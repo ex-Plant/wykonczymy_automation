@@ -11,6 +11,7 @@ import { CashRegisters } from '@/collections/cash-registers'
 import { Investments } from '@/collections/investments'
 import { Media } from '@/collections/media'
 import { OtherCategories } from '@/collections/other-categories'
+import { Transactions } from '@/collections/transactions'
 import { Users } from '@/collections/users'
 import { seed } from '@/seed'
 
@@ -36,7 +37,7 @@ export default buildConfig({
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
-  collections: [Users, CashRegisters, Investments, OtherCategories, Media],
+  collections: [Users, CashRegisters, Investments, Transactions, OtherCategories, Media],
   onInit: seed,
   secret: process.env.PAYLOAD_SECRET || 'CHANGE-ME-IN-ENV',
   sharp,

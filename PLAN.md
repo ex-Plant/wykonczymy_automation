@@ -200,14 +200,15 @@ For invoice file uploads (PDF, images).
 - **Migration**: `20260211_212425.ts`
 - **Verified**: All 4 tables created, types generated, frontend (200) + admin (200)
 
-### M4: Transactions & Business Logic
+### M4: Transactions & Business Logic ✅ DONE
 
-- [ ] Transactions collection with all fields and conditional visibility
-- [ ] Validation hooks (beforeValidate)
-- [ ] Balance update hooks (afterChange)
-- [ ] Invoice upload configuration
-- **Files**: `src/collections/transactions.ts`, `src/hooks/`, `src/collections/media.ts`
-- **Success**: Creating a transaction updates register balance and investment costs correctly
+- [x] Transactions collection with all fields and conditional visibility (`admin.condition`)
+- [x] Validation hooks (beforeValidate) — type-dependent required fields, auto-set createdBy
+- [x] Balance update hooks (afterChange + afterDelete) — recalculate register balance and investment totalCosts
+- [x] Invoice upload via Media collection (configured in M3)
+- **Files**: `src/collections/transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`
+- **Migration**: `20260211_213603.ts`
+- **Verified**: Types generated, frontend (200) + admin (200)
 
 ### M5: Custom Dashboard & Views
 
