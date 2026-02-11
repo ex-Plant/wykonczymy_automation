@@ -1,0 +1,129 @@
+{
+  "date": {
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    }
+  },
+  "common": {
+    "heroImageAlt": "Hero image",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "noResults": "No results",
+    "invalidFileUrl": "Invalid file URL",
+    "downloadError": "Error while downloading file",
+    "somethingWentWrong": "Something went wrong",
+    "download": "Download"
+  },
+  "navigation": {
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "accessibility": {
+    "title": "Accessibility",
+    "fontSize": "Font size",
+    "fontSizeSmall": "Small",
+    "fontSizeMedium": "Medium",
+    "fontSizeLarge": "Large",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "language": "Language",
+    "toggleLanguage": "Change language of the page",
+    "skipToContent": "Skip to content",
+    "decreaseFontSize": "Decrease font size",
+    "increaseFontSize": "Increase font size"
+  },
+  "form": {
+    "required": "This field is required",
+    "invalidEmail": "Invalid email address",
+    "minLength": "Minimum length is {{min}} characters",
+    "maxLength": "Maximum length is {{max}} characters",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "message": "Message",
+    "phone": "Phone"
+  },
+  "footer": {
+    "copyright": "All rights reserved",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "newEditionComingSoon": "New edition coming soon",
+    "join": "Join"
+  },
+  "cardBox": {
+    "details": "Details",
+    "download": "Download",
+    "stop": "Stop",
+    "listen": "Listen",
+    "play": "Play",
+    "more": "More",
+    "typeVideo": "Video",
+    "typeAudio": "Audio",
+    "typeFile": "File",
+    "typeEvent": "Event",
+    "typePerson": "Guest",
+    "thumbnailEvent": "Event thumbnail",
+    "thumbnailFile": "File thumbnail",
+    "thumbnailAudio": "Audio thumbnail",
+    "thumbnailVideo": "Video thumbnail",
+    "thumbnailPerson": "Person avatar",
+    "thumbnailDefault": "Thumbnail",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "fullscreen": "Enter fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "typeEmbed": "Embedded video"
+  },
+  "community": {
+    "highlighted": "Highlighted:",
+    "latest": "Latest:",
+    "pinned": "Pinned:",
+    "allCategories": "All",
+    "noResults": "No articles found for this category.",
+    "writeAnArticle": "Write an article"
+  },
+  "pagination": {
+    "previous": "Previous",
+    "next": "Next",
+    "goToPreviousPage": "Go to previous page",
+    "goToNextPage": "Go to next page",
+    "page": "Page",
+    "morePages": "More pages",
+    "pagination": "Pagination"
+  },
+  "gallery": {
+    "openModal": "Open gallery",
+    "imageAlt": "Gallery image",
+    "galleryImageAlt": "Gallery image",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "closeGallery": "Close gallery"
+  }
+}

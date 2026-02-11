@@ -1,0 +1,129 @@
+{
+  "date": {
+    "months": {
+      "january": "Stycznia",
+      "february": "Lutego",
+      "march": "Marca",
+      "april": "Kwietnia",
+      "may": "Maja",
+      "june": "Czerwca",
+      "july": "Lipca",
+      "august": "Sierpnia",
+      "september": "Września",
+      "october": "Października",
+      "november": "Listopada",
+      "december": "Grudnia"
+    }
+  },
+  "common": {
+    "heroImageAlt": "Obraz wyróżniający",
+    "submit": "Wyślij",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "close": "Zamknij",
+    "loading": "Ładowanie...",
+    "error": "Wystąpił błąd",
+    "success": "Sukces",
+    "confirm": "Potwierdź",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "search": "Szukaj",
+    "noResults": "Brak wyników",
+    "invalidFileUrl": "Nieprawidłowy adres pliku",
+    "downloadError": "Błąd podczas pobierania pliku",
+    "somethingWentWrong": "Coś poszło nie tak",
+    "download": "Pobierz"
+  },
+  "navigation": {
+    "home": "Strona główna",
+    "about": "O nas",
+    "contact": "Kontakt",
+    "menu": "Menu",
+    "openMenu": "Otwórz menu",
+    "closeMenu": "Zamknij menu"
+  },
+  "accessibility": {
+    "title": "Dostępność",
+    "fontSize": "Rozmiar czcionki",
+    "fontSizeSmall": "Mały",
+    "fontSizeMedium": "Średni",
+    "fontSizeLarge": "Duży",
+    "darkMode": "Tryb ciemny",
+    "lightMode": "Tryb jasny",
+    "language": "Język",
+    "toggleLanguage": "Zmień język strony",
+    "skipToContent": "Przejdź do treści",
+    "decreaseFontSize": "Zmniejsz rozmiar czcionki",
+    "increaseFontSize": "Zwiększ rozmiar czcionki"
+  },
+  "form": {
+    "required": "To pole jest wymagane",
+    "invalidEmail": "Nieprawidłowy adres email",
+    "minLength": "Minimalna długość to {{min}} znaków",
+    "maxLength": "Maksymalna długość to {{max}} znaków",
+    "email": "Email",
+    "password": "Hasło",
+    "name": "Imię",
+    "message": "Wiadomość",
+    "phone": "Telefon"
+  },
+  "footer": {
+    "copyright": "Wszelkie prawa zastrzeżone",
+    "privacyPolicy": "Polityka prywatności",
+    "termsOfService": "Regulamin",
+    "newEditionComingSoon": "Nowa edycja już wkrótce",
+    "join": "Dołącz"
+  },
+  "cardBox": {
+    "details": "Szczegóły",
+    "download": "Pobierz",
+    "stop": "Zakończ",
+    "listen": "Posłuchaj",
+    "play": "Odtwórz",
+    "more": "Więcej",
+    "typeVideo": "Wideo",
+    "typeAudio": "Audio",
+    "typeFile": "Plik",
+    "typeEvent": "Wydarzenie",
+    "typePerson": "Gość",
+    "thumbnailEvent": "Miniatura wydarzenia",
+    "thumbnailFile": "Miniatura pliku",
+    "thumbnailAudio": "Miniatura audio",
+    "thumbnailVideo": "Miniatura wideo",
+    "thumbnailPerson": "Awatar osoby",
+    "thumbnailDefault": "Miniatura",
+    "pause": "Pauza",
+    "mute": "Wycisz",
+    "unmute": "Włącz dźwięk",
+    "fullscreen": "Pełny ekran",
+    "exitFullscreen": "Zamknij pełny ekran",
+    "typeEmbed": "Wideo osadzone"
+  },
+  "community": {
+    "highlighted": "Wyróżnione:",
+    "latest": "Najnowsze:",
+    "pinned": "Przypięte:",
+    "allCategories": "Wszystkie",
+    "noResults": "Brak artykułów w tej kategorii.",
+    "writeAnArticle": "Napisz artykuł"
+  },
+  "pagination": {
+    "previous": "Poprzednia",
+    "next": "Następna",
+    "goToPreviousPage": "Przejdź do poprzedniej strony",
+    "goToNextPage": "Przejdź do następnej strony",
+    "page": "Strona",
+    "morePages": "Więcej stron",
+    "pagination": "Paginacja"
+  },
+  "gallery": {
+    "openModal": "Otwórz galerię",
+    "imageAlt": "Zdjęcie z galerii",
+    "galleryImageAlt": "Zdjęcie z galerii",
+    "previousImage": "Poprzednie zdjęcie",
+    "nextImage": "Następne zdjęcie",
+    "closeGallery": "Zamknij galerię"
+  }
+}
