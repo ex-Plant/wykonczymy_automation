@@ -176,16 +176,19 @@ For invoice file uploads (PDF, images).
 
 ---
 
-### M2: Auth & Users
+### M2: Auth & Users ✅ DONE
 
-- [ ] Extract Users collection to `src/collections/users.ts`
-- [ ] Add role field (`ADMIN` / `OWNER` / `MANAGER` / `EMPLOYEE`) with `saveToJWT`
-- [ ] Role-based access control helpers (`src/access/`)
-- [ ] ADMIN role: full Payload admin panel access, all collections unrestricted
-- [ ] Seed script for initial ADMIN account
-- [ ] Admin panel i18n (`@payloadcms/translations` — pl + en)
-- **Files**: `src/collections/users.ts`, `src/access/`, `src/seed.ts`
-- **Success**: Can log in as ADMIN, create OWNER/MANAGER/EMPLOYEE accounts
+- [x] Extract Users collection to `src/collections/users.ts`
+- [x] Add role field (`ADMIN` / `OWNER` / `MANAGER` / `EMPLOYEE`) with `saveToJWT`
+- [x] Role-based access control helpers (`src/access/`)
+- [x] ADMIN role: full Payload admin panel access, all collections unrestricted
+- [x] Seed script for initial ADMIN account (`onInit` hook, skips if users exist)
+- [x] Admin panel i18n (`@payloadcms/translations` — pl + en, fallback: pl)
+- [x] Collection labels + field labels translated (pl/en)
+- [x] Existing user (Konrad) promoted to ADMIN role
+- **Key files**: `src/collections/users.ts`, `src/access/index.ts`, `src/seed.ts`, `src/payload.config.ts`
+- **Migration**: `20260211_204911_add_user_role.ts`
+- **Verified**: Admin panel (200), frontend (200), Polish translations active, access control blocking anonymous requests
 
 ### M3: Core Collections (CashRegisters, Investments, OtherCategories)
 

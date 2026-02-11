@@ -1,9 +1,14 @@
 import { vercelPostgresAdapter } from '@payloadcms/db-vercel-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { pl } from '@payloadcms/translations/languages/pl'
+import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
+
+import { Users } from '@/collections/users'
+import { seed } from '@/seed'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -15,6 +20,10 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
+  i18n: {
+    supportedLanguages: { pl, en },
+    fallbackLanguage: 'pl',
+  },
   editor: lexicalEditor(),
   db: vercelPostgresAdapter({
     pool: {
@@ -23,13 +32,8 @@ export default buildConfig({
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
-  collections: [
-    {
-      slug: 'users',
-      auth: true,
-      fields: [{ name: 'name', type: 'text', required: true }],
-    },
-  ],
+  collections: [Users],
+  onInit: seed,
   secret: process.env.PAYLOAD_SECRET || 'CHANGE-ME-IN-ENV',
   sharp,
   typescript: {

@@ -22,6 +22,7 @@
     "@payloadcms/db-vercel-postgres": "3.73.0",
     "@payloadcms/next": "3.73.0",
     "@payloadcms/richtext-lexical": "3.73.0",
+    "@payloadcms/translations": "3.73.0",
     "@payloadcms/ui": "3.73.0",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-dialog": "^1.1.15",
