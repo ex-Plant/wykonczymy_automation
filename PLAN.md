@@ -190,14 +190,15 @@ For invoice file uploads (PDF, images).
 - **Migration**: `20260211_204911_add_user_role.ts`
 - **Verified**: Admin panel (200), frontend (200), Polish translations active, access control blocking anonymous requests
 
-### M3: Core Collections (CashRegisters, Investments, OtherCategories)
+### M3: Core Collections (CashRegisters, Investments, OtherCategories) ✅ DONE
 
-- [ ] CashRegisters with owner relationship and balance field
-- [ ] Investments with all client fields and totalCosts
-- [ ] OtherCategories for configurable expense categories
-- [ ] Media collection for invoice uploads
+- [x] CashRegisters with owner relationship and balance field
+- [x] Investments with all client fields and totalCosts
+- [x] OtherCategories for configurable expense categories
+- [x] Media collection for invoice uploads (images + PDF, with createdBy auto-set)
 - **Files**: `src/collections/cash-registers.ts`, `src/collections/investments.ts`, `src/collections/other-categories.ts`, `src/collections/media.ts`
-- **Success**: CRUD via Payload admin for all collections
+- **Migration**: `20260211_212425.ts`
+- **Verified**: All 4 tables created, types generated, frontend (200) + admin (200)
 
 ### M4: Transactions & Business Logic
 

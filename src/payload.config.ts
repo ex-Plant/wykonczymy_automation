@@ -7,6 +7,10 @@ import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
+import { CashRegisters } from '@/collections/cash-registers'
+import { Investments } from '@/collections/investments'
+import { Media } from '@/collections/media'
+import { OtherCategories } from '@/collections/other-categories'
 import { Users } from '@/collections/users'
 import { seed } from '@/seed'
 
@@ -32,7 +36,7 @@ export default buildConfig({
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
-  collections: [Users],
+  collections: [Users, CashRegisters, Investments, OtherCategories, Media],
   onInit: seed,
   secret: process.env.PAYLOAD_SECRET || 'CHANGE-ME-IN-ENV',
   sharp,
