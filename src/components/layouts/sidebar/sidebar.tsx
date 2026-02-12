@@ -9,6 +9,7 @@ import {
   Wallet,
   ArrowLeftRight,
   Users,
+  Receipt,
   LogOut,
   Plus,
 } from 'lucide-react'
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { label: 'Inwestycje', href: '/inwestycje', icon: Building2, roles: 'management' as const },
   { label: 'Kasa', href: '/kasa', icon: Wallet, roles: 'management' as const },
   { label: 'Użytkownicy', href: '/uzytkownicy', icon: Users, roles: 'management' as const },
+  { label: 'Rozliczenia', href: '/rozliczenia', icon: Receipt, roles: 'management' as const },
 ]
 
 export function Sidebar({ user, onAddTransaction }: SidebarPropsT) {

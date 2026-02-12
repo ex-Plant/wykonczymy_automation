@@ -12,6 +12,7 @@ import {
   type TransactionTypeT,
   type PaymentMethodT,
 } from '@/lib/constants/transactions'
+import { ZeroSaldoDialog } from '@/components/settlements/zero-saldo-dialog'
 
 type PagePropsT = {
   params: Promise<{ id: string }>
@@ -57,8 +58,8 @@ export default async function UserDetailPage({ params }: PagePropsT) {
     }),
   ])
 
-  // Fetch all matching docs to sum amounts
-  const [allAdvances, allExpenses] = await Promise.all([
+  // Fetch all matching docs to sum amounts + reference data for zero saldo
+  const [allAdvances, allExpenses, activeInvestments, cashRegisters] = await Promise.all([
     payload.find({
       collection: 'transactions',
       where: { worker: { equals: id }, type: { equals: 'ADVANCE' } },
@@ -71,6 +72,13 @@ export default async function UserDetailPage({ params }: PagePropsT) {
       limit: expenses.totalDocs || 1000,
       depth: 0,
     }),
+    payload.find({
+      collection: 'investments',
+      where: { status: { equals: 'active' } },
+      limit: 100,
+      depth: 0,
+    }),
+    payload.find({ collection: 'cash-registers', limit: 100, depth: 0 }),
   ])
 
   const advancesSum = allAdvances.docs.reduce((sum, tx) => sum + tx.amount, 0)
@@ -93,10 +101,20 @@ export default async function UserDetailPage({ params }: PagePropsT) {
         <dd className="text-foreground">{ROLE_LABELS[targetUser.role as RoleT]?.pl ?? targetUser.role}</dd>
       </dl>
 
-      {/* Stat card */}
-      <div className="bg-muted/50 border-border mt-6 inline-block rounded-lg border px-6 py-4">
-        <p className="text-muted-foreground text-xs font-medium">Saldo</p>
-        <p className="text-foreground text-xl font-semibold">{formatPLN(saldo)}</p>
+      {/* Stat card + zero saldo */}
+      <div className="mt-6 flex items-end gap-4">
+        <div className="bg-muted/50 border-border inline-block rounded-lg border px-6 py-4">
+          <p className="text-muted-foreground text-xs font-medium">Saldo</p>
+          <p className="text-foreground text-xl font-semibold">{formatPLN(saldo)}</p>
+        </div>
+        <ZeroSaldoDialog
+          saldo={saldo}
+          workerId={targetUser.id}
+          referenceData={{
+            investments: activeInvestments.docs.map((i) => ({ id: i.id, name: i.name })),
+            cashRegisters: cashRegisters.docs.map((c) => ({ id: c.id, name: c.name })),
+          }}
+        />
       </div>
 
       {/* Transactions table */}

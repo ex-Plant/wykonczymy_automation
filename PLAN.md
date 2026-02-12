@@ -245,14 +245,21 @@ For invoice file uploads (PDF, images).
 - **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 new errors)
 - **Success**: All sidebar pages have functional views with real data
 
-### M8: Settlement Flow
+### M8: Settlement Flow ✅ DONE
 
-- [ ] MANAGER settlement page for processing EMPLOYEE invoices
-- [ ] Invoice line-item calculator (add items, auto-sum)
-- [ ] Batch creation of EMPLOYEE_EXPENSE transactions
-- [ ] Sub-account zeroing flow (ZALICZKA NA POCZET WYPLATY)
-- **Files**: `src/app/(frontend)/settlement/`, `src/components/settlement/`
-- **Success**: MANAGER can settle EMPLOYEE invoices end-to-end
+- [x] Settlement server actions: `getEmployeeSaldo`, `createSettlement`, `zeroSaldoAction`
+- [x] Settlement page (`/rozliczenia`) — management-only, fetches reference data
+- [x] Settlement form with dynamic line items, auto-sum, employee saldo display, invoice upload
+- [x] Each line item creates a separate EMPLOYEE_EXPENSE transaction (shared metadata: worker, investment, date, cash register, payment method, invoice)
+- [x] Zero saldo dialog on `/uzytkownicy/[id]` — creates single EMPLOYEE_EXPENSE to zero out balance
+- [x] Sidebar: "Rozliczenia" nav item (management only, Receipt icon)
+- **New files**: `src/lib/settlements/actions.ts`, `src/app/(frontend)/rozliczenia/page.tsx`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`
+- **Modified**: `src/components/layouts/sidebar/sidebar.tsx`, `src/app/(frontend)/uzytkownicy/[id]/page.tsx`
+- **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 new errors)
+
+---
+
+### Future Milestones (not yet planned in detail)
 
 ### M9: Reports
 
