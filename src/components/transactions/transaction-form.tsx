@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef } from 'react'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
@@ -13,8 +14,11 @@ import {
   needsInvestment,
   needsWorker,
   needsOtherCategory,
+  type TransactionTypeT,
+  type PaymentMethodT,
 } from '@/lib/constants/transactions'
 import { createTransactionAction } from '@/lib/transactions/actions'
+import type { CreateTransactionFormT } from '@/lib/transactions/schema'
 import type { ReferenceDataT } from './transaction-dialog-provider'
 
 type TransactionFormPropsT = {
@@ -41,6 +45,8 @@ type FormValuesT = {
 const today = () => new Date().toISOString().split('T')[0]
 
 export function TransactionForm({ referenceData, onSuccess }: TransactionFormPropsT) {
+  const invoiceRef = useRef<HTMLInputElement>(null)
+
   const form = useAppForm({
     defaultValues: {
       description: '',
@@ -56,27 +62,28 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
       invoiceNote: '',
     } as FormValuesT,
     onSubmit: async ({ value }) => {
-      const formData = new FormData()
+      const data: CreateTransactionFormT = {
+        description: value.description,
+        amount: Number(value.amount),
+        date: value.date,
+        type: value.type as TransactionTypeT,
+        paymentMethod: value.paymentMethod as PaymentMethodT,
+        cashRegister: Number(value.cashRegister),
+        investment: value.investment ? Number(value.investment) : undefined,
+        worker: value.worker ? Number(value.worker) : undefined,
+        otherCategory: value.otherCategory ? Number(value.otherCategory) : undefined,
+        otherDescription: value.otherDescription || undefined,
+        invoiceNote: value.invoiceNote || undefined,
+      }
 
-      formData.set('description', value.description)
-      formData.set('amount', value.amount)
-      formData.set('date', value.date)
-      formData.set('type', value.type)
-      formData.set('paymentMethod', value.paymentMethod)
-      formData.set('cashRegister', value.cashRegister)
+      const file = invoiceRef.current?.files?.[0]
+      let invoiceFormData: FormData | null = null
+      if (file) {
+        invoiceFormData = new FormData()
+        invoiceFormData.set('invoice', file)
+      }
 
-      if (value.investment) formData.set('investment', value.investment)
-      if (value.worker) formData.set('worker', value.worker)
-      if (value.otherCategory) formData.set('otherCategory', value.otherCategory)
-      if (value.otherDescription) formData.set('otherDescription', value.otherDescription)
-      if (value.invoiceNote) formData.set('invoiceNote', value.invoiceNote)
-
-      // Get invoice file from the file input
-      const invoiceInput = document.querySelector<HTMLInputElement>('input[name="invoice"]')
-      const invoiceFile = invoiceInput?.files?.[0]
-      if (invoiceFile) formData.set('invoice', invoiceFile)
-
-      const result = await createTransactionAction(formData)
+      const result = await createTransactionAction(data, invoiceFormData)
 
       if (result.success) {
         toastMessage('Transakcja dodana', 'success')
@@ -215,6 +222,7 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
               Faktura
             </label>
             <input
+              ref={invoiceRef}
               type="file"
               id="invoice"
               name="invoice"
