@@ -1,10 +1,7 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminOrOwner } from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager, rolesOrSelfField } from '@/access'
 import { validateTransaction } from '@/hooks/transactions/validate'
-import {
-  recalcAfterChange,
-  recalcAfterDelete,
-} from '@/hooks/transactions/recalculate-balances'
+import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recalculate-balances'
 
 const TRANSACTION_TYPES = [
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
@@ -29,8 +26,7 @@ const needsWorker = (data: Record<string, unknown>) =>
   data?.type === 'ADVANCE' || data?.type === 'EMPLOYEE_EXPENSE'
 
 /** Show field when type is OTHER */
-const needsOtherCategory = (data: Record<string, unknown>) =>
-  data?.type === 'OTHER'
+const needsOtherCategory = (data: Record<string, unknown>) => data?.type === 'OTHER'
 
 export const Transactions: CollectionConfig = {
   slug: 'transactions',
@@ -44,22 +40,9 @@ export const Transactions: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   access: {
-    read: ({ req: { user } }) => {
-      if (!user) return false
-      if (user.role === 'ADMIN' || user.role === 'OWNER' || user.role === 'MANAGER') return true
-      // EMPLOYEE can only read transactions where they are the worker
-      return { worker: { equals: user.id } }
-    },
-    create: ({ req: { user } }) => {
-      if (!user) return false
-      return user.role === 'ADMIN' || user.role === 'OWNER' || user.role === 'MANAGER'
-    },
-    update: ({ req: { user } }) => {
-      if (!user) return false
-      if (user.role === 'ADMIN' || user.role === 'OWNER') return true
-      // MANAGER can only update their own transactions
-      return { createdBy: { equals: user.id } }
-    },
+    read: rolesOrSelfField('worker', 'ADMIN', 'OWNER', 'MANAGER'),
+    create: isAdminOrOwnerOrManager,
+    update: rolesOrSelfField('createdBy', 'ADMIN', 'OWNER'),
     delete: isAdminOrOwner,
   },
   hooks: {

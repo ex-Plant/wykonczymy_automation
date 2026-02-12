@@ -1,8 +1,4 @@
-import type {
-  CollectionAfterChangeHook,
-  CollectionAfterDeleteHook,
-  Payload,
-} from 'payload'
+import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, Payload } from 'payload'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
 
@@ -10,10 +6,7 @@ const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
  * Recalculate a cash register's balance by summing all its transactions.
  * Every transaction reduces the register balance (money going out).
  */
-const recalcRegisterBalance = async (
-  payload: Payload,
-  registerId: number,
-): Promise<void> => {
+const recalcRegisterBalance = async (payload: Payload, registerId: number): Promise<void> => {
   const { docs } = await payload.find({
     collection: 'transactions',
     where: { cashRegister: { equals: registerId } },
@@ -35,10 +28,7 @@ const recalcRegisterBalance = async (
  * Recalculate an investment's totalCosts by summing INVESTMENT_EXPENSE
  * and EMPLOYEE_EXPENSE transactions linked to it.
  */
-const recalcInvestmentCosts = async (
-  payload: Payload,
-  investmentId: number,
-): Promise<void> => {
+const recalcInvestmentCosts = async (payload: Payload, investmentId: number): Promise<void> => {
   const { docs } = await payload.find({
     collection: 'transactions',
     where: {
@@ -110,10 +100,7 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
  * afterDelete — recalculate register balance and investment costs
  * after a transaction is deleted.
  */
-export const recalcAfterDelete: CollectionAfterDeleteHook = async ({
-  doc,
-  req,
-}) => {
+export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req }) => {
   const registerId = resolveId(doc.cashRegister)
   if (registerId) {
     await recalcRegisterBalance(req.payload, registerId)

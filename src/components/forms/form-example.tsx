@@ -150,7 +150,7 @@ export default function FormExample() {
                     <Button
                       type="button"
                       variant="outline"
-                      size="fest"
+                      size="default"
                       onClick={() => field.pushValue({ email: '' })}
                     >
                       Add User

@@ -36,13 +36,14 @@
 
 ### 1. Users (auth collection)
 
-| Field | Type   | Notes                                                          |
-| ----- | ------ | -------------------------------------------------------------- |
-| name  | text   | required                                                       |
-| email | email  | required, unique                                               |
-| role  | select | `ADMIN` / `OWNER` / `MANAGER` / `EMPLOYEE`, saveToJWT         |
+| Field | Type   | Notes                                                 |
+| ----- | ------ | ----------------------------------------------------- |
+| name  | text   | required                                              |
+| email | email  | required, unique                                      |
+| role  | select | `ADMIN` / `OWNER` / `MANAGER` / `EMPLOYEE`, saveToJWT |
 
 **Role semantics:**
+
 - `ADMIN` — Full system access. Payload admin panel, all collections, user management, system config. Reserved for developers/sysadmins.
 - `OWNER` — Business owner (SZEF). Full CRUD on all business data. Cannot access Payload admin panel system settings.
 - `MANAGER` — Site manager (MAJSTER). Creates transactions, views all data, manages own cash register.
@@ -71,21 +72,21 @@
 
 ### 4. Transactions
 
-| Field            | Type         | Notes                                                                   |
-| ---------------- | ------------ | ----------------------------------------------------------------------- |
-| description      | text         | what the money was spent on                                             |
-| amount           | number       | always positive, direction determined by type                           |
-| date             | date         | when the transaction occurred                                           |
-| type             | select       | `INVESTMENT_EXPENSE` / `ADVANCE` / `EMPLOYEE_EXPENSE` / `OTHER`         |
-| paymentMethod    | select       | `CASH` / `BLIK` / `TRANSFER` / `CARD`                                   |
-| cashRegister     | relationship | → CashRegisters (source of funds)                                       |
+| Field            | Type         | Notes                                                                     |
+| ---------------- | ------------ | ------------------------------------------------------------------------- |
+| description      | text         | what the money was spent on                                               |
+| amount           | number       | always positive, direction determined by type                             |
+| date             | date         | when the transaction occurred                                             |
+| type             | select       | `INVESTMENT_EXPENSE` / `ADVANCE` / `EMPLOYEE_EXPENSE` / `OTHER`           |
+| paymentMethod    | select       | `CASH` / `BLIK` / `TRANSFER` / `CARD`                                     |
+| cashRegister     | relationship | → CashRegisters (source of funds)                                         |
 | investment       | relationship | → Investments (required if type = INVESTMENT_EXPENSE or EMPLOYEE_EXPENSE) |
 | worker           | relationship | → Users (required if type = ADVANCE or EMPLOYEE_EXPENSE)                  |
-| invoice          | upload       | → Media                                                                 |
-| invoiceNote      | textarea     | required if no invoice attached                                         |
-| otherCategory    | relationship | → OtherCategories (required if type = OTHER)                            |
-| otherDescription | textarea     | required if type = OTHER and category not in predefined list            |
-| createdBy        | relationship | → Users, auto-set via hook                                              |
+| invoice          | upload       | → Media                                                                   |
+| invoiceNote      | textarea     | required if no invoice attached                                           |
+| otherCategory    | relationship | → OtherCategories (required if type = OTHER)                              |
+| otherDescription | textarea     | required if type = OTHER and category not in predefined list              |
+| createdBy        | relationship | → Users, auto-set via hook                                                |
 
 ### 5. OtherCategories
 
@@ -124,15 +125,15 @@ For invoice file uploads (PDF, images).
 
 ## Access Control
 
-| Collection      | ADMIN          | OWNER     | MANAGER                      | EMPLOYEE                 |
-| --------------- | -------------- | --------- | ---------------------------- | ------------------------ |
-| Users           | full CRUD      | full CRUD | read all                     | read self only           |
-| CashRegisters   | full CRUD      | full CRUD | read all, update own balance | no access                |
-| Investments     | full CRUD      | full CRUD | read all                     | no access                |
-| Transactions    | full CRUD      | full CRUD | create, read all, update own | read own (worker = self) |
-| OtherCategories | full CRUD      | full CRUD | read                         | no access                |
-| Media           | full CRUD      | full CRUD | create, read                 | read own                 |
-| Payload Admin   | full access    | no access | no access                    | no access                |
+| Collection      | ADMIN       | OWNER     | MANAGER                      | EMPLOYEE                 |
+| --------------- | ----------- | --------- | ---------------------------- | ------------------------ |
+| Users           | full CRUD   | full CRUD | read all                     | read self only           |
+| CashRegisters   | full CRUD   | full CRUD | read all, update own balance | no access                |
+| Investments     | full CRUD   | full CRUD | read all                     | no access                |
+| Transactions    | full CRUD   | full CRUD | create, read all, update own | read own (worker = self) |
+| OtherCategories | full CRUD   | full CRUD | read                         | no access                |
+| Media           | full CRUD   | full CRUD | create, read                 | read own                 |
+| Payload Admin   | full access | no access | no access                    | no access                |
 
 ---
 
@@ -170,6 +171,7 @@ For invoice file uploads (PDF, images).
 - **Verified**: Frontend (200) + Admin panel (200) both working on Turbopack
 
 #### Deferred from M1
+
 - Email adapter (nodemailer) — console-only for now, add when needed
 - Admin panel i18n (pl/en) — add in M2
 - CORS config — add when frontend fetches from API
@@ -206,28 +208,43 @@ For invoice file uploads (PDF, images).
 - [x] Validation hooks (beforeValidate) — type-dependent required fields, auto-set createdBy
 - [x] Balance update hooks (afterChange + afterDelete) — recalculate register balance and investment totalCosts
 - [x] Invoice upload via Media collection (configured in M3)
-- **Files**: `src/collections/transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`
+- [x] Refactored access control — extracted `rolesOrSelfField` higher-order helper, eliminated all inline access logic across 4 collections
+- **Files**: `src/collections/transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`, `src/access/index.ts`
 - **Migration**: `20260211_213603.ts`
 - **Verified**: Types generated, frontend (200) + admin (200)
 
-### M5: Custom Dashboard & Views
+### M5: Dashboard & Sidebar Layout ✅ DONE
 
-- [ ] App layout with role-based navigation
-- [ ] Dashboard with overview cards (register balances, recent transactions)
-- [ ] Investment list + detail page with TanStack Table
-- [ ] Cash register list + detail
-- **Files**: `src/app/(frontend)/layout.tsx` (updated), `src/app/(frontend)/page.tsx`, `src/app/(frontend)/investments/`, `src/app/(frontend)/cash-registers/`, `src/components/`
-- **Success**: Functional dashboard with real data from Payload
+- [x] Sidebar layout with role-based navigation (EMPLOYEE sees Kokpit + Transakcje only)
+- [x] Dashboard with overview cards (register balances, active investments, recent transactions)
+- [x] Login/logout flow with session-based auth
+- **Files**: `src/app/(frontend)/layout.tsx`, `src/app/(frontend)/page.tsx`, `src/components/layouts/sidebar/sidebar.tsx`, `src/app/(auth)/`
+- **Verified**: Frontend (200), sidebar renders, auth redirect works
 
-### M6: Transaction Management & Worker Sub-accounts
+### M6: Frontend Business Features ✅ DONE
 
-- [ ] New transaction form with conditional fields (Shadcn form + Zod validation)
-- [ ] Worker sub-account view (balance, history)
-- [ ] EMPLOYEE portal (read-only own data)
-- **Files**: `src/app/(frontend)/transactions/`, `src/app/(frontend)/workers/`, `src/app/(frontend)/my-account/`
-- **Success**: Full transaction creation flow, EMPLOYEE can see own balance
+- [x] Shared constants (`src/lib/constants/transactions.ts`) — type/payment labels, conditional field helpers
+- [x] Role permission helpers (`src/lib/auth/permissions.ts`) — `isManagementRole()`, `MANAGEMENT_ROLES`
+- [x] Role-aware sidebar — EMPLOYEE sees 2 items, management sees 5 + "Nowa transakcja" button
+- [x] Role-aware dashboard — management sees full stats, EMPLOYEE sees personal saldo + monthly transactions
+- [x] Employee dashboard with month/year selector and server action data fetching
+- [x] Transaction creation dialog (openable from sidebar/list page) with context provider pattern
+- [x] Transaction form with conditional fields, Zod 4 validation, invoice upload, server action
+- [x] Transaction list page (`/transakcje`) with URL-based filters (type, cash register, date range) + pagination
+- [x] EMPLOYEE auto-filtered to own transactions on list page
+- **New files**: `src/lib/constants/transactions.ts`, `src/lib/auth/permissions.ts`, `src/lib/transactions/actions.ts`, `src/lib/transactions/schema.ts`, `src/app/(frontend)/_components/manager-dashboard.tsx`, `src/app/(frontend)/_components/employee-dashboard.tsx`, `src/app/(frontend)/_components/layout-shell.tsx`, `src/components/transactions/transaction-dialog-provider.tsx`, `src/components/transactions/transaction-form.tsx`, `src/app/(frontend)/transakcje/page.tsx`, `src/app/(frontend)/transakcje/_components/`
+- **Modified**: `src/components/layouts/sidebar/sidebar.tsx`, `src/app/(frontend)/page.tsx`, `src/app/(frontend)/layout.tsx`
+- **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 errors), dev server running
 
-### M7: Settlement Flow
+### M7: Investment & Cash Register Views
+
+- [ ] Investment list + detail page with transaction history
+- [ ] Cash register list + detail with balance and transaction history
+- [ ] Worker list + sub-account balance view
+- **Files**: `src/app/(frontend)/inwestycje/`, `src/app/(frontend)/kasa/`, `src/app/(frontend)/uzytkownicy/`
+- **Success**: All sidebar pages have functional views with real data
+
+### M8: Settlement Flow
 
 - [ ] MANAGER settlement page for processing EMPLOYEE invoices
 - [ ] Invoice line-item calculator (add items, auto-sum)
@@ -236,7 +253,7 @@ For invoice file uploads (PDF, images).
 - **Files**: `src/app/(frontend)/settlement/`, `src/components/settlement/`
 - **Success**: MANAGER can settle EMPLOYEE invoices end-to-end
 
-### M8: Reports
+### M9: Reports
 
 - [ ] Filterable report views (date range, investment, worker, register)
 - [ ] Daily / monthly / yearly summaries
@@ -244,7 +261,7 @@ For invoice file uploads (PDF, images).
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M9: Deployment
+### M10: Deployment
 
 - [ ] Vercel project setup
 - [ ] Neon Postgres provisioning (swap DATABASE_URL)

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager, rolesOrSelfField } from '@/access'
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -25,13 +25,7 @@ export const Media: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   access: {
-    // ADMIN/OWNER: full CRUD. MANAGER: create + read. EMPLOYEE: read own.
-    read: ({ req: { user } }) => {
-      if (!user) return false
-      if (user.role === 'ADMIN' || user.role === 'OWNER' || user.role === 'MANAGER') return true
-      // EMPLOYEE can only read media they uploaded
-      return { createdBy: { equals: user.id } }
-    },
+    read: rolesOrSelfField('createdBy', 'ADMIN', 'OWNER', 'MANAGER'),
     create: isAdminOrOwnerOrManager,
     update: isAdminOrOwner,
     delete: isAdminOrOwner,
@@ -52,9 +46,7 @@ export const Media: CollectionConfig = {
         position: 'sidebar',
       },
       hooks: {
-        beforeChange: [
-          ({ req, value }) => req.user?.id ?? value,
-        ],
+        beforeChange: [({ req, value }) => req.user?.id ?? value],
       },
     },
   ],

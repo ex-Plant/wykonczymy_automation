@@ -4,6 +4,7 @@ import {
   isAdminOrOwner,
   isAdminOrOwnerField,
   isAdminOrSelf,
+  rolesOrSelfField,
 } from '@/access'
 
 export const ROLES = ['ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE'] as const
@@ -29,13 +30,7 @@ export const Users: CollectionConfig = {
     group: { en: 'Admin', pl: 'Administracja' },
   },
   access: {
-    // ADMIN/OWNER: all users. MANAGER: read all. EMPLOYEE: read self only.
-    read: ({ req: { user } }) => {
-      if (!user) return false
-      if (user.role === 'ADMIN' || user.role === 'OWNER' || user.role === 'MANAGER') return true
-      // EMPLOYEE can only read their own document
-      return { id: { equals: user.id } }
-    },
+    read: rolesOrSelfField('id', 'ADMIN', 'OWNER', 'MANAGER'),
     create: isAdminOrOwner,
     update: isAdminOrSelf,
     delete: isAdminOrOwner,

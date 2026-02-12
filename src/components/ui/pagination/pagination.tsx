@@ -58,10 +58,10 @@ function PaginationLink({ className, isActive, isDisabled, ...props }: Paginatio
       data-slot="pagination-link"
       data-active={isActive}
       className={cn(
-        'fest-label-small inline-flex size-8 cursor-pointer items-center justify-center rounded-md transition-all duration-200 select-none',
-        isActive && 'border-black-100 text-black-100 border',
-        !isActive && !isDisabled && 'border-black-10 text-black-100 hover:bg-black-5 border',
-        isDisabled && 'text-black-30 pointer-events-none cursor-not-allowed',
+        'inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-xs font-medium transition-all duration-200 select-none',
+        isActive && 'border-foreground text-foreground border',
+        !isActive && !isDisabled && 'border-border text-foreground hover:bg-accent border',
+        isDisabled && 'text-muted-foreground pointer-events-none cursor-not-allowed',
         className,
       )}
       {...props}

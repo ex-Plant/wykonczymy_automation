@@ -14,15 +14,14 @@ import { cn } from '@/lib/cn'
  */
 
 const tagVariants = cva(
-  'fest-tag inline-flex items-center gap-1.5 whitespace-nowrap text-black-100 dark:text-contrast',
+  'text-xs inline-flex items-center gap-1.5 whitespace-nowrap text-foreground',
   {
     variants: {
       variant: {
-        outline:
-          'h-5 rounded-[6px] border border-black-10 bg-white/50 pl-2 pr-3 dark:border-contrast dark:bg-background-contrast',
+        outline: 'h-5 rounded-[6px] border border-border bg-background pl-2 pr-3',
         gradientBorder: 'h-5 rounded-[8px]',
         filled:
-          'h-5 rounded-[8px] bg-gradient-to-r from-[#FCC86B] to-[#00B8A2] pl-2 pr-3 text-white-100 ',
+          'h-5 rounded-[8px] bg-gradient-to-r from-[#FCC86B] to-[#00B8A2] pl-2 pr-3 text-white',
       },
     },
     defaultVariants: {
@@ -82,8 +81,8 @@ export default function Tag({
         className={cn('relative inline-flex h-5 rounded-[8px] p-px', className)}
         style={{ background: gradientMap[gradient] }}
       >
-        <span className="dark:bg-background-contrast inline-flex h-full w-full items-center gap-[6px] rounded-[7px] bg-white pr-3 pl-2">
-          <span className="fest-tag text-black-100 dark:text-contrast inline-flex items-center gap-1.5 whitespace-nowrap">
+        <span className="bg-background inline-flex h-full w-full items-center gap-[6px] rounded-[7px] pr-3 pl-2">
+          <span className="text-foreground inline-flex items-center gap-1.5 text-xs whitespace-nowrap">
             {shouldShowDot && <TagDot color={dotColor} />}
             {children}
           </span>

@@ -17,7 +17,5 @@ export const seed = async (payload: Payload): Promise<void> => {
     data: SEED_ADMIN,
   })
 
-  payload.logger.info(
-    `Seeded admin user: ${SEED_ADMIN.email} (password: ${SEED_ADMIN.password})`,
-  )
+  payload.logger.info(`Seeded admin user: ${SEED_ADMIN.email} (password: ${SEED_ADMIN.password})`)
 }

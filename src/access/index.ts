@@ -1,13 +1,15 @@
 import type { Access, FieldAccess, PayloadRequest } from 'payload'
 import type { RoleT } from '@/collections/users'
 
-type UserWithRole = {
-  id: number
-  role?: RoleT
-} | null | undefined
+type UserWithRole =
+  | {
+      id: number
+      role?: RoleT
+    }
+  | null
+  | undefined
 
-const hasRole = (user: UserWithRole, role: RoleT): boolean =>
-  user?.role === role
+const hasRole = (user: UserWithRole, role: RoleT): boolean => user?.role === role
 
 const hasAnyRole = (user: UserWithRole, ...roles: RoleT[]): boolean =>
   roles.some((role) => hasRole(user, role))
@@ -16,15 +18,13 @@ const hasAnyRole = (user: UserWithRole, ...roles: RoleT[]): boolean =>
 
 type BooleanAccess = ({ req }: { req: PayloadRequest }) => boolean
 
-export const isAdminBoolean: BooleanAccess = ({ req: { user } }) =>
-  hasRole(user, 'ADMIN')
+export const isAdminBoolean: BooleanAccess = ({ req: { user } }) => hasRole(user, 'ADMIN')
 
 // --- Collection-level access (can return boolean | Where) ---
 
 export const isAdmin: Access = ({ req: { user } }) => hasRole(user, 'ADMIN')
 
-export const isAdminOrOwner: Access = ({ req: { user } }) =>
-  hasAnyRole(user, 'ADMIN', 'OWNER')
+export const isAdminOrOwner: Access = ({ req: { user } }) => hasAnyRole(user, 'ADMIN', 'OWNER')
 
 export const isAdminOrOwnerOrManager: Access = ({ req: { user } }) =>
   hasAnyRole(user, 'ADMIN', 'OWNER', 'MANAGER')
@@ -35,6 +35,18 @@ export const isAdminOrSelf: Access = ({ req: { user }, id }) => {
   if (hasAnyRole(user, 'ADMIN', 'OWNER')) return true
   return user?.id === id
 }
+
+/**
+ * Higher-order access: privileged roles get full access,
+ * others get a Where clause filtering by `field = user.id`.
+ */
+export const rolesOrSelfField =
+  (field: string, ...roles: RoleT[]): Access =>
+  ({ req: { user } }) => {
+    if (!user) return false
+    if (hasAnyRole(user, ...roles)) return true
+    return { [field]: { equals: user.id } }
+  }
 
 // --- Field-level access ---
 

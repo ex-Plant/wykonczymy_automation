@@ -8,11 +8,7 @@ type TransactionData = Partial<Transaction>
  * Enforces required relationships based on transaction type
  * and ensures invoice documentation exists.
  */
-export const validateTransaction: CollectionBeforeValidateHook = ({
-  data,
-  req,
-  operation,
-}) => {
+export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, operation }) => {
   const d = data as TransactionData
 
   // Auto-set createdBy on create

@@ -1,5 +1,4 @@
 import { cn } from '@/lib/cn'
-import { useFontSizeStore } from '@/stores/font-size-store'
 
 type PropsT = {
   className?: string
@@ -8,23 +7,13 @@ type PropsT = {
 
 // todo mix-blend-difference is not working in
 export default function Logo({ className, fill = 'currentColor' }: PropsT) {
-  const { scale } = useFontSizeStore()
-
   return (
-    <div
-      style={{
-        width: `${(125 * scale) / 100}px`,
-        height: `${(25 * scale) / 100}px`,
-      }}
-      className={'mix-blend-difference delay-400 duration-200 dark:mix-blend-normal'}
-    >
+    <div className="h-[25px] w-[125px]">
       <svg
-        // width="125"
-        // height="25"
         viewBox="0 0 125 25"
         fill={'none'}
         xmlns="http://www.w3.org/2000/svg"
-        className={cn('h-full w-full px-2 mix-blend-difference dark:mix-blend-normal', className)}
+        className={cn('h-full w-full px-2', className)}
       >
         <path
           d="M0 0.341217H9.92943V3.75339H3.75339V10.4071H8.59868V13.8193H3.75339V24.2264H0V0.341217Z"

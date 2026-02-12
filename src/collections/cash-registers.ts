@@ -3,6 +3,7 @@ import {
   isAdminOrOwner,
   isAdminOrOwnerOrManager,
   isAdminOrOwnerField,
+  rolesOrSelfField,
 } from '@/access'
 
 export const CashRegisters: CollectionConfig = {
@@ -20,12 +21,7 @@ export const CashRegisters: CollectionConfig = {
     // ADMIN/OWNER: full CRUD. MANAGER: read all.
     read: isAdminOrOwnerOrManager,
     create: isAdminOrOwner,
-    update: ({ req: { user } }) => {
-      if (!user) return false
-      if (user.role === 'ADMIN' || user.role === 'OWNER') return true
-      // MANAGER can only update their own register
-      return { owner: { equals: user.id } }
-    },
+    update: rolesOrSelfField('owner', 'ADMIN', 'OWNER'),
     delete: isAdminOrOwner,
   },
   fields: [

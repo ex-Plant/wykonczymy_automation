@@ -1,9 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import {
-  isAdminOrOwner,
-  isAdminOrOwnerOrManager,
-  isAdminOrOwnerField,
-} from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager, isAdminOrOwnerField } from '@/access'
 
 const STATUS_OPTIONS = [
   { label: { en: 'Active', pl: 'Aktywna' }, value: 'active' },

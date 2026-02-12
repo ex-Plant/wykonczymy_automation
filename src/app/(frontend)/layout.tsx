@@ -1,18 +1,44 @@
 import '@/styles/globals.css'
 import React from 'react'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { abcFavorit, dmSans, spaceMono } from '@/fonts'
 import { cn } from '@/lib/cn'
 import { ThemeProvider } from '@/components/theme-provider'
-import { Gradient } from '@/components/ui/gradient'
-import { Header } from '@/components/layouts/header/header'
-import { Footer } from '@/components/layouts/footer/footer'
-import { DebugWrapper } from '@/components/debug_tools/debug-wrapper'
-import { DebugScreens } from '@/components/debug_tools/debug-screens'
 import { ToastContainer } from 'react-toastify'
-import { TranslationsProvider } from '@/lib/i18n/translations-provider'
-import { LocaleT } from '@/lib/i18n/types'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { isManagementRole } from '@/lib/auth/permissions'
+import { LayoutShell } from './_components/layout-shell'
+import type { ReferenceDataT } from '@/components/transactions/transaction-dialog-provider'
 
 export default async function FrontendLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/zaloguj')
+
+  // Fetch reference data for the transaction dialog (management only)
+  let referenceData: ReferenceDataT | undefined
+  if (isManagementRole(user.role)) {
+    const payload = await getPayload({ config })
+    const [cashRegisters, investments, workers, otherCategories] = await Promise.all([
+      payload.find({ collection: 'cash-registers', limit: 100 }),
+      payload.find({
+        collection: 'investments',
+        where: { status: { equals: 'active' } },
+        limit: 100,
+      }),
+      payload.find({ collection: 'users', limit: 100 }),
+      payload.find({ collection: 'other-categories', limit: 100 }),
+    ])
+
+    referenceData = {
+      cashRegisters: cashRegisters.docs.map((d) => ({ id: d.id, name: d.name })),
+      investments: investments.docs.map((d) => ({ id: d.id, name: d.name })),
+      workers: workers.docs.map((d) => ({ id: d.id, name: d.name })),
+      otherCategories: otherCategories.docs.map((d) => ({ id: d.id, name: d.name })),
+    }
+  }
+
   return (
     <html
       lang="pl"
@@ -25,32 +51,18 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       )}
       suppressHydrationWarning
     >
-      <body
-        className={
-          'bg-background dark:bg-background-contrast dark:text-contrast relative overscroll-none scroll-smooth'
-        }
-      >
-        <Gradient placement="top" />
+      <body className="bg-background text-foreground relative overscroll-none scroll-smooth">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
-          <TranslationsProvider locale={'pl' as LocaleT}>
-            <DebugWrapper>
-              <div className="flex min-h-screen flex-col">
-                <Header />
-                {children}
-                <Footer />
-              </div>
-
-              <ToastContainer />
-              <DebugScreens />
-            </DebugWrapper>
-          </TranslationsProvider>
+          <LayoutShell user={user} referenceData={referenceData}>
+            {children}
+          </LayoutShell>
+          <ToastContainer />
         </ThemeProvider>
-        <Gradient placement="bottom" />
       </body>
     </html>
   )

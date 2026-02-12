@@ -263,7 +263,8 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
+        outline:
+          'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
@@ -315,11 +316,26 @@ Custom CSS Grid implementation using CSS variables for responsive column layouts
   --fest-content-width: 21.5rem; /* 344px */
 }
 
-@media (min-width: 48rem) { --fest-columns: 8; --fest-content-width: 45rem; } /* SM */
-@media (min-width: 64rem) { --fest-columns: 12; --fest-content-width: 62rem; } /* MD */
-@media (min-width: 80rem) { --fest-columns: 12; --fest-content-width: 78rem; } /* LG */
-@media (min-width: 90rem) { --fest-columns: 16; --fest-content-width: 88rem; } /* XL */
-@media (min-width: 120rem) { --fest-columns: 16; --fest-content-width: 88rem; } /* 2XL */
+@media (min-width: 48rem) {
+  --fest-columns: 8;
+  --fest-content-width: 45rem;
+} /* SM */
+@media (min-width: 64rem) {
+  --fest-columns: 12;
+  --fest-content-width: 62rem;
+} /* MD */
+@media (min-width: 80rem) {
+  --fest-columns: 12;
+  --fest-content-width: 78rem;
+} /* LG */
+@media (min-width: 90rem) {
+  --fest-columns: 16;
+  --fest-content-width: 88rem;
+} /* XL */
+@media (min-width: 120rem) {
+  --fest-columns: 16;
+  --fest-content-width: 88rem;
+} /* 2XL */
 ```
 
 ---
@@ -607,26 +623,26 @@ export { Component, componentVariants }
 
 ## 15. KEY FILE PATHS
 
-| Purpose              | Path                                  |
-| -------------------- | ------------------------------------- |
-| **Global Styles**    | `/styles/globals.css`                 |
-| **Design Tokens**    | `/styles/globals.css` (CSS variables) |
-| **Core Components**  | `/components/ui/`                     |
-| **Forms**            | `/components/forms/`                  |
-| **Field System**     | `/components/ui/field.tsx`            |
-| **Icons**            | `/components/ui/icons/`               |
-| **Layouts**          | `/components/layouts/`                |
-| **Debug Tools**      | `/components/debug_tools/`            |
-| **Utilities**        | `/lib/cn.ts`                          |
-| **Environment**      | `/lib/env.ts`                         |
-| **i18n**             | `/lib/i18n/`                          |
-| **Stores**           | `/stores/`                            |
-| **Hooks**            | `/hooks/`                             |
-| **Fonts**            | `/public/fonts/`                      |
-| **Root Layout**      | `/app/layout.tsx`                     |
-| **TypeScript Config** | `tsconfig.json`                      |
-| **Prettier Config**  | `.prettierrc`                         |
-| **ESLint Config**    | `eslint.config.mjs`                   |
+| Purpose               | Path                                  |
+| --------------------- | ------------------------------------- |
+| **Global Styles**     | `/styles/globals.css`                 |
+| **Design Tokens**     | `/styles/globals.css` (CSS variables) |
+| **Core Components**   | `/components/ui/`                     |
+| **Forms**             | `/components/forms/`                  |
+| **Field System**      | `/components/ui/field.tsx`            |
+| **Icons**             | `/components/ui/icons/`               |
+| **Layouts**           | `/components/layouts/`                |
+| **Debug Tools**       | `/components/debug_tools/`            |
+| **Utilities**         | `/lib/cn.ts`                          |
+| **Environment**       | `/lib/env.ts`                         |
+| **i18n**              | `/lib/i18n/`                          |
+| **Stores**            | `/stores/`                            |
+| **Hooks**             | `/hooks/`                             |
+| **Fonts**             | `/public/fonts/`                      |
+| **Root Layout**       | `/app/layout.tsx`                     |
+| **TypeScript Config** | `tsconfig.json`                       |
+| **Prettier Config**   | `.prettierrc`                         |
+| **ESLint Config**     | `eslint.config.mjs`                   |
 
 ---
 

@@ -37,9 +37,9 @@ export function FormFileInput({ accept, ...props }: FormFileInputPropsT) {
         type="button"
         onClick={() => inputRef.current?.click()}
         className={cn(
-          'fest-body-small border-black-10 bg-white-100 flex h-8 w-full items-center gap-2 rounded-[6px] border px-2 text-left transition-[color,box-shadow] outline-none',
+          'border-input bg-background flex h-9 w-full items-center gap-2 rounded-md border px-3 text-left text-sm transition-[color,box-shadow] outline-none',
           'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
-          fileName ? 'text-black-100' : 'text-black-50',
+          fileName ? 'text-foreground' : 'text-muted-foreground',
         )}
       >
         <Icon iconName="plus" size="sm" />

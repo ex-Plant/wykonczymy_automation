@@ -5,70 +5,39 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/cn'
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive duration-300 cursor-pointer dark:hover:underline dark:hover:text-contrast dark:text-contrast dark:bg-background-contrast dark:border-contrast dark:hover:border-contrast",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default: 'hover:bg-black-100 hover:text-white-100 fest-label-small bg-white text-black-100',
-        primary:
-          'bg-black-100 text-white-100 fest-label-small hover:bg-transparent hover:text-black-100 border border-transparent hover:border-black-30',
-        secondary:
-          'bg-transparent text-black-100 fest-label-small border border-black-10 hover:border-black-30',
-        tertiary:
-          'bg-transparent text-black-100 fest-label-small rounded-[6px] border border-black-10 hover:border-black-30',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         outline:
-          'bg-transparent text-black-100 fest-label-small border border-black-30 hover:bg-black-10',
-        ghost: 'bg-transparent text-black-100 fest-label-small hover:bg-black-5',
-        sidePanel:
-          'bg-transparent text-black-100 fest-label-small justify-start rounded-[6px] hover:bg-black-10',
-        gradient:
-          'text-white-100 fest-label-small rounded-lg hover:opacity-90 dark:hover:opacity-90',
+          'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        destructive: 'bg-destructive text-white hover:bg-destructive/90',
+        link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        // Fest Design System size (from Figma)
-        fest: 'h-8 px-4 gap-2',
-        lg: 'h-10 px-4 gap-2',
-        sm: 'p-2 gap-2',
-        icon: 'size-8 p-0',
+        default: 'h-9 px-4 py-2',
+        sm: 'h-8 rounded-md gap-1.5 px-3 text-xs',
+        lg: 'h-10 rounded-md px-6',
+        icon: 'size-9',
       },
     },
     defaultVariants: {
-      variant: 'primary',
-      size: 'fest',
+      variant: 'default',
+      size: 'default',
     },
   },
 )
 
-type GradientPropsT = {
-  gradientFrom?: string
-  gradientTo?: string
-}
-
 type ButtonPropsT = React.ComponentProps<'button'> &
-  VariantProps<typeof buttonVariants> &
-  GradientPropsT & {
+  VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }
 
-function Button({
-  className,
-  variant = 'primary',
-  size = 'fest',
-  asChild = false,
-  gradientFrom = '#FF6756',
-  gradientTo = '#D1A4FF',
-  style,
-  ...props
-}: ButtonPropsT) {
+function Button({ className, variant, size, asChild = false, ...props }: ButtonPropsT) {
   const Comp = asChild ? Slot : 'button'
-
-  const gradientStyle =
-    variant === 'gradient'
-      ? {
-          ...style,
-          backgroundImage: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`,
-        }
-      : style
 
   return (
     <Comp
@@ -76,7 +45,6 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
-      style={gradientStyle}
       {...props}
     />
   )
