@@ -236,12 +236,13 @@ For invoice file uploads (PDF, images).
 - **Modified**: `src/components/layouts/sidebar/sidebar.tsx`, `src/app/(frontend)/page.tsx`, `src/app/(frontend)/layout.tsx`
 - **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 errors), dev server running
 
-### M7: Investment & Cash Register Views
+### M7: Investment, Cash Register & Worker Views ✅
 
-- [ ] Investment list + detail page with transaction history
-- [ ] Cash register list + detail with balance and transaction history
-- [ ] Worker list + sub-account balance view
-- **Files**: `src/app/(frontend)/inwestycje/`, `src/app/(frontend)/kasa/`, `src/app/(frontend)/uzytkownicy/`
+- [x] Investment list + detail page with transaction history
+- [x] Cash register list + detail with balance and transaction history
+- [x] Worker list + sub-account balance view
+- **New files**: `src/app/(frontend)/inwestycje/page.tsx`, `src/app/(frontend)/inwestycje/[id]/page.tsx`, `src/app/(frontend)/kasa/page.tsx`, `src/app/(frontend)/kasa/[id]/page.tsx`, `src/app/(frontend)/uzytkownicy/page.tsx`, `src/app/(frontend)/uzytkownicy/[id]/page.tsx`
+- **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 new errors)
 - **Success**: All sidebar pages have functional views with real data
 
 ### M8: Settlement Flow
