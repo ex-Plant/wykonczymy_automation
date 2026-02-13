@@ -1,5 +1,3 @@
-'use client'
-
 import { createColumnHelper } from '@tanstack/react-table'
 import { FileText } from 'lucide-react'
 import { formatPLN } from '@/lib/format-currency'
@@ -34,8 +32,7 @@ const allColumns = [
   col.accessor('paymentMethod', {
     id: 'paymentMethod',
     header: 'Metoda',
-    cell: (info) =>
-      PAYMENT_METHOD_LABELS[info.getValue() as PaymentMethodT] ?? info.getValue(),
+    cell: (info) => PAYMENT_METHOD_LABELS[info.getValue() as PaymentMethodT] ?? info.getValue(),
   }),
   col.accessor('date', {
     id: 'date',

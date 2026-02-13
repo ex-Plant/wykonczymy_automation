@@ -17,7 +17,8 @@
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",
     "migrate:create": "payload migrate:create",
-    "seed:transactions": "node --env-file=.env --import tsx src/scripts/seed-transactions.ts"
+    "seed:transactions": "node --env-file=.env --import tsx src/scripts/seed-transactions.ts",
+    "seed:ziutek": "node --env-file=.env --import tsx src/scripts/seed-ziutek-advances.ts"
   },
   "dependencies": {
     "@payloadcms/db-vercel-postgres": "3.73.0",

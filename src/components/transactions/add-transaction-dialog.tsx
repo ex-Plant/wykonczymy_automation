@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { TransactionForm } from './transaction-form'
 
 export type ReferenceItemT = { id: number; name: string }
@@ -19,33 +21,20 @@ export type ReferenceDataT = {
   otherCategories: ReferenceItemT[]
 }
 
-type TransactionDialogContextT = {
-  open: () => void
-  close: () => void
-}
-
-const TransactionDialogContext = createContext<TransactionDialogContextT | undefined>(undefined)
-
-export function useTransactionDialog() {
-  const ctx = useContext(TransactionDialogContext)
-  if (!ctx) throw new Error('useTransactionDialog must be used within TransactionDialogProvider')
-  return ctx
-}
-
-type ProviderPropsT = {
+type AddTransactionDialogPropsT = {
   referenceData: ReferenceDataT
-  children: ReactNode
 }
 
-export function TransactionDialogProvider({ referenceData, children }: ProviderPropsT) {
+export function AddTransactionDialog({ referenceData }: AddTransactionDialogPropsT) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const open = () => setIsOpen(true)
-  const close = () => setIsOpen(false)
-
   return (
-    <TransactionDialogContext value={{ open, close }}>
-      {children}
+    <>
+      <Button variant="default" size="sm" className="w-full gap-2" onClick={() => setIsOpen(true)}>
+        <Plus className="size-4" />
+        Nowa transakcja
+      </Button>
+
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -53,10 +42,10 @@ export function TransactionDialogProvider({ referenceData, children }: ProviderP
             <DialogDescription>Wypełnij formularz, aby dodać nową transakcję.</DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto pr-1">
-            <TransactionForm referenceData={referenceData} onSuccess={close} />
+            <TransactionForm referenceData={referenceData} onSuccess={() => setIsOpen(false)} />
           </div>
         </DialogContent>
       </Dialog>
-    </TransactionDialogContext>
+    </>
   )
 }

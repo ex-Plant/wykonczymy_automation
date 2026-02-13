@@ -13,7 +13,6 @@ import { Media } from '@/collections/media'
 import { OtherCategories } from '@/collections/other-categories'
 import { Transactions } from '@/collections/transactions'
 import { Users } from '@/collections/users'
-import { seed } from '@/seed'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -38,7 +37,6 @@ export default buildConfig({
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
   collections: [Users, CashRegisters, Investments, Transactions, OtherCategories, Media],
-  onInit: seed,
   secret: process.env.PAYLOAD_SECRET || 'CHANGE-ME-IN-ENV',
   sharp,
   typescript: {

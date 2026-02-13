@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback } from 'react'
 import {
   Select,
   SelectContent,
@@ -9,8 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatPLN } from '@/lib/format-currency'
-import { TRANSACTION_TYPE_LABELS, type TransactionTypeT } from '@/lib/constants/transactions'
-import { getEmployeeMonthData, type EmployeeMonthDataT } from '@/lib/transactions/actions'
+import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import type { TransactionRowT, PaginationMetaT } from '@/lib/transactions/types'
 
 const MONTHS = [
   'Styczeń',
@@ -27,35 +28,65 @@ const MONTHS = [
   'Grudzień',
 ] as const
 
+const EMPLOYEE_EXCLUDE_COLUMNS = [
+  'cashRegister',
+  'investment',
+  'worker',
+  'otherCategory',
+  'invoice',
+  'paymentMethod',
+]
+
 type EmployeeDashboardPropsT = {
-  userId: number
-  initialMonth: number
-  initialYear: number
-  initialData: EmployeeMonthDataT
+  readonly rows: readonly TransactionRowT[]
+  readonly paginationMeta: PaginationMetaT
+  readonly saldo: number
+  readonly month: number
+  readonly year: number
 }
 
 export function EmployeeDashboard({
-  userId,
-  initialMonth,
-  initialYear,
-  initialData,
+  rows,
+  paginationMeta,
+  saldo,
+  month,
+  year,
 }: EmployeeDashboardPropsT) {
-  const [month, setMonth] = useState(initialMonth)
-  const [year, setYear] = useState(initialYear)
-  const [data, setData] = useState(initialData)
-  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
-  const handlePeriodChange = (newMonth: number, newYear: number) => {
-    setMonth(newMonth)
-    setYear(newYear)
-    startTransition(async () => {
-      const result = await getEmployeeMonthData(userId, newMonth, newYear)
-      setData(result)
-    })
-  }
+  const buildUrl = useCallback(
+    (overrides: Record<string, string>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      for (const [key, value] of Object.entries(overrides)) {
+        if (value) {
+          params.set(key, value)
+        } else {
+          params.delete(key)
+        }
+      }
+      const qs = params.toString()
+      return `/${qs ? `?${qs}` : ''}`
+    },
+    [searchParams],
+  )
+
+  const handleMonthChange = useCallback(
+    (value: string) => {
+      router.push(buildUrl({ month: value, page: '' }))
+    },
+    [router, buildUrl],
+  )
+
+  const handleYearChange = useCallback(
+    (value: string) => {
+      router.push(buildUrl({ year: value, page: '' }))
+    },
+    [router, buildUrl],
+  )
 
   return (
     <div className="p-6 lg:p-8">
@@ -63,7 +94,7 @@ export function EmployeeDashboard({
 
       {/* Month/year selector */}
       <div className="mt-6 flex gap-3">
-        <Select value={String(month)} onValueChange={(v) => handlePeriodChange(Number(v), year)}>
+        <Select value={String(month)} onValueChange={handleMonthChange}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
@@ -76,7 +107,7 @@ export function EmployeeDashboard({
           </SelectContent>
         </Select>
 
-        <Select value={String(year)} onValueChange={(v) => handlePeriodChange(month, Number(v))}>
+        <Select value={String(year)} onValueChange={handleYearChange}>
           <SelectTrigger className="w-28">
             <SelectValue />
           </SelectTrigger>
@@ -93,7 +124,7 @@ export function EmployeeDashboard({
       {/* Saldo card — all-time */}
       <div className="border-border bg-card mt-6 rounded-lg border p-4">
         <p className="text-muted-foreground text-sm">Saldo (zaliczki - wydatki)</p>
-        <p className="text-foreground mt-1 text-2xl font-semibold">{formatPLN(data.saldo)}</p>
+        <p className="text-foreground mt-1 text-2xl font-semibold">{formatPLN(saldo)}</p>
       </div>
 
       {/* Monthly transactions table */}
@@ -101,45 +132,13 @@ export function EmployeeDashboard({
         <h2 className="text-foreground text-lg font-medium">
           Transakcje — {MONTHS[month - 1]} {year}
         </h2>
-        <div className="border-border mt-4 overflow-x-auto rounded-lg border">
-          <table className={`w-full text-sm ${isPending ? 'opacity-50' : ''}`}>
-            <thead>
-              <tr className="border-border bg-muted/50 border-b">
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Opis</th>
-                <th className="text-muted-foreground px-4 py-3 text-right font-medium">Kwota</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Typ</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center">
-                    Brak transakcji w tym miesiącu
-                  </td>
-                </tr>
-              ) : (
-                data.transactions.map((tx) => (
-                  <tr key={tx.id} className="border-border border-b last:border-b-0">
-                    <td className="text-foreground px-4 py-3">{tx.description}</td>
-                    <td className="text-foreground px-4 py-3 text-right font-medium">
-                      {formatPLN(tx.amount)}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {TRANSACTION_TYPE_LABELS[tx.type as TransactionTypeT] ?? tx.type}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {new Date(tx.date).toLocaleDateString('pl-PL', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <TransactionDataTable
+            data={rows}
+            paginationMeta={paginationMeta}
+            excludeColumns={EMPLOYEE_EXCLUDE_COLUMNS}
+            baseUrl="/"
+          />
         </div>
       </div>
     </div>

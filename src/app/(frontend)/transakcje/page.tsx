@@ -5,7 +5,6 @@ import { isManagementRole } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { TransactionFilters } from './_components/transaction-filters'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
-import { AddTransactionButton } from './_components/add-transaction-button'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import type { Where } from 'payload'
 
@@ -85,10 +84,7 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-foreground text-2xl font-semibold">Transakcje</h1>
-        {isManager && <AddTransactionButton />}
-      </div>
+      <h1 className="text-foreground text-2xl font-semibold">Transakcje</h1>
 
       {/* Filters */}
       <div className="mt-6">
