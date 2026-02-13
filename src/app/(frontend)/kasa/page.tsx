@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { CashRegisterDataTable } from './_components/cash-register-data-table'
 import type { CashRegisterRowT } from '@/lib/cash-registers/types'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -52,12 +53,10 @@ export default async function CashRegistersPage({ searchParams }: PagePropsT) {
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-foreground text-2xl font-semibold">Kasy</h1>
-
+    <PageWrapper title="Kasy">
       <div className="mt-6">
         <CashRegisterDataTable data={rows} paginationMeta={paginationMeta} />
       </div>
-    </div>
+    </PageWrapper>
   )
 }

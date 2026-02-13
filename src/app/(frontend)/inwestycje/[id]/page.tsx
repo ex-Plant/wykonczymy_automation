@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
@@ -7,6 +6,7 @@ import { isManagementRole } from '@/lib/auth/permissions'
 import { formatPLN } from '@/lib/format-currency'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -68,13 +68,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <Link href="/inwestycje" className="text-muted-foreground hover:text-foreground text-sm">
-        &larr; Inwestycje
-      </Link>
-
-      <h1 className="text-foreground mt-2 text-2xl font-semibold">{investment.name}</h1>
-
+    <PageWrapper title={investment.name} backHref="/inwestycje" backLabel="Inwestycje">
       {/* Info section */}
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         {infoFields
@@ -105,6 +99,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
           baseUrl={`/inwestycje/${id}`}
         />
       </div>
-    </div>
+    </PageWrapper>
   )
 }

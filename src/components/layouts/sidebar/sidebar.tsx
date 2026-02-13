@@ -22,14 +22,14 @@ export async function Sidebar({ user }: SidebarPropsT) {
 
   const payload = await getPayload({ config })
   const [cashRegisters, investments, workers, otherCategories] = await Promise.all([
-    payload.find({ collection: 'cash-registers', limit: 100 }),
+    payload.find({ collection: 'cash-registers', pagination: false }),
     payload.find({
       collection: 'investments',
       where: { status: { equals: 'active' } },
-      limit: 100,
+      pagination: false,
     }),
-    payload.find({ collection: 'users', limit: 100 }),
-    payload.find({ collection: 'other-categories', limit: 100 }),
+    payload.find({ collection: 'users', pagination: false }),
+    payload.find({ collection: 'other-categories', pagination: false }),
   ])
 
   const referenceData = {

@@ -17,9 +17,9 @@ type PagePropsT = {
 export default async function DashboardPage({ searchParams }: PagePropsT) {
   const user = await getCurrentUser()
   if (!user) redirect('/zaloguj')
-  if (isManagementRole(user.role)) return <ManagerDashboard />
-
   const params = await searchParams
+
+  if (isManagementRole(user.role)) return <ManagerDashboard searchParams={params} />
   const payload = await getPayload({ config })
 
   const now = new Date()

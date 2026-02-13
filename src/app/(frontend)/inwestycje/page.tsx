@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { InvestmentDataTable } from './_components/investment-data-table'
 import type { InvestmentRowT } from '@/lib/investments/types'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -55,12 +56,10 @@ export default async function InvestmentsPage({ searchParams }: PagePropsT) {
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-foreground text-2xl font-semibold">Inwestycje</h1>
-
+    <PageWrapper title="Inwestycje">
       <div className="mt-6">
         <InvestmentDataTable data={rows} paginationMeta={paginationMeta} />
       </div>
-    </div>
+    </PageWrapper>
   )
 }

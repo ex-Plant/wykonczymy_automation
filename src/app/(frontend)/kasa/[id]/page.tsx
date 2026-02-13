@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
@@ -7,6 +6,7 @@ import { isManagementRole } from '@/lib/auth/permissions'
 import { formatPLN } from '@/lib/format-currency'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -61,13 +61,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <Link href="/kasa" className="text-muted-foreground hover:text-foreground text-sm">
-        &larr; Kasy
-      </Link>
-
-      <h1 className="text-foreground mt-2 text-2xl font-semibold">{register.name}</h1>
-
+    <PageWrapper title={register.name} backHref="/kasa" backLabel="Kasy">
       {/* Info section */}
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground font-medium">Właściciel</dt>
@@ -90,6 +84,6 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
           baseUrl={`/kasa/${id}`}
         />
       </div>
-    </div>
+    </PageWrapper>
   )
 }

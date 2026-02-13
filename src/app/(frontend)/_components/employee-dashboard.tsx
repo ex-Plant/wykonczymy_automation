@@ -12,6 +12,7 @@ import {
 import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import type { TransactionRowT, PaginationMetaT } from '@/lib/transactions/types'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
 const MONTHS = [
   'Styczeń',
@@ -89,9 +90,7 @@ export function EmployeeDashboard({
   )
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-foreground text-2xl font-semibold">Moje konto</h1>
-
+    <PageWrapper title="Moje konto">
       {/* Month/year selector */}
       <div className="mt-6 flex gap-3">
         <Select value={String(month)} onValueChange={handleMonthChange}>
@@ -141,6 +140,6 @@ export function EmployeeDashboard({
           />
         </div>
       </div>
-    </div>
+    </PageWrapper>
   )
 }

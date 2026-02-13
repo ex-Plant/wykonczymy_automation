@@ -1,0 +1,21 @@
+'use client'
+
+import { DataTable } from '@/components/ui/data-table'
+import { PaginationFooter } from '@/components/ui/pagination-footer'
+import { userColumns } from '@/lib/users/columns'
+import type { UserRowT } from '@/lib/users/types'
+import type { PaginationMetaT } from '@/lib/transactions/types'
+
+type UserDataTablePropsT = {
+  readonly data: readonly UserRowT[]
+  readonly paginationMeta: PaginationMetaT
+}
+
+export function UserDataTable({ data, paginationMeta }: UserDataTablePropsT) {
+  return (
+    <div className="space-y-4">
+      <DataTable data={data} columns={userColumns} emptyMessage="Brak użytkowników" />
+      <PaginationFooter paginationMeta={paginationMeta} baseUrl="/uzytkownicy" />
+    </div>
+  )
+}

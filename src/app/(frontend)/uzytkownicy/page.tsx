@@ -1,47 +1,46 @@
-import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { formatPLN } from '@/lib/format-currency'
-import { ROLE_LABELS, type RoleT } from '@/collections/users'
+import type { RoleT } from '@/collections/users'
+import { UserDataTable } from '@/components/users/user-data-table'
+import type { UserRowT } from '@/lib/users/types'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
-export default async function UsersPage() {
+const DEFAULT_LIMIT = 20
+const ALLOWED_LIMITS = [20, 50, 100]
+
+type PagePropsT = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function UsersPage({ searchParams }: PagePropsT) {
   const user = await getCurrentUser()
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
 
+  const sp = await searchParams
   const payload = await getPayload({ config })
 
-  const [users, advances, expenses] = await Promise.all([
-    payload.find({ collection: 'users', sort: 'name', limit: 100 }),
-    payload.find({
-      collection: 'transactions',
-      where: { type: { equals: 'ADVANCE' } },
-      limit: 0,
-      depth: 0,
-    }),
-    payload.find({
-      collection: 'transactions',
-      where: { type: { equals: 'EMPLOYEE_EXPENSE' } },
-      limit: 0,
-      depth: 0,
-    }),
-  ])
+  const pageParam = typeof sp.page === 'string' ? Number(sp.page) : 1
+  const currentPage = pageParam > 0 ? pageParam : 1
 
-  // Re-fetch with all docs to compute saldo (limit:0 returns totalDocs only)
-  const [allAdvances, allExpenses] = await Promise.all([
+  const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
+  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
+
+  const [users, allAdvances, allExpenses] = await Promise.all([
+    payload.find({ collection: 'users', sort: 'name', limit, page: currentPage }),
     payload.find({
       collection: 'transactions',
       where: { type: { equals: 'ADVANCE' } },
-      limit: advances.totalDocs || 1000,
+      pagination: false,
       depth: 0,
     }),
     payload.find({
       collection: 'transactions',
       where: { type: { equals: 'EMPLOYEE_EXPENSE' } },
-      limit: expenses.totalDocs || 1000,
+      pagination: false,
       depth: 0,
     }),
   ])
@@ -64,53 +63,26 @@ export default async function UsersPage() {
     }
   }
 
-  const computeSaldo = (userId: number) =>
-    (advancesByWorker.get(userId) ?? 0) - (expensesByWorker.get(userId) ?? 0)
+  const rows: UserRowT[] = users.docs.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role as RoleT,
+    saldo: (advancesByWorker.get(u.id) ?? 0) - (expensesByWorker.get(u.id) ?? 0),
+  }))
+
+  const paginationMeta = {
+    currentPage: users.page ?? 1,
+    totalPages: users.totalPages,
+    totalDocs: users.totalDocs,
+    limit,
+  }
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-foreground text-2xl font-semibold">Użytkownicy</h1>
-
+    <PageWrapper title="Użytkownicy">
       <div className="mt-6">
-        <div className="border-border overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-border bg-muted/50 border-b">
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Imię</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Email</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Rola</th>
-                <th className="text-muted-foreground px-4 py-3 text-right font-medium">Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.docs.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center">
-                    Brak użytkowników
-                  </td>
-                </tr>
-              ) : (
-                users.docs.map((u) => (
-                  <tr key={u.id} className="border-border border-b last:border-b-0">
-                    <td className="text-foreground px-4 py-3">
-                      <Link href={`/uzytkownicy/${u.id}`} className="hover:underline">
-                        {u.name}
-                      </Link>
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">{u.email}</td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {ROLE_LABELS[u.role as RoleT]?.pl ?? u.role}
-                    </td>
-                    <td className="text-foreground px-4 py-3 text-right font-medium">
-                      {formatPLN(computeSaldo(u.id))}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <UserDataTable data={rows} paginationMeta={paginationMeta} />
       </div>
-    </div>
+    </PageWrapper>
   )
 }

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { SettlementForm } from '@/components/settlements/settlement-form'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 
 export default async function SettlementsPage() {
   const user = await getCurrentUser()
@@ -30,15 +31,11 @@ export default async function SettlementsPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-foreground text-2xl font-semibold">Rozliczenie pracownika</h1>
-      <p className="text-muted-foreground mt-1 text-sm">
-        Dodaj pozycje z faktury — każda stanie się osobną transakcją typu &quot;Wydatek
-        pracowniczy&quot;.
-      </p>
-      <div className="mt-6">
-        <SettlementForm referenceData={referenceData} />
-      </div>
-    </div>
+    <PageWrapper
+      title="Rozliczenie pracownika"
+      description='Dodaj pozycje z faktury — każda stanie się osobną transakcją typu "Wydatek pracowniczy".'
+    >
+      <SettlementForm referenceData={referenceData} className="mt-6" />
+    </PageWrapper>
   )
 }

@@ -16,8 +16,13 @@ import {
 } from '@/components/ui/select'
 import { toastMessage } from '@/components/toasts'
 import { formatPLN } from '@/lib/format-currency'
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethodT } from '@/lib/constants/transactions'
+import {
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethodT,
+} from '@/lib/constants/transactions'
 import { getEmployeeSaldo, createSettlement } from '@/lib/settlements/actions'
+import { cn } from '../../lib/cn'
 
 type ReferenceDataT = {
   users: { id: number; name: string }[]
@@ -33,6 +38,7 @@ type LineItemT = {
 
 type SettlementFormPropsT = {
   referenceData: ReferenceDataT
+  className?: string
 }
 
 const createEmptyLineItem = (): LineItemT => ({
@@ -41,7 +47,7 @@ const createEmptyLineItem = (): LineItemT => ({
   amount: '',
 })
 
-export function SettlementForm({ referenceData }: SettlementFormPropsT) {
+export function SettlementForm({ referenceData, className }: SettlementFormPropsT) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -103,7 +109,10 @@ export function SettlementForm({ referenceData }: SettlementFormPropsT) {
     formData.set('date', date)
     formData.set('cashRegister', cashRegister)
     formData.set('paymentMethod', paymentMethod)
-    formData.set('lineItems', JSON.stringify(lineItems.map(({ description, amount }) => ({ description, amount }))))
+    formData.set(
+      'lineItems',
+      JSON.stringify(lineItems.map(({ description, amount }) => ({ description, amount }))),
+    )
     if (invoiceFile) formData.set('invoice', invoiceFile)
     if (invoiceNote) formData.set('invoiceNote', invoiceNote)
 
@@ -119,7 +128,7 @@ export function SettlementForm({ referenceData }: SettlementFormPropsT) {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className={cn('max-w-3xl space-y-6', className)}>
       {/* Employee selector */}
       <div className="space-y-2">
         <Label>Pracownik</Label>
@@ -135,9 +144,7 @@ export function SettlementForm({ referenceData }: SettlementFormPropsT) {
             ))}
           </SelectContent>
         </Select>
-        {isSaldoLoading && (
-          <p className="text-muted-foreground text-sm">Ładowanie salda...</p>
-        )}
+        {isSaldoLoading && <p className="text-muted-foreground text-sm">Ładowanie salda...</p>}
         {saldo !== null && !isSaldoLoading && (
           <p className="text-sm">
             Aktualne saldo: <span className="font-medium">{formatPLN(saldo)}</span>
@@ -239,9 +246,7 @@ export function SettlementForm({ referenceData }: SettlementFormPropsT) {
         <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
           Dodaj pozycję
         </Button>
-        <p className="text-foreground text-sm font-medium">
-          Suma: {formatPLN(total)}
-        </p>
+        <p className="text-foreground text-sm font-medium">Suma: {formatPLN(total)}</p>
       </div>
 
       {/* Invoice */}
@@ -272,8 +277,7 @@ export function SettlementForm({ referenceData }: SettlementFormPropsT) {
             Suma rozliczenia: <span className="font-medium">{formatPLN(total)}</span>
           </p>
           <p className="text-sm">
-            Saldo po rozliczeniu:{' '}
-            <span className="font-medium">{formatPLN(saldo - total)}</span>
+            Saldo po rozliczeniu: <span className="font-medium">{formatPLN(saldo - total)}</span>
           </p>
         </div>
       )}

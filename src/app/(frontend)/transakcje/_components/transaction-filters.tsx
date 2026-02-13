@@ -12,14 +12,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { TRANSACTION_TYPES, TRANSACTION_TYPE_LABELS } from '@/lib/constants/transactions'
+import { cn } from '@/lib/cn'
 
 type ReferenceItemT = { id: number; name: string }
 
 type TransactionFiltersPropsT = {
   cashRegisters: ReferenceItemT[]
+  className?: string
 }
 
-export function TransactionFilters({ cashRegisters }: TransactionFiltersPropsT) {
+export function TransactionFilters({ cashRegisters, className }: TransactionFiltersPropsT) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -50,7 +52,7 @@ export function TransactionFilters({ cashRegisters }: TransactionFiltersPropsT) 
   const hasFilters = currentType || currentCashRegister || currentFrom || currentTo
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <div className={cn('flex flex-wrap items-end gap-3', className)}>
       {/* Type filter */}
       <div className="space-y-1">
         <label className="text-muted-foreground text-xs font-medium">Typ</label>

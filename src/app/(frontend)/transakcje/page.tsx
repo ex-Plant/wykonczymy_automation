@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { TransactionFilters } from './_components/transaction-filters'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
+import { PageWrapper } from '@/components/ui/page-wrapper'
 import type { Where } from 'payload'
 
 const DEFAULT_LIMIT = 20
@@ -83,22 +84,15 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <h1 className="text-foreground text-2xl font-semibold">Transakcje</h1>
+    <PageWrapper title="Transakcje">
+      <TransactionFilters cashRegisters={cashRegisterOptions} className="mt-6" />
 
-      {/* Filters */}
-      <div className="mt-6">
-        <TransactionFilters cashRegisters={cashRegisterOptions} />
-      </div>
-
-      {/* Table */}
-      <div className="mt-6">
-        <TransactionDataTable
-          data={rows}
-          paginationMeta={paginationMeta}
-          baseUrl="/transakcje"
-        />
-      </div>
-    </div>
+      <TransactionDataTable
+        data={rows}
+        paginationMeta={paginationMeta}
+        baseUrl="/transakcje"
+        className="mt-6"
+      />
+    </PageWrapper>
   )
 }
