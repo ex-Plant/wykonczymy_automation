@@ -5,23 +5,24 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { formatPLN } from '@/lib/format-currency'
-import {
-  TRANSACTION_TYPE_LABELS,
-  PAYMENT_METHOD_LABELS,
-  type TransactionTypeT,
-  type PaymentMethodT,
-} from '@/lib/constants/transactions'
+import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
+import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+
+const DEFAULT_LIMIT = 20
+const ALLOWED_LIMITS = [20, 50, 100]
 
 type PagePropsT = {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export default async function InvestmentDetailPage({ params }: PagePropsT) {
+export default async function InvestmentDetailPage({ params, searchParams }: PagePropsT) {
   const user = await getCurrentUser()
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
 
   const { id } = await params
+  const sp = await searchParams
   const payload = await getPayload({ config })
 
   let investment
@@ -33,13 +34,22 @@ export default async function InvestmentDetailPage({ params }: PagePropsT) {
 
   if (!investment) notFound()
 
+  // Pagination params
+  const pageParam = typeof sp.page === 'string' ? Number(sp.page) : 1
+  const currentPage = pageParam > 0 ? pageParam : 1
+  const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
+  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
+
   const transactions = await payload.find({
     collection: 'transactions',
     where: { investment: { equals: id } },
     sort: '-date',
     depth: 1,
-    limit: 50,
+    limit,
+    page: currentPage,
   })
+
+  const rows = transactions.docs.map(mapTransactionRow)
 
   const infoFields = [
     { label: 'Adres', value: investment.address },
@@ -49,6 +59,13 @@ export default async function InvestmentDetailPage({ params }: PagePropsT) {
     { label: 'Notatki', value: investment.notes },
     { label: 'Status', value: investment.status === 'active' ? 'Aktywna' : 'Zakończona' },
   ]
+
+  const paginationMeta = {
+    currentPage: transactions.page ?? 1,
+    totalPages: transactions.totalPages,
+    totalDocs: transactions.totalDocs,
+    limit,
+  }
 
   return (
     <div className="p-6 lg:p-8">
@@ -81,56 +98,12 @@ export default async function InvestmentDetailPage({ params }: PagePropsT) {
       {/* Transactions table */}
       <h2 className="text-foreground mt-8 text-lg font-semibold">Transakcje</h2>
       <div className="mt-4">
-        <div className="border-border overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-border bg-muted/50 border-b">
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Opis</th>
-                <th className="text-muted-foreground px-4 py-3 text-right font-medium">Kwota</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Typ</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Metoda</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Data</th>
-                <th className="text-muted-foreground px-4 py-3 text-left font-medium">Kasa</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.docs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-muted-foreground px-4 py-8 text-center">
-                    Brak transakcji
-                  </td>
-                </tr>
-              ) : (
-                transactions.docs.map((tx) => (
-                  <tr key={tx.id} className="border-border border-b last:border-b-0">
-                    <td className="text-foreground px-4 py-3">{tx.description}</td>
-                    <td className="text-foreground px-4 py-3 text-right font-medium">
-                      {formatPLN(tx.amount)}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {TRANSACTION_TYPE_LABELS[tx.type as TransactionTypeT] ?? tx.type}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {PAYMENT_METHOD_LABELS[tx.paymentMethod as PaymentMethodT] ?? tx.paymentMethod}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {new Date(tx.date).toLocaleDateString('pl-PL', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                      })}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3">
-                      {typeof tx.cashRegister === 'object' && tx.cashRegister !== null
-                        ? tx.cashRegister.name
-                        : '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <TransactionDataTable
+          data={rows}
+          paginationMeta={paginationMeta}
+          excludeColumns={['investment']}
+          baseUrl={`/inwestycje/${id}`}
+        />
       </div>
     </div>
   )

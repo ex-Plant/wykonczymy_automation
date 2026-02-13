@@ -25,7 +25,7 @@ export default function FormBase({
   showError,
 }: FormBasePropsT) {
   const field = useFieldContext()
-  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+  const isInvalid = field.state.meta.errors.length > 0
   const errorElem = showError && isInvalid && <FieldError errors={field.state.meta.errors} />
 
   return (

@@ -1,15 +1,16 @@
-import Link from 'next/link'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { TransactionFilters } from './_components/transaction-filters'
-import { TransactionsTable } from './_components/transactions-table'
+import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { AddTransactionButton } from './_components/add-transaction-button'
+import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import type { Where } from 'payload'
 
-const PER_PAGE = 20
+const DEFAULT_LIMIT = 20
+const ALLOWED_LIMITS = [20, 50, 100]
 
 type PagePropsT = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -57,41 +58,29 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
   const pageParam = typeof params.page === 'string' ? Number(params.page) : 1
   const currentPage = pageParam > 0 ? pageParam : 1
 
+  const limitParam = typeof params.limit === 'string' ? Number(params.limit) : DEFAULT_LIMIT
+  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
+
   const [transactions, cashRegisters] = await Promise.all([
     payload.find({
       collection: 'transactions',
       where,
       sort: '-date',
-      limit: PER_PAGE,
+      limit,
       page: currentPage,
       depth: 1,
     }),
     payload.find({ collection: 'cash-registers', limit: 100 }),
   ])
 
-  const rows = transactions.docs.map((tx) => ({
-    id: tx.id,
-    description: tx.description,
-    amount: tx.amount,
-    type: tx.type,
-    paymentMethod: tx.paymentMethod,
-    date: tx.date,
-    cashRegisterName:
-      typeof tx.cashRegister === 'object' && tx.cashRegister !== null ? tx.cashRegister.name : '—',
-  }))
-
+  const rows = transactions.docs.map(mapTransactionRow)
   const cashRegisterOptions = cashRegisters.docs.map((d) => ({ id: d.id, name: d.name }))
 
-  // Build pagination URLs
-  const buildPageUrl = (page: number) => {
-    const p = new URLSearchParams()
-    if (typeParam) p.set('type', typeParam)
-    if (cashRegisterParam) p.set('cashRegister', cashRegisterParam)
-    if (fromParam) p.set('from', fromParam)
-    if (toParam) p.set('to', toParam)
-    if (page > 1) p.set('page', String(page))
-    const qs = p.toString()
-    return `/transakcje${qs ? `?${qs}` : ''}`
+  const paginationMeta = {
+    currentPage: transactions.page ?? 1,
+    totalPages: transactions.totalPages,
+    totalDocs: transactions.totalDocs,
+    limit,
   }
 
   return (
@@ -108,36 +97,12 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
 
       {/* Table */}
       <div className="mt-6">
-        <TransactionsTable transactions={rows} userRole={user.role} />
+        <TransactionDataTable
+          data={rows}
+          paginationMeta={paginationMeta}
+          baseUrl="/transakcje"
+        />
       </div>
-
-      {/* Pagination */}
-      {transactions.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-muted-foreground text-sm">
-            Strona {transactions.page} z {transactions.totalPages} ({transactions.totalDocs}{' '}
-            wyników)
-          </p>
-          <div className="flex gap-2">
-            {transactions.hasPrevPage && (
-              <Link
-                href={buildPageUrl(currentPage - 1)}
-                className="border-border text-foreground hover:bg-accent rounded-md border px-3 py-1.5 text-sm"
-              >
-                Poprzednia
-              </Link>
-            )}
-            {transactions.hasNextPage && (
-              <Link
-                href={buildPageUrl(currentPage + 1)}
-                className="border-border text-foreground hover:bg-accent rounded-md border px-3 py-1.5 text-sm"
-              >
-                Następna
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -18,8 +18,9 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transactions'
 import { createTransactionAction } from '@/lib/transactions/actions'
-import type { CreateTransactionFormT } from '@/lib/transactions/schema'
+import { transactionFormSchema, type CreateTransactionFormT } from '@/lib/transactions/schema'
 import type { ReferenceDataT } from './transaction-dialog-provider'
+import useCheckFormErrors from '../forms/hooks/use-check-form-errors'
 
 type TransactionFormPropsT = {
   referenceData: ReferenceDataT
@@ -61,6 +62,9 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
       otherDescription: '',
       invoiceNote: '',
     } as FormValuesT,
+    validators: {
+      onSubmit: transactionFormSchema,
+    },
     onSubmit: async ({ value }) => {
       const data: CreateTransactionFormT = {
         description: value.description,
@@ -89,12 +93,15 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
         toastMessage('Transakcja dodana', 'success')
         onSuccess()
       } else {
+        console.log('result', result.error)
         toastMessage(result.error, 'error')
       }
 
       return false
     },
   })
+
+  useCheckFormErrors(form)
 
   const currentType = useStore(form.store, (s) => s.values.type)
 
@@ -217,30 +224,34 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
           )}
 
           {/* Invoice file — manual input (not bound to form state, read via DOM on submit) */}
-          <div className="space-y-1">
-            <label htmlFor="invoice" className="text-foreground text-sm font-medium">
-              Faktura
-            </label>
-            <input
-              ref={invoiceRef}
-              type="file"
-              id="invoice"
-              name="invoice"
-              accept="image/*,application/pdf"
-              className="text-muted-foreground file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:px-4 file:py-2 file:text-sm file:font-medium"
-            />
-          </div>
+          {currentType !== 'DEPOSIT' && (
+            <div className="space-y-1">
+              <label htmlFor="invoice" className="text-foreground text-sm font-medium">
+                Faktura
+              </label>
+              <input
+                ref={invoiceRef}
+                type="file"
+                id="invoice"
+                name="invoice"
+                accept="image/*,application/pdf"
+                className="text-muted-foreground file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:px-4 file:py-2 file:text-sm file:font-medium"
+              />
+            </div>
+          )}
 
           {/* Invoice note */}
-          <form.AppField name="invoiceNote">
-            {(field) => (
-              <field.Textarea
-                label="Notatka do faktury"
-                placeholder="Wymagane jeśli brak faktury"
-                showError
-              />
-            )}
-          </form.AppField>
+          {currentType !== 'DEPOSIT' && (
+            <form.AppField name="invoiceNote">
+              {(field) => (
+                <field.Textarea
+                  label="Notatka do faktury"
+                  placeholder="Wymagane jeśli brak faktury"
+                  showError
+                />
+              )}
+            </form.AppField>
+          )}
         </FieldGroup>
 
         <div className="mt-6">

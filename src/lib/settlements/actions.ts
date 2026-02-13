@@ -43,6 +43,7 @@ export async function getEmployeeSaldo(workerId: number): Promise<SaldoResultT> 
 }
 
 export async function createSettlement(formData: FormData): Promise<ActionResultT> {
+  console.log('createSettlement', formData)
   const user = await getCurrentUser()
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
@@ -144,6 +145,7 @@ export async function createSettlement(formData: FormData): Promise<ActionResult
 
     revalidatePath('/')
     revalidatePath('/transakcje')
+    revalidatePath('/kasa')
     revalidatePath('/uzytkownicy')
 
     return { success: true, count: created }
@@ -190,6 +192,7 @@ export async function zeroSaldoAction(formData: FormData): Promise<ActionResultT
 
     revalidatePath('/')
     revalidatePath('/transakcje')
+    revalidatePath('/kasa')
     revalidatePath('/uzytkownicy')
 
     return { success: true }

@@ -4,6 +4,7 @@ import { validateTransaction } from '@/hooks/transactions/validate'
 import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recalculate-balances'
 
 const TRANSACTION_TYPES = [
+  { label: { en: 'Deposit', pl: 'Wpłata do kasy' }, value: 'DEPOSIT' },
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
   { label: { en: 'Advance', pl: 'Zaliczka' }, value: 'ADVANCE' },
   { label: { en: 'Employee Expense', pl: 'Wydatek pracowniczy' }, value: 'EMPLOYEE_EXPENSE' },

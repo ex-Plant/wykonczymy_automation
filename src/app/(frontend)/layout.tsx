@@ -5,7 +5,6 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { abcFavorit, dmSans, spaceMono } from '@/fonts'
 import { cn } from '@/lib/cn'
-import { ThemeProvider } from '@/components/theme-provider'
 import { ToastContainer } from 'react-toastify'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
@@ -52,17 +51,10 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground relative overscroll-none scroll-smooth">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <LayoutShell user={user} referenceData={referenceData}>
-            {children}
-          </LayoutShell>
-          <ToastContainer />
-        </ThemeProvider>
+        <LayoutShell user={user} referenceData={referenceData}>
+          {children}
+        </LayoutShell>
+        <ToastContainer style={{ zIndex: 10001 }} />
       </body>
     </html>
   )

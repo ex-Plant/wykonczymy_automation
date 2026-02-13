@@ -6,7 +6,7 @@ import { useFieldContext } from './hooks/form-hooks'
 
 export function FormSelect({ children, ...props }: FormControlPropsT & { children: ReactNode }) {
   const field = useFieldContext<string>()
-  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+  const isInvalid = field.state.meta.errors.length > 0
   const safeValue = field.state.value ?? ''
 
   return (

@@ -10,6 +10,7 @@ type TransactionData = Partial<Transaction>
  */
 export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, operation }) => {
   const d = data as TransactionData
+  console.log('[validateTransaction] Start', { operation, type: d.type, amount: d.amount })
 
   // Auto-set createdBy on create
   if (operation === 'create' && req.user) {
@@ -36,14 +37,16 @@ export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, o
     if (!d.otherCategory) errors.push('Category is required for OTHER transactions.')
   }
 
-  // Invoice or invoiceNote must exist
-  if (!d.invoice && !d.invoiceNote) {
+  // Invoice or invoiceNote must exist (not required for deposits)
+  if (d.type !== 'DEPOSIT' && !d.invoice && !d.invoiceNote) {
     errors.push('Either an invoice file or invoice note is required.')
   }
 
   if (errors.length > 0) {
+    console.log('[validateTransaction] Validation failed:', errors)
     throw new Error(errors.join(' '))
   }
 
+  console.log('[validateTransaction] Passed')
   return d
 }

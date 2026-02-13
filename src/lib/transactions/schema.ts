@@ -9,12 +9,12 @@ import {
 
 export const createTransactionSchema = z
   .object({
-    description: z.string().min(1, 'Opis jest wymagany'),
+    description: z.string().optional().default(''),
     amount: z.number().positive('Kwota musi być większa niż 0'),
     date: z.string().min(1, 'Data jest wymagana'),
     type: z.enum(TRANSACTION_TYPES),
     paymentMethod: z.enum(PAYMENT_METHODS),
-    cashRegister: z.number({ error: 'Kasa jest wymagana' }),
+    cashRegister: z.number({ error: 'Kasa jest wymagana' }).positive('Kasa jest wymagana'),
     investment: z.number().optional(),
     worker: z.number().optional(),
     otherCategory: z.number().optional(),
@@ -22,6 +22,15 @@ export const createTransactionSchema = z
     invoiceNote: z.string().optional(),
   })
   .superRefine((data, ctx) => {
+    console.log(data.type)
+    if (data.type !== 'DEPOSIT' && !data.description) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Opis jest wymagany',
+        path: ['description'],
+      })
+    }
+
     if (needsInvestment(data.type) && !data.investment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -48,3 +57,79 @@ export const createTransactionSchema = z
   })
 
 export type CreateTransactionFormT = z.infer<typeof createTransactionSchema>
+
+/**
+ * Client-side form validation schema.
+ * Works with string values (HTML inputs) — the server schema handles type conversion.
+ */
+export const transactionFormSchema = z
+  .object({
+    description: z.string(),
+    amount: z.string(),
+    date: z.string(),
+    type: z.string(),
+    paymentMethod: z.string(),
+    cashRegister: z.string(),
+    investment: z.string(),
+    worker: z.string(),
+    otherCategory: z.string(),
+    otherDescription: z.string(),
+    invoiceNote: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type !== 'DEPOSIT' && !data.description) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Opis jest wymagany',
+        path: ['description'],
+      })
+    }
+
+    if (!data.amount || Number(data.amount) <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Kwota musi być większa niż 0',
+        path: ['amount'],
+      })
+    }
+
+    if (!data.date) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Data jest wymagana',
+        path: ['date'],
+      })
+    }
+
+    if (!data.cashRegister) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Kasa jest wymagana',
+        path: ['cashRegister'],
+      })
+    }
+
+    if (needsInvestment(data.type) && !data.investment) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Inwestycja jest wymagana dla tego typu transakcji',
+        path: ['investment'],
+      })
+    }
+
+    if (needsWorker(data.type) && !data.worker) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Pracownik jest wymagany dla tego typu transakcji',
+        path: ['worker'],
+      })
+    }
+
+    if (needsOtherCategory(data.type) && !data.otherCategory) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Kategoria jest wymagana dla transakcji typu "Inne"',
+        path: ['otherCategory'],
+      })
+    }
+  })

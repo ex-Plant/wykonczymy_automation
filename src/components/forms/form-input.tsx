@@ -5,7 +5,7 @@ import { useFieldContext } from './hooks/form-hooks'
 
 export function FormInput(props: FormControlPropsT) {
   const field = useFieldContext<string>()
-  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+  const isInvalid = field.state.meta.errors.length > 0
 
   return (
     <FormBase {...props}>

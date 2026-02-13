@@ -8,10 +8,7 @@ import { redirect } from 'next/navigation'
 export default async function DashboardPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/zaloguj')
-
-  if (isManagementRole(user.role)) {
-    return <ManagerDashboard />
-  }
+  if (isManagementRole(user.role)) return <ManagerDashboard />
 
   // Employee: fetch initial data for current month
   const now = new Date()

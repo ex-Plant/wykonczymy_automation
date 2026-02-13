@@ -1,4 +1,5 @@
 export const TRANSACTION_TYPES = [
+  'DEPOSIT',
   'INVESTMENT_EXPENSE',
   'ADVANCE',
   'EMPLOYEE_EXPENSE',
@@ -7,6 +8,7 @@ export const TRANSACTION_TYPES = [
 export type TransactionTypeT = (typeof TRANSACTION_TYPES)[number]
 
 export const TRANSACTION_TYPE_LABELS: Record<TransactionTypeT, string> = {
+  DEPOSIT: 'Wpłata do kasy',
   INVESTMENT_EXPENSE: 'Wydatek inwestycyjny',
   ADVANCE: 'Zaliczka',
   EMPLOYEE_EXPENSE: 'Wydatek pracowniczy',

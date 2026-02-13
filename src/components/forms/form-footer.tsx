@@ -12,7 +12,7 @@ export default function FormFooter() {
     <>
       <footer>
         <Button disabled={isSubmitting} type="submit">
-          Submit
+          Dodaj
         </Button>
         {isInvalid && (
           <p className="text-destructive mt-2 text-sm font-medium">{'Formularz zawiera blędy '}</p>
