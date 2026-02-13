@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
 import {
   Select,
   SelectContent,
@@ -59,35 +58,26 @@ export function EmployeeDashboard({
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
-  const buildUrl = useCallback(
-    (overrides: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(overrides)) {
-        if (value) {
-          params.set(key, value)
-        } else {
-          params.delete(key)
-        }
+  const buildUrl = (overrides: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
       }
-      const qs = params.toString()
-      return `/${qs ? `?${qs}` : ''}`
-    },
-    [searchParams],
-  )
+    }
+    const qs = params.toString()
+    return `/${qs ? `?${qs}` : ''}`
+  }
 
-  const handleMonthChange = useCallback(
-    (value: string) => {
-      router.push(buildUrl({ month: value, page: '' }))
-    },
-    [router, buildUrl],
-  )
+  const handleMonthChange = (value: string) => {
+    router.push(buildUrl({ month: value, page: '' }))
+  }
 
-  const handleYearChange = useCallback(
-    (value: string) => {
-      router.push(buildUrl({ year: value, page: '' }))
-    },
-    [router, buildUrl],
-  )
+  const handleYearChange = (value: string) => {
+    router.push(buildUrl({ year: value, page: '' }))
+  }
 
   return (
     <PageWrapper title="Moje konto">

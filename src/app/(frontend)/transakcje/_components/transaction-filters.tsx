@@ -1,7 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
 import {
   Select,
   SelectContent,
@@ -30,22 +30,19 @@ export function TransactionFilters({ cashRegisters, className }: TransactionFilt
   const currentFrom = searchParams.get('from') ?? ''
   const currentTo = searchParams.get('to') ?? ''
 
-  const updateParam = useCallback(
-    (key: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (value) {
-        params.set(key, value)
-      } else {
-        params.delete(key)
-      }
-      // Reset to page 1 when changing filters
-      params.delete('page')
-      router.push(`/transakcje?${params.toString()}`)
-    },
-    [router, searchParams],
-  )
+  function updateParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) {
+      params.set(key, value)
+    } else {
+      params.delete(key)
+    }
+    // Reset to page 1 when changing filters
+    params.delete('page')
+    router.push(`/transakcje?${params.toString()}`)
+  }
 
-  const clearFilters = () => {
+  function clearFilters() {
     router.push('/transakcje')
   }
 
@@ -53,76 +50,82 @@ export function TransactionFilters({ cashRegisters, className }: TransactionFilt
 
   return (
     <div className={cn('flex flex-wrap items-end gap-3', className)}>
-      {/* Type filter */}
-      <div className="space-y-1">
-        <label className="text-muted-foreground text-xs font-medium">Typ</label>
-        <Select
+      <FilterField label="Typ">
+        <FilterSelect
           value={currentType}
-          onValueChange={(v) => updateParam('type', v === 'ALL' ? '' : v)}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Wszystkie" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Wszystkie</SelectItem>
-            {TRANSACTION_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {TRANSACTION_TYPE_LABELS[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          onValueChange={(v) => updateParam('type', v)}
+          options={TRANSACTION_TYPES.map((t) => ({ value: t, label: TRANSACTION_TYPE_LABELS[t] }))}
+        />
+      </FilterField>
 
-      {/* Cash register filter */}
-      <div className="space-y-1">
-        <label className="text-muted-foreground text-xs font-medium">Kasa</label>
-        <Select
+      <FilterField label="Kasa">
+        <FilterSelect
           value={currentCashRegister}
-          onValueChange={(v) => updateParam('cashRegister', v === 'ALL' ? '' : v)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Wszystkie" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Wszystkie</SelectItem>
-            {cashRegisters.map((cr) => (
-              <SelectItem key={cr.id} value={String(cr.id)}>
-                {cr.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          onValueChange={(v) => updateParam('cashRegister', v)}
+          options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
+        />
+      </FilterField>
 
-      {/* Date from */}
-      <div className="space-y-1">
-        <label className="text-muted-foreground text-xs font-medium">Od</label>
+      <FilterField label="Od">
         <Input
           type="date"
           value={currentFrom}
           onChange={(e) => updateParam('from', e.target.value)}
           className="w-40"
+          placeholder="Od"
         />
-      </div>
+      </FilterField>
 
-      {/* Date to */}
-      <div className="space-y-1">
-        <label className="text-muted-foreground text-xs font-medium">Do</label>
+      <FilterField label="Do">
         <Input
           type="date"
           value={currentTo}
           onChange={(e) => updateParam('to', e.target.value)}
-          className="w-40"
+          placeholder="Do"
         />
-      </div>
+      </FilterField>
 
-      {/* Clear filters */}
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={clearFilters}>
           Wyczyść filtry
         </Button>
       )}
     </div>
+  )
+}
+
+function FilterField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col space-y-1">
+      <span className="text-muted-foreground text-xs font-medium">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+type FilterOptionT = { value: string; label: string }
+
+type FilterSelectPropsT = {
+  value: string
+  onValueChange: (value: string) => void
+  options: FilterOptionT[]
+  className?: string
+}
+
+function FilterSelect({ value, onValueChange, options, className }: FilterSelectPropsT) {
+  return (
+    <Select value={value} onValueChange={(v) => onValueChange(v === 'ALL' ? '' : v)}>
+      <SelectTrigger className={'min-w-40'}>
+        <SelectValue placeholder="Wszystkie" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="ALL">Wszystkie</SelectItem>
+        {options.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
 import { UrlPagination } from './url-pagination'
 import {
   Select,
@@ -23,28 +22,22 @@ export function PaginationFooter({ paginationMeta, baseUrl }: PaginationFooterPr
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const buildUrl = useCallback(
-    (overrides: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(overrides)) {
-        if (value) {
-          params.set(key, value)
-        } else {
-          params.delete(key)
-        }
+  const buildUrl = (overrides: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
       }
-      const qs = params.toString()
-      return `${baseUrl}${qs ? `?${qs}` : ''}`
-    },
-    [searchParams, baseUrl],
-  )
+    }
+    const qs = params.toString()
+    return `${baseUrl}${qs ? `?${qs}` : ''}`
+  }
 
-  const handleLimitChange = useCallback(
-    (value: string) => {
-      router.push(buildUrl({ limit: value, page: '' }))
-    },
-    [router, buildUrl],
-  )
+  const handleLimitChange = (value: string) => {
+    router.push(buildUrl({ limit: value, page: '' }))
+  }
 
   if (paginationMeta.totalPages <= 1 && paginationMeta.totalDocs === 0) return null
 

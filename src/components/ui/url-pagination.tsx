@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
 import {
   Pagination,
   PaginationContent,
@@ -30,19 +29,16 @@ export function UrlPagination({
   const searchParams = useSearchParams()
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
 
-  const buildPageUrl = useCallback(
-    (page: number) => {
-      const params = new URLSearchParams(searchParams.toString())
-      if (page > 1) {
-        params.set('page', String(page))
-      } else {
-        params.delete('page')
-      }
-      const qs = params.toString()
-      return `${baseUrl}${qs ? `?${qs}` : ''}`
-    },
-    [searchParams, baseUrl],
-  )
+  const buildPageUrl = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (page > 1) {
+      params.set('page', String(page))
+    } else {
+      params.delete('page')
+    }
+    const qs = params.toString()
+    return `${baseUrl}${qs ? `?${qs}` : ''}`
+  }
 
   const handleClick = (e: React.MouseEvent, href: string) => {
     e.preventDefault()
