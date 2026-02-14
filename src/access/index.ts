@@ -3,7 +3,7 @@ import type { RoleT } from '@/collections/users'
 
 type UserWithRole =
   | {
-      id: string | number
+      id: number
       role?: RoleT
     }
   | null
