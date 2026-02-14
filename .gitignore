@@ -39,6 +39,9 @@ next-env.d.ts
 # IDE
 .idea/
 
+# worktrees
+.worktrees/
+
 
 .notes
 claude_code_notes.md
