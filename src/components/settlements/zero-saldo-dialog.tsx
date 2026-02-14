@@ -22,26 +22,40 @@ import {
 } from '@/components/ui/select'
 import { toastMessage } from '@/components/toasts'
 import { formatPLN } from '@/lib/format-currency'
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethodT } from '@/lib/constants/transactions'
+import {
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethodT,
+} from '@/lib/constants/transactions'
 import { zeroSaldoAction } from '@/lib/settlements/actions'
 
 type ZeroSaldoDialogPropsT = {
   saldo: number
   workerId: number
+  managerCashRegisterId?: number
   referenceData: {
     investments: { id: number; name: string }[]
     cashRegisters: { id: number; name: string }[]
   }
 }
 
-export function ZeroSaldoDialog({ saldo, workerId, referenceData }: ZeroSaldoDialogPropsT) {
+export function ZeroSaldoDialog({
+  saldo,
+  workerId,
+  managerCashRegisterId,
+  referenceData,
+}: ZeroSaldoDialogPropsT) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
 
+  const isRegisterLocked = managerCashRegisterId !== undefined
+
   const [investment, setInvestment] = useState('')
-  const [cashRegister, setCashRegister] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('')
+  const [cashRegister, setCashRegister] = useState(
+    isRegisterLocked ? String(managerCashRegisterId) : '',
+  )
+  const [paymentMethod, setPaymentMethod] = useState('CASH')
 
   const handleConfirm = () => {
     const formData = new FormData()
@@ -104,7 +118,11 @@ export function ZeroSaldoDialog({ saldo, workerId, referenceData }: ZeroSaldoDia
 
           <div className="space-y-2">
             <Label>Kasa</Label>
-            <Select value={cashRegister} onValueChange={setCashRegister}>
+            <Select
+              value={cashRegister}
+              onValueChange={setCashRegister}
+              disabled={isRegisterLocked}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Wybierz kasę" />
               </SelectTrigger>

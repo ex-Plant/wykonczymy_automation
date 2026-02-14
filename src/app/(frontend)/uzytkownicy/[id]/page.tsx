@@ -3,6 +3,7 @@ import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/collections/users'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
@@ -45,36 +46,43 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
 
   // Fetch paginated transactions + saldo totals + reference data for zero saldo
-  const [transactions, allAdvances, allExpenses, activeInvestments, cashRegisters] =
-    await Promise.all([
-      payload.find({
-        collection: 'transactions',
-        where: { worker: { equals: id } },
-        sort: '-date',
-        depth: 1,
-        limit,
-        page: currentPage,
-      }),
-      payload.find({
-        collection: 'transactions',
-        where: { worker: { equals: id }, type: { equals: 'ADVANCE' } },
-        pagination: false,
-        depth: 0,
-      }),
-      payload.find({
-        collection: 'transactions',
-        where: { worker: { equals: id }, type: { equals: 'EMPLOYEE_EXPENSE' } },
-        pagination: false,
-        depth: 0,
-      }),
-      payload.find({
-        collection: 'investments',
-        where: { status: { equals: 'active' } },
-        pagination: false,
-        depth: 0,
-      }),
-      payload.find({ collection: 'cash-registers', pagination: false, depth: 0 }),
-    ])
+  const [
+    transactions,
+    allAdvances,
+    allExpenses,
+    activeInvestments,
+    cashRegisters,
+    managerRegisterIds,
+  ] = await Promise.all([
+    payload.find({
+      collection: 'transactions',
+      where: { worker: { equals: id } },
+      sort: '-date',
+      depth: 1,
+      limit,
+      page: currentPage,
+    }),
+    payload.find({
+      collection: 'transactions',
+      where: { worker: { equals: id }, type: { equals: 'ADVANCE' } },
+      pagination: false,
+      depth: 0,
+    }),
+    payload.find({
+      collection: 'transactions',
+      where: { worker: { equals: id }, type: { equals: 'EMPLOYEE_EXPENSE' } },
+      pagination: false,
+      depth: 0,
+    }),
+    payload.find({
+      collection: 'investments',
+      where: { status: { equals: 'active' } },
+      pagination: false,
+      depth: 0,
+    }),
+    payload.find({ collection: 'cash-registers', pagination: false, depth: 0 }),
+    getUserCashRegisterIds(user.id, user.role),
+  ])
 
   const advancesSum = allAdvances.docs.reduce((sum, tx) => sum + tx.amount, 0)
   const expensesSum = allExpenses.docs.reduce((sum, tx) => sum + tx.amount, 0)
@@ -96,7 +104,9 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         <dt className="text-muted-foreground font-medium">Email</dt>
         <dd className="text-foreground">{targetUser.email}</dd>
         <dt className="text-muted-foreground font-medium">Rola</dt>
-        <dd className="text-foreground">{ROLE_LABELS[targetUser.role as RoleT]?.pl ?? targetUser.role}</dd>
+        <dd className="text-foreground">
+          {ROLE_LABELS[targetUser.role as RoleT]?.pl ?? targetUser.role}
+        </dd>
       </dl>
 
       {/* Stat card + zero saldo */}
@@ -108,6 +118,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         <ZeroSaldoDialog
           saldo={saldo}
           workerId={targetUser.id}
+          managerCashRegisterId={managerRegisterIds?.[0]}
           referenceData={{
             investments: activeInvestments.docs.map((i) => ({ id: i.id, name: i.name })),
             cashRegisters: cashRegisters.docs.map((c) => ({ id: c.id, name: c.name })),

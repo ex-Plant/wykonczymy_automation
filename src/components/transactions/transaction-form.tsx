@@ -24,6 +24,7 @@ import useCheckFormErrors from '../forms/hooks/use-check-form-errors'
 
 type TransactionFormPropsT = {
   referenceData: ReferenceDataT
+  managerCashRegisterId?: number
   onSuccess: () => void
 }
 
@@ -45,8 +46,13 @@ type FormValuesT = {
 
 const today = () => new Date().toISOString().split('T')[0]
 
-export function TransactionForm({ referenceData, onSuccess }: TransactionFormPropsT) {
+export function TransactionForm({
+  referenceData,
+  managerCashRegisterId,
+  onSuccess,
+}: TransactionFormPropsT) {
   const invoiceRef = useRef<HTMLInputElement>(null)
+  const isRegisterLocked = managerCashRegisterId !== undefined
 
   const form = useAppForm({
     defaultValues: {
@@ -55,7 +61,7 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
       date: today(),
       type: 'INVESTMENT_EXPENSE',
       paymentMethod: 'CASH',
-      cashRegister: '',
+      cashRegister: isRegisterLocked ? String(managerCashRegisterId) : '',
       investment: '',
       worker: '',
       otherCategory: '',
@@ -160,7 +166,12 @@ export function TransactionForm({ referenceData, onSuccess }: TransactionFormPro
           {/* Cash register */}
           <form.AppField name="cashRegister">
             {(field) => (
-              <field.Select label="Kasa" placeholder="Wybierz kasę" showError>
+              <field.Select
+                label="Kasa"
+                placeholder="Wybierz kasę"
+                showError
+                disabled={isRegisterLocked}
+              >
                 {referenceData.cashRegisters.map((cr) => (
                   <SelectItem key={cr.id} value={String(cr.id)}>
                     {cr.name}
