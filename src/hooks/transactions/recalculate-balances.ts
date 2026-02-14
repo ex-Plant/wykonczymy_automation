@@ -4,14 +4,14 @@ import type {
   Payload,
   PayloadRequest,
 } from 'payload'
+import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
 
 /**
- * Recalculate a cash register's balance by summing all its transactions.
- * Every transaction reduces the register balance (money going out).
+ * Recalculate a cash register's balance via SQL SUM aggregation.
  *
- * IMPORTANT: `req` must be forwarded so queries run inside the same
+ * IMPORTANT: `req` must be forwarded so the query runs inside the same
  * database transaction as the triggering operation, avoiding stale reads.
  */
 const recalcRegisterBalance = async (
@@ -21,21 +21,9 @@ const recalcRegisterBalance = async (
 ): Promise<void> => {
   console.log(`[recalcRegisterBalance] registerId=${registerId}`)
 
-  const { docs } = await payload.find({
-    collection: 'transactions',
-    where: { cashRegister: { equals: registerId } },
-    limit: 0, // all docs
-    pagination: false,
-    overrideAccess: true,
-    req,
-  })
+  const balance = await sumRegisterBalance(payload, registerId, req)
 
-  const balance = docs.reduce((sum, tx) => {
-    if (tx.type === 'DEPOSIT') return sum + (tx.amount ?? 0)
-    return sum - (tx.amount ?? 0)
-  }, 0)
-
-  console.log(`[recalcRegisterBalance] registerId=${registerId} txCount=${docs.length} newBalance=${balance}`)
+  console.log(`[recalcRegisterBalance] registerId=${registerId} newBalance=${balance}`)
 
   await payload.update({
     collection: 'cash-registers',
@@ -48,8 +36,8 @@ const recalcRegisterBalance = async (
 }
 
 /**
- * Recalculate an investment's totalCosts by summing INVESTMENT_EXPENSE
- * and EMPLOYEE_EXPENSE transactions linked to it.
+ * Recalculate an investment's totalCosts via SQL SUM aggregation.
+ * Only INVESTMENT_EXPENSE and EMPLOYEE_EXPENSE transactions count.
  */
 const recalcInvestmentCosts = async (
   payload: Payload,
@@ -58,21 +46,9 @@ const recalcInvestmentCosts = async (
 ): Promise<void> => {
   console.log(`[recalcInvestmentCosts] investmentId=${investmentId}`)
 
-  const { docs } = await payload.find({
-    collection: 'transactions',
-    where: {
-      investment: { equals: investmentId },
-      type: { in: [...COST_TYPES] },
-    },
-    limit: 0,
-    pagination: false,
-    overrideAccess: true,
-    req,
-  })
+  const totalCosts = await sumInvestmentCosts(payload, investmentId, req)
 
-  const totalCosts = docs.reduce((sum, tx) => sum + (tx.amount ?? 0), 0)
-
-  console.log(`[recalcInvestmentCosts] investmentId=${investmentId} txCount=${docs.length} totalCosts=${totalCosts}`)
+  console.log(`[recalcInvestmentCosts] investmentId=${investmentId} totalCosts=${totalCosts}`)
 
   await payload.update({
     collection: 'investments',

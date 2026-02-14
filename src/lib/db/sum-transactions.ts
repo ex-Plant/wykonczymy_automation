@@ -1,0 +1,124 @@
+import { sql } from '@payloadcms/db-vercel-postgres'
+import type { Payload, PayloadRequest } from 'payload'
+
+type DateRangeT = { start: string; end: string }
+
+/**
+ * Returns the transaction-scoped Drizzle instance when inside a hook
+ * (where `req` carries a `transactionID`), or the default instance otherwise.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getDb = async (payload: Payload, req?: PayloadRequest): Promise<any> => {
+  const adapter = payload.db as unknown as Record<string, unknown>
+  const txId = req?.transactionID ? await req.transactionID : undefined
+  const sessions = adapter.sessions as Record<string, { db?: unknown }> | undefined
+
+  if (txId && sessions?.[txId]?.db) return sessions[txId].db
+  return adapter.drizzle
+}
+
+/**
+ * SUM balance for a cash register using SQL aggregation.
+ * DEPOSITs add to balance, everything else subtracts.
+ */
+export const sumRegisterBalance = async (
+  payload: Payload,
+  registerId: number,
+  req?: PayloadRequest,
+): Promise<number> => {
+  const db = await getDb(payload, req)
+
+  const result = await db.execute(sql`
+    SELECT COALESCE(SUM(
+      CASE WHEN type = 'DEPOSIT' THEN amount ELSE -amount END
+    ), 0) AS balance
+    FROM transactions
+    WHERE cash_register_id = ${registerId}
+  `)
+
+  return Number(result.rows[0].balance)
+}
+
+/**
+ * SUM costs for an investment using SQL aggregation.
+ * Only INVESTMENT_EXPENSE and EMPLOYEE_EXPENSE types count.
+ */
+export const sumInvestmentCosts = async (
+  payload: Payload,
+  investmentId: number,
+  req?: PayloadRequest,
+): Promise<number> => {
+  const db = await getDb(payload, req)
+
+  const result = await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0) AS total
+    FROM transactions
+    WHERE investment_id = ${investmentId}
+      AND type IN ('INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE')
+  `)
+
+  return Number(result.rows[0].total)
+}
+
+/**
+ * SUM employee saldo using SQL aggregation.
+ * ADVANCEs add to saldo, EMPLOYEE_EXPENSEs subtract.
+ * Optional date range filters by the `date` column.
+ */
+/**
+ * SUM saldo for ALL workers in a single query, grouped by worker_id.
+ * Returns a Map<workerId, saldo>.
+ */
+export const sumAllWorkerSaldos = async (payload: Payload): Promise<Map<number, number>> => {
+  const db = await getDb(payload)
+
+  const result = await db.execute(sql`
+    SELECT worker_id,
+      COALESCE(SUM(
+        CASE WHEN type = 'ADVANCE' THEN amount ELSE -amount END
+      ), 0) AS saldo
+    FROM transactions
+    WHERE worker_id IS NOT NULL
+      AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+    GROUP BY worker_id
+  `)
+
+  const map = new Map<number, number>()
+  for (const row of result.rows) {
+    map.set(Number(row.worker_id), Number(row.saldo))
+  }
+  return map
+}
+
+export const sumEmployeeSaldo = async (
+  payload: Payload,
+  workerId: number,
+  dateRange?: DateRangeT,
+): Promise<number> => {
+  const db = await getDb(payload)
+
+  if (dateRange) {
+    const result = await db.execute(sql`
+      SELECT COALESCE(SUM(
+        CASE WHEN type = 'ADVANCE' THEN amount ELSE -amount END
+      ), 0) AS saldo
+      FROM transactions
+      WHERE worker_id = ${workerId}
+        AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+        AND date >= ${dateRange.start}
+        AND date <= ${dateRange.end}
+    `)
+    return Number(result.rows[0].saldo)
+  }
+
+  const result = await db.execute(sql`
+    SELECT COALESCE(SUM(
+      CASE WHEN type = 'ADVANCE' THEN amount ELSE -amount END
+    ), 0) AS saldo
+    FROM transactions
+    WHERE worker_id = ${workerId}
+      AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+  `)
+
+  return Number(result.rows[0].saldo)
+}

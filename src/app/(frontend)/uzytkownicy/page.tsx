@@ -3,6 +3,7 @@ import config from '@payload-config'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { sumAllWorkerSaldos } from '@/lib/db/sum-transactions'
 import type { RoleT } from '@/collections/users'
 import { UserDataTable } from '@/components/users/user-data-table'
 import type { UserRowT } from '@/lib/users/types'
@@ -29,46 +30,17 @@ export default async function UsersPage({ searchParams }: PagePropsT) {
   const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
   const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
 
-  const [users, allAdvances, allExpenses] = await Promise.all([
+  const [users, saldoMap] = await Promise.all([
     payload.find({ collection: 'users', sort: 'name', limit, page: currentPage }),
-    payload.find({
-      collection: 'transactions',
-      where: { type: { equals: 'ADVANCE' } },
-      pagination: false,
-      depth: 0,
-    }),
-    payload.find({
-      collection: 'transactions',
-      where: { type: { equals: 'EMPLOYEE_EXPENSE' } },
-      pagination: false,
-      depth: 0,
-    }),
+    sumAllWorkerSaldos(payload),
   ])
-
-  // Group advances by worker ID
-  const advancesByWorker = new Map<number, number>()
-  for (const tx of allAdvances.docs) {
-    const workerId = typeof tx.worker === 'object' && tx.worker !== null ? tx.worker.id : tx.worker
-    if (typeof workerId === 'number') {
-      advancesByWorker.set(workerId, (advancesByWorker.get(workerId) ?? 0) + tx.amount)
-    }
-  }
-
-  // Group expenses by worker ID
-  const expensesByWorker = new Map<number, number>()
-  for (const tx of allExpenses.docs) {
-    const workerId = typeof tx.worker === 'object' && tx.worker !== null ? tx.worker.id : tx.worker
-    if (typeof workerId === 'number') {
-      expensesByWorker.set(workerId, (expensesByWorker.get(workerId) ?? 0) + tx.amount)
-    }
-  }
 
   const rows: UserRowT[] = users.docs.map((u) => ({
     id: u.id,
     name: u.name,
     email: u.email,
     role: u.role as RoleT,
-    saldo: (advancesByWorker.get(u.id) ?? 0) - (expensesByWorker.get(u.id) ?? 0),
+    saldo: saldoMap.get(u.id) ?? 0,
   }))
 
   const paginationMeta = {

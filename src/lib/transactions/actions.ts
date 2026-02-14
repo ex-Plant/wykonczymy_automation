@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import { createTransactionSchema, type CreateTransactionFormT } from './schema'
 
 type SerializedTransactionT = {
@@ -42,7 +43,7 @@ export async function getEmployeeMonthData(
   const endDate = new Date(year, month, 0, 23, 59, 59)
 
   // Fetch monthly transactions + all-time saldo in parallel
-  const [monthlyResult, advanceDocs, expenseDocs] = await Promise.all([
+  const [monthlyResult, saldo] = await Promise.all([
     payload.find({
       collection: 'transactions',
       where: {
@@ -55,32 +56,10 @@ export async function getEmployeeMonthData(
       sort: '-date',
       limit: 100,
     }),
-    // All-time advances for this worker
-    payload.find({
-      collection: 'transactions',
-      where: {
-        worker: { equals: userId },
-        type: { equals: 'ADVANCE' },
-      },
-      limit: 1000,
-    }),
-    // All-time employee expenses for this worker
-    payload.find({
-      collection: 'transactions',
-      where: {
-        worker: { equals: userId },
-        type: { equals: 'EMPLOYEE_EXPENSE' },
-      },
-      limit: 1000,
-    }),
+    sumEmployeeSaldo(payload, userId),
   ])
 
-  const advanceSum = advanceDocs.docs.reduce((sum, tx) => sum + tx.amount, 0)
-  const expenseSum = expenseDocs.docs.reduce((sum, tx) => sum + tx.amount, 0)
-
-  console.log(
-    `[getEmployeeMonthData] txCount=${monthlyResult.docs.length} advances=${advanceSum} expenses=${expenseSum} saldo=${advanceSum - expenseSum}`,
-  )
+  console.log(`[getEmployeeMonthData] txCount=${monthlyResult.docs.length} saldo=${saldo}`)
 
   return {
     transactions: monthlyResult.docs.map((tx) => ({
@@ -90,7 +69,7 @@ export async function getEmployeeMonthData(
       type: tx.type,
       date: tx.date,
     })),
-    saldo: advanceSum - expenseSum,
+    saldo,
   }
 }
 

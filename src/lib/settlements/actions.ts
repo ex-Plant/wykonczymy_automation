@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import type { PaymentMethodT } from '@/lib/constants/transactions'
 
 type SaldoResultT = { saldo: number }
@@ -20,26 +21,9 @@ export async function getEmployeeSaldo(workerId: number): Promise<SaldoResultT> 
   }
 
   const payload = await getPayload({ config })
+  const saldo = await sumEmployeeSaldo(payload, workerId)
 
-  const [advanceDocs, expenseDocs] = await Promise.all([
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: workerId }, type: { equals: 'ADVANCE' } },
-      limit: 1000,
-      depth: 0,
-    }),
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: workerId }, type: { equals: 'EMPLOYEE_EXPENSE' } },
-      limit: 1000,
-      depth: 0,
-    }),
-  ])
-
-  const advanceSum = advanceDocs.docs.reduce((sum, tx) => sum + tx.amount, 0)
-  const expenseSum = expenseDocs.docs.reduce((sum, tx) => sum + tx.amount, 0)
-
-  return { saldo: advanceSum - expenseSum }
+  return { saldo }
 }
 
 export async function createSettlement(formData: FormData): Promise<ActionResultT> {

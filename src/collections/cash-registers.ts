@@ -14,7 +14,7 @@ export const CashRegisters: CollectionConfig = {
   },
   access: {
     // ADMIN/OWNER: full CRUD. MANAGER: read all.
-    read: isAdminOrOwnerOrManager,
+    read: isAdminOrOwner,
     create: isAdminOrOwner,
     update: isAdminOrOwner,
     delete: isAdminOrOwner,

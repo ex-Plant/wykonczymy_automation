@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
+import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/collections/users'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
@@ -47,48 +48,27 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
   const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
 
-  // Fetch paginated transactions + saldo totals + reference data for zero saldo
-  const [
-    transactions,
-    allAdvances,
-    allExpenses,
-    activeInvestments,
-    cashRegisters,
-    managerRegisterIds,
-  ] = await Promise.all([
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: id } },
-      sort: '-date',
-      depth: 1,
-      limit,
-      page: currentPage,
-    }),
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: id }, type: { equals: 'ADVANCE' } },
-      pagination: false,
-      depth: 0,
-    }),
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: id }, type: { equals: 'EMPLOYEE_EXPENSE' } },
-      pagination: false,
-      depth: 0,
-    }),
-    payload.find({
-      collection: 'investments',
-      where: { status: { equals: 'active' } },
-      pagination: false,
-      depth: 0,
-    }),
-    payload.find({ collection: 'cash-registers', pagination: false, depth: 0 }),
-    getUserCashRegisterIds(user.id, user.role),
-  ])
-
-  const advancesSum = allAdvances.docs.reduce((sum, tx) => sum + tx.amount, 0)
-  const expensesSum = allExpenses.docs.reduce((sum, tx) => sum + tx.amount, 0)
-  const saldo = advancesSum - expensesSum
+  // Fetch paginated transactions + saldo + reference data for zero saldo
+  const [transactions, saldo, activeInvestments, cashRegisters, managerRegisterIds] =
+    await Promise.all([
+      payload.find({
+        collection: 'transactions',
+        where: { worker: { equals: id } },
+        sort: '-date',
+        depth: 1,
+        limit,
+        page: currentPage,
+      }),
+      sumEmployeeSaldo(payload, Number(id)),
+      payload.find({
+        collection: 'investments',
+        where: { status: { equals: 'active' } },
+        pagination: false,
+        depth: 0,
+      }),
+      payload.find({ collection: 'cash-registers', pagination: false, depth: 0 }),
+      getUserCashRegisterIds(user.id, user.role),
+    ])
 
   const rows = transactions.docs.map(mapTransactionRow)
 

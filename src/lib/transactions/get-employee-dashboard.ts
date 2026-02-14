@@ -2,6 +2,7 @@
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import { mapTransactionRow } from './map-transaction-row'
 import type { TransactionRowT, PaginationMetaT } from './types'
 
@@ -16,26 +17,7 @@ export type MonthlyDataT = {
 
 export async function getEmployeeSaldo(userId: number): Promise<number> {
   const payload = await getPayload({ config })
-
-  const [advanceDocs, expenseDocs] = await Promise.all([
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: userId }, type: { equals: 'ADVANCE' } },
-      select: { amount: true },
-      limit: 0,
-    }),
-    payload.find({
-      collection: 'transactions',
-      where: { worker: { equals: userId }, type: { equals: 'EMPLOYEE_EXPENSE' } },
-      select: { amount: true },
-      limit: 0,
-    }),
-  ])
-
-  const advanceSum = advanceDocs.docs.reduce((sum, tx) => sum + tx.amount, 0)
-  const expenseSum = expenseDocs.docs.reduce((sum, tx) => sum + tx.amount, 0)
-
-  return advanceSum - expenseSum
+  return sumEmployeeSaldo(payload, userId)
 }
 
 export async function getEmployeeMonthlyData({
@@ -64,7 +46,7 @@ export async function getEmployeeMonthlyData({
     less_than_equal: endDate.toISOString(),
   }
 
-  const [transactions, monthlySaldoDocs] = await Promise.all([
+  const [transactions, monthlySaldo] = await Promise.all([
     payload.find({
       collection: 'transactions',
       where: { worker: { equals: userId }, date: dateRange },
@@ -73,25 +55,11 @@ export async function getEmployeeMonthlyData({
       page: safePage,
       depth: 1,
     }),
-    payload.find({
-      collection: 'transactions',
-      where: {
-        worker: { equals: userId },
-        type: { in: ['ADVANCE', 'EMPLOYEE_EXPENSE'] },
-        date: dateRange,
-      },
-      select: { amount: true, type: true },
-      limit: 0,
+    sumEmployeeSaldo(payload, userId, {
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
     }),
   ])
-
-  let monthlyAdvanceSum = 0
-  let monthlyExpenseSum = 0
-
-  for (const tx of monthlySaldoDocs.docs) {
-    if (tx.type === 'ADVANCE') monthlyAdvanceSum += tx.amount
-    else monthlyExpenseSum += tx.amount
-  }
 
   return {
     rows: transactions.docs.map(mapTransactionRow),
@@ -101,6 +69,6 @@ export async function getEmployeeMonthlyData({
       totalDocs: transactions.totalDocs,
       limit: safeLimit,
     },
-    monthlySaldo: monthlyAdvanceSum - monthlyExpenseSum,
+    monthlySaldo,
   }
 }

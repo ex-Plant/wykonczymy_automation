@@ -13,7 +13,7 @@ type CashRegisterDataTablePropsT = {
 
 export function CashRegisterDataTable({ data, paginationMeta }: CashRegisterDataTablePropsT) {
   return (
-    <div className="space-y-4">
+    <div className="mt-6 space-y-4">
       <DataTable data={data} columns={cashRegisterColumns} emptyMessage="Brak kas" />
       <PaginationFooter paginationMeta={paginationMeta} baseUrl="/kasa" />
     </div>
