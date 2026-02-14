@@ -18,6 +18,7 @@ export function FormInput(props: FormControlPropsT) {
         onChange={(e) => field.handleChange(e.target.value)}
         aria-invalid={isInvalid}
         type={props.type}
+        autoComplete={props.autoComplete}
         className={props.className}
       />
     </FormBase>

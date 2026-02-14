@@ -6,5 +6,6 @@ export type FormControlPropsT = {
   placeholder?: string
   showError?: boolean
   type?: React.ComponentProps<'input'>['type']
+  autoComplete?: React.ComponentProps<'input'>['autoComplete']
   className?: string
 }
