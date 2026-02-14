@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useTransition } from 'react'
 import {
   Select,
   SelectContent,
@@ -10,8 +10,12 @@ import {
 } from '@/components/ui/select'
 import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
-import type { TransactionRowT, PaginationMetaT } from '@/lib/transactions/types'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { StatCard } from '@/components/ui/stat-card'
+import {
+  getEmployeeMonthlyData,
+  type MonthlyDataT,
+} from '@/lib/transactions/get-employee-dashboard'
 
 const MONTHS = [
   'Styczeń',
@@ -38,45 +42,45 @@ const EMPLOYEE_EXCLUDE_COLUMNS = [
 ]
 
 type EmployeeDashboardPropsT = {
-  readonly rows: readonly TransactionRowT[]
-  readonly paginationMeta: PaginationMetaT
+  readonly userId: number
   readonly saldo: number
+  readonly initialMonthlyData: MonthlyDataT
   readonly month: number
   readonly year: number
 }
 
 export function EmployeeDashboard({
-  rows,
-  paginationMeta,
+  userId,
   saldo,
-  month,
-  year,
+  initialMonthlyData,
+  month: initialMonth,
+  year: initialYear,
 }: EmployeeDashboardPropsT) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
+  const [month, setMonth] = useState(initialMonth)
+  const [year, setYear] = useState(initialYear)
+  const [monthlyData, setMonthlyData] = useState(initialMonthlyData)
 
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
-  const buildUrl = (overrides: Record<string, string>) => {
-    const params = new URLSearchParams(searchParams.toString())
-    for (const [key, value] of Object.entries(overrides)) {
-      if (value) {
-        params.set(key, value)
-      } else {
-        params.delete(key)
-      }
-    }
-    const qs = params.toString()
-    return `/${qs ? `?${qs}` : ''}`
+  const refetch = (nextMonth: number, nextYear: number) => {
+    startTransition(async () => {
+      const result = await getEmployeeMonthlyData({ userId, month: nextMonth, year: nextYear })
+      setMonthlyData(result)
+    })
   }
 
   const handleMonthChange = (value: string) => {
-    router.push(buildUrl({ month: value, page: '' }))
+    const nextMonth = Number(value)
+    setMonth(nextMonth)
+    refetch(nextMonth, year)
   }
 
   const handleYearChange = (value: string) => {
-    router.push(buildUrl({ year: value, page: '' }))
+    const nextYear = Number(value)
+    setYear(nextYear)
+    refetch(month, nextYear)
   }
 
   return (
@@ -110,10 +114,13 @@ export function EmployeeDashboard({
         </Select>
       </div>
 
-      {/* Saldo card — all-time */}
-      <div className="border-border bg-card mt-6 rounded-lg border p-4">
-        <p className="text-muted-foreground text-sm">Saldo (zaliczki - wydatki)</p>
-        <p className="text-foreground mt-1 text-2xl font-semibold">{formatPLN(saldo)}</p>
+      {/* Saldo cards */}
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <StatCard label="Saldo ogólne (zaliczki - wydatki)" value={formatPLN(saldo)} />
+        <StatCard
+          label={`Saldo — ${MONTHS[month - 1]} ${year}`}
+          value={formatPLN(monthlyData.monthlySaldo)}
+        />
       </div>
 
       {/* Monthly transactions table */}
@@ -123,8 +130,8 @@ export function EmployeeDashboard({
         </h2>
         <div className="mt-4">
           <TransactionDataTable
-            data={rows}
-            paginationMeta={paginationMeta}
+            data={monthlyData.rows}
+            paginationMeta={monthlyData.paginationMeta}
             excludeColumns={EMPLOYEE_EXCLUDE_COLUMNS}
             baseUrl="/"
           />

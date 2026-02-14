@@ -4,6 +4,7 @@ import { formatPLN } from '@/lib/format-currency'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { StatCard } from '@/components/ui/stat-card'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -21,7 +22,8 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   const pageParam = typeof searchParams.page === 'string' ? Number(searchParams.page) : 1
   const currentPage = pageParam > 0 ? pageParam : 1
 
-  const limitParam = typeof searchParams.limit === 'string' ? Number(searchParams.limit) : DEFAULT_LIMIT
+  const limitParam =
+    typeof searchParams.limit === 'string' ? Number(searchParams.limit) : DEFAULT_LIMIT
   const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
 
   const [cashRegisters, investments, recentTransactions, transactionsLast30Days] =
@@ -71,14 +73,5 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
         </div>
       </div>
     </PageWrapper>
-  )
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-border bg-card rounded-lg border p-4">
-      <p className="text-muted-foreground text-sm">{label}</p>
-      <p className="text-foreground mt-1 text-2xl font-semibold">{value}</p>
-    </div>
   )
 }
