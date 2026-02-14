@@ -35,7 +35,7 @@ export default buildConfig({
   editor: lexicalEditor(),
   db: vercelPostgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URL,
+      connectionString: process.env.DB_POSTGRES_URL,
     },
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),

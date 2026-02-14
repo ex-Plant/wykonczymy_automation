@@ -6,7 +6,7 @@ const envSchema = z.object({
   // Public vars (available in browser)
   NEXT_PUBLIC_FRONTEND_URL: z.string().refine(isValidUrl, 'Invalid URL'),
   // Server-only vars
-  DATABASE_URL: z.string().min(1),
+  DB_POSTGRES_URL: z.string().min(1),
   PAYLOAD_SECRET: z.string().min(1),
   BLOB_READ_WRITE_TOKEN: z.string().min(1),
   EMAIL_USER: z.string().min(1),
