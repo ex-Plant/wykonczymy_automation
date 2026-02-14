@@ -23,6 +23,7 @@
       "@payload-config": ["./src/payload.config.ts"]
     }
   },
+  "files": ["src/payload-types.ts"],
   "include": [
     "next-env.d.ts",
     "**/*.ts",
