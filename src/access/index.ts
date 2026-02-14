@@ -20,6 +20,9 @@ type BooleanAccess = ({ req }: { req: PayloadRequest }) => boolean
 
 export const isAdminBoolean: BooleanAccess = ({ req: { user } }) => hasRole(user, 'ADMIN')
 
+export const isAdminOrOwnerOrManagerBoolean: BooleanAccess = ({ req: { user } }) =>
+  hasAnyRole(user, 'ADMIN', 'OWNER', 'MANAGER')
+
 // --- Collection-level access (can return boolean | Where) ---
 
 export const isAdmin: Access = ({ req: { user } }) => hasRole(user, 'ADMIN')

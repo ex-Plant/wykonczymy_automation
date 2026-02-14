@@ -125,15 +125,15 @@ For invoice file uploads (PDF, images).
 
 ## Access Control
 
-| Collection      | ADMIN       | OWNER     | MANAGER                      | EMPLOYEE                 |
-| --------------- | ----------- | --------- | ---------------------------- | ------------------------ |
-| Users           | full CRUD   | full CRUD | read all                     | read self only           |
-| CashRegisters   | full CRUD   | full CRUD | read all, update own balance | no access                |
-| Investments     | full CRUD   | full CRUD | read all                     | no access                |
-| Transactions    | full CRUD   | full CRUD | create, read all, update own | read own (worker = self) |
-| OtherCategories | full CRUD   | full CRUD | read                         | no access                |
-| Media           | full CRUD   | full CRUD | create, read                 | read own                 |
-| Payload Admin   | full access | no access | no access                    | no access                |
+| Collection      | ADMIN       | OWNER       | MANAGER                      | EMPLOYEE                 |
+| --------------- | ----------- | ----------- | ---------------------------- | ------------------------ |
+| Users           | full CRUD   | full CRUD   | read all                     | read self only           |
+| CashRegisters   | full CRUD   | full CRUD   | read all, update own balance | no access                |
+| Investments     | full CRUD   | full CRUD   | read all                     | no access                |
+| Transactions    | full CRUD   | full CRUD   | create, read all, update own | read own (worker = self) |
+| OtherCategories | full CRUD   | full CRUD   | read                         | no access                |
+| Media           | full CRUD   | full CRUD   | create, read                 | read own                 |
+| Payload Admin   | full access | full access | full access                  | no access                |
 
 ---
 
@@ -259,52 +259,41 @@ For invoice file uploads (PDF, images).
 
 ---
 
-### M8.1: Form Defaults & Manager Cash Register Scoping
+### M8.1: Form Defaults & Manager Cash Register Scoping ✅ DONE
 
-**Goal:** Default payment method to CASH across all forms. Lock Manager's own cash register in transaction/settlement forms (read access to all data remains unrestricted).
-
-#### Task 1: Default payment method to CASH
-
-**Files to modify:**
-
-- `src/components/settlements/settlement-form.tsx` — `useState('')` → `useState('CASH')`
-- `src/components/settlements/zero-saldo-dialog.tsx` — `useState('')` → `useState('CASH')`
-- `src/components/transactions/transaction-form.tsx` — already `'CASH'`, no change needed
-
-#### Task 2: Manager cash register locked in settlement/transaction forms
-
-MANAGER sees all cash registers and all transactions (read access is unrestricted). But when **creating** transactions or settlements, Manager's own cash register is pre-selected and **cannot be changed** (select is disabled).
-
-ADMIN/OWNER can freely choose any cash register in all forms.
-
-**Server-side:** Pass `user` (role + id) to settlement/transaction pages so forms know the current user's own register.
-
-**Resolve Manager's own register:**
-
-```ts
-// src/lib/auth/get-user-cash-registers.ts
-async function getUserCashRegisterIds(userId: number, role: RoleT): Promise<number[] | undefined>
-```
-
-Returns register ids for MANAGER, `undefined` for ADMIN/OWNER (meaning "all/no restriction").
-
-**Client-side behavior (all 3 forms):**
-
-- `src/components/settlements/settlement-form.tsx` — if MANAGER: default to own register, disable select
-- `src/components/settlements/zero-saldo-dialog.tsx` — same: default to own register, disable select
-- `src/components/transactions/transaction-form.tsx` — same: default to own register, disable select
-
-**Data flow:** Server page fetches ALL cash registers (for display) but also passes the Manager's own register id(s). Client forms use this to pre-select and lock the cash register field for MANAGER role.
+- [x] Default payment method to CASH in settlement + zero-saldo forms
+- [x] Manager's own cash register pre-selected and locked (disabled select) in transaction/settlement/zero-saldo forms
+- [x] ADMIN/OWNER can freely choose any cash register
+- [x] Server-side: `getUserCashRegisterIds()` resolves Manager's own register
+- **Files**: `src/lib/auth/get-user-cash-registers.ts`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`, `src/components/transactions/transaction-form.tsx`
 
 #### Note: Adding workers & investments
 
 Adding new workers (Users) and investments is handled exclusively via the **Payload admin panel** — no frontend forms needed. MANAGER already has read access; ADMIN/OWNER create entries in the admin panel.
 
+### M8.2: Refactoring & Dashboard Improvements ✅ DONE
+
+- [x] Login form — migrated to TanStack Form (`useAppForm`), removed redundant client-side Zod validation, added `autoComplete` support to form system
+- [x] Employee dashboard — split saldo into overall (fetched once on server) + monthly (refetched on month/year change via server action)
+- [x] Employee dashboard — extracted server component (`employee-dashboard-server.tsx`), cleaned up `page.tsx` to pure routing
+- [x] Employee dashboard — optimized from 5 Payload queries to 2 (combined ADVANCE + EMPLOYEE_EXPENSE with `select` projection)
+- [x] Employee dashboard — removed month/year from URL params, now client state with `useTransition` + server action
+- [x] StatCard — extracted as shared reusable component used by both employee and manager dashboards
+- [x] Admin panel access — ADMIN + OWNER + MANAGER can now access `/admin` (EMPLOYEE still locked out)
+- **New files**: `src/components/ui/stat-card.tsx`, `src/app/(frontend)/_components/employee-dashboard-server.tsx`, `src/lib/transactions/get-employee-dashboard.ts`
+- **Modified**: `src/app/(auth)/zaloguj/login-form.tsx`, `src/app/(frontend)/page.tsx`, `src/app/(frontend)/_components/employee-dashboard.tsx`, `src/app/(frontend)/_components/manager-dashboard.tsx`, `src/components/forms/types/form-types.ts`, `src/components/forms/form-input.tsx`, `src/access/index.ts`, `src/collections/users.ts`
+
 ---
 
 ### Future Milestones (not yet planned in detail)
 
-### M9: Reports
+### M9: Performance Optimization [URGENT]
+
+- [ ] **`recalculate-balances.ts` hooks** — runs on EVERY transaction create/update/delete. `recalcRegisterBalance` fetches all transactions for a cash register, `recalcInvestmentCosts` fetches all cost transactions for an investment. Replace `limit: 0` + `.reduce()` with SQL `SUM` via `payload.db.drizzle.execute(sql\`...\`)`. Alternative: incremental delta updates (add/subtract amount instead of full recalc), but riskier if data drifts.
+- [ ] **`getEmployeeSaldo`** — fetches all ADVANCE + EMPLOYEE_EXPENSE for a worker on dashboard load. Replace with SQL `SUM`. Requires adding `drizzle-orm` as a direct dependency.
+- [ ] **Searchable combobox** — sidebar/forms fetch all users/investments/categories upfront with `pagination: false`. Won't scale past ~100-200 records. Switch to search-as-you-type combobox with server-side filtering (debounced Payload query on keystroke) for: workers, investments, cash registers, other categories.
+
+### M10: Reports
 
 - [ ] Filterable report views (date range, investment, worker, register)
 - [ ] Daily / monthly / yearly summaries
@@ -312,7 +301,7 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M10: Invoices View & Download
+### M11: Invoices View & Download
 
 - [ ] Dedicated page for browsing/searching uploaded invoices (currently only accessible via individual transactions)
 - [ ] Filtering by date, worker, investment
@@ -322,7 +311,7 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`, `src/lib/transactions/map-transaction-row.ts`
 - **Success**: Users can browse, search, and download invoices; invoice PDF download is accessible inline from any transaction row across the entire app
 
-### M11: Deployment
+### M12: Deployment
 
 - [ ] Vercel project setup
 - [ ] Neon Postgres provisioning (swap DATABASE_URL)
@@ -331,6 +320,24 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - [ ] Environment variables configuration
 - **Files**: `vercel.json` (if needed), env config
 - **Success**: App live on Vercel, all features working
+
+---
+
+## Open Decisions
+
+- Rozliczenia: gotówka — zawsze default ✅ (done in M8.1)
+- Wybierz kasę — dany majster ma tylko swoją ✅ (done in M8.1)
+- Kokpit majstra — widzi tylko swoją kasę
+- Swoje transakcje
+- Nie widzi użytkowników
+- Czy manager / majster może dodawać użytkowników / pracowników / inwestycje?
+- Kto ma mieć wgląd do faktur?
+- Jakiś widok z fakturami? Z opcją pobrania etc.?
+- Czy użytkownik o roli manager (majster - kasa Adrian):
+  - widzi inne kasy?
+  - widzi transakcje z innych kas?
+  - może dodawać pracowników / podwykonawców?
+  - może dodawać inwestycje?
 
 ---
 

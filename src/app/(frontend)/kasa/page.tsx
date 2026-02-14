@@ -54,9 +54,7 @@ export default async function CashRegistersPage({ searchParams }: PagePropsT) {
 
   return (
     <PageWrapper title="Kasy">
-      <div className="mt-6">
-        <CashRegisterDataTable data={rows} paginationMeta={paginationMeta} />
-      </div>
+      <CashRegisterDataTable data={rows} paginationMeta={paginationMeta} />
     </PageWrapper>
   )
 }
