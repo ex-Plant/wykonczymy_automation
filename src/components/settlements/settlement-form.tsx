@@ -38,6 +38,7 @@ type LineItemT = {
 
 type SettlementFormPropsT = {
   referenceData: ReferenceDataT
+  managerCashRegisterId?: number
   className?: string
 }
 
@@ -47,16 +48,24 @@ const createEmptyLineItem = (): LineItemT => ({
   amount: '',
 })
 
-export function SettlementForm({ referenceData, className }: SettlementFormPropsT) {
+export function SettlementForm({
+  referenceData,
+  managerCashRegisterId,
+  className,
+}: SettlementFormPropsT) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+
+  const isRegisterLocked = managerCashRegisterId !== undefined
 
   // Shared metadata
   const [worker, setWorker] = useState('')
   const [investment, setInvestment] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
-  const [cashRegister, setCashRegister] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('')
+  const [cashRegister, setCashRegister] = useState(
+    isRegisterLocked ? String(managerCashRegisterId) : '',
+  )
+  const [paymentMethod, setPaymentMethod] = useState('CASH')
 
   // Line items
   const [lineItems, setLineItems] = useState<LineItemT[]>([createEmptyLineItem()])
@@ -177,7 +186,7 @@ export function SettlementForm({ referenceData, className }: SettlementFormProps
 
         <div className="space-y-2">
           <Label>Kasa</Label>
-          <Select value={cashRegister} onValueChange={setCashRegister}>
+          <Select value={cashRegister} onValueChange={setCashRegister} disabled={isRegisterLocked}>
             <SelectTrigger>
               <SelectValue placeholder="Wybierz kasę" />
             </SelectTrigger>

@@ -3,6 +3,7 @@ import config from '@payload-config'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { SettlementForm } from '@/components/settlements/settlement-form'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
@@ -13,7 +14,7 @@ export default async function SettlementsPage() {
 
   const payload = await getPayload({ config })
 
-  const [users, investments, cashRegisters] = await Promise.all([
+  const [users, investments, cashRegisters, managerRegisterIds] = await Promise.all([
     payload.find({ collection: 'users', limit: 100, depth: 0 }),
     payload.find({
       collection: 'investments',
@@ -22,6 +23,7 @@ export default async function SettlementsPage() {
       depth: 0,
     }),
     payload.find({ collection: 'cash-registers', limit: 100, depth: 0 }),
+    getUserCashRegisterIds(user.id, user.role),
   ])
 
   const referenceData = {
@@ -35,7 +37,11 @@ export default async function SettlementsPage() {
       title="Rozliczenie pracownika"
       description='Dodaj pozycje z faktury — każda stanie się osobną transakcją typu "Wydatek pracowniczy".'
     >
-      <SettlementForm referenceData={referenceData} className="mt-6" />
+      <SettlementForm
+        referenceData={referenceData}
+        managerCashRegisterId={managerRegisterIds?.[0]}
+        className="mt-6"
+      />
     </PageWrapper>
   )
 }

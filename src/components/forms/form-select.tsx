@@ -4,14 +4,22 @@ import FormBase from './form-base'
 import { FormControlPropsT } from './types/form-types'
 import { useFieldContext } from './hooks/form-hooks'
 
-export function FormSelect({ children, ...props }: FormControlPropsT & { children: ReactNode }) {
+export function FormSelect({
+  children,
+  disabled,
+  ...props
+}: FormControlPropsT & { children: ReactNode }) {
   const field = useFieldContext<string>()
   const isInvalid = field.state.meta.errors.length > 0
   const safeValue = field.state.value ?? ''
 
   return (
     <FormBase {...props}>
-      <Select value={safeValue} onValueChange={(e) => e !== '' && field.handleChange(e)}>
+      <Select
+        value={safeValue}
+        onValueChange={(e) => e !== '' && field.handleChange(e)}
+        disabled={disabled}
+      >
         <SelectTrigger aria-invalid={isInvalid} id={field.name} onBlur={field.handleBlur}>
           <SelectValue placeholder={props.placeholder} />
         </SelectTrigger>

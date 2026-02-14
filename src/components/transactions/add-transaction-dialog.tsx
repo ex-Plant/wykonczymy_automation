@@ -23,10 +23,14 @@ export type ReferenceDataT = {
 
 type AddTransactionDialogPropsT = {
   referenceData: ReferenceDataT
+  managerCashRegisterId?: number
   variant?: 'default' | 'icon'
 }
 
-export function AddTransactionDialog({ referenceData }: AddTransactionDialogPropsT) {
+export function AddTransactionDialog({
+  referenceData,
+  managerCashRegisterId,
+}: AddTransactionDialogPropsT) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -43,7 +47,11 @@ export function AddTransactionDialog({ referenceData }: AddTransactionDialogProp
             <DialogDescription>Wypełnij formularz, aby dodać nową transakcję.</DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto pr-1">
-            <TransactionForm referenceData={referenceData} onSuccess={() => setIsOpen(false)} />
+            <TransactionForm
+              referenceData={referenceData}
+              managerCashRegisterId={managerCashRegisterId}
+              onSuccess={() => setIsOpen(false)}
+            />
           </div>
         </DialogContent>
       </Dialog>

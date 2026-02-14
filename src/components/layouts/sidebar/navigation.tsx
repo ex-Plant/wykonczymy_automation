@@ -1,5 +1,6 @@
 import type { RoleT } from '@/collections/users'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { SidebarNav } from './sidebar-nav'
@@ -8,6 +9,7 @@ import { AddTransactionDialog } from '@/components/transactions/add-transaction-
 
 type NavigationPropsT = {
   user: {
+    id: number
     name: string
     email: string
     role: RoleT
@@ -17,13 +19,25 @@ type NavigationPropsT = {
 export async function Navigation({ user }: NavigationPropsT) {
   const isManager = isManagementRole(user.role)
 
-  const referenceData = isManager ? await fetchReferenceData() : undefined
+  const [referenceData, managerRegisterIds] = await Promise.all([
+    isManager ? fetchReferenceData() : undefined,
+    getUserCashRegisterIds(user.id, user.role),
+  ])
+
+  const managerCashRegisterId = managerRegisterIds?.[0]
 
   return (
     <>
       <SidebarNav
         user={user}
-        action={referenceData ? <AddTransactionDialog referenceData={referenceData} /> : undefined}
+        action={
+          referenceData ? (
+            <AddTransactionDialog
+              referenceData={referenceData}
+              managerCashRegisterId={managerCashRegisterId}
+            />
+          ) : undefined
+        }
       />
       <MobileNav user={user} referenceData={referenceData} />
     </>
