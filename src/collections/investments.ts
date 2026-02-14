@@ -18,10 +18,9 @@ export const Investments: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   access: {
-    // ADMIN/OWNER: full CRUD. MANAGER: read all.
     read: isAdminOrOwnerOrManager,
-    create: isAdminOrOwner,
-    update: isAdminOrOwner,
+    create: isAdminOrOwnerOrManager,
+    update: isAdminOrOwnerOrManager,
     delete: isAdminOrOwner,
   },
   fields: [

@@ -1,11 +1,5 @@
+import { isAdminBoolean, isAdminOrOwnerField, isAdminOrOwnerOrManager } from '@/access'
 import type { CollectionConfig } from 'payload'
-import {
-  isAdminBoolean,
-  isAdminOrOwner,
-  isAdminOrOwnerField,
-  isAdminOrSelf,
-  rolesOrSelfField,
-} from '@/access'
 
 export const ROLES = ['ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE'] as const
 export type RoleT = (typeof ROLES)[number]
@@ -30,10 +24,10 @@ export const Users: CollectionConfig = {
     group: { en: 'Admin', pl: 'Administracja' },
   },
   access: {
-    read: rolesOrSelfField('id', 'ADMIN', 'OWNER', 'MANAGER'),
-    create: isAdminOrOwner,
-    update: isAdminOrSelf,
-    delete: isAdminOrOwner,
+    read: isAdminOrOwnerOrManager,
+    create: isAdminOrOwnerOrManager,
+    update: isAdminOrOwnerOrManager,
+    delete: isAdminOrOwnerOrManager,
     // Only ADMIN gets Payload admin panel access
     admin: isAdminBoolean,
   },

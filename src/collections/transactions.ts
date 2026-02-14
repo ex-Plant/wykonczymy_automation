@@ -41,9 +41,9 @@ export const Transactions: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   access: {
-    read: rolesOrSelfField('worker', 'ADMIN', 'OWNER', 'MANAGER'),
-    create: isAdminOrOwnerOrManager,
-    update: rolesOrSelfField('createdBy', 'ADMIN', 'OWNER'),
+    read: isAdminOrOwner,
+    create: isAdminOrOwner,
+    update: isAdminOrOwner,
     delete: isAdminOrOwner,
   },
   hooks: {

@@ -1,10 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import {
-  isAdminOrOwner,
-  isAdminOrOwnerOrManager,
-  isAdminOrOwnerField,
-  rolesOrSelfField,
-} from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager, isAdminOrOwnerField } from '@/access'
 
 export const CashRegisters: CollectionConfig = {
   slug: 'cash-registers',
@@ -21,7 +16,7 @@ export const CashRegisters: CollectionConfig = {
     // ADMIN/OWNER: full CRUD. MANAGER: read all.
     read: isAdminOrOwnerOrManager,
     create: isAdminOrOwner,
-    update: rolesOrSelfField('owner', 'ADMIN', 'OWNER'),
+    update: isAdminOrOwner,
     delete: isAdminOrOwner,
   },
   fields: [

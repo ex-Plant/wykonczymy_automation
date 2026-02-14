@@ -15,9 +15,9 @@ export const OtherCategories: CollectionConfig = {
   access: {
     // ADMIN/OWNER: full CRUD. MANAGER: read only.
     read: isAdminOrOwnerOrManager,
-    create: isAdminOrOwner,
-    update: isAdminOrOwner,
-    delete: isAdminOrOwner,
+    create: isAdminOrOwnerOrManager,
+    update: isAdminOrOwnerOrManager,
+    delete: isAdminOrOwnerOrManager,
   },
   fields: [
     {
