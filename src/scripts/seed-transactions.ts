@@ -216,12 +216,15 @@ async function ensureCategories(payload: PayloadT) {
 // Transaction generation
 // ---------------------------------------------------------------------------
 
+type TransactionTypeT = 'DEPOSIT' | 'INVESTMENT_EXPENSE' | 'ADVANCE' | 'EMPLOYEE_EXPENSE' | 'OTHER'
+type PaymentMethodT = 'CASH' | 'BLIK' | 'TRANSFER' | 'CARD'
+
 type TransactionDataT = {
   description: string
   amount: number
   date: string
-  type: string
-  paymentMethod: string
+  type: TransactionTypeT
+  paymentMethod: PaymentMethodT
   cashRegister: number
   investment?: number
   worker?: number

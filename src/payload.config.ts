@@ -1,5 +1,9 @@
 import { vercelPostgresAdapter } from '@payloadcms/db-vercel-postgres'
+import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
+import nodemailer from 'nodemailer'
+
 import { pl } from '@payloadcms/translations/languages/pl'
 import { en } from '@payloadcms/translations/languages/en'
 import path from 'path'
@@ -36,7 +40,27 @@ export default buildConfig({
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
+  email: nodemailerAdapter({
+    defaultFromAddress: process.env.EMAIL_USER ?? '',
+    defaultFromName: 'Wykonczymy',
+    transport: nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    }),
+  }),
   collections: [Users, CashRegisters, Investments, Transactions, OtherCategories, Media],
+  plugins: [
+    vercelBlobStorage({
+      collections: { media: true },
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    }),
+  ],
+
   secret: process.env.PAYLOAD_SECRET || 'CHANGE-ME-IN-ENV',
   sharp,
   typescript: {

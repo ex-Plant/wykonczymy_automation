@@ -8,6 +8,10 @@ const envSchema = z.object({
   // Server-only vars
   DATABASE_URL: z.string().min(1),
   PAYLOAD_SECRET: z.string().min(1),
+  BLOB_READ_WRITE_TOKEN: z.string().min(1),
+  EMAIL_USER: z.string().min(1),
+  EMAIL_PASS: z.string().min(1),
+  EMAIL_HOST: z.string().min(1),
 })
 
 type EnvT = z.infer<typeof envSchema>

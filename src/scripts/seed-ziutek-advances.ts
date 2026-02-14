@@ -97,7 +97,7 @@ async function main() {
     amount: randomBetween(100, 3000),
     date: randomDate(),
     type: 'ADVANCE' as const,
-    paymentMethod: randomItem(PAYMENT_METHODS) as string,
+    paymentMethod: randomItem(PAYMENT_METHODS),
     cashRegister: randomItem(registerIds),
     worker: ziutek.id,
     invoiceNote: randomItem(INVOICE_NOTES),

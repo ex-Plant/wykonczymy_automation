@@ -287,11 +287,28 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 
 ### Future Milestones (not yet planned in detail)
 
-### M9: Performance Optimization [URGENT]
+### M9: Performance Optimization — SQL SUM Aggregation ✅ DONE
 
-- [ ] **`recalculate-balances.ts` hooks** — runs on EVERY transaction create/update/delete. `recalcRegisterBalance` fetches all transactions for a cash register, `recalcInvestmentCosts` fetches all cost transactions for an investment. Replace `limit: 0` + `.reduce()` with SQL `SUM` via `payload.db.drizzle.execute(sql\`...\`)`. Alternative: incremental delta updates (add/subtract amount instead of full recalc), but riskier if data drifts.
-- [ ] **`getEmployeeSaldo`** — fetches all ADVANCE + EMPLOYEE_EXPENSE for a worker on dashboard load. Replace with SQL `SUM`. Requires adding `drizzle-orm` as a direct dependency.
-- [ ] **Searchable combobox** — sidebar/forms fetch all users/investments/categories upfront with `pagination: false`. Won't scale past ~100-200 records. Switch to search-as-you-type combobox with server-side filtering (debounced Payload query on keystroke) for: workers, investments, cash registers, other categories.
+Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. No new dependencies — uses `sql` re-exported from `@payloadcms/db-vercel-postgres`.
+
+- [x] **Shared SQL utility** (`src/lib/db/sum-transactions.ts`) — `getDb` helper for transaction-scoped Drizzle access + 4 aggregation functions:
+  - `sumRegisterBalance(payload, registerId, req?)` — `SUM(CASE WHEN DEPOSIT THEN +amount ELSE -amount END)`
+  - `sumInvestmentCosts(payload, investmentId, req?)` — `SUM(amount)` for `INVESTMENT_EXPENSE` + `EMPLOYEE_EXPENSE`
+  - `sumEmployeeSaldo(payload, workerId, dateRange?)` — `SUM(CASE WHEN ADVANCE THEN +amount ELSE -amount END)` with optional date range
+  - `sumAllWorkerSaldos(payload)` — same as above but `GROUP BY worker_id`, returns `Map<number, number>`
+- [x] **`recalculate-balances.ts` hooks** — replaced `payload.find(limit: 0)` + `.reduce()` with `sumRegisterBalance` / `sumInvestmentCosts`. `req` forwarded for transaction-scoped DB access.
+- [x] **`get-employee-dashboard.ts`** — `getEmployeeSaldo`: replaced 2x `payload.find(limit: 0)` + reduce → single `sumEmployeeSaldo`. `getEmployeeMonthlyData`: replaced monthly saldo fetch + loop → `sumEmployeeSaldo` with date range.
+- [x] **`settlements/actions.ts`** — `getEmployeeSaldo`: replaced 2x `payload.find(limit: 1000)` + reduce → `sumEmployeeSaldo`. **Fixed limit:1000 truncation bug.**
+- [x] **`transactions/actions.ts`** — `getEmployeeMonthData`: replaced 2x `payload.find(limit: 1000)` + reduce → single `sumEmployeeSaldo`. Dropped 2 of 3 parallel queries. **Fixed limit:1000 truncation bug.**
+- [x] **`uzytkownicy/[id]/page.tsx`** — replaced 2x `payload.find(pagination: false)` + reduce → single `sumEmployeeSaldo`. Dropped 2 of 6 parallel queries.
+- [x] **`uzytkownicy/page.tsx`** — replaced 2x full-table scans (`pagination: false`, no worker filter) + JS grouping → single `sumAllWorkerSaldos` with `GROUP BY`. Dropped 2 of 3 parallel queries.
+- **New file**: `src/lib/db/sum-transactions.ts`
+- **Modified**: `src/hooks/transactions/recalculate-balances.ts`, `src/lib/transactions/get-employee-dashboard.ts`, `src/lib/settlements/actions.ts`, `src/lib/transactions/actions.ts`, `src/app/(frontend)/uzytkownicy/page.tsx`, `src/app/(frontend)/uzytkownicy/[id]/page.tsx`
+- **Verified**: `pnpm tsc --noEmit` (0 new errors)
+
+#### Deferred from M9
+
+- **Searchable combobox** — sidebar/forms fetch all users/investments/categories upfront with `pagination: false`. Won't scale past ~100-200 records, but fine for a construction company with <50 workers, <100 investments, <10 registers. Defer to a later milestone if growth warrants it.
 
 ### M10: Reports
 
@@ -311,33 +328,19 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`, `src/lib/transactions/map-transaction-row.ts`
 - **Success**: Users can browse, search, and download invoices; invoice PDF download is accessible inline from any transaction row across the entire app
 
-### M12: Deployment
+### M12: Deployment (in progress)
 
-- [ ] Vercel project setup
-- [ ] Neon Postgres provisioning (swap DATABASE_URL)
-- [ ] Uploadthing or Vercel Blob for file storage
-- [ ] Email adapter (nodemailer) for production
-- [ ] Environment variables configuration
-- **Files**: `vercel.json` (if needed), env config
+- [x] Vercel project setup
+- [x] Neon Postgres provisioning + data migrated
+- [x] File storage — Vercel Blob via `@payloadcms/storage-vercel-blob@3.73.0`, configured in `payload.config.ts` plugin. Requires `BLOB_READ_WRITE_TOKEN` env var.
+- [x] Production build verification — `pnpm build` succeeds. Fixed dead `format-date.ts` (removed) and seed script type errors (`type`/`paymentMethod` widened to `string` instead of literal unions).
+- [x] Email adapter — `@payloadcms/email-nodemailer@3.73.0` + `nodemailer` with SMTP (seohost.pl). Requires `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS` env vars.
+- [ ] Environment variables audit — ensure all env vars are set in Vercel (`DATABASE_URL`, `PAYLOAD_SECRET`, `BLOB_READ_WRITE_TOKEN`, `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS`)
+- [ ] Remove test email route (`src/app/(frontend)/api/test-email/route.ts`) before go-live
+- **New deps**: `@payloadcms/storage-vercel-blob@3.73.0`, `@payloadcms/email-nodemailer@3.73.0`, `nodemailer`, `@types/nodemailer` (dev)
+- **Modified**: `src/payload.config.ts`, `src/scripts/seed-transactions.ts`, `src/scripts/seed-ziutek-advances.ts`
+- **Deleted**: `src/lib/format-date.ts` (dead code, referenced deleted i18n module)
 - **Success**: App live on Vercel, all features working
-
----
-
-## Open Decisions
-
-- Rozliczenia: gotówka — zawsze default ✅ (done in M8.1)
-- Wybierz kasę — dany majster ma tylko swoją ✅ (done in M8.1)
-- Kokpit majstra — widzi tylko swoją kasę
-- Swoje transakcje
-- Nie widzi użytkowników
-- Czy manager / majster może dodawać użytkowników / pracowników / inwestycje?
-- Kto ma mieć wgląd do faktur?
-- Jakiś widok z fakturami? Z opcją pobrania etc.?
-- Czy użytkownik o roli manager (majster - kasa Adrian):
-  - widzi inne kasy?
-  - widzi transakcje z innych kas?
-  - może dodawać pracowników / podwykonawców?
-  - może dodawać inwestycje?
 
 ---
 
