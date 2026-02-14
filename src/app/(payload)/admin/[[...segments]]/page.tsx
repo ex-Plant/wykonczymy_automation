@@ -14,7 +14,7 @@ type ArgsT = {
 export const generateMetadata = ({ params, searchParams }: ArgsT) =>
   generatePageMetadata({ config, params, searchParams })
 
-export default async function Page(props: AdminViewProps) {
-  // @ts-expect-error — Payload 3.73 AdminViewProps doesn't align with RootPage params; auto-generated file
-  return RootPage({ ...props, config, importMap })
+export default async function Page(props: ArgsT) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return RootPage({ ...props, config, importMap } as any)
 }
