@@ -1,14 +1,20 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import nodemailer from 'nodemailer'
 import { NextResponse } from 'next/server'
 
 /**
  * GET /api/test-email?to=you@example.com
  * Verifies SMTP connection, then sends a test email.
- * Remove this route before going to production.
+ * ADMIN only.
  */
 export async function GET(request: Request) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const to = searchParams.get('to')
 

@@ -336,7 +336,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - [x] Production build verification — `pnpm build` succeeds. Fixed dead `format-date.ts` (removed) and seed script type errors (`type`/`paymentMethod` widened to `string` instead of literal unions).
 - [x] Email adapter — `@payloadcms/email-nodemailer@3.73.0` + `nodemailer` with SMTP (seohost.pl). Requires `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS` env vars.
 - [ ] Environment variables audit — ensure all env vars are set in Vercel (`DATABASE_URL`, `PAYLOAD_SECRET`, `BLOB_READ_WRITE_TOKEN`, `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS`)
-- [ ] Remove test email route (`src/app/(frontend)/api/test-email/route.ts`) before go-live
+- [x] Test email route (`GET /api/test-email?to=...`) — ADMIN-only, verifies SMTP connection before sending
 - **New deps**: `@payloadcms/storage-vercel-blob@3.73.0`, `@payloadcms/email-nodemailer@3.73.0`, `nodemailer`, `@types/nodemailer` (dev)
 - **Modified**: `src/payload.config.ts`, `src/scripts/seed-transactions.ts`, `src/scripts/seed-ziutek-advances.ts`
 - **Deleted**: `src/lib/format-date.ts` (dead code, referenced deleted i18n module)
