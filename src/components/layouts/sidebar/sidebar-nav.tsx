@@ -3,15 +3,8 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard,
-  Building2,
-  Wallet,
-  ArrowLeftRight,
-  Users,
-  Receipt,
-} from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { NAV_ITEMS } from '@/components/layouts/nav-items'
 import { isManagementRole } from '@/lib/auth/permissions'
 import type { RoleT } from '@/collections/users'
 import { SidebarUser } from './sidebar-user'
@@ -25,15 +18,6 @@ type SidebarNavPropsT = {
   action?: ReactNode
 }
 
-const NAV_ITEMS = [
-  { label: 'Kokpit', href: '/', icon: LayoutDashboard, roles: 'all' as const },
-  { label: 'Transakcje', href: '/transakcje', icon: ArrowLeftRight, roles: 'all' as const },
-  { label: 'Inwestycje', href: '/inwestycje', icon: Building2, roles: 'management' as const },
-  { label: 'Kasa', href: '/kasa', icon: Wallet, roles: 'management' as const },
-  { label: 'Użytkownicy', href: '/uzytkownicy', icon: Users, roles: 'management' as const },
-  { label: 'Rozliczenia', href: '/rozliczenia', icon: Receipt, roles: 'management' as const },
-]
-
 export function SidebarNav({ user, action }: SidebarNavPropsT) {
   const pathname = usePathname()
   const isManager = isManagementRole(user.role)
@@ -43,7 +27,7 @@ export function SidebarNav({ user, action }: SidebarNavPropsT) {
   )
 
   return (
-    <aside className="border-border bg-background sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r">
+    <aside className="border-border bg-background sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r md:flex">
       {/* App name */}
       <div className="flex h-14 items-center px-4">
         <span className="text-lg font-semibold">Wykonczymy</span>
@@ -73,7 +57,7 @@ export function SidebarNav({ user, action }: SidebarNavPropsT) {
       </nav>
 
       {/* Quick action slot */}
-      {action && <div className="px-3 pb-2">{action}</div>}
+      {action && <div className="px-3 pb-2 [&>button]:w-full">{action}</div>}
 
       <SidebarUser user={user} />
     </aside>
