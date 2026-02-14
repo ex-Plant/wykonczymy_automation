@@ -6,7 +6,7 @@ import { abcFavorit, dmSans, spaceMono } from '@/fonts'
 import { cn } from '@/lib/cn'
 import { ToastContainer } from 'react-toastify'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import { Sidebar } from '@/components/layouts/sidebar/sidebar'
+import { Navigation } from '@/components/layouts/sidebar/navigation'
 
 export default async function FrontendLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
@@ -19,8 +19,8 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground relative overscroll-none scroll-smooth">
-        <div className="flex min-h-screen">
-          <Sidebar user={user} />
+        <div className="flex min-h-screen flex-col md:flex-row">
+          <Navigation user={user} />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
         <ToastContainer style={{ zIndex: 10001 }} />

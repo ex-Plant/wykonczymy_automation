@@ -259,6 +259,45 @@ For invoice file uploads (PDF, images).
 
 ---
 
+### M8.1: Form Defaults & Manager Cash Register Scoping
+
+**Goal:** Default payment method to CASH across all forms. Lock Manager's own cash register in transaction/settlement forms (read access to all data remains unrestricted).
+
+#### Task 1: Default payment method to CASH
+
+**Files to modify:**
+- `src/components/settlements/settlement-form.tsx` — `useState('')` → `useState('CASH')`
+- `src/components/settlements/zero-saldo-dialog.tsx` — `useState('')` → `useState('CASH')`
+- `src/components/transactions/transaction-form.tsx` — already `'CASH'`, no change needed
+
+#### Task 2: Manager cash register locked in settlement/transaction forms
+
+MANAGER sees all cash registers and all transactions (read access is unrestricted). But when **creating** transactions or settlements, Manager's own cash register is pre-selected and **cannot be changed** (select is disabled).
+
+ADMIN/OWNER can freely choose any cash register in all forms.
+
+**Server-side:** Pass `user` (role + id) to settlement/transaction pages so forms know the current user's own register.
+
+**Resolve Manager's own register:**
+```ts
+// src/lib/auth/get-user-cash-registers.ts
+async function getUserCashRegisterIds(userId: number, role: RoleT): Promise<number[] | undefined>
+```
+Returns register ids for MANAGER, `undefined` for ADMIN/OWNER (meaning "all/no restriction").
+
+**Client-side behavior (all 3 forms):**
+- `src/components/settlements/settlement-form.tsx` — if MANAGER: default to own register, disable select
+- `src/components/settlements/zero-saldo-dialog.tsx` — same: default to own register, disable select
+- `src/components/transactions/transaction-form.tsx` — same: default to own register, disable select
+
+**Data flow:** Server page fetches ALL cash registers (for display) but also passes the Manager's own register id(s). Client forms use this to pre-select and lock the cash register field for MANAGER role.
+
+#### Note: Adding workers & investments
+
+Adding new workers (Users) and investments is handled exclusively via the **Payload admin panel** — no frontend forms needed. MANAGER already has read access; ADMIN/OWNER create entries in the admin panel.
+
+---
+
 ### Future Milestones (not yet planned in detail)
 
 ### M9: Reports
@@ -269,7 +308,17 @@ For invoice file uploads (PDF, images).
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M10: Deployment
+### M10: Invoices View
+
+- [ ] Dedicated page for browsing/searching uploaded invoices (currently only accessible via individual transactions)
+- [ ] Filtering by date, worker, investment
+- [ ] Download/preview functionality
+- [ ] Access control: decide who can view invoices (open question in M8.1)
+- [ ] **Downloadable invoice links in transaction tables** — every transaction table (transactions page, dashboard recent, investment detail, settlement history, etc.) should display a download link/icon when the transaction has an attached invoice. This applies globally wherever transactions are rendered, not just the dedicated invoices page.
+- **Files**: `src/app/(frontend)/faktury/`, transaction table components
+- **Success**: Users can browse, search, and download invoices without navigating to each transaction; invoice downloads are also accessible inline from any transaction row
+
+### M11: Deployment
 
 - [ ] Vercel project setup
 - [ ] Neon Postgres provisioning (swap DATABASE_URL)

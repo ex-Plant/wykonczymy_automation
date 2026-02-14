@@ -23,6 +23,7 @@ export type ReferenceDataT = {
 
 type AddTransactionDialogPropsT = {
   referenceData: ReferenceDataT
+  variant?: 'default' | 'icon'
 }
 
 export function AddTransactionDialog({ referenceData }: AddTransactionDialogPropsT) {
@@ -30,7 +31,7 @@ export function AddTransactionDialog({ referenceData }: AddTransactionDialogProp
 
   return (
     <>
-      <Button variant="default" size="sm" className="w-full gap-2" onClick={() => setIsOpen(true)}>
+      <Button variant="default" size="sm" className="gap-2" onClick={() => setIsOpen(true)}>
         <Plus className="size-4" />
         Nowa transakcja
       </Button>
