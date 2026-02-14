@@ -7,6 +7,8 @@ import { formatPLN } from '@/lib/format-currency'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { SectionHeader } from '@/components/ui/section-header'
+import { StatCard } from '@/components/ui/stat-card'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -81,16 +83,14 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
           ))}
       </dl>
 
-      {/* Stat card */}
-      <div className="bg-muted/50 border-border mt-6 inline-block rounded-lg border px-6 py-4">
-        <p className="text-muted-foreground text-xs font-medium">Koszty całkowite</p>
-        <p className="text-foreground text-xl font-semibold">
-          {formatPLN(investment.totalCosts ?? 0)}
-        </p>
-      </div>
+      <StatCard
+        label="Koszty całkowite"
+        value={formatPLN(investment.totalCosts ?? 0)}
+        className="mt-6 inline-block"
+      />
 
       {/* Transactions table */}
-      <h2 className="text-foreground mt-8 text-lg font-semibold">Transakcje</h2>
+      <SectionHeader className="mt-8">Transakcje</SectionHeader>
       <div className="mt-4">
         <TransactionDataTable
           data={rows}

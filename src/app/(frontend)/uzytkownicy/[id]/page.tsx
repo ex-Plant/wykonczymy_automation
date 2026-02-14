@@ -9,7 +9,9 @@ import { ROLE_LABELS, type RoleT } from '@/collections/users'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { ZeroSaldoDialog } from '@/components/settlements/zero-saldo-dialog'
+import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { SectionHeader } from '@/components/ui/section-header'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -111,10 +113,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
       {/* Stat card + zero saldo */}
       <div className="mt-6 flex items-end gap-4">
-        <div className="bg-muted/50 border-border inline-block rounded-lg border px-6 py-4">
-          <p className="text-muted-foreground text-xs font-medium">Saldo</p>
-          <p className="text-foreground text-xl font-semibold">{formatPLN(saldo)}</p>
-        </div>
+        <StatCard label="Saldo" value={formatPLN(saldo)} />
         <ZeroSaldoDialog
           saldo={saldo}
           workerId={targetUser.id}
@@ -127,7 +126,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       </div>
 
       {/* Transactions table */}
-      <h2 className="text-foreground mt-8 text-lg font-semibold">Transakcje</h2>
+      <SectionHeader className="mt-8">Transakcje</SectionHeader>
       <div className="mt-4">
         <TransactionDataTable
           data={rows}

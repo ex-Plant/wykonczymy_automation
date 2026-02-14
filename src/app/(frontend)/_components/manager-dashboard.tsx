@@ -4,6 +4,7 @@ import { formatPLN } from '@/lib/format-currency'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
 
 const DEFAULT_LIMIT = 20
@@ -67,7 +68,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
 
       {/* Recent transactions */}
       <div className="mt-8">
-        <h2 className="text-foreground text-lg font-medium">Ostatnie transakcje</h2>
+        <SectionHeader>Ostatnie transakcje</SectionHeader>
         <div className="mt-4">
           <TransactionDataTable data={rows} paginationMeta={paginationMeta} baseUrl="/" />
         </div>

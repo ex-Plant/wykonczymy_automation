@@ -7,6 +7,7 @@ import { formatPLN } from '@/lib/format-currency'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { SectionHeader } from '@/components/ui/section-header'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -75,7 +76,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
       </div>
 
       {/* Transactions table */}
-      <h2 className="text-foreground mt-8 text-lg font-semibold">Transakcje</h2>
+      <SectionHeader className="mt-8">Transakcje</SectionHeader>
       <div className="mt-4">
         <TransactionDataTable
           data={rows}
