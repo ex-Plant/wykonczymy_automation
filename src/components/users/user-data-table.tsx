@@ -2,8 +2,7 @@
 
 import { DataTable } from '@/components/ui/data-table'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
-import { userColumns } from '@/lib/users/columns'
-import type { UserRowT } from '@/lib/users/types'
+import { userColumns, type UserRowT } from '@/lib/tables/users'
 import type { PaginationMetaT } from '@/lib/pagination'
 
 type UserDataTablePropsT = {

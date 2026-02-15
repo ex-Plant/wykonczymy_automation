@@ -2,8 +2,7 @@
 
 import { DataTable } from '@/components/ui/data-table'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
-import { cashRegisterColumns } from '@/lib/cash-registers/columns'
-import type { CashRegisterRowT } from '@/lib/cash-registers/types'
+import { cashRegisterColumns, type CashRegisterRowT } from '@/lib/tables/cash-registers'
 import type { PaginationMetaT } from '@/lib/pagination'
 
 type CashRegisterDataTablePropsT = {

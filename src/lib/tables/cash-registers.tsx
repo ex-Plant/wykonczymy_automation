@@ -3,7 +3,13 @@
 import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/format-currency'
-import type { CashRegisterRowT } from './types'
+
+export type CashRegisterRowT = {
+  readonly id: number
+  readonly name: string
+  readonly ownerName: string
+  readonly balance: number
+}
 
 const col = createColumnHelper<CashRegisterRowT>()
 

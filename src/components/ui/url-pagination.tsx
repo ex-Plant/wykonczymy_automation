@@ -84,7 +84,6 @@ export function UrlPagination({
           const href = buildPageUrl(page)
           return (
             <PaginationItem key={page}>
-              3
               <Link
                 className={cn(page === currentPage && 'pointer-events-none')}
                 href={href}

@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { createTransactionSchema, type CreateTransactionFormT } from '@/lib/transactions/schema'
+import { createTransactionSchema, type CreateTransactionFormT } from '@/lib/schemas/transactions'
 
 type CreateResultT = { success: true } | { success: false; error: string }
 

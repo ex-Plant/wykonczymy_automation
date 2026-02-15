@@ -2,7 +2,14 @@ import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
-import type { UserRowT } from './types'
+
+export type UserRowT = {
+  readonly id: number
+  readonly name: string
+  readonly email: string
+  readonly role: RoleT
+  readonly saldo: number
+}
 
 const col = createColumnHelper<UserRowT>()
 

@@ -2,8 +2,7 @@
 
 import { DataTable } from '@/components/ui/data-table'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
-import { investmentColumns } from '@/lib/investments/columns'
-import type { InvestmentRowT } from '@/lib/investments/types'
+import { investmentColumns, type InvestmentRowT } from '@/lib/tables/investments'
 import type { PaginationMetaT } from '@/lib/pagination'
 
 type InvestmentDataTablePropsT = {

@@ -2,8 +2,7 @@
 
 import { DataTable } from '@/components/ui/data-table'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
-import { getTransactionColumns } from '@/lib/transactions/columns'
-import type { TransactionRowT } from '@/lib/transactions/types'
+import { getTransactionColumns, type TransactionRowT } from '@/lib/tables/transactions'
 import type { PaginationMetaT } from '@/lib/pagination'
 import { cn } from '../../lib/cn'
 

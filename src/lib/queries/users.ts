@@ -4,7 +4,7 @@ import config from '@payload-config'
 import type { Payload } from 'payload'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
 import { sumAllWorkerSaldos, sumEmployeeSaldo } from '@/lib/db/sum-transactions'
-import type { UserRowT } from '@/lib/users/types'
+import type { UserRowT } from '@/lib/tables/users'
 import type { RoleT } from '@/lib/auth/roles'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 

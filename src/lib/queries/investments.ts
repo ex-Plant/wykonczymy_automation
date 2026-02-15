@@ -1,6 +1,6 @@
 import type { Payload } from 'payload'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
-import type { InvestmentRowT } from '@/lib/investments/types'
+import type { InvestmentRowT } from '@/lib/tables/investments'
 
 export async function findInvestments(payload: Payload, { page, limit }: PaginationParamsT) {
   const result = await payload.find({

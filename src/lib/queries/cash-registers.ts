@@ -1,6 +1,6 @@
 import type { Payload } from 'payload'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
-import type { CashRegisterRowT } from '@/lib/cash-registers/types'
+import type { CashRegisterRowT } from '@/lib/tables/cash-registers'
 
 export async function findCashRegisters(payload: Payload, { page, limit }: PaginationParamsT) {
   const result = await payload.find({

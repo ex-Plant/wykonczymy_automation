@@ -1,5 +1,5 @@
 import type { Payload, Where } from 'payload'
-import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
+import { mapTransactionRow } from '@/lib/tables/transactions'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
 
 type FindTransactionsOptsT = PaginationParamsT & {
