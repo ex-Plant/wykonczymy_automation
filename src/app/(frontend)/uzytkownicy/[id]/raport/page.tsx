@@ -29,7 +29,7 @@ export default async function WorkerReportPage({ params, searchParams }: PagePro
   const targetUser = await getUser(id)
   if (!targetUser) notFound()
 
-  const fromParam = typeof sp.from === 'string' ? sp.from : undefined
+  const fromParam = typeof sp.from === 'string' ? sp.from : undefined /* & */
   const toParam = typeof sp.to === 'string' ? sp.to : undefined
 
   if (!fromParam || !toParam) {

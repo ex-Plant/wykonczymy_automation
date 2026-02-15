@@ -43,7 +43,7 @@ export const Media: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   access: {
-    read: rolesOrSelfField('createdBy', 'ADMIN', 'OWNER', 'MANAGER'),
+    read: () => true,
     create: isAdminOrOwnerOrManager,
     update: isAdminOrOwner,
     delete: isAdminOrOwner,
