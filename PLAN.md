@@ -283,9 +283,36 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - **New files**: `src/components/ui/stat-card.tsx`, `src/app/(frontend)/_components/employee-dashboard-server.tsx`, `src/lib/transactions/get-employee-dashboard.ts`
 - **Modified**: `src/app/(auth)/zaloguj/login-form.tsx`, `src/app/(frontend)/page.tsx`, `src/app/(frontend)/_components/employee-dashboard.tsx`, `src/app/(frontend)/_components/manager-dashboard.tsx`, `src/components/forms/types/form-types.ts`, `src/components/forms/form-input.tsx`, `src/access/index.ts`, `src/collections/users.ts`
 
----
+### M9: Performance Optimization — SQL SUM Aggregation ✅ DONE
 
-### M14: Mobile Navigation UX ✅ DONE
+Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. No new dependencies — uses `sql` re-exported from `@payloadcms/db-vercel-postgres`.
+
+- [x] **Shared SQL utility** (`src/lib/db/sum-transactions.ts`) — `getDb` helper for transaction-scoped Drizzle access + 4 aggregation functions:
+  - `sumRegisterBalance(payload, registerId, req?)` — `SUM(CASE WHEN DEPOSIT THEN +amount ELSE -amount END)`
+  - `sumInvestmentCosts(payload, investmentId, req?)` — `SUM(amount)` for `INVESTMENT_EXPENSE` + `EMPLOYEE_EXPENSE`
+  - `sumEmployeeSaldo(payload, workerId, dateRange?)` — `SUM(CASE WHEN ADVANCE THEN +amount ELSE -amount END)` with optional date range
+  - `sumAllWorkerSaldos(payload)` — same as above but `GROUP BY worker_id`, returns `Map<number, number>`
+- [x] **`recalculate-balances.ts` hooks** — replaced `payload.find(limit: 0)` + `.reduce()` with `sumRegisterBalance` / `sumInvestmentCosts`. `req` forwarded for transaction-scoped DB access.
+- [x] **`get-employee-dashboard.ts`** — `getEmployeeSaldo`: replaced 2x `payload.find(limit: 0)` + reduce → single `sumEmployeeSaldo`. `getEmployeeMonthlyData`: replaced monthly saldo fetch + loop → `sumEmployeeSaldo` with date range.
+- [x] **`settlements/actions.ts`** — `getEmployeeSaldo`: replaced 2x `payload.find(limit: 1000)` + reduce → `sumEmployeeSaldo`. **Fixed limit:1000 truncation bug.**
+- [x] **`transactions/actions.ts`** — `getEmployeeMonthData`: replaced 2x `payload.find(limit: 1000)` + reduce → single `sumEmployeeSaldo`. Dropped 2 of 3 parallel queries. **Fixed limit:1000 truncation bug.**
+- [x] **`uzytkownicy/[id]/page.tsx`** — replaced 2x `payload.find(pagination: false)` + reduce → single `sumEmployeeSaldo`. Dropped 2 of 6 parallel queries.
+- [x] **`uzytkownicy/page.tsx`** — replaced 2x full-table scans (`pagination: false`, no worker filter) + JS grouping → single `sumAllWorkerSaldos` with `GROUP BY`. Dropped 2 of 3 parallel queries.
+- **New file**: `src/lib/db/sum-transactions.ts`
+- **Modified**: `src/hooks/transactions/recalculate-balances.ts`, `src/lib/transactions/get-employee-dashboard.ts`, `src/lib/settlements/actions.ts`, `src/lib/transactions/actions.ts`, `src/app/(frontend)/uzytkownicy/page.tsx`, `src/app/(frontend)/uzytkownicy/[id]/page.tsx`
+- **Verified**: `pnpm tsc --noEmit` (0 new errors)
+
+#### Deferred from M9
+
+- **Searchable combobox** — sidebar/forms fetch all users/investments/categories upfront with `pagination: false`. Won't scale past ~100-200 records, but fine for a construction company with <50 workers, <100 investments, <10 registers. Defer to a later milestone if growth warrants it.
+
+### Bug Fixes (post-M9)
+
+- [x] **Pagination not navigating** — `UrlPagination` called `e.preventDefault()` unconditionally, blocking `<Link>` navigation when `onNavigate` wasn't passed. Made `handleClick` conditional.
+- [x] **Pagination page windowing** — all page buttons rendered (e.g. 20 buttons). Replaced with 5-page sliding window + first/last page buttons + configurable jump-by-N arrows (`jumpSize` prop, default 5). New utility: `src/components/ui/pagination/get-windowed-pages.ts`.
+- [x] **MANAGER privilege escalation** — MANAGER could create users with any role (ADMIN, OWNER). Added `create: isAdminOrOwnerField` to role field; restricted collection `update`/`delete` to `isAdminOrOwner`. MANAGER can now only create EMPLOYEE users (role field defaults when not writable).
+
+### M10: Mobile Navigation UX ✅ DONE
 
 - [x] Increased hamburger button touch target (`p-2.5` → `p-3`, 48px)
 - [x] Increased Sheet close button touch target (`p-1.5`, icon `size-4` → `size-6`)
@@ -293,7 +320,7 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - [x] Kept Radix Dialog for accessibility (focus trap, escape, aria), disabled its CSS animations
 - **Modified**: `src/components/layouts/mobile-nav.tsx`, `src/components/layouts/mobile-menu-toggle.tsx`, `src/components/ui/sheet.tsx`
 
-### M15: Cache + Revalidation ✅ DONE
+### M11: Cache + Revalidation ✅ DONE
 
 - [x] Cache infrastructure: `src/lib/cache/tags.ts` (tag constants), `src/lib/cache/revalidate.ts` (revalidation helpers)
 - [x] Hook factory: `src/hooks/revalidate-collection.ts` — shared `afterChange`/`afterDelete` hooks calling `revalidateCollection()`
@@ -304,14 +331,30 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 - **New files**: `src/lib/cache/tags.ts`, `src/lib/cache/revalidate.ts`, `src/hooks/revalidate-collection.ts`, `src/lib/auth/roles.ts`
 - **Modified**: 12+ files (navigation, pages, actions, hooks, collections)
 
-### M16: Session Duration ✅ DONE
+### M12: Session Duration ✅ DONE
 
 - [x] Extended Payload session from default 2h to 24h (`auth: { tokenExpiration: 86400 }`)
 - **Modified**: `src/collections/users.ts`
 
+### M13: Deployment ✅ DONE
+
+- [x] Vercel project setup
+- [x] Neon Postgres provisioning + data migrated
+- [x] File storage — Vercel Blob via `@payloadcms/storage-vercel-blob@3.73.0`, configured in `payload.config.ts` plugin. Requires `BLOB_READ_WRITE_TOKEN` env var.
+- [x] Production build verification — `pnpm build` succeeds. Fixed dead `format-date.ts` (removed) and seed script type errors (`type`/`paymentMethod` widened to `string` instead of literal unions).
+- [x] Email adapter — `@payloadcms/email-nodemailer@3.73.0` + `nodemailer` with SMTP (seohost.pl). Requires `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS` env vars.
+- [x] Environment variables audit — ensure all env vars are set in Vercel (`DATABASE_URL`, `PAYLOAD_SECRET`, `BLOB_READ_WRITE_TOKEN`, `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS`)
+- [x] Test email route (`GET /api/test-email?to=...`) — ADMIN-only, verifies SMTP connection before sending
+- **New deps**: `@payloadcms/storage-vercel-blob@3.73.0`, `@payloadcms/email-nodemailer@3.73.0`, `nodemailer`, `@types/nodemailer` (dev)
+- **Modified**: `src/payload.config.ts`, `src/scripts/seed-transactions.ts`, `src/scripts/seed-ziutek-advances.ts`
+- **Deleted**: `src/lib/format-date.ts` (dead code, referenced deleted i18n module)
+- **Success**: App live on Vercel, all features working
+
 ---
 
-### M17: Centralized Query Layer
+### Future Milestones (not yet planned in detail)
+
+### M14: Centralized Query Layer
 
 Extract all data fetching from `page.tsx` files into co-located `queries.ts` files per domain. Pages become thin: auth guard → parse params → call query → render JSX.
 
@@ -386,40 +429,7 @@ Extract all data fetching from `page.tsx` files into co-located `queries.ts` fil
 
 - **Success**: Every `page.tsx` is under ~30 lines. All data fetching logic is testable in isolation. Zero duplication of pagination parsing.
 
----
-
-### Future Milestones (not yet planned in detail)
-
-### M9: Performance Optimization — SQL SUM Aggregation ✅ DONE
-
-Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. No new dependencies — uses `sql` re-exported from `@payloadcms/db-vercel-postgres`.
-
-- [x] **Shared SQL utility** (`src/lib/db/sum-transactions.ts`) — `getDb` helper for transaction-scoped Drizzle access + 4 aggregation functions:
-  - `sumRegisterBalance(payload, registerId, req?)` — `SUM(CASE WHEN DEPOSIT THEN +amount ELSE -amount END)`
-  - `sumInvestmentCosts(payload, investmentId, req?)` — `SUM(amount)` for `INVESTMENT_EXPENSE` + `EMPLOYEE_EXPENSE`
-  - `sumEmployeeSaldo(payload, workerId, dateRange?)` — `SUM(CASE WHEN ADVANCE THEN +amount ELSE -amount END)` with optional date range
-  - `sumAllWorkerSaldos(payload)` — same as above but `GROUP BY worker_id`, returns `Map<number, number>`
-- [x] **`recalculate-balances.ts` hooks** — replaced `payload.find(limit: 0)` + `.reduce()` with `sumRegisterBalance` / `sumInvestmentCosts`. `req` forwarded for transaction-scoped DB access.
-- [x] **`get-employee-dashboard.ts`** — `getEmployeeSaldo`: replaced 2x `payload.find(limit: 0)` + reduce → single `sumEmployeeSaldo`. `getEmployeeMonthlyData`: replaced monthly saldo fetch + loop → `sumEmployeeSaldo` with date range.
-- [x] **`settlements/actions.ts`** — `getEmployeeSaldo`: replaced 2x `payload.find(limit: 1000)` + reduce → `sumEmployeeSaldo`. **Fixed limit:1000 truncation bug.**
-- [x] **`transactions/actions.ts`** — `getEmployeeMonthData`: replaced 2x `payload.find(limit: 1000)` + reduce → single `sumEmployeeSaldo`. Dropped 2 of 3 parallel queries. **Fixed limit:1000 truncation bug.**
-- [x] **`uzytkownicy/[id]/page.tsx`** — replaced 2x `payload.find(pagination: false)` + reduce → single `sumEmployeeSaldo`. Dropped 2 of 6 parallel queries.
-- [x] **`uzytkownicy/page.tsx`** — replaced 2x full-table scans (`pagination: false`, no worker filter) + JS grouping → single `sumAllWorkerSaldos` with `GROUP BY`. Dropped 2 of 3 parallel queries.
-- **New file**: `src/lib/db/sum-transactions.ts`
-- **Modified**: `src/hooks/transactions/recalculate-balances.ts`, `src/lib/transactions/get-employee-dashboard.ts`, `src/lib/settlements/actions.ts`, `src/lib/transactions/actions.ts`, `src/app/(frontend)/uzytkownicy/page.tsx`, `src/app/(frontend)/uzytkownicy/[id]/page.tsx`
-- **Verified**: `pnpm tsc --noEmit` (0 new errors)
-
-#### Deferred from M9
-
-- **Searchable combobox** — sidebar/forms fetch all users/investments/categories upfront with `pagination: false`. Won't scale past ~100-200 records, but fine for a construction company with <50 workers, <100 investments, <10 registers. Defer to a later milestone if growth warrants it.
-
-### Bug Fixes (post-M9)
-
-- [x] **Pagination not navigating** — `UrlPagination` called `e.preventDefault()` unconditionally, blocking `<Link>` navigation when `onNavigate` wasn't passed. Made `handleClick` conditional.
-- [x] **Pagination page windowing** — all page buttons rendered (e.g. 20 buttons). Replaced with 5-page sliding window + first/last page buttons + configurable jump-by-N arrows (`jumpSize` prop, default 5). New utility: `src/components/ui/pagination/get-windowed-pages.ts`.
-- [x] **MANAGER privilege escalation** — MANAGER could create users with any role (ADMIN, OWNER). Added `create: isAdminOrOwnerField` to role field; restricted collection `update`/`delete` to `isAdminOrOwner`. MANAGER can now only create EMPLOYEE users (role field defaults when not writable).
-
-### M10: Table Column Management
+### M15: Table Column Management
 
 - [ ] Column visibility toggle — allow users to hide/show columns in data tables (transactions, users, investments, cash registers)
 - [ ] Column reordering — drag-and-drop or menu-based column reordering
@@ -428,7 +438,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - **Files**: `src/components/ui/data-table.tsx`, new `src/components/ui/column-settings.tsx`
 - **Success**: Users can hide irrelevant columns and reorder them to their preference
 
-### M11: Reports (was M10)
+### M16: Reports
 
 - [ ] Filterable report views (date range, investment, worker, register)
 - [ ] Daily / monthly / yearly summaries
@@ -436,7 +446,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M12: Invoices View & Download
+### M17: Invoices View & Download
 
 - [ ] Dedicated page for browsing/searching uploaded invoices (currently only accessible via individual transactions)
 - [ ] Filtering by date, worker, investment
@@ -445,20 +455,6 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - [ ] **Downloadable invoice PDF in every transaction table** — wherever a transaction row appears in the app (transactions list, investment detail, cash register detail, worker detail, dashboard recent, settlement history), display a download link/icon when the transaction has an attached invoice. This is a **cross-cutting requirement** that affects the shared `TransactionDataTable` component and any other place transactions are rendered.
 - **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`, `src/lib/transactions/map-transaction-row.ts`
 - **Success**: Users can browse, search, and download invoices; invoice PDF download is accessible inline from any transaction row across the entire app
-
-### M13: Deployment (in progress)
-
-- [x] Vercel project setup
-- [x] Neon Postgres provisioning + data migrated
-- [x] File storage — Vercel Blob via `@payloadcms/storage-vercel-blob@3.73.0`, configured in `payload.config.ts` plugin. Requires `BLOB_READ_WRITE_TOKEN` env var.
-- [x] Production build verification — `pnpm build` succeeds. Fixed dead `format-date.ts` (removed) and seed script type errors (`type`/`paymentMethod` widened to `string` instead of literal unions).
-- [x] Email adapter — `@payloadcms/email-nodemailer@3.73.0` + `nodemailer` with SMTP (seohost.pl). Requires `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS` env vars.
-- [x] Environment variables audit — ensure all env vars are set in Vercel (`DATABASE_URL`, `PAYLOAD_SECRET`, `BLOB_READ_WRITE_TOKEN`, `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS`)
-- [x] Test email route (`GET /api/test-email?to=...`) — ADMIN-only, verifies SMTP connection before sending
-- **New deps**: `@payloadcms/storage-vercel-blob@3.73.0`, `@payloadcms/email-nodemailer@3.73.0`, `nodemailer`, `@types/nodemailer` (dev)
-- **Modified**: `src/payload.config.ts`, `src/scripts/seed-transactions.ts`, `src/scripts/seed-ziutek-advances.ts`
-- **Deleted**: `src/lib/format-date.ts` (dead code, referenced deleted i18n module)
-- **Success**: App live on Vercel, all features working
 
 ---
 

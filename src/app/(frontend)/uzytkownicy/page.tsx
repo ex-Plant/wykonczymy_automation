@@ -1,5 +1,3 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
@@ -18,10 +16,9 @@ export default async function UsersPage({ searchParams }: PagePropsT) {
   if (!isManagementRole(user.role)) redirect('/')
 
   const sp = await searchParams
-  const payload = await getPayload({ config })
   const { page, limit } = parsePagination(sp)
 
-  const { rows, paginationMeta } = await findUsersWithSaldos(payload, { page, limit })
+  const { rows, paginationMeta } = await findUsersWithSaldos({ page, limit })
 
   return (
     <PageWrapper title="Użytkownicy">

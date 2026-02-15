@@ -1,16 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useState, useTransition } from 'react'
-import { LogOut } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { isManagementRole } from '@/lib/auth/permissions'
-import type { RoleT } from '@/lib/auth/roles'
-import type { ReferenceDataT } from '@/components/transactions/add-transaction-dialog'
-import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { MobileMenuToggle } from '@/components/layouts/mobile-menu-toggle'
 import { NAV_ITEMS } from '@/components/layouts/nav-items'
 import { NavLink } from '@/components/layouts/nav-link'
-import { logoutAction } from '@/lib/actions/auth'
-import { MobileMenuToggle } from '@/components/layouts/mobile-menu-toggle'
+import type { ReferenceDataT } from '@/components/transactions/add-transaction-dialog'
+import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { isManagementRole } from '@/lib/auth/permissions'
+import type { RoleT } from '@/lib/auth/roles'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { SidebarUser } from './sidebar/sidebar-user'
 
 type MobileNavPropsT = {
   user: { name: string; email: string; role: RoleT }
@@ -30,18 +29,11 @@ const transition = {
 
 export function MobileNav({ user, referenceData }: MobileNavPropsT) {
   const [isOpen, setIsOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
   const isManager = isManagementRole(user.role)
 
   const visibleItems = NAV_ITEMS.filter(
     (item) => item.roles === 'all' || (item.roles === 'management' && isManager),
   )
-
-  const close = useCallback(() => setIsOpen(false), [])
-
-  function handleLogout() {
-    startTransition(() => logoutAction())
-  }
 
   // Close on Escape key
   useEffect(() => {
@@ -53,16 +45,6 @@ export function MobileNav({ user, referenceData }: MobileNavPropsT) {
 
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [isOpen])
-
-  // Lock body scroll while menu is open
-  useEffect(() => {
-    if (!isOpen) return
-
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
   }, [isOpen])
 
   return (
@@ -89,7 +71,7 @@ export function MobileNav({ user, referenceData }: MobileNavPropsT) {
           >
             {/* Panel header — mirrors main header layout */}
             <div className="border-border flex h-14 items-center justify-between gap-3 border-b px-3">
-              <MobileMenuToggle isOpen={isOpen} onToggle={close} />
+              <MobileMenuToggle isOpen={isOpen} onToggle={() => setIsOpen(false)} />
               {referenceData && <AddTransactionDialog referenceData={referenceData} />}
             </div>
 
@@ -106,16 +88,7 @@ export function MobileNav({ user, referenceData }: MobileNavPropsT) {
               ))}
             </nav>
 
-            <div className="border-border mt-auto border-t p-3">
-              <button
-                onClick={handleLogout}
-                disabled={isPending}
-                className="text-muted-foreground hover:bg-accent hover:text-foreground flex w-full items-center gap-3 rounded-md px-3 py-3 text-base transition-colors disabled:opacity-50"
-              >
-                <LogOut className="size-5" />
-                Wyloguj
-              </button>
-            </div>
+            <SidebarUser user={user} />
           </motion.div>
         )}
       </AnimatePresence>

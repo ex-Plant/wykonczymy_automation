@@ -1,10 +1,9 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { parsePagination } from '@/lib/pagination'
 import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { TransactionFilters } from './_components/transaction-filters'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -18,7 +17,6 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
   if (!user) redirect('/zaloguj')
 
   const params = await searchParams
-  const payload = await getPayload({ config })
   const { page, limit } = parsePagination(params)
 
   const where = buildTransactionFilters(params, {
@@ -27,11 +25,11 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
   })
 
   const [{ rows, paginationMeta }, cashRegisters] = await Promise.all([
-    findTransactions(payload, { where, page, limit }),
-    payload.find({ collection: 'cash-registers', limit: 100 }),
+    findTransactions({ where, page, limit }),
+    findAllCashRegisters(),
   ])
 
-  const cashRegisterOptions = cashRegisters.docs.map((d) => ({ id: d.id, name: d.name }))
+  const cashRegisterOptions = cashRegisters.map(({ id, name }) => ({ id, name }))
 
   return (
     <PageWrapper title="Transakcje">

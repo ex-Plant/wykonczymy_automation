@@ -1,63 +1,73 @@
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import type { Payload } from 'payload'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
 import { sumAllWorkerSaldos, sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import type { UserRowT } from '@/lib/tables/users'
 import type { RoleT } from '@/lib/auth/roles'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 
-export async function findUsersWithSaldos(payload: Payload, { page, limit }: PaginationParamsT) {
-  const getCachedSaldos = unstable_cache(
-    async () => {
-      const pl = await getPayload({ config })
-      const map = await sumAllWorkerSaldos(pl)
-      return Object.fromEntries(map)
-    },
-    ['all-worker-saldos'],
-    { tags: [CACHE_TAGS.transactions] },
-  )
+export const findUsersWithSaldos = unstable_cache(
+  async ({ page, limit }: PaginationParamsT) => {
+    const payload = await getPayload({ config })
+    const [users, saldoRecord] = await Promise.all([
+      payload.find({ collection: 'users', sort: 'name', limit, page }),
+      sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
+    ])
 
-  const [users, saldoRecord] = await Promise.all([
-    payload.find({ collection: 'users', sort: 'name', limit, page }),
-    getCachedSaldos(),
-  ])
+    const rows: UserRowT[] = users.docs.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role as RoleT,
+      saldo: saldoRecord[String(u.id)] ?? 0,
+    }))
 
-  const saldoMap = new Map(Object.entries(saldoRecord).map(([k, v]) => [Number(k), v]))
+    return {
+      rows,
+      paginationMeta: buildPaginationMeta(users, limit),
+    }
+  },
+  ['users-with-saldos'],
+  { tags: [CACHE_TAGS.transactions, CACHE_TAGS.users] },
+)
 
-  const rows: UserRowT[] = users.docs.map((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    role: u.role as RoleT,
-    saldo: saldoMap.get(u.id) ?? 0,
-  }))
+export const getUser = unstable_cache(
+  async (id: string) => {
+    const payload = await getPayload({ config })
+    try {
+      const user = await payload.findByID({ collection: 'users', id })
+      return user ?? null
+    } catch {
+      return null
+    }
+  },
+  ['get-user'],
+  { tags: [CACHE_TAGS.users] },
+)
 
-  return {
-    rows,
-    paginationMeta: buildPaginationMeta(users, limit),
-  }
-}
+export const getUserSaldo = unstable_cache(
+  async (userId: string) => {
+    const payload = await getPayload({ config })
+    return sumEmployeeSaldo(payload, Number(userId))
+  },
+  ['employee-saldo'],
+  { tags: [CACHE_TAGS.transactions] },
+)
 
-export async function getUser(payload: Payload, id: string) {
-  try {
-    const user = await payload.findByID({ collection: 'users', id })
-    return user ?? undefined
-  } catch {
-    return undefined
-  }
-}
-
-export async function getUserSaldo(userId: string) {
-  const getCachedSaldo = unstable_cache(
-    async (workerId: number) => {
-      const pl = await getPayload({ config })
-      return sumEmployeeSaldo(pl, workerId)
-    },
-    ['employee-saldo', userId],
-    { tags: [CACHE_TAGS.transactions] },
-  )
-
-  return getCachedSaldo(Number(userId))
-}
+export const findAllUsers = unstable_cache(
+  async () => {
+    const payload = await getPayload({ config })
+    const result = await payload.find({
+      collection: 'users',
+      limit: 100,
+      depth: 0,
+    })
+    return result.docs.map((u) => ({
+      id: u.id as number,
+      name: u.name as string,
+    }))
+  },
+  ['find-all-users'],
+  { tags: [CACHE_TAGS.users] },
+)

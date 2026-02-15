@@ -1,8 +1,6 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { formatPLN } from '@/lib/format-currency'
 import { parsePagination } from '@/lib/pagination'
-import { findTransactions } from '@/lib/queries/transactions'
+import { findTransactions, countRecentTransactions } from '@/lib/queries/transactions'
 import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { findActiveInvestments } from '@/lib/queries/investments'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
@@ -15,25 +13,21 @@ type ManagerDashboardPropsT = {
 }
 
 export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT) {
-  const payload = await getPayload({ config })
   const { page, limit } = parsePagination(searchParams)
 
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
 
-  const [cashRegisters, activeInvestments, { rows, paginationMeta }, transactionsLast30Days] =
+  const [cashRegisters, activeInvestments, { rows, paginationMeta }, recentCount] =
     await Promise.all([
-      findAllCashRegisters(payload),
-      findActiveInvestments(payload),
-      findTransactions(payload, { page, limit }),
-      payload.find({
-        collection: 'transactions',
-        limit: 0,
-        where: { date: { greater_than_equal: thirtyDaysAgo.toISOString() } },
-      }),
+      findAllCashRegisters(),
+      findActiveInvestments(),
+      findTransactions({ page, limit }),
+      countRecentTransactions(sinceDate),
     ])
 
-  const totalBalance = cashRegisters.reduce((sum, cr) => sum + (cr.balance ?? 0), 0)
+  const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
 
   return (
     <PageWrapper title="Kokpit">
@@ -41,7 +35,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Saldo kas" value={formatPLN(totalBalance)} />
         <StatCard label="Aktywne inwestycje" value={String(activeInvestments.length)} />
-        <StatCard label="Transakcje (30 dni)" value={String(transactionsLast30Days.totalDocs)} />
+        <StatCard label="Transakcje (30 dni)" value={String(recentCount)} />
       </div>
 
       {/* Recent transactions */}

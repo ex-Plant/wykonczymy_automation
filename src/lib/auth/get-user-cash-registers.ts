@@ -1,8 +1,10 @@
 import 'server-only'
 
+import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { RoleT } from '@/lib/auth/roles'
+import { CACHE_TAGS } from '@/lib/cache/tags'
 
 /**
  * Returns the cash register ids owned by the given user if they are a MANAGER.
@@ -13,14 +15,20 @@ export async function getUserCashRegisterIds(
   role: RoleT,
 ): Promise<number[] | undefined> {
   if (role !== 'MANAGER') return undefined
-
-  const payload = await getPayload({ config })
-  const { docs } = await payload.find({
-    collection: 'cash-registers',
-    where: { owner: { equals: userId } },
-    limit: 100,
-    depth: 0,
-  })
-
-  return docs.map((doc) => doc.id as number)
+  return getCachedManagerRegisterIds(userId)
 }
+
+const getCachedManagerRegisterIds = unstable_cache(
+  async (userId: number) => {
+    const payload = await getPayload({ config })
+    const { docs } = await payload.find({
+      collection: 'cash-registers',
+      where: { owner: { equals: userId } },
+      limit: 100,
+      depth: 0,
+    })
+    return docs.map((doc) => doc.id as number)
+  },
+  ['manager-register-ids'],
+  { tags: [CACHE_TAGS.cashRegisters] },
+)

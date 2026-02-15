@@ -1,5 +1,3 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
@@ -24,13 +22,12 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
 
   const { id } = await params
   const sp = await searchParams
-  const payload = await getPayload({ config })
   const { page, limit } = parsePagination(sp)
 
-  const investment = await getInvestment(payload, id)
+  const investment = await getInvestment(id)
   if (!investment) notFound()
 
-  const { rows, paginationMeta } = await findTransactions(payload, {
+  const { rows, paginationMeta } = await findTransactions({
     where: { investment: { equals: id } },
     page,
     limit,

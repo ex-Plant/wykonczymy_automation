@@ -1,9 +1,10 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
+import { findAllUsers } from '@/lib/queries/users'
+import { findActiveInvestments } from '@/lib/queries/investments'
+import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { SettlementForm } from '@/components/settlements/settlement-form'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
@@ -12,24 +13,17 @@ export default async function SettlementsPage() {
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
 
-  const payload = await getPayload({ config })
-
   const [users, investments, cashRegisters, managerRegisterIds] = await Promise.all([
-    payload.find({ collection: 'users', limit: 100, depth: 0 }),
-    payload.find({
-      collection: 'investments',
-      where: { status: { equals: 'active' } },
-      limit: 100,
-      depth: 0,
-    }),
-    payload.find({ collection: 'cash-registers', limit: 100, depth: 0 }),
+    findAllUsers(),
+    findActiveInvestments(),
+    findAllCashRegisters(),
     getUserCashRegisterIds(user.id, user.role),
   ])
 
   const referenceData = {
-    users: users.docs.map((u) => ({ id: u.id, name: u.name })),
-    investments: investments.docs.map((i) => ({ id: i.id, name: i.name })),
-    cashRegisters: cashRegisters.docs.map((c) => ({ id: c.id, name: c.name })),
+    users: users.map(({ id, name }) => ({ id, name })),
+    investments: investments.map(({ id, name }) => ({ id, name })),
+    cashRegisters: cashRegisters.map(({ id, name }) => ({ id, name })),
   }
 
   return (

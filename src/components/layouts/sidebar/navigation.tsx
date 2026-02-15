@@ -33,12 +33,10 @@ export async function Navigation({ user }: NavigationPropsT) {
       <SidebarNav
         user={user}
         action={
-          referenceData ? (
-            <AddTransactionDialog
-              referenceData={referenceData}
-              managerCashRegisterId={managerCashRegisterId}
-            />
-          ) : undefined
+          <AddTransactionDialog
+            referenceData={referenceData}
+            managerCashRegisterId={managerCashRegisterId}
+          />
         }
       />
       <MobileNav user={user} referenceData={referenceData} />

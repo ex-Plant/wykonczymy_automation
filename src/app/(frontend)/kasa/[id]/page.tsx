@@ -1,5 +1,3 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
@@ -23,13 +21,12 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
 
   const { id } = await params
   const sp = await searchParams
-  const payload = await getPayload({ config })
   const { page, limit } = parsePagination(sp)
 
-  const register = await getCashRegister(payload, id)
+  const register = await getCashRegister(id)
   if (!register) notFound()
 
-  const { rows, paginationMeta } = await findTransactions(payload, {
+  const { rows, paginationMeta } = await findTransactions({
     where: { cashRegister: { equals: id } },
     page,
     limit,
