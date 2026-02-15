@@ -1,7 +1,7 @@
-import { isAdminOrOwner } from '@/access'
-import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recalculate-balances'
-import { validateTransaction } from '@/hooks/transactions/validate'
 import type { CollectionConfig } from 'payload'
+import { isAdminOrOwner } from '@/access'
+import { validateTransaction } from '@/hooks/transactions/validate'
+import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recalculate-balances'
 
 const TRANSACTION_TYPES = [
   { label: { en: 'Deposit', pl: 'Wpłata do kasy' }, value: 'DEPOSIT' },
