@@ -38,12 +38,26 @@ export function LoginForm() {
       className="flex flex-col gap-4"
     >
       <form.AppField name="email">
-        {(field) => <field.Input label="Email" type="email" autoComplete="email" showError />}
+        {(field) => (
+          <field.Input
+            label="Email"
+            type="email"
+            autoComplete="email"
+            showError
+            className={`text-base`}
+          />
+        )}
       </form.AppField>
 
       <form.AppField name="password">
         {(field) => (
-          <field.Input label="Hasło" type="password" autoComplete="current-password" showError />
+          <field.Input
+            label="Hasło"
+            type="password"
+            autoComplete="current-password"
+            showError
+            className={`text-base`}
+          />
         )}
       </form.AppField>
 
