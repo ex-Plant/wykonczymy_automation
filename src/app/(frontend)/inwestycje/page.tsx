@@ -3,12 +3,10 @@ import config from '@payload-config'
 import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { parsePagination } from '@/lib/pagination'
+import { findInvestments } from '@/lib/queries/investments'
 import { InvestmentDataTable } from './_components/investment-data-table'
-import type { InvestmentRowT } from '@/lib/investments/types'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-
-const DEFAULT_LIMIT = 20
-const ALLOWED_LIMITS = [20, 50, 100]
 
 type PagePropsT = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -20,40 +18,10 @@ export default async function InvestmentsPage({ searchParams }: PagePropsT) {
   if (!isManagementRole(user.role)) redirect('/')
 
   const params = await searchParams
-
-  // Pagination
-  const pageParam = typeof params.page === 'string' ? Number(params.page) : 1
-  const currentPage = pageParam > 0 ? pageParam : 1
-
-  const limitParam = typeof params.limit === 'string' ? Number(params.limit) : DEFAULT_LIMIT
-  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
-
   const payload = await getPayload({ config })
+  const { page, limit } = parsePagination(params)
 
-  const investments = await payload.find({
-    collection: 'investments',
-    sort: 'name',
-    limit,
-    page: currentPage,
-  })
-
-  const rows: InvestmentRowT[] = investments.docs.map((inv) => ({
-    id: inv.id,
-    name: inv.name,
-    status: inv.status as 'active' | 'completed',
-    totalCosts: inv.totalCosts ?? 0,
-    address: inv.address ?? '',
-    phone: inv.phone ?? '',
-    email: inv.email ?? '',
-    contactPerson: inv.contactPerson ?? '',
-  }))
-
-  const paginationMeta = {
-    currentPage: investments.page ?? 1,
-    totalPages: investments.totalPages,
-    totalDocs: investments.totalDocs,
-    limit,
-  }
+  const { rows, paginationMeta } = await findInvestments(payload, { page, limit })
 
   return (
     <PageWrapper title="Inwestycje">

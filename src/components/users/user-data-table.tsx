@@ -4,7 +4,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
 import { userColumns } from '@/lib/users/columns'
 import type { UserRowT } from '@/lib/users/types'
-import type { PaginationMetaT } from '@/lib/transactions/types'
+import type { PaginationMetaT } from '@/lib/pagination'
 
 type UserDataTablePropsT = {
   readonly data: readonly UserRowT[]

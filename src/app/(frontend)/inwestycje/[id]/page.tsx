@@ -3,15 +3,14 @@ import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { parsePagination } from '@/lib/pagination'
+import { getInvestment } from '@/lib/queries/investments'
+import { findTransactions } from '@/lib/queries/transactions'
 import { formatPLN } from '@/lib/format-currency'
-import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
-
-const DEFAULT_LIMIT = 20
-const ALLOWED_LIMITS = [20, 50, 100]
 
 type PagePropsT = {
   params: Promise<{ id: string }>
@@ -26,32 +25,16 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   const { id } = await params
   const sp = await searchParams
   const payload = await getPayload({ config })
+  const { page, limit } = parsePagination(sp)
 
-  let investment
-  try {
-    investment = await payload.findByID({ collection: 'investments', id })
-  } catch {
-    notFound()
-  }
-
+  const investment = await getInvestment(payload, id)
   if (!investment) notFound()
 
-  // Pagination params
-  const pageParam = typeof sp.page === 'string' ? Number(sp.page) : 1
-  const currentPage = pageParam > 0 ? pageParam : 1
-  const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
-  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
-
-  const transactions = await payload.find({
-    collection: 'transactions',
+  const { rows, paginationMeta } = await findTransactions(payload, {
     where: { investment: { equals: id } },
-    sort: '-date',
-    depth: 1,
+    page,
     limit,
-    page: currentPage,
   })
-
-  const rows = transactions.docs.map(mapTransactionRow)
 
   const infoFields = [
     { label: 'Adres', value: investment.address },
@@ -61,13 +44,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
     { label: 'Notatki', value: investment.notes },
     { label: 'Status', value: investment.status === 'active' ? 'Aktywna' : 'Zakończona' },
   ]
-
-  const paginationMeta = {
-    currentPage: transactions.page ?? 1,
-    totalPages: transactions.totalPages,
-    totalDocs: transactions.totalDocs,
-    limit,
-  }
 
   return (
     <PageWrapper title={investment.name} backHref="/inwestycje" backLabel="Inwestycje">

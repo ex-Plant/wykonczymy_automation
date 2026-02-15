@@ -3,14 +3,11 @@ import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
+import { parsePagination } from '@/lib/pagination'
+import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
 import { TransactionFilters } from './_components/transaction-filters'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
-import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import type { Where } from 'payload'
-
-const DEFAULT_LIMIT = 20
-const ALLOWED_LIMITS = [20, 50, 100]
 
 type PagePropsT = {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -22,66 +19,19 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
 
   const params = await searchParams
   const payload = await getPayload({ config })
-  const isManager = isManagementRole(user.role)
+  const { page, limit } = parsePagination(params)
 
-  // Build where query from search params
-  const where: Where = {}
+  const where = buildTransactionFilters(params, {
+    id: user.id,
+    isManager: isManagementRole(user.role),
+  })
 
-  // EMPLOYEE: always filter by own worker ID
-  if (!isManager) {
-    where.worker = { equals: user.id }
-  }
-
-  // Type filter
-  const typeParam = typeof params.type === 'string' ? params.type : undefined
-  if (typeParam) {
-    where.type = { equals: typeParam }
-  }
-
-  // Cash register filter
-  const cashRegisterParam =
-    typeof params.cashRegister === 'string' ? params.cashRegister : undefined
-  if (cashRegisterParam) {
-    where.cashRegister = { equals: Number(cashRegisterParam) }
-  }
-
-  // Date range
-  const fromParam = typeof params.from === 'string' ? params.from : undefined
-  const toParam = typeof params.to === 'string' ? params.to : undefined
-  if (fromParam || toParam) {
-    where.date = {}
-    if (fromParam) (where.date as Record<string, string>).greater_than_equal = fromParam
-    if (toParam) (where.date as Record<string, string>).less_than_equal = toParam
-  }
-
-  // Pagination
-  const pageParam = typeof params.page === 'string' ? Number(params.page) : 1
-  const currentPage = pageParam > 0 ? pageParam : 1
-
-  const limitParam = typeof params.limit === 'string' ? Number(params.limit) : DEFAULT_LIMIT
-  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
-
-  const [transactions, cashRegisters] = await Promise.all([
-    payload.find({
-      collection: 'transactions',
-      where,
-      sort: '-date',
-      limit,
-      page: currentPage,
-      depth: 1,
-    }),
+  const [{ rows, paginationMeta }, cashRegisters] = await Promise.all([
+    findTransactions(payload, { where, page, limit }),
     payload.find({ collection: 'cash-registers', limit: 100 }),
   ])
 
-  const rows = transactions.docs.map(mapTransactionRow)
   const cashRegisterOptions = cashRegisters.docs.map((d) => ({ id: d.id, name: d.name }))
-
-  const paginationMeta = {
-    currentPage: transactions.page ?? 1,
-    totalPages: transactions.totalPages,
-    totalDocs: transactions.totalDocs,
-    limit,
-  }
 
   return (
     <PageWrapper title="Transakcje">

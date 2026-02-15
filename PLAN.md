@@ -285,6 +285,109 @@ Adding new workers (Users) and investments is handled exclusively via the **Payl
 
 ---
 
+### M14: Mobile Navigation UX ✅ DONE
+
+- [x] Increased hamburger button touch target (`p-2.5` → `p-3`, 48px)
+- [x] Increased Sheet close button touch target (`p-1.5`, icon `size-4` → `size-6`)
+- [x] Added Framer Motion animations to mobile nav drawer (overlay fade + panel slide-from-left via `AnimatePresence` + `motion.div`)
+- [x] Kept Radix Dialog for accessibility (focus trap, escape, aria), disabled its CSS animations
+- **Modified**: `src/components/layouts/mobile-nav.tsx`, `src/components/layouts/mobile-menu-toggle.tsx`, `src/components/ui/sheet.tsx`
+
+### M15: Cache + Revalidation ✅ DONE
+
+- [x] Cache infrastructure: `src/lib/cache/tags.ts` (tag constants), `src/lib/cache/revalidate.ts` (revalidation helpers)
+- [x] Hook factory: `src/hooks/revalidate-collection.ts` — shared `afterChange`/`afterDelete` hooks calling `revalidateCollection()`
+- [x] Wrapped expensive fetches with `unstable_cache`: navigation reference data (4 collection tags), all worker saldos, individual employee saldo
+- [x] Replaced `revalidatePath()` with `revalidateCollections()` in server actions (`transactions/actions.ts`, `settlements/actions.ts`)
+- [x] Added revalidation hooks to all 5 collection configs (cash-registers, investments, users, other-categories, transactions)
+- [x] Extracted `ROLES`/`RoleT`/`ROLE_LABELS` from `users.ts` into `src/lib/auth/roles.ts` to break server→client import chain
+- **New files**: `src/lib/cache/tags.ts`, `src/lib/cache/revalidate.ts`, `src/hooks/revalidate-collection.ts`, `src/lib/auth/roles.ts`
+- **Modified**: 12+ files (navigation, pages, actions, hooks, collections)
+
+### M16: Session Duration ✅ DONE
+
+- [x] Extended Payload session from default 2h to 24h (`auth: { tokenExpiration: 86400 }`)
+- **Modified**: `src/collections/users.ts`
+
+---
+
+### M17: Centralized Query Layer
+
+Extract all data fetching from `page.tsx` files into co-located `queries.ts` files per domain. Pages become thin: auth guard → parse params → call query → render JSX.
+
+#### Shared pagination helper: `src/lib/pagination.ts` (NEW)
+
+- `parsePagination(searchParams)` → `{ page, limit }` — replaces duplicated `DEFAULT_LIMIT` / `ALLOWED_LIMITS` / `pageParam` / `limitParam` logic in every page
+- `buildPaginationMeta(payloadResult)` → `{ currentPage, totalPages, totalDocs, limit }` — replaces repeated `paginationMeta` object construction
+- Constants `DEFAULT_LIMIT = 20`, `ALLOWED_LIMITS = [20, 50, 100]` defined once
+
+#### Query files: `src/lib/queries/` (NEW directory)
+
+**`src/lib/queries/transactions.ts`**
+
+- `findTransactions(payload, { where, page, limit, sort })` — returns mapped rows + pagination meta. Used by: `/transakcje`, `/inwestycje/[id]`, `/kasa/[id]`, `/uzytkownicy/[id]`
+- `buildTransactionFilters(searchParams, userContext)` — where-clause builder extracted from `transakcje/page.tsx`
+
+**`src/lib/queries/investments.ts`**
+
+- `findInvestments(payload, { page, limit })` — returns mapped rows + meta
+- `getInvestment(payload, id)` — single by ID (returns `notFound()` on miss)
+- `findActiveInvestments(payload)` — reference data (pagination: false, depth: 0)
+
+**`src/lib/queries/cash-registers.ts`**
+
+- `findCashRegisters(payload, { page, limit })` — returns mapped rows + meta
+- `getCashRegister(payload, id)` — single by ID
+- `findAllCashRegisters(payload)` — reference data
+
+**`src/lib/queries/users.ts`**
+
+- `findUsersWithSaldos(payload, { page, limit })` — users + cached saldos, returns rows + meta
+- `getUser(payload, id)` — single by ID
+- `getUserSaldo(payload, userId)` — cached employee saldo (wraps `unstable_cache`)
+
+#### What stays in pages
+
+- Auth guards + redirects
+- `await searchParams` → `parsePagination(sp)`
+- Calling query functions
+- JSX rendering
+
+#### What moves to queries
+
+- All `payload.find()` / `payload.findByID()` calls
+- Row mapping (mapTransactionRow, investment/cash-register/user row mapping)
+- `unstable_cache` wrappers
+- Where-clause construction
+- Pagination meta extraction
+
+#### Design decisions
+
+- Query functions accept `payload` instance as first arg (avoids duplicate `getPayload()` when page calls multiple queries)
+- Each query returns **ready-to-render typed data** (rows, not raw Payload docs)
+- Caching lives inside the query function, not the page
+
+#### Files
+
+| Action | File                                           |
+| ------ | ---------------------------------------------- |
+| NEW    | `src/lib/pagination.ts`                        |
+| NEW    | `src/lib/queries/transactions.ts`              |
+| NEW    | `src/lib/queries/investments.ts`               |
+| NEW    | `src/lib/queries/cash-registers.ts`            |
+| NEW    | `src/lib/queries/users.ts`                     |
+| MODIFY | `src/app/(frontend)/transakcje/page.tsx`       |
+| MODIFY | `src/app/(frontend)/inwestycje/page.tsx`       |
+| MODIFY | `src/app/(frontend)/inwestycje/[id]/page.tsx`  |
+| MODIFY | `src/app/(frontend)/kasa/page.tsx`             |
+| MODIFY | `src/app/(frontend)/kasa/[id]/page.tsx`        |
+| MODIFY | `src/app/(frontend)/uzytkownicy/page.tsx`      |
+| MODIFY | `src/app/(frontend)/uzytkownicy/[id]/page.tsx` |
+
+- **Success**: Every `page.tsx` is under ~30 lines. All data fetching logic is testable in isolation. Zero duplication of pagination parsing.
+
+---
+
 ### Future Milestones (not yet planned in detail)
 
 ### M9: Performance Optimization — SQL SUM Aggregation ✅ DONE
@@ -350,7 +453,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - [x] File storage — Vercel Blob via `@payloadcms/storage-vercel-blob@3.73.0`, configured in `payload.config.ts` plugin. Requires `BLOB_READ_WRITE_TOKEN` env var.
 - [x] Production build verification — `pnpm build` succeeds. Fixed dead `format-date.ts` (removed) and seed script type errors (`type`/`paymentMethod` widened to `string` instead of literal unions).
 - [x] Email adapter — `@payloadcms/email-nodemailer@3.73.0` + `nodemailer` with SMTP (seohost.pl). Requires `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS` env vars.
-- [ ] Environment variables audit — ensure all env vars are set in Vercel (`DATABASE_URL`, `PAYLOAD_SECRET`, `BLOB_READ_WRITE_TOKEN`, `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS`)
+- [x] Environment variables audit — ensure all env vars are set in Vercel (`DATABASE_URL`, `PAYLOAD_SECRET`, `BLOB_READ_WRITE_TOKEN`, `EMAIL_HOST`, `EMAIL_USER`, `EMAIL_PASS`)
 - [x] Test email route (`GET /api/test-email?to=...`) — ADMIN-only, verifies SMTP connection before sending
 - **New deps**: `@payloadcms/storage-vercel-blob@3.73.0`, `@payloadcms/email-nodemailer@3.73.0`, `nodemailer`, `@types/nodemailer` (dev)
 - **Modified**: `src/payload.config.ts`, `src/scripts/seed-transactions.ts`, `src/scripts/seed-ziutek-advances.ts`

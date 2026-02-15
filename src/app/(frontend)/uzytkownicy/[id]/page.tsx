@@ -1,23 +1,21 @@
-import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
-import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
+import { parsePagination } from '@/lib/pagination'
+import { getUser, getUserSaldo } from '@/lib/queries/users'
+import { findTransactions } from '@/lib/queries/transactions'
+import { findActiveInvestments } from '@/lib/queries/investments'
+import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
-import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { ZeroSaldoDialog } from '@/components/settlements/zero-saldo-dialog'
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
-import { CACHE_TAGS } from '@/lib/cache/tags'
-
-const DEFAULT_LIMIT = 20
-const ALLOWED_LIMITS = [20, 50, 100]
 
 const EXCLUDE_COLUMNS = ['investment', 'worker', 'otherCategory', 'invoice']
 
@@ -34,61 +32,23 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const { id } = await params
   const sp = await searchParams
   const payload = await getPayload({ config })
+  const { page, limit } = parsePagination(sp)
 
-  let targetUser
-  try {
-    targetUser = await payload.findByID({ collection: 'users', id })
-  } catch {
-    notFound()
-  }
-
+  const targetUser = await getUser(payload, id)
   if (!targetUser) notFound()
 
-  const pageParam = typeof sp.page === 'string' ? Number(sp.page) : 1
-  const currentPage = pageParam > 0 ? pageParam : 1
-
-  const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
-  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
-
-  const getCachedSaldo = unstable_cache(
-    async (workerId: number) => {
-      const pl = await getPayload({ config })
-      return sumEmployeeSaldo(pl, workerId)
-    },
-    ['employee-saldo', id],
-    { tags: [CACHE_TAGS.transactions] },
-  )
-
-  // Fetch paginated transactions + saldo + reference data for zero saldo
-  const [transactions, saldo, activeInvestments, cashRegisters, managerRegisterIds] =
+  const [{ rows, paginationMeta }, saldo, activeInvestments, cashRegisters, managerRegisterIds] =
     await Promise.all([
-      payload.find({
-        collection: 'transactions',
+      findTransactions(payload, {
         where: { worker: { equals: id } },
-        sort: '-date',
-        depth: 1,
+        page,
         limit,
-        page: currentPage,
       }),
-      getCachedSaldo(Number(id)),
-      payload.find({
-        collection: 'investments',
-        where: { status: { equals: 'active' } },
-        pagination: false,
-        depth: 0,
-      }),
-      payload.find({ collection: 'cash-registers', pagination: false, depth: 0 }),
+      getUserSaldo(id),
+      findActiveInvestments(payload),
+      findAllCashRegisters(payload),
       getUserCashRegisterIds(user.id, user.role),
     ])
-
-  const rows = transactions.docs.map(mapTransactionRow)
-
-  const paginationMeta = {
-    currentPage: transactions.page ?? 1,
-    totalPages: transactions.totalPages,
-    totalDocs: transactions.totalDocs,
-    limit,
-  }
 
   return (
     <PageWrapper title={targetUser.name} backHref="/uzytkownicy" backLabel="Użytkownicy">
@@ -110,8 +70,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           workerId={targetUser.id}
           managerCashRegisterId={managerRegisterIds?.[0]}
           referenceData={{
-            investments: activeInvestments.docs.map((i) => ({ id: i.id, name: i.name })),
-            cashRegisters: cashRegisters.docs.map((c) => ({ id: c.id, name: c.name })),
+            investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
+            cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
           }}
         />
       </div>

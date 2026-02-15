@@ -4,10 +4,13 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import { mapTransactionRow } from './map-transaction-row'
-import type { TransactionRowT, PaginationMetaT } from './types'
-
-const DEFAULT_LIMIT = 20
-const ALLOWED_LIMITS = [20, 50, 100]
+import type { TransactionRowT } from './types'
+import {
+  buildPaginationMeta,
+  DEFAULT_LIMIT,
+  ALLOWED_LIMITS,
+  type PaginationMetaT,
+} from '@/lib/pagination'
 
 export type MonthlyDataT = {
   rows: TransactionRowT[]
@@ -63,12 +66,7 @@ export async function getEmployeeMonthlyData({
 
   return {
     rows: transactions.docs.map(mapTransactionRow),
-    paginationMeta: {
-      currentPage: transactions.page ?? 1,
-      totalPages: transactions.totalPages,
-      totalDocs: transactions.totalDocs,
-      limit: safeLimit,
-    },
+    paginationMeta: buildPaginationMeta(transactions, safeLimit),
     monthlySaldo,
   }
 }

@@ -13,10 +13,3 @@ export type TransactionRowT = {
   readonly otherCategoryName: string
   readonly hasInvoice: boolean
 }
-
-export type PaginationMetaT = {
-  readonly currentPage: number
-  readonly totalPages: number
-  readonly totalDocs: number
-  readonly limit: number
-}

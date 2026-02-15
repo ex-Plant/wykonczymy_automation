@@ -4,7 +4,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
 import { investmentColumns } from '@/lib/investments/columns'
 import type { InvestmentRowT } from '@/lib/investments/types'
-import type { PaginationMetaT } from '@/lib/transactions/types'
+import type { PaginationMetaT } from '@/lib/pagination'
 
 type InvestmentDataTablePropsT = {
   readonly data: readonly InvestmentRowT[]

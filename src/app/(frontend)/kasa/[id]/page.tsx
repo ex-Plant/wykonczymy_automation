@@ -3,14 +3,13 @@ import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
+import { parsePagination } from '@/lib/pagination'
+import { getCashRegister } from '@/lib/queries/cash-registers'
+import { findTransactions } from '@/lib/queries/transactions'
 import { formatPLN } from '@/lib/format-currency'
-import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
-
-const DEFAULT_LIMIT = 20
-const ALLOWED_LIMITS = [20, 50, 100]
 
 type PagePropsT = {
   params: Promise<{ id: string }>
@@ -25,41 +24,19 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
   const { id } = await params
   const sp = await searchParams
   const payload = await getPayload({ config })
+  const { page, limit } = parsePagination(sp)
 
-  let register
-  try {
-    register = await payload.findByID({ collection: 'cash-registers', id, depth: 1 })
-  } catch {
-    notFound()
-  }
-
+  const register = await getCashRegister(payload, id)
   if (!register) notFound()
 
-  // Pagination params
-  const pageParam = typeof sp.page === 'string' ? Number(sp.page) : 1
-  const currentPage = pageParam > 0 ? pageParam : 1
-  const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
-  const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
-
-  const transactions = await payload.find({
-    collection: 'transactions',
+  const { rows, paginationMeta } = await findTransactions(payload, {
     where: { cashRegister: { equals: id } },
-    sort: '-date',
-    depth: 1,
+    page,
     limit,
-    page: currentPage,
   })
 
-  const rows = transactions.docs.map(mapTransactionRow)
   const ownerName =
     typeof register.owner === 'object' && register.owner !== null ? register.owner.name : '—'
-
-  const paginationMeta = {
-    currentPage: transactions.page ?? 1,
-    totalPages: transactions.totalPages,
-    totalDocs: transactions.totalDocs,
-    limit,
-  }
 
   return (
     <PageWrapper title={register.name} backHref="/kasa" backLabel="Kasy">
