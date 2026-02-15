@@ -47,6 +47,7 @@ type DataTablePropsT<TData> = {
   readonly storageKey?: string
   readonly getRowHref?: (row: TData) => string | undefined
   readonly toolbar?: (table: Table<TData>) => React.ReactNode
+  readonly className?: string
 }
 
 export function DataTable<TData>({
@@ -59,6 +60,7 @@ export function DataTable<TData>({
   storageKey,
   getRowHref,
   toolbar,
+  className,
 }: DataTablePropsT<TData>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
@@ -128,7 +130,7 @@ export function DataTable<TData>({
   }
 
   return (
-    <div className="space-y-2">
+    <div className={cn('space-y-2', className)}>
       {toolbar && <div className="flex items-center">{toolbar(table)}</div>}
       <div className="border-border overflow-x-auto rounded-lg border">
         {enableVirtualization ? (

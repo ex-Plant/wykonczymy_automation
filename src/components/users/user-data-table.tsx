@@ -12,14 +12,14 @@ type UserDataTablePropsT = {
 
 export function UserDataTable({ data, paginationMeta }: UserDataTablePropsT) {
   return (
-    <div className="space-y-4">
+    <>
       <DataTable
         data={data}
         columns={userColumns}
         emptyMessage="Brak użytkowników"
         getRowHref={(row: UserRowT) => `/uzytkownicy/${row.id}`}
       />
-      <PaginationFooter paginationMeta={paginationMeta} baseUrl="/uzytkownicy" />
-    </div>
+      <PaginationFooter paginationMeta={paginationMeta} baseUrl="/uzytkownicy" className={`mt-4`} />
+    </>
   )
 }

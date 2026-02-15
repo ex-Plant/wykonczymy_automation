@@ -5,15 +5,17 @@ import { UrlPagination } from './url-pagination'
 import { buildUrlWithParams } from '@/lib/helpers'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 import type { PaginationMetaT } from '@/lib/pagination'
+import { cn } from '../../lib/cn'
 
 const LIMIT_OPTIONS = [20, 50, 100] as const
 
 type PaginationFooterPropsT = {
   readonly paginationMeta: PaginationMetaT
   readonly baseUrl: string
+  readonly className?: string
 }
 
-export function PaginationFooter({ paginationMeta, baseUrl }: PaginationFooterPropsT) {
+export function PaginationFooter({ paginationMeta, baseUrl, className }: PaginationFooterPropsT) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -24,7 +26,7 @@ export function PaginationFooter({ paginationMeta, baseUrl }: PaginationFooterPr
   if (paginationMeta.totalPages <= 1 && paginationMeta.totalDocs === 0) return null
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className={cn('flex flex-wrap items-center justify-between gap-4', className)}>
       <div className="flex items-center gap-3">
         <p className="text-muted-foreground text-sm">{paginationMeta.totalDocs} wyników</p>
         <div className="flex items-center gap-2">
