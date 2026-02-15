@@ -23,18 +23,30 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
     isManager: isManagementRole(user.role),
   })
 
+  const isManager = isManagementRole(user.role)
+
   const [{ rows, paginationMeta }, cashRegisters] = await Promise.all([
     findTransactions({ where, page, limit }),
     findAllCashRegisters(),
   ])
+
+  const excludeColumns = isManager
+    ? []
+    : ['type', 'cashRegister', 'investment', 'worker', 'otherCategory', 'invoice', 'paymentMethod']
+
+  // Worker do not has to see type and cash register selects
+  const filters = isManager
+    ? { cashRegisters: cashRegisters.map(({ id, name }) => ({ id, name })) }
+    : { showTypeFilter: false }
 
   return (
     <PageWrapper title="Transakcje">
       <TransactionDataTable
         data={rows}
         paginationMeta={paginationMeta}
+        excludeColumns={excludeColumns}
         baseUrl="/transakcje"
-        filters={{ cashRegisters: cashRegisters.map(({ id, name }) => ({ id, name })) }}
+        filters={filters}
         className="mt-6"
       />
     </PageWrapper>

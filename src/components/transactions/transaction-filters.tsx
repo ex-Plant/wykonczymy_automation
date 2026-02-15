@@ -21,15 +21,15 @@ type ReferenceItemT = { id: number; name: string }
 
 type TransactionFiltersPropsT = {
   cashRegisters?: ReferenceItemT[]
+  showTypeFilter?: boolean
   baseUrl: string
-  showMonthPicker?: boolean
   className?: string
 }
 
 export function TransactionFilters({
   cashRegisters,
+  showTypeFilter = true,
   baseUrl,
-  showMonthPicker = false,
   className,
 }: TransactionFiltersPropsT) {
   const router = useRouter()
@@ -78,50 +78,50 @@ export function TransactionFilters({
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex flex-wrap gap-3">
-        <FilterField label="Typ">
+      {(showTypeFilter || (cashRegisters && cashRegisters.length > 0)) && (
+        <div className="flex flex-wrap gap-3">
+          {showTypeFilter && (
+            <FilterField label="Typ">
+              <FilterSelect
+                value={currentType}
+                onValueChange={(v) => updateParam('type', v)}
+                options={TRANSACTION_TYPES.map((t) => ({
+                  value: t,
+                  label: TRANSACTION_TYPE_LABELS[t],
+                }))}
+              />
+            </FilterField>
+          )}
+
+          {cashRegisters && cashRegisters.length > 0 && (
+            <FilterField label="Kasa">
+              <FilterSelect
+                value={currentCashRegister}
+                onValueChange={(v) => updateParam('cashRegister', v)}
+                options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
+              />
+            </FilterField>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap items-end gap-3">
+        <FilterField label="Rok">
           <FilterSelect
-            value={currentType}
-            onValueChange={(v) => updateParam('type', v)}
-            options={TRANSACTION_TYPES.map((t) => ({
-              value: t,
-              label: TRANSACTION_TYPE_LABELS[t],
-            }))}
+            value={String(pickerYear)}
+            onValueChange={(v) => handleYearChange(Number(v))}
+            options={years.map((y) => ({ value: String(y), label: String(y) }))}
+            showAllOption={false}
           />
         </FilterField>
 
-        {cashRegisters && cashRegisters.length > 0 && (
-          <FilterField label="Kasa">
-            <FilterSelect
-              value={currentCashRegister}
-              onValueChange={(v) => updateParam('cashRegister', v)}
-              options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
-            />
-          </FilterField>
-        )}
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        {showMonthPicker && (
-          <>
-            <FilterField label="Rok">
-              <FilterSelect
-                value={String(pickerYear)}
-                onValueChange={(v) => handleYearChange(Number(v))}
-                options={years.map((y) => ({ value: String(y), label: String(y) }))}
-                showAllOption={false}
-              />
-            </FilterField>
-
-            <FilterField label="Miesiąc">
-              <FilterSelect
-                value={String(pickerMonth)}
-                onValueChange={(v) => handleMonthChange(Number(v))}
-                options={MONTHS.map((label, i) => ({ value: String(i + 1), label }))}
-                showAllOption={false}
-              />
-            </FilterField>
-          </>
-        )}
+        <FilterField label="Miesiąc">
+          <FilterSelect
+            value={String(pickerMonth)}
+            onValueChange={(v) => handleMonthChange(Number(v))}
+            options={MONTHS.map((label, i) => ({ value: String(i + 1), label }))}
+            showAllOption={false}
+          />
+        </FilterField>
 
         <FilterField label="Od">
           <Input

@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { getInvestment } from '@/lib/queries/investments'
-import { findTransactions } from '@/lib/queries/transactions'
+import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
 import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -27,8 +27,9 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   const investment = await getInvestment(id)
   if (!investment) notFound()
 
+  const urlFilters = buildTransactionFilters(sp, { id: user.id, isManager: true })
   const { rows, paginationMeta } = await findTransactions({
-    where: { investment: { equals: id } },
+    where: { ...urlFilters, investment: { equals: id } },
     page,
     limit,
   })
@@ -70,6 +71,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
           paginationMeta={paginationMeta}
           excludeColumns={['investment']}
           baseUrl={`/inwestycje/${id}`}
+          filters={{}}
         />
       </div>
     </PageWrapper>

@@ -3,11 +3,12 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { getCashRegister } from '@/lib/queries/cash-registers'
-import { findTransactions } from '@/lib/queries/transactions'
+import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
 import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
+import { StatCard } from '@/components/ui/stat-card'
 
 type PagePropsT = {
   params: Promise<{ id: string }>
@@ -26,8 +27,10 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
   const register = await getCashRegister(id)
   if (!register) notFound()
 
+  const urlFilters = buildTransactionFilters(sp, { id: user.id, isManager: true })
+
   const { rows, paginationMeta } = await findTransactions({
-    where: { cashRegister: { equals: id } },
+    where: { ...urlFilters, cashRegister: { equals: id } },
     page,
     limit,
   })
@@ -43,11 +46,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
         <dd className="text-foreground">{ownerName}</dd>
       </dl>
 
-      {/* Stat card */}
-      <div className="bg-muted/50 border-border mt-6 inline-block rounded-lg border px-6 py-4">
-        <p className="text-muted-foreground text-xs font-medium">Saldo</p>
-        <p className="text-foreground text-xl font-semibold">{formatPLN(register.balance ?? 0)}</p>
-      </div>
+      <StatCard label="Saldo" value={formatPLN(register.balance ?? 0)} className="mt-6" />
 
       {/* Transactions table */}
       <SectionHeader className="mt-8">Transakcje</SectionHeader>
@@ -57,6 +56,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
           paginationMeta={paginationMeta}
           excludeColumns={['cashRegister']}
           baseUrl={`/kasa/${id}`}
+          filters={{}}
         />
       </div>
     </PageWrapper>

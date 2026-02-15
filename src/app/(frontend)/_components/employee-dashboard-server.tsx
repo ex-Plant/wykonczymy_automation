@@ -1,5 +1,4 @@
 import { parsePagination } from '@/lib/pagination'
-import { getMonthDateRange } from '@/lib/helpers'
 import { getEmployeeSaldo } from '@/lib/queries/employees'
 import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
 import { getUserSaldo } from '@/lib/queries/users'
@@ -10,6 +9,7 @@ import { PageWrapper } from '@/components/ui/page-wrapper'
 import { StatCard } from '@/components/ui/stat-card'
 
 const EMPLOYEE_EXCLUDE_COLUMNS = [
+  'type',
   'cashRegister',
   'investment',
   'worker',
@@ -29,24 +29,13 @@ export async function EmployeeDashboardServer({
 }: EmployeeDashboardServerPropsT) {
   const { page, limit } = parsePagination(searchParams)
 
-  // Derive month/year from URL params or default to current month
-  const fromParam = typeof searchParams.from === 'string' ? searchParams.from : undefined
-  const toParam = typeof searchParams.to === 'string' ? searchParams.to : undefined
+  // from/to are guaranteed by the redirect in page.tsx
+  const from = searchParams.from as string
+  const to = searchParams.to as string
+  const displayMonth = new Date(from + 'T00:00:00').getMonth() + 1
+  const displayYear = new Date(from + 'T00:00:00').getFullYear()
 
-  const now = new Date()
-  const hasDateRange = fromParam && toParam
-  const dateRange = hasDateRange
-    ? { from: fromParam, to: toParam }
-    : getMonthDateRange(now.getMonth() + 1, now.getFullYear())
-
-  const displayMonth = new Date(dateRange.from + 'T00:00:00').getMonth() + 1
-  const displayYear = new Date(dateRange.from + 'T00:00:00').getFullYear()
-
-  // Build filters — always scoped to this employee
-  const where = buildTransactionFilters(
-    { ...searchParams, from: dateRange.from, to: dateRange.to },
-    { id: userId, isManager: false },
-  )
+  const where = buildTransactionFilters(searchParams, { id: userId, isManager: false })
 
   const [{ rows, paginationMeta }, overallSaldo, periodSaldo] = await Promise.all([
     findTransactions({ where, page, limit }),
@@ -75,7 +64,7 @@ export async function EmployeeDashboardServer({
           paginationMeta={paginationMeta}
           excludeColumns={EMPLOYEE_EXCLUDE_COLUMNS}
           baseUrl="/"
-          filters={{ showMonthPicker: true }}
+          filters={{ showTypeFilter: false }}
           className="mt-4"
         />
       </div>

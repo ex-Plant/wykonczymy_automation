@@ -130,7 +130,6 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         baseUrl={`/uzytkownicy/${id}`}
         filters={{
           cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
-          showMonthPicker: true,
         }}
         className="mt-4"
       />

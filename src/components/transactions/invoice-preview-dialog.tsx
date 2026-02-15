@@ -56,7 +56,7 @@ export function InvoicePreviewDialog({
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
           {isImage && (
             <div className="relative h-[70vh] w-full">
-              <NextImage src={url} alt={displayName} fill className="object-contain" unoptimized />
+              <NextImage src={url} alt={displayName} fill className="object-contain" />
             </div>
           )}
           {isPdf && (

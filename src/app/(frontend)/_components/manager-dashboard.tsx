@@ -1,6 +1,10 @@
 import { formatPLN } from '@/lib/format-currency'
 import { parsePagination } from '@/lib/pagination'
-import { findTransactions, countRecentTransactions } from '@/lib/queries/transactions'
+import {
+  findTransactions,
+  buildTransactionFilters,
+  countRecentTransactions,
+} from '@/lib/queries/transactions'
 import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { findActiveInvestments } from '@/lib/queries/investments'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
@@ -23,7 +27,11 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
     await Promise.all([
       findAllCashRegisters(),
       findActiveInvestments(),
-      findTransactions({ page, limit }),
+      findTransactions({
+        where: buildTransactionFilters(searchParams, { id: 0, isManager: true }),
+        page,
+        limit,
+      }),
       countRecentTransactions(sinceDate),
     ])
 
@@ -42,7 +50,12 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       <div className="mt-8">
         <SectionHeader>Ostatnie transakcje</SectionHeader>
         <div className="mt-4">
-          <TransactionDataTable data={rows} paginationMeta={paginationMeta} baseUrl="/" />
+          <TransactionDataTable
+            data={rows}
+            paginationMeta={paginationMeta}
+            baseUrl="/"
+            filters={{ cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })) }}
+          />
         </div>
       </div>
     </PageWrapper>
