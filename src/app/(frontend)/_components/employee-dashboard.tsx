@@ -1,33 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { StatCard } from '@/components/ui/stat-card'
+import { MonthYearPicker, MONTHS } from '@/components/ui/month-year-picker'
 import { getEmployeeMonthlyData, type MonthlyDataT } from '@/lib/queries/employees'
-
-const MONTHS = [
-  'Styczeń',
-  'Luty',
-  'Marzec',
-  'Kwiecień',
-  'Maj',
-  'Czerwiec',
-  'Lipiec',
-  'Sierpień',
-  'Wrzesień',
-  'Październik',
-  'Listopad',
-  'Grudzień',
-] as const
 
 const EMPLOYEE_EXCLUDE_COLUMNS = [
   'cashRegister',
@@ -58,9 +37,6 @@ export function EmployeeDashboard({
   const [year, setYear] = useState(initialYear)
   const [monthlyData, setMonthlyData] = useState(initialMonthlyData)
 
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
-
   const refetch = (nextMonth: number, nextYear: number) => {
     startTransition(async () => {
       const result = await getEmployeeMonthlyData({ userId, month: nextMonth, year: nextYear })
@@ -68,14 +44,12 @@ export function EmployeeDashboard({
     })
   }
 
-  const handleMonthChange = (value: string) => {
-    const nextMonth = Number(value)
+  const handleMonthChange = (nextMonth: number) => {
     setMonth(nextMonth)
     refetch(nextMonth, year)
   }
 
-  const handleYearChange = (value: string) => {
-    const nextYear = Number(value)
+  const handleYearChange = (nextYear: number) => {
     setYear(nextYear)
     refetch(month, nextYear)
   }
@@ -83,33 +57,13 @@ export function EmployeeDashboard({
   return (
     <PageWrapper title="Moje konto">
       {/* Month/year selector */}
-      <div className="mt-6 flex gap-3">
-        <Select value={String(month)} onValueChange={handleMonthChange}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {MONTHS.map((label, i) => (
-              <SelectItem key={i + 1} value={String(i + 1)}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={String(year)} onValueChange={handleYearChange}>
-          <SelectTrigger className="w-28">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((y) => (
-              <SelectItem key={y} value={String(y)}>
-                {y}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <MonthYearPicker
+        month={month}
+        year={year}
+        onMonthChange={handleMonthChange}
+        onYearChange={handleYearChange}
+        className="mt-6"
+      />
 
       {/* Saldo cards */}
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">

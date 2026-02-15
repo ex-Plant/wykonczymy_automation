@@ -9,12 +9,14 @@ import { findActiveInvestments } from '@/lib/queries/investments'
 import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
+import { getMonthDateRange } from '@/components/ui/month-year-picker'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { TransactionFilters } from '@/components/transactions/transaction-filters'
 import { ZeroSaldoDialog } from '@/components/settlements/zero-saldo-dialog'
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
+import { Button } from '@/components/ui/button'
 
 const EXCLUDE_COLUMNS = ['investment', 'worker', 'otherCategory', 'invoice']
 
@@ -56,6 +58,22 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     getUserCashRegisterIds(user.id, user.role),
   ])
 
+  // Build report URL — use current date range or default to current month
+  const reportDateRange = hasDateRange
+    ? { from: fromParam, to: toParam }
+    : getMonthDateRange(new Date().getMonth() + 1, new Date().getFullYear())
+
+  const reportParams = new URLSearchParams(
+    Object.entries({
+      from: reportDateRange.from,
+      to: reportDateRange.to,
+      type: sp.type,
+      cashRegister: sp.cashRegister,
+    })
+      .filter(([, v]) => typeof v === 'string' && v !== '')
+      .map(([k, v]) => [k, String(v)]),
+  )
+
   return (
     <PageWrapper title={targetUser.name} backHref="/uzytkownicy" backLabel="Użytkownicy">
       {/* Info section */}
@@ -87,6 +105,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       <TransactionFilters
         cashRegisters={cashRegisters.map((c) => ({ id: c.id, name: c.name }))}
         baseUrl={`/uzytkownicy/${id}`}
+        showMonthPicker
         className="mt-4"
       />
 
@@ -99,28 +118,18 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </div>
       )}
 
-      {/* Print report link */}
-      {hasDateRange && (
-        <div className="mt-4 flex justify-end">
+      {/* Report link — always visible */}
+      <div className="mt-4 flex justify-end">
+        <Button variant="outline" size="sm" asChild>
           <a
-            href={`/uzytkownicy/${id}/raport?${new URLSearchParams(
-              Object.entries({
-                from: fromParam,
-                to: toParam,
-                type: sp.type,
-                cashRegister: sp.cashRegister,
-              })
-                .filter(([, v]) => typeof v === 'string' && v !== '')
-                .map(([k, v]) => [k, String(v)]),
-            ).toString()}`}
+            href={`/uzytkownicy/${id}/raport?${reportParams.toString()}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary text-sm font-medium hover:underline"
           >
-            Drukuj raport &rarr;
+            Generuj raport
           </a>
-        </div>
-      )}
+        </Button>
+      </div>
 
       {/* Transactions table */}
       <div className="mt-4">
