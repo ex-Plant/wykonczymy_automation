@@ -4,7 +4,7 @@ import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { SidebarNav } from './sidebar-nav'
 import { MobileNav } from '@/components/layouts/mobile-nav'
-import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { AddTransactionDialog } from '@/components/dialogs/add-transaction-dialog'
 
 type NavigationPropsT = {
   user: {

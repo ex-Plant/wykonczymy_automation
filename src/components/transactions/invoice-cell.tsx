@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { FileText } from 'lucide-react'
-import { InvoicePreviewDialog } from './invoice-preview-dialog'
+import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
 
 type InvoiceCellPropsT = {
   readonly url: string

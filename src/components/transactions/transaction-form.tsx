@@ -20,7 +20,7 @@ import {
 } from '@/lib/constants/transactions'
 import { createTransactionAction } from '@/lib/actions/transactions'
 import { transactionFormSchema, type CreateTransactionFormT } from '@/lib/schemas/transactions'
-import type { ReferenceDataT } from './add-transaction-dialog'
+import type { ReferenceDataT } from '@/components/dialogs/add-transaction-dialog'
 import useCheckFormErrors from '../forms/hooks/use-check-form-errors'
 
 type TransactionFormPropsT = {

@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { findCashRegisters } from '@/lib/queries/cash-registers'
-import { CashRegisterDataTable } from './_components/cash-register-data-table'
+import { CashRegisterDataTable } from '@/components/cash-registers/cash-register-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
 type PagePropsT = {

@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { TransactionForm } from './transaction-form'
+import { TransactionForm } from '@/components/transactions/transaction-form'
 
 export type ReferenceItemT = { id: number; name: string }
 

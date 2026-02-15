@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { findInvestments } from '@/lib/queries/investments'
-import { InvestmentDataTable } from './_components/investment-data-table'
+import { InvestmentDataTable } from '@/components/investments/investment-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
 type PagePropsT = {

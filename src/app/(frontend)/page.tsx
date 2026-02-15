@@ -1,7 +1,7 @@
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { ManagerDashboard } from './_components/manager-dashboard'
-import { EmployeeDashboardServer } from './_components/employee-dashboard-server'
+import { ManagerDashboard } from '@/components/dashboard/manager-dashboard'
+import { EmployeeDashboardServer } from '@/components/dashboard/employee-dashboard-server'
 import { redirect } from 'next/navigation'
 import { getMonthDateRange } from '@/lib/helpers'
 
