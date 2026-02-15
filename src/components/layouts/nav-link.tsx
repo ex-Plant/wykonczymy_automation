@@ -11,15 +11,24 @@ type NavLinkPropsT = {
   icon: LucideIcon
   size?: 'sm' | 'base'
   className?: string
+  onClick?: () => void
 }
 
-export function NavLink({ href, label, icon: Icon, size = 'sm', className }: NavLinkPropsT) {
+export function NavLink({
+  href,
+  label,
+  icon: Icon,
+  size = 'sm',
+  className,
+  onClick,
+}: NavLinkPropsT) {
   const pathname = usePathname()
   const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
 
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(
         'flex items-center gap-3 rounded-md px-3 transition-colors',
         size === 'base' ? 'py-3 text-base' : 'py-2 text-sm',
