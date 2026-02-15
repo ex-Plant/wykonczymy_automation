@@ -6,6 +6,7 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FieldGroup } from '@/components/ui/field'
 import { SelectItem } from '@/components/ui/select'
+import { FileInput } from '@/components/ui/file-input'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useFormStatus } from '@/components/forms/hooks/use-form-status'
 import useCheckFormErrors from '@/components/forms/hooks/use-check-form-errors'
@@ -54,7 +55,7 @@ export function SettlementForm({
   className,
 }: SettlementFormPropsT) {
   const router = useRouter()
-  const invoiceRef = useRef<HTMLInputElement>(null)
+  const invoiceFilesRef = useRef<Map<number, File>>(new Map())
   const isRegisterLocked = managerCashRegisterId !== undefined
 
   // Saldo is display-only, not form data
@@ -88,11 +89,12 @@ export function SettlementForm({
         })),
       }
 
-      const file = invoiceRef.current?.files?.[0]
       let invoiceFormData: FormData | null = null
-      if (file) {
+      if (invoiceFilesRef.current.size > 0) {
         invoiceFormData = new FormData()
-        invoiceFormData.set('invoice', file)
+        invoiceFilesRef.current.forEach((file, index) => {
+          invoiceFormData!.set(`invoice-${index}`, file)
+        })
       }
 
       const result = await createSettlementAction(data, invoiceFormData)
@@ -115,7 +117,7 @@ export function SettlementForm({
 
   const { isInvalid, isSubmitting } = useFormStatus(form)
 
-  const fetchSaldo = async (workerId: string) => {
+  async function fetchSaldo(workerId: string) {
     setSaldo(null)
     if (!workerId) return
 
@@ -128,6 +130,23 @@ export function SettlementForm({
     } finally {
       setIsSaldoLoading(false)
     }
+  }
+
+  function handleRemoveLineItem(index: number, removeValue: (index: number) => void) {
+    const oldFiles = invoiceFilesRef.current
+    const newFiles = new Map<number, File>()
+    oldFiles.forEach((file, i) => {
+      if (i < index) newFiles.set(i, file)
+      else if (i > index) newFiles.set(i - 1, file)
+    })
+    invoiceFilesRef.current = newFiles
+    removeValue(index)
+  }
+
+  function handleFileChange(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) invoiceFilesRef.current.set(index, file)
+    else invoiceFilesRef.current.delete(index)
   }
 
   return (
@@ -218,30 +237,36 @@ export function SettlementForm({
             {/* Line items */}
             <form.Field name="lineItems" mode="array">
               {(lineItemsField) => (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <p className="text-foreground text-sm font-medium">Pozycje faktury</p>
                   {lineItemsField.state.value.map((_, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="flex-1">
-                        <form.AppField name={`lineItems[${index}].description`}>
-                          {(field) => <field.Input placeholder="Opis pozycji" showError />}
-                        </form.AppField>
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <form.AppField name={`lineItems[${index}].description`}>
+                            {(field) => <field.Input placeholder="Opis pozycji" showError />}
+                          </form.AppField>
+                        </div>
+                        <div className="w-36">
+                          <form.AppField name={`lineItems[${index}].amount`}>
+                            {(field) => <field.Input placeholder="Kwota" type="number" showError />}
+                          </form.AppField>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveLineItem(index, lineItemsField.removeValue)}
+                          disabled={lineItemsField.state.value.length === 1}
+                          aria-label="Usuń pozycję"
+                        >
+                          <X className="size-4" />
+                        </Button>
                       </div>
-                      <div className="w-36">
-                        <form.AppField name={`lineItems[${index}].amount`}>
-                          {(field) => <field.Input placeholder="Kwota" type="number" showError />}
-                        </form.AppField>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => lineItemsField.removeValue(index)}
-                        disabled={lineItemsField.state.value.length === 1}
-                        aria-label="Usuń pozycję"
-                      >
-                        <X className="size-4" />
-                      </Button>
+                      <FileInput
+                        accept="image/*,application/pdf"
+                        onChange={(e) => handleFileChange(index, e)}
+                      />
                     </div>
                   ))}
                   <Button
@@ -257,27 +282,12 @@ export function SettlementForm({
               )}
             </form.Field>
 
-            {/* Invoice file — manual input (not bound to form state, read via ref on submit) */}
-            <div className="space-y-1">
-              <label htmlFor="invoice" className="text-foreground text-sm font-medium">
-                Faktura
-              </label>
-              <input
-                ref={invoiceRef}
-                type="file"
-                id="invoice"
-                name="invoice"
-                accept="image/*,application/pdf"
-                className="text-muted-foreground file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:px-4 file:py-2 file:text-sm file:font-medium"
-              />
-            </div>
-
             {/* Invoice note */}
             <form.AppField name="invoiceNote">
               {(field) => (
                 <field.Textarea
                   label="Notatka do faktury"
-                  placeholder="Wymagane jeśli brak faktury"
+                  placeholder="Wymagane dla pozycji bez faktury"
                   showError
                 />
               )}

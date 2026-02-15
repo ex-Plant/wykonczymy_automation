@@ -3,9 +3,14 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Cache rendered pages in the client Router Cache for 5 min.
+  // Dynamic pages (searchParams/headers) skip this cache by default,
+  // causing a full server round-trip + loader on every navigation.
+  // Server Actions automatically clear the cache, so own mutations
+  // always show fresh data. Staleness only affects other users' changes.
   experimental: {
     staleTimes: {
-      dynamic: 30,
+      dynamic: 300,
     },
   },
   serverExternalPackages: ['payload', 'pino', 'pino-pretty', 'thread-stream'],

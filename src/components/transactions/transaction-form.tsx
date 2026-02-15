@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { SelectItem } from '@/components/ui/select'
+import { FileInput } from '@/components/ui/file-input'
 import { FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import FormFooter from '@/components/forms/form-footer'
@@ -234,19 +235,17 @@ export function TransactionForm({
             </>
           )}
 
-          {/* Invoice file — manual input (not bound to form state, read via DOM on submit) */}
+          {/* Invoice file — not bound to form state, read via ref on submit */}
           {currentType !== 'DEPOSIT' && (
             <div className="space-y-1">
               <label htmlFor="invoice" className="text-foreground text-sm font-medium">
                 Faktura
               </label>
-              <input
+              <FileInput
                 ref={invoiceRef}
-                type="file"
                 id="invoice"
                 name="invoice"
                 accept="image/*,application/pdf"
-                className="text-muted-foreground file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:px-4 file:py-2 file:text-sm file:font-medium"
               />
             </div>
           )}

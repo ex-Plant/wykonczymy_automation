@@ -404,6 +404,20 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - **New files**: `src/components/ui/column-toggle.tsx`, `src/lib/tables/column-meta.ts`
 - **Modified**: `src/components/ui/data-table.tsx`, table column definitions in `src/lib/tables/`
 
+### M16.1: Settlement Form Refactor — TanStack Form + Per-Line Invoices ✅ DONE
+
+- [x] Settlement Zod schemas — client (string values) + server (typed) for both settlement and zero-saldo forms
+- [x] Settlement server actions refactored — `createSettlementAction(data, invoiceFormData)` and `zeroSaldoAction(data)` accept typed data instead of raw FormData, with schema validation via `safeParse`
+- [x] Settlement form rewritten with `useAppForm` — TanStack Form array fields (`form.Field mode="array"` + `pushValue`/`removeValue`) for line items, `form.AppField` for all other fields, `useStore` for reactive total, `listeners.onChange` on worker field for saldo fetch, `useFormStatus` for submit/invalid state, `useCheckFormErrors` for dev debugging
+- [x] Per-line-item invoice uploads — each line item row has its own file input, files tracked via `useRef<Map<number, File>>`, re-indexed on row removal, sent as `invoice-0`, `invoice-1`, ... in FormData
+- [x] Server action handles per-line files — uploads each file separately to media collection, links each transaction to its own mediaId
+- [x] Global `invoiceNote` as fallback — each line item must have either its own file OR the global note
+- [x] Zero-saldo dialog rewritten with `useAppForm` — same TanStack Form pattern, `zeroSaldoFormSchema` validation, typed submit handler
+- [x] Client-side field-level error display (was toast-only before)
+- **New file**: `src/lib/schemas/settlements.ts`
+- **Modified**: `src/lib/actions/settlements.ts`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`
+- **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 new errors)
+
 ### M17: Reports
 
 - [ ] Filterable report views (date range, investment, worker, register)
@@ -429,6 +443,16 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - [ ] **Downloadable invoice PDF in every transaction table** — wherever a transaction row appears in the app (transactions list, investment detail, cash register detail, worker detail, dashboard recent, settlement history), display a download link/icon when the transaction has an attached invoice. This is a **cross-cutting requirement** that affects the shared `TransactionDataTable` component and any other place transactions are rendered.
 - **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`, `src/lib/transactions/map-transaction-row.ts`
 - **Success**: Users can browse, search, and download invoices; invoice PDF download is accessible inline from any transaction row across the entire app
+
+### M20: Add/Replace Invoice on Existing Transactions
+
+- [ ] Edit transaction action — `updateTransactionInvoice(transactionId, invoiceFormData)` server action to upload + attach an invoice to a transaction that currently has none (or replace an existing one)
+- [ ] Inline "Dodaj fakturę" button in transaction table rows where `invoice` is null — opens a small dialog/popover with file input
+- [ ] Permission: MANAGER can add invoices to own transactions, ADMIN/OWNER to any
+- [ ] Revalidate transaction cache after update
+- [ ] Consider: bulk invoice upload (select multiple transactions, upload invoices in batch)
+- **Files**: `src/lib/actions/transactions.ts`, `src/components/transactions/` (new dialog or inline upload component)
+- **Success**: Users can retroactively attach invoices to transactions that were created without one
 
 ---
 

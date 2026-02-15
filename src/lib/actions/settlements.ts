@@ -30,38 +30,49 @@ export async function createSettlementAction(
     return { success: false, error: firstError }
   }
 
-  // Either invoice file or invoiceNote must exist
-  const invoiceFile = invoiceFormData?.get('invoice') as File | null
-  const hasInvoice = invoiceFile && invoiceFile.size > 0
   const hasInvoiceNote = !!parsed.data.invoiceNote
 
-  if (!hasInvoice && !hasInvoiceNote) {
-    return { success: false, error: 'Wymagana jest faktura lub notatka do faktury' }
+  // Each line item must have either its own invoice file or the global invoiceNote
+  for (let i = 0; i < parsed.data.lineItems.length; i++) {
+    const file = invoiceFormData?.get(`invoice-${i}`) as File | null
+    const hasFile = file && file.size > 0
+    if (!hasFile && !hasInvoiceNote) {
+      return {
+        success: false,
+        error: `Pozycja ${i + 1}: wymagana jest faktura lub notatka do faktury`,
+      }
+    }
   }
 
   try {
     const payload = await getPayload({ config })
 
-    // Upload invoice file once if provided
-    let mediaId: number | undefined
-    if (hasInvoice) {
-      const buffer = Buffer.from(await invoiceFile.arrayBuffer())
-      const media = await payload.create({
-        collection: 'media',
-        file: {
-          data: buffer,
-          mimetype: invoiceFile.type,
-          name: invoiceFile.name,
-          size: invoiceFile.size,
-        },
-        data: {},
-      })
-      mediaId = media.id
+    // Upload invoice files per line item
+    const mediaIds: (number | undefined)[] = []
+    for (let i = 0; i < parsed.data.lineItems.length; i++) {
+      const file = invoiceFormData?.get(`invoice-${i}`) as File | null
+      if (file && file.size > 0) {
+        const buffer = Buffer.from(await file.arrayBuffer())
+        const media = await payload.create({
+          collection: 'media',
+          file: {
+            data: buffer,
+            mimetype: file.type,
+            name: file.name,
+            size: file.size,
+          },
+          data: {},
+        })
+        mediaIds.push(media.id)
+      } else {
+        mediaIds.push(undefined)
+      }
     }
 
     // Create N EMPLOYEE_EXPENSE transactions
     let created = 0
-    for (const item of parsed.data.lineItems) {
+    for (let i = 0; i < parsed.data.lineItems.length; i++) {
+      const item = parsed.data.lineItems[i]
       try {
         await payload.create({
           collection: 'transactions',
@@ -74,7 +85,7 @@ export async function createSettlementAction(
             cashRegister: parsed.data.cashRegister,
             investment: parsed.data.investment,
             worker: parsed.data.worker,
-            invoice: mediaId,
+            invoice: mediaIds[i],
             invoiceNote: parsed.data.invoiceNote,
             createdBy: user.id,
           },
