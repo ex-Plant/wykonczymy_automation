@@ -5,58 +5,35 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
-import type { PaymentMethodT } from '@/lib/constants/transactions'
+import {
+  createSettlementSchema,
+  zeroSaldoSchema,
+  type CreateSettlementFormT,
+  type ZeroSaldoFormT,
+} from '@/lib/schemas/settlements'
 
 type ActionResultT = { success: true; count?: number } | { success: false; error: string }
 
-type LineItemT = { description: string; amount: string }
-
-export async function createSettlement(formData: FormData): Promise<ActionResultT> {
-  console.log('createSettlement', formData)
+export async function createSettlementAction(
+  data: CreateSettlementFormT,
+  invoiceFormData: FormData | null,
+): Promise<ActionResultT> {
   const user = await getCurrentUser()
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
 
-  const worker = Number(formData.get('worker'))
-  const investment = Number(formData.get('investment'))
-  const date = formData.get('date') as string
-  const cashRegister = Number(formData.get('cashRegister'))
-  const paymentMethod = formData.get('paymentMethod') as PaymentMethodT
-  const invoiceNote = (formData.get('invoiceNote') as string) || undefined
-  const lineItemsRaw = formData.get('lineItems') as string
-
-  // Validate required shared fields
-  if (!worker || !date || !cashRegister || !paymentMethod) {
-    return { success: false, error: 'Wypełnij wszystkie wymagane pola' }
-  }
-
-  // Parse line items
-  let lineItems: LineItemT[]
-  try {
-    lineItems = JSON.parse(lineItemsRaw)
-  } catch {
-    return { success: false, error: 'Nieprawidłowe dane pozycji' }
-  }
-
-  if (!Array.isArray(lineItems) || lineItems.length === 0) {
-    return { success: false, error: 'Dodaj co najmniej jedną pozycję' }
-  }
-
-  // Validate each line item
-  for (const item of lineItems) {
-    if (!item.description.trim()) {
-      return { success: false, error: 'Wszystkie pozycje muszą mieć opis' }
-    }
-    if (!item.amount || Number(item.amount) <= 0) {
-      return { success: false, error: 'Wszystkie kwoty muszą być większe niż 0' }
-    }
+  // Validate with server schema
+  const parsed = createSettlementSchema.safeParse(data)
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]?.message ?? 'Nieprawidłowe dane'
+    return { success: false, error: firstError }
   }
 
   // Either invoice file or invoiceNote must exist
-  const invoiceFile = formData.get('invoice') as File | null
+  const invoiceFile = invoiceFormData?.get('invoice') as File | null
   const hasInvoice = invoiceFile && invoiceFile.size > 0
-  const hasInvoiceNote = !!invoiceNote
+  const hasInvoiceNote = !!parsed.data.invoiceNote
 
   if (!hasInvoice && !hasInvoiceNote) {
     return { success: false, error: 'Wymagana jest faktura lub notatka do faktury' }
@@ -84,21 +61,21 @@ export async function createSettlement(formData: FormData): Promise<ActionResult
 
     // Create N EMPLOYEE_EXPENSE transactions
     let created = 0
-    for (const item of lineItems) {
+    for (const item of parsed.data.lineItems) {
       try {
         await payload.create({
           collection: 'transactions',
           data: {
             description: item.description,
-            amount: Number(item.amount),
-            date,
+            amount: item.amount,
+            date: parsed.data.date,
             type: 'EMPLOYEE_EXPENSE',
-            paymentMethod,
-            cashRegister,
-            investment,
-            worker,
+            paymentMethod: parsed.data.paymentMethod,
+            cashRegister: parsed.data.cashRegister,
+            investment: parsed.data.investment,
+            worker: parsed.data.worker,
             invoice: mediaId,
-            invoiceNote,
+            invoiceNote: parsed.data.invoiceNote,
             createdBy: user.id,
           },
         })
@@ -107,7 +84,7 @@ export async function createSettlement(formData: FormData): Promise<ActionResult
         const message = err instanceof Error ? err.message : 'Wystąpił błąd'
         return {
           success: false,
-          error: `Utworzono ${created} z ${lineItems.length} transakcji. Błąd: ${message}`,
+          error: `Utworzono ${created} z ${parsed.data.lineItems.length} transakcji. Błąd: ${message}`,
         }
       }
     }
@@ -121,20 +98,17 @@ export async function createSettlement(formData: FormData): Promise<ActionResult
   }
 }
 
-export async function zeroSaldoAction(formData: FormData): Promise<ActionResultT> {
+export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResultT> {
   const user = await getCurrentUser()
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
 
-  const worker = Number(formData.get('worker'))
-  const investment = Number(formData.get('investment'))
-  const cashRegister = Number(formData.get('cashRegister'))
-  const paymentMethod = formData.get('paymentMethod') as PaymentMethodT
-  const amount = Number(formData.get('amount'))
-
-  if (!worker || !investment || !cashRegister || !paymentMethod || !amount || amount <= 0) {
-    return { success: false, error: 'Wypełnij wszystkie wymagane pola' }
+  // Validate with server schema
+  const parsed = zeroSaldoSchema.safeParse(data)
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0]?.message ?? 'Nieprawidłowe dane'
+    return { success: false, error: firstError }
   }
 
   try {
@@ -144,13 +118,13 @@ export async function zeroSaldoAction(formData: FormData): Promise<ActionResultT
       collection: 'transactions',
       data: {
         description: 'Zaliczka na poczet wypłaty',
-        amount,
+        amount: parsed.data.amount,
         date: new Date().toISOString(),
         type: 'EMPLOYEE_EXPENSE',
-        paymentMethod,
-        cashRegister,
-        investment,
-        worker,
+        paymentMethod: parsed.data.paymentMethod,
+        cashRegister: parsed.data.cashRegister,
+        investment: parsed.data.investment,
+        worker: parsed.data.worker,
         invoiceNote: 'Zerowanie salda pracownika',
         createdBy: user.id,
       },
