@@ -2,7 +2,7 @@ import 'server-only'
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import type { RoleT } from '@/collections/users'
+import type { RoleT } from '@/lib/auth/roles'
 
 /**
  * Returns the cash register ids owned by the given user if they are a MANAGER.

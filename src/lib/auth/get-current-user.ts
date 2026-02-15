@@ -3,7 +3,7 @@ import 'server-only'
 import { headers } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import type { RoleT } from '@/collections/users'
+import type { RoleT } from '@/lib/auth/roles'
 
 export type SessionUserT = {
   id: number

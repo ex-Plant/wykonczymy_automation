@@ -1,4 +1,4 @@
-import type { RoleT } from '@/collections/users'
+import type { RoleT } from '@/lib/auth/roles'
 
 const MANAGEMENT_ROLES: readonly RoleT[] = ['ADMIN', 'OWNER', 'MANAGER'] as const
 

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/format-currency'
-import { ROLE_LABELS, type RoleT } from '@/collections/users'
+import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import type { UserRowT } from './types'
 
 const col = createColumnHelper<UserRowT>()

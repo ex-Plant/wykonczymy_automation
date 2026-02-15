@@ -1,5 +1,5 @@
 import type { Access, FieldAccess, PayloadRequest } from 'payload'
-import type { RoleT } from '@/collections/users'
+import type { RoleT } from '@/lib/auth/roles'
 
 type UserWithRole =
   | {
