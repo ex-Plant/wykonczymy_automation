@@ -59,18 +59,15 @@ export function InvoicePreviewDialog({
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
           {isImage && (
             <ImageMedia
-              containerClass={`relative h-full w-[min(90vw,1000px)] `}
+              containerClass={`relative  h-full w-[min(90vw,1000px)] `}
               imgClass="object-contain"
-              sizes="max-(max-width:1200px) 90vw, 1000px"
+              sizes="(max-width:1200px) 90vw, 1000px"
               src={url}
               alt={displayName}
               fill
               quality={50}
             />
           )}
-          {/* {isImage && (
-            <img src={url} alt={displayName} className="max-h-[70vh] max-w-full object-contain" />
-          )} */}
           {isPdf && (
             <iframe src={url} title={displayName} className="h-[70vh] w-full rounded border-0" />
           )}
