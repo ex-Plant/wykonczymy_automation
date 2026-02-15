@@ -1,11 +1,29 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager, rolesOrSelfField } from '@/access'
 
+/** Replace characters that break next/image optimization URLs */
+function sanitizeFilename(name: string): string {
+  return name.replace(/\s+/g, '-').replace(/[()]/g, '')
+}
+
 export const Media: CollectionConfig = {
   slug: 'media',
   labels: {
     singular: { en: 'Media', pl: 'Plik' },
     plural: { en: 'Media', pl: 'Pliki' },
+  },
+  hooks: {
+    beforeChange: [
+      ({ data, req }) => {
+        if (req.file?.name) {
+          req.file.name = sanitizeFilename(req.file.name)
+        }
+        if (data.filename) {
+          data.filename = sanitizeFilename(data.filename)
+        }
+        return data
+      },
+    ],
   },
   upload: {
     staticDir: 'media',

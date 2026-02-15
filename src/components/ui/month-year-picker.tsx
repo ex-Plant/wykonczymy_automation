@@ -46,19 +46,6 @@ export function MonthYearPicker({
 
   return (
     <div className={cn('flex gap-3', className)}>
-      <Select value={String(month)} onValueChange={(v) => onMonthChange(Number(v))}>
-        <SelectTrigger className="w-40">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {MONTHS.map((label, i) => (
-            <SelectItem key={i + 1} value={String(i + 1)}>
-              {label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
         <SelectTrigger className="w-28">
           <SelectValue />
@@ -67,6 +54,18 @@ export function MonthYearPicker({
           {years.map((y) => (
             <SelectItem key={y} value={String(y)}>
               {y}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={String(month)} onValueChange={(v) => onMonthChange(Number(v))}>
+        <SelectTrigger className="w-40">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {MONTHS.map((label, i) => (
+            <SelectItem key={i + 1} value={String(i + 1)}>
+              {label}
             </SelectItem>
           ))}
         </SelectContent>

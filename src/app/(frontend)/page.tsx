@@ -15,5 +15,5 @@ export default async function DashboardPage({ searchParams }: PagePropsT) {
 
   if (isManagementRole(user.role)) return <ManagerDashboard searchParams={params} />
 
-  return <EmployeeDashboardServer userId={user.id} />
+  return <EmployeeDashboardServer userId={user.id} searchParams={params} />
 }

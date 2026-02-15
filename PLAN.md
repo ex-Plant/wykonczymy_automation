@@ -382,106 +382,27 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 
 ---
 
-### Future Milestones (not yet planned in detail)
+### M15: Migrate `unstable_cache` → `use cache` Directive ✅ DONE
 
-### M15: Migrate `unstable_cache` → `use cache` Directive
+- [x] Enabled `cacheComponents: true` in `next.config.ts`
+- [x] Migrated all query functions from `unstable_cache` wrapper → `'use cache'` directive + `cacheTag()` inside function body
+- [x] Removed manual `keyParts` arrays — cache key derived from function arguments automatically
+- [x] Split `employees.ts` (`'use server'`) — cached data functions moved to new `src/lib/queries/employee-data.ts` (`'use cache'`), server action wrappers remain in `employees.ts`
+- [x] `revalidateTag()` in actions and hooks unchanged — works identically with `use cache`
+- **Modified**: `next.config.ts`, `src/lib/queries/transactions.ts`, `src/lib/queries/cash-registers.ts`, `src/lib/queries/investments.ts`, `src/lib/queries/users.ts`, `src/lib/queries/employees.ts`, `src/lib/queries/reference-data.ts`, `src/lib/auth/get-user-cash-registers.ts`
+- **New file**: `src/lib/queries/employee-data.ts`
+- **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 errors)
 
-Next.js 16 ships the `use cache` directive as the stable replacement for `unstable_cache`. The migration is mechanical — every query file follows the same pattern.
+### M16: Table Column Management ✅ DONE
 
-#### 1. Enable `cacheComponents` in `next.config.ts`
-
-```typescript
-const nextConfig: NextConfig = {
-  cacheComponents: true,
-  // ... existing config
-}
-```
-
-#### 2. Migrate query functions
-
-Replace the `unstable_cache` wrapper with `'use cache'` directive + `cacheTag()` inside each function body.
-
-**Before** (`unstable_cache`):
-
-```typescript
-import { unstable_cache } from 'next/cache'
-
-export const findTransactions = unstable_cache(
-  async ({ where, page, limit, sort }: FindTransactionsOptsT) => {
-    const payload = await getPayload({ config })
-    const result = await payload.find({ ... })
-    return { rows: result.docs.map(mapTransactionRow), paginationMeta: buildPaginationMeta(result, limit) }
-  },
-  ['find-transactions'],
-  { tags: [CACHE_TAGS.transactions] },
-)
-```
-
-**After** (`use cache`):
-
-```typescript
-import { cacheTag } from 'next/cache'
-
-export async function findTransactions({ where, page, limit, sort }: FindTransactionsOptsT) {
-  'use cache'
-  cacheTag(CACHE_TAGS.transactions)
-  const payload = await getPayload({ config })
-  const result = await payload.find({ ... })
-  return { rows: result.docs.map(mapTransactionRow), paginationMeta: buildPaginationMeta(result, limit) }
-}
-```
-
-Key changes per function:
-
-- Remove `unstable_cache` wrapper → normal `async function` with `'use cache'` directive
-- Remove manual `keyParts` array → cache key derived from function arguments automatically
-- `tags` option → `cacheTag()` call inside function body
-- Optional: add `cacheLife('hours')` / `cacheLife('max')` for time-based expiry
-
-#### 3. Handle `'use server'` + `'use cache'` in `employees.ts`
-
-The `employees.ts` file has `'use server'` at file level (functions are server actions callable from client). Two options:
-
-- **Option A**: Move cached inner functions to a separate file (e.g. `queries/employee-data.ts` with `'use cache'`), keep server action wrappers in `employees.ts`
-- **Option B**: Use function-level `'use cache'` inside the inner functions (test if this works alongside file-level `'use server'`)
-
-#### 4. Verify `revalidateTag` still works
-
-`revalidateTag()` in server actions and Payload hooks works the same way with `use cache` — no changes needed in `src/lib/cache/revalidate.ts` or any action/hook files.
-
-#### Files to modify
-
-| Action | File                                           |
-| ------ | ---------------------------------------------- |
-| MODIFY | `next.config.ts` (add `cacheComponents: true`) |
-| MODIFY | `src/lib/queries/transactions.ts`              |
-| MODIFY | `src/lib/queries/cash-registers.ts`            |
-| MODIFY | `src/lib/queries/investments.ts`               |
-| MODIFY | `src/lib/queries/users.ts`                     |
-| MODIFY | `src/lib/queries/employees.ts`                 |
-| MODIFY | `src/lib/queries/reference-data.ts`            |
-| MODIFY | `src/lib/auth/get-user-cash-registers.ts`      |
-
-#### Verification
-
-- `pnpm typecheck` (0 errors)
-- `pnpm lint` (0 errors)
-- Navigate between pages — data loads from cache on revisit (no loader)
-- Create a transaction → revisit pages → fresh data (tag revalidation works)
-- Test `withPayload` compatibility with `cacheComponents: true`
-
-#### Risk
-
-- Check that Payload's `withPayload()` wrapper doesn't conflict with `cacheComponents: true`. If it does, defer until Payload releases a compatible version.
-
-### M16: Table Column Management
-
-- [ ] Column visibility toggle — allow users to hide/show columns in data tables (transactions, users, investments, cash registers)
-- [ ] Column reordering — drag-and-drop or menu-based column reordering
-- [ ] Persist preferences per user (localStorage or DB) so column config survives page reload
-- [ ] TanStack Table already supports `columnVisibility` and `columnOrder` state — wire into existing `DataTable` component
-- **Files**: `src/components/ui/data-table.tsx`, new `src/components/ui/column-settings.tsx`
-- **Success**: Users can hide irrelevant columns and reorder them to their preference
+- [x] Column visibility toggle — `src/components/ui/column-toggle.tsx` dropdown with `Settings2` icon, respects `meta.canHide` and `meta.label`
+- [x] Column definition meta — `src/lib/tables/column-meta.ts` augments TanStack Table with `label` and `canHide` properties
+- [x] Persist visibility to localStorage — `src/components/ui/data-table.tsx` reads/writes `table-columns:{storageKey}` key
+- [x] Applied to transaction and investment tables with `storageKey` prop
+- [x] Clickable table rows — whole row is a navigable link where relevant
+- [x] Dropdown stays open on checkbox toggle (`onSelect` with `preventDefault`)
+- **New files**: `src/components/ui/column-toggle.tsx`, `src/lib/tables/column-meta.ts`
+- **Modified**: `src/components/ui/data-table.tsx`, table column definitions in `src/lib/tables/`
 
 ### M17: Reports
 
@@ -491,17 +412,13 @@ The `employees.ts` file has `'use server'` at file level (functions are server a
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M18: Mobile Modal Overflow Fix
+### M18: Mobile Modal Overflow Fix ✅ DONE
 
-- [ ] **New Transaction modal** — horizontal overflow on mobile, content wider than viewport
-- [ ] Audit all other modals for the same issue: Settlement form, Zero Saldo dialog, Add Transaction dialog
-- [ ] **Full-screen modals on mobile** — modals should take up the full viewport height on mobile (sheet/drawer pattern: `h-dvh` or `min-h-dvh`), with scrollable content area inside
-- [ ] Ensure modal content uses `max-w-full`, `overflow-auto`, or responsive width constraints
-- [ ] Form fields inside modals must not exceed viewport width (selects, inputs, textareas, file inputs)
-- [ ] Desktop modals remain centered/dialog style (change is mobile-only, use `sm:` breakpoint)
-- [ ] Test at 320px–428px viewport widths (iPhone SE → iPhone 15 Pro Max)
-- **Files**: `src/components/ui/dialog.tsx`, `src/components/transactions/add-transaction-dialog.tsx`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`
-- **Success**: All modals are full-screen on mobile (no overflow, no horizontal scroll), standard dialog on desktop
+- [x] Fixed horizontal overflow on mobile for transaction, settlement, and zero-saldo modals
+- [x] Full-screen modals on mobile (sheet/drawer pattern), standard dialog on desktop
+- [x] Form fields constrained to viewport width
+- **Modified**: `src/components/ui/dialog.tsx`, modal components
+- **Verified**: Tested at 320px–428px viewport widths
 
 ### M19: Invoices View & Download
 

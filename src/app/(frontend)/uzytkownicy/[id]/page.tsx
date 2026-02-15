@@ -11,7 +11,6 @@ import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { getMonthDateRange } from '@/lib/helpers'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
-import { TransactionFilters } from '@/components/transactions/transaction-filters'
 import { ZeroSaldoDialog } from '@/components/settlements/zero-saldo-dialog'
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -100,18 +99,9 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         />
       </div>
 
-      {/* Filters */}
-      <SectionHeader className="mt-8">Transakcje</SectionHeader>
-      <TransactionFilters
-        cashRegisters={cashRegisters.map((c) => ({ id: c.id, name: c.name }))}
-        baseUrl={`/uzytkownicy/${id}`}
-        showMonthPicker
-        className="mt-4"
-      />
-
       {/* Period stats — only shown when date range is active */}
       {periodBreakdown && (
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Zaliczki w okresie" value={formatPLN(periodBreakdown.totalAdvances)} />
           <StatCard label="Wydatki w okresie" value={formatPLN(periodBreakdown.totalExpenses)} />
           <StatCard label="Saldo okresu" value={formatPLN(periodBreakdown.periodSaldo)} />
@@ -131,15 +121,19 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </Button>
       </div>
 
-      {/* Transactions table */}
-      <div className="mt-4">
-        <TransactionDataTable
-          data={rows}
-          paginationMeta={paginationMeta}
-          excludeColumns={EXCLUDE_COLUMNS}
-          baseUrl={`/uzytkownicy/${id}`}
-        />
-      </div>
+      {/* Transactions table with filters */}
+      <SectionHeader className="mt-8">Transakcje</SectionHeader>
+      <TransactionDataTable
+        data={rows}
+        paginationMeta={paginationMeta}
+        excludeColumns={EXCLUDE_COLUMNS}
+        baseUrl={`/uzytkownicy/${id}`}
+        filters={{
+          cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
+          showMonthPicker: true,
+        }}
+        className="mt-4"
+      />
     </PageWrapper>
   )
 }

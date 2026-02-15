@@ -20,7 +20,7 @@ import { cn } from '@/lib/cn'
 type ReferenceItemT = { id: number; name: string }
 
 type TransactionFiltersPropsT = {
-  cashRegisters: ReferenceItemT[]
+  cashRegisters?: ReferenceItemT[]
   baseUrl: string
   showMonthPicker?: boolean
   className?: string
@@ -90,13 +90,15 @@ export function TransactionFilters({
           />
         </FilterField>
 
-        <FilterField label="Kasa">
-          <FilterSelect
-            value={currentCashRegister}
-            onValueChange={(v) => updateParam('cashRegister', v)}
-            options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
-          />
-        </FilterField>
+        {cashRegisters && cashRegisters.length > 0 && (
+          <FilterField label="Kasa">
+            <FilterSelect
+              value={currentCashRegister}
+              onValueChange={(v) => updateParam('cashRegister', v)}
+              options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
+            />
+          </FilterField>
+        )}
       </div>
       <div className="flex flex-wrap items-end gap-3">
         {showMonthPicker && (

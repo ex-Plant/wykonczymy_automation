@@ -1,6 +1,6 @@
 import { createColumnHelper } from '@tanstack/react-table'
-import { FileText } from 'lucide-react'
 import { formatPLN } from '@/lib/format-currency'
+import { InvoiceCell } from '@/components/transactions/invoice-cell'
 import {
   TRANSACTION_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
@@ -19,7 +19,9 @@ export type TransactionRowT = {
   readonly investmentName: string
   readonly workerName: string
   readonly otherCategoryName: string
-  readonly hasInvoice: boolean
+  readonly invoiceUrl: string | null
+  readonly invoiceFilename: string | null
+  readonly invoiceMimeType: string | null
 }
 
 /**
@@ -39,7 +41,9 @@ export function mapTransactionRow(doc: any): TransactionRowT {
     investmentName: getRelationName(doc.investment),
     workerName: getRelationName(doc.worker),
     otherCategoryName: getRelationName(doc.otherCategory),
-    hasInvoice: doc.invoice != null,
+    invoiceUrl: getMediaField(doc.invoice, 'url'),
+    invoiceFilename: getMediaField(doc.invoice, 'filename'),
+    invoiceMimeType: getMediaField(doc.invoice, 'mimeType'),
   }
 }
 
@@ -50,9 +54,27 @@ function getRelationName(field: unknown): string {
   return '—'
 }
 
+function getMediaField(field: unknown, key: string): string | null {
+  if (typeof field === 'object' && field !== null && key in field) {
+    return (field as Record<string, unknown>)[key] as string | null
+  }
+  return null
+}
+
 const col = createColumnHelper<TransactionRowT>()
 
 const allColumns = [
+  col.accessor('date', {
+    id: 'date',
+    header: 'Data',
+    meta: { label: 'Data' },
+    cell: (info) =>
+      new Date(info.getValue()).toLocaleDateString('pl-PL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }),
+  }),
   col.accessor('description', {
     id: 'description',
     header: 'Opis',
@@ -73,28 +95,25 @@ const allColumns = [
     meta: { label: 'Typ' },
     cell: (info) => TRANSACTION_TYPE_LABELS[info.getValue() as TransactionTypeT] ?? info.getValue(),
   }),
-  col.accessor('paymentMethod', {
-    id: 'paymentMethod',
-    header: 'Metoda',
-    meta: { label: 'Metoda' },
-    cell: (info) => PAYMENT_METHOD_LABELS[info.getValue() as PaymentMethodT] ?? info.getValue(),
-  }),
-  col.accessor('date', {
-    id: 'date',
-    header: 'Data',
-    meta: { label: 'Data' },
-    cell: (info) =>
-      new Date(info.getValue()).toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      }),
-  }),
-  col.accessor('cashRegisterName', {
-    id: 'cashRegister',
-    header: 'Kasa',
-    meta: { label: 'Kasa' },
+
+  col.accessor('workerName', {
+    id: 'worker',
+    header: 'Pracownik',
+    meta: { label: 'Pracownik' },
     cell: (info) => info.getValue(),
+  }),
+
+  col.accessor('invoiceUrl', {
+    id: 'invoice',
+    header: 'Faktura',
+    meta: { label: 'Faktura' },
+    enableSorting: false,
+    cell: (info) => {
+      const url = info.getValue()
+      if (!url) return <span className="text-muted-foreground">—</span>
+      const row = info.row.original
+      return <InvoiceCell url={url} filename={row.invoiceFilename} mimeType={row.invoiceMimeType} />
+    },
   }),
   col.accessor('investmentName', {
     id: 'investment',
@@ -102,10 +121,10 @@ const allColumns = [
     meta: { label: 'Inwestycja' },
     cell: (info) => info.getValue(),
   }),
-  col.accessor('workerName', {
-    id: 'worker',
-    header: 'Pracownik',
-    meta: { label: 'Pracownik' },
+  col.accessor('cashRegisterName', {
+    id: 'cashRegister',
+    header: 'Kasa',
+    meta: { label: 'Kasa' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('otherCategoryName', {
@@ -114,17 +133,11 @@ const allColumns = [
     meta: { label: 'Kategoria' },
     cell: (info) => info.getValue(),
   }),
-  col.accessor('hasInvoice', {
-    id: 'invoice',
-    header: 'Faktura',
-    meta: { label: 'Faktura' },
-    enableSorting: false,
-    cell: (info) =>
-      info.getValue() ? (
-        <FileText className="text-muted-foreground size-4" />
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      ),
+  col.accessor('paymentMethod', {
+    id: 'paymentMethod',
+    header: 'Metoda',
+    meta: { label: 'Metoda' },
+    cell: (info) => PAYMENT_METHOD_LABELS[info.getValue() as PaymentMethodT] ?? info.getValue(),
   }),
 ]
 
