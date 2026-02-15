@@ -2,9 +2,11 @@
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { isManagementRole } from '@/lib/auth/permissions'
 import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
-import { mapTransactionRow } from './map-transaction-row'
-import type { TransactionRowT } from './types'
+import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
+import type { TransactionRowT } from '@/lib/transactions/types'
 import {
   buildPaginationMeta,
   DEFAULT_LIMIT,
@@ -69,4 +71,16 @@ export async function getEmployeeMonthlyData({
     paginationMeta: buildPaginationMeta(transactions, safeLimit),
     monthlySaldo,
   }
+}
+
+export async function getManagementEmployeeSaldo(workerId: number): Promise<{ saldo: number }> {
+  const user = await getCurrentUser()
+  if (!user || !isManagementRole(user.role)) {
+    throw new Error('Brak uprawnień')
+  }
+
+  const payload = await getPayload({ config })
+  const saldo = await sumEmployeeSaldo(payload, workerId)
+
+  return { saldo }
 }

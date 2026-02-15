@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
-import { loginAction } from '@/lib/auth/actions'
+import { loginAction } from '@/lib/actions/auth'
 
 export function LoginForm() {
   const router = useRouter()

@@ -1,5 +1,5 @@
 import { EmployeeDashboard } from './employee-dashboard'
-import { getEmployeeSaldo, getEmployeeMonthlyData } from '@/lib/transactions/get-employee-dashboard'
+import { getEmployeeSaldo, getEmployeeMonthlyData } from '@/lib/queries/employees'
 
 type EmployeeDashboardServerPropsT = {
   userId: number

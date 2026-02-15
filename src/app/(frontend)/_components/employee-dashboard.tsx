@@ -12,10 +12,7 @@ import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { StatCard } from '@/components/ui/stat-card'
-import {
-  getEmployeeMonthlyData,
-  type MonthlyDataT,
-} from '@/lib/transactions/get-employee-dashboard'
+import { getEmployeeMonthlyData, type MonthlyDataT } from '@/lib/queries/employees'
 
 const MONTHS = [
   'Styczeń',

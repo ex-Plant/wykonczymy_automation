@@ -9,7 +9,7 @@ import type { ReferenceDataT } from '@/components/transactions/add-transaction-d
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { NAV_ITEMS } from '@/components/layouts/nav-items'
 import { NavLink } from '@/components/layouts/nav-link'
-import { logoutAction } from '@/lib/auth/actions'
+import { logoutAction } from '@/lib/actions/auth'
 import { MobileMenuToggle } from '@/components/layouts/mobile-menu-toggle'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 

@@ -27,7 +27,7 @@ import {
   PAYMENT_METHOD_LABELS,
   type PaymentMethodT,
 } from '@/lib/constants/transactions'
-import { zeroSaldoAction } from '@/lib/settlements/actions'
+import { zeroSaldoAction } from '@/lib/actions/settlements'
 
 type ZeroSaldoDialogPropsT = {
   saldo: number

@@ -21,7 +21,8 @@ import {
   PAYMENT_METHOD_LABELS,
   type PaymentMethodT,
 } from '@/lib/constants/transactions'
-import { getEmployeeSaldo, createSettlement } from '@/lib/settlements/actions'
+import { getManagementEmployeeSaldo } from '@/lib/queries/employees'
+import { createSettlement } from '@/lib/actions/settlements'
 import { cn } from '../../lib/cn'
 
 type ReferenceDataT = {
@@ -88,7 +89,7 @@ export function SettlementForm({
 
     setIsSaldoLoading(true)
     try {
-      const result = await getEmployeeSaldo(Number(value))
+      const result = await getManagementEmployeeSaldo(Number(value))
       setSaldo(result.saldo)
     } catch {
       toastMessage('Nie udało się pobrać salda', 'error')

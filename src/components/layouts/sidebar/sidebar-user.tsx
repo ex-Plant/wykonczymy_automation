@@ -3,7 +3,7 @@
 import { useTransition } from 'react'
 import { LogOut } from 'lucide-react'
 import { getInitials } from '@/lib/get-initials'
-import { logoutAction } from '@/lib/auth/actions'
+import { logoutAction } from '@/lib/actions/auth'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 
 type SidebarUserPropsT = {

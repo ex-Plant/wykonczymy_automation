@@ -5,26 +5,11 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import type { PaymentMethodT } from '@/lib/constants/transactions'
-
-type SaldoResultT = { saldo: number }
 
 type ActionResultT = { success: true; count?: number } | { success: false; error: string }
 
 type LineItemT = { description: string; amount: string }
-
-export async function getEmployeeSaldo(workerId: number): Promise<SaldoResultT> {
-  const user = await getCurrentUser()
-  if (!user || !isManagementRole(user.role)) {
-    throw new Error('Brak uprawnień')
-  }
-
-  const payload = await getPayload({ config })
-  const saldo = await sumEmployeeSaldo(payload, workerId)
-
-  return { saldo }
-}
 
 export async function createSettlement(formData: FormData): Promise<ActionResultT> {
   console.log('createSettlement', formData)
