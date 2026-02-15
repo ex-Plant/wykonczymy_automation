@@ -352,84 +352,129 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 
 ---
 
+### M14: Centralized Query Layer + lib/ Cleanup ✅ DONE
+
+- [x] Shared pagination helper (`src/lib/pagination.ts`) — `parsePagination()`, `buildPaginationMeta()`, constants
+- [x] Query files: `src/lib/queries/` — transactions, investments, cash-registers, users, employees, reference-data
+- [x] All queries self-contained — each creates own Payload instance, wrapped with `unstable_cache` + tag-based invalidation
+- [x] Pages no longer manage Payload instances — just call cached query functions
+- [x] Server actions consolidated into `src/lib/actions/` (auth, transactions, settlements)
+- [x] Table configs consolidated into `src/lib/tables/` (one file per entity: type + columns + mapper)
+- [x] Schemas moved to `src/lib/schemas/` (transactions)
+- [x] Navigation `fetchReferenceData` moved to `src/lib/queries/reference-data.ts`
+- [x] `getUserCashRegisterIds` wrapped with `unstable_cache`
+- [x] Inline `payload.find()` calls in pages replaced with proper cached query functions
+- [x] Dead code removed: `getEmployeeMonthData`, `EmployeeMonthDataT`, `SerializedTransactionT`
+- **Final `src/lib/` structure**:
+  ```
+  lib/
+  ├── actions/       (auth.ts, transactions.ts, settlements.ts)
+  ├── auth/          (get-current-user.ts, get-user-cash-registers.ts, permissions.ts, roles.ts)
+  ├── cache/         (tags.ts, revalidate.ts)
+  ├── constants/     (transactions.ts)
+  ├── db/            (sum-transactions.ts)
+  ├── queries/       (transactions.ts, cash-registers.ts, investments.ts, users.ts, employees.ts, reference-data.ts)
+  ├── schemas/       (transactions.ts)
+  ├── tables/        (transactions.tsx, cash-registers.tsx, investments.tsx, users.tsx)
+  └── [utilities]    (cn.ts, env.ts, pagination.ts, format-currency.ts)
+  ```
+- **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 errors)
+
+---
+
 ### Future Milestones (not yet planned in detail)
 
-### M14: Centralized Query Layer
+### M15: Migrate `unstable_cache` → `use cache` Directive
 
-Extract all data fetching from `page.tsx` files into co-located `queries.ts` files per domain. Pages become thin: auth guard → parse params → call query → render JSX.
+Next.js 16 ships the `use cache` directive as the stable replacement for `unstable_cache`. The migration is mechanical — every query file follows the same pattern.
 
-#### Shared pagination helper: `src/lib/pagination.ts` (NEW)
+#### 1. Enable `cacheComponents` in `next.config.ts`
 
-- `parsePagination(searchParams)` → `{ page, limit }` — replaces duplicated `DEFAULT_LIMIT` / `ALLOWED_LIMITS` / `pageParam` / `limitParam` logic in every page
-- `buildPaginationMeta(payloadResult)` → `{ currentPage, totalPages, totalDocs, limit }` — replaces repeated `paginationMeta` object construction
-- Constants `DEFAULT_LIMIT = 20`, `ALLOWED_LIMITS = [20, 50, 100]` defined once
+```typescript
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+  // ... existing config
+}
+```
 
-#### Query files: `src/lib/queries/` (NEW directory)
+#### 2. Migrate query functions
 
-**`src/lib/queries/transactions.ts`**
+Replace the `unstable_cache` wrapper with `'use cache'` directive + `cacheTag()` inside each function body.
 
-- `findTransactions(payload, { where, page, limit, sort })` — returns mapped rows + pagination meta. Used by: `/transakcje`, `/inwestycje/[id]`, `/kasa/[id]`, `/uzytkownicy/[id]`
-- `buildTransactionFilters(searchParams, userContext)` — where-clause builder extracted from `transakcje/page.tsx`
+**Before** (`unstable_cache`):
 
-**`src/lib/queries/investments.ts`**
+```typescript
+import { unstable_cache } from 'next/cache'
 
-- `findInvestments(payload, { page, limit })` — returns mapped rows + meta
-- `getInvestment(payload, id)` — single by ID (returns `notFound()` on miss)
-- `findActiveInvestments(payload)` — reference data (pagination: false, depth: 0)
+export const findTransactions = unstable_cache(
+  async ({ where, page, limit, sort }: FindTransactionsOptsT) => {
+    const payload = await getPayload({ config })
+    const result = await payload.find({ ... })
+    return { rows: result.docs.map(mapTransactionRow), paginationMeta: buildPaginationMeta(result, limit) }
+  },
+  ['find-transactions'],
+  { tags: [CACHE_TAGS.transactions] },
+)
+```
 
-**`src/lib/queries/cash-registers.ts`**
+**After** (`use cache`):
 
-- `findCashRegisters(payload, { page, limit })` — returns mapped rows + meta
-- `getCashRegister(payload, id)` — single by ID
-- `findAllCashRegisters(payload)` — reference data
+```typescript
+import { cacheTag } from 'next/cache'
 
-**`src/lib/queries/users.ts`**
+export async function findTransactions({ where, page, limit, sort }: FindTransactionsOptsT) {
+  'use cache'
+  cacheTag(CACHE_TAGS.transactions)
+  const payload = await getPayload({ config })
+  const result = await payload.find({ ... })
+  return { rows: result.docs.map(mapTransactionRow), paginationMeta: buildPaginationMeta(result, limit) }
+}
+```
 
-- `findUsersWithSaldos(payload, { page, limit })` — users + cached saldos, returns rows + meta
-- `getUser(payload, id)` — single by ID
-- `getUserSaldo(payload, userId)` — cached employee saldo (wraps `unstable_cache`)
+Key changes per function:
 
-#### What stays in pages
+- Remove `unstable_cache` wrapper → normal `async function` with `'use cache'` directive
+- Remove manual `keyParts` array → cache key derived from function arguments automatically
+- `tags` option → `cacheTag()` call inside function body
+- Optional: add `cacheLife('hours')` / `cacheLife('max')` for time-based expiry
 
-- Auth guards + redirects
-- `await searchParams` → `parsePagination(sp)`
-- Calling query functions
-- JSX rendering
+#### 3. Handle `'use server'` + `'use cache'` in `employees.ts`
 
-#### What moves to queries
+The `employees.ts` file has `'use server'` at file level (functions are server actions callable from client). Two options:
 
-- All `payload.find()` / `payload.findByID()` calls
-- Row mapping (mapTransactionRow, investment/cash-register/user row mapping)
-- `unstable_cache` wrappers
-- Where-clause construction
-- Pagination meta extraction
+- **Option A**: Move cached inner functions to a separate file (e.g. `queries/employee-data.ts` with `'use cache'`), keep server action wrappers in `employees.ts`
+- **Option B**: Use function-level `'use cache'` inside the inner functions (test if this works alongside file-level `'use server'`)
 
-#### Design decisions
+#### 4. Verify `revalidateTag` still works
 
-- Query functions accept `payload` instance as first arg (avoids duplicate `getPayload()` when page calls multiple queries)
-- Each query returns **ready-to-render typed data** (rows, not raw Payload docs)
-- Caching lives inside the query function, not the page
+`revalidateTag()` in server actions and Payload hooks works the same way with `use cache` — no changes needed in `src/lib/cache/revalidate.ts` or any action/hook files.
 
-#### Files
+#### Files to modify
 
 | Action | File                                           |
 | ------ | ---------------------------------------------- |
-| NEW    | `src/lib/pagination.ts`                        |
-| NEW    | `src/lib/queries/transactions.ts`              |
-| NEW    | `src/lib/queries/investments.ts`               |
-| NEW    | `src/lib/queries/cash-registers.ts`            |
-| NEW    | `src/lib/queries/users.ts`                     |
-| MODIFY | `src/app/(frontend)/transakcje/page.tsx`       |
-| MODIFY | `src/app/(frontend)/inwestycje/page.tsx`       |
-| MODIFY | `src/app/(frontend)/inwestycje/[id]/page.tsx`  |
-| MODIFY | `src/app/(frontend)/kasa/page.tsx`             |
-| MODIFY | `src/app/(frontend)/kasa/[id]/page.tsx`        |
-| MODIFY | `src/app/(frontend)/uzytkownicy/page.tsx`      |
-| MODIFY | `src/app/(frontend)/uzytkownicy/[id]/page.tsx` |
+| MODIFY | `next.config.ts` (add `cacheComponents: true`) |
+| MODIFY | `src/lib/queries/transactions.ts`              |
+| MODIFY | `src/lib/queries/cash-registers.ts`            |
+| MODIFY | `src/lib/queries/investments.ts`               |
+| MODIFY | `src/lib/queries/users.ts`                     |
+| MODIFY | `src/lib/queries/employees.ts`                 |
+| MODIFY | `src/lib/queries/reference-data.ts`            |
+| MODIFY | `src/lib/auth/get-user-cash-registers.ts`      |
 
-- **Success**: Every `page.tsx` is under ~30 lines. All data fetching logic is testable in isolation. Zero duplication of pagination parsing.
+#### Verification
 
-### M15: Table Column Management
+- `pnpm typecheck` (0 errors)
+- `pnpm lint` (0 errors)
+- Navigate between pages — data loads from cache on revisit (no loader)
+- Create a transaction → revisit pages → fresh data (tag revalidation works)
+- Test `withPayload` compatibility with `cacheComponents: true`
+
+#### Risk
+
+- Check that Payload's `withPayload()` wrapper doesn't conflict with `cacheComponents: true`. If it does, defer until Payload releases a compatible version.
+
+### M16: Table Column Management
 
 - [ ] Column visibility toggle — allow users to hide/show columns in data tables (transactions, users, investments, cash registers)
 - [ ] Column reordering — drag-and-drop or menu-based column reordering
@@ -438,7 +483,7 @@ Extract all data fetching from `page.tsx` files into co-located `queries.ts` fil
 - **Files**: `src/components/ui/data-table.tsx`, new `src/components/ui/column-settings.tsx`
 - **Success**: Users can hide irrelevant columns and reorder them to their preference
 
-### M16: Reports
+### M17: Reports
 
 - [ ] Filterable report views (date range, investment, worker, register)
 - [ ] Daily / monthly / yearly summaries
@@ -446,7 +491,19 @@ Extract all data fetching from `page.tsx` files into co-located `queries.ts` fil
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M17: Invoices View & Download
+### M18: Mobile Modal Overflow Fix
+
+- [ ] **New Transaction modal** — horizontal overflow on mobile, content wider than viewport
+- [ ] Audit all other modals for the same issue: Settlement form, Zero Saldo dialog, Add Transaction dialog
+- [ ] **Full-screen modals on mobile** — modals should take up the full viewport height on mobile (sheet/drawer pattern: `h-dvh` or `min-h-dvh`), with scrollable content area inside
+- [ ] Ensure modal content uses `max-w-full`, `overflow-auto`, or responsive width constraints
+- [ ] Form fields inside modals must not exceed viewport width (selects, inputs, textareas, file inputs)
+- [ ] Desktop modals remain centered/dialog style (change is mobile-only, use `sm:` breakpoint)
+- [ ] Test at 320px–428px viewport widths (iPhone SE → iPhone 15 Pro Max)
+- **Files**: `src/components/ui/dialog.tsx`, `src/components/transactions/add-transaction-dialog.tsx`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`
+- **Success**: All modals are full-screen on mobile (no overflow, no horizontal scroll), standard dialog on desktop
+
+### M19: Invoices View & Download
 
 - [ ] Dedicated page for browsing/searching uploaded invoices (currently only accessible via individual transactions)
 - [ ] Filtering by date, worker, investment

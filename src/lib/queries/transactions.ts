@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache'
+import { cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
@@ -11,41 +11,44 @@ type FindTransactionsOptsT = PaginationParamsT & {
   readonly sort?: string
 }
 
-export const findTransactions = unstable_cache(
-  async ({ where = {}, page, limit, sort = '-date' }: FindTransactionsOptsT) => {
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'transactions',
-      where,
-      sort,
-      limit,
-      page,
-      depth: 1,
-    })
+export async function findTransactions({
+  where = {},
+  page,
+  limit,
+  sort = '-date',
+}: FindTransactionsOptsT) {
+  'use cache'
+  cacheTag(CACHE_TAGS.transactions)
 
-    return {
-      rows: result.docs.map(mapTransactionRow),
-      paginationMeta: buildPaginationMeta(result, limit),
-    }
-  },
-  ['find-transactions'],
-  { tags: [CACHE_TAGS.transactions] },
-)
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: 'transactions',
+    where,
+    sort,
+    limit,
+    page,
+    depth: 1,
+  })
 
-export const countRecentTransactions = unstable_cache(
-  async (sinceDate: string) => {
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'transactions',
-      limit: 0,
-      where: { date: { greater_than_equal: sinceDate } },
-    })
+  return {
+    rows: result.docs.map(mapTransactionRow),
+    paginationMeta: buildPaginationMeta(result, limit),
+  }
+}
 
-    return result.totalDocs
-  },
-  ['count-recent-transactions'],
-  { tags: [CACHE_TAGS.transactions] },
-)
+export async function countRecentTransactions(sinceDate: string) {
+  'use cache'
+  cacheTag(CACHE_TAGS.transactions)
+
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: 'transactions',
+    limit: 0,
+    where: { date: { greater_than_equal: sinceDate } },
+  })
+
+  return result.totalDocs
+}
 
 type SearchParamsT = Record<string, string | string[] | undefined>
 

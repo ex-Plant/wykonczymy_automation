@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { unstable_cache } from 'next/cache'
+import { cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { RoleT } from '@/lib/auth/roles'
@@ -18,17 +18,16 @@ export async function getUserCashRegisterIds(
   return getCachedManagerRegisterIds(userId)
 }
 
-const getCachedManagerRegisterIds = unstable_cache(
-  async (userId: number) => {
-    const payload = await getPayload({ config })
-    const { docs } = await payload.find({
-      collection: 'cash-registers',
-      where: { owner: { equals: userId } },
-      limit: 100,
-      depth: 0,
-    })
-    return docs.map((doc) => doc.id as number)
-  },
-  ['manager-register-ids'],
-  { tags: [CACHE_TAGS.cashRegisters] },
-)
+async function getCachedManagerRegisterIds(userId: number) {
+  'use cache'
+  cacheTag(CACHE_TAGS.cashRegisters)
+
+  const payload = await getPayload({ config })
+  const { docs } = await payload.find({
+    collection: 'cash-registers',
+    where: { owner: { equals: userId } },
+    limit: 100,
+    depth: 0,
+  })
+  return docs.map((doc) => doc.id as number)
+}
