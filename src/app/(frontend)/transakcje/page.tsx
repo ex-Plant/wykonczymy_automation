@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { parsePagination } from '@/lib/pagination'
 import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
 import { findAllCashRegisters } from '@/lib/queries/cash-registers'
-import { TransactionFilters } from './_components/transaction-filters'
+import { TransactionFilters } from '@/components/transactions/transaction-filters'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
@@ -33,7 +33,11 @@ export default async function TransactionsPage({ searchParams }: PagePropsT) {
 
   return (
     <PageWrapper title="Transakcje">
-      <TransactionFilters cashRegisters={cashRegisterOptions} className="mt-6" />
+      <TransactionFilters
+        cashRegisters={cashRegisterOptions}
+        baseUrl="/transakcje"
+        className="mt-6"
+      />
 
       <TransactionDataTable
         data={rows}

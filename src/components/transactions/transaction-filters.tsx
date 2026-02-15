@@ -19,10 +19,15 @@ type ReferenceItemT = { id: number; name: string }
 
 type TransactionFiltersPropsT = {
   cashRegisters: ReferenceItemT[]
+  baseUrl: string
   className?: string
 }
 
-export function TransactionFilters({ cashRegisters, className }: TransactionFiltersPropsT) {
+export function TransactionFilters({
+  cashRegisters,
+  baseUrl,
+  className,
+}: TransactionFiltersPropsT) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -33,13 +38,11 @@ export function TransactionFilters({ cashRegisters, className }: TransactionFilt
 
   function updateParam(key: string, value: string) {
     // Reset to page 1 when changing filters
-    router.push(
-      buildUrlWithParams('/transakcje', searchParams.toString(), { [key]: value, page: '' }),
-    )
+    router.push(buildUrlWithParams(baseUrl, searchParams.toString(), { [key]: value, page: '' }))
   }
 
   function clearFilters() {
-    router.push('/transakcje')
+    router.push(baseUrl)
   }
 
   const hasFilters = currentType || currentCashRegister || currentFrom || currentTo
