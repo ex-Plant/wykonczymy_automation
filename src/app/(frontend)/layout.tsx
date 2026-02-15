@@ -1,5 +1,5 @@
 import '@/styles/globals.css'
-import React from 'react'
+import React, { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 
 import { abcFavorit, dmSans, spaceMono } from '@/fonts'
@@ -7,11 +7,9 @@ import { cn } from '@/lib/cn'
 import { ToastContainer } from 'react-toastify'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { Navigation } from '@/components/layouts/sidebar/navigation'
+import { Loader } from '@/components/ui/loader/loader'
 
-export default async function FrontendLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser()
-  if (!user) redirect('/zaloguj')
-
+export default function FrontendLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="pl"
@@ -19,12 +17,23 @@ export default async function FrontendLayout({ children }: { children: React.Rea
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground relative overscroll-none scroll-smooth">
-        <div className="flex min-h-screen flex-col md:flex-row">
-          <Navigation user={user} />
-          <main className="flex-1 overflow-y-auto">{children}</main>
-        </div>
+        <Suspense fallback={<Loader loading={true} />}>
+          <AuthenticatedShell>{children}</AuthenticatedShell>
+        </Suspense>
         <ToastContainer style={{ zIndex: 10001 }} />
       </body>
     </html>
+  )
+}
+
+async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser()
+  if (!user) redirect('/zaloguj')
+
+  return (
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <Navigation user={user} />
+      <main className="flex-1 overflow-y-auto">{children}</main>
+    </div>
   )
 }
