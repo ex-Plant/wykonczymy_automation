@@ -1,12 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/cn'
-import { NAV_ITEMS } from '@/components/layouts/nav-items'
 import { isManagementRole } from '@/lib/auth/permissions'
-import type { RoleT } from '@/collections/users'
+import type { RoleT } from '@/lib/auth/roles'
+import { NAV_ITEMS } from '@/components/layouts/nav-items'
+import { NavLink } from '@/components/layouts/nav-link'
 import { SidebarUser } from './sidebar-user'
 
 type SidebarNavPropsT = {
@@ -19,7 +17,6 @@ type SidebarNavPropsT = {
 }
 
 export function SidebarNav({ user, action }: SidebarNavPropsT) {
-  const pathname = usePathname()
   const isManager = isManagementRole(user.role)
 
   const visibleItems = NAV_ITEMS.filter(
@@ -35,25 +32,9 @@ export function SidebarNav({ user, action }: SidebarNavPropsT) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-2">
-        {visibleItems.map(({ label, href, icon: Icon }) => {
-          const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                isActive
-                  ? 'bg-accent text-accent-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          )
-        })}
+        {visibleItems.map(({ label, href, icon }) => (
+          <NavLink key={href} href={href} label={label} icon={icon} />
+        ))}
       </nav>
 
       {/* Quick action slot */}
