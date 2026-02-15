@@ -2,7 +2,12 @@ import { cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
-import { sumAllWorkerSaldos, sumEmployeeSaldo } from '@/lib/db/sum-transactions'
+import {
+  sumAllWorkerSaldos,
+  sumEmployeeSaldo,
+  sumWorkerPeriodBreakdown,
+  type WorkerPeriodBreakdownT,
+} from '@/lib/db/sum-transactions'
 import type { UserRowT } from '@/lib/tables/users'
 import type { RoleT } from '@/lib/auth/roles'
 import { CACHE_TAGS } from '@/lib/cache/tags'
@@ -50,6 +55,18 @@ export async function getUserSaldo(userId: string) {
 
   const payload = await getPayload({ config })
   return sumEmployeeSaldo(payload, Number(userId))
+}
+
+export async function getWorkerPeriodBreakdown(
+  workerId: string,
+  from: string,
+  to: string,
+): Promise<WorkerPeriodBreakdownT> {
+  'use cache'
+  cacheTag(CACHE_TAGS.transactions)
+
+  const payload = await getPayload({ config })
+  return sumWorkerPeriodBreakdown(payload, Number(workerId), { start: from, end: to })
 }
 
 export async function findAllUsers() {
