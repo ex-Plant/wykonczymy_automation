@@ -1,4 +1,5 @@
 import {
+  isAdminOrOwner,
   isAdminOrOwnerOrManagerBoolean,
   isAdminOrOwnerField,
   isAdminOrOwnerOrManager,
@@ -30,8 +31,8 @@ export const Users: CollectionConfig = {
   access: {
     read: isAdminOrOwnerOrManager,
     create: isAdminOrOwnerOrManager,
-    update: isAdminOrOwnerOrManager,
-    delete: isAdminOrOwnerOrManager,
+    update: isAdminOrOwner,
+    delete: isAdminOrOwner,
     admin: isAdminOrOwnerOrManagerBoolean,
   },
   fields: [
@@ -53,7 +54,9 @@ export const Users: CollectionConfig = {
       })),
       saveToJWT: true,
       access: {
-        // Only ADMIN/OWNER can change roles
+        // Only ADMIN/OWNER can set or change roles
+        // MANAGER creating a user → field not writable → defaults to EMPLOYEE
+        create: isAdminOrOwnerField,
         update: isAdminOrOwnerField,
       },
     },
