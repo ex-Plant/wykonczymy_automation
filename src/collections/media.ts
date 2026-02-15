@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminOrOwner, isAdminOrOwnerOrManager, rolesOrSelfField } from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 
 /** Replace characters that break next/image optimization URLs */
 function sanitizeFilename(name: string): string {

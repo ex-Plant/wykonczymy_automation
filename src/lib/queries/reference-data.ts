@@ -1,10 +1,11 @@
-import { cacheTag } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 
 export async function fetchReferenceData() {
   'use cache'
+  cacheLife('max')
   cacheTag(
     CACHE_TAGS.cashRegisters,
     CACHE_TAGS.investments,

@@ -1,4 +1,4 @@
-import { cacheTag } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
@@ -14,6 +14,7 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 
 export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions, CACHE_TAGS.users)
 
   const payload = await getPayload({ config })
@@ -38,6 +39,7 @@ export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
 
 export async function getUser(id: string) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.users)
 
   const payload = await getPayload({ config })
@@ -51,6 +53,7 @@ export async function getUser(id: string) {
 
 export async function getUserSaldo(userId: string) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })
@@ -63,6 +66,7 @@ export async function getWorkerPeriodBreakdown(
   to: string,
 ): Promise<WorkerPeriodBreakdownT> {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })
@@ -71,6 +75,7 @@ export async function getWorkerPeriodBreakdown(
 
 export async function findAllUsers() {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.users)
 
   const payload = await getPayload({ config })

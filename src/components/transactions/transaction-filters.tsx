@@ -171,13 +171,7 @@ type FilterSelectPropsT = {
   className?: string
 }
 
-function FilterSelect({
-  value,
-  onValueChange,
-  options,
-  showAllOption = true,
-  className,
-}: FilterSelectPropsT) {
+function FilterSelect({ value, onValueChange, options, showAllOption = true }: FilterSelectPropsT) {
   return (
     <Select value={value} onValueChange={(v) => onValueChange(v === 'ALL' ? '' : v)}>
       <SelectTrigger className={'min-w-40'}>

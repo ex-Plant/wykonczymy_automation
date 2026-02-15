@@ -1,4 +1,4 @@
-import { cacheTag } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
@@ -8,6 +8,7 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 
 export async function getCachedEmployeeSaldo(userId: number) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })
@@ -22,6 +23,7 @@ export async function getCachedMonthlyData(
   limit: number,
 ) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })

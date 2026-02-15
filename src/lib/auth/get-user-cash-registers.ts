@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { cacheTag } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { RoleT } from '@/lib/auth/roles'
@@ -20,6 +20,7 @@ export async function getUserCashRegisterIds(
 
 async function getCachedManagerRegisterIds(userId: number) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.cashRegisters)
 
   const payload = await getPayload({ config })

@@ -1,4 +1,4 @@
-import { cacheTag } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import type { Where } from 'payload'
@@ -18,6 +18,7 @@ export async function findTransactions({
   sort = '-date',
 }: FindTransactionsOptsT) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })
@@ -44,6 +45,7 @@ export async function findAllTransactions({
   readonly sort?: string
 }) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })
@@ -60,6 +62,7 @@ export async function findAllTransactions({
 
 export async function countRecentTransactions(sinceDate: string) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
   const payload = await getPayload({ config })

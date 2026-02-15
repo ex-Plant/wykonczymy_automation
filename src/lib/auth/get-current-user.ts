@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { cache } from 'react'
 import { headers } from 'next/headers'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -12,7 +13,7 @@ export type SessionUserT = {
   role: RoleT
 }
 
-export async function getCurrentUser(): Promise<SessionUserT | undefined> {
+export const getCurrentUser = cache(async (): Promise<SessionUserT | undefined> => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await headers() })
 
@@ -24,4 +25,4 @@ export async function getCurrentUser(): Promise<SessionUserT | undefined> {
     name: user.name,
     role: user.role,
   }
-}
+})

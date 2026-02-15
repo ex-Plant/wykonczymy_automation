@@ -75,8 +75,6 @@ export const ImageMedia: React.FC<any> = (props) => {
         .map(([, value]) => `(max-width: ${value}px) ${value * 2}w`)
         .join(', ')
 
-  console.log({ sizes })
-
   return (
     <picture className={cn(pictureClassName)}>
       <NextImage

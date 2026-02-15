@@ -1,4 +1,4 @@
-import { cacheTag } from 'next/cache'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
@@ -7,6 +7,7 @@ import type { InvestmentRowT } from '@/lib/tables/investments'
 
 export async function findInvestments({ page, limit }: PaginationParamsT) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.investments)
 
   const payload = await getPayload({ config })
@@ -36,6 +37,7 @@ export async function findInvestments({ page, limit }: PaginationParamsT) {
 
 export async function getInvestment(id: string) {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.investments)
 
   const payload = await getPayload({ config })
@@ -49,6 +51,7 @@ export async function getInvestment(id: string) {
 
 export async function findActiveInvestments() {
   'use cache'
+  cacheLife('max')
   cacheTag(CACHE_TAGS.investments)
 
   const payload = await getPayload({ config })
