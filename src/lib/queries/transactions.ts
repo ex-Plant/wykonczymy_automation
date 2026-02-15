@@ -36,6 +36,28 @@ export async function findTransactions({
   }
 }
 
+export async function findAllTransactions({
+  where = {},
+  sort = '-date',
+}: {
+  readonly where?: Where
+  readonly sort?: string
+}) {
+  'use cache'
+  cacheTag(CACHE_TAGS.transactions)
+
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: 'transactions',
+    where,
+    sort,
+    pagination: false,
+    depth: 1,
+  })
+
+  return result.docs.map(mapTransactionRow)
+}
+
 export async function countRecentTransactions(sinceDate: string) {
   'use cache'
   cacheTag(CACHE_TAGS.transactions)
