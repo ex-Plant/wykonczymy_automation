@@ -223,9 +223,6 @@ export function SettlementForm({
         <Label>Pozycje faktury</Label>
         {lineItems.map((item, index) => (
           <div key={item.id} className="flex items-start gap-2">
-            <span className="text-muted-foreground flex h-9 items-center text-sm">
-              {index + 1}.
-            </span>
             <Input
               placeholder="Opis pozycji"
               value={item.description}

@@ -13,7 +13,12 @@ type CashRegisterDataTablePropsT = {
 export function CashRegisterDataTable({ data, paginationMeta }: CashRegisterDataTablePropsT) {
   return (
     <div className="mt-6 space-y-4">
-      <DataTable data={data} columns={cashRegisterColumns} emptyMessage="Brak kas" />
+      <DataTable
+        data={data}
+        columns={cashRegisterColumns}
+        emptyMessage="Brak kas"
+        getRowHref={(row: CashRegisterRowT) => `/kasa/${row.id}`}
+      />
       <PaginationFooter paginationMeta={paginationMeta} baseUrl="/kasa" />
     </div>
   )

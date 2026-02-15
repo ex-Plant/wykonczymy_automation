@@ -1,6 +1,7 @@
 'use client'
 
 import { DataTable } from '@/components/ui/data-table'
+import { ColumnToggle } from '@/components/ui/column-toggle'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
 import { getTransactionColumns, type TransactionRowT } from '@/lib/tables/transactions'
 import type { PaginationMetaT } from '@/lib/pagination'
@@ -25,7 +26,13 @@ export function TransactionDataTable({
 
   return (
     <div className={cn('space-y-4', className)}>
-      <DataTable data={data} columns={columns} emptyMessage="Brak transakcji" />
+      <DataTable
+        data={data}
+        columns={columns}
+        emptyMessage="Brak transakcji"
+        storageKey="transactions"
+        toolbar={(table) => <ColumnToggle table={table} />}
+      />
       <PaginationFooter paginationMeta={paginationMeta} baseUrl={baseUrl} />
     </div>
   )
