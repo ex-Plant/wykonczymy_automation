@@ -12,7 +12,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { TRANSACTION_TYPES, TRANSACTION_TYPE_LABELS } from '@/lib/constants/transactions'
-import { MonthYearPicker, getMonthDateRange } from '@/components/ui/month-year-picker'
+import { MONTHS } from '@/components/ui/month-year-picker'
+import { getMonthDateRange } from '@/lib/helpers'
 import { buildUrlWithParams } from '@/lib/helpers'
 import { cn } from '@/lib/cn'
 
@@ -70,20 +71,14 @@ export function TransactionFilters({
     updateMultipleParams({ from, to })
   }
 
+  const currentYear = now.getFullYear()
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
+
   const hasFilters = currentType || currentCashRegister || currentFrom || currentTo
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      {showMonthPicker && (
-        <MonthYearPicker
-          month={pickerMonth}
-          year={pickerYear}
-          onMonthChange={handleMonthChange}
-          onYearChange={handleYearChange}
-        />
-      )}
-
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap gap-3">
         <FilterField label="Typ">
           <FilterSelect
             value={currentType}
@@ -102,6 +97,29 @@ export function TransactionFilters({
             options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
           />
         </FilterField>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        {showMonthPicker && (
+          <>
+            <FilterField label="Rok">
+              <FilterSelect
+                value={String(pickerYear)}
+                onValueChange={(v) => handleYearChange(Number(v))}
+                options={years.map((y) => ({ value: String(y), label: String(y) }))}
+                showAllOption={false}
+              />
+            </FilterField>
+
+            <FilterField label="Miesiąc">
+              <FilterSelect
+                value={String(pickerMonth)}
+                onValueChange={(v) => handleMonthChange(Number(v))}
+                options={MONTHS.map((label, i) => ({ value: String(i + 1), label }))}
+                showAllOption={false}
+              />
+            </FilterField>
+          </>
+        )}
 
         <FilterField label="Od">
           <Input
@@ -147,17 +165,24 @@ type FilterSelectPropsT = {
   value: string
   onValueChange: (value: string) => void
   options: FilterOptionT[]
+  showAllOption?: boolean
   className?: string
 }
 
-function FilterSelect({ value, onValueChange, options, className }: FilterSelectPropsT) {
+function FilterSelect({
+  value,
+  onValueChange,
+  options,
+  showAllOption = true,
+  className,
+}: FilterSelectPropsT) {
   return (
     <Select value={value} onValueChange={(v) => onValueChange(v === 'ALL' ? '' : v)}>
       <SelectTrigger className={'min-w-40'}>
         <SelectValue placeholder="Wszystkie" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="ALL">Wszystkie</SelectItem>
+        {showAllOption && <SelectItem value="ALL">Wszystkie</SelectItem>}
         {options.map((opt) => (
           <SelectItem key={opt.value} value={opt.value}>
             {opt.label}
