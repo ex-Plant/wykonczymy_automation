@@ -86,7 +86,7 @@ export function ZeroSaldoDialog({
           Zeruj saldo
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Zeruj saldo pracownika</DialogTitle>
           <DialogDescription>

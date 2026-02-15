@@ -43,8 +43,8 @@ export function AddTransactionDialog({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader className={`p-4`}>
             <DialogTitle>Nowa transakcja</DialogTitle>
             <DialogDescription>Wypełnij formularz, aby dodać nową transakcję.</DialogDescription>
           </DialogHeader>

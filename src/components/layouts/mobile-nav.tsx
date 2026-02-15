@@ -83,7 +83,7 @@ export function MobileNav({ user, referenceData }: MobileNavPropsT) {
                   label={label}
                   icon={icon}
                   size="base"
-                  onClick={close}
+                  onClick={() => setIsOpen(false)}
                 />
               ))}
             </nav>
