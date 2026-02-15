@@ -74,6 +74,25 @@
   }
 }
 
+@media print {
+  /* Hide navigation and sidebar */
+  aside,
+  [data-slot='mobile-nav'],
+  [data-slot='sheet-overlay'] {
+    display: none !important;
+  }
+
+  /* Clean print background */
+  body {
+    background: white !important;
+  }
+
+  /* Remove shadows for cleaner print */
+  * {
+    box-shadow: none !important;
+  }
+}
+
 /*https://tailwindcss.com/docs/adding-custom-styles/*
 
 
