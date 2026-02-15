@@ -125,15 +125,15 @@ For invoice file uploads (PDF, images).
 
 ## Access Control
 
-| Collection      | ADMIN       | OWNER       | MANAGER                      | EMPLOYEE                 |
-| --------------- | ----------- | ----------- | ---------------------------- | ------------------------ |
-| Users           | full CRUD   | full CRUD   | read all                     | read self only           |
-| CashRegisters   | full CRUD   | full CRUD   | read all, update own balance | no access                |
-| Investments     | full CRUD   | full CRUD   | read all                     | no access                |
-| Transactions    | full CRUD   | full CRUD   | create, read all, update own | read own (worker = self) |
-| OtherCategories | full CRUD   | full CRUD   | read                         | no access                |
-| Media           | full CRUD   | full CRUD   | create, read                 | read own                 |
-| Payload Admin   | full access | full access | full access                  | no access                |
+| Collection      | ADMIN       | OWNER       | MANAGER                          | EMPLOYEE                 |
+| --------------- | ----------- | ----------- | -------------------------------- | ------------------------ |
+| Users           | full CRUD   | full CRUD   | create (EMPLOYEE only), read all | read self only           |
+| CashRegisters   | full CRUD   | full CRUD   | read all, update own balance     | no access                |
+| Investments     | full CRUD   | full CRUD   | read all                         | no access                |
+| Transactions    | full CRUD   | full CRUD   | create, read all, update own     | read own (worker = self) |
+| OtherCategories | full CRUD   | full CRUD   | read                             | no access                |
+| Media           | full CRUD   | full CRUD   | create, read                     | read own                 |
+| Payload Admin   | full access | full access | full access                      | no access                |
 
 ---
 
@@ -269,7 +269,7 @@ For invoice file uploads (PDF, images).
 
 #### Note: Adding workers & investments
 
-Adding new workers (Users) and investments is handled exclusively via the **Payload admin panel** — no frontend forms needed. MANAGER already has read access; ADMIN/OWNER create entries in the admin panel.
+Adding new workers (Users) and investments is handled exclusively via the **Payload admin panel** — no frontend forms needed. MANAGER can create EMPLOYEE users only (role field locked to default); ADMIN/OWNER can create users with any role.
 
 ### M8.2: Refactoring & Dashboard Improvements ✅ DONE
 
@@ -310,7 +310,22 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 
 - **Searchable combobox** — sidebar/forms fetch all users/investments/categories upfront with `pagination: false`. Won't scale past ~100-200 records, but fine for a construction company with <50 workers, <100 investments, <10 registers. Defer to a later milestone if growth warrants it.
 
-### M10: Reports
+### Bug Fixes (post-M9)
+
+- [x] **Pagination not navigating** — `UrlPagination` called `e.preventDefault()` unconditionally, blocking `<Link>` navigation when `onNavigate` wasn't passed. Made `handleClick` conditional.
+- [x] **Pagination page windowing** — all page buttons rendered (e.g. 20 buttons). Replaced with 5-page sliding window + first/last page buttons + configurable jump-by-N arrows (`jumpSize` prop, default 5). New utility: `src/components/ui/pagination/get-windowed-pages.ts`.
+- [x] **MANAGER privilege escalation** — MANAGER could create users with any role (ADMIN, OWNER). Added `create: isAdminOrOwnerField` to role field; restricted collection `update`/`delete` to `isAdminOrOwner`. MANAGER can now only create EMPLOYEE users (role field defaults when not writable).
+
+### M10: Table Column Management
+
+- [ ] Column visibility toggle — allow users to hide/show columns in data tables (transactions, users, investments, cash registers)
+- [ ] Column reordering — drag-and-drop or menu-based column reordering
+- [ ] Persist preferences per user (localStorage or DB) so column config survives page reload
+- [ ] TanStack Table already supports `columnVisibility` and `columnOrder` state — wire into existing `DataTable` component
+- **Files**: `src/components/ui/data-table.tsx`, new `src/components/ui/column-settings.tsx`
+- **Success**: Users can hide irrelevant columns and reorder them to their preference
+
+### M11: Reports (was M10)
 
 - [ ] Filterable report views (date range, investment, worker, register)
 - [ ] Daily / monthly / yearly summaries
@@ -318,7 +333,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - **Files**: `src/app/(frontend)/reports/`
 - **Success**: OWNER/MANAGER can generate filtered reports
 
-### M11: Invoices View & Download
+### M12: Invoices View & Download
 
 - [ ] Dedicated page for browsing/searching uploaded invoices (currently only accessible via individual transactions)
 - [ ] Filtering by date, worker, investment
@@ -328,7 +343,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`, `src/lib/transactions/map-transaction-row.ts`
 - **Success**: Users can browse, search, and download invoices; invoice PDF download is accessible inline from any transaction row across the entire app
 
-### M12: Deployment (in progress)
+### M13: Deployment (in progress)
 
 - [x] Vercel project setup
 - [x] Neon Postgres provisioning + data migrated

@@ -22,7 +22,7 @@ export type ReferenceDataT = {
 }
 
 type AddTransactionDialogPropsT = {
-  referenceData: ReferenceDataT
+  referenceData: ReferenceDataT | undefined
   managerCashRegisterId?: number
   variant?: 'default' | 'icon'
 }
@@ -32,6 +32,8 @@ export function AddTransactionDialog({
   managerCashRegisterId,
 }: AddTransactionDialogPropsT) {
   const [isOpen, setIsOpen] = useState(false)
+
+  if (!referenceData) return <></>
 
   return (
     <>

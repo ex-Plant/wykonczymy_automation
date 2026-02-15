@@ -11,6 +11,7 @@ import {
   PaginationNext,
 } from './pagination/pagination'
 import { getWindowedPages } from './pagination/get-windowed-pages'
+import { buildUrlWithParams } from '@/lib/helpers'
 import { cn } from '@/lib/cn'
 
 type UrlPaginationPropsT = {
@@ -34,16 +35,10 @@ export function UrlPagination({
 
   if (totalPages <= 1) return null
 
-  const buildPageUrl = (page: number) => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (page > 1) {
-      params.set('page', String(page))
-    } else {
-      params.delete('page')
-    }
-    const qs = params.toString()
-    return `${baseUrl}${qs ? `?${qs}` : ''}`
-  }
+  const buildPageUrl = (page: number) =>
+    buildUrlWithParams(baseUrl, searchParams.toString(), {
+      page: page > 1 ? String(page) : '',
+    })
 
   function handleClick(e: React.MouseEvent, href: string) {
     if (!onNavigate) return

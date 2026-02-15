@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { TRANSACTION_TYPES, TRANSACTION_TYPE_LABELS } from '@/lib/constants/transactions'
+import { buildUrlWithParams } from '@/lib/helpers'
 import { cn } from '@/lib/cn'
 
 type ReferenceItemT = { id: number; name: string }
@@ -31,15 +32,10 @@ export function TransactionFilters({ cashRegisters, className }: TransactionFilt
   const currentTo = searchParams.get('to') ?? ''
 
   function updateParam(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString())
-    if (value) {
-      params.set(key, value)
-    } else {
-      params.delete(key)
-    }
     // Reset to page 1 when changing filters
-    params.delete('page')
-    router.push(`/transakcje?${params.toString()}`)
+    router.push(
+      buildUrlWithParams('/transakcje', searchParams.toString(), { [key]: value, page: '' }),
+    )
   }
 
   function clearFilters() {

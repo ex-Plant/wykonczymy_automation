@@ -5,20 +5,18 @@ import {
   isAdminOrOwnerOrManager,
 } from '@/access'
 import type { CollectionConfig } from 'payload'
-
-export const ROLES = ['ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE'] as const
-export type RoleT = (typeof ROLES)[number]
-
-export const ROLE_LABELS: Record<RoleT, { en: string; pl: string }> = {
-  ADMIN: { en: 'Admin', pl: 'Admin' },
-  OWNER: { en: 'Owner', pl: 'Właściciel' },
-  MANAGER: { en: 'Manager', pl: 'Majster' },
-  EMPLOYEE: { en: 'Employee', pl: 'Pracownik' },
-}
+import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { ROLES, ROLE_LABELS } from '@/lib/auth/roles'
 
 export const Users: CollectionConfig = {
   slug: 'users',
-  auth: true,
+  auth: {
+    tokenExpiration: 86400, // 24 hours until app logs you out
+  },
+  hooks: {
+    afterChange: [makeRevalidateAfterChange('users')],
+    afterDelete: [makeRevalidateAfterDelete('users')],
+  },
   labels: {
     singular: { en: 'User', pl: 'Użytkownik' },
     plural: { en: 'Users', pl: 'Użytkownicy' },
