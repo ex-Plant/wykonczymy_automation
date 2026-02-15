@@ -21,15 +21,50 @@ export const investmentColumns = [
   col.accessor('name', {
     id: 'name',
     header: 'Nazwa',
+    meta: { canHide: false, label: 'Nazwa' },
     cell: (info) => (
       <Link href={`/inwestycje/${info.row.original.id}`} className="hover:underline">
         {info.getValue()}
       </Link>
     ),
   }),
+
+  col.accessor('totalCosts', {
+    id: 'totalCosts',
+    header: () => <span className="block text-right">Koszty</span>,
+    meta: { label: 'Koszty' },
+    cell: (info) => (
+      <span className="block text-right font-medium">{formatPLN(info.getValue())}</span>
+    ),
+  }),
+  col.accessor('address', {
+    id: 'address',
+    header: 'Adres',
+    meta: { label: 'Adres' },
+    cell: (info) => info.getValue() || '—',
+  }),
+  col.accessor('phone', {
+    id: 'phone',
+    header: 'Telefon',
+    meta: { label: 'Telefon' },
+    cell: (info) => info.getValue() || '—',
+  }),
+  col.accessor('email', {
+    id: 'email',
+    header: 'Email',
+    meta: { label: 'Email' },
+    cell: (info) => info.getValue() || '—',
+  }),
+  col.accessor('contactPerson', {
+    id: 'contactPerson',
+    header: 'Osoba kontaktowa',
+    meta: { label: 'Osoba kontaktowa' },
+    cell: (info) => info.getValue() || '—',
+  }),
   col.accessor('status', {
     id: 'status',
     header: 'Status',
+    meta: { label: 'Status' },
     cell: (info) => {
       const isActive = info.getValue() === 'active'
       return (
@@ -44,32 +79,5 @@ export const investmentColumns = [
         </span>
       )
     },
-  }),
-  col.accessor('totalCosts', {
-    id: 'totalCosts',
-    header: () => <span className="block text-right">Koszty</span>,
-    cell: (info) => (
-      <span className="block text-right font-medium">{formatPLN(info.getValue())}</span>
-    ),
-  }),
-  col.accessor('address', {
-    id: 'address',
-    header: 'Adres',
-    cell: (info) => info.getValue() || '—',
-  }),
-  col.accessor('phone', {
-    id: 'phone',
-    header: 'Telefon',
-    cell: (info) => info.getValue() || '—',
-  }),
-  col.accessor('email', {
-    id: 'email',
-    header: 'Email',
-    cell: (info) => info.getValue() || '—',
-  }),
-  col.accessor('contactPerson', {
-    id: 'contactPerson',
-    header: 'Osoba kontaktowa',
-    cell: (info) => info.getValue() || '—',
   }),
 ]

@@ -56,11 +56,13 @@ const allColumns = [
   col.accessor('description', {
     id: 'description',
     header: 'Opis',
+    meta: { canHide: false, label: 'Opis' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('amount', {
     id: 'amount',
     header: () => <span className="block text-right">Kwota</span>,
+    meta: { label: 'Kwota' },
     cell: (info) => (
       <span className="block text-right font-medium">{formatPLN(info.getValue())}</span>
     ),
@@ -68,16 +70,19 @@ const allColumns = [
   col.accessor('type', {
     id: 'type',
     header: 'Typ',
+    meta: { label: 'Typ' },
     cell: (info) => TRANSACTION_TYPE_LABELS[info.getValue() as TransactionTypeT] ?? info.getValue(),
   }),
   col.accessor('paymentMethod', {
     id: 'paymentMethod',
     header: 'Metoda',
+    meta: { label: 'Metoda' },
     cell: (info) => PAYMENT_METHOD_LABELS[info.getValue() as PaymentMethodT] ?? info.getValue(),
   }),
   col.accessor('date', {
     id: 'date',
     header: 'Data',
+    meta: { label: 'Data' },
     cell: (info) =>
       new Date(info.getValue()).toLocaleDateString('pl-PL', {
         day: '2-digit',
@@ -88,26 +93,31 @@ const allColumns = [
   col.accessor('cashRegisterName', {
     id: 'cashRegister',
     header: 'Kasa',
+    meta: { label: 'Kasa' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('investmentName', {
     id: 'investment',
     header: 'Inwestycja',
+    meta: { label: 'Inwestycja' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('workerName', {
     id: 'worker',
     header: 'Pracownik',
+    meta: { label: 'Pracownik' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('otherCategoryName', {
     id: 'otherCategory',
     header: 'Kategoria',
+    meta: { label: 'Kategoria' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('hasInvoice', {
     id: 'invoice',
     header: 'Faktura',
+    meta: { label: 'Faktura' },
     enableSorting: false,
     cell: (info) =>
       info.getValue() ? (
