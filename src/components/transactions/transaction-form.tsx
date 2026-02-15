@@ -256,7 +256,7 @@ export function TransactionForm({
               {(field) => (
                 <field.Textarea
                   label="Notatka do faktury"
-                  placeholder="Wymagane jeśli brak faktury"
+                  placeholder="Opcjonalna notatka do faktury"
                   showError
                 />
               )}

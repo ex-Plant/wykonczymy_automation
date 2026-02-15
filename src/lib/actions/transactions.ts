@@ -7,12 +7,12 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { createTransactionSchema, type CreateTransactionFormT } from '@/lib/schemas/transactions'
 
-type CreateResultT = { success: true } | { success: false; error: string }
+type ActionResultT = { success: true } | { success: false; error: string }
 
 export async function createTransactionAction(
   data: CreateTransactionFormT,
   invoiceFormData: FormData | null,
-): Promise<CreateResultT> {
+): Promise<ActionResultT> {
   console.log('[createTransactionAction] Start', {
     type: data.type,
     amount: data.amount,
@@ -37,20 +37,6 @@ export async function createTransactionAction(
 
   const invoiceFile = invoiceFormData?.get('invoice') as File | null
   const hasInvoice = invoiceFile && invoiceFile.size > 0
-  const hasInvoiceNote = !!parsed.data.invoiceNote
-
-  console.log('[createTransactionAction] Invoice check', {
-    hasInvoice,
-    hasInvoiceNote,
-    type: parsed.data.type,
-  })
-
-  console.log('createTransactionAction', parsed.data)
-  // Either invoice or invoiceNote must exist (not required for deposits)
-  if (parsed.data.type !== 'DEPOSIT' && !hasInvoice && !hasInvoiceNote) {
-    console.log('[createTransactionAction] Missing invoice/note for non-DEPOSIT')
-    return { success: false, error: 'Wymagana jest faktura lub notatka do faktury' }
-  }
 
   try {
     const payload = await getPayload({ config })
@@ -97,6 +83,50 @@ export async function createTransactionAction(
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Wystąpił błąd'
     console.log('[createTransactionAction] Error:', message)
+    return { success: false, error: message }
+  }
+}
+
+export async function updateTransactionInvoiceAction(
+  transactionId: number,
+  invoiceFormData: FormData,
+): Promise<ActionResultT> {
+  const user = await getCurrentUser()
+  if (!user || !isManagementRole(user.role)) {
+    return { success: false, error: 'Brak uprawnień' }
+  }
+
+  const invoiceFile = invoiceFormData.get('invoice') as File | null
+  if (!invoiceFile || invoiceFile.size === 0) {
+    return { success: false, error: 'Nie wybrano pliku' }
+  }
+
+  try {
+    const payload = await getPayload({ config })
+
+    const buffer = Buffer.from(await invoiceFile.arrayBuffer())
+    const media = await payload.create({
+      collection: 'media',
+      file: {
+        data: buffer,
+        mimetype: invoiceFile.type,
+        name: invoiceFile.name,
+        size: invoiceFile.size,
+      },
+      data: {},
+    })
+
+    await payload.update({
+      collection: 'transactions',
+      id: transactionId,
+      data: { invoice: media.id },
+    })
+
+    revalidateCollections(['transactions'])
+
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Wystąpił błąd'
     return { success: false, error: message }
   }
 }

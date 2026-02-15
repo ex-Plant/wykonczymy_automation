@@ -109,10 +109,15 @@ const allColumns = [
     meta: { label: 'Faktura' },
     enableSorting: false,
     cell: (info) => {
-      const url = info.getValue()
-      if (!url) return <span className="text-muted-foreground">—</span>
       const row = info.row.original
-      return <InvoiceCell url={url} filename={row.invoiceFilename} mimeType={row.invoiceMimeType} />
+      return (
+        <InvoiceCell
+          transactionId={row.id}
+          url={row.invoiceUrl}
+          filename={row.invoiceFilename}
+          mimeType={row.invoiceMimeType}
+        />
+      )
     },
   }),
   col.accessor('investmentName', {

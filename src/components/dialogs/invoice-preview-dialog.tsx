@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Download, Printer } from 'lucide-react'
+import { Download, Printer, Replace } from 'lucide-react'
 import NextImage from 'next/image'
 
 type InvoicePreviewDialogPropsT = {
@@ -17,6 +17,7 @@ type InvoicePreviewDialogPropsT = {
   readonly mimeType: string | null
   readonly open: boolean
   readonly onOpenChange: (open: boolean) => void
+  readonly onReplace?: () => void
 }
 
 export function InvoicePreviewDialog({
@@ -25,6 +26,7 @@ export function InvoicePreviewDialog({
   mimeType,
   open,
   onOpenChange,
+  onReplace,
 }: InvoicePreviewDialogPropsT) {
   const isImage = mimeType?.startsWith('image/')
   const isPdf = mimeType === 'application/pdf'
@@ -77,6 +79,12 @@ export function InvoicePreviewDialog({
         </div>
 
         <DialogFooter>
+          {onReplace && (
+            <Button variant="outline" onClick={onReplace}>
+              <Replace />
+              Zamień
+            </Button>
+          )}
           <Button variant="outline" onClick={handlePrint}>
             <Printer />
             Drukuj
