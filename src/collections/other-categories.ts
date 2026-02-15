@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
+import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 export const OtherCategories: CollectionConfig = {
   slug: 'other-categories',
@@ -11,6 +12,10 @@ export const OtherCategories: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name'],
     group: { en: 'Finance', pl: 'Finanse' },
+  },
+  hooks: {
+    afterChange: [makeRevalidateAfterChange('otherCategories')],
+    afterDelete: [makeRevalidateAfterDelete('otherCategories')],
   },
   access: {
     // ADMIN/OWNER: full CRUD. MANAGER: read only.

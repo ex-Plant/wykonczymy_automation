@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { redirect, notFound } from 'next/navigation'
@@ -6,13 +7,14 @@ import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
 import { formatPLN } from '@/lib/format-currency'
-import { ROLE_LABELS, type RoleT } from '@/collections/users'
+import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { mapTransactionRow } from '@/lib/transactions/map-transaction-row'
 import { ZeroSaldoDialog } from '@/components/settlements/zero-saldo-dialog'
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
+import { CACHE_TAGS } from '@/lib/cache/tags'
 
 const DEFAULT_LIMIT = 20
 const ALLOWED_LIMITS = [20, 50, 100]
@@ -48,6 +50,15 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const limitParam = typeof sp.limit === 'string' ? Number(sp.limit) : DEFAULT_LIMIT
   const limit = ALLOWED_LIMITS.includes(limitParam) ? limitParam : DEFAULT_LIMIT
 
+  const getCachedSaldo = unstable_cache(
+    async (workerId: number) => {
+      const pl = await getPayload({ config })
+      return sumEmployeeSaldo(pl, workerId)
+    },
+    ['employee-saldo', id],
+    { tags: [CACHE_TAGS.transactions] },
+  )
+
   // Fetch paginated transactions + saldo + reference data for zero saldo
   const [transactions, saldo, activeInvestments, cashRegisters, managerRegisterIds] =
     await Promise.all([
@@ -59,7 +70,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         limit,
         page: currentPage,
       }),
-      sumEmployeeSaldo(payload, Number(id)),
+      getCachedSaldo(Number(id)),
       payload.find({
         collection: 'investments',
         where: { status: { equals: 'active' } },

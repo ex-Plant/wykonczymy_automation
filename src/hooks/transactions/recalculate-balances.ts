@@ -5,6 +5,7 @@ import type {
   PayloadRequest,
 } from 'payload'
 import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
 
@@ -109,6 +110,8 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
     await recalcInvestmentCosts(req.payload, prevInvestmentId, req)
   }
 
+  revalidateCollections(['transactions', 'cashRegisters'])
+
   return doc
 }
 
@@ -128,6 +131,8 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
   if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
     await recalcInvestmentCosts(req.payload, investmentId, req)
   }
+
+  revalidateCollections(['transactions', 'cashRegisters'])
 
   return doc
 }

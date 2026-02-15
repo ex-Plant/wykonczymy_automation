@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
@@ -127,10 +127,7 @@ export async function createSettlement(formData: FormData): Promise<ActionResult
       }
     }
 
-    revalidatePath('/')
-    revalidatePath('/transakcje')
-    revalidatePath('/kasa')
-    revalidatePath('/uzytkownicy')
+    revalidateCollections(['transactions', 'cashRegisters'])
 
     return { success: true, count: created }
   } catch (err) {
@@ -174,10 +171,7 @@ export async function zeroSaldoAction(formData: FormData): Promise<ActionResultT
       },
     })
 
-    revalidatePath('/')
-    revalidatePath('/transakcje')
-    revalidatePath('/kasa')
-    revalidatePath('/uzytkownicy')
+    revalidateCollections(['transactions', 'cashRegisters'])
 
     return { success: true }
   } catch (err) {

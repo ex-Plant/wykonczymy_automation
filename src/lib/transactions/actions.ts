@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
@@ -157,9 +157,7 @@ export async function createTransactionAction(
 
     console.log('[createTransactionAction] Transaction created successfully')
 
-    revalidatePath('/')
-    revalidatePath('/transakcje')
-    revalidatePath('/kasa')
+    revalidateCollections(['transactions', 'cashRegisters'])
 
     return { success: true }
   } catch (err) {

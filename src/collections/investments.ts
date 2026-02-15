@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager, isAdminOrOwnerField } from '@/access'
+import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 const STATUS_OPTIONS = [
   { label: { en: 'Active', pl: 'Aktywna' }, value: 'active' },
@@ -16,6 +17,10 @@ export const Investments: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'status', 'totalCosts'],
     group: { en: 'Finance', pl: 'Finanse' },
+  },
+  hooks: {
+    afterChange: [makeRevalidateAfterChange('investments')],
+    afterDelete: [makeRevalidateAfterDelete('investments')],
   },
   access: {
     read: isAdminOrOwnerOrManager,
