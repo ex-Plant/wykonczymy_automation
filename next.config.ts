@@ -2,6 +2,7 @@ import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   cacheComponents: true,
   // Cache rendered pages in the client Router Cache for 5 min.
   // Dynamic pages (searchParams/headers) skip this cache by default,
