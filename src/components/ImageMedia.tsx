@@ -1,5 +1,4 @@
 import Image from 'next/image'
-import type { WpImageT } from '@/types/api'
 import { cn } from '@/lib/cn'
 
 type PropsT = {
