@@ -236,7 +236,7 @@ export function TransactionForm({
           )}
 
           {/* Invoice file — not bound to form state, read via ref on submit */}
-          {currentType !== 'DEPOSIT' && (
+          {currentType !== 'DEPOSIT' && currentType !== 'ADVANCE' && (
             <div className="space-y-1">
               <label htmlFor="invoice" className="text-foreground text-sm font-medium">
                 Faktura
@@ -251,7 +251,7 @@ export function TransactionForm({
           )}
 
           {/* Invoice note */}
-          {currentType !== 'DEPOSIT' && (
+          {currentType !== 'DEPOSIT' && currentType !== 'ADVANCE' && (
             <form.AppField name="invoiceNote">
               {(field) => (
                 <field.Textarea

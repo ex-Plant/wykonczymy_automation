@@ -10,7 +10,19 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { TransactionForm } from '@/components/transactions/transaction-form'
+import dynamic from 'next/dynamic'
+
+const TransactionForm = dynamic(
+  () =>
+    import('@/components/transactions/transaction-form').then((m) => ({
+      default: m.TransactionForm,
+    })),
+  {
+    loading: () => (
+      <p className="text-muted-foreground p-8 text-center text-sm">Ładowanie formularza...</p>
+    ),
+  },
+)
 
 export type ReferenceItemT = { id: number; name: string }
 

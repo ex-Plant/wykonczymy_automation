@@ -1,10 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { FileText, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
-import { InvoiceUploadDialog } from '@/components/dialogs/invoice-upload-dialog'
+
+const InvoicePreviewDialog = dynamic(() =>
+  import('@/components/dialogs/invoice-preview-dialog').then((m) => ({
+    default: m.InvoicePreviewDialog,
+  })),
+)
+
+const InvoiceUploadDialog = dynamic(() =>
+  import('@/components/dialogs/invoice-upload-dialog').then((m) => ({
+    default: m.InvoiceUploadDialog,
+  })),
+)
 
 type InvoiceCellPropsT = {
   readonly transactionId: number
@@ -48,9 +59,9 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
         </Button>
       )}
 
-      {hasInvoice && (
+      {url && previewOpen && (
         <InvoicePreviewDialog
-          url={url!}
+          url={url}
           filename={filename}
           mimeType={mimeType}
           open={previewOpen}
@@ -59,12 +70,14 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
         />
       )}
 
-      <InvoiceUploadDialog
-        transactionId={transactionId}
-        open={uploadOpen}
-        onOpenChange={setUploadOpen}
-        isReplace={hasInvoice}
-      />
+      {uploadOpen && (
+        <InvoiceUploadDialog
+          transactionId={transactionId}
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          isReplace={hasInvoice}
+        />
+      )}
     </>
   )
 }

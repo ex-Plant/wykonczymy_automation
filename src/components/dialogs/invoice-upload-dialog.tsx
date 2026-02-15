@@ -53,8 +53,15 @@ export function InvoiceUploadDialog({
     }
   }
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen && fileRef.current) {
+      fileRef.current.value = ''
+    }
+    onOpenChange(nextOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="h-fit sm:top-1/2 sm:bottom-auto sm:max-w-md sm:-translate-y-1/2"
         aria-describedby={undefined}

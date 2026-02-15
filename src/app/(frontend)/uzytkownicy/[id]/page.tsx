@@ -11,7 +11,13 @@ import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { getMonthDateRange } from '@/lib/helpers'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
-import { ZeroSaldoDialog } from '@/components/dialogs/zero-saldo-dialog'
+import dynamic from 'next/dynamic'
+
+const ZeroSaldoDialog = dynamic(() =>
+  import('@/components/dialogs/zero-saldo-dialog').then((m) => ({
+    default: m.ZeroSaldoDialog,
+  })),
+)
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'

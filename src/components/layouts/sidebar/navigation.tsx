@@ -4,7 +4,13 @@ import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { SidebarNav } from './sidebar-nav'
 import { MobileNav } from '@/components/layouts/mobile-nav'
-import { AddTransactionDialog } from '@/components/dialogs/add-transaction-dialog'
+import dynamic from 'next/dynamic'
+
+const AddTransactionDialog = dynamic(() =>
+  import('@/components/dialogs/add-transaction-dialog').then((m) => ({
+    default: m.AddTransactionDialog,
+  })),
+)
 
 type NavigationPropsT = {
   user: {

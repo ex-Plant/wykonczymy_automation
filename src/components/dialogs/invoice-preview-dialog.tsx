@@ -8,8 +8,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Download, Printer, Replace } from 'lucide-react'
 import NextImage from 'next/image'
+import { Download, Printer, Replace } from 'lucide-react'
+import { ImageMedia } from '../ImageMedia'
 
 type InvoicePreviewDialogPropsT = {
   readonly url: string
@@ -57,17 +58,19 @@ export function InvoicePreviewDialog({
 
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
           {isImage && (
-            <div className="relative h-full w-[min(90vw,1000px)]">
-              <NextImage
-                sizes="max-(max-width:1200px) 90vw, 1000px"
-                src={url}
-                alt={displayName}
-                fill
-                className="object-contain"
-                quality={50}
-              />
-            </div>
+            <ImageMedia
+              containerClass={`relative h-full w-[min(90vw,1000px)] `}
+              imgClass="object-contain"
+              sizes="max-(max-width:1200px) 90vw, 1000px"
+              src={url}
+              alt={displayName}
+              fill
+              quality={50}
+            />
           )}
+          {/* {isImage && (
+            <img src={url} alt={displayName} className="max-h-[70vh] max-w-full object-contain" />
+          )} */}
           {isPdf && (
             <iframe src={url} title={displayName} className="h-[70vh] w-full rounded border-0" />
           )}

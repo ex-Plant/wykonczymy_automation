@@ -4,7 +4,13 @@ import { MobileMenuToggle } from '@/components/layouts/mobile-menu-toggle'
 import { NAV_ITEMS } from '@/components/layouts/nav-items'
 import { NavLink } from '@/components/layouts/nav-link'
 import type { ReferenceDataT } from '@/components/dialogs/add-transaction-dialog'
-import { AddTransactionDialog } from '@/components/dialogs/add-transaction-dialog'
+import dynamic from 'next/dynamic'
+
+const AddTransactionDialog = dynamic(() =>
+  import('@/components/dialogs/add-transaction-dialog').then((m) => ({
+    default: m.AddTransactionDialog,
+  })),
+)
 import { isManagementRole } from '@/lib/auth/permissions'
 import type { RoleT } from '@/lib/auth/roles'
 import { AnimatePresence, motion } from 'framer-motion'
