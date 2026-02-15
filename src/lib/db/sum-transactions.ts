@@ -122,3 +122,41 @@ export const sumEmployeeSaldo = async (
 
   return Number(result.rows[0].saldo)
 }
+
+export type WorkerPeriodBreakdownT = {
+  totalAdvances: number
+  totalExpenses: number
+  periodSaldo: number
+}
+
+/**
+ * Returns advances, expenses, and net saldo for a worker in a date range.
+ * Single SQL query with CASE WHEN grouping.
+ */
+export const sumWorkerPeriodBreakdown = async (
+  payload: Payload,
+  workerId: number,
+  dateRange: DateRangeT,
+): Promise<WorkerPeriodBreakdownT> => {
+  const db = await getDb(payload)
+
+  const result = await db.execute(sql`
+    SELECT
+      COALESCE(SUM(CASE WHEN type = 'ADVANCE' THEN amount ELSE 0 END), 0) AS advances,
+      COALESCE(SUM(CASE WHEN type = 'EMPLOYEE_EXPENSE' THEN amount ELSE 0 END), 0) AS expenses
+    FROM transactions
+    WHERE worker_id = ${workerId}
+      AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+      AND date >= ${dateRange.start}
+      AND date <= ${dateRange.end}
+  `)
+
+  const advances = Number(result.rows[0].advances)
+  const expenses = Number(result.rows[0].expenses)
+
+  return {
+    totalAdvances: advances,
+    totalExpenses: expenses,
+    periodSaldo: advances - expenses,
+  }
+}
