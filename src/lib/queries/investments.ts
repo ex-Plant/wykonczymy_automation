@@ -10,6 +10,7 @@ export async function findInvestments({ page, limit }: PaginationParamsT) {
   cacheLife('max')
   cacheTag(CACHE_TAGS.investments)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'investments',
@@ -17,6 +18,7 @@ export async function findInvestments({ page, limit }: PaginationParamsT) {
     limit,
     page,
   })
+  console.log(`[PERF] query.findInvestments ${(performance.now() - start).toFixed(1)}ms`)
 
   const rows: InvestmentRowT[] = result.docs.map((inv) => ({
     id: inv.id,
@@ -40,9 +42,11 @@ export async function getInvestment(id: string) {
   cacheLife('max')
   cacheTag(CACHE_TAGS.investments)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   try {
     const investment = await payload.findByID({ collection: 'investments', id })
+    console.log(`[PERF] query.getInvestment(${id}) ${(performance.now() - start).toFixed(1)}ms`)
     return investment ?? null
   } catch {
     return null
@@ -54,6 +58,7 @@ export async function findActiveInvestments() {
   cacheLife('max')
   cacheTag(CACHE_TAGS.investments)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'investments',
@@ -61,6 +66,10 @@ export async function findActiveInvestments() {
     pagination: false,
     depth: 0,
   })
+  console.log(
+    `[PERF] query.findActiveInvestments ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
+  )
+
   return result.docs.map((inv) => ({
     id: inv.id as number,
     name: inv.name as string,

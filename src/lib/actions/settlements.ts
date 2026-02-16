@@ -11,6 +11,7 @@ import {
   type CreateSettlementFormT,
   type ZeroSaldoFormT,
 } from '@/lib/schemas/settlements'
+import { perf, perfStart } from '@/lib/perf'
 
 type ActionResultT = { success: true; count?: number } | { success: false; error: string }
 
@@ -18,7 +19,11 @@ export async function createSettlementAction(
   data: CreateSettlementFormT,
   invoiceFormData: FormData | null,
 ): Promise<ActionResultT> {
-  const user = await getCurrentUser()
+  const elapsed = perfStart()
+  const lineCount = data.lineItems?.length ?? 0
+  console.log(`[PERF] createSettlementAction START lineItems=${lineCount}`)
+
+  const user = await perf('settlement.getCurrentUser', () => getCurrentUser())
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
@@ -45,62 +50,67 @@ export async function createSettlementAction(
   }
 
   try {
-    const payload = await getPayload({ config })
+    const payload = await perf('settlement.getPayload', () => getPayload({ config }))
 
     // Upload invoice files per line item
     const mediaIds: (number | undefined)[] = []
-    for (let i = 0; i < parsed.data.lineItems.length; i++) {
-      const file = invoiceFormData?.get(`invoice-${i}`) as File | null
-      if (file && file.size > 0) {
-        const buffer = Buffer.from(await file.arrayBuffer())
-        const media = await payload.create({
-          collection: 'media',
-          file: {
-            data: buffer,
-            mimetype: file.type,
-            name: file.name,
-            size: file.size,
-          },
-          data: {},
-        })
-        mediaIds.push(media.id)
-      } else {
-        mediaIds.push(undefined)
+    await perf(`settlement.uploadMedia (${parsed.data.lineItems.length} items)`, async () => {
+      for (let i = 0; i < parsed.data.lineItems.length; i++) {
+        const file = invoiceFormData?.get(`invoice-${i}`) as File | null
+        if (file && file.size > 0) {
+          const buffer = Buffer.from(await file.arrayBuffer())
+          const media = await payload.create({
+            collection: 'media',
+            file: {
+              data: buffer,
+              mimetype: file.type,
+              name: file.name,
+              size: file.size,
+            },
+            data: {},
+          })
+          mediaIds.push(media.id)
+        } else {
+          mediaIds.push(undefined)
+        }
       }
-    }
+    })
 
     // Create N EMPLOYEE_EXPENSE transactions
     let created = 0
-    for (let i = 0; i < parsed.data.lineItems.length; i++) {
-      const item = parsed.data.lineItems[i]
-      try {
-        await payload.create({
-          collection: 'transactions',
-          data: {
-            description: item.description,
-            amount: item.amount,
-            date: parsed.data.date,
-            type: 'EMPLOYEE_EXPENSE',
-            paymentMethod: parsed.data.paymentMethod,
-            cashRegister: parsed.data.cashRegister,
-            investment: parsed.data.investment,
-            worker: parsed.data.worker,
-            invoice: mediaIds[i],
-            invoiceNote: parsed.data.invoiceNote,
-            createdBy: user.id,
-          },
-        })
-        created++
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Wystąpił błąd'
-        return {
-          success: false,
-          error: `Utworzono ${created} z ${parsed.data.lineItems.length} transakcji. Błąd: ${message}`,
+    await perf(
+      `settlement.createTransactions (${parsed.data.lineItems.length} items)`,
+      async () => {
+        for (let i = 0; i < parsed.data.lineItems.length; i++) {
+          const item = parsed.data.lineItems[i]
+          await perf(`settlement.createTransaction[${i}]`, () =>
+            payload.create({
+              collection: 'transactions',
+              data: {
+                description: item.description,
+                amount: item.amount,
+                date: parsed.data.date,
+                type: 'EMPLOYEE_EXPENSE',
+                paymentMethod: parsed.data.paymentMethod,
+                cashRegister: parsed.data.cashRegister,
+                investment: parsed.data.investment,
+                worker: parsed.data.worker,
+                invoice: mediaIds[i],
+                invoiceNote: parsed.data.invoiceNote,
+                createdBy: user.id,
+              },
+            }),
+          )
+          created++
         }
-      }
-    }
+      },
+    )
 
-    revalidateCollections(['transactions', 'cashRegisters'])
+    perf('settlement.revalidateCollections', async () => {
+      revalidateCollections(['transactions', 'cashRegisters'])
+    })
+
+    console.log(`[PERF] createSettlementAction TOTAL ${elapsed()}ms (${created} transactions)`)
 
     return { success: true, count: created }
   } catch (err) {
@@ -110,7 +120,10 @@ export async function createSettlementAction(
 }
 
 export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResultT> {
-  const user = await getCurrentUser()
+  const elapsed = perfStart()
+  console.log(`[PERF] zeroSaldoAction START worker=${data.worker}`)
+
+  const user = await perf('zeroSaldo.getCurrentUser', () => getCurrentUser())
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
@@ -123,25 +136,31 @@ export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResul
   }
 
   try {
-    const payload = await getPayload({ config })
+    const payload = await perf('zeroSaldo.getPayload', () => getPayload({ config }))
 
-    await payload.create({
-      collection: 'transactions',
-      data: {
-        description: 'Zaliczka na poczet wypłaty',
-        amount: parsed.data.amount,
-        date: new Date().toISOString(),
-        type: 'EMPLOYEE_EXPENSE',
-        paymentMethod: parsed.data.paymentMethod,
-        cashRegister: parsed.data.cashRegister,
-        investment: parsed.data.investment,
-        worker: parsed.data.worker,
-        invoiceNote: 'Zerowanie salda pracownika',
-        createdBy: user.id,
-      },
+    await perf('zeroSaldo.payloadCreate (includes hooks)', () =>
+      payload.create({
+        collection: 'transactions',
+        data: {
+          description: 'Zaliczka na poczet wypłaty',
+          amount: parsed.data.amount,
+          date: new Date().toISOString(),
+          type: 'EMPLOYEE_EXPENSE',
+          paymentMethod: parsed.data.paymentMethod,
+          cashRegister: parsed.data.cashRegister,
+          investment: parsed.data.investment,
+          worker: parsed.data.worker,
+          invoiceNote: 'Zerowanie salda pracownika',
+          createdBy: user.id,
+        },
+      }),
+    )
+
+    perf('zeroSaldo.revalidateCollections', async () => {
+      revalidateCollections(['transactions', 'cashRegisters'])
     })
 
-    revalidateCollections(['transactions', 'cashRegisters'])
+    console.log(`[PERF] zeroSaldoAction TOTAL ${elapsed()}ms`)
 
     return { success: true }
   } catch (err) {

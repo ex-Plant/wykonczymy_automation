@@ -11,8 +11,13 @@ export async function getCachedEmployeeSaldo(userId: number) {
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
-  return sumEmployeeSaldo(payload, userId)
+  const result = await sumEmployeeSaldo(payload, userId)
+  console.log(
+    `[PERF] query.getCachedEmployeeSaldo(${userId}) ${(performance.now() - start).toFixed(1)}ms`,
+  )
+  return result
 }
 
 export async function getCachedMonthlyData(
@@ -26,6 +31,7 @@ export async function getCachedMonthlyData(
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
 
   const safeLimit = ALLOWED_LIMITS.includes(limit) ? limit : DEFAULT_LIMIT
@@ -53,6 +59,9 @@ export async function getCachedMonthlyData(
       end: endDate.toISOString(),
     }),
   ])
+  console.log(
+    `[PERF] query.getCachedMonthlyData(user=${userId}, ${month}/${year}) ${(performance.now() - start).toFixed(1)}ms (${transactions.docs.length} docs)`,
+  )
 
   return {
     rows: transactions.docs.map(mapTransactionRow),

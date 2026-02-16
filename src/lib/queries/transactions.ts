@@ -21,6 +21,7 @@ export async function findTransactions({
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'transactions',
@@ -30,6 +31,9 @@ export async function findTransactions({
     page,
     depth: 1,
   })
+  console.log(
+    `[PERF] query.findTransactions ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs, page=${page})`,
+  )
 
   return {
     rows: result.docs.map(mapTransactionRow),
@@ -48,6 +52,7 @@ export async function findAllTransactions({
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'transactions',
@@ -56,6 +61,9 @@ export async function findAllTransactions({
     pagination: false,
     depth: 1,
   })
+  console.log(
+    `[PERF] query.findAllTransactions ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
+  )
 
   return result.docs.map(mapTransactionRow)
 }
@@ -65,12 +73,16 @@ export async function countRecentTransactions(sinceDate: string) {
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const result = await payload.find({
     collection: 'transactions',
     limit: 0,
     where: { date: { greater_than_equal: sinceDate } },
   })
+  console.log(
+    `[PERF] query.countRecentTransactions ${(performance.now() - start).toFixed(1)}ms (${result.totalDocs} total)`,
+  )
 
   return result.totalDocs
 }

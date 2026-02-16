@@ -17,11 +17,13 @@ export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions, CACHE_TAGS.users)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const [users, saldoRecord] = await Promise.all([
     payload.find({ collection: 'users', sort: 'name', limit, page }),
     sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
   ])
+  console.log(`[PERF] query.findUsersWithSaldos ${(performance.now() - start).toFixed(1)}ms`)
 
   const rows: UserRowT[] = users.docs.map((u) => ({
     id: u.id,
@@ -56,8 +58,11 @@ export async function getUserSaldo(userId: string) {
   cacheLife('max')
   cacheTag(CACHE_TAGS.transactions)
 
+  const start = performance.now()
   const payload = await getPayload({ config })
-  return sumEmployeeSaldo(payload, Number(userId))
+  const result = await sumEmployeeSaldo(payload, Number(userId))
+  console.log(`[PERF] query.getUserSaldo(${userId}) ${(performance.now() - start).toFixed(1)}ms`)
+  return result
 }
 
 export async function getWorkerPeriodBreakdown(

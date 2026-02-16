@@ -13,6 +13,7 @@ export async function fetchReferenceData() {
     CACHE_TAGS.otherCategories,
   )
 
+  const start = performance.now()
   const payload = await getPayload({ config })
   const [cashRegisters, investments, workers, otherCategories] = await Promise.all([
     payload.find({ collection: 'cash-registers', pagination: false }),
@@ -24,6 +25,10 @@ export async function fetchReferenceData() {
     payload.find({ collection: 'users', pagination: false }),
     payload.find({ collection: 'other-categories', pagination: false }),
   ])
+  console.log(
+    `[PERF] query.fetchReferenceData ${(performance.now() - start).toFixed(1)}ms (4 collections)`,
+  )
+
   return {
     cashRegisters: cashRegisters.docs.map((d) => ({ id: d.id, name: d.name })),
     investments: investments.docs.map((d) => ({ id: d.id, name: d.name })),
