@@ -10,6 +10,9 @@ import {
   type CreateSettlementFormT,
   type ZeroSaldoFormT,
 } from '@/lib/schemas/settlements'
+import { sql } from '@payloadcms/db-vercel-postgres'
+import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf, perfStart } from '@/lib/perf'
 
 type ActionResultT = { success: true; count?: number } | { success: false; error: string }
@@ -51,38 +54,38 @@ export async function createSettlementAction(
   try {
     const payload = await perf('settlement.getPayload', () => getPayload({ config }))
 
-    // Upload invoice files per line item
-    const mediaIds: (number | undefined)[] = []
-    await perf(`settlement.uploadMedia (${parsed.data.lineItems.length} items)`, async () => {
-      for (let i = 0; i < parsed.data.lineItems.length; i++) {
-        const file = invoiceFormData?.get(`invoice-${i}`) as File | null
-        if (file && file.size > 0) {
-          const buffer = Buffer.from(await file.arrayBuffer())
-          const media = await payload.create({
-            collection: 'media',
-            file: {
-              data: buffer,
-              mimetype: file.type,
-              name: file.name,
-              size: file.size,
-            },
-            data: {},
-          })
-          mediaIds.push(media.id)
-        } else {
-          mediaIds.push(undefined)
-        }
-      }
-    })
+    // Upload invoice files in parallel
+    const mediaIds = await perf(
+      `settlement.uploadMedia (${parsed.data.lineItems.length} items)`,
+      () =>
+        Promise.all(
+          parsed.data.lineItems.map(async (_, i) => {
+            const file = invoiceFormData?.get(`invoice-${i}`) as File | null
+            if (file && file.size > 0) {
+              const buffer = Buffer.from(await file.arrayBuffer())
+              const media = await payload.create({
+                collection: 'media',
+                file: {
+                  data: buffer,
+                  mimetype: file.type,
+                  name: file.name,
+                  size: file.size,
+                },
+                data: {},
+              })
+              return media.id
+            }
+            return undefined
+          }),
+        ),
+    )
 
-    // Create N EMPLOYEE_EXPENSE transactions
-    let created = 0
-    await perf(
+    // Create all transactions in parallel, skipping hooks (single recalc at end)
+    const created = await perf(
       `settlement.createTransactions (${parsed.data.lineItems.length} items)`,
       async () => {
-        for (let i = 0; i < parsed.data.lineItems.length; i++) {
-          const item = parsed.data.lineItems[i]
-          await perf(`settlement.createTransaction[${i}]`, () =>
+        const results = await Promise.all(
+          parsed.data.lineItems.map((item, i) =>
             payload.create({
               collection: 'transactions',
               data: {
@@ -98,14 +101,45 @@ export async function createSettlementAction(
                 invoiceNote: parsed.data.invoiceNote,
                 createdBy: user.id,
               },
+              context: { skipBalanceRecalc: true },
             }),
-          )
-          created++
-        }
+          ),
+        )
+        return results.length
       },
     )
 
-    // Hook already calls revalidateCollections per transaction — no duplicate needed
+    // Single recalculation for all affected entities (direct SQL, bypasses Payload ORM)
+    await perf('settlement.recalcBalances', async () => {
+      const db = await getDb(payload)
+      const recalcTasks: Promise<unknown>[] = []
+
+      if (parsed.data.cashRegister) {
+        const registerId = parsed.data.cashRegister
+        recalcTasks.push(
+          sumRegisterBalance(payload, registerId).then((balance) =>
+            db.execute(sql`
+              UPDATE cash_registers SET balance = ${balance}, updated_at = NOW() WHERE id = ${registerId}
+            `),
+          ),
+        )
+      }
+
+      if (parsed.data.investment) {
+        const investmentId = parsed.data.investment
+        recalcTasks.push(
+          sumInvestmentCosts(payload, investmentId).then((totalCosts) =>
+            db.execute(sql`
+              UPDATE investments SET total_costs = ${totalCosts}, updated_at = NOW() WHERE id = ${investmentId}
+            `),
+          ),
+        )
+      }
+
+      await Promise.all(recalcTasks)
+    })
+
+    revalidateCollections(['transactions', 'cashRegisters'])
 
     console.log(`[PERF] createSettlementAction TOTAL ${elapsed()}ms (${created} transactions)`)
 

@@ -101,7 +101,7 @@ export function SettlementForm({
 
       if (result.success) {
         toastMessage(`Utworzono ${result.count} transakcji`, 'success')
-        router.push('/transakcje')
+        router.push('/')
       } else {
         toastMessage(result.error, 'error')
       }

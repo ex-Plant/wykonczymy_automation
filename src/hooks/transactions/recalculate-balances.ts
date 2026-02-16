@@ -4,14 +4,15 @@ import type {
   Payload,
   PayloadRequest,
 } from 'payload'
-import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { sql } from '@payloadcms/db-vercel-postgres'
+import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf } from '@/lib/perf'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
 
 /**
- * Recalculate a cash register's balance via SQL SUM aggregation.
+ * Recalculate a cash register's balance via SQL SUM + direct UPDATE.
  *
  * IMPORTANT: `req` must be forwarded so the query runs inside the same
  * database transaction as the triggering operation, avoiding stale reads.
@@ -25,20 +26,16 @@ const recalcRegisterBalance = async (
     sumRegisterBalance(payload, registerId, req),
   )
 
-  await perf(`hook.updateCashRegister(${registerId})`, () =>
-    payload.update({
-      collection: 'cash-registers',
-      id: registerId,
-      data: { balance },
-      context: { skipBalanceRecalc: true, skipRevalidation: true },
-      overrideAccess: true,
-      req,
-    }),
-  )
+  await perf(`hook.updateCashRegister(${registerId})`, async () => {
+    const db = await getDb(payload, req)
+    await db.execute(sql`
+      UPDATE cash_registers SET balance = ${balance}, updated_at = NOW() WHERE id = ${registerId}
+    `)
+  })
 }
 
 /**
- * Recalculate an investment's totalCosts via SQL SUM aggregation.
+ * Recalculate an investment's totalCosts via SQL SUM + direct UPDATE.
  * Only INVESTMENT_EXPENSE and EMPLOYEE_EXPENSE transactions count.
  */
 const recalcInvestmentCosts = async (
@@ -50,16 +47,12 @@ const recalcInvestmentCosts = async (
     sumInvestmentCosts(payload, investmentId, req),
   )
 
-  await perf(`hook.updateInvestment(${investmentId})`, () =>
-    payload.update({
-      collection: 'investments',
-      id: investmentId,
-      data: { totalCosts },
-      context: { skipBalanceRecalc: true, skipRevalidation: true },
-      overrideAccess: true,
-      req,
-    }),
-  )
+  await perf(`hook.updateInvestment(${investmentId})`, async () => {
+    const db = await getDb(payload, req)
+    await db.execute(sql`
+      UPDATE investments SET total_costs = ${totalCosts}, updated_at = NOW() WHERE id = ${investmentId}
+    `)
+  })
 }
 
 /** Resolve relationship value to a numeric ID (handles populated objects). */
@@ -90,30 +83,28 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
 
   const registerId = resolveId(doc.cashRegister)
   const prevRegisterId = resolveId(previousDoc?.cashRegister)
-
-  // Recalculate current register
-  if (registerId) {
-    await recalcRegisterBalance(req.payload, registerId, req)
-  }
-  // If register changed, recalculate the old one too
-  if (prevRegisterId && prevRegisterId !== registerId) {
-    await recalcRegisterBalance(req.payload, prevRegisterId, req)
-  }
-
-  // Recalculate investment costs if applicable
   const investmentId = resolveId(doc.investment)
   const prevInvestmentId = resolveId(previousDoc?.investment)
 
+  // Run all recalculations in parallel — they operate on independent entities
+  const tasks: Promise<void>[] = []
+
+  if (registerId) {
+    tasks.push(recalcRegisterBalance(req.payload, registerId, req))
+  }
+  if (prevRegisterId && prevRegisterId !== registerId) {
+    tasks.push(recalcRegisterBalance(req.payload, prevRegisterId, req))
+  }
   if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
-    await recalcInvestmentCosts(req.payload, investmentId, req)
+    tasks.push(recalcInvestmentCosts(req.payload, investmentId, req))
   }
   if (prevInvestmentId && prevInvestmentId !== investmentId) {
-    await recalcInvestmentCosts(req.payload, prevInvestmentId, req)
+    tasks.push(recalcInvestmentCosts(req.payload, prevInvestmentId, req))
   }
 
-  const revalStart = performance.now()
+  await Promise.all(tasks)
+
   revalidateCollections(['transactions', 'cashRegisters'])
-  console.log(`[PERF] hook.revalidateCollections ${(performance.now() - revalStart).toFixed(1)}ms`)
 
   console.log(`[PERF] recalcAfterChange TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 
@@ -129,14 +120,18 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
   console.log(`[PERF] recalcAfterDelete START id=${doc.id} type=${doc.type}`)
 
   const registerId = resolveId(doc.cashRegister)
+  const investmentId = resolveId(doc.investment)
+
+  const tasks: Promise<void>[] = []
+
   if (registerId) {
-    await recalcRegisterBalance(req.payload, registerId, req)
+    tasks.push(recalcRegisterBalance(req.payload, registerId, req))
+  }
+  if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
+    tasks.push(recalcInvestmentCosts(req.payload, investmentId, req))
   }
 
-  const investmentId = resolveId(doc.investment)
-  if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
-    await recalcInvestmentCosts(req.payload, investmentId, req)
-  }
+  await Promise.all(tasks)
 
   revalidateCollections(['transactions', 'cashRegisters'])
 

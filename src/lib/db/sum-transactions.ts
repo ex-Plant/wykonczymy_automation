@@ -8,7 +8,7 @@ type DateRangeT = { start: string; end: string }
  * (where `req` carries a `transactionID`), or the default instance otherwise.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const getDb = async (payload: Payload, req?: PayloadRequest): Promise<any> => {
+export const getDb = async (payload: Payload, req?: PayloadRequest): Promise<any> => {
   const adapter = payload.db as unknown as Record<string, unknown>
   const txId = req?.transactionID ? await req.transactionID : undefined
   const sessions = adapter.sessions as Record<string, { db?: unknown }> | undefined

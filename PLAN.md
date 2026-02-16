@@ -542,6 +542,20 @@ Establish hard numbers so every subsequent change can be measured against the ba
 - [ ] **Investigate bulk delete** — confirm whether Payload's admin bulk delete triggers `afterDelete` per-doc or skips hooks. If it skips, add a `beforeBulkOperation` hook or disable bulk delete for transactions.
 - [ ] **Periodic verification** — consider a lightweight check on dashboard load: compare displayed balance vs live `SUM()`. If mismatch, log warning and auto-repair.
 
+### M21.1: Remove `/transakcje` Page (Merge into Dashboard)
+
+> Dashboard and `/transakcje` render the same `TransactionDataTable` with the same filters. Eliminating the duplicate page removes redundant queries on navigation and simplifies the sidebar.
+
+- [ ] **EMPLOYEE transactions on dashboard** — the employee dashboard already shows monthly transactions. Verify it covers the same data `/transakcje` showed (auto-filtered to `worker=self`, same columns hidden). If not, add the missing pieces.
+- [ ] **Move investment filter to dashboard** — if `/transakcje` had an investment filter the dashboard lacks, add it to the dashboard's `TransactionDataTable`.
+- [ ] **Remove `/transakcje` route** — delete `src/app/(frontend)/transakcje/page.tsx` and directory.
+- [ ] **Remove sidebar item** — remove "Transakcje" from sidebar nav. Dashboard ("Kokpit") is the single entry point.
+- [ ] **Update internal links** — any `href="/transakcje"` in the codebase should point to `"/"` or be removed.
+- **Key files**: `src/app/(frontend)/transakcje/`, `src/components/layouts/sidebar/sidebar-nav.tsx`, `src/components/dashboard/manager-dashboard.tsx`, `src/components/dashboard/employee-dashboard-server.tsx`
+- **Success**: One fewer page, one fewer set of queries, sidebar is simpler, all transaction browsing happens on dashboard
+
+---
+
 ### M22: Bug Fixes & Form Polish
 
 - [ ] **Debug Juri saldo bug** — investigate why saldo didn't update after receiving money. Check `recalcAfterChange` hook fires correctly for all transaction types, verify `sumEmployeeSaldo` SQL covers the relevant type.
