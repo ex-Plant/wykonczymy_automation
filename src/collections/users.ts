@@ -38,6 +38,7 @@ export const Users: CollectionConfig = {
       name: 'name',
       type: 'text',
       required: true,
+      saveToJWT: true,
       label: { en: 'Name', pl: 'Imię i nazwisko' },
     },
     {

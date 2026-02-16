@@ -3,7 +3,7 @@
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { createTransactionSchema, type CreateTransactionFormT } from '@/lib/schemas/transactions'
 import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
@@ -29,7 +29,7 @@ export async function createTransactionAction(
   const elapsed = perfStart()
   console.log(`[PERF] createTransactionAction START type=${data.type} amount=${data.amount}`)
 
-  const user = await perf('createTransaction.getCurrentUser', () => getCurrentUser())
+  const user = await perf('createTransaction.getCurrentUser', () => getCurrentUserJwt())
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
@@ -81,9 +81,7 @@ export async function createTransactionAction(
       }),
     )
 
-    perf('createTransaction.revalidateCollections', async () => {
-      revalidateCollections(['transactions', 'cashRegisters'])
-    })
+    // Hook already calls revalidateCollections — no duplicate needed here
 
     console.log(`[PERF] createTransactionAction TOTAL ${elapsed()}ms`)
 
@@ -96,7 +94,7 @@ export async function createTransactionAction(
 }
 
 export async function recalculateBalancesAction(): Promise<RecalculateResultT> {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user || user.role !== 'ADMIN') {
     return { success: false, error: 'Brak uprawnień' }
   }
@@ -153,7 +151,7 @@ export async function updateTransactionInvoiceAction(
   transactionId: number,
   invoiceFormData: FormData,
 ): Promise<ActionResultT> {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }

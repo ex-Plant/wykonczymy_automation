@@ -1,9 +1,8 @@
 'use server'
 
-import { revalidateCollections } from '@/lib/cache/revalidate'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import {
   createSettlementSchema,
@@ -23,7 +22,7 @@ export async function createSettlementAction(
   const lineCount = data.lineItems?.length ?? 0
   console.log(`[PERF] createSettlementAction START lineItems=${lineCount}`)
 
-  const user = await perf('settlement.getCurrentUser', () => getCurrentUser())
+  const user = await perf('settlement.getCurrentUser', () => getCurrentUserJwt())
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
@@ -106,9 +105,7 @@ export async function createSettlementAction(
       },
     )
 
-    perf('settlement.revalidateCollections', async () => {
-      revalidateCollections(['transactions', 'cashRegisters'])
-    })
+    // Hook already calls revalidateCollections per transaction — no duplicate needed
 
     console.log(`[PERF] createSettlementAction TOTAL ${elapsed()}ms (${created} transactions)`)
 
@@ -123,7 +120,7 @@ export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResul
   const elapsed = perfStart()
   console.log(`[PERF] zeroSaldoAction START worker=${data.worker}`)
 
-  const user = await perf('zeroSaldo.getCurrentUser', () => getCurrentUser())
+  const user = await perf('zeroSaldo.getCurrentUser', () => getCurrentUserJwt())
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
@@ -156,9 +153,7 @@ export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResul
       }),
     )
 
-    perf('zeroSaldo.revalidateCollections', async () => {
-      revalidateCollections(['transactions', 'cashRegisters'])
-    })
+    // Hook already calls revalidateCollections — no duplicate needed
 
     console.log(`[PERF] zeroSaldoAction TOTAL ${elapsed()}ms`)
 
