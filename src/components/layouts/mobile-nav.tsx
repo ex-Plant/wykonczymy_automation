@@ -1,10 +1,10 @@
 'use client'
 
-import { MobileMenuToggle } from '@/components/layouts/mobile-menu-toggle'
-import { NAV_ITEMS } from '@/components/layouts/nav-items'
-import { NavLink } from '@/components/layouts/nav-link'
 import type { ReferenceDataT } from '@/components/dialogs/add-transaction-dialog'
 import dynamic from 'next/dynamic'
+import { useTransition } from 'react'
+import { LogOut } from 'lucide-react'
+import { logoutAction } from '@/lib/actions/auth'
 
 const AddTransactionDialog = dynamic(() =>
   import('@/components/dialogs/add-transaction-dialog').then((m) => ({
@@ -17,110 +17,44 @@ const AddSettlementDialog = dynamic(() =>
     default: m.AddSettlementDialog,
   })),
 )
-import { isManagementRole } from '@/lib/auth/permissions'
-import type { RoleT } from '@/lib/auth/roles'
-import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
-import { SidebarUser } from './sidebar/sidebar-user'
 
-type MobileNavPropsT = {
-  user: { name: string; email: string; role: RoleT }
+type TopNavPropsT = {
   referenceData?: ReferenceDataT
   managerCashRegisterId?: number
 }
 
-const panelVariants = {
-  hidden: { x: '-100%' },
-  visible: { x: 0 },
-}
+export function TopNav({ referenceData, managerCashRegisterId }: TopNavPropsT) {
+  const [isPending, startTransition] = useTransition()
 
-const transition = {
-  type: 'tween' as const,
-  duration: 0.3,
-  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
-}
-
-export function MobileNav({ user, referenceData, managerCashRegisterId }: MobileNavPropsT) {
-  const [isOpen, setIsOpen] = useState(false)
-  const isManager = isManagementRole(user.role)
-
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => item.roles === 'all' || (item.roles === 'management' && isManager),
-  )
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setIsOpen(false)
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [isOpen])
+  const handleLogout = () => {
+    startTransition(() => logoutAction())
+  }
 
   return (
-    <header className="border-border bg-background sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b px-3 md:hidden">
-      {/* Left: menu toggle */}
-      <MobileMenuToggle isOpen={isOpen} onToggle={() => setIsOpen(true)} />
+    <header className="border-border bg-background sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b px-3">
+      {/* Left: app name */}
+      <span className="text-lg font-semibold">Wykonczymy</span>
 
-      {/* Right: action buttons */}
-      {referenceData && (
-        <div className="flex gap-2">
-          <AddSettlementDialog
-            referenceData={referenceData}
-            managerCashRegisterId={managerCashRegisterId}
-          />
-          <AddTransactionDialog referenceData={referenceData} />
-        </div>
-      )}
-
-      {/* Full-screen sliding panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu nawigacji"
-            variants={panelVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            transition={transition}
-            className="bg-background fixed inset-0 z-50 flex flex-col"
-          >
-            {/* Panel header — mirrors main header layout */}
-            <div className="border-border flex h-14 items-center justify-between gap-3 border-b px-3">
-              <MobileMenuToggle isOpen={isOpen} onToggle={() => setIsOpen(false)} />
-              {referenceData && (
-                <div className="flex gap-2">
-                  <AddSettlementDialog
-                    referenceData={referenceData}
-                    managerCashRegisterId={managerCashRegisterId}
-                  />
-                  <AddTransactionDialog referenceData={referenceData} />
-                </div>
-              )}
-            </div>
-
-            <nav className="flex-1 space-y-1 px-3 py-2">
-              {visibleItems.map(({ label, href, icon }) => (
-                <NavLink
-                  key={href}
-                  href={href}
-                  label={label}
-                  icon={icon}
-                  size="base"
-                  onClick={() => setIsOpen(false)}
-                />
-              ))}
-            </nav>
-
-            <SidebarUser user={user} />
-          </motion.div>
+      {/* Right: action buttons + logout */}
+      <div className="flex items-center gap-2">
+        {referenceData && (
+          <>
+            <AddSettlementDialog
+              referenceData={referenceData}
+              managerCashRegisterId={managerCashRegisterId}
+            />
+            <AddTransactionDialog referenceData={referenceData} />
+          </>
         )}
-      </AnimatePresence>
+        <button
+          onClick={handleLogout}
+          disabled={isPending}
+          className="text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-md p-1.5 transition-colors disabled:opacity-50"
+          aria-label="Wyloguj"
+        >
+          <LogOut className="size-4" />
+        </button>
+      </div>
     </header>
   )
 }

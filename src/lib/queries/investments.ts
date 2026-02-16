@@ -53,6 +53,36 @@ export async function getInvestment(id: string) {
   }
 }
 
+export async function findAllInvestments() {
+  'use cache'
+  cacheLife('max')
+  cacheTag(CACHE_TAGS.investments)
+
+  const start = performance.now()
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: 'investments',
+    pagination: false,
+    sort: 'name',
+  })
+  console.log(
+    `[PERF] query.findAllInvestments ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
+  )
+
+  const rows: InvestmentRowT[] = result.docs.map((inv) => ({
+    id: inv.id,
+    name: inv.name,
+    status: inv.status as 'active' | 'completed',
+    totalCosts: inv.totalCosts ?? 0,
+    address: inv.address ?? '',
+    phone: inv.phone ?? '',
+    email: inv.email ?? '',
+    contactPerson: inv.contactPerson ?? '',
+  }))
+
+  return rows
+}
+
 export async function findActiveInvestments() {
   'use cache'
   cacheLife('max')

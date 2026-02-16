@@ -44,7 +44,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   ]
 
   return (
-    <PageWrapper title={investment.name} backHref="/inwestycje" backLabel="Inwestycje">
+    <PageWrapper title={investment.name} backHref="/" backLabel="Kokpit">
       {/* Info section */}
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         {infoFields

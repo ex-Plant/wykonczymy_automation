@@ -31,7 +31,7 @@ async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
   if (!user) redirect('/zaloguj')
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex min-h-screen flex-col">
       <Navigation user={user} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>

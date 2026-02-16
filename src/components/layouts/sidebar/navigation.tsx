@@ -2,21 +2,7 @@ import type { RoleT } from '@/lib/auth/roles'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { SidebarNav } from './sidebar-nav'
-import { MobileNav } from '@/components/layouts/mobile-nav'
-import dynamic from 'next/dynamic'
-
-const AddTransactionDialog = dynamic(() =>
-  import('@/components/dialogs/add-transaction-dialog').then((m) => ({
-    default: m.AddTransactionDialog,
-  })),
-)
-
-const AddSettlementDialog = dynamic(() =>
-  import('@/components/dialogs/add-settlement-dialog').then((m) => ({
-    default: m.AddSettlementDialog,
-  })),
-)
+import { TopNav } from '@/components/layouts/mobile-nav'
 
 type NavigationPropsT = {
   user: {
@@ -37,28 +23,5 @@ export async function Navigation({ user }: NavigationPropsT) {
 
   const managerCashRegisterId = managerRegisterIds?.[0]
 
-  return (
-    <>
-      <SidebarNav
-        user={user}
-        action={
-          <>
-            <AddTransactionDialog
-              referenceData={referenceData}
-              managerCashRegisterId={managerCashRegisterId}
-            />
-            <AddSettlementDialog
-              referenceData={referenceData}
-              managerCashRegisterId={managerCashRegisterId}
-            />
-          </>
-        }
-      />
-      <MobileNav
-        user={user}
-        referenceData={referenceData}
-        managerCashRegisterId={managerCashRegisterId}
-      />
-    </>
-  )
+  return <TopNav referenceData={referenceData} managerCashRegisterId={managerCashRegisterId} />
 }

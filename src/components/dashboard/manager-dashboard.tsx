@@ -6,7 +6,7 @@ import {
   countRecentTransactions,
 } from '@/lib/queries/transactions'
 import { findAllCashRegisters } from '@/lib/queries/cash-registers'
-import { findActiveInvestments } from '@/lib/queries/investments'
+import { findActiveInvestments, findAllInvestments } from '@/lib/queries/investments'
 import { findAllUsersWithSaldos } from '@/lib/queries/users'
 import { DashboardTables } from '@/components/dashboard/dashboard-tables'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
@@ -27,18 +27,25 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
 
-  const [cashRegisters, activeInvestments, users, { rows, paginationMeta }, recentCount] =
-    await Promise.all([
-      findAllCashRegisters(),
-      findActiveInvestments(),
-      findAllUsersWithSaldos(),
-      findTransactions({
-        where: buildTransactionFilters(searchParams, { id: 0, isManager: true }),
-        page,
-        limit,
-      }),
-      countRecentTransactions(sinceDate),
-    ])
+  const [
+    cashRegisters,
+    activeInvestments,
+    allInvestments,
+    users,
+    { rows, paginationMeta },
+    recentCount,
+  ] = await Promise.all([
+    findAllCashRegisters(),
+    findActiveInvestments(),
+    findAllInvestments(),
+    findAllUsersWithSaldos(),
+    findTransactions({
+      where: buildTransactionFilters(searchParams, { id: 0, isManager: true }),
+      page,
+      limit,
+    }),
+    countRecentTransactions(sinceDate),
+  ])
 
   const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
   const user = await getCurrentUserJwt()
@@ -61,7 +68,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       )}
 
       {/* Cash registers & Users */}
-      <DashboardTables cashRegisters={cashRegisters} users={users} />
+      <DashboardTables cashRegisters={cashRegisters} investments={allInvestments} users={users} />
 
       {/* Recent transactions */}
       <div className="mt-8">
