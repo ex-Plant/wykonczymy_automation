@@ -1,7 +1,9 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { sql } from '@payloadcms/db-vercel-postgres'
 import { CACHE_TAGS } from '@/lib/cache/tags'
+import { getDb } from '@/lib/db/sum-transactions'
 
 type RefItemT = { readonly id: number; readonly name: string }
 
@@ -24,24 +26,34 @@ export async function fetchReferenceData(): Promise<ReferenceDataT> {
 
   const start = performance.now()
   const payload = await getPayload({ config })
-  const [cashRegisters, investments, workers, otherCategories] = await Promise.all([
-    payload.find({ collection: 'cash-registers', pagination: false }),
-    payload.find({
-      collection: 'investments',
-      where: { status: { equals: 'active' } },
-      pagination: false,
-    }),
-    payload.find({ collection: 'users', pagination: false }),
-    payload.find({ collection: 'other-categories', pagination: false }),
-  ])
+  const db = await getDb(payload)
+
+  const result = await db.execute(sql`
+    SELECT 'cashRegisters' AS collection, id, name FROM cash_registers
+    UNION ALL
+    SELECT 'investments' AS collection, id, name FROM investments WHERE status = 'active'
+    UNION ALL
+    SELECT 'workers' AS collection, id, name FROM users
+    UNION ALL
+    SELECT 'otherCategories' AS collection, id, name FROM other_categories
+  `)
   console.log(
-    `[PERF] query.fetchReferenceData ${(performance.now() - start).toFixed(1)}ms (4 collections)`,
+    `[PERF] query.fetchReferenceData ${(performance.now() - start).toFixed(1)}ms (1 SQL, ${result.rows.length} rows)`,
   )
 
-  return {
-    cashRegisters: cashRegisters.docs.map((d) => ({ id: d.id, name: d.name })),
-    investments: investments.docs.map((d) => ({ id: d.id, name: d.name })),
-    workers: workers.docs.map((d) => ({ id: d.id, name: d.name })),
-    otherCategories: otherCategories.docs.map((d) => ({ id: d.id, name: d.name })),
+  const data: Record<string, RefItemT[]> = {
+    cashRegisters: [],
+    investments: [],
+    workers: [],
+    otherCategories: [],
   }
+
+  for (const row of result.rows) {
+    data[row.collection as string]?.push({
+      id: Number(row.id),
+      name: row.name as string,
+    })
+  }
+
+  return data as ReferenceDataT
 }
