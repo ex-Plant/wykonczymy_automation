@@ -6,6 +6,7 @@ import type {
 } from 'payload'
 import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
 import { revalidateCollections } from '@/lib/cache/revalidate'
+import { perf } from '@/lib/perf'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
 
@@ -20,20 +21,20 @@ const recalcRegisterBalance = async (
   registerId: number,
   req: PayloadRequest,
 ): Promise<void> => {
-  console.log(`[recalcRegisterBalance] registerId=${registerId}`)
+  const balance = await perf(`hook.sumRegisterBalance(${registerId})`, () =>
+    sumRegisterBalance(payload, registerId, req),
+  )
 
-  const balance = await sumRegisterBalance(payload, registerId, req)
-
-  console.log(`[recalcRegisterBalance] registerId=${registerId} newBalance=${balance}`)
-
-  await payload.update({
-    collection: 'cash-registers',
-    id: registerId,
-    data: { balance },
-    context: { skipBalanceRecalc: true },
-    overrideAccess: true,
-    req,
-  })
+  await perf(`hook.updateCashRegister(${registerId})`, () =>
+    payload.update({
+      collection: 'cash-registers',
+      id: registerId,
+      data: { balance },
+      context: { skipBalanceRecalc: true },
+      overrideAccess: true,
+      req,
+    }),
+  )
 }
 
 /**
@@ -45,20 +46,20 @@ const recalcInvestmentCosts = async (
   investmentId: number,
   req: PayloadRequest,
 ): Promise<void> => {
-  console.log(`[recalcInvestmentCosts] investmentId=${investmentId}`)
+  const totalCosts = await perf(`hook.sumInvestmentCosts(${investmentId})`, () =>
+    sumInvestmentCosts(payload, investmentId, req),
+  )
 
-  const totalCosts = await sumInvestmentCosts(payload, investmentId, req)
-
-  console.log(`[recalcInvestmentCosts] investmentId=${investmentId} totalCosts=${totalCosts}`)
-
-  await payload.update({
-    collection: 'investments',
-    id: investmentId,
-    data: { totalCosts },
-    context: { skipBalanceRecalc: true },
-    overrideAccess: true,
-    req,
-  })
+  await perf(`hook.updateInvestment(${investmentId})`, () =>
+    payload.update({
+      collection: 'investments',
+      id: investmentId,
+      data: { totalCosts },
+      context: { skipBalanceRecalc: true },
+      overrideAccess: true,
+      req,
+    }),
+  )
 }
 
 /** Resolve relationship value to a numeric ID (handles populated objects). */
@@ -80,10 +81,10 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
   req,
   context,
 }) => {
-  console.log('[recalcAfterChange] Start', { id: doc.id, type: doc.type, amount: doc.amount })
+  const hookStart = performance.now()
+  console.log(`[PERF] recalcAfterChange START id=${doc.id} type=${doc.type}`)
 
   if (context.skipBalanceRecalc) {
-    console.log('[recalcAfterChange] Skipped (skipBalanceRecalc)')
     return doc
   }
 
@@ -110,7 +111,11 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
     await recalcInvestmentCosts(req.payload, prevInvestmentId, req)
   }
 
+  const revalStart = performance.now()
   revalidateCollections(['transactions', 'cashRegisters'])
+  console.log(`[PERF] hook.revalidateCollections ${(performance.now() - revalStart).toFixed(1)}ms`)
+
+  console.log(`[PERF] recalcAfterChange TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 
   return doc
 }
@@ -120,7 +125,8 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
  * after a transaction is deleted.
  */
 export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req }) => {
-  console.log('[recalcAfterDelete] Start', { id: doc.id, type: doc.type, amount: doc.amount })
+  const hookStart = performance.now()
+  console.log(`[PERF] recalcAfterDelete START id=${doc.id} type=${doc.type}`)
 
   const registerId = resolveId(doc.cashRegister)
   if (registerId) {
@@ -133,6 +139,8 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
   }
 
   revalidateCollections(['transactions', 'cashRegisters'])
+
+  console.log(`[PERF] recalcAfterDelete TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 
   return doc
 }

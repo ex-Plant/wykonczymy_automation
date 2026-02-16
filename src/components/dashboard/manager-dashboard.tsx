@@ -11,6 +11,8 @@ import { TransactionDataTable } from '@/components/transactions/transaction-data
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
+import { SyncBalancesButton } from '@/components/dashboard/sync-balances-button'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 
 type ManagerDashboardPropsT = {
   searchParams: Record<string, string | string[] | undefined>
@@ -36,6 +38,8 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
     ])
 
   const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
+  const user = await getCurrentUser()
+  const isAdmin = user?.role === 'ADMIN'
 
   return (
     <PageWrapper title="Kokpit">
@@ -45,6 +49,13 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
         <StatCard label="Aktywne inwestycje" value={String(activeInvestments.length)} />
         <StatCard label="Transakcje (30 dni)" value={String(recentCount)} />
       </div>
+
+      {/* Admin tools */}
+      {isAdmin && (
+        <div className="mt-4 flex justify-end">
+          <SyncBalancesButton />
+        </div>
+      )}
 
       {/* Recent transactions */}
       <div className="mt-8">
