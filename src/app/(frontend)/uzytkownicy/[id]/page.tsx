@@ -4,9 +4,16 @@ import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { parsePagination } from '@/lib/pagination'
 import { getUser, getUserSaldo, getWorkerPeriodBreakdown } from '@/lib/queries/users'
-import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
 import { findActiveInvestments } from '@/lib/queries/investments'
-import { findAllCashRegisters } from '@/lib/queries/cash-registers'
+import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash-registers'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchMediaByIds } from '@/lib/queries/media'
+import {
+  mapTransactionRow,
+  extractInvoiceIds,
+  buildTransactionLookups,
+} from '@/lib/tables/transactions'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { getMonthDateRange } from '@/lib/helpers'
@@ -48,20 +55,30 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const hasDateRange = fromParam && toParam
 
   const [
-    { rows, paginationMeta },
+    rawTxResult,
     saldo,
     periodBreakdown,
     activeInvestments,
-    cashRegisters,
+    rawCashRegisters,
     managerRegisterIds,
+    refData,
   ] = await Promise.all([
-    findTransactions({ where: baseFilters, page, limit }),
+    findTransactionsRaw({ where: baseFilters, page, limit }),
     getUserSaldo(id),
     hasDateRange ? getWorkerPeriodBreakdown(id, fromParam, toParam) : Promise.resolve(undefined),
     findActiveInvestments(),
-    findAllCashRegisters(),
+    findAllCashRegistersRaw(),
     getUserCashRegisterIds(user.id, user.role),
+    fetchReferenceData(),
   ])
+
+  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
+  const mediaMap = await fetchMediaByIds(invoiceIds)
+  const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
+  const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
+  const lookups = buildTransactionLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const paginationMeta = rawTxResult.paginationMeta
 
   // Build report URL — use current date range or default to current month
   const reportDateRange = hasDateRange

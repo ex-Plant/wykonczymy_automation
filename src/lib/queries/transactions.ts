@@ -1,17 +1,21 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { sql } from '@payloadcms/db-vercel-postgres'
 import type { Where } from 'payload'
-import { mapTransactionRow } from '@/lib/tables/transactions'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
 import { CACHE_TAGS } from '@/lib/cache/tags'
+import { getDb } from '@/lib/db/sum-transactions'
 
 type FindTransactionsOptsT = PaginationParamsT & {
   readonly where?: Where
   readonly sort?: string
 }
 
-export async function findTransactions({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RawTransactionDocT = Record<string, any>
+
+export async function findTransactionsRaw({
   where = {},
   page,
   limit,
@@ -29,19 +33,19 @@ export async function findTransactions({
     sort,
     limit,
     page,
-    depth: 1,
+    depth: 0,
   })
   console.log(
-    `[PERF] query.findTransactions ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs, page=${page})`,
+    `[PERF] query.findTransactionsRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs, page=${page})`,
   )
 
   return {
-    rows: result.docs.map(mapTransactionRow),
+    docs: result.docs as RawTransactionDocT[],
     paginationMeta: buildPaginationMeta(result, limit),
   }
 }
 
-export async function findAllTransactions({
+export async function findAllTransactionsRaw({
   where = {},
   sort = '-date',
 }: {
@@ -59,13 +63,13 @@ export async function findAllTransactions({
     where,
     sort,
     pagination: false,
-    depth: 1,
+    depth: 0,
   })
   console.log(
-    `[PERF] query.findAllTransactions ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
+    `[PERF] query.findAllTransactionsRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
   )
 
-  return result.docs.map(mapTransactionRow)
+  return result.docs as RawTransactionDocT[]
 }
 
 export async function countRecentTransactions(sinceDate: string) {
@@ -75,16 +79,17 @@ export async function countRecentTransactions(sinceDate: string) {
 
   const start = performance.now()
   const payload = await getPayload({ config })
-  const result = await payload.find({
-    collection: 'transactions',
-    limit: 0,
-    where: { date: { greater_than_equal: sinceDate } },
-  })
+  const db = await getDb(payload)
+
+  const result = await db.execute(
+    sql`SELECT COUNT(*) AS count FROM transactions WHERE date >= ${sinceDate}`,
+  )
+  const count = Number(result.rows[0].count)
   console.log(
-    `[PERF] query.countRecentTransactions ${(performance.now() - start).toFixed(1)}ms (${result.totalDocs} total)`,
+    `[PERF] query.countRecentTransactions ${(performance.now() - start).toFixed(1)}ms (${count} total)`,
   )
 
-  return result.totalDocs
+  return count
 }
 
 type SearchParamsT = Record<string, string | string[] | undefined>

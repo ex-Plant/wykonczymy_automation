@@ -1,6 +1,13 @@
 import { parsePagination } from '@/lib/pagination'
 import { getEmployeeSaldo } from '@/lib/queries/employees'
-import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchMediaByIds } from '@/lib/queries/media'
+import {
+  mapTransactionRow,
+  extractInvoiceIds,
+  buildTransactionLookups,
+} from '@/lib/tables/transactions'
 import { getUserSaldo } from '@/lib/queries/users'
 import { formatPLN } from '@/lib/format-currency'
 import { MONTHS } from '@/lib/constants/months'
@@ -36,11 +43,18 @@ export async function EmployeeDashboardServer({
 
   const where = buildTransactionFilters(searchParams, { id: userId, isManager: false })
 
-  const [{ rows, paginationMeta }, overallSaldo, periodSaldo] = await Promise.all([
-    findTransactions({ where, page, limit }),
+  const [rawTxResult, overallSaldo, periodSaldo, refData] = await Promise.all([
+    findTransactionsRaw({ where, page, limit }),
     getUserSaldo(String(userId)),
     getEmployeeSaldo(userId),
+    fetchReferenceData(),
   ])
+
+  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
+  const mediaMap = await fetchMediaByIds(invoiceIds)
+  const lookups = buildTransactionLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const paginationMeta = rawTxResult.paginationMeta
 
   return (
     <PageWrapper title="Moje konto">

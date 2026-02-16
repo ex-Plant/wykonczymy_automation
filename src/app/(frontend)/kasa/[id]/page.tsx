@@ -3,7 +3,14 @@ import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { getCashRegister } from '@/lib/queries/cash-registers'
-import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchMediaByIds } from '@/lib/queries/media'
+import {
+  mapTransactionRow,
+  extractInvoiceIds,
+  buildTransactionLookups,
+} from '@/lib/tables/transactions'
 import { formatPLN } from '@/lib/format-currency'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -29,11 +36,20 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
 
   const urlFilters = buildTransactionFilters(sp, { id: user.id, isManager: true })
 
-  const { rows, paginationMeta } = await findTransactions({
-    where: { ...urlFilters, cashRegister: { equals: id } },
-    page,
-    limit,
-  })
+  const [rawTxResult, refData] = await Promise.all([
+    findTransactionsRaw({
+      where: { ...urlFilters, cashRegister: { equals: id } },
+      page,
+      limit,
+    }),
+    fetchReferenceData(),
+  ])
+
+  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
+  const mediaMap = await fetchMediaByIds(invoiceIds)
+  const lookups = buildTransactionLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const paginationMeta = rawTxResult.paginationMeta
 
   const ownerName =
     typeof register.owner === 'object' && register.owner !== null ? register.owner.name : '—'

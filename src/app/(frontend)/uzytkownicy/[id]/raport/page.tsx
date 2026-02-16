@@ -2,7 +2,14 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUser, getWorkerPeriodBreakdown } from '@/lib/queries/users'
-import { findAllTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findAllTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchMediaByIds } from '@/lib/queries/media'
+import {
+  mapTransactionRow,
+  extractInvoiceIds,
+  buildTransactionLookups,
+} from '@/lib/tables/transactions'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import {
@@ -38,10 +45,16 @@ export default async function WorkerReportPage({ params, searchParams }: PagePro
 
   const where = buildTransactionFilters(sp, { id: Number(id), isManager: false })
 
-  const [rows, periodBreakdown] = await Promise.all([
-    findAllTransactions({ where }),
+  const [rawDocs, periodBreakdown, refData] = await Promise.all([
+    findAllTransactionsRaw({ where }),
     getWorkerPeriodBreakdown(id, fromParam, toParam),
+    fetchReferenceData(),
   ])
+
+  const invoiceIds = extractInvoiceIds(rawDocs)
+  const mediaMap = await fetchMediaByIds(invoiceIds)
+  const lookups = buildTransactionLookups(refData, mediaMap)
+  const rows = rawDocs.map((doc) => mapTransactionRow(doc, lookups))
 
   const periodLabel = `${formatDate(fromParam)} — ${formatDate(toParam)}`
 

@@ -7,6 +7,8 @@ import {
   type TransactionTypeT,
   type PaymentMethodT,
 } from '@/lib/constants/transactions'
+import type { ReferenceDataT } from '@/lib/queries/reference-data'
+import type { MediaInfoT } from '@/lib/queries/media'
 
 export type TransactionRowT = {
   readonly id: number
@@ -24,12 +26,63 @@ export type TransactionRowT = {
   readonly invoiceMimeType: string | null
 }
 
+type NameMapT = Map<number, string>
+
+export type TransactionLookupsT = {
+  readonly cashRegisters: NameMapT
+  readonly investments: NameMapT
+  readonly workers: NameMapT
+  readonly otherCategories: NameMapT
+  readonly media: Map<number, MediaInfoT>
+}
+
 /**
- * Maps a Payload transaction document (depth: 1) to a flat TransactionRowT.
- * Handles both populated (object) and non-populated (number) relationship fields.
+ * Builds lookup Maps from reference data + media map for use with mapTransactionRow.
+ */
+export function buildTransactionLookups(
+  refData: ReferenceDataT,
+  mediaMap: Map<number, MediaInfoT>,
+): TransactionLookupsT {
+  const toNameMap = (items: ReadonlyArray<{ id: number; name: string }>): NameMapT =>
+    new Map(items.map((i) => [i.id, i.name]))
+
+  return {
+    cashRegisters: toNameMap(refData.cashRegisters),
+    investments: toNameMap(refData.investments),
+    workers: toNameMap(refData.workers),
+    otherCategories: toNameMap(refData.otherCategories),
+    media: mediaMap,
+  }
+}
+
+/**
+ * Maps a Payload transaction document to a flat TransactionRowT.
+ * When `lookups` is provided, resolves IDs from maps (depth: 0 mode).
+ * When omitted, falls back to populated objects (depth: 1 mode).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapTransactionRow(doc: any): TransactionRowT {
+export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): TransactionRowT {
+  if (lookups) {
+    const mediaId = typeof doc.invoice === 'number' ? doc.invoice : null
+    const media = mediaId ? lookups.media.get(mediaId) : undefined
+
+    return {
+      id: doc.id,
+      description: doc.description,
+      amount: doc.amount,
+      type: doc.type as TransactionTypeT,
+      paymentMethod: doc.paymentMethod as PaymentMethodT,
+      date: doc.date,
+      cashRegisterName: lookupName(lookups.cashRegisters, doc.cashRegister),
+      investmentName: lookupName(lookups.investments, doc.investment),
+      workerName: lookupName(lookups.workers, doc.worker),
+      otherCategoryName: lookupName(lookups.otherCategories, doc.otherCategory),
+      invoiceUrl: media?.url ?? null,
+      invoiceFilename: media?.filename ?? null,
+      invoiceMimeType: media?.mimeType ?? null,
+    }
+  }
+
   return {
     id: doc.id,
     description: doc.description,
@@ -45,6 +98,23 @@ export function mapTransactionRow(doc: any): TransactionRowT {
     invoiceFilename: getMediaField(doc.invoice, 'filename'),
     invoiceMimeType: getMediaField(doc.invoice, 'mimeType'),
   }
+}
+
+/**
+ * Extracts unique invoice IDs from raw (depth: 0) transaction docs.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractInvoiceIds(docs: any[]): number[] {
+  const ids = new Set<number>()
+  for (const doc of docs) {
+    if (typeof doc.invoice === 'number') ids.add(doc.invoice)
+  }
+  return [...ids]
+}
+
+function lookupName(map: NameMapT, field: unknown): string {
+  if (typeof field === 'number') return map.get(field) ?? '—'
+  return getRelationName(field)
 }
 
 function getRelationName(field: unknown): string {

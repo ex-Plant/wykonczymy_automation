@@ -3,7 +3,16 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 
-export async function fetchReferenceData() {
+type RefItemT = { readonly id: number; readonly name: string }
+
+export type ReferenceDataT = {
+  readonly cashRegisters: RefItemT[]
+  readonly investments: RefItemT[]
+  readonly workers: RefItemT[]
+  readonly otherCategories: RefItemT[]
+}
+
+export async function fetchReferenceData(): Promise<ReferenceDataT> {
   'use cache'
   cacheLife('max')
   cacheTag(

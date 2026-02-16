@@ -1,13 +1,20 @@
 import { formatPLN } from '@/lib/format-currency'
 import { parsePagination } from '@/lib/pagination'
 import {
-  findTransactions,
+  findTransactionsRaw,
   buildTransactionFilters,
   countRecentTransactions,
 } from '@/lib/queries/transactions'
-import { findAllCashRegisters } from '@/lib/queries/cash-registers'
+import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash-registers'
 import { findActiveInvestments, findAllInvestments } from '@/lib/queries/investments'
 import { findAllUsersWithSaldos } from '@/lib/queries/users'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchMediaByIds } from '@/lib/queries/media'
+import {
+  mapTransactionRow,
+  extractInvoiceIds,
+  buildTransactionLookups,
+} from '@/lib/tables/transactions'
 import { DashboardTables } from '@/components/dashboard/dashboard-tables'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -27,25 +34,39 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
 
+  // Phase 1: all depth:0 queries in parallel
   const [
-    cashRegisters,
+    rawCashRegisters,
     activeInvestments,
     allInvestments,
     users,
-    { rows, paginationMeta },
+    rawTxResult,
     recentCount,
+    refData,
   ] = await Promise.all([
-    findAllCashRegisters(),
+    findAllCashRegistersRaw(),
     findActiveInvestments(),
     findAllInvestments(),
     findAllUsersWithSaldos(),
-    findTransactions({
+    findTransactionsRaw({
       where: buildTransactionFilters(searchParams, { id: 0, isManager: true }),
       page,
       limit,
     }),
     countRecentTransactions(sinceDate),
+    fetchReferenceData(),
   ])
+
+  // Phase 2: batch-fetch media for invoices
+  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
+  const mediaMap = await fetchMediaByIds(invoiceIds)
+
+  // Phase 3: pure mapping
+  const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
+  const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
+  const lookups = buildTransactionLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const paginationMeta = rawTxResult.paginationMeta
 
   const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
   const user = await getCurrentUserJwt()

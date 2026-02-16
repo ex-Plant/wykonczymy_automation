@@ -1,38 +1,8 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import type { CashRegisterRowT } from '@/lib/tables/cash-registers'
-
-export async function findCashRegisters({ page, limit }: PaginationParamsT) {
-  'use cache'
-  cacheLife('max')
-  cacheTag(CACHE_TAGS.cashRegisters)
-
-  const start = performance.now()
-  const payload = await getPayload({ config })
-  const result = await payload.find({
-    collection: 'cash-registers',
-    sort: 'name',
-    limit,
-    page,
-    depth: 1,
-  })
-  console.log(`[PERF] query.findCashRegisters ${(performance.now() - start).toFixed(1)}ms`)
-
-  const rows: CashRegisterRowT[] = result.docs.map((cr) => ({
-    id: cr.id,
-    name: cr.name,
-    ownerName: typeof cr.owner === 'object' && cr.owner !== null ? cr.owner.name : '—',
-    balance: cr.balance ?? 0,
-  }))
-
-  return {
-    rows,
-    paginationMeta: buildPaginationMeta(result, limit),
-  }
-}
 
 export async function getCashRegister(id: string) {
   'use cache'
@@ -50,7 +20,10 @@ export async function getCashRegister(id: string) {
   }
 }
 
-export async function findAllCashRegisters() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RawCashRegisterDocT = Record<string, any>
+
+export async function findAllCashRegistersRaw() {
   'use cache'
   cacheLife('max')
   cacheTag(CACHE_TAGS.cashRegisters)
@@ -61,16 +34,34 @@ export async function findAllCashRegisters() {
     collection: 'cash-registers',
     pagination: false,
     sort: 'name',
-    depth: 1,
+    depth: 0,
   })
   console.log(
-    `[PERF] query.findAllCashRegisters ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
+    `[PERF] query.findAllCashRegistersRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
   )
 
-  return result.docs.map((cr) => ({
+  return result.docs as RawCashRegisterDocT[]
+}
+
+/**
+ * Maps raw cash register docs (depth: 0) to CashRegisterRowT using a workers name map.
+ */
+export function mapCashRegisterRows(
+  docs: RawCashRegisterDocT[],
+  workersMap: Map<number, string>,
+): CashRegisterRowT[] {
+  return docs.map((cr) => ({
     id: cr.id as number,
     name: cr.name as string,
-    ownerName: (typeof cr.owner === 'object' && cr.owner !== null ? cr.owner.name : '—') as string,
+    ownerName:
+      typeof cr.owner === 'number' ? (workersMap.get(cr.owner) ?? '—') : getOwnerName(cr.owner),
     balance: (cr.balance ?? 0) as number,
   }))
+}
+
+function getOwnerName(field: unknown): string {
+  if (typeof field === 'object' && field !== null && 'name' in field) {
+    return (field as { name: string }).name
+  }
+  return '—'
 }

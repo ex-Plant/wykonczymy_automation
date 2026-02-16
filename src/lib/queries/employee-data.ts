@@ -2,7 +2,13 @@ import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sumEmployeeSaldo } from '@/lib/db/sum-transactions'
-import { mapTransactionRow } from '@/lib/tables/transactions'
+import {
+  mapTransactionRow,
+  extractInvoiceIds,
+  buildTransactionLookups,
+} from '@/lib/tables/transactions'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchMediaByIds } from '@/lib/queries/media'
 import { buildPaginationMeta, DEFAULT_LIMIT, ALLOWED_LIMITS } from '@/lib/pagination'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 
@@ -45,26 +51,31 @@ export async function getCachedMonthlyData(
     less_than_equal: endDate.toISOString(),
   }
 
-  const [transactions, monthlySaldo] = await Promise.all([
+  const [transactions, monthlySaldo, refData] = await Promise.all([
     payload.find({
       collection: 'transactions',
       where: { worker: { equals: userId }, date: dateRange },
       sort: '-date',
       limit: safeLimit,
       page: safePage,
-      depth: 1,
+      depth: 0,
     }),
     sumEmployeeSaldo(payload, userId, {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     }),
+    fetchReferenceData(),
   ])
   console.log(
     `[PERF] query.getCachedMonthlyData(user=${userId}, ${month}/${year}) ${(performance.now() - start).toFixed(1)}ms (${transactions.docs.length} docs)`,
   )
 
+  const invoiceIds = extractInvoiceIds(transactions.docs)
+  const mediaMap = await fetchMediaByIds(invoiceIds)
+  const lookups = buildTransactionLookups(refData, mediaMap)
+
   return {
-    rows: transactions.docs.map(mapTransactionRow),
+    rows: transactions.docs.map((doc) => mapTransactionRow(doc, lookups)),
     paginationMeta: buildPaginationMeta(transactions, safeLimit),
     monthlySaldo,
   }
