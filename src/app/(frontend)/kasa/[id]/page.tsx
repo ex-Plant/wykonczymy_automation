@@ -39,7 +39,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
     typeof register.owner === 'object' && register.owner !== null ? register.owner.name : '—'
 
   return (
-    <PageWrapper title={register.name} backHref="/kasa" backLabel="Kasy">
+    <PageWrapper title={register.name} backHref="/" backLabel="Kokpit">
       {/* Info section */}
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground font-medium">Właściciel</dt>

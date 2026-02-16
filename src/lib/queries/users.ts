@@ -39,6 +39,28 @@ export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   }
 }
 
+export async function findAllUsersWithSaldos() {
+  'use cache'
+  cacheLife('max')
+  cacheTag(CACHE_TAGS.transactions, CACHE_TAGS.users)
+
+  const start = performance.now()
+  const payload = await getPayload({ config })
+  const [users, saldoRecord] = await Promise.all([
+    payload.find({ collection: 'users', sort: 'name', pagination: false }),
+    sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
+  ])
+  console.log(`[PERF] query.findAllUsersWithSaldos ${(performance.now() - start).toFixed(1)}ms`)
+
+  return users.docs.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role as RoleT,
+    saldo: saldoRecord[String(u.id)] ?? 0,
+  }))
+}
+
 export async function getUser(id: string) {
   'use cache'
   cacheLife('max')

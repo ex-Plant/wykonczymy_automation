@@ -35,6 +35,7 @@ type SettlementFormPropsT = {
   referenceData: ReferenceDataT
   managerCashRegisterId?: number
   className?: string
+  onSuccess?: () => void
 }
 
 type FormValuesT = {
@@ -53,6 +54,7 @@ export function SettlementForm({
   referenceData,
   managerCashRegisterId,
   className,
+  onSuccess,
 }: SettlementFormPropsT) {
   const router = useRouter()
   const invoiceFilesRef = useRef<Map<number, File>>(new Map())
@@ -101,7 +103,8 @@ export function SettlementForm({
 
       if (result.success) {
         toastMessage(`Utworzono ${result.count} transakcji`, 'success')
-        router.push('/')
+        if (onSuccess) onSuccess()
+        else router.push('/')
       } else {
         toastMessage(result.error, 'error')
       }

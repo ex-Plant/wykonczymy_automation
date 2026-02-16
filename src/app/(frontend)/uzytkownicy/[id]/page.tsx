@@ -80,7 +80,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   )
 
   return (
-    <PageWrapper title={targetUser.name} backHref="/uzytkownicy" backLabel="Użytkownicy">
+    <PageWrapper title={targetUser.name} backHref="/" backLabel="Kokpit">
       {/* Info section */}
       <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
         <dt className="text-muted-foreground font-medium">Email</dt>

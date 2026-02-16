@@ -38,7 +38,7 @@ export function SidebarNav({ user, action }: SidebarNavPropsT) {
       </nav>
 
       {/* Quick action slot */}
-      {action && <div className="px-3 pb-2 [&>button]:w-full">{action}</div>}
+      {action && <div className="space-y-2 px-3 pb-2 [&_button]:w-full">{action}</div>}
 
       <SidebarUser user={user} />
     </aside>

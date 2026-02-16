@@ -60,7 +60,8 @@ export async function findAllCashRegisters() {
   const result = await payload.find({
     collection: 'cash-registers',
     pagination: false,
-    depth: 0,
+    sort: 'name',
+    depth: 1,
   })
   console.log(
     `[PERF] query.findAllCashRegisters ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
@@ -69,6 +70,7 @@ export async function findAllCashRegisters() {
   return result.docs.map((cr) => ({
     id: cr.id as number,
     name: cr.name as string,
+    ownerName: (typeof cr.owner === 'object' && cr.owner !== null ? cr.owner.name : '—') as string,
     balance: (cr.balance ?? 0) as number,
   }))
 }

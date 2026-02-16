@@ -12,6 +12,12 @@ const AddTransactionDialog = dynamic(() =>
   })),
 )
 
+const AddSettlementDialog = dynamic(() =>
+  import('@/components/dialogs/add-settlement-dialog').then((m) => ({
+    default: m.AddSettlementDialog,
+  })),
+)
+
 type NavigationPropsT = {
   user: {
     id: number
@@ -36,13 +42,23 @@ export async function Navigation({ user }: NavigationPropsT) {
       <SidebarNav
         user={user}
         action={
-          <AddTransactionDialog
-            referenceData={referenceData}
-            managerCashRegisterId={managerCashRegisterId}
-          />
+          <>
+            <AddTransactionDialog
+              referenceData={referenceData}
+              managerCashRegisterId={managerCashRegisterId}
+            />
+            <AddSettlementDialog
+              referenceData={referenceData}
+              managerCashRegisterId={managerCashRegisterId}
+            />
+          </>
         }
       />
-      <MobileNav user={user} referenceData={referenceData} />
+      <MobileNav
+        user={user}
+        referenceData={referenceData}
+        managerCashRegisterId={managerCashRegisterId}
+      />
     </>
   )
 }

@@ -11,6 +11,12 @@ const AddTransactionDialog = dynamic(() =>
     default: m.AddTransactionDialog,
   })),
 )
+
+const AddSettlementDialog = dynamic(() =>
+  import('@/components/dialogs/add-settlement-dialog').then((m) => ({
+    default: m.AddSettlementDialog,
+  })),
+)
 import { isManagementRole } from '@/lib/auth/permissions'
 import type { RoleT } from '@/lib/auth/roles'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -20,6 +26,7 @@ import { SidebarUser } from './sidebar/sidebar-user'
 type MobileNavPropsT = {
   user: { name: string; email: string; role: RoleT }
   referenceData?: ReferenceDataT
+  managerCashRegisterId?: number
 }
 
 const panelVariants = {
@@ -33,7 +40,7 @@ const transition = {
   ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
 }
 
-export function MobileNav({ user, referenceData }: MobileNavPropsT) {
+export function MobileNav({ user, referenceData, managerCashRegisterId }: MobileNavPropsT) {
   const [isOpen, setIsOpen] = useState(false)
   const isManager = isManagementRole(user.role)
 
@@ -58,8 +65,16 @@ export function MobileNav({ user, referenceData }: MobileNavPropsT) {
       {/* Left: menu toggle */}
       <MobileMenuToggle isOpen={isOpen} onToggle={() => setIsOpen(true)} />
 
-      {/* Right: add transaction button */}
-      {referenceData && <AddTransactionDialog referenceData={referenceData} />}
+      {/* Right: action buttons */}
+      {referenceData && (
+        <div className="flex gap-2">
+          <AddSettlementDialog
+            referenceData={referenceData}
+            managerCashRegisterId={managerCashRegisterId}
+          />
+          <AddTransactionDialog referenceData={referenceData} />
+        </div>
+      )}
 
       {/* Full-screen sliding panel */}
       <AnimatePresence>
@@ -78,7 +93,15 @@ export function MobileNav({ user, referenceData }: MobileNavPropsT) {
             {/* Panel header — mirrors main header layout */}
             <div className="border-border flex h-14 items-center justify-between gap-3 border-b px-3">
               <MobileMenuToggle isOpen={isOpen} onToggle={() => setIsOpen(false)} />
-              {referenceData && <AddTransactionDialog referenceData={referenceData} />}
+              {referenceData && (
+                <div className="flex gap-2">
+                  <AddSettlementDialog
+                    referenceData={referenceData}
+                    managerCashRegisterId={managerCashRegisterId}
+                  />
+                  <AddTransactionDialog referenceData={referenceData} />
+                </div>
+              )}
             </div>
 
             <nav className="flex-1 space-y-1 px-3 py-2">

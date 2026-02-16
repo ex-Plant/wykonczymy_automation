@@ -7,6 +7,8 @@ import {
 } from '@/lib/queries/transactions'
 import { findAllCashRegisters } from '@/lib/queries/cash-registers'
 import { findActiveInvestments } from '@/lib/queries/investments'
+import { findAllUsersWithSaldos } from '@/lib/queries/users'
+import { DashboardTables } from '@/components/dashboard/dashboard-tables'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
@@ -25,10 +27,11 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
 
-  const [cashRegisters, activeInvestments, { rows, paginationMeta }, recentCount] =
+  const [cashRegisters, activeInvestments, users, { rows, paginationMeta }, recentCount] =
     await Promise.all([
       findAllCashRegisters(),
       findActiveInvestments(),
+      findAllUsersWithSaldos(),
       findTransactions({
         where: buildTransactionFilters(searchParams, { id: 0, isManager: true }),
         page,
@@ -56,6 +59,9 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
           <SyncBalancesButton />
         </div>
       )}
+
+      {/* Cash registers & Users */}
+      <DashboardTables cashRegisters={cashRegisters} users={users} />
 
       {/* Recent transactions */}
       <div className="mt-8">
