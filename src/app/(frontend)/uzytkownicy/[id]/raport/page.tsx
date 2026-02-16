@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUser, getWorkerPeriodBreakdown } from '@/lib/queries/users'
 import { findAllTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
@@ -19,7 +19,7 @@ type PagePropsT = {
 }
 
 export default async function WorkerReportPage({ params, searchParams }: PagePropsT) {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
 

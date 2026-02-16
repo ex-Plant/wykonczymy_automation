@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { getCashRegister } from '@/lib/queries/cash-registers'
@@ -16,7 +16,7 @@ type PagePropsT = {
 }
 
 export default async function CashRegisterDetailPage({ params, searchParams }: PagePropsT) {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
 

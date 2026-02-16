@@ -12,7 +12,7 @@ import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
 import { SyncBalancesButton } from '@/components/dashboard/sync-balances-button'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 
 type ManagerDashboardPropsT = {
   searchParams: Record<string, string | string[] | undefined>
@@ -38,7 +38,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
     ])
 
   const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   const isAdmin = user?.role === 'ADMIN'
 
   return (

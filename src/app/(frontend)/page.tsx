@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { ManagerDashboard } from '@/components/dashboard/manager-dashboard'
 import { EmployeeDashboardServer } from '@/components/dashboard/employee-dashboard-server'
@@ -10,7 +10,7 @@ type PagePropsT = {
 }
 
 export default async function DashboardPage({ searchParams }: PagePropsT) {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
   const params = await searchParams
 

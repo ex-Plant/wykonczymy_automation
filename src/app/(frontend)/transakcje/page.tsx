@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { redirect } from 'next/navigation'
 import { parsePagination } from '@/lib/pagination'
@@ -12,7 +12,7 @@ type PagePropsT = {
 }
 
 export default async function TransactionsPage({ searchParams }: PagePropsT) {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
 
   const params = await searchParams

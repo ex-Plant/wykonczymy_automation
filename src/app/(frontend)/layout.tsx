@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { abcFavorit, dmSans, spaceMono } from '@/fonts'
 import { cn } from '@/lib/cn'
 import { ToastContainer } from 'react-toastify'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { Navigation } from '@/components/layouts/sidebar/navigation'
 import { Loader } from '@/components/ui/loader/loader'
 
@@ -27,7 +27,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
 }
 
 async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
 
   return (

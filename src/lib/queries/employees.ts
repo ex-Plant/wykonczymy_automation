@@ -1,6 +1,6 @@
 'use server'
 
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { DEFAULT_LIMIT } from '@/lib/pagination'
 import type { TransactionRowT } from '@/lib/tables/transactions'
@@ -34,7 +34,7 @@ export async function getEmployeeMonthlyData({
 }
 
 export async function getManagementEmployeeSaldo(workerId: number): Promise<{ saldo: number }> {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user || !isManagementRole(user.role)) {
     throw new Error('Brak uprawnień')
   }

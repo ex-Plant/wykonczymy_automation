@@ -25,10 +25,12 @@
 
 ### Design decisions
 
-- **No separate SubAccounts collection.** EMPLOYEE balance = sum of their ADVANCE transactions minus sum of their EMPLOYEE_EXPENSE transactions. Simpler, no sync issues.
-- **Investment totalCosts** = computed via hooks on transaction CRUD, stored on the Investment document for fast reads.
+- **No separate SubAccounts collection.** EMPLOYEE balance = sum of their ACCOUNT_FUNDING transactions minus sum of their EMPLOYEE_EXPENSE transactions. Simpler, no sync issues.
+- **Investment totalCosts** = computed via hooks on transaction CRUD, stored on the Investment document for fast reads. (May evolve to signed P&L balance in M28 — deferred.)
 - **CashRegister balance** = computed via hooks on transaction CRUD, stored on the register document.
-- **All money flows are transactions.** OWNER→MANAGER transfer = two transactions (withdrawal from OWNER register, deposit to MANAGER register). Keeps the ledger clean.
+- **All money flows are transactions.** Register-to-register transfer = single `REGISTER_TRANSFER` transaction with source + target registers.
+- **EMPLOYEE_EXPENSE does NOT touch cash registers.** When a worker spends their advanced money, only their saldo decreases and investment costs increase. The cash register already lost the money when the advance was given. This prevents double-charging.
+- **Deposit types are explicit.** Instead of a generic `DEPOSIT`, each source of funds is a separate transaction type (`INVESTOR_DEPOSIT`, `STAGE_SETTLEMENT`, `COMPANY_FUNDING`, `OTHER_DEPOSIT`) with appropriate required fields.
 
 ---
 
@@ -72,21 +74,22 @@
 
 ### 4. Transactions
 
-| Field            | Type         | Notes                                                                     |
-| ---------------- | ------------ | ------------------------------------------------------------------------- |
-| description      | text         | what the money was spent on                                               |
-| amount           | number       | always positive, direction determined by type                             |
-| date             | date         | when the transaction occurred                                             |
-| type             | select       | `INVESTMENT_EXPENSE` / `ADVANCE` / `EMPLOYEE_EXPENSE` / `OTHER`           |
-| paymentMethod    | select       | `CASH` / `BLIK` / `TRANSFER` / `CARD`                                     |
-| cashRegister     | relationship | → CashRegisters (source of funds)                                         |
-| investment       | relationship | → Investments (required if type = INVESTMENT_EXPENSE or EMPLOYEE_EXPENSE) |
-| worker           | relationship | → Users (required if type = ADVANCE or EMPLOYEE_EXPENSE)                  |
-| invoice          | upload       | → Media                                                                   |
-| invoiceNote      | textarea     | required if no invoice attached                                           |
-| otherCategory    | relationship | → OtherCategories (required if type = OTHER)                              |
-| otherDescription | textarea     | required if type = OTHER and category not in predefined list              |
-| createdBy        | relationship | → Users, auto-set via hook                                                |
+| Field            | Type         | Notes                                                                                                                                            |
+| ---------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| description      | text         | what the money was spent on                                                                                                                      |
+| amount           | number       | always positive, direction determined by type                                                                                                    |
+| date             | date         | when the transaction occurred                                                                                                                    |
+| type             | select       | See type enum table in M24. Current: `DEPOSIT` / `INVESTMENT_EXPENSE` / `ADVANCE` / `EMPLOYEE_EXPENSE` / `OTHER`. Post-M24: expanded to 9 types. |
+| paymentMethod    | select       | `CASH` / `BLIK` / `TRANSFER` / `CARD`                                                                                                            |
+| cashRegister     | relationship | → CashRegisters (source of funds). **Not used for EMPLOYEE_EXPENSE** (post-M24).                                                                 |
+| targetRegister   | relationship | → CashRegisters (post-M24, only for REGISTER_TRANSFER)                                                                                           |
+| investment       | relationship | → Investments (required for some types, optional for EMPLOYEE_EXPENSE)                                                                           |
+| worker           | relationship | → Users (required if type = ACCOUNT_FUNDING or EMPLOYEE_EXPENSE)                                                                                 |
+| invoice          | upload       | → Media                                                                                                                                          |
+| invoiceNote      | textarea     | optional, never required                                                                                                                         |
+| otherCategory    | relationship | → OtherCategories (required if type = OTHER)                                                                                                     |
+| otherDescription | textarea     | required if type = OTHER and category not in predefined list                                                                                     |
+| createdBy        | relationship | → Users, auto-set via hook                                                                                                                       |
 
 ### 5. OtherCategories
 
@@ -104,18 +107,22 @@ For invoice file uploads (PDF, images).
 
 ### Transactions - beforeValidate
 
-- `type = INVESTMENT_EXPENSE` → require `investment`
-- `type = ADVANCE` → require `worker`
-- `type = EMPLOYEE_EXPENSE` → require `worker` + `investment`
-- `type = OTHER` → require `otherCategory`
-- No `invoice` → require `invoiceNote`
 - Auto-set `createdBy` from `req.user`
+- Type-dependent required fields — see M24 type table for full matrix. Key rules:
+  - Deposit types (`INVESTOR_DEPOSIT`, `STAGE_SETTLEMENT`) → require `cashRegister` + `investment`
+  - `COMPANY_FUNDING`, `OTHER_DEPOSIT` → require `cashRegister`
+  - `INVESTMENT_EXPENSE` → require `cashRegister` + `investment`
+  - `ACCOUNT_FUNDING` → require `cashRegister` + `worker`
+  - `EMPLOYEE_EXPENSE` → require `worker`, NO cash register. `investment` optional (relaxed in M27).
+  - `REGISTER_TRANSFER` → require `cashRegister` (source) + `targetRegister`
+  - `OTHER` → require `cashRegister` + `otherCategory`
 
 ### Transactions - afterChange (create/update/delete)
 
-- Recalculate `cashRegister.balance` (sum all transactions for that register)
-- If `type = INVESTMENT_EXPENSE` or `EMPLOYEE_EXPENSE` → recalculate `investment.totalCosts`
-- Worker sub-account balance is computed on-read (no stored field needed), but we could cache it for performance
+- Recalculate `cashRegister.balance` — **skip for EMPLOYEE_EXPENSE** (no register involved)
+- For `REGISTER_TRANSFER` → recalculate BOTH source (`cashRegister`) and target (`targetRegister`) balances
+- If type has `investment` → recalculate `investment.totalCosts`
+- Worker sub-account balance is computed on-read (no stored field needed)
 
 ### Transactions - beforeDelete
 
@@ -416,6 +423,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - [x] Client-side field-level error display (was toast-only before)
 - **New file**: `src/lib/schemas/settlements.ts`
 - **Modified**: `src/lib/actions/settlements.ts`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`
+
 - **Verified**: `pnpm typecheck` (0 errors), `pnpm lint` (0 new errors)
 
 ### M17: Reports
@@ -525,6 +533,174 @@ Establish hard numbers so every subsequent change can be measured against the ba
 
 - **Key files**: `src/hooks/transactions/recalculate-balances.ts`, `src/hooks/revalidate-collection.ts`, `src/lib/actions/transactions.ts`, `src/lib/actions/settlements.ts`, `src/lib/cache/tags.ts`, `src/lib/cache/revalidate.ts`, all `src/lib/queries/*.ts`, `loading.tsx` files
 - **Success**: Transaction create <500ms, page navigation feels instant on cache hits, settlement proportional but parallelized
+
+### Data Integrity: Balance Verification & Repair
+
+> **Bug**: Cash register balances can become stale (non-zero with zero transactions). Root cause: `afterDelete` hook may not fire on bulk deletes via Payload admin, or hook errors swallow silently. Investment `totalCosts` likely has the same issue.
+
+- [ ] **Recalculate all balances script** — admin-only server action or API route that re-runs `SUM()` for every cash register and every investment, updating stored balances. Use as a repair tool.
+- [ ] **Investigate bulk delete** — confirm whether Payload's admin bulk delete triggers `afterDelete` per-doc or skips hooks. If it skips, add a `beforeBulkOperation` hook or disable bulk delete for transactions.
+- [ ] **Periodic verification** — consider a lightweight check on dashboard load: compare displayed balance vs live `SUM()`. If mismatch, log warning and auto-repair.
+
+### M22: Bug Fixes & Form Polish
+
+- [ ] **Debug Juri saldo bug** — investigate why saldo didn't update after receiving money. Check `recalcAfterChange` hook fires correctly for all transaction types, verify `sumEmployeeSaldo` SQL covers the relevant type.
+- [ ] **Form reset after successful submit** — audit all forms (transaction, settlement, zero-saldo). Ensure TanStack Form `reset()` is called on success. Check if dialog close triggers reset.
+- [ ] **Investment column in transaction tables** — add `investment` column to `src/lib/tables/transactions.tsx` (all contexts: transaction list, cash register detail, worker detail, investment detail).
+- [ ] **Investment filter on transaction list page** — add investment filter to `/transakcje` URL-based filters alongside existing type/cash-register/date-range filters.
+- [ ] **Remove invoiceNote requirement** — `invoiceNote` is never required (no "invoice OR invoiceNote" validation). Remove from `validateTransaction` hook, settlement action validation, and any frontend form-level required checks.
+- **Key files**: `src/hooks/transactions/recalculate-balances.ts`, `src/hooks/transactions/validate.ts`, `src/lib/db/sum-transactions.ts`, `src/components/transactions/transaction-form.tsx`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`, `src/lib/tables/transactions.tsx`, `src/app/(frontend)/transakcje/`
+- **Success**: Saldo always consistent after any transaction type, all forms reset cleanly, investment visible and filterable in tables
+
+### M23: Naming Overhaul
+
+Rename terminology across the entire codebase to match business language.
+
+#### Rename "Zaliczka" → "Zasilenie konta współpracownika"
+
+- [ ] **DB migration** — `UPDATE transactions SET type = 'ACCOUNT_FUNDING' WHERE type = 'ADVANCE'`
+- [ ] **Payload collection** — update `TRANSACTION_TYPES` option value + labels (pl: "Zasilenie konta współpracownika", en: "Account Funding")
+- [ ] **Constants** — update `src/lib/constants/transactions.ts`: type enum, labels map, `needsWorker()` helper
+- [ ] **SQL queries** — update all raw SQL in `src/lib/db/sum-transactions.ts` that reference `'ADVANCE'` → `'ACCOUNT_FUNDING'`
+- [ ] **Validation hook** — update `src/hooks/transactions/validate.ts` type checks
+- [ ] **Balance hook** — update `src/hooks/transactions/recalculate-balances.ts` if it references `ADVANCE`
+- [ ] **Frontend forms** — update transaction form, settlement form type references
+- [ ] **Schemas** — update Zod schemas in `src/lib/schemas/`
+
+#### Rename "Transakcje" → "Transfery"
+
+- [ ] **Sidebar** — rename nav item label from "Transakcje" to "Transfery"
+- [ ] **Page titles** — `/transakcje` page heading, breadcrumbs
+- [ ] **Payload admin labels** — collection `labels.singular`/`labels.plural` (pl: "Transfer"/"Transfery", en: "Transfer"/"Transfers")
+- [ ] **Table headers** — any reference to "transakcja" in table columns
+- [ ] **URL route** — consider renaming `/transakcje` → `/transfery` (breaking change for bookmarks — evaluate if worth it or defer)
+
+- **Migration**: `20260217_rename_advance_to_account_funding.ts`
+- **Key files**: `src/collections/transactions.ts`, `src/lib/constants/transactions.ts`, `src/lib/db/sum-transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`, `src/lib/schemas/transactions.ts`, `src/components/layouts/sidebar/`, page components
+- **Success**: All UI shows "Zasilenie konta współpracownika" and "Transfery", DB stores `ACCOUNT_FUNDING`, no references to old names remain
+
+### M24: Transaction Type System Overhaul
+
+> **Resolved design decisions:**
+>
+> - **Q1 (Investment saldo):** Deferred — keep `totalCosts` as positive accumulator for now. Revisit if/when investor payments are implemented.
+> - **Q2 (Employee expense + register):** `EMPLOYEE_EXPENSE` has **no cash register field at all**. Clean separation: advances go through registers, employee expenses go through worker accounts only.
+> - **Q3 (Register transfers):** Implement as a single `REGISTER_TRANSFER` transaction with `sourceRegister` (= `cashRegister`) + `targetRegister` field.
+> - **Q4 (Deposit subtypes):** Separate top-level transaction types (not a subtype field).
+
+#### New transaction type enum
+
+Replace current: `DEPOSIT | INVESTMENT_EXPENSE | ACCOUNT_FUNDING | EMPLOYEE_EXPENSE | OTHER`
+
+With expanded set:
+
+| Type                 | Polish label                    | Requires fields                                    | Register balance effect                |
+| -------------------- | ------------------------------- | -------------------------------------------------- | -------------------------------------- |
+| `INVESTOR_DEPOSIT`   | Wpłata od inwestora             | `cashRegister`, `investment`                       | +amount to register                    |
+| `STAGE_SETTLEMENT`   | Rozliczenie etapu               | `cashRegister`, `investment`                       | +amount to register                    |
+| `COMPANY_FUNDING`    | Zasilenie z konta firmowego     | `cashRegister`                                     | +amount to register                    |
+| `OTHER_DEPOSIT`      | Inna wpłata                     | `cashRegister`                                     | +amount to register                    |
+| `INVESTMENT_EXPENSE` | Wydatek inwestycyjny            | `cashRegister`, `investment`                       | -amount from register                  |
+| `ACCOUNT_FUNDING`    | Zasilenie konta współpracownika | `cashRegister`, `worker`                           | -amount from register                  |
+| `EMPLOYEE_EXPENSE`   | Wydatek pracowniczy             | `worker`, `investment` (optional)                  | **no register effect**                 |
+| `REGISTER_TRANSFER`  | Transfer między kasami          | `cashRegister` (source), `targetRegister` (target) | -amount from source, +amount to target |
+| `OTHER`              | Inne                            | `cashRegister`, `otherCategory`                    | -amount from register                  |
+
+#### Implementation tasks
+
+- [ ] **Remove `DEPOSIT` type** — replaced by 4 specific deposit types (`INVESTOR_DEPOSIT`, `STAGE_SETTLEMENT`, `COMPANY_FUNDING`, `OTHER_DEPOSIT`)
+- [ ] **DB migration** — update enum values, add `target_register_id` column, migrate existing `DEPOSIT` rows to `OTHER_DEPOSIT` (or appropriate subtype), remove `cash_register_id` requirement
+- [ ] **Remove `cashRegister` from `EMPLOYEE_EXPENSE`** — field not applicable. Existing EMPLOYEE_EXPENSE rows: set `cash_register_id = NULL` in migration.
+- [ ] **Add `targetRegister` field** — relationship → CashRegisters, visible only when type = `REGISTER_TRANSFER`
+- [ ] **Update Payload collection** — new type options with pl/en labels, conditional field visibility:
+  - `investment`: visible when type in (`INVESTOR_DEPOSIT`, `STAGE_SETTLEMENT`, `INVESTMENT_EXPENSE`, `EMPLOYEE_EXPENSE`)
+  - `worker`: visible when type in (`ACCOUNT_FUNDING`, `EMPLOYEE_EXPENSE`)
+  - `cashRegister`: visible for all types EXCEPT `EMPLOYEE_EXPENSE`
+  - `targetRegister`: visible only for `REGISTER_TRANSFER`
+  - `otherCategory`: visible only for `OTHER`
+- [ ] **Update validation hook** — new type→field requirement matrix (see table above)
+- [ ] **Update constants** — `src/lib/constants/transactions.ts`: new type enum, labels, `needsInvestment()`, `needsWorker()`, `needsCashRegister()`, `needsTargetRegister()` helpers
+- [ ] **Update `sumRegisterBalance` SQL** — deposit types add, expense types subtract, `EMPLOYEE_EXPENSE` excluded, `REGISTER_TRANSFER` subtracts from source:
+  ```sql
+  CASE
+    WHEN type IN ('INVESTOR_DEPOSIT', 'STAGE_SETTLEMENT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT') THEN amount
+    WHEN type = 'EMPLOYEE_EXPENSE' THEN 0
+    ELSE -amount
+  END
+  ```
+  Plus a separate query/addition for `REGISTER_TRANSFER` deposits (where `target_register_id = registerId`):
+  ```sql
+  + COALESCE((SELECT SUM(amount) FROM transactions WHERE target_register_id = registerId AND type = 'REGISTER_TRANSFER'), 0)
+  ```
+- [ ] **Update `sumInvestmentCosts`** — include `INVESTOR_DEPOSIT` and `STAGE_SETTLEMENT` as income? (Deferred per Q1 — only count costs for now)
+- [ ] **Update `recalculate-balances` hook** — skip register recalc for `EMPLOYEE_EXPENSE`. For `REGISTER_TRANSFER`, recalc BOTH source and target registers.
+- [ ] **Update `sumEmployeeSaldo` / `sumAllWorkerSaldos`** — currently uses `ADVANCE` (will be `ACCOUNT_FUNDING` after M23). Verify no other type changes needed.
+- [ ] **Update frontend forms** — transaction form conditional field logic, new type select options, remove cash register for EMPLOYEE_EXPENSE, add target register for REGISTER_TRANSFER
+- [ ] **Update schemas** — Zod schemas for new type enum + conditional field requirements
+- [ ] **Update table columns/filters** — new type labels in tables, type filter updated
+- **Migration**: `20260217_transaction_type_overhaul.ts` — new enum values, `target_register_id` column, data migration for existing rows
+- **Key files**: `src/collections/transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`, `src/lib/db/sum-transactions.ts`, `src/lib/constants/transactions.ts`, `src/lib/schemas/transactions.ts`, `src/components/transactions/transaction-form.tsx`, `src/lib/queries/transactions.ts`
+- **Depends on**: M23 (naming — `ADVANCE` already renamed to `ACCOUNT_FUNDING`)
+- **Success**: All new types work end-to-end, register balances correct, no double-charging on employee expenses
+
+### M25: Cash Flow Integrity & Lockdown
+
+- [ ] **Restrict balance editing in Payload admin** — remove manual balance override for ALL roles. Balance field becomes truly computed-only (remove `update` access, keep `admin.readOnly: true`).
+- [ ] **Consider disabling transaction editing** — evaluate if editing existing transactions should be blocked (safer for accounting). Only corrections via new offsetting transactions.
+- [ ] **Verify cash flow integrity** — write a verification script/action that checks: `SUM(all deposits) - SUM(all withdrawals) = SUM(all register balances)`. Run against existing data.
+- [ ] **Fix any existing data inconsistencies** — if M24 migration reveals balance discrepancies from the double-charge bug, recalculate all register balances.
+- **Depends on**: M24
+
+### M26: Cash Register Permissions
+
+- [ ] **Add `type` field to CashRegisters** — `MAIN` | `AUXILIARY` (select field, default `AUXILIARY`)
+- [ ] **DB migration** — add `type` column, update existing "Kasa główna" to `MAIN`
+- [ ] **Access control: read** — `MAIN` registers restricted to ADMIN/OWNER. `AUXILIARY` registers readable by MANAGER.
+- [ ] **Frontend filter** — register lists/dropdowns filter by user role + register type. MANAGER sees only `AUXILIARY` registers.
+- [ ] **Dashboard** — MANAGER dashboard shows only auxiliary register balances. OWNER/ADMIN sees all.
+- [ ] **Forms** — cash register select in transaction/settlement forms respects role-based visibility
+- **Key files**: `src/collections/cash-registers.ts`, `src/access/index.ts`, `src/lib/queries/cash-registers.ts`, `src/lib/queries/reference-data.ts`, `src/components/transactions/transaction-form.tsx`, `src/components/settlements/settlement-form.tsx`, dashboard components
+- **Migration**: `20260217_add_cash_register_type.ts`
+- **Success**: MANAGER cannot see or select "Kasa główna", OWNER sees everything
+
+### M27: Settlement Relaxation
+
+- [ ] **Make `investment` optional** — remove required validation on `investment` field in settlement form and `createSettlementAction`
+- [ ] **Allow adding investment later** — extend existing M20 edit action to support adding/changing `investment` on existing transactions
+- [ ] **Expense subtype in settlement** — evaluate adding a type selector to settlement line items (e.g., "Materiały", "Robocizna", "Inne")
+- **Key files**: `src/hooks/transactions/validate.ts`, `src/lib/schemas/settlements.ts`, `src/components/settlements/settlement-form.tsx`, `src/lib/actions/settlements.ts`, `src/lib/actions/transactions.ts`
+- **Success**: Settlement submittable without investment or invoice, both can be attached later
+
+### M28: Investment View Enhancements
+
+- [ ] **Labor costs stat** — add "Koszty robocizny" card to investment detail page (SUM of `EMPLOYEE_EXPENSE` where investment matches)
+- [ ] **Materials costs stat** — add "Koszty materiałów" card (SUM of `INVESTMENT_EXPENSE` where investment matches)
+- [ ] **Transaction type filter** — add type filter/breakdown on investment detail page transaction table
+- [ ] **Investment balance** — if M24 introduces signed investment saldo (income - costs), display net balance on investment detail
+- **Depends on**: M24/M25 (saldo model), M22 (investment column)
+- **Key files**: `src/app/(frontend)/inwestycje/[id]/page.tsx`, `src/lib/db/sum-transactions.ts`, `src/lib/queries/investments.ts`
+
+---
+
+## Milestone Dependency Graph
+
+```
+M21 (Perf) ─── in progress
+  │
+  ├── M22 (Bugs/Polish) ─── independent, quick wins
+  │
+  ├── M23 (Naming) ─── independent, safe rename
+  │     │
+  │     └── M24 (Type System) ─── depends on M23 + design decisions Q1-Q4
+  │           │
+  │           ├── M25 (Cash Flow) ─── depends on M24
+  │           │
+  │           ├── M27 (Settlement) ─── depends on M24 validation changes
+  │           │
+  │           └── M28 (Investment View) ─── depends on M24/M25
+  │
+  └── M26 (Register Permissions) ─── independent of type changes
+```
 
 ---
 

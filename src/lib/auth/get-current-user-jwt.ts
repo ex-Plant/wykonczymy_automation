@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
 import { getPayload } from 'payload'
@@ -7,6 +8,7 @@ import config from '@payload-config'
 import type { RoleT } from '@/lib/auth/roles'
 import { ROLES } from '@/lib/auth/roles'
 import type { SessionUserT } from './get-current-user'
+export type { SessionUserT } from './get-current-user'
 
 let cachedSecretKey: Uint8Array | undefined
 
@@ -19,13 +21,14 @@ async function getSecretKey(): Promise<Uint8Array> {
 }
 
 /**
- * Fast JWT-based auth for server actions.
+ * Fast JWT-based auth for server actions and RSC pages.
  * Decodes the payload-token cookie directly — no DB round-trip.
+ * Wrapped with React cache() for deduplication within a single render pass.
  *
  * Requires `saveToJWT: true` on `name` and `role` fields in Users collection.
  * Trade-off: a deleted/disabled user stays valid until token expires (24h).
  */
-export async function getCurrentUserJwt(): Promise<SessionUserT | undefined> {
+export const getCurrentUserJwt = cache(async (): Promise<SessionUserT | undefined> => {
   const cookieStore = await cookies()
   const token = cookieStore.get('payload-token')?.value
 
@@ -51,4 +54,4 @@ export async function getCurrentUserJwt(): Promise<SessionUserT | undefined> {
     console.error('[getCurrentUserJwt] JWT verify failed:', err)
     return undefined
   }
-}
+})

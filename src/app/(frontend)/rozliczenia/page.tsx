@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { findAllUsers } from '@/lib/queries/users'
@@ -9,7 +9,7 @@ import { SettlementForm } from '@/components/settlements/settlement-form'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
 export default async function SettlementsPage() {
-  const user = await getCurrentUser()
+  const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
 
