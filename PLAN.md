@@ -434,25 +434,97 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 - **Modified**: `src/components/ui/dialog.tsx`, modal components
 - **Verified**: Tested at 320px–428px viewport widths
 
-### M19: Invoices View & Download
+### M19: Invoices View & Download ✅ DONE
 
-- [ ] Dedicated page for browsing/searching uploaded invoices (currently only accessible via individual transactions)
-- [ ] Filtering by date, worker, investment
-- [ ] Download/preview functionality
-- [ ] Access control: decide who can view invoices (open question in M8.1)
-- [ ] **Downloadable invoice PDF in every transaction table** — wherever a transaction row appears in the app (transactions list, investment detail, cash register detail, worker detail, dashboard recent, settlement history), display a download link/icon when the transaction has an attached invoice. This is a **cross-cutting requirement** that affects the shared `TransactionDataTable` component and any other place transactions are rendered.
-- **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`, `src/lib/transactions/map-transaction-row.ts`
-- **Success**: Users can browse, search, and download invoices; invoice PDF download is accessible inline from any transaction row across the entire app
+- [x] Dedicated page for browsing/searching uploaded invoices
+- [x] Filtering by date, worker, investment
+- [x] Download/preview functionality
+- [x] Downloadable invoice PDF in every transaction table (cross-cutting)
+- **Files**: `src/app/(frontend)/faktury/`, `src/components/transactions/transaction-data-table.tsx`
 
-### M20: Add/Replace Invoice on Existing Transactions
+### M20: Add/Replace Invoice on Existing Transactions ✅ DONE
 
-- [ ] Edit transaction action — `updateTransactionInvoice(transactionId, invoiceFormData)` server action to upload + attach an invoice to a transaction that currently has none (or replace an existing one)
-- [ ] Inline "Dodaj fakturę" button in transaction table rows where `invoice` is null — opens a small dialog/popover with file input
-- [ ] Permission: MANAGER can add invoices to own transactions, ADMIN/OWNER to any
-- [ ] Revalidate transaction cache after update
-- [ ] Consider: bulk invoice upload (select multiple transactions, upload invoices in batch)
-- **Files**: `src/lib/actions/transactions.ts`, `src/components/transactions/` (new dialog or inline upload component)
-- **Success**: Users can retroactively attach invoices to transactions that were created without one
+- [x] Edit transaction action — upload + attach invoice to existing transaction
+- [x] Inline "Dodaj fakturę" button in transaction table rows
+- [x] Permission: MANAGER own transactions, ADMIN/OWNER any
+- [x] Revalidate transaction cache after update
+- **Files**: `src/lib/actions/transactions.ts`, `src/components/transactions/`
+
+---
+
+### M21: Performance Audit & Optimization ⬅️ TOP PRIORITY
+
+> **Problem**: App feels slow everywhere — page navigations are the worst offender, mutations (e.g. adding a transaction) take ~3 seconds with a loader. Should feel instant.
+
+#### Root Causes (from code analysis)
+
+**A. Mutation overhead (transaction create = ~3 seconds)**
+
+Each `payload.create('transactions')` triggers a synchronous hook chain that blocks the response:
+
+1. `beforeValidate` — validation (fast, no DB)
+2. `afterChange` in `recalculate-balances.ts`:
+   - `sumRegisterBalance()` — 1 SQL SUM query
+   - `payload.update('cash-registers')` — 1 DB write → triggers its own `afterChange` hook → `revalidateCollection('cashRegisters')`
+   - `sumInvestmentCosts()` — 1 SQL SUM query (if investment-linked)
+   - `payload.update('investments')` — 1 DB write → triggers its own `afterChange` hook → `revalidateCollection('investments')`
+   - `revalidateCollections(['transactions', 'cashRegisters'])` ← 1st revalidation
+3. `afterChange` in `revalidate-collection.ts`:
+   - `revalidateCollection('transactions')` ← 2nd revalidation (DUPLICATE)
+4. Back in `createTransactionAction`:
+   - `revalidateCollections(['transactions', 'cashRegisters'])` ← 3rd revalidation (DUPLICATE)
+
+**Total**: 5-7 DB round trips + 3x duplicate cache invalidation, all synchronous.
+
+**B. Cache invalidation is too broad (page navigations slow)**
+
+Cache tags are **collection-level** only (`collection:transactions`, `collection:cash-registers`, etc.). Creating 1 transaction invalidates ALL `transactions`-tagged caches globally — every dashboard, every list page, every employee saldo, every investment detail. On next navigation, Next.js must re-run all those queries from scratch.
+
+**C. Settlement is catastrophically slow**
+
+Creates N transactions in a **sequential loop**, each with the full hook chain. 5 line items = ~30 DB operations + 6x cache invalidation, all sequential.
+
+#### Implementation Plan
+
+##### Phase 1: Baseline measurement (instrument before changing anything)
+
+Establish hard numbers so every subsequent change can be measured against the baseline.
+
+- [ ] **Server action timing** — wrap `createTransactionAction`, `createSettlementAction`, `zeroSaldoAction` with `performance.now()` measuring: total action time, Payload `create()` call time, time spent in hooks (returned via context or measured around the call), revalidation time.
+- [ ] **Hook timing** — instrument `recalcAfterChange` and `recalcAfterDelete` in `recalculate-balances.ts`: measure each SQL SUM query, each `payload.update()`, and revalidation calls separately.
+- [ ] **Page load timing** — instrument key cached query functions (`findTransactions`, `findAllCashRegisters`, `findActiveInvestments`, `getUserSaldo`, `getCachedEmployeeSaldo`) with `performance.now()` to measure cache hit vs miss times.
+- [ ] **Log format** — structured logs: `[PERF] <operation> <duration>ms` so they're easy to grep. Include context (e.g., transaction type, number of line items for settlements).
+- [ ] **Capture baseline** — run through the key flows (create transaction, create settlement with 3-5 items, navigate dashboard → transactions → worker detail → back) and record the numbers.
+
+##### Phase 2: Quick wins (remove waste)
+
+- [ ] **Remove duplicate revalidation** — `createTransactionAction` and `recalcAfterChange` both call `revalidateCollections`. Remove from action, keep in hook only. Same for settlement actions.
+- [ ] **Remove cascading hook revalidation** — `payload.update('cash-registers')` inside the transaction hook triggers the cash-registers collection `afterChange` hook, which calls `revalidateCollection('cashRegisters')` again. Either skip hooks on these internal updates (`context: { skipRevalidation: true }`) or remove the generic revalidation hook from cash-registers/investments since the transaction hook already handles it.
+- [ ] **Re-measure** — run the same flows from Phase 1, compare numbers.
+
+##### Phase 3: Mutation speed (make creates feel instant)
+
+- [ ] **Parallelize balance recalculation** — `sumRegisterBalance` + `sumInvestmentCosts` can run in parallel (`Promise.all`), then both `payload.update()` calls can also run in parallel.
+- [ ] **Investigate: fire-and-forget balance recalc** — balance recalculation doesn't need to block the response. The user doesn't need to wait for the cash register balance to update before seeing "transaction created." Explore running recalculation after the response is sent (e.g., `waitUntil()` from `next/server`, or `after()` from Next.js 15+).
+- [ ] **Settlement: batch transaction creation** — replace sequential loop with `Promise.all` for media uploads, then `Promise.all` for transaction creates. Or explore Payload's bulk create if available. Revalidate once at the end, not per-transaction.
+
+##### Phase 4: Navigation speed (smarter caching)
+
+- [ ] **Loading skeletons** — audit all pages for `loading.tsx` files. Any page without one feels frozen during data fetching. Add skeletons for dashboard, transaction list, worker detail, investment detail, cash register detail.
+- [ ] **Granular cache tags** — replace collection-wide tags with entity-specific tags where it matters most:
+  - `cashRegister:${id}:balance` — only invalidate the affected register
+  - `investment:${id}:costs` — only invalidate the affected investment
+  - `user:${id}:saldo` — only invalidate the affected worker's saldo
+  - Keep `collection:transactions` for list queries but add per-entity tags for detail queries
+- [ ] **Investigate: partial revalidation** — when creating a transaction for worker X on cash register Y, only invalidate caches that involve X or Y, not the entire transactions collection.
+
+##### Phase 5: Evaluate (Payload vs direct DB)
+
+- [ ] **Compare Payload ORM vs direct Drizzle** — with instrumentation from Phase 1, measure `payload.find()` overhead vs raw SQL. If Payload's ORM adds >100ms per query, migrate hot-path reads to direct Drizzle (already available via `getDb()`).
+- [ ] **Decision gate**: if Phases 1-3 bring mutation time to <500ms and navigation feels instant with cache hits, keep Payload. If not, plan migration to Prisma/Drizzle for the data layer.
+
+- **Key files**: `src/hooks/transactions/recalculate-balances.ts`, `src/hooks/revalidate-collection.ts`, `src/lib/actions/transactions.ts`, `src/lib/actions/settlements.ts`, `src/lib/cache/tags.ts`, `src/lib/cache/revalidate.ts`, all `src/lib/queries/*.ts`, `loading.tsx` files
+- **Success**: Transaction create <500ms, page navigation feels instant on cache hits, settlement proportional but parallelized
 
 ---
 

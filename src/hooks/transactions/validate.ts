@@ -37,11 +37,6 @@ export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, o
     if (!d.otherCategory) errors.push('Category is required for OTHER transactions.')
   }
 
-  // Invoice or invoiceNote must exist (not required for deposits)
-  if (d.type !== 'DEPOSIT' && !d.invoice && !d.invoiceNote) {
-    errors.push('Either an invoice file or invoice note is required.')
-  }
-
   if (errors.length > 0) {
     console.log('[validateTransaction] Validation failed:', errors)
     throw new Error(errors.join(' '))

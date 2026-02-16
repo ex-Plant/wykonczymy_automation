@@ -3,7 +3,7 @@ import { getEmployeeSaldo } from '@/lib/queries/employees'
 import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
 import { getUserSaldo } from '@/lib/queries/users'
 import { formatPLN } from '@/lib/format-currency'
-import { MONTHS } from '@/components/ui/month-year-picker'
+import { MONTHS } from '@/lib/constants/months'
 import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { StatCard } from '@/components/ui/stat-card'
@@ -11,7 +11,6 @@ import { StatCard } from '@/components/ui/stat-card'
 const EMPLOYEE_EXCLUDE_COLUMNS = [
   'type',
   'cashRegister',
-  'investment',
   'worker',
   'otherCategory',
   'invoice',

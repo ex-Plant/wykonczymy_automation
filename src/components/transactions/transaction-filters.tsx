@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { TRANSACTION_TYPES, TRANSACTION_TYPE_LABELS } from '@/lib/constants/transactions'
-import { MONTHS } from '@/components/ui/month-year-picker'
+import { MONTHS } from '@/lib/constants/months'
 import { getMonthDateRange } from '@/lib/helpers'
 import { buildUrlWithParams } from '@/lib/helpers'
 import { cn } from '@/lib/cn'
