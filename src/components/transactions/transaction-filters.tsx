@@ -21,6 +21,7 @@ type ReferenceItemT = { id: number; name: string }
 
 type TransactionFiltersPropsT = {
   cashRegisters?: ReferenceItemT[]
+  investments?: ReferenceItemT[]
   showTypeFilter?: boolean
   baseUrl: string
   className?: string
@@ -28,6 +29,7 @@ type TransactionFiltersPropsT = {
 
 export function TransactionFilters({
   cashRegisters,
+  investments,
   showTypeFilter = true,
   baseUrl,
   className,
@@ -37,6 +39,7 @@ export function TransactionFilters({
 
   const currentType = searchParams.get('type') ?? ''
   const currentCashRegister = searchParams.get('cashRegister') ?? ''
+  const currentInvestment = searchParams.get('investment') ?? ''
   const currentFrom = searchParams.get('from') ?? ''
   const currentTo = searchParams.get('to') ?? ''
 
@@ -74,11 +77,14 @@ export function TransactionFilters({
   const currentYear = now.getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
-  const hasFilters = currentType || currentCashRegister || currentFrom || currentTo
+  const hasFilters =
+    currentType || currentCashRegister || currentInvestment || currentFrom || currentTo
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      {(showTypeFilter || (cashRegisters && cashRegisters.length > 0)) && (
+      {(showTypeFilter ||
+        (cashRegisters && cashRegisters.length > 0) ||
+        (investments && investments.length > 0)) && (
         <div className="flex flex-wrap gap-3">
           {showTypeFilter && (
             <FilterField label="Typ">
@@ -99,6 +105,16 @@ export function TransactionFilters({
                 value={currentCashRegister}
                 onValueChange={(v) => updateParam('cashRegister', v)}
                 options={cashRegisters.map((cr) => ({ value: String(cr.id), label: cr.name }))}
+              />
+            </FilterField>
+          )}
+
+          {investments && investments.length > 0 && (
+            <FilterField label="Inwestycja">
+              <FilterSelect
+                value={currentInvestment}
+                onValueChange={(v) => updateParam('investment', v)}
+                options={investments.map((i) => ({ value: String(i.id), label: i.name }))}
               />
             </FilterField>
           )}

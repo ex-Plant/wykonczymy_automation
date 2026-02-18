@@ -460,7 +460,7 @@ Replaced all fetch-all-and-reduce-in-JS patterns with Postgres `SUM()` queries. 
 
 ---
 
-### M21: Performance Audit & Optimization ⬅️ TOP PRIORITY
+### M21: Performance Audit & Optimization
 
 > **Problem**: App feels slow everywhere — page navigations are the worst offender, mutations (e.g. adding a transaction) take ~3 seconds with a loader. Should feel instant.
 
@@ -493,6 +493,32 @@ Cache tags are **collection-level** only (`collection:transactions`, `collection
 Creates N transactions in a **sequential loop**, each with the full hook chain. 5 line items = ~30 DB operations + 6x cache invalidation, all sequential.
 
 #### Implementation Plan
+
+##### Phase 0: Dashboard Query Optimization ✅ DONE
+
+**Branch:** `feat/dashboard-query-performance`
+
+Eliminated `depth: 1` joins across all transaction and cash register queries. Dashboard cold-cache render: **2900ms → 884ms (-70%)**. Warm cache: **397ms**.
+
+- [x] **Database indexes** — `idx_transactions_worker_type` on `(worker_id, type)`, `idx_transactions_date` on `(date)`. Migration: `20260216_add_performance_indexes.ts`
+- [x] **Depth: 0 queries** — `findTransactionsRaw`, `findAllTransactionsRaw`, `findAllCashRegistersRaw` skip ORM relationship joins. Callers resolve names via lookup maps built from `fetchReferenceData`.
+- [x] **Direct SQL count** — `countRecentTransactions` → `SELECT COUNT(*) FROM transactions WHERE date >= $1` (was `payload.find({ limit: 0 })`)
+- [x] **UNION ALL reference data** — `fetchReferenceData` replaced 4 parallel Payload ORM queries with single `SELECT ... UNION ALL` across 4 tables
+- [x] **Media batch-fetch** — `fetchMediaByIds(ids)` resolves invoice URLs from raw media IDs (depth: 0 returns IDs not objects)
+- [x] **Lookup-based mapping** — `mapTransactionRow(doc, lookups?)` resolves relationship IDs to names via `TransactionLookupsT` maps. `buildTransactionLookups(refData, mediaMap)` + `extractInvoiceIds(docs)` helpers.
+- [x] **All callers migrated** — manager dashboard, employee dashboard, investment/cash-register/user detail pages, worker report page, employee-data.ts. Old depth:1 functions removed.
+- **New files**: `src/lib/queries/media.ts`, `src/migrations/20260216_add_performance_indexes.ts`
+- **Modified**: `src/lib/queries/transactions.ts`, `src/lib/queries/cash-registers.ts`, `src/lib/queries/reference-data.ts`, `src/lib/queries/employee-data.ts`, `src/lib/tables/transactions.tsx`, `src/components/dashboard/manager-dashboard.tsx`, `src/components/dashboard/employee-dashboard-server.tsx`, 4 detail pages
+- **Results**:
+
+| Query                     | Before | After   |
+| ------------------------- | ------ | ------- |
+| `findTransactionsRaw`     | 2472ms | ~580ms  |
+| `findAllCashRegistersRaw` | 1874ms | ~390ms  |
+| `fetchReferenceData`      | 1572ms | ~580ms  |
+| `countRecentTransactions` | 1498ms | ~384ms  |
+| `findAllUsersWithSaldos`  | 1438ms | ~490ms  |
+| Detail page queries       | —      | 75-90ms |
 
 ##### Phase 1: Baseline measurement (instrument before changing anything)
 

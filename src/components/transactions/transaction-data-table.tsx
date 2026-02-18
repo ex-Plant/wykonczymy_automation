@@ -10,6 +10,7 @@ import { cn } from '../../lib/cn'
 
 type FilterConfigT = {
   readonly cashRegisters?: { id: number; name: string }[]
+  readonly investments?: { id: number; name: string }[]
   readonly showTypeFilter?: boolean
 }
 
@@ -37,6 +38,7 @@ export function TransactionDataTable({
       {filters && (
         <TransactionFilters
           cashRegisters={filters.cashRegisters}
+          investments={filters.investments}
           showTypeFilter={filters.showTypeFilter}
           baseUrl={baseUrl}
         />

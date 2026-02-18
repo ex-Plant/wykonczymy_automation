@@ -123,6 +123,13 @@ export function buildTransactionFilters(
     where.cashRegister = { equals: Number(cashRegisterParam) }
   }
 
+  // Investment filter
+  const investmentParam =
+    typeof searchParams.investment === 'string' ? searchParams.investment : undefined
+  if (investmentParam) {
+    where.investment = { equals: Number(investmentParam) }
+  }
+
   // Date range
   const fromParam = typeof searchParams.from === 'string' ? searchParams.from : undefined
   const toParam = typeof searchParams.to === 'string' ? searchParams.to : undefined

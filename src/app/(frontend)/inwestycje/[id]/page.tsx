@@ -31,18 +31,18 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   const sp = await searchParams
   const { page, limit } = parsePagination(sp)
 
-  const investment = await getInvestment(id)
-  if (!investment) notFound()
-
   const urlFilters = buildTransactionFilters(sp, { id: user.id, isManager: true })
-  const [rawTxResult, refData] = await Promise.all([
+  const investmentId = Number(id)
+  const [investment, rawTxResult, refData] = await Promise.all([
+    getInvestment(id),
     findTransactionsRaw({
-      where: { ...urlFilters, investment: { equals: id } },
+      where: { ...urlFilters, investment: { equals: investmentId } },
       page,
       limit,
     }),
     fetchReferenceData(),
   ])
+  if (!investment) notFound()
 
   const invoiceIds = extractInvoiceIds(rawTxResult.docs)
   const mediaMap = await fetchMediaByIds(invoiceIds)

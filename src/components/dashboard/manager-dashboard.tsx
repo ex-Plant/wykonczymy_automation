@@ -99,7 +99,10 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
             data={rows}
             paginationMeta={paginationMeta}
             baseUrl="/"
-            filters={{ cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })) }}
+            filters={{
+              cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
+              investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
+            }}
           />
         </div>
       </div>
