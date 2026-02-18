@@ -8,13 +8,16 @@ import { PAYMENT_METHODS } from '@/lib/constants/transfers'
 const lineItemClientSchema = z.object({
   description: z.string(),
   amount: z.string(),
+  category: z.string().optional(),
+  note: z.string().optional(),
 })
 
 /** Client-side schema — works with string values from HTML inputs. */
 export const settlementFormSchema = z
   .object({
     worker: z.string(),
-    investment: z.string(),
+    mode: z.enum(['investment', 'category']),
+    investment: z.string().optional(),
     date: z.string(),
     paymentMethod: z.string(),
     invoiceNote: z.string(),
@@ -29,7 +32,7 @@ export const settlementFormSchema = z
       })
     }
 
-    if (!data.investment) {
+    if (data.mode === 'investment' && !data.investment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Inwestycja jest wymagana',
@@ -68,13 +71,30 @@ export const settlementFormSchema = z
           path: ['lineItems', index, 'amount'],
         })
       }
+      if (data.mode === 'category') {
+        if (!item.category) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Kategoria jest wymagana',
+            path: ['lineItems', index, 'category'],
+          })
+        }
+        if (!item.note?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Notatka jest wymagana',
+            path: ['lineItems', index, 'note'],
+          })
+        }
+      }
     })
   })
 
 /** Server-side schema — typed values after conversion. */
 export const createSettlementSchema = z.object({
   worker: z.number({ error: 'Pracownik jest wymagany' }).positive('Pracownik jest wymagany'),
-  investment: z.number({ error: 'Inwestycja jest wymagana' }).positive('Inwestycja jest wymagana'),
+  mode: z.enum(['investment', 'category']),
+  investment: z.number().positive().optional(),
   date: z.string().min(1, 'Data jest wymagana'),
   paymentMethod: z.enum(PAYMENT_METHODS),
   invoiceNote: z.string().optional(),
@@ -83,6 +103,8 @@ export const createSettlementSchema = z.object({
       z.object({
         description: z.string().min(1, 'Opis jest wymagany'),
         amount: z.number().positive('Kwota musi być większa niż 0'),
+        category: z.number().positive().optional(),
+        note: z.string().optional(),
       }),
     )
     .min(1, 'Dodaj co najmniej jedną pozycję'),

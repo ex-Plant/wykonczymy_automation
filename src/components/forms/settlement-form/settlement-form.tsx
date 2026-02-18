@@ -28,6 +28,7 @@ type ReferenceItemT = { id: number; name: string }
 type ReferenceDataT = {
   users: ReferenceItemT[]
   investments: ReferenceItemT[]
+  otherCategories: ReferenceItemT[]
 }
 
 type SettlementFormPropsT = {
@@ -38,11 +39,12 @@ type SettlementFormPropsT = {
 
 type FormValuesT = {
   worker: string
-  investment: string
+  mode: 'investment' | 'category'
+  investment?: string
   date: string
   paymentMethod: string
   invoiceNote: string
-  lineItems: { description: string; amount: string }[]
+  lineItems: { description: string; amount: string; category?: string; note?: string }[]
 }
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -58,11 +60,12 @@ export function SettlementForm({ referenceData, className, onSuccess }: Settleme
   const form = useAppForm({
     defaultValues: {
       worker: '',
+      mode: 'investment' as const,
       investment: '',
       date: today(),
       paymentMethod: 'CASH',
       invoiceNote: '',
-      lineItems: [{ description: '', amount: '' }],
+      lineItems: [{ description: '', amount: '', category: '', note: '' }],
     } as FormValuesT,
     validators: {
       onSubmit: settlementFormSchema,
@@ -70,13 +73,16 @@ export function SettlementForm({ referenceData, className, onSuccess }: Settleme
     onSubmit: async ({ value }) => {
       const data: CreateSettlementFormT = {
         worker: Number(value.worker),
-        investment: Number(value.investment),
+        mode: value.mode,
+        investment: value.mode === 'investment' ? Number(value.investment) : undefined,
         date: value.date,
         paymentMethod: value.paymentMethod as PaymentMethodT,
         invoiceNote: value.invoiceNote || undefined,
         lineItems: value.lineItems.map((item) => ({
           description: item.description,
           amount: Number(item.amount),
+          category: value.mode === 'category' ? Number(item.category) : undefined,
+          note: value.mode === 'category' ? item.note : undefined,
         })),
       }
 
@@ -106,6 +112,7 @@ export function SettlementForm({ referenceData, className, onSuccess }: Settleme
 
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+  const mode = useStore(form.store, (s) => s.values.mode)
 
   const { isInvalid, isSubmitting } = useFormStatus(form)
 
@@ -178,19 +185,49 @@ export function SettlementForm({ referenceData, className, onSuccess }: Settleme
               </p>
             )}
 
+            {/* Mode toggle */}
+            <form.AppField name="mode">
+              {(field) => (
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="radio"
+                      name="settlementMode"
+                      value="investment"
+                      checked={field.state.value === 'investment'}
+                      onChange={() => field.handleChange('investment')}
+                    />
+                    Inwestycja
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="radio"
+                      name="settlementMode"
+                      value="category"
+                      checked={field.state.value === 'category'}
+                      onChange={() => field.handleChange('category')}
+                    />
+                    Inne (kategoria)
+                  </label>
+                </div>
+              )}
+            </form.AppField>
+
             {/* Shared metadata */}
             <div className="grid gap-4 md:grid-cols-2">
-              <form.AppField name="investment">
-                {(field) => (
-                  <field.Select label="Inwestycja" placeholder="Wybierz inwestycję" showError>
-                    {referenceData.investments.map((inv) => (
-                      <SelectItem key={inv.id} value={String(inv.id)}>
-                        {inv.name}
-                      </SelectItem>
-                    ))}
-                  </field.Select>
-                )}
-              </form.AppField>
+              {mode === 'investment' && (
+                <form.AppField name="investment">
+                  {(field) => (
+                    <field.Select label="Inwestycja" placeholder="Wybierz inwestycję" showError>
+                      {referenceData.investments.map((inv) => (
+                        <SelectItem key={inv.id} value={String(inv.id)}>
+                          {inv.name}
+                        </SelectItem>
+                      ))}
+                    </field.Select>
+                  )}
+                </form.AppField>
+              )}
 
               <form.AppField name="date">
                 {(field) => <field.Input label="Data" type="date" showError />}
@@ -242,13 +279,48 @@ export function SettlementForm({ referenceData, className, onSuccess }: Settleme
                         accept="image/*,application/pdf"
                         onChange={(e) => handleFileChange(index, e)}
                       />
+                      {mode === 'category' && (
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <form.AppField name={`lineItems[${index}].category`}>
+                            {(field) => (
+                              <field.Select
+                                label="Kategoria"
+                                placeholder="Wybierz kategorię"
+                                showError
+                              >
+                                {referenceData.otherCategories.map((cat) => (
+                                  <SelectItem key={cat.id} value={String(cat.id)}>
+                                    {cat.name}
+                                  </SelectItem>
+                                ))}
+                              </field.Select>
+                            )}
+                          </form.AppField>
+                          <form.AppField name={`lineItems[${index}].note`}>
+                            {(field) => (
+                              <field.Input
+                                label="Notatka"
+                                placeholder="Notatka do pozycji"
+                                showError
+                              />
+                            )}
+                          </form.AppField>
+                        </div>
+                      )}
                     </div>
                   ))}
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => lineItemsField.pushValue({ description: '', amount: '' })}
+                    onClick={() =>
+                      lineItemsField.pushValue({
+                        description: '',
+                        amount: '',
+                        category: '',
+                        note: '',
+                      })
+                    }
                   >
                     Dodaj pozycję
                   </Button>

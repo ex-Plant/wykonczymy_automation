@@ -8,6 +8,7 @@ import * as migration_20260218_rename_advance_to_account_funding from './2026021
 import * as migration_20260218_0_transaction_type_enums from './20260218_0_transaction_type_enums'
 import * as migration_20260218_transaction_type_overhaul from './20260218_transaction_type_overhaul'
 import * as migration_20260218_add_cash_register_type from './20260218_add_cash_register_type'
+import * as migration_20260218_seed_other_category_inne from './20260218_seed_other_category_inne'
 
 export const migrations = [
   {
@@ -59,5 +60,10 @@ export const migrations = [
     up: migration_20260218_add_cash_register_type.up,
     down: migration_20260218_add_cash_register_type.down,
     name: '20260218_add_cash_register_type',
+  },
+  {
+    up: migration_20260218_seed_other_category_inne.up,
+    down: migration_20260218_seed_other_category_inne.down,
+    name: '20260218_seed_other_category_inne',
   },
 ]

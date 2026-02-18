@@ -46,7 +46,8 @@ const needsWorker = (data: Record<string, unknown>) =>
 const showTargetRegister = (data: Record<string, unknown>) => data?.type === 'REGISTER_TRANSFER'
 
 /** Show field when type is OTHER */
-const needsOtherCategory = (data: Record<string, unknown>) => data?.type === 'OTHER'
+const needsOtherCategory = (data: Record<string, unknown>) =>
+  data?.type === 'OTHER' || data?.type === 'EMPLOYEE_EXPENSE'
 
 export const Transfers: CollectionConfig = {
   slug: 'transactions',

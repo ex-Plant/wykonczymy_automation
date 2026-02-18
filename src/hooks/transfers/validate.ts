@@ -61,6 +61,20 @@ export const validateTransfer: CollectionBeforeValidateHook = ({ data, req, oper
     errors.push('Category is required for OTHER transfers.')
   }
 
+  // EMPLOYEE_EXPENSE: requires either investment OR (otherCategory + otherDescription)
+  if (type === 'EMPLOYEE_EXPENSE') {
+    const hasInvestment = !!d.investment
+    const hasCategory = !!d.otherCategory
+    if (!hasInvestment && !hasCategory) {
+      errors.push('Employee expense requires either an investment or a category.')
+    }
+    if (hasInvestment && hasCategory) {
+      // Investment takes precedence — auto-clear category
+      d.otherCategory = null
+      d.otherDescription = null
+    }
+  }
+
   if (errors.length > 0) {
     console.log('[validateTransfer] Validation failed:', errors)
     throw new Error(errors.join(' '))

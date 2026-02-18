@@ -38,6 +38,7 @@ export function AddSettlementDialog({ referenceData }: AddSettlementDialogPropsT
   const settlementReferenceData = {
     users: referenceData.workers,
     investments: referenceData.investments,
+    otherCategories: referenceData.otherCategories,
   }
 
   return (
