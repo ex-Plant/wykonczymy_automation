@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import dynamic from 'next/dynamic'
-import type { ReferenceDataT } from '@/components/dialogs/add-transaction-dialog'
+import type { ReferenceDataT } from '@/components/dialogs/add-transfer-dialog'
 
 const SettlementForm = dynamic(
   () =>
-    import('@/components/settlements/settlement-form').then((m) => ({
+    import('@/components/forms/settlement-form/settlement-form').then((m) => ({
       default: m.SettlementForm,
     })),
   {

@@ -1,14 +1,14 @@
 'use client'
 
-import type { ReferenceDataT } from '@/components/dialogs/add-transaction-dialog'
+import type { ReferenceDataT } from '@/components/dialogs/add-transfer-dialog'
 import dynamic from 'next/dynamic'
 import { useTransition } from 'react'
 import { LogOut } from 'lucide-react'
 import { logoutAction } from '@/lib/actions/auth'
 
-const AddTransactionDialog = dynamic(() =>
-  import('@/components/dialogs/add-transaction-dialog').then((m) => ({
-    default: m.AddTransactionDialog,
+const AddTransferDialog = dynamic(() =>
+  import('@/components/dialogs/add-transfer-dialog').then((m) => ({
+    default: m.AddTransferDialog,
   })),
 )
 
@@ -43,7 +43,7 @@ export function TopNav({ referenceData, managerCashRegisterId }: TopNavPropsT) {
               referenceData={referenceData}
               managerCashRegisterId={managerCashRegisterId}
             />
-            <AddTransactionDialog referenceData={referenceData} />
+            <AddTransferDialog referenceData={referenceData} />
           </>
         )}
         <button

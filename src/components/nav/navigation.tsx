@@ -2,7 +2,7 @@ import type { RoleT } from '@/lib/auth/roles'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { TopNav } from '@/components/layouts/mobile-nav'
+import { TopNav } from '@/components/nav/top-nav'
 
 type NavigationPropsT = {
   user: {

@@ -723,21 +723,21 @@ With expanded set:
 ## Milestone Dependency Graph
 
 ```
-M21 (Perf) ─── in progress
+M21 (Perf) ─── Phase 0-3 done, Phase 4-5 open
   │
-  ├── M22 (Bugs/Polish) ─── independent, quick wins
+  ├── M22 (Bugs/Polish) ─── 3 items remaining (saldo bug, form reset, invoiceNote)
   │
-  ├── M23 (Naming) ─── independent, safe rename
+  ├── M23 (Naming) ─── ✅ DONE
   │     │
-  │     └── M24 (Type System) ─── depends on M23 + design decisions Q1-Q4
+  │     └── M24 (Type System) ─── UNBLOCKED, ready to start
   │           │
-  │           ├── M25 (Cash Flow) ─── depends on M24
+  │           ├── M25 (Cash Flow) ─── blocked by M24
   │           │
-  │           ├── M27 (Settlement) ─── depends on M24 validation changes
+  │           ├── M27 (Settlement) ─── blocked by M24
   │           │
-  │           └── M28 (Investment View) ─── depends on M24/M25
+  │           └── M28 (Investment View) ─── blocked by M24/M25
   │
-  └── M26 (Register Permissions) ─── independent of type changes
+  └── M26 (Register Permissions) ─── independent, ready to start
 ```
 
 ---

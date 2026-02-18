@@ -6,7 +6,7 @@ import { abcFavorit, dmSans, spaceMono } from '@/fonts'
 import { cn } from '@/lib/cn'
 import { ToastContainer } from 'react-toastify'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
-import { Navigation } from '@/components/layouts/sidebar/navigation'
+import { Navigation } from '@/components/nav/navigation'
 import { Loader } from '@/components/ui/loader/loader'
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {

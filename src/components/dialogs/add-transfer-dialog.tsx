@@ -12,10 +12,10 @@ import {
 import { Button } from '@/components/ui/button'
 import dynamic from 'next/dynamic'
 
-const TransactionForm = dynamic(
+const TransferForm = dynamic(
   () =>
-    import('@/components/transactions/transaction-form').then((m) => ({
-      default: m.TransactionForm,
+    import('@/components/forms/transfer-form/transfer-form').then((m) => ({
+      default: m.TransferForm,
     })),
   {
     loading: () => (
@@ -33,16 +33,16 @@ export type ReferenceDataT = {
   otherCategories: ReferenceItemT[]
 }
 
-type AddTransactionDialogPropsT = {
+type AddTransferDialogPropsT = {
   referenceData: ReferenceDataT | undefined
   managerCashRegisterId?: number
   variant?: 'default' | 'icon'
 }
 
-export function AddTransactionDialog({
+export function AddTransferDialog({
   referenceData,
   managerCashRegisterId,
-}: AddTransactionDialogPropsT) {
+}: AddTransferDialogPropsT) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!referenceData) return <></>
@@ -61,7 +61,7 @@ export function AddTransactionDialog({
             <DialogDescription>Wypełnij formularz, aby dodać nowy transfer.</DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto pr-1">
-            <TransactionForm
+            <TransferForm
               referenceData={referenceData}
               managerCashRegisterId={managerCashRegisterId}
               onSuccess={() => setIsOpen(false)}
