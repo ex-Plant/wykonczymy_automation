@@ -11,7 +11,7 @@ import {
   type ZeroSaldoFormT,
 } from '@/lib/schemas/settlements'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { getDb, sumInvestmentCosts } from '@/lib/db/sum-transfers'
+import { getDb, sumInvestmentCosts, sumInvestmentIncome } from '@/lib/db/sum-transfers'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf, perfStart } from '@/lib/perf'
 
@@ -97,14 +97,19 @@ export async function createSettlementAction(
       },
     )
 
-    // Single recalculation for investment costs only (no register involved for EMPLOYEE_EXPENSE)
+    // Single recalculation for investment financials (no register involved for EMPLOYEE_EXPENSE)
     await perf('settlement.recalcBalances', async () => {
       if (parsed.data.investment) {
         const db = await getDb(payload)
         const investmentId = parsed.data.investment
-        const totalCosts = await sumInvestmentCosts(payload, investmentId)
+        const [totalCosts, totalIncome] = await Promise.all([
+          sumInvestmentCosts(payload, investmentId),
+          sumInvestmentIncome(payload, investmentId),
+        ])
         await db.execute(sql`
-          UPDATE investments SET total_costs = ${totalCosts}, updated_at = NOW() WHERE id = ${investmentId}
+          UPDATE investments
+          SET total_costs = ${totalCosts}, total_income = ${totalIncome}, updated_at = NOW()
+          WHERE id = ${investmentId}
         `)
       }
     })

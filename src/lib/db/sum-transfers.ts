@@ -75,6 +75,27 @@ export const sumInvestmentCosts = async (
 }
 
 /**
+ * SUM income for an investment using SQL aggregation.
+ * Only INVESTOR_DEPOSIT and STAGE_SETTLEMENT types count.
+ */
+export const sumInvestmentIncome = async (
+  payload: Payload,
+  investmentId: number,
+  req?: PayloadRequest,
+): Promise<number> => {
+  const db = await getDb(payload, req)
+
+  const result = await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0) AS total
+    FROM transactions
+    WHERE investment_id = ${investmentId}
+      AND type IN ('INVESTOR_DEPOSIT', 'STAGE_SETTLEMENT')
+  `)
+
+  return Number(result.rows[0].total)
+}
+
+/**
  * SUM employee saldo using SQL aggregation.
  * ACCOUNT_FUNDINGs add to saldo, EMPLOYEE_EXPENSEs subtract.
  * Optional date range filters by the `date` column.

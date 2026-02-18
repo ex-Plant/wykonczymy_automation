@@ -5,13 +5,20 @@ import type {
   PayloadRequest,
 } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transfers'
+import {
+  getDb,
+  sumRegisterBalance,
+  sumInvestmentCosts,
+  sumInvestmentIncome,
+} from '@/lib/db/sum-transfers'
 import { revalidateTag } from 'next/cache'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { entityTag } from '@/lib/cache/tags'
 import { perf } from '@/lib/perf'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
+const INCOME_TYPES = ['INVESTOR_DEPOSIT', 'STAGE_SETTLEMENT'] as const
+const INVESTMENT_TYPES = [...COST_TYPES, ...INCOME_TYPES] as const
 
 /**
  * Recalculate a cash register's balance via SQL SUM + direct UPDATE.
@@ -37,22 +44,30 @@ const recalcRegisterBalance = async (
 }
 
 /**
- * Recalculate an investment's totalCosts via SQL SUM + direct UPDATE.
- * Only INVESTMENT_EXPENSE and EMPLOYEE_EXPENSE transactions count.
+ * Recalculate an investment's totalCosts and totalIncome via SQL SUM + direct UPDATE.
+ * Costs: INVESTMENT_EXPENSE + EMPLOYEE_EXPENSE
+ * Income: INVESTOR_DEPOSIT + STAGE_SETTLEMENT
  */
-const recalcInvestmentCosts = async (
+const recalcInvestmentFinancials = async (
   payload: Payload,
   investmentId: number,
   req: PayloadRequest,
 ): Promise<void> => {
-  const totalCosts = await perf(`hook.sumInvestmentCosts(${investmentId})`, () =>
-    sumInvestmentCosts(payload, investmentId, req),
-  )
+  const [totalCosts, totalIncome] = await Promise.all([
+    perf(`hook.sumInvestmentCosts(${investmentId})`, () =>
+      sumInvestmentCosts(payload, investmentId, req),
+    ),
+    perf(`hook.sumInvestmentIncome(${investmentId})`, () =>
+      sumInvestmentIncome(payload, investmentId, req),
+    ),
+  ])
 
   await perf(`hook.updateInvestment(${investmentId})`, async () => {
     const db = await getDb(payload, req)
     await db.execute(sql`
-      UPDATE investments SET total_costs = ${totalCosts}, updated_at = NOW() WHERE id = ${investmentId}
+      UPDATE investments
+      SET total_costs = ${totalCosts}, total_income = ${totalIncome}, updated_at = NOW()
+      WHERE id = ${investmentId}
     `)
   })
 }
@@ -112,12 +127,12 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
     tasks.push(recalcRegisterBalance(req.payload, prevTargetRegisterId, req))
   }
 
-  // Investment costs
-  if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
-    tasks.push(recalcInvestmentCosts(req.payload, investmentId, req))
+  // Investment costs + income
+  if (investmentId && (INVESTMENT_TYPES as readonly string[]).includes(doc.type as string)) {
+    tasks.push(recalcInvestmentFinancials(req.payload, investmentId, req))
   }
   if (prevInvestmentId && prevInvestmentId !== investmentId) {
-    tasks.push(recalcInvestmentCosts(req.payload, prevInvestmentId, req))
+    tasks.push(recalcInvestmentFinancials(req.payload, prevInvestmentId, req))
   }
 
   await Promise.all(tasks)
@@ -160,8 +175,8 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
   if (targetRegisterId) {
     tasks.push(recalcRegisterBalance(req.payload, targetRegisterId, req))
   }
-  if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
-    tasks.push(recalcInvestmentCosts(req.payload, investmentId, req))
+  if (investmentId && (INVESTMENT_TYPES as readonly string[]).includes(doc.type as string)) {
+    tasks.push(recalcInvestmentFinancials(req.payload, investmentId, req))
   }
 
   await Promise.all(tasks)
