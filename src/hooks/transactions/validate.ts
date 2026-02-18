@@ -24,8 +24,8 @@ export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, o
     if (!d.investment) errors.push('Investment is required for investment expenses.')
   }
 
-  if (d.type === 'ADVANCE') {
-    if (!d.worker) errors.push('Worker is required for advances.')
+  if (d.type === 'ACCOUNT_FUNDING') {
+    if (!d.worker) errors.push('Worker is required for account funding.')
   }
 
   if (d.type === 'EMPLOYEE_EXPENSE') {

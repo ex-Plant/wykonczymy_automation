@@ -75,7 +75,7 @@ export default async function WorkerReportPage({ params, searchParams }: PagePro
 
       {/* Summary stats */}
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <SummaryCard label="Zaliczki" value={formatPLN(periodBreakdown.totalAdvances)} />
+        <SummaryCard label="Zasilenia" value={formatPLN(periodBreakdown.totalAdvances)} />
         <SummaryCard label="Wydatki" value={formatPLN(periodBreakdown.totalExpenses)} />
         <SummaryCard label="Saldo okresu" value={formatPLN(periodBreakdown.periodSaldo)} />
       </div>
@@ -110,7 +110,7 @@ export default async function WorkerReportPage({ params, searchParams }: PagePro
 
       {rows.length === 0 && (
         <p className="text-muted-foreground mt-4 text-center text-sm">
-          Brak transakcji w wybranym okresie.
+          Brak transferów w wybranym okresie.
         </p>
       )}
     </div>

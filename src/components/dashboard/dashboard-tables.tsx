@@ -36,6 +36,7 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
           </div>
         </div>
       </div>
+      3
       <div>
         <SectionHeader>Użytkownicy</SectionHeader>
         <div className="mt-4">

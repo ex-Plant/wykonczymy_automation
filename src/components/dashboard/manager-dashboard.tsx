@@ -78,7 +78,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Saldo kas" value={formatPLN(totalBalance)} />
         <StatCard label="Aktywne inwestycje" value={String(activeInvestments.length)} />
-        <StatCard label="Transakcje (30 dni)" value={String(recentCount)} />
+        <StatCard label="Transfery (30 dni)" value={String(recentCount)} />
       </div>
 
       {/* Admin tools */}
@@ -93,7 +93,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
 
       {/* Recent transactions */}
       <div className="mt-8">
-        <SectionHeader>Ostatnie transakcje</SectionHeader>
+        <SectionHeader>Ostatnie transfery</SectionHeader>
         <div className="mt-4">
           <TransactionDataTable
             data={rows}

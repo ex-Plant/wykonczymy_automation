@@ -60,7 +60,7 @@ export async function EmployeeDashboardServer({
     <PageWrapper title="Moje konto">
       {/* Saldo cards */}
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <StatCard label="Saldo ogólne (zaliczki - wydatki)" value={formatPLN(overallSaldo)} />
+        <StatCard label="Saldo ogólne (zasilenia - wydatki)" value={formatPLN(overallSaldo)} />
         <StatCard
           label={`Saldo — ${MONTHS[displayMonth - 1]} ${displayYear}`}
           value={formatPLN(periodSaldo)}
@@ -70,7 +70,7 @@ export async function EmployeeDashboardServer({
       {/* Transactions table with month/year picker */}
       <div className="mt-8">
         <h2 className="text-foreground text-lg font-medium">
-          Transakcje — {MONTHS[displayMonth - 1]} {displayYear}
+          Transfery — {MONTHS[displayMonth - 1]} {displayYear}
         </h2>
         <TransactionDataTable
           data={rows}

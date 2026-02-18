@@ -62,7 +62,7 @@ export const sumInvestmentCosts = async (
 
 /**
  * SUM employee saldo using SQL aggregation.
- * ADVANCEs add to saldo, EMPLOYEE_EXPENSEs subtract.
+ * ACCOUNT_FUNDINGs add to saldo, EMPLOYEE_EXPENSEs subtract.
  * Optional date range filters by the `date` column.
  */
 /**
@@ -75,11 +75,11 @@ export const sumAllWorkerSaldos = async (payload: Payload): Promise<Map<number, 
   const result = await db.execute(sql`
     SELECT worker_id,
       COALESCE(SUM(
-        CASE WHEN type = 'ADVANCE' THEN amount ELSE -amount END
+        CASE WHEN type = 'ACCOUNT_FUNDING' THEN amount ELSE -amount END
       ), 0) AS saldo
     FROM transactions
     WHERE worker_id IS NOT NULL
-      AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+      AND type IN ('ACCOUNT_FUNDING', 'EMPLOYEE_EXPENSE')
     GROUP BY worker_id
   `)
 
@@ -100,11 +100,11 @@ export const sumEmployeeSaldo = async (
   if (dateRange) {
     const result = await db.execute(sql`
       SELECT COALESCE(SUM(
-        CASE WHEN type = 'ADVANCE' THEN amount ELSE -amount END
+        CASE WHEN type = 'ACCOUNT_FUNDING' THEN amount ELSE -amount END
       ), 0) AS saldo
       FROM transactions
       WHERE worker_id = ${workerId}
-        AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+        AND type IN ('ACCOUNT_FUNDING', 'EMPLOYEE_EXPENSE')
         AND date >= ${dateRange.start}
         AND date <= ${dateRange.end}
     `)
@@ -113,11 +113,11 @@ export const sumEmployeeSaldo = async (
 
   const result = await db.execute(sql`
     SELECT COALESCE(SUM(
-      CASE WHEN type = 'ADVANCE' THEN amount ELSE -amount END
+      CASE WHEN type = 'ACCOUNT_FUNDING' THEN amount ELSE -amount END
     ), 0) AS saldo
     FROM transactions
     WHERE worker_id = ${workerId}
-      AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+      AND type IN ('ACCOUNT_FUNDING', 'EMPLOYEE_EXPENSE')
   `)
 
   return Number(result.rows[0].saldo)
@@ -142,11 +142,11 @@ export const sumWorkerPeriodBreakdown = async (
 
   const result = await db.execute(sql`
     SELECT
-      COALESCE(SUM(CASE WHEN type = 'ADVANCE' THEN amount ELSE 0 END), 0) AS advances,
+      COALESCE(SUM(CASE WHEN type = 'ACCOUNT_FUNDING' THEN amount ELSE 0 END), 0) AS advances,
       COALESCE(SUM(CASE WHEN type = 'EMPLOYEE_EXPENSE' THEN amount ELSE 0 END), 0) AS expenses
     FROM transactions
     WHERE worker_id = ${workerId}
-      AND type IN ('ADVANCE', 'EMPLOYEE_EXPENSE')
+      AND type IN ('ACCOUNT_FUNDING', 'EMPLOYEE_EXPENSE')
       AND date >= ${dateRange.start}
       AND date <= ${dateRange.end}
   `)

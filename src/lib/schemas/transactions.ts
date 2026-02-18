@@ -34,7 +34,7 @@ export const createTransactionSchema = z
     if (needsInvestment(data.type) && !data.investment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Inwestycja jest wymagana dla tego typu transakcji',
+        message: 'Inwestycja jest wymagana dla tego typu transferu',
         path: ['investment'],
       })
     }
@@ -42,7 +42,7 @@ export const createTransactionSchema = z
     if (needsWorker(data.type) && !data.worker) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Pracownik jest wymagany dla tego typu transakcji',
+        message: 'Pracownik jest wymagany dla tego typu transferu',
         path: ['worker'],
       })
     }
@@ -50,7 +50,7 @@ export const createTransactionSchema = z
     if (needsOtherCategory(data.type) && !data.otherCategory) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Kategoria jest wymagana dla transakcji typu "Inne"',
+        message: 'Kategoria jest wymagana dla transferu typu "Inne"',
         path: ['otherCategory'],
       })
     }
@@ -112,7 +112,7 @@ export const transactionFormSchema = z
     if (needsInvestment(data.type) && !data.investment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Inwestycja jest wymagana dla tego typu transakcji',
+        message: 'Inwestycja jest wymagana dla tego typu transferu',
         path: ['investment'],
       })
     }
@@ -120,7 +120,7 @@ export const transactionFormSchema = z
     if (needsWorker(data.type) && !data.worker) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Pracownik jest wymagany dla tego typu transakcji',
+        message: 'Pracownik jest wymagany dla tego typu transferu',
         path: ['worker'],
       })
     }
@@ -128,7 +128,7 @@ export const transactionFormSchema = z
     if (needsOtherCategory(data.type) && !data.otherCategory) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Kategoria jest wymagana dla transakcji typu "Inne"',
+        message: 'Kategoria jest wymagana dla transferu typu "Inne"',
         path: ['otherCategory'],
       })
     }

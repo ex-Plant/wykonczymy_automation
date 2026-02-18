@@ -51,14 +51,14 @@ export function AddTransactionDialog({
     <>
       <Button variant="default" size="sm" className="gap-2" onClick={() => setIsOpen(true)}>
         <Plus className="size-4" />
-        Nowa transakcja
+        Nowy transfer
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader className={`p-4`}>
-            <DialogTitle>Nowa transakcja</DialogTitle>
-            <DialogDescription>Wypełnij formularz, aby dodać nową transakcję.</DialogDescription>
+            <DialogTitle>Nowy transfer</DialogTitle>
+            <DialogDescription>Wypełnij formularz, aby dodać nowy transfer.</DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto pr-1">
             <TransactionForm

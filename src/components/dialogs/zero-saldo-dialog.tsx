@@ -103,8 +103,8 @@ export function ZeroSaldoDialog({
         <DialogHeader>
           <DialogTitle>Zeruj saldo pracownika</DialogTitle>
           <DialogDescription>
-            Zostanie utworzona transakcja &quot;Wydatek pracowniczy&quot; na kwotę{' '}
-            {formatPLN(saldo)}, zerując saldo.
+            Zostanie utworzony transfer &quot;Wydatek pracowniczy&quot; na kwotę {formatPLN(saldo)},
+            zerując saldo.
           </DialogDescription>
         </DialogHeader>
 

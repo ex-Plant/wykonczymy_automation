@@ -520,27 +520,22 @@ Eliminated `depth: 1` joins across all transaction and cash register queries. Da
 | `findAllUsersWithSaldos`  | 1438ms | ~490ms  |
 | Detail page queries       | —      | 75-90ms |
 
-##### Phase 1: Baseline measurement (instrument before changing anything)
+##### Phase 1: Baseline measurement ✅ DONE
 
-Establish hard numbers so every subsequent change can be measured against the baseline.
+- [x] **Server action timing** — `perf()` / `perfStart()` wrappers (`src/lib/perf.ts`) around all server actions: `createTransactionAction`, `createSettlementAction`, `zeroSaldoAction`. Measures total action time, Payload `create()`, media uploads.
+- [x] **Hook timing** — `recalcAfterChange` and `recalcAfterDelete` instrumented with `performance.now()` + `perf()` for each SQL SUM and direct SQL UPDATE.
+- [x] **Log format** — structured `[PERF] <operation> <duration>ms` logs with context (transaction type, line item count for settlements).
 
-- [ ] **Server action timing** — wrap `createTransactionAction`, `createSettlementAction`, `zeroSaldoAction` with `performance.now()` measuring: total action time, Payload `create()` call time, time spent in hooks (returned via context or measured around the call), revalidation time.
-- [ ] **Hook timing** — instrument `recalcAfterChange` and `recalcAfterDelete` in `recalculate-balances.ts`: measure each SQL SUM query, each `payload.update()`, and revalidation calls separately.
-- [ ] **Page load timing** — instrument key cached query functions (`findTransactions`, `findAllCashRegisters`, `findActiveInvestments`, `getUserSaldo`, `getCachedEmployeeSaldo`) with `performance.now()` to measure cache hit vs miss times.
-- [ ] **Log format** — structured logs: `[PERF] <operation> <duration>ms` so they're easy to grep. Include context (e.g., transaction type, number of line items for settlements).
-- [ ] **Capture baseline** — run through the key flows (create transaction, create settlement with 3-5 items, navigate dashboard → transactions → worker detail → back) and record the numbers.
+##### Phase 2: Quick wins (remove waste) ✅ DONE
 
-##### Phase 2: Quick wins (remove waste)
+- [x] **Remove duplicate revalidation** — actions no longer call `revalidateCollections`; hook handles it. Settlement uses `skipBalanceRecalc: true` + single revalidation at end.
+- [x] **Remove cascading hook revalidation** — `recalculate-balances.ts` now uses direct SQL `UPDATE` instead of `payload.update()`, so cash-registers/investments `afterChange` hooks never fire during balance recalc. Generic hooks remain for direct admin edits and respect `context.skipRevalidation`.
 
-- [ ] **Remove duplicate revalidation** — `createTransactionAction` and `recalcAfterChange` both call `revalidateCollections`. Remove from action, keep in hook only. Same for settlement actions.
-- [ ] **Remove cascading hook revalidation** — `payload.update('cash-registers')` inside the transaction hook triggers the cash-registers collection `afterChange` hook, which calls `revalidateCollection('cashRegisters')` again. Either skip hooks on these internal updates (`context: { skipRevalidation: true }`) or remove the generic revalidation hook from cash-registers/investments since the transaction hook already handles it.
-- [ ] **Re-measure** — run the same flows from Phase 1, compare numbers.
+##### Phase 3: Mutation speed (make creates feel instant) ✅ DONE
 
-##### Phase 3: Mutation speed (make creates feel instant)
-
-- [ ] **Parallelize balance recalculation** — `sumRegisterBalance` + `sumInvestmentCosts` can run in parallel (`Promise.all`), then both `payload.update()` calls can also run in parallel.
-- [ ] **Investigate: fire-and-forget balance recalc** — balance recalculation doesn't need to block the response. The user doesn't need to wait for the cash register balance to update before seeing "transaction created." Explore running recalculation after the response is sent (e.g., `waitUntil()` from `next/server`, or `after()` from Next.js 15+).
-- [ ] **Settlement: batch transaction creation** — replace sequential loop with `Promise.all` for media uploads, then `Promise.all` for transaction creates. Or explore Payload's bulk create if available. Revalidate once at the end, not per-transaction.
+- [x] **Parallelize balance recalculation** — `Promise.all(tasks)` in `recalcAfterChange` runs `sumRegisterBalance` + `sumInvestmentCosts` + their SQL UPDATEs concurrently.
+- [ ] **Investigate: fire-and-forget balance recalc** — explore `after()` from Next.js to run recalculation after response is sent. Deferred — current perf may be sufficient.
+- [x] **Settlement: batch transaction creation** — `createSettlementAction` uses `Promise.all` for media uploads, `Promise.all` for transaction creates with `skipBalanceRecalc: true`, single SQL recalc at end.
 
 ##### Phase 4: Navigation speed (smarter caching)
 
@@ -564,19 +559,19 @@ Establish hard numbers so every subsequent change can be measured against the ba
 
 > **Bug**: Cash register balances can become stale (non-zero with zero transactions). Root cause: `afterDelete` hook may not fire on bulk deletes via Payload admin, or hook errors swallow silently. Investment `totalCosts` likely has the same issue.
 
-- [ ] **Recalculate all balances script** — admin-only server action or API route that re-runs `SUM()` for every cash register and every investment, updating stored balances. Use as a repair tool.
+- [x] **Recalculate all balances script** — `recalculateBalancesAction()` in `src/lib/actions/transactions.ts`: ADMIN-only server action that re-runs `SUM()` for every cash register and investment, compares with stored values, updates mismatches, and reports what was fixed.
 - [ ] **Investigate bulk delete** — confirm whether Payload's admin bulk delete triggers `afterDelete` per-doc or skips hooks. If it skips, add a `beforeBulkOperation` hook or disable bulk delete for transactions.
 - [ ] **Periodic verification** — consider a lightweight check on dashboard load: compare displayed balance vs live `SUM()`. If mismatch, log warning and auto-repair.
 
-### M21.1: Remove `/transakcje` Page (Merge into Dashboard)
+### M21.1: Remove `/transakcje` Page (Merge into Dashboard) ✅ DONE
 
 > Dashboard and `/transakcje` render the same `TransactionDataTable` with the same filters. Eliminating the duplicate page removes redundant queries on navigation and simplifies the sidebar.
 
-- [ ] **EMPLOYEE transactions on dashboard** — the employee dashboard already shows monthly transactions. Verify it covers the same data `/transakcje` showed (auto-filtered to `worker=self`, same columns hidden). If not, add the missing pieces.
-- [ ] **Move investment filter to dashboard** — if `/transakcje` had an investment filter the dashboard lacks, add it to the dashboard's `TransactionDataTable`.
-- [ ] **Remove `/transakcje` route** — delete `src/app/(frontend)/transakcje/page.tsx` and directory.
-- [ ] **Remove sidebar item** — remove "Transakcje" from sidebar nav. Dashboard ("Kokpit") is the single entry point.
-- [ ] **Update internal links** — any `href="/transakcje"` in the codebase should point to `"/"` or be removed.
+- [x] **EMPLOYEE transactions on dashboard** — employee dashboard shows monthly transactions filtered by `worker=self`
+- [x] **Move investment filter to dashboard** — investment filter added to dashboard's `TransactionDataTable` and `TransactionFilters`
+- [x] **Remove `/transakcje` route** — deleted `src/app/(frontend)/transakcje/` directory
+- [x] **Remove sidebar item** — "Transakcje" removed from sidebar nav
+- [x] **Update internal links** — no `href="/transakcje"` references remain
 - **Key files**: `src/app/(frontend)/transakcje/`, `src/components/layouts/sidebar/sidebar-nav.tsx`, `src/components/dashboard/manager-dashboard.tsx`, `src/components/dashboard/employee-dashboard-server.tsx`
 - **Success**: One fewer page, one fewer set of queries, sidebar is simpler, all transaction browsing happens on dashboard
 
@@ -586,38 +581,41 @@ Establish hard numbers so every subsequent change can be measured against the ba
 
 - [ ] **Debug Juri saldo bug** — investigate why saldo didn't update after receiving money. Check `recalcAfterChange` hook fires correctly for all transaction types, verify `sumEmployeeSaldo` SQL covers the relevant type.
 - [ ] **Form reset after successful submit** — audit all forms (transaction, settlement, zero-saldo). Ensure TanStack Form `reset()` is called on success. Check if dialog close triggers reset.
-- [ ] **Investment column in transaction tables** — add `investment` column to `src/lib/tables/transactions.tsx` (all contexts: transaction list, cash register detail, worker detail, investment detail).
-- [ ] **Investment filter on transaction list page** — add investment filter to `/transakcje` URL-based filters alongside existing type/cash-register/date-range filters.
+- [x] **Investment column in transaction tables** — added `investment` column to `src/lib/tables/transactions.tsx` (all contexts: dashboard, cash register detail, worker detail, investment detail)
+- [x] **Investment filter on transaction list page** — investment filter added to `TransactionFilters` component, wired through dashboard and detail pages via URL params
 - [ ] **Remove invoiceNote requirement** — `invoiceNote` is never required (no "invoice OR invoiceNote" validation). Remove from `validateTransaction` hook, settlement action validation, and any frontend form-level required checks.
-- **Key files**: `src/hooks/transactions/recalculate-balances.ts`, `src/hooks/transactions/validate.ts`, `src/lib/db/sum-transactions.ts`, `src/components/transactions/transaction-form.tsx`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`, `src/lib/tables/transactions.tsx`, `src/app/(frontend)/transakcje/`
-- **Success**: Saldo always consistent after any transaction type, all forms reset cleanly, investment visible and filterable in tables
+- **Key files**: `src/hooks/transactions/recalculate-balances.ts`, `src/hooks/transactions/validate.ts`, `src/lib/db/sum-transactions.ts`, `src/components/transactions/transaction-form.tsx`, `src/components/settlements/settlement-form.tsx`, `src/components/settlements/zero-saldo-dialog.tsx`
+- **Success**: Saldo always consistent after any transaction type, all forms reset cleanly
 
-### M23: Naming Overhaul
+### M23: Naming Overhaul ✅ DONE
 
-Rename terminology across the entire codebase to match business language.
+Renamed terminology across the entire codebase to match business language.
 
 #### Rename "Zaliczka" → "Zasilenie konta współpracownika"
 
-- [ ] **DB migration** — `UPDATE transactions SET type = 'ACCOUNT_FUNDING' WHERE type = 'ADVANCE'`
-- [ ] **Payload collection** — update `TRANSACTION_TYPES` option value + labels (pl: "Zasilenie konta współpracownika", en: "Account Funding")
-- [ ] **Constants** — update `src/lib/constants/transactions.ts`: type enum, labels map, `needsWorker()` helper
-- [ ] **SQL queries** — update all raw SQL in `src/lib/db/sum-transactions.ts` that reference `'ADVANCE'` → `'ACCOUNT_FUNDING'`
-- [ ] **Validation hook** — update `src/hooks/transactions/validate.ts` type checks
-- [ ] **Balance hook** — update `src/hooks/transactions/recalculate-balances.ts` if it references `ADVANCE`
-- [ ] **Frontend forms** — update transaction form, settlement form type references
-- [ ] **Schemas** — update Zod schemas in `src/lib/schemas/`
+- [x] **DB migration** — `ALTER TYPE enum_transactions_type RENAME VALUE 'ADVANCE' TO 'ACCOUNT_FUNDING'`
+- [x] **Payload collection** — updated `TRANSACTION_TYPES` option value + labels (pl: "Zasilenie konta współpracownika", en: "Account Funding")
+- [x] **Constants** — updated `src/lib/constants/transactions.ts`: type enum, labels map, `needsWorker()` helper
+- [x] **SQL queries** — updated all raw SQL in `src/lib/db/sum-transactions.ts` (`'ADVANCE'` → `'ACCOUNT_FUNDING'`)
+- [x] **Validation hook** — updated `src/hooks/transactions/validate.ts` type checks
+- [x] **Balance hook** — no references to `ADVANCE` in `recalculate-balances.ts` (already clean)
+- [x] **Frontend forms** — updated transaction form, settlement form, zero-saldo dialog
+- [x] **Schemas** — updated Zod schemas in `src/lib/schemas/transactions.ts`
+- [x] **Stat card labels** — "Zaliczki w okresie" → "Zasilenia w okresie", "Zaliczki" → "Zasilenia", "zaliczki - wydatki" → "zasilenia - wydatki"
+- [x] **Seed scripts** — updated `seed-transactions.ts` and `seed-ziutek-advances.ts`
 
 #### Rename "Transakcje" → "Transfery"
 
-- [ ] **Sidebar** — rename nav item label from "Transakcje" to "Transfery"
-- [ ] **Page titles** — `/transakcje` page heading, breadcrumbs
-- [ ] **Payload admin labels** — collection `labels.singular`/`labels.plural` (pl: "Transfer"/"Transfery", en: "Transfer"/"Transfers")
-- [ ] **Table headers** — any reference to "transakcja" in table columns
-- [ ] **URL route** — consider renaming `/transakcje` → `/transfery` (breaking change for bookmarks — evaluate if worth it or defer)
+- [x] **Sidebar** — already removed (M21.1), "Nowa transakcja" button → "Nowy transfer"
+- [x] **Page titles** — `/transakcje` route already deleted (M21.1). Section headers on detail pages updated.
+- [x] **Payload admin labels** — collection labels: pl "Transfer"/"Transfery", en "Transfer"/"Transfers"
+- [x] **UI text** — dialog titles, descriptions, toast messages, empty states, stat cards, form labels, placeholders
+- [x] **Validation messages** — "tego typu transakcji" → "tego typu transferu" in Zod schemas
+- [x] **URL route** — N/A, `/transakcje` was already deleted in M21.1
 
-- **Migration**: `20260217_rename_advance_to_account_funding.ts`
-- **Key files**: `src/collections/transactions.ts`, `src/lib/constants/transactions.ts`, `src/lib/db/sum-transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`, `src/lib/schemas/transactions.ts`, `src/components/layouts/sidebar/`, page components
-- **Success**: All UI shows "Zasilenie konta współpracownika" and "Transfery", DB stores `ACCOUNT_FUNDING`, no references to old names remain
+- **Migration**: `20260218_rename_advance_to_account_funding.ts`
+- **Modified**: `src/collections/transactions.ts`, `src/collections/investments.ts`, `src/collections/cash-registers.ts`, `src/lib/constants/transactions.ts`, `src/lib/db/sum-transactions.ts`, `src/hooks/transactions/validate.ts`, `src/lib/schemas/transactions.ts`, `src/lib/actions/settlements.ts`, `src/components/dialogs/add-transaction-dialog.tsx`, `src/components/dialogs/add-settlement-dialog.tsx`, `src/components/dialogs/zero-saldo-dialog.tsx`, `src/components/transactions/transaction-form.tsx`, `src/components/transactions/transaction-data-table.tsx`, `src/components/dashboard/manager-dashboard.tsx`, `src/components/dashboard/employee-dashboard-server.tsx`, `src/components/settlements/settlement-form.tsx`, detail pages (inwestycje, kasa, uzytkownicy, raport)
+- **Verified**: `pnpm typecheck` (0 errors), no stale `ADVANCE`/`Transakcj`/`Zaliczk` references in production source
 
 ### M24: Transaction Type System Overhaul
 

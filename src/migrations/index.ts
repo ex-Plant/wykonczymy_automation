@@ -4,6 +4,7 @@ import * as migration_20260211_212425 from './20260211_212425'
 import * as migration_20260211_213603 from './20260211_213603'
 import * as migration_20260212_191046_add_deposit_type from './20260212_191046_add_deposit_type'
 import * as migration_20260216_add_performance_indexes from './20260216_add_performance_indexes'
+import * as migration_20260218_rename_advance_to_account_funding from './20260218_rename_advance_to_account_funding'
 
 export const migrations = [
   {
@@ -35,5 +36,10 @@ export const migrations = [
     up: migration_20260216_add_performance_indexes.up,
     down: migration_20260216_add_performance_indexes.down,
     name: '20260216_add_performance_indexes',
+  },
+  {
+    up: migration_20260218_rename_advance_to_account_funding.up,
+    down: migration_20260218_rename_advance_to_account_funding.down,
+    name: '20260218_rename_advance_to_account_funding',
   },
 ]

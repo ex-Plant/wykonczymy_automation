@@ -216,7 +216,12 @@ async function ensureCategories(payload: PayloadT) {
 // Transaction generation
 // ---------------------------------------------------------------------------
 
-type TransactionTypeT = 'DEPOSIT' | 'INVESTMENT_EXPENSE' | 'ADVANCE' | 'EMPLOYEE_EXPENSE' | 'OTHER'
+type TransactionTypeT =
+  | 'DEPOSIT'
+  | 'INVESTMENT_EXPENSE'
+  | 'ACCOUNT_FUNDING'
+  | 'EMPLOYEE_EXPENSE'
+  | 'OTHER'
 type PaymentMethodT = 'CASH' | 'BLIK' | 'TRANSFER' | 'CARD'
 
 type TransactionDataT = {
@@ -274,7 +279,7 @@ function generateAdvance(e: EntitiesT): TransactionDataT {
     description: randomItem(ADVANCE_DESCRIPTIONS),
     amount: randomBetween(200, 3000),
     date: randomDate(),
-    type: 'ADVANCE',
+    type: 'ACCOUNT_FUNDING',
     paymentMethod: randomItem(PAYMENT_METHODS),
     cashRegister: randomItem(e.registerIds),
     worker: randomItem(e.workerIds),

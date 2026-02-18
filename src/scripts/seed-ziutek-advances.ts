@@ -1,5 +1,5 @@
 /**
- * Seed script — creates 200 ADVANCE transactions assigned to "Ziutek Dwa".
+ * Seed script — creates 200 ACCOUNT_FUNDING transactions assigned to "Ziutek Dwa".
  *
  * Usage:  pnpm seed:ziutek
  *
@@ -91,12 +91,12 @@ async function main() {
   const registerIds = registers.docs.map((r) => r.id)
   console.log(`Found ${registerIds.length} cash register(s)`)
 
-  // Build 200 ADVANCE transactions
+  // Build 200 ACCOUNT_FUNDING transactions
   const transactions = Array.from({ length: TRANSACTION_COUNT }, () => ({
     description: randomItem(ADVANCE_DESCRIPTIONS),
     amount: randomBetween(100, 3000),
     date: randomDate(),
-    type: 'ADVANCE' as const,
+    type: 'ACCOUNT_FUNDING' as const,
     paymentMethod: randomItem(PAYMENT_METHODS),
     cashRegister: randomItem(registerIds),
     worker: ziutek.id,
@@ -104,7 +104,7 @@ async function main() {
     createdBy: creator.id,
   })).sort((a, b) => a.date.localeCompare(b.date))
 
-  console.log(`\nInserting ${TRANSACTION_COUNT} ADVANCE transactions for ${ziutek.name}...`)
+  console.log(`\nInserting ${TRANSACTION_COUNT} ACCOUNT_FUNDING transactions for ${ziutek.name}...`)
 
   let created = 0
   for (const tx of transactions) {
@@ -119,7 +119,7 @@ async function main() {
     }
   }
 
-  console.log(`\nDone! Created ${created} ADVANCE transactions for ${ziutek.name}.`)
+  console.log(`\nDone! Created ${created} ACCOUNT_FUNDING transactions for ${ziutek.name}.`)
   process.exit(0)
 }
 

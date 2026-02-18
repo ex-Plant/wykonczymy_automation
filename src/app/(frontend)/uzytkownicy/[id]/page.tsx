@@ -125,7 +125,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       {/* Period stats — only shown when date range is active */}
       {periodBreakdown && (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Zaliczki w okresie" value={formatPLN(periodBreakdown.totalAdvances)} />
+          <StatCard label="Zasilenia w okresie" value={formatPLN(periodBreakdown.totalAdvances)} />
           <StatCard label="Wydatki w okresie" value={formatPLN(periodBreakdown.totalExpenses)} />
           <StatCard label="Saldo okresu" value={formatPLN(periodBreakdown.periodSaldo)} />
         </div>
@@ -145,7 +145,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       </div>
 
       {/* Transactions table with filters */}
-      <SectionHeader className="mt-8">Transakcje</SectionHeader>
+      <SectionHeader className="mt-8">Transfery</SectionHeader>
       <TransactionDataTable
         data={rows}
         paginationMeta={paginationMeta}

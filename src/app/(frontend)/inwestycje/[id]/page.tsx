@@ -80,7 +80,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
       />
 
       {/* Transactions table */}
-      <SectionHeader className="mt-8">Transakcje</SectionHeader>
+      <SectionHeader className="mt-8">Transfery</SectionHeader>
       <div className="mt-4">
         <TransactionDataTable
           data={rows}

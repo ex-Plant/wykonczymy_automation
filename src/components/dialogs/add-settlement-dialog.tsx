@@ -57,7 +57,7 @@ export function AddSettlementDialog({
           <DialogHeader className="p-4">
             <DialogTitle>Rozliczenie pracownika</DialogTitle>
             <DialogDescription>
-              Dodaj pozycje z faktury — każda stanie się osobną transakcją typu &quot;Wydatek
+              Dodaj pozycje z faktury — każda stanie się osobnym transferem typu &quot;Wydatek
               pracowniczy&quot;.
             </DialogDescription>
           </DialogHeader>

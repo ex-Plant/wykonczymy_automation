@@ -1,7 +1,7 @@
 export const TRANSACTION_TYPES = [
   'DEPOSIT',
   'INVESTMENT_EXPENSE',
-  'ADVANCE',
+  'ACCOUNT_FUNDING',
   'EMPLOYEE_EXPENSE',
   'OTHER',
 ] as const
@@ -10,7 +10,7 @@ export type TransactionTypeT = (typeof TRANSACTION_TYPES)[number]
 export const TRANSACTION_TYPE_LABELS: Record<TransactionTypeT, string> = {
   DEPOSIT: 'Wpłata do kasy',
   INVESTMENT_EXPENSE: 'Wydatek inwestycyjny',
-  ADVANCE: 'Zaliczka',
+  ACCOUNT_FUNDING: 'Zasilenie konta',
   EMPLOYEE_EXPENSE: 'Wydatek pracowniczy',
   OTHER: 'Inne',
 }
@@ -28,6 +28,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodT, string> = {
 export const needsInvestment = (type: string) =>
   type === 'INVESTMENT_EXPENSE' || type === 'EMPLOYEE_EXPENSE'
 
-export const needsWorker = (type: string) => type === 'ADVANCE' || type === 'EMPLOYEE_EXPENSE'
+export const needsWorker = (type: string) =>
+  type === 'ACCOUNT_FUNDING' || type === 'EMPLOYEE_EXPENSE'
 
 export const needsOtherCategory = (type: string) => type === 'OTHER'

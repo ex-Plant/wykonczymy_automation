@@ -6,7 +6,10 @@ import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recal
 const TRANSACTION_TYPES = [
   { label: { en: 'Deposit', pl: 'Wpłata do kasy' }, value: 'DEPOSIT' },
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
-  { label: { en: 'Advance', pl: 'Zaliczka' }, value: 'ADVANCE' },
+  {
+    label: { en: 'Account Funding', pl: 'Zasilenie konta współpracownika' },
+    value: 'ACCOUNT_FUNDING',
+  },
   { label: { en: 'Employee Expense', pl: 'Wydatek pracowniczy' }, value: 'EMPLOYEE_EXPENSE' },
   { label: { en: 'Other', pl: 'Inne' }, value: 'OTHER' },
 ] as const
@@ -24,7 +27,7 @@ const needsInvestment = (data: Record<string, unknown>) =>
 
 /** Show field when type includes worker */
 const needsWorker = (data: Record<string, unknown>) =>
-  data?.type === 'ADVANCE' || data?.type === 'EMPLOYEE_EXPENSE'
+  data?.type === 'ACCOUNT_FUNDING' || data?.type === 'EMPLOYEE_EXPENSE'
 
 /** Show field when type is OTHER */
 const needsOtherCategory = (data: Record<string, unknown>) => data?.type === 'OTHER'
@@ -32,8 +35,8 @@ const needsOtherCategory = (data: Record<string, unknown>) => data?.type === 'OT
 export const Transactions: CollectionConfig = {
   slug: 'transactions',
   labels: {
-    singular: { en: 'Transaction', pl: 'Transakcja' },
-    plural: { en: 'Transactions', pl: 'Transakcje' },
+    singular: { en: 'Transfer', pl: 'Transfer' },
+    plural: { en: 'Transfers', pl: 'Transfery' },
   },
   admin: {
     useAsTitle: 'description',

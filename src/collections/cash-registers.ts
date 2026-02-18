@@ -47,7 +47,7 @@ export const CashRegisters: CollectionConfig = {
         readOnly: true,
         description: {
           en: 'Updated automatically via transactions',
-          pl: 'Aktualizowane automatycznie przez transakcje',
+          pl: 'Aktualizowane automatycznie przez transfery',
         },
       },
       access: {

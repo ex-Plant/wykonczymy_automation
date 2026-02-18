@@ -97,7 +97,7 @@ export function TransactionForm({
       const result = await createTransactionAction(data, invoiceFormData)
 
       if (result.success) {
-        toastMessage('Transakcja dodana', 'success')
+        toastMessage('Transfer dodany', 'success')
         onSuccess()
       } else {
         console.log('result', result.error)
@@ -124,7 +124,7 @@ export function TransactionForm({
           {/* Type */}
           <form.AppField name="type">
             {(field) => (
-              <field.Select label="Typ transakcji" showError>
+              <field.Select label="Typ transferu" showError>
                 {TRANSACTION_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {TRANSACTION_TYPE_LABELS[t]}
@@ -136,7 +136,7 @@ export function TransactionForm({
 
           {/* Description */}
           <form.AppField name="description">
-            {(field) => <field.Input label="Opis" placeholder="Opis transakcji" showError />}
+            {(field) => <field.Input label="Opis" placeholder="Opis transferu" showError />}
           </form.AppField>
 
           {/* Amount */}
@@ -236,7 +236,7 @@ export function TransactionForm({
           )}
 
           {/* Invoice file — not bound to form state, read via ref on submit */}
-          {currentType !== 'DEPOSIT' && currentType !== 'ADVANCE' && (
+          {currentType !== 'DEPOSIT' && currentType !== 'ACCOUNT_FUNDING' && (
             <div className="space-y-1">
               <label htmlFor="invoice" className="text-foreground text-sm font-medium">
                 Faktura
@@ -251,7 +251,7 @@ export function TransactionForm({
           )}
 
           {/* Invoice note */}
-          {currentType !== 'DEPOSIT' && currentType !== 'ADVANCE' && (
+          {currentType !== 'DEPOSIT' && currentType !== 'ACCOUNT_FUNDING' && (
             <form.AppField name="invoiceNote">
               {(field) => (
                 <field.Textarea

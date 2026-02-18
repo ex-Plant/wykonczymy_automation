@@ -173,7 +173,7 @@ export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResul
       payload.create({
         collection: 'transactions',
         data: {
-          description: 'Zaliczka na poczet wypłaty',
+          description: 'Zerowanie salda pracownika',
           amount: parsed.data.amount,
           date: new Date().toISOString(),
           type: 'EMPLOYEE_EXPENSE',

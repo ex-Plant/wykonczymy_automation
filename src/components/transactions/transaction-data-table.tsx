@@ -46,7 +46,7 @@ export function TransactionDataTable({
       <DataTable
         data={data}
         columns={columns}
-        emptyMessage="Brak transakcji"
+        emptyMessage="Brak transferów"
         storageKey="transactions"
         toolbar={(table) => <ColumnToggle table={table} />}
       />

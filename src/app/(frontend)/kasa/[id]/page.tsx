@@ -65,7 +65,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
       <StatCard label="Saldo" value={formatPLN(register.balance ?? 0)} className="mt-6" />
 
       {/* Transactions table */}
-      <SectionHeader className="mt-8">Transakcje</SectionHeader>
+      <SectionHeader className="mt-8">Transfery</SectionHeader>
       <div className="mt-4">
         <TransactionDataTable
           data={rows}
