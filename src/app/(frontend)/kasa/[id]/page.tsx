@@ -29,6 +29,9 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
   const register = await getCashRegister(id)
   if (!register) notFound()
 
+  // Block MANAGER from viewing MAIN registers
+  if (user.role === 'MANAGER' && register.type === 'MAIN') notFound()
+
   const urlFilters = buildTransferFilters(sp, { id: user.id, isManager: true })
   const transferWhere = { ...urlFilters, cashRegister: { equals: id } }
 
