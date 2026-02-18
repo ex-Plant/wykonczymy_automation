@@ -786,14 +786,18 @@ M23 renamed UI text; this milestone renames all remaining code identifiers — f
 - **Key files**: `src/hooks/transfers/validate.ts`, `src/lib/schemas/settlements.ts`, `src/components/settlements/settlement-form.tsx`, `src/lib/actions/settlements.ts`, `src/lib/actions/transfers.ts`
 - **Success**: Settlement submittable without investment or invoice, both can be attached later
 
-### M28: Investment View Enhancements
+### M28: Investment View Enhancements ✅ DONE
 
-- [ ] **Labor costs stat** — add "Koszty robocizny" card to investment detail page (SUM of `EMPLOYEE_EXPENSE` where investment matches)
-- [ ] **Materials costs stat** — add "Koszty materiałów" card (SUM of `INVESTMENT_EXPENSE` where investment matches)
-- [ ] **Transfer type filter** — add type filter/breakdown on investment detail page transfer table
-- [ ] **Investment balance** — if M24 introduces signed investment saldo (income - costs), display net balance on investment detail
-- **Depends on**: M24/M25 (saldo model), M22 (investment column)
-- **Key files**: `src/app/(frontend)/inwestycje/[id]/page.tsx`, `src/lib/db/sum-transfers.ts`, `src/lib/queries/investments.ts`
+- [x] **`totalIncome` field** — computed via hooks, SUM of `INVESTOR_DEPOSIT` + `STAGE_SETTLEMENT` per investment
+- [x] **`laborCosts` field** — manually entered by OWNER/ADMIN on Investments collection
+- [x] **`sumInvestmentIncome()` SQL** — new aggregation function mirroring `sumInvestmentCosts`
+- [x] **Hook update** — `recalcInvestmentFinancials` calculates both costs + income in parallel, single UPDATE
+- [x] **Settlement action** — recalculates both `totalCosts` and `totalIncome`
+- [x] **Investment detail page** — OWNER/ADMIN sees 4 stat cards (Koszty inwestycji, Wpłaty od inwestora, Koszty robocizny, Bilans). MANAGER sees transfer history only.
+- [x] **Transfer type filter** — already working via `TransferFilters` with `showTypeFilter=true` default
+- **Migration**: `20260218_add_investment_financials.ts`
+- **Key files**: `src/collections/investments.ts`, `src/lib/db/sum-transfers.ts`, `src/hooks/transfers/recalculate-balances.ts`, `src/lib/actions/settlements.ts`, `src/app/(frontend)/inwestycje/[id]/page.tsx`
+- **Verified**: `pnpm typecheck` (0 new errors), `pnpm lint` (0 errors)
 
 ---
 
@@ -812,7 +816,7 @@ M21 (Perf) ─── Phase 0-3 ✅, Phase 4-5 open
   │           │
   │           ├── M27 (Settlement) ─── UNBLOCKED, ready to start
   │           │
-  │           └── M28 (Investment View) ─── blocked by M25
+  │           └── M28 (Investment View) ─── ✅ DONE
   │
   └── M26 (Register Permissions) ─── ✅ DONE
 ```
@@ -845,17 +849,11 @@ pnpm generate:importmap       # regenerate admin importMap.js
 
 ### Ready to start
 
-| Milestone                         | Scope                                                                                         | Size |
-| --------------------------------- | --------------------------------------------------------------------------------------------- | ---- |
-| ~~**M25: Cash Flow Integrity**~~  | ~~Lock balance fields, disable transfer editing, verify SUM = balances, fix inconsistencies~~ | ✅   |
-| ~~**M26: Register Permissions**~~ | ~~`MAIN`/`AUXILIARY` register types, role-based visibility in forms + dashboard~~             | ✅   |
-| **M27: Settlement Relaxation**    | Make `investment` optional, allow attaching later, expense subtypes                           | S    |
-
-### Unblocked
-
-| Milestone                | Scope                                                       |
-| ------------------------ | ----------------------------------------------------------- |
-| **M28: Investment View** | Labor/materials cost cards, type filter, investment balance |
+| Milestone                          | Scope                                                                                         | Size |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- | ---- |
+| ~~**M25: Cash Flow Integrity**~~   | ~~Lock balance fields, disable transfer editing, verify SUM = balances, fix inconsistencies~~ | ✅   |
+| ~~**M26: Register Permissions**~~  | ~~`MAIN`/`AUXILIARY` register types, role-based visibility in forms + dashboard~~             | ✅   |
+| ~~**M27: Settlement Relaxation**~~ | ~~Make `investment` optional, per-item categories from `other-categories`~~                   | ✅   |
 
 ### Remaining items in done milestones
 
