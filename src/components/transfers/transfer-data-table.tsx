@@ -3,8 +3,8 @@
 import { DataTable } from '@/components/ui/data-table'
 import { ColumnToggle } from '@/components/ui/column-toggle'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
-import { TransactionFilters } from '@/components/transactions/transaction-filters'
-import { getTransactionColumns, type TransactionRowT } from '@/lib/tables/transactions'
+import { TransferFilters } from '@/components/transfers/transfer-filters'
+import { getTransferColumns, type TransferRowT } from '@/lib/tables/transfers'
 import type { PaginationMetaT } from '@/lib/pagination'
 import { cn } from '../../lib/cn'
 
@@ -14,8 +14,8 @@ type FilterConfigT = {
   readonly showTypeFilter?: boolean
 }
 
-type TransactionDataTablePropsT = {
-  readonly data: readonly TransactionRowT[]
+type TransferDataTablePropsT = {
+  readonly data: readonly TransferRowT[]
   readonly paginationMeta: PaginationMetaT
   readonly excludeColumns?: string[]
   readonly baseUrl: string
@@ -23,20 +23,20 @@ type TransactionDataTablePropsT = {
   readonly className?: string
 }
 
-export function TransactionDataTable({
+export function TransferDataTable({
   data,
   paginationMeta,
   excludeColumns = [],
   baseUrl,
   filters,
   className,
-}: TransactionDataTablePropsT) {
-  const columns = getTransactionColumns(excludeColumns)
+}: TransferDataTablePropsT) {
+  const columns = getTransferColumns(excludeColumns)
 
   return (
     <div className={cn('space-y-4', className)}>
       {filters && (
-        <TransactionFilters
+        <TransferFilters
           cashRegisters={filters.cashRegisters}
           investments={filters.investments}
           showTypeFilter={filters.showTypeFilter}
@@ -47,7 +47,7 @@ export function TransactionDataTable({
         data={data}
         columns={columns}
         emptyMessage="Brak transferów"
-        storageKey="transactions"
+        storageKey="transfers"
         toolbar={(table) => <ColumnToggle table={table} />}
       />
       <PaginationFooter paginationMeta={paginationMeta} baseUrl={baseUrl} />

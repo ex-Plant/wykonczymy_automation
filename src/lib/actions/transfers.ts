@@ -5,8 +5,8 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { createTransactionSchema, type CreateTransactionFormT } from '@/lib/schemas/transactions'
-import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { createTransferSchema, type CreateTransferFormT } from '@/lib/schemas/transfers'
+import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transfers'
 import { perf, perfStart } from '@/lib/perf'
 
 type ActionResultT = { success: true } | { success: false; error: string }
@@ -22,20 +22,20 @@ type RecalculateResultT =
     }
   | { success: false; error: string }
 
-export async function createTransactionAction(
-  data: CreateTransactionFormT,
+export async function createTransferAction(
+  data: CreateTransferFormT,
   invoiceFormData: FormData | null,
 ): Promise<ActionResultT> {
   const elapsed = perfStart()
-  console.log(`[PERF] createTransactionAction START type=${data.type} amount=${data.amount}`)
+  console.log(`[PERF] createTransferAction START type=${data.type} amount=${data.amount}`)
 
-  const user = await perf('createTransaction.getCurrentUser', () => getCurrentUserJwt())
+  const user = await perf('createTransfer.getCurrentUser', () => getCurrentUserJwt())
   if (!user || !isManagementRole(user.role)) {
     return { success: false, error: 'Brak uprawnień' }
   }
 
   // Validate
-  const parsed = createTransactionSchema.safeParse(data)
+  const parsed = createTransferSchema.safeParse(data)
   if (!parsed.success) {
     const firstError = parsed.error.issues[0]?.message ?? 'Nieprawidłowe dane'
     return { success: false, error: firstError }
@@ -45,13 +45,13 @@ export async function createTransactionAction(
   const hasInvoice = invoiceFile && invoiceFile.size > 0
 
   try {
-    const payload = await perf('createTransaction.getPayload', () => getPayload({ config }))
+    const payload = await perf('createTransfer.getPayload', () => getPayload({ config }))
 
     // Upload invoice file if provided
     let mediaId: number | undefined
     if (hasInvoice) {
       const buffer = Buffer.from(await invoiceFile.arrayBuffer())
-      const media = await perf('createTransaction.uploadMedia', () =>
+      const media = await perf('createTransfer.uploadMedia', () =>
         payload.create({
           collection: 'media',
           file: {
@@ -66,10 +66,10 @@ export async function createTransactionAction(
       mediaId = media.id
     }
 
-    // Create the transaction (hooks fire inside this call)
+    // Create the transfer (hooks fire inside this call)
     const description = parsed.data.description || ''
 
-    await perf('createTransaction.payloadCreate (includes hooks)', () =>
+    await perf('createTransfer.payloadCreate (includes hooks)', () =>
       payload.create({
         collection: 'transactions',
         data: {
@@ -83,12 +83,12 @@ export async function createTransactionAction(
 
     // Hook already calls revalidateCollections — no duplicate needed here
 
-    console.log(`[PERF] createTransactionAction TOTAL ${elapsed()}ms`)
+    console.log(`[PERF] createTransferAction TOTAL ${elapsed()}ms`)
 
     return { success: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Wystąpił błąd'
-    console.log('[createTransactionAction] Error:', message)
+    console.log('[createTransferAction] Error:', message)
     return { success: false, error: message }
   }
 }
@@ -147,8 +147,8 @@ export async function recalculateBalancesAction(): Promise<RecalculateResultT> {
   }
 }
 
-export async function updateTransactionInvoiceAction(
-  transactionId: number,
+export async function updateTransferInvoiceAction(
+  transferId: number,
   invoiceFormData: FormData,
 ): Promise<ActionResultT> {
   const user = await getCurrentUserJwt()
@@ -178,11 +178,11 @@ export async function updateTransactionInvoiceAction(
 
     await payload.update({
       collection: 'transactions',
-      id: transactionId,
+      id: transferId,
       data: { invoice: media.id },
     })
 
-    revalidateCollections(['transactions'])
+    revalidateCollections(['transfers'])
 
     return { success: true }
   } catch (err) {

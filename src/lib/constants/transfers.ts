@@ -1,4 +1,4 @@
-export const TRANSACTION_TYPES = [
+export const TRANSFER_TYPES = [
   'INVESTOR_DEPOSIT',
   'STAGE_SETTLEMENT',
   'COMPANY_FUNDING',
@@ -9,9 +9,9 @@ export const TRANSACTION_TYPES = [
   'REGISTER_TRANSFER',
   'OTHER',
 ] as const
-export type TransactionTypeT = (typeof TRANSACTION_TYPES)[number]
+export type TransferTypeT = (typeof TRANSFER_TYPES)[number]
 
-export const TRANSACTION_TYPE_LABELS: Record<TransactionTypeT, string> = {
+export const TRANSFER_TYPE_LABELS: Record<TransferTypeT, string> = {
   INVESTOR_DEPOSIT: 'Wpłata od inwestora',
   STAGE_SETTLEMENT: 'Rozliczenie etapu',
   COMPANY_FUNDING: 'Zasilenie z konta firmowego',
@@ -23,7 +23,7 @@ export const TRANSACTION_TYPE_LABELS: Record<TransactionTypeT, string> = {
   OTHER: 'Inne',
 }
 
-export const DEPOSIT_TYPES: TransactionTypeT[] = [
+export const DEPOSIT_TYPES: TransferTypeT[] = [
   'INVESTOR_DEPOSIT',
   'STAGE_SETTLEMENT',
   'COMPANY_FUNDING',

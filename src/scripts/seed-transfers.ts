@@ -216,7 +216,7 @@ async function ensureCategories(payload: PayloadT) {
 // Transaction generation
 // ---------------------------------------------------------------------------
 
-type TransactionTypeT =
+type TransferTypeT =
   | 'INVESTOR_DEPOSIT'
   | 'STAGE_SETTLEMENT'
   | 'COMPANY_FUNDING'
@@ -228,11 +228,11 @@ type TransactionTypeT =
   | 'OTHER'
 type PaymentMethodT = 'CASH' | 'BLIK' | 'TRANSFER' | 'CARD'
 
-type TransactionDataT = {
+type TransferDataT = {
   description: string
   amount: number
   date: string
-  type: TransactionTypeT
+  type: TransferTypeT
   paymentMethod: PaymentMethodT
   cashRegister: number
   investment?: number
@@ -252,7 +252,7 @@ type EntitiesT = {
   categoryIds: number[]
 }
 
-function generateDeposit(e: EntitiesT): TransactionDataT {
+function generateDeposit(e: EntitiesT): TransferDataT {
   return {
     description: randomItem(DEPOSIT_DESCRIPTIONS),
     amount: randomBetween(1000, 20000),
@@ -264,7 +264,7 @@ function generateDeposit(e: EntitiesT): TransactionDataT {
   }
 }
 
-function generateInvestmentExpense(e: EntitiesT): TransactionDataT {
+function generateInvestmentExpense(e: EntitiesT): TransferDataT {
   return {
     description: randomItem(EXPENSE_DESCRIPTIONS),
     amount: randomBetween(50, 5000),
@@ -278,7 +278,7 @@ function generateInvestmentExpense(e: EntitiesT): TransactionDataT {
   }
 }
 
-function generateAdvance(e: EntitiesT): TransactionDataT {
+function generateAdvance(e: EntitiesT): TransferDataT {
   return {
     description: randomItem(ADVANCE_DESCRIPTIONS),
     amount: randomBetween(200, 3000),
@@ -292,7 +292,7 @@ function generateAdvance(e: EntitiesT): TransactionDataT {
   }
 }
 
-function generateEmployeeExpense(e: EntitiesT): TransactionDataT {
+function generateEmployeeExpense(e: EntitiesT): TransferDataT {
   return {
     description: randomItem(EXPENSE_DESCRIPTIONS),
     amount: randomBetween(100, 4000),
@@ -307,7 +307,7 @@ function generateEmployeeExpense(e: EntitiesT): TransactionDataT {
   }
 }
 
-function generateOther(e: EntitiesT): TransactionDataT {
+function generateOther(e: EntitiesT): TransferDataT {
   return {
     description: randomItem(OTHER_DESCRIPTIONS),
     amount: randomBetween(20, 1500),
@@ -323,8 +323,8 @@ function generateOther(e: EntitiesT): TransactionDataT {
 }
 
 /** Build a list of ~150 transaction data objects with realistic distribution. */
-function buildTransactionList(entities: EntitiesT): TransactionDataT[] {
-  const txs: TransactionDataT[] = []
+function buildTransferList(entities: EntitiesT): TransferDataT[] {
+  const txs: TransferDataT[] = []
 
   // Distribution: 30 deposits, 40 investment, 30 advance, 25 employee, 25 other = 150
   for (let i = 0; i < 30; i++) txs.push(generateDeposit(entities))
@@ -361,11 +361,11 @@ async function main() {
   }
 
   console.log('\n2. Generating 150 transactions...')
-  const transactions = buildTransactionList(entities)
+  const transfers = buildTransferList(entities)
 
   console.log('\n3. Inserting transactions (hooks will recalculate balances)...')
   let created = 0
-  for (const tx of transactions) {
+  for (const tx of transfers) {
     await payload.create({
       collection: 'transactions',
       data: tx,
@@ -373,7 +373,7 @@ async function main() {
     })
     created++
     if (created % 25 === 0) {
-      console.log(`  ${created}/${transactions.length} created...`)
+      console.log(`  ${created}/${transfers.length} created...`)
     }
   }
 

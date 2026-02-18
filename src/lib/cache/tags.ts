@@ -1,5 +1,5 @@
 export const CACHE_TAGS = {
-  transactions: 'collection:transactions',
+  transfers: 'collection:transactions',
   cashRegisters: 'collection:cash-registers',
   investments: 'collection:investments',
   users: 'collection:users',

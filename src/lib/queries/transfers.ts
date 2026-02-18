@@ -5,25 +5,25 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 import type { Where } from 'payload'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
 import { CACHE_TAGS } from '@/lib/cache/tags'
-import { getDb } from '@/lib/db/sum-transactions'
+import { getDb } from '@/lib/db/sum-transfers'
 
-type FindTransactionsOptsT = PaginationParamsT & {
+type FindTransfersOptsT = PaginationParamsT & {
   readonly where?: Where
   readonly sort?: string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type RawTransactionDocT = Record<string, any>
+export type RawTransferDocT = Record<string, any>
 
-export async function findTransactionsRaw({
+export async function findTransfersRaw({
   where = {},
   page,
   limit,
   sort = '-date',
-}: FindTransactionsOptsT) {
+}: FindTransfersOptsT) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const start = performance.now()
   const payload = await getPayload({ config })
@@ -36,16 +36,16 @@ export async function findTransactionsRaw({
     depth: 0,
   })
   console.log(
-    `[PERF] query.findTransactionsRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs, page=${page})`,
+    `[PERF] query.findTransfersRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs, page=${page})`,
   )
 
   return {
-    docs: result.docs as RawTransactionDocT[],
+    docs: result.docs as RawTransferDocT[],
     paginationMeta: buildPaginationMeta(result, limit),
   }
 }
 
-export async function findAllTransactionsRaw({
+export async function findAllTransfersRaw({
   where = {},
   sort = '-date',
 }: {
@@ -54,7 +54,7 @@ export async function findAllTransactionsRaw({
 }) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const start = performance.now()
   const payload = await getPayload({ config })
@@ -66,16 +66,16 @@ export async function findAllTransactionsRaw({
     depth: 0,
   })
   console.log(
-    `[PERF] query.findAllTransactionsRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
+    `[PERF] query.findAllTransfersRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
   )
 
-  return result.docs as RawTransactionDocT[]
+  return result.docs as RawTransferDocT[]
 }
 
-export async function countRecentTransactions(sinceDate: string) {
+export async function countRecentTransfers(sinceDate: string) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const start = performance.now()
   const payload = await getPayload({ config })
@@ -86,7 +86,7 @@ export async function countRecentTransactions(sinceDate: string) {
   )
   const count = Number(result.rows[0].count)
   console.log(
-    `[PERF] query.countRecentTransactions ${(performance.now() - start).toFixed(1)}ms (${count} total)`,
+    `[PERF] query.countRecentTransfers ${(performance.now() - start).toFixed(1)}ms (${count} total)`,
   )
 
   return count
@@ -99,7 +99,7 @@ type UserContextT = {
   readonly isManager: boolean
 }
 
-export function buildTransactionFilters(
+export function buildTransferFilters(
   searchParams: SearchParamsT,
   userContext: UserContextT,
 ): Where {

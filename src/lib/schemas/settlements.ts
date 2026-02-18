@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { PAYMENT_METHODS } from '@/lib/constants/transactions'
+import { PAYMENT_METHODS } from '@/lib/constants/transfers'
 
 // ---------------------------------------------------------------------------
 // Settlement form

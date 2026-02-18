@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { CACHE_TAGS } from '@/lib/cache/tags'
-import { getDb } from '@/lib/db/sum-transactions'
+import { getDb } from '@/lib/db/sum-transfers'
 
 type RefItemT = { readonly id: number; readonly name: string }
 

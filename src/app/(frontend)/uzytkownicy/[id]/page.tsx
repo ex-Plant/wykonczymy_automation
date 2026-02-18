@@ -4,20 +4,16 @@ import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { parsePagination } from '@/lib/pagination'
 import { getUser, getUserSaldo, getWorkerPeriodBreakdown } from '@/lib/queries/users'
-import { findTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
 import { findActiveInvestments } from '@/lib/queries/investments'
 import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash-registers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchMediaByIds } from '@/lib/queries/media'
-import {
-  mapTransactionRow,
-  extractInvoiceIds,
-  buildTransactionLookups,
-} from '@/lib/tables/transactions'
+import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { getMonthDateRange } from '@/lib/helpers'
-import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import dynamic from 'next/dynamic'
 
 const ZeroSaldoDialog = dynamic(() =>
@@ -49,7 +45,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const targetUser = await getUser(id)
   if (!targetUser) notFound()
 
-  const baseFilters = buildTransactionFilters(sp, { id: Number(id), isManager: false })
+  const baseFilters = buildTransferFilters(sp, { id: Number(id), isManager: false })
   const fromParam = typeof sp.from === 'string' ? sp.from : undefined
   const toParam = typeof sp.to === 'string' ? sp.to : undefined
   const hasDateRange = fromParam && toParam
@@ -63,7 +59,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
     managerRegisterIds,
     refData,
   ] = await Promise.all([
-    findTransactionsRaw({ where: baseFilters, page, limit }),
+    findTransfersRaw({ where: baseFilters, page, limit }),
     getUserSaldo(id),
     hasDateRange ? getWorkerPeriodBreakdown(id, fromParam, toParam) : Promise.resolve(undefined),
     findActiveInvestments(),
@@ -76,8 +72,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const mediaMap = await fetchMediaByIds(invoiceIds)
   const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
   const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
-  const lookups = buildTransactionLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const lookups = buildTransferLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
   const paginationMeta = rawTxResult.paginationMeta
 
   // Build report URL — use current date range or default to current month
@@ -144,7 +140,7 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
       {/* Transactions table with filters */}
       <SectionHeader className="mt-8">Transfery</SectionHeader>
-      <TransactionDataTable
+      <TransferDataTable
         data={rows}
         paginationMeta={paginationMeta}
         excludeColumns={EXCLUDE_COLUMNS}

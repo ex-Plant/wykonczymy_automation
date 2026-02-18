@@ -3,12 +3,12 @@
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { DEFAULT_LIMIT } from '@/lib/pagination'
-import type { TransactionRowT } from '@/lib/tables/transactions'
+import type { TransferRowT } from '@/lib/tables/transfers'
 import type { PaginationMetaT } from '@/lib/pagination'
 import { getCachedEmployeeSaldo, getCachedMonthlyData } from '@/lib/queries/employee-data'
 
 export type MonthlyDataT = {
-  rows: TransactionRowT[]
+  rows: TransferRowT[]
   paginationMeta: PaginationMetaT
   monthlySaldo: number
 }

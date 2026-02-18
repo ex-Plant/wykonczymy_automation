@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { RefreshCw } from 'lucide-react'
 import { toastMessage } from '@/components/toasts'
-import { recalculateBalancesAction } from '@/lib/actions/transactions'
+import { recalculateBalancesAction } from '@/lib/actions/transfers'
 
 export function SyncBalancesButton() {
   const [isPending, startTransition] = useTransition()

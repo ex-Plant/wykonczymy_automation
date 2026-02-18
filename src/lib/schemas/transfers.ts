@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  TRANSACTION_TYPES,
+  TRANSFER_TYPES,
   PAYMENT_METHODS,
   isDepositType,
   needsCashRegister,
@@ -8,14 +8,14 @@ import {
   needsWorker,
   needsTargetRegister,
   needsOtherCategory,
-} from '@/lib/constants/transactions'
+} from '@/lib/constants/transfers'
 
-export const createTransactionSchema = z
+export const createTransferSchema = z
   .object({
     description: z.string().optional().default(''),
     amount: z.number().positive('Kwota musi być większa niż 0'),
     date: z.string().min(1, 'Data jest wymagana'),
-    type: z.enum(TRANSACTION_TYPES),
+    type: z.enum(TRANSFER_TYPES),
     paymentMethod: z.enum(PAYMENT_METHODS),
     cashRegister: z.number().optional(),
     targetRegister: z.number().optional(),
@@ -83,13 +83,13 @@ export const createTransactionSchema = z
     }
   })
 
-export type CreateTransactionFormT = z.infer<typeof createTransactionSchema>
+export type CreateTransferFormT = z.infer<typeof createTransferSchema>
 
 /**
  * Client-side form validation schema.
  * Works with string values (HTML inputs) — the server schema handles type conversion.
  */
-export const transactionFormSchema = z
+export const transferFormSchema = z
   .object({
     description: z.string(),
     amount: z.string(),

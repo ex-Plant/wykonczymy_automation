@@ -1,22 +1,18 @@
 import { formatPLN } from '@/lib/format-currency'
 import { parsePagination } from '@/lib/pagination'
 import {
-  findTransactionsRaw,
-  buildTransactionFilters,
-  countRecentTransactions,
-} from '@/lib/queries/transactions'
+  findTransfersRaw,
+  buildTransferFilters,
+  countRecentTransfers,
+} from '@/lib/queries/transfers'
 import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash-registers'
 import { findActiveInvestments, findAllInvestments } from '@/lib/queries/investments'
 import { findAllUsersWithSaldos } from '@/lib/queries/users'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchMediaByIds } from '@/lib/queries/media'
-import {
-  mapTransactionRow,
-  extractInvoiceIds,
-  buildTransactionLookups,
-} from '@/lib/tables/transactions'
+import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
 import { DashboardTables } from '@/components/dashboard/dashboard-tables'
-import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
@@ -48,12 +44,12 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
     findActiveInvestments(),
     findAllInvestments(),
     findAllUsersWithSaldos(),
-    findTransactionsRaw({
-      where: buildTransactionFilters(searchParams, { id: 0, isManager: true }),
+    findTransfersRaw({
+      where: buildTransferFilters(searchParams, { id: 0, isManager: true }),
       page,
       limit,
     }),
-    countRecentTransactions(sinceDate),
+    countRecentTransfers(sinceDate),
     fetchReferenceData(),
   ])
 
@@ -64,8 +60,8 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   // Phase 3: pure mapping
   const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
   const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
-  const lookups = buildTransactionLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const lookups = buildTransferLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
   const paginationMeta = rawTxResult.paginationMeta
 
   const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
@@ -95,7 +91,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       <div className="mt-8">
         <SectionHeader>Ostatnie transfery</SectionHeader>
         <div className="mt-4">
-          <TransactionDataTable
+          <TransferDataTable
             data={rows}
             paginationMeta={paginationMeta}
             baseUrl="/"

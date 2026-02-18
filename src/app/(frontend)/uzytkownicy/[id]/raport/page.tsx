@@ -2,22 +2,18 @@ import { redirect, notFound } from 'next/navigation'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUser, getWorkerPeriodBreakdown } from '@/lib/queries/users'
-import { findAllTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findAllTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchMediaByIds } from '@/lib/queries/media'
-import {
-  mapTransactionRow,
-  extractInvoiceIds,
-  buildTransactionLookups,
-} from '@/lib/tables/transactions'
+import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import {
-  TRANSACTION_TYPE_LABELS,
+  TRANSFER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
-  type TransactionTypeT,
+  type TransferTypeT,
   type PaymentMethodT,
-} from '@/lib/constants/transactions'
+} from '@/lib/constants/transfers'
 import { PrintButton } from '@/components/users/print-button'
 
 type PagePropsT = {
@@ -43,18 +39,18 @@ export default async function WorkerReportPage({ params, searchParams }: PagePro
     redirect(`/uzytkownicy/${id}`)
   }
 
-  const where = buildTransactionFilters(sp, { id: Number(id), isManager: false })
+  const where = buildTransferFilters(sp, { id: Number(id), isManager: false })
 
   const [rawDocs, periodBreakdown, refData] = await Promise.all([
-    findAllTransactionsRaw({ where }),
+    findAllTransfersRaw({ where }),
     getWorkerPeriodBreakdown(id, fromParam, toParam),
     fetchReferenceData(),
   ])
 
   const invoiceIds = extractInvoiceIds(rawDocs)
   const mediaMap = await fetchMediaByIds(invoiceIds)
-  const lookups = buildTransactionLookups(refData, mediaMap)
-  const rows = rawDocs.map((doc) => mapTransactionRow(doc, lookups))
+  const lookups = buildTransferLookups(refData, mediaMap)
+  const rows = rawDocs.map((doc) => mapTransferRow(doc, lookups))
 
   const periodLabel = `${formatDate(fromParam)} — ${formatDate(toParam)}`
 
@@ -97,7 +93,7 @@ export default async function WorkerReportPage({ params, searchParams }: PagePro
               <td className="py-1.5">{formatDate(row.date)}</td>
               <td className="py-1.5">{row.description}</td>
               <td className="py-1.5">
-                {TRANSACTION_TYPE_LABELS[row.type as TransactionTypeT] ?? row.type}
+                {TRANSFER_TYPE_LABELS[row.type as TransferTypeT] ?? row.type}
               </td>
               <td className="py-1.5">
                 {PAYMENT_METHOD_LABELS[row.paymentMethod as PaymentMethodT] ?? row.paymentMethod}

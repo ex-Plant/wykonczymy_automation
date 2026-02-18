@@ -3,16 +3,12 @@ import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { getInvestment } from '@/lib/queries/investments'
-import { findTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchMediaByIds } from '@/lib/queries/media'
-import {
-  mapTransactionRow,
-  extractInvoiceIds,
-  buildTransactionLookups,
-} from '@/lib/tables/transactions'
+import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
 import { formatPLN } from '@/lib/format-currency'
-import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
@@ -31,11 +27,11 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   const sp = await searchParams
   const { page, limit } = parsePagination(sp)
 
-  const urlFilters = buildTransactionFilters(sp, { id: user.id, isManager: true })
+  const urlFilters = buildTransferFilters(sp, { id: user.id, isManager: true })
   const investmentId = Number(id)
   const [investment, rawTxResult, refData] = await Promise.all([
     getInvestment(id),
-    findTransactionsRaw({
+    findTransfersRaw({
       where: { ...urlFilters, investment: { equals: investmentId } },
       page,
       limit,
@@ -46,8 +42,8 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
 
   const invoiceIds = extractInvoiceIds(rawTxResult.docs)
   const mediaMap = await fetchMediaByIds(invoiceIds)
-  const lookups = buildTransactionLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const lookups = buildTransferLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
   const paginationMeta = rawTxResult.paginationMeta
 
   const infoFields = [
@@ -82,7 +78,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
       {/* Transactions table */}
       <SectionHeader className="mt-8">Transfery</SectionHeader>
       <div className="mt-4">
-        <TransactionDataTable
+        <TransferDataTable
           data={rows}
           paginationMeta={paginationMeta}
           excludeColumns={['investment']}

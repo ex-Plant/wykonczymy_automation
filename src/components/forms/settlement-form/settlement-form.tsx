@@ -17,7 +17,7 @@ import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   type PaymentMethodT,
-} from '@/lib/constants/transactions'
+} from '@/lib/constants/transfers'
 import { getManagementEmployeeSaldo } from '@/lib/queries/employees'
 import { createSettlementAction } from '@/lib/actions/settlements'
 import { settlementFormSchema, type CreateSettlementFormT } from '@/lib/schemas/settlements'

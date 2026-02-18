@@ -6,18 +6,18 @@ import {
   needsWorker,
   needsTargetRegister,
   needsOtherCategory,
-} from '@/lib/constants/transactions'
+} from '@/lib/constants/transfers'
 
-type TransactionData = Partial<Transaction>
+type TransferData = Partial<Transaction>
 
 /**
  * Cross-field validation for Transactions.
  * Enforces required relationships based on transaction type
  * and auto-clears inapplicable fields.
  */
-export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, operation }) => {
-  const d = data as TransactionData
-  console.log('[validateTransaction] Start', { operation, type: d.type, amount: d.amount })
+export const validateTransfer: CollectionBeforeValidateHook = ({ data, req, operation }) => {
+  const d = data as TransferData
+  console.log('[validateTransfer] Start', { operation, type: d.type, amount: d.amount })
 
   // Auto-set createdBy on create
   if (operation === 'create' && req.user) {
@@ -62,10 +62,10 @@ export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, o
   }
 
   if (errors.length > 0) {
-    console.log('[validateTransaction] Validation failed:', errors)
+    console.log('[validateTransfer] Validation failed:', errors)
     throw new Error(errors.join(' '))
   }
 
-  console.log('[validateTransaction] Passed')
+  console.log('[validateTransfer] Passed')
   return d
 }

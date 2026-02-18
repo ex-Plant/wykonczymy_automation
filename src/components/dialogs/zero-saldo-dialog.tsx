@@ -24,7 +24,7 @@ import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   type PaymentMethodT,
-} from '@/lib/constants/transactions'
+} from '@/lib/constants/transfers'
 import { zeroSaldoAction } from '@/lib/actions/settlements'
 import { zeroSaldoFormSchema, type ZeroSaldoFormT } from '@/lib/schemas/settlements'
 

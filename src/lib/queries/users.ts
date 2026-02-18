@@ -7,7 +7,7 @@ import {
   sumEmployeeSaldo,
   sumWorkerPeriodBreakdown,
   type WorkerPeriodBreakdownT,
-} from '@/lib/db/sum-transactions'
+} from '@/lib/db/sum-transfers'
 import type { UserRowT } from '@/lib/tables/users'
 import type { RoleT } from '@/lib/auth/roles'
 import { CACHE_TAGS } from '@/lib/cache/tags'
@@ -15,7 +15,7 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions, CACHE_TAGS.users)
+  cacheTag(CACHE_TAGS.transfers, CACHE_TAGS.users)
 
   const start = performance.now()
   const payload = await getPayload({ config })
@@ -42,7 +42,7 @@ export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
 export async function findAllUsersWithSaldos() {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions, CACHE_TAGS.users)
+  cacheTag(CACHE_TAGS.transfers, CACHE_TAGS.users)
 
   const start = performance.now()
   const payload = await getPayload({ config })
@@ -78,7 +78,7 @@ export async function getUser(id: string) {
 export async function getUserSaldo(userId: string) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const start = performance.now()
   const payload = await getPayload({ config })
@@ -94,7 +94,7 @@ export async function getWorkerPeriodBreakdown(
 ): Promise<WorkerPeriodBreakdownT> {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const payload = await getPayload({ config })
   return sumWorkerPeriodBreakdown(payload, Number(workerId), { start: from, end: to })

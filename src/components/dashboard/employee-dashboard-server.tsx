@@ -1,17 +1,13 @@
 import { parsePagination } from '@/lib/pagination'
 import { getEmployeeSaldo } from '@/lib/queries/employees'
-import { findTransactionsRaw, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchMediaByIds } from '@/lib/queries/media'
-import {
-  mapTransactionRow,
-  extractInvoiceIds,
-  buildTransactionLookups,
-} from '@/lib/tables/transactions'
+import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
 import { getUserSaldo } from '@/lib/queries/users'
 import { formatPLN } from '@/lib/format-currency'
 import { MONTHS } from '@/lib/constants/months'
-import { TransactionDataTable } from '@/components/transactions/transaction-data-table'
+import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { StatCard } from '@/components/ui/stat-card'
 
@@ -41,10 +37,10 @@ export async function EmployeeDashboardServer({
   const displayMonth = new Date(from + 'T00:00:00').getMonth() + 1
   const displayYear = new Date(from + 'T00:00:00').getFullYear()
 
-  const where = buildTransactionFilters(searchParams, { id: userId, isManager: false })
+  const where = buildTransferFilters(searchParams, { id: userId, isManager: false })
 
   const [rawTxResult, overallSaldo, periodSaldo, refData] = await Promise.all([
-    findTransactionsRaw({ where, page, limit }),
+    findTransfersRaw({ where, page, limit }),
     getUserSaldo(String(userId)),
     getEmployeeSaldo(userId),
     fetchReferenceData(),
@@ -52,8 +48,8 @@ export async function EmployeeDashboardServer({
 
   const invoiceIds = extractInvoiceIds(rawTxResult.docs)
   const mediaMap = await fetchMediaByIds(invoiceIds)
-  const lookups = buildTransactionLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransactionRow(doc, lookups))
+  const lookups = buildTransferLookups(refData, mediaMap)
+  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
   const paginationMeta = rawTxResult.paginationMeta
 
   return (
@@ -72,7 +68,7 @@ export async function EmployeeDashboardServer({
         <h2 className="text-foreground text-lg font-medium">
           Transfery — {MONTHS[displayMonth - 1]} {displayYear}
         </h2>
-        <TransactionDataTable
+        <TransferDataTable
           data={rows}
           paginationMeta={paginationMeta}
           excludeColumns={EMPLOYEE_EXCLUDE_COLUMNS}

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { TRANSACTION_TYPES, TRANSACTION_TYPE_LABELS } from '@/lib/constants/transactions'
+import { TRANSFER_TYPES, TRANSFER_TYPE_LABELS } from '@/lib/constants/transfers'
 import { MONTHS } from '@/lib/constants/months'
 import { getMonthDateRange } from '@/lib/helpers'
 import { buildUrlWithParams } from '@/lib/helpers'
@@ -19,7 +19,7 @@ import { cn } from '@/lib/cn'
 
 type ReferenceItemT = { id: number; name: string }
 
-type TransactionFiltersPropsT = {
+type TransferFiltersPropsT = {
   cashRegisters?: ReferenceItemT[]
   investments?: ReferenceItemT[]
   showTypeFilter?: boolean
@@ -27,13 +27,13 @@ type TransactionFiltersPropsT = {
   className?: string
 }
 
-export function TransactionFilters({
+export function TransferFilters({
   cashRegisters,
   investments,
   showTypeFilter = true,
   baseUrl,
   className,
-}: TransactionFiltersPropsT) {
+}: TransferFiltersPropsT) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -91,9 +91,9 @@ export function TransactionFilters({
               <FilterSelect
                 value={currentType}
                 onValueChange={(v) => updateParam('type', v)}
-                options={TRANSACTION_TYPES.map((t) => ({
+                options={TRANSFER_TYPES.map((t) => ({
                   value: t,
-                  label: TRANSACTION_TYPE_LABELS[t],
+                  label: TRANSFER_TYPE_LABELS[t],
                 }))}
               />
             </FilterField>

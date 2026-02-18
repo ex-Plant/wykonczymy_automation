@@ -11,7 +11,7 @@ import {
   type ZeroSaldoFormT,
 } from '@/lib/schemas/settlements'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { getDb, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { getDb, sumInvestmentCosts } from '@/lib/db/sum-transfers'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf, perfStart } from '@/lib/perf'
 
@@ -121,7 +121,7 @@ export async function createSettlementAction(
       }
     })
 
-    revalidateCollections(['transactions', 'cashRegisters'])
+    revalidateCollections(['transfers', 'cashRegisters'])
 
     console.log(`[PERF] createSettlementAction TOTAL ${elapsed()}ms (${created} transactions)`)
 

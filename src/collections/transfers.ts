@@ -1,9 +1,9 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner } from '@/access'
-import { validateTransaction } from '@/hooks/transactions/validate'
-import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recalculate-balances'
+import { validateTransfer } from '@/hooks/transfers/validate'
+import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transfers/recalculate-balances'
 
-const TRANSACTION_TYPES = [
+const TRANSFER_TYPES = [
   { label: { en: 'Investor Deposit', pl: 'Wpłata od inwestora' }, value: 'INVESTOR_DEPOSIT' },
   { label: { en: 'Stage Settlement', pl: 'Rozliczenie etapu' }, value: 'STAGE_SETTLEMENT' },
   { label: { en: 'Company Funding', pl: 'Zasilenie z konta firmowego' }, value: 'COMPANY_FUNDING' },
@@ -48,7 +48,7 @@ const showTargetRegister = (data: Record<string, unknown>) => data?.type === 'RE
 /** Show field when type is OTHER */
 const needsOtherCategory = (data: Record<string, unknown>) => data?.type === 'OTHER'
 
-export const Transactions: CollectionConfig = {
+export const Transfers: CollectionConfig = {
   slug: 'transactions',
   labels: {
     singular: { en: 'Transfer', pl: 'Transfer' },
@@ -66,7 +66,7 @@ export const Transactions: CollectionConfig = {
     delete: isAdminOrOwner,
   },
   hooks: {
-    beforeValidate: [validateTransaction],
+    beforeValidate: [validateTransfer],
     afterChange: [recalcAfterChange],
     afterDelete: [recalcAfterDelete],
   },
@@ -107,7 +107,7 @@ export const Transactions: CollectionConfig = {
       type: 'select',
       required: true,
       label: { en: 'Type', pl: 'Typ' },
-      options: [...TRANSACTION_TYPES],
+      options: [...TRANSFER_TYPES],
     },
     {
       name: 'paymentMethod',

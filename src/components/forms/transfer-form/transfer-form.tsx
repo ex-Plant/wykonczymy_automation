@@ -8,8 +8,8 @@ import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import FormFooter from '@/components/forms/form-footer'
 import { toastMessage } from '@/components/toasts'
 import {
-  TRANSACTION_TYPES,
-  TRANSACTION_TYPE_LABELS,
+  TRANSFER_TYPES,
+  TRANSFER_TYPE_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   isDepositType,
@@ -18,15 +18,15 @@ import {
   needsWorker,
   needsTargetRegister,
   needsOtherCategory,
-  type TransactionTypeT,
+  type TransferTypeT,
   type PaymentMethodT,
-} from '@/lib/constants/transactions'
-import { createTransactionAction } from '@/lib/actions/transactions'
-import { transactionFormSchema, type CreateTransactionFormT } from '@/lib/schemas/transactions'
+} from '@/lib/constants/transfers'
+import { createTransferAction } from '@/lib/actions/transfers'
+import { transferFormSchema, type CreateTransferFormT } from '@/lib/schemas/transfers'
 import type { ReferenceDataT } from '@/components/dialogs/add-transfer-dialog'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 
-type TransactionFormPropsT = {
+type TransferFormPropsT = {
   referenceData: ReferenceDataT
   managerCashRegisterId?: number
   onSuccess: () => void
@@ -55,7 +55,7 @@ export function TransferForm({
   referenceData,
   managerCashRegisterId,
   onSuccess,
-}: TransactionFormPropsT) {
+}: TransferFormPropsT) {
   const invoiceRef = useRef<HTMLInputElement>(null)
   const isRegisterLocked = managerCashRegisterId !== undefined
 
@@ -75,14 +75,14 @@ export function TransferForm({
       invoiceNote: '',
     } as FormValuesT,
     validators: {
-      onSubmit: transactionFormSchema,
+      onSubmit: transferFormSchema,
     },
     onSubmit: async ({ value }) => {
-      const data: CreateTransactionFormT = {
+      const data: CreateTransferFormT = {
         description: value.description,
         amount: Number(value.amount),
         date: value.date,
-        type: value.type as TransactionTypeT,
+        type: value.type as TransferTypeT,
         paymentMethod: value.paymentMethod as PaymentMethodT,
         cashRegister: value.cashRegister ? Number(value.cashRegister) : undefined,
         targetRegister: value.targetRegister ? Number(value.targetRegister) : undefined,
@@ -100,7 +100,7 @@ export function TransferForm({
         invoiceFormData.set('invoice', file)
       }
 
-      const result = await createTransactionAction(data, invoiceFormData)
+      const result = await createTransferAction(data, invoiceFormData)
 
       if (result.success) {
         toastMessage('Transfer dodany', 'success')
@@ -131,9 +131,9 @@ export function TransferForm({
           <form.AppField name="type">
             {(field) => (
               <field.Select label="Typ transferu" showError>
-                {TRANSACTION_TYPES.map((t) => (
+                {TRANSFER_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
-                    {TRANSACTION_TYPE_LABELS[t]}
+                    {TRANSFER_TYPE_LABELS[t]}
                   </SelectItem>
                 ))}
               </field.Select>

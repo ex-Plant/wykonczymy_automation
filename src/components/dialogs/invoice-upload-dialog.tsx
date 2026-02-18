@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { FileInput } from '@/components/ui/file-input'
 import { Upload } from 'lucide-react'
-import { updateTransactionInvoiceAction } from '@/lib/actions/transactions'
+import { updateTransferInvoiceAction } from '@/lib/actions/transfers'
 import { toastMessage } from '@/components/toasts'
 
 type InvoiceUploadDialogPropsT = {
@@ -41,7 +41,7 @@ export function InvoiceUploadDialog({
     const formData = new FormData()
     formData.set('invoice', file)
 
-    const result = await updateTransactionInvoiceAction(transactionId, formData)
+    const result = await updateTransferInvoiceAction(transactionId, formData)
 
     setIsSubmitting(false)
 

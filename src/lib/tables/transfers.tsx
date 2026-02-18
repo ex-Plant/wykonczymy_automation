@@ -1,20 +1,20 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/format-currency'
-import { InvoiceCell } from '@/components/transactions/invoice-cell'
+import { InvoiceCell } from '@/components/transfers/invoice-cell'
 import {
-  TRANSACTION_TYPE_LABELS,
+  TRANSFER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
-  type TransactionTypeT,
+  type TransferTypeT,
   type PaymentMethodT,
-} from '@/lib/constants/transactions'
+} from '@/lib/constants/transfers'
 import type { ReferenceDataT } from '@/lib/queries/reference-data'
 import type { MediaInfoT } from '@/lib/queries/media'
 
-export type TransactionRowT = {
+export type TransferRowT = {
   readonly id: number
   readonly description: string
   readonly amount: number
-  readonly type: TransactionTypeT
+  readonly type: TransferTypeT
   readonly paymentMethod: PaymentMethodT
   readonly date: string
   readonly cashRegisterName: string
@@ -29,7 +29,7 @@ export type TransactionRowT = {
 
 type NameMapT = Map<number, string>
 
-export type TransactionLookupsT = {
+export type TransferLookupsT = {
   readonly cashRegisters: NameMapT
   readonly investments: NameMapT
   readonly workers: NameMapT
@@ -38,12 +38,12 @@ export type TransactionLookupsT = {
 }
 
 /**
- * Builds lookup Maps from reference data + media map for use with mapTransactionRow.
+ * Builds lookup Maps from reference data + media map for use with mapTransferRow.
  */
-export function buildTransactionLookups(
+export function buildTransferLookups(
   refData: ReferenceDataT,
   mediaMap: Map<number, MediaInfoT>,
-): TransactionLookupsT {
+): TransferLookupsT {
   const toNameMap = (items: ReadonlyArray<{ id: number; name: string }>): NameMapT =>
     new Map(items.map((i) => [i.id, i.name]))
 
@@ -57,12 +57,12 @@ export function buildTransactionLookups(
 }
 
 /**
- * Maps a Payload transaction document to a flat TransactionRowT.
+ * Maps a Payload transfer document to a flat TransferRowT.
  * When `lookups` is provided, resolves IDs from maps (depth: 0 mode).
  * When omitted, falls back to populated objects (depth: 1 mode).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): TransactionRowT {
+export function mapTransferRow(doc: any, lookups?: TransferLookupsT): TransferRowT {
   if (lookups) {
     const mediaId = typeof doc.invoice === 'number' ? doc.invoice : null
     const media = mediaId ? lookups.media.get(mediaId) : undefined
@@ -71,7 +71,7 @@ export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): Tran
       id: doc.id,
       description: doc.description,
       amount: doc.amount,
-      type: doc.type as TransactionTypeT,
+      type: doc.type as TransferTypeT,
       paymentMethod: doc.paymentMethod as PaymentMethodT,
       date: doc.date,
       cashRegisterName: lookupName(lookups.cashRegisters, doc.cashRegister),
@@ -89,7 +89,7 @@ export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): Tran
     id: doc.id,
     description: doc.description,
     amount: doc.amount,
-    type: doc.type as TransactionTypeT,
+    type: doc.type as TransferTypeT,
     paymentMethod: doc.paymentMethod as PaymentMethodT,
     date: doc.date,
     cashRegisterName: getRelationName(doc.cashRegister),
@@ -104,7 +104,7 @@ export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): Tran
 }
 
 /**
- * Extracts unique invoice IDs from raw (depth: 0) transaction docs.
+ * Extracts unique invoice IDs from raw (depth: 0) transfer docs.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function extractInvoiceIds(docs: any[]): number[] {
@@ -134,7 +134,7 @@ function getMediaField(field: unknown, key: string): string | null {
   return null
 }
 
-const col = createColumnHelper<TransactionRowT>()
+const col = createColumnHelper<TransferRowT>()
 
 const allColumns = [
   col.accessor('date', {
@@ -166,7 +166,7 @@ const allColumns = [
     id: 'type',
     header: 'Typ',
     meta: { label: 'Typ' },
-    cell: (info) => TRANSACTION_TYPE_LABELS[info.getValue() as TransactionTypeT] ?? info.getValue(),
+    cell: (info) => TRANSFER_TYPE_LABELS[info.getValue() as TransferTypeT] ?? info.getValue(),
   }),
 
   col.accessor('workerName', {
@@ -225,12 +225,12 @@ const allColumns = [
   }),
 ]
 
-export type TransactionColumnIdT = (typeof allColumns)[number]['id']
+export type TransferColumnIdT = (typeof allColumns)[number]['id']
 
 /**
- * Returns transaction column definitions, excluding specified column IDs.
+ * Returns transfer column definitions, excluding specified column IDs.
  */
-export function getTransactionColumns(exclude: string[] = []) {
+export function getTransferColumns(exclude: string[] = []) {
   if (exclude.length === 0) return allColumns
   const excludeSet = new Set(exclude)
   return allColumns.filter((c) => !excludeSet.has(c.id!))

@@ -12,7 +12,7 @@ export type MediaInfoT = {
 export async function fetchMediaByIds(ids: number[]): Promise<Map<number, MediaInfoT>> {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const map = new Map<number, MediaInfoT>()
   if (ids.length === 0) return map

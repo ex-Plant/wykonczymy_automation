@@ -5,7 +5,7 @@ import type {
   PayloadRequest,
 } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transfers'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf } from '@/lib/perf'
 
@@ -120,7 +120,7 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
 
   await Promise.all(tasks)
 
-  revalidateCollections(['transactions', 'cashRegisters'])
+  revalidateCollections(['transfers', 'cashRegisters'])
 
   console.log(`[PERF] recalcAfterChange TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 
@@ -153,7 +153,7 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
 
   await Promise.all(tasks)
 
-  revalidateCollections(['transactions', 'cashRegisters'])
+  revalidateCollections(['transfers', 'cashRegisters'])
 
   console.log(`[PERF] recalcAfterDelete TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 

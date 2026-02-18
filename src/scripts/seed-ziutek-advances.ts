@@ -11,7 +11,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 const ZIUTEK_EMAIL = 'ziutek2@test.pl'
-const TRANSACTION_COUNT = 200
+const TRANSFER_COUNT = 200
 
 const PAYMENT_METHODS = ['CASH', 'BLIK', 'TRANSFER', 'CARD'] as const
 
@@ -92,7 +92,7 @@ async function main() {
   console.log(`Found ${registerIds.length} cash register(s)`)
 
   // Build 200 ACCOUNT_FUNDING transactions
-  const transactions = Array.from({ length: TRANSACTION_COUNT }, () => ({
+  const transactions = Array.from({ length: TRANSFER_COUNT }, () => ({
     description: randomItem(ADVANCE_DESCRIPTIONS),
     amount: randomBetween(100, 3000),
     date: randomDate(),
@@ -104,7 +104,7 @@ async function main() {
     createdBy: creator.id,
   })).sort((a, b) => a.date.localeCompare(b.date))
 
-  console.log(`\nInserting ${TRANSACTION_COUNT} ACCOUNT_FUNDING transactions for ${ziutek.name}...`)
+  console.log(`\nInserting ${TRANSFER_COUNT} ACCOUNT_FUNDING transactions for ${ziutek.name}...`)
 
   let created = 0
   for (const tx of transactions) {
@@ -115,7 +115,7 @@ async function main() {
     })
     created++
     if (created % 25 === 0) {
-      console.log(`  ${created}/${TRANSACTION_COUNT} created...`)
+      console.log(`  ${created}/${TRANSFER_COUNT} created...`)
     }
   }
 
