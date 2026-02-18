@@ -62,4 +62,4 @@ export const needsWorker = (type: string) =>
 
 export const needsTargetRegister = (type: string) => type === 'REGISTER_TRANSFER'
 
-export const needsOtherCategory = (type: string) => type === 'OTHER' || type === 'EMPLOYEE_EXPENSE'
+export const needsOtherCategory = (type: string) => type === 'OTHER'

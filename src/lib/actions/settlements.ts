@@ -4,17 +4,19 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
-import {
-  createSettlementSchema,
-  zeroSaldoSchema,
-  type CreateSettlementFormT,
-  type ZeroSaldoFormT,
-} from '@/lib/schemas/settlements'
 import { sql } from '@payloadcms/db-vercel-postgres'
+
 import { getDb, sumInvestmentCosts, sumInvestmentIncome } from '@/lib/db/sum-transfers'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf, perfStart } from '@/lib/perf'
-
+import {
+  CreateSettlementFormT,
+  createSettlementSchema,
+} from '@/components/forms/settlement-form/settlement-schema'
+import {
+  ZeroSaldoFormT,
+  zeroSaldoSchema,
+} from '@/components/forms/settlement-form/settlement-schema'
 type ActionResultT = { success: true; count?: number } | { success: false; error: string }
 
 export async function createSettlementAction(

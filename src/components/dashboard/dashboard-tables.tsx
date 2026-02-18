@@ -22,7 +22,12 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
         <div>
           <SectionHeader>Kasy</SectionHeader>
           <div className="mt-4">
-            <DataTable data={cashRegisters} columns={cashRegisterColumns} emptyMessage="Brak kas" />
+            <DataTable
+              data={cashRegisters}
+              columns={cashRegisterColumns}
+              emptyMessage="Brak kas"
+              getRowHref={(row) => `/kasa/${row.id}`}
+            />
           </div>
         </div>
         <div>
@@ -32,6 +37,7 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
               data={investments}
               columns={investmentColumns}
               emptyMessage="Brak inwestycji"
+              getRowHref={(row) => `/inwestycje/${row.id}`}
             />
           </div>
         </div>
@@ -39,7 +45,12 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
       <div>
         <SectionHeader>Użytkownicy</SectionHeader>
         <div className="mt-4">
-          <DataTable data={users} columns={userColumns} emptyMessage="Brak użytkowników" />
+          <DataTable
+            data={users}
+            columns={userColumns}
+            emptyMessage="Brak użytkowników"
+            getRowHref={(row) => `/uzytkownicy/${row.id}`}
+          />
         </div>
       </div>
     </div>

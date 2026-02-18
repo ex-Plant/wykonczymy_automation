@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import dynamic from 'next/dynamic'
 
 const TransferForm = dynamic(
@@ -44,8 +45,13 @@ export function AddTransferDialog({
   managerCashRegisterId,
 }: AddTransferDialogPropsT) {
   const [isOpen, setIsOpen] = useState(false)
+  const [keepOpen, setKeepOpen] = useState(false)
 
   if (!referenceData) return <></>
+
+  function handleSuccess() {
+    if (!keepOpen) setIsOpen(false)
+  }
 
   return (
     <>
@@ -64,9 +70,16 @@ export function AddTransferDialog({
             <TransferForm
               referenceData={referenceData}
               managerCashRegisterId={managerCashRegisterId}
-              onSuccess={() => setIsOpen(false)}
+              onSuccess={handleSuccess}
             />
           </div>
+          <label className="flex cursor-pointer items-center gap-2 pb-4 text-sm select-none">
+            <Checkbox
+              checked={keepOpen}
+              onCheckedChange={(checked) => setKeepOpen(checked === true)}
+            />
+            Nie zamykaj po zapisaniu
+          </label>
         </DialogContent>
       </Dialog>
     </>

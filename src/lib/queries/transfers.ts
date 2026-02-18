@@ -34,6 +34,7 @@ export async function findTransfersRaw({
     limit,
     page,
     depth: 0,
+    overrideAccess: true,
   })
   console.log(
     `[PERF] query.findTransfersRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs, page=${page})`,
@@ -64,6 +65,7 @@ export async function findAllTransfersRaw({
     sort,
     pagination: false,
     depth: 0,
+    overrideAccess: true,
   })
   console.log(
     `[PERF] query.findAllTransfersRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,

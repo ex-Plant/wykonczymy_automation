@@ -20,9 +20,8 @@ import {
 } from '@/lib/constants/transfers'
 import { getManagementEmployeeSaldo } from '@/lib/queries/employees'
 import { createSettlementAction } from '@/lib/actions/settlements'
-import { settlementFormSchema, type CreateSettlementFormT } from '@/lib/schemas/settlements'
 import { cn } from '@/lib/cn'
-
+import { settlementFormSchema, type CreateSettlementFormT } from './settlement-schema'
 type ReferenceItemT = { id: number; name: string }
 
 type ReferenceDataT = {

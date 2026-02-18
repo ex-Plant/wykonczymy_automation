@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/format-currency'
 
@@ -22,11 +21,6 @@ export const investmentColumns = [
     id: 'name',
     header: 'Nazwa',
     meta: { canHide: false, label: 'Nazwa' },
-    cell: (info) => (
-      <Link href={`/inwestycje/${info.row.original.id}`} className="hover:underline">
-        {info.getValue()}
-      </Link>
-    ),
   }),
 
   col.accessor('totalCosts', {

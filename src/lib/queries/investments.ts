@@ -17,6 +17,7 @@ export async function findInvestments({ page, limit }: PaginationParamsT) {
     sort: 'name',
     limit,
     page,
+    overrideAccess: true,
   })
   console.log(`[PERF] query.findInvestments ${(performance.now() - start).toFixed(1)}ms`)
 
@@ -45,7 +46,11 @@ export async function getInvestment(id: string) {
   const start = performance.now()
   const payload = await getPayload({ config })
   try {
-    const investment = await payload.findByID({ collection: 'investments', id })
+    const investment = await payload.findByID({
+      collection: 'investments',
+      id,
+      overrideAccess: true,
+    })
     console.log(`[PERF] query.getInvestment(${id}) ${(performance.now() - start).toFixed(1)}ms`)
     return investment ?? null
   } catch {
@@ -64,6 +69,7 @@ export async function findAllInvestments() {
     collection: 'investments',
     pagination: false,
     sort: 'name',
+    overrideAccess: true,
   })
   console.log(
     `[PERF] query.findAllInvestments ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,
@@ -95,6 +101,7 @@ export async function findActiveInvestments() {
     where: { status: { equals: 'active' } },
     pagination: false,
     depth: 0,
+    overrideAccess: true,
   })
   console.log(
     `[PERF] query.findActiveInvestments ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,

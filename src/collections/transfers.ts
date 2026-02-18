@@ -75,7 +75,6 @@ export const Transfers: CollectionConfig = {
     {
       name: 'description',
       type: 'text',
-      required: true,
       label: { en: 'Description', pl: 'Opis' },
       access: { update: () => false },
     },

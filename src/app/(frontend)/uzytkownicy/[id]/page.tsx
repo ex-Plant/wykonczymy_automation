@@ -14,13 +14,7 @@ import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { getMonthDateRange } from '@/lib/helpers'
 import { TransferTableServer } from '@/components/transfers/transfer-table-server'
 import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
-import dynamic from 'next/dynamic'
 
-const ZeroSaldoDialog = dynamic(() =>
-  import('@/components/dialogs/zero-saldo-dialog').then((m) => ({
-    default: m.ZeroSaldoDialog,
-  })),
-)
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
@@ -94,13 +88,6 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       {/* Stat card + zero saldo */}
       <div className="mt-6 flex items-end gap-4">
         <StatCard label="Saldo" value={formatPLN(saldo)} />
-        <ZeroSaldoDialog
-          saldo={saldo}
-          workerId={targetUser.id}
-          referenceData={{
-            investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
-          }}
-        />
       </div>
 
       {/* Period stats — only shown when date range is active */}

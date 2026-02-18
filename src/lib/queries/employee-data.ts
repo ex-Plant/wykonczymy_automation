@@ -55,6 +55,7 @@ export async function getCachedMonthlyData(
       limit: safeLimit,
       page: safePage,
       depth: 0,
+      overrideAccess: true,
     }),
     sumEmployeeSaldo(payload, userId, {
       start: startDate.toISOString(),

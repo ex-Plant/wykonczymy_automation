@@ -12,7 +12,12 @@ export async function getCashRegister(id: string) {
   const start = performance.now()
   const payload = await getPayload({ config })
   try {
-    const register = await payload.findByID({ collection: 'cash-registers', id, depth: 1 })
+    const register = await payload.findByID({
+      collection: 'cash-registers',
+      id,
+      depth: 1,
+      overrideAccess: true,
+    })
     console.log(`[PERF] query.getCashRegister(${id}) ${(performance.now() - start).toFixed(1)}ms`)
     return register ?? null
   } catch {
@@ -35,6 +40,7 @@ export async function findAllCashRegistersRaw() {
     pagination: false,
     sort: 'name',
     depth: 0,
+    overrideAccess: true,
   })
   console.log(
     `[PERF] query.findAllCashRegistersRaw ${(performance.now() - start).toFixed(1)}ms (${result.docs.length} docs)`,

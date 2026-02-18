@@ -2,7 +2,6 @@ import { z } from 'zod'
 import {
   TRANSFER_TYPES,
   PAYMENT_METHODS,
-  isDepositType,
   needsCashRegister,
   requiresInvestment,
   needsWorker,
@@ -97,14 +96,6 @@ export const transferFormSchema = z
     invoiceNote: z.string(),
   })
   .superRefine((data, ctx) => {
-    if (!isDepositType(data.type) && !data.description) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Opis jest wymagany',
-        path: ['description'],
-      })
-    }
-
     if (!data.amount || Number(data.amount) <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

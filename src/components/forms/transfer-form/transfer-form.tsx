@@ -21,7 +21,10 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { createTransferAction } from '@/lib/actions/transfers'
-import { transferFormSchema, type CreateTransferFormT } from '@/lib/schemas/transfers'
+import {
+  transferFormSchema,
+  type CreateTransferFormT,
+} from '@/components/forms/transfer-form/transfer-schema'
 import type { ReferenceDataT } from '@/components/dialogs/add-transfer-dialog'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
@@ -127,11 +130,11 @@ export function TransferForm({
         }}
       >
         <FieldGroup>
-          {/* Type */}
+          {/* Type — OTHER_DEPOSIT hidden (use COMPANY_FUNDING or OTHER instead) */}
           <form.AppField name="type">
             {(field) => (
               <field.Select label="Typ transferu" showError>
-                {TRANSFER_TYPES.map((t) => (
+                {TRANSFER_TYPES.filter((t) => t !== 'OTHER_DEPOSIT').map((t) => (
                   <SelectItem key={t} value={t}>
                     {TRANSFER_TYPE_LABELS[t]}
                   </SelectItem>
@@ -140,9 +143,34 @@ export function TransferForm({
             )}
           </form.AppField>
 
-          {/* Description */}
+          {/* Conditional: Other category — shown right after type for OTHER / EMPLOYEE_EXPENSE */}
+          {needsOtherCategory(currentType) && (
+            <>
+              <form.AppField name="otherCategory">
+                {(field) => (
+                  <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
+                    {referenceData.otherCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </field.Select>
+                )}
+              </form.AppField>
+
+              <form.AppField name="otherDescription">
+                {(field) => (
+                  <field.Textarea label="Opis kategorii" placeholder="Dodatkowy opis" showError />
+                )}
+              </form.AppField>
+            </>
+          )}
+
+          {/* Description — optional for all types */}
           <form.AppField name="description">
-            {(field) => <field.Input label="Opis" placeholder="Opis transferu" showError />}
+            {(field) => (
+              <field.Input label="Opis (opcjonalnie)" placeholder="Opis transferu" showError />
+            )}
           </form.AppField>
 
           {/* Amount */}
@@ -233,29 +261,6 @@ export function TransferForm({
                 </field.Select>
               )}
             </form.AppField>
-          )}
-
-          {/* Conditional: Other category */}
-          {needsOtherCategory(currentType) && (
-            <>
-              <form.AppField name="otherCategory">
-                {(field) => (
-                  <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
-                    {referenceData.otherCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={String(cat.id)}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </field.Select>
-                )}
-              </form.AppField>
-
-              <form.AppField name="otherDescription">
-                {(field) => (
-                  <field.Textarea label="Opis kategorii" placeholder="Dodatkowy opis" showError />
-                )}
-              </form.AppField>
-            </>
           )}
 
           {/* Invoice file — not bound to form state, read via ref on submit */}

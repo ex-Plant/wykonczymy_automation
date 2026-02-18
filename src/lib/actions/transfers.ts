@@ -5,7 +5,10 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { createTransferSchema, type CreateTransferFormT } from '@/lib/schemas/transfers'
+import {
+  createTransferSchema,
+  type CreateTransferFormT,
+} from '@/components/forms/transfer-form/transfer-schema'
 import { sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transfers'
 import { perf, perfStart } from '@/lib/perf'
 
@@ -81,7 +84,9 @@ export async function createTransferAction(
       }),
     )
 
-    // Hook already calls revalidateCollections — no duplicate needed here
+    // Hook revalidates inside the DB transaction (row may not be visible yet).
+    // Revalidate again after payload.create() returns (transaction committed).
+    revalidateCollections(['transfers', 'cashRegisters', 'investments'])
 
     console.log(`[PERF] createTransferAction TOTAL ${elapsed()}ms`)
 

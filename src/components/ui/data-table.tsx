@@ -116,7 +116,7 @@ export function DataTable<TData>({
         key={row.id}
         className={cn(
           'border-border border-b last:border-b-0',
-          href && 'hover:bg-muted/50 cursor-pointer',
+          href && 'hover:bg-muted cursor-pointer transition-colors',
         )}
         onClick={href ? (e) => handleRowClick(e, href) : undefined}
       >

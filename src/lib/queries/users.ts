@@ -20,7 +20,7 @@ export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   const start = performance.now()
   const payload = await getPayload({ config })
   const [users, saldoRecord] = await Promise.all([
-    payload.find({ collection: 'users', sort: 'name', limit, page }),
+    payload.find({ collection: 'users', sort: 'name', limit, page, overrideAccess: true }),
     sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
   ])
   console.log(`[PERF] query.findUsersWithSaldos ${(performance.now() - start).toFixed(1)}ms`)
@@ -47,7 +47,7 @@ export async function findAllUsersWithSaldos() {
   const start = performance.now()
   const payload = await getPayload({ config })
   const [users, saldoRecord] = await Promise.all([
-    payload.find({ collection: 'users', sort: 'name', pagination: false }),
+    payload.find({ collection: 'users', sort: 'name', pagination: false, overrideAccess: true }),
     sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
   ])
   console.log(`[PERF] query.findAllUsersWithSaldos ${(performance.now() - start).toFixed(1)}ms`)
@@ -68,7 +68,7 @@ export async function getUser(id: string) {
 
   const payload = await getPayload({ config })
   try {
-    const user = await payload.findByID({ collection: 'users', id })
+    const user = await payload.findByID({ collection: 'users', id, overrideAccess: true })
     return user ?? null
   } catch {
     return null
@@ -110,6 +110,7 @@ export async function findAllUsers() {
     collection: 'users',
     limit: 100,
     depth: 0,
+    overrideAccess: true,
   })
   return result.docs.map((u) => ({
     id: u.id as number,
