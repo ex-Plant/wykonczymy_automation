@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminOrOwner, isAdminOrOwnerOrManager, isAdminOrOwnerField } from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 export const CashRegisters: CollectionConfig = {
@@ -19,10 +19,10 @@ export const CashRegisters: CollectionConfig = {
   },
   access: {
     // ADMIN/OWNER: full CRUD. MANAGER: read all.
-    read: isAdminOrOwner,
+    read: isAdminOrOwnerOrManager,
     create: isAdminOrOwner,
     update: isAdminOrOwner,
-    delete: isAdminOrOwner,
+    delete: () => false,
   },
   fields: [
     {
@@ -39,6 +39,20 @@ export const CashRegisters: CollectionConfig = {
       label: { en: 'Owner', pl: 'Właściciel' },
     },
     {
+      name: 'type',
+      type: 'select',
+      required: true,
+      defaultValue: 'AUXILIARY',
+      label: { en: 'Type', pl: 'Typ' },
+      options: [
+        { label: { en: 'Main', pl: 'Główna' }, value: 'MAIN' },
+        { label: { en: 'Auxiliary', pl: 'Pomocnicza' }, value: 'AUXILIARY' },
+      ],
+      admin: {
+        condition: (_, __, { user }) => user?.role === 'ADMIN' || user?.role === 'OWNER',
+      },
+    },
+    {
       name: 'balance',
       type: 'number',
       defaultValue: 0,
@@ -51,8 +65,8 @@ export const CashRegisters: CollectionConfig = {
         },
       },
       access: {
-        // Only ADMIN/OWNER can manually override balance
-        update: isAdminOrOwnerField,
+        // Derived field — only writable via raw SQL in recalculation hooks
+        update: () => false,
       },
     },
   ],
