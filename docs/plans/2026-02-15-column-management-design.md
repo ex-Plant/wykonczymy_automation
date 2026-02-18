@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add column show/hide toggles to Transactions and Investments tables, and make all table rows with detail pages clickable as full-row links.
+**Goal:** Add column show/hide toggles to Transfers and Investments tables, and make all table rows with detail pages clickable as full-row links.
 
 **Architecture:** TanStack Table's built-in `columnVisibility` state wired to a `ColumnToggle` dropdown (Radix DropdownMenu). Preferences persisted in localStorage per table. Clickable rows via `getRowHref` prop on DataTable using `router.push` with Cmd/Ctrl+Click support.
 
@@ -10,11 +10,11 @@
 
 ---
 
-## Task 1: Add column `meta.canHide` to transactions and investments column definitions
+## Task 1: Add column `meta.canHide` to transfers and investments column definitions
 
 **Files:**
 
-- Modify: `src/lib/tables/transactions.tsx`
+- Modify: `src/lib/tables/transfers.tsx`
 - Modify: `src/lib/tables/investments.tsx`
 
 TanStack Table columns accept an arbitrary `meta` object. We'll use `meta: { canHide: false }` to mark columns that must always stay visible. Columns without this meta (or `canHide: true`) are toggleable.
@@ -37,9 +37,9 @@ declare module '@tanstack/react-table' {
 }
 ```
 
-**Step 2: Mark non-hideable columns in transactions**
+**Step 2: Mark non-hideable columns in transfers**
 
-In `src/lib/tables/transactions.tsx`, add `meta` to the `description` column:
+In `src/lib/tables/transfers.tsx`, add `meta` to the `description` column:
 
 ```typescript
 col.accessor('description', {
@@ -96,7 +96,7 @@ Expected: 0 errors
 **Step 5: Commit**
 
 ```bash
-git add src/lib/tables/column-meta.ts src/lib/tables/transactions.tsx src/lib/tables/investments.tsx
+git add src/lib/tables/column-meta.ts src/lib/tables/transfers.tsx src/lib/tables/investments.tsx
 git commit -m "feat(tables): add column meta with canHide and label for toggle support"
 ```
 
@@ -344,33 +344,33 @@ git commit -m "feat(data-table): add column visibility persistence and clickable
 
 ---
 
-## Task 4: Wire up TransactionDataTable with column toggle
+## Task 4: Wire up TransferDataTable with column toggle
 
 **Files:**
 
-- Modify: `src/components/transactions/transaction-data-table.tsx`
+- Modify: `src/components/transfers/transfer-data-table.tsx`
 
 **Step 1: Add storageKey and toolbar**
 
 ```typescript
 import { ColumnToggle } from '@/components/ui/column-toggle'
 
-export function TransactionDataTable({
+export function TransferDataTable({
   data,
   paginationMeta,
   excludeColumns = [],
   baseUrl,
   className,
-}: TransactionDataTablePropsT) {
-  const columns = getTransactionColumns(excludeColumns)
+}: TransferDataTablePropsT) {
+  const columns = getTransferColumns(excludeColumns)
 
   return (
     <div className={cn('space-y-4', className)}>
       <DataTable
         data={data}
         columns={columns}
-        emptyMessage="Brak transakcji"
-        storageKey="transactions"
+        emptyMessage="Brak przelewów"
+        storageKey="transfers"
         toolbar={(table) => <ColumnToggle table={table} />}
       />
       <PaginationFooter paginationMeta={paginationMeta} baseUrl={baseUrl} />
@@ -379,7 +379,7 @@ export function TransactionDataTable({
 }
 ```
 
-No `getRowHref` — transactions don't have a detail page.
+No `getRowHref` — transfers don't have a detail page.
 
 **Step 2: Verify**
 
@@ -389,8 +389,8 @@ Expected: 0 errors
 **Step 3: Commit**
 
 ```bash
-git add src/components/transactions/transaction-data-table.tsx
-git commit -m "feat(transactions): wire column toggle into transaction table"
+git add src/components/transfers/transfer-data-table.tsx
+git commit -m "feat(transfers): wire column toggle into transfer table"
 ```
 
 ---
@@ -515,7 +515,7 @@ Expected: 0 new errors
 
 **Step 3: Manual test checklist**
 
-- [ ] Transactions table: column toggle dropdown visible, can hide/show columns, preferences survive page reload
+- [ ] Transfers table: column toggle dropdown visible, can hide/show columns, preferences survive page reload
 - [ ] Investments table: column toggle visible, clickable rows navigate to `/inwestycje/[id]`, Cmd+Click opens new tab
 - [ ] Cash registers table: rows clickable, navigate to `/kasa/[id]`
 - [ ] Users table: rows clickable, navigate to `/uzytkownicy/[id]`

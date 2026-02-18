@@ -5,7 +5,7 @@ import { SelectItem } from '@/components/ui/select'
 import { FileInput } from '@/components/ui/file-input'
 import { FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
-import FormFooter from '@/components/forms/form-footer'
+import FormFooter from '@/components/forms/form-components/form-footer'
 import { toastMessage } from '@/components/toasts'
 import {
   TRANSFER_TYPES,

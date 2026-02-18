@@ -7,8 +7,8 @@ import {
   FieldError,
   FieldLabel,
 } from '@/components/ui/field'
-import { useFieldContext } from './hooks/form-hooks'
-import { FormControlPropsT } from './types/form-types'
+import { FormControlPropsT } from '../types/form-types'
+import { useFieldContext } from '../hooks/form-hooks'
 
 type FormBasePropsT = FormControlPropsT & {
   children: ReactNode

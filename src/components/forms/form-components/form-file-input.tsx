@@ -4,8 +4,8 @@ import { useRef } from 'react'
 import Icon from '@/components/ui/icons/icon'
 import { cn } from '@/lib/cn'
 import FormBase from './form-base'
-import { FormControlPropsT } from './types/form-types'
-import { useFieldContext } from './hooks/form-hooks'
+import { FormControlPropsT } from '../types/form-types'
+import { useFieldContext } from '../hooks/form-hooks'
 
 type FormFileInputPropsT = FormControlPropsT & {
   accept?: string

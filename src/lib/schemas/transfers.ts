@@ -26,14 +26,6 @@ export const createTransferSchema = z
     invoiceNote: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (!isDepositType(data.type) && !data.description) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Opis jest wymagany',
-        path: ['description'],
-      })
-    }
-
     if (needsCashRegister(data.type) && !data.cashRegister) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

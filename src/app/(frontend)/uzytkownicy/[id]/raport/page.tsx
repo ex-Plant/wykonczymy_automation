@@ -14,7 +14,7 @@ import {
   type TransferTypeT,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
-import { PrintButton } from '@/components/users/print-button'
+import { PrintButton } from '@/components/ui/print-button'
 
 type PagePropsT = {
   params: Promise<{ id: string }>

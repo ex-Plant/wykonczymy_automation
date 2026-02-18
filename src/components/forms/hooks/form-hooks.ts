@@ -1,9 +1,13 @@
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form'
-import { FormCheckbox, FormFileInput, FormInput, FormSelect, FormTextarea } from '../index'
 
 const { fieldContext, formContext, useFieldContext, useFormContext } = createFormHookContexts()
 
 import { useStore } from '@tanstack/react-form'
+import { FormInput } from 'lucide-react'
+import { FormCheckbox } from '../form-components/form-checkbox'
+import { FormFileInput } from '../form-components/form-file-input'
+import { FormSelect } from '../form-components/form-select'
+import { FormTextarea } from '../form-components/form-textarea'
 
 // Create the full form hook with field components
 const { useAppForm } = createFormHook({

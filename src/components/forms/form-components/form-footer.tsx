@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
-import { useFormContext } from './hooks/form-hooks'
-import { useFormStatus } from './hooks/use-form-status'
-import { Loader } from '../ui/loader/loader'
+import { useFormContext } from '../hooks/form-hooks'
+import { useFormStatus } from '../hooks/use-form-status'
+import { Loader } from '@/components/ui/loader/loader'
 
 export default function FormFooter() {
   const form = useFormContext()

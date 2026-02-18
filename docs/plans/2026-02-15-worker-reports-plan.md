@@ -4,27 +4,27 @@
 
 **Goal:** Add per-worker period filtering, summary stats, and a printable report route to the worker detail page.
 
-**Architecture:** Reuse the existing `TransactionFilters` component (extracted to shared location) on the worker detail page. Add a new SQL aggregation query for period breakdown (advances vs expenses). Create a dedicated print route that fetches all transactions without pagination.
+**Architecture:** Reuse the existing `TransferFilters` component (extracted to shared location) on the worker detail page. Add a new SQL aggregation query for period breakdown (advances vs expenses). Create a dedicated print route that fetches all transfers without pagination.
 
 **Tech Stack:** Next.js 16 App Router, Payload CMS queries, `@payloadcms/db-vercel-postgres` raw SQL, `use cache` + `cacheTag`, Tailwind CSS `@media print`.
 
 ---
 
-### Task 1: Extract TransactionFilters to shared location
+### Task 1: Extract TransferFilters to shared location
 
-The `TransactionFilters` component is currently co-located with the transactions page. Move it to a shared location so both `/transakcje` and `/uzytkownicy/[id]` can use it. The component currently hardcodes `/transakcje` as the base URL for navigation — make it configurable via a `baseUrl` prop.
+The `TransferFilters` component is currently co-located with the transfers page. Move it to a shared location so both `/transakcje` and `/uzytkownicy/[id]` can use it. The component currently hardcodes `/transakcje` as the base URL for navigation — make it configurable via a `baseUrl` prop.
 
 **Files:**
 
-- Move: `src/app/(frontend)/transakcje/_components/transaction-filters.tsx` → `src/components/transactions/transaction-filters.tsx`
+- Move: `src/app/(frontend)/transakcje/_components/transfer-filters.tsx` → `src/components/transfers/transfer-filters.tsx`
 - Modify: `src/app/(frontend)/transakcje/page.tsx` (update import)
 
 **Step 1: Add `baseUrl` prop and move the file**
 
-In the moved file, add a `baseUrl` prop to `TransactionFiltersPropsT`:
+In the moved file, add a `baseUrl` prop to `TransferFiltersPropsT`:
 
 ```typescript
-type TransactionFiltersPropsT = {
+type TransferFiltersPropsT = {
   cashRegisters: ReferenceItemT[]
   baseUrl: string
   className?: string
@@ -53,21 +53,21 @@ In `src/app/(frontend)/transakcje/page.tsx`, change line 7:
 
 ```typescript
 // Before
-import { TransactionFilters } from './_components/transaction-filters'
+import { TransferFilters } from './_components/transfer-filters'
 
 // After
-import { TransactionFilters } from '@/components/transactions/transaction-filters'
+import { TransferFilters } from '@/components/transfers/transfer-filters'
 ```
 
 And pass the `baseUrl` prop:
 
 ```typescript
-<TransactionFilters cashRegisters={cashRegisterOptions} baseUrl="/transakcje" className="mt-6" />
+<TransferFilters cashRegisters={cashRegisterOptions} baseUrl="/transakcje" className="mt-6" />
 ```
 
 **Step 3: Delete the old file**
 
-Delete `src/app/(frontend)/transakcje/_components/transaction-filters.tsx`.
+Delete `src/app/(frontend)/transakcje/_components/transfer-filters.tsx`.
 
 **Step 4: Verify**
 
@@ -77,22 +77,22 @@ Expected: 0 errors
 **Step 5: Commit**
 
 ```bash
-git add -A && git commit -m "refactor: extract TransactionFilters to shared location"
+git add -A && git commit -m "refactor: extract TransferFilters to shared location"
 ```
 
 ---
 
 ### Task 2: SQL aggregation — sumWorkerPeriodBreakdown
 
-Add a new SQL function that returns advances, expenses, and net saldo for a worker within a date range. Follows the same pattern as existing functions in `src/lib/db/sum-transactions.ts`.
+Add a new SQL function that returns advances, expenses, and net saldo for a worker within a date range. Follows the same pattern as existing functions in `src/lib/db/sum-transfers.ts`.
 
 **Files:**
 
-- Modify: `src/lib/db/sum-transactions.ts` (add function to existing file)
+- Modify: `src/lib/db/sum-transfers.ts` (add function to existing file)
 
 **Step 1: Add the function**
 
-Add to the bottom of `src/lib/db/sum-transactions.ts`:
+Add to the bottom of `src/lib/db/sum-transfers.ts`:
 
 ```typescript
 export type WorkerPeriodBreakdownT = {
@@ -142,7 +142,7 @@ Expected: 0 errors
 **Step 3: Commit**
 
 ```bash
-git add src/lib/db/sum-transactions.ts && git commit -m "feat: add sumWorkerPeriodBreakdown SQL aggregation"
+git add src/lib/db/sum-transfers.ts && git commit -m "feat: add sumWorkerPeriodBreakdown SQL aggregation"
 ```
 
 ---
@@ -160,8 +160,8 @@ Wrap the SQL function with `'use cache'` + `cacheTag` in the queries layer.
 Add to `src/lib/queries/users.ts`:
 
 ```typescript
-import { sumEmployeeSaldo, sumWorkerPeriodBreakdown } from '@/lib/db/sum-transactions'
-import type { WorkerPeriodBreakdownT } from '@/lib/db/sum-transactions'
+import { sumEmployeeSaldo, sumWorkerPeriodBreakdown } from '@/lib/db/sum-transfers'
+import type { WorkerPeriodBreakdownT } from '@/lib/db/sum-transfers'
 ```
 
 Note: `sumEmployeeSaldo` is already imported — just add `sumWorkerPeriodBreakdown` and the type to the existing import.
@@ -175,7 +175,7 @@ export async function getWorkerPeriodBreakdown(
   to: string,
 ): Promise<WorkerPeriodBreakdownT> {
   'use cache'
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const payload = await getPayload({ config })
   return sumWorkerPeriodBreakdown(payload, Number(workerId), { start: from, end: to })
@@ -195,20 +195,20 @@ git add src/lib/queries/users.ts && git commit -m "feat: add cached getWorkerPer
 
 ---
 
-### Task 4: Add a query function for all transactions (no pagination)
+### Task 4: Add a query function for all transfers (no pagination)
 
-The print route needs ALL transactions for a worker + filters without pagination. Add a `findAllTransactions` query function.
+The print route needs ALL transfers for a worker + filters without pagination. Add a `findAllTransfers` query function.
 
 **Files:**
 
-- Modify: `src/lib/queries/transactions.ts`
+- Modify: `src/lib/queries/transfers.ts`
 
 **Step 1: Add the function**
 
-Add to `src/lib/queries/transactions.ts`:
+Add to `src/lib/queries/transfers.ts`:
 
 ```typescript
-export async function findAllTransactions({
+export async function findAllTransfers({
   where = {},
   sort = '-date',
 }: {
@@ -216,7 +216,7 @@ export async function findAllTransactions({
   readonly sort?: string
 }) {
   'use cache'
-  cacheTag(CACHE_TAGS.transactions)
+  cacheTag(CACHE_TAGS.transfers)
 
   const payload = await getPayload({ config })
   const result = await payload.find({
@@ -227,7 +227,7 @@ export async function findAllTransactions({
     depth: 1,
   })
 
-  return result.docs.map(mapTransactionRow)
+  return result.docs.map(mapTransferRow)
 }
 ```
 
@@ -239,14 +239,14 @@ Expected: 0 errors
 **Step 3: Commit**
 
 ```bash
-git add src/lib/queries/transactions.ts && git commit -m "feat: add findAllTransactions query (no pagination)"
+git add src/lib/queries/transfers.ts && git commit -m "feat: add findAllTransfers query (no pagination)"
 ```
 
 ---
 
 ### Task 5: Add filters and period stats to worker detail page
 
-Wire up `TransactionFilters` + `StatCard` period stats on the existing worker detail page.
+Wire up `TransferFilters` + `StatCard` period stats on the existing worker detail page.
 
 **Files:**
 
@@ -257,31 +257,31 @@ Wire up `TransactionFilters` + `StatCard` period stats on the existing worker de
 Add to the imports:
 
 ```typescript
-import { findTransactions, buildTransactionFilters } from '@/lib/queries/transactions'
+import { findTransfers, buildTransferFilters } from '@/lib/queries/transfers'
 import { getWorkerPeriodBreakdown } from '@/lib/queries/users'
-import { TransactionFilters } from '@/components/transactions/transaction-filters'
+import { TransferFilters } from '@/components/transfers/transfer-filters'
 ```
 
-Remove the direct `findTransactions` import if it's already there (it is — line 7). Replace it with the one that also imports `buildTransactionFilters`.
+Remove the direct `findTransfers` import if it's already there (it is — line 7). Replace it with the one that also imports `buildTransferFilters`.
 
 **Step 2: Build where clause from search params**
 
-After `parsePagination`, build the where clause using the existing `buildTransactionFilters` helper. Force the worker filter:
+After `parsePagination`, build the where clause using the existing `buildTransferFilters` helper. Force the worker filter:
 
 ```typescript
-const filters = buildTransactionFilters(sp, { id: Number(id), isManager: false })
-// buildTransactionFilters with isManager: false always adds worker = id
+const filters = buildTransferFilters(sp, { id: Number(id), isManager: false })
+// buildTransferFilters with isManager: false always adds worker = id
 ```
 
-Wait — `buildTransactionFilters` uses `userContext.id` for the worker filter when `isManager` is false. But here the worker ID comes from the URL param `id` (the target user), not the current user. So we need to build the where clause manually, reusing the filter parts for type/cashRegister/date but forcing `worker = id`:
+Wait — `buildTransferFilters` uses `userContext.id` for the worker filter when `isManager` is false. But here the worker ID comes from the URL param `id` (the target user), not the current user. So we need to build the where clause manually, reusing the filter parts for type/cashRegister/date but forcing `worker = id`:
 
 ```typescript
 // Build filters from search params (type, cashRegister, date range)
-const baseFilters = buildTransactionFilters(sp, { id: Number(id), isManager: false })
-// buildTransactionFilters already sets worker = id when isManager is false
+const baseFilters = buildTransferFilters(sp, { id: Number(id), isManager: false })
+// buildTransferFilters already sets worker = id when isManager is false
 ```
 
-Actually, `buildTransactionFilters` with `isManager: false` and `id: Number(id)` will set `worker = { equals: Number(id) }` plus any type/cashRegister/date filters. This is exactly what we want. The `Number(id)` is the target worker ID.
+Actually, `buildTransferFilters` with `isManager: false` and `id: Number(id)` will set `worker = { equals: Number(id) }` plus any type/cashRegister/date filters. This is exactly what we want. The `Number(id)` is the target worker ID.
 
 **Step 3: Update the Promise.all data fetching**
 
@@ -300,7 +300,7 @@ const [
   cashRegisters,
   managerRegisterIds,
 ] = await Promise.all([
-  findTransactions({
+  findTransfers({
     where: baseFilters,
     page,
     limit,
@@ -319,8 +319,8 @@ After the saldo stat card section and before the transactions table, add:
 
 ```tsx
 {/* Filters */}
-<SectionHeader className="mt-8">Transakcje</SectionHeader>
-<TransactionFilters
+<SectionHeader className="mt-8">Transfery</SectionHeader>
+<TransferFilters
   cashRegisters={cashRegisters.map((c) => ({ id: c.id, name: c.name }))}
   baseUrl={`/uzytkownicy/${id}`}
   className="mt-4"

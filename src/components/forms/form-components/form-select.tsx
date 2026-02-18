@@ -1,8 +1,8 @@
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ReactNode } from 'react'
 import FormBase from './form-base'
-import { FormControlPropsT } from './types/form-types'
-import { useFieldContext } from './hooks/form-hooks'
+import { FormControlPropsT } from '../types/form-types'
+import { useFieldContext } from '../hooks/form-hooks'
 
 export function FormSelect({
   children,

@@ -1,31 +1,31 @@
-# M19: Invoice Preview in Transaction Tables — Implementation Plan
+# M19: Invoice Preview in Transfer Tables — Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Make invoice files (PDF/images) previewable and downloadable directly from the invoice column in any transaction table.
+**Goal:** Make invoice files (PDF/images) previewable and downloadable directly from the invoice column in any transfer table.
 
-**Architecture:** Extend the transaction row type to carry invoice metadata (URL, filename, mimeType) instead of a boolean. Create an `InvoiceCell` client component that renders a clickable icon button opening an `InvoicePreviewDialog` (Radix Dialog with `<img>` for images, `<iframe>` for PDFs, download button). The DataTable's `handleRowClick` already skips `<button>` elements, so no stopPropagation needed.
+**Architecture:** Extend the transfer row type to carry invoice metadata (URL, filename, mimeType) instead of a boolean. Create an `InvoiceCell` client component that renders a clickable icon button opening an `InvoicePreviewDialog` (Radix Dialog with `<img>` for images, `<iframe>` for PDFs, download button). The DataTable's `handleRowClick` already skips `<button>` elements, so no stopPropagation needed.
 
 **Tech Stack:** React 19, Radix Dialog (existing), Lucide icons, TanStack Table
 
 ---
 
-### Task 1: Extend TransactionRowT and update mapper
+### Task 1: Extend TransferRowT and update mapper
 
 **Files:**
 
-- Modify: `src/lib/tables/transactions.tsx`
+- Modify: `src/lib/tables/transfers.tsx`
 
 **Step 1: Update the row type**
 
 Replace `hasInvoice: boolean` with three nullable fields:
 
 ```typescript
-export type TransactionRowT = {
+export type TransferRowT = {
   readonly id: number
   readonly description: string
   readonly amount: number
-  readonly type: TransactionTypeT
+  readonly type: TransferTypeT
   readonly paymentMethod: PaymentMethodT
   readonly date: string
   readonly cashRegisterName: string
@@ -40,7 +40,7 @@ export type TransactionRowT = {
 
 **Step 2: Update the mapper**
 
-In `mapTransactionRow`, replace `hasInvoice: doc.invoice != null` with:
+In `mapTransferRow`, replace `hasInvoice: doc.invoice != null` with:
 
 ```typescript
 invoiceUrl: getMediaField(doc.invoice, 'url'),
@@ -84,7 +84,7 @@ col.accessor('invoiceUrl', {
 })
 ```
 
-Add the import at the top: `import { InvoiceCell } from '@/components/transactions/invoice-cell'`
+Add the import at the top: `import { InvoiceCell } from '@/components/transfers/invoice-cell'`
 
 Remove the `FileText` import if no longer used elsewhere in this file.
 
@@ -99,7 +99,7 @@ Expected: 0 errors (once Tasks 2 & 3 are complete — this task can be done toge
 
 **Files:**
 
-- Create: `src/components/transactions/invoice-preview-dialog.tsx`
+- Create: `src/components/transfers/invoice-preview-dialog.tsx`
 
 **Step 1: Create the component**
 
@@ -193,7 +193,7 @@ export function InvoicePreviewDialog({
 
 **Files:**
 
-- Create: `src/components/transactions/invoice-cell.tsx`
+- Create: `src/components/transfers/invoice-cell.tsx`
 
 **Step 1: Create the component**
 
@@ -259,7 +259,7 @@ Expected: 0 new errors
 **Step 3: Manual verification**
 
 1. Start dev server: `pnpm dev`
-2. Navigate to `/transakcje` — invoice column should show clickable icons for transactions with invoices
+2. Navigate to `/transfery` — invoice column should show clickable icons for transfers with invoices
 3. Click an icon — preview dialog should open with image or PDF
 4. Click "Pobierz" — file should download
 5. Click outside dialog or X — dialog closes
@@ -273,17 +273,17 @@ Mark M19 tasks as done and update the description to match the reduced scope.
 **Step 5: Commit**
 
 ```bash
-git add src/lib/tables/transactions.tsx src/components/transactions/invoice-preview-dialog.tsx src/components/transactions/invoice-cell.tsx
-git commit -m "feat(M19): add invoice preview dialog to transaction tables"
+git add src/lib/tables/transfers.tsx src/components/transfers/invoice-preview-dialog.tsx src/components/transfers/invoice-cell.tsx
+git commit -m "feat(M19): add invoice preview dialog to transfer tables"
 ```
 
 ---
 
 ## Summary
 
-| Task | Files                                                    | Action                               |
-| ---- | -------------------------------------------------------- | ------------------------------------ |
-| 1    | `src/lib/tables/transactions.tsx`                        | Extend type, mapper, column cell     |
-| 2    | `src/components/transactions/invoice-preview-dialog.tsx` | Create preview modal                 |
-| 3    | `src/components/transactions/invoice-cell.tsx`           | Create cell renderer                 |
-| 4    | —                                                        | Typecheck, lint, manual test, commit |
+| Task | Files                                                 | Action                               |
+| ---- | ----------------------------------------------------- | ------------------------------------ |
+| 1    | `src/lib/tables/transfers.tsx`                        | Extend type, mapper, column cell     |
+| 2    | `src/components/transfers/invoice-preview-dialog.tsx` | Create preview modal                 |
+| 3    | `src/components/transfers/invoice-cell.tsx`           | Create cell renderer                 |
+| 4    | —                                                     | Typecheck, lint, manual test, commit |
