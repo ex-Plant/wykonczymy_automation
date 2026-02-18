@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerField, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 const STATUS_OPTIONS = [
@@ -75,6 +75,37 @@ export const Investments: CollectionConfig = {
       access: {
         // Derived field — only writable via raw SQL in recalculation hooks
         update: () => false,
+      },
+    },
+    {
+      name: 'totalIncome',
+      type: 'number',
+      defaultValue: 0,
+      label: { en: 'Total Income', pl: 'Wpłaty od inwestora' },
+      admin: {
+        readOnly: true,
+        description: {
+          en: 'Updated automatically via deposit transfers',
+          pl: 'Aktualizowane automatycznie przez wpłaty',
+        },
+      },
+      access: {
+        update: () => false,
+      },
+    },
+    {
+      name: 'laborCosts',
+      type: 'number',
+      defaultValue: 0,
+      label: { en: 'Labor Costs', pl: 'Koszty robocizny' },
+      admin: {
+        description: {
+          en: 'Manually entered labor costs',
+          pl: 'Ręcznie wprowadzone koszty robocizny',
+        },
+      },
+      access: {
+        update: isAdminOrOwnerField,
       },
     },
     {
