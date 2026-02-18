@@ -56,6 +56,7 @@ export function mapCashRegisterRows(
     ownerName:
       typeof cr.owner === 'number' ? (workersMap.get(cr.owner) ?? '—') : getOwnerName(cr.owner),
     balance: (cr.balance ?? 0) as number,
+    type: (cr.type as 'MAIN' | 'AUXILIARY') ?? 'AUXILIARY',
   }))
 }
 

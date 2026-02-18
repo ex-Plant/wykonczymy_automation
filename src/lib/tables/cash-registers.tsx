@@ -9,6 +9,7 @@ export type CashRegisterRowT = {
   readonly name: string
   readonly ownerName: string
   readonly balance: number
+  readonly type: 'MAIN' | 'AUXILIARY'
 }
 
 const col = createColumnHelper<CashRegisterRowT>()
