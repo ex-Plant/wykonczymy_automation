@@ -7,6 +7,7 @@ import * as migration_20260216_add_performance_indexes from './20260216_add_perf
 import * as migration_20260218_rename_advance_to_account_funding from './20260218_rename_advance_to_account_funding'
 import * as migration_20260218_0_transaction_type_enums from './20260218_0_transaction_type_enums'
 import * as migration_20260218_transaction_type_overhaul from './20260218_transaction_type_overhaul'
+import * as migration_20260218_add_cash_register_type from './20260218_add_cash_register_type'
 
 export const migrations = [
   {
@@ -53,5 +54,10 @@ export const migrations = [
     up: migration_20260218_transaction_type_overhaul.up,
     down: migration_20260218_transaction_type_overhaul.down,
     name: '20260218_transaction_type_overhaul',
+  },
+  {
+    up: migration_20260218_add_cash_register_type.up,
+    down: migration_20260218_add_cash_register_type.down,
+    name: '20260218_add_cash_register_type',
   },
 ]
