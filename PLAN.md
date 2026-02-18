@@ -567,7 +567,7 @@ Eliminated `depth: 1` joins across all transfer and cash register queries. Dashb
 
 - [x] **Recalculate all balances script** — `recalculateBalancesAction()` in `src/lib/actions/transfers.ts`: ADMIN-only server action that re-runs `SUM()` for every cash register and investment, compares with stored values, updates mismatches, and reports what was fixed.
 - [ ] **Investigate bulk delete** — confirm whether Payload's admin bulk delete triggers `afterDelete` per-doc or skips hooks. If it skips, add a `beforeBulkOperation` hook or disable bulk delete for transfers.
-- [ ] **Periodic verification** — consider a lightweight check on dashboard load: compare displayed balance vs live `SUM()`. If mismatch, log warning and auto-repair.
+- [x] **On-demand verification** — `SyncBalancesButton` on manager dashboard (ADMIN only). Calls `recalculateBalancesAction()`, toasts result, refreshes page.
 
 ### M21.1: Remove `/transakcje` Page (Merge into Dashboard) ✅ DONE
 
@@ -763,17 +763,20 @@ M23 renamed UI text; this milestone renames all remaining code identifiers — f
 - [ ] **Fix any existing data inconsistencies** — if M24 migration reveals balance discrepancies from the double-charge bug, recalculate all register balances.
 - **Depends on**: M24
 
-### M26: Cash Register Permissions
+### M26: Cash Register Permissions ✅ DONE
 
-- [ ] **Add `type` field to CashRegisters** — `MAIN` | `AUXILIARY` (select field, default `AUXILIARY`)
-- [ ] **DB migration** — add `type` column, update existing "Kasa główna" to `MAIN`
-- [ ] **Access control: read** — `MAIN` registers restricted to ADMIN/OWNER. `AUXILIARY` registers readable by MANAGER.
-- [ ] **Frontend filter** — register lists/dropdowns filter by user role + register type. MANAGER sees only `AUXILIARY` registers.
-- [ ] **Dashboard** — MANAGER dashboard shows only auxiliary register balances. OWNER/ADMIN sees all.
-- [ ] **Forms** — cash register select in transfer/settlement forms respects role-based visibility
-- **Key files**: `src/collections/cash-registers.ts`, `src/access/index.ts`, `src/lib/queries/cash-registers.ts`, `src/lib/queries/reference-data.ts`, `src/components/transfers/transfer-form.tsx`, `src/components/settlements/settlement-form.tsx`, dashboard components
-- **Migration**: `20260217_add_cash_register_type.ts`
-- **Success**: MANAGER cannot see or select "Kasa główna", OWNER sees everything
+- [x] **Add `type` field to CashRegisters** — `MAIN` | `AUXILIARY` (select field, default `AUXILIARY`)
+- [x] **DB migration** — `20260218_add_cash_register_type.ts`: enum + column + "Kasa główna" set to MAIN
+- [x] **Collection config** — `type` field with admin condition (ADMIN/OWNER only), `read` access opened to MANAGER, `delete` blocked for all roles
+- [x] **Reference data** — `fetchReferenceData()` SQL returns `type`, `CashRegisterRefItemT` type added
+- [x] **Cash register rows** — `CashRegisterRowT` and `mapCashRegisterRows` include `type`
+- [x] **Dashboard** — MANAGER sees only AUXILIARY register balances and tables. SyncBalancesButton visible to OWNER too.
+- [x] **Forms** — Navigation filters MAIN registers from reference data before passing to TopNav/forms. MANAGER never sees MAIN in dropdowns.
+- [x] **Detail page guard** — `/kasa/[id]` returns 404 for MANAGER accessing MAIN register
+- **Key files**: `src/collections/cash-registers.ts`, `src/lib/queries/reference-data.ts`, `src/lib/queries/cash-registers.ts`, `src/lib/tables/cash-registers.tsx`, `src/components/dashboard/manager-dashboard.tsx`, `src/components/nav/navigation.tsx`, `src/components/dialogs/add-transfer-dialog.tsx`, `src/app/(frontend)/kasa/[id]/page.tsx`
+- **Migration**: `20260218_add_cash_register_type.ts`
+- **Verified**: `pnpm typecheck` (0 new errors), `pnpm lint` (0 errors)
+- **Success**: MANAGER cannot see or select MAIN registers anywhere, OWNER sees everything, no register can be deleted
 
 ### M27: Settlement Relaxation
 
@@ -811,7 +814,7 @@ M21 (Perf) ─── Phase 0-3 ✅, Phase 4-5 open
   │           │
   │           └── M28 (Investment View) ─── blocked by M25
   │
-  └── M26 (Register Permissions) ─── independent, ready to start
+  └── M26 (Register Permissions) ─── ✅ DONE
 ```
 
 ---
@@ -842,32 +845,32 @@ pnpm generate:importmap       # regenerate admin importMap.js
 
 ### Ready to start
 
-| Milestone                      | Scope                                                                                     | Size |
-| ------------------------------ | ----------------------------------------------------------------------------------------- | ---- |
-| **M25: Cash Flow Integrity**   | Lock balance fields, disable transfer editing, verify SUM = balances, fix inconsistencies | S    |
-| **M26: Register Permissions**  | `MAIN`/`AUXILIARY` register types, role-based visibility in forms + dashboard             | M    |
-| **M27: Settlement Relaxation** | Make `investment` optional, allow attaching later, expense subtypes                       | S    |
+| Milestone                         | Scope                                                                                         | Size |
+| --------------------------------- | --------------------------------------------------------------------------------------------- | ---- |
+| ~~**M25: Cash Flow Integrity**~~  | ~~Lock balance fields, disable transfer editing, verify SUM = balances, fix inconsistencies~~ | ✅   |
+| ~~**M26: Register Permissions**~~ | ~~`MAIN`/`AUXILIARY` register types, role-based visibility in forms + dashboard~~             | ✅   |
+| **M27: Settlement Relaxation**    | Make `investment` optional, allow attaching later, expense subtypes                           | S    |
 
-### Blocked
+### Unblocked
 
-| Milestone                | Blocked by | Scope                                                       |
-| ------------------------ | ---------- | ----------------------------------------------------------- |
-| **M28: Investment View** | M25        | Labor/materials cost cards, type filter, investment balance |
+| Milestone                | Scope                                                       |
+| ------------------------ | ----------------------------------------------------------- |
+| **M28: Investment View** | Labor/materials cost cards, type filter, investment balance |
 
 ### Remaining items in done milestones
 
-| Milestone          | Item                                    | Notes                                                                                             |
-| ------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **M21 Phase 4**    | ~~Stream transfer table with Suspense~~ | ✅ Done — `TransferTableServer` async component + `<Suspense>` in 5 pages                         |
-| **M21 Phase 4**    | ~~Granular cache tags~~                 | ✅ Done — `entityTag()` helper, entity tags on detail queries, fixed investments revalidation bug |
-| **M21 Phase 4**    | Optimistic updates                      | Instant UI feedback on mutations, background revalidation                                         |
-| **M21 Phase 4**    | Mutation failure strategy               | Revert optimistic state, toast error, retry pattern                                               |
-| **M22**            | ~~invoiceNote settlement check~~        | ✅ Removed — deferred to M27                                                                      |
-| **Data Integrity** | Bulk delete investigation               | Does Payload admin bulk delete fire `afterDelete` per doc?                                        |
-| **Data Integrity** | Periodic balance verification           | Auto-check on dashboard load                                                                      |
+| Milestone          | Item                                    | Notes                                                                                                 |
+| ------------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **M21 Phase 4**    | ~~Stream transfer table with Suspense~~ | ✅ Done — `TransferTableServer` async component + `<Suspense>` in 5 pages                             |
+| **M21 Phase 4**    | ~~Granular cache tags~~                 | ✅ Done — `entityTag()` helper, entity tags on detail queries, fixed investments revalidation bug     |
+| **M22**            | ~~invoiceNote settlement check~~        | ✅ Removed — deferred to M27                                                                          |
+| **Data Integrity** | Bulk delete investigation               | Does Payload admin bulk delete fire `afterDelete` per doc?                                            |
+| **Data Integrity** | ~~Periodic balance verification~~       | ✅ Done — `SyncBalancesButton` on manager dashboard (ADMIN only), calls `recalculateBalancesAction()` |
 
 ### End-of-project
 
-| Item                        | Notes                                                   |
-| --------------------------- | ------------------------------------------------------- |
-| **Payload vs Drizzle eval** | Measure ORM overhead, decide on migration (M21 Phase 5) |
+| Item                          | Notes                                                     |
+| ----------------------------- | --------------------------------------------------------- |
+| **Payload vs Drizzle eval**   | Measure ORM overhead, decide on migration (M21 Phase 5)   |
+| **Optimistic updates**        | Instant UI feedback on mutations, background revalidation |
+| **Mutation failure strategy** | Revert optimistic state, toast error, retry pattern       |
