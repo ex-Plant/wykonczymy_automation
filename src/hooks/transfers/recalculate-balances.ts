@@ -6,7 +6,9 @@ import type {
 } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transfers'
+import { revalidateTag } from 'next/cache'
 import { revalidateCollections } from '@/lib/cache/revalidate'
+import { entityTag } from '@/lib/cache/tags'
 import { perf } from '@/lib/perf'
 
 const COST_TYPES = ['INVESTMENT_EXPENSE', 'EMPLOYEE_EXPENSE'] as const
@@ -120,7 +122,18 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
 
   await Promise.all(tasks)
 
-  revalidateCollections(['transfers', 'cashRegisters'])
+  // Revalidate entity-specific tags
+  if (registerId) revalidateTag(entityTag('cash-register', registerId), 'max')
+  if (prevRegisterId && prevRegisterId !== registerId)
+    revalidateTag(entityTag('cash-register', prevRegisterId), 'max')
+  if (targetRegisterId) revalidateTag(entityTag('cash-register', targetRegisterId), 'max')
+  if (prevTargetRegisterId && prevTargetRegisterId !== targetRegisterId)
+    revalidateTag(entityTag('cash-register', prevTargetRegisterId), 'max')
+  if (investmentId) revalidateTag(entityTag('investment', investmentId), 'max')
+  if (prevInvestmentId && prevInvestmentId !== investmentId)
+    revalidateTag(entityTag('investment', prevInvestmentId), 'max')
+
+  revalidateCollections(['transfers', 'cashRegisters', 'investments'])
 
   console.log(`[PERF] recalcAfterChange TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 
@@ -153,7 +166,12 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
 
   await Promise.all(tasks)
 
-  revalidateCollections(['transfers', 'cashRegisters'])
+  // Revalidate entity-specific tags
+  if (registerId) revalidateTag(entityTag('cash-register', registerId), 'max')
+  if (targetRegisterId) revalidateTag(entityTag('cash-register', targetRegisterId), 'max')
+  if (investmentId) revalidateTag(entityTag('investment', investmentId), 'max')
+
+  revalidateCollections(['transfers', 'cashRegisters', 'investments'])
 
   console.log(`[PERF] recalcAfterDelete TOTAL ${(performance.now() - hookStart).toFixed(1)}ms`)
 

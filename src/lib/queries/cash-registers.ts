@@ -1,13 +1,13 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { CACHE_TAGS } from '@/lib/cache/tags'
+import { CACHE_TAGS, entityTag } from '@/lib/cache/tags'
 import type { CashRegisterRowT } from '@/lib/tables/cash-registers'
 
 export async function getCashRegister(id: string) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.cashRegisters)
+  cacheTag(CACHE_TAGS.cashRegisters, entityTag('cash-register', id))
 
   const start = performance.now()
   const payload = await getPayload({ config })

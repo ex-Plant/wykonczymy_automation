@@ -2,7 +2,7 @@ import { cacheLife, cacheTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { buildPaginationMeta, type PaginationParamsT } from '@/lib/pagination'
-import { CACHE_TAGS } from '@/lib/cache/tags'
+import { CACHE_TAGS, entityTag } from '@/lib/cache/tags'
 import type { InvestmentRowT } from '@/lib/tables/investments'
 
 export async function findInvestments({ page, limit }: PaginationParamsT) {
@@ -40,7 +40,7 @@ export async function findInvestments({ page, limit }: PaginationParamsT) {
 export async function getInvestment(id: string) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.investments)
+  cacheTag(CACHE_TAGS.investments, entityTag('investment', id))
 
   const start = performance.now()
   const payload = await getPayload({ config })

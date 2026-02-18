@@ -1,14 +1,13 @@
+import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { parsePagination } from '@/lib/pagination'
 import { getInvestment } from '@/lib/queries/investments'
-import { findTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
-import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { fetchMediaByIds } from '@/lib/queries/media'
-import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
+import { buildTransferFilters } from '@/lib/queries/transfers'
 import { formatPLN } from '@/lib/format-currency'
-import { TransferDataTable } from '@/components/transfers/transfer-data-table'
+import { TransferTableServer } from '@/components/transfers/transfer-table-server'
+import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { SectionHeader } from '@/components/ui/section-header'
 import { StatCard } from '@/components/ui/stat-card'
@@ -27,24 +26,12 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   const sp = await searchParams
   const { page, limit } = parsePagination(sp)
 
-  const urlFilters = buildTransferFilters(sp, { id: user.id, isManager: true })
   const investmentId = Number(id)
-  const [investment, rawTxResult, refData] = await Promise.all([
-    getInvestment(id),
-    findTransfersRaw({
-      where: { ...urlFilters, investment: { equals: investmentId } },
-      page,
-      limit,
-    }),
-    fetchReferenceData(),
-  ])
+  const investment = await getInvestment(id)
   if (!investment) notFound()
 
-  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
-  const mediaMap = await fetchMediaByIds(invoiceIds)
-  const lookups = buildTransferLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
-  const paginationMeta = rawTxResult.paginationMeta
+  const urlFilters = buildTransferFilters(sp, { id: user.id, isManager: true })
+  const transferWhere = { ...urlFilters, investment: { equals: investmentId } }
 
   const infoFields = [
     { label: 'Adres', value: investment.address },
@@ -78,13 +65,16 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
       {/* Transactions table */}
       <SectionHeader className="mt-8">Transfery</SectionHeader>
       <div className="mt-4">
-        <TransferDataTable
-          data={rows}
-          paginationMeta={paginationMeta}
-          excludeColumns={['investment']}
-          baseUrl={`/inwestycje/${id}`}
-          filters={{}}
-        />
+        <Suspense fallback={<TransferTableSkeleton />}>
+          <TransferTableServer
+            where={transferWhere}
+            page={page}
+            limit={limit}
+            excludeColumns={['investment']}
+            baseUrl={`/inwestycje/${id}`}
+            filters={{}}
+          />
+        </Suspense>
       </div>
     </PageWrapper>
   )

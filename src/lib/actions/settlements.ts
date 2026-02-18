@@ -37,20 +37,6 @@ export async function createSettlementAction(
     return { success: false, error: firstError }
   }
 
-  const hasInvoiceNote = !!parsed.data.invoiceNote
-
-  // Each line item must have either its own invoice file or the global invoiceNote
-  for (let i = 0; i < parsed.data.lineItems.length; i++) {
-    const file = invoiceFormData?.get(`invoice-${i}`) as File | null
-    const hasFile = file && file.size > 0
-    if (!hasFile && !hasInvoiceNote) {
-      return {
-        success: false,
-        error: `Pozycja ${i + 1}: wymagana jest faktura lub notatka do faktury`,
-      }
-    }
-  }
-
   try {
     const payload = await perf('settlement.getPayload', () => getPayload({ config }))
 

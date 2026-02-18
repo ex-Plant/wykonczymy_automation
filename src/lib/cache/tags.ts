@@ -7,3 +7,5 @@ export const CACHE_TAGS = {
 } as const
 
 export type CacheTagT = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS]
+
+export const entityTag = (collection: string, id: number | string) => `${collection}:${id}` as const

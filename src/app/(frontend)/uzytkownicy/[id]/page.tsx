@@ -1,19 +1,19 @@
+import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
 import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { parsePagination } from '@/lib/pagination'
 import { getUser, getUserSaldo, getWorkerPeriodBreakdown } from '@/lib/queries/users'
-import { findTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
+import { buildTransferFilters } from '@/lib/queries/transfers'
 import { findActiveInvestments } from '@/lib/queries/investments'
 import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash-registers'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { fetchMediaByIds } from '@/lib/queries/media'
-import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
 import { getMonthDateRange } from '@/lib/helpers'
-import { TransferDataTable } from '@/components/transfers/transfer-data-table'
+import { TransferTableServer } from '@/components/transfers/transfer-table-server'
+import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 import dynamic from 'next/dynamic'
 
 const ZeroSaldoDialog = dynamic(() =>
@@ -50,31 +50,18 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const toParam = typeof sp.to === 'string' ? sp.to : undefined
   const hasDateRange = fromParam && toParam
 
-  const [
-    rawTxResult,
-    saldo,
-    periodBreakdown,
-    activeInvestments,
-    rawCashRegisters,
-    managerRegisterIds,
-    refData,
-  ] = await Promise.all([
-    findTransfersRaw({ where: baseFilters, page, limit }),
-    getUserSaldo(id),
-    hasDateRange ? getWorkerPeriodBreakdown(id, fromParam, toParam) : Promise.resolve(undefined),
-    findActiveInvestments(),
-    findAllCashRegistersRaw(),
-    getUserCashRegisterIds(user.id, user.role),
-    fetchReferenceData(),
-  ])
+  const [saldo, periodBreakdown, activeInvestments, rawCashRegisters, managerRegisterIds, refData] =
+    await Promise.all([
+      getUserSaldo(id),
+      hasDateRange ? getWorkerPeriodBreakdown(id, fromParam, toParam) : Promise.resolve(undefined),
+      findActiveInvestments(),
+      findAllCashRegistersRaw(),
+      getUserCashRegisterIds(user.id, user.role),
+      fetchReferenceData(),
+    ])
 
-  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
-  const mediaMap = await fetchMediaByIds(invoiceIds)
   const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
   const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
-  const lookups = buildTransferLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
-  const paginationMeta = rawTxResult.paginationMeta
 
   // Build report URL — use current date range or default to current month
   const reportDateRange = hasDateRange
@@ -140,17 +127,20 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
 
       {/* Transactions table with filters */}
       <SectionHeader className="mt-8">Transfery</SectionHeader>
-      <TransferDataTable
-        data={rows}
-        paginationMeta={paginationMeta}
-        excludeColumns={EXCLUDE_COLUMNS}
-        baseUrl={`/uzytkownicy/${id}`}
-        filters={{
-          cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
-          investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
-        }}
-        className="mt-4"
-      />
+      <Suspense fallback={<TransferTableSkeleton />}>
+        <TransferTableServer
+          where={baseFilters}
+          page={page}
+          limit={limit}
+          excludeColumns={EXCLUDE_COLUMNS}
+          baseUrl={`/uzytkownicy/${id}`}
+          filters={{
+            cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
+            investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
+          }}
+          className="mt-4"
+        />
+      </Suspense>
     </PageWrapper>
   )
 }

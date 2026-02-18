@@ -10,7 +10,7 @@ import {
 } from '@/lib/db/sum-transfers'
 import type { UserRowT } from '@/lib/tables/users'
 import type { RoleT } from '@/lib/auth/roles'
-import { CACHE_TAGS } from '@/lib/cache/tags'
+import { CACHE_TAGS, entityTag } from '@/lib/cache/tags'
 
 export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   'use cache'
@@ -64,7 +64,7 @@ export async function findAllUsersWithSaldos() {
 export async function getUser(id: string) {
   'use cache'
   cacheLife('max')
-  cacheTag(CACHE_TAGS.users)
+  cacheTag(CACHE_TAGS.users, entityTag('user', id))
 
   const payload = await getPayload({ config })
   try {

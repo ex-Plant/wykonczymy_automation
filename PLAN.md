@@ -550,6 +550,8 @@ Eliminated `depth: 1` joins across all transfer and cash register queries. Dashb
   - `user:${id}:saldo` — only invalidate the affected worker's saldo
   - Keep `collection:transactions` for list queries but add per-entity tags for detail queries
 - [ ] **Investigate: partial revalidation** — when creating a transfer for worker X on cash register Y, only invalidate caches that involve X or Y, not the entire transactions collection.
+- [ ] **Optimistic updates** — update UI immediately on mutation (transfer create, settlement, zero-saldo) before server confirms. Close dialog + show new row/updated balance instantly, revalidate in background.
+- [ ] **Mutation failure strategy** — define what happens when server rejects after optimistic update: toast with error details, revert optimistic state, offer retry. Consider: network errors vs validation errors vs hook failures (balance recalc). Needs a consistent pattern across all server actions.
 
 ##### Phase 5: Evaluate (Payload vs direct DB)
 
@@ -587,7 +589,7 @@ Eliminated `depth: 1` joins across all transfer and cash register queries. Dashb
 - [x] **Form reset after successful submit** — dialog close unmounts form component → TanStack Form state destroyed. No explicit `reset()` needed. All 3 forms (transfer, settlement, zero-saldo) clean up via dialog unmount.
 - [x] **Investment column in transfer tables** — added `investment` column to `src/lib/tables/transfers.tsx` (all contexts: dashboard, cash register detail, worker detail, investment detail)
 - [x] **Investment filter on transfer list page** — investment filter added to `TransferFilters` component, wired through dashboard and detail pages via URL params
-- [ ] **Remove invoiceNote requirement from settlement action** — `invoiceNote` is optional in Zod schema but the settlement action has runtime validation (lines 42-52) requiring either a file per line item OR `invoiceNote`. Decision needed: remove this runtime check entirely, or move it into `createSettlementSchema.superRefine()` for consistency.
+- [x] **Remove invoiceNote requirement from settlement action** — removed runtime validation (lines 42-52) that required either a file per line item OR `invoiceNote`. Settlements can now be created without invoice documentation. Proper handling deferred to M27.
 - **Key files**: `src/lib/actions/settlements.ts`
 - **Success**: Saldo always consistent after any transfer type, all forms reset cleanly
 
@@ -833,3 +835,39 @@ pnpm migrate:create           # create a new migration
 pnpm generate:types           # regenerate payload-types.ts
 pnpm generate:importmap       # regenerate admin importMap.js
 ```
+
+---
+
+## What's Left
+
+### Ready to start
+
+| Milestone                      | Scope                                                                                     | Size |
+| ------------------------------ | ----------------------------------------------------------------------------------------- | ---- |
+| **M25: Cash Flow Integrity**   | Lock balance fields, disable transfer editing, verify SUM = balances, fix inconsistencies | S    |
+| **M26: Register Permissions**  | `MAIN`/`AUXILIARY` register types, role-based visibility in forms + dashboard             | M    |
+| **M27: Settlement Relaxation** | Make `investment` optional, allow attaching later, expense subtypes                       | S    |
+
+### Blocked
+
+| Milestone                | Blocked by | Scope                                                       |
+| ------------------------ | ---------- | ----------------------------------------------------------- |
+| **M28: Investment View** | M25        | Labor/materials cost cards, type filter, investment balance |
+
+### Remaining items in done milestones
+
+| Milestone          | Item                                    | Notes                                                                                             |
+| ------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **M21 Phase 4**    | ~~Stream transfer table with Suspense~~ | ✅ Done — `TransferTableServer` async component + `<Suspense>` in 5 pages                         |
+| **M21 Phase 4**    | ~~Granular cache tags~~                 | ✅ Done — `entityTag()` helper, entity tags on detail queries, fixed investments revalidation bug |
+| **M21 Phase 4**    | Optimistic updates                      | Instant UI feedback on mutations, background revalidation                                         |
+| **M21 Phase 4**    | Mutation failure strategy               | Revert optimistic state, toast error, retry pattern                                               |
+| **M22**            | ~~invoiceNote settlement check~~        | ✅ Removed — deferred to M27                                                                      |
+| **Data Integrity** | Bulk delete investigation               | Does Payload admin bulk delete fire `afterDelete` per doc?                                        |
+| **Data Integrity** | Periodic balance verification           | Auto-check on dashboard load                                                                      |
+
+### End-of-project
+
+| Item                        | Notes                                                   |
+| --------------------------- | ------------------------------------------------------- |
+| **Payload vs Drizzle eval** | Measure ORM overhead, decide on migration (M21 Phase 5) |

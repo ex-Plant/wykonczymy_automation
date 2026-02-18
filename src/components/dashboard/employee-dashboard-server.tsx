@@ -1,13 +1,12 @@
+import { Suspense } from 'react'
 import { parsePagination } from '@/lib/pagination'
 import { getEmployeeSaldo } from '@/lib/queries/employees'
-import { findTransfersRaw, buildTransferFilters } from '@/lib/queries/transfers'
-import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { fetchMediaByIds } from '@/lib/queries/media'
-import { mapTransferRow, extractInvoiceIds, buildTransferLookups } from '@/lib/tables/transfers'
+import { buildTransferFilters } from '@/lib/queries/transfers'
 import { getUserSaldo } from '@/lib/queries/users'
 import { formatPLN } from '@/lib/format-currency'
 import { MONTHS } from '@/lib/constants/months'
-import { TransferDataTable } from '@/components/transfers/transfer-data-table'
+import { TransferTableServer } from '@/components/transfers/transfer-table-server'
+import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { StatCard } from '@/components/ui/stat-card'
 
@@ -39,18 +38,10 @@ export async function EmployeeDashboardServer({
 
   const where = buildTransferFilters(searchParams, { id: userId, isManager: false })
 
-  const [rawTxResult, overallSaldo, periodSaldo, refData] = await Promise.all([
-    findTransfersRaw({ where, page, limit }),
+  const [overallSaldo, periodSaldo] = await Promise.all([
     getUserSaldo(String(userId)),
     getEmployeeSaldo(userId),
-    fetchReferenceData(),
   ])
-
-  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
-  const mediaMap = await fetchMediaByIds(invoiceIds)
-  const lookups = buildTransferLookups(refData, mediaMap)
-  const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
-  const paginationMeta = rawTxResult.paginationMeta
 
   return (
     <PageWrapper title="Moje konto">
@@ -68,14 +59,17 @@ export async function EmployeeDashboardServer({
         <h2 className="text-foreground text-lg font-medium">
           Transfery — {MONTHS[displayMonth - 1]} {displayYear}
         </h2>
-        <TransferDataTable
-          data={rows}
-          paginationMeta={paginationMeta}
-          excludeColumns={EMPLOYEE_EXCLUDE_COLUMNS}
-          baseUrl="/"
-          filters={{ showTypeFilter: false }}
-          className="mt-4"
-        />
+        <Suspense fallback={<TransferTableSkeleton />}>
+          <TransferTableServer
+            where={where}
+            page={page}
+            limit={limit}
+            excludeColumns={EMPLOYEE_EXCLUDE_COLUMNS}
+            baseUrl="/"
+            filters={{ showTypeFilter: false }}
+            className="mt-4"
+          />
+        </Suspense>
       </div>
     </PageWrapper>
   )
