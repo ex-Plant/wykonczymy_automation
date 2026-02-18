@@ -21,6 +21,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
   const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
   if (!isManagementRole(user.role)) redirect('/')
+  const isOwnerOrAdmin = user.role === 'ADMIN' || user.role === 'OWNER'
 
   const { id } = await params
   const sp = await searchParams
@@ -56,11 +57,21 @@ export default async function InvestmentDetailPage({ params, searchParams }: Pag
           ))}
       </dl>
 
-      <StatCard
-        label="Koszty całkowite"
-        value={formatPLN(investment.totalCosts ?? 0)}
-        className="mt-6 inline-block"
-      />
+      {isOwnerOrAdmin && (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Koszty inwestycji" value={formatPLN(investment.totalCosts ?? 0)} />
+          <StatCard label="Wpłaty od inwestora" value={formatPLN(investment.totalIncome ?? 0)} />
+          <StatCard label="Koszty robocizny" value={formatPLN(investment.laborCosts ?? 0)} />
+          <StatCard
+            label="Bilans"
+            value={formatPLN(
+              (investment.totalIncome ?? 0) -
+                (investment.totalCosts ?? 0) -
+                (investment.laborCosts ?? 0),
+            )}
+          />
+        </div>
+      )}
 
       {/* Transactions table */}
       <SectionHeader className="mt-8">Transfery</SectionHeader>
