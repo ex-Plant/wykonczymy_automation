@@ -76,6 +76,7 @@ export const Transfers: CollectionConfig = {
       type: 'text',
       required: true,
       label: { en: 'Description', pl: 'Opis' },
+      access: { update: () => false },
     },
     {
       name: 'amount',
@@ -83,6 +84,7 @@ export const Transfers: CollectionConfig = {
       required: true,
       min: 0.01,
       label: { en: 'Amount', pl: 'Kwota' },
+      access: { update: () => false },
       admin: {
         description: {
           en: 'Always positive — direction is determined by type',
@@ -95,6 +97,7 @@ export const Transfers: CollectionConfig = {
       type: 'date',
       required: true,
       label: { en: 'Date', pl: 'Data' },
+      access: { update: () => false },
       admin: {
         date: {
           pickerAppearance: 'dayOnly',
@@ -108,6 +111,7 @@ export const Transfers: CollectionConfig = {
       required: true,
       label: { en: 'Type', pl: 'Typ' },
       options: [...TRANSFER_TYPES],
+      access: { update: () => false },
     },
     {
       name: 'paymentMethod',
@@ -115,6 +119,7 @@ export const Transfers: CollectionConfig = {
       required: true,
       label: { en: 'Payment Method', pl: 'Metoda płatności' },
       options: [...PAYMENT_METHODS],
+      access: { update: () => false },
     },
     {
       name: 'cashRegister',
@@ -122,6 +127,7 @@ export const Transfers: CollectionConfig = {
       relationTo: 'cash-registers',
       required: false,
       label: { en: 'Cash Register', pl: 'Kasa' },
+      access: { update: () => false },
       admin: {
         condition: (data) => showCashRegister(data),
       },
@@ -131,6 +137,7 @@ export const Transfers: CollectionConfig = {
       type: 'relationship',
       relationTo: 'cash-registers',
       label: { en: 'Target Register', pl: 'Kasa docelowa' },
+      access: { update: () => false },
       admin: {
         condition: (data) => showTargetRegister(data),
       },
@@ -141,6 +148,7 @@ export const Transfers: CollectionConfig = {
       type: 'relationship',
       relationTo: 'investments',
       label: { en: 'Investment', pl: 'Inwestycja' },
+      access: { update: () => false },
       admin: {
         condition: (data) => showInvestment(data),
       },
@@ -150,6 +158,7 @@ export const Transfers: CollectionConfig = {
       type: 'relationship',
       relationTo: 'users',
       label: { en: 'Worker', pl: 'Pracownik' },
+      access: { update: () => false },
       admin: {
         condition: (data) => needsWorker(data),
       },
@@ -159,6 +168,7 @@ export const Transfers: CollectionConfig = {
       type: 'relationship',
       relationTo: 'other-categories',
       label: { en: 'Category', pl: 'Kategoria' },
+      access: { update: () => false },
       admin: {
         condition: (data) => needsOtherCategory(data),
       },
@@ -167,6 +177,7 @@ export const Transfers: CollectionConfig = {
       name: 'otherDescription',
       type: 'textarea',
       label: { en: 'Category Description', pl: 'Opis kategorii' },
+      access: { update: () => false },
       admin: {
         condition: (data) => needsOtherCategory(data),
       },

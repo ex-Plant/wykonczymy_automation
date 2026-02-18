@@ -5,7 +5,6 @@ import { SelectItem } from '@/components/ui/select'
 import { FileInput } from '@/components/ui/file-input'
 import { FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
-import FormFooter from '@/components/forms/form-components/form-footer'
 import { toastMessage } from '@/components/toasts'
 import {
   TRANSFER_TYPES,
@@ -25,6 +24,7 @@ import { createTransferAction } from '@/lib/actions/transfers'
 import { transferFormSchema, type CreateTransferFormT } from '@/lib/schemas/transfers'
 import type { ReferenceDataT } from '@/components/dialogs/add-transfer-dialog'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
+import FormFooter from '../form-components/form-footer'
 
 type TransferFormPropsT = {
   referenceData: ReferenceDataT

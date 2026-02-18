@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminOrOwner, isAdminOrOwnerOrManager, isAdminOrOwnerField } from '@/access'
+import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 const STATUS_OPTIONS = [
@@ -73,7 +73,8 @@ export const Investments: CollectionConfig = {
         },
       },
       access: {
-        update: isAdminOrOwnerField,
+        // Derived field — only writable via raw SQL in recalculation hooks
+        update: () => false,
       },
     },
     {
