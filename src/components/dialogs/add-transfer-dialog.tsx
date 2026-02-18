@@ -24,7 +24,7 @@ const TransferForm = dynamic(
   },
 )
 
-export type ReferenceItemT = { id: number; name: string }
+export type ReferenceItemT = { id: number; name: string; type?: string }
 
 export type ReferenceDataT = {
   cashRegisters: ReferenceItemT[]

@@ -23,5 +23,15 @@ export async function Navigation({ user }: NavigationPropsT) {
 
   const managerCashRegisterId = managerRegisterIds?.[0]
 
-  return <TopNav referenceData={referenceData} managerCashRegisterId={managerCashRegisterId} />
+  const filteredRefData = referenceData
+    ? {
+        ...referenceData,
+        cashRegisters:
+          user.role === 'ADMIN' || user.role === 'OWNER'
+            ? referenceData.cashRegisters
+            : referenceData.cashRegisters.filter((cr) => cr.type === 'AUXILIARY'),
+      }
+    : undefined
+
+  return <TopNav referenceData={filteredRefData} managerCashRegisterId={managerCashRegisterId} />
 }
