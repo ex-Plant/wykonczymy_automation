@@ -114,10 +114,8 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         <ZeroSaldoDialog
           saldo={saldo}
           workerId={targetUser.id}
-          managerCashRegisterId={managerRegisterIds?.[0]}
           referenceData={{
             investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
-            cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
           }}
         />
       </div>

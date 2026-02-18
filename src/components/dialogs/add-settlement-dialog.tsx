@@ -27,13 +27,9 @@ const SettlementForm = dynamic(
 
 type AddSettlementDialogPropsT = {
   referenceData: ReferenceDataT | undefined
-  managerCashRegisterId?: number
 }
 
-export function AddSettlementDialog({
-  referenceData,
-  managerCashRegisterId,
-}: AddSettlementDialogPropsT) {
+export function AddSettlementDialog({ referenceData }: AddSettlementDialogPropsT) {
   const [isOpen, setIsOpen] = useState(false)
 
   if (!referenceData) return <></>
@@ -42,7 +38,6 @@ export function AddSettlementDialog({
   const settlementReferenceData = {
     users: referenceData.workers,
     investments: referenceData.investments,
-    cashRegisters: referenceData.cashRegisters,
   }
 
   return (
@@ -64,7 +59,6 @@ export function AddSettlementDialog({
           <div className="overflow-y-auto pr-1">
             <SettlementForm
               referenceData={settlementReferenceData}
-              managerCashRegisterId={managerCashRegisterId}
               onSuccess={() => setIsOpen(false)}
             />
           </div>

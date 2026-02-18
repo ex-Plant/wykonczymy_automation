@@ -67,6 +67,9 @@ const resolveId = (value: unknown): number | undefined => {
 /**
  * afterChange — recalculate register balance and investment costs
  * after a transaction is created or updated.
+ *
+ * REGISTER_TRANSFER: recalcs both source (cashRegister) and target (targetRegister).
+ * EMPLOYEE_EXPENSE: registerId is undefined (no cashRegister) → naturally skipped.
  */
 export const recalcAfterChange: CollectionAfterChangeHook = async ({
   doc,
@@ -83,18 +86,31 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({
 
   const registerId = resolveId(doc.cashRegister)
   const prevRegisterId = resolveId(previousDoc?.cashRegister)
+  const targetRegisterId = resolveId(doc.targetRegister)
+  const prevTargetRegisterId = resolveId(previousDoc?.targetRegister)
   const investmentId = resolveId(doc.investment)
   const prevInvestmentId = resolveId(previousDoc?.investment)
 
   // Run all recalculations in parallel — they operate on independent entities
   const tasks: Promise<void>[] = []
 
+  // Source register
   if (registerId) {
     tasks.push(recalcRegisterBalance(req.payload, registerId, req))
   }
   if (prevRegisterId && prevRegisterId !== registerId) {
     tasks.push(recalcRegisterBalance(req.payload, prevRegisterId, req))
   }
+
+  // Target register (REGISTER_TRANSFER)
+  if (targetRegisterId) {
+    tasks.push(recalcRegisterBalance(req.payload, targetRegisterId, req))
+  }
+  if (prevTargetRegisterId && prevTargetRegisterId !== targetRegisterId) {
+    tasks.push(recalcRegisterBalance(req.payload, prevTargetRegisterId, req))
+  }
+
+  // Investment costs
   if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
     tasks.push(recalcInvestmentCosts(req.payload, investmentId, req))
   }
@@ -120,12 +136,16 @@ export const recalcAfterDelete: CollectionAfterDeleteHook = async ({ doc, req })
   console.log(`[PERF] recalcAfterDelete START id=${doc.id} type=${doc.type}`)
 
   const registerId = resolveId(doc.cashRegister)
+  const targetRegisterId = resolveId(doc.targetRegister)
   const investmentId = resolveId(doc.investment)
 
   const tasks: Promise<void>[] = []
 
   if (registerId) {
     tasks.push(recalcRegisterBalance(req.payload, registerId, req))
+  }
+  if (targetRegisterId) {
+    tasks.push(recalcRegisterBalance(req.payload, targetRegisterId, req))
   }
   if (investmentId && COST_TYPES.includes(doc.type as (typeof COST_TYPES)[number])) {
     tasks.push(recalcInvestmentCosts(req.payload, investmentId, req))

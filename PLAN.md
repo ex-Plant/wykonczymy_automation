@@ -626,59 +626,194 @@ Renamed terminology across the entire codebase to match business language.
 > - **Q3 (Register transfers):** Implement as a single `REGISTER_TRANSFER` transaction with `sourceRegister` (= `cashRegister`) + `targetRegister` field.
 > - **Q4 (Deposit subtypes):** Separate top-level transaction types (not a subtype field).
 
-#### New transaction type enum
+#### Type Matrix
 
-Replace current: `DEPOSIT | INVESTMENT_EXPENSE | ACCOUNT_FUNDING | EMPLOYEE_EXPENSE | OTHER`
+| Type                 | Polish label                    | Required fields                    | Register effect                     |
+| -------------------- | ------------------------------- | ---------------------------------- | ----------------------------------- |
+| `INVESTOR_DEPOSIT`   | Wpłata od inwestora             | cashRegister, investment           | +amount                             |
+| `STAGE_SETTLEMENT`   | Rozliczenie etapu               | cashRegister, investment           | +amount                             |
+| `COMPANY_FUNDING`    | Zasilenie z konta firmowego     | cashRegister                       | +amount                             |
+| `OTHER_DEPOSIT`      | Inna wpłata                     | cashRegister                       | +amount                             |
+| `INVESTMENT_EXPENSE` | Wydatek inwestycyjny            | cashRegister, investment           | -amount                             |
+| `ACCOUNT_FUNDING`    | Zasilenie konta współpracownika | cashRegister, worker               | -amount                             |
+| `EMPLOYEE_EXPENSE`   | Wydatek pracowniczy             | worker; investment optional        | **none**                            |
+| `REGISTER_TRANSFER`  | Transfer między kasami          | cashRegister (src), targetRegister | -amount from src, +amount to target |
+| `OTHER`              | Inne                            | cashRegister, otherCategory        | -amount                             |
 
-With expanded set:
+#### Step 1: Constants (`src/lib/constants/transactions.ts`)
 
-| Type                 | Polish label                    | Requires fields                                    | Register balance effect                |
-| -------------------- | ------------------------------- | -------------------------------------------------- | -------------------------------------- |
-| `INVESTOR_DEPOSIT`   | Wpłata od inwestora             | `cashRegister`, `investment`                       | +amount to register                    |
-| `STAGE_SETTLEMENT`   | Rozliczenie etapu               | `cashRegister`, `investment`                       | +amount to register                    |
-| `COMPANY_FUNDING`    | Zasilenie z konta firmowego     | `cashRegister`                                     | +amount to register                    |
-| `OTHER_DEPOSIT`      | Inna wpłata                     | `cashRegister`                                     | +amount to register                    |
-| `INVESTMENT_EXPENSE` | Wydatek inwestycyjny            | `cashRegister`, `investment`                       | -amount from register                  |
-| `ACCOUNT_FUNDING`    | Zasilenie konta współpracownika | `cashRegister`, `worker`                           | -amount from register                  |
-| `EMPLOYEE_EXPENSE`   | Wydatek pracowniczy             | `worker`, `investment` (optional)                  | **no register effect**                 |
-| `REGISTER_TRANSFER`  | Transfer między kasami          | `cashRegister` (source), `targetRegister` (target) | -amount from source, +amount to target |
-| `OTHER`              | Inne                            | `cashRegister`, `otherCategory`                    | -amount from register                  |
+Foundation — every other file imports from here.
 
-#### Implementation tasks
+- [ ] Replace `TRANSACTION_TYPES` with 9 new values (drop `DEPOSIT`)
+- [ ] Replace `TRANSACTION_TYPE_LABELS` with 9 Polish labels
+- [ ] Add `DEPOSIT_TYPES` array for the 4 inflow types
+- [ ] Update helpers:
+  - `isDepositType(type)` — true for the 4 deposit types
+  - `needsCashRegister(type)` — false only for EMPLOYEE_EXPENSE
+  - `showsInvestment(type)` — INVESTOR_DEPOSIT, STAGE_SETTLEMENT, INVESTMENT_EXPENSE, EMPLOYEE_EXPENSE
+  - `requiresInvestment(type)` — INVESTOR_DEPOSIT, STAGE_SETTLEMENT, INVESTMENT_EXPENSE (not EMPLOYEE_EXPENSE)
+  - `needsWorker(type)` — ACCOUNT_FUNDING, EMPLOYEE_EXPENSE (unchanged)
+  - `needsTargetRegister(type)` — REGISTER_TRANSFER only
+  - `needsOtherCategory(type)` — OTHER only (unchanged)
 
-- [ ] **Remove `DEPOSIT` type** — replaced by 4 specific deposit types (`INVESTOR_DEPOSIT`, `STAGE_SETTLEMENT`, `COMPANY_FUNDING`, `OTHER_DEPOSIT`)
-- [ ] **DB migration** — update enum values, add `target_register_id` column, migrate existing `DEPOSIT` rows to `OTHER_DEPOSIT` (or appropriate subtype), remove `cash_register_id` requirement
-- [ ] **Remove `cashRegister` from `EMPLOYEE_EXPENSE`** — field not applicable. Existing EMPLOYEE_EXPENSE rows: set `cash_register_id = NULL` in migration.
-- [ ] **Add `targetRegister` field** — relationship → CashRegisters, visible only when type = `REGISTER_TRANSFER`
-- [ ] **Update Payload collection** — new type options with pl/en labels, conditional field visibility:
-  - `investment`: visible when type in (`INVESTOR_DEPOSIT`, `STAGE_SETTLEMENT`, `INVESTMENT_EXPENSE`, `EMPLOYEE_EXPENSE`)
-  - `worker`: visible when type in (`ACCOUNT_FUNDING`, `EMPLOYEE_EXPENSE`)
-  - `cashRegister`: visible for all types EXCEPT `EMPLOYEE_EXPENSE`
-  - `targetRegister`: visible only for `REGISTER_TRANSFER`
-  - `otherCategory`: visible only for `OTHER`
-- [ ] **Update validation hook** — new type→field requirement matrix (see table above)
-- [ ] **Update constants** — `src/lib/constants/transactions.ts`: new type enum, labels, `needsInvestment()`, `needsWorker()`, `needsCashRegister()`, `needsTargetRegister()` helpers
-- [ ] **Update `sumRegisterBalance` SQL** — deposit types add, expense types subtract, `EMPLOYEE_EXPENSE` excluded, `REGISTER_TRANSFER` subtracts from source:
+#### Step 2: DB Migration (`src/migrations/20260218_transaction_type_overhaul.ts`)
+
+- [ ] `ALTER TYPE ADD VALUE` for 5 new enum values
+- [ ] `ADD COLUMN target_register_id` with FK to cash_registers
+- [ ] `UPDATE transactions SET type = 'OTHER_DEPOSIT' WHERE type = 'DEPOSIT'` (all existing deposits become OTHER_DEPOSIT)
+- [ ] `UPDATE transactions SET cash_register_id = NULL WHERE type = 'EMPLOYEE_EXPENSE'` (EMPLOYEE_EXPENSE no longer uses registers)
+- [ ] Do NOT remove DEPOSIT from enum (PG limitation — unused values are harmless)
+- [ ] Register in `src/migrations/index.ts`
+
+#### Step 3: Collection Config (`src/collections/transactions.ts`)
+
+- [ ] Replace `TRANSACTION_TYPES` with 9 options + labels
+- [ ] `cashRegister`: change `required: true` → `required: false`, add admin condition `needsCashRegister(data)`
+- [ ] Add `targetRegister` field: relationship → cash-registers, admin condition `needsTargetRegister(data)`
+- [ ] Update `needsInvestment` condition → `showsInvestment(data)`
+- [ ] `needsWorker` — unchanged
+- [ ] `needsOtherCategory` — unchanged
+
+#### Step 4: Validation Hook (`src/hooks/transactions/validate.ts`)
+
+New type→field requirement matrix:
+
+- [ ] INVESTOR_DEPOSIT, STAGE_SETTLEMENT: require cashRegister + investment
+- [ ] COMPANY_FUNDING, OTHER_DEPOSIT: require cashRegister
+- [ ] INVESTMENT_EXPENSE: require cashRegister + investment
+- [ ] ACCOUNT_FUNDING: require cashRegister + worker
+- [ ] EMPLOYEE_EXPENSE: require worker (investment optional, no cashRegister)
+- [ ] REGISTER_TRANSFER: require cashRegister + targetRegister, ensure source ≠ target
+- [ ] OTHER: require cashRegister + otherCategory
+- [ ] Auto-clear cashRegister for EMPLOYEE_EXPENSE (prevent stale data)
+
+#### Step 5: SQL Queries (`src/lib/db/sum-transactions.ts`)
+
+- [ ] **`sumRegisterBalance`** — rewrite:
+
   ```sql
-  CASE
-    WHEN type IN ('INVESTOR_DEPOSIT', 'STAGE_SETTLEMENT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT') THEN amount
-    WHEN type = 'EMPLOYEE_EXPENSE' THEN 0
-    ELSE -amount
-  END
+  -- Outflows + inflows from cash_register_id
+  SELECT COALESCE(SUM(
+    CASE
+      WHEN type IN ('INVESTOR_DEPOSIT','STAGE_SETTLEMENT','COMPANY_FUNDING','OTHER_DEPOSIT') THEN amount
+      ELSE -amount
+    END
+  ), 0)
+  -- Plus: incoming transfers where this register is the target
+  + COALESCE((
+    SELECT SUM(amount) FROM transactions
+    WHERE target_register_id = $registerId AND type = 'REGISTER_TRANSFER'
+  ), 0) AS balance
+  FROM transactions
+  WHERE cash_register_id = $registerId
   ```
-  Plus a separate query/addition for `REGISTER_TRANSFER` deposits (where `target_register_id = registerId`):
-  ```sql
-  + COALESCE((SELECT SUM(amount) FROM transactions WHERE target_register_id = registerId AND type = 'REGISTER_TRANSFER'), 0)
-  ```
-- [ ] **Update `sumInvestmentCosts`** — include `INVESTOR_DEPOSIT` and `STAGE_SETTLEMENT` as income? (Deferred per Q1 — only count costs for now)
-- [ ] **Update `recalculate-balances` hook** — skip register recalc for `EMPLOYEE_EXPENSE`. For `REGISTER_TRANSFER`, recalc BOTH source and target registers.
-- [ ] **Update `sumEmployeeSaldo` / `sumAllWorkerSaldos`** — currently uses `ADVANCE` (will be `ACCOUNT_FUNDING` after M23). Verify no other type changes needed.
-- [ ] **Update frontend forms** — transaction form conditional field logic, new type select options, remove cash register for EMPLOYEE_EXPENSE, add target register for REGISTER_TRANSFER
-- [ ] **Update schemas** — Zod schemas for new type enum + conditional field requirements
-- [ ] **Update table columns/filters** — new type labels in tables, type filter updated
-- **Migration**: `20260217_transaction_type_overhaul.ts` — new enum values, `target_register_id` column, data migration for existing rows
-- **Key files**: `src/collections/transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`, `src/lib/db/sum-transactions.ts`, `src/lib/constants/transactions.ts`, `src/lib/schemas/transactions.ts`, `src/components/transactions/transaction-form.tsx`, `src/lib/queries/transactions.ts`
-- **Depends on**: M23 (naming — `ADVANCE` already renamed to `ACCOUNT_FUNDING`)
+
+  Note: EMPLOYEE_EXPENSE rows have `cash_register_id = NULL` (after migration), so they're automatically excluded from this query.
+
+- [ ] **`sumInvestmentCosts`** — unchanged (INVESTMENT_EXPENSE + EMPLOYEE_EXPENSE)
+- [ ] **`sumEmployeeSaldo`, `sumAllWorkerSaldos`, `sumWorkerPeriodBreakdown`** — unchanged (ACCOUNT_FUNDING + EMPLOYEE_EXPENSE)
+
+#### Step 6: Balance Hooks (`src/hooks/transactions/recalculate-balances.ts`)
+
+- [ ] `recalcAfterChange`:
+  - Add `targetRegisterId` resolution from `doc.targetRegister`
+  - Add `prevTargetRegisterId` for updates
+  - If targetRegisterId → push `recalcRegisterBalance(targetRegisterId)` to parallel tasks
+  - If prevTargetRegisterId changed → recalc old target too
+  - EMPLOYEE_EXPENSE: `registerId` will be undefined (no cashRegister) → naturally skipped
+- [ ] `recalcAfterDelete`:
+  - Same targetRegister handling
+
+#### Step 7: Schemas (`src/lib/schemas/transactions.ts`)
+
+- [ ] Server schema (`createTransactionSchema`):
+  - `cashRegister`: change from `z.number().positive()` → `z.number().optional()`
+  - Add `targetRegister: z.number().optional()`
+  - Update superRefine: use `requiresInvestment()`, add targetRegister validation for REGISTER_TRANSFER, add cashRegister validation for types that need it
+  - Replace `data.type !== 'DEPOSIT'` → `!isDepositType(data.type)` for description requirement
+- [ ] Client schema (`transactionFormSchema`):
+  - Add `targetRegister: z.string()`
+  - Update superRefine: mirror server changes with string comparisons
+
+#### Step 8: Transaction Action (`src/lib/actions/transactions.ts`)
+
+- [ ] `createTransactionAction`: remove `'Wpłata do kasy'` default description (was DEPOSIT-specific). Use a generic fallback or require description for all types.
+- [ ] `recalculateBalancesAction`: no changes needed (it recalculates ALL registers via loop, not per-transaction)
+
+#### Step 9: Table Mapping (`src/lib/tables/transactions.tsx`)
+
+- [ ] Add `targetRegisterName` to `TransactionRowT`
+- [ ] Add `targetRegister` column definition (header: "Kasa docelowa")
+- [ ] Update `mapTransactionRow` to resolve `targetRegister` → name via lookups
+- [ ] Update `buildTransactionLookups` / `TransactionLookupsT` if needed (cash register lookup already exists)
+
+#### Step 10: Transaction Form (`src/components/forms/transfer-form/transfer-form.tsx`)
+
+- [ ] Add `targetRegister` to `FormValuesT` and `defaultValues`
+- [ ] Conditionally show `cashRegister` field: `needsCashRegister(currentType)`
+- [ ] Add `targetRegister` select field: `needsTargetRegister(currentType)`
+- [ ] Update investment visibility: `showsInvestment(currentType)`
+- [ ] Update invoice visibility: `!isDepositType(currentType) && currentType !== 'ACCOUNT_FUNDING'`
+- [ ] Add `targetRegister` to onSubmit data mapping
+
+#### Step 11: Settlement + Zero-Saldo (EMPLOYEE_EXPENSE no longer has cashRegister)
+
+- [ ] **`src/lib/schemas/settlements.ts`**: remove cashRegister field from all 4 schemas
+- [ ] **`src/lib/actions/settlements.ts`**: remove cashRegister from create data, remove register recalc from settlement action
+- [ ] **`src/components/settlements/settlement-form.tsx`**: remove cashRegister select, remove isRegisterLocked logic
+- [ ] **`src/components/dialogs/zero-saldo-dialog.tsx`**: remove cashRegister select + managerCashRegisterId prop
+- [ ] **`src/components/dialogs/add-settlement-dialog.tsx`**: remove managerCashRegisterId prop passthrough
+- [ ] **`src/app/(frontend)/uzytkownicy/[id]/page.tsx`**: update ZeroSaldoDialog props
+
+#### Step 12: Regenerate + Verify
+
+- [ ] `pnpm generate:types`
+- [ ] `pnpm typecheck`
+- [ ] `pnpm lint`
+- [ ] `pnpm payload migrate`
+
+#### Key Risks
+
+1. **Existing DEPOSIT rows** → migrated to OTHER_DEPOSIT. DEPOSIT stays in PG enum (unused). No new DEPOSIT rows can be created since it's not in the UI options.
+2. **EMPLOYEE_EXPENSE losing cashRegister** → behavioral change. Settlements no longer debit a register. This is correct (the advance already debited it), but users may notice.
+3. **sumRegisterBalance SQL** → most complex change. The UNION subquery for target register transfers must be correct to avoid balance drift.
+
+#### Files Changed (20 files)
+
+| File                                                   | Change                                                    |
+| ------------------------------------------------------ | --------------------------------------------------------- |
+| `src/lib/constants/transactions.ts`                    | 9 types, labels, helpers                                  |
+| `src/migrations/20260218_transaction_type_overhaul.ts` | NEW — enum + column + data migration                      |
+| `src/migrations/index.ts`                              | Register migration                                        |
+| `src/collections/transactions.ts`                      | Type options, targetRegister field, cashRegister optional |
+| `src/hooks/transactions/validate.ts`                   | New validation matrix                                     |
+| `src/lib/db/sum-transactions.ts`                       | sumRegisterBalance rewrite                                |
+| `src/hooks/transactions/recalculate-balances.ts`       | targetRegister handling                                   |
+| `src/lib/schemas/transactions.ts`                      | targetRegister, cashRegister optional                     |
+| `src/lib/actions/transactions.ts`                      | Remove DEPOSIT description fallback                       |
+| `src/lib/tables/transactions.tsx`                      | targetRegisterName column + mapping                       |
+| `src/components/forms/transfer-form/transfer-form.tsx` | targetRegister, conditional cashRegister                  |
+| `src/lib/schemas/settlements.ts`                       | Remove cashRegister                                       |
+| `src/lib/actions/settlements.ts`                       | Remove cashRegister + register recalc                     |
+| `src/components/settlements/settlement-form.tsx`       | Remove cashRegister field                                 |
+| `src/components/dialogs/zero-saldo-dialog.tsx`         | Remove cashRegister                                       |
+| `src/components/dialogs/add-settlement-dialog.tsx`     | Remove managerCashRegisterId                              |
+| `src/app/(frontend)/uzytkownicy/[id]/page.tsx`         | Update ZeroSaldoDialog props                              |
+| `src/payload-types.ts`                                 | Auto-regenerated                                          |
+| `src/scripts/seed-transactions.ts`                     | Update type values (optional)                             |
+
+#### Verification
+
+1. `pnpm typecheck` — 0 errors
+2. `pnpm payload migrate` — migration runs cleanly
+3. Manual: create one of each new type via the form, verify register balances update correctly
+4. Manual: create a REGISTER_TRANSFER, verify source register debited and target credited
+5. Manual: create EMPLOYEE_EXPENSE without selecting a cash register, verify no register balance change
+6. Manual: verify settlement form no longer shows cash register field
+
+- **Migration**: `20260218_transaction_type_overhaul.ts` — new enum values, `target_register_id` column, data migration for existing rows
+- **Key files**: `src/collections/transactions.ts`, `src/hooks/transactions/validate.ts`, `src/hooks/transactions/recalculate-balances.ts`, `src/lib/db/sum-transactions.ts`, `src/lib/constants/transactions.ts`, `src/lib/schemas/transactions.ts`, `src/components/forms/transfer-form/transfer-form.tsx`, `src/lib/queries/transactions.ts`
+- **Depends on**: M23 (naming — `ADVANCE` already renamed to `ACCOUNT_FUNDING`) ✅
 - **Success**: All new types work end-to-end, register balances correct, no double-charging on employee expenses
 
 ### M25: Cash Flow Integrity & Lockdown

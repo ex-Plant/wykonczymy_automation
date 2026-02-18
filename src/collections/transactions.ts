@@ -4,13 +4,20 @@ import { validateTransaction } from '@/hooks/transactions/validate'
 import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transactions/recalculate-balances'
 
 const TRANSACTION_TYPES = [
-  { label: { en: 'Deposit', pl: 'Wpłata do kasy' }, value: 'DEPOSIT' },
+  { label: { en: 'Investor Deposit', pl: 'Wpłata od inwestora' }, value: 'INVESTOR_DEPOSIT' },
+  { label: { en: 'Stage Settlement', pl: 'Rozliczenie etapu' }, value: 'STAGE_SETTLEMENT' },
+  { label: { en: 'Company Funding', pl: 'Zasilenie z konta firmowego' }, value: 'COMPANY_FUNDING' },
+  { label: { en: 'Other Deposit', pl: 'Inna wpłata' }, value: 'OTHER_DEPOSIT' },
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
   {
     label: { en: 'Account Funding', pl: 'Zasilenie konta współpracownika' },
     value: 'ACCOUNT_FUNDING',
   },
   { label: { en: 'Employee Expense', pl: 'Wydatek pracowniczy' }, value: 'EMPLOYEE_EXPENSE' },
+  {
+    label: { en: 'Register Transfer', pl: 'Transfer między kasami' },
+    value: 'REGISTER_TRANSFER',
+  },
   { label: { en: 'Other', pl: 'Inne' }, value: 'OTHER' },
 ] as const
 
@@ -21,13 +28,22 @@ const PAYMENT_METHODS = [
   { label: { en: 'Card', pl: 'Karta' }, value: 'CARD' },
 ] as const
 
-/** Show field when type includes investment */
-const needsInvestment = (data: Record<string, unknown>) =>
-  data?.type === 'INVESTMENT_EXPENSE' || data?.type === 'EMPLOYEE_EXPENSE'
+/** Show cashRegister for all types except EMPLOYEE_EXPENSE */
+const showCashRegister = (data: Record<string, unknown>) => data?.type !== 'EMPLOYEE_EXPENSE'
+
+/** Show investment field for types that use it (required or optional) */
+const showInvestment = (data: Record<string, unknown>) =>
+  data?.type === 'INVESTOR_DEPOSIT' ||
+  data?.type === 'STAGE_SETTLEMENT' ||
+  data?.type === 'INVESTMENT_EXPENSE' ||
+  data?.type === 'EMPLOYEE_EXPENSE'
 
 /** Show field when type includes worker */
 const needsWorker = (data: Record<string, unknown>) =>
   data?.type === 'ACCOUNT_FUNDING' || data?.type === 'EMPLOYEE_EXPENSE'
+
+/** Show targetRegister only for REGISTER_TRANSFER */
+const showTargetRegister = (data: Record<string, unknown>) => data?.type === 'REGISTER_TRANSFER'
 
 /** Show field when type is OTHER */
 const needsOtherCategory = (data: Record<string, unknown>) => data?.type === 'OTHER'
@@ -104,8 +120,20 @@ export const Transactions: CollectionConfig = {
       name: 'cashRegister',
       type: 'relationship',
       relationTo: 'cash-registers',
-      required: true,
+      required: false,
       label: { en: 'Cash Register', pl: 'Kasa' },
+      admin: {
+        condition: (data) => showCashRegister(data),
+      },
+    },
+    {
+      name: 'targetRegister',
+      type: 'relationship',
+      relationTo: 'cash-registers',
+      label: { en: 'Target Register', pl: 'Kasa docelowa' },
+      admin: {
+        condition: (data) => showTargetRegister(data),
+      },
     },
     // --- Conditional fields based on type ---
     {
@@ -114,7 +142,7 @@ export const Transactions: CollectionConfig = {
       relationTo: 'investments',
       label: { en: 'Investment', pl: 'Inwestycja' },
       admin: {
-        condition: (data) => needsInvestment(data),
+        condition: (data) => showInvestment(data),
       },
     },
     {

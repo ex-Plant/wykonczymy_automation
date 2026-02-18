@@ -5,6 +5,8 @@ import * as migration_20260211_213603 from './20260211_213603'
 import * as migration_20260212_191046_add_deposit_type from './20260212_191046_add_deposit_type'
 import * as migration_20260216_add_performance_indexes from './20260216_add_performance_indexes'
 import * as migration_20260218_rename_advance_to_account_funding from './20260218_rename_advance_to_account_funding'
+import * as migration_20260218_0_transaction_type_enums from './20260218_0_transaction_type_enums'
+import * as migration_20260218_transaction_type_overhaul from './20260218_transaction_type_overhaul'
 
 export const migrations = [
   {
@@ -41,5 +43,15 @@ export const migrations = [
     up: migration_20260218_rename_advance_to_account_funding.up,
     down: migration_20260218_rename_advance_to_account_funding.down,
     name: '20260218_rename_advance_to_account_funding',
+  },
+  {
+    up: migration_20260218_0_transaction_type_enums.up,
+    down: migration_20260218_0_transaction_type_enums.down,
+    name: '20260218_0_transaction_type_enums',
+  },
+  {
+    up: migration_20260218_transaction_type_overhaul.up,
+    down: migration_20260218_transaction_type_overhaul.down,
+    name: '20260218_transaction_type_overhaul',
   },
 ]

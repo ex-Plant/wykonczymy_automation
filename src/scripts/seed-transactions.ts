@@ -217,10 +217,14 @@ async function ensureCategories(payload: PayloadT) {
 // ---------------------------------------------------------------------------
 
 type TransactionTypeT =
-  | 'DEPOSIT'
+  | 'INVESTOR_DEPOSIT'
+  | 'STAGE_SETTLEMENT'
+  | 'COMPANY_FUNDING'
+  | 'OTHER_DEPOSIT'
   | 'INVESTMENT_EXPENSE'
   | 'ACCOUNT_FUNDING'
   | 'EMPLOYEE_EXPENSE'
+  | 'REGISTER_TRANSFER'
   | 'OTHER'
 type PaymentMethodT = 'CASH' | 'BLIK' | 'TRANSFER' | 'CARD'
 
@@ -253,7 +257,7 @@ function generateDeposit(e: EntitiesT): TransactionDataT {
     description: randomItem(DEPOSIT_DESCRIPTIONS),
     amount: randomBetween(1000, 20000),
     date: randomDate(),
-    type: 'DEPOSIT',
+    type: 'OTHER_DEPOSIT',
     paymentMethod: randomItem(PAYMENT_METHODS),
     cashRegister: randomItem(e.registerIds),
     createdBy: e.ownerId,

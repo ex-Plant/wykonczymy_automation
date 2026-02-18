@@ -1,12 +1,19 @@
 import type { CollectionBeforeValidateHook } from 'payload'
 import type { Transaction } from '@/payload-types'
+import {
+  needsCashRegister,
+  requiresInvestment,
+  needsWorker,
+  needsTargetRegister,
+  needsOtherCategory,
+} from '@/lib/constants/transactions'
 
 type TransactionData = Partial<Transaction>
 
 /**
  * Cross-field validation for Transactions.
  * Enforces required relationships based on transaction type
- * and ensures invoice documentation exists.
+ * and auto-clears inapplicable fields.
  */
 export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, operation }) => {
   const d = data as TransactionData
@@ -17,24 +24,41 @@ export const validateTransaction: CollectionBeforeValidateHook = ({ data, req, o
     d.createdBy = req.user.id
   }
 
+  const type = d.type ?? ''
   const errors: string[] = []
 
-  // Type-dependent field requirements
-  if (d.type === 'INVESTMENT_EXPENSE') {
-    if (!d.investment) errors.push('Investment is required for investment expenses.')
+  // cashRegister — required for all types except EMPLOYEE_EXPENSE
+  if (needsCashRegister(type) && !d.cashRegister) {
+    errors.push('Cash register is required for this transfer type.')
   }
 
-  if (d.type === 'ACCOUNT_FUNDING') {
-    if (!d.worker) errors.push('Worker is required for account funding.')
+  // Auto-clear cashRegister for EMPLOYEE_EXPENSE (prevent stale data)
+  if (!needsCashRegister(type)) {
+    d.cashRegister = null
   }
 
-  if (d.type === 'EMPLOYEE_EXPENSE') {
-    if (!d.worker) errors.push('Worker is required for employee expenses.')
-    if (!d.investment) errors.push('Investment is required for employee expenses.')
+  // investment — required for INVESTOR_DEPOSIT, STAGE_SETTLEMENT, INVESTMENT_EXPENSE
+  if (requiresInvestment(type) && !d.investment) {
+    errors.push('Investment is required for this transfer type.')
   }
 
-  if (d.type === 'OTHER') {
-    if (!d.otherCategory) errors.push('Category is required for OTHER transactions.')
+  // worker — required for ACCOUNT_FUNDING, EMPLOYEE_EXPENSE
+  if (needsWorker(type) && !d.worker) {
+    errors.push('Worker is required for this transfer type.')
+  }
+
+  // targetRegister — required for REGISTER_TRANSFER, must differ from source
+  if (needsTargetRegister(type)) {
+    if (!d.targetRegister) {
+      errors.push('Target register is required for register transfers.')
+    } else if (d.cashRegister && d.targetRegister === d.cashRegister) {
+      errors.push('Target register must be different from source register.')
+    }
+  }
+
+  // otherCategory — required for OTHER
+  if (needsOtherCategory(type) && !d.otherCategory) {
+    errors.push('Category is required for OTHER transfers.')
   }
 
   if (errors.length > 0) {

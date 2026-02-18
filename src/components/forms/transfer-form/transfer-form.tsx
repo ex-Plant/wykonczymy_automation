@@ -12,8 +12,11 @@ import {
   TRANSACTION_TYPE_LABELS,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
-  needsInvestment,
+  isDepositType,
+  needsCashRegister,
+  showsInvestment,
   needsWorker,
+  needsTargetRegister,
   needsOtherCategory,
   type TransactionTypeT,
   type PaymentMethodT,
@@ -38,6 +41,7 @@ type FormValuesT = {
   type: string
   paymentMethod: string
   cashRegister: string
+  targetRegister: string
   investment: string
   worker: string
   otherCategory: string
@@ -63,6 +67,7 @@ export function TransferForm({
       type: 'INVESTMENT_EXPENSE',
       paymentMethod: 'CASH',
       cashRegister: isRegisterLocked ? String(managerCashRegisterId) : '',
+      targetRegister: '',
       investment: '',
       worker: '',
       otherCategory: '',
@@ -79,7 +84,8 @@ export function TransferForm({
         date: value.date,
         type: value.type as TransactionTypeT,
         paymentMethod: value.paymentMethod as PaymentMethodT,
-        cashRegister: Number(value.cashRegister),
+        cashRegister: value.cashRegister ? Number(value.cashRegister) : undefined,
+        targetRegister: value.targetRegister ? Number(value.targetRegister) : undefined,
         investment: value.investment ? Number(value.investment) : undefined,
         worker: value.worker ? Number(value.worker) : undefined,
         otherCategory: value.otherCategory ? Number(value.otherCategory) : undefined,
@@ -164,26 +170,43 @@ export function TransferForm({
             )}
           </form.AppField>
 
-          {/* Cash register */}
-          <form.AppField name="cashRegister">
-            {(field) => (
-              <field.Select
-                label="Kasa"
-                placeholder="Wybierz kasę"
-                showError
-                disabled={isRegisterLocked}
-              >
-                {referenceData.cashRegisters.map((cr) => (
-                  <SelectItem key={cr.id} value={String(cr.id)}>
-                    {cr.name}
-                  </SelectItem>
-                ))}
-              </field.Select>
-            )}
-          </form.AppField>
+          {/* Cash register — hidden for EMPLOYEE_EXPENSE */}
+          {needsCashRegister(currentType) && (
+            <form.AppField name="cashRegister">
+              {(field) => (
+                <field.Select
+                  label="Kasa"
+                  placeholder="Wybierz kasę"
+                  showError
+                  disabled={isRegisterLocked}
+                >
+                  {referenceData.cashRegisters.map((cr) => (
+                    <SelectItem key={cr.id} value={String(cr.id)}>
+                      {cr.name}
+                    </SelectItem>
+                  ))}
+                </field.Select>
+              )}
+            </form.AppField>
+          )}
+
+          {/* Conditional: Target register (REGISTER_TRANSFER only) */}
+          {needsTargetRegister(currentType) && (
+            <form.AppField name="targetRegister">
+              {(field) => (
+                <field.Select label="Kasa docelowa" placeholder="Wybierz kasę docelową" showError>
+                  {referenceData.cashRegisters.map((cr) => (
+                    <SelectItem key={cr.id} value={String(cr.id)}>
+                      {cr.name}
+                    </SelectItem>
+                  ))}
+                </field.Select>
+              )}
+            </form.AppField>
+          )}
 
           {/* Conditional: Investment */}
-          {needsInvestment(currentType) && (
+          {showsInvestment(currentType) && (
             <form.AppField name="investment">
               {(field) => (
                 <field.Select label="Inwestycja" placeholder="Wybierz inwestycję" showError>
@@ -236,7 +259,7 @@ export function TransferForm({
           )}
 
           {/* Invoice file — not bound to form state, read via ref on submit */}
-          {currentType !== 'DEPOSIT' && currentType !== 'ACCOUNT_FUNDING' && (
+          {!isDepositType(currentType) && currentType !== 'ACCOUNT_FUNDING' && (
             <div className="space-y-1">
               <label htmlFor="invoice" className="text-foreground text-sm font-medium">
                 Faktura
@@ -251,7 +274,7 @@ export function TransferForm({
           )}
 
           {/* Invoice note */}
-          {currentType !== 'DEPOSIT' && currentType !== 'ACCOUNT_FUNDING' && (
+          {!isDepositType(currentType) && currentType !== 'ACCOUNT_FUNDING' && (
             <form.AppField name="invoiceNote">
               {(field) => (
                 <field.Textarea

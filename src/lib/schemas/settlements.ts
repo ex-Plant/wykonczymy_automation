@@ -16,7 +16,6 @@ export const settlementFormSchema = z
     worker: z.string(),
     investment: z.string(),
     date: z.string(),
-    cashRegister: z.string(),
     paymentMethod: z.string(),
     invoiceNote: z.string(),
     lineItems: z.array(lineItemClientSchema),
@@ -43,14 +42,6 @@ export const settlementFormSchema = z
         code: z.ZodIssueCode.custom,
         message: 'Data jest wymagana',
         path: ['date'],
-      })
-    }
-
-    if (!data.cashRegister) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Kasa jest wymagana',
-        path: ['cashRegister'],
       })
     }
 
@@ -85,7 +76,6 @@ export const createSettlementSchema = z.object({
   worker: z.number({ error: 'Pracownik jest wymagany' }).positive('Pracownik jest wymagany'),
   investment: z.number({ error: 'Inwestycja jest wymagana' }).positive('Inwestycja jest wymagana'),
   date: z.string().min(1, 'Data jest wymagana'),
-  cashRegister: z.number({ error: 'Kasa jest wymagana' }).positive('Kasa jest wymagana'),
   paymentMethod: z.enum(PAYMENT_METHODS),
   invoiceNote: z.string().optional(),
   lineItems: z
@@ -108,7 +98,6 @@ export type CreateSettlementFormT = z.infer<typeof createSettlementSchema>
 export const zeroSaldoFormSchema = z
   .object({
     investment: z.string(),
-    cashRegister: z.string(),
     paymentMethod: z.string(),
   })
   .superRefine((data, ctx) => {
@@ -119,21 +108,12 @@ export const zeroSaldoFormSchema = z
         path: ['investment'],
       })
     }
-
-    if (!data.cashRegister) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Kasa jest wymagana',
-        path: ['cashRegister'],
-      })
-    }
   })
 
 /** Server-side schema — typed values. */
 export const zeroSaldoSchema = z.object({
   worker: z.number({ error: 'Pracownik jest wymagany' }).positive('Pracownik jest wymagany'),
   investment: z.number({ error: 'Inwestycja jest wymagana' }).positive('Inwestycja jest wymagana'),
-  cashRegister: z.number({ error: 'Kasa jest wymagana' }).positive('Kasa jest wymagana'),
   paymentMethod: z.enum(PAYMENT_METHODS),
   amount: z.number().positive('Kwota musi być większa niż 0'),
 })

@@ -11,7 +11,7 @@ import {
   type ZeroSaldoFormT,
 } from '@/lib/schemas/settlements'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { getDb, sumRegisterBalance, sumInvestmentCosts } from '@/lib/db/sum-transactions'
+import { getDb, sumInvestmentCosts } from '@/lib/db/sum-transactions'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { perf, perfStart } from '@/lib/perf'
 
@@ -81,6 +81,7 @@ export async function createSettlementAction(
     )
 
     // Create all transactions in parallel, skipping hooks (single recalc at end)
+    // EMPLOYEE_EXPENSE has no cashRegister — register balance unaffected
     const created = await perf(
       `settlement.createTransactions (${parsed.data.lineItems.length} items)`,
       async () => {
@@ -94,7 +95,6 @@ export async function createSettlementAction(
                 date: parsed.data.date,
                 type: 'EMPLOYEE_EXPENSE',
                 paymentMethod: parsed.data.paymentMethod,
-                cashRegister: parsed.data.cashRegister,
                 investment: parsed.data.investment,
                 worker: parsed.data.worker,
                 invoice: mediaIds[i],
@@ -109,34 +109,16 @@ export async function createSettlementAction(
       },
     )
 
-    // Single recalculation for all affected entities (direct SQL, bypasses Payload ORM)
+    // Single recalculation for investment costs only (no register involved for EMPLOYEE_EXPENSE)
     await perf('settlement.recalcBalances', async () => {
-      const db = await getDb(payload)
-      const recalcTasks: Promise<unknown>[] = []
-
-      if (parsed.data.cashRegister) {
-        const registerId = parsed.data.cashRegister
-        recalcTasks.push(
-          sumRegisterBalance(payload, registerId).then((balance) =>
-            db.execute(sql`
-              UPDATE cash_registers SET balance = ${balance}, updated_at = NOW() WHERE id = ${registerId}
-            `),
-          ),
-        )
-      }
-
       if (parsed.data.investment) {
+        const db = await getDb(payload)
         const investmentId = parsed.data.investment
-        recalcTasks.push(
-          sumInvestmentCosts(payload, investmentId).then((totalCosts) =>
-            db.execute(sql`
-              UPDATE investments SET total_costs = ${totalCosts}, updated_at = NOW() WHERE id = ${investmentId}
-            `),
-          ),
-        )
+        const totalCosts = await sumInvestmentCosts(payload, investmentId)
+        await db.execute(sql`
+          UPDATE investments SET total_costs = ${totalCosts}, updated_at = NOW() WHERE id = ${investmentId}
+        `)
       }
-
-      await Promise.all(recalcTasks)
     })
 
     revalidateCollections(['transactions', 'cashRegisters'])
@@ -178,7 +160,6 @@ export async function zeroSaldoAction(data: ZeroSaldoFormT): Promise<ActionResul
           date: new Date().toISOString(),
           type: 'EMPLOYEE_EXPENSE',
           paymentMethod: parsed.data.paymentMethod,
-          cashRegister: parsed.data.cashRegister,
           investment: parsed.data.investment,
           worker: parsed.data.worker,
           invoiceNote: 'Zerowanie salda pracownika',

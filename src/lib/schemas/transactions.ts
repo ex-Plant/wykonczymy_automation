@@ -2,8 +2,11 @@ import { z } from 'zod'
 import {
   TRANSACTION_TYPES,
   PAYMENT_METHODS,
-  needsInvestment,
+  isDepositType,
+  needsCashRegister,
+  requiresInvestment,
   needsWorker,
+  needsTargetRegister,
   needsOtherCategory,
 } from '@/lib/constants/transactions'
 
@@ -14,7 +17,8 @@ export const createTransactionSchema = z
     date: z.string().min(1, 'Data jest wymagana'),
     type: z.enum(TRANSACTION_TYPES),
     paymentMethod: z.enum(PAYMENT_METHODS),
-    cashRegister: z.number({ error: 'Kasa jest wymagana' }).positive('Kasa jest wymagana'),
+    cashRegister: z.number().optional(),
+    targetRegister: z.number().optional(),
     investment: z.number().optional(),
     worker: z.number().optional(),
     otherCategory: z.number().optional(),
@@ -22,8 +26,7 @@ export const createTransactionSchema = z
     invoiceNote: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    console.log(data.type)
-    if (data.type !== 'DEPOSIT' && !data.description) {
+    if (!isDepositType(data.type) && !data.description) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Opis jest wymagany',
@@ -31,7 +34,31 @@ export const createTransactionSchema = z
       })
     }
 
-    if (needsInvestment(data.type) && !data.investment) {
+    if (needsCashRegister(data.type) && !data.cashRegister) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Kasa jest wymagana dla tego typu transferu',
+        path: ['cashRegister'],
+      })
+    }
+
+    if (needsTargetRegister(data.type)) {
+      if (!data.targetRegister) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Kasa docelowa jest wymagana dla transferu między kasami',
+          path: ['targetRegister'],
+        })
+      } else if (data.cashRegister && data.targetRegister === data.cashRegister) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Kasa docelowa musi być inna niż kasa źródłowa',
+          path: ['targetRegister'],
+        })
+      }
+    }
+
+    if (requiresInvestment(data.type) && !data.investment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Inwestycja jest wymagana dla tego typu transferu',
@@ -70,6 +97,7 @@ export const transactionFormSchema = z
     type: z.string(),
     paymentMethod: z.string(),
     cashRegister: z.string(),
+    targetRegister: z.string(),
     investment: z.string(),
     worker: z.string(),
     otherCategory: z.string(),
@@ -77,7 +105,7 @@ export const transactionFormSchema = z
     invoiceNote: z.string(),
   })
   .superRefine((data, ctx) => {
-    if (data.type !== 'DEPOSIT' && !data.description) {
+    if (!isDepositType(data.type) && !data.description) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Opis jest wymagany',
@@ -101,15 +129,31 @@ export const transactionFormSchema = z
       })
     }
 
-    if (!data.cashRegister) {
+    if (needsCashRegister(data.type) && !data.cashRegister) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Kasa jest wymagana',
+        message: 'Kasa jest wymagana dla tego typu transferu',
         path: ['cashRegister'],
       })
     }
 
-    if (needsInvestment(data.type) && !data.investment) {
+    if (needsTargetRegister(data.type)) {
+      if (!data.targetRegister) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Kasa docelowa jest wymagana dla transferu między kasami',
+          path: ['targetRegister'],
+        })
+      } else if (data.cashRegister && data.targetRegister === data.cashRegister) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Kasa docelowa musi być inna niż kasa źródłowa',
+          path: ['targetRegister'],
+        })
+      }
+    }
+
+    if (requiresInvestment(data.type) && !data.investment) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Inwestycja jest wymagana dla tego typu transferu',

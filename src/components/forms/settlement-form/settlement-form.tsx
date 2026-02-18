@@ -28,12 +28,10 @@ type ReferenceItemT = { id: number; name: string }
 type ReferenceDataT = {
   users: ReferenceItemT[]
   investments: ReferenceItemT[]
-  cashRegisters: ReferenceItemT[]
 }
 
 type SettlementFormPropsT = {
   referenceData: ReferenceDataT
-  managerCashRegisterId?: number
   className?: string
   onSuccess?: () => void
 }
@@ -42,7 +40,6 @@ type FormValuesT = {
   worker: string
   investment: string
   date: string
-  cashRegister: string
   paymentMethod: string
   invoiceNote: string
   lineItems: { description: string; amount: string }[]
@@ -50,15 +47,9 @@ type FormValuesT = {
 
 const today = () => new Date().toISOString().split('T')[0]
 
-export function SettlementForm({
-  referenceData,
-  managerCashRegisterId,
-  className,
-  onSuccess,
-}: SettlementFormPropsT) {
+export function SettlementForm({ referenceData, className, onSuccess }: SettlementFormPropsT) {
   const router = useRouter()
   const invoiceFilesRef = useRef<Map<number, File>>(new Map())
-  const isRegisterLocked = managerCashRegisterId !== undefined
 
   // Saldo is display-only, not form data
   const [saldo, setSaldo] = useState<number | null>(null)
@@ -69,7 +60,6 @@ export function SettlementForm({
       worker: '',
       investment: '',
       date: today(),
-      cashRegister: isRegisterLocked ? String(managerCashRegisterId) : '',
       paymentMethod: 'CASH',
       invoiceNote: '',
       lineItems: [{ description: '', amount: '' }],
@@ -82,7 +72,6 @@ export function SettlementForm({
         worker: Number(value.worker),
         investment: Number(value.investment),
         date: value.date,
-        cashRegister: Number(value.cashRegister),
         paymentMethod: value.paymentMethod as PaymentMethodT,
         invoiceNote: value.invoiceNote || undefined,
         lineItems: value.lineItems.map((item) => ({
@@ -205,23 +194,6 @@ export function SettlementForm({
 
               <form.AppField name="date">
                 {(field) => <field.Input label="Data" type="date" showError />}
-              </form.AppField>
-
-              <form.AppField name="cashRegister">
-                {(field) => (
-                  <field.Select
-                    label="Kasa"
-                    placeholder="Wybierz kasę"
-                    showError
-                    disabled={isRegisterLocked}
-                  >
-                    {referenceData.cashRegisters.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </field.Select>
-                )}
               </form.AppField>
 
               <form.AppField name="paymentMethod">

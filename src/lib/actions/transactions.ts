@@ -67,7 +67,7 @@ export async function createTransactionAction(
     }
 
     // Create the transaction (hooks fire inside this call)
-    const description = parsed.data.description || 'Wpłata do kasy'
+    const description = parsed.data.description || ''
 
     await perf('createTransaction.payloadCreate (includes hooks)', () =>
       payload.create({

@@ -39,11 +39,11 @@ export function TopNav({ referenceData, managerCashRegisterId }: TopNavPropsT) {
       <div className="flex items-center gap-2">
         {referenceData && (
           <>
-            <AddSettlementDialog
+            <AddSettlementDialog referenceData={referenceData} />
+            <AddTransferDialog
               referenceData={referenceData}
               managerCashRegisterId={managerCashRegisterId}
             />
-            <AddTransferDialog referenceData={referenceData} />
           </>
         )}
         <button

@@ -18,6 +18,7 @@ export type TransactionRowT = {
   readonly paymentMethod: PaymentMethodT
   readonly date: string
   readonly cashRegisterName: string
+  readonly targetRegisterName: string
   readonly investmentName: string
   readonly workerName: string
   readonly otherCategoryName: string
@@ -74,6 +75,7 @@ export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): Tran
       paymentMethod: doc.paymentMethod as PaymentMethodT,
       date: doc.date,
       cashRegisterName: lookupName(lookups.cashRegisters, doc.cashRegister),
+      targetRegisterName: lookupName(lookups.cashRegisters, doc.targetRegister),
       investmentName: lookupName(lookups.investments, doc.investment),
       workerName: lookupName(lookups.workers, doc.worker),
       otherCategoryName: lookupName(lookups.otherCategories, doc.otherCategory),
@@ -91,6 +93,7 @@ export function mapTransactionRow(doc: any, lookups?: TransactionLookupsT): Tran
     paymentMethod: doc.paymentMethod as PaymentMethodT,
     date: doc.date,
     cashRegisterName: getRelationName(doc.cashRegister),
+    targetRegisterName: getRelationName(doc.targetRegister),
     investmentName: getRelationName(doc.investment),
     workerName: getRelationName(doc.worker),
     otherCategoryName: getRelationName(doc.otherCategory),
@@ -200,6 +203,12 @@ const allColumns = [
     id: 'cashRegister',
     header: 'Kasa',
     meta: { label: 'Kasa' },
+    cell: (info) => info.getValue(),
+  }),
+  col.accessor('targetRegisterName', {
+    id: 'targetRegister',
+    header: 'Kasa docelowa',
+    meta: { label: 'Kasa docelowa' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('otherCategoryName', {

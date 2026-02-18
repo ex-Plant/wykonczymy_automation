@@ -31,33 +31,23 @@ import { zeroSaldoFormSchema, type ZeroSaldoFormT } from '@/lib/schemas/settleme
 type ZeroSaldoDialogPropsT = {
   saldo: number
   workerId: number
-  managerCashRegisterId?: number
   referenceData: {
     investments: { id: number; name: string }[]
-    cashRegisters: { id: number; name: string }[]
   }
 }
 
 type FormValuesT = {
   investment: string
-  cashRegister: string
   paymentMethod: string
 }
 
-export function ZeroSaldoDialog({
-  saldo,
-  workerId,
-  managerCashRegisterId,
-  referenceData,
-}: ZeroSaldoDialogPropsT) {
+export function ZeroSaldoDialog({ saldo, workerId, referenceData }: ZeroSaldoDialogPropsT) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
-  const isRegisterLocked = managerCashRegisterId !== undefined
 
   const form = useAppForm({
     defaultValues: {
       investment: '',
-      cashRegister: isRegisterLocked ? String(managerCashRegisterId) : '',
       paymentMethod: 'CASH',
     } as FormValuesT,
     validators: {
@@ -67,7 +57,6 @@ export function ZeroSaldoDialog({
       const data: ZeroSaldoFormT = {
         worker: workerId,
         investment: Number(value.investment),
-        cashRegister: Number(value.cashRegister),
         paymentMethod: value.paymentMethod as PaymentMethodT,
         amount: saldo,
       }
@@ -126,23 +115,6 @@ export function ZeroSaldoDialog({
                     {referenceData.investments.map((i) => (
                       <SelectItem key={i.id} value={String(i.id)}>
                         {i.name}
-                      </SelectItem>
-                    ))}
-                  </field.Select>
-                )}
-              </form.AppField>
-
-              <form.AppField name="cashRegister">
-                {(field) => (
-                  <field.Select
-                    label="Kasa"
-                    placeholder="Wybierz kasę"
-                    showError
-                    disabled={isRegisterLocked}
-                  >
-                    {referenceData.cashRegisters.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.name}
                       </SelectItem>
                     ))}
                   </field.Select>

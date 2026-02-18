@@ -19,7 +19,10 @@ export const getDb = async (payload: Payload, req?: PayloadRequest): Promise<any
 
 /**
  * SUM balance for a cash register using SQL aggregation.
- * DEPOSITs add to balance, everything else subtracts.
+ * Deposit types add, expense types subtract.
+ * EMPLOYEE_EXPENSE has cash_register_id = NULL so is automatically excluded.
+ * REGISTER_TRANSFER: subtracts from source (cash_register_id) via main query,
+ * adds to target (target_register_id) via subquery.
  */
 export const sumRegisterBalance = async (
   payload: Payload,
@@ -29,9 +32,20 @@ export const sumRegisterBalance = async (
   const db = await getDb(payload, req)
 
   const result = await db.execute(sql`
-    SELECT COALESCE(SUM(
-      CASE WHEN type = 'DEPOSIT' THEN amount ELSE -amount END
-    ), 0) AS balance
+    SELECT
+      COALESCE(SUM(
+        CASE
+          WHEN type IN ('INVESTOR_DEPOSIT', 'STAGE_SETTLEMENT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT')
+            THEN amount
+          ELSE -amount
+        END
+      ), 0)
+      + COALESCE((
+        SELECT SUM(amount) FROM transactions
+        WHERE target_register_id = ${registerId}
+          AND type = 'REGISTER_TRANSFER'
+      ), 0)
+      AS balance
     FROM transactions
     WHERE cash_register_id = ${registerId}
   `)
