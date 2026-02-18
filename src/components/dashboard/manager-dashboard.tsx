@@ -40,9 +40,14 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
   const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
 
-  const totalBalance = cashRegisters.reduce((sum, cr) => sum + cr.balance, 0)
   const user = await getCurrentUserJwt()
-  const isAdmin = user?.role === 'ADMIN'
+  const isAdminOrOwner = user?.role === 'ADMIN' || user?.role === 'OWNER'
+
+  const visibleRegisters = isAdminOrOwner
+    ? cashRegisters
+    : cashRegisters.filter((cr) => cr.type === 'AUXILIARY')
+
+  const totalBalance = visibleRegisters.reduce((sum, cr) => sum + cr.balance, 0)
 
   return (
     <PageWrapper title="Kokpit">
@@ -54,14 +59,18 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       </div>
 
       {/* Admin tools */}
-      {isAdmin && (
+      {isAdminOrOwner && (
         <div className="mt-4 flex justify-end">
           <SyncBalancesButton />
         </div>
       )}
 
       {/* Cash registers & Users */}
-      <DashboardTables cashRegisters={cashRegisters} investments={allInvestments} users={users} />
+      <DashboardTables
+        cashRegisters={visibleRegisters}
+        investments={allInvestments}
+        users={users}
+      />
 
       {/* Recent transactions */}
       <div className="mt-8">
@@ -74,7 +83,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
               limit={limit}
               baseUrl="/"
               filters={{
-                cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
+                cashRegisters: visibleRegisters.map((c) => ({ id: c.id, name: c.name })),
                 investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
               }}
             />
