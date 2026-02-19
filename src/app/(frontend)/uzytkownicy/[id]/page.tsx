@@ -17,7 +17,7 @@ import { TransferTableSkeleton } from '@/components/transfers/transfer-table-ske
 
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import { SectionHeader } from '@/components/ui/section-header'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { Button } from '@/components/ui/button'
 
 const EXCLUDE_COLUMNS = ['investment', 'worker', 'otherCategory', 'invoice']
@@ -113,21 +113,22 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
       </div>
 
       {/* Transactions table with filters */}
-      <SectionHeader className="mt-8">Transfery</SectionHeader>
-      <Suspense fallback={<TransferTableSkeleton />}>
-        <TransferTableServer
-          where={baseFilters}
-          page={page}
-          limit={limit}
-          excludeColumns={EXCLUDE_COLUMNS}
-          baseUrl={`/uzytkownicy/${id}`}
-          filters={{
-            cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
-            investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
-          }}
-          className="mt-4"
-        />
-      </Suspense>
+      <CollapsibleSection title="Transfery" className="mt-8">
+        <Suspense fallback={<TransferTableSkeleton />}>
+          <TransferTableServer
+            where={baseFilters}
+            page={page}
+            limit={limit}
+            excludeColumns={EXCLUDE_COLUMNS}
+            baseUrl={`/uzytkownicy/${id}`}
+            filters={{
+              cashRegisters: cashRegisters.map((c) => ({ id: c.id, name: c.name })),
+              investments: activeInvestments.map((i) => ({ id: i.id, name: i.name })),
+            }}
+            className="mt-4"
+          />
+        </Suspense>
+      </CollapsibleSection>
     </PageWrapper>
   )
 }

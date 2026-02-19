@@ -9,7 +9,7 @@ import { formatPLN } from '@/lib/format-currency'
 import { TransferTableServer } from '@/components/transfers/transfer-table-server'
 import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import { SectionHeader } from '@/components/ui/section-header'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { StatCard } from '@/components/ui/stat-card'
 
 type PagePropsT = {
@@ -49,19 +49,20 @@ export default async function CashRegisterDetailPage({ params, searchParams }: P
       <StatCard label="Saldo" value={formatPLN(register.balance ?? 0)} className="mt-6" />
 
       {/* Transactions table */}
-      <SectionHeader className="mt-8">Transfery</SectionHeader>
-      <div className="mt-4">
-        <Suspense fallback={<TransferTableSkeleton />}>
-          <TransferTableServer
-            where={transferWhere}
-            page={page}
-            limit={limit}
-            excludeColumns={['cashRegister']}
-            baseUrl={`/kasa/${id}`}
-            filters={{}}
-          />
-        </Suspense>
-      </div>
+      <CollapsibleSection title="Transfery" className="mt-8">
+        <div className="mt-4">
+          <Suspense fallback={<TransferTableSkeleton />}>
+            <TransferTableServer
+              where={transferWhere}
+              page={page}
+              limit={limit}
+              excludeColumns={['cashRegister']}
+              baseUrl={`/kasa/${id}`}
+              filters={{}}
+            />
+          </Suspense>
+        </div>
+      </CollapsibleSection>
     </PageWrapper>
   )
 }

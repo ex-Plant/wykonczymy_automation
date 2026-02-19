@@ -10,7 +10,7 @@ import { DashboardTables } from '@/components/dashboard/dashboard-tables'
 import { TransferTableServer } from '@/components/transfers/transfer-table-server'
 import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import { SectionHeader } from '@/components/ui/section-header'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { StatCard } from '@/components/ui/stat-card'
 import { SyncBalancesButton } from '@/components/dashboard/sync-balances-button'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
@@ -73,8 +73,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
       />
 
       {/* Recent transactions */}
-      <div className="mt-8">
-        <SectionHeader>Ostatnie transfery</SectionHeader>
+      <CollapsibleSection title="Ostatnie transfery" className="mt-8">
         <div className="mt-4">
           <Suspense fallback={<TransferTableSkeleton />}>
             <TransferTableServer
@@ -89,7 +88,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
             />
           </Suspense>
         </div>
-      </div>
+      </CollapsibleSection>
     </PageWrapper>
   )
 }

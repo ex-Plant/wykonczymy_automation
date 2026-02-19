@@ -66,6 +66,28 @@
   --color-sidebar-accent-foreground: oklch(0.205 0 0);
   --color-sidebar-border: oklch(0.922 0 0);
   --color-sidebar-ring: oklch(0.708 0 0);
+
+  /* Collapsible animations */
+  --animate-collapse-down: collapse-down 200ms ease-out;
+  --animate-collapse-up: collapse-up 200ms ease-out;
+}
+
+@keyframes collapse-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes collapse-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 @utility scrollbar-hidden {

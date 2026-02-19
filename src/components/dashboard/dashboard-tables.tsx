@@ -4,7 +4,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { cashRegisterColumns } from '@/lib/tables/cash-registers'
 import { investmentColumns } from '@/lib/tables/investments'
 import { userColumns } from '@/lib/tables/users'
-import { SectionHeader } from '@/components/ui/section-header'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import type { CashRegisterRowT } from '@/lib/tables/cash-registers'
 import type { InvestmentRowT } from '@/lib/tables/investments'
 import type { UserRowT } from '@/lib/tables/users'
@@ -19,8 +19,7 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
   return (
     <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
       <div className="space-y-8">
-        <div>
-          <SectionHeader>Kasy</SectionHeader>
+        <CollapsibleSection title="Kasy">
           <div className="mt-4">
             <DataTable
               data={cashRegisters}
@@ -29,9 +28,8 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
               getRowHref={(row) => `/kasa/${row.id}`}
             />
           </div>
-        </div>
-        <div>
-          <SectionHeader>Inwestycje</SectionHeader>
+        </CollapsibleSection>
+        <CollapsibleSection title="Inwestycje">
           <div className="mt-4">
             <DataTable
               data={investments}
@@ -40,10 +38,9 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
               getRowHref={(row) => `/inwestycje/${row.id}`}
             />
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
-      <div>
-        <SectionHeader>Użytkownicy</SectionHeader>
+      <CollapsibleSection title="Użytkownicy">
         <div className="mt-4">
           <DataTable
             data={users}
@@ -52,7 +49,7 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
             getRowHref={(row) => `/uzytkownicy/${row.id}`}
           />
         </div>
-      </div>
+      </CollapsibleSection>
     </div>
   )
 }
