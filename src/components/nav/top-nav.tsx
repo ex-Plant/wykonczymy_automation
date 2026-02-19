@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReferenceDataT } from '@/components/dialogs/add-transfer-dialog'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useTransition } from 'react'
 import { LogOut } from 'lucide-react'
@@ -33,7 +34,9 @@ export function TopNav({ referenceData, managerCashRegisterId }: TopNavPropsT) {
   return (
     <header className="border-border bg-background sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b px-3">
       {/* Left: app name */}
-      <span className="text-lg font-semibold">Wykonczymy</span>
+      <Link href="/" className="text-lg font-semibold">
+        Wykonczymy
+      </Link>
 
       {/* Right: action buttons + logout */}
       <div className="flex items-center gap-2">

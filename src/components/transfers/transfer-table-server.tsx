@@ -30,13 +30,16 @@ export async function TransferTableServer({
   filters,
   className,
 }: TransferTableServerPropsT) {
+  const needsMedia = !excludeColumns?.includes('invoice')
+
   const [rawTxResult, refData] = await Promise.all([
     findTransfersRaw({ where, page, limit }),
     fetchReferenceData(),
   ])
 
-  const invoiceIds = extractInvoiceIds(rawTxResult.docs)
-  const mediaMap = await fetchMediaByIds(invoiceIds)
+  const mediaMap = needsMedia
+    ? await fetchMediaByIds(extractInvoiceIds(rawTxResult.docs))
+    : new Map()
   const lookups = buildTransferLookups(refData, mediaMap)
   const rows = rawTxResult.docs.map((doc) => mapTransferRow(doc, lookups))
 

@@ -20,7 +20,14 @@ export async function findUsersWithSaldos({ page, limit }: PaginationParamsT) {
   const start = performance.now()
   const payload = await getPayload({ config })
   const [users, saldoRecord] = await Promise.all([
-    payload.find({ collection: 'users', sort: 'name', limit, page, overrideAccess: true }),
+    payload.find({
+      collection: 'users',
+      sort: 'name',
+      limit,
+      page,
+      overrideAccess: true,
+      where: { role: { not_in: ['ADMIN', 'OWNER', 'MANAGER'] } },
+    }),
     sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
   ])
   console.log(`[PERF] query.findUsersWithSaldos ${(performance.now() - start).toFixed(1)}ms`)
@@ -47,7 +54,13 @@ export async function findAllUsersWithSaldos() {
   const start = performance.now()
   const payload = await getPayload({ config })
   const [users, saldoRecord] = await Promise.all([
-    payload.find({ collection: 'users', sort: 'name', pagination: false, overrideAccess: true }),
+    payload.find({
+      collection: 'users',
+      sort: 'name',
+      pagination: false,
+      overrideAccess: true,
+      where: { role: { not_in: ['ADMIN', 'OWNER', 'MANAGER'] } },
+    }),
     sumAllWorkerSaldos(payload).then((map) => Object.fromEntries(map)),
   ])
   console.log(`[PERF] query.findAllUsersWithSaldos ${(performance.now() - start).toFixed(1)}ms`)

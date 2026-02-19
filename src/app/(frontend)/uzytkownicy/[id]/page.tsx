@@ -2,7 +2,6 @@ import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { isManagementRole } from '@/lib/auth/permissions'
-import { getUserCashRegisterIds } from '@/lib/auth/get-user-cash-registers'
 import { parsePagination } from '@/lib/pagination'
 import { getUser, getUserSaldo, getWorkerPeriodBreakdown } from '@/lib/queries/users'
 import { buildTransferFilters } from '@/lib/queries/transfers'
@@ -11,14 +10,12 @@ import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { formatPLN } from '@/lib/format-currency'
 import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
-import { getMonthDateRange } from '@/lib/helpers'
 import { TransferTableServer } from '@/components/transfers/transfer-table-server'
 import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
-import { Button } from '@/components/ui/button'
 
 const EXCLUDE_COLUMNS = ['investment', 'worker', 'otherCategory', 'invoice']
 
@@ -36,42 +33,25 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
   const sp = await searchParams
   const { page, limit } = parsePagination(sp)
 
-  const targetUser = await getUser(id)
-  if (!targetUser) notFound()
-
   const baseFilters = buildTransferFilters(sp, { id: Number(id), isManager: false })
   const fromParam = typeof sp.from === 'string' ? sp.from : undefined
   const toParam = typeof sp.to === 'string' ? sp.to : undefined
   const hasDateRange = fromParam && toParam
 
-  const [saldo, periodBreakdown, activeInvestments, rawCashRegisters, managerRegisterIds, refData] =
+  const [targetUser, saldo, periodBreakdown, activeInvestments, rawCashRegisters, refData] =
     await Promise.all([
+      getUser(id),
       getUserSaldo(id),
       hasDateRange ? getWorkerPeriodBreakdown(id, fromParam, toParam) : Promise.resolve(undefined),
       findActiveInvestments(),
       findAllCashRegistersRaw(),
-      getUserCashRegisterIds(user.id, user.role),
       fetchReferenceData(),
     ])
 
+  if (!targetUser) notFound()
+
   const workersMap = new Map(refData.workers.map((w) => [w.id, w.name]))
   const cashRegisters = mapCashRegisterRows(rawCashRegisters, workersMap)
-
-  // Build report URL — use current date range or default to current month
-  const reportDateRange = hasDateRange
-    ? { from: fromParam, to: toParam }
-    : getMonthDateRange(new Date().getMonth() + 1, new Date().getFullYear())
-
-  const reportParams = new URLSearchParams(
-    Object.entries({
-      from: reportDateRange.from,
-      to: reportDateRange.to,
-      type: sp.type,
-      cashRegister: sp.cashRegister,
-    })
-      .filter(([, v]) => typeof v === 'string' && v !== '')
-      .map(([k, v]) => [k, String(v)]),
-  )
 
   return (
     <PageWrapper title={targetUser.name} backHref="/" backLabel="Kokpit">
@@ -98,19 +78,6 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
           <StatCard label="Saldo okresu" value={formatPLN(periodBreakdown.periodSaldo)} />
         </div>
       )}
-
-      {/* Report link — always visible */}
-      <div className="mt-4 flex justify-end">
-        <Button variant="outline" size="sm" asChild>
-          <a
-            href={`/uzytkownicy/${id}/raport?${reportParams.toString()}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Generuj raport
-          </a>
-        </Button>
-      </div>
 
       {/* Transactions table with filters */}
       <CollapsibleSection title="Transfery" className="mt-8">

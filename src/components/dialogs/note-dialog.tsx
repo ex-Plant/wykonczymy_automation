@@ -22,20 +22,23 @@ type NoteCellPropsT = {
 
 export function NoteCell({ transactionId, note }: NoteCellPropsT) {
   const [open, setOpen] = useState(false)
+  const [savedNote, setSavedNote] = useState(note)
   const [value, setValue] = useState(note ?? '')
   const [isPending, startTransition] = useTransition()
 
-  const hasNote = !!note
+  const hasNote = !!savedNote
 
   function handleOpen() {
-    setValue(note ?? '')
+    setValue(savedNote ?? '')
     setOpen(true)
   }
 
   function handleSave() {
     startTransition(async () => {
-      const result = await updateTransferNoteAction(transactionId, value.trim())
+      const trimmed = value.trim()
+      const result = await updateTransferNoteAction(transactionId, trimmed)
       if (result.success) {
+        setSavedNote(trimmed || null)
         toastMessage('Notatka zapisana', 'success')
         setOpen(false)
       } else {

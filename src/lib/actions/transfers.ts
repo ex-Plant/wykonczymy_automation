@@ -170,8 +170,6 @@ export async function updateTransferNoteAction(
       data: { invoiceNote: note },
     })
 
-    revalidateCollections(['transfers'])
-
     return { success: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Wystąpił błąd'

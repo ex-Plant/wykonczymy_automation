@@ -40,12 +40,12 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
           </div>
         </CollapsibleSection>
       </div>
-      <CollapsibleSection title="Użytkownicy">
+      <CollapsibleSection title="Współpracownicy">
         <div className="mt-4">
           <DataTable
             data={users}
             columns={userColumns}
-            emptyMessage="Brak użytkowników"
+            emptyMessage="Brak współpracowników"
             getRowHref={(row) => `/uzytkownicy/${row.id}`}
           />
         </div>
