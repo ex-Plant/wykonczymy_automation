@@ -8,6 +8,9 @@ export type InvestmentRowT = {
   readonly name: string
   readonly status: 'active' | 'completed'
   readonly totalCosts: number
+  readonly totalIncome: number
+  readonly laborCosts: number
+  readonly balance: number
   readonly address: string
   readonly phone: string
   readonly email: string
@@ -27,6 +30,14 @@ export const investmentColumns = [
     id: 'totalCosts',
     header: () => <span className="block text-right">Koszty</span>,
     meta: { label: 'Koszty' },
+    cell: (info) => (
+      <span className="block text-right font-medium">{formatPLN(info.getValue())}</span>
+    ),
+  }),
+  col.accessor('balance', {
+    id: 'balance',
+    header: () => <span className="block text-right">Bilans</span>,
+    meta: { label: 'Bilans' },
     cell: (info) => (
       <span className="block text-right font-medium">{formatPLN(info.getValue())}</span>
     ),

@@ -96,7 +96,7 @@ export function SettlementForm({ referenceData, className, onSuccess }: Settleme
       const result = await createSettlementAction(data, invoiceFormData)
 
       if (result.success) {
-        toastMessage(`Utworzono ${result.count} transferów`, 'success')
+        toastMessage(`Utworzono ${result.count} transakcji`, 'success')
         if (onSuccess) onSuccess()
         else router.push('/')
       } else {

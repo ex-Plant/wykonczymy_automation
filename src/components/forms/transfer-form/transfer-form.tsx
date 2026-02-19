@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { SelectItem } from '@/components/ui/select'
 import { FileInput } from '@/components/ui/file-input'
 import { FieldGroup } from '@/components/ui/field'
@@ -61,6 +61,7 @@ export function TransferForm({
 }: TransferFormPropsT) {
   const invoiceRef = useRef<HTMLInputElement>(null)
   const isRegisterLocked = managerCashRegisterId !== undefined
+  const [expenseTarget, setExpenseTarget] = useState<'investment' | 'other'>('investment')
 
   const form = useAppForm({
     defaultValues: {
@@ -135,6 +136,7 @@ export function TransferForm({
   function resetConditionalFields() {
     conditionalFields.forEach((field) => form.resetField(field))
     if (!isRegisterLocked) form.resetField('cashRegister')
+    setExpenseTarget('investment')
   }
 
   return (
@@ -159,28 +161,67 @@ export function TransferForm({
             )}
           </form.AppField>
 
-          {/* Conditional: Other category — shown right after type for OTHER / EMPLOYEE_EXPENSE */}
-          {needsOtherCategory(currentType) && (
-            <>
-              <form.AppField name="otherCategory">
-                {(field) => (
-                  <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
-                    {referenceData.otherCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={String(cat.id)}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </field.Select>
-                )}
-              </form.AppField>
-
-              <form.AppField name="otherDescription">
-                {(field) => (
-                  <field.Textarea label="Opis kategorii" placeholder="Dodatkowy opis" showError />
-                )}
-              </form.AppField>
-            </>
+          {/* Radio toggle for EMPLOYEE_EXPENSE: investment vs other category */}
+          {currentType === 'EMPLOYEE_EXPENSE' && (
+            <fieldset className="space-y-2">
+              <legend className="text-foreground text-sm font-medium">Cel wydatku</legend>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="expenseTarget"
+                    value="investment"
+                    checked={expenseTarget === 'investment'}
+                    onChange={() => {
+                      setExpenseTarget('investment')
+                      form.resetField('otherCategory')
+                      form.resetField('otherDescription')
+                    }}
+                    className="accent-primary size-4"
+                  />
+                  Inwestycja
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="expenseTarget"
+                    value="other"
+                    checked={expenseTarget === 'other'}
+                    onChange={() => {
+                      setExpenseTarget('other')
+                      form.resetField('investment')
+                    }}
+                    className="accent-primary size-4"
+                  />
+                  Inna kategoria
+                </label>
+              </div>
+            </fieldset>
           )}
+
+          {/* Conditional: Other category — always for OTHER, radio-gated for EMPLOYEE_EXPENSE */}
+          {needsOtherCategory(currentType) &&
+            (currentType === 'OTHER' || expenseTarget === 'other') && (
+              <>
+                <form.AppField name="otherCategory">
+                  {(field) => (
+                    <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
+                      {referenceData.otherCategories.map((cat) => (
+                        <SelectItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </field.Select>
+                  )}
+                </form.AppField>
+
+                <form.AppField name="otherDescription">
+                  {(field) => (
+                    <field.Textarea label="Opis kategorii" placeholder="Dodatkowy opis" showError />
+                  )}
+                </form.AppField>
+              </>
+            )}
 
           {/* Description — optional for all types */}
           <form.AppField name="description">
@@ -249,20 +290,21 @@ export function TransferForm({
             </form.AppField>
           )}
 
-          {/* Conditional: Investment */}
-          {showsInvestment(currentType) && (
-            <form.AppField name="investment">
-              {(field) => (
-                <field.Select label="Inwestycja" placeholder="Wybierz inwestycję" showError>
-                  {referenceData.investments.map((inv) => (
-                    <SelectItem key={inv.id} value={String(inv.id)}>
-                      {inv.name}
-                    </SelectItem>
-                  ))}
-                </field.Select>
-              )}
-            </form.AppField>
-          )}
+          {/* Conditional: Investment — radio-gated for EMPLOYEE_EXPENSE */}
+          {showsInvestment(currentType) &&
+            (currentType !== 'EMPLOYEE_EXPENSE' || expenseTarget === 'investment') && (
+              <form.AppField name="investment">
+                {(field) => (
+                  <field.Select label="Inwestycja" placeholder="Wybierz inwestycję" showError>
+                    {referenceData.investments.map((inv) => (
+                      <SelectItem key={inv.id} value={String(inv.id)}>
+                        {inv.name}
+                      </SelectItem>
+                    ))}
+                  </field.Select>
+                )}
+              </form.AppField>
+            )}
 
           {/* Conditional: Worker */}
           {needsWorker(currentType) && (

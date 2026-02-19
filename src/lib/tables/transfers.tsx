@@ -1,6 +1,7 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/format-currency'
 import { InvoiceCell } from '@/components/transfers/invoice-cell'
+import { NoteCell } from '@/components/dialogs/note-dialog'
 import {
   TRANSFER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
@@ -25,6 +26,7 @@ export type TransferRowT = {
   readonly invoiceUrl: string | null
   readonly invoiceFilename: string | null
   readonly invoiceMimeType: string | null
+  readonly invoiceNote: string | null
 }
 
 type NameMapT = Map<number, string>
@@ -82,6 +84,7 @@ export function mapTransferRow(doc: any, lookups?: TransferLookupsT): TransferRo
       invoiceUrl: media?.url ?? null,
       invoiceFilename: media?.filename ?? null,
       invoiceMimeType: media?.mimeType ?? null,
+      invoiceNote: doc.invoiceNote ?? null,
     }
   }
 
@@ -100,6 +103,7 @@ export function mapTransferRow(doc: any, lookups?: TransferLookupsT): TransferRo
     invoiceUrl: getMediaField(doc.invoice, 'url'),
     invoiceFilename: getMediaField(doc.invoice, 'filename'),
     invoiceMimeType: getMediaField(doc.invoice, 'mimeType'),
+    invoiceNote: doc.invoiceNote ?? null,
   }
 }
 
@@ -191,6 +195,16 @@ const allColumns = [
           mimeType={row.invoiceMimeType}
         />
       )
+    },
+  }),
+  col.accessor('invoiceNote', {
+    id: 'invoiceNote',
+    header: 'Notatka',
+    meta: { label: 'Notatka' },
+    enableSorting: false,
+    cell: (info) => {
+      const row = info.row.original
+      return <NoteCell transactionId={row.id} note={row.invoiceNote} />
     },
   }),
   col.accessor('investmentName', {

@@ -152,6 +152,33 @@ export async function recalculateBalancesAction(): Promise<RecalculateResultT> {
   }
 }
 
+export async function updateTransferNoteAction(
+  transferId: number,
+  note: string,
+): Promise<ActionResultT> {
+  const user = await getCurrentUserJwt()
+  if (!user || !isManagementRole(user.role)) {
+    return { success: false, error: 'Brak uprawnień' }
+  }
+
+  try {
+    const payload = await getPayload({ config })
+
+    await payload.update({
+      collection: 'transactions',
+      id: transferId,
+      data: { invoiceNote: note },
+    })
+
+    revalidateCollections(['transfers'])
+
+    return { success: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Wystąpił błąd'
+    return { success: false, error: message }
+  }
+}
+
 export async function updateTransferInvoiceAction(
   transferId: number,
   invoiceFormData: FormData,

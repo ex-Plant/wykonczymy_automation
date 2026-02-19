@@ -44,14 +44,4 @@ Transakcja na poczet wynagrodzenia
 
 Investment view
 
-Something to consider for later - adding two more stats with koszty robocizny to caclulate whole investment
 Also select with typ of transaction
-
-WPŁATA DO KASY MOŻE BYĆ
-
-- OD INWESTORA (POŁĄCZONE Z INWESTYCJĄ) / typ zaliczka na inwestycje
-- on inwestora (połączone z inwstycją) TYP TRANSAKCJI ROZLICZENIE ETAPU
-- zasilenie z konta firmowego
-- inne
-
-bilans do inwestycji +
