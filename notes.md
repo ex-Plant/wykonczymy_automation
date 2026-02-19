@@ -53,3 +53,5 @@ WPŁATA DO KASY MOŻE BYĆ
 - on inwestora (połączone z inwstycją) TYP TRANSAKCJI ROZLICZENIE ETAPU
 - zasilenie z konta firmowego
 - inne
+
+bilans do inwestycji +
