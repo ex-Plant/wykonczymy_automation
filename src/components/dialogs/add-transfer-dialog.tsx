@@ -61,12 +61,12 @@ export function AddTransferDialog({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="h-auto overflow-y-auto sm:max-w-2xl">
           <DialogHeader className={`p-4`}>
             <DialogTitle>Nowy transfer</DialogTitle>
             <DialogDescription>Wypełnij formularz, aby dodać nowy transfer.</DialogDescription>
           </DialogHeader>
-          <div className="overflow-y-auto pr-1">
+          <div className="pr-1">
             <TransferForm
               referenceData={referenceData}
               managerCashRegisterId={managerCashRegisterId}

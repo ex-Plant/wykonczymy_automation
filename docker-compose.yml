@@ -1,13 +1,13 @@
 services:
   db:
     image: postgres:17-alpine
-    container_name: wykonczymy-db
+    container_name: wykonczymy
     ports:
       - '5433:5432'
     environment:
-      POSTGRES_DB: wykonczymy
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
 

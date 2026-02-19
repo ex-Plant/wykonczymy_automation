@@ -816,9 +816,9 @@ M21 (Perf) ─── Phase 0-3 ✅, Phase 4-5 open
   │           │
   │           ├── M27 (Settlement) ─── UNBLOCKED, ready to start
   │           │
-  │           └── M28 (Investment View) ─── ✅ DONE
+  │           └── M28 (Investment View) ─── blocked by M25
   │
-  └── M26 (Register Permissions) ─── ✅ DONE
+  └── M26 (Register Permissions) ─── independent, ready to start
 ```
 
 ---
@@ -865,10 +865,150 @@ pnpm generate:importmap       # regenerate admin importMap.js
 | **Data Integrity** | Bulk delete investigation               | Does Payload admin bulk delete fire `afterDelete` per doc?                                            |
 | **Data Integrity** | ~~Periodic balance verification~~       | ✅ Done — `SyncBalancesButton` on manager dashboard (ADMIN only), calls `recalculateBalancesAction()` |
 
+### M29: Test Coverage — Form Validation & Business Logic
+
+> **Motivation**: Validation mismatches between client schema, server schema, and Payload hooks have caused silent failures. Examples:
+>
+> - EMPLOYEE_EXPENSE without investment passes client validation but server hook rejects it
+> - Settlement server schema (`createSettlementSchema`) is a flat `z.object` with no `superRefine` — doesn't enforce `investment` when mode=investment or `category`/`note` per line item when mode=category (only client schema does)
+> - Stale form values persist when switching transfer type (hidden fields keep old values)
+>
+> Tests are needed to catch these gaps, verify client/server parity, and prevent regressions.
+
+#### Phase 1: Test Framework Setup
+
+- [ ] **Install Vitest** — `pnpm add -D vitest` + `vitest.config.ts` with path aliases matching `tsconfig.json`
+- [ ] **Test scripts** — Add `"test"`, `"test:watch"`, `"test:coverage"` to `package.json`
+- [ ] **Test directory structure** — `src/__tests__/` with files mirroring source tree
+
+#### Phase 2: Transfer Form — Schemas & Helpers
+
+##### 2a: Transfer Constants (`src/lib/constants/transfers.ts`)
+
+- [ ] **Helper truth table** — For each of the 9 transfer types, assert expected return value of every helper:
+  - `isDepositType` — true for 4 deposit types, false for 5 others
+  - `needsCashRegister` — false only for EMPLOYEE_EXPENSE
+  - `showsInvestment` — true for INVESTOR_DEPOSIT, STAGE_SETTLEMENT, INVESTMENT_EXPENSE, EMPLOYEE_EXPENSE
+  - `requiresInvestment` — true for INVESTOR_DEPOSIT, STAGE_SETTLEMENT, INVESTMENT_EXPENSE only
+  - `needsWorker` — true for ACCOUNT_FUNDING, EMPLOYEE_EXPENSE only
+  - `needsTargetRegister` — true for REGISTER_TRANSFER only
+  - `needsOtherCategory` — true for OTHER only
+- [ ] **Edge cases** — empty string, unknown type string → verify all helpers return false
+
+##### 2b: Server Schema (`createTransferSchema`)
+
+- [ ] **Valid payloads** — One valid payload per transfer type, each `.safeParse()` should succeed:
+  - INVESTOR_DEPOSIT: amount, date, type, paymentMethod, cashRegister, investment
+  - STAGE_SETTLEMENT: same as above
+  - COMPANY_FUNDING: amount, date, type, paymentMethod, cashRegister
+  - OTHER_DEPOSIT: same as COMPANY_FUNDING
+  - INVESTMENT_EXPENSE: cashRegister + investment
+  - ACCOUNT_FUNDING: cashRegister + worker
+  - EMPLOYEE_EXPENSE: worker + investment (no cashRegister)
+  - REGISTER_TRANSFER: cashRegister + targetRegister (different IDs)
+  - OTHER: cashRegister + otherCategory
+- [ ] **Missing required fields** — For each type, omit each conditionally required field and verify `.safeParse()` fails with the correct error path:
+  - INVESTOR_DEPOSIT without cashRegister → error on `cashRegister`
+  - INVESTOR_DEPOSIT without investment → error on `investment`
+  - ACCOUNT_FUNDING without worker → error on `worker`
+  - REGISTER_TRANSFER without targetRegister → error on `targetRegister`
+  - REGISTER_TRANSFER with targetRegister === cashRegister → error on `targetRegister`
+  - OTHER without otherCategory → error on `otherCategory`
+  - EMPLOYEE_EXPENSE without worker → error on `worker`
+- [ ] **Amount edge cases** — 0, negative, NaN → all should fail
+- [ ] **EMPLOYEE_EXPENSE special cases** (validated by hook, NOT by schema — document this):
+  - investment only → passes schema (hook will also pass)
+  - otherCategory only → passes schema (hook will also pass)
+  - neither investment nor otherCategory → passes schema (but hook rejects — this is the gap)
+
+##### 2c: Client Schema (`transferFormSchema`)
+
+- [ ] **Mirror of 2b but with string values** — same test matrix, values as strings (`"100"` not `100`)
+- [ ] **Empty string vs missing** — verify `""` for optional fields is handled correctly
+
+##### 2d: Schema Parity Tests
+
+- [ ] **For each of the 9 types**: generate a valid server payload + equivalent string-based client payload. Verify both schemas agree (both pass or both fail).
+- [ ] **Known mismatch (EMPLOYEE_EXPENSE)**: document that client passes without investment while server schema also passes, but Payload hook rejects. This test should FAIL until Phase 5 fix is applied — use `test.fails()` or `TODO` marker.
+
+#### Phase 3: Settlement Form — Schemas
+
+##### 3a: Client Schema (`settlementFormSchema`)
+
+- [ ] **Investment mode — valid** — worker + investment + date + paymentMethod + 1 line item (description + amount > 0) → passes
+- [ ] **Investment mode — missing investment** → error on `investment`
+- [ ] **Investment mode — missing worker** → error on `worker`
+- [ ] **Investment mode — empty line items** → error on `lineItems`
+- [ ] **Investment mode — line item without description** → error on `lineItems[0].description`
+- [ ] **Investment mode — line item with amount=0** → error on `lineItems[0].amount`
+- [ ] **Investment mode — line item with negative amount** → error on `lineItems[0].amount`
+- [ ] **Category mode — valid** — worker + date + paymentMethod + 1 line item (description + amount + category + note) → passes
+- [ ] **Category mode — missing category per line item** → error on `lineItems[0].category`
+- [ ] **Category mode — missing note per line item** → error on `lineItems[0].note`
+- [ ] **Category mode — investment NOT required** (it's hidden in UI)
+- [ ] **Multiple line items** — 3 items, one invalid → only the invalid one gets errors
+- [ ] **Date missing** → error on `date`
+
+##### 3b: Server Schema (`createSettlementSchema`)
+
+- [ ] **Valid payloads** — same as 3a but with typed values (numbers for IDs/amounts)
+- [ ] **Known gaps** (should FAIL until fix is applied):
+  - mode=investment without investment → passes server schema (no `superRefine`) but should fail
+  - mode=category without category per line item → passes server schema but should fail
+  - mode=category without note per line item → passes server schema but should fail
+- [ ] **Basic validation** — worker not positive, empty date, empty lineItems array → should fail
+
+##### 3c: Schema Parity (Settlement)
+
+- [ ] **Investment mode**: valid client payload + equivalent server payload → both pass
+- [ ] **Category mode**: valid client payload + equivalent server payload → both pass
+- [ ] **Known mismatches**: mode=investment without investment passes server but fails client. Document with `test.fails()`.
+
+##### 3d: Zero-Saldo Schemas
+
+- [ ] **Client (`zeroSaldoFormSchema`)** — investment required (string), missing investment → error
+- [ ] **Server (`zeroSaldoSchema`)** — worker + investment + paymentMethod + amount all required and positive
+- [ ] **Parity** — valid payloads agree, missing fields agree
+
+#### Phase 4: Validate Hook (`validateTransfer`)
+
+- [ ] **All 9 types with valid data** — returns data without throwing
+- [ ] **Missing required fields per type** — throws Error with correct message
+- [ ] **Auto-clear behavior**:
+  - EMPLOYEE_EXPENSE → `cashRegister` set to `null`
+  - EMPLOYEE_EXPENSE with both investment + otherCategory → otherCategory + otherDescription set to `null`
+- [ ] **EMPLOYEE_EXPENSE special**:
+  - investment only → passes
+  - otherCategory only → passes
+  - neither → throws "requires either an investment or a category"
+  - both → passes, otherCategory auto-cleared
+- [ ] **REGISTER_TRANSFER** — targetRegister === cashRegister → throws
+- [ ] **`createdBy` auto-set** — on operation=create with req.user, data.createdBy is set
+
+#### Phase 5: Fix Known Validation Gaps
+
+- [ ] **Transfer form — EMPLOYEE_EXPENSE client validation**:
+  - Add "investment OR otherCategory required" to `transferFormSchema` superRefine
+  - Decide: show `otherCategory` in form for EMPLOYEE_EXPENSE (match server flexibility) OR require investment client-side
+- [ ] **Settlement server schema — add `superRefine`** to `createSettlementSchema`:
+  - mode=investment → investment required
+  - mode=category → each line item needs category (and optionally note)
+- [ ] **Transfer form — reset conditional fields on type change**:
+  - When type changes, clear fields that become hidden (cashRegister, targetRegister, investment, worker, otherCategory, otherDescription)
+  - Use TanStack Form's `listeners.onChange` on the `type` field to reset dependent values
+- [ ] **Re-run all parity tests** — previously failing tests should now pass
+
+- **New deps**: `vitest` (dev)
+- **New files**: `vitest.config.ts`, `src/__tests__/transfer-constants.test.ts`, `src/__tests__/transfer-schema.test.ts`, `src/__tests__/settlement-schema.test.ts`, `src/__tests__/validate-hook.test.ts`
+- **Key files under test**: `src/lib/constants/transfers.ts`, `src/components/forms/transfer-form/transfer-schema.ts`, `src/components/forms/settlement-form/settlement-schema.ts`, `src/hooks/transfers/validate.ts`
+- **Success**: All validation schemas tested with full type/mode matrix, client/server parity verified for both forms, known validation gaps fixed, zero-saldo schemas covered
+
+---
+
 ### End-of-project
 
-| Item                          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Migrate reads to raw SQL**  | 15 query functions still use Payload ORM (`payload.find`/`findByID`). Already bypassed on hot paths (`fetchReferenceData`, `countRecentTransfers`, all `sum*()`, balance UPDATEs). Remaining: 3 findByID, 6 simple lists, 3 paginated lists, 3 transfer queries with dynamic WHERE. Would eliminate ~200-400ms ORM overhead per query. Needs shared `buildSqlWhere()` + `paginatedQuery()` utilities. Keep Payload for admin panel, auth, writes only. |
-| **Optimistic updates**        | Instant UI feedback on mutations, background revalidation                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Mutation failure strategy** | Revert optimistic state, toast error, retry pattern                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Item                          | Notes                                                     |
+| ----------------------------- | --------------------------------------------------------- |
+| **Payload vs Drizzle eval**   | Measure ORM overhead, decide on migration (M21 Phase 5)   |
+| **Optimistic updates**        | Instant UI feedback on mutations, background revalidation |
+| **Mutation failure strategy** | Revert optimistic state, toast error, retry pattern       |
