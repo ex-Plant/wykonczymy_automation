@@ -179,3 +179,84 @@ postgresql://postgres:postgres@db:5432/wykonczymy
 | Service name   | `services: db:` in YAML   | Internal Docker networking between services | `db:5432`       |
 | Container name | `container_name:` in YAML | `docker exec`, `docker ps`                  | `wykonczymy-db` |
 | Database name  | `POSTGRES_DB` in .env     | `psql -d`, connection strings               | `wykonczymy`    |
+
+---
+
+## Next.js Dynamic Imports (`next/dynamic`)
+
+### What `dynamic()` actually does
+
+`dynamic()` creates a **chunk split at the import boundary**. The dynamically imported module and all of its **static** dependencies are bundled into a separate chunk. That chunk loads when the dynamic component first renders — not when its children become visible.
+
+### The misconception
+
+> "Wrapping the outer shell with `dynamic()` makes everything inside lazily loaded."
+
+**Wrong.** `dynamic()` controls when the **module file** loads, not when individual JSX subtrees render. The bundler resolves the full static import tree at build time.
+
+### How chunks are created
+
+```
+// dialog.tsx
+import { HeavyForm } from './heavy-form'  // ← STATIC import
+
+// top-nav.tsx
+const Dialog = dynamic(() => import('./dialog'))
+```
+
+Result:
+
+```
+Chunk A (main bundle)  →  loads on page load
+Chunk B (dialog.tsx + heavy-form.tsx + all their static deps)  →  loads when Dialog renders
+```
+
+If `Dialog` always renders (e.g., it's a button that's always visible), Chunk B loads on page load too. The form code loads **even though the dialog is closed**. You just moved it to a different file — no real deferral.
+
+### The correct approach
+
+Put `dynamic()` on the component you want to defer until interaction:
+
+```tsx
+// dialog.tsx
+const HeavyForm = dynamic(() => import('./heavy-form')) // ← DYNAMIC import
+
+export function MyDialog() {
+  const [isOpen, setIsOpen] = useState(false)
+  return (
+    <Dialog open={isOpen}>
+      <DialogContent>
+        <HeavyForm /> {/* chunk loads only when dialog opens */}
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+Result:
+
+```
+Chunk A (main bundle)  →  loads on page load
+Chunk B (dialog shell) →  loads on page load (button is always visible)
+Chunk C (heavy form)   →  loads when dialog OPENS (Radix mounts DialogContent)
+```
+
+### Why this works with Radix Dialog
+
+Radix `DialogContent` **unmounts its children** when `open={false}`. So `<HeavyForm />` is not in the React tree until the dialog opens → the dynamic import triggers only on open.
+
+If you used a dialog that keeps children mounted but hidden with CSS (`display: none`), the dynamic import would fire immediately because React still renders the component.
+
+### Rule of thumb
+
+| Scenario                                                         | Where to put `dynamic()`                   |
+| ---------------------------------------------------------------- | ------------------------------------------ |
+| Heavy component behind user interaction (dialog, tab, accordion) | On the heavy component itself              |
+| Outer shell is lightweight, always visible                       | Don't bother with `dynamic()` on the shell |
+| Outer shell is also heavy AND not always rendered                | Both can be dynamic (rare case)            |
+
+### Checklist for auditing existing `dynamic()` usage
+
+1. Does the dynamic component **always render** on page load? → The split saves nothing meaningful
+2. Is the heavy part a **static import inside** the dynamic component? → It loads with the shell, not deferred
+3. Is there a user interaction gate (dialog open, tab click, route change)? → Put `dynamic()` on the component behind that gate

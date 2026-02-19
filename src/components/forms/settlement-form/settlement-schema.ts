@@ -91,24 +91,46 @@ export const settlementFormSchema = z
   })
 
 /** Server-side schema — typed values after conversion. */
-export const createSettlementSchema = z.object({
-  worker: z.number({ error: 'Pracownik jest wymagany' }).positive('Pracownik jest wymagany'),
-  mode: z.enum(['investment', 'category']),
-  investment: z.number().positive().optional(),
-  date: z.string().min(1, 'Data jest wymagana'),
-  paymentMethod: z.enum(PAYMENT_METHODS),
-  invoiceNote: z.string().optional(),
-  lineItems: z
-    .array(
-      z.object({
-        description: z.string().min(1, 'Opis jest wymagany'),
-        amount: z.number().positive('Kwota musi być większa niż 0'),
-        category: z.number().positive().optional(),
-        note: z.string().optional(),
-      }),
-    )
-    .min(1, 'Dodaj co najmniej jedną pozycję'),
-})
+export const createSettlementSchema = z
+  .object({
+    worker: z.number({ error: 'Pracownik jest wymagany' }).positive('Pracownik jest wymagany'),
+    mode: z.enum(['investment', 'category']),
+    investment: z.number().positive().optional(),
+    date: z.string().min(1, 'Data jest wymagana'),
+    paymentMethod: z.enum(PAYMENT_METHODS),
+    invoiceNote: z.string().optional(),
+    lineItems: z
+      .array(
+        z.object({
+          description: z.string().min(1, 'Opis jest wymagany'),
+          amount: z.number().positive('Kwota musi być większa niż 0'),
+          category: z.number().positive().optional(),
+          note: z.string().optional(),
+        }),
+      )
+      .min(1, 'Dodaj co najmniej jedną pozycję'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === 'investment' && !data.investment) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Inwestycja jest wymagana',
+        path: ['investment'],
+      })
+    }
+
+    if (data.mode === 'category') {
+      data.lineItems.forEach((item, index) => {
+        if (!item.category) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Kategoria jest wymagana',
+            path: ['lineItems', index, 'category'],
+          })
+        }
+      })
+    }
+  })
 
 export type CreateSettlementFormT = z.infer<typeof createSettlementSchema>
 

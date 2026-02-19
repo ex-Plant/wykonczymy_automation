@@ -34,9 +34,9 @@ export function AddSettlementDialog({ referenceData }: AddSettlementDialogPropsT
 
   if (!referenceData) return <></>
 
-  // Settlement form expects `users`, reference data has `workers` — same data
+  // Settlement form expects `users` — filter out admins/owners from worker dropdown
   const settlementReferenceData = {
-    users: referenceData.workers,
+    users: referenceData.workers.filter((w) => w.type !== 'ADMIN' && w.type !== 'OWNER'),
     investments: referenceData.investments,
     otherCategories: referenceData.otherCategories,
   }

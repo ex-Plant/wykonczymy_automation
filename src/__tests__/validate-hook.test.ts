@@ -1,0 +1,237 @@
+import { describe, it, expect } from 'vitest'
+import { validateTransfer } from '@/hooks/transfers/validate'
+
+// ── Mock factory ────────────────────────────────────────────────────────
+
+/** Build a minimal Payload hook args object for validateTransfer. */
+function hookArgs(
+  data: Record<string, unknown>,
+  opts: { operation?: 'create' | 'update'; userId?: number } = {},
+) {
+  const { operation = 'create', userId } = opts
+  return {
+    data,
+    operation,
+    req: userId ? { user: { id: userId } } : { user: null },
+    // validateTransfer only uses data, operation, req — other args unused
+    originalDoc: undefined,
+    collection: undefined,
+    context: {},
+  } as unknown as Parameters<typeof validateTransfer>[0]
+}
+
+/** Base valid transfer data — override per type. */
+const base = {
+  amount: 100,
+  date: '2026-02-19',
+  paymentMethod: 'CASH',
+}
+
+const VALID_DATA: Record<string, Record<string, unknown>> = {
+  INVESTOR_DEPOSIT: { ...base, type: 'INVESTOR_DEPOSIT', cashRegister: 1, investment: 1 },
+  STAGE_SETTLEMENT: { ...base, type: 'STAGE_SETTLEMENT', cashRegister: 1, investment: 1 },
+  COMPANY_FUNDING: { ...base, type: 'COMPANY_FUNDING', cashRegister: 1 },
+  OTHER_DEPOSIT: { ...base, type: 'OTHER_DEPOSIT', cashRegister: 1 },
+  INVESTMENT_EXPENSE: { ...base, type: 'INVESTMENT_EXPENSE', cashRegister: 1, investment: 1 },
+  ACCOUNT_FUNDING: { ...base, type: 'ACCOUNT_FUNDING', cashRegister: 1, worker: 1 },
+  EMPLOYEE_EXPENSE: { ...base, type: 'EMPLOYEE_EXPENSE', worker: 1, investment: 1 },
+  REGISTER_TRANSFER: { ...base, type: 'REGISTER_TRANSFER', cashRegister: 1, targetRegister: 2 },
+  OTHER: { ...base, type: 'OTHER', cashRegister: 1, otherCategory: 1 },
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// All 9 types with valid data → passes
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('validateTransfer — all types valid', () => {
+  for (const [type, data] of Object.entries(VALID_DATA)) {
+    it(`${type} — does not throw`, () => {
+      expect(() => validateTransfer(hookArgs({ ...data }))).not.toThrow()
+    })
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// Missing required fields per type → throws
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('validateTransfer — missing required fields', () => {
+  it('INVESTOR_DEPOSIT without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.INVESTOR_DEPOSIT
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('INVESTOR_DEPOSIT without investment → throws', () => {
+    const { investment, ...data } = VALID_DATA.INVESTOR_DEPOSIT
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
+  })
+
+  it('STAGE_SETTLEMENT without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.STAGE_SETTLEMENT
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('STAGE_SETTLEMENT without investment → throws', () => {
+    const { investment, ...data } = VALID_DATA.STAGE_SETTLEMENT
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
+  })
+
+  it('COMPANY_FUNDING without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.COMPANY_FUNDING
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('OTHER_DEPOSIT without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.OTHER_DEPOSIT
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('INVESTMENT_EXPENSE without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.INVESTMENT_EXPENSE
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('INVESTMENT_EXPENSE without investment → throws', () => {
+    const { investment, ...data } = VALID_DATA.INVESTMENT_EXPENSE
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
+  })
+
+  it('ACCOUNT_FUNDING without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.ACCOUNT_FUNDING
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('ACCOUNT_FUNDING without worker → throws', () => {
+    const { worker, ...data } = VALID_DATA.ACCOUNT_FUNDING
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ww]orker/)
+  })
+
+  it('EMPLOYEE_EXPENSE without worker → throws', () => {
+    const { worker, ...data } = VALID_DATA.EMPLOYEE_EXPENSE
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ww]orker/)
+  })
+
+  it('REGISTER_TRANSFER without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.REGISTER_TRANSFER
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('REGISTER_TRANSFER without targetRegister → throws', () => {
+    const { targetRegister, ...data } = VALID_DATA.REGISTER_TRANSFER
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Tt]arget register/)
+  })
+
+  it('OTHER without cashRegister → throws', () => {
+    const { cashRegister, ...data } = VALID_DATA.OTHER
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ash register/)
+  })
+
+  it('OTHER without otherCategory → throws', () => {
+    const { otherCategory, ...data } = VALID_DATA.OTHER
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Cc]ategory/)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// Auto-clear behavior
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('validateTransfer — auto-clear behavior', () => {
+  it('EMPLOYEE_EXPENSE → cashRegister set to null', () => {
+    const data = { ...VALID_DATA.EMPLOYEE_EXPENSE, cashRegister: 5 }
+    const result = validateTransfer(hookArgs(data))
+    expect(result.cashRegister).toBeNull()
+  })
+
+  it('EMPLOYEE_EXPENSE with both investment + otherCategory → otherCategory auto-cleared', () => {
+    const data = {
+      ...base,
+      type: 'EMPLOYEE_EXPENSE',
+      worker: 1,
+      investment: 1,
+      otherCategory: 2,
+      otherDescription: 'something',
+    }
+    const result = validateTransfer(hookArgs(data))
+    expect(result.otherCategory).toBeNull()
+    expect(result.otherDescription).toBeNull()
+    // investment preserved
+    expect(result.investment).toBe(1)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// EMPLOYEE_EXPENSE special: investment OR otherCategory
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('validateTransfer — EMPLOYEE_EXPENSE either/or', () => {
+  it('investment only → passes', () => {
+    const data = { ...base, type: 'EMPLOYEE_EXPENSE', worker: 1, investment: 1 }
+    expect(() => validateTransfer(hookArgs(data))).not.toThrow()
+  })
+
+  it('otherCategory only → passes', () => {
+    const data = { ...base, type: 'EMPLOYEE_EXPENSE', worker: 1, otherCategory: 1 }
+    expect(() => validateTransfer(hookArgs(data))).not.toThrow()
+  })
+
+  it('neither investment nor otherCategory → throws', () => {
+    const data = { ...base, type: 'EMPLOYEE_EXPENSE', worker: 1 }
+    expect(() => validateTransfer(hookArgs(data))).toThrow(
+      /requires either an investment or a category/,
+    )
+  })
+
+  it('both → passes (investment takes precedence, otherCategory cleared)', () => {
+    const data = {
+      ...base,
+      type: 'EMPLOYEE_EXPENSE',
+      worker: 1,
+      investment: 1,
+      otherCategory: 2,
+    }
+    const result = validateTransfer(hookArgs(data))
+    expect(result.investment).toBe(1)
+    expect(result.otherCategory).toBeNull()
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// REGISTER_TRANSFER — same register check
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('validateTransfer — REGISTER_TRANSFER', () => {
+  it('targetRegister === cashRegister → throws', () => {
+    const data = { ...base, type: 'REGISTER_TRANSFER', cashRegister: 1, targetRegister: 1 }
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Tt]arget register must be different/)
+  })
+
+  it('different registers → passes', () => {
+    const data = { ...base, type: 'REGISTER_TRANSFER', cashRegister: 1, targetRegister: 2 }
+    expect(() => validateTransfer(hookArgs(data))).not.toThrow()
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════
+// createdBy auto-set
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('validateTransfer — createdBy auto-set', () => {
+  it('operation=create with user → createdBy is set', () => {
+    const data = { ...VALID_DATA.COMPANY_FUNDING }
+    const result = validateTransfer(hookArgs(data, { operation: 'create', userId: 42 }))
+    expect(result.createdBy).toBe(42)
+  })
+
+  it('operation=update → createdBy NOT overwritten', () => {
+    const data = { ...VALID_DATA.COMPANY_FUNDING, createdBy: 10 }
+    const result = validateTransfer(hookArgs(data, { operation: 'update', userId: 42 }))
+    expect(result.createdBy).toBe(10)
+  })
+
+  it('operation=create without user → createdBy not set', () => {
+    const data = { ...VALID_DATA.COMPANY_FUNDING }
+    const result = validateTransfer(hookArgs(data, { operation: 'create' }))
+    expect(result.createdBy).toBeUndefined()
+  })
+})

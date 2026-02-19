@@ -6,12 +6,12 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/sum-transfers'
 
 type RefItemT = { readonly id: number; readonly name: string }
-type CashRegisterRefItemT = RefItemT & { readonly type: 'MAIN' | 'AUXILIARY' }
+type TypedRefItemT = RefItemT & { readonly type: string }
 
 export type ReferenceDataT = {
-  readonly cashRegisters: CashRegisterRefItemT[]
+  readonly cashRegisters: TypedRefItemT[]
   readonly investments: RefItemT[]
-  readonly workers: RefItemT[]
+  readonly workers: TypedRefItemT[]
   readonly otherCategories: RefItemT[]
 }
 
@@ -30,11 +30,11 @@ export async function fetchReferenceData(): Promise<ReferenceDataT> {
   const db = await getDb(payload)
 
   const result = await db.execute(sql`
-    SELECT 'cashRegisters' AS collection, id, name, type FROM cash_registers
+    SELECT 'cashRegisters' AS collection, id, name, type::text FROM cash_registers
     UNION ALL
     SELECT 'investments' AS collection, id, name, NULL AS type FROM investments WHERE status = 'active'
     UNION ALL
-    SELECT 'workers' AS collection, id, name, NULL AS type FROM users
+    SELECT 'workers' AS collection, id, name, role::text AS type FROM users
     UNION ALL
     SELECT 'otherCategories' AS collection, id, name, NULL AS type FROM other_categories
   `)
@@ -42,9 +42,9 @@ export async function fetchReferenceData(): Promise<ReferenceDataT> {
     `[PERF] query.fetchReferenceData ${(performance.now() - start).toFixed(1)}ms (1 SQL, ${result.rows.length} rows)`,
   )
 
-  const cashRegisters: CashRegisterRefItemT[] = []
+  const cashRegisters: TypedRefItemT[] = []
   const investments: RefItemT[] = []
-  const workers: RefItemT[] = []
+  const workers: TypedRefItemT[] = []
   const otherCategories: RefItemT[] = []
 
   for (const row of result.rows) {
@@ -52,14 +52,11 @@ export async function fetchReferenceData(): Promise<ReferenceDataT> {
     const item = { id: Number(row.id), name: row.name as string }
 
     if (collection === 'cashRegisters') {
-      cashRegisters.push({
-        ...item,
-        type: (row.type as 'MAIN' | 'AUXILIARY') ?? 'AUXILIARY',
-      })
+      cashRegisters.push({ ...item, type: (row.type as string) ?? 'AUXILIARY' })
     } else if (collection === 'investments') {
       investments.push(item)
     } else if (collection === 'workers') {
-      workers.push(item)
+      workers.push({ ...item, type: (row.type as string) ?? 'EMPLOYEE' })
     } else if (collection === 'otherCategories') {
       otherCategories.push(item)
     }

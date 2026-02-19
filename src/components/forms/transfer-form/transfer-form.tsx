@@ -121,6 +121,22 @@ export function TransferForm({
 
   const currentType = useStore(form.store, (s) => s.values.type)
 
+  // TanStack Form preserves values of unmounted fields. When the user switches
+  // transfer type, hidden fields (e.g. investment, worker) keep stale selections.
+  // Reset them so validation and submission use a clean slate for the new type.
+  const conditionalFields = [
+    'targetRegister',
+    'investment',
+    'worker',
+    'otherCategory',
+    'otherDescription',
+  ] as const
+
+  function resetConditionalFields() {
+    conditionalFields.forEach((field) => form.resetField(field))
+    if (!isRegisterLocked) form.resetField('cashRegister')
+  }
+
   return (
     <form.AppForm>
       <form
@@ -131,7 +147,7 @@ export function TransferForm({
       >
         <FieldGroup>
           {/* Type — OTHER_DEPOSIT hidden (use COMPANY_FUNDING or OTHER instead) */}
-          <form.AppField name="type">
+          <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
             {(field) => (
               <field.Select label="Typ transferu" showError>
                 {TRANSFER_TYPES.filter((t) => t !== 'OTHER_DEPOSIT').map((t) => (
@@ -253,11 +269,13 @@ export function TransferForm({
             <form.AppField name="worker">
               {(field) => (
                 <field.Select label="Pracownik" placeholder="Wybierz pracownika" showError>
-                  {referenceData.workers.map((w) => (
-                    <SelectItem key={w.id} value={String(w.id)}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
+                  {referenceData.workers
+                    .filter((w) => w.type !== 'ADMIN' && w.type !== 'OWNER')
+                    .map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>
+                        {w.name}
+                      </SelectItem>
+                    ))}
                 </field.Select>
               )}
             </form.AppField>
