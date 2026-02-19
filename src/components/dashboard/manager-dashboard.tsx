@@ -6,7 +6,7 @@ import { findAllCashRegistersRaw, mapCashRegisterRows } from '@/lib/queries/cash
 import { findActiveInvestments, findAllInvestments } from '@/lib/queries/investments'
 import { findAllUsersWithSaldos } from '@/lib/queries/users'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { DashboardTables } from '@/components/dashboard/dashboard-tables'
+import { DashboardTables, CashRegistersTable } from '@/components/dashboard/dashboard-tables'
 import { TransferTableServer } from '@/components/transfers/transfer-table-server'
 import { TransferTableSkeleton } from '@/components/transfers/transfer-table-skeleton'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -51,26 +51,27 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
 
   return (
     <PageWrapper title="Kokpit">
-      {/* Stat cards */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Saldo kas" value={formatPLN(totalBalance)} />
-        <StatCard label="Aktywne inwestycje" value={String(activeInvestments.length)} />
-        <StatCard label="Transfery (30 dni)" value={String(recentCount)} />
+      {/* Stat cards + cash registers */}
+      <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div>
+          <CashRegistersTable data={visibleRegisters} />
+          {isAdminOrOwner && (
+            <div className="mt-4 flex justify-end">
+              <SyncBalancesButton />
+            </div>
+          )}
+        </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <StatCard label="Saldo kas" value={formatPLN(totalBalance)} />
+            <StatCard label="Aktywne inwestycje" value={String(activeInvestments.length)} />
+            <StatCard label="Transfery (30 dni)" value={String(recentCount)} />
+          </div>
+        </div>
       </div>
 
-      {/* Admin tools */}
-      {isAdminOrOwner && (
-        <div className="mt-4 flex justify-end">
-          <SyncBalancesButton />
-        </div>
-      )}
-
-      {/* Cash registers & Users */}
-      <DashboardTables
-        cashRegisters={visibleRegisters}
-        investments={allInvestments}
-        users={users}
-      />
+      {/* Users & Investments — full width */}
+      <DashboardTables investments={allInvestments} users={users} />
 
       {/* Recent transactions */}
       <CollapsibleSection title="Ostatnie transfery" className="mt-8">

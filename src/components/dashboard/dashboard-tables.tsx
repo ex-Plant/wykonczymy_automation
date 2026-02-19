@@ -9,37 +9,33 @@ import type { CashRegisterRowT } from '@/lib/tables/cash-registers'
 import type { InvestmentRowT } from '@/lib/tables/investments'
 import type { UserRowT } from '@/lib/tables/users'
 
+type CashRegistersTablePropsT = {
+  readonly data: readonly CashRegisterRowT[]
+}
+
+export function CashRegistersTable({ data }: CashRegistersTablePropsT) {
+  return (
+    <CollapsibleSection title="Kasy">
+      <div className="mt-4">
+        <DataTable
+          data={data}
+          columns={cashRegisterColumns}
+          emptyMessage="Brak kas"
+          getRowHref={(row) => `/kasa/${row.id}`}
+        />
+      </div>
+    </CollapsibleSection>
+  )
+}
+
 type DashboardTablesPropsT = {
-  readonly cashRegisters: readonly CashRegisterRowT[]
   readonly investments: readonly InvestmentRowT[]
   readonly users: readonly UserRowT[]
 }
 
-export function DashboardTables({ cashRegisters, investments, users }: DashboardTablesPropsT) {
+export function DashboardTables({ investments, users }: DashboardTablesPropsT) {
   return (
-    <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
-      <div className="space-y-8">
-        <CollapsibleSection title="Kasy">
-          <div className="mt-4">
-            <DataTable
-              data={cashRegisters}
-              columns={cashRegisterColumns}
-              emptyMessage="Brak kas"
-              getRowHref={(row) => `/kasa/${row.id}`}
-            />
-          </div>
-        </CollapsibleSection>
-        <CollapsibleSection title="Inwestycje">
-          <div className="mt-4">
-            <DataTable
-              data={investments}
-              columns={investmentColumns}
-              emptyMessage="Brak inwestycji"
-              getRowHref={(row) => `/inwestycje/${row.id}`}
-            />
-          </div>
-        </CollapsibleSection>
-      </div>
+    <div className="mt-8 space-y-8">
       <CollapsibleSection title="Współpracownicy">
         <div className="mt-4">
           <DataTable
@@ -47,6 +43,16 @@ export function DashboardTables({ cashRegisters, investments, users }: Dashboard
             columns={userColumns}
             emptyMessage="Brak współpracowników"
             getRowHref={(row) => `/uzytkownicy/${row.id}`}
+          />
+        </div>
+      </CollapsibleSection>
+      <CollapsibleSection title="Inwestycje">
+        <div className="mt-4">
+          <DataTable
+            data={investments}
+            columns={investmentColumns}
+            emptyMessage="Brak inwestycji"
+            getRowHref={(row) => `/inwestycje/${row.id}`}
           />
         </div>
       </CollapsibleSection>

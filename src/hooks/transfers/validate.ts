@@ -56,8 +56,8 @@ export const validateTransfer: CollectionBeforeValidateHook = ({ data, req, oper
     }
   }
 
-  // otherCategory — required for OTHER
-  if (needsOtherCategory(type) && !d.otherCategory) {
+  // otherCategory — required for OTHER (EMPLOYEE_EXPENSE has its own check below)
+  if (type !== 'EMPLOYEE_EXPENSE' && needsOtherCategory(type) && !d.otherCategory) {
     errors.push('Category is required for OTHER transfers.')
   }
 

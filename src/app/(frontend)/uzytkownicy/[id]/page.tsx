@@ -16,6 +16,7 @@ import { TransferTableSkeleton } from '@/components/transfers/transfer-table-ske
 import { StatCard } from '@/components/ui/stat-card'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
+import { PrintButton } from '@/components/ui/print-button'
 
 const EXCLUDE_COLUMNS = ['investment', 'worker', 'otherCategory', 'invoice']
 
@@ -65,12 +66,13 @@ export default async function UserDetailPage({ params, searchParams }: PageProps
         </dd>
       </dl>
 
-      {/* Stat card + zero saldo */}
-      <div className="mt-6 flex items-end gap-4">
+      {/* Saldo + print */}
+      <div className="mt-6 flex items-end justify-between">
         <StatCard label="Saldo" value={formatPLN(saldo)} />
+        <PrintButton />
       </div>
 
-      {/* Period stats — only shown when date range is active */}
+      {/* Period stats */}
       {periodBreakdown && (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Zasilenia w okresie" value={formatPLN(periodBreakdown.totalAdvances)} />
