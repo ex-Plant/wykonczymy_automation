@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { revalidateCollections } from '@/lib/cache/revalidate'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -100,7 +101,7 @@ export async function createTransferAction(
 
 export async function recalculateBalancesAction(): Promise<RecalculateResultT> {
   const user = await getCurrentUserJwt()
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'OWNER')) {
     return { success: false, error: 'Brak uprawnień' }
   }
 
@@ -142,7 +143,8 @@ export async function recalculateBalancesAction(): Promise<RecalculateResultT> {
     }
   }
 
-  revalidateCollections(['cashRegisters', 'investments'])
+  revalidateCollections(['transfers', 'cashRegisters', 'investments', 'users', 'otherCategories'])
+  revalidatePath('/', 'layout')
 
   const fixed = results.cashRegisters.length + results.investments.length
   return {
