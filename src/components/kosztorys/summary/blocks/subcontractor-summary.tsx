@@ -19,13 +19,17 @@ import {
   computeSubcontractorSummary,
   UNASSIGNED_WORKER_NAME,
 } from '@/lib/kosztorys/subcontractor-summary'
+import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
+import { PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
+import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/reference-data'
 import { cn } from '@/lib/utils/cn'
 
 type PropsT = {
   investmentId: number
-  // „Suma wykonanej pracy" (należne) — executed value at the active view's subcontractor price, pre-rabat.
-  dueNet: number
+  // View-independent settlement: each etap valued at its OWN plane's price. `combined` is „Suma
+  // wykonanej pracy"; `wTools`/`ownTools` feed the split rows; `hasUnconfirmedPlane` flips the badge.
+  subcontractorDue: SubcontractorDueByPlaneT
   // Realized PAYOUTs per worker (null-worker bucket kept), name-enriched at the page.
   payouts: SubcontractorPayoutRowT[]
   // The un-summed PAYOUT rows, already date-desc from the query. Feed the sortable/virtualized list.
@@ -90,11 +94,11 @@ const PAYOUT_COLUMNS: ColumnDef<PayoutTableRowT>[] = [
 // preview, so the per-worker links are always live (no plain-text fallback needed).
 export function SubcontractorSummary({
   investmentId,
-  dueNet,
+  subcontractorDue,
   payouts,
   payoutTransactions,
 }: PropsT) {
-  const summary = computeSubcontractorSummary(dueNet, payouts)
+  const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts)
   const nameByWorker = new Map(payouts.map((payout) => [workerKey(payout.workerId), payout.name]))
   const [mode, setMode] = useState<GroupModeT>('worker')
 
@@ -115,7 +119,7 @@ export function SubcontractorSummary({
   return (
     <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-2 pb-6 text-sm">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-        <HeadlineSummary summary={summary} dueNet={dueNet} />
+        <HeadlineSummary summary={summary} due={subcontractorDue} />
         {summary.rows.length > 0 && (
           <WorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
@@ -150,20 +154,38 @@ export function SubcontractorSummary({
   )
 }
 
+// Explains the badge: unconfirmed etapy default to z narzędziami, so „Suma wykonanej pracy" may
+// overstate the with-tools total until every plane is picked.
+const UNCONFIRMED_PLANE_HINT =
+  'Niektóre etapy nie mają potwierdzonego rozliczenia — liczone jako „z narzędziami".'
+
 function HeadlineSummary({
   summary,
-  dueNet,
+  due,
 }: {
   summary: ReturnType<typeof computeSubcontractorSummary>
-  dueNet: number
+  due: SubcontractorDueByPlaneT
 }) {
   return (
     <SummaryTable cols={`${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`} className="w-fit">
       <SummaryHeaderCell variant="label">Podsumowanie podwykonawców</SummaryHeaderCell>
       <SummaryHeaderCell>Kwota</SummaryHeaderCell>
 
-      <SummaryLabelCell className="font-medium">Suma wykonanej pracy</SummaryLabelCell>
-      <SummaryValueCell className="font-medium">{formatNet(dueNet)}</SummaryValueCell>
+      {/* Split by plane: each etap valued at its own price, so Z + Bez = razem exactly. Shown even
+          when one side is 0, so the reader sees the settlement is plane-aware. */}
+      <SummaryLabelCell>{PLANE_LABELS.w_tools}</SummaryLabelCell>
+      <SummaryValueCell>{formatNet(due.wTools)}</SummaryValueCell>
+
+      <SummaryLabelCell>{PLANE_LABELS.own_tools}</SummaryLabelCell>
+      <SummaryValueCell>{formatNet(due.ownTools)}</SummaryValueCell>
+
+      <SummaryLabelCell className="flex items-center gap-x-2 font-bold">
+        Suma wykonanej pracy
+        {due.hasUnconfirmedPlane && (
+          <PlaneUnconfirmedBadge content={UNCONFIRMED_PLANE_HINT} className="size-4" />
+        )}
+      </SummaryLabelCell>
+      <SummaryValueCell className="font-bold">{formatNet(due.combined)}</SummaryValueCell>
 
       <SummaryLabelCell className="font-medium">Zaliczki (wypłaty) razem</SummaryLabelCell>
       <SummaryValueCell className="text-chart-green font-medium">

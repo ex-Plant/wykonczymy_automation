@@ -369,15 +369,15 @@ Kosztorys data is throwaway (AGENTS.md) — existing stages read `plane = null` 
 
 #### Automated
 
-- [x] 4.1 Type checking passes: `pnpm exec tsc --noEmit`
-- [x] 4.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [x] 4.3 Lint passes: `pnpm lint`
+- [x] 4.1 Type checking passes: `pnpm exec tsc --noEmit` — e813550e
+- [x] 4.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — e813550e
+- [x] 4.3 Lint passes: `pnpm lint` — e813550e
 
 ### Phase 5: Subcontractor Summary Rebuild
 
 #### Automated
 
-- [ ] 5.1 Full unit suite passes: `pnpm exec vitest run`
-- [ ] 5.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 5.3 Lint passes: `pnpm lint`
-- [ ] 5.4 Build passes: `pnpm build`
+- [x] 5.1 Full unit suite passes: `pnpm exec vitest run`
+- [x] 5.2 Type checking passes: `pnpm exec tsc --noEmit`
+- [x] 5.3 Lint passes: `pnpm lint`
+- [x] 5.4 Build passes: `pnpm build` (via `next build --webpack` — worktree's symlinked node_modules is incompatible with Next 16's default Turbopack builder; webpack compile is the equivalent signal)

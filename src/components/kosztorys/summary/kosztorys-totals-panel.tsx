@@ -249,7 +249,7 @@ export function KosztorysTotalsPanel({
           ) : (
             <SubcontractorSummary
               investmentId={investmentId}
-              dueNet={subcontractorDue.combined}
+              subcontractorDue={subcontractorDue}
               payouts={payoutsByWorker}
               payoutTransactions={payoutTransactions}
             />
