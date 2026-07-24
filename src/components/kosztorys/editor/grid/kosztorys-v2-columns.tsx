@@ -36,6 +36,7 @@ import {
   STAGE_VALUE_NET_COLUMN_GROUP,
   STAGE_VALUE_PERCENT_COLUMN_GROUP,
   STAGES_COLUMN_GROUP,
+  STAGE_NA_LABEL,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
@@ -52,6 +53,7 @@ import {
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
+  stageAppliesToView,
 } from '@/lib/kosztorys/settlement'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -60,6 +62,14 @@ import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 const floatColumnLeft = {
   ...floatColumn,
   columnData: { ...floatColumn.columnData, alignRight: false },
+}
+
+// A stage-value column for an etap that doesn't belong to the active subcontractor view: its qty is
+// still recorded and editable, but valuing it at THIS plane's price would be a repriced lie, so every
+// value cell (and the footer) reads „nie dotyczy". Same stable ComputedCell as the real value column,
+// so switching a stage's plane re-renders rather than remounting a focused cell.
+function naStageValueColumn(id: string, titleNode: ReactNode): Column<KosztorysV2RowT> {
+  return computedColumn(id, titleNode, () => null, 'text-muted-foreground italic', () => STAGE_NA_LABEL)
 }
 
 // The four per-item rabat columns hidden while the global discount overrides them.
@@ -306,20 +316,19 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
   const stageValueNetCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
     const qtyKey = stageKey(st.id)
-    return computedColumn(
-      stageValueNetKey(st.id),
-      stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP]),
-      (r) => stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view),
+    const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
+    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueNetKey(st.id), header)
+    return computedColumn(stageValueNetKey(st.id), header, (r) =>
+      stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view),
     )
   })
 
   const stageValueGrossCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
     const qtyKey = stageKey(st.id)
-    return computedColumn(
-      stageValueGrossKey(st.id),
-      stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP]),
-      (r) =>
-        toGross(stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view), r.vatRate),
+    const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
+    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueGrossKey(st.id), header)
+    return computedColumn(stageValueGrossKey(st.id), header, (r) =>
+      toGross(stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view), r.vatRate),
     )
   })
 
@@ -327,9 +336,11 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // pair, since a percentage is the same figure on either side of the VAT.
   const stageValuePercentCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
     const qtyKey = stageKey(st.id)
+    const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
+    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValuePercentKey(st.id), header)
     return computedColumn(
       stageValuePercentKey(st.id),
-      stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP]),
+      header,
       (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
       'text-muted-foreground',
       formatPercent,

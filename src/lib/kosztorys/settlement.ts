@@ -18,6 +18,18 @@ import type {
 /** An etap with no explicitly picked plane is counted as z narzędziami — and warned about. */
 export const DEFAULT_STAGE_PLANE: StagePlaneT = 'w_tools'
 
+/**
+ * Does this etap belong to the active price view? The client view shows every etap (it never filters,
+ * only reprices). In a subcontractor view an etap belongs only if its effective plane (null →
+ * DEFAULT_STAGE_PLANE) matches the view — the other plane's per-etap VALUE would otherwise be a
+ * repriced lie (per etap the relationship is OR: one crew executed it). Owned here so Phase 2's
+ * settlement math and the grid's „nie dotyczy" gate can never disagree on the rule.
+ */
+export function stageAppliesToView(stage: KosztorysStageT, view: PriceViewT): boolean {
+  if (view === 'client') return true
+  return (stage.plane ?? DEFAULT_STAGE_PLANE) === view
+}
+
 export type KosztorysClientTotalsT = {
   // Executed value at client prices, POST-rabat (Σ section net). The progress counter divides it by
   // the equally post-rabat plannedNet, so both sides of the ratio carry the rabat consistently.

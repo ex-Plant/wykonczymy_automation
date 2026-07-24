@@ -361,17 +361,17 @@ Kosztorys data is throwaway (AGENTS.md) — existing stages read `plane = null` 
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `pnpm exec tsc --noEmit`
-- [x] 3.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [x] 3.3 Lint passes: `pnpm lint`
+- [x] 3.1 Type checking passes: `pnpm exec tsc --noEmit` — 6bcc5b2c
+- [x] 3.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 6bcc5b2c
+- [x] 3.3 Lint passes: `pnpm lint` — 6bcc5b2c
 
 ### Phase 4: Grid „Nie dotyczy" for Other-Plane Etapy
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 4.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 4.3 Lint passes: `pnpm lint`
+- [x] 4.1 Type checking passes: `pnpm exec tsc --noEmit`
+- [x] 4.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
+- [x] 4.3 Lint passes: `pnpm lint`
 
 ### Phase 5: Subcontractor Summary Rebuild
 
