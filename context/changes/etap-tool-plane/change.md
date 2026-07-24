@@ -1,12 +1,12 @@
 ---
 change_id: etap-tool-plane
 title: Per-etap tool-plane assignment + view-independent subcontractor settlement
-status: planned
+status: implementing
 created: 2026-07-23
-updated: 2026-07-23
+updated: 2026-07-24
 archived_at: null
-branch: null
-worktree: null
+branch: etap-tool-plane
+worktree: /Users/konradantonik/workspace/yolo/wykonczymy-worktrees/etap-tool-plane
 ---
 
 ## Notes

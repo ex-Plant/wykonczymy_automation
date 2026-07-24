@@ -4,8 +4,8 @@ import type { BuildV2ColumnsOptsT } from '@/components/kosztorys/editor/grid/kos
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 
 const stages: KosztorysStageT[] = [
-  { id: 100, ordinal: 1, label: 'Etap 1' },
-  { id: 101, ordinal: 2, label: null },
+  { id: 100, ordinal: 1, label: 'Etap 1', plane: null },
+  { id: 101, ordinal: 2, label: null, plane: null },
 ]
 
 // The editor's own opts: mutation callbacks present, so the actions column is built and cells are live.

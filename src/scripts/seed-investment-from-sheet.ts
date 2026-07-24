@@ -176,6 +176,7 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
     id: k + 1,
     ordinal: k + 1,
     label: null,
+    plane: null,
   }))
 
   return {

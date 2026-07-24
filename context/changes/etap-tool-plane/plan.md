@@ -344,10 +344,10 @@ Kosztorys data is throwaway (AGENTS.md) — existing stages read `plane = null` 
 
 #### Automated
 
-- [ ] 1.1 Migration applies cleanly to local dev DB: `node --env-file=.env node_modules/.bin/payload migrate`
-- [ ] 1.2 Type checking passes: `pnpm exec tsc --noEmit` (after `pnpm generate:types`)
-- [ ] 1.3 Existing unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 1.4 Lint passes: `pnpm lint`
+- [x] 1.1 Migration applies cleanly to local dev DB: `node --env-file=.env node_modules/.bin/payload migrate`
+- [x] 1.2 Type checking passes: `pnpm exec tsc --noEmit` (after `pnpm generate:types`)
+- [x] 1.3 Existing unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
+- [x] 1.4 Lint passes: `pnpm lint`
 
 ### Phase 2: Settlement Math (TDD)
 

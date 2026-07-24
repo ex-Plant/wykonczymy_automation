@@ -56,7 +56,7 @@ const tree: KosztorysTreeT = {
       ],
     },
   ],
-  stages: [{ id: 100, ordinal: 1, label: null }],
+  stages: [{ id: 100, ordinal: 1, label: null, plane: null }],
   progress: [
     { itemId: 1, stageId: 100, qtyDone: 1 },
     { itemId: 2, stageId: 100, qtyDone: 8 },

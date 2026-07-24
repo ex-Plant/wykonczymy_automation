@@ -83,10 +83,16 @@ export type ViewPricingT = KosztorysItemT & {
   globalOwnToolsCoeff: number
 }
 
+// A stage's subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a
+// valid price view and flows straight into viewPrice(). null = defaulted to DEFAULT_STAGE_PLANE
+// (z narzędziami), unconfirmed — the state the TriangleAlert warning screams about.
+export type StagePlaneT = 'w_tools' | 'own_tools'
+
 export type KosztorysStageT = {
   id: number
   ordinal: number
   label: string | null
+  plane: StagePlaneT | null
 }
 
 export type StageProgressT = {

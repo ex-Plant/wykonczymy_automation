@@ -679,7 +679,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const res = await addStageAction(investmentId)
     if (!res.success) return
     const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null }])
+    setStages((s) => [...s, { id, ordinal, label: null, plane: null }])
     patchRows(
       () => true,
       (r) => ({ ...r, [stageKey(id)]: 0 }),
