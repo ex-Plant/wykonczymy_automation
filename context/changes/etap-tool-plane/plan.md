@@ -344,18 +344,18 @@ Kosztorys data is throwaway (AGENTS.md) — existing stages read `plane = null` 
 
 #### Automated
 
-- [x] 1.1 Migration applies cleanly to local dev DB: `node --env-file=.env node_modules/.bin/payload migrate`
-- [x] 1.2 Type checking passes: `pnpm exec tsc --noEmit` (after `pnpm generate:types`)
-- [x] 1.3 Existing unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [x] 1.4 Lint passes: `pnpm lint`
+- [x] 1.1 Migration applies cleanly to local dev DB: `node --env-file=.env node_modules/.bin/payload migrate` — 0b038e53
+- [x] 1.2 Type checking passes: `pnpm exec tsc --noEmit` (after `pnpm generate:types`) — 0b038e53
+- [x] 1.3 Existing unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 0b038e53
+- [x] 1.4 Lint passes: `pnpm lint` — 0b038e53
 
 ### Phase 2: Settlement Math (TDD)
 
 #### Automated
 
-- [ ] 2.1 New settlement spec red→green: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 2.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 2.3 Lint passes: `pnpm lint`
+- [x] 2.1 New settlement spec red→green: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
+- [x] 2.2 Type checking passes: `pnpm exec tsc --noEmit`
+- [x] 2.3 Lint passes: `pnpm lint`
 
 ### Phase 3: Etap Header UI — Picker, Icon, Warning
 

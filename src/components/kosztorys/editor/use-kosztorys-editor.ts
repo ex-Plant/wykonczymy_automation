@@ -40,10 +40,10 @@ import {
 } from '@/lib/kosztorys/delete-policy'
 import {
   clientTotalsFromSubtotals,
-  executedWorkNetPreRabat,
   rowRemainingForView,
   sectionSubtotalsForView,
   stageTotalsForView,
+  subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
@@ -386,9 +386,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   )
   const rabatAmount = discountAmount + itemRabatTotal
 
-  // „Suma wykonanej pracy" (należne) for the subcontractor summary — executed value at the ACTIVE
-  // view's subcontractor price, pre-rabat. Reactive to unsaved edits and the view toggle via subtotals.
-  const subcontractorDueNet = useMemo(() => executedWorkNetPreRabat(subtotals), [subtotals])
+  // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
+  // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
+  // no `view` dependency (the settlement is the same in both subcontractor views, honest on mixed).
+  const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
   // revert-on-error: roll an optimistic field edit back to its pre-save value
   // (rows + diff snapshot) when the server rejects it. The "current === attempted" guard lives
@@ -1033,7 +1034,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     globalDiscount,
     discountAmount,
     rabatAmount,
-    subcontractorDueNet,
+    subcontractorDue,
     laborCostsNetFromKosztorys,
     // toolbar / panel state
     setView,

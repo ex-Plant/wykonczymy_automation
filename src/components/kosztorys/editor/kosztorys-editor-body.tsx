@@ -77,7 +77,7 @@ export function KosztorysEditorBody({
     rabatClientNet,
     rabatAmount,
     laborCostsNetFromKosztorys,
-    subcontractorDueNet,
+    subcontractorDue,
     view,
     moneyAxis,
     setMoneyAxis,
@@ -215,7 +215,7 @@ export function KosztorysEditorBody({
             payoutTransactions={payoutTransactions}
             depositTransactions={depositTransactions}
             materialTransactions={materialTransactions}
-            subcontractorDueNet={subcontractorDueNet}
+            subcontractorDue={subcontractorDue}
             totalNet={totalNet}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
             materialsGross={materialsGross}
