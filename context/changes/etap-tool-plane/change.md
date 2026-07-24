@@ -1,7 +1,7 @@
 ---
 change_id: etap-tool-plane
 title: Per-etap tool-plane assignment + view-independent subcontractor settlement
-status: implementing
+status: implemented
 created: 2026-07-23
 updated: 2026-07-24
 archived_at: null
