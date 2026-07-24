@@ -353,17 +353,17 @@ Kosztorys data is throwaway (AGENTS.md) — existing stages read `plane = null` 
 
 #### Automated
 
-- [x] 2.1 New settlement spec red→green: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [x] 2.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [x] 2.3 Lint passes: `pnpm lint`
+- [x] 2.1 New settlement spec red→green: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 65db3ba9
+- [x] 2.2 Type checking passes: `pnpm exec tsc --noEmit` — 65db3ba9
+- [x] 2.3 Lint passes: `pnpm lint` — 65db3ba9
 
 ### Phase 3: Etap Header UI — Picker, Icon, Warning
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 3.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 3.3 Lint passes: `pnpm lint`
+- [x] 3.1 Type checking passes: `pnpm exec tsc --noEmit`
+- [x] 3.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
+- [x] 3.3 Lint passes: `pnpm lint`
 
 ### Phase 4: Grid „Nie dotyczy" for Other-Plane Etapy
 

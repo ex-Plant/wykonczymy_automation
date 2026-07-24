@@ -294,6 +294,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           stage={st}
           onRename={opts.onRenameStage}
           onRemove={opts.onRemoveStage}
+          onSetPlane={opts.onSetStagePlane}
           tip={HEADER_TIPS[STAGES_COLUMN_GROUP]}
         />
       ),

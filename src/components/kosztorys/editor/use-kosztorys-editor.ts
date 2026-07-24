@@ -63,6 +63,7 @@ import {
   removeItemAction,
   removeSectionAction,
   removeStageAction,
+  setStagePlaneAction,
   setStageProgressAction,
   swapItemOrderAction,
   updateInvestmentCoeffsAction,
@@ -78,6 +79,7 @@ import type {
   KosztorysStageT,
   KosztorysTreeT,
   KosztorysV2RowT,
+  StagePlaneT,
 } from '@/lib/kosztorys/types'
 
 type ArgsT = {
@@ -264,6 +266,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     stages,
     onRemoveStage: editorOnly(handleRemoveStage),
     onRenameStage: editorOnly(handleRenameStage),
+    onSetStagePlane: editorOnly(handleSetStagePlane),
     sort,
     onSetSort: editorOnly(setSortField),
     isHidden,
@@ -730,6 +733,26 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
         setStages((s) =>
           s.map((st) =>
             st.id === stageId && st.label === next ? { ...st, label: prevLabel } : st,
+          ),
+        ),
+    )
+  }
+
+  // Optimistic plane pick. Fired from the header's onValueChange (an event handler, never inside a
+  // state updater), with the same revert-on-error discipline as the rename saver. Picking the plane
+  // already set is a no-op; picking any plane (even the default) writes it and clears the warning.
+  function handleSetStagePlane(stageId: number, plane: StagePlaneT) {
+    const current = stagesRef.current.find((st) => st.id === stageId)
+    if (current && current.plane === plane) return
+    const prevPlane = current?.plane ?? null
+    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, plane } : st)))
+    save(
+      `stage-plane:${stageId}`,
+      () => setStagePlaneAction(stageId, plane),
+      () =>
+        setStages((s) =>
+          s.map((st) =>
+            st.id === stageId && st.plane === plane ? { ...st, plane: prevPlane } : st,
           ),
         ),
     )
