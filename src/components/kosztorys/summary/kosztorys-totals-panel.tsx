@@ -15,8 +15,16 @@ import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subc
 import { CollapsiblePanelTrigger } from '@/components/ui/collapsible-panel-trigger'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
-import { useSummaryAxis } from '@/components/kosztorys/summary/hooks/use-summary-axis'
-import { useSummaryView, type SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
+import {
+  useSummaryAxis,
+  type PanelAxisT,
+} from '@/components/kosztorys/summary/hooks/use-summary-axis'
+import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
+import { Description } from '@/components/ui/description'
+import {
+  useSummaryView,
+  type SummaryViewT,
+} from '@/components/kosztorys/summary/hooks/use-summary-view'
 import { useMaterialsNetPricing } from '@/components/kosztorys/summary/hooks/use-materials-net-pricing'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
@@ -34,6 +42,12 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'wydatki', label: 'Wydatki' },
   { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
+]
+
+const AXIS_SELECT_OPTIONS: SelectOptionT[] = [
+  { value: 'net', label: 'Netto' },
+  { value: 'gross', label: 'Brutto' },
+  { value: 'mixed', label: 'Mix' },
 ]
 
 type PropsT = {
@@ -108,10 +122,6 @@ export function KosztorysTotalsPanel({
   // Which client-plane view is shown (Podsumowanie / Wydatki / Wpłaty) — independent of the grid's
   // price view. Disabled on the subcontractor plane, which renders its own summary instead.
   const [summaryView, setSummaryView] = useSummaryView()
-  // „Mieszane" ('mixed') shows BOTH netto and brutto columns, then a cash split block — the settlement
-  // anchors on brutto (matching the brutto „Do zapłaty" column at C = 0), while netto stays visible
-  // beside it. Every other value is a real MoneyAxisT the children read directly.
-  const mixedMode = moneyAxis === 'mixed'
   // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
   // netto+brutto settlement, so it shows both columns alongside the gotówka block.
   const displayAxis: MoneyAxisT = moneyAxis === 'mixed' ? 'both' : moneyAxis
@@ -177,7 +187,7 @@ export function KosztorysTotalsPanel({
             content scrolls below it. Rendered on both planes but disabled on the subcontractor plane,
             which has its own summary; the toggle only governs the client plane for now. pr keeps the
             toggle clear of the absolute close affordance in the top-right corner. */}
-        <div className="px-4 pt-4">
+        <div className="flex flex-col items-start gap-2 px-4 pt-4">
           <ToggleGroup
             options={SUMMARY_VIEW_OPTIONS}
             value={summaryView}
@@ -185,6 +195,19 @@ export function KosztorysTotalsPanel({
             disabled={!isClientPlane}
             aria-label="Widok podsumowania"
           />
+          {isClientPlane && (
+            <div className="my-2 flex flex-col gap-2">
+              <Description className="max-w-xs" size="sm">
+                Wybierz jak rozliczana będzie inwestycja.
+              </Description>
+              <SimpleSelect
+                value={moneyAxis}
+                onValueChange={(next) => setMoneyAxis(next as PanelAxisT)}
+                options={AXIS_SELECT_OPTIONS}
+                className="w-40"
+              />
+            </div>
+          )}
         </div>
         <SummaryScrollRegion>
           {isClientPlane ? (
@@ -193,7 +216,6 @@ export function KosztorysTotalsPanel({
                 <SummaryOverviewTab
                   investmentId={investmentId}
                   moneyAxis={moneyAxis}
-                  onMoneyAxisChange={setMoneyAxis}
                   laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
                   doZaplaty={doZaplaty}
                   materialsGross={materialsGross}
@@ -228,7 +250,6 @@ export function KosztorysTotalsPanel({
                 <SummaryDepositsTab
                   investmentId={investmentId}
                   rows={depositTransactions}
-                  showPlane={mixedMode}
                   paidNet={paidNet}
                   paidGross={paidGross}
                   clientView={clientView}
