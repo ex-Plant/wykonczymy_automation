@@ -165,3 +165,36 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 ### Deploy note (migration ordering — deploy-time, not a code check)
 
 - [ ] **`20260724_2_add_plane_to_kosztorys_stages` must be applied to preview/prod before/with this merge.** Adds nullable `plane` to `kosztorys_stages`. Standard column-**add** ordering (unlike the coeff drop above): migrate **before** the code that reads `plane` lands, or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. Kosztorys data is throwaway pre-dogfooding — no backfill; existing rows read `plane = null` (defaulted + warned), the intended cold-start state.
+
+---
+
+## EX-569 — client-facing „Pobierz faktury" in the kosztorys Wydatki tab
+
+**In review** — automated green (tsc 0, eslint 0, unit 1140/1140, 33 in `invoice-zip.test.ts`).
+Branch `feat/ex-569-kosztorys-client-invoices` (worktree). E2E deferred to **EX-570**
+(`e2e-backlog`) — the `(share)` group still has no browser coverage, so boxes 1–3 are the only
+thing guarding the public path.
+
+Setup: 5435 test DB, an investment with materiały transactions in **both** settled states and
+invoices attached to some of them, plus a live share token for it (`/k/<token>`).
+
+### Client share path
+
+- [ ] Logged out on `/k/<token>` → Podsumowanie → Wydatki: the „Faktury" button downloads an archive of the visible dataset
+- [ ] Switching to „Materiały wliczone w robociznę" and downloading yields that dataset's invoices, not the other one's
+- [ ] The archive name carries the investment name and the dataset label; two investments downloaded the same day do not collide in Downloads
+- [ ] A dataset where some rows have no invoice reports the shortfall („Pobrano 3 z 5 — 2 bez faktury") rather than implying a complete set
+- [ ] An investment with zero materiały transactions renders no list and no button
+- [ ] A dataset whose rows all lack an invoice renders the list but no „Faktury" button
+
+### Owner app view
+
+- [ ] Same three checks on `/inwestycje/<id>/kosztorys_v2` — button present, follows the toggle, archive correct
+- [ ] A materiały transaction with an attached invoice reaches the list with a live `invoiceUrl` on both surfaces (the file actually opens from the archive)
+
+### Regression on the authenticated transfers table
+
+The zip/toast loop moved into the shared `useInvoiceZip`, so the transfers export changed behavior.
+
+- [ ] The transfers table's „Faktury" button still downloads a working archive with correct filenames
+- [ ] Its final toast now reports missing invoices honestly on a filter set where some rows have none (the pre-fetch „Pobieram…" toast is gone — the button spinner replaces it)

@@ -328,7 +328,7 @@ archive. Reality-check the Linear MCP first — if it is unreachable, say so rat
 
 #### Automated
 
-- [ ] 3.1 New unit tests pass
-- [ ] 3.2 Full unit suite passes
-- [ ] 3.3 Type checking passes
-- [ ] 3.4 Linting passes
+- [x] 3.1 New unit tests pass — 45d9f865
+- [x] 3.2 Full unit suite passes — 45d9f865
+- [x] 3.3 Type checking passes — 45d9f865
+- [x] 3.4 Linting passes — 45d9f865
