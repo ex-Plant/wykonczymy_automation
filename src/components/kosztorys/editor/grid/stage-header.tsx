@@ -12,12 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/kosztorys/editor/grid/header-label'
+import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
-import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
+import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
+import { useInlineRename } from '@/components/kosztorys/editor/use-inline-rename'
+import { PLANE_LABELS, STAGE_PLANES } from '@/lib/kosztorys/constants'
 import { cn } from '@/lib/utils/cn'
 import type { KosztorysStageT, StagePlaneT } from '@/lib/kosztorys/types'
-
-const STAGE_PLANES: StagePlaneT[] = ['w_tools', 'own_tools']
 
 type PropsT = {
   stage: KosztorysStageT
@@ -27,12 +28,12 @@ type PropsT = {
 }
 
 // Stage column header: „Zmień nazwę" edits the label inline (empty → the „Etap N" placeholder,
-// persisting null), „Usuń etap" deletes behind a confirm. The inline input is uncontrolled, so its
-// `defaultValue` is read only when edit mode opens — no stale value can leak if the stage behind
-// this column index shifts under the persisted DOM node.
+// persisting null), „Usuń etap" deletes behind a confirm.
 export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
   const label = stage.label ?? `Etap ${stage.ordinal}`
-  const [editing, setEditing] = useState(false)
+  const { editing, start, inputProps } = useInlineRename((name) =>
+    onRename?.(stage.id, name.trim()),
+  )
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   // No handlers = a read-only mount (clientView): render the bare label, no menu/rename/delete AND no
@@ -47,22 +48,11 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
 
   if (editing) {
     return (
-      <input
+      <EditableCellInput
+        {...inputProps}
         autoFocus
-        className="h-full w-full min-w-0 bg-transparent px-1 text-xs outline-none"
-        defaultValue={stage.label ?? ''}
+        className="min-w-0 px-1 text-xs"
         placeholder={`Etap ${stage.ordinal}`}
-        onBlur={(e) => {
-          onRename?.(stage.id, e.target.value.trim())
-          setEditing(false)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur()
-          if (e.key === 'Escape') {
-            e.currentTarget.value = stage.label ?? ''
-            e.currentTarget.blur()
-          }
-        }}
       />
     )
   }
@@ -109,7 +99,7 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuItem onSelect={() => setEditing(true)}>
+        <DropdownMenuItem onSelect={() => start(stage.label ?? '')}>
           <Pencil />
           Zmień nazwę
         </DropdownMenuItem>
