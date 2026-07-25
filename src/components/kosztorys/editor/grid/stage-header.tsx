@@ -75,12 +75,10 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
     <>
       <HeaderMenu
         label={
-          <span className="inline-flex items-center gap-1 outline-0">
-            {planeIcon(effectivePlane, 'size-3.5 opacity-70')}
+          <span className="inline-flex items-center gap-2">
+            {planeIcon(effectivePlane)}
             <span className={cn(stage.label == null && 'text-muted-foreground')}>{label}</span>
-            {stage.plane == null && (
-              <PlaneUnconfirmedBadge className="size-3.5" content="Wybierz jak rozliczać etap" />
-            )}
+            {stage.plane == null && <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap" />}
           </span>
         }
         icon={<ChevronDown className="opacity-50" />}
@@ -97,14 +95,14 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
                 checked={stage.plane === plane}
                 onCheckedChange={() => onSetPlane(stage.id, plane)}
                 label={PLANE_LABELS[plane]}
-                trailing={planeIcon(plane, 'size-3.5 opacity-70')}
+                trailing={planeIcon(plane)}
               />
             ))}
             <DropdownMenuSeparator />
           </>
         )}
         <DropdownMenuItem onSelect={() => setEditing(true)}>
-          <Pencil className="opacity-70" />
+          <Pencil />
           Zmień nazwę
         </DropdownMenuItem>
         {onRemove && (

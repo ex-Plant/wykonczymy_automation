@@ -2,11 +2,8 @@
 
 import { useState, type ReactNode } from 'react'
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent } from '@/components/ui/dropdown-menu'
+import { HeaderMenuTrigger } from '@/components/ui/datasheet-grid/header-menu-trigger'
 import {
   Tooltip,
   TooltipContent,
@@ -14,7 +11,6 @@ import {
   TooltipTrigger,
   TOOLTIP_DELAY,
 } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils/cn'
 
 type PropsT = {
   // Trigger content — the label span and its trailing icon; each header styles its own.
@@ -43,16 +39,10 @@ export function HeaderMenu({ label, icon, triggerClassName, triggerTitle, tip, c
   }
 
   const trigger = (
-    <DropdownMenuTrigger
-      title={tip ? undefined : triggerTitle}
-      className={cn(
-        'hover:bg-accent flex h-full w-full cursor-pointer items-center gap-1 rounded px-1 text-left font-medium outline-none',
-        triggerClassName,
-      )}
-    >
+    <HeaderMenuTrigger title={tip ? undefined : triggerTitle} className={triggerClassName}>
       {label}
       {icon}
-    </DropdownMenuTrigger>
+    </HeaderMenuTrigger>
   )
 
   return (
