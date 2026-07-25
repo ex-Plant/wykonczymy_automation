@@ -20,8 +20,8 @@ while agents are still live, or they will treat a dirty tree as contamination.
 
 ## Findings
 
-- [ ] 🟡 WARNING · deferred · impl-review F7 · `src/__tests__/lib/kosztorys/v2-columns-readonly.test.ts:43` · nothing pins the slice's central promise (which columns exist per view) — the spec asserts only absences and would stay green if every stage column vanished. Three `expect(ids(...))` lines would cover it. Box checks once filed.
-- [ ] 🟡 WARNING · deferred · impl-review F7 · `src/__tests__/lib/kosztorys/kosztorys-empty-sections.test.ts:53` · plan's Testing Strategy promised explicit planes on this fixture; still `plane: null`. Harmless today (client-view only) but it is the same latent vacuity that hid the critical. Box checks once filed.
+- [x] 🟡 WARNING · filed EX-572 · impl-review F7 + code-review · `v2-columns-readonly.test.ts:43`, `kosztorys-empty-sections.test.ts:53` · nothing pins the slice's central promise (which columns exist per view) — the readonly spec asserts only absences and would stay green if every stage column vanished; the empty-sections fixture still carries the `plane: null` vacuity the plan promised to remove. Same shape as the critical's hiding place, which is why it is filed rather than dropped. Not fixed here: writing the column-set assertions is its own test-authoring task.
+      test: TDD · unit — disposition recorded on EX-572 so the guard travels with the fix.
 
 - [x] 🔴 CRITICAL · fixed · impl-review F1 + code-review · `src/lib/kosztorys/settlement.ts:249` · `stageTotalsForView` made its denominator view-scoped but kept distributing the row's net over every stage, so an out-of-view etap took a share > 1 — Σ per-etap overshot „Razem" by a multiple. Reachable: the panel's „Robocizna" tab is no longer coupled to the price view, so it rendered the other crew's etap at this crew's price. Fixed in `4ffc3031` with `stageAppliesToView` in the inner loop.
       test: test-driven-debugging · unit — red repro asserted Σ stageTotals ≈ Σ rowValueForView per subcontractor view (caught 36 where 0 was owed), plus explicit per-etap figures. Green.
@@ -56,7 +56,12 @@ while agents are still live, or they will treat a dirty tree as contamination.
 
 ## Simplify pass
 
-<!-- filled in Step 2 -->
+`/simplify` was **not run as a separate step** — its fix-now pass was folded into triage above
+(`4fbba15e`), which is where every reuse/dedup finding the fan-out raised was applied. Running it
+again now would re-review a tree that already carries those fixes, and it mutates: five files in the
+working tree belong to a parallel session (`deposit-form`, `form-base`, `vat-plane-field`,
+`transfers`, `subcontractor-summary`), which the gate forbids it to touch. Worth a separate pass once
+that session's work lands.
 
 ## Tests & suite
 
