@@ -15,35 +15,162 @@ export const TRANSFER_TYPES = [
 ] as const
 export type TransferTypeT = (typeof TRANSFER_TYPES)[number]
 
-export const TRANSFER_TYPE_LABELS: Record<TransferTypeT, string> = {
-  INVESTOR_DEPOSIT: 'Wpłata od inwestora',
-  COMPANY_FUNDING: 'Zasilenie z konta firmowego',
-  OTHER_DEPOSIT: 'Inna wpłata',
-  INVESTMENT_EXPENSE: 'Wydatek inwestycyjny',
-  LABOR_COST: 'Koszty robocizny',
-  RABAT: 'Rabat',
-  LOSS: 'Strata',
-  CORRECTION: 'Korekta',
-  PAYOUT: 'Wypłata',
-  REGISTER_TRANSFER: 'Transfer między kasami',
-  OTHER: 'Inny wydatek',
-  CANCELLATION: 'Anulowanie',
+/**
+ * What a transfer type DOES — one row per type, one column per decision.
+ *
+ * The axis used to run the other way: a dozen membership arrays each answering "which
+ * types belong to me", so adding a type meant visiting each one and remembering to
+ * consider it. A miss was a silently wrong number, never a build error. `satisfies
+ * Record<TransferTypeT, …>` inverts that — a new type cannot compile until every column
+ * below has an answer.
+ *
+ * Deliberately narrow: only decisions where getting it wrong moves money or misroutes a
+ * sheet row. Per-field form rules (which fields show, which are required, which are
+ * auto-cleared) are five independent axes per field, not one membership question, and
+ * stay as their own predicates below.
+ */
+type TransferSpecT = {
+  label: string
+  color: string
+  /** Adds to a register instead of subtracting, and counts as investor income. */
+  deposit: boolean
+  /** Owns a row on the kosztorys „Wydatki inwestycyjne" tab. */
+  expensesSheetTab: boolean
+  /** Owns a row on the „transfery (tylko do odczytu)" tab. */
+  transfersSheetTab: boolean
+  /**
+   * The „wliczone w robociznę" flag means something for this type.
+   *
+   * Equal to `expensesSheetTab` for all twelve types today — which is exactly why the two
+   * were once a single predicate. The equality is a coincidence of the current type set,
+   * not a rule: INVESTMENT_EXPENSE_NET owns an expenses-tab row but must NOT be settleable,
+   * and collapsing them is what leaks netto into totalSettled → marża.
+   */
+  settleable: boolean
+  /** Whether a source register is required, or meaningless (a P&L figure, no cash moves). */
+  sourceRegister: 'required' | 'never'
 }
 
-export const TRANSFER_TYPE_COLORS: Record<TransferTypeT, string> = {
-  INVESTOR_DEPOSIT: 'chart-green',
-  COMPANY_FUNDING: 'chart-green',
-  OTHER_DEPOSIT: 'chart-green',
-  INVESTMENT_EXPENSE: 'chart-red',
-  LABOR_COST: 'chart-orange',
-  RABAT: 'chart-green',
-  LOSS: 'chart-purple',
-  CORRECTION: 'chart-orange',
-  PAYOUT: 'chart-red',
-  REGISTER_TRANSFER: 'chart-turquoise',
-  OTHER: 'chart-red',
-  CANCELLATION: 'muted-foreground',
-}
+export const TRANSFER_TYPE_SPECS = {
+  CANCELLATION: {
+    label: 'Anulowanie',
+    color: 'muted-foreground',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: false,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+  OTHER_DEPOSIT: {
+    label: 'Inna wpłata',
+    color: 'chart-green',
+    deposit: true,
+    expensesSheetTab: false,
+    transfersSheetTab: false,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+  OTHER: {
+    label: 'Inny wydatek',
+    color: 'chart-red',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: false,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+  CORRECTION: {
+    label: 'Korekta',
+    color: 'chart-orange',
+    deposit: false,
+    expensesSheetTab: true,
+    transfersSheetTab: false,
+    settleable: true,
+    sourceRegister: 'required',
+  },
+  LABOR_COST: {
+    label: 'Koszty robocizny',
+    color: 'chart-orange',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: true,
+    settleable: false,
+    sourceRegister: 'never',
+  },
+  RABAT: {
+    label: 'Rabat',
+    color: 'chart-green',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: true,
+    settleable: false,
+    sourceRegister: 'never',
+  },
+  LOSS: {
+    label: 'Strata',
+    color: 'chart-purple',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: true,
+    settleable: false,
+    sourceRegister: 'never',
+  },
+  REGISTER_TRANSFER: {
+    label: 'Transfer między kasami',
+    color: 'chart-turquoise',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: false,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+  INVESTOR_DEPOSIT: {
+    label: 'Wpłata od inwestora',
+    color: 'chart-green',
+    deposit: true,
+    expensesSheetTab: false,
+    transfersSheetTab: true,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+  INVESTMENT_EXPENSE: {
+    label: 'Wydatek inwestycyjny',
+    color: 'chart-red',
+    deposit: false,
+    expensesSheetTab: true,
+    transfersSheetTab: false,
+    settleable: true,
+    sourceRegister: 'required',
+  },
+  PAYOUT: {
+    label: 'Wypłata',
+    color: 'chart-red',
+    deposit: false,
+    expensesSheetTab: false,
+    transfersSheetTab: true,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+  COMPANY_FUNDING: {
+    label: 'Zasilenie z konta firmowego',
+    color: 'chart-green',
+    deposit: true,
+    expensesSheetTab: false,
+    transfersSheetTab: false,
+    settleable: false,
+    sourceRegister: 'required',
+  },
+} satisfies Record<TransferTypeT, TransferSpecT>
+
+const mapSpecs = <V,>(pick: (spec: TransferSpecT) => V): Record<TransferTypeT, V> =>
+  Object.fromEntries(TRANSFER_TYPES.map((t) => [t, pick(TRANSFER_TYPE_SPECS[t])])) as Record<
+    TransferTypeT,
+    V
+  >
+
+export const TRANSFER_TYPE_LABELS: Record<TransferTypeT, string> = mapSpecs((s) => s.label)
+
+export const TRANSFER_TYPE_COLORS: Record<TransferTypeT, string> = mapSpecs((s) => s.color)
 
 export const EXPENSE_CATEGORY_LABEL = 'Typ wydatku inwestycyjnego'
 
@@ -55,6 +182,8 @@ export const SETTLED_TYPE = {
   color: 'chart-pink',
 } as const
 
+// Bound to the table's `deposit` column by the consistency test. Kept as an explicit
+// array because it is spread into SQL IN-lists at module load.
 export const DEPOSIT_TYPES: TransferTypeT[] = [
   'INVESTOR_DEPOSIT',
   'COMPANY_FUNDING',
@@ -77,9 +206,12 @@ export const TRANSACTION_TRANSFER_TYPES: TransferTypeT[] = [
 ]
 
 // Investment-linked types mirrored on the sheet's 'transfery (tylko do odczytu)'
-// tab — every showInvestment type (src/collections/transfers.ts) EXCEPT
-// INVESTMENT_EXPENSE (owns the expenses tab) and CANCELLATION (audit row).
-// Order = summary-block column order on the tab.
+// tab. Stays a literal because it exports SheetTransferTabTypeT — deriving it with a
+// .filter() destroys the literal union. Membership is bound to the table's
+// `transfersSheetTab` column by the consistency test.
+// (Order is NOT the summary-block column order — that is TRANSFERS_SUMMARY_TYPES.
+// This array is only ever used in `{ in: [...] }` wheres and .includes(), so it is
+// order-free.)
 export const SHEET_TRANSFER_TAB_TYPES = [
   'INVESTOR_DEPOSIT',
   'LABOR_COST',
@@ -89,9 +221,10 @@ export const SHEET_TRANSFER_TAB_TYPES = [
 ] as const satisfies readonly TransferTypeT[]
 export type SheetTransferTabTypeT = (typeof SHEET_TRANSFER_TAB_TYPES)[number]
 
-// Types that own a row on the kosztorys "Wydatki inwestycyjne" tab. Single source
-// of truth for sheet routing AND the sync-hook gate — keep them from drifting
-// apart (a CORRECTION once synced to no tab because one of three copies was missed).
+// Types that own a row on the kosztorys "Wydatki inwestycyjne" tab. Stays a literal
+// because sync-sheet.ts spreads it at module load inside the Payload config graph, which
+// needs an eager value. Membership is bound to the table's `expensesSheetTab` column by
+// the consistency test.
 export const EXPENSES_TAB_TYPES = [
   'INVESTMENT_EXPENSE',
   'CORRECTION',
@@ -146,24 +279,77 @@ export const VAT_PLANE_LABELS: Record<VatPlaneT, string> = {
   GROSS: 'Brutto',
 }
 
-// Type predicates and their private membership arrays live in transfer-rules.ts to
-// keep this file to plain data. Re-exported here so existing importers stay unchanged;
-// the transfers ↔ transfer-rules cycle is safe because predicates access these arrays
-// lazily at call time, not at module load.
-export {
-  isSheetTransferTabType,
-  isExpensesTabType,
-  canBeSettled,
-  isTransferType,
-  isDepositType,
-  needsSourceRegister,
-  showsInvestment,
-  requiresInvestment,
-  needsTargetRegister,
-  needsWorker,
-  needsOtherCategory,
-  showsOtherCategory,
-  needsExpenseCategory,
-  isLaborCost,
-  isCancellationType,
-} from './transfer-rules'
+// ── Predicates ──────────────────────────────────────────────────────────
+//
+// These lived in transfer-rules.ts purely to break a load-order cycle with this file.
+// With the spec table there is one home and no cycle, so they moved back. Every value
+// here is eager: sync-sheet.ts spreads these arrays at module load inside the Payload
+// config graph, where a lazy value would yield [] and every transfer would silently stop
+// syncing to the sheet.
+
+export const isTransferType = (type: string): type is TransferTypeT =>
+  (TRANSFER_TYPES as readonly string[]).includes(type)
+
+const specOf = (type: unknown): TransferSpecT | undefined =>
+  typeof type === 'string' && isTransferType(type) ? TRANSFER_TYPE_SPECS[type] : undefined
+
+export const isDepositType = (type: string) => specOf(type)?.deposit === true
+
+export const isExpensesTabType = (type: unknown): boolean =>
+  specOf(type)?.expensesSheetTab === true
+
+export const canBeSettled = (type: unknown): boolean => specOf(type)?.settleable === true
+
+export const isSheetTransferTabType = (type: unknown): type is SheetTransferTabTypeT =>
+  specOf(type)?.transfersSheetTab === true
+
+export const needsSourceRegister = (type: string) => specOf(type)?.sourceRegister === 'required'
+
+// Field-rule predicates. NOT folded into the table: a field is governed by up to five
+// independent axes (shown / required / auto-cleared / optional / exempt), and `investment`
+// alone uses three of them over two different type sets. One boolean column per predicate
+// would be wrong by construction.
+
+const INVESTMENT_TYPES: TransferTypeT[] = [
+  'INVESTMENT_EXPENSE',
+  'LABOR_COST',
+  'INVESTOR_DEPOSIT',
+  'COMPANY_FUNDING',
+  'OTHER_DEPOSIT',
+  'RABAT',
+  'LOSS',
+  'CORRECTION',
+  'PAYOUT',
+]
+
+// Subset of INVESTMENT_TYPES where the investment is mandatory (not just shown).
+const REQUIRES_INVESTMENT_TYPES: TransferTypeT[] = [
+  'INVESTOR_DEPOSIT',
+  'INVESTMENT_EXPENSE',
+  'LABOR_COST',
+  'RABAT',
+]
+
+export const showsInvestment = (type: string) =>
+  isTransferType(type) && (INVESTMENT_TYPES as readonly string[]).includes(type)
+
+export const requiresInvestment = (type: string) =>
+  isTransferType(type) && (REQUIRES_INVESTMENT_TYPES as readonly string[]).includes(type)
+
+export const needsTargetRegister = (type: string) =>
+  isTransferType(type) && type === 'REGISTER_TRANSFER'
+
+export const needsWorker = (type: string) => isTransferType(type) && type === 'PAYOUT'
+
+export const needsOtherCategory = (type: string) => isTransferType(type) && type === 'OTHER'
+
+export const showsOtherCategory = (type: string) =>
+  isTransferType(type) && (type === 'OTHER' || type === 'INVESTMENT_EXPENSE' || type === 'PAYOUT')
+
+export const needsExpenseCategory = (type: string, hasInvestment?: boolean) =>
+  isTransferType(type) &&
+  (type === 'INVESTMENT_EXPENSE' || (type === 'CORRECTION' && !!hasInvestment))
+
+export const isLaborCost = (type: string) => isTransferType(type) && type === 'LABOR_COST'
+
+export const isCancellationType = (type: string) => isTransferType(type) && type === 'CANCELLATION'

@@ -256,11 +256,14 @@ did more than close the door.
       a wrong fingerprint produced the "regenerate" message instead of a drift report.
 - [x] Phase 0b — `pnpm test:parity` green (now runs both DB specs);
       `pnpm test:golden:update` regenerates the fixture.
-- [ ] Phase 1 — `pnpm exec vitest run src/__tests__/transfer-constants.test.ts` green; full suite green
-- [ ] Phase 1 — golden master byte-identical (zero moved figures)
-- [ ] Phase 1 — `pnpm typecheck` clean (the `readonly`-collapse near-miss in `lessons.md` broke
+- [x] Phase 1 — characterization suite green **unchanged**; full unit suite 1527 passed
+- [x] Phase 1 — golden master byte-identical (zero moved figures across 100 investments,
+      29 registers, 36 workers)
+- [x] Phase 1 — `pnpm typecheck` clean (the `readonly`-collapse near-miss in `lessons.md` broke
       15 call sites because `tsc` was never run — this gate is not optional)
-- [ ] Phase 1 — sheet-sync guard: assert `SHEET_SYNCED_TYPES` is non-empty at import
+- [x] Phase 1 — sheet-sync guard: both `SHEET_SYNCED_TYPES` inputs asserted non-empty at import
+- [x] Phase 1 — `transfer-rules.ts` deleted, cycle dissolved, zero consumer files edited
+      (the only importer was the re-export barrel in `transfers.ts`)
 - [ ] Phase 2 — `deriveFinancials` pins green; golden master byte-identical apart from the
       deliberate `totalCorrections` key removal
 - [ ] Phase 3 — `needsSourceRegister('CANCELLATION') === false`, reason recorded in the test
