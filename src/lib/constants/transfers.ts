@@ -72,7 +72,10 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: false,
     financialBucket: 'none',
-    sourceRegister: 'required',
+    // A cancellation moves no cash of its own — it annotates the row it reverses, whose
+    // register already carries the reversal. A register set here would reach the `ELSE
+    // -amount` arm in sum-transfers and silently drain that register.
+    sourceRegister: 'never',
   },
   OTHER_DEPOSIT: {
     label: 'Inna wpłata',

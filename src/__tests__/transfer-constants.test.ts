@@ -47,10 +47,11 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
   },
   needsSourceRegister: {
     fn: needsSourceRegister,
-    // Everything except the three P&L figures with no cash movement.
-    // CANCELLATION's presence here is the defect phase 3 fixes — pinned deliberately.
+    // Everything except the three P&L figures with no cash movement, plus CANCELLATION.
+    // CANCELLATION was in this list until EX-573 phase 3 — a DELIBERATE behaviour change,
+    // not a drift: a cancellation annotates the row it reverses and moves no cash of its
+    // own, so offering it a „Kasa" picker only opened a path to draining that register.
     trueFor: [
-      'CANCELLATION',
       'OTHER_DEPOSIT',
       'OTHER',
       'CORRECTION',
@@ -139,13 +140,16 @@ describe('transfer constants — helper truth table', () => {
 })
 
 describe('needsSourceRegister — CANCELLATION', () => {
-  // Pins TODAY's behaviour, which is wrong: a cancellation is an audit stub with no cash
-  // movement, so the admin panel currently offers it a „Kasa" picker whose value nothing
-  // clears (validate.ts returns early for CANCELLATION) and which would land in the
-  // `ELSE -amount` arm of sum-transfers.ts, silently draining that register.
-  // Phase 3 flips this to false; the flip must show up as a diff on THIS line.
-  it('is true today — phase 3 flips it', () => {
-    expect(needsSourceRegister('CANCELLATION')).toBe(true)
+  // Flipped from true in EX-573 phase 3. A cancellation is an audit stub with no cash
+  // movement of its own — the register was already moved by the row being reversed. While
+  // this was true, the admin panel offered a cancellation a „Kasa" picker whose value
+  // nothing cleared (validate.ts returns early for CANCELLATION) and which would land in
+  // the `ELSE -amount` arm of sum-transfers.ts, silently draining that register.
+  //
+  // Defence, not repair: 0 of the 257 cancellations in the production dataset carry a
+  // register, which is why the golden master's 32 register balances are unmoved by this.
+  it('is false — a cancellation gets no register picker', () => {
+    expect(needsSourceRegister('CANCELLATION')).toBe(false)
   })
 })
 

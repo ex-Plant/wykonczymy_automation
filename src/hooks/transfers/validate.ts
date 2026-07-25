@@ -56,12 +56,10 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     if (amountErr) errors.push(amountErr)
   }
 
-  // sourceRegister — required for all types except LABOR_COST
   if (needsSourceRegister(type) && !d.sourceRegister) {
     errors.push('Cash register is required for this transfer type.')
   }
 
-  // Auto-clear sourceRegister for types that don't need it
   if (!needsSourceRegister(type)) {
     d.sourceRegister = null
   }
