@@ -4,6 +4,7 @@ import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
+import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import {
   DEPOSIT_UI_TYPES,
@@ -56,6 +57,10 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
     ? DEPOSIT_UI_TYPES
     : DEPOSIT_UI_TYPES.filter((t) => t !== 'COMPANY_FUNDING')
 
+  // Fills the select only when it would otherwise be empty — a draft that already names an
+  // investment keeps it, so navigating between investments never rewrites a half-filled form.
+  const investmentFromUrl = useInvestmentFromUrl(referenceData.investments)
+
   const { form, reset } = useManagedForm<FormValuesT, CreateTransferFormT>({
     formId: FORM_ID,
     useFormStore: useDepositFormStore,
@@ -68,8 +73,10 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
       paymentMethod: 'CASH',
       vatPlane: VAT_PLANE_NONE,
       sourceRegister: getDefaultCashRegister(referenceData),
-      investment: '',
+      investment: investmentFromUrl,
     },
+    mergeStored: (stored) =>
+      stored.investment ? stored : { ...stored, investment: investmentFromUrl },
     keepOpen,
     successMessage: 'Wpłata dodana',
     onSubmitSuccess,
