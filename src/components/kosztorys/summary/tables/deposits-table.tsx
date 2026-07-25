@@ -19,11 +19,10 @@ import type { DepositTransactionRowT } from '@/types/reference-data'
 // SummaryLabelCell/SummaryValueCell). Deposits are rare, so no virtualization: one row each,
 // date-desc.
 //
-// In tryb mieszany (`showPlane`) the table adds a „Rodzaj" column naming each wpłata's vatPlane —
-// Netto (`NET`), Brutto (`GROSS`), or „Nie określono" (`null`) — and closes with a Razem row for
-// each of the three rodzaje. The buckets are display-only: „Nie określono" still counts as netto in the
-// settlement math (owner's „brak wartości = netto" ruling, 2026-07-23), noted under the „Rozliczenie
-// mieszane" block. Outside tryb mieszany the plane is irrelevant, so the table is a plain Data | Kwota list.
+// The table always adds a „Rozliczenie netto/brutto" column naming each wpłata's vatPlane — Netto
+// (`NET`), Brutto (`GROSS`), or „Nie określono" (`null`) — and closes with a Razem row for each of the
+// three rodzaje. The buckets are display-only: „Nie określono" still counts as netto in the settlement
+// math (owner's „brak wartości = netto" ruling, 2026-07-23).
 const PLANE_LABELS = { NET: 'Netto', GROSS: 'Brutto' } as const
 const planeLabel = (plane: DepositTransactionRowT['vatPlane']) =>
   plane == null ? 'Nie określono' : PLANE_LABELS[plane]
@@ -31,12 +30,10 @@ export function DepositsTable({
   investmentId,
   rows,
   clientView,
-  showPlane,
 }: {
   investmentId: number
   rows: DepositTransactionRowT[]
   clientView: boolean
-  showPlane: boolean
 }) {
   const dateCell = (row: DepositTransactionRowT) => (
     <SummaryLabelCell className="tabular-nums">
@@ -52,32 +49,6 @@ export function DepositsTable({
       )}
     </SummaryLabelCell>
   )
-
-  const total = rows.reduce((sum, row) => sum + row.amount, 0)
-
-  // List rows and the Razem total live in ONE grid so the whole wpłaty block reads as a single
-  // segment — the gap-px separator between the last wpłata and the first Razem row is just another
-  // rowline, no break.
-  if (!showPlane) {
-    return (
-      <SummaryTable cols={`${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`} className="w-fit">
-        <SummaryHeaderCell variant="label">Wpłaty</SummaryHeaderCell>
-        <SummaryHeaderCell>Kwota</SummaryHeaderCell>
-        {rows.map((row) => (
-          <Fragment key={row.id}>
-            {dateCell(row)}
-            <SummaryValueCell className="text-chart-green">
-              {formatNet(row.amount)}
-            </SummaryValueCell>
-          </Fragment>
-        ))}
-        <SummaryLabelCell className="font-bold">Razem</SummaryLabelCell>
-        <SummaryValueCell className="text-chart-green font-bold">
-          {formatNet(total)}
-        </SummaryValueCell>
-      </SummaryTable>
-    )
-  }
 
   // One Razem row per rodzaj — always all three, even a 0 zł bucket, so the split is fully readable.
   const perPlane = (['NET', 'GROSS', null] as const).map((plane) => ({
