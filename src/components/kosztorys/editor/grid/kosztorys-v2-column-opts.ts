@@ -48,6 +48,11 @@ export type BuildV2ColumnsOptsT = {
   // Renaming the whole section from its (denormalized) name cell. Routes through the same fan-out
   // as the section panel — never a per-row setRowData, which would desync the other rows' copies.
   onRenameSection?: (sectionId: number, name: string) => void
+  // Deleting the whole section a row belongs to, from the row-actions menu. Cascade-deletes the
+  // section's items + stage_progress (same path as the section panel), guarded by a confirm dialog.
+  onRemoveSection?: (sectionId: number) => void
+  // Item count for a section, to size the "removes N items" confirm before deleting it.
+  getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from
   // the grid and the picker (the underlying data stays and returns when the discount is cleared).
   globalDiscountActive?: boolean

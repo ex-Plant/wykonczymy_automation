@@ -282,6 +282,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onReorderItem: editorOnly(handleReorderItem),
     onInsertItem: editorOnly(handleInsertItem),
     onRenameSection: editorOnly(handleRenameSection),
+    onRemoveSection: editorOnly(handleRemoveSection),
+    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
     readOnly: clientView || undefined,
