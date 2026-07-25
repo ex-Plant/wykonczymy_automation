@@ -1,10 +1,10 @@
 ---
 change_id: subcontractor-view-settlement-only
 title: Subcontractor views become settlement-only — plane-filtered pomiar, no przedmiar-anchored columns
-status: implemented
+status: archived
 created: 2026-07-25
 updated: 2026-07-25
-archived_at: null
+archived_at: 2026-07-25T20:01:44Z
 branch: subcontractor-view-settlement-only
 worktree: null
 ---
