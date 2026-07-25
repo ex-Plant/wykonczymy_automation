@@ -35,16 +35,10 @@ export async function seedInvestmentFromPreset(
       // Read-only bail: no writes happened, so committing this empty tree-check is equivalent to a rollback.
       if (existing.rows.length > 0) return 'not-empty'
       await applyPreset(payload, req, investmentId, preset.payload)
-      // A preset carries no etapy; a kosztorys must always have at least one. Install the single blank
-      // starting etap so a preset-seeded tree opens identically to a hand-started one — but only when
-      // there is none: „Dodaj etap" works on a tree with no sections, so an investment can reach the
-      // „Wypełnij z szablonu" CTA already holding etapy, and a blind insert collides with
-      // UNIQUE(investment_id, ordinal).
-      await txDb.execute(sql`
-        INSERT INTO kosztorys_stages (investment_id, ordinal, label)
-        SELECT ${investmentId}, 1, NULL
-        WHERE NOT EXISTS (SELECT 1 FROM kosztorys_stages WHERE investment_id = ${investmentId})
-      `)
+      // A preset carries no etapy and the seed installs none: an etap's plane is forced at creation
+      // (addStageAction), and a seeded etap could only guess one. A guessed plane reads as confirmed
+      // while nobody chose it, and an unconfirmed (null) one drops out of both subcontractor views —
+      // so the first etap is the user's explicit call, through the picker.
       return 'ok'
     },
     { skipRevalidation: true },

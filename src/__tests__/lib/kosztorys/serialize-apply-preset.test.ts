@@ -246,7 +246,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     })
   })
 
-  it('seed from a preset yields exactly one blank etap and no progress, whatever the source stages were', async () => {
+  it('seed from a preset yields no etapy and no progress, whatever the source stages were', async () => {
     const sourceId = await createInvestment(`${PRESET_PREFIX}source-oneetap`, 0.23, 0.7, 0.5)
     await buildSourceTree(sourceId) // source has 2 stages + progress
 
@@ -264,9 +264,8 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     expect(await seedInvestmentFromPreset(payload, spawnId, presetId!)).toBe('ok')
 
     const after = await serializeKosztorys(spawnId)
-    expect(after.stages).toHaveLength(1)
-    expect(after.stages[0].ordinal).toBe(1)
-    expect(after.stages[0].label).toBeNull()
+    // No etap is installed: its plane is forced at creation, and the seed has nothing to base one on.
+    expect(after.stages).toEqual([])
     expect(after.progress).toEqual([])
   })
 
@@ -280,9 +279,9 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
       payload: preset,
     })
 
-    // The live shape behind the bug: an empty tree (no sections → the „Wypełnij z szablonu" CTA)
-    // that nonetheless already carries etapy, because „Dodaj etap" works on an empty kosztorys.
-    // Blindly installing the starting etap here hits UNIQUE(investment_id, ordinal).
+    // The live shape behind the original bug: an empty tree (no sections → the „Wypełnij z szablonu"
+    // CTA) that nonetheless already carries etapy, because „Dodaj etap" works on an empty kosztorys.
+    // The seed used to install a starting etap here and collided with UNIQUE(investment_id, ordinal).
     const targetId = await createInvestment(`${PRESET_PREFIX}target-hasetapy`, 0.23, 0.7, 0.5)
     await payload.create({
       collection: 'kosztorys-stages',
