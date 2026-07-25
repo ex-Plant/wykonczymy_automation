@@ -172,7 +172,7 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 
 ## EX-571 — subcontractor-view-settlement-only
 
-**In review** — all automated checks green (tsc 0, eslint 0 errors, 1135 unit tests). A subcontractor
+**In review** — full suite green minus e2e (tsc 0, eslint 0 errors, 1141 unit tests, build ok). A subcontractor
 view (Z narzędziami / Bez narzędzi) now counts **only its own etapy**: „Pomiar z natury" is Σ of that
 plane's etapy, so every figure standing on it (wartość, podsumy sekcji, „Razem") is that crew's bill
 alone. Columns anchored in Przedmiar („Wartość netto/brutto przedmiar", „Pozostało", „% wykonania")

@@ -94,3 +94,11 @@ explicit ban on `git checkout` / `restore` / `stash` after the Step-1 incident; 
   11 skipped (276 + 2 new przedmiar-column guards), 21 files passed / 3 skipped.
 - After the przedmiar block: `pnpm typecheck` clean; ESLint clean on the five touched files;
   the same run + `kosztorys-chart-slices.test.ts` → 285 passed / 11 skipped, 22 files passed / 3 skipped.
+- **Full suite (Step 3), minus e2e — user's call, `test:e2e` not run** (needs the 5435 `db-test`
+  container up; the browser-level obligation stays with EX-571's manual checks + the E2E backlog):
+  - `pnpm typecheck` → clean.
+  - `pnpm lint` → 0 errors, 87 warnings, all pre-existing (`src/migrations/*` unused-arg noise plus
+    ~22 unrelated files). None in a file this slice touched.
+  - `pnpm test` → **1141 passed / 51 skipped**, 91 files passed / 20 skipped. The Nodemailer
+    `ECONNREFUSED 127.0.0.1:465` stderr is from the skipped preset specs, not a failure.
+  - `pnpm build` → succeeded, full route table emitted.
