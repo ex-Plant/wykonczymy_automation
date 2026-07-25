@@ -312,17 +312,17 @@ archive. Reality-check the Linear MCP first — if it is unreachable, say so rat
 
 #### Automated
 
-- [x] 1.1 Type checking passes
-- [x] 1.2 Linting passes
-- [x] 1.3 Existing unit suite passes
+- [x] 1.1 Type checking passes — ed724650
+- [x] 1.2 Linting passes — ed724650
+- [x] 1.3 Existing unit suite passes — ed724650
 
 ### Phase 2: Extract the zip loop into `useInvoiceZip`
 
 #### Automated
 
-- [ ] 2.1 Type checking passes
-- [ ] 2.2 Linting passes
-- [ ] 2.3 Existing unit suite passes
+- [x] 2.1 Type checking passes
+- [x] 2.2 Linting passes
+- [x] 2.3 Existing unit suite passes
 
 ### Phase 3: Mount the button in the Wydatki list
 
