@@ -320,9 +320,9 @@ archive. Reality-check the Linear MCP first — if it is unreachable, say so rat
 
 #### Automated
 
-- [x] 2.1 Type checking passes
-- [x] 2.2 Linting passes
-- [x] 2.3 Existing unit suite passes
+- [x] 2.1 Type checking passes — 35e18250
+- [x] 2.2 Linting passes — 35e18250
+- [x] 2.3 Existing unit suite passes — 35e18250
 
 ### Phase 3: Mount the button in the Wydatki list
 

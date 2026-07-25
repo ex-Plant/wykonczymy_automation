@@ -232,6 +232,7 @@ export function KosztorysEditorBody({
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel
             investmentId={investmentId}
+            investmentName={investmentName}
             stages={stages}
             stageTotals={stageTotals}
             payoutsByWorker={payoutsByWorker}

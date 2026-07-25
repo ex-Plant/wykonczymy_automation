@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildInvoiceArchiveName,
+  buildInvoiceZipMessage,
   buildUniqueFilename,
   sanitizeForFilename,
   getExtension,
@@ -148,5 +150,67 @@ describe('pluralizeInvoice', () => {
     expect(pluralizeInvoice(112)).toBe('faktur')
     expect(pluralizeInvoice(113)).toBe('faktur')
     expect(pluralizeInvoice(114)).toBe('faktur')
+  })
+})
+
+describe('buildInvoiceArchiveName', () => {
+  it('falls back to the generic name when no parts are given', () => {
+    expect(buildInvoiceArchiveName([], '2026-07-25')).toBe('faktury-2026-07-25.zip')
+  })
+
+  it('joins parts between the prefix and the date', () => {
+    expect(buildInvoiceArchiveName(['Kowalski', 'Wydatki inwestycyjne'], '2026-07-25')).toBe(
+      'faktury-Kowalski-Wydatki_inwestycyjne-2026-07-25.zip',
+    )
+  })
+
+  it('strips characters that are illegal in a filename', () => {
+    expect(buildInvoiceArchiveName(['ul. Polna 3/5: etap "A"'], '2026-07-25')).toBe(
+      'faktury-ul._Polna_35_etap_A-2026-07-25.zip',
+    )
+  })
+
+  it('drops a part that sanitizes to nothing', () => {
+    expect(buildInvoiceArchiveName(['???', 'Etap'], '2026-07-25')).toBe(
+      'faktury-Etap-2026-07-25.zip',
+    )
+  })
+})
+
+describe('buildInvoiceZipMessage', () => {
+  it('reports a plain count when every row was packed', () => {
+    expect(buildInvoiceZipMessage({ total: 5, withInvoice: 5, downloaded: 5 })).toBe(
+      'Pobrano 5 faktur',
+    )
+  })
+
+  it('names the shortfall when some rows carry no invoice', () => {
+    expect(buildInvoiceZipMessage({ total: 5, withInvoice: 3, downloaded: 3 })).toBe(
+      'Pobrano 3 z 5 — 2 bez faktury',
+    )
+  })
+
+  it('names the shortfall when some downloads failed', () => {
+    expect(buildInvoiceZipMessage({ total: 5, withInvoice: 5, downloaded: 3 })).toBe(
+      'Pobrano 3 z 5 — 2 nie do pobrania',
+    )
+  })
+
+  it('names both shortfalls when they occur together', () => {
+    expect(buildInvoiceZipMessage({ total: 6, withInvoice: 4, downloaded: 3 })).toBe(
+      'Pobrano 3 z 6 — 2 bez faktury, 1 nie do pobrania',
+    )
+  })
+
+  it('says nothing was attachable when no row carries an invoice', () => {
+    expect(buildInvoiceZipMessage({ total: 4, withInvoice: 0, downloaded: 0 })).toBe(
+      'Brak faktur do pobrania',
+    )
+  })
+
+  it('distinguishes a total download failure from having nothing to download', () => {
+    expect(buildInvoiceZipMessage({ total: 4, withInvoice: 2, downloaded: 0 })).toBe(
+      'Nie udało się pobrać żadnej faktury',
+    )
   })
 })
