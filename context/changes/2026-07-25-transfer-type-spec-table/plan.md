@@ -264,11 +264,17 @@ did more than close the door.
 - [x] Phase 1 — sheet-sync guard: both `SHEET_SYNCED_TYPES` inputs asserted non-empty at import
 - [x] Phase 1 — `transfer-rules.ts` deleted, cycle dissolved, zero consumer files edited
       (the only importer was the re-export barrel in `transfers.ts`)
-- [ ] Phase 2 — `deriveFinancials` pins green; golden master byte-identical apart from the
-      deliberate `totalCorrections` key removal
-- [ ] Phase 3 — `needsSourceRegister('CANCELLATION') === false`, reason recorded in the test
-- [ ] Phase 3 — golden master byte-identical, register balances included
-- [ ] `pnpm exec vitest run src/__tests__/lib/google/sheets.test.ts` green (summary-column order)
+- [x] Phase 2 — `deriveFinancials` pins green; golden master run against the OLD fixture drifted
+      on exactly 100 lines, all of them `totalCorrections: expected 0 got undefined` — no other
+      figure and no register/worker balance moved. Regenerating the fixture is a pure
+      `100 deletions, 0 insertions` diff, which is the visible record that a field was removed
+      rather than a number changed.
+- [x] Phase 3 — `needsSourceRegister('CANCELLATION') === false`, reason recorded in the test
+      (`transfer-constants.test.ts`, both the truth-table row and the dedicated describe).
+      `validate.ts`'s blanket CANCELLATION early return kept, so the only live effect is the
+      admin panel dropping the „Kasa" picker.
+- [x] Phase 3 — golden master byte-identical, all 32 register balances included, no drift
+- [x] `pnpm exec vitest run src/__tests__/lib/google/sheets.test.ts` green (summary-column order)
 
 ## Open risks
 
