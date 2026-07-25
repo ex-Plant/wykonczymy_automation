@@ -6,57 +6,45 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
-import {
-  generateShareLinkAction,
-  getShareLinkAction,
-  revokeShareLinkAction,
-} from '@/lib/actions/kosztorys-share'
+import { generateShareLinkAction, revokeShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { FRONTEND_URL } from '@/lib/env'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 import { toastMessage } from '@/lib/utils/toast'
 import { Description } from '@/components/ui/description'
 
-type PropsT = { investmentId: number; open: boolean; onOpenChange: (open: boolean) => void }
+type PropsT = {
+  investmentId: number
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  // Token + its load state are owned by the parent, which fetches on the Opcje-menu click. Radix
+  // fires onOpenChange only for its OWN trigger, never for a programmatic `open`, so a fetch hung
+  // off onOpenChange never ran when the dialog is opened from a menu item. The dialog updates the
+  // token back up on generate/revoke.
+  token: string | null
+  loaded: boolean
+  onTokenChange: (token: string | null) => void
+}
 
-/**
- * The current token is fetched when the dialog opens rather than threaded down from the page: the
- * editor's server page would otherwise carry a secret it never renders, and the state is only ever
- * looked at here. Same lazy-on-open shape as KosztorysActionsMenu's preset list.
- *
- * Controlled from the parent (Opcje menu) rather than owning its own trigger — a DropdownMenuItem
- * closes the menu on select, so the dialog can't live inside it.
- */
-export function KosztorysShareDialog({ investmentId, open, onOpenChange }: PropsT) {
-  const [token, setToken] = useState<string | null>(null)
-  const [loaded, setLoaded] = useState(false)
+// Controlled from the parent (Opcje menu) rather than owning its own trigger — a DropdownMenuItem
+// closes the menu on select, so the dialog can't live inside it.
+export function KosztorysShareDialog({
+  investmentId,
+  open,
+  onOpenChange,
+  token,
+  loaded,
+  onTokenChange,
+}: PropsT) {
   const [confirmingRevoke, setConfirmingRevoke] = useState(false)
   const [pending, startTransition] = useTransition()
 
   const url = token ? `${FRONTEND_URL}/k/${token}` : ''
 
-  const handleOpenChange = (next: boolean) => {
-    onOpenChange(next)
-    if (!next) return
-    setLoaded(false)
-    // Clear on every failure path. Keeping a token from a previous open would render a link that
-    // may since have been rotated or revoked elsewhere as though it were still live.
-    void getShareLinkAction(investmentId)
-      .then((res) => {
-        setToken(res.success ? res.data : null)
-        if (!res.success) toastMessage(res.error, 'error')
-      })
-      .catch(() => {
-        setToken(null)
-        toastMessage('Nie udało się sprawdzić linku', 'error')
-      })
-      .finally(() => setLoaded(true))
-  }
-
   const generate = () =>
     startTransition(async () => {
       const res = await generateShareLinkAction(investmentId)
       if (!res.success) return toastMessage(res.error, 'error')
-      setToken(res.data)
+      onTokenChange(res.data)
       toastMessage('Link gotowy. Poprzedni (jeśli był) przestał działać.', 'success')
     })
 
@@ -64,7 +52,7 @@ export function KosztorysShareDialog({ investmentId, open, onOpenChange }: Props
     startTransition(async () => {
       const res = await revokeShareLinkAction(investmentId)
       if (!res.success) return toastMessage(res.error, 'error')
-      setToken(null)
+      onTokenChange(null)
       setConfirmingRevoke(false)
       toastMessage('Link wyłączony.', 'success')
     })
@@ -73,7 +61,7 @@ export function KosztorysShareDialog({ investmentId, open, onOpenChange }: Props
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader
             title="Udostępnij klientowi"
