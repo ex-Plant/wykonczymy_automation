@@ -120,7 +120,7 @@ export function SubcontractorSummary({
     mode === 'worker' ? [{ id: 'workerName', desc: false }] : [{ id: 'date', desc: true }]
 
   return (
-    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-4 pb-10 text-sm">
+    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
         <HeadlineSummary summary={summary} due={subcontractorDue} />
         {summary.rows.length > 0 && (
