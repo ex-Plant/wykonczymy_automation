@@ -133,11 +133,11 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodT, string> = {
   // CARD: 'Karta',
 }
 
-// EX-536 netto/brutto wpłata bucket. An optional third state — NULL — is the create form's default
-// („— nie określono —") and a first-class outcome, not a legacy-only value: a new INVESTOR_DEPOSIT
-// persists NULL unless the user picks NET or GROSS. Downstream (deposits reconciliation) an unmarked
-// deposit is treated as netto — the owner's „brak wartości = netto" ruling (flipped 2026-07-23 from
-// the earlier null→brutto default; only GROSS goes to the invoiced part, NET and null pay gotówka).
+// EX-536 netto/brutto wpłata bucket. The create form now always sends NET or GROSS (NET preselected),
+// but NULL stays a valid stored state for wpłaty booked before that. Downstream (deposits
+// reconciliation) an unmarked deposit is treated as netto — the owner's „brak wartości = netto"
+// ruling (flipped 2026-07-23 from the earlier null→brutto default; only GROSS goes to the invoiced
+// part, NET and null pay gotówka).
 export const VAT_PLANES = ['NET', 'GROSS'] as const
 export type VatPlaneT = (typeof VAT_PLANES)[number]
 

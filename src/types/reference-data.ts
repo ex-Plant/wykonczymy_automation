@@ -59,7 +59,8 @@ export type PayoutTransactionRowT = {
 }
 
 // One INVESTOR_DEPOSIT transaction for the client Podsumowanie's wpłaty list — mirrors
-// PayoutTransactionRowT. `vatPlane` is null for the „nie określono" default state.
+// PayoutTransactionRowT. `vatPlane` is null for wpłaty booked before the plane became a required
+// choice in the form — the reconciliation reads those as netto.
 export type DepositTransactionRowT = {
   id: number
   date: string
