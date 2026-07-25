@@ -69,9 +69,11 @@ export type DepositTransactionRowT = {
 
 // One materiały (Wydatki inwestycyjne) transaction for the Podsumowanie's wydatki list — an
 // INVESTMENT_EXPENSE / CORRECTION row. Sourced from the existing `findTransfersRaw` fetch; the
-// expense-category `label` is resolved at the page from reference data (like worker names on the
-// payout list). `settled` splits the client-facing „Wydatki inwestycyjne" (false — Σ ===
-// materialsGross) from the owner-only „Materiały wliczone w robociznę" (true) behind the list toggle.
+// expense-category `label` is resolved in the shared fetcher, not at either page, so the owner view
+// and the client share view label a row identically. `settled` splits „Wydatki inwestycyjne" (false —
+// Σ === materialsGross) from „Materiały wliczone w robociznę" (true) behind the list toggle; both
+// sets show in every view. The invoice pair feeds the list's bulk-ZIP download and is null when no
+// invoice is attached.
 export type MaterialTransactionRowT = {
   id: number
   date: string
@@ -79,6 +81,8 @@ export type MaterialTransactionRowT = {
   label: string
   description: string | null
   settled: boolean
+  invoiceUrl: string | null
+  invoiceFilename: string | null
 }
 
 export type OtherCategoryRefT = {
