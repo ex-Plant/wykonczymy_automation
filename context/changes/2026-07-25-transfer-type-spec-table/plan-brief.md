@@ -20,7 +20,7 @@ load-order cycle.
 0. Widen the characterization net **on the current implementation** — it covers 7 of 15
    predicates today and asserts nothing about the two that gate money math.
    0b. Freeze a **per-investment golden master** over the real prod restore on 5435 (100
-   investments × every figure + bilans + marża, plus 32 register balances), fingerprinted
+   investments × every figure + bilans + marża, plus 29 register + 36 worker balances), fingerprinted
    against the dataset so a test-DB refresh reads as "regenerate", not "drift". Every later
    phase must leave it byte-identical. No test touches Neon — prod figures enter as data via
    the dump, never as a connection.

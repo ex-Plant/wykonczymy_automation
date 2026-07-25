@@ -1,7 +1,7 @@
 ---
 change_id: transfer-type-spec-table
 title: One spec table for transfer types, membership arrays derived
-status: planned
+status: implemented
 created: 2026-07-25
 updated: 2026-07-25
 archived_at: null
@@ -27,7 +27,7 @@ The specific trap `netto-expense-type` walks into: `canBeSettled` currently alia
 `INVESTMENT_EXPENSE_NET` is exactly the type that splits them, and forgetting the carve-out
 leaks netto into `totalSettled` → marża. Compiles clean, tests pass, wrong money.
 
-**Approach:** invert the axis to one `TRANSFER_SPECS` table keyed by type, one row per type,
+**Approach:** invert the axis to one `TRANSFER_TYPE_SPECS` table keyed by type, one row per type,
 declaring its capabilities as columns. `satisfies Record<TransferTypeT, TransferSpecT>` with
 required fields makes a missing decision a **compile error**. Every existing export
 (`DEPOSIT_TYPES`, `canBeSettled`, …) is then derived from the table, keeping names and

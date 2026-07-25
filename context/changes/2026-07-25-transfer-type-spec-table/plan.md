@@ -155,7 +155,7 @@ fails loudly if env is set but the DB is unreachable). Added to `test:parity`'s 
   `totalLaborCosts`, `totalPayouts`, `totalRabat`, `totalLoss`, `totalSettled` — plus
   `categoryCosts` / `settledCategoryCosts` sorted by `categoryId`, plus the two derived
   figures the pages actually render: `calculateBalance` (bilans) and `calculateMargin` (marża).
-- **per cash register** (all 32): the computed balance. Phase 3 is a register-drain defect, so
+- **per cash register** (all 29) **and per worker** (all 36): the computed balance. Phase 3 is a register-drain defect, so
   the register axis cannot be left uncovered even though the user's focus is per-investment.
 - All amounts rounded to 2dp (`round2`, as the existing parity test does) — the numbers are
   PLN, and float noise below a grosz is not a behaviour change.
@@ -234,7 +234,7 @@ than a number changed.
   cross-field validation; a mechanical table-driven rewrite that dropped it would break
   cancellation outright (`research.md` §5 C).
 
-Gate: golden master byte-identical — **including all 32 register balances**. 0 of 257
+Gate: golden master byte-identical — **including all 29 register balances**. 0 of 257
 cancellations carry a register today, so a moved register balance here would mean the change
 did more than close the door.
 
@@ -273,7 +273,7 @@ did more than close the door.
       (`transfer-constants.test.ts`, both the truth-table row and the dedicated describe).
       `validate.ts`'s blanket CANCELLATION early return kept, so the only live effect is the
       admin panel dropping the „Kasa" picker.
-- [x] Phase 3 — golden master byte-identical, all 32 register balances included, no drift
+- [x] Phase 3 — golden master byte-identical, all 29 register + 36 worker balances included, no drift
 - [x] `pnpm exec vitest run src/__tests__/lib/google/sheets.test.ts` green (summary-column order)
 
 ## Open risks
