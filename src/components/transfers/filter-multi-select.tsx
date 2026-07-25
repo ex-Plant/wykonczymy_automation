@@ -28,9 +28,15 @@ type FilterMultiSelectPropsT = {
   // Render just the icon (no label / count) — for tight surfaces where a tooltip carries the meaning.
   iconOnly?: boolean
   title?: string
-  // An extra standalone checkbox row rendered above the option list, for a toggle that isn't itself
-  // a filter value (e.g. "show/hide empty sections").
-  extraToggle?: { label: string; checked: boolean; onToggle: () => void }
+  // Copy for the select-all row, which flips between the two. Overridable because a caller whose
+  // checkmarks mean "renders in the grid" wants the OUTCOME named („Pokaż/Ukryj wszystkie"), not the
+  // mechanism — the default suits a plain list filter.
+  selectAllLabel?: string
+  deselectAllLabel?: string
+  // An extra row beside the select-all one, for a caller-defined bulk selection move
+  // (e.g. "untick every empty section"). `select` maps the current selection to the next one; it
+  // routes through the same local state as the other rows, so the checkmarks move with it.
+  extraAction?: { label: string; select: (current: string[]) => string[] }
 }
 
 // URL param encoding: [] = all selected (no filter), ['__none__'] = nothing selected
@@ -47,7 +53,9 @@ export function FilterMultiSelect({
   triggerClassName,
   iconOnly = false,
   title,
-  extraToggle,
+  selectAllLabel = 'Zaznacz wszystkie',
+  deselectAllLabel = 'Odznacz wszystkie',
+  extraAction,
 }: FilterMultiSelectPropsT) {
   const [open, setOpen] = useState(false)
   const [localSelected, setLocalSelected] = useState<string[] | null>(null)
@@ -113,6 +121,13 @@ export function FilterMultiSelect({
     scheduleFlush(next)
   }
 
+  function runExtraAction() {
+    if (!extraAction) return
+    const next = extraAction.select(selected)
+    setLocalSelected(next)
+    scheduleFlush(next)
+  }
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -143,12 +158,12 @@ export function FilterMultiSelect({
             <CommandGroup>
               <CommandItem onSelect={toggleAll} className="font-medium">
                 <CheckIcon className={cn(!allSelected && 'opacity-0')} />
-                {allSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                {allSelected ? deselectAllLabel : selectAllLabel}
               </CommandItem>
-              {extraToggle && (
-                <CommandItem onSelect={extraToggle.onToggle}>
-                  <CheckIcon className={cn(!extraToggle.checked && 'opacity-0')} />
-                  {extraToggle.label}
+              {extraAction && (
+                <CommandItem onSelect={runExtraAction} className="font-medium">
+                  <CheckIcon className="opacity-0" />
+                  {extraAction.label}
                 </CommandItem>
               )}
             </CommandGroup>

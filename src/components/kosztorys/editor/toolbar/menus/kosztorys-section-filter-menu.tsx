@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { ListFilter } from 'lucide-react'
 import { FilterMultiSelect, FILTER_NONE } from '@/components/transfers/filter-multi-select'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -9,14 +8,10 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 // Set<number> | null (null = all, empty Set = none, Set = those); FilterMultiSelect speaks the URL
 // encoding [] = all / [FILTER_NONE] = none / [ids] = those, so this bridges the two.
 export function KosztorysSectionFilterMenu() {
-  const { subtotals, shownSectionIds, setShownSectionIds } = useKosztorysEditorContext()
-  const [hideEmpty, setHideEmpty] = useState(false)
+  const { subtotals, shownSectionIds, setShownSectionIds, emptySections } =
+    useKosztorysEditorContext()
 
-  // "Empty" = no executed work yet (net === 0), not "no positions" — every section always has at
-  // least one item (an empty-of-items section is cascade-deleted, see use-kosztorys-editor.ts).
-  const options = subtotals
-    .filter((s) => !hideEmpty || s.net > 0)
-    .map((s) => ({ value: String(s.sectionId), label: s.sectionName }))
+  const options = subtotals.map((s) => ({ value: String(s.sectionId), label: s.sectionName }))
 
   const values =
     shownSectionIds === null
@@ -41,10 +36,15 @@ export function KosztorysSectionFilterMenu() {
       searchable
       title="Filtruj sekcje"
       triggerClassName="w-fit min-w-0"
-      extraToggle={{
-        label: 'Ukryj puste sekcje',
-        checked: hideEmpty,
-        onToggle: () => setHideEmpty((v) => !v),
+      selectAllLabel="Pokaż wszystkie"
+      deselectAllLabel="Ukryj wszystkie"
+      // Hides by unticking rather than by filtering on top: the checkmarks stay the only description
+      // of what the grid shows, so the picker can't disagree with it. "Pusta" = no executed work
+      // (net === 0), not "no positions" — a section with no items is cascade-deleted and never
+      // reaches the grid.
+      extraAction={{
+        label: `Ukryj puste sekcje (${emptySections.size})`,
+        select: (current) => current.filter((v) => !emptySections.has(Number(v))),
       }}
     />
   )
