@@ -38,6 +38,9 @@ export function KosztorysToolbarActions() {
         className={cn(summaryOpen && 'border border-transparent')}
         onClick={() => setSummaryOpen((o) => !o)}
       >
+        <ChevronDown
+          className={cn('transition-transform duration-200', summaryOpen && 'rotate-180')}
+        />
         Sekcje
       </Button>
       <Button
