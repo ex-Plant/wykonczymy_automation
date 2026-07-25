@@ -52,7 +52,7 @@ const allColumns = [
   }),
   col.accessor('vatPlane', {
     id: 'vatPlane',
-    header: 'Netto/Brutto',
+    header: 'Rozliczenie netto/brutto',
     cell: (info) => {
       const value = info.getValue()
       return value ? VAT_PLANE_LABELS[value] : '—'

@@ -41,7 +41,6 @@ import {
 import {
   clientTotalsFromSubtotals,
   emptySectionIds,
-  executedWorkNetPreRabat,
   rowRemainingForView,
   sectionSubtotalsForView,
   stageTotalsForView,
@@ -56,7 +55,7 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { globalDiscountAmount, isGlobalDiscountActive, toGross } from '@/lib/kosztorys/calc'
+import { isGlobalDiscountActive, toGross } from '@/lib/kosztorys/calc'
 import {
   addItemAction,
   addSectionAction,
@@ -282,6 +281,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onReorderItem: editorOnly(handleReorderItem),
     onInsertItem: editorOnly(handleInsertItem),
     onRenameSection: editorOnly(handleRenameSection),
+    onRemoveSection: editorOnly(handleRemoveSection),
+    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
     readOnly: clientView || undefined,
@@ -366,7 +367,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // two verification surfaces can't drift (reconciliation, lessons.md). All three are client-view and
   // view-independent — the progress ratio and the robocizna/rabat comparison must not move with the
   // price-view toggle.
-  const { doneNet, sumaPracNet, rabatClientNet } = useMemo(
+  const { doneNet, sumaPracNet, rabatClientNet, globalRabatNet } = useMemo(
     () => clientTotalsFromSubtotals(progressSubtotals, globalDiscount),
     [progressSubtotals, globalDiscount],
   )
@@ -375,25 +376,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     [progressSubtotals],
   )
 
-  // Global discount amount + the post-rabat robocizna, computed ONCE here off the executed total.
-  // Both total surfaces (the Sekcje Suma block and the totals bar) read these props — neither
-  // recomputes, so they can never disagree.
-  const discountAmount = useMemo(
-    () => globalDiscountAmount(totalNet, globalDiscount),
-    [totalNet, globalDiscount],
-  )
   // NOT the „Do zapłaty" the UI shows — that one adds materiały and subtracts wpłaty
-  // (computeDoZaplatyRM). This is robocizna alone, after rabat.
-  const laborCostsNetFromKosztorys = totalNet - discountAmount
-  // The single explicit rabat figure the totals show. Global and per-item rabat are mutually
-  // exclusive (a live global discount forces every row gross, zeroing its per-item rabat), so
-  // summing them yields whichever mode is active without a branch. `discountAmount` still drives
-  // `laborCostsNetFromKosztorys`; `rabatAmount` is display-only (= discountAmount when global, Σ item-rabat otherwise).
-  const itemRabatTotal = useMemo(
-    () => subtotals.reduce((sum, s) => sum + s.discount, 0),
-    [subtotals],
-  )
-  const rabatAmount = discountAmount + itemRabatTotal
+  // (computeDoZaplatyRM). This is robocizna alone, after rabat. Both total surfaces (the Sekcje Suma
+  // block and the totals bar) read this one prop, so they can never disagree.
+  const laborCostsNetFromKosztorys = doneNet - globalRabatNet
 
   // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
   // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
@@ -1090,8 +1076,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     rabatClientNet,
     plannedNet,
     globalDiscount,
-    discountAmount,
-    rabatAmount,
     subcontractorDue,
     laborCostsNetFromKosztorys,
     // toolbar / panel state

@@ -1,3 +1,4 @@
+import type { PriceViewT } from '@/lib/kosztorys/calc'
 import {
   STAGES_COLUMN_GROUP,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
@@ -35,6 +36,47 @@ export const COLUMN_LABELS: Record<string, string> = {
   donePercent: '% wykonania (względem przedmiaru)',
   note: 'Komentarz',
 }
+
+/**
+ * The two labels that mean different things per view, resolved in the same module that owns every
+ * other label — otherwise the header renders a view-aware name while the column picker reads
+ * `COLUMN_LABELS[id]` and the two disagree about what a column is called, which is the exact drift
+ * this file exists to prevent.
+ *
+ * „Razem": what the client pays (post-rabat) vs what this crew is owed (rabat is a client concession
+ * — calc.ts `netForQtyForView`). „Pomiar": the whole scope's executed quantity vs only this crew's
+ * etapy (settlement.ts `rowTotalQtyDone`).
+ */
+export function columnLabelForView(id: string, view: PriceViewT): string {
+  const label = COLUMN_LABELS[id] ?? id
+  if (id === 'net' || id === 'gross') {
+    return `${label} — ${view === 'client' ? 'po rabacie' : 'do zapłaty ekipie'}`
+  }
+  if (id === 'stageQtySum' && view !== 'client') return 'Pomiar (etapy tej ekipy)'
+  return label
+}
+
+/**
+ * Columns anchored to the przedmiar — visible in the client view only. The przedmiar has no plane: it
+ * is typed once per row for the WHOLE offered scope, so beside a plane-filtered pomiar it invites a
+ * comparison that means nothing (one crew's numerator over everyone's denominator).
+ *
+ * A set applied at the selection chokepoint, not four `view === 'client' ? […] : []` wrappers in the
+ * assembly: this way there is a list you can read to answer "which columns are przedmiar-anchored",
+ * and a przedmiar-derived column added later is opted in here rather than silently shipping the
+ * nonsense comparison because someone missed the wrapping idiom.
+ *
+ * Per-etap „% wykonania" (STAGE_VALUE_PERCENT_COLUMN_GROUP) is deliberately absent — owner ruling
+ * 2026-07-25: it stays in every view, and its tip names the przedmiar base instead (header-tips.ts).
+ */
+export const PRZEDMIAR_ANCHORED_COLUMNS: ReadonlySet<string> = new Set([
+  'plannedQty',
+  'plannedNet',
+  'plannedGross',
+  'donePercent',
+  'remaining',
+  'remainingGross',
+])
 
 // Which side of the netto/brutto pair a money column reports, keyed by the picker's toggleKey
 // (`stageValueNet`, never `stageValueNet_7`) so the per-stage namespace collapses to one entry and no

@@ -120,11 +120,11 @@ export const Transfers: CollectionConfig = {
     {
       // EX-536 netto/brutto wpłata bucket. Three-state: NET / GROSS / null. INVESTOR_DEPOSIT only,
       // create-only (immutable once set). Not `required`, and the create schema keeps it `.optional()`
-      // — null is the deliberate default („nie określono"), read as netto in the reconciliation, not
-      // an enforced choice.
+      // — the form always sends a plane now, but rows written before that stay null and read as netto
+      // in the reconciliation.
       name: 'vatPlane',
       type: 'select',
-      label: { en: 'Deposit VAT plane', pl: 'Wpłata netto czy brutto' },
+      label: { en: 'Deposit VAT plane', pl: 'Rozliczenie netto/brutto' },
       options: [
         { label: { en: 'Net', pl: 'Netto' }, value: 'NET' },
         { label: { en: 'Gross', pl: 'Brutto' }, value: 'GROSS' },

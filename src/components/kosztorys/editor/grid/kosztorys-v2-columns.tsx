@@ -36,13 +36,16 @@ import {
   STAGE_VALUE_NET_COLUMN_GROUP,
   STAGE_VALUE_PERCENT_COLUMN_GROUP,
   STAGES_COLUMN_GROUP,
-  STAGE_NA_LABEL,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { CLIENT_VISIBLE_COLUMNS, COLUMN_LABELS } from '@/lib/kosztorys/column-config'
+import {
+  CLIENT_VISIBLE_COLUMNS,
+  PRZEDMIAR_ANCHORED_COLUMNS,
+  columnLabelForView,
+} from '@/lib/kosztorys/column-config'
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
@@ -53,7 +56,7 @@ import {
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
-  stageAppliesToView,
+  stagesForView,
 } from '@/lib/kosztorys/settlement'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -62,20 +65,6 @@ import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 const floatColumnLeft = {
   ...floatColumn,
   columnData: { ...floatColumn.columnData, alignRight: false },
-}
-
-// A stage-value column for an etap that doesn't belong to the active subcontractor view: its qty is
-// still recorded and editable, but valuing it at THIS plane's price would be a repriced lie, so every
-// value cell (and the footer) reads „nie dotyczy". Same stable ComputedCell as the real value column,
-// so switching a stage's plane re-renders rather than remounting a focused cell.
-function naStageValueColumn(id: string, titleNode: ReactNode): Column<KosztorysV2RowT> {
-  return computedColumn(
-    id,
-    titleNode,
-    () => null,
-    'text-muted-foreground italic',
-    () => STAGE_NA_LABEL,
-  )
 }
 
 // The four per-item rabat columns hidden while the global discount overrides them.
@@ -100,6 +89,22 @@ function keyCol(
   return { ...(keyColumn(key, column) as Column<KosztorysV2RowT>), ...rest }
 }
 
+// An etap with no rozliczenie belongs to neither crew's bill (settlement.ts), so its quantities fall
+// out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
+// So the whole column screams, header and every cell. Reachable in the client view only, which is the
+// one that shows every etap.
+//
+// Colour only: the qty column adds its own lock (the three value columns are already read-only, so a
+// `disabled` here would say nothing about them).
+const PLANE_UNCONFIRMED_CELL = {
+  headerClassName: 'bg-destructive/15',
+  cellClassName: 'bg-destructive/10 text-destructive',
+} as const
+
+function planeUnconfirmed(stage: KosztorysStageT): Partial<Column<KosztorysV2RowT>> {
+  return stage.plane == null ? PLANE_UNCONFIRMED_CELL : {}
+}
+
 function withTip(node: ReactNode, tip: string): ReactNode {
   return (
     <SimpleTooltip content={tip}>
@@ -112,12 +117,15 @@ function withTip(node: ReactNode, tip: string): ReactNode {
 // tooltip when the field has one in HEADER_TIPS.
 // `sortable: false` for columns whose value is categorical or dash-laden (the subcontractor
 // „źródło ceny" pair) — a sort trigger there would render a caret over a sort nothing can resolve.
+//
+// The label is resolved from `field`, never passed in: every header and the column picker then read
+// the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
 function title(
   field: string,
-  label: string,
-  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort'>,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'view'>,
   sortable = true,
 ): ReactNode {
+  const label = columnLabelForView(field, opts.view)
   const active = opts.sort?.field === field ? opts.sort.dir : null
   const tip = HEADER_TIPS[field]
   // The tip goes ONTO the sort trigger (same element), not around it — a second wrapping trigger
@@ -204,6 +212,9 @@ function RowActionsCell({
       onMoveUp={() => opts.onReorderItem?.(rowData, 'up')}
       onMoveDown={() => opts.onReorderItem?.(rowData, 'down')}
       onRemove={() => opts.onRemoveItem?.(rowData)}
+      onRemoveSection={opts.onRemoveSection && (() => opts.onRemoveSection?.(rowData.sectionId))}
+      sectionName={rowData.sectionName ?? undefined}
+      sectionItemCount={opts.getSectionItemCount?.(rowData.sectionId) ?? 0}
     />
   )
 }
@@ -234,22 +245,19 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       ? [
           keyCol('clientPrice', floatColumnLeft, {
             id: 'price',
-            title: title('price', COLUMN_LABELS.price, opts),
+            title: title('price', opts),
             minWidth: 90,
           }),
         ]
       : [
-          subcontractorModeColumn(view, title('priceMode', COLUMN_LABELS.priceMode, opts, false)),
-          subcontractorCoeffColumn(
-            view,
-            title('priceCoeff', COLUMN_LABELS.priceCoeff, opts, false),
-          ),
-          subcontractorPriceColumn(view, title('price', COLUMN_LABELS.price, opts)),
+          subcontractorModeColumn(view, title('priceMode', opts, false)),
+          subcontractorCoeffColumn(view, title('priceCoeff', opts, false)),
+          subcontractorPriceColumn(view, title('price', opts)),
         ]
   const identity: Column<KosztorysV2RowT>[] = [
     {
       id: 'sectionName',
-      title: title('sectionName', COLUMN_LABELS.sectionName, opts),
+      title: title('sectionName', opts),
       minWidth: 140,
       keepFocus: true,
       component: ({ rowData, disabled }: CellProps<KosztorysV2RowT, unknown>) => (
@@ -262,30 +270,34 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     },
     keyCol('description', textColumn, {
       id: 'description',
-      title: title('description', COLUMN_LABELS.description, opts),
+      title: title('description', opts),
       minWidth: 240,
       grow: 2,
     }),
   ]
+
+  // A subcontractor view is one crew's bill: only that plane's etapy get columns at all. Nothing
+  // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
+  const viewStages = stagesForView(stages, view)
 
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
   const przedmiar: Column<KosztorysV2RowT>[] = [
     keyCol('plannedQty', floatColumnLeft, {
       id: 'plannedQty',
-      title: title('plannedQty', COLUMN_LABELS.plannedQty, opts),
+      title: title('plannedQty', opts),
       minWidth: 90,
     }),
   ]
 
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn('stageQtySum', title('stageQtySum', COLUMN_LABELS.stageQtySum, opts), (r) =>
-        rowTotalQtyDone(r, stages),
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) =>
+        rowTotalQtyDone(r, viewStages, view),
       ),
       minWidth: 90,
     },
-    unitColumn(title('unit', COLUMN_LABELS.unit, opts)),
+    unitColumn(title('unit', opts)),
   ]
 
   // Rabat is a client concession, never passed to the subcontractor (calc.ts netForQtyForView), so
@@ -294,30 +306,26 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const discountCols: Column<KosztorysV2RowT>[] =
     view === 'client'
       ? [
-          discountValueColumn(title('discountValue', COLUMN_LABELS.discountValue, opts)),
-          discountTypeColumn(title('discountType', COLUMN_LABELS.discountType, opts)),
-          computedColumn(
-            'discountAmount',
-            title('discountAmount', COLUMN_LABELS.discountAmount, opts),
-            (r) => rowDiscountForView(r, rowTotalQtyDone(r, stages), view),
+          discountValueColumn(title('discountValue', opts)),
+          discountTypeColumn(title('discountType', opts)),
+          computedColumn('discountAmount', title('discountAmount', opts), (r) =>
+            rowDiscountForView(r, rowTotalQtyDone(r, viewStages, view), view),
           ),
-          computedColumn(
-            'discountAmountGross',
-            title('discountAmountGross', COLUMN_LABELS.discountAmountGross, opts),
-            (r) => toGross(rowDiscountForView(r, rowTotalQtyDone(r, stages), view), r.vatRate),
+          computedColumn('discountAmountGross', title('discountAmountGross', opts), (r) =>
+            toGross(rowDiscountForView(r, rowTotalQtyDone(r, viewStages, view), view), r.vatRate),
           ),
         ]
       : []
 
   const pricing: Column<KosztorysV2RowT>[] = [
     ...priceCols,
-    computedColumn('priceGross', title('priceGross', COLUMN_LABELS.priceGross, opts), (r) =>
+    computedColumn('priceGross', title('priceGross', opts), (r) =>
       toGross(viewPrice(r, view), r.vatRate),
     ),
     ...discountCols,
   ]
 
-  const stageCols: Column<KosztorysV2RowT>[] = stages.map((st) =>
+  const stageCols: Column<KosztorysV2RowT>[] = viewStages.map((st) =>
     keyCol(stageKey(st.id), floatColumnLeft, {
       id: stageKey(st.id),
       title: (
@@ -329,54 +337,70 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         />
       ),
       minWidth: 80,
+      // Locked until the rozliczenie is picked: qty typed here would be work nobody gets billed for,
+      // and picking one costs a click.
+      disabled: st.plane == null,
+      ...planeUnconfirmed(st),
     }),
   )
 
   // The sheet's V–AE: the value of each stage's recorded qty at the view's price, post-discount.
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
-  const stageValueNetCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
+  const stageValueNetCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueNetKey(st.id), header)
-    return computedColumn(stageValueNetKey(st.id), header, (r) =>
-      stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view),
-    )
+    return {
+      ...computedColumn(stageValueNetKey(st.id), header, (r) =>
+        stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, viewStages, view), view),
+      ),
+      ...planeUnconfirmed(st),
+    }
   })
 
-  const stageValueGrossCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
+  const stageValueGrossCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueGrossKey(st.id), header)
-    return computedColumn(stageValueGrossKey(st.id), header, (r) =>
-      toGross(stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view), r.vatRate),
-    )
+    return {
+      ...computedColumn(stageValueGrossKey(st.id), header, (r) =>
+        toGross(
+          stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, viewStages, view), view),
+          r.vatRate,
+        ),
+      ),
+      ...planeUnconfirmed(st),
+    }
   })
 
   // The percent reading of the same stage block: one column per stage instead of the netto/brutto
   // pair, since a percentage is the same figure on either side of the VAT.
-  const stageValuePercentCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
+  const stageValuePercentCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view))
-      return naStageValueColumn(stageValuePercentKey(st.id), header)
-    return computedColumn(
-      stageValuePercentKey(st.id),
-      header,
-      (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
-      'text-muted-foreground',
-      formatPercent,
-    )
+    return {
+      ...computedColumn(
+        stageValuePercentKey(st.id),
+        header,
+        (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
+        'text-muted-foreground',
+        formatPercent,
+      ),
+      ...planeUnconfirmed(st),
+    }
   })
 
   // The row's headline figure — available in both display modes, hence untagged: it answers "how far
   // along is this position", which the money columns never say outright.
+  //
+  // The przedmiar-anchored columns here and below compute at `'client'` outright, not at `view`:
+  // PRZEDMIAR_ANCHORED_COLUMNS drops them outside the client view, so a `view`-reactive formula would
+  // be false generality — it reads as if a subcontractor reading existed, and there isn't one.
   const donePercent: Column<KosztorysV2RowT>[] = [
     computedColumn(
       'donePercent',
-      title('donePercent', COLUMN_LABELS.donePercent, opts),
-      (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages)),
-      // Red = more was executed than was offered. The percentage says so too (>100%), but only this
-      // cell says it at a glance across a thousand rows.
+      title('donePercent', opts),
+      (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages, 'client')),
+      // Red = more was executed than was offered. The percentage says so too (>100%), but only
+      // this cell says it at a glance across a thousand rows.
       (r) =>
         hasStagesOverPlanned(r, stages)
           ? 'text-destructive font-medium'
@@ -385,20 +409,24 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ),
   ]
 
+  const plannedValue: Column<KosztorysV2RowT>[] = [
+    computedColumn('plannedNet', title('plannedNet', opts), (r) =>
+      rowPlannedNetForView(r, 'client'),
+    ),
+    computedColumn('plannedGross', title('plannedGross', opts), (r) =>
+      toGross(rowPlannedNetForView(r, 'client'), r.vatRate),
+    ),
+  ]
+
   const computed: Column<KosztorysV2RowT>[] = [
-    computedColumn('plannedNet', title('plannedNet', COLUMN_LABELS.plannedNet, opts), (r) =>
-      rowPlannedNetForView(r, view),
-    ),
-    computedColumn('plannedGross', title('plannedGross', COLUMN_LABELS.plannedGross, opts), (r) =>
-      toGross(rowPlannedNetForView(r, view), r.vatRate),
-    ),
+    ...plannedValue,
     computedColumn(
       'net',
-      title('net', COLUMN_LABELS.net, opts),
+      title('net', opts),
       (r) => rowValueForView(r, stages, view),
       'text-muted-foreground font-medium',
     ),
-    computedColumn('gross', title('gross', COLUMN_LABELS.gross, opts), (r) =>
+    computedColumn('gross', title('gross', opts), (r) =>
       toGross(rowValueForView(r, stages, view), r.vatRate),
     ),
   ]
@@ -409,7 +437,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const komentarz: Column<KosztorysV2RowT>[] = [
     keyCol('note', textColumn, {
       id: 'note',
-      title: title('note', COLUMN_LABELS.note, opts, false),
+      title: title('note', opts, false),
       minWidth: 200,
       grow: 1,
       headerClassName: 'border-l border-border',
@@ -418,16 +446,16 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   ]
 
   const remaining: Column<KosztorysV2RowT>[] = [
-    computedColumn('remaining', title('remaining', COLUMN_LABELS.remaining, opts), (r) =>
-      rowRemainingForView(r, stages, view),
+    computedColumn('remaining', title('remaining', opts), (r) =>
+      rowRemainingForView(r, stages, 'client'),
     ),
     computedColumn(
       'remainingGross',
-      title('remainingGross', COLUMN_LABELS.remainingGross, opts),
-      // The dash must survive the VAT step: toGross(null) would read 0 — "settled" — on a row that
-      // has no przedmiar to settle against.
+      title('remainingGross', opts),
+      // The dash must survive the VAT step: toGross(null) would read 0 — "settled" — on a row
+      // that has no przedmiar to settle against.
       (r) => {
-        const net = rowRemainingForView(r, stages, view)
+        const net = rowRemainingForView(r, stages, 'client')
         return net === null ? null : toGross(net, r.vatRate)
       },
     ),
@@ -487,6 +515,7 @@ function selectV2Columns(
       const key = toggleKey(c.id ?? '')
       if (opts.clientVisible && !CLIENT_VISIBLE_COLUMNS.has(key)) return false
       if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(key)) return false
+      if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
       return (
         !opts.isHidden?.(key) &&
         axisAllows(key, axis) &&
@@ -538,7 +567,8 @@ function selectV2ToggleItems(
     if (items.some((i) => i.id === id)) continue
     if (opts.clientVisible && !CLIENT_VISIBLE_COLUMNS.has(id)) continue
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
-    items.push({ id, label: COLUMN_LABELS[id] ?? id, visible: !opts.isHidden?.(id) })
+    if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(id)) continue
+    items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })
   }
   return items
 }

@@ -13,7 +13,6 @@ import {
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
-import { DEFAULT_STAGE_PLANE } from '@/lib/kosztorys/settlement'
 import { cn } from '@/lib/utils/cn'
 import type { KosztorysStageT, StagePlaneT } from '@/lib/kosztorys/types'
 
@@ -44,10 +43,6 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
       </span>
     )
   }
-
-  // The effective plane drives the header icon; a null (unconfirmed) plane still renders the default
-  // wrench, with the scream next to it.
-  const effectivePlane = stage.plane ?? DEFAULT_STAGE_PLANE
 
   if (editing) {
     return (
@@ -81,13 +76,16 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
               stage.plane == null && 'text-destructive',
             )}
           >
-            {planeIcon(effectivePlane)}
+            {/* A wrench here would claim a crew nobody picked. */}
+            {stage.plane != null && planeIcon(stage.plane)}
             <span
               className={cn(stage.plane != null && stage.label == null && 'text-muted-foreground')}
             >
               {label}
             </span>
-            {stage.plane == null && <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap" />}
+            {stage.plane == null && (
+              <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap — do tego czasu ilości w tej kolumnie są zablokowane, bo nie weszłyby do rachunku żadnej ekipy." />
+            )}
           </span>
         }
         icon={<ChevronDown className="opacity-50" />}

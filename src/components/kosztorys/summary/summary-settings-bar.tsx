@@ -32,6 +32,10 @@ const MODE_DESCRIPTION: Record<ModeT, string> = {
   percent: 'Jednorazowo wpisuje ten sam % w rabat każdej pozycji, nadpisując istniejące.',
 }
 
+// Rabat is a client concession only (calc.ts netForQtyForView) — it never reaches the subcontractor
+// views, so their prices stay whatever the plane sets.
+const RABAT_SUBCONTRACTOR_NOTE = 'Rabat nie wpływa na ceny podwykonawców.'
+
 // VAT + rabat, lifted out of the toolbar to sit at the top of the Podsumowanie tab. Reads the setters
 // straight from the editor context (the panel renders inside the provider), so no props thread through
 // KosztorysTotalsPanel.
@@ -103,7 +107,7 @@ export function SummarySettingsBar() {
       </div>
       {enabled && (
         <Description size="xs" className="max-w-md">
-          {MODE_DESCRIPTION[mode]}
+          {MODE_DESCRIPTION[mode]} {RABAT_SUBCONTRACTOR_NOTE}
         </Description>
       )}
     </div>

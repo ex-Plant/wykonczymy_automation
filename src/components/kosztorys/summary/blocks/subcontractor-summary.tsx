@@ -120,17 +120,17 @@ export function SubcontractorSummary({
     mode === 'worker' ? [{ id: 'workerName', desc: false }] : [{ id: 'date', desc: true }]
 
   return (
-    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-2 pb-6 text-sm">
-      <KosztorysGlobalSettings
-        globalCoeffs={tree.globalCoeffs}
-        onGlobalCoeffChange={handleGlobalCoeffChange}
-      />
+    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
         <HeadlineSummary summary={summary} due={subcontractorDue} />
         {summary.rows.length > 0 && (
           <WorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
       </div>
+      <KosztorysGlobalSettings
+        globalCoeffs={tree.globalCoeffs}
+        onGlobalCoeffChange={handleGlobalCoeffChange}
+      />
 
       {payoutTransactions.length > 0 && (
         <div className="flex flex-col gap-y-2">
@@ -161,10 +161,10 @@ export function SubcontractorSummary({
   )
 }
 
-// Explains the badge: unconfirmed etapy default to z narzędziami, so „Suma wykonanej pracy" may
-// overstate the with-tools total until every plane is picked.
+// Explains the badge: an etap with no rozliczenie belongs to neither crew, so it lands in neither
+// amount — „Suma wykonanej pracy" UNDERstates the executed work until every etap is assigned.
 const UNCONFIRMED_PLANE_HINT =
-  'Niektóre etapy nie mają potwierdzonego rozliczenia — liczone jako „z narzędziami".'
+  'Niektóre etapy nie mają potwierdzonego rozliczenia — nie wchodzą do żadnej z kwot, więc suma jest niższa niż faktycznie wykonana praca.'
 
 function HeadlineSummary({
   summary,

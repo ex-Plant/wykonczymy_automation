@@ -311,10 +311,15 @@ pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „d
       Odpowiedź na „zaliczka netto czy brutto" = **obie**. To rewiduje regułę „wpłaty face value"
       **tylko dla zaliczki/deposit**. **Mechanika — ROZSTRZYGNIĘTA (EX-536):** każda wpłata niesie
       przechowywany, trójstanowy znacznik `vatPlane` (`NET` / `GROSS` / `null`), wybierany per wpłata
-      przy tworzeniu (create-only, immutable), a nie wyliczany jedna z drugiej. Domyślnie `null`
-      („nie określono") — w rozliczeniu mieszanym traktowane jako **netto** (właściciel, 2026-07-23,
-      odwrócone z wcześniejszego null→brutto): tylko `GROSS` idzie na część fakturowaną, `NET` i `null`
-      spłacają gotówkę. Kwota gotówki nie jest wpisywana — wynika z sumy wpłat netto. Kod:
+      przy tworzeniu (create-only, immutable), a nie wyliczany jedna z drugiej. `null` w rozliczeniu
+      mieszanym traktowane jest jako **netto** (właściciel, 2026-07-23, odwrócone z wcześniejszego
+      null→brutto): tylko `GROSS` idzie na część fakturowaną, `NET` i `null` spłacają gotówkę.
+      **Formularz wymusza wybór (2026-07-25):** opcja „— nie określono —" zniknęła, „Netto" jest
+      preselektowane, więc `null` zostaje już tylko na wpłatach zaksięgowanych wcześniej. Pole nazywa
+      się wszędzie tak samo — **„Rozliczenie netto/brutto"** (formularz, kolumna w transakcjach, admin,
+      tabela wpłat w Podsumowaniu) — z opisem: _„Określ czy wpłata ma trafić do puli netto czy brutto.
+      Na tej podstawie określamy wartość rozliczenia mieszanego (część brutto, część netto)."_
+      Kwota gotówki nie jest wpisywana — wynika z sumy wpłat netto. Kod:
       `src/collections/transfers.ts` (pole `vatPlane`) + `src/lib/kosztorys/summary-economics.ts`
       (`bucketDepositsByPlane`) + migracja `20260721_1`.
   - **Rabat też jest na płaszczyźnie prac — gruntuje się** (właściciel, 2026-07-19). Rabat to

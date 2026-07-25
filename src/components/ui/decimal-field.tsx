@@ -1,12 +1,12 @@
 'use client'
 
-import type { FocusEvent, KeyboardEvent } from 'react'
+import type { FocusEvent, KeyboardEvent, ReactNode } from 'react'
 import { DecimalInput } from '@/components/ui/decimal-input'
 import { HintTooltip } from '@/components/ui/tooltip'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 type PropsT = {
-  label: string
+  label: ReactNode
   // Optional explanatory tooltip on the LABEL only — the input stays a clean text field.
   hint?: string
   value: number | null

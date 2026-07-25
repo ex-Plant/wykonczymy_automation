@@ -85,8 +85,9 @@ export type ViewPricingT = KosztorysItemT & {
 }
 
 // A stage's subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a
-// valid price view and flows straight into viewPrice(). null = defaulted to DEFAULT_STAGE_PLANE
-// (z narzędziami), unconfirmed — the state the TriangleAlert warning screams about.
+// valid price view and flows straight into viewPrice(). null = undecided, which is NOT a plane: such
+// an etap belongs to no subcontractor bill and counts toward neither settlement figure — the state
+// the TriangleAlert warning screams about.
 export type StagePlaneT = 'w_tools' | 'own_tools'
 
 export type KosztorysStageT = {
@@ -179,7 +180,13 @@ export type SectionSubtotalT = {
   sectionId: number
   sectionName: string
   net: number // executed (the sheet's T), at the active price view — a MONEY figure
-  plannedNet: number // offered (the sheet's S), at the active price view — a MONEY figure
+  // Offered (the sheet's S), at the active price view — a MONEY figure. `null` outside the client
+  // view, and that is the whole point: the przedmiar is typed once per row for the WHOLE offered
+  // scope and carries no rozliczenie, so beside a plane-filtered `net` it would put one crew's
+  // numerator over everyone's denominator. There is no correct subcontractor reading to substitute —
+  // 0 would claim nothing was offered — so the figure is withheld rather than guessed.
+  plannedNet: number | null
+
   // Σ per-item rabat actually taken on the executed qty, at the active price view — a MONEY figure.
   // 0 when the global discount is active (it overrides per-item rabat). Lets the totals show one
   // explicit „Rabat" figure without re-deriving it from pre/post-rabat totals.
@@ -192,3 +199,8 @@ export type SectionSubtotalT = {
   completionRatio: number | null
   itemCount: number
 }
+
+// A subtotal built at the client view, where the przedmiar figure is always present. Consumers pinned
+// to that view (the progress counter, the section pie) take this and never handle a `null` that their
+// call site has already ruled out — sectionSubtotalsForView's overload hands it to them.
+export type SectionSubtotalClientT = SectionSubtotalT & { plannedNet: number }
