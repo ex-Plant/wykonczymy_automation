@@ -18,10 +18,11 @@ export const FilterTriggerButton = forwardRef<HTMLButtonElement, FilterTriggerBu
         ref={ref}
         variant={active ? 'activeFilter' : 'outline'}
         size="sm"
-        className={cn('min-w-40 justify-start', className)}
+        align="start"
+        className={cn('min-w-40', className)}
         {...props}
       >
-        {Icon && <Icon className="size-4" />}
+        {Icon && <Icon />}
         {children}
       </Button>
     )

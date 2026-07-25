@@ -88,8 +88,9 @@ export function ToggleStatButtons({
                     variant="outline"
                     key={entry.label}
                     onClick={() => toggle(entry.label)}
+                    align="start"
                     className={cn(
-                      'justify-start border-2',
+                      'border-2',
                       entry.borderClassName,
                       isHidden && 'opacity-40',
                     )}

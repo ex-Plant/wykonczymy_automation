@@ -43,16 +43,16 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
         {SECTION_LINKS.map((link) => (
-          <Button key={link.href} variant="ghost" size="sm" className="justify-start" asChild>
+          <Button key={link.href} variant="ghost" size="sm" align="start" asChild>
             <Link href={link.href}>
-              <link.icon className="size-4" />
+              <link.icon />
               {link.label}
               {link.badge && <link.badge />}
             </Link>
           </Button>
         ))}
         {showUsers && (
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
+          <Button variant="ghost" size="sm" align="start" asChild>
             <Link href="/kosztorysy">
               <FileSpreadsheet />
               Kosztorysy
@@ -60,7 +60,7 @@ export function Sidebar() {
           </Button>
         )}
         {showUsers && (
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
+          <Button variant="ghost" size="sm" align="start" asChild>
             <Link href="/pracownicy">
               <Users />
               Pracownicy
@@ -68,7 +68,7 @@ export function Sidebar() {
           </Button>
         )}
         {showReports && (
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
+          <Button variant="ghost" size="sm" align="start" asChild>
             <Link href="/raporty">
               <FileBarChart />
               Raporty

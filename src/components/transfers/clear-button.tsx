@@ -12,7 +12,8 @@ export function ClearButton({ onClick, disabled, children }: ClearButtonPropsT) 
     <Button
       variant="outline"
       size="sm"
-      className="min-w-40 justify-start gap-1.5"
+      align="start"
+      className="min-w-40"
       onClick={onClick}
       disabled={disabled}
     >
