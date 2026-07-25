@@ -204,6 +204,9 @@ function RowActionsCell({
       onMoveUp={() => opts.onReorderItem?.(rowData, 'up')}
       onMoveDown={() => opts.onReorderItem?.(rowData, 'down')}
       onRemove={() => opts.onRemoveItem?.(rowData)}
+      onRemoveSection={opts.onRemoveSection && (() => opts.onRemoveSection?.(rowData.sectionId))}
+      sectionName={rowData.sectionName ?? undefined}
+      sectionItemCount={opts.getSectionItemCount?.(rowData.sectionId) ?? 0}
     />
   )
 }
@@ -281,7 +284,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const measure: Column<KosztorysV2RowT>[] = [
     {
       ...computedColumn('stageQtySum', title('stageQtySum', COLUMN_LABELS.stageQtySum, opts), (r) =>
-        rowTotalQtyDone(r, stages),
+        rowTotalQtyDone(r, stages, view),
       ),
       minWidth: 90,
     },
@@ -299,12 +302,13 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           computedColumn(
             'discountAmount',
             title('discountAmount', COLUMN_LABELS.discountAmount, opts),
-            (r) => rowDiscountForView(r, rowTotalQtyDone(r, stages), view),
+            (r) => rowDiscountForView(r, rowTotalQtyDone(r, stages, view), view),
           ),
           computedColumn(
             'discountAmountGross',
             title('discountAmountGross', COLUMN_LABELS.discountAmountGross, opts),
-            (r) => toGross(rowDiscountForView(r, rowTotalQtyDone(r, stages), view), r.vatRate),
+            (r) =>
+              toGross(rowDiscountForView(r, rowTotalQtyDone(r, stages, view), view), r.vatRate),
           ),
         ]
       : []
@@ -339,7 +343,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
     if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueNetKey(st.id), header)
     return computedColumn(stageValueNetKey(st.id), header, (r) =>
-      stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view),
+      stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
     )
   })
 
@@ -348,7 +352,10 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
     if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueGrossKey(st.id), header)
     return computedColumn(stageValueGrossKey(st.id), header, (r) =>
-      toGross(stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages), view), r.vatRate),
+      toGross(
+        stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
+        r.vatRate,
+      ),
     )
   })
 
@@ -374,7 +381,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     computedColumn(
       'donePercent',
       title('donePercent', COLUMN_LABELS.donePercent, opts),
-      (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages)),
+      (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages, view)),
       // Red = more was executed than was offered. The percentage says so too (>100%), but only this
       // cell says it at a glance across a thousand rows.
       (r) =>

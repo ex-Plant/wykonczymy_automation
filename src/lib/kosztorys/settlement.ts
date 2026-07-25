@@ -12,22 +12,22 @@ import type {
   KosztorysStageT,
   KosztorysV2RowT,
   SectionSubtotalT,
-  StagePlaneT,
 } from '@/lib/kosztorys/types'
-
-/** An etap with no explicitly picked plane is counted as z narzędziami — and warned about. */
-export const DEFAULT_STAGE_PLANE: StagePlaneT = 'w_tools'
 
 /**
  * Does this etap belong to the active price view? The client view shows every etap (it never filters,
- * only reprices). In a subcontractor view an etap belongs only if its effective plane (null →
- * DEFAULT_STAGE_PLANE) matches the view — the other plane's per-etap VALUE would otherwise be a
- * repriced lie (per etap the relationship is OR: one crew executed it). Owned here so Phase 2's
- * settlement math and the grid's „nie dotyczy" gate can never disagree on the rule.
+ * only reprices). A subcontractor view is that crew's bill, so it accepts only `stage.plane === view`
+ * — per etap the relationship is OR: one crew executed it, at one price.
+ *
+ * An undecided plane (`null`) is NOT a plane and matches neither view: charging it to a crew nobody
+ * picked would be a fabricated debt. The accepted cost is that while any etap is unassigned the two
+ * crews' bills no longer sum to the executed work — `hasUnconfirmedPlane` is what says so.
+ *
+ * Owned here so the settlement math and the grid's column set can never disagree on the rule.
  */
 export function stageAppliesToView(stage: KosztorysStageT, view: PriceViewT): boolean {
   if (view === 'client') return true
-  return (stage.plane ?? DEFAULT_STAGE_PLANE) === view
+  return stage.plane === view
 }
 
 export type KosztorysClientTotalsT = {
@@ -119,8 +119,8 @@ export type SubcontractorDueByPlaneT = {
  * a global discount never reaches subcontractors either. For a single-plane investment the per-stage
  * sum collapses to `totalQty × viewPrice`, i.e. exactly `executedWorkNetPreRabat` at that view.
  *
- * `null` plane → DEFAULT_STAGE_PLANE (z narzędziami) and raises `hasUnconfirmedPlane`: the number
- * renders, the warning sits next to it (recon-mismatch pattern).
+ * A `null` plane belongs to neither crew — it is skipped and raises `hasUnconfirmedPlane`: the two
+ * amounts render short, the warning sits next to them (recon-mismatch pattern).
  */
 export function subcontractorDueByPlane(
   rows: KosztorysV2RowT[],
@@ -129,7 +129,8 @@ export function subcontractorDueByPlane(
   let wTools = 0
   let ownTools = 0
   for (const st of stages) {
-    const plane = st.plane ?? DEFAULT_STAGE_PLANE
+    const plane = st.plane
+    if (plane === null) continue
     const key = stageKey(st.id)
     let planeTotal = 0
     for (const row of rows) {
@@ -147,9 +148,23 @@ export function subcontractorDueByPlane(
   }
 }
 
-/** The "Pomiar z natury" itself — the sheet's O = SUM(D:M), not a stored field (EX-494). */
-export function rowTotalQtyDone(row: KosztorysV2RowT, stages: KosztorysStageT[]): number {
-  return stages.reduce((sum, st) => sum + (row[stageKey(st.id)] ?? 0), 0)
+/**
+ * The "Pomiar z natury" itself — the sheet's O = SUM(D:M), not a stored field (EX-494).
+ *
+ * Scoped to the view's etapy: in a subcontractor view the pomiar is that crew's pomiar, so every
+ * figure standing on it (row wartość, section subtotals, „Razem") counts one crew's work at one
+ * crew's price. `view` is REQUIRED, not defaulted — a default would silently restore the plane-blind
+ * reading at any call site that forgets it, which is the exact bug this parameter exists to kill.
+ */
+export function rowTotalQtyDone(
+  row: KosztorysV2RowT,
+  stages: KosztorysStageT[],
+  view: PriceViewT,
+): number {
+  return stages.reduce(
+    (sum, st) => (stageAppliesToView(st, view) ? sum + (row[stageKey(st.id)] ?? 0) : sum),
+    0,
+  )
 }
 
 /**
@@ -169,7 +184,7 @@ export function rowValueForView(
   stages: KosztorysStageT[],
   view: PriceViewT,
 ): number {
-  return netForQtyForView(row, rowTotalQtyDone(row, stages), view)
+  return netForQtyForView(row, rowTotalQtyDone(row, stages, view), view)
 }
 
 /**
@@ -199,9 +214,14 @@ export function rowRemainingForView(
  * flagging it would paint the whole grid red on a healthy kosztorys. Work recorded against no
  * przedmiar at all is not a separate branch — it is the przedmiar-is-0 case, which every stage
  * overshoots.
+ *
+ * Hard-anchored to the client pomiar, not the active view: the przedmiar has no plane (it is typed
+ * once per row for the whole offered scope), so comparing one crew's share against it would flag
+ * „under-plan" on work the other crew finished, and the red highlight would blink on and off as the
+ * user switches views.
  */
 export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStageT[]): boolean {
-  return rowTotalQtyDone(row, stages) > (row.plannedQty ?? 0)
+  return rowTotalQtyDone(row, stages, 'client') > (row.plannedQty ?? 0)
 }
 
 /**
@@ -221,7 +241,7 @@ export function stageTotalsForView(
 ): Map<number, number> {
   const totals = new Map<number, number>(stages.map((st) => [st.id, 0]))
   for (const row of rows) {
-    const totalQty = rowTotalQtyDone(row, stages)
+    const totalQty = rowTotalQtyDone(row, stages, view)
     if (!(totalQty > 0)) continue
     // Price the row's executed net once, then split it by each stage's qty share — same figure
     // stageValueForView yields per cell, but without re-pricing the row on every stage.
@@ -273,7 +293,7 @@ export function sectionSubtotalsForView(
     acc.net += rowValueForView(row, stages, view)
     acc.plannedNet += rowPlannedNetForView(row, view)
     // Rabat taken on the executed qty (the same qty `net` prices) — 0 under a global discount.
-    acc.discount += rowDiscountForView(row, rowTotalQtyDone(row, stages), view)
+    acc.discount += rowDiscountForView(row, rowTotalQtyDone(row, stages, view), view)
     acc.itemCount += 1
     const client = clientBySection.get(row.sectionId)!
     client.executed += rowValueForView(row, stages, 'client')

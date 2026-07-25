@@ -85,8 +85,9 @@ export type ViewPricingT = KosztorysItemT & {
 }
 
 // A stage's subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a
-// valid price view and flows straight into viewPrice(). null = defaulted to DEFAULT_STAGE_PLANE
-// (z narzędziami), unconfirmed — the state the TriangleAlert warning screams about.
+// valid price view and flows straight into viewPrice(). null = undecided, which is NOT a plane: such
+// an etap belongs to no subcontractor bill and counts toward neither settlement figure — the state
+// the TriangleAlert warning screams about.
 export type StagePlaneT = 'w_tools' | 'own_tools'
 
 export type KosztorysStageT = {
