@@ -102,3 +102,16 @@ explicit ban on `git checkout` / `restore` / `stash` after the Step-1 incident; 
   - `pnpm test` → **1141 passed / 51 skipped**, 91 files passed / 20 skipped. The Nodemailer
     `ECONNREFUSED 127.0.0.1:465` stderr is from the skipped preset specs, not a failure.
   - `pnpm build` → succeeded, full route table emitted.
+
+## Archive
+
+Archived 2026-07-25 with the 16 EX-571 manual checks still open — **by design, not as a waiver**:
+they live in the shared registry `context/foundation/manual-checks.md` under `## EX-571`, which is a
+`foundation/` doc and does not travel with the change folder. Archiving the folder therefore drops
+nothing; the verification work stays exactly where it is tracked, and the slice's Linear issue stays
+open as the one outstanding thread.
+
+If a figure is ever disputed, two checks are the ones to run first: „Razem Netto" (Z) + „Razem Netto"
+(Bez) against „Suma wykonanej pracy" in Podsumowanie podwykonawców, and typing into an etap ilość
+cell after the column rebuild (EX-422's remount shape — this slice touched column identity).
+`test:e2e` was not run either, so both are browser-level and undischarged.
