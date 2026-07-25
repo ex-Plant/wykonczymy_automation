@@ -11,8 +11,8 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
-import { HeaderLabel } from '@/components/kosztorys/editor/grid/header-label'
-import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
+import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
+import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'

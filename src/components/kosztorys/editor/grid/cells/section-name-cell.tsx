@@ -1,5 +1,5 @@
-import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
-import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
+import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
+import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 

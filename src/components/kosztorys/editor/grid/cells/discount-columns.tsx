@@ -1,8 +1,8 @@
 import { type ReactNode } from 'react'
 import { Column, type CellProps } from 'react-datasheet-grid'
 import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
-import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
-import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
+import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
+import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { discountFromType, discountFromValue } from '@/lib/kosztorys/discount-edit'
 import type { DiscountTypeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 

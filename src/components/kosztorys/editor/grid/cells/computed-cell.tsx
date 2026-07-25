@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Column, type CellProps } from 'react-datasheet-grid'
-import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
+import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
 import { formatNet as fmt } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 

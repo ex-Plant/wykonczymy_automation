@@ -254,10 +254,6 @@
   padding-bottom: 3rem;
 }
 
-.kosztorys-grid .dsg-cell-header {
-  font-size: var(--text-xs);
-}
-
 /* Retint dsg's native selection blue to the app's monochrome theme (border = primary,
    faint primary-tinted fill), so the selection rect / active cell / row+col markers all
    track light/dark via the theme tokens instead of a hardcoded rgb(69,128,230). */
