@@ -11,6 +11,7 @@ import type {
   GlobalDiscountT,
   KosztorysStageT,
   KosztorysV2RowT,
+  SectionSubtotalClientT,
   SectionSubtotalT,
 } from '@/lib/kosztorys/types'
 
@@ -30,6 +31,18 @@ export function stageAppliesToView(stage: KosztorysStageT, view: PriceViewT): bo
   return stage.plane === view
 }
 
+/**
+ * The view's own etapy as a named collection, so view-scoped code iterates something that says it is
+ * view-scoped. Every per-stage aggregation used to re-derive this inline, which made a plain
+ * `for (const st of stages)` inside view-scoped code look normal — that shape is exactly how
+ * `stageTotalsForView` came to price one crew's etap at the other crew's rate.
+ *
+ * Idempotent, so it is safe to hand the filtered array back to `rowTotalQtyDone` et al.
+ */
+export function stagesForView(stages: KosztorysStageT[], view: PriceViewT): KosztorysStageT[] {
+  return view === 'client' ? stages : stages.filter((st) => stageAppliesToView(st, view))
+}
+
 export type KosztorysClientTotalsT = {
   // Executed value at client prices, POST-rabat (Σ section net). The progress counter divides it by
   // the equally post-rabat plannedNet, so both sides of the ratio carry the rabat consistently.
@@ -43,6 +56,11 @@ export type KosztorysClientTotalsT = {
   // mutually exclusive (a live global discount forces every row gross, zeroing its per-item rabat),
   // so their sum is whichever mode is active.
   rabatClientNet: number
+  // The global half of `rabatClientNet` on its own — robocizna is `doneNet − this`, and the per-item
+  // rabat is already inside `doneNet`, so subtracting the whole `rabatClientNet` would take it twice.
+  // Returned rather than recomputed by the caller: the base a global discount is taken against is one
+  // decision, and the argument for it is written once, here.
+  globalRabatNet: number
 }
 
 /**
@@ -78,10 +96,12 @@ export function clientTotalsFromSubtotals(
   // global discount is the full gross, per-item rabat being zeroed).
   const doneNet = clientSubtotals.reduce((sum, s) => sum + s.net, 0)
   const itemRabatNet = clientSubtotals.reduce((sum, s) => sum + s.discount, 0)
+  const globalRabatNet = globalDiscountAmount(doneNet, globalDiscount)
   return {
     doneNet,
     sumaPracNet: doneNet + itemRabatNet,
-    rabatClientNet: globalDiscountAmount(doneNet, globalDiscount) + itemRabatNet,
+    rabatClientNet: globalRabatNet + itemRabatNet,
+    globalRabatNet,
   }
 }
 
@@ -128,10 +148,17 @@ export function subcontractorDueByPlane(
 ): SubcontractorDueByPlaneT {
   let wTools = 0
   let ownTools = 0
+  let hasUnconfirmedPlane = false
   for (const st of stages) {
     const plane = st.plane
-    if (plane === null) continue
     const key = stageKey(st.id)
+    if (plane === null) {
+      // Gated on the etap actually holding qty: the badge this drives claims the sum is SHORT, and a
+      // freshly added empty etap makes that claim false — it would scream about missing money that
+      // does not exist yet.
+      hasUnconfirmedPlane ||= rows.some((row) => row[key])
+      continue
+    }
     let planeTotal = 0
     for (const row of rows) {
       const qty = row[key] ?? 0
@@ -140,17 +167,7 @@ export function subcontractorDueByPlane(
     if (plane === 'w_tools') wTools += planeTotal
     else ownTools += planeTotal
   }
-  return {
-    wTools,
-    ownTools,
-    combined: wTools + ownTools,
-    // Gated on the etap actually holding qty: the badge this drives claims the sum is SHORT, and a
-    // freshly added empty etap makes that claim false — it would scream about missing money that
-    // does not exist yet.
-    hasUnconfirmedPlane: stages.some(
-      (st) => st.plane === null && rows.some((row) => row[stageKey(st.id)]),
-    ),
-  }
+  return { wTools, ownTools, combined: wTools + ownTools, hasUnconfirmedPlane }
 }
 
 /**
@@ -243,17 +260,18 @@ export function stageTotalsForView(
   stages: KosztorysStageT[],
   view: PriceViewT,
 ): Map<number, number> {
+  // Seeded over ALL stages, iterated over the view's own: an out-of-view etap must still report 0
+  // rather than go missing, but it must never take a share of a total built without it — give it one
+  // and it draws > 1 of the row, so Σ per-etap overshoots „Razem" by a multiple.
   const totals = new Map<number, number>(stages.map((st) => [st.id, 0]))
+  const viewStages = stagesForView(stages, view)
   for (const row of rows) {
-    const totalQty = rowTotalQtyDone(row, stages, view)
+    const totalQty = rowTotalQtyDone(row, viewStages, view)
     if (!(totalQty > 0)) continue
     // Price the row's executed net once, then split it by each stage's qty share — same figure
     // stageValueForView yields per cell, but without re-pricing the row on every stage.
     const rowNet = netForQtyForView(row, totalQty, view)
-    for (const st of stages) {
-      // Same filter `totalQty` was built with — split a view-scoped total over the view's etapy only,
-      // or an out-of-view etap takes a share > 1 of the row and Σ overshoots „Razem" by a multiple.
-      if (!stageAppliesToView(st, view)) continue
+    for (const st of viewStages) {
       const qtyInStage = row[stageKey(st.id)] ?? 0
       if (!qtyInStage) continue
       totals.set(st.id, (totals.get(st.id) ?? 0) + rowNet * (qtyInStage / totalQty))
@@ -270,6 +288,19 @@ export function stageTotalsForView(
  * what was offered, `net` what has been executed. Nothing has to choose between them, and the
  * progress counter divides one by the other.
  */
+// Overloaded on the literal so a caller that pins 'client' gets the przedmiar figure typed as present
+// and never writes a `?? 0` for a case it already excluded, while a caller passing a `view` variable
+// is forced to handle the null. The guarantee is structural — it cannot be forgotten at a call site.
+export function sectionSubtotalsForView(
+  rows: KosztorysV2RowT[],
+  stages: KosztorysStageT[],
+  view: 'client',
+): SectionSubtotalClientT[]
+export function sectionSubtotalsForView(
+  rows: KosztorysV2RowT[],
+  stages: KosztorysStageT[],
+  view: PriceViewT,
+): SectionSubtotalT[]
 export function sectionSubtotalsForView(
   rows: KosztorysV2RowT[],
   stages: KosztorysStageT[],
@@ -281,6 +312,7 @@ export function sectionSubtotalsForView(
   // so the same physical progress and the same cost split must not read differently per view.
   // Accumulated apart from the money net above, which does follow the view.
   const clientBySection = new Map<number, { executed: number; offered: number }>()
+  const viewStages = stagesForView(stages, view)
   for (const row of rows) {
     let acc = bySection.get(row.sectionId)
     if (!acc) {
@@ -288,7 +320,7 @@ export function sectionSubtotalsForView(
         sectionId: row.sectionId,
         sectionName: row.sectionName,
         net: 0,
-        plannedNet: 0,
+        plannedNet: view === 'client' ? 0 : null,
         discount: 0,
         share: 0,
         completionRatio: null,
@@ -297,10 +329,13 @@ export function sectionSubtotalsForView(
       bySection.set(row.sectionId, acc)
       clientBySection.set(row.sectionId, { executed: 0, offered: 0 })
     }
-    acc.net += rowValueForView(row, stages, view)
-    acc.plannedNet += rowPlannedNetForView(row, view)
-    // Rabat taken on the executed qty (the same qty `net` prices) — 0 under a global discount.
-    acc.discount += rowDiscountForView(row, rowTotalQtyDone(row, stages, view), view)
+    // One pomiar per row, priced twice: the value and the rabat taken on it must stand on the same
+    // quantity or a section's net and discount describe different amounts of work.
+    const qtyDone = rowTotalQtyDone(row, viewStages, view)
+    acc.net += netForQtyForView(row, qtyDone, view)
+    if (acc.plannedNet !== null) acc.plannedNet += rowPlannedNetForView(row, view)
+    // 0 under a global discount.
+    acc.discount += rowDiscountForView(row, qtyDone, view)
     acc.itemCount += 1
     const client = clientBySection.get(row.sectionId)!
     client.executed += rowValueForView(row, stages, 'client')

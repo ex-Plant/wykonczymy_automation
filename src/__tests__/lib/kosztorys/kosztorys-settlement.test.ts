@@ -145,6 +145,26 @@ describe('sectionSubtotalsForView › discount (per-item rabat aggregate)', () =
   })
 })
 
+describe('sectionSubtotalsForView › plannedNet (przedmiar) is client-only', () => {
+  // The przedmiar is typed once per row for the WHOLE offered scope and carries no rozliczenie, so
+  // beside a plane-filtered `net` it would put one crew's numerator over everyone's denominator.
+  // Asserting `null`, not 0: 0 would be a claim that nothing was offered.
+  it('is withheld in a subcontractor view', () => {
+    const rows = treeToRows(tree)
+    for (const view of ['w_tools', 'own_tools'] as const) {
+      const [section] = sectionSubtotalsForView(rows, tree.stages, view)
+      expect(section.plannedNet).toBeNull()
+    }
+  })
+
+  it('is present in the client view', () => {
+    const rows = treeToRows(tree)
+    const [section] = sectionSubtotalsForView(rows, tree.stages, 'client')
+    // Item 1: 5 planned @ 20 = 100. Item 2: 4 planned @ 10 = 40, less its flat-8 rabat = 32.
+    expect(section.plannedNet).toBeCloseTo(132)
+  })
+})
+
 describe('executedWorkNetPreRabat (subcontractor należne)', () => {
   // Executed pre-rabat at client price: row 1 = 5 @ 20 = 100, row 2 = 4 @ 10 = 40 → 140, ignoring
   // item 2's flat-8 rabat (that's a client concession the crew is still owed past).

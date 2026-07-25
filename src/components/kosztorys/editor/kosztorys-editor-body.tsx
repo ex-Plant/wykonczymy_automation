@@ -23,7 +23,7 @@ import {
 import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
-import { stageAppliesToView } from '@/lib/kosztorys/settlement'
+import { stagesForView } from '@/lib/kosztorys/settlement'
 import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
@@ -76,7 +76,6 @@ export function KosztorysEditorBody({
     totalNet,
     sumaPracNet,
     rabatClientNet,
-    rabatAmount,
     laborCostsNetFromKosztorys,
     subcontractorDue,
     view,
@@ -100,11 +99,18 @@ export function KosztorysEditorBody({
     // Money: executed value + offered przedmiar, net and gross. The Przedmiar „Razem" must track
     // the active price view (its column reprices per view), so sum the view-aware subtotals — NOT
     // the hook's `plannedNet`, which is fixed to client prices for the progress counter.
-    const plannedNetForView = subtotals.reduce((sum, section) => sum + section.plannedNet, 0)
     totals.set('net', totalNet)
     totals.set('gross', toGross(totalNet, tree.vatRate))
-    totals.set('plannedNet', plannedNetForView)
-    totals.set('plannedGross', toGross(plannedNetForView, tree.vatRate))
+    // `null` outside the client view — the przedmiar has no per-rozliczenie reading, so the subtotals
+    // withhold it. Nothing to sum, and the columns it would total are hidden there anyway.
+    if (view === 'client') {
+      const plannedNetForView = subtotals.reduce(
+        (sum, section) => sum + (section.plannedNet ?? 0),
+        0,
+      )
+      totals.set('plannedNet', plannedNetForView)
+      totals.set('plannedGross', toGross(plannedNetForView, tree.vatRate))
+    }
     totals.set('remaining', remainingTotals.net)
     totals.set('remainingGross', remainingTotals.gross)
     // Rabat: Σ per-item discount taken on executed qty, view-aware like the columns themselves.
@@ -113,9 +119,7 @@ export function KosztorysEditorBody({
     totals.set('discountAmountGross', toGross(discountNetForView, tree.vatRate))
     // Qty (Pomiar z natury): per-etap column, their sum, and the offered przedmiar column.
     let qtySum = 0
-    for (const stage of stages) {
-      // „Pomiar razem" in a subcontractor view is that crew's pomiar, so the other plane's qty stays out.
-      if (!stageAppliesToView(stage, view)) continue
+    for (const stage of stagesForView(stages, view)) {
       const stageQty = stageQtyTotals.get(stage.id) ?? 0
       qtySum += stageQty
       totals.set(stageKey(stage.id), stageQty)
@@ -226,7 +230,7 @@ export function KosztorysEditorBody({
             materialyBreakdown={materialyBreakdown}
             sectionSubtotals={progressSubtotals}
             wplatyNet={wplatyNet}
-            rabatAmount={rabatAmount}
+            rabatAmount={rabatClientNet}
             reconciliation={reconciliation}
             vatRate={tree.vatRate}
             clientView={clientView}
