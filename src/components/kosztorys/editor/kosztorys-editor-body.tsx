@@ -229,7 +229,6 @@ export function KosztorysEditorBody({
             wplatyNet={wplatyNet}
             rabatAmount={rabatAmount}
             reconciliation={reconciliation}
-            priceView={view}
             vatRate={tree.vatRate}
             clientView={clientView}
           />
