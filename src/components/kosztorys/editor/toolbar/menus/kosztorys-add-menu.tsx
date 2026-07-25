@@ -12,7 +12,7 @@ import {
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import { PLANE_LABELS, STAGE_PLANES } from '@/lib/kosztorys/constants'
+import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 
 export function KosztorysAddMenu() {
   const {
@@ -51,7 +51,7 @@ export function KosztorysAddMenu() {
           </DropdownMenuItem>
           {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
               plane-less „Etap" and no new stage is ever unconfirmed. */}
-          {STAGE_PLANES.map((plane) => (
+          {TOOL_PLANES.map((plane) => (
             <DropdownMenuItem key={plane} onSelect={() => handleAddStage(plane)}>
               {planeIcon(plane)}
               Etap — {PLANE_LABELS[plane].toLowerCase()}

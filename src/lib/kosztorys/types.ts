@@ -18,7 +18,6 @@ export type DiscountTypeT = 'percent' | 'amount'
 // total (PLN netto). Amount-only: a percent rabat isn't stored here — it's a one-shot tool that
 // stamps a percent into every per-item rabat (see applyPercentRabatToAllItemsAction).
 export type GlobalDiscountT = { type: 'amount' | null; value: number }
-export type CostVariantT = 'w_tools' | 'own_tools'
 // Per-item subcontractor price override: 'coeff' = client × value (tracks the client
 // price), 'amount' = flat frozen amount, null = derive from the effective coefficient.
 export type SubcontractorOverrideTypeT = 'coeff' | 'amount'
@@ -27,7 +26,7 @@ export type KosztorysSectionT = {
   id: number
   name: string
   displayOrder: number
-  defaultCostVariant: CostVariantT
+  defaultCostVariant: ToolPlaneT
 }
 
 export type KosztorysItemT = {
@@ -44,7 +43,7 @@ export type KosztorysItemT = {
   wToolsOverrideValue: number
   ownToolsOverrideType: SubcontractorOverrideTypeT | null
   ownToolsOverrideValue: number
-  costVariant: CostVariantT | null
+  costVariant: ToolPlaneT | null
   hiddenInExport: boolean
   note: string | null
 }
@@ -84,17 +83,19 @@ export type ViewPricingT = KosztorysItemT & {
   globalOwnToolsCoeff: number
 }
 
-// A stage's subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a
-// valid price view and flows straight into viewPrice(). null = undecided, which is NOT a plane: such
-// an etap belongs to no subcontractor bill and counts toward neither settlement figure — the state
-// the TriangleAlert warning screams about.
-export type StagePlaneT = 'w_tools' | 'own_tools'
+// The subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a valid
+// price view and flows straight into viewPrice(). One type for all three carriers: a stage's `plane`,
+// an item's `costVariant`, a section's `defaultCostVariant` — they answer the same question (z
+// narzędziami czy bez), so they are not separate concepts even though the columns are named apart.
+// null = undecided, which is NOT a plane: such an etap belongs to no subcontractor bill and counts
+// toward neither settlement figure — the state the TriangleAlert warning screams about.
+export type ToolPlaneT = 'w_tools' | 'own_tools'
 
 export type KosztorysStageT = {
   id: number
   ordinal: number
   label: string | null
-  plane: StagePlaneT | null
+  plane: ToolPlaneT | null
 }
 
 // Stage autosave patch = the fields the header edits one at a time (rename → label, plane picker →
@@ -102,7 +103,7 @@ export type KosztorysStageT = {
 // patched to null — an explicit pick only ever confirms a concrete plane.
 export type StagePatchT = Partial<{
   label: string | null
-  plane: StagePlaneT
+  plane: ToolPlaneT
 }>
 
 export type StageProgressT = {
@@ -161,7 +162,7 @@ export type KosztorysV2RowBaseT = KosztorysItemT & {
   // Denormalized investment VAT rate (one for the whole kosztorys) — gross = net × (1 + vatRate).
   vatRate: number
   globalDiscountActive: boolean
-  sectionDefaultCostVariant: CostVariantT
+  sectionDefaultCostVariant: ToolPlaneT
   // Denormalized global coefficients for deriving the subcontractor price on the row (ViewPricingT).
   globalWToolsCoeff: number
   globalOwnToolsCoeff: number

@@ -6,15 +6,14 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 import type {
-  CostVariantT,
   DiscountTypeT,
   KosztorysItemT,
   KosztorysSectionT,
   KosztorysStageT,
   KosztorysTreeT,
-  StagePlaneT,
   StageProgressT,
   SubcontractorOverrideTypeT,
+  ToolPlaneT,
 } from '@/lib/kosztorys/types'
 
 // Relationships arrive as a number (depth 0) or an object — we normalize to the id.
@@ -96,7 +95,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
       wToolsOverrideValue: num(d.wToolsOverrideValue),
       ownToolsOverrideType: (d.ownToolsOverrideType as SubcontractorOverrideTypeT | null) ?? null,
       ownToolsOverrideValue: num(d.ownToolsOverrideValue),
-      costVariant: (d.costVariant as CostVariantT | null) ?? null,
+      costVariant: (d.costVariant as ToolPlaneT | null) ?? null,
       hiddenInExport: Boolean(d.hiddenInExport),
       note: d.note ?? null,
     }),
@@ -116,7 +115,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
       id: d.id,
       name: d.name,
       displayOrder: num(d.displayOrder),
-      defaultCostVariant: (d.defaultCostVariant as CostVariantT) ?? 'w_tools',
+      defaultCostVariant: (d.defaultCostVariant as ToolPlaneT) ?? 'w_tools',
       items: itemsBySection.get(d.id) ?? [],
     }),
   )
@@ -126,7 +125,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
       id: d.id,
       ordinal: num(d.ordinal),
       label: d.label ?? null,
-      plane: (d.plane as StagePlaneT | null) ?? null,
+      plane: (d.plane as ToolPlaneT | null) ?? null,
     }),
   )
 

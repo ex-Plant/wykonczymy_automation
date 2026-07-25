@@ -80,7 +80,7 @@ import type {
   KosztorysStageT,
   KosztorysTreeT,
   KosztorysV2RowT,
-  StagePlaneT,
+  ToolPlaneT,
 } from '@/lib/kosztorys/types'
 
 type ArgsT = {
@@ -671,7 +671,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // A new stage adds a `stage_<id>: 0` key to every current row + snapshot (like patchRows for
   // coeffs), so the column renders 0s (not blanks) and the first progress entry diffs correctly.
-  async function handleAddStage(plane: StagePlaneT) {
+  async function handleAddStage(plane: ToolPlaneT) {
     const res = await addStageAction(investmentId, plane)
     if (!res.success) return
     const { id, ordinal } = res.data
@@ -733,7 +733,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // Optimistic plane pick. Fired from the header's onValueChange (an event handler, never inside a
   // state updater), with the same revert-on-error discipline as the rename saver. Picking any plane
   // (even the default w_tools) writes it, which is what clears the unconfirmed warning.
-  function handleSetStagePlane(stageId: number, plane: StagePlaneT) {
+  function handleSetStagePlane(stageId: number, plane: ToolPlaneT) {
     const current = stagesRef.current.find((st) => st.id === stageId)
     if (current && current.plane === plane) return
     const prevPlane = current?.plane ?? null

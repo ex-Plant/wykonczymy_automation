@@ -13,14 +13,14 @@ import {
   DEFAULT_ITEM_DESCRIPTION,
   DEFAULT_UNIT,
   NEW_SECTION_DEFAULTS,
-  STAGE_PLANES,
+  TOOL_PLANES,
 } from '@/lib/kosztorys/constants'
 import type { ActionResultT } from '@/types/action'
-import type { ItemPatchT, StagePatchT, StagePlaneT } from '@/lib/kosztorys/types'
+import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
 
-// Derived from STAGE_PLANES rather than re-listing the union, so a plane added to the pickers can't
+// Derived from TOOL_PLANES rather than re-listing the union, so a plane added to the pickers can't
 // be silently rejected by validation — the two used to be five separate literal lists.
-const stagePlaneSchema = z.enum(STAGE_PLANES)
+const stagePlaneSchema = z.enum(TOOL_PLANES)
 const overrideTypeSchema = z.enum(['coeff', 'amount'])
 
 // --- Patch schemas (all fields optional — autosave sends one field at a time) ---
@@ -419,7 +419,7 @@ export async function swapItemOrderAction(
 // Legacy stages keep their null and its unconfirmed warning until a human picks one.
 export async function addStageAction(
   investmentId: number,
-  plane: StagePlaneT,
+  plane: ToolPlaneT,
 ): Promise<ActionResultT<{ id: number; ordinal: number }>> {
   return protectedAction(
     'addStageAction',

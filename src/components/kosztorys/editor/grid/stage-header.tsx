@@ -16,15 +16,15 @@ import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/edit
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useInlineRename } from '@/components/kosztorys/editor/use-inline-rename'
-import { PLANE_LABELS, STAGE_PLANES } from '@/lib/kosztorys/constants'
+import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 import { cn } from '@/lib/utils/cn'
-import type { KosztorysStageT, StagePlaneT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
 
 type PropsT = {
   stage: KosztorysStageT
   onRename?: (stageId: number, label: string) => void
   onRemove?: (stageId: number) => void
-  onSetPlane?: (stageId: number, plane: StagePlaneT) => void
+  onSetPlane?: (stageId: number, plane: ToolPlaneT) => void
 }
 
 // Stage column header: „Zmień nazwę" edits the label inline (empty → the „Etap N" placeholder,
@@ -87,7 +87,7 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
             <DropdownMenuLabel>Rozliczenie</DropdownMenuLabel>
             {/* Single-select skinned as checkboxes. onCheckedChange ignores its arg — re-picking the
                 active plane can't unset it. */}
-            {STAGE_PLANES.map((plane) => (
+            {TOOL_PLANES.map((plane) => (
               <DropdownMenuCheckboxRow
                 key={plane}
                 checked={stage.plane === plane}

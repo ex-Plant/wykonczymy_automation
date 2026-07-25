@@ -1,10 +1,10 @@
-import type { CostVariantT, StagePlaneT } from '@/lib/kosztorys/types'
+import type { ToolPlaneT } from '@/lib/kosztorys/types'
 
-// Every stage plane, in pick order — the single source for the plane pickers (etap header, add menu)
+// Every tool plane, in pick order — the single source for the plane pickers (etap header, add menu)
 // and the label lookup below, so a third plane can't land in one menu and miss the other.
-export const STAGE_PLANES = ['w_tools', 'own_tools'] as const satisfies readonly StagePlaneT[]
+export const TOOL_PLANES = ['w_tools', 'own_tools'] as const satisfies readonly ToolPlaneT[]
 
-export const PLANE_LABELS: Record<StagePlaneT, string> = {
+export const PLANE_LABELS: Record<ToolPlaneT, string> = {
   w_tools: 'Z narzędziami',
   own_tools: 'Bez narzędzi',
 }
@@ -33,4 +33,4 @@ export const DEFAULT_ITEM_DESCRIPTION = 'Nowa praca'
 export const NEW_SECTION_DEFAULTS = {
   name: 'Nowa sekcja',
   defaultCostVariant: 'w_tools',
-} as const satisfies { name: string; defaultCostVariant: CostVariantT }
+} as const satisfies { name: string; defaultCostVariant: ToolPlaneT }

@@ -4,7 +4,7 @@ import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
 import type { SortDirT } from '@/lib/kosztorys/row-view'
-import type { KosztorysStageT, KosztorysV2RowT, StagePlaneT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 
 export type V2SortStateT = { field: string; dir: SortDirT } | null
 
@@ -15,7 +15,7 @@ export type BuildV2ColumnsOptsT = {
   stages: KosztorysStageT[]
   onRemoveStage?: (stageId: number) => void
   onRenameStage?: (stageId: number, label: string) => void
-  onSetStagePlane?: (stageId: number, plane: StagePlaneT) => void
+  onSetStagePlane?: (stageId: number, plane: ToolPlaneT) => void
   sort?: V2SortStateT
   onSetSort?: (field: string, dir: SortDirT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by
