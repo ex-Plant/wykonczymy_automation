@@ -150,6 +150,10 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 
 ### Phase 4: Grid „nie dotyczy"
 
+> **Superseded by EX-571** (section below). „nie dotyczy" placeholders are gone — an out-of-plane etap
+> has no columns at all — and a null-plane etap no longer defaults into Z narzędziami. Do not run the
+> four boxes below; EX-571's Phase 2 boxes replace them.
+
 - [ ] In Bez narzędzi view, a z-narzędziami etap's value cells and footer read „nie dotyczy"; its qty cells still accept input
 - [ ] A null-plane etap shows values in Z narzędziami view (it defaults there) and „nie dotyczy" in Bez narzędzi
 - [ ] Klient view shows every etap's values as before
@@ -165,3 +169,37 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 ### Deploy note (migration ordering — deploy-time, not a code check)
 
 - [ ] **`20260724_2_add_plane_to_kosztorys_stages` must be applied to preview/prod before/with this merge.** Adds nullable `plane` to `kosztorys_stages`. Standard column-**add** ordering (unlike the coeff drop above): migrate **before** the code that reads `plane` lands, or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. Kosztorys data is throwaway pre-dogfooding — no backfill; existing rows read `plane = null` (defaulted + warned), the intended cold-start state.
+
+## EX-571 — subcontractor-view-settlement-only
+
+**In review** — all automated checks green (tsc 0, eslint 0 errors, 1135 unit tests). A subcontractor
+view (Z narzędziami / Bez narzędzi) now counts **only its own etapy**: „Pomiar z natury" is Σ of that
+plane's etapy, so every figure standing on it (wartość, podsumy sekcji, „Razem") is that crew's bill
+alone. Columns anchored in Przedmiar („Wartość netto/brutto przedmiar", „Pozostało", „% wykonania")
+render only in Klient, because Przedmiar has no plane. Klient is unchanged. Supersedes EX-565's
+Phase 4 boxes above.
+
+Setup: **5435 test DB** (see intro), OWNER login, a kosztorys with ≥2 etapy on different planes plus
+one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
+
+### Phase 1: Pomiar liczony po planie
+
+- [ ] In Z narzędziami, „Pomiar razem" in the „Razem" row equals the hand-summed ilości of the z-narzędziami etapy only; same for Bez narzędzi
+- [ ] „Razem Netto" in Z + „Razem Netto" in Bez equals „Suma wykonanej pracy" (razem) from „Podsumowanie podwykonawców"
+- [ ] Each side's „Razem Netto" equals its own row in „Podsumowanie podwykonawców" (Z / Bez) to the grosz
+- [ ] Klient view's Pomiar and Razem are unchanged from before the change (compare against Przedmiar-based figures)
+
+### Phase 2: Grid pokazuje tylko rachunek jednej ekipy
+
+- [ ] In a subcontractor view the out-of-plane etapy have **no** columns at all (no „nie dotyczy" cells)
+- [ ] An etap with no rozliczenie picked appears in **neither** subcontractor view and shows no wrench icon in its header
+- [ ] „Wartość netto/brutto przedmiar", „Pozostało", „% wykonania" are absent in both subcontractor views and present in Klient
+- [ ] „Razem Netto/Brutto" header reads „— po rabacie" in Klient and „— do zapłaty ekipie" in a subcontractor view
+- [ ] Typing into an etap ilość cell drops no characters (no cell remount after the column rebuild)
+
+### Phase 3: Rabat i podpowiedzi
+
+- [ ] Klient Podsumowanie's robocizna figure is identical whether the panel was opened from Klient directly or after switching from a subcontractor view and back
+- [ ] With a global rabat set, „Rabat" in the totals equals the rabat computed off the client-priced executed work (unchanged from before the change)
+- [ ] With an unassigned etap present, the badge in „Podsumowanie podwykonawców" says the sum is **lower** than the executed work (no „liczone jako z narzędziami")
+- [ ] The rabat tooltips („Rabat", „Rabat kwota netto", „Razem Netto", „Razem Brutto", „Etap — kwota netto") state that rabat never lowers the crews' prices
