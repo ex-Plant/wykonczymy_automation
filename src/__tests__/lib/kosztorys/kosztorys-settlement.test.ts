@@ -46,9 +46,11 @@ const tree: KosztorysTreeT = {
       ],
     },
   ],
+  // Mixed planes on purpose: with both stages left unassigned every subcontractor-view assertion
+  // below reduces to 0-vs-something and passes without exercising the plane filter at all.
   stages: [
-    { id: 100, ordinal: 1, label: null, plane: null },
-    { id: 101, ordinal: 2, label: null, plane: null },
+    { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
+    { id: 101, ordinal: 2, label: null, plane: 'own_tools' },
   ],
   progress: [
     { itemId: 1, stageId: 100, qtyDone: 2 },
@@ -87,14 +89,32 @@ describe('stageTotalsForView', () => {
     expect(totals.get(101)).toBeCloseTo(60)
   })
 
-  it('switching to the subcontractor view changes the totals', () => {
+  // The reconciliation invariant above, held per subcontractor view. It is the one that breaks when
+  // the per-stage split divides a view-scoped total across every stage: the out-of-view etap then
+  // takes a share > 1 of the row and Σ overshoots „Razem" by a multiple.
+  it.each(['w_tools', 'own_tools'] as const)(
+    'Σ etap totals equals Σ row executed values in the %s view too',
+    (view) => {
+      const rows = treeToRows(tree)
+      const totals = stageTotalsForView(rows, tree.stages, view)
+      const stageSum = [...totals.values()].reduce((s, v) => s + v, 0)
+      const rowSum = rows.reduce((s, r) => s + rowValueForView(r, tree.stages, view), 0)
+      expect(stageSum).toBeCloseTo(rowSum)
+    },
+  )
+
+  it('gives an out-of-view etap nothing — its value belongs to the other crew', () => {
     const rows = treeToRows(tree)
-    const client = stageTotalsForView(rows, tree.stages, 'client')
+    // Etap 100 is w_tools, 101 is own_tools. In the w_tools view only 100's qty is executed work
+    // (row 1: 2, row 2: 4) at the w_tools price 12 → 72; etap 101 is not this crew's bill at all.
     const wTools = stageTotalsForView(rows, tree.stages, 'w_tools')
-    // Compare the summed totals, not stage 100 alone: with rabat now client-only both rows sit at
-    // w_tools price 12, so stage 100 happens to coincide (72) while the views still differ overall.
-    const sum = (totals: Map<number, number>) => [...totals.values()].reduce((s, v) => s + v, 0)
-    expect(sum(wTools)).not.toBeCloseTo(sum(client))
+    expect(wTools.get(100)).toBeCloseTo(72)
+    expect(wTools.get(101)).toBe(0)
+
+    // Mirror image: own_tools sees only etap 101 (row 1: 3 @ own_tools price 10 → 30).
+    const ownTools = stageTotalsForView(rows, tree.stages, 'own_tools')
+    expect(ownTools.get(100)).toBe(0)
+    expect(ownTools.get(101)).toBeCloseTo(30)
   })
 })
 

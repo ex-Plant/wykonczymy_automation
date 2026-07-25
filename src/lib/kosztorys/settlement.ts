@@ -247,6 +247,9 @@ export function stageTotalsForView(
     // stageValueForView yields per cell, but without re-pricing the row on every stage.
     const rowNet = netForQtyForView(row, totalQty, view)
     for (const st of stages) {
+      // Same filter `totalQty` was built with — split a view-scoped total over the view's etapy only,
+      // or an out-of-view etap takes a share > 1 of the row and Σ overshoots „Razem" by a multiple.
+      if (!stageAppliesToView(st, view)) continue
       const qtyInStage = row[stageKey(st.id)] ?? 0
       if (!qtyInStage) continue
       totals.set(st.id, (totals.get(st.id) ?? 0) + rowNet * (qtyInStage / totalQty))
