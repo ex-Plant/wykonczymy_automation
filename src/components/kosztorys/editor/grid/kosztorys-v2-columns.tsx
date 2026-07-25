@@ -93,6 +93,18 @@ function keyCol(
   return { ...(keyColumn(key, column) as Column<KosztorysV2RowT>), ...rest }
 }
 
+// An etap with no rozliczenie belongs to neither crew's bill (settlement.ts), so its quantities fall
+// out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
+// The header badge alone was too easy to scroll past, so the whole column is flagged: header and
+// every cell under it. Reachable in the client view only, which is the one that shows every etap.
+function planeAlert(stage: KosztorysStageT): Partial<Column<KosztorysV2RowT>> {
+  if (stage.plane != null) return {}
+  return {
+    headerClassName: 'bg-destructive/15',
+    cellClassName: 'bg-destructive/10 text-destructive',
+  }
+}
+
 function withTip(node: ReactNode, tip: string): ReactNode {
   return (
     <SimpleTooltip content={tip}>
@@ -339,6 +351,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         />
       ),
       minWidth: 80,
+      ...planeAlert(st),
     }),
   )
 
@@ -347,20 +360,26 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const stageValueNetCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
-    return computedColumn(stageValueNetKey(st.id), header, (r) =>
-      stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
-    )
+    return {
+      ...computedColumn(stageValueNetKey(st.id), header, (r) =>
+        stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
+      ),
+      ...planeAlert(st),
+    }
   })
 
   const stageValueGrossCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
-    return computedColumn(stageValueGrossKey(st.id), header, (r) =>
-      toGross(
-        stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
-        r.vatRate,
+    return {
+      ...computedColumn(stageValueGrossKey(st.id), header, (r) =>
+        toGross(
+          stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
+          r.vatRate,
+        ),
       ),
-    )
+      ...planeAlert(st),
+    }
   })
 
   // The percent reading of the same stage block: one column per stage instead of the netto/brutto
@@ -368,13 +387,16 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const stageValuePercentCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    return computedColumn(
-      stageValuePercentKey(st.id),
-      header,
-      (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
-      'text-muted-foreground',
-      formatPercent,
-    )
+    return {
+      ...computedColumn(
+        stageValuePercentKey(st.id),
+        header,
+        (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
+        'text-muted-foreground',
+        formatPercent,
+      ),
+      ...planeAlert(st),
+    }
   })
 
   // The row's headline figure — available in both display modes, hence untagged: it answers "how far
