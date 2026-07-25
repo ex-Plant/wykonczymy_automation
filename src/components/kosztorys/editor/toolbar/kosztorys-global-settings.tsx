@@ -1,43 +1,36 @@
 'use client'
 
 import { DecimalField } from '@/components/ui/decimal-field'
-import type { PriceViewT } from '@/lib/kosztorys/calc'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 const COEFF_TIP = [
-  'Domyślny mnożnik ceny klienta.',
   'Cena wykonawcy = cena klienta × mnożnik.',
   '0,65 = wykonawca dostaje 65% ceny klienta.',
   'Dziedziczą go pozycje ze źródłem ceny „auto".',
-  'Możesz go nadpisać per pozycja własnym mnożnikiem lub kwotą stałą.',
 ].join('\n')
 
 type PropsT = {
   globalCoeffs: { wTools: number; ownTools: number }
-  // Active price view — the mnożnik feeds the wykonawca price, so the „Klient" view has no use for
-  // it, and each wykonawca view only edits its own coefficient.
-  view: PriceViewT
   onGlobalCoeffChange: (patch: { wToolsCoeff?: number; ownToolsCoeff?: number }) => void
 }
 
-export function KosztorysGlobalSettings({ globalCoeffs, view, onGlobalCoeffChange }: PropsT) {
+export function KosztorysGlobalSettings({ globalCoeffs, onGlobalCoeffChange }: PropsT) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      {view === 'w_tools' && (
-        <DecimalField
-          label="Mnożnik ceny wykonawcy z narzędziami"
-          hint={COEFF_TIP}
-          value={globalCoeffs.wTools}
-          onCommit={(n) => onGlobalCoeffChange({ wToolsCoeff: n })}
-        />
-      )}
-      {view === 'own_tools' && (
-        <DecimalField
-          label="Mnożnik ceny wykonawcy bez narzędzi"
-          hint={COEFF_TIP}
-          value={globalCoeffs.ownTools}
-          onCommit={(n) => onGlobalCoeffChange({ ownToolsCoeff: n })}
-        />
-      )}
+      <span className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
+        Mnożnik ceny:
+        <InfoTooltip content={COEFF_TIP} label="Jak działa mnożnik ceny" />
+      </span>
+      <DecimalField
+        label="z narzędziami"
+        value={globalCoeffs.wTools}
+        onCommit={(n) => onGlobalCoeffChange({ wToolsCoeff: n })}
+      />
+      <DecimalField
+        label="bez narzędzi"
+        value={globalCoeffs.ownTools}
+        onCommit={(n) => onGlobalCoeffChange({ ownToolsCoeff: n })}
+      />
     </div>
   )
 }

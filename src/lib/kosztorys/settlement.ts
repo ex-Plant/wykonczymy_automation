@@ -289,3 +289,14 @@ export function sectionSubtotalsForView(
     for (const s of result) s.share = clientBySection.get(s.sectionId)!.executed / grandClientNet
   return result
 }
+
+/**
+ * Sections with nothing executed yet — the ones the filter menu's „Ukryj puste sekcje" row unticks,
+ * and the count it shows.
+ *
+ * "Pusta" is no WORK DONE, not no positions: a section with no items is cascade-deleted, so that
+ * state never reaches the grid.
+ */
+export function emptySectionIds(subtotals: SectionSubtotalT[]): Set<number> {
+  return new Set(subtotals.filter((s) => s.net === 0).map((s) => s.sectionId))
+}

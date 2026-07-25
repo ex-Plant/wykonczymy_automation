@@ -39,7 +39,7 @@ export function KosztorysProgressCounter({ doneNet, plannedNet }: PropsT) {
           />
         </span>
       </div>
-      <Description className="text-xs">
+      <Description size="xs">
         Ile zostało wykonane względem pierwotnych estymat z wyceny projektu
       </Description>
     </div>

@@ -122,7 +122,7 @@ describe('subcontractorDueByPlane', () => {
 
   it('is unchanged by an active global discount', () => {
     const plain = makeTree(mixed)
-    const discounted = makeTree(mixed, { globalDiscount: { type: 'percent', value: 10 } })
+    const discounted = makeTree(mixed, { globalDiscount: { type: 'amount', value: 10 } })
     const a = subcontractorDueByPlane(treeToRows(plain), plain.stages)
     const b = subcontractorDueByPlane(treeToRows(discounted), discounted.stages)
     expect(b.combined).toBeCloseTo(a.combined)

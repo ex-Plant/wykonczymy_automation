@@ -8,6 +8,7 @@ import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
 import { nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
 import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
+import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 import {
   DEFAULT_ITEM_DESCRIPTION,
   DEFAULT_UNIT,
@@ -59,9 +60,10 @@ const investmentCoeffsSchema = z
 const investmentVatSchema = z.object({ vatRate: z.coerce.number().min(0).max(1) })
 
 // Per-investment global discount over the whole kosztorys. type null = none (clears the discount).
-// value is netto PLN ('amount') or percentage points ('percent'); never negative.
+// Amount-only: value is netto PLN; never negative. A percent rabat isn't stored here —
+// applyPercentRabatToAllItemsAction stamps it into each per-item rabat instead.
 const investmentGlobalDiscountSchema = z.object({
-  globalDiscountType: z.enum(['percent', 'amount']).nullable(),
+  globalDiscountType: z.enum(['amount']).nullable(),
   globalDiscountValue: z.coerce.number().min(0),
 })
 
@@ -148,6 +150,35 @@ export async function updateInvestmentGlobalDiscountAction(
     // like vatRate. 'investments' also invalidates the cached readers of the mutated source row
     // (getInvestment, fetchReferenceData) immediately, rather than waiting on the afterChange hook.
     ['kosztorysItems', 'investments'],
+  )
+}
+
+// Percent rabat bulk-apply: stamps `percent X` on EVERY item of the investment's kosztorys in one
+// SQL statement. A kosztorys can hold 1000+ items, so N Payload updates would be O(n) round-trips —
+// raw SQL via the src/lib/db client, like the other financial bulk writes. One-shot tool, not stored
+// state: the percent lands in per-item rabaty and nothing persists the percent itself.
+export async function applyPercentRabatToAllItemsAction(
+  investmentId: number,
+  percent: number,
+): Promise<ActionResultT> {
+  return protectedAction(
+    'applyPercentRabatToAllItemsAction',
+    async ({ payload, user }) => {
+      const parsed = validateAction(applyPercentRabatSchema, { percent })
+      if (!parsed.success) return parsed
+      const db = await getDb(payload)
+      // The overwrite is irrecoverable by in-session undo (owner: recovery = re-typing), and it
+      // flattens whatever per-item rabaty were there — hand-tuned amounts included. Snapshot the exact
+      // current state first, every time, exactly like removeSectionAction's destructive-write guard.
+      await captureAutoSnapshot(db, investmentId, user.id)
+      await db.execute(sql`
+        UPDATE kosztorys_items
+        SET discount_type = 'percent', discount_value = ${parsed.data.percent}, updated_at = now()
+        WHERE investment_id = ${investmentId}
+      `)
+      return { success: true }
+    },
+    ['kosztorysItems'],
   )
 }
 

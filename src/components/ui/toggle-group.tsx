@@ -18,6 +18,7 @@ type PropsT<T extends string> = {
   // only in some contexts (e.g. the summary view toggle on the subcontractor plane).
   disabled?: boolean
   'aria-label'?: string
+  className?: string
 }
 
 const ROOT_SIZE: Record<SizeT, string> = {
@@ -37,6 +38,7 @@ export function ToggleGroup<T extends string>({
   size = 'default',
   disabled = false,
   'aria-label': ariaLabel,
+  className,
 }: PropsT<T>) {
   const rootRef = useRef<HTMLDivElement>(null)
   const indicatorRef = useRef<HTMLSpanElement>(null)
@@ -63,6 +65,7 @@ export function ToggleGroup<T extends string>({
         'border-input bg-background relative inline-grid auto-cols-max grid-flow-col items-center rounded-md border p-0.5',
         ROOT_SIZE[size],
         disabled && 'pointer-events-none opacity-50',
+        className,
       )}
     >
       {/* w-0 until the layout effect measures the active item — invisible pre-hydration. */}

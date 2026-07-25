@@ -40,6 +40,8 @@ import {
 } from '@/lib/kosztorys/delete-policy'
 import {
   clientTotalsFromSubtotals,
+  emptySectionIds,
+  executedWorkNetPreRabat,
   rowRemainingForView,
   sectionSubtotalsForView,
   stageTotalsForView,
@@ -59,6 +61,7 @@ import {
   addItemAction,
   addSectionAction,
   addStageAction,
+  applyPercentRabatToAllItemsAction,
   insertItemAction,
   removeItemAction,
   removeSectionAction,
@@ -298,6 +301,14 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   )
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
+  // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
+  // the filter/sort. Sits above viewRows because „Ukryj puste sekcje" reads its net.
+  const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
+  // Feeds the filter menu's „Ukryj puste sekcje" row — both its count and the ids it unticks. That
+  // row hides by unticking rather than filtering rows on its own, so the picker's checkmarks stay
+  // the single description of what the grid shows.
+  const emptySections = useMemo(() => emptySectionIds(subtotals), [subtotals])
+
   // View = filter + sort. Edits are mapped back into the full dataset by id.
   const viewRows = useMemo(() => {
     const scoped =
@@ -306,10 +317,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
   }, [rows, shownSectionIds, search, sort, view, stages])
-
-  // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort.
-  const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -844,10 +851,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const res = await persist()
     if (res.success) {
       router.refresh()
-      return
+      return true
     }
     revert()
     toastMessage(res.error ?? errorMessage, 'warning', 4000)
+    return false
   }
 
   // Changing the global coefficient recomputes the derived prices of all non-overridden items.
@@ -945,6 +953,34 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
         )
       },
       'Nie udało się zapisać rabatu',
+    )
+  }
+
+  // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
+  // Overwrites every item's per-item rabat with `percent X` — optimistically on the rows, then one
+  // bulk SQL update. No undo entry (owner: recovery = re-typing). Returns success so the settings
+  // control clears its input only when the write landed.
+  async function handleApplyPercentRabat(percent: number): Promise<boolean> {
+    const prev = new Map(
+      rowsRef.current.map((r) => [
+        r.id,
+        { discountType: r.discountType, discountValue: r.discountValue },
+      ]),
+    )
+    patchRows(
+      () => true,
+      (r) => ({ ...r, discountType: 'percent', discountValue: percent }),
+    )
+    // Roll each row's rabat back to its pre-apply value on failure — the once-only useState seed means
+    // a refresh can't reseed it.
+    return optimisticSettingSave(
+      () => applyPercentRabatToAllItemsAction(investmentId, percent),
+      () =>
+        patchRows(
+          () => true,
+          (r) => ({ ...r, ...(prev.get(r.id) ?? {}) }),
+        ),
+      'Nie udało się zastosować rabatu',
     )
   }
 
@@ -1064,6 +1100,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     setSearch,
     shownSectionIds,
     setShownSectionIds,
+    emptySections,
     summaryOpen,
     setSummaryOpen,
     // handlers
@@ -1077,6 +1114,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     handleGlobalCoeffChange,
     handleVatChange,
     handleGlobalDiscountChange,
+    handleApplyPercentRabat,
     // undo/redo (stack lives in the shell; consumed by the toolbar + keyboard). Both flush a
     // still-buffering edit burst first, so an undo pops the just-typed edit (correct LIFO) rather
     // than an older command that the un-pushed burst is sitting in front of.

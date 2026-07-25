@@ -3,29 +3,20 @@
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { materialyPair, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
-import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summary'
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
 import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
 import { SlicePie } from '@/components/ui/slice-pie'
-import { Description } from '@/components/ui/description'
 import { type PanelAxisT } from '@/components/kosztorys/summary/hooks/use-summary-axis'
 import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
 import { costTotalsPieSlices } from '@/lib/kosztorys/chart-slices'
 import { formatNet } from '@/lib/kosztorys/format'
 
-const SUMMARY_AXIS_OPTIONS: OptionT<PanelAxisT>[] = [
-  { value: 'net', label: 'Netto' },
-  { value: 'gross', label: 'Brutto' },
-  { value: 'mixed', label: 'Mieszane' },
-]
-
 type PropsT = {
   investmentId: number
-  // The subsection's own netto/brutto/Mieszane axis + its setter — the control lives at the top of
-  // this tab because it governs only the figures below it, not the panel-wide view toggle.
+  // netto/brutto/Mieszane axis — the control lives in the panel top bar (it governs every summary
+  // tab); this tab only reads the value to pick Mixed vs Brutto/Netto.
   moneyAxis: PanelAxisT
-  onMoneyAxisChange: (value: PanelAxisT) => void
   laborCostsNetFromKosztorys: number
   doZaplaty: MoneyPairT
   materialsGross: number
@@ -48,7 +39,6 @@ type PropsT = {
 export function SummaryOverviewTab({
   investmentId,
   moneyAxis,
-  onMoneyAxisChange,
   laborCostsNetFromKosztorys,
   doZaplaty,
   materialsGross,
@@ -76,7 +66,6 @@ export function SummaryOverviewTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4">
-      {!clientView && <SummarySettingsBar />}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         {mixedMode ? (
           <MixedSummary
@@ -112,19 +101,7 @@ export function SummaryOverviewTab({
           formatValue={formatNet}
         />
       </div>
-      {/* The netto/brutto/Mieszane axis governs only the Podsumowanie figures, so it lives inside this
-          tab (right below the tables) rather than in a panel-wide bar. */}
-      <div>
-        <ToggleGroup
-          options={SUMMARY_AXIS_OPTIONS}
-          value={moneyAxis}
-          onChange={onMoneyAxisChange}
-          aria-label="Rozliczenie netto lub brutto"
-        />
-        <Description className="mt-2 max-w-xs text-xs">
-          Mieszane oznacza, że inwestycja jest rozliczana częściowo netto, częściowo brutto.
-        </Description>
-      </div>
+      {!clientView && <SummarySettingsBar />}
     </div>
   )
 }

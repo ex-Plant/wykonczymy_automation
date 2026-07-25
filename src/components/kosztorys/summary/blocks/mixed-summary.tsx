@@ -47,8 +47,8 @@ export function MixedSummary({
   return (
     <div className="flex w-fit flex-col gap-8 self-start">
       <SummaryTable cols={cols} className="w-fit">
-        <SummaryHeaderCell variant="label">Rozliczenie mieszane</SummaryHeaderCell>
-        <SummaryHeaderCell>Kwota netto</SummaryHeaderCell>
+        <SummaryHeaderCell variant="label">Rozliczenie netto</SummaryHeaderCell>
+        <SummaryHeaderCell>Kwota</SummaryHeaderCell>
 
         <SummaryRow label="Robocizna" line={faceValue(settlement.robocizna)} axis="net" />
         <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
@@ -65,7 +65,7 @@ export function MixedSummary({
 
       <SummaryTable cols={cols} className="w-fit">
         <SummaryHeaderCell variant="label">Rozliczenie fakturą</SummaryHeaderCell>
-        <SummaryHeaderCell>Kwota brutto</SummaryHeaderCell>
+        <SummaryHeaderCell>Kwota</SummaryHeaderCell>
 
         <SummaryRow
           label="Reszta brutto"

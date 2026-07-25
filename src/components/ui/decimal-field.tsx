@@ -1,6 +1,7 @@
 'use client'
 
 import type { FocusEvent, KeyboardEvent } from 'react'
+import { DecimalInput } from '@/components/ui/decimal-input'
 import { HintTooltip } from '@/components/ui/tooltip'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
@@ -37,13 +38,11 @@ export function DecimalField({
   return (
     <label className="text-muted-foreground flex items-center gap-1 text-xs">
       {hint ? <HintTooltip content={hint}>{label}</HintTooltip> : label}
-      <input
+      <DecimalInput
         key={value == null ? 'null' : String(value)}
-        type="text"
-        inputMode="decimal"
         defaultValue={value == null ? '' : String(value)}
         placeholder={placeholder != null ? String(placeholder) : ''}
-        className={`border-border h-6 w-14 rounded border bg-transparent px-1 text-right text-xs outline-none ${valueClassName ?? ''}`}
+        className={valueClassName}
         onBlur={commit}
         onKeyDown={commitOnEnter}
       />
