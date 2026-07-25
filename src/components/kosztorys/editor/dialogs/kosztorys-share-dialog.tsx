@@ -102,7 +102,7 @@ export function KosztorysShareDialog({ investmentId, open, onOpenChange }: Props
                   Wyłącz link
                 </Button>
               </div>
-              <Description className="text-xs">
+              <Description size="xs">
                 „Wygeneruj nowy" unieważnia obecny link — stary adres przestaje działać.
               </Description>
             </div>

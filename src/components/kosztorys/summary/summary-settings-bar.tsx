@@ -101,7 +101,11 @@ export function SummarySettingsBar() {
           </>
         )}
       </div>
-      {enabled && <Description className="max-w-md text-xs">{MODE_DESCRIPTION[mode]}</Description>}
+      {enabled && (
+        <Description size="xs" className="max-w-md">
+          {MODE_DESCRIPTION[mode]}
+        </Description>
+      )}
     </div>
   )
 }
