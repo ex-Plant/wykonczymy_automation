@@ -270,6 +270,34 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     expect(after.progress).toEqual([])
   })
 
+  it('seed onto an investment that already has etapy keeps them and adds none', async () => {
+    const sourceId = await createInvestment(`${PRESET_PREFIX}source-hasetapy`, 0.23, 0.7, 0.5)
+    await buildSourceTree(sourceId)
+    const preset = await serializeKosztorysAsPreset(sourceId)
+    const presetId = await insertPreset(db, {
+      name: `${PRESET_PREFIX}hasetapy`,
+      createdBy: null,
+      payload: preset,
+    })
+
+    // The live shape behind the bug: an empty tree (no sections → the „Wypełnij z szablonu" CTA)
+    // that nonetheless already carries etapy, because „Dodaj etap" works on an empty kosztorys.
+    // Blindly installing the starting etap here hits UNIQUE(investment_id, ordinal).
+    const targetId = await createInvestment(`${PRESET_PREFIX}target-hasetapy`, 0.23, 0.7, 0.5)
+    await payload.create({
+      collection: 'kosztorys-stages',
+      data: { investment: targetId, ordinal: 1, label: null, plane: 'w_tools' },
+      context: { skipRevalidation: true },
+    })
+
+    expect(await seedInvestmentFromPreset(payload, targetId, presetId!)).toBe('ok')
+
+    const after = await serializeKosztorys(targetId)
+    expect(after.stages).toHaveLength(1)
+    expect(after.stages[0].ordinal).toBe(1)
+    expect(after.sections.length).toBe(preset.sections.length)
+  })
+
   it('seed rejects a non-empty investment and writes nothing', async () => {
     const targetId = await createInvestment(`${PRESET_PREFIX}source-guard`, 0.23, 0.7, 0.5)
     await buildSourceTree(targetId)
