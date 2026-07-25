@@ -1,4 +1,5 @@
 import type { PriceViewT } from '@/lib/kosztorys/calc'
+import { PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
 import {
   STAGES_COLUMN_GROUP,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
@@ -25,8 +26,8 @@ export const COLUMN_LABELS: Record<string, string> = {
   discountAmountGross: 'Rabat kwota brutto',
   plannedNet: 'Wartość przedmiaru netto',
   plannedGross: 'Wartość przedmiaru brutto',
-  net: 'Razem Netto',
-  gross: 'Razem Brutto',
+  net: 'Razem netto',
+  gross: 'Razem brutto',
   remaining: 'Pozostało netto (względem przedmiaru)',
   remainingGross: 'Pozostało brutto (względem przedmiaru)',
   stages: 'Etapy — ilość',
@@ -50,9 +51,11 @@ export const COLUMN_LABELS: Record<string, string> = {
 export function columnLabelForView(id: string, view: PriceViewT): string {
   const label = COLUMN_LABELS[id] ?? id
   if (id === 'net' || id === 'gross') {
-    return `${label} — ${view === 'client' ? 'po rabacie' : 'do zapłaty ekipie'}`
+    if (view === 'client') return `${label} — po rabacie`
+    return `Suma etapy ${PLANE_LABELS[view].toLowerCase()} ${id === 'net' ? 'netto' : 'brutto'}`
   }
-  if (id === 'stageQtySum' && view !== 'client') return 'Pomiar (etapy tej ekipy)'
+  if (id === 'stageQtySum' && view !== 'client')
+    return `Pomiar (suma etapów — ${PLANE_LABELS[view].toLowerCase()})`
   return label
 }
 
