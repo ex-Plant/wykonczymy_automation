@@ -384,10 +384,10 @@ staging). Kosztorys data is throwaway until dogfooding merges to `main`, so exis
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [x] 1.2 Full suite passes: `pnpm test`
-- [x] 1.3 Type checking passes: `pnpm typecheck`
-- [x] 1.4 Linting passes: `pnpm lint`
+- [x] 1.1 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 69290c80
+- [x] 1.2 Full suite passes: `pnpm test` — 69290c80
+- [x] 1.3 Type checking passes: `pnpm typecheck` — 69290c80
+- [x] 1.4 Linting passes: `pnpm lint` — 69290c80
 
 ### Phase 2: The subcontractor grid shows only that crew's bill
 
