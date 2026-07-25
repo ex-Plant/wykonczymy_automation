@@ -95,6 +95,25 @@ function DropdownMenuCheckboxItem({
   )
 }
 
+// The canonical checkbox row: check on the left (from CheckboxItem), label, optional glyph pushed to
+// the right edge. The one shape for every check-row so the plane picker and the Widok-kolumn menu
+// can't drift.
+function DropdownMenuCheckboxRow({
+  label,
+  trailing,
+  ...props
+}: Omit<React.ComponentProps<typeof DropdownMenuCheckboxItem>, 'children'> & {
+  label: React.ReactNode
+  trailing?: React.ReactNode
+}) {
+  return (
+    <DropdownMenuCheckboxItem {...props}>
+      {label}
+      {trailing && <span className="ml-auto">{trailing}</span>}
+    </DropdownMenuCheckboxItem>
+  )
+}
+
 function DropdownMenuRadioGroup({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
@@ -218,6 +237,7 @@ export {
   DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
+  DropdownMenuCheckboxRow,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,

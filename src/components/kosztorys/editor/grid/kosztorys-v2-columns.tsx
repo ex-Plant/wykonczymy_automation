@@ -69,7 +69,13 @@ const floatColumnLeft = {
 // value cell (and the footer) reads „nie dotyczy". Same stable ComputedCell as the real value column,
 // so switching a stage's plane re-renders rather than remounting a focused cell.
 function naStageValueColumn(id: string, titleNode: ReactNode): Column<KosztorysV2RowT> {
-  return computedColumn(id, titleNode, () => null, 'text-muted-foreground italic', () => STAGE_NA_LABEL)
+  return computedColumn(
+    id,
+    titleNode,
+    () => null,
+    'text-muted-foreground italic',
+    () => STAGE_NA_LABEL,
+  )
 }
 
 // The four per-item rabat columns hidden while the global discount overrides them.
@@ -305,7 +311,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           onRename={opts.onRenameStage}
           onRemove={opts.onRemoveStage}
           onSetPlane={opts.onSetStagePlane}
-          tip={HEADER_TIPS[STAGES_COLUMN_GROUP]}
         />
       ),
       minWidth: 80,
@@ -337,7 +342,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const stageValuePercentCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValuePercentKey(st.id), header)
+    if (!stageAppliesToView(st, view))
+      return naStageValueColumn(stageValuePercentKey(st.id), header)
     return computedColumn(
       stageValuePercentKey(st.id),
       header,

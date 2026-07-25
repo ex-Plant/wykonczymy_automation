@@ -2,7 +2,6 @@ import {
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   STAGE_VALUE_NET_COLUMN_GROUP,
   STAGE_VALUE_PERCENT_COLUMN_GROUP,
-  STAGES_COLUMN_GROUP,
 } from '@/lib/kosztorys/stage-keys'
 
 // Audit aid (may be temporary): each header explains the column's intent + the formula that
@@ -27,10 +26,9 @@ export const HEADER_TIPS: Record<string, string> = {
     'Wartość przedmiaru − wartość pomiaru, brutto = netto × (1 + VAT).\nIle z oferty nie zostało jeszcze wykonane.\nNa minusie = przekroczono przedmiar.\n„—" = pozycja nie ma przedmiaru.',
   donePercent:
     '% wykonania względem przedmiaru.\nIle procent oferty jest zrobione.\n„—" = brak przedmiaru. Powyżej 100% oznacza przekroczenie założeń z przedmiaru.',
-  // The three stage axes key by column GROUP, not by column id — every stage's column shares its
-  // axis's tip, because the only thing that differs between them is the stage's name.
-  [STAGES_COLUMN_GROUP]:
-    'Etap — ilość wykonana w tym etapie.\nWartość etapu = ilość × Cena − udział etapu w rabacie (proporcjonalny do ilości).',
+  // The three stage-VALUE axes key by column GROUP, not by column id — every stage's column shares
+  // its axis's tip, because the only thing that differs between them is the stage's name. The etap
+  // ilość header itself carries no tip (etap is self-evident, and it would fight the plane warning).
   [STAGE_VALUE_NET_COLUMN_GROUP]:
     'Ilość wykonana w tym etapie × cena j.m. − udział etapu w rabacie.\nUdział jest proporcjonalny do ilości (rabat zł jest rabatem od całego wiersza, więc etap niesie tylko swoją część).\nZależy od aktywnego widoku cen.',
   [STAGE_VALUE_GROSS_COLUMN_GROUP]: 'Etap — kwota brutto = Etap — kwota netto × (1 + VAT).',

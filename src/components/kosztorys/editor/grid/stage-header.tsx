@@ -5,10 +5,9 @@ import { ChevronDown, Pencil, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
+  DropdownMenuCheckboxRow,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
@@ -25,14 +24,13 @@ type PropsT = {
   onRename?: (stageId: number, label: string) => void
   onRemove?: (stageId: number) => void
   onSetPlane?: (stageId: number, plane: StagePlaneT) => void
-  tip?: string
 }
 
 // Stage column header: „Zmień nazwę" edits the label inline (empty → the „Etap N" placeholder,
 // persisting null), „Usuń etap" deletes behind a confirm. The inline input is uncontrolled, so its
 // `defaultValue` is read only when edit mode opens — no stale value can leak if the stage behind
 // this column index shifts under the persisted DOM node.
-export function StageHeader({ stage, onRename, onRemove, onSetPlane, tip }: PropsT) {
+export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
   const label = stage.label ?? `Etap ${stage.ordinal}`
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -77,35 +75,31 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane, tip }: Prop
     <>
       <HeaderMenu
         label={
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 outline-0">
             {planeIcon(effectivePlane, 'size-3.5 opacity-70')}
             <span className={cn(stage.label == null && 'text-muted-foreground')}>{label}</span>
             {stage.plane == null && (
-              <PlaneUnconfirmedBadge
-                className="size-3.5"
-                content="Domyślnie: z narzędziami — wybierz rozliczenie etapu."
-              />
+              <PlaneUnconfirmedBadge className="size-3.5" content="Wybierz jak rozliczać etap" />
             )}
           </span>
         }
         icon={<ChevronDown className="opacity-50" />}
         triggerTitle="Opcje etapu"
-        tip={tip}
       >
         {onSetPlane && (
           <>
             <DropdownMenuLabel>Rozliczenie</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={stage.plane ?? undefined}
-              onValueChange={(v) => onSetPlane(stage.id, v as StagePlaneT)}
-            >
-              {STAGE_PLANES.map((plane) => (
-                <DropdownMenuRadioItem key={plane} value={plane}>
-                  {planeIcon(plane)}
-                  {PLANE_LABELS[plane]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
+            {/* Single-select skinned as checkboxes. onCheckedChange ignores its arg — re-picking the
+                active plane can't unset it. */}
+            {STAGE_PLANES.map((plane) => (
+              <DropdownMenuCheckboxRow
+                key={plane}
+                checked={stage.plane === plane}
+                onCheckedChange={() => onSetPlane(stage.id, plane)}
+                label={PLANE_LABELS[plane]}
+                trailing={planeIcon(plane, 'size-3.5 opacity-70')}
+              />
+            ))}
             <DropdownMenuSeparator />
           </>
         )}

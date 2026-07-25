@@ -678,11 +678,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // A new stage adds a `stage_<id>: 0` key to every current row + snapshot (like patchRows for
   // coeffs), so the column renders 0s (not blanks) and the first progress entry diffs correctly.
-  async function handleAddStage() {
-    const res = await addStageAction(investmentId)
+  async function handleAddStage(plane: StagePlaneT) {
+    const res = await addStageAction(investmentId, plane)
     if (!res.success) return
     const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null, plane: null }])
+    setStages((s) => [...s, { id, ordinal, label: null, plane }])
     patchRows(
       () => true,
       (r) => ({ ...r, [stageKey(id)]: 0 }),

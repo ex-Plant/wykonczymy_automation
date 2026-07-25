@@ -5,7 +5,7 @@ import { CheckIcon, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
+  DropdownMenuCheckboxRow,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -66,15 +66,14 @@ function AxisSection<T extends string>({
       {options.map((option) => {
         const box = option.value === config.a ? 'a' : 'b'
         return (
-          <DropdownMenuCheckboxItem
+          <DropdownMenuCheckboxRow
             key={option.value}
             checked={checks[box]}
             onSelect={keepOpen}
             onCheckedChange={() => onChange(togglePairAxis(value, box, config))}
-          >
-            {option.label}
-            {option.icon && <span className="ml-auto">{option.icon}</span>}
-          </DropdownMenuCheckboxItem>
+            label={option.label}
+            trailing={option.icon}
+          />
         )
       })}
     </>
