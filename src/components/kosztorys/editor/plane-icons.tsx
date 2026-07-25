@@ -16,7 +16,4 @@ export function planeIcon(plane: StagePlaneT, className = ''): ReactNode {
   )
 }
 
-export const PLANE_LABELS: Record<StagePlaneT, string> = {
-  w_tools: 'Z narzędziami',
-  own_tools: 'Bez narzędzi',
-}
+export { PLANE_LABELS, STAGE_PLANES } from '@/lib/kosztorys/constants'

@@ -1,5 +1,5 @@
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import { PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import {
   STAGES_COLUMN_GROUP,
   STAGE_VALUE_GROSS_COLUMN_GROUP,

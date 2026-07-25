@@ -13,9 +13,15 @@ import {
   DEFAULT_ITEM_DESCRIPTION,
   DEFAULT_UNIT,
   NEW_SECTION_DEFAULTS,
+  STAGE_PLANES,
 } from '@/lib/kosztorys/constants'
 import type { ActionResultT } from '@/types/action'
 import type { ItemPatchT, StagePatchT, StagePlaneT } from '@/lib/kosztorys/types'
+
+// Derived from STAGE_PLANES rather than re-listing the union, so a plane added to the pickers can't
+// be silently rejected by validation — the two used to be five separate literal lists.
+const stagePlaneSchema = z.enum(STAGE_PLANES)
+const overrideTypeSchema = z.enum(['coeff', 'amount'])
 
 // --- Patch schemas (all fields optional — autosave sends one field at a time) ---
 // itemPatchSchema is shaped to match ItemPatchT (a single source of the type in lib/kosztorys/types.ts).
@@ -28,11 +34,11 @@ const itemPatchSchema = z
     discountType: z.enum(['percent', 'amount']).nullable(),
     discountValue: z.coerce.number(),
     clientPrice: z.coerce.number(),
-    wToolsOverrideType: z.enum(['coeff', 'amount']).nullable(),
+    wToolsOverrideType: overrideTypeSchema.nullable(),
     wToolsOverrideValue: z.coerce.number(),
-    ownToolsOverrideType: z.enum(['coeff', 'amount']).nullable(),
+    ownToolsOverrideType: overrideTypeSchema.nullable(),
     ownToolsOverrideValue: z.coerce.number(),
-    costVariant: z.enum(['w_tools', 'own_tools']).nullable(),
+    costVariant: stagePlaneSchema.nullable(),
     hiddenInExport: z.boolean(),
     note: z.string().nullable(),
   })
@@ -41,7 +47,7 @@ const itemPatchSchema = z
 const sectionPatchSchema = z
   .object({
     name: z.string(),
-    defaultCostVariant: z.enum(['w_tools', 'own_tools']),
+    defaultCostVariant: stagePlaneSchema,
     displayOrder: z.coerce.number(),
   })
   .partial()
@@ -442,7 +448,7 @@ export async function addStageAction(
 const stagePatchSchema = z
   .object({
     label: z.string().nullable(),
-    plane: z.enum(['w_tools', 'own_tools']),
+    plane: stagePlaneSchema,
   })
   .partial()
 

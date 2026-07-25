@@ -1,4 +1,13 @@
-import type { CostVariantT } from '@/lib/kosztorys/types'
+import type { CostVariantT, StagePlaneT } from '@/lib/kosztorys/types'
+
+// Every stage plane, in pick order — the single source for the plane pickers (etap header, add menu)
+// and the label lookup below, so a third plane can't land in one menu and miss the other.
+export const STAGE_PLANES = ['w_tools', 'own_tools'] as const satisfies readonly StagePlaneT[]
+
+export const PLANE_LABELS: Record<StagePlaneT, string> = {
+  w_tools: 'Z narzędziami',
+  own_tools: 'Bez narzędzi',
+}
 
 // Default subcontractor markup coefficients for an investment — the single source for both the
 // Payload column `defaultValue` (src/collections/investments.ts) and the query fallback

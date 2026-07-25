@@ -10,11 +10,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
-import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
+import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import type { StagePlaneT } from '@/lib/kosztorys/types'
-
-const STAGE_PLANES: StagePlaneT[] = ['w_tools', 'own_tools']
+import { PLANE_LABELS, STAGE_PLANES } from '@/lib/kosztorys/constants'
 
 export function KosztorysAddMenu() {
   const {
