@@ -48,14 +48,47 @@ export function SummaryExpensesTab({
   const materialsReductionAmount = materialsGross * materialsReduction
 
   return (
-    <div className="flex w-full flex-col">
+    <div className="flex w-full flex-col gap-4">
       {materialsGross !== 0 && (
         <div className="flex flex-col items-start gap-8 lg:flex-row">
-          <MaterialsBreakdownTable
-            rows={materialyBreakdown}
-            reduction={materialsReduction}
-            showReduction={nettoShown && materialsAsNet}
-          />
+          {/* The netto-pricing controls live inside the table's column so they sit directly under it —
+              as a sibling of the row they'd be pushed below the taller pie column. */}
+          <div className="flex flex-col gap-2">
+            <MaterialsBreakdownTable
+              rows={materialyBreakdown}
+              reduction={materialsReduction}
+              showReduction={nettoShown && materialsAsNet}
+            />
+            {nettoShown && (
+              <label
+                className={cn(
+                  'flex w-fit cursor-pointer items-center gap-2 text-xs',
+                  materialsAsNet ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                <Checkbox
+                  checked={materialsAsNet}
+                  onCheckedChange={(value) => onMaterialsAsNetChange(value === true)}
+                />
+                Zaznacz jeśli wydatki mają być rozliczane po kwocie netto
+              </label>
+            )}
+            {nettoShown && materialsAsNet && (
+              <>
+                <span className="text-muted-foreground text-xs">Stawka netto wydatków</span>
+                <div className="flex items-center gap-2">
+                  <DecimalField
+                    label=""
+                    value={materialsReductionPercent}
+                    onCommit={(n) => onMaterialsReductionPercentChange(n)}
+                  />
+                  <span className="text-muted-foreground text-xs">
+                    % (−{formatNet(materialsReductionAmount)} zł)
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
           <SlicePie
             caption="Struktura wydatków inwestycyjnych"
             slices={expensePieSlices(materialyBreakdown)}
@@ -63,37 +96,6 @@ export function SummaryExpensesTab({
           />
         </div>
       )}
-      <div className="my-2 flex w-fit flex-col gap-2">
-        {nettoShown && materialsGross !== 0 && (
-          <label
-            className={cn(
-              'flex w-fit cursor-pointer items-center gap-2 text-xs',
-              materialsAsNet ? 'text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            <Checkbox
-              checked={materialsAsNet}
-              onCheckedChange={(value) => onMaterialsAsNetChange(value === true)}
-            />
-            Zaznacz jeśli wydatki mają być rozliczane po kwocie netto
-          </label>
-        )}
-        {nettoShown && materialsGross !== 0 && materialsAsNet && (
-          <>
-            <span className="text-muted-foreground text-xs">Stawka netto wydatków</span>
-            <div className="flex items-center gap-2">
-              <DecimalField
-                label=""
-                value={materialsReductionPercent}
-                onCommit={(n) => onMaterialsReductionPercentChange(n)}
-              />
-              <span className="text-muted-foreground text-xs">
-                % (−{formatNet(materialsReductionAmount)} zł)
-              </span>
-            </div>
-          </>
-        )}
-      </div>
       <MaterialsTransactionsTable
         investmentId={investmentId}
         rows={materialTransactions}
