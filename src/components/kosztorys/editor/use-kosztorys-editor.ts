@@ -380,22 +380,21 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // Global discount amount + the post-rabat robocizna, computed ONCE here off the executed total.
   // Both total surfaces (the Sekcje Suma block and the totals bar) read these props — neither
   // recomputes, so they can never disagree.
+  // Anchored to `doneNet` (client-priced), NOT the active-view `totalNet`: a rabat is a concession to
+  // the CLIENT, so its base is what the client is billed. Under a subcontractor view `totalNet` is one
+  // crew's share, and a discount taken against that would be a discount on someone else's bill.
   const discountAmount = useMemo(
-    () => globalDiscountAmount(totalNet, globalDiscount),
-    [totalNet, globalDiscount],
+    () => globalDiscountAmount(doneNet, globalDiscount),
+    [doneNet, globalDiscount],
   )
   // NOT the „Do zapłaty" the UI shows — that one adds materiały and subtracts wpłaty
   // (computeDoZaplatyRM). This is robocizna alone, after rabat.
-  const laborCostsNetFromKosztorys = totalNet - discountAmount
-  // The single explicit rabat figure the totals show. Global and per-item rabat are mutually
-  // exclusive (a live global discount forces every row gross, zeroing its per-item rabat), so
-  // summing them yields whichever mode is active without a branch. `discountAmount` still drives
-  // `laborCostsNetFromKosztorys`; `rabatAmount` is display-only (= discountAmount when global, Σ item-rabat otherwise).
-  const itemRabatTotal = useMemo(
-    () => subtotals.reduce((sum, s) => sum + s.discount, 0),
-    [subtotals],
-  )
-  const rabatAmount = discountAmount + itemRabatTotal
+  const laborCostsNetFromKosztorys = doneNet - discountAmount
+  // The single explicit rabat figure the totals show — the same client-anchored sum the reconciliation
+  // compares against, so the two can't drift. Global and per-item rabat are mutually exclusive (a live
+  // global discount forces every row gross, zeroing its per-item rabat), so `clientTotalsFromSubtotals`
+  // sums both and lands on whichever mode is active without a branch.
+  const rabatAmount = rabatClientNet
 
   // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
   // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];

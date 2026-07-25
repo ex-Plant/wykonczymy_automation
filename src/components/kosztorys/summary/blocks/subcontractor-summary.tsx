@@ -161,10 +161,10 @@ export function SubcontractorSummary({
   )
 }
 
-// Explains the badge: unconfirmed etapy default to z narzędziami, so „Suma wykonanej pracy" may
-// overstate the with-tools total until every plane is picked.
+// Explains the badge: an etap with no rozliczenie belongs to neither crew, so it lands in neither
+// amount — „Suma wykonanej pracy" UNDERstates the executed work until every etap is assigned.
 const UNCONFIRMED_PLANE_HINT =
-  'Niektóre etapy nie mają potwierdzonego rozliczenia — liczone jako „z narzędziami".'
+  'Niektóre etapy nie mają potwierdzonego rozliczenia — nie wchodzą do żadnej z kwot, więc suma jest niższa niż faktycznie wykonana praca.'
 
 function HeadlineSummary({
   summary,
