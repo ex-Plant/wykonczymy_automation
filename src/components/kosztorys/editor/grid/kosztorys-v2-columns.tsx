@@ -166,10 +166,10 @@ function withResize(
   // A fixed-width column (min === max, e.g. the row-actions column) has nothing to drag — skip the
   // resizable header rather than hang a dead handle on it.
   if (col.minWidth != null && col.minWidth === col.maxWidth) return col
-  // 150 is the floor for every resizable column, not per-column tuning — dsg clamps an unpinned
+  // 140 is the floor for every resizable column, not per-column tuning — dsg clamps an unpinned
   // column's rendered width to its minWidth on overflow (many columns > viewport), so this is the
   // actual initial width, not just a drag limit.
-  const min = Math.max(col.minWidth ?? 0, 150)
+  const min = Math.max(col.minWidth ?? 0, 140)
   const pinned = opts.widths?.[col.id]
   // Pinning = a rigid width independent of dsg's flex algorithm: min=max=basis=W,
   // grow/shrink 0. (dsg ignored `basis` alone on overflow — it fell back to minWidth.)
