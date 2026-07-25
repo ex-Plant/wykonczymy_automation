@@ -25,7 +25,6 @@ export function shapeInvestments(
     const financials = fin ?? {
       categoryCosts: [],
       totalMaterialCosts: 0,
-      totalCorrections: 0,
       totalIncome: 0,
       totalLaborCosts: 0,
       totalPayouts: 0,

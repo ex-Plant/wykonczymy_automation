@@ -35,10 +35,18 @@ describe('spec table — structural integrity', () => {
       'expensesSheetTab',
       'transfersSheetTab',
       'settleable',
+      'financialBucket',
       'sourceRegister',
     ]
     for (const type of TRANSFER_TYPES) {
       expect(sorted(Object.keys(TRANSFER_TYPE_SPECS[type])), type).toEqual(sorted(columns))
+    }
+  })
+
+  it('financialBucket is one of the allowed buckets', () => {
+    const buckets = ['materials', 'income', 'laborCosts', 'payouts', 'rabat', 'loss', 'none']
+    for (const type of TRANSFER_TYPES) {
+      expect(buckets, type).toContain(TRANSFER_TYPE_SPECS[type].financialBucket)
     }
   })
 
@@ -98,6 +106,33 @@ describe('sheet-sync inputs are eager at module load', () => {
     ['SHEET_TRANSFER_TAB_TYPES', SHEET_TRANSFER_TAB_TYPES],
   ])('%s is non-empty on import', (_name, array) => {
     expect(array.length).toBeGreaterThan(0)
+  })
+})
+
+describe('financialBucket vs the routing columns', () => {
+  // Before the table, deriveFinancials read DEPOSIT_TYPES and isExpensesTabType directly —
+  // it bucketed money by where a row is MIRRORED ON THE SHEET. Phase 2 gave the money its
+  // own column, so those two questions can now be answered differently. They agree today,
+  // and these two pins are what make a future disagreement a deliberate edit rather than
+  // a figure that silently moved.
+  it('the income bucket is exactly the deposit column', () => {
+    expect(sorted(typesWhere((s) => s.financialBucket === 'income'))).toEqual(
+      sorted(typesWhere((s) => s.deposit)),
+    )
+  })
+
+  it('the materials bucket is exactly the expenses-tab column', () => {
+    expect(sorted(typesWhere((s) => s.financialBucket === 'materials'))).toEqual(
+      sorted(typesWhere((s) => s.expensesSheetTab)),
+    )
+  })
+
+  it('only a materials type is settleable — the settled split has no other home', () => {
+    // deriveFinancials splits ONLY the materials bucket on `settled`. A settleable type
+    // outside that bucket would carry a flag nothing reads.
+    for (const type of typesWhere((s) => s.settleable)) {
+      expect(TRANSFER_TYPE_SPECS[type].financialBucket, type).toBe('materials')
+    }
   })
 })
 

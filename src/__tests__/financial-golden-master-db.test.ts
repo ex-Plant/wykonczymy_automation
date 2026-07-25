@@ -41,7 +41,6 @@ type CategoryPairT = [categoryId: number, total: number]
 
 type InvestmentSnapshotT = {
   totalMaterialCosts: number
-  totalCorrections: number
   totalIncome: number
   totalLaborCosts: number
   totalPayouts: number
@@ -66,7 +65,6 @@ type SnapshotT = {
 const ZERO_FINANCIALS: InvestmentFinancialsT = {
   categoryCosts: [],
   totalMaterialCosts: 0,
-  totalCorrections: 0,
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
@@ -138,7 +136,6 @@ async function buildSnapshot(payload: Payload): Promise<{
     const financials = financialsMap.get(id) ?? ZERO_FINANCIALS
     investments[String(id)] = {
       totalMaterialCosts: round2(financials.totalMaterialCosts),
-      totalCorrections: round2(financials.totalCorrections),
       totalIncome: round2(financials.totalIncome),
       totalLaborCosts: round2(financials.totalLaborCosts),
       totalPayouts: round2(financials.totalPayouts),

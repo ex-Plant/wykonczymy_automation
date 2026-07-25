@@ -21,9 +21,6 @@ const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
     ['INVESTMENT_EXPENSE', false],
     ['CORRECTION', false],
   ],
-  // Dead figure — computed, typed, zero-initialised, read nowhere. Phase 2 deletes it;
-  // pinning it makes that deletion a visible diff instead of a silent disappearance.
-  totalCorrections: [['CORRECTION', false]],
   // The deposit buckets ignore `settled` entirely — a settled deposit is not a concept,
   // but the predicate does not exclude it, and that tolerance is the pinned behaviour.
   totalIncome: [

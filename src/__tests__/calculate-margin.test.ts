@@ -5,7 +5,6 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 const fin = (p: Partial<InvestmentFinancialsT>): InvestmentFinancialsT => ({
   categoryCosts: [],
   totalMaterialCosts: 0,
-  totalCorrections: 0,
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,

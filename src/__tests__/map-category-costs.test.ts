@@ -5,7 +5,6 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 const base: InvestmentFinancialsT = {
   categoryCosts: [],
   totalMaterialCosts: 0,
-  totalCorrections: 0,
   totalIncome: 5000,
   totalLaborCosts: 1000,
   totalPayouts: 0,
@@ -30,17 +29,11 @@ describe('buildFinancialFields — rabat row', () => {
 })
 
 describe('buildFinancialFields — corrections fold into their type (no separate line)', () => {
-  it('never emits a "Korekty" field, even when totalCorrections != 0', () => {
-    const fields = buildFinancialFields({ ...base, totalCorrections: -2000 }, [])
-    expect(fields.find((f) => f.label === 'Korekty')).toBeUndefined()
-  })
-
   it('a categorized correction is reflected once, inside its expense type', () => {
     // category 1 net = expense 1000 + correction -200 = 800 → amount -800
     const financials = {
       ...base,
       categoryCosts: [{ categoryId: 1, total: 800 }],
-      totalCorrections: -200,
     }
     const fields = buildFinancialFields(financials, [{ id: 1, name: 'Materiały budowlane' }])
     const cat = fields.find((f) => f.label === 'Materiały budowlane')

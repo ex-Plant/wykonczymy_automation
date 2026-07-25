@@ -47,9 +47,21 @@ type TransferSpecT = {
    * and collapsing them is what leaks netto into totalSettled → marża.
    */
   settleable: boolean
+  /**
+   * Which investment figure this type feeds. `'none'` means it feeds none — an explicit
+   * answer, so a type that falls into no bucket is a stated decision rather than a
+   * `deriveFinancials` that simply forgot to mention it.
+   *
+   * `'materials'` splits further on the `settled` flag: unsettled → totalMaterialCosts,
+   * settled → totalSettled. That split lives in deriveFinancials, not here, because it
+   * is a per-ROW fact, not a per-type one.
+   */
+  financialBucket: 'materials' | 'income' | 'laborCosts' | 'payouts' | 'rabat' | 'loss' | 'none'
   /** Whether a source register is required, or meaningless (a P&L figure, no cash moves). */
   sourceRegister: 'required' | 'never'
 }
+
+export type FinancialBucketT = TransferSpecT['financialBucket']
 
 export const TRANSFER_TYPE_SPECS = {
   CANCELLATION: {
@@ -59,6 +71,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: false,
     settleable: false,
+    financialBucket: 'none',
     sourceRegister: 'required',
   },
   OTHER_DEPOSIT: {
@@ -68,6 +81,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: false,
     settleable: false,
+    financialBucket: 'income',
     sourceRegister: 'required',
   },
   OTHER: {
@@ -77,6 +91,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: false,
     settleable: false,
+    financialBucket: 'none',
     sourceRegister: 'required',
   },
   CORRECTION: {
@@ -86,6 +101,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: true,
     transfersSheetTab: false,
     settleable: true,
+    financialBucket: 'materials',
     sourceRegister: 'required',
   },
   LABOR_COST: {
@@ -95,6 +111,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: true,
     settleable: false,
+    financialBucket: 'laborCosts',
     sourceRegister: 'never',
   },
   RABAT: {
@@ -104,6 +121,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: true,
     settleable: false,
+    financialBucket: 'rabat',
     sourceRegister: 'never',
   },
   LOSS: {
@@ -113,6 +131,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: true,
     settleable: false,
+    financialBucket: 'loss',
     sourceRegister: 'never',
   },
   REGISTER_TRANSFER: {
@@ -122,6 +141,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: false,
     settleable: false,
+    financialBucket: 'none',
     sourceRegister: 'required',
   },
   INVESTOR_DEPOSIT: {
@@ -131,6 +151,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: true,
     settleable: false,
+    financialBucket: 'income',
     sourceRegister: 'required',
   },
   INVESTMENT_EXPENSE: {
@@ -140,6 +161,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: true,
     transfersSheetTab: false,
     settleable: true,
+    financialBucket: 'materials',
     sourceRegister: 'required',
   },
   PAYOUT: {
@@ -149,6 +171,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: true,
     settleable: false,
+    financialBucket: 'payouts',
     sourceRegister: 'required',
   },
   COMPANY_FUNDING: {
@@ -158,6 +181,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: false,
     settleable: false,
+    financialBucket: 'income',
     sourceRegister: 'required',
   },
 } satisfies Record<TransferTypeT, TransferSpecT>
@@ -304,6 +328,11 @@ export const isSheetTransferTabType = (type: unknown): type is SheetTransferTabT
   specOf(type)?.transfersSheetTab === true
 
 export const needsSourceRegister = (type: string) => specOf(type)?.sourceRegister === 'required'
+
+// An unknown type contributes to nothing rather than throwing — a row whose type predates
+// the union must not take the whole investment panel down with it.
+export const financialBucketOf = (type: unknown): FinancialBucketT =>
+  specOf(type)?.financialBucket ?? 'none'
 
 // Field-rule predicates. NOT folded into the table: a field is governed by up to five
 // independent axes (shown / required / auto-cleared / optional / exempt), and `investment`

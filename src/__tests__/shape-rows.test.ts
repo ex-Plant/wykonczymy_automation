@@ -68,7 +68,6 @@ describe('shapeInvestments', () => {
       '5': {
         categoryCosts: [],
         totalMaterialCosts: 1000,
-        totalCorrections: 0,
         totalIncome: 9547,
         totalLaborCosts: 3900,
         totalPayouts: 1000,
@@ -109,7 +108,6 @@ describe('shapeInvestments', () => {
           { categoryId: 2, total: 400 },
         ],
         totalMaterialCosts: 1150, // (800 + 400) + (-50) correction
-        totalCorrections: -50,
         totalIncome: 0,
         totalLaborCosts: 0,
         totalPayouts: 0,

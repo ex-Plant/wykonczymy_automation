@@ -135,7 +135,6 @@ describe('sumAllInvestmentFinancials', () => {
     expect(map.get(1)).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 3000,
-      totalCorrections: 0,
       totalIncome: 10000,
       totalLaborCosts: 200,
       totalPayouts: 150,
@@ -303,7 +302,6 @@ describe('deriveFinancials', () => {
     expect(deriveFinancials(rows)).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 5000,
-      totalCorrections: 0,
       totalIncome: 12000,
       totalLaborCosts: 800,
       totalPayouts: 300,
@@ -318,7 +316,6 @@ describe('deriveFinancials', () => {
     expect(deriveFinancials([])).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 0,
-      totalCorrections: 0,
       totalIncome: 0,
       totalLaborCosts: 0,
       totalPayouts: 0,
@@ -360,16 +357,15 @@ describe('deriveFinancials — settled material is symmetric for EXPENSE and COR
     expect(f.settledCategoryCosts).toEqual([])
   })
 
-  it('keeps settled CORRECTION out of materials/corrections, into totalSettled', () => {
+  it('keeps settled CORRECTION out of materials, into totalSettled', () => {
     const rows = [
       { type: 'CORRECTION', settled: false, total: 50 },
       { type: 'CORRECTION', settled: true, total: -200 },
       { type: 'INVESTMENT_EXPENSE', settled: false, total: 1000 },
     ]
     const f = deriveFinancials(rows)
-    // unsettled correction stays in materials and corrections
+    // unsettled correction stays in materials
     expect(f.totalMaterialCosts).toBe(1050)
-    expect(f.totalCorrections).toBe(50)
     // settled correction leaves materials, lands in totalSettled (negative ok)
     expect(f.totalSettled).toBe(-200)
   })

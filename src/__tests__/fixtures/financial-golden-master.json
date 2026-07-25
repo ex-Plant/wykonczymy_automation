@@ -6,7 +6,6 @@
   "investments": {
     "6": {
       "totalMaterialCosts": 25223.57,
-      "totalCorrections": 0,
       "totalIncome": 136000,
       "totalLaborCosts": 110871,
       "totalPayouts": 71400,
@@ -29,7 +28,6 @@
     },
     "7": {
       "totalMaterialCosts": 20976.55,
-      "totalCorrections": 0,
       "totalIncome": 122508,
       "totalLaborCosts": 101532,
       "totalPayouts": 44170,
@@ -48,7 +46,6 @@
     },
     "8": {
       "totalMaterialCosts": 33325.89,
-      "totalCorrections": 0,
       "totalIncome": 139781,
       "totalLaborCosts": 106455.11,
       "totalPayouts": 56350,
@@ -71,7 +68,6 @@
     },
     "9": {
       "totalMaterialCosts": 6277.76,
-      "totalCorrections": 0,
       "totalIncome": 48060,
       "totalLaborCosts": 41782,
       "totalPayouts": 16572,
@@ -90,7 +86,6 @@
     },
     "10": {
       "totalMaterialCosts": 15885.69,
-      "totalCorrections": 0,
       "totalIncome": 114472,
       "totalLaborCosts": 98662.5,
       "totalPayouts": 41840,
@@ -113,7 +108,6 @@
     },
     "11": {
       "totalMaterialCosts": 20531.47,
-      "totalCorrections": 0,
       "totalIncome": 124100,
       "totalLaborCosts": 103652,
       "totalPayouts": 52140,
@@ -132,7 +126,6 @@
     },
     "12": {
       "totalMaterialCosts": 2764.53,
-      "totalCorrections": 0,
       "totalIncome": 39673,
       "totalLaborCosts": 42587,
       "totalPayouts": 15160,
@@ -151,7 +144,6 @@
     },
     "13": {
       "totalMaterialCosts": 171.8,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 1690,
@@ -170,7 +162,6 @@
     },
     "14": {
       "totalMaterialCosts": 64643.19,
-      "totalCorrections": 0,
       "totalIncome": 159421,
       "totalLaborCosts": 95004,
       "totalPayouts": 47025,
@@ -193,7 +184,6 @@
     },
     "15": {
       "totalMaterialCosts": 5543.02,
-      "totalCorrections": 0,
       "totalIncome": 51330,
       "totalLaborCosts": 45786,
       "totalPayouts": 22215,
@@ -212,7 +202,6 @@
     },
     "16": {
       "totalMaterialCosts": 67900.02,
-      "totalCorrections": 0,
       "totalIncome": 228193.35,
       "totalLaborCosts": 160457.8,
       "totalPayouts": 86652.5,
@@ -231,7 +220,6 @@
     },
     "17": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -245,7 +233,6 @@
     },
     "18": {
       "totalMaterialCosts": 2032.87,
-      "totalCorrections": 0,
       "totalIncome": 9532.87,
       "totalLaborCosts": 7500,
       "totalPayouts": 5500,
@@ -268,7 +255,6 @@
     },
     "19": {
       "totalMaterialCosts": 9839.37,
-      "totalCorrections": 0,
       "totalIncome": 89212.47,
       "totalLaborCosts": 80251,
       "totalPayouts": 34640,
@@ -287,7 +273,6 @@
     },
     "20": {
       "totalMaterialCosts": 7429.77,
-      "totalCorrections": -89.96,
       "totalIncome": 46721,
       "totalLaborCosts": 39291,
       "totalPayouts": 21270,
@@ -306,7 +291,6 @@
     },
     "21": {
       "totalMaterialCosts": 80113.18,
-      "totalCorrections": 0,
       "totalIncome": 145152,
       "totalLaborCosts": 65921,
       "totalPayouts": 23610,
@@ -329,7 +313,6 @@
     },
     "22": {
       "totalMaterialCosts": 16850,
-      "totalCorrections": -244.42,
       "totalIncome": 56850,
       "totalLaborCosts": 40000,
       "totalPayouts": 25070,
@@ -352,7 +335,6 @@
     },
     "25": {
       "totalMaterialCosts": 94760.41,
-      "totalCorrections": 0,
       "totalIncome": 309723.41,
       "totalLaborCosts": 214963,
       "totalPayouts": 118710,
@@ -375,7 +357,6 @@
     },
     "26": {
       "totalMaterialCosts": 593265.77,
-      "totalCorrections": -221.96,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 296322.5,
@@ -402,7 +383,6 @@
     },
     "28": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -416,7 +396,6 @@
     },
     "31": {
       "totalMaterialCosts": 180660.57,
-      "totalCorrections": -3745.24,
       "totalIncome": 303382.34,
       "totalLaborCosts": 235911,
       "totalPayouts": 198634,
@@ -444,7 +423,6 @@
     },
     "32": {
       "totalMaterialCosts": 31717.29,
-      "totalCorrections": 0,
       "totalIncome": 215934,
       "totalLaborCosts": 184311,
       "totalPayouts": 80324,
@@ -467,7 +445,6 @@
     },
     "33": {
       "totalMaterialCosts": 4735.18,
-      "totalCorrections": 0,
       "totalIncome": 37616.18,
       "totalLaborCosts": 32881,
       "totalPayouts": 17907.9,
@@ -486,7 +463,6 @@
     },
     "34": {
       "totalMaterialCosts": 11962.45,
-      "totalCorrections": 0,
       "totalIncome": 63278.9,
       "totalLaborCosts": 51597.47,
       "totalPayouts": 26350,
@@ -505,7 +481,6 @@
     },
     "35": {
       "totalMaterialCosts": 34369.68,
-      "totalCorrections": 0,
       "totalIncome": 154155,
       "totalLaborCosts": 119685,
       "totalPayouts": 61286,
@@ -524,7 +499,6 @@
     },
     "36": {
       "totalMaterialCosts": 13992.8,
-      "totalCorrections": -677,
       "totalIncome": 41333.98,
       "totalLaborCosts": 27569,
       "totalPayouts": 13500,
@@ -547,7 +521,6 @@
     },
     "37": {
       "totalMaterialCosts": 4933.81,
-      "totalCorrections": 0,
       "totalIncome": 38362,
       "totalLaborCosts": 33428,
       "totalPayouts": 14750,
@@ -570,7 +543,6 @@
     },
     "38": {
       "totalMaterialCosts": 1896.31,
-      "totalCorrections": -557.3,
       "totalIncome": 61989.88,
       "totalLaborCosts": 0,
       "totalPayouts": 3000,
@@ -593,7 +565,6 @@
     },
     "39": {
       "totalMaterialCosts": 1000,
-      "totalCorrections": 0,
       "totalIncome": 3000,
       "totalLaborCosts": 2000,
       "totalPayouts": 650,
@@ -612,7 +583,6 @@
     },
     "40": {
       "totalMaterialCosts": 62380.15,
-      "totalCorrections": -1145.59,
       "totalIncome": 0,
       "totalLaborCosts": 13000,
       "totalPayouts": 9200,
@@ -635,7 +605,6 @@
     },
     "41": {
       "totalMaterialCosts": 10687.24,
-      "totalCorrections": 0,
       "totalIncome": 77704.73,
       "totalLaborCosts": 67027,
       "totalPayouts": 35036,
@@ -654,7 +623,6 @@
     },
     "42": {
       "totalMaterialCosts": 56258.15,
-      "totalCorrections": -578.21,
       "totalIncome": 185738,
       "totalLaborCosts": 129036,
       "totalPayouts": 56840,
@@ -686,7 +654,6 @@
     },
     "43": {
       "totalMaterialCosts": 3725.8,
-      "totalCorrections": -500,
       "totalIncome": 37200,
       "totalLaborCosts": 33441,
       "totalPayouts": 18430,
@@ -705,7 +672,6 @@
     },
     "45": {
       "totalMaterialCosts": 60673.49,
-      "totalCorrections": 0,
       "totalIncome": 104787.62,
       "totalLaborCosts": 59037,
       "totalPayouts": 28500,
@@ -728,7 +694,6 @@
     },
     "46": {
       "totalMaterialCosts": 4819.76,
-      "totalCorrections": 0,
       "totalIncome": 32450,
       "totalLaborCosts": 27630,
       "totalPayouts": 18200,
@@ -747,7 +712,6 @@
     },
     "47": {
       "totalMaterialCosts": 142.65,
-      "totalCorrections": 0,
       "totalIncome": 142.65,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -766,7 +730,6 @@
     },
     "48": {
       "totalMaterialCosts": 16463.57,
-      "totalCorrections": 0,
       "totalIncome": 77840,
       "totalLaborCosts": 5590,
       "totalPayouts": 27170,
@@ -789,7 +752,6 @@
     },
     "49": {
       "totalMaterialCosts": 4378.74,
-      "totalCorrections": 0,
       "totalIncome": 38693,
       "totalLaborCosts": 34314,
       "totalPayouts": 17130,
@@ -812,7 +774,6 @@
     },
     "50": {
       "totalMaterialCosts": 5463.98,
-      "totalCorrections": 0,
       "totalIncome": 49836.98,
       "totalLaborCosts": 44373,
       "totalPayouts": 21200.75,
@@ -831,7 +792,6 @@
     },
     "51": {
       "totalMaterialCosts": 49.02,
-      "totalCorrections": 0,
       "totalIncome": 3259,
       "totalLaborCosts": 3210,
       "totalPayouts": 2132,
@@ -850,7 +810,6 @@
     },
     "52": {
       "totalMaterialCosts": 4165.48,
-      "totalCorrections": 0,
       "totalIncome": 30579,
       "totalLaborCosts": 26229,
       "totalPayouts": 13020,
@@ -869,7 +828,6 @@
     },
     "53": {
       "totalMaterialCosts": 1377.57,
-      "totalCorrections": 0,
       "totalIncome": 8502,
       "totalLaborCosts": 7124,
       "totalPayouts": 3375,
@@ -888,7 +846,6 @@
     },
     "54": {
       "totalMaterialCosts": 130.86,
-      "totalCorrections": 0,
       "totalIncome": 7940,
       "totalLaborCosts": 0,
       "totalPayouts": 11007,
@@ -907,7 +864,6 @@
     },
     "55": {
       "totalMaterialCosts": 6886,
-      "totalCorrections": 0,
       "totalIncome": 38680,
       "totalLaborCosts": 31916,
       "totalPayouts": 19850,
@@ -926,7 +882,6 @@
     },
     "57": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 430,
@@ -940,7 +895,6 @@
     },
     "58": {
       "totalMaterialCosts": 3773.62,
-      "totalCorrections": 0,
       "totalIncome": 27110,
       "totalLaborCosts": 30127,
       "totalPayouts": 15660,
@@ -959,7 +913,6 @@
     },
     "59": {
       "totalMaterialCosts": -153.1,
-      "totalCorrections": -800,
       "totalIncome": 9394,
       "totalLaborCosts": 9547,
       "totalPayouts": 4800,
@@ -978,7 +931,6 @@
     },
     "60": {
       "totalMaterialCosts": 15039.35,
-      "totalCorrections": -4361.31,
       "totalIncome": 77849.11,
       "totalLaborCosts": 62909,
       "totalPayouts": 34823,
@@ -997,7 +949,6 @@
     },
     "61": {
       "totalMaterialCosts": 435.53,
-      "totalCorrections": 0,
       "totalIncome": 4222,
       "totalLaborCosts": 3786.47,
       "totalPayouts": 1500,
@@ -1016,7 +967,6 @@
     },
     "62": {
       "totalMaterialCosts": 362.84,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1035,7 +985,6 @@
     },
     "63": {
       "totalMaterialCosts": 0,
-      "totalCorrections": -450.07,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1054,7 +1003,6 @@
     },
     "64": {
       "totalMaterialCosts": 32903.46,
-      "totalCorrections": -430,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 11861.14,
@@ -1082,7 +1030,6 @@
     },
     "65": {
       "totalMaterialCosts": 58378.06,
-      "totalCorrections": 0,
       "totalIncome": 149053.6,
       "totalLaborCosts": 73571,
       "totalPayouts": 44100,
@@ -1109,7 +1056,6 @@
     },
     "66": {
       "totalMaterialCosts": 44584.84,
-      "totalCorrections": 0,
       "totalIncome": 197957,
       "totalLaborCosts": 168477,
       "totalPayouts": 89820,
@@ -1132,7 +1078,6 @@
     },
     "67": {
       "totalMaterialCosts": 25338.53,
-      "totalCorrections": -139.97,
       "totalIncome": 116000,
       "totalLaborCosts": 91618,
       "totalPayouts": 48986,
@@ -1155,7 +1100,6 @@
     },
     "68": {
       "totalMaterialCosts": 5230.86,
-      "totalCorrections": 0,
       "totalIncome": 23980,
       "totalLaborCosts": 18780,
       "totalPayouts": 10650,
@@ -1174,7 +1118,6 @@
     },
     "70": {
       "totalMaterialCosts": 349.31,
-      "totalCorrections": 0,
       "totalIncome": 5950,
       "totalLaborCosts": 6850,
       "totalPayouts": 1350,
@@ -1193,7 +1136,6 @@
     },
     "71": {
       "totalMaterialCosts": 226.11,
-      "totalCorrections": 0,
       "totalIncome": 2300,
       "totalLaborCosts": 2153,
       "totalPayouts": 1490,
@@ -1212,7 +1154,6 @@
     },
     "72": {
       "totalMaterialCosts": 5438.21,
-      "totalCorrections": 0,
       "totalIncome": 30900,
       "totalLaborCosts": 25476,
       "totalPayouts": 14100,
@@ -1231,7 +1172,6 @@
     },
     "73": {
       "totalMaterialCosts": 595.9,
-      "totalCorrections": 0,
       "totalIncome": 2595.9,
       "totalLaborCosts": 2000,
       "totalPayouts": 1200,
@@ -1250,7 +1190,6 @@
     },
     "74": {
       "totalMaterialCosts": 14298.89,
-      "totalCorrections": 0,
       "totalIncome": 57776.59,
       "totalLaborCosts": 44491,
       "totalPayouts": 30900,
@@ -1273,7 +1212,6 @@
     },
     "75": {
       "totalMaterialCosts": 6780.66,
-      "totalCorrections": 0,
       "totalIncome": 54400,
       "totalLaborCosts": 47623,
       "totalPayouts": 25000,
@@ -1292,7 +1230,6 @@
     },
     "76": {
       "totalMaterialCosts": 28613.15,
-      "totalCorrections": 0,
       "totalIncome": 69228,
       "totalLaborCosts": 0,
       "totalPayouts": 26485,
@@ -1315,7 +1252,6 @@
     },
     "77": {
       "totalMaterialCosts": 3731.8,
-      "totalCorrections": 0,
       "totalIncome": 29257,
       "totalLaborCosts": 25525,
       "totalPayouts": 12649.04,
@@ -1334,7 +1270,6 @@
     },
     "78": {
       "totalMaterialCosts": 3044.67,
-      "totalCorrections": 0,
       "totalIncome": 41900,
       "totalLaborCosts": 43848,
       "totalPayouts": 24800,
@@ -1353,7 +1288,6 @@
     },
     "80": {
       "totalMaterialCosts": 417.96,
-      "totalCorrections": 0,
       "totalIncome": 3417.96,
       "totalLaborCosts": 3000,
       "totalPayouts": 1000,
@@ -1372,7 +1306,6 @@
     },
     "81": {
       "totalMaterialCosts": 0,
-      "totalCorrections": -91.02,
       "totalIncome": 1678.95,
       "totalLaborCosts": 1678.95,
       "totalPayouts": 630,
@@ -1391,7 +1324,6 @@
     },
     "83": {
       "totalMaterialCosts": 184.27,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 3050,
@@ -1410,7 +1342,6 @@
     },
     "84": {
       "totalMaterialCosts": 332.7,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1429,7 +1360,6 @@
     },
     "85": {
       "totalMaterialCosts": 56957.51,
-      "totalCorrections": 0,
       "totalIncome": 75143,
       "totalLaborCosts": 0,
       "totalPayouts": 48392,
@@ -1448,7 +1378,6 @@
     },
     "86": {
       "totalMaterialCosts": 8340.76,
-      "totalCorrections": 0,
       "totalIncome": 21000,
       "totalLaborCosts": 0,
       "totalPayouts": 6550,
@@ -1471,7 +1400,6 @@
     },
     "87": {
       "totalMaterialCosts": 4242.06,
-      "totalCorrections": 0,
       "totalIncome": 35363,
       "totalLaborCosts": 0,
       "totalPayouts": 21290,
@@ -1490,7 +1418,6 @@
     },
     "88": {
       "totalMaterialCosts": 13014,
-      "totalCorrections": 0,
       "totalIncome": 47000,
       "totalLaborCosts": 0,
       "totalPayouts": 16350,
@@ -1514,7 +1441,6 @@
     },
     "89": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1528,7 +1454,6 @@
     },
     "90": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1542,7 +1467,6 @@
     },
     "91": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 1500,
       "totalLaborCosts": 7000,
       "totalPayouts": 7000,
@@ -1556,7 +1480,6 @@
     },
     "93": {
       "totalMaterialCosts": 4561.75,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 16891,
       "totalPayouts": 16900,
@@ -1575,7 +1498,6 @@
     },
     "94": {
       "totalMaterialCosts": 1021.64,
-      "totalCorrections": 0,
       "totalIncome": 3721.64,
       "totalLaborCosts": 2700,
       "totalPayouts": 1200,
@@ -1594,7 +1516,6 @@
     },
     "96": {
       "totalMaterialCosts": 2477.5,
-      "totalCorrections": 0,
       "totalIncome": 13335.5,
       "totalLaborCosts": 10858,
       "totalPayouts": 4500,
@@ -1613,7 +1534,6 @@
     },
     "97": {
       "totalMaterialCosts": 10155.49,
-      "totalCorrections": 0,
       "totalIncome": 44700,
       "totalLaborCosts": 0,
       "totalPayouts": 17700,
@@ -1632,7 +1552,6 @@
     },
     "98": {
       "totalMaterialCosts": 39,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1651,7 +1570,6 @@
     },
     "99": {
       "totalMaterialCosts": 173.34,
-      "totalCorrections": 0,
       "totalIncome": 973,
       "totalLaborCosts": 800,
       "totalPayouts": 500,
@@ -1670,7 +1588,6 @@
     },
     "100": {
       "totalMaterialCosts": 1305.39,
-      "totalCorrections": 0,
       "totalIncome": 30859.34,
       "totalLaborCosts": 0,
       "totalPayouts": 2600,
@@ -1689,7 +1606,6 @@
     },
     "101": {
       "totalMaterialCosts": 11782.73,
-      "totalCorrections": 0,
       "totalIncome": 22633.8,
       "totalLaborCosts": 0,
       "totalPayouts": 20350,
@@ -1708,7 +1624,6 @@
     },
     "102": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 900,
       "totalLaborCosts": 900,
       "totalPayouts": 450,
@@ -1722,7 +1637,6 @@
     },
     "103": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 5454,
       "totalLaborCosts": 5454,
       "totalPayouts": 2600,
@@ -1736,7 +1650,6 @@
     },
     "104": {
       "totalMaterialCosts": 26.98,
-      "totalCorrections": 0,
       "totalIncome": 1900,
       "totalLaborCosts": 1900,
       "totalPayouts": 400,
@@ -1760,7 +1673,6 @@
     },
     "105": {
       "totalMaterialCosts": 25970.27,
-      "totalCorrections": 0,
       "totalIncome": 21000,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1783,7 +1695,6 @@
     },
     "106": {
       "totalMaterialCosts": 4561.48,
-      "totalCorrections": 0,
       "totalIncome": 15135,
       "totalLaborCosts": 14493,
       "totalPayouts": 300,
@@ -1806,7 +1717,6 @@
     },
     "107": {
       "totalMaterialCosts": 321.02,
-      "totalCorrections": 0,
       "totalIncome": 3321,
       "totalLaborCosts": 3000,
       "totalPayouts": 1800,
@@ -1825,7 +1735,6 @@
     },
     "108": {
       "totalMaterialCosts": 5952.1,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 6150,
@@ -1849,7 +1758,6 @@
     },
     "109": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 1865,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1863,7 +1771,6 @@
     },
     "110": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 6633.79,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1877,7 +1784,6 @@
     },
     "111": {
       "totalMaterialCosts": 458.48,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1896,7 +1802,6 @@
     },
     "112": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1910,7 +1815,6 @@
     },
     "113": {
       "totalMaterialCosts": 3786.24,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1929,7 +1833,6 @@
     },
     "114": {
       "totalMaterialCosts": 18034.14,
-      "totalCorrections": 0,
       "totalIncome": 6960,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1952,7 +1855,6 @@
     },
     "115": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 4500,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1966,7 +1868,6 @@
     },
     "116": {
       "totalMaterialCosts": 550,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,
@@ -1985,7 +1886,6 @@
     },
     "247": {
       "totalMaterialCosts": 0,
-      "totalCorrections": 0,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 0,

@@ -6,7 +6,6 @@ export type CategoryCostT = {
 export type InvestmentFinancialsT = {
   categoryCosts: CategoryCostT[]
   totalMaterialCosts: number
-  totalCorrections: number
   totalIncome: number
   totalLaborCosts: number
   totalPayouts: number
