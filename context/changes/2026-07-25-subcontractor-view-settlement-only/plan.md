@@ -402,6 +402,6 @@ staging). Kosztorys data is throwaway until dogfooding merges to `main`, so exis
 
 #### Automated
 
-- [x] 3.1 Full suite passes: `pnpm test` — 4b66d66e
-- [x] 3.2 Type checking passes: `pnpm typecheck` — 4b66d66e
-- [x] 3.3 Linting passes: `pnpm lint` — 4b66d66e
+- [x] 3.1 Full suite passes: `pnpm test` — e551ac25
+- [x] 3.2 Type checking passes: `pnpm typecheck` — e551ac25
+- [x] 3.3 Linting passes: `pnpm lint` — e551ac25
