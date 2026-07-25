@@ -8,11 +8,6 @@ import type { StageKeyT } from '@/lib/kosztorys/types'
 // noise, and it keeps stage ids out of the visibility map — Postgres can reissue a deleted stage's
 // id, and a new stage inheriting the dead one's hidden state would be a ghost. Three groups, so the
 // qty axis and each value axis hide independently.
-// Rendered in a stage-value cell/footer when the stage doesn't belong to the active subcontractor
-// view (its plane is the other one) — see stageAppliesToView. Shared so the cell and the „Razem"
-// footer read identically.
-export const STAGE_NA_LABEL = 'nie dotyczy'
-
 export const STAGES_COLUMN_GROUP = 'stages'
 export const STAGE_VALUE_NET_COLUMN_GROUP = 'stageValueNet'
 export const STAGE_VALUE_GROSS_COLUMN_GROUP = 'stageValueGross'

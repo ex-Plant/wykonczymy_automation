@@ -22,12 +22,7 @@ import {
 } from '@/components/kosztorys/editor/grid/kosztorys-totals-row'
 import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
-import {
-  stageKey,
-  stageValueGrossKey,
-  stageValueNetKey,
-  stageValuePercentKey,
-} from '@/lib/kosztorys/stage-keys'
+import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { stageAppliesToView } from '@/lib/kosztorys/settlement'
 import {
   NOOP_UNDO_REDO,
@@ -119,12 +114,12 @@ export function KosztorysEditorBody({
     // Qty (Pomiar z natury): per-etap column, their sum, and the offered przedmiar column.
     let qtySum = 0
     for (const stage of stages) {
+      // An etap outside this view has no columns at all — and its qty must stay out of „Pomiar
+      // razem", which in a subcontractor view is that crew's pomiar.
+      if (!stageAppliesToView(stage, view)) continue
       const stageQty = stageQtyTotals.get(stage.id) ?? 0
       qtySum += stageQty
       totals.set(stageKey(stage.id), stageQty)
-      // Skip the value footers for an etap that doesn't belong to this view — its cells read „nie
-      // dotyczy" (naStageColumnIds), and a repriced „Razem" underneath them would contradict that.
-      if (!stageAppliesToView(stage, view)) continue
       const stageNet = stageTotals.get(stage.id) ?? 0
       totals.set(stageValueNetKey(stage.id), stageNet)
       totals.set(stageValueGrossKey(stage.id), toGross(stageNet, tree.vatRate))
@@ -144,22 +139,9 @@ export function KosztorysEditorBody({
     view,
   ])
 
-  // Which stage-value column ids render „nie dotyczy" on the footer — the value/percent keys of etapy
-  // whose plane isn't the active view. Client view filters nothing, so this is always empty there.
-  const naStageColumnIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const stage of stages) {
-      if (stageAppliesToView(stage, view)) continue
-      ids.add(stageValueNetKey(stage.id))
-      ids.add(stageValueGrossKey(stage.id))
-      ids.add(stageValuePercentKey(stage.id))
-    }
-    return ids
-  }, [stages, view])
-
   const gridColumns = useMemo(
-    () => columns.map((column) => withTotalsRow(column, columnTotals, naStageColumnIds)),
-    [columns, columnTotals, naStageColumnIds],
+    () => columns.map((column) => withTotalsRow(column, columnTotals)),
+    [columns, columnTotals],
   )
   const gridRows = useMemo(() => [...viewRows, makeSpacerRow(), makeTotalsRow()], [viewRows])
   const isSyntheticRow = (id: number) => id === SPACER_ROW_ID || id === TOTALS_ROW_ID

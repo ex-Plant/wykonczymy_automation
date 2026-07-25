@@ -22,6 +22,7 @@ import {
   stageValueForView,
   toGross,
   viewPrice,
+  type PriceViewT,
 } from '@/lib/kosztorys/calc'
 import {
   discountValueColumn,
@@ -36,7 +37,6 @@ import {
   STAGE_VALUE_NET_COLUMN_GROUP,
   STAGE_VALUE_PERCENT_COLUMN_GROUP,
   STAGES_COLUMN_GROUP,
-  STAGE_NA_LABEL,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
@@ -64,18 +64,11 @@ const floatColumnLeft = {
   columnData: { ...floatColumn.columnData, alignRight: false },
 }
 
-// A stage-value column for an etap that doesn't belong to the active subcontractor view: its qty is
-// still recorded and editable, but valuing it at THIS plane's price would be a repriced lie, so every
-// value cell (and the footer) reads „nie dotyczy". Same stable ComputedCell as the real value column,
-// so switching a stage's plane re-renders rather than remounting a focused cell.
-function naStageValueColumn(id: string, titleNode: ReactNode): Column<KosztorysV2RowT> {
-  return computedColumn(
-    id,
-    titleNode,
-    () => null,
-    'text-muted-foreground italic',
-    () => STAGE_NA_LABEL,
-  )
+// „Razem" bare would mean two things by view: what the client pays (post-rabat) vs what this crew is
+// owed (pre-rabat — rabat is a client concession, calc.ts netForQtyForView). Both sides say which one
+// they are; the suffix lives here rather than in COLUMN_LABELS, which has no `view` to branch on.
+function razemLabel(label: string, view: PriceViewT): string {
+  return `${label} — ${view === 'client' ? 'po rabacie' : 'do zapłaty ekipie'}`
 }
 
 // The four per-item rabat columns hidden while the global discount overrides them.
@@ -271,15 +264,28 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
+  // A subcontractor view is one crew's bill: only that plane's etapy get columns at all. Blanking the
+  // other plane's columns with a placeholder was built and rejected — a wall of dead cells whose qty
+  // columns still read as if they counted. Nothing becomes uneditable: quantities are typed in the
+  // Klient view, which shows every etap.
+  const viewStages = stages.filter((st) => stageAppliesToView(st, view))
+
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
-  const przedmiar: Column<KosztorysV2RowT>[] = [
-    keyCol('plannedQty', floatColumnLeft, {
-      id: 'plannedQty',
-      title: title('plannedQty', COLUMN_LABELS.plannedQty, opts),
-      minWidth: 90,
-    }),
-  ]
+  //
+  // Client-only: the przedmiar has no plane — it is typed once per row for the WHOLE offered scope —
+  // so next to a plane-filtered pomiar it invites a comparison that means nothing. Same reason kills
+  // „Wartość przedmiaru", „% wykonania" and „Pozostało" below.
+  const przedmiar: Column<KosztorysV2RowT>[] =
+    view === 'client'
+      ? [
+          keyCol('plannedQty', floatColumnLeft, {
+            id: 'plannedQty',
+            title: title('plannedQty', COLUMN_LABELS.plannedQty, opts),
+            minWidth: 90,
+          }),
+        ]
+      : []
 
   const measure: Column<KosztorysV2RowT>[] = [
     {
@@ -321,7 +327,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...discountCols,
   ]
 
-  const stageCols: Column<KosztorysV2RowT>[] = stages.map((st) =>
+  const stageCols: Column<KosztorysV2RowT>[] = viewStages.map((st) =>
     keyCol(stageKey(st.id), floatColumnLeft, {
       id: stageKey(st.id),
       title: (
@@ -338,19 +344,17 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   // The sheet's V–AE: the value of each stage's recorded qty at the view's price, post-discount.
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
-  const stageValueNetCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
+  const stageValueNetCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueNetKey(st.id), header)
     return computedColumn(stageValueNetKey(st.id), header, (r) =>
       stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
     )
   })
 
-  const stageValueGrossCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
+  const stageValueGrossCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view)) return naStageValueColumn(stageValueGrossKey(st.id), header)
     return computedColumn(stageValueGrossKey(st.id), header, (r) =>
       toGross(
         stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
@@ -361,11 +365,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   // The percent reading of the same stage block: one column per stage instead of the netto/brutto
   // pair, since a percentage is the same figure on either side of the VAT.
-  const stageValuePercentCols: Column<KosztorysV2RowT>[] = stages.map((st) => {
+  const stageValuePercentCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    if (!stageAppliesToView(st, view))
-      return naStageValueColumn(stageValuePercentKey(st.id), header)
     return computedColumn(
       stageValuePercentKey(st.id),
       header,
@@ -377,35 +379,47 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   // The row's headline figure — available in both display modes, hence untagged: it answers "how far
   // along is this position", which the money columns never say outright.
-  const donePercent: Column<KosztorysV2RowT>[] = [
-    computedColumn(
-      'donePercent',
-      title('donePercent', COLUMN_LABELS.donePercent, opts),
-      (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages, view)),
-      // Red = more was executed than was offered. The percentage says so too (>100%), but only this
-      // cell says it at a glance across a thousand rows.
-      (r) =>
-        hasStagesOverPlanned(r, stages)
-          ? 'text-destructive font-medium'
-          : 'text-muted-foreground font-medium',
-      formatPercent,
-    ),
-  ]
+  const donePercent: Column<KosztorysV2RowT>[] =
+    view === 'client'
+      ? [
+          computedColumn(
+            'donePercent',
+            title('donePercent', COLUMN_LABELS.donePercent, opts),
+            (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages, view)),
+            // Red = more was executed than was offered. The percentage says so too (>100%), but only
+            // this cell says it at a glance across a thousand rows.
+            (r) =>
+              hasStagesOverPlanned(r, stages)
+                ? 'text-destructive font-medium'
+                : 'text-muted-foreground font-medium',
+            formatPercent,
+          ),
+        ]
+      : []
+
+  const plannedValue: Column<KosztorysV2RowT>[] =
+    view === 'client'
+      ? [
+          computedColumn('plannedNet', title('plannedNet', COLUMN_LABELS.plannedNet, opts), (r) =>
+            rowPlannedNetForView(r, view),
+          ),
+          computedColumn(
+            'plannedGross',
+            title('plannedGross', COLUMN_LABELS.plannedGross, opts),
+            (r) => toGross(rowPlannedNetForView(r, view), r.vatRate),
+          ),
+        ]
+      : []
 
   const computed: Column<KosztorysV2RowT>[] = [
-    computedColumn('plannedNet', title('plannedNet', COLUMN_LABELS.plannedNet, opts), (r) =>
-      rowPlannedNetForView(r, view),
-    ),
-    computedColumn('plannedGross', title('plannedGross', COLUMN_LABELS.plannedGross, opts), (r) =>
-      toGross(rowPlannedNetForView(r, view), r.vatRate),
-    ),
+    ...plannedValue,
     computedColumn(
       'net',
-      title('net', COLUMN_LABELS.net, opts),
+      title('net', razemLabel(COLUMN_LABELS.net, view), opts),
       (r) => rowValueForView(r, stages, view),
       'text-muted-foreground font-medium',
     ),
-    computedColumn('gross', title('gross', COLUMN_LABELS.gross, opts), (r) =>
+    computedColumn('gross', title('gross', razemLabel(COLUMN_LABELS.gross, view), opts), (r) =>
       toGross(rowValueForView(r, stages, view), r.vatRate),
     ),
   ]
@@ -424,21 +438,24 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
-  const remaining: Column<KosztorysV2RowT>[] = [
-    computedColumn('remaining', title('remaining', COLUMN_LABELS.remaining, opts), (r) =>
-      rowRemainingForView(r, stages, view),
-    ),
-    computedColumn(
-      'remainingGross',
-      title('remainingGross', COLUMN_LABELS.remainingGross, opts),
-      // The dash must survive the VAT step: toGross(null) would read 0 — "settled" — on a row that
-      // has no przedmiar to settle against.
-      (r) => {
-        const net = rowRemainingForView(r, stages, view)
-        return net === null ? null : toGross(net, r.vatRate)
-      },
-    ),
-  ]
+  const remaining: Column<KosztorysV2RowT>[] =
+    view === 'client'
+      ? [
+          computedColumn('remaining', title('remaining', COLUMN_LABELS.remaining, opts), (r) =>
+            rowRemainingForView(r, stages, view),
+          ),
+          computedColumn(
+            'remainingGross',
+            title('remainingGross', COLUMN_LABELS.remainingGross, opts),
+            // The dash must survive the VAT step: toGross(null) would read 0 — "settled" — on a row
+            // that has no przedmiar to settle against.
+            (r) => {
+              const net = rowRemainingForView(r, stages, view)
+              return net === null ? null : toGross(net, r.vatRate)
+            },
+          ),
+        ]
+      : []
 
   // Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
   // Komentarz (T) at the work/progress seam, then the value block (U–AE right before AF "pozostało").
