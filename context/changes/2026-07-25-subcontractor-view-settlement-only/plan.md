@@ -393,10 +393,10 @@ staging). Kosztorys data is throwaway until dogfooding merges to `main`, so exis
 
 #### Automated
 
-- [x] 2.1 Full suite passes: `pnpm test`
-- [x] 2.2 Type checking passes: `pnpm typecheck`
-- [x] 2.3 Linting passes: `pnpm lint`
-- [x] 2.4 The string „nie dotyczy" no longer appears in `src/`
+- [x] 2.1 Full suite passes: `pnpm test` — 5003e50d
+- [x] 2.2 Type checking passes: `pnpm typecheck` — 5003e50d
+- [x] 2.3 Linting passes: `pnpm lint` — 5003e50d
+- [x] 2.4 The string „nie dotyczy" no longer appears in `src/` — 5003e50d
 
 ### Phase 3: Close the global-discount trap and the stale hint
 
