@@ -86,12 +86,14 @@ export function clientTotalsFromSubtotals(
 }
 
 /**
- * „Suma wykonanej pracy" (należne) for the subcontractor summary: the executed value at the ACTIVE
- * view's price, PRE-rabat — `Σ(net + discount)` over that view's subtotals. Same net+discount
- * construction as `clientTotalsFromSubtotals`'s `sumaPracNet`, but view-agnostic and with no
- * global-discount add-back: the crew is owed its price regardless of any client concession (rabat is
- * absorbed by the company margin, not passed to the subcontractor). Under a global discount `net` is
- * already gross and `discount` is 0, so the identity still holds.
+ * Executed value at the ACTIVE view's price, PRE-rabat — `Σ(net + discount)` over that view's
+ * subtotals. Same net+discount construction as `clientTotalsFromSubtotals`'s `sumaPracNet`, but
+ * view-agnostic and with no global-discount add-back: the crew is owed its price regardless of any
+ * client concession (rabat is absorbed by the company margin, not passed to the subcontractor). Under
+ * a global discount `net` is already gross and `discount` is 0, so the identity still holds.
+ *
+ * The subcontractor summary now uses `subcontractorDueByPlane` (per-etap, plane-aware); this remains
+ * as the single-plane parity oracle its per-stage sum collapses to.
  */
 export function executedWorkNetPreRabat(subtotals: SectionSubtotalT[]): number {
   return subtotals.reduce((sum, s) => sum + s.net + s.discount, 0)

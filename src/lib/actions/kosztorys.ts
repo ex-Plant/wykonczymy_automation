@@ -14,7 +14,7 @@ import {
   NEW_SECTION_DEFAULTS,
 } from '@/lib/kosztorys/constants'
 import type { ActionResultT } from '@/types/action'
-import type { ItemPatchT, StagePlaneT } from '@/lib/kosztorys/types'
+import type { ItemPatchT, StagePatchT } from '@/lib/kosztorys/types'
 
 // --- Patch schemas (all fields optional — autosave sends one field at a time) ---
 // itemPatchSchema is shaped to match ItemPatchT (a single source of the type in lib/kosztorys/types.ts).
@@ -401,36 +401,25 @@ export async function addStageAction(
   )
 }
 
-const stageLabelSchema = z.object({ label: z.string().nullable() })
+// stagePatchSchema is shaped to match StagePatchT (single source of the type in lib/kosztorys/types.ts).
+const stagePatchSchema = z
+  .object({
+    label: z.string().nullable(),
+    plane: z.enum(['w_tools', 'own_tools']),
+  })
+  .partial()
 
-export async function updateStageFieldAction(
+// Stage autosave: the header patches one field at a time (rename → label, plane picker → plane).
+// A plane patch only ever writes a concrete value — an explicit pick confirms the plane and clears
+// the unconfirmed (null) warning; there is no "un-confirm" path.
+export async function updateStageAction(
   stageId: number,
-  label: string | null,
+  patch: StagePatchT,
 ): Promise<ActionResultT> {
   return protectedAction(
-    'updateStageFieldAction',
+    'updateStageAction',
     async ({ payload }) => {
-      const parsed = validateAction(stageLabelSchema, { label })
-      if (!parsed.success) return parsed
-      await payload.update({ collection: 'kosztorys-stages', id: stageId, data: parsed.data })
-      return { success: true }
-    },
-    ['kosztorysStages'],
-  )
-}
-
-const stagePlaneSchema = z.object({ plane: z.enum(['w_tools', 'own_tools']) })
-
-// Set an etap's subcontractor tool-plane. Only ever writes a concrete value — an explicit pick
-// confirms the plane and clears the unconfirmed (null) warning; there is no "un-confirm" path.
-export async function setStagePlaneAction(
-  stageId: number,
-  plane: StagePlaneT,
-): Promise<ActionResultT> {
-  return protectedAction(
-    'setStagePlaneAction',
-    async ({ payload }) => {
-      const parsed = validateAction(stagePlaneSchema, { plane })
+      const parsed = validateAction(stagePatchSchema, patch)
       if (!parsed.success) return parsed
       await payload.update({ collection: 'kosztorys-stages', id: stageId, data: parsed.data })
       return { success: true }

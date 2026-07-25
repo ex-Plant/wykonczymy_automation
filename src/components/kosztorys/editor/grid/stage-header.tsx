@@ -48,7 +48,7 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane, tip }: Prop
   }
 
   // The effective plane drives the header icon; a null (unconfirmed) plane still renders the default
-  // wrench, with the scream next to it. Icons/warning only in the interactive editor mount.
+  // wrench, with the scream next to it.
   const effectivePlane = stage.plane ?? DEFAULT_STAGE_PLANE
 
   if (editing) {

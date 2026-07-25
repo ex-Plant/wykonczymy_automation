@@ -63,7 +63,6 @@ import {
   removeItemAction,
   removeSectionAction,
   removeStageAction,
-  setStagePlaneAction,
   setStageProgressAction,
   swapItemOrderAction,
   updateInvestmentCoeffsAction,
@@ -71,7 +70,7 @@ import {
   updateInvestmentVatAction,
   updateItemFieldAction,
   updateSectionFieldAction,
-  updateStageFieldAction,
+  updateStageAction,
 } from '@/lib/actions/kosztorys'
 import type {
   GlobalDiscountT,
@@ -728,7 +727,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     // The revert restores the prior label only if nothing newer was typed (label still === next).
     save(
       `stage-label:${stageId}`,
-      () => updateStageFieldAction(stageId, next),
+      () => updateStageAction(stageId, { label: next }),
       () =>
         setStages((s) =>
           s.map((st) =>
@@ -739,8 +738,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   // Optimistic plane pick. Fired from the header's onValueChange (an event handler, never inside a
-  // state updater), with the same revert-on-error discipline as the rename saver. Picking the plane
-  // already set is a no-op; picking any plane (even the default) writes it and clears the warning.
+  // state updater), with the same revert-on-error discipline as the rename saver. Picking any plane
+  // (even the default w_tools) writes it, which is what clears the unconfirmed warning.
   function handleSetStagePlane(stageId: number, plane: StagePlaneT) {
     const current = stagesRef.current.find((st) => st.id === stageId)
     if (current && current.plane === plane) return
@@ -748,7 +747,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     setStages((s) => s.map((st) => (st.id === stageId ? { ...st, plane } : st)))
     save(
       `stage-plane:${stageId}`,
-      () => setStagePlaneAction(stageId, plane),
+      () => updateStageAction(stageId, { plane }),
       () =>
         setStages((s) =>
           s.map((st) =>

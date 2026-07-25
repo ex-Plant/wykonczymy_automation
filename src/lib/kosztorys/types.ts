@@ -95,6 +95,14 @@ export type KosztorysStageT = {
   plane: StagePlaneT | null
 }
 
+// Stage autosave patch = the fields the header edits one at a time (rename → label, plane picker →
+// plane). Mirrors ItemPatchT; the action's zod validation is derived from this shape. plane is never
+// patched to null — an explicit pick only ever confirms a concrete plane.
+export type StagePatchT = Partial<{
+  label: string | null
+  plane: StagePlaneT
+}>
+
 export type StageProgressT = {
   itemId: number
   stageId: number
