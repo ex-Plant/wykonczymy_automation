@@ -22,6 +22,10 @@ while agents are still live, or they will treat a dirty tree as contamination.
 
 - [x] 🟡 WARNING · filed EX-572 · impl-review F7 + code-review · `v2-columns-readonly.test.ts:43`, `kosztorys-empty-sections.test.ts:53` · nothing pins the slice's central promise (which columns exist per view) — the readonly spec asserts only absences and would stay green if every stage column vanished; the empty-sections fixture still carries the `plane: null` vacuity the plan promised to remove. Same shape as the critical's hiding place, which is why it is filed rather than dropped. Not fixed here: writing the column-set assertions is its own test-authoring task.
       test: TDD · unit — disposition recorded on EX-572 so the guard travels with the fix.
+      **Partly discharged in the `/simplify` pass:** the przedmiar-anchored column-set assertions now
+      exist (`v2-columns-readonly.test.ts`, +2 specs) because `/simplify` moved that filter to the
+      selection chokepoint and the new mechanism owed a guard. EX-572 still owns the rest: the
+      per-etap column-set assertions and the `plane: null` fixture vacuity in `kosztorys-empty-sections.test.ts`.
 
 - [x] 🔴 CRITICAL · fixed · impl-review F1 + code-review · `src/lib/kosztorys/settlement.ts:249` · `stageTotalsForView` made its denominator view-scoped but kept distributing the row's net over every stage, so an out-of-view etap took a share > 1 — Σ per-etap overshot „Razem" by a multiple. Reachable: the panel's „Robocizna" tab is no longer coupled to the price view, so it rendered the other crew's etap at this crew's price. Fixed in `4ffc3031` with `stageAppliesToView` in the inner loop.
       test: test-driven-debugging · unit — red repro asserted Σ stageTotals ≈ Σ rowValueForView per subcontractor view (caught 36 where 0 was owed), plus explicit per-etap figures. Green.
@@ -54,15 +58,39 @@ while agents are still live, or they will treat a dirty tree as contamination.
 - [x] dismissed · module-cohesion · `settlement.ts`, `stage-keys.ts`, `kosztorys-totals-row.tsx` · scanner-flagged, judged cohesive: each is one concern, and the exported types are the return contracts of functions in the same file.
 - [x] dismissed · tailwind-v4-audit · whole diff · 0 hits across all three v4 groups; `bg-destructive/10 text-destructive` is the established repo pair.
 
+### `/simplify` pass (Step 2)
+
+- [x] fixed · simplify · `kosztorys-v2-columns.tsx:70` · **the label-resolution hole** (3 of 4 agents). `columnLabelForView` was wired into 3 of ~21 headers while the column picker always used it, so a fourth view-dependent label would render correctly in the picker and wrongly in the header — the exact drift `column-config.ts` exists to prevent, reintroduced one header at a time. `title()` now resolves the label from `field` itself; all 22 call sites pass only the id. The two-source failure mode is gone by construction.
+- [x] fixed · simplify · `kosztorys-v2-columns.tsx` + `column-config.ts:72` · **four copy-pasted `view === 'client' ? […] : []` ternaries** (3 of 4 agents) replaced by `PRZEDMIAR_ANCHORED_COLUMNS`, applied at both selection chokepoints. Now there is a list you can read to answer "which columns are przedmiar-anchored", and a przedmiar-derived column added later must opt in rather than silently ship the one-crew-numerator-over-everyone's-denominator comparison.
+- [x] fixed · simplify · `v2-columns-readonly.test.ts:65` · the guard the line above owes: the filter moved from assembly to selection, so a column that starts being built unconditionally can only leak through the new chokepoint. Two specs assert the built grid per view, not the set constant (which would restate itself).
+- [x] fixed · simplify · `settlement.ts:60` · four sites re-derived the view's own etapy inline, which made a bare `for (const st of stages)` inside view-scoped code look normal — the shape that produced the 🔴 above. Extracted `stagesForView`, idempotent so the filtered array is safe to hand onward.
+- [x] fixed · simplify · `settlement.ts:249` · `stageTotalsForView` re-filtered the stage list once per row. Hoisted; the seed still spans **all** stages so an out-of-view etap reports 0 instead of vanishing.
+- [x] fixed · simplify · `settlement.ts:293` · `sectionSubtotalsForView` both re-filtered per row **and** computed the pomiar twice — once for the net, once for the rabat. One `qtyDone`, reused: value and discount now stand on the same quantity by construction.
+- [x] fixed · simplify · `settlement.ts:147` · `hasUnconfirmedPlane` walked the stages a second time and re-derived `stageKey`. Folded into the existing loop; `||=` short-circuits once it's true.
+- [x] fixed · simplify · `kosztorys-v2-columns.tsx` (per-cell computes) · every przedmiar-anchored compute took `view` as if a subcontractor reading existed — false generality, since the set above drops those columns outside the client view. Hard-anchored to `'client'`, so the formula states what is actually true.
+- [x] fixed · simplify · `kosztorys-v2-columns.tsx:102` · `planeUnconfirmed` returned a fresh object mixing colour and `disabled`. Split: `PLANE_UNCONFIRMED_CELL` is a module-level `as const` (dsg identity, EX-422), and `disabled` moved inline onto `stageCols` — the three value columns are already read-only, so the flag said nothing about them.
+- [x] fixed · simplify · `use-kosztorys-editor.ts:392` + `settlement.ts` · the global rabat was computed twice: once inside `clientTotalsFromSubtotals`, once again in a `discountAmount` memo in the hook. `KosztorysClientTotalsT` now carries `globalRabatNet`; the memo and the `rabatAmount` alias are deleted. This is impl-review F10's dropped finding, now fixed rather than parked — it stopped being cosmetic once the duplication was the reason it existed.
+- [x] fixed · simplify · `kosztorys-v2-columns.tsx` (cell renderers) · per-cell `rowTotalQtyDone(r, stages, view)` re-filtered on every render. Threaded `viewStages` through.
+- [x] fixed · simplify · `use-kosztorys-editor.ts`, `kosztorys-v2-columns.tsx` · dead code the slice left behind: unused `PriceViewT` / `executedWorkNetPreRabat` imports (pre-existing — confirmed by stashing the working tree) and the now-unused `COLUMN_LABELS` import. Gated on typecheck + lint, not grep.
+- [x] fixed · simplify · `settlement.ts:293` · `sectionSubtotalsForView` accumulated `plannedNet` unscoped, so a section subtotal's przedmiar spanned the whole scope while its net spanned one crew — one crew's numerator over everyone's denominator. Initially skipped as a domain call; **owner ruling 2026-07-25: the subcontractor view is an internal preview, not a screen the crew sees, so the przedmiar has nothing to describe there — block it.** `plannedNet` is now `number | null`, withheld outside the client view (`null`, not 0 — 0 would claim nothing was offered). Enforced structurally: `sectionSubtotalsForView` is overloaded on the `'client'` literal and returns `SectionSubtotalClientT`, so the two pinned consumers (progress counter, section pie) keep a non-null figure with no `?? 0` noise while the one view-aware consumer — the „Razem" row — is forced by `tsc` to branch. The previous guard was only the hidden columns; the value was still computed and would have leaked silently the day someone surfaced it.
+      test: TDD · unit — two specs in `kosztorys-settlement.test.ts`: `null` in both subcontractor views, 132 in the client view.
+- [x] dropped · simplify · `kosztorys-v2-columns.tsx` · dedup the three per-etap value-column builders (qty / net / gross) into one parameterised factory. The agent rated its own confidence low at three call sites, and the three bodies differ in enough small ways that the factory would carry more configuration than the duplication costs.
+- [x] dismissed · simplify · `header-tips.ts` · header tips read the same in every view. Duplicate of impl-review F4 — already the owner's explicit decision 2026-07-25, not an oversight.
+- [x] dismissed · simplify · `subcontractor-summary.tsx` · findings reported but not applied: the file carries a parallel session's uncommitted work, the one file-based hold the gate honours (hard-excluded in the agents' brief).
+
 ## Simplify pass
 
-`/simplify` was **not run as a separate step** — its fix-now pass was folded into triage above
-(`4fbba15e`), which is where every reuse/dedup finding the fan-out raised was applied. Running it
-again now would re-review a tree that already carries those fixes, and it mutates: five files in the
-working tree belong to a parallel session (`deposit-form`, `form-base`, `vat-plane-field`,
-`transfers`, `subcontractor-summary`), which the gate forbids it to touch. Worth a separate pass once
-that session's work lands.
+Ran `/simplify` (4 agents: reuse / simplification / efficiency / altitude), scoped to the slice's own
+commits and with `subcontractor-summary.tsx` hard-excluded (parallel session's uncommitted file) —
+**13 applied, 0 proposed, 3 dismissed/dropped, 0 skipped**; each folded into `## Findings` above,
+tagged `simplify`. No separate report file, per the gate's one-list rule. Every agent was given an
+explicit ban on `git checkout` / `restore` / `stash` after the Step-1 incident; none touched the tree.
 
 ## Tests & suite
 
 - `pnpm exec vitest run src/__tests__/lib/kosztorys/` → 264 passed / 11 skipped (was 262 + 2 new guards).
+- Post-`/simplify`: `pnpm typecheck` clean; ESLint clean on the five touched files;
+  `pnpm exec vitest run src/__tests__/lib/kosztorys/ src/__tests__/components` → 278 passed /
+  11 skipped (276 + 2 new przedmiar-column guards), 21 files passed / 3 skipped.
+- After the przedmiar block: `pnpm typecheck` clean; ESLint clean on the five touched files;
+  the same run + `kosztorys-chart-slices.test.ts` → 285 passed / 11 skipped, 22 files passed / 3 skipped.
