@@ -56,6 +56,28 @@ export function columnLabelForView(id: string, view: PriceViewT): string {
   return label
 }
 
+/**
+ * Columns anchored to the przedmiar — visible in the client view only. The przedmiar has no plane: it
+ * is typed once per row for the WHOLE offered scope, so beside a plane-filtered pomiar it invites a
+ * comparison that means nothing (one crew's numerator over everyone's denominator).
+ *
+ * A set applied at the selection chokepoint, not four `view === 'client' ? […] : []` wrappers in the
+ * assembly: this way there is a list you can read to answer "which columns are przedmiar-anchored",
+ * and a przedmiar-derived column added later is opted in here rather than silently shipping the
+ * nonsense comparison because someone missed the wrapping idiom.
+ *
+ * Per-etap „% wykonania" (STAGE_VALUE_PERCENT_COLUMN_GROUP) is deliberately absent — owner ruling
+ * 2026-07-25: it stays in every view, and its tip names the przedmiar base instead (header-tips.ts).
+ */
+export const PRZEDMIAR_ANCHORED_COLUMNS: ReadonlySet<string> = new Set([
+  'plannedQty',
+  'plannedNet',
+  'plannedGross',
+  'donePercent',
+  'remaining',
+  'remainingGross',
+])
+
 // Which side of the netto/brutto pair a money column reports, keyed by the picker's toggleKey
 // (`stageValueNet`, never `stageValueNet_7`) so the per-stage namespace collapses to one entry and no
 // stage id enters the map — the same ghost-id reasoning as the picker groups (constants.ts). A column
