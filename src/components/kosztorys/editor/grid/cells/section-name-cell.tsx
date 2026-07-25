@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
+import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Renames the WHOLE section, so it commits through onRename (the same fan-out the section panel uses)
@@ -25,9 +26,8 @@ export function SectionNameCell({
   if (disabled) return <ReadOnlyCellText>{rowData.sectionName ?? ''}</ReadOnlyCellText>
 
   return (
-    <input
+    <EditableCellInput
       ref={inputRef}
-      className="size-full bg-transparent px-2 text-left text-sm outline-none"
       value={editing ? draft : (rowData.sectionName ?? '')}
       onFocus={() => {
         cancelRef.current = false

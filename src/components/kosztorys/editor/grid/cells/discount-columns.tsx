@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { Column, type CellProps } from 'react-datasheet-grid'
 import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
 import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
+import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
 import { discountFromType, discountFromValue } from '@/lib/kosztorys/discount-edit'
 import type { DiscountTypeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -37,8 +38,7 @@ function DiscountTypeCell({ rowData, setRowData, disabled }: CellProps<Kosztorys
 function DiscountValueCell({ rowData, setRowData, disabled }: CellProps<KosztorysV2RowT, unknown>) {
   if (disabled) return <ReadOnlyCellText>{String(rowData.discountValue ?? '')}</ReadOnlyCellText>
   return (
-    <input
-      className="size-full bg-transparent px-2 text-left text-sm outline-none"
+    <EditableCellInput
       value={String(rowData.discountValue ?? '')}
       inputMode="decimal"
       onChange={(e) => {

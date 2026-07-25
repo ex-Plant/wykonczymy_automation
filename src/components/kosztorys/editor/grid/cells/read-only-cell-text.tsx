@@ -1,8 +1,20 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils/cn'
 
 // The disabled render for every custom-input cell in the read-only (clientView) grid: a plain
 // left-aligned, truncated label where an editor would otherwise sit. Shared so the four custom cells
 // can't drift on their read-only markup (they had before — one carried a stray alignment class).
-export function ReadOnlyCellText({ children }: { children: ReactNode }) {
-  return <span className="block size-full truncate px-2 text-left text-sm">{children}</span>
+// `muted` covers the derived-value case (a subcontractor cell showing a value it isn't editable in
+// this mode) — same markup, just greyed to read as "not yours to type here".
+export function ReadOnlyCellText({ children, muted }: { children: ReactNode; muted?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'block size-full truncate px-2 text-left text-sm',
+        muted && 'text-muted-foreground',
+      )}
+    >
+      {children}
+    </span>
+  )
 }

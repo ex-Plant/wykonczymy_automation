@@ -1,5 +1,7 @@
 import { Column, type CellProps } from 'react-datasheet-grid'
 import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
+import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
+import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 import { formatNet as fmt } from '@/lib/kosztorys/format'
@@ -45,14 +47,14 @@ export function subcontractorCoeffColumn(
     component: ({ rowData, setRowData }: CellProps<KosztorysV2RowT, unknown>) => {
       const type = rowData[typeField] as SubcontractorOverrideTypeT | null
       if (type === 'amount') {
-        return <span className="text-muted-foreground block w-full px-2 text-left">—</span>
+        return <ReadOnlyCellText muted>—</ReadOnlyCellText>
       }
       // auto: the row carries no multiplier of its own — show the inherited investment default as a
       // placeholder, italic to read as "not set here".
       const inherited = type == null
       return (
-        <input
-          className={`size-full bg-transparent px-2 text-left text-sm outline-none ${inherited ? 'text-muted-foreground italic' : ''}`}
+        <EditableCellInput
+          className={inherited ? 'text-muted-foreground italic' : undefined}
           value={inherited ? '' : String(rowData[valueField] ?? '')}
           placeholder={inherited ? String(effectiveCoeff(rowData, view)) : ''}
           inputMode="decimal"
@@ -90,13 +92,10 @@ export function subcontractorPriceColumn(
       const type = rowData[typeField] as SubcontractorOverrideTypeT | null
       const price = viewPrice(rowData, view)
       if (type !== 'amount') {
-        return (
-          <span className="text-muted-foreground block w-full px-2 text-left">{fmt(price)}</span>
-        )
+        return <ReadOnlyCellText muted>{fmt(price)}</ReadOnlyCellText>
       }
       return (
-        <input
-          className="size-full bg-transparent px-2 text-left text-sm outline-none"
+        <EditableCellInput
           value={String(rowData[valueField] ?? '')}
           inputMode="decimal"
           onChange={(e) => {
