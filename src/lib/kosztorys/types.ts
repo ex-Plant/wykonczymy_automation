@@ -147,9 +147,9 @@ export type KosztorysEditorDataT = {
   payoutTransactions?: PayoutTransactionRowT[]
   // Individual deposit rows for the client Podsumowanie's sortable wpłaty list. Optional (default []).
   depositTransactions?: DepositTransactionRowT[]
-  // Individual materiały rows for the Podsumowanie's wydatki list (data · typ · kwota). Optional
-  // (default []) — the client-view share entry points omit it.
-  materialTransactions?: MaterialTransactionRowT[]
+  // Individual materiały rows for the Podsumowanie's wydatki list (data · typ · kwota), both settled
+  // states. Required: every entry point serves this list, the client share path included.
+  materialTransactions: MaterialTransactionRowT[]
 }
 
 // --- v2 variant (react-datasheet-grid): a flat row with stages flattened

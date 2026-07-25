@@ -59,7 +59,7 @@ export function KosztorysEditorBody({
   payoutsByWorker = [],
   payoutTransactions = [],
   depositTransactions = [],
-  materialTransactions = [],
+  materialTransactions,
   clientView = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,

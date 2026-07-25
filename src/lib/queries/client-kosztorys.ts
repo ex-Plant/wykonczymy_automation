@@ -13,6 +13,7 @@ import {
   fetchCategoryBreakdowns,
   fetchExpenseCategories,
   fetchFilteredByType,
+  fetchMaterialTransactionsForInvestment,
 } from '@/lib/queries/reference-data'
 
 // The read-only render mounts the real KosztorysEditorBody, so the client read builds exactly the
@@ -40,13 +41,15 @@ const KOSZTORYS_TAGS = [
 async function buildClientKosztorysEditorData(investmentId: number): Promise<KosztorysEditorDataT> {
   const investmentWhere = { investment: { equals: investmentId } }
   const payload = await getPayload({ config })
-  const [tree, investment, typeDistribution, breakdowns, expenseCategories] = await Promise.all([
-    buildKosztorysTree(investmentId),
-    payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
-    fetchFilteredByType(investmentWhere),
-    fetchCategoryBreakdowns(investmentWhere),
-    fetchExpenseCategories(),
-  ])
+  const [tree, investment, typeDistribution, breakdowns, expenseCategories, materialTransactions] =
+    await Promise.all([
+      buildKosztorysTree(investmentId),
+      payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
+      fetchFilteredByType(investmentWhere),
+      fetchCategoryBreakdowns(investmentWhere),
+      fetchExpenseCategories(),
+      fetchMaterialTransactionsForInvestment(investmentId),
+    ])
   const financials = deriveFinancials(typeDistribution, breakdowns.categoryCosts)
 
   return {
@@ -58,6 +61,7 @@ async function buildClientKosztorysEditorData(investmentId: number): Promise<Kos
     wplatyNet: financials.totalIncome,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,
+    materialTransactions,
   }
 }
 
