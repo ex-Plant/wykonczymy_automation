@@ -268,12 +268,17 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
-  const measure: Column<KosztorysV2RowT>[] = [
+  // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
+  // offered quantity reads before the per-etap execution it is measured against.
+  const przedmiar: Column<KosztorysV2RowT>[] = [
     keyCol('plannedQty', floatColumnLeft, {
       id: 'plannedQty',
       title: title('plannedQty', COLUMN_LABELS.plannedQty, opts),
       minWidth: 90,
     }),
+  ]
+
+  const measure: Column<KosztorysV2RowT>[] = [
     {
       ...computedColumn('stageQtySum', title('stageQtySum', COLUMN_LABELS.stageQtySum, opts), (r) =>
         rowTotalQtyDone(r, stages),
@@ -428,13 +433,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ),
   ]
 
-  // Both blocks keep sheet order: the stage qty columns lead (the sheet's D–M), then Przedmiar (N)
-  // and Pomiar z natury (O), then Komentarz (T) at the work/progress seam, then the value block
-  // (U–AE right before AF "pozostało"). The row-actions column leads the whole grid when editing is
-  // enabled — it rides the same assemble→hide→toggle pipeline as every data column (no special-casing),
-  // so the picker can hide it like any other.
+  // Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
+  // Komentarz (T) at the work/progress seam, then the value block (U–AE right before AF "pozostało").
+  // The row-actions column leads the whole grid when editing is enabled — it rides the same
+  // assemble→hide→toggle pipeline as every data column (no special-casing), so the picker can hide it
+  // like any other.
   const dataColumns = [
     ...identity,
+    ...przedmiar,
     ...stageCols,
     ...measure,
     ...pricing,
