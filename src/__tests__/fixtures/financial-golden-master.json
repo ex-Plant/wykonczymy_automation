@@ -12,8 +12,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -94.57,
-      "marza": 39471,
+      "balance": -94.57,
+      "margin": 39471,
       "categoryCosts": [
         [
           1,
@@ -34,8 +34,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -0.55,
-      "marza": 57362,
+      "balance": -0.55,
+      "margin": 57362,
       "categoryCosts": [
         [
           1,
@@ -52,8 +52,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 50105.11,
+      "balance": 0,
+      "margin": 50105.11,
       "categoryCosts": [
         [
           1,
@@ -74,8 +74,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.24,
-      "marza": 25210,
+      "balance": 0.24,
+      "margin": 25210,
       "categoryCosts": [
         [
           1,
@@ -92,8 +92,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -76.19,
-      "marza": 56822.5,
+      "balance": -76.19,
+      "margin": 56822.5,
       "categoryCosts": [
         [
           1,
@@ -114,8 +114,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -83.47,
-      "marza": 51512,
+      "balance": -83.47,
+      "margin": 51512,
       "categoryCosts": [
         [
           1,
@@ -132,8 +132,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -5678.53,
-      "marza": 27427,
+      "balance": -5678.53,
+      "margin": 27427,
       "categoryCosts": [
         [
           1,
@@ -150,8 +150,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -171.8,
-      "marza": -1690,
+      "balance": -171.8,
+      "margin": -1690,
       "categoryCosts": [
         [
           1,
@@ -168,8 +168,8 @@
       "totalRabat": 226.19,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 47752.81,
+      "balance": 0,
+      "margin": 47752.81,
       "categoryCosts": [
         [
           1,
@@ -190,8 +190,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.98,
-      "marza": 23571,
+      "balance": 0.98,
+      "margin": 23571,
       "categoryCosts": [
         [
           1,
@@ -208,8 +208,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -164.47,
-      "marza": 73805.3,
+      "balance": -164.47,
+      "margin": 73805.3,
       "categoryCosts": [
         [
           1,
@@ -226,8 +226,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -239,8 +239,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 2000,
+      "balance": 0,
+      "margin": 2000,
       "categoryCosts": [
         [
           1,
@@ -261,8 +261,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -877.9,
-      "marza": 45611,
+      "balance": -877.9,
+      "margin": 45611,
       "categoryCosts": [
         [
           1,
@@ -279,8 +279,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.23,
-      "marza": 18021,
+      "balance": 0.23,
+      "margin": 18021,
       "categoryCosts": [
         [
           1,
@@ -297,8 +297,8 @@
       "totalRabat": 882.18,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 41428.82,
+      "balance": 0,
+      "margin": 41428.82,
       "categoryCosts": [
         [
           1,
@@ -319,8 +319,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 14930,
+      "balance": 0,
+      "margin": 14930,
       "categoryCosts": [
         [
           1,
@@ -341,8 +341,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 96253,
+      "balance": 0,
+      "margin": 96253,
       "categoryCosts": [
         [
           1,
@@ -363,8 +363,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -593265.77,
-      "marza": -296322.5,
+      "balance": -593265.77,
+      "margin": -296322.5,
       "categoryCosts": [
         [
           1,
@@ -389,8 +389,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -402,8 +402,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 4421.85,
-      "bilans": -113189.23,
-      "marza": 32855.15,
+      "balance": -113189.23,
+      "margin": 32855.15,
       "categoryCosts": [
         [
           1,
@@ -429,8 +429,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -94.29,
-      "marza": 103987,
+      "balance": -94.29,
+      "margin": 103987,
       "categoryCosts": [
         [
           1,
@@ -451,8 +451,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 14973.1,
+      "balance": 0,
+      "margin": 14973.1,
       "categoryCosts": [
         [
           1,
@@ -469,8 +469,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -281.02,
-      "marza": 25247.47,
+      "balance": -281.02,
+      "margin": 25247.47,
       "categoryCosts": [
         [
           1,
@@ -487,8 +487,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 100.32,
-      "marza": 58399,
+      "balance": 100.32,
+      "margin": 58399,
       "categoryCosts": [
         [
           1,
@@ -505,8 +505,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -227.82,
-      "marza": 14069,
+      "balance": -227.82,
+      "margin": 14069,
       "categoryCosts": [
         [
           1,
@@ -527,8 +527,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.19,
-      "marza": 18678,
+      "balance": 0.19,
+      "margin": 18678,
       "categoryCosts": [
         [
           1,
@@ -549,8 +549,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 60093.57,
-      "marza": -3000,
+      "balance": 60093.57,
+      "margin": -3000,
       "categoryCosts": [
         [
           1,
@@ -571,8 +571,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 1350,
+      "balance": 0,
+      "margin": 1350,
       "categoryCosts": [
         [
           1,
@@ -589,8 +589,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -75380.15,
-      "marza": 3800,
+      "balance": -75380.15,
+      "margin": 3800,
       "categoryCosts": [
         [
           1,
@@ -611,8 +611,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -9.51,
-      "marza": 31991,
+      "balance": -9.51,
+      "margin": 31991,
       "categoryCosts": [
         [
           1,
@@ -629,8 +629,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 400,
-      "bilans": 443.85,
-      "marza": 71796,
+      "balance": 443.85,
+      "margin": 71796,
       "categoryCosts": [
         [
           1,
@@ -660,8 +660,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 33.2,
-      "marza": 15011,
+      "balance": 33.2,
+      "margin": 15011,
       "categoryCosts": [
         [
           1,
@@ -678,8 +678,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -14922.87,
-      "marza": 30537,
+      "balance": -14922.87,
+      "margin": 30537,
       "categoryCosts": [
         [
           1,
@@ -700,8 +700,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.24,
-      "marza": 9430,
+      "balance": 0.24,
+      "margin": 9430,
       "categoryCosts": [
         [
           1,
@@ -718,8 +718,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [
         [
           1,
@@ -736,8 +736,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 55786.43,
-      "marza": -21580,
+      "balance": 55786.43,
+      "margin": -21580,
       "categoryCosts": [
         [
           1,
@@ -758,8 +758,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.26,
-      "marza": 17184,
+      "balance": 0.26,
+      "margin": 17184,
       "categoryCosts": [
         [
           1,
@@ -780,8 +780,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 23172.25,
+      "balance": 0,
+      "margin": 23172.25,
       "categoryCosts": [
         [
           1,
@@ -798,8 +798,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -0.02,
-      "marza": 1078,
+      "balance": -0.02,
+      "margin": 1078,
       "categoryCosts": [
         [
           1,
@@ -816,8 +816,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 184.52,
-      "marza": 13209,
+      "balance": 184.52,
+      "margin": 13209,
       "categoryCosts": [
         [
           1,
@@ -834,8 +834,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.43,
-      "marza": 3749,
+      "balance": 0.43,
+      "margin": 3749,
       "categoryCosts": [
         [
           1,
@@ -852,8 +852,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 7809.14,
-      "marza": -11007,
+      "balance": 7809.14,
+      "margin": -11007,
       "categoryCosts": [
         [
           1,
@@ -870,8 +870,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -122,
-      "marza": 12066,
+      "balance": -122,
+      "margin": 12066,
       "categoryCosts": [
         [
           1,
@@ -888,8 +888,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": -430,
+      "balance": 0,
+      "margin": -430,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -901,8 +901,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -6790.62,
-      "marza": 14467,
+      "balance": -6790.62,
+      "margin": 14467,
       "categoryCosts": [
         [
           1,
@@ -919,8 +919,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.1,
-      "marza": 4747,
+      "balance": 0.1,
+      "margin": 4747,
       "categoryCosts": [
         [
           1,
@@ -937,8 +937,8 @@
       "totalRabat": 99.24,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 27986.76,
+      "balance": 0,
+      "margin": 27986.76,
       "categoryCosts": [
         [
           1,
@@ -955,8 +955,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 2286.47,
+      "balance": 0,
+      "margin": 2286.47,
       "categoryCosts": [
         [
           1,
@@ -973,8 +973,8 @@
       "totalRabat": 0,
       "totalLoss": 362.84,
       "totalSettled": 0,
-      "bilans": -362.84,
-      "marza": -362.84,
+      "balance": -362.84,
+      "margin": -362.84,
       "categoryCosts": [
         [
           1,
@@ -991,8 +991,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [
         [
           1,
@@ -1009,8 +1009,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 19.99,
-      "bilans": -32903.46,
-      "marza": -11881.13,
+      "balance": -32903.46,
+      "margin": -11881.13,
       "categoryCosts": [
         [
           1,
@@ -1036,8 +1036,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 17104.54,
-      "marza": 29471,
+      "balance": 17104.54,
+      "margin": 29471,
       "categoryCosts": [
         [
           1,
@@ -1062,8 +1062,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -15104.84,
-      "marza": 78657,
+      "balance": -15104.84,
+      "margin": 78657,
       "categoryCosts": [
         [
           1,
@@ -1084,8 +1084,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -956.53,
-      "marza": 42632,
+      "balance": -956.53,
+      "margin": 42632,
       "categoryCosts": [
         [
           1,
@@ -1106,8 +1106,8 @@
       "totalRabat": 30.86,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 8099.14,
+      "balance": 0,
+      "margin": 8099.14,
       "categoryCosts": [
         [
           1,
@@ -1124,8 +1124,8 @@
       "totalRabat": 1249.31,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 4250.69,
+      "balance": 0,
+      "margin": 4250.69,
       "categoryCosts": [
         [
           1,
@@ -1142,8 +1142,8 @@
       "totalRabat": 79.11,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 583.89,
+      "balance": 0,
+      "margin": 583.89,
       "categoryCosts": [
         [
           1,
@@ -1160,8 +1160,8 @@
       "totalRabat": 14.21,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 11361.79,
+      "balance": 0,
+      "margin": 11361.79,
       "categoryCosts": [
         [
           1,
@@ -1178,8 +1178,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 800,
+      "balance": 0,
+      "margin": 800,
       "categoryCosts": [
         [
           1,
@@ -1196,8 +1196,8 @@
       "totalRabat": 1289.89,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 276.59,
-      "marza": 12301.11,
+      "balance": 276.59,
+      "margin": 12301.11,
       "categoryCosts": [
         [
           1,
@@ -1218,8 +1218,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -3.66,
-      "marza": 22623,
+      "balance": -3.66,
+      "margin": 22623,
       "categoryCosts": [
         [
           1,
@@ -1236,8 +1236,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 40614.85,
-      "marza": -26485,
+      "balance": 40614.85,
+      "margin": -26485,
       "categoryCosts": [
         [
           1,
@@ -1258,8 +1258,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0.2,
-      "marza": 12875.96,
+      "balance": 0.2,
+      "margin": 12875.96,
       "categoryCosts": [
         [
           1,
@@ -1276,8 +1276,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -4992.67,
-      "marza": 19048,
+      "balance": -4992.67,
+      "margin": 19048,
       "categoryCosts": [
         [
           1,
@@ -1294,8 +1294,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 2000,
+      "balance": 0,
+      "margin": 2000,
       "categoryCosts": [
         [
           1,
@@ -1312,8 +1312,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 1048.95,
+      "balance": 0,
+      "margin": 1048.95,
       "categoryCosts": [
         [
           1,
@@ -1330,8 +1330,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -184.27,
-      "marza": -3050,
+      "balance": -184.27,
+      "margin": -3050,
       "categoryCosts": [
         [
           1,
@@ -1348,8 +1348,8 @@
       "totalRabat": 332.7,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": -332.7,
+      "balance": 0,
+      "margin": -332.7,
       "categoryCosts": [
         [
           1,
@@ -1366,8 +1366,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 18185.49,
-      "marza": -48392,
+      "balance": 18185.49,
+      "margin": -48392,
       "categoryCosts": [
         [
           1,
@@ -1384,8 +1384,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 12659.24,
-      "marza": -6550,
+      "balance": 12659.24,
+      "margin": -6550,
       "categoryCosts": [
         [
           1,
@@ -1406,8 +1406,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 31120.94,
-      "marza": -21290,
+      "balance": 31120.94,
+      "margin": -21290,
       "categoryCosts": [
         [
           1,
@@ -1424,8 +1424,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 900,
-      "bilans": 33986,
-      "marza": -17250,
+      "balance": 33986,
+      "margin": -17250,
       "categoryCosts": [
         [
           1,
@@ -1447,8 +1447,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1460,8 +1460,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1473,8 +1473,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -5500,
-      "marza": 0,
+      "balance": -5500,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1486,8 +1486,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -21452.75,
-      "marza": -9,
+      "balance": -21452.75,
+      "margin": -9,
       "categoryCosts": [
         [
           1,
@@ -1504,8 +1504,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 1500,
+      "balance": 0,
+      "margin": 1500,
       "categoryCosts": [
         [
           1,
@@ -1522,8 +1522,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 6358,
+      "balance": 0,
+      "margin": 6358,
       "categoryCosts": [
         [
           1,
@@ -1540,8 +1540,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 34544.51,
-      "marza": -17700,
+      "balance": 34544.51,
+      "margin": -17700,
       "categoryCosts": [
         [
           1,
@@ -1558,8 +1558,8 @@
       "totalRabat": 0,
       "totalLoss": 39,
       "totalSettled": 0,
-      "bilans": -39,
-      "marza": -39,
+      "balance": -39,
+      "margin": -39,
       "categoryCosts": [
         [
           1,
@@ -1576,8 +1576,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -0.34,
-      "marza": 300,
+      "balance": -0.34,
+      "margin": 300,
       "categoryCosts": [
         [
           1,
@@ -1594,8 +1594,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 29553.95,
-      "marza": -2600,
+      "balance": 29553.95,
+      "margin": -2600,
       "categoryCosts": [
         [
           1,
@@ -1612,8 +1612,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 10851.07,
-      "marza": -20350,
+      "balance": 10851.07,
+      "margin": -20350,
       "categoryCosts": [
         [
           1,
@@ -1630,8 +1630,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 450,
+      "balance": 0,
+      "margin": 450,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1643,8 +1643,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 2854,
+      "balance": 0,
+      "margin": 2854,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1656,8 +1656,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 900,
-      "bilans": -26.98,
-      "marza": 600,
+      "balance": -26.98,
+      "margin": 600,
       "categoryCosts": [
         [
           1,
@@ -1679,8 +1679,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -4970.27,
-      "marza": 0,
+      "balance": -4970.27,
+      "margin": 0,
       "categoryCosts": [
         [
           1,
@@ -1701,8 +1701,8 @@
       "totalRabat": 2419,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -1500.48,
-      "marza": 11774,
+      "balance": -1500.48,
+      "margin": 11774,
       "categoryCosts": [
         [
           1,
@@ -1723,8 +1723,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -0.02,
-      "marza": 1200,
+      "balance": -0.02,
+      "margin": 1200,
       "categoryCosts": [
         [
           1,
@@ -1741,8 +1741,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 238.2,
-      "bilans": -5952.1,
-      "marza": -6388.2,
+      "balance": -5952.1,
+      "margin": -6388.2,
       "categoryCosts": [
         [
           1,
@@ -1764,8 +1764,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 1865,
-      "marza": 0,
+      "balance": 1865,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1777,8 +1777,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 6633.79,
-      "marza": 0,
+      "balance": 6633.79,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1790,8 +1790,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -458.48,
-      "marza": 0,
+      "balance": -458.48,
+      "margin": 0,
       "categoryCosts": [
         [
           1,
@@ -1808,8 +1808,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1821,8 +1821,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -3786.24,
-      "marza": 0,
+      "balance": -3786.24,
+      "margin": 0,
       "categoryCosts": [
         [
           1,
@@ -1839,8 +1839,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -11074.14,
-      "marza": 0,
+      "balance": -11074.14,
+      "margin": 0,
       "categoryCosts": [
         [
           1,
@@ -1861,8 +1861,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 4500,
-      "marza": 0,
+      "balance": 4500,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     },
@@ -1874,8 +1874,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": -550,
-      "marza": 0,
+      "balance": -550,
+      "margin": 0,
       "categoryCosts": [
         [
           3,
@@ -1892,8 +1892,8 @@
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "bilans": 0,
-      "marza": 0,
+      "balance": 0,
+      "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
     }

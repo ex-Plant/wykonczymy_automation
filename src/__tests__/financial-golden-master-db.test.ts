@@ -12,6 +12,7 @@ import { getDb } from '@/lib/db/get-db'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
+import { round2 } from '@/__tests__/helpers/money'
 
 // GOLDEN MASTER (EX-573 phase 0b) — every displayed figure, for every investment, frozen
 // against the real production dataset restored into the 5435 db-test container.
@@ -35,7 +36,6 @@ const FIXTURE_PATH = join(
   'src/__tests__/fixtures/financial-golden-master.json',
 )
 
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 type CategoryPairT = [categoryId: number, total: number]
 
@@ -47,8 +47,8 @@ type InvestmentSnapshotT = {
   totalRabat: number
   totalLoss: number
   totalSettled: number
-  bilans: number
-  marza: number
+  balance: number
+  margin: number
   categoryCosts: CategoryPairT[]
   settledCategoryCosts: CategoryPairT[]
 }
@@ -142,8 +142,8 @@ async function buildSnapshot(payload: Payload): Promise<{
       totalRabat: round2(financials.totalRabat),
       totalLoss: round2(financials.totalLoss),
       totalSettled: round2(financials.totalSettled),
-      bilans: round2(calculateBalance(financials)),
-      marza: round2(calculateMargin(financials)),
+      balance: round2(calculateBalance(financials)),
+      margin: round2(calculateMargin(financials)),
       categoryCosts: toPairs(financials.categoryCosts),
       settledCategoryCosts: toPairs(financials.settledCategoryCosts),
     }
@@ -163,6 +163,28 @@ async function buildSnapshot(payload: Payload): Promise<{
   }
 }
 
+/** The dataset floor, asserted in TWO places on purpose: as a test (a thin dataset makes
+ *  every comparison trivially pass) and as a precondition on the REGENERATE path, which
+ *  overwrites the only committed record of the pre-refactor figures. Regenerating against
+ *  a half-restored container would destroy the net and report the reason afterwards. */
+const DATASET_FLOOR = { investments: 50, registers: 10, transactions: 1000 }
+
+function assertNonTrivial(snapshot: SnapshotT) {
+  const counts = {
+    investments: Object.keys(snapshot.investments).length,
+    registers: Object.keys(snapshot.registers).length,
+    transactions: snapshot.fingerprint.transactionCount,
+  }
+  for (const key of Object.keys(DATASET_FLOOR) as (keyof typeof DATASET_FLOOR)[]) {
+    if (counts[key] <= DATASET_FLOOR[key]) {
+      throw new Error(
+        `db-test holds only ${counts[key]} ${key} (floor ${DATASET_FLOOR[key]}) — this is a ` +
+          `thin or half-restored dataset. Run \`pnpm db:import:test\` before regenerating.`,
+      )
+    }
+  }
+}
+
 describe.skipIf(!ENV_READY)('financial golden master — every figure, every investment (DB)', () => {
   let snapshot: SnapshotT | null = null
   let names = new Map<string, string>()
@@ -177,6 +199,7 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
       snapshot = built.snapshot
       names = built.names
       if (UPDATE) {
+        assertNonTrivial(snapshot)
         writeFileSync(FIXTURE_PATH, `${JSON.stringify(snapshot, null, 2)}\n`)
       }
     } catch (e) {
@@ -251,11 +274,8 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
   })
 
   it('covers a non-trivial slice of the real dataset', () => {
-    if (!snapshot) throw new Error('snapshot not built')
-    // Guards against a silently empty run — a DB with no rows would make every
-    // comparison above trivially pass.
-    expect(Object.keys(snapshot.investments).length).toBeGreaterThan(50)
-    expect(Object.keys(snapshot.registers).length).toBeGreaterThan(10)
-    expect(snapshot.fingerprint.transactionCount).toBeGreaterThan(1000)
+    const built = snapshot
+    if (!built) throw new Error('snapshot not built')
+    assertNonTrivial(built)
   })
 })

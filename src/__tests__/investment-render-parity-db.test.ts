@@ -14,6 +14,7 @@ import { buildFinancialFields } from '@/lib/db/map-category-costs'
 // NOTE: a SECOND function also named calculateBalance — this one sums the *visible*
 // display fields. It is the one the DETAIL page actually uses for "Bilans inwestora".
 import { calculateBalance as sumVisibleFields } from '@/lib/export/header-fields'
+import { round2 } from '@/__tests__/helpers/money'
 
 // REAL-PATH parity: assemble each figure exactly the way each PAGE assembles it, over
 // the real DB, for every investment — then assert listing == detail.
@@ -26,7 +27,6 @@ import { calculateBalance as sumVisibleFields } from '@/lib/export/header-fields
 // is unreachable. Run via `pnpm test:parity`.
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
-const round2 = (n: number) => Math.round(n * 100) / 100
 
 describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly paths (DB)', () => {
   let payload: Payload | null = null

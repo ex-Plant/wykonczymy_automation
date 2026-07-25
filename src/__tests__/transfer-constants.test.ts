@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import * as transfersModule from '@/lib/constants/transfers'
 import {
   TRANSFER_TYPES,
   TRANSFER_TYPE_LABELS,
@@ -122,9 +123,20 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
   },
 }
 
+// Not boolean, so it has no row in the truth table above — its per-type answers are
+// pinned by the spec-table consistency suite instead (transfer-spec-table.test.ts).
+const NOT_A_BOOLEAN_PREDICATE = ['financialBucketOf']
+
 describe('transfer constants — helper truth table', () => {
   it('covers every exported predicate', () => {
-    expect(Object.keys(HELPERS)).toHaveLength(15)
+    // Derived from the module, not a hand-typed count — a `toHaveLength(15)` stays green
+    // forever while a newly exported predicate goes untested. Its one exclusion is named
+    // and justified, so adding an export forces a decision here rather than silence.
+    const covered = [...Object.keys(HELPERS), ...NOT_A_BOOLEAN_PREDICATE]
+    const exported = Object.entries(transfersModule)
+      .filter(([, value]) => typeof value === 'function')
+      .map(([name]) => name)
+    expect(covered.sort()).toEqual(exported.sort())
   })
 
   for (const [helperName, { fn, trueFor }] of Object.entries(HELPERS)) {
@@ -147,7 +159,7 @@ describe('needsSourceRegister — CANCELLATION', () => {
   // the `ELSE -amount` arm of sum-transfers.ts, silently draining that register.
   //
   // Defence, not repair: 0 of the 257 cancellations in the production dataset carry a
-  // register, which is why the golden master's 32 register balances are unmoved by this.
+  // register, which is why the golden master's 29 register balances are unmoved by this.
   it('is false — a cancellation gets no register picker', () => {
     expect(needsSourceRegister('CANCELLATION')).toBe(false)
   })
@@ -156,8 +168,8 @@ describe('needsSourceRegister — CANCELLATION', () => {
 describe('canBeSettled vs isExpensesTabType — coincidental equality', () => {
   // They agree for all 12 types today, which is exactly why they were collapsed into an
   // alias. The equality is a coincidence of the current type set, not a rule:
-  // INVESTMENT_EXPENSE_NET owns an expenses-tab row but must NOT be settleable.
-  // This documents the agreement; it does not assert it must hold.
+  // INVESTMENT_EXPENSE_NET owns an expenses-tab row but must NOT be settleable — and
+  // this test is what will go red when it arrives, forcing the split to be deliberate.
   it('agree for every current type', () => {
     for (const type of TRANSFER_TYPES) {
       expect(canBeSettled(type)).toBe(isExpensesTabType(type))
