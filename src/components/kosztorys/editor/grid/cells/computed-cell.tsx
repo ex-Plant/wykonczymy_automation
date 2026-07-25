@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Column, type CellProps } from 'react-datasheet-grid'
+import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
 import { formatNet as fmt } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -21,11 +22,9 @@ type ComputedCellDataT = {
 function ComputedCell({ rowData, columnData }: CellProps<KosztorysV2RowT, ComputedCellDataT>) {
   const { compute, className, format } = columnData
   return (
-    <span
-      className={`block w-full px-2 text-left ${typeof className === 'function' ? className(rowData) : className}`}
-    >
+    <ReadOnlyCellText className={typeof className === 'function' ? className(rowData) : className}>
       {format(compute(rowData))}
-    </span>
+    </ReadOnlyCellText>
   )
 }
 

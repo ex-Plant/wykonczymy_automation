@@ -6,12 +6,21 @@ import { cn } from '@/lib/utils/cn'
 // can't drift on their read-only markup (they had before — one carried a stray alignment class).
 // `muted` covers the derived-value case (a subcontractor cell showing a value it isn't editable in
 // this mode) — same markup, just greyed to read as "not yours to type here".
-export function ReadOnlyCellText({ children, muted }: { children: ReactNode; muted?: boolean }) {
+export function ReadOnlyCellText({
+  children,
+  muted,
+  className,
+}: {
+  children: ReactNode
+  muted?: boolean
+  className?: string
+}) {
   return (
     <span
       className={cn(
         'block size-full truncate px-2 text-left text-sm',
         muted && 'text-muted-foreground',
+        className,
       )}
     >
       {children}
