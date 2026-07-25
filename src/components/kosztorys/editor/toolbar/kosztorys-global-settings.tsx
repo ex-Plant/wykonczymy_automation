@@ -21,12 +21,22 @@ export function KosztorysGlobalSettings({ globalCoeffs, onGlobalCoeffChange }: P
       <div className="flex flex-col gap-1">
         <p className="text-muted-foreground text-xs font-medium">Mnożnik ceny:</p>
         <DecimalField
-          label="Z narzędziami"
+          label={
+            <span className="inline-flex items-center gap-1">
+              {planeIcon('w_tools', 'size-3.5')}
+              {PLANE_LABELS.w_tools}
+            </span>
+          }
           value={globalCoeffs.wTools}
           onCommit={(n) => onGlobalCoeffChange({ wToolsCoeff: n })}
         />
         <DecimalField
-          label="Bez narzędzi"
+          label={
+            <span className="inline-flex items-center gap-1">
+              {planeIcon('own_tools', 'size-3.5')}
+              {PLANE_LABELS.own_tools}
+            </span>
+          }
           value={globalCoeffs.ownTools}
           onCommit={(n) => onGlobalCoeffChange({ ownToolsCoeff: n })}
         />
