@@ -1,7 +1,6 @@
 // Flat types for the labor ("robocizna") breakdown. Relations are reduced to numeric *_id
 // values — the query fetches with depth 0. costVariant = null means "inherit from the section".
-// VAT is a single rate per investment (KosztorysTreeT.vatRate), not per section/item;
-// in S-01 it is carried as 0 (VAT arrives in S-12).
+// VAT is a single rate per investment (KosztorysTreeT.vatRate), not per section/item.
 
 import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
@@ -88,7 +87,7 @@ export type ViewPricingT = KosztorysItemT & {
 // an item's `costVariant`, a section's `defaultCostVariant` — they answer the same question (z
 // narzędziami czy bez), so they are not separate concepts even though the columns are named apart.
 // null = undecided, which is NOT a plane: such an etap belongs to no subcontractor bill and counts
-// toward neither settlement figure — the state the TriangleAlert warning screams about.
+// toward neither settlement figure.
 export type ToolPlaneT = 'w_tools' | 'own_tools'
 
 export type KosztorysStageT = {

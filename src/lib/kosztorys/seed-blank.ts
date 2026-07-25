@@ -6,13 +6,12 @@ import {
   NEW_SECTION_DEFAULTS,
 } from '@/lib/kosztorys/constants'
 
-// Cold-start seed for a preset-less new investment: one section + one blank item, so the editor opens
-// on a typable row instead of an empty grid (EX-463). No etap — its plane is forced at creation
-// (addStageAction) and a seeded one could only guess: a guessed plane reads as confirmed while nobody
-// chose it, an unconfirmed (null) one drops out of both subcontractor views. Field shapes mirror
-// addSectionAction / addItemAction — a fresh investment has no sections/items, so displayOrder is
-// always 0. The caller owns the non-fatal try/catch and revalidation (the investment isn't cached yet,
-// so no tag here).
+// The editor opens on a typable row instead of an empty grid (EX-463). No etap — its plane is forced
+// at creation (addStageAction) and a seeded one could only guess: a guessed plane reads as confirmed
+// while nobody chose it, an unconfirmed (null) one drops out of both subcontractor views. Field
+// shapes mirror addSectionAction / addItemAction — a fresh investment has no sections/items, so
+// displayOrder is always 0. The caller owns the non-fatal try/catch and revalidation (the investment
+// isn't cached yet, so no tag here).
 export async function seedBlankKosztorys(
   payload: Payload,
   investmentId: number,

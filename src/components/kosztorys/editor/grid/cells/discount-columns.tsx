@@ -53,7 +53,6 @@ export function discountValueColumn(titleNode: ReactNode): Column<KosztorysV2Row
   return {
     id: 'discountValue',
     title: titleNode,
-    minWidth: 80,
     keepFocus: true,
     component: DiscountValueCell,
     copyValue: ({ rowData }) => String(rowData.discountValue ?? ''),
@@ -65,7 +64,6 @@ export function discountTypeColumn(titleNode: ReactNode): Column<KosztorysV2RowT
   return {
     id: 'discountType',
     title: titleNode,
-    minWidth: 110,
     component: DiscountTypeCell,
     keepFocus: true,
     copyValue: ({ rowData }) => rowData.discountType ?? '',

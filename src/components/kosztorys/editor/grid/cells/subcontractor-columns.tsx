@@ -42,7 +42,6 @@ export function subcontractorCoeffColumn(
   return {
     id: 'priceCoeff',
     title: titleNode,
-    minWidth: 90,
     keepFocus: true,
     component: ({ rowData, setRowData }: CellProps<KosztorysV2RowT, unknown>) => {
       const type = rowData[typeField] as SubcontractorOverrideTypeT | null
@@ -86,7 +85,6 @@ export function subcontractorPriceColumn(
   return {
     id: 'price',
     title: titleNode,
-    minWidth: 90,
     keepFocus: true,
     component: ({ rowData, setRowData }: CellProps<KosztorysV2RowT, unknown>) => {
       const type = rowData[typeField] as SubcontractorOverrideTypeT | null

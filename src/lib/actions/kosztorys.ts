@@ -19,7 +19,7 @@ import type { ActionResultT } from '@/types/action'
 import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
 
 // Derived from TOOL_PLANES rather than re-listing the union, so a plane added to the pickers can't
-// be silently rejected by validation — the two used to be five separate literal lists.
+// be silently rejected by validation.
 const stagePlaneSchema = z.enum(TOOL_PLANES)
 const overrideTypeSchema = z.enum(['coeff', 'amount'])
 

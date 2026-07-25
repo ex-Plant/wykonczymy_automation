@@ -158,6 +158,8 @@ function stageValueHeader(stage: KosztorysStageT, suffix: string, tip: string): 
   )
 }
 
+const DEFAULT_COLUMN_MIN_WIDTH = 140
+
 function withResize(
   col: Column<KosztorysV2RowT>,
   opts: Pick<BuildV2ColumnsOptsT, 'onGuide' | 'onCommitColumn' | 'widths'>,
@@ -166,10 +168,10 @@ function withResize(
   // A fixed-width column (min === max, e.g. the row-actions column) has nothing to drag — skip the
   // resizable header rather than hang a dead handle on it.
   if (col.minWidth != null && col.minWidth === col.maxWidth) return col
-  // 140 is the floor for every resizable column, not per-column tuning — dsg clamps an unpinned
-  // column's rendered width to its minWidth on overflow (many columns > viewport), so this is the
-  // actual initial width, not just a drag limit.
-  const min = Math.max(col.minWidth ?? 0, 140)
+  // A default, not a clamp: a column that declares its own minWidth keeps it (the trailing gap wants
+  // 24). dsg clamps an unpinned column's rendered width to its minWidth on overflow (many columns >
+  // viewport), so this is the actual initial width, not just a drag limit.
+  const min = col.minWidth ?? DEFAULT_COLUMN_MIN_WIDTH
   const pinned = opts.widths?.[col.id]
   // Pinning = a rigid width independent of dsg's flex algorithm: min=max=basis=W,
   // grow/shrink 0. (dsg ignored `basis` alone on overflow — it fell back to minWidth.)
@@ -250,7 +252,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           keyCol('clientPrice', floatColumnLeft, {
             id: 'price',
             title: title('price', opts),
-            minWidth: 90,
           }),
         ]
       : [
@@ -262,7 +263,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     {
       id: 'sectionName',
       title: title('sectionName', opts),
-      minWidth: 140,
       keepFocus: true,
       component: ({ rowData, disabled }: CellProps<KosztorysV2RowT, unknown>) => (
         <SectionNameCell rowData={rowData} onRename={opts.onRenameSection} disabled={disabled} />

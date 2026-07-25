@@ -20,11 +20,13 @@ type PropsT = {
 export function SortHeader({ label, active, onSort, tip }: PropsT) {
   const Icon = active === 'asc' ? ArrowUp : active === 'desc' ? ArrowDown : ChevronsUpDown
 
+  // The active-sort weight goes on the label element, not triggerClassName: HeaderLabel's own
+  // font-medium sits on that element and would beat anything merely inherited from the trigger.
   return (
     <HeaderMenu
-      label={<HeaderLabel>{label}</HeaderLabel>}
+      label={<HeaderLabel className={cn(active && 'font-semibold')}>{label}</HeaderLabel>}
       icon={<Icon className={cn('size-4 shrink-0', active ? 'opacity-100' : 'opacity-50')} />}
-      triggerClassName={cn(active && 'text-primary font-semibold')}
+      triggerClassName={cn(active && 'text-primary')}
       triggerTitle="Sortuj kolumnę"
       tip={tip}
     >
