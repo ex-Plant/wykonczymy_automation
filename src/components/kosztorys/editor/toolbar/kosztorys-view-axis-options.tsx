@@ -1,6 +1,7 @@
 import { Activity, Banknote, Coins, Hammer, Percent, Receipt, User } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
+import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 import type { PairAxisConfigT } from '@/lib/kosztorys/axis-checkboxes'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { LayerT } from '@/lib/kosztorys/layer'
@@ -13,8 +14,11 @@ const ICON_CLASS = 'size-4'
 // subcontractor views share their glyphs with the etap header via planeIcon (can't drift).
 export const VIEWS: { value: PriceViewT; label: string; icon: ReactNode }[] = [
   { value: 'client', label: 'Klient', icon: <User className={ICON_CLASS} /> },
-  { value: 'w_tools', label: 'Z narzędziami', icon: planeIcon('w_tools', ICON_CLASS) },
-  { value: 'own_tools', label: 'Bez narzędzi', icon: planeIcon('own_tools', ICON_CLASS) },
+  ...TOOL_PLANES.map((plane) => ({
+    value: plane,
+    label: PLANE_LABELS[plane],
+    icon: planeIcon(plane, ICON_CLASS),
+  })),
 ]
 
 export const VIEW_LEGEND = [

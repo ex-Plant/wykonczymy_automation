@@ -1,4 +1,4 @@
-import type { GlobalDiscountT, ViewPricingT } from '@/lib/kosztorys/types'
+import type { GlobalDiscountT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
 // VAT: a single rate per investment (vatRate), carried on the row. No section→item cascade.
 
@@ -33,14 +33,14 @@ function applyDiscount(gross: number, item: ViewPricingT): number {
 }
 
 // --- Price views (one dataset → three views: client / subcontractor with/without tools) ---
-export type PriceViewT = 'client' | 'w_tools' | 'own_tools'
+export type PriceViewT = 'client' | ToolPlaneT
 
-export function effectiveCoeff(row: ViewPricingT, view: 'w_tools' | 'own_tools'): number {
+export function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
   return view === 'w_tools' ? row.globalWToolsCoeff : row.globalOwnToolsCoeff
 }
 
 /** Subcontractor price by view: null→derived (client×coeff), coeff→client×%, amount→flat. */
-export function subcontractorPrice(row: ViewPricingT, view: 'w_tools' | 'own_tools'): number {
+export function subcontractorPrice(row: ViewPricingT, view: ToolPlaneT): number {
   const type = view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
   const value = view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
   if (type === 'amount') return value

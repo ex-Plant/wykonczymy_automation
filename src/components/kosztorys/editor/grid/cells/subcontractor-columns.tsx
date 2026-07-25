@@ -5,7 +5,7 @@ import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/edit
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 import { formatNet as fmt } from '@/lib/kosztorys/format'
-import type { KosztorysV2RowT, SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
+import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { ReactNode } from 'react'
 
 // Where the subcontractor price comes from (a column in the subcontractor views). Labels name the
@@ -18,7 +18,7 @@ const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
 ]
 
 const OVERRIDE_FIELDS: Record<
-  'w_tools' | 'own_tools',
+  ToolPlaneT,
   { type: keyof KosztorysV2RowT; value: keyof KosztorysV2RowT }
 > = {
   w_tools: { type: 'wToolsOverrideType', value: 'wToolsOverrideValue' },
@@ -35,7 +35,7 @@ const OVERRIDE_FIELDS: Record<
 // is meaningless under 'coeff'/auto (it's derived). The read-only side still renders its value so
 // the row is legible in every mode.
 export function subcontractorCoeffColumn(
-  view: 'w_tools' | 'own_tools',
+  view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
   const { type: typeField, value: valueField } = OVERRIDE_FIELDS[view]
@@ -78,7 +78,7 @@ export function subcontractorCoeffColumn(
 }
 
 export function subcontractorPriceColumn(
-  view: 'w_tools' | 'own_tools',
+  view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
   const { type: typeField, value: valueField } = OVERRIDE_FIELDS[view]
@@ -116,7 +116,7 @@ export function subcontractorPriceColumn(
 // Switching to auto zeroes the override value. Switching auto→coeff seeds the inherited multiplier
 // as the starting point — leaving it at 0 would silently collapse the row's price to zero.
 export function subcontractorModeColumn(
-  view: 'w_tools' | 'own_tools',
+  view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
   const { type: typeField, value: valueField } = OVERRIDE_FIELDS[view]
