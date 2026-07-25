@@ -228,3 +228,29 @@ describe('validateTransfer — createdBy auto-set', () => {
     expect(result.createdBy).toBeUndefined()
   })
 })
+
+describe('validateTransfer — a CANCELLATION never keeps a register', () => {
+  // EX-573 review gate. The spec table says a cancellation needs no register, but that
+  // answer only reached the admin panel's field condition: the blanket early return below
+  // skipped the auto-clear, so a REST/Local-API write could persist source_register_id on
+  // a cancellation. sumRegisterBalance has no CANCELLATION arm — the row falls into
+  // `ELSE -amount` and drains that register permanently, with nothing surfacing the cause.
+  it('strips a sourceRegister smuggled in past the early return', () => {
+    const data = {
+      type: 'CANCELLATION',
+      amount: 100,
+      date: '2026-07-25',
+      cancelledTransaction: 42,
+      sourceRegister: 3,
+    }
+    const result = validateTransfer(hookArgs(data, { operation: 'create' }))
+    expect(result.sourceRegister).toBeNull()
+  })
+
+  it('still refuses a cancellation with no original to point at', () => {
+    const data = { type: 'CANCELLATION', amount: 100, date: '2026-07-25' }
+    expect(() => validateTransfer(hookArgs(data, { operation: 'create' }))).toThrow(
+      /Cancelled transaction reference is required/,
+    )
+  })
+})

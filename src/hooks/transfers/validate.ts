@@ -14,11 +14,6 @@ import { getAmountError } from '@/lib/utils/validation'
 
 type TransferData = Partial<Transaction>
 
-/**
- * Cross-field validation for Transactions.
- * Enforces required relationships based on transaction type
- * and auto-clears inapplicable fields.
- */
 export const validateTransfer: CollectionBeforeValidateHook = ({
   data,
   req,
@@ -28,7 +23,6 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   const d = data as TransferData
   console.log('[validateTransfer] Start', { operation, type: d.type, amount: d.amount })
 
-  // Auto-set createdBy on create
   if (operation === 'create' && req.user) {
     d.createdBy = req.user.id
   }
@@ -40,17 +34,20 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     if (!d.cancelledTransaction) {
       throw new Error('Cancelled transaction reference is required.')
     }
+    // The one field the early return may NOT wave through: sumRegisterBalance has no
+    // CANCELLATION arm, so a register smuggled in here (REST / Local API — the admin
+    // panel no longer offers the picker) lands in `ELSE -amount` and drains it forever.
+    d.sourceRegister = null
     return d
   }
 
-  // Marking as cancelled — no field re-validation needed
   if (operation === 'update' && d.cancelled) {
     return d
   }
 
   const errors: string[] = []
 
-  // Amount validation — CORRECTION allows negative (invoice corrections), others must be positive
+  // CORRECTION allows negative (invoice credits); every other type must be positive.
   if (d.amount !== undefined && d.amount !== null) {
     const amountErr = getAmountError(d.amount, type)
     if (amountErr) errors.push(amountErr)
@@ -64,7 +61,6 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.sourceRegister = null
   }
 
-  // investment — required for INVESTOR_DEPOSIT, INVESTMENT_EXPENSE, LABOR_COST
   if (requiresInvestment(type) && !d.investment) {
     errors.push('Investment is required for this transfer type.')
   }
@@ -77,7 +73,6 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.investment = null
   }
 
-  // targetRegister — required for REGISTER_TRANSFER, must differ from source
   if (needsTargetRegister(type)) {
     if (!d.targetRegister) {
       errors.push('Target register is required for register transfers.')
@@ -86,17 +81,14 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     }
   }
 
-  // otherCategory — required for OTHER
   if (needsOtherCategory(type) && !d.otherCategory) {
     errors.push('Category is required for OTHER transfers.')
   }
 
-  // worker — required for PAYOUT
   if (needsWorker(type) && !d.worker) {
     errors.push('Worker is required for payout transfers.')
   }
 
-  // Auto-clear worker for types that don't need it
   if (!needsWorker(type)) {
     d.worker = null
   }
@@ -108,7 +100,6 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.settled = false
   }
 
-  // expenseCategory — required for INVESTMENT_EXPENSE, and for CORRECTION once it has an investment
   if (needsExpenseCategory(type, !!d.investment) && !d.expenseCategory) {
     errors.push('Expense category is required for investment-related expenses.')
   }
