@@ -28,7 +28,7 @@ const MODE_OPTIONS: OptionT<ModeT>[] = [
 
 const MODE_DESCRIPTION: Record<ModeT, string> = {
   amount:
-    'Kwota netto odejmowana raz od sumy wykonanych prac. Nadpisuje rabaty per pozycja — ich kolumny znikają (dane zostają).',
+    'Kwota netto odejmowana raz od sumy wykonanych prac. Nie łączy się z rabatami per pozycja - zastępuje je.',
   percent: 'Jednorazowo wpisuje ten sam % w rabat każdej pozycji, nadpisując istniejące.',
 }
 

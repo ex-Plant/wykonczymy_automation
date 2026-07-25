@@ -197,7 +197,7 @@ export function KosztorysTotalsPanel({
           />
           {isClientPlane && (
             <div className="my-2 flex flex-col gap-2">
-              <Description className="max-w-xs" size="sm">
+              <Description className="max-w-xs" size="sm" withIcon={false}>
                 Wybierz jak rozliczana będzie inwestycja.
               </Description>
               <SimpleSelect
