@@ -31,8 +31,8 @@ const sumRows = (rows: TypeSettledTotalT[], pred: (r: TypeSettledTotalT) => bool
 const sumBucket = (rows: TypeSettledTotalT[], bucket: FinancialBucketT): number =>
   sumRows(rows, (r) => financialBucketOf(r.type) === bucket)
 
-/** Derive financials from a raw (type, settled) distribution. Single source of truth
- *  for the bucketing rule — both the listing and the detail page feed this. */
+/** The listing and the detail page both funnel through here, so the bucketing rule
+ *  cannot differ between the two views. */
 export function deriveFinancials(
   rows: TypeSettledTotalT[],
   categoryCosts: CategoryCostT[] = [],
@@ -47,7 +47,7 @@ export function deriveFinancials(
     totalIncome: sumBucket(rows, 'income'),
     totalLaborCosts: sumBucket(rows, 'laborCosts'),
     totalPayouts: sumBucket(rows, 'payouts'),
-    totalRabat: sumBucket(rows, 'rabat'),
+    totalRabat: sumBucket(rows, 'discount'),
     totalLoss: sumBucket(rows, 'loss'),
     totalSettled: sumRows(rows, (r) => isMaterial(r) && r.settled),
     settledCategoryCosts,

@@ -56,7 +56,7 @@ type TransferSpecT = {
    * settled → totalSettled. That split lives in deriveFinancials, not here, because it
    * is a per-ROW fact, not a per-type one.
    */
-  financialBucket: 'materials' | 'income' | 'laborCosts' | 'payouts' | 'rabat' | 'loss' | 'none'
+  financialBucket: 'materials' | 'income' | 'laborCosts' | 'payouts' | 'discount' | 'loss' | 'none'
   /** Whether a source register is required, or meaningless (a P&L figure, no cash moves). */
   sourceRegister: 'required' | 'never'
 }
@@ -124,7 +124,7 @@ export const TRANSFER_TYPE_SPECS = {
     expensesSheetTab: false,
     transfersSheetTab: true,
     settleable: false,
-    financialBucket: 'rabat',
+    financialBucket: 'discount',
     sourceRegister: 'never',
   },
   LOSS: {
@@ -308,11 +308,10 @@ export const VAT_PLANE_LABELS: Record<VatPlaneT, string> = {
 
 // ── Predicates ──────────────────────────────────────────────────────────
 //
-// These lived in transfer-rules.ts purely to break a load-order cycle with this file.
-// With the spec table there is one home and no cycle, so they moved back. Every value
-// here is eager: sync-sheet.ts spreads these arrays at module load inside the Payload
-// config graph, where a lazy value would yield [] and every transfer would silently stop
-// syncing to the sheet.
+// Every value here must stay eager. sync-sheet.ts spreads these arrays at module load
+// inside the Payload config graph; a lazy value would yield [] there and every transfer
+// would silently stop syncing to the sheet. (A barrel re-export, not the split, is what
+// once made this file cycle — so a second home buys nothing.)
 
 export const isTransferType = (type: string): type is TransferTypeT =>
   (TRANSFER_TYPES as readonly string[]).includes(type)

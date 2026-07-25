@@ -44,7 +44,7 @@ describe('spec table — structural integrity', () => {
   })
 
   it('financialBucket is one of the allowed buckets', () => {
-    const buckets = ['materials', 'income', 'laborCosts', 'payouts', 'rabat', 'loss', 'none']
+    const buckets = ['materials', 'income', 'laborCosts', 'payouts', 'discount', 'loss', 'none']
     for (const type of TRANSFER_TYPES) {
       expect(buckets, type).toContain(TRANSFER_TYPE_SPECS[type].financialBucket)
     }
