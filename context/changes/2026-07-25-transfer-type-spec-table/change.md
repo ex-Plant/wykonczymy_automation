@@ -1,12 +1,12 @@
 ---
 change_id: transfer-type-spec-table
 title: One spec table for transfer types, membership arrays derived
-status: new
+status: planned
 created: 2026-07-25
 updated: 2026-07-25
 archived_at: null
-branch: null
-worktree: null
+branch: konradantonik/ex-573-transfer-type-spec-table
+worktree: .claude/worktrees/ex-573-spec-table
 ---
 
 ## Notes
@@ -32,8 +32,24 @@ declaring its capabilities as columns. `satisfies Record<TransferTypeT, Transfer
 required fields makes a missing decision a **compile error**. Every existing export
 (`DEPOSIT_TYPES`, `canBeSettled`, …) is then derived from the table, keeping names and
 signatures identical — a pure inward refactor behind a stable façade, so none of the ~23
-consumer files change. `src/__tests__/transfer-constants.test.ts` already asserts exact array
-contents and serves as the characterization test.
+consumer files change.
+
+**Research (2026-07-25): `research.md`.** Five parallel agents, every finding re-verified by hand
+against the local prod restore. It changed the premise twice:
+
+1. `src/__tests__/transfer-constants.test.ts` covers **7 of 15** predicates — not the
+   characterization net this plan assumed. `canBeSettled` and `isExpensesTabType`, which gate
+   money math, are asserted nowhere. The net must be widened on the CURRENT implementation
+   before any rewrite.
+2. The predicates are **five independent axes per field** (required / shown / auto-cleared /
+   optional / exempt), not one membership question. `investment` alone uses three, with two
+   different sets on the same field. So "one boolean column per predicate" is wrong by
+   construction.
+
+Ten latent disagreements surfaced (`research.md` §5); a data audit found **zero** bad rows for
+every one of them — they are dormant, not active. The one genuinely wrong figure in the app is
+**EX-574** (`Suma wybranych transakcji` over-reports by up to +71 %), which is independent of
+this refactor and does not block it.
 
 **Deliberately NOT derived** (facts that are positional/ordering, not semantic):
 
@@ -56,6 +72,9 @@ Keeping this change purely structural preserves its "provably zero behaviour cha
 — the existing characterization test staying green _is_ the proof, and mixing in the financial
 layer would destroy that.
 
-**Branch caution:** the current working tree (`subcontractor-view-settlement-only`) has
-uncommitted edits in `src/collections/transfers.ts` and `src/lib/constants/transfers.ts` — the
-exact files this change rewrites. Resolve isolation before implementing.
+**Isolation (resolved 2026-07-25):** branched from `subcontractor-view-settlement-only` at
+`faecd048`, not from `origin/main` — this change folder only exists on that branch. So the
+worktree inherits that branch's unmerged work (the kosztorys view-scoping refactors and the
+`vatPlane` rename, `527ec1a0`/`a7116585`, which already touched `DEPOSIT_UI_TYPES`). **Merge
+order matters:** `subcontractor-view-settlement-only` must land before this branch, or the
+constants file conflicts.
