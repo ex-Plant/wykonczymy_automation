@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react'
 import Link from 'next/link'
-import { DEPOSIT_TYPES } from '@/lib/constants/transfers'
+import { DEPOSIT_TYPES, VAT_PLANE_LABELS } from '@/lib/constants/transfers'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
@@ -23,9 +23,8 @@ import type { DepositTransactionRowT } from '@/types/reference-data'
 // (`NET`), Brutto (`GROSS`), or „Nie określono" (`null`) — and closes with a Razem row for each of the
 // three rodzaje. The buckets are display-only: „Nie określono" still counts as netto in the settlement
 // math (owner's „brak wartości = netto" ruling, 2026-07-23).
-const PLANE_LABELS = { NET: 'Netto', GROSS: 'Brutto' } as const
 const planeLabel = (plane: DepositTransactionRowT['vatPlane']) =>
-  plane == null ? 'Nie określono' : PLANE_LABELS[plane]
+  plane == null ? 'Nie określono' : VAT_PLANE_LABELS[plane]
 export function DepositsTable({
   investmentId,
   rows,

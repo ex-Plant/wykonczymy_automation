@@ -20,7 +20,7 @@ import {
   UNASSIGNED_WORKER_NAME,
 } from '@/lib/kosztorys/subcontractor-summary'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
-import { PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { KosztorysGlobalSettings } from '@/components/kosztorys/editor/toolbar/kosztorys-global-settings'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'

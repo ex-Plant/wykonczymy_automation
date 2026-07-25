@@ -15,5 +15,3 @@ export function planeIcon(plane: StagePlaneT, className = ''): ReactNode {
     </span>
   )
 }
-
-export { PLANE_LABELS, STAGE_PLANES } from '@/lib/kosztorys/constants'

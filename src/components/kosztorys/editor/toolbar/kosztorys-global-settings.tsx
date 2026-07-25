@@ -2,7 +2,8 @@
 
 import { DecimalField } from '@/components/ui/decimal-field'
 import { Description } from '@/components/ui/description'
-import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
+import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 
 const COEFF_DESCRIPTION = [
   'Cena wykonawcy = cena klienta × mnożnik.',
