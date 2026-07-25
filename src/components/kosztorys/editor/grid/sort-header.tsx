@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils/cn'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
+import { HeaderLabel } from '@/components/kosztorys/editor/grid/header-label'
 import type { SortDirT } from '@/lib/kosztorys/row-view'
 
 type PropsT = {
@@ -21,7 +22,7 @@ export function SortHeader({ label, active, onSort, tip }: PropsT) {
 
   return (
     <HeaderMenu
-      label={<span>{label}</span>}
+      label={<HeaderLabel>{label}</HeaderLabel>}
       icon={<Icon className={cn('size-4 shrink-0', active ? 'opacity-100' : 'opacity-50')} />}
       triggerClassName={cn(active && 'text-primary font-semibold')}
       triggerTitle="Sortuj kolumnę"

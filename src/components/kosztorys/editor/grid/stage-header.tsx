@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
+import { HeaderLabel } from '@/components/kosztorys/editor/grid/header-label'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
 import { cn } from '@/lib/utils/cn'
@@ -38,9 +39,9 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
   // plane icon or warning — the rozliczenie is internal subcontractor information, never client-facing.
   if (!onRename && !onRemove && !onSetPlane) {
     return (
-      <span className={cn('px-1 text-sm', stage.label == null && 'text-muted-foreground')}>
+      <HeaderLabel className={cn('px-1', stage.label == null && 'text-muted-foreground')}>
         {label}
-      </span>
+      </HeaderLabel>
     )
   }
 
@@ -48,7 +49,7 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
     return (
       <input
         autoFocus
-        className="h-full w-full min-w-0 bg-transparent px-1 text-sm outline-none"
+        className="h-full w-full min-w-0 bg-transparent px-1 text-xs outline-none"
         defaultValue={stage.label ?? ''}
         placeholder={`Etap ${stage.ordinal}`}
         onBlur={(e) => {
@@ -78,11 +79,11 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
           >
             {/* A wrench here would claim a crew nobody picked. */}
             {stage.plane != null && planeIcon(stage.plane)}
-            <span
+            <HeaderLabel
               className={cn(stage.plane != null && stage.label == null && 'text-muted-foreground')}
             >
               {label}
-            </span>
+            </HeaderLabel>
             {stage.plane == null && (
               <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap — do tego czasu ilości w tej kolumnie są zablokowane, bo nie weszłyby do rachunku żadnej ekipy." />
             )}

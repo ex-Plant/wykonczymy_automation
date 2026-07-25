@@ -16,7 +16,7 @@ export function HeaderMenuTrigger({
   return (
     <DropdownMenuTrigger
       className={cn(
-        'hover:bg-accent flex h-full w-full cursor-pointer items-center gap-2 rounded px-1 text-left font-medium outline-none',
+        'hover:bg-accent flex h-full w-full cursor-pointer items-center gap-2 rounded px-1 text-left outline-none',
         className,
       )}
       {...props}

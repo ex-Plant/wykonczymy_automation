@@ -4,6 +4,7 @@ import { type ReactNode } from 'react'
 import { Column, type CellProps, keyColumn, textColumn, floatColumn } from 'react-datasheet-grid'
 import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
+import { HeaderLabel } from '@/components/kosztorys/editor/grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
@@ -140,7 +141,7 @@ function title(
       />
     )
   }
-  const node = <span>{label}</span>
+  const node = <HeaderLabel>{label}</HeaderLabel>
   return tip ? withTip(node, tip) : node
 }
 
@@ -152,7 +153,7 @@ function title(
 function stageValueHeader(stage: KosztorysStageT, suffix: string, tip: string): ReactNode {
   // Wraps (no truncate) into the fixed, taller header row (KosztorysEditorBody).
   return withTip(
-    <span className="text-sm">{`${stage.label || `Etap ${stage.ordinal}`} ${suffix}`}</span>,
+    <HeaderLabel>{`${stage.label || `Etap ${stage.ordinal}`} ${suffix}`}</HeaderLabel>,
     tip,
   )
 }
@@ -165,14 +166,17 @@ function withResize(
   // A fixed-width column (min === max, e.g. the row-actions column) has nothing to drag — skip the
   // resizable header rather than hang a dead handle on it.
   if (col.minWidth != null && col.minWidth === col.maxWidth) return col
-  const min = col.minWidth ?? 100
+  // 150 is the floor for every resizable column, not per-column tuning — dsg clamps an unpinned
+  // column's rendered width to its minWidth on overflow (many columns > viewport), so this is the
+  // actual initial width, not just a drag limit.
+  const min = Math.max(col.minWidth ?? 0, 150)
   const pinned = opts.widths?.[col.id]
   // Pinning = a rigid width independent of dsg's flex algorithm: min=max=basis=W,
   // grow/shrink 0. (dsg ignored `basis` alone on overflow — it fell back to minWidth.)
   const sized: Column<KosztorysV2RowT> =
     pinned != null
       ? { ...col, basis: pinned, grow: 0, shrink: 0, minWidth: pinned, maxWidth: pinned }
-      : col
+      : { ...col, minWidth: min }
   return {
     ...sized,
     title: (
@@ -222,7 +226,7 @@ function RowActionsCell({
 function actionColumn(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT> {
   return {
     id: 'actions',
-    title: <span className="px-1 font-medium">Akcje</span>,
+    title: <HeaderLabel className="px-1">Akcje</HeaderLabel>,
     basis: 64,
     grow: 0,
     shrink: 0,
@@ -286,7 +290,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     keyCol('plannedQty', floatColumnLeft, {
       id: 'plannedQty',
       title: title('plannedQty', opts),
-      minWidth: 90,
+      minWidth: 150,
     }),
   ]
 
@@ -295,7 +299,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) =>
         rowTotalQtyDone(r, viewStages, view),
       ),
-      minWidth: 90,
+      minWidth: 170,
     },
     unitColumn(title('unit', opts)),
   ]
@@ -336,7 +340,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           onSetPlane={opts.onSetStagePlane}
         />
       ),
-      minWidth: 80,
+      minWidth: 150,
       // Locked until the rozliczenie is picked: qty typed here would be work nobody gets billed for,
       // and picking one costs a click.
       disabled: st.plane == null,
