@@ -193,6 +193,7 @@ one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
 
 - [ ] In a subcontractor view the out-of-plane etapy have **no** columns at all (no „nie dotyczy" cells)
 - [ ] An etap with no rozliczenie picked appears in **neither** subcontractor view and shows no wrench icon in its header
+- [ ] In Klient, an etap with no rozliczenie has its ilość cells **locked** (typing does nothing) and unlocks the moment a rozliczenie is picked
 - [ ] In Klient, an etap with no rozliczenie has its **whole** block on a red tint — header plus every cell of its ilość / netto / brutto / % columns; picking a rozliczenie clears the tint instantly
 - [ ] The red tint does not bleed into the neighbouring etapy's columns and does not fight the „Razem" row's own styling
 - [ ] „Wartość netto/brutto przedmiar", „Pozostało", „% wykonania" are absent in both subcontractor views and present in Klient

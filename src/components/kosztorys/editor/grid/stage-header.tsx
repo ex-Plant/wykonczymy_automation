@@ -83,7 +83,9 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
             >
               {label}
             </span>
-            {stage.plane == null && <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap" />}
+            {stage.plane == null && (
+              <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap — do tego czasu ilości w tej kolumnie są zablokowane, bo nie weszłyby do rachunku żadnej ekipy." />
+            )}
           </span>
         }
         icon={<ChevronDown className="opacity-50" />}

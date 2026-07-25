@@ -95,11 +95,13 @@ function keyCol(
 
 // An etap with no rozliczenie belongs to neither crew's bill (settlement.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
-// The header badge alone was too easy to scroll past, so the whole column is flagged: header and
-// every cell under it. Reachable in the client view only, which is the one that shows every etap.
-function planeAlert(stage: KosztorysStageT): Partial<Column<KosztorysV2RowT>> {
+// So the whole column screams (header + every cell) AND locks: qty typed here would be work nobody
+// gets billed for, and picking the rozliczenie first costs one click. Reachable in the client view
+// only, which is the one that shows every etap.
+function planeUnconfirmed(stage: KosztorysStageT): Partial<Column<KosztorysV2RowT>> {
   if (stage.plane != null) return {}
   return {
+    disabled: true,
     headerClassName: 'bg-destructive/15',
     cellClassName: 'bg-destructive/10 text-destructive',
   }
@@ -351,7 +353,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         />
       ),
       minWidth: 80,
-      ...planeAlert(st),
+      ...planeUnconfirmed(st),
     }),
   )
 
@@ -364,7 +366,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       ...computedColumn(stageValueNetKey(st.id), header, (r) =>
         stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, stages, view), view),
       ),
-      ...planeAlert(st),
+      ...planeUnconfirmed(st),
     }
   })
 
@@ -378,7 +380,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           r.vatRate,
         ),
       ),
-      ...planeAlert(st),
+      ...planeUnconfirmed(st),
     }
   })
 
@@ -395,7 +397,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         'text-muted-foreground',
         formatPercent,
       ),
-      ...planeAlert(st),
+      ...planeUnconfirmed(st),
     }
   })
 
