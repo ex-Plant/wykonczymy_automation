@@ -144,7 +144,12 @@ export function subcontractorDueByPlane(
     wTools,
     ownTools,
     combined: wTools + ownTools,
-    hasUnconfirmedPlane: stages.some((st) => st.plane === null),
+    // Gated on the etap actually holding qty: the badge this drives claims the sum is SHORT, and a
+    // freshly added empty etap makes that claim false — it would scream about missing money that
+    // does not exist yet.
+    hasUnconfirmedPlane: stages.some(
+      (st) => st.plane === null && rows.some((row) => row[stageKey(st.id)]),
+    ),
   }
 }
 
@@ -217,8 +222,7 @@ export function rowRemainingForView(
  *
  * Hard-anchored to the client pomiar, not the active view: the przedmiar has no plane (it is typed
  * once per row for the whole offered scope), so comparing one crew's share against it would flag
- * „under-plan" on work the other crew finished, and the red highlight would blink on and off as the
- * user switches views.
+ * „under-plan" on work the other crew finished.
  */
 export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStageT[]): boolean {
   return rowTotalQtyDone(row, stages, 'client') > (row.plannedQty ?? 0)

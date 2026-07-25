@@ -42,7 +42,11 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { CLIENT_VISIBLE_COLUMNS, COLUMN_LABELS } from '@/lib/kosztorys/column-config'
+import {
+  CLIENT_VISIBLE_COLUMNS,
+  COLUMN_LABELS,
+  columnLabelForView,
+} from '@/lib/kosztorys/column-config'
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
@@ -62,13 +66,6 @@ import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 const floatColumnLeft = {
   ...floatColumn,
   columnData: { ...floatColumn.columnData, alignRight: false },
-}
-
-// „Razem" bare would mean two things by view: what the client pays (post-rabat) vs what this crew is
-// owed (pre-rabat — rabat is a client concession, calc.ts netForQtyForView). Both sides say which one
-// they are; the suffix lives here rather than in COLUMN_LABELS, which has no `view` to branch on.
-function razemLabel(label: string, view: PriceViewT): string {
-  return `${label} — ${view === 'client' ? 'po rabacie' : 'do zapłaty ekipie'}`
 }
 
 // The four per-item rabat columns hidden while the global discount overrides them.
@@ -279,9 +276,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   ]
 
   // A subcontractor view is one crew's bill: only that plane's etapy get columns at all. Blanking the
-  // other plane's columns with a placeholder was built and rejected — a wall of dead cells whose qty
-  // columns still read as if they counted. Nothing becomes uneditable: quantities are typed in the
-  // Klient view, which shows every etap.
+  // other plane's columns with a placeholder is worse — a wall of dead cells whose qty columns still
+  // read as if they counted. Nothing becomes uneditable: quantities are typed in the Klient view,
+  // which shows every etap.
   const viewStages = stages.filter((st) => stageAppliesToView(st, view))
 
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
@@ -303,8 +300,10 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn('stageQtySum', title('stageQtySum', COLUMN_LABELS.stageQtySum, opts), (r) =>
-        rowTotalQtyDone(r, stages, view),
+      ...computedColumn(
+        'stageQtySum',
+        title('stageQtySum', columnLabelForView('stageQtySum', view), opts),
+        (r) => rowTotalQtyDone(r, stages, view),
       ),
       minWidth: 90,
     },
@@ -439,11 +438,11 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...plannedValue,
     computedColumn(
       'net',
-      title('net', razemLabel(COLUMN_LABELS.net, view), opts),
+      title('net', columnLabelForView('net', view), opts),
       (r) => rowValueForView(r, stages, view),
       'text-muted-foreground font-medium',
     ),
-    computedColumn('gross', title('gross', razemLabel(COLUMN_LABELS.gross, view), opts), (r) =>
+    computedColumn('gross', title('gross', columnLabelForView('gross', view), opts), (r) =>
       toGross(rowValueForView(r, stages, view), r.vatRate),
     ),
   ]
@@ -586,7 +585,7 @@ function selectV2ToggleItems(
     if (items.some((i) => i.id === id)) continue
     if (opts.clientVisible && !CLIENT_VISIBLE_COLUMNS.has(id)) continue
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
-    items.push({ id, label: COLUMN_LABELS[id] ?? id, visible: !opts.isHidden?.(id) })
+    items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })
   }
   return items
 }

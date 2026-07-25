@@ -114,8 +114,7 @@ export function KosztorysEditorBody({
     // Qty (Pomiar z natury): per-etap column, their sum, and the offered przedmiar column.
     let qtySum = 0
     for (const stage of stages) {
-      // An etap outside this view has no columns at all — and its qty must stay out of „Pomiar
-      // razem", which in a subcontractor view is that crew's pomiar.
+      // „Pomiar razem" in a subcontractor view is that crew's pomiar, so the other plane's qty stays out.
       if (!stageAppliesToView(stage, view)) continue
       const stageQty = stageQtyTotals.get(stage.id) ?? 0
       qtySum += stageQty

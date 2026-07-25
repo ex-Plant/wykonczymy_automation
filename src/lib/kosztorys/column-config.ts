@@ -1,3 +1,4 @@
+import type { PriceViewT } from '@/lib/kosztorys/calc'
 import {
   STAGES_COLUMN_GROUP,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
@@ -34,6 +35,25 @@ export const COLUMN_LABELS: Record<string, string> = {
   stageValuePercent: 'Etapy — % wykonania',
   donePercent: '% wykonania (względem przedmiaru)',
   note: 'Komentarz',
+}
+
+/**
+ * The two labels that mean different things per view, resolved in the same module that owns every
+ * other label — otherwise the header renders a view-aware name while the column picker reads
+ * `COLUMN_LABELS[id]` and the two disagree about what a column is called, which is the exact drift
+ * this file exists to prevent.
+ *
+ * „Razem": what the client pays (post-rabat) vs what this crew is owed (rabat is a client concession
+ * — calc.ts `netForQtyForView`). „Pomiar": the whole scope's executed quantity vs only this crew's
+ * etapy (settlement.ts `rowTotalQtyDone`).
+ */
+export function columnLabelForView(id: string, view: PriceViewT): string {
+  const label = COLUMN_LABELS[id] ?? id
+  if (id === 'net' || id === 'gross') {
+    return `${label} — ${view === 'client' ? 'po rabacie' : 'do zapłaty ekipie'}`
+  }
+  if (id === 'stageQtySum' && view !== 'client') return 'Pomiar (etapy tej ekipy)'
+  return label
 }
 
 // Which side of the netto/brutto pair a money column reports, keyed by the picker's toggleKey

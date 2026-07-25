@@ -4,9 +4,8 @@ import {
   STAGE_VALUE_PERCENT_COLUMN_GROUP,
 } from '@/lib/kosztorys/stage-keys'
 
-// Rabat is a concession to the CLIENT, never a cut in what a crew is paid (calc.ts
-// netForQtyForView applies it only in the client view) — so it needs saying wherever a tip mentions
-// it, or a reader assumes a discount flows down to the subcontractor bill.
+// calc.ts `netForQtyForView` applies the rabat in the client view only — without saying so, a reader
+// assumes a discount flows down to the subcontractor bill.
 const RABAT_IS_CLIENT_ONLY =
   'Rabat dotyczy wyłącznie ceny dla klienta — nie obniża cen robocizny dla ekip. W widokach „Z narzędziami" i „Bez narzędzi" kwoty są zawsze przed rabatem.'
 
@@ -14,7 +13,8 @@ const RABAT_IS_CLIENT_ONLY =
 // drives it, so mismatches between intent and calc are visible.
 export const HEADER_TIPS: Record<string, string> = {
   plannedQty: 'Przedmiar — ilość planowana',
-  stageQtySum: 'Pomiar — ilość faktycznie wykonana.\nSuma ilości ze wszystkich etapów.',
+  stageQtySum:
+    'Pomiar — ilość faktycznie wykonana.\nSuma ilości z etapów widocznych w tym widoku: w „Kliencie" ze wszystkich, w widoku ekipy tylko z etapów rozliczanych z tą ekipą.',
   priceCoeff:
     '1 = tyle co Cena klienta \n 0.65 = 65% ceny klienta · 1.2 = 120% ceny klienta.\n\nSzary kursywą = dziedziczony (z sekcji lub domyślny z inwestycji). Wpisanie własnego przestawia wiersz na „własny mnożnik".\n„—" Kwota stała, mnożnik się nie stosuje',
   priceMode: 'Auto = mnożnik dziedziczony - domyślny z inwestycji lub ustawiony dla danej sekcji.',
@@ -35,6 +35,9 @@ export const HEADER_TIPS: Record<string, string> = {
   // ilość header itself carries no tip (etap is self-evident, and it would fight the plane warning).
   [STAGE_VALUE_NET_COLUMN_GROUP]: `Ilość wykonana w tym etapie × cena j.m. − udział etapu w rabacie.\nUdział jest proporcjonalny do ilości (rabat zł jest rabatem od całego wiersza, więc etap niesie tylko swoją część).\nZależy od aktywnego widoku cen.\n\n${RABAT_IS_CLIENT_ONLY}`,
   [STAGE_VALUE_GROSS_COLUMN_GROUP]: 'Etap — kwota brutto = Etap — kwota netto × (1 + VAT).',
+  // Kept in the subcontractor views even though its base — the przedmiar — has no plane and is hidden
+  // there (see kosztorys-v2-columns, where every other przedmiar-anchored column drops out). So the
+  // tip has to name that base out loud: the reader can no longer see the denominator on screen.
   [STAGE_VALUE_PERCENT_COLUMN_GROUP]:
-    'Etap — % wykonania w tym etapie względem przedmiaru.\nIle z oferty dowiózł ten etap. \n„ —" = brak Przedmiaru.',
+    'Etap — % wykonania w tym etapie względem przedmiaru.\nIle z oferty dowiózł ten etap.\nBazą jest zawsze cały przedmiar pozycji, nie część przypisana ekipie — w widokach „Z narzędziami" i „Bez narzędzi" procenty wszystkich etapów nadal sumują się do wykonania całej oferty.\n„—" = brak Przedmiaru.',
 }

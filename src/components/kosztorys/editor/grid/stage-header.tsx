@@ -76,7 +76,7 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
               stage.plane == null && 'text-destructive',
             )}
           >
-            {/* No icon while the plane is unconfirmed — a wrench would claim a crew nobody picked. */}
+            {/* A wrench here would claim a crew nobody picked. */}
             {stage.plane != null && planeIcon(stage.plane)}
             <span
               className={cn(stage.plane != null && stage.label == null && 'text-muted-foreground')}
