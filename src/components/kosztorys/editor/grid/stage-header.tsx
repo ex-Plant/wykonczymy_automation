@@ -75,9 +75,18 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
     <>
       <HeaderMenu
         label={
-          <span className="inline-flex items-center gap-2">
+          <span
+            className={cn(
+              'inline-flex items-center gap-2',
+              stage.plane == null && 'text-destructive',
+            )}
+          >
             {planeIcon(effectivePlane)}
-            <span className={cn(stage.label == null && 'text-muted-foreground')}>{label}</span>
+            <span
+              className={cn(stage.plane != null && stage.label == null && 'text-muted-foreground')}
+            >
+              {label}
+            </span>
             {stage.plane == null && <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap" />}
           </span>
         }
