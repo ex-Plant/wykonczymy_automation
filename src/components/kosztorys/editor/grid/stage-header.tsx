@@ -15,7 +15,7 @@ import { HeaderLabel } from '@/components/kosztorys/editor/grid/header-label'
 import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
-import { useInlineRename } from '@/components/kosztorys/editor/use-inline-rename'
+import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
 import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 import { cn } from '@/lib/utils/cn'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
@@ -27,8 +27,7 @@ type PropsT = {
   onSetPlane?: (stageId: number, plane: ToolPlaneT) => void
 }
 
-// Stage column header: „Zmień nazwę" edits the label inline (empty → the „Etap N" placeholder,
-// persisting null), „Usuń etap" deletes behind a confirm.
+// An emptied label persists as null and falls back to the „Etap N" placeholder.
 export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
   const label = stage.label ?? `Etap ${stage.ordinal}`
   const { editing, start, inputProps } = useInlineRename((name) =>

@@ -1,6 +1,6 @@
 import { ReadOnlyCellText } from '@/components/kosztorys/editor/grid/cells/read-only-cell-text'
 import { EditableCellInput } from '@/components/kosztorys/editor/grid/cells/editable-cell-input'
-import { useInlineRename } from '@/components/kosztorys/editor/use-inline-rename'
+import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Renames the WHOLE section, so it commits through onRename (the same fan-out the section panel uses)

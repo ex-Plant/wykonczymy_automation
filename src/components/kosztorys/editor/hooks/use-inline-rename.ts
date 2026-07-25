@@ -1,10 +1,7 @@
 import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 
-// The state machine behind the editor's click-to-rename inputs (section-name cell, stage header):
-// a draft seeded from the current value, Enter/blur commits it, Escape cancels. cancelledRef
-// survives the blur, which is what lets both keys route through blur and still be told apart — the
-// two call sites used to disagree here, Escape in the stage header committing the unchanged label
-// instead of skipping the rename the way the cell did.
+// cancelledRef survives the blur, which is what lets Enter and Escape both route through blur and
+// still be told apart.
 export function useInlineRename(onCommit: (draft: string) => void) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
