@@ -174,7 +174,9 @@ export function MaterialsTransactionsTable({
 
   return (
     <div className="mt-6 flex flex-col gap-y-2">
-      <div className="flex items-center gap-2">
+      {/* Shares the table's max width so the right-aligned download button lands flush with the
+          table's right edge rather than the panel's. */}
+      <div className="flex w-full max-w-5xl items-center gap-2">
         {options.length > 1 && (
           <ToggleGroup
             options={options}
@@ -189,10 +191,10 @@ export function MaterialsTransactionsTable({
             size="sm"
             onClick={handleDownload}
             disabled={isPending}
-            aria-label="Pobierz faktury"
+            className="ml-auto"
           >
             {isPending ? <Loader2 className="animate-spin" /> : <FileArchive />}
-            Faktury
+            Pobierz faktury
           </Button>
         )}
       </div>

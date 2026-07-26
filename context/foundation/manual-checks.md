@@ -290,12 +290,12 @@ invoices attached to some of them, plus a live share token for it (`/k/<token>`)
 
 ### Client share path
 
-- [ ] Logged out on `/k/<token>` → Podsumowanie → Wydatki: the „Faktury" button downloads an archive of the visible dataset
+- [ ] Logged out on `/k/<token>` → Podsumowanie → Wydatki: the „Pobierz faktury" button downloads an archive of the visible dataset
 - [ ] Switching to „Materiały wliczone w robociznę" and downloading yields that dataset's invoices, not the other one's
 - [ ] The archive name carries the investment name and the dataset label; two investments downloaded the same day do not collide in Downloads
 - [ ] A dataset where some rows have no invoice reports the shortfall („Pobrano 3 z 5 — 2 bez faktury") rather than implying a complete set
 - [ ] An investment with zero materiały transactions renders no list and no button
-- [ ] A dataset whose rows all lack an invoice renders the list but no „Faktury" button
+- [ ] A dataset whose rows all lack an invoice renders the list but no „Pobierz faktury" button
 
 ### Owner app view
 
