@@ -6,6 +6,7 @@
 import { google } from 'googleapis'
 import { getPayload } from 'payload'
 import config from '../payload.config'
+import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 
 const SHEET_ID = '1TWZuU7ZDElhUameN4ii2U5TztmQG387Gqcn9NgwwObE'
 const TAB = 'kosztorys_robocizny'
@@ -85,13 +86,15 @@ async function run() {
     // Wiersz-nagłówek sekcji: kolumna A to tekst (nie numer).
     if (typeof a === 'string' && a.trim() !== '') {
       const name = b || a.trim()
+      const order = sectionOrder++
       const section = await payload.create({
         collection: 'kosztorys-sections',
         data: {
           investment: INVESTMENT_ID,
           name,
-          displayOrder: sectionOrder++,
+          displayOrder: order,
           defaultCostVariant: 'w_tools',
+          color: sectionColorForIndex(order),
         },
         ...ctx,
       })

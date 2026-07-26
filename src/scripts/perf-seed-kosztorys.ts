@@ -6,6 +6,7 @@
 //   INV=7 node --env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts
 import { getPayload } from 'payload'
 import config from '../payload.config'
+import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 
 const INVESTMENT_ID = Number(process.env.INV ?? 7)
 const SECTIONS = 10
@@ -50,6 +51,7 @@ async function run() {
         name: `Sekcja ${si + 1}`,
         displayOrder: si,
         defaultCostVariant: 'w_tools',
+        color: sectionColorForIndex(si),
       },
       ...ctx,
     })

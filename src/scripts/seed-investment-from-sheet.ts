@@ -28,6 +28,7 @@ import { google } from 'googleapis'
 import { getPayload } from 'payload'
 import config from '../payload.config'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '../lib/kosztorys/constants'
+import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 import { SNAPSHOT_SCHEMA_VERSION, type SnapshotPayloadT } from '../lib/kosztorys/snapshot-format'
 import type {
   KosztorysItemT,
@@ -132,7 +133,7 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
         name: currentSection,
         displayOrder: sections.length,
         defaultCostVariant: 'w_tools',
-        color: null,
+        color: sectionColorForIndex(sections.length),
       })
     }
 
@@ -229,6 +230,7 @@ async function seed(tree: SnapshotPayloadT): Promise<void> {
         name: sec.name,
         displayOrder: sec.displayOrder,
         defaultCostVariant: sec.defaultCostVariant,
+        color: sec.color,
       },
       ...ctx,
     })

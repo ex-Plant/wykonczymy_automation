@@ -21,7 +21,6 @@ import {
   type KosztorysReconciliationT,
   type ReconT,
 } from '@/lib/kosztorys/reconciliation'
-import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
 
 // The scream's tooltip names both compared figures + the różnica; formatNet because this surface shows
 // kosztorys nets. Shared copy with the investment page (reconciliationTooltip).
