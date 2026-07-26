@@ -302,15 +302,15 @@ and is not re-filed here.
 
 #### Automated
 
-- [x] 2.1 Type checking passes
-- [x] 2.2 Linting passes
-- [x] 2.3 Unit tests pass
+- [x] 2.1 Type checking passes — ff3eed6e
+- [x] 2.2 Linting passes — ff3eed6e
+- [x] 2.3 Unit tests pass — ff3eed6e
 
 ### Phase 3: The two columns
 
 #### Automated
 
-- [ ] 3.1 Type checking passes
-- [ ] 3.2 Linting passes
-- [ ] 3.3 Helper spec passes
-- [ ] 3.4 Full unit suite passes
+- [x] 3.1 Type checking passes
+- [x] 3.2 Linting passes
+- [x] 3.3 Helper spec passes
+- [x] 3.4 Full unit suite passes

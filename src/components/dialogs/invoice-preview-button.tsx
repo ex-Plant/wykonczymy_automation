@@ -8,9 +8,17 @@ type InvoicePreviewButtonPropsT = {
   url: string
   filename: string | null
   mimeType: string | null
+  variant?: 'field' | 'compact'
+  className?: string
 }
 
-export function InvoicePreviewButton({ url, filename, mimeType }: InvoicePreviewButtonPropsT) {
+export function InvoicePreviewButton({
+  url,
+  filename,
+  mimeType,
+  variant,
+  className,
+}: InvoicePreviewButtonPropsT) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const isImage = mimeType?.startsWith('image/') ?? false
   const displayName = filename ?? 'Faktura'
@@ -21,6 +29,8 @@ export function InvoicePreviewButton({ url, filename, mimeType }: InvoicePreview
         isImage={isImage}
         label={displayName}
         onClick={() => setPreviewOpen(true)}
+        variant={variant}
+        className={className}
       />
 
       {previewOpen && (
