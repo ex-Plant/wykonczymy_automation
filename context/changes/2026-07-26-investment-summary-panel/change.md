@@ -66,3 +66,22 @@ Restructured in `36204b17`:
 
 Delete the whole axis (param, toggle, `FinancialStats` on this page) once the owner calls the
 comparison over.
+
+### UI follow-ups (2026-07-26, owner, `f679d50c`)
+
+Three calls that supersede the "Owner's calls so far" bullets above:
+
+- **No pies on the investment page.** `SummaryPanelContent` gained `showPies` (default `true`); the
+  investment host passes `false`, so Podsumowanie / Wydatki / Wpłaty render without „Struktura
+  kosztów", „Struktura wydatków inwestycyjnych" and „Udział wpłat netto / brutto". The editor and the
+  client share view (`/k/<token>`) keep theirs — the flag is per host, not a global removal.
+- **No collapsible.** The panel is no longer wrapped in `CollapsibleSection`, so there is no
+  „Podsumowanie" trigger to click — it renders open. Consequence: a long Wpłaty list makes the page
+  taller instead of scrolling inside a bounded region (`SummaryScrollRegion` only clips inside a
+  height-bounded flex column).
+- **Owner strip moved BELOW the panel**, contradicting the "ABOVE the panel" bullet in Notes. It is
+  still a separate gated component (`InvestmentOwnerFigures`) for the same leak reason — only its
+  position changed.
+
+Also: the tabs are Podsumowanie + **Wydatki + Wpłaty** (`INVESTMENT_PANEL_VIEWS`), not the two the
+Notes bullet names.

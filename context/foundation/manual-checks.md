@@ -377,28 +377,31 @@ The migration `20260726_3_add_settlement_mode_to_investments` must be applied to
 Adds a second reading of the investment detail page's financials, selected by `?widok=` (default
 `v2`). **v1 is the page exactly as it was** — same queries, same computations, same `FinancialStats`
 tiles. **v2** replaces the tiles with the kosztorys Podsumowanie panel (Podsumowanie + Wydatki +
-Wpłaty) plus an owner-only strip carrying Marża / Wypłaty / Strata / Rozliczone R+M. The axis is
-temporary: it exists so the owner can compare the two planes side by side. All automated checks green
+Wpłaty — no pies, no collapsible) plus an owner-only strip **below** it carrying Marża / Wypłaty /
+Strata / Rozliczone R+M. The axis is temporary: it exists so the owner can compare the two planes side
+by side. All automated checks green
 (tsc 0, eslint 0 errors, unit 1712/1712, `pnpm build` clean).
 
 Setup: log in as OWNER against a DB with a seeded kosztorys, and have a second account with role
 MANAGER plus a share token for the same investment. No migration owed — the settlement-mode column
 came with EX-588.
 
-- [ ] The editor panel at `/inwestycje/<id>/kosztorys_v2` opens, collapses, and renders all five views exactly as before, including the settings bar
+- [ ] The editor panel at `/inwestycje/<id>/kosztorys_v2` opens, collapses, and renders all five views exactly as before — settings bar and **all three pies** intact
 - [ ] In the editor, Wydatki and Wpłaty are unchanged (both new flags default to today's behaviour)
-- [ ] `/k/<token>` renders four client views, no settings bar, no reconciliation scream, and no marża anywhere
+- [ ] `/k/<token>` renders four client views with their pies, no settings bar, no reconciliation scream, and no marża anywhere
 - [ ] For an investment with kosztorys rows, every Podsumowanie figure on `/inwestycje/<id>` matches the same figure in the editor panel on the same settlement mode
-- [ ] Wydatki on the investment page shows the per-category breakdown and the pie, with no transaction list
-- [ ] Wpłaty shows exactly three Razem buckets (netto / brutto / nie określono) and the udział pie, with no per-deposit rows
-- [ ] An investment with **no** kosztorys rows renders the panel on transaction figures with no reading toggle — not an all-zero panel
+- [ ] Wydatki on the investment page shows the per-category breakdown with **no pie and no transaction list**
+- [ ] Wpłaty shows exactly three Razem buckets (netto / brutto / nie określono), with no udział pie and no per-deposit rows
+- [ ] Podsumowanie on the investment page shows the settlement table with **no** „Struktura kosztów" pie
+- [ ] The panel renders **always open** — there is no Podsumowanie collapsible trigger to click
+- [ ] An investment with **no** kosztorys rows renders the panel on transaction figures — not an all-zero panel
 - [ ] The panel appears without blocking first paint; the transfers table below still filters and paginates
 - [ ] `?widok=v1` renders the page **identically to before this change** — the same tile block, the same figures, the toggle above it — and the browser network panel shows no kosztorys/deposit fetch
 - [ ] `?widok=v2` and `?widok=v1` open in two tabs side by side compare cleanly: Materiały and Wpłaty agree, only Robocizna and Rabat differ
 - [ ] The toggle preserves the page's other search params (transfers filters, pagination) when switching
 - [ ] The reconciliation scream still fires when the kosztorys and transaction figures disagree
 - [ ] Changing the settlement mode from the panel persists and survives a hard reload
-- [ ] In v2, `/inwestycje/<id>` shows the owner strip (Marża / Wypłaty / Strata / Rozliczone R+M) above the panel and no tile block
+- [ ] In v2, `/inwestycje/<id>` shows the owner strip (Marża / Wypłaty / Strata / Rozliczone R+M) **below** the panel, and no tile block
 - [ ] A MANAGER (non-owner) sees the v2 panel but **none** of the owner strip
 - [ ] `/raporty` renders its tiles exactly as before, deselect included
 - [ ] Printing from the transfers table works in both readings: v1 keeps the dynamic bilans, v2 produces a header with all fields and a static bilans (accepted degradation — see `lessons.md`)
