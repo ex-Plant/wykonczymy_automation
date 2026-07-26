@@ -24,6 +24,23 @@ import { SimpleTooltip } from '@/components/ui/tooltip'
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
+type OrderActionsT = {
+  onInsertAbove: () => void
+  onInsertBelow: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+}
+
+// One bundle rather than six optional callbacks: they all come from the same `editorOnly()` gate, so
+// they are all-present or all-absent — as separate props the „Sekcje" group could half-appear.
+type SectionActionsT = OrderActionsT & {
+  color: SectionColorKeyT | null
+  name?: string
+  itemCount: number
+  onSetColor: (color: SectionColorKeyT | null) => void
+  onRemove: () => void
+}
+
 type PropsT = {
   // Insert + move have no meaning against a price-sorted view — disabled with a hint.
   sortActive: boolean
@@ -33,57 +50,36 @@ type PropsT = {
   removeBlockReason?: string
   // Populated row: delete destroys recorded stage progress, so route through a confirm dialog first.
   removeNeedsConfirm?: boolean
-  onInsertAbove: () => void
-  onInsertBelow: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
-  onRemove: () => void
-  // Section-level actions, all keyed off the row's section. Absent (read-only view) → the whole
-  // „Sekcje" group is hidden.
-  onRemoveSection?: () => void
-  onInsertSectionAbove?: () => void
-  onInsertSectionBelow?: () => void
-  onMoveSectionUp?: () => void
-  onMoveSectionDown?: () => void
-  onSetSectionColor?: (color: SectionColorKeyT | null) => void
-  sectionColor?: SectionColorKeyT | null
-  sectionName?: string
-  sectionItemCount?: number
+  item: OrderActionsT & { onRemove: () => void }
+  // Absent (read-only view) → the whole „Sekcje" group is hidden.
+  section?: SectionActionsT
 }
 
 export function KosztorysRowActionsMenu({
   sortActive,
   removeBlockReason,
   removeNeedsConfirm,
-  onInsertAbove,
-  onInsertBelow,
-  onMoveUp,
-  onMoveDown,
-  onRemove,
-  onRemoveSection,
-  onInsertSectionAbove,
-  onInsertSectionBelow,
-  onMoveSectionUp,
-  onMoveSectionDown,
-  onSetSectionColor,
-  sectionColor,
-  sectionName,
-  sectionItemCount,
+  item,
+  section,
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
-  // Disabled items are pointer-events-none, so an order-dependent group is wrapped in a tooltip
-  // trigger (which catches the hover the disabled items would otherwise pass through).
-  const withSortHint = (items: ReactNode) =>
-    sortActive ? (
-      <SimpleTooltip content="Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować">
+  // Disabled items are pointer-events-none, so anything disabled is wrapped in a tooltip trigger,
+  // which catches the hover the disabled item would otherwise pass through.
+  const withHint = (items: ReactNode, reason?: string) =>
+    reason == null ? (
+      items
+    ) : (
+      <SimpleTooltip content={reason}>
         <div>{items}</div>
       </SimpleTooltip>
-    ) : (
-      items
     )
 
-  const itemOrderItems = (
+  const sortHint = sortActive
+    ? 'Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować'
+    : undefined
+
+  const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertAbove}>
         <ArrowUpToLine />
@@ -104,55 +100,6 @@ export function KosztorysRowActionsMenu({
     </>
   )
 
-  const sectionOrderItems = (
-    <>
-      {onInsertSectionAbove && (
-        <DropdownMenuItem disabled={sortActive} onSelect={onInsertSectionAbove}>
-          <ArrowUpToLine />
-          Wstaw powyżej
-        </DropdownMenuItem>
-      )}
-      {onInsertSectionBelow && (
-        <DropdownMenuItem disabled={sortActive} onSelect={onInsertSectionBelow}>
-          <ArrowDownToLine />
-          Wstaw poniżej
-        </DropdownMenuItem>
-      )}
-      {onMoveSectionUp && (
-        <DropdownMenuItem disabled={sortActive} onSelect={onMoveSectionUp}>
-          <ArrowUp />
-          Przesuń w górę
-        </DropdownMenuItem>
-      )}
-      {onMoveSectionDown && (
-        <DropdownMenuItem disabled={sortActive} onSelect={onMoveSectionDown}>
-          <ArrowDown />
-          Przesuń w dół
-        </DropdownMenuItem>
-      )}
-    </>
-  )
-
-  const removeItem = (
-    <DropdownMenuItem
-      variant="destructive"
-      disabled={removeBlockReason != null}
-      onSelect={() => (removeNeedsConfirm ? setConfirmOpen(true) : onRemove())}
-    >
-      <Trash2 />
-      Usuń pozycję
-    </DropdownMenuItem>
-  )
-
-  const sectionGroupShown = Boolean(
-    onRemoveSection ??
-      onInsertSectionAbove ??
-      onInsertSectionBelow ??
-      onMoveSectionUp ??
-      onMoveSectionDown ??
-      onSetSectionColor,
-  )
-
   return (
     <>
       <DropdownMenu>
@@ -165,31 +112,28 @@ export function KosztorysRowActionsMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-44">
           <DropdownMenuLabel>Prace</DropdownMenuLabel>
-          {withSortHint(itemOrderItems)}
-          {removeBlockReason == null ? (
-            removeItem
-          ) : (
-            <SimpleTooltip content={removeBlockReason}>
-              <div>{removeItem}</div>
-            </SimpleTooltip>
+          {withHint(orderItems(item), sortHint)}
+          {withHint(
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={removeBlockReason != null}
+              onSelect={() => (removeNeedsConfirm ? setConfirmOpen(true) : item.onRemove())}
+            >
+              <Trash2 />
+              Usuń pozycję
+            </DropdownMenuItem>,
+            removeBlockReason,
           )}
-          {sectionGroupShown && (
+          {section && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcje</DropdownMenuLabel>
-              {withSortHint(sectionOrderItems)}
-              {onSetSectionColor && (
-                <SectionColorPicker value={sectionColor ?? null} onChange={onSetSectionColor} />
-              )}
-              {onRemoveSection && (
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={() => setSectionConfirmOpen(true)}
-                >
-                  <Trash2 />
-                  Usuń sekcję
-                </DropdownMenuItem>
-              )}
+              {withHint(orderItems(section), sortHint)}
+              <SectionColorPicker value={section.color} onChange={section.onSetColor} />
+              <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
+                <Trash2 />
+                Usuń sekcję
+              </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
@@ -200,18 +144,18 @@ export function KosztorysRowActionsMenu({
         description="Pozycja i wpisane w niej ilości etapów zostaną usunięte."
         confirmLabel="Usuń"
         onConfirm={() => {
-          onRemove()
+          item.onRemove()
           setConfirmOpen(false)
         }}
         onCancel={() => setConfirmOpen(false)}
       />
       <ConfirmDialog
         open={sectionConfirmOpen}
-        title={`Usunąć sekcję „${sectionName}"?`}
-        description={`Usunie też ${sectionItemCount} pozycji wraz z wpisanymi w nich ilościami etapów. Tej operacji nie można cofnąć.`}
+        title={`Usunąć sekcję „${section?.name}"?`}
+        description={`Usunie też ${section?.itemCount} pozycji wraz z wpisanymi w nich ilościami etapów. Tej operacji nie można cofnąć.`}
         confirmLabel="Usuń"
         onConfirm={() => {
-          onRemoveSection?.()
+          section?.onRemove()
           setSectionConfirmOpen(false)
         }}
         onCancel={() => setSectionConfirmOpen(false)}

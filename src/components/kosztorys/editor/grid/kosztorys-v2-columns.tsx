@@ -6,6 +6,7 @@ import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
@@ -208,35 +209,38 @@ function RowActionsCell({
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
   const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
 
+  // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
+  // "editor mode?" test rather than four independent ones.
+  const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
+  const section =
+    onInsertSection && onReorderSection && onSetSectionColor && onRemoveSection
+      ? {
+          color: rowData.sectionColor,
+          name: rowData.sectionName ?? undefined,
+          itemCount: opts.getSectionItemCount?.(rowData.sectionId) ?? 0,
+          onInsertAbove: () => onInsertSection(rowData, 'above'),
+          onInsertBelow: () => onInsertSection(rowData, 'below'),
+          onMoveUp: () => onReorderSection(rowData.sectionId, 'up'),
+          onMoveDown: () => onReorderSection(rowData.sectionId, 'down'),
+          onSetColor: (color: SectionColorKeyT | null) =>
+            onSetSectionColor(rowData.sectionId, color),
+          onRemove: () => onRemoveSection(rowData.sectionId),
+        }
+      : undefined
+
   return (
     <KosztorysRowActionsMenu
       sortActive={sortActive}
       removeBlockReason={removeBlockReason}
       removeNeedsConfirm={removeNeedsConfirm}
-      onInsertAbove={() => opts.onInsertItem?.(rowData, 'above')}
-      onInsertBelow={() => opts.onInsertItem?.(rowData, 'below')}
-      onMoveUp={() => opts.onReorderItem?.(rowData, 'up')}
-      onMoveDown={() => opts.onReorderItem?.(rowData, 'down')}
-      onRemove={() => opts.onRemoveItem?.(rowData)}
-      onRemoveSection={opts.onRemoveSection && (() => opts.onRemoveSection?.(rowData.sectionId))}
-      onInsertSectionAbove={
-        opts.onInsertSection && (() => opts.onInsertSection?.(rowData, 'above'))
-      }
-      onInsertSectionBelow={
-        opts.onInsertSection && (() => opts.onInsertSection?.(rowData, 'below'))
-      }
-      onMoveSectionUp={
-        opts.onReorderSection && (() => opts.onReorderSection?.(rowData.sectionId, 'up'))
-      }
-      onMoveSectionDown={
-        opts.onReorderSection && (() => opts.onReorderSection?.(rowData.sectionId, 'down'))
-      }
-      onSetSectionColor={
-        opts.onSetSectionColor && ((color) => opts.onSetSectionColor?.(rowData.sectionId, color))
-      }
-      sectionColor={rowData.sectionColor}
-      sectionName={rowData.sectionName ?? undefined}
-      sectionItemCount={opts.getSectionItemCount?.(rowData.sectionId) ?? 0}
+      item={{
+        onInsertAbove: () => opts.onInsertItem?.(rowData, 'above'),
+        onInsertBelow: () => opts.onInsertItem?.(rowData, 'below'),
+        onMoveUp: () => opts.onReorderItem?.(rowData, 'up'),
+        onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
+        onRemove: () => opts.onRemoveItem?.(rowData),
+      }}
+      section={section}
     />
   )
 }
@@ -300,6 +304,19 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
   const viewStages = stagesForView(stages, view)
 
+  // Σ etapów for the row — the denominator every stage-value cell divides by. There are 2×|etapy| of
+  // those cells per row (netto + brutto) and each used to re-run the O(|etapy|) reduce to arrive at
+  // the SAME number, making a row O(|etapy|²). Memoised per row object: rows are replaced immutably
+  // on every edit, so identity is a self-invalidating cache key — a stale total can't outlive its row.
+  const totalQtyDoneByRow = new WeakMap<KosztorysV2RowT, number>()
+  const totalQtyDone = (row: KosztorysV2RowT) => {
+    const cached = totalQtyDoneByRow.get(row)
+    if (cached !== undefined) return cached
+    const total = rowTotalQtyDone(row, viewStages, view)
+    totalQtyDoneByRow.set(row, total)
+    return total
+  }
+
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
   const przedmiar: Column<KosztorysV2RowT>[] = [
@@ -312,9 +329,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) =>
-        rowTotalQtyDone(r, viewStages, view),
-      ),
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
       minWidth: 170,
     },
     unitColumn(title('unit', opts)),
@@ -329,10 +344,10 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           discountValueColumn(title('discountValue', opts)),
           discountTypeColumn(title('discountType', opts)),
           computedColumn('discountAmount', title('discountAmount', opts), (r) =>
-            rowDiscountForView(r, rowTotalQtyDone(r, viewStages, view), view),
+            rowDiscountForView(r, totalQtyDone(r), view),
           ),
           computedColumn('discountAmountGross', title('discountAmountGross', opts), (r) =>
-            toGross(rowDiscountForView(r, rowTotalQtyDone(r, viewStages, view), view), r.vatRate),
+            toGross(rowDiscountForView(r, totalQtyDone(r), view), r.vatRate),
           ),
         ]
       : []
@@ -371,7 +386,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
     return {
       ...computedColumn(stageValueNetKey(st.id), header, (r) =>
-        stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, viewStages, view), view),
+        stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view),
       ),
       ...planeUnconfirmed(st),
     }
@@ -382,10 +397,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
     return {
       ...computedColumn(stageValueGrossKey(st.id), header, (r) =>
-        toGross(
-          stageValueForView(r, r[qtyKey] ?? 0, rowTotalQtyDone(r, viewStages, view), view),
-          r.vatRate,
-        ),
+        toGross(stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view), r.vatRate),
       ),
       ...planeUnconfirmed(st),
     }

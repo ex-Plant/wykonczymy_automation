@@ -669,6 +669,24 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     })
   }
 
+  // The first row of a brand-new section: the section's own fields are still the defaults the action
+  // just wrote, so they come from NEW_SECTION_DEFAULTS rather than a round trip.
+  function buildNewSectionRow(sectionId: number, item: { id: number; displayOrder: number }) {
+    return buildBlankRow({
+      id: item.id,
+      displayOrder: item.displayOrder,
+      sectionId,
+      sectionName: NEW_SECTION_DEFAULTS.name,
+      sectionColor: null,
+      vatRate: tree.vatRate,
+      globalDiscountActive,
+      sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
+      globalWToolsCoeff: tree.globalCoeffs.wTools,
+      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
+      stages,
+    })
+  }
+
   // ⋯ → Sekcje → Wstaw powyżej/poniżej. The section-level twin of handleInsertItem: a new section
   // (plus its first blank item — a 0-item section renders as 0 rows) lands right before or after the
   // anchor row's section instead of at the end.
@@ -688,19 +706,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     sectionOrderRef.current.set(sec.data.id, at)
     const item = await addItemAction(sec.data.id)
     if (!item.success) return
-    const row = buildBlankRow({
-      id: item.data.id,
-      displayOrder: item.data.displayOrder,
-      sectionId: sec.data.id,
-      sectionName: NEW_SECTION_DEFAULTS.name,
-      sectionColor: null,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
-    })
+    const row = buildNewSectionRow(sec.data.id, item.data)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorRow.sectionId, row, dir))
     // A filter would hide the new section's only row, making the insert look like a no-op.
@@ -713,19 +719,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     // A new section immediately gets a blank item (an empty section = 0 rows = invisible).
     const item = await addItemAction(sec.data.id)
     if (!item.success) return
-    const row = buildBlankRow({
-      id: item.data.id,
-      displayOrder: item.data.displayOrder,
-      sectionId: sec.data.id,
-      sectionName: NEW_SECTION_DEFAULTS.name,
-      sectionColor: null,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
-    })
+    const row = buildNewSectionRow(sec.data.id, item.data)
     sectionOrderRef.current.set(sec.data.id, sec.data.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
@@ -873,52 +867,51 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     }
   }
 
-  // The name is denormalized on every row of the section — patch them all (rows + prevById) and
-  // persist. Extracted so an undo/redo can re-run it with the before/after name (unlike a grid cell,
-  // the rename fires the action directly, not via the debounced saver — nothing to cancel on undo).
-  function applySectionRename(sectionId: number, name: string) {
+  // A section field is denormalized on every row of the section, so setting one patches them all
+  // (rows + prevById) and persists once. The two fields differ only in which row key mirrors which
+  // column, so they share one pathway rather than growing a third copy for defaultCostVariant.
+  const SECTION_ROW_FIELDS = { sectionName: 'name', sectionColor: 'color' } as const
+  type SectionRowFieldT = keyof typeof SECTION_ROW_FIELDS
+
+  // Extracted from the handler so undo/redo can re-run it with the before/after value: unlike a grid
+  // cell, a section field fires the action directly, not via the debounced saver — nothing to cancel.
+  function applySectionField<K extends SectionRowFieldT>(
+    sectionId: number,
+    rowKey: K,
+    value: KosztorysV2RowT[K],
+  ) {
     patchRows(
       (r) => r.sectionId === sectionId,
-      (r) => ({ ...r, sectionName: name }),
+      (r) => ({ ...r, [rowKey]: value }),
     )
-    void updateSectionFieldAction(sectionId, { name })
+    void updateSectionFieldAction(sectionId, { [SECTION_ROW_FIELDS[rowKey]]: value })
   }
 
-  // null clears the pin.
-  function applySectionColor(sectionId: number, color: SectionColorKeyT | null) {
-    patchRows(
-      (r) => r.sectionId === sectionId,
-      (r) => ({ ...r, sectionColor: color }),
+  // Bails on a no-op write: the Sekcja cell's onBlur fires on every focus-out and the colour picker
+  // stays open across clicks, so both can re-send the value they already hold.
+  function handleSetSectionField<K extends SectionRowFieldT>(
+    sectionId: number,
+    rowKey: K,
+    value: KosztorysV2RowT[K],
+    undoLabel: string,
+  ) {
+    const before = rowsRef.current.find((r) => r.sectionId === sectionId)?.[rowKey]
+    if (before === undefined || before === value) return
+    applySectionField(sectionId, rowKey, value)
+    pushReversible(
+      undoLabel,
+      (v: KosztorysV2RowT[K]) => applySectionField(sectionId, rowKey, v),
+      before,
+      value,
     )
-    void updateSectionFieldAction(sectionId, { color })
   }
 
   function handleSetSectionColor(sectionId: number, color: SectionColorKeyT | null) {
-    const sectionRow = rowsRef.current.find((r) => r.sectionId === sectionId)
-    if (!sectionRow) return
-    const before = sectionRow.sectionColor ?? null
-    if (before === color) return
-    applySectionColor(sectionId, color)
-    pushReversible(
-      'Zmiana koloru sekcji',
-      (c: SectionColorKeyT | null) => applySectionColor(sectionId, c),
-      before,
-      color,
-    )
+    handleSetSectionField(sectionId, 'sectionColor', color, 'Zmiana koloru sekcji')
   }
 
   function handleRenameSection(sectionId: number, name: string) {
-    // Skip a no-op write: the cell's onBlur fires on every focus-out, so bail when the name is
-    // unchanged (the Sekcja cell has no diff of its own, like handleRenameStage for etap labels).
-    const before = rowsRef.current.find((r) => r.sectionId === sectionId)?.sectionName
-    if (before === undefined || before === name) return
-    applySectionRename(sectionId, name)
-    pushReversible(
-      'Zmiana nazwy sekcji',
-      (n: string) => applySectionRename(sectionId, n),
-      before,
-      name,
-    )
+    handleSetSectionField(sectionId, 'sectionName', name, 'Zmiana nazwy sekcji')
   }
 
   // Optimistic patch of a denormalized field on the matching rows + prevById (like
@@ -1204,8 +1197,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     handleAddSection,
     handleAppendedSections,
     handleAddStage,
-    handleRenameSection,
-    handleRemoveSection,
     handleGlobalCoeffChange,
     handleVatChange,
     handleGlobalDiscountChange,
