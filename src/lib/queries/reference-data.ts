@@ -324,6 +324,8 @@ export async function fetchMaterialTransactionsForInvestment(
             : 'Bez kategorii',
       invoiceUrl: media?.url ?? null,
       invoiceFilename: media?.filename ?? null,
+      invoiceMimeType: media?.mimeType ?? null,
+      invoiceNote: doc.invoiceNote != null ? String(doc.invoiceNote) : null,
     }
   })
 }

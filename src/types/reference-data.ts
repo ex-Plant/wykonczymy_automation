@@ -72,8 +72,9 @@ export type DepositTransactionRowT = {
 // expense-category `label` is resolved in the shared fetcher, not at either page, so the owner view
 // and the client share view label a row identically. `settled` splits „Wydatki inwestycyjne" (false —
 // Σ === materialsGross) from „Materiały wliczone w robociznę" (true) behind the list toggle; both
-// sets show in every view. The invoice pair feeds the list's bulk-ZIP download and is null when no
-// invoice is attached.
+// sets show in every view. The invoice triple feeds the list's bulk-ZIP download and its per-row
+// preview, and is null when no invoice is attached. `invoiceNote` is the AI scan's extracted FV data
+// — line 1 the numer faktury, the pozycje below it — null on any row that never went through a scan.
 export type MaterialTransactionRowT = {
   id: number
   date: string
@@ -83,6 +84,8 @@ export type MaterialTransactionRowT = {
   settled: boolean
   invoiceUrl: string | null
   invoiceFilename: string | null
+  invoiceMimeType: string | null
+  invoiceNote: string | null
 }
 
 export type OtherCategoryRefT = {
