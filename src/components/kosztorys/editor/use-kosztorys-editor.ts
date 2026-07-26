@@ -296,11 +296,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onReorderItem: editorOnly(handleReorderItem),
     onInsertItem: editorOnly(handleInsertItem),
     onRenameSection: editorOnly(handleRenameSection),
-    onRemoveSection: editorOnly(handleRemoveSection),
-    onReorderSection: editorOnly(handleReorderSection),
-    onInsertSection: editorOnly(handleInsertSection),
-    onSetSectionColor: editorOnly(handleSetSectionColor),
-    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
     readOnly: clientView || undefined,
@@ -1183,6 +1178,17 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     guideX,
     collapsedSectionIds,
     toggleSectionCollapsed,
+    // Section mutations live on the band, not in the row „…" menu. Undefined in the read-only client
+    // view — one gate for the whole bundle, so the band's menu can't half-appear.
+    sectionHandlers: clientView
+      ? undefined
+      : {
+          onInsert: handleInsertSection,
+          onReorder: handleReorderSection,
+          onSetColor: handleSetSectionColor,
+          onRemove: handleRemoveSection,
+          onRename: handleRenameSection,
+        },
     // subtotals + section panel
     subtotals,
     // client-priced, view-invariant per-section subtotals — the section pie's structure source.

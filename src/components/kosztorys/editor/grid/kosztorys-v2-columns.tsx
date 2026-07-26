@@ -6,7 +6,6 @@ import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
-import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
@@ -209,25 +208,6 @@ function RowActionsCell({
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
   const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
 
-  // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
-  // "editor mode?" test rather than four independent ones.
-  const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
-  const section =
-    onInsertSection && onReorderSection && onSetSectionColor && onRemoveSection
-      ? {
-          color: rowData.sectionColor,
-          name: rowData.sectionName ?? undefined,
-          itemCount: opts.getSectionItemCount?.(rowData.sectionId) ?? 0,
-          onInsertAbove: () => onInsertSection(rowData, 'above'),
-          onInsertBelow: () => onInsertSection(rowData, 'below'),
-          onMoveUp: () => onReorderSection(rowData.sectionId, 'up'),
-          onMoveDown: () => onReorderSection(rowData.sectionId, 'down'),
-          onSetColor: (color: SectionColorKeyT | null) =>
-            onSetSectionColor(rowData.sectionId, color),
-          onRemove: () => onRemoveSection(rowData.sectionId),
-        }
-      : undefined
-
   return (
     <KosztorysRowActionsMenu
       sortActive={sortActive}
@@ -240,7 +220,6 @@ function RowActionsCell({
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
       }}
-      section={section}
     />
   )
 }

@@ -2,7 +2,11 @@
 
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
+import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
+import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
+import { KosztorysSectionActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-section-actions-menu'
 import { formatNet } from '@/lib/kosztorys/format'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 export type SectionHeaderFigureT = {
@@ -11,24 +15,37 @@ export type SectionHeaderFigureT = {
   itemCount: number
 }
 
+// Every section-level mutation, taking the section as an argument rather than pre-bound: the context
+// is built once per grid, while a band binds them to its own section at render.
+export type SectionHeaderHandlersT = {
+  onInsert: (anchorRow: KosztorysV2RowT, dir: 'above' | 'below') => void
+  onReorder: (sectionId: number, dir: 'up' | 'down') => void
+  onSetColor: (sectionId: number, color: SectionColorKeyT | null) => void
+  onRemove: (sectionId: number) => void
+  onRename: (sectionId: number, name: string) => void
+}
+
 // What every band cell needs, carried on the wrapped column's `columnData` (never a closure — see
 // kosztorys-synthetic-rows.tsx). Figures are keyed by section id because the band row carries only
-// the section's identity, not its numbers.
+// the section's identity, not its numbers. `handlers` is absent in the read-only client view, which
+// is what hides the menu and freezes the name.
 export type SectionHeaderContextT = {
   figures: Map<number, SectionHeaderFigureT>
   collapsedSectionIds: ReadonlySet<number>
   onToggleCollapsed: (sectionId: number) => void
+  handlers?: SectionHeaderHandlersT
 }
 
 // Which piece of the band this column paints. The band spans no columns — each cell renders its own
 // piece under the column it sits in, so dsg's layout keeps the figure aligned with „Razem netto"
 // through horizontal scroll.
-export type SectionHeaderSlotT = 'label' | 'net' | 'gross' | 'blank'
+export type SectionHeaderSlotT = 'label' | 'net' | 'gross' | 'actions' | 'blank'
 
 export function sectionHeaderSlot(columnId: string | undefined): SectionHeaderSlotT {
   if (columnId === 'description') return 'label'
   if (columnId === 'net') return 'net'
   if (columnId === 'gross') return 'gross'
+  if (columnId === 'actions') return 'actions'
   return 'blank'
 }
 
@@ -43,6 +60,29 @@ function SectionDot() {
   )
 }
 
+// Renames the whole section through the same fan-out the „Sekcja" column used, so the denormalized
+// name on every item row moves with it.
+function SectionNameField({
+  rowData,
+  onRename,
+}: {
+  rowData: KosztorysV2RowT
+  onRename: (sectionId: number, name: string) => void
+}) {
+  const { editing, start, inputProps } = useInlineRename((name) =>
+    onRename(rowData.sectionId, name),
+  )
+
+  return (
+    <EditableCellInput
+      {...inputProps}
+      className="min-w-0 flex-1 px-0 text-base font-semibold"
+      value={editing ? inputProps.value : (rowData.sectionName ?? '')}
+      onFocus={() => start(rowData.sectionName ?? '')}
+    />
+  )
+}
+
 export function SectionHeaderCell({
   rowData,
   slot,
@@ -53,24 +93,51 @@ export function SectionHeaderCell({
   context: SectionHeaderContextT
 }) {
   const figure = context.figures.get(rowData.sectionId)
+  const { handlers } = context
 
   if (slot === 'label') {
     const collapsed = context.collapsedSectionIds.has(rowData.sectionId)
     const Chevron = collapsed ? ChevronRight : ChevronDown
     return (
-      <button
-        type="button"
-        onClick={() => context.onToggleCollapsed(rowData.sectionId)}
-        aria-expanded={!collapsed}
-        className="flex size-full items-center gap-2 px-2 text-left text-base font-semibold"
-      >
-        <Chevron className="text-muted-foreground size-4 shrink-0" />
+      <div className="flex size-full items-center gap-2 px-2 text-base font-semibold">
+        <button
+          type="button"
+          title={collapsed ? 'Rozwiń sekcję' : 'Zwiń sekcję'}
+          aria-expanded={!collapsed}
+          onClick={() => context.onToggleCollapsed(rowData.sectionId)}
+          className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+        >
+          <Chevron className="size-4" />
+        </button>
         <SectionDot />
-        <span className="truncate">{rowData.sectionName ?? ''}</span>
+        {handlers ? (
+          <SectionNameField rowData={rowData} onRename={handlers.onRename} />
+        ) : (
+          <span className="min-w-0 flex-1 truncate">{rowData.sectionName ?? ''}</span>
+        )}
         <span className="text-muted-foreground shrink-0 text-xs font-normal">
           {figure?.itemCount ?? 0} poz.
         </span>
-      </button>
+      </div>
+    )
+  }
+
+  if (slot === 'actions') {
+    if (!handlers) return <div className="size-full" />
+    return (
+      <KosztorysSectionActionsMenu
+        name={rowData.sectionName ?? ''}
+        itemCount={figure?.itemCount ?? 0}
+        color={rowData.sectionColor}
+        actions={{
+          onInsertAbove: () => handlers.onInsert(rowData, 'above'),
+          onInsertBelow: () => handlers.onInsert(rowData, 'below'),
+          onMoveUp: () => handlers.onReorder(rowData.sectionId, 'up'),
+          onMoveDown: () => handlers.onReorder(rowData.sectionId, 'down'),
+          onSetColor: (color) => handlers.onSetColor(rowData.sectionId, color),
+          onRemove: () => handlers.onRemove(rowData.sectionId),
+        }}
+      />
     )
   }
 

@@ -89,6 +89,7 @@ export function KosztorysEditorBody({
     sort,
     collapsedSectionIds,
     toggleSectionCollapsed,
+    sectionHandlers,
     moneyAxis,
     setMoneyAxis,
     onChange,
@@ -158,8 +159,13 @@ export function KosztorysEditorBody({
         itemCount: section.itemCount,
       })
     }
-    return { figures, collapsedSectionIds, onToggleCollapsed: toggleSectionCollapsed }
-  }, [subtotals, tree.vatRate, collapsedSectionIds, toggleSectionCollapsed])
+    return {
+      figures,
+      collapsedSectionIds,
+      onToggleCollapsed: toggleSectionCollapsed,
+      handlers: sectionHandlers,
+    }
+  }, [subtotals, tree.vatRate, collapsedSectionIds, toggleSectionCollapsed, sectionHandlers])
 
   const gridColumns = useMemo(
     () =>

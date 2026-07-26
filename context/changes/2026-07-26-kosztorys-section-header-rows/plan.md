@@ -488,17 +488,17 @@ localStorage column map, and it is deliberately left sparse so an explicit choic
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `pnpm typecheck` — 5002fd0a
-- [x] 3.2 Linting passes: `pnpm lint` — 5002fd0a
-- [x] 3.3 Unit spec still passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-header-rows.test.ts` — 5002fd0a
+- [x] 3.1 Type checking passes: `pnpm typecheck` — ebe497b6
+- [x] 3.2 Linting passes: `pnpm lint` — ebe497b6
+- [x] 3.3 Unit spec still passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-header-rows.test.ts` — ebe497b6
 
 ### Phase 4: Section actions on the band
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `pnpm typecheck`
-- [ ] 4.2 Linting passes: `pnpm lint`
-- [ ] 4.3 Unit suite passes: `pnpm test`
+- [x] 4.1 Type checking passes: `pnpm typecheck`
+- [x] 4.2 Linting passes: `pnpm lint`
+- [x] 4.3 Unit suite passes: `pnpm test`
 
 ### Phase 5: Client view and E2E
 
