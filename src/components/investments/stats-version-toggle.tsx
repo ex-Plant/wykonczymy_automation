@@ -2,18 +2,12 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { STATS_VERSION_PARAM, type StatsVersionT } from '@/lib/constants/stats-version'
 
 const OPTIONS: OptionT<StatsVersionT>[] = [
   { value: 'v1', label: 'v1' },
   { value: 'v2', label: 'v2' },
 ]
-
-const TOOLTIP =
-  'v1 — kafelki i figury z transakcji (tak jak dotychczas).\n' +
-  'v2 — Podsumowanie z kosztorysu (ceny klienta, netto), a marża i wypłaty w osobnym pasku właściciela.\n' +
-  'Materiały, wpłaty, wypłaty i strata w obu wersjach pochodzą z transakcji.'
 
 type PropsT = {
   version: StatsVersionT
@@ -35,14 +29,11 @@ export function StatsVersionToggle({ version }: PropsT) {
   }
 
   return (
-    <div className="flex items-center gap-1">
-      <ToggleGroup
-        options={OPTIONS}
-        value={version}
-        onChange={handleChange}
-        aria-label="Źródło robocizny i rabatu"
-      />
-      <InfoTooltip content={TOOLTIP} label="Czym różnią się v1 i v2" />
-    </div>
+    <ToggleGroup
+      options={OPTIONS}
+      value={version}
+      onChange={handleChange}
+      aria-label="Źródło robocizny i rabatu"
+    />
   )
 }
