@@ -9,6 +9,7 @@ import { KosztorysToolbarActions } from '@/components/kosztorys/editor/toolbar/k
 import { KosztorysToolbarTotalsToggle } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-totals-toggle'
 import { KosztorysToolbarViewToggles } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-view-toggles'
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
+import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-section-filter-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
@@ -37,8 +38,11 @@ export function KosztorysEditorToolbar() {
             />
           </div>
         </SimpleTooltip>
-        <KosztorysToolbarActions />
-        <KosztorysViewMenu />
+        <div className="ml-auto flex items-center gap-1">
+          <KosztorysToolbarActions />
+          <KosztorysSectionFilterMenu />
+          <KosztorysViewMenu />
+        </div>
       </div>
     </div>
   )

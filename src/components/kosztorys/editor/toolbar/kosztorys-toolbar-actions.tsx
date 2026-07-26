@@ -17,7 +17,7 @@ export function KosztorysToolbarActions() {
   } = useKosztorysEditorContext()
 
   return (
-    <div className="ml-auto flex items-center gap-1">
+    <>
       <KosztorysActionsMenu
         investmentId={investmentId}
         onOpenVersions={onOpenVersions}
@@ -29,6 +29,6 @@ export function KosztorysToolbarActions() {
       <PanelToggleButton open={summaryOpen} onToggle={() => setSummaryOpen((o) => !o)}>
         Sekcje
       </PanelToggleButton>
-    </div>
+    </>
   )
 }
