@@ -1,12 +1,9 @@
 'use client'
 
 import { usePersistedEnum } from '@/hooks/use-persisted-enum'
-import { SUMMARY_AXIS_DEFAULT, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import { SUMMARY_AXIS_DEFAULT, type PanelAxisT } from '@/lib/kosztorys/money-axis'
 
-// The totals panel's own axis pick. Extends MoneyAxisT with a panel-only 'mixed' value: 'both' keeps
-// its original meaning (netto + brutto columns side by side), 'mixed' is the „Mieszane"
-// Mieszane settlement view (netto-only figures + the gotówka block).
-export type PanelAxisT = MoneyAxisT | 'mixed'
+export type { PanelAxisT }
 
 // Persisted globally in localStorage — a reading preference of the person, not of one kosztorys;
 // same `table-columns:` family as the grid's money-axis picker, so clearing that memory clears this

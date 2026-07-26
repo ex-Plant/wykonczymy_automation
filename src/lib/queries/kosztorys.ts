@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
+import { SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/money-axis'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 import { isSectionColorKey } from '@/lib/kosztorys/section-colors'
 import type {
@@ -148,6 +149,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
     progress,
     globalCoeffs,
     vatRate: investment.vatRate ?? DEFAULT_VAT,
+    settlementMode: investment.settlementMode ?? SETTLEMENT_MODE_DEFAULT,
     globalDiscount: {
       // Amount-only stored discount — fail closed on a legacy 'percent' row (treat it as none).
       type: investment.globalDiscountType === 'amount' ? 'amount' : null,

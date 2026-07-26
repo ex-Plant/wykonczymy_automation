@@ -4,6 +4,7 @@
 
 import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
+import type { SettlementModeT } from '@/lib/kosztorys/money-axis'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 import type {
   SubcontractorPayoutRowT,
@@ -122,6 +123,10 @@ export type KosztorysTreeT = {
   globalCoeffs: KosztorysGlobalCoeffsT
   // A single VAT rate per investment — carried through the tree (like globalCoeffs), denormalized onto each row.
   vatRate: number
+  // How the investment is settled — the stored decision that fixes the money plane for EVERY reader
+  // of this kosztorys, owner and client alike. Rides the tree (not the rows) because it is one value
+  // for the whole sheet and nothing per-row branches on it.
+  settlementMode: SettlementModeT
   // A single global discount per investment — its `active` flag is denormalized onto each row (see
   // KosztorysV2RowBaseT.globalDiscountActive), the amount is subtracted once at the total level.
   globalDiscount: GlobalDiscountT

@@ -57,6 +57,7 @@ const makeTree = (stages: KosztorysStageT[], extra?: Partial<KosztorysTreeT>): K
   ],
   globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
   vatRate: 0.08,
+  settlementMode: 'NET',
   globalDiscount: { type: null, value: 0 },
   revision: '2026-01-01T00:00:00.000Z',
   ...extra,

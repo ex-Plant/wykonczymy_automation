@@ -751,6 +751,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       progress: [],
       globalCoeffs: tree.globalCoeffs,
       vatRate: tree.vatRate,
+      settlementMode: tree.settlementMode,
       globalDiscount,
       revision: tree.revision,
     })
