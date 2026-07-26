@@ -505,10 +505,11 @@ localStorage column map, and it is deliberately left sparse so an explicit choic
 #### Automated
 
 - [ ] 5.1 E2E passes: `pnpm test:e2e e2e/kosztorys-section-headers.spec.ts`
-- [x] 5.2 Type checking passes: `pnpm typecheck`
-- [x] 5.3 Full unit suite passes: `pnpm test`
+- [x] 5.2 Type checking passes: `pnpm typecheck` — c1829a2a
+- [x] 5.3 Full unit suite passes: `pnpm test` — c1829a2a
 
 > 5.1 stays open. The spec and its `seed:kosztorys-bands` fixture are authored, but `pnpm test:e2e`
 > cannot run inside a git worktree: the bootstrap symlinks `node_modules` to the main tree and
 > Turbopack's production build aborts with "Symlink node_modules is invalid, it points out of the
-> filesystem root". Run it from the main working tree once this branch merges.
+> filesystem root". Run it from the main working tree once this branch merges — tracked as **EX-582**
+> (`e2e-backlog`).
