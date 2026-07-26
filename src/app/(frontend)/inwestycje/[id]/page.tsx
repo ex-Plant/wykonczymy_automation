@@ -97,7 +97,9 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
 
       {/* Anchored here rather than inside either reading's block: the two readings render different
           trees, so a toggle living inside them moves under the cursor on every switch. */}
-      <StatsVersionToggle version={version} />
+      <div className="w-fit">
+        <StatsVersionToggle version={version} />
+      </div>
 
       {version === 'v1' ? (
         <FinancialStats
