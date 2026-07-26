@@ -521,17 +521,17 @@ that reads the column ships.
 
 #### Automated
 
-- [x] 1.1 Type checking passes
-- [x] 1.2 Linting passes
-- [x] 1.3 Migration applies against the local docker DB
+- [x] 1.1 Type checking passes — 787c8b24
+- [x] 1.2 Linting passes — 787c8b24
+- [x] 1.3 Migration applies against the local docker DB — 787c8b24
 
 ### Phase 2: The difference in the two figures
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass
-- [ ] 2.2 Parity audit passes against the regenerated fixture
-- [ ] 2.3 Type checking passes
+- [x] 2.1 Unit tests pass
+- [x] 2.2 Parity audit passes against the regenerated fixture
+- [x] 2.3 Type checking passes
 
 ### Phase 3: Panel writes to the server, and the difference is visible
 

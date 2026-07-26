@@ -31,6 +31,7 @@ export function shapeInvestments(
       totalRabat: 0,
       totalLoss: 0,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     }
     const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts

@@ -19,6 +19,11 @@ export type InvestmentFinancialsT = {
   totalRabat: number
   totalLoss: number
   totalSettled: number
+  /** What the company gives away by billing materiały netto instead of at the brutto receipt:
+   *  `materialsGrossBase − materialsGrossBase / (1 + rate)`, or 0 where no rate is set or the
+   *  investment is settled brutto. Two-sided like a rabat — it lowers marża and raises bilans.
+   *  Non-optional on purpose: an `undefined` here would poison both figures with NaN. */
+  materialsNetDiscount: number
   settledCategoryCosts: CategoryCostT[]
 }
 

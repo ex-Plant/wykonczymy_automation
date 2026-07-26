@@ -130,6 +130,9 @@ describe('sumAllInvestmentFinancials', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: null, settlement_mode: 'NET' }],
+      })
     const map = await sumAllInvestmentFinancials(fakePayload)
     expect(map.size).toBe(2)
     expect(map.get(1)).toEqual({
@@ -143,6 +146,7 @@ describe('sumAllInvestmentFinancials', () => {
       totalRabat: 50,
       totalLoss: 120,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     })
     expect(map.get(2)?.totalMaterialCosts).toBe(500)
@@ -157,6 +161,9 @@ describe('sumAllInvestmentFinancials', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: null, settlement_mode: 'NET' }],
+      })
     const inv = (await sumAllInvestmentFinancials(fakePayload)).get(1)!
     expect(inv.totalMaterialCosts).toBe(1000)
     expect(inv.totalSettled).toBe(-200)
@@ -188,6 +195,9 @@ describe('sumAllInvestmentFinancials', () => {
           },
         ],
       })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: null, settlement_mode: 'NET' }],
+      })
     const map = await sumAllInvestmentFinancials(fakePayload)
     const inv = map.get(1)!
     expect(inv.totalMaterialCosts).toBe(7000)
@@ -199,9 +209,27 @@ describe('sumAllInvestmentFinancials', () => {
   })
 
   it('returns empty Map for no rows', async () => {
-    mockExecute.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] })
+    mockExecute
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
     const map = await sumAllInvestmentFinancials(fakePayload)
     expect(map.size).toBe(0)
+  })
+
+  // The listing's Marża has to carry the same concession the detail page's does — the pricing
+  // lookup is the seam where it could silently go missing for one surface only.
+  it('applies the per-investment materiały netto rate it looked up', async () => {
+    mockExecute
+      .mockResolvedValueOnce({
+        rows: [{ investment_id: '1', type: 'INVESTMENT_EXPENSE', settled: false, total: '123' }],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: 0.23, settlement_mode: 'NET' }],
+      })
+    const inv = (await sumAllInvestmentFinancials(fakePayload)).get(1)!
+    expect(inv.materialsNetDiscount).toBeCloseTo(23, 10)
   })
 })
 
@@ -312,6 +340,7 @@ describe('deriveFinancials', () => {
       totalRabat: 200,
       totalLoss: 150,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     })
   })
@@ -328,6 +357,7 @@ describe('deriveFinancials', () => {
       totalRabat: 0,
       totalLoss: 0,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     })
   })

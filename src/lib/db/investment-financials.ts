@@ -11,6 +11,7 @@ import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
 } from '@/types/investment-financials'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 type BilledRowT = { type: string; total: number; netTotal?: number }
 
@@ -62,10 +63,15 @@ const sumBucket = (rows: TypeSettledTotalT[], bucket: FinancialBucketT): number 
 
 /** The listing and the detail page both funnel through here, so the bucketing rule
  *  cannot differ between the two views. */
+// Both trailing params default to "no concession", so a surface that cannot supply them (reports,
+// the client share) reads exactly what an investment with no rate set reads — "can't compute it"
+// and "there is nothing to compute" collapse into one safe value instead of two behaviours.
 export function deriveFinancials(
   rows: TypeSettledTotalT[],
   categoryCosts: CategoryCostT[] = [],
   settledCategoryCosts: CategoryCostT[] = [],
+  materialsNetRate: number | null = null,
+  settlementMode: SettlementModeT = SETTLEMENT_MODE_DEFAULT,
 ): InvestmentFinancialsT {
   const isBruttoMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materials'
   const isNetMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materialsNet'
@@ -73,6 +79,14 @@ export function deriveFinancials(
   // Not split on `settled`: the netto type is `settleable: false`, so a settled netto row
   // cannot exist — and if one ever did, dropping it here would hide it from every figure.
   const materialsNetBilled = sumRows(rows, isNetMaterial)
+  // The gate lives here, not with the readers, so no surface can forget it: a brutto-settled client
+  // has VAT added on top of the bill, which leaves nothing to strip off. The base is the brutto
+  // bucket ALONE — running this off totalMaterialCosts would cut VAT off materialsNetBilled a
+  // second time, which is already netto.
+  const materialsNetDiscount =
+    materialsNetRate == null || settlementMode === 'GROSS'
+      ? 0
+      : materialsGrossBase - materialsGrossBase / (1 + materialsNetRate)
   return {
     categoryCosts,
     // The only bucket that splits on the per-ROW settled flag: settled material has been
@@ -86,6 +100,7 @@ export function deriveFinancials(
     totalRabat: sumBucket(rows, 'discount'),
     totalLoss: sumBucket(rows, 'loss'),
     totalSettled: sumRows(rows, (r) => isBruttoMaterial(r) && r.settled),
+    materialsNetDiscount,
     settledCategoryCosts,
   }
 }

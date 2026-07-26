@@ -31,11 +31,7 @@ import { round2 } from '@/__tests__/helpers/money'
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 const UPDATE = process.env.UPDATE_GOLDEN === '1'
 
-const FIXTURE_PATH = join(
-  process.cwd(),
-  'src/__tests__/fixtures/financial-golden-master.json',
-)
-
+const FIXTURE_PATH = join(process.cwd(), 'src/__tests__/fixtures/financial-golden-master.json')
 
 type CategoryPairT = [categoryId: number, total: number]
 
@@ -73,6 +69,7 @@ const ZERO_FINANCIALS: InvestmentFinancialsT = {
   totalRabat: 0,
   totalLoss: 0,
   totalSettled: 0,
+  materialsNetDiscount: 0,
   settledCategoryCosts: [],
 }
 
@@ -221,7 +218,9 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
       return
     }
     if (!existsSync(FIXTURE_PATH)) {
-      throw new Error(`no fixture at ${FIXTURE_PATH} — generate it with \`pnpm test:golden:update\``)
+      throw new Error(
+        `no fixture at ${FIXTURE_PATH} — generate it with \`pnpm test:golden:update\``,
+      )
     }
 
     const expected: SnapshotT = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8'))

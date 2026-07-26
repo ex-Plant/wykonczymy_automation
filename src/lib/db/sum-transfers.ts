@@ -15,6 +15,7 @@ import type {
 import { buildSqlConditions, isNoResultsSentinel } from '@/lib/db/where-to-sql'
 import { getDb } from '@/lib/db/get-db'
 import { DEPOSIT_TYPES, type VatPlaneT } from '@/lib/constants/transfers'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 // Re-exported so the existing importers of the derive functions keep resolving here.
 export { deriveCategoryBreakdowns, deriveFinancials } from '@/lib/db/investment-financials'
@@ -146,7 +147,7 @@ export const sumAllInvestmentFinancials = async (
   const elapsed = perfStart()
   const db = await getDb(payload)
 
-  const [totalsResult, categoryResult] = await Promise.all([
+  const [totalsResult, categoryResult, investmentsResult] = await Promise.all([
     db.execute(sql`
       SELECT investment_id,
         type::text AS type,
@@ -170,7 +171,21 @@ export const sumAllInvestmentFinancials = async (
         AND expense_category_id IS NOT NULL
       GROUP BY investment_id, expense_category_id, type, (settled IS TRUE)
     `),
+    // The materiały netto concession is per investment, so the listing's Marża can only be as
+    // correct as the detail page's if the rate and its settlement-mode gate travel with the sums.
+    db.execute(sql`
+      SELECT id, materials_net_rate::float8, settlement_mode::text
+      FROM investments
+    `),
   ])
+
+  const pricingByInvestment = new Map<number, { rate: number | null; mode: SettlementModeT }>()
+  for (const row of investmentsResult.rows) {
+    pricingByInvestment.set(Number(row.id), {
+      rate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
+      mode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+    })
+  }
 
   // Group the raw (type, settled) sums per investment.
   const rowsByInvestment = new Map<number, TypeSettledTotalT[]>()
@@ -215,7 +230,17 @@ export const sumAllInvestmentFinancials = async (
     const { categoryCosts, settledCategoryCosts } = deriveCategoryBreakdowns(
       categoryRowsByInvestment.get(invId) ?? [],
     )
-    map.set(invId, deriveFinancials(rows, categoryCosts, settledCategoryCosts))
+    const pricing = pricingByInvestment.get(invId)
+    map.set(
+      invId,
+      deriveFinancials(
+        rows,
+        categoryCosts,
+        settledCategoryCosts,
+        pricing?.rate ?? null,
+        pricing?.mode ?? SETTLEMENT_MODE_DEFAULT,
+      ),
+    )
   }
   console.log(`[PERF] query.sumAllInvestmentFinancials ${elapsed()}ms (${map.size} investments)`)
   return map
