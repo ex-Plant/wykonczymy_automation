@@ -295,16 +295,16 @@ and is not re-filed here.
 
 #### Automated
 
-- [x] 1.1 Type checking passes
-- [x] 1.2 Linting passes
+- [x] 1.1 Type checking passes — 18334a39
+- [x] 1.2 Linting passes — 18334a39
 
 ### Phase 2: Compact preview trigger
 
 #### Automated
 
-- [ ] 2.1 Type checking passes
-- [ ] 2.2 Linting passes
-- [ ] 2.3 Unit tests pass
+- [x] 2.1 Type checking passes
+- [x] 2.2 Linting passes
+- [x] 2.3 Unit tests pass
 
 ### Phase 3: The two columns
 
