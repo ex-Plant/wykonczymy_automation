@@ -310,7 +310,7 @@ and is not re-filed here.
 
 #### Automated
 
-- [x] 3.1 Type checking passes
-- [x] 3.2 Linting passes
-- [x] 3.3 Helper spec passes
-- [x] 3.4 Full unit suite passes
+- [x] 3.1 Type checking passes — aad1ea40
+- [x] 3.2 Linting passes — aad1ea40
+- [x] 3.3 Helper spec passes — aad1ea40
+- [x] 3.4 Full unit suite passes — aad1ea40

@@ -198,3 +198,35 @@ The zip/toast loop moved into the shared `useInvoiceZip`, so the transfers expor
 
 - [ ] The transfers table's „Faktury" button still downloads a working archive with correct filenames
 - [ ] Its final toast now reports missing invoices honestly on a filter set where some rows have none (the pre-fetch „Pobieram…" toast is gone — the button spinner replaces it)
+
+## EX-585 — kosztorys-invoice-note-and-preview
+
+Extends EX-569's Wydatki list with a „Notatka" column (numer faktury + tooltip) and a per-row
+invoice preview. Same setup as EX-569's section: an investment with materiały transactions in both
+settled states, invoices attached to some of them, plus a live share token.
+
+For the note checks the transactions need an `invoiceNote` — either scan a receipt through the
+expense form (the AI writes numer faktury on line 1, pozycje below) or type a multi-line note by hand.
+
+### Phase 2: Compact preview trigger
+
+- [ ] Transfers table: the invoice icon still opens the preview dialog, and Usuń / Zamień inside it still work
+- [ ] Transfers table: rows with no invoice still show the `+` upload button, unchanged
+- [ ] Transfers table: a row whose invoice is an **image** now shows the magnifier icon instead of the document icon (the shared trigger picks the icon by mime type; the hand-rolled button always showed a document)
+- [ ] The line-item invoice field in the expense form still renders the full-width bordered trigger
+
+### Phase 3: The two columns
+
+- [ ] Kosztorys Podsumowanie → Wydatki (owner view): rows with a scanned invoice show the numer faktury in „Notatka"; hovering reveals the full note with the pozycje on separate lines
+- [ ] A row whose transfer has no note shows „—" and no hover affordance
+- [ ] Clicking the „Faktura" icon opens the preview dialog — a PDF in the native viewer, an image inline
+- [ ] Clicking the „Faktura" icon does NOT navigate to the transfer detail page (the row link must not fire)
+- [ ] The client share view (`/k/<token>`, logged out) shows both new columns with the same content, and its rows still don't navigate anywhere
+- [ ] Both dataset tabs („Wydatki inwestycyjne" / „Materiały wliczone w robociznę") carry the new columns
+
+**Row height changed 36 → 44** (a text-only row had no budget for the icon). The virtualizer
+estimates and never measures, so any row rendering at a different height drifts the scroll spacers:
+
+- [ ] Scroll a list of ~100+ rows to the bottom and back — rows stay aligned with the header and no gap or overlap appears at either end
+- [ ] A dataset mixing rows with and without invoices scrolls without drift (the invoice-less cell reserves the control's box on purpose)
+- [ ] A very long note (many pozycje) does not wrap the cell onto a second line — it stays truncated at one line

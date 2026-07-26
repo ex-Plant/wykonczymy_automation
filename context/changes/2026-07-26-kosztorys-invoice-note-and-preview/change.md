@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-invoice-note-and-preview
 title: Notatka column and per-row invoice preview in the kosztorys Wydatki list
-status: implementing
+status: implemented
 linear: EX-585
 created: 2026-07-26
 updated: 2026-07-26
