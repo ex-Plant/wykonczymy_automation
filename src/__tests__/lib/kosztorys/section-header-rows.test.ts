@@ -1,29 +1,36 @@
 import { describe, expect, it } from 'vitest'
 
+import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
 import {
-  buildSectionHeaderRows,
   isSectionHeaderRow,
   isSyntheticRow,
+  SECTION_HEADER_ROW_BASE,
   sectionHeaderRowId,
-  sectionIdFromHeaderRow,
-} from '@/lib/kosztorys/section-header-rows'
+} from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 function row(id: number, sectionId: number): KosztorysV2RowT {
-  return { id, sectionId, sectionName: `Sekcja ${sectionId}`, sectionColor: null } as KosztorysV2RowT
+  return {
+    id,
+    sectionId,
+    sectionName: `Sekcja ${sectionId}`,
+    sectionColor: null,
+  } as KosztorysV2RowT
 }
 
 // Two sections, three items then two — the shape every case below narrows.
 const VIEW_ROWS = [row(1, 10), row(2, 10), row(3, 10), row(4, 20), row(5, 20)]
 
-const enabled = (collapsed: number[] = []) => ({
+const enabled = (collapsed: number[] = [], searchActive = false) => ({
   collapsedSectionIds: new Set(collapsed),
   enabled: true,
+  searchActive,
 })
 
 describe('section header row ids', () => {
-  it('round-trips a section id', () => {
-    expect(sectionIdFromHeaderRow(sectionHeaderRowId(42))).toBe(42)
+  it('derives one id per section id', () => {
+    expect(SECTION_HEADER_ROW_BASE - sectionHeaderRowId(42)).toBe(42)
+    expect(sectionHeaderRowId(1)).not.toBe(sectionHeaderRowId(2))
   })
 
   it('separates band ids from the spacer and „Razem" rows', () => {
@@ -88,11 +95,32 @@ describe('buildSectionHeaderRows', () => {
     ])
   })
 
+  it('ignores a collapsed section while a search is active', () => {
+    const { rows } = buildSectionHeaderRows(VIEW_ROWS, enabled([10], true))
+
+    expect(rows.map((r) => r.id)).toEqual([
+      sectionHeaderRowId(10),
+      1,
+      2,
+      3,
+      sectionHeaderRowId(20),
+      4,
+      5,
+    ])
+  })
+
+  it('emits one band per section even when its rows arrive in two blocks', () => {
+    const { rows } = buildSectionHeaderRows([row(1, 10), row(4, 20), row(2, 10)], enabled())
+
+    expect(rows.map((r) => r.id)).toEqual([sectionHeaderRowId(10), 1, sectionHeaderRowId(20), 4, 2])
+  })
+
   it('passes the rows through untouched when disabled by an active sort', () => {
     const { rows, ordinalByRowId } = buildSectionHeaderRows(VIEW_ROWS, {
       // Even a collapsed section stays visible: with no band there would be nothing to re-expand it.
       collapsedSectionIds: new Set([10]),
       enabled: false,
+      searchActive: false,
     })
 
     expect(rows).toBe(VIEW_ROWS)

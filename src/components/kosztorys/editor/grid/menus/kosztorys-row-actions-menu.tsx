@@ -2,22 +2,11 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import {
-  ArrowDown,
-  ArrowDownToLine,
-  ArrowUp,
-  ArrowUpToLine,
-  MoreHorizontal,
-  Trash2,
-} from 'lucide-react'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 
 type OrderActionsT = {
@@ -88,14 +77,7 @@ export function KosztorysRowActionsMenu({
         {/* size-full: whole cell is the click target, else dsg selects the dead space around the icon.
             The button chrome therefore sits on an inner span — the trigger itself has to stay
             cell-sized and unstyled. */}
-        <DropdownMenuTrigger
-          title="Akcje wiersza"
-          className="group flex size-full cursor-pointer items-center justify-center outline-none"
-        >
-          <span className="text-foreground group-hover:bg-accent group-hover:text-accent-foreground group-data-[state=open]:bg-accent flex size-6 items-center justify-center rounded-md transition-colors">
-            <MoreHorizontal className="size-3.5" />
-          </span>
-        </DropdownMenuTrigger>
+        <CellMenuTrigger title="Akcje wiersza" />
         <DropdownMenuContent align="start" className="min-w-44">
           {withHint(orderItems(item), sortHint)}
           {withHint(

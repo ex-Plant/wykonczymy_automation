@@ -13,17 +13,17 @@ import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import {
-  makeSpacerRow,
-  makeTotalsRow,
   ordinalGutterColumn,
   withSyntheticRows,
 } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import type { SectionHeaderFigureT } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
+import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
 import {
-  buildSectionHeaderRows,
   isSectionHeaderRow,
   isSyntheticRow,
-} from '@/lib/kosztorys/section-header-rows'
+  makeSpacerRow,
+  makeTotalsRow,
+} from '@/lib/kosztorys/synthetic-rows'
 import { sectionColorRail } from '@/lib/kosztorys/section-colors'
 import { cn } from '@/lib/utils/cn'
 import { toGross } from '@/lib/kosztorys/calc'
@@ -87,6 +87,7 @@ export function KosztorysEditorBody({
     subcontractorDue,
     view,
     sort,
+    search,
     collapsedSectionIds,
     toggleSectionCollapsed,
     sectionHandlers,
@@ -97,8 +98,6 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
-  // The „Razem" totals row is a real last grid row, so per-column sums stay aligned and scroll with
-  // the grid for free. columnTotals bakes one sum per summable column id; withSyntheticRows renders it.
   const columnTotals = useMemo(() => {
     const totals = new Map<string, number>()
     // Money: executed value + offered przedmiar, net and gross. The Przedmiar „Razem" must track
@@ -172,14 +171,16 @@ export function KosztorysEditorBody({
       columns.map((column) => withSyntheticRows(column, { totals: columnTotals, sectionHeader })),
     [columns, columnTotals, sectionHeader],
   )
-  // Grouping presumes section-contiguous rows, which a column sort breaks — under one the bands are
-  // dropped and the grid reads as a flat table.
   const { rows: bodyRows, ordinalByRowId } = useMemo(
-    () => buildSectionHeaderRows(viewRows, { collapsedSectionIds, enabled: sort == null }),
-    [viewRows, collapsedSectionIds, sort],
+    () =>
+      buildSectionHeaderRows(viewRows, {
+        collapsedSectionIds,
+        enabled: sort == null,
+        searchActive: search.trim() !== '',
+      }),
+    [viewRows, collapsedSectionIds, sort, search],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
-  // Bands and the spacer/„Razem" rows are unnumbered, so the gutter can't use dsg's row index.
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
@@ -238,10 +239,7 @@ export function KosztorysEditorBody({
               rowClassName={({ rowData }) =>
                 cn(
                   sectionColorRail(rowData.sectionColor),
-                  // The band opens its section, so it carries both the hue wash and the divider that
-                  // used to sit on the section's first item row.
-                  isSectionHeaderRow(rowData.id) &&
-                    'kosztorys-section-header kosztorys-section-start',
+                  isSectionHeaderRow(rowData.id) && 'kosztorys-section-header',
                 )
               }
             />

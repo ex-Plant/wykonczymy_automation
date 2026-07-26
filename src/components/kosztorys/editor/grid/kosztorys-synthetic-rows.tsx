@@ -8,30 +8,16 @@ import {
   type SectionHeaderSlotT,
 } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { formatNet } from '@/lib/kosztorys/format'
-import { isSectionHeaderRow } from '@/lib/kosztorys/section-header-rows'
+import { isSectionHeaderRow, SPACER_ROW_ID, TOTALS_ROW_ID } from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-// A single „Razem" row pinned as the grid's last row — the familiar spreadsheet SUM under each
-// column. It rides the grid's own layout, so column alignment and horizontal scroll come for free;
-// the price of that is that dsg renders EVERY column's cell against it, so `withSyntheticRows` wraps
-// each column to render a baked total on this row (and its normal cell on every real row). The
-// section bands (lib/kosztorys/section-header-rows.ts) are the same mechanism, one branch further.
-export const TOTALS_ROW_ID = -1
-// A blank spacer row directly above „Razem", separating the data rows from the totals.
-export const SPACER_ROW_ID = -2
+// „Razem" rides the grid's own layout, so column alignment and horizontal scroll come for free; the
+// price of that is that dsg renders EVERY column's cell against it, so `withSyntheticRows` wraps each
+// column to render a baked total on this row (and its normal cell on every real row). The section
+// bands are the same mechanism, one branch further.
 
 // The label column (widest identity column) carries the „Razem" caption instead of a number.
 const LABEL_COLUMN_ID = 'description'
-
-// Minimal stand-in row: only `id` is read before a cell renders (rowKey). The wrapper short-circuits
-// on the id, so no other field is ever touched — hence the cast over a real KosztorysV2RowT.
-export function makeTotalsRow(): KosztorysV2RowT {
-  return { id: TOTALS_ROW_ID } as unknown as KosztorysV2RowT
-}
-
-export function makeSpacerRow(): KosztorysV2RowT {
-  return { id: SPACER_ROW_ID } as unknown as KosztorysV2RowT
-}
 
 // Left-aligned like the data cells (computed-cell.tsx / floatColumnLeft are `text-left px-2`), so a
 // column's total sits directly under its values.
@@ -79,7 +65,10 @@ function SyntheticAwareCell(props: CellProps<KosztorysV2RowT, SyntheticColumnDat
 // Same module-level-identity rule as SyntheticAwareCell: the ordinals ride on `columnData`, never a
 // closure. dsg's default gutter prints `rowIndex + 1`, which counts bands and the spacer/„Razem"
 // rows; the precomputed map numbers only the real item rows, and returns nothing for the rest.
-function OrdinalGutterCell({ rowData, columnData }: CellProps<KosztorysV2RowT, Map<number, number>>) {
+function OrdinalGutterCell({
+  rowData,
+  columnData,
+}: CellProps<KosztorysV2RowT, Map<number, number>>) {
   return <>{columnData.get(rowData.id) ?? ''}</>
 }
 
@@ -89,9 +78,6 @@ export function ordinalGutterColumn(
   return { component: OrdinalGutterCell, columnData: ordinalByRowId }
 }
 
-// Wrap a column so it renders the baked total on the totals row, its piece of the band on a section
-// header row, and its normal cell everywhere else. One pass over the column list replaces N
-// per-column edits.
 export function withSyntheticRows(
   column: Column<KosztorysV2RowT>,
   { totals, sectionHeader }: { totals: Map<string, number>; sectionHeader: SectionHeaderContextT },

@@ -10,10 +10,12 @@ export function SectionNameCell({
   rowData,
   onRename,
   disabled,
+  className,
 }: {
   rowData: KosztorysV2RowT
   onRename?: (sectionId: number, name: string) => void
   disabled?: boolean
+  className?: string
 }) {
   const { editing, start, inputProps } = useInlineRename((name) =>
     onRename?.(rowData.sectionId, name),
@@ -24,6 +26,7 @@ export function SectionNameCell({
   return (
     <EditableCellInput
       {...inputProps}
+      className={className}
       // The cell stays mounted when not editing, so it shows the row's canonical name — an external
       // rename (from the section panel) can't go stale behind a leftover draft.
       value={editing ? inputProps.value : (rowData.sectionName ?? '')}

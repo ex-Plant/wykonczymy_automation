@@ -1,22 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  ArrowDown,
-  ArrowDownToLine,
-  ArrowUp,
-  ArrowUpToLine,
-  MoreHorizontal,
-  Trash2,
-} from 'lucide-react'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
@@ -47,16 +36,7 @@ export function KosztorysSectionActionsMenu({
   return (
     <>
       <DropdownMenu>
-        {/* Same cell-sized trigger as the row menu (see kosztorys-row-actions-menu.tsx): the chrome
-            sits on an inner span so the whole cell stays clickable. */}
-        <DropdownMenuTrigger
-          title="Akcje sekcji"
-          className="group flex size-full cursor-pointer items-center justify-center outline-none"
-        >
-          <span className="text-foreground group-hover:bg-accent group-hover:text-accent-foreground group-data-[state=open]:bg-accent flex size-6 items-center justify-center rounded-md transition-colors">
-            <MoreHorizontal className="size-3.5" />
-          </span>
-        </DropdownMenuTrigger>
+        <CellMenuTrigger title="Akcje sekcji" />
         <DropdownMenuContent align="start" className="min-w-44">
           <DropdownMenuItem onSelect={actions.onInsertAbove}>
             <ArrowUpToLine />

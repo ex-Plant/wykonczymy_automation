@@ -698,10 +698,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // ⋯ → Sekcje → Wstaw powyżej/poniżej. The section-level twin of handleInsertItem: a new section
   // (plus its first blank item — a 0-item section renders as 0 rows) lands right before or after the
-  // anchor row's section instead of at the end.
-  async function handleInsertSection(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
+  // anchor section instead of at the end.
+  async function handleInsertSection(anchorSectionId: number, dir: 'above' | 'below') {
     if (sort) return
-    const anchorOrder = sectionOrderRef.current.get(anchorRow.sectionId)
+    const anchorOrder = sectionOrderRef.current.get(anchorSectionId)
     if (anchorOrder == null) return
     const at = dir === 'above' ? anchorOrder : anchorOrder + 1
     const sec = await insertSectionAction(investmentId, at)
@@ -717,7 +717,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     if (!item.success) return
     const row = buildNewSectionRow(sec.data.id, item.data)
     prevById.current.set(row.id, row)
-    setRows((rs) => applyInsertSectionRow(rs, anchorRow.sectionId, row, dir))
+    setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
     // A filter would hide the new section's only row, making the insert look like a no-op.
     setShownSectionIds(null)
   }
@@ -1178,8 +1178,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     guideX,
     collapsedSectionIds,
     toggleSectionCollapsed,
-    // Section mutations live on the band, not in the row „…" menu. Undefined in the read-only client
-    // view — one gate for the whole bundle, so the band's menu can't half-appear.
+    // Undefined in the read-only client view — one gate for the whole bundle, so the band's menu
+    // can't half-appear.
     sectionHandlers: clientView
       ? undefined
       : {

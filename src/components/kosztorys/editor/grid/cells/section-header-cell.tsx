@@ -2,8 +2,7 @@
 
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
-import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
-import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
+import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
 import { KosztorysSectionActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-section-actions-menu'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -15,10 +14,10 @@ export type SectionHeaderFigureT = {
   itemCount: number
 }
 
-// Every section-level mutation, taking the section as an argument rather than pre-bound: the context
-// is built once per grid, while a band binds them to its own section at render.
+// Taking the section as an argument rather than pre-bound: the context is built once per grid, while
+// a band binds them to its own section at render.
 export type SectionHeaderHandlersT = {
-  onInsert: (anchorRow: KosztorysV2RowT, dir: 'above' | 'below') => void
+  onInsert: (sectionId: number, dir: 'above' | 'below') => void
   onReorder: (sectionId: number, dir: 'up' | 'down') => void
   onSetColor: (sectionId: number, color: SectionColorKeyT | null) => void
   onRemove: (sectionId: number) => void
@@ -53,33 +52,7 @@ export function sectionHeaderSlot(columnId: string | undefined): SectionHeaderSl
 // so the band's colour and the gutter rail can't disagree.
 function SectionDot() {
   return (
-    <span
-      className="size-2.5 shrink-0 rounded-full"
-      style={{ background: 'var(--section-rail, var(--color-muted-foreground))' }}
-    />
-  )
-}
-
-// Renames the whole section through the same fan-out the „Sekcja" column used, so the denormalized
-// name on every item row moves with it.
-function SectionNameField({
-  rowData,
-  onRename,
-}: {
-  rowData: KosztorysV2RowT
-  onRename: (sectionId: number, name: string) => void
-}) {
-  const { editing, start, inputProps } = useInlineRename((name) =>
-    onRename(rowData.sectionId, name),
-  )
-
-  return (
-    <EditableCellInput
-      {...inputProps}
-      className="min-w-0 flex-1 px-0 text-base font-semibold"
-      value={editing ? inputProps.value : (rowData.sectionName ?? '')}
-      onFocus={() => start(rowData.sectionName ?? '')}
-    />
+    <span className="size-2.5 shrink-0 rounded-full bg-(--section-rail,var(--color-muted-foreground))" />
   )
 }
 
@@ -111,7 +84,11 @@ export function SectionHeaderCell({
         </button>
         <SectionDot />
         {handlers ? (
-          <SectionNameField rowData={rowData} onRename={handlers.onRename} />
+          <SectionNameCell
+            rowData={rowData}
+            onRename={handlers.onRename}
+            className="min-w-0 flex-1 px-0 text-base font-semibold"
+          />
         ) : (
           <span className="min-w-0 flex-1 truncate">{rowData.sectionName ?? ''}</span>
         )}
@@ -130,8 +107,8 @@ export function SectionHeaderCell({
         itemCount={figure?.itemCount ?? 0}
         color={rowData.sectionColor}
         actions={{
-          onInsertAbove: () => handlers.onInsert(rowData, 'above'),
-          onInsertBelow: () => handlers.onInsert(rowData, 'below'),
+          onInsertAbove: () => handlers.onInsert(rowData.sectionId, 'above'),
+          onInsertBelow: () => handlers.onInsert(rowData.sectionId, 'below'),
           onMoveUp: () => handlers.onReorder(rowData.sectionId, 'up'),
           onMoveDown: () => handlers.onReorder(rowData.sectionId, 'down'),
           onSetColor: (color) => handlers.onSetColor(rowData.sectionId, color),

@@ -513,3 +513,22 @@ localStorage column map, and it is deliberately left sparse so an explicit choic
 > Turbopack's production build aborts with "Symlink node_modules is invalid, it points out of the
 > filesystem root". Run it from the main working tree once this branch merges — tracked as **EX-582**
 > (`e2e-backlog`).
+
+## Drift from the plan
+
+Recorded at the review gate; the shipped shape is the truth, this section says where it differs.
+
+- **Rename gesture.** Desired End State said double-click-to-rename; the Phase 4 contract said reuse
+  `useInlineRename` (focus-to-edit). Shipped follows the contract. The gate additionally gave
+  `useInlineRename` an untouched-draft guard, so focusing a name and leaving no longer writes.
+- **Collapse click target.** Plan said the whole label block toggles; shipped is the chevron only —
+  in editor mode the rename input owns the rest of the block, and a click that both focuses the input
+  and folds the section reads as a bug.
+- **`ordinalGutterColumn` placement.** Landed in `grid/kosztorys-synthetic-rows.tsx` next to the other
+  synthetic-row cells rather than behind `buildV2Grid` opts in `kosztorys-v2-columns.tsx`.
+- **One band class, not two.** `kosztorys-section-header` and `kosztorys-section-start` were always
+  applied together and were collapsed into the former at the gate; `globals.css` carries the merged
+  rule.
+- **Synthetic-id namespace.** The negative-id constants and factories moved out of the component into
+  `src/lib/kosztorys/synthetic-rows.ts`, so the module that asserts `id < 0` owns every id in the set.
+  `section-header-rows.ts` keeps only the grouping algorithm.

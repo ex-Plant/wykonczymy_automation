@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyInsertSectionRow, neighborSectionId, swapSectionBlock } from '@/lib/kosztorys/row-ops'
+import {
+  applyAddItem,
+  applyInsertSectionRow,
+  neighborSectionId,
+  swapSectionBlock,
+} from '@/lib/kosztorys/row-ops'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // The section movers only ever read `id` and `sectionId`, so the rest of the row is irrelevant here.
@@ -12,10 +17,21 @@ const ids = (rows: KosztorysV2RowT[]) => rows.map((r) => r.id)
 // Three tidy blocks: section 1 = [1,2], section 2 = [3,4], section 3 = [5].
 const contiguous = [row(1, 1), row(2, 1), row(3, 2), row(4, 2), row(5, 3)]
 
-// The same three sections, but item 2 was added by applyAddItem AFTER the others, so it sits at the
-// end of the array instead of next to its block. This is the shape that broke the index-based
-// splice: nothing guarantees a section's rows are adjacent.
+// The same three sections, but item 2 sits at the end of the array instead of next to its block.
+// This is the shape that broke the index-based splice: nothing guarantees a section's rows are
+// adjacent, so the movers must not assume it.
 const nonContiguous = [row(1, 1), row(3, 2), row(4, 2), row(5, 3), row(2, 1)]
+
+describe('applyAddItem', () => {
+  it('lands the new row after the last row of its own section', () => {
+    expect(ids(applyAddItem(contiguous, row(9, 1)))).toEqual([1, 2, 9, 3, 4, 5])
+    expect(ids(applyAddItem(contiguous, row(9, 2)))).toEqual([1, 2, 3, 4, 9, 5])
+  })
+
+  it('appends when the section has no rows yet', () => {
+    expect(ids(applyAddItem(contiguous, row(9, 42)))).toEqual([1, 2, 3, 4, 5, 9])
+  })
+})
 
 describe('neighborSectionId', () => {
   it('reads the section order off the array, ignoring block contiguity', () => {

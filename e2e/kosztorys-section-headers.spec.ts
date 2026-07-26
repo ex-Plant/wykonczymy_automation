@@ -41,6 +41,12 @@ async function itemOrdinals(page: Page): Promise<string[]> {
   return texts.map((t) => t.trim()).filter(Boolean)
 }
 
+// The „Razem" row rides the grid's own layout as its last row, so it is a `.dsg-row` like any other —
+// only the header row also carries the word (in „Razem netto"), and it is excluded by class.
+function totalsRow(page: Page) {
+  return page.locator('.dsg-row:not(.dsg-row-header)').filter({ hasText: 'Razem' }).first()
+}
+
 async function gotoEditor(page: Page): Promise<void> {
   await page.goto(`/inwestycje/${seed.investment}/kosztorys_v2`)
   await bands(page).first().waitFor()
@@ -58,12 +64,16 @@ test('one band per section, carrying its own wartość netto', async ({ page }) 
   }
 })
 
-test('collapsing a section hides its items and keeps the numbering continuous', async ({ page }) => {
+test('collapsing a section hides its items and keeps the numbering continuous', async ({
+  page,
+}) => {
   await gotoEditor(page)
   const total = seed.sections.reduce((sum, s) => sum + s.itemCount, 0)
-  expect(await itemOrdinals(page)).toEqual(
-    Array.from({ length: total }, (_, i) => String(i + 1)),
-  )
+  await expect
+    .poll(() => itemOrdinals(page))
+    .toEqual(Array.from({ length: total }, (_, i) => String(i + 1)))
+  // „Razem" sums the whole dataset, so a fold must not move it — captured here, compared after.
+  const totalsBefore = await totalsRow(page).innerText()
 
   await bands(page).first().getByRole('button', { name: 'Zwiń sekcję' }).click()
 
@@ -71,12 +81,11 @@ test('collapsing a section hides its items and keeps the numbering continuous', 
   await expect(bands(page)).toHaveCount(seed.sections.length)
   await expect(page.getByText(seed.sections[0].name).first()).toBeVisible()
   const remaining = total - seed.sections[0].itemCount
-  expect(await itemOrdinals(page)).toEqual(
-    Array.from({ length: remaining }, (_, i) => String(i + 1)),
-  )
-  // „Razem" sums the whole dataset, so a fold must not move it.
-  await expect(page.getByText('Razem').first()).toBeVisible()
+  await expect
+    .poll(() => itemOrdinals(page))
+    .toEqual(Array.from({ length: remaining }, (_, i) => String(i + 1)))
+  await expect(totalsRow(page)).toHaveText(totalsBefore)
 
   await bands(page).first().getByRole('button', { name: 'Rozwiń sekcję' }).click()
-  expect(await itemOrdinals(page)).toHaveLength(total)
+  await expect.poll(() => itemOrdinals(page)).toHaveLength(total)
 })
