@@ -59,6 +59,8 @@ const baseInv: InvestmentRefT = {
   notes: '',
   review: '',
   hasSheet: false,
+  materialsNetRate: null,
+  settlementMode: 'NET',
   active: true,
 }
 

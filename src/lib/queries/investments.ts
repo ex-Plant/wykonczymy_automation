@@ -58,6 +58,8 @@ export function shapeInvestments(
       review: inv.review,
       notes: inv.notes,
       hasSheet: inv.hasSheet,
+      materialsNetRate: inv.materialsNetRate,
+      settlementMode: inv.settlementMode,
     }
   })
 }

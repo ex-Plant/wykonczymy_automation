@@ -61,6 +61,7 @@ import * as migration_20260726_0_add_investment_expense_net_type from './2026072
 import * as migration_20260726_1_add_net_amount_to_transactions from './20260726_1_add_net_amount_to_transactions'
 import * as migration_20260726_2_add_color_to_kosztorys_sections from './20260726_2_add_color_to_kosztorys_sections'
 import * as migration_20260726_3_add_settlement_mode_to_investments from './20260726_3_add_settlement_mode_to_investments'
+import * as migration_20260726_4_add_materials_net_rate_to_investments from './20260726_4_add_materials_net_rate_to_investments'
 
 export const migrations = [
   {
@@ -377,5 +378,10 @@ export const migrations = [
     up: migration_20260726_3_add_settlement_mode_to_investments.up,
     down: migration_20260726_3_add_settlement_mode_to_investments.down,
     name: '20260726_3_add_settlement_mode_to_investments',
+  },
+  {
+    up: migration_20260726_4_add_materials_net_rate_to_investments.up,
+    down: migration_20260726_4_add_materials_net_rate_to_investments.down,
+    name: '20260726_4_add_materials_net_rate_to_investments',
   },
 ]

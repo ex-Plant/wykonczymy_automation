@@ -69,6 +69,16 @@ aggregate flows from there into the two formulas:
 That holds for "materiały osobno, robocizna osobno" jobs. The `settled` flag (R+M jobs) is
 the exception — material the company eats, so it _does_ hit marża.
 
+**The reclaimed VAT does not change this — owner ruling, 2026-07-26.** The company deducts input
+VAT, so a 1230 zł receipt costs it 1000, while the client returns the full 1230 (they pay exactly
+the amount entered in the form; nothing is added on top at rozliczenie netto or mieszany). It is
+tempting to read that 230 as an unbooked profit and give marża a `+VAT` term for it. **Don't** —
+the owner has rejected it twice, in his own words: „materiał to koszt, który klient zwraca w cenie
+brutto", „nie zapisujemy tych 230 zł jako zysk". Pass-through means pass-through on both axes. The
+consequence that matters downstream: a materiały concession (billing the client netto instead of
+brutto) is a straight give-away that lowers marża, not the return of an earn that was never
+booked.
+
 ---
 
 ## The four modifiers — how each bends the two formulas

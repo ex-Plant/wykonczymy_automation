@@ -36,6 +36,8 @@ const mockRefData: ReferenceDataBaseT = {
       notes: '',
       review: '',
       hasSheet: false,
+      materialsNetRate: null,
+      settlementMode: 'NET' as const,
     },
     {
       id: 20,
@@ -49,6 +51,8 @@ const mockRefData: ReferenceDataBaseT = {
       notes: '',
       review: '',
       hasSheet: false,
+      materialsNetRate: null,
+      settlementMode: 'NET' as const,
     },
   ],
   workers: [

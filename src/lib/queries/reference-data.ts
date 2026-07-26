@@ -26,6 +26,7 @@ import type {
   TypeSettledTotalT,
   CategoryBreakdownsT,
 } from '@/types/investment-financials'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { perfStart } from '@/lib/perf'
 
 import type {
@@ -78,6 +79,7 @@ export const fetchReferenceData = unstable_cache(
       db.execute(sql`
         SELECT i.id, i.name, i.status::text,
                i.address, i.phone, i.email, i.contact_person, i.notes, i.review,
+               i.materials_net_rate::float8, i.settlement_mode::text,
                (k.google_sheet_id IS NOT NULL) AS has_sheet
         FROM investments i
         LEFT JOIN kosztoryses k ON k.investment_id = i.id
@@ -125,6 +127,8 @@ export const fetchReferenceData = unstable_cache(
       contactPerson: (row.contact_person as string) ?? '',
       notes: (row.notes as string) ?? '',
       review: (row.review as string) ?? '',
+      materialsNetRate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
+      settlementMode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
       hasSheet: Boolean(row.has_sheet),
     }))
 

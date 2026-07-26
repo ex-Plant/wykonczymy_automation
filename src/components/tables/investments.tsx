@@ -5,6 +5,7 @@ import { formatPLN } from '@/lib/utils/format-currency'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
 import type { ExpenseCategoryRefT, InvestmentStatusT } from '@/types/reference-data'
 import type { CategoryCostT } from '@/types/investment-financials'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { costForCategory } from '@/lib/db/map-category-costs'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
@@ -33,6 +34,8 @@ export type InvestmentRowT = {
   review: string
   notes: string
   hasSheet: boolean
+  materialsNetRate: number | null
+  settlementMode: SettlementModeT
 }
 
 const col = createColumnHelper<InvestmentRowT>()

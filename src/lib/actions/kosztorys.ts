@@ -74,6 +74,12 @@ const investmentSettlementModeSchema = z.object({
   settlementMode: z.enum(SETTLEMENT_MODES),
 })
 
+// Materiały billed netto instead of brutto, as a fraction; null clears the concession. Same fraction
+// bounds as the VAT rate and for the same reason — the rate feeds both marża and bilans.
+const investmentMaterialsNetRateSchema = z.object({
+  materialsNetRate: z.coerce.number().min(0).max(1).nullable(),
+})
+
 // Per-investment global discount over the whole kosztorys. type null = none (clears the discount).
 // Amount-only: value is netto PLN; never negative. A percent rabat isn't stored here —
 // applyPercentRabatToAllItemsAction stamps it into each per-item rabat instead.
@@ -163,6 +169,24 @@ export async function updateInvestmentSettlementModeAction(
     },
     // Unlike vatRate, the mode isn't denormalized onto items — every reader projects it from the
     // tree, so invalidating the investment row is enough.
+    ['investments'],
+  )
+}
+
+export async function updateInvestmentMaterialsNetRateAction(
+  investmentId: number,
+  materialsNetRate: number | null,
+) {
+  return protectedAction(
+    'updateInvestmentMaterialsNetRateAction',
+    async ({ payload }) => {
+      const parsed = validateAction(investmentMaterialsNetRateSchema, { materialsNetRate })
+      if (!parsed.success) return parsed
+      await payload.update({ collection: 'investments', id: investmentId, data: parsed.data })
+      return { success: true }
+    },
+    // Like the settlement mode, the rate isn't denormalized onto items — it only ever reaches the
+    // financial aggregates, which read the investment row.
     ['investments'],
   )
 }

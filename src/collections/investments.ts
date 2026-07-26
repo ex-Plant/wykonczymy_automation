@@ -118,6 +118,15 @@ export const Investments: CollectionConfig = {
       label: { en: 'Settlement mode', pl: 'Sposób rozliczenia' },
       options: SETTLEMENT_MODE_ADMIN_OPTIONS,
     },
+    // Materiały billed to the investor at netto instead of the brutto receipt, stored as a fraction
+    // (0.23 = 23%) like `vatRate` above. Deliberately neither `required` nor defaulted: null means
+    // "no concession" and must stay distinguishable from a 0% one, since that is what leaves every
+    // existing investment's figures untouched. Edited from the Podsumowanie panel, not typically here.
+    {
+      name: 'materialsNetRate',
+      type: 'number',
+      label: { en: 'Materials net rate (fraction)', pl: 'Stawka netto wydatków (ułamek)' },
+    },
     // Global kosztorys discount: amount-only ('amount' | null). Overrides per-item discounts and is
     // subtracted once from the executed total. `type` null = no global discount (per-item discounts
     // apply). A percent global rabat is no longer stored — it's stamped into each per-item rabat.

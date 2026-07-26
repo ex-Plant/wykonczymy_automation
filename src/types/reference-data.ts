@@ -1,5 +1,6 @@
 import type { RoleT } from '@/lib/auth/roles'
 import type { TransferTypeT, VatPlaneT } from '@/lib/constants/transfers'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 export type ReferenceItemT = {
   id: number
@@ -27,6 +28,10 @@ export type InvestmentRefT = ReferenceItemT & {
   notes: string
   review: string
   hasSheet: boolean
+  // Both feed the per-row Marża on the investments list: the concession is gated on the settlement
+  // mode, so a reader that has one without the other cannot compute it. null rate = no concession.
+  materialsNetRate: number | null
+  settlementMode: SettlementModeT
 }
 
 export type WorkerRefT = Omit<ReferenceItemT, 'type'> & {
