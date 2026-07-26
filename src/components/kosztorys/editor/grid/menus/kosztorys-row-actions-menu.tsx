@@ -10,15 +10,28 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
+import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import { SimpleTooltip } from '@/components/ui/tooltip'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type OrderActionsT = {
   onInsertAbove: () => void
   onInsertBelow: () => void
   onMoveUp: () => void
   onMoveDown: () => void
+}
+
+// One bundle rather than six optional callbacks: they all come from the same `editorOnly()` gate, so
+// they are all-present or all-absent — as separate props the „Sekcja" group could half-appear.
+type SectionActionsT = OrderActionsT & {
+  color: SectionColorKeyT | null
+  name?: string
+  itemCount: number
+  onSetColor: (color: SectionColorKeyT | null) => void
+  onRemove: () => void
 }
 
 type PropsT = {
@@ -31,6 +44,8 @@ type PropsT = {
   // Populated row: delete destroys recorded stage progress, so route through a confirm dialog first.
   removeNeedsConfirm?: boolean
   item: OrderActionsT & { onRemove: () => void }
+  // Absent (read-only view) → the whole „Sekcja" group is hidden.
+  section?: SectionActionsT
 }
 
 export function KosztorysRowActionsMenu({
@@ -38,8 +53,10 @@ export function KosztorysRowActionsMenu({
   removeBlockReason,
   removeNeedsConfirm,
   item,
+  section,
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
   // Disabled items are pointer-events-none, so anything disabled is wrapped in a tooltip trigger,
   // which catches the hover the disabled item would otherwise pass through.
   const withHint = (items: ReactNode, reason?: string) =>
@@ -84,8 +101,8 @@ export function KosztorysRowActionsMenu({
             cell-sized and unstyled. */}
         <CellMenuTrigger title="Akcje wiersza" />
         <DropdownMenuContent align="start" className="min-w-44">
-          {/* Names the target: this menu and the band's carry the same four order commands, so
-              without it the only cue is which row you happened to click. */}
+          {/* Names the target: both groups carry the same four order commands, so the label is the
+              only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {withHint(orderItems(item), sortHint)}
           {withHint(
@@ -99,6 +116,18 @@ export function KosztorysRowActionsMenu({
             </DropdownMenuItem>,
             removeBlockReason,
           )}
+          {section && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
+              {withHint(orderItems(section), sortHint)}
+              <SectionColorPicker value={section.color} onChange={section.onSetColor} />
+              <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
+                <Trash2 />
+                Usuń sekcję
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <ConfirmDialog
@@ -111,6 +140,17 @@ export function KosztorysRowActionsMenu({
           setConfirmOpen(false)
         }}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={sectionConfirmOpen}
+        title={`Usunąć sekcję „${section?.name}"?`}
+        description={`Usunie też ${section?.itemCount} pozycji wraz z wpisanymi w nich ilościami etapów. Tej operacji nie można cofnąć.`}
+        confirmLabel="Usuń"
+        onConfirm={() => {
+          section?.onRemove()
+          setSectionConfirmOpen(false)
+        }}
+        onCancel={() => setSectionConfirmOpen(false)}
       />
     </>
   )

@@ -15,10 +15,7 @@ import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import {
-  settlementModeToGridAxis,
-  type SettlementModeT,
-} from '@/lib/kosztorys/settlement-mode'
+import { settlementModeToGridAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -308,6 +305,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onReorderItem: editorOnly(handleReorderItem),
     onInsertItem: editorOnly(handleInsertItem),
     onRenameSection: editorOnly(handleRenameSection),
+    onRemoveSection: editorOnly(handleRemoveSection),
+    onReorderSection: editorOnly(handleReorderSection),
+    onInsertSection: editorOnly(handleInsertSection),
+    onSetSectionColor: editorOnly(handleSetSectionColor),
+    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
     readOnly: clientView || undefined,
@@ -1196,17 +1198,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     collapsedSectionIds,
     toggleSectionCollapsed,
     setCollapsedSectionIds,
-    // Undefined in the read-only client view — one gate for the whole bundle, so the band's menu
-    // can't half-appear.
-    sectionHandlers: clientView
-      ? undefined
-      : {
-          onInsert: handleInsertSection,
-          onReorder: handleReorderSection,
-          onSetColor: handleSetSectionColor,
-          onRemove: handleRemoveSection,
-          onRename: handleRenameSection,
-        },
+    // The band's only mutation — every other section command lives in the row „…" menu. Reused from
+    // columnOpts rather than gated a second time, so the band and the name cell can't disagree about
+    // whether renaming is allowed.
+    onRenameSection: columnOpts.onRenameSection,
     // subtotals + section panel
     subtotals,
     // client-priced, view-invariant per-section subtotals — the section pie's structure source.

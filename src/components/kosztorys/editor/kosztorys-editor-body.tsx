@@ -101,7 +101,7 @@ export function KosztorysEditorBody({
     search,
     collapsedSectionIds,
     toggleSectionCollapsed,
-    sectionHandlers,
+    onRenameSection,
     moneyAxis,
     onChange,
   } = editor
@@ -173,7 +173,7 @@ export function KosztorysEditorBody({
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       moneyAxis,
-      handlers: sectionHandlers,
+      onRename: onRenameSection,
     }
   }, [
     subtotals,
@@ -181,7 +181,7 @@ export function KosztorysEditorBody({
     collapsedSectionIds,
     toggleSectionCollapsed,
     moneyAxis,
-    sectionHandlers,
+    onRenameSection,
   ])
 
   const gridColumns = useMemo(
