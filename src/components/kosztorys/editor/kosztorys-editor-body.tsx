@@ -12,10 +12,7 @@ import { MoneyAxisToggle } from '@/components/kosztorys/editor/grid/money-axis-t
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
-import {
-  ordinalGutterColumn,
-  withSyntheticRows,
-} from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
+import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import type { SectionHeaderFigureT } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
 import {
@@ -35,6 +32,11 @@ import {
   type UndoRedoApiT,
 } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
+
+const ITEM_ROW_HEIGHT = 32
+// The extra height over an item row is spent above the band's content (the cells align to the
+// bottom), so a section reads as opening after a gap rather than as one taller stripe.
+const SECTION_BAND_ROW_HEIGHT = 52
 
 type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim axis
@@ -171,7 +173,7 @@ export function KosztorysEditorBody({
       columns.map((column) => withSyntheticRows(column, { totals: columnTotals, sectionHeader })),
     [columns, columnTotals, sectionHeader],
   )
-  const { rows: bodyRows, ordinalByRowId } = useMemo(
+  const { rows: bodyRows } = useMemo(
     () =>
       buildSectionHeaderRows(viewRows, {
         collapsedSectionIds,
@@ -181,7 +183,6 @@ export function KosztorysEditorBody({
     [viewRows, collapsedSectionIds, sort, search],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
-  const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
   // rabatClientNet, view-independent) vs the investment's transaction sums — net to net, since the
@@ -228,9 +229,11 @@ export function KosztorysEditorBody({
               // Strip the appended spacer + „Razem" rows before the editor's diff sees them — display-only.
               onChange={(rows) => onChange(rows.filter((row) => !isSyntheticRow(row.id)))}
               columns={gridColumns}
-              gutterColumn={gutterColumn}
+              gutterColumn={false}
               height={gridHeight}
-              rowHeight={32}
+              rowHeight={({ rowData }) =>
+                isSectionHeaderRow(rowData.id) ? SECTION_BAND_ROW_HEIGHT : ITEM_ROW_HEIGHT
+              }
               // Taller header so verbose column labels („Pozostało netto (względem przedmiaru)" etc.)
               // wrap onto two rows instead of truncating.
               headerRowHeight={56}
