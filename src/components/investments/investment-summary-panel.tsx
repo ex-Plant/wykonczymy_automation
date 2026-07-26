@@ -6,7 +6,6 @@ import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
 import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
 import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
-import { StatsVersionToggle } from '@/components/investments/stats-version-toggle'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { CategoryCostT } from '@/types/investment-financials'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
@@ -67,7 +66,6 @@ export async function InvestmentSummaryPanel({
       })}
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}
-      topBarSlot={<StatsVersionToggle version="v2" />}
     />
   )
 }

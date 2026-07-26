@@ -96,17 +96,18 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
       </div>
       <InfoList items={infoFields.filter((f) => f.value)} />
 
+      {/* Anchored here rather than inside either reading's block: the two readings render different
+          trees, so a toggle living inside them moves under the cursor on every switch. */}
+      <StatsVersionToggle version={version} />
+
       {version === 'v1' ? (
-        <div className="space-y-2">
-          <StatsVersionToggle version="v1" />
-          <FinancialStats
-            fields={financialFields}
-            margin={calculateMargin(financials)}
-            totalPayouts={financials.totalPayouts}
-            totalLoss={financials.totalLoss}
-            settledFields={settledFields}
-          />
-        </div>
+        <FinancialStats
+          fields={financialFields}
+          margin={calculateMargin(financials)}
+          totalPayouts={financials.totalPayouts}
+          totalLoss={financials.totalLoss}
+          settledFields={settledFields}
+        />
       ) : (
         <>
           <InvestmentOwnerFigures
@@ -119,7 +120,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           <CollapsibleSection title="Podsumowanie">
             {/* Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
                 long-pole query, so the rest of the page paints without waiting on it. */}
-            <Suspense fallback={<StatsVersionToggle version="v2" />}>
+            <Suspense fallback={null}>
               <InvestmentSummaryPanel
                 investmentId={investmentId}
                 investmentName={investment.name}
