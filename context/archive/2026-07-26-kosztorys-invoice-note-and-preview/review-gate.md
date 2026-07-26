@@ -13,35 +13,15 @@ its manual checks live in `context/foundation/manual-checks.md` and are still ow
 
 ## Findings
 
+Eight `fixed` findings were trimmed at archive — their fixes are now just the code. What remains is
+every finding that carries a decision worth keeping.
+
 - [x] dismissed · impl-review · `src/lib/queries/reference-data.ts:fetchMaterialTransactionsForInvestment` · `invoiceNote` reaches the unauthenticated `/k/<token>` client share view
       The exposure ruling that cleared invoice data for the client view was reasoned about **AI-extracted**
       invoice fields (numer faktury + pozycje). `invoiceNote` is a plain hand-editable textarea on the
       transfer form, so it can carry internal staff remarks. Raised because the answer is a business
       decision, not a code one — **owner ruled 2026-07-26: accept, the note is client-safe.** No code
       change; the column ships to the share view as-is.
-
-- [x] 🔴 CRITICAL · fixed · code-review · `src/components/ui/invoice-preview-trigger.tsx:20-34` · the transfers „Faktura" icon lost its horizontal centering
-      The extraction replaced `Button` (`inline-flex`) with a block-level `flex` element, so in the
-      transfers table's `text-center` `<td>` the icon jumped to the left edge — a real visual regression
-      this slice introduced. Fixed by composing the compact branch from `buttonVariants({ variant: 'ghost',
-    size: 'icon' })` + `mx-auto`, which also restores the focus ring, radius and hover box the hand-rolled
-      class list had dropped.
-      test: no automated test · e2e — a pure layout regression; jsdom can't see centering. Folded into EX-570.
-
-- [x] 🟡 WARNING · fixed · code-review · `src/components/ui/invoice-preview-trigger.tsx:26` · compact variant collapsed to zero size when the caller passed no `className`
-      `InvoiceCell` renders it with no `className`, so the compact branch had no width/height at all and
-      relied on the icon's intrinsic size. `buttonVariants({ size: 'icon' })` now supplies the 36px box as
-      the default; `cn()` is tailwind-merge, so a caller's `size-7` still wins.
-      test: no automated test · e2e — same layout-only class as above; covered by EX-570.
-
-- [x] 🟡 WARNING · fixed · code-review · `src/components/kosztorys/summary/tables/materials-transactions-table.tsx:66-84` · the Notatka tooltip was keyboard-unreachable, and clicking it navigated the row
-      `HintTooltip` wraps children in a `<span>` — no tab stop — so the full note (which exists nowhere
-      else on the page) was mouse-only. And a plain `<span>` inside a linked row meant a click to read the
-      note navigated away. Switched to `SimpleTooltip` + a real `<button>`, which fixes both: it is
-      focusable, and `DataTable`'s row-link handler already skips clicks landing on a `button`.
-      Rejected the alternative of adding `tabIndex={0}` to the shared `HintTooltip` — that would add a tab
-      stop to every hint tooltip in the app to fix one cell.
-      test: no automated test · e2e — keyboard focus + click-doesn't-navigate are browser facts. Folded into EX-570.
 
 - [x] 🔵 OBSERVATION · dismissed · code-review · `.../materials-transactions-table.tsx:42` · `ROW_HEIGHT = 44` is arguably one px short of what a row renders
       `<tr>` carries `border-b` under `border-collapse`, which the 36 + 8 arithmetic in the comment doesn't
@@ -51,26 +31,6 @@ its manual checks live in `context/foundation/manual-checks.md` and are still ow
       to say the estimate must track whatever the tallest cell actually renders. The three row-height
       entries already in `manual-checks.md` are this finding's real guard.
       test: no automated test · e2e — measured, not computed; belongs to the manual checks + EX-570.
-
-- [x] fixed · primitive-reuse-scan · `src/components/ui/invoice-preview-trigger.tsx:31` · third copy of the `mimeType.startsWith('image/')` icon derivation
-      `InvoicePreviewButton` and `LineItemInvoiceField` each computed `isImage` and passed it down.
-      The trigger now takes `mimeType` and derives the icon once; both callers pass the raw field.
-
-- [x] fixed · module-cohesion · `src/hooks/use-invoice-zip.ts` · hook lived under `src/components/transfers/` but has two consumers in different features
-      `git mv`'d to `src/hooks/`; both importers repointed. Flagged by `structure-scatter-audit` as the one
-      real scatter the slice created — EX-585 gave the hook its second, cross-feature consumer.
-
-- [x] fixed · comment-noise · `src/lib/utils/invoice-note.ts:1-6` · comment claimed the note _is_ an AI-written invoice number
-      It is free text a human can type. Reworded to say line 1 is the AI scan's _shape_, not a guarantee —
-      and the export was renamed `invoiceNumberFromNote` → `firstNoteLine` so the name stops asserting
-      something the function can't know. Test file renamed with it.
-
-- [x] fixed · comment-noise · `src/types/reference-data.ts` · `MaterialTransactionRowT`'s doc comment repeated the same "AI-written invoice number" overclaim
-      Corrected in step with the util above.
-
-- [x] fixed · code-review · `src/components/ui/invoice-preview-trigger.tsx:5` · `aria-label` read as a verb phrase („Podgląd faktury" as an action) and the props type wasn't exported
-      Reworded to name the target file, and `InvoicePreviewTriggerPropsT` is now exported so
-      `InvoicePreviewButton` can `Pick<>` its pass-through props instead of redeclaring them.
 
 - [x] dropped · tailwind-v4-audit · — · no v4 violations in the diff
       No `var(--x)` in arbitrary values, no dynamic class-name construction, no inline `style`. Nothing to fix.
@@ -98,8 +58,8 @@ its manual checks live in `context/foundation/manual-checks.md` and are still ow
 
 `/simplify` is a built-in slash command and is not invocable as a tool from this context, so the
 equivalent mutating pass was run **inline in the main thread** instead: the reuse/dedup/comment
-findings above were applied directly, plus a `primitive-reuse-scan` (which produced the `mimeType`
-dedup and EX-586). Every result is folded into `## Findings` above — 8 applied, 1 proposed,
+findings were applied directly, plus a `primitive-reuse-scan` (which produced the `mimeType`
+dedup and EX-586). Every result was folded into `## Findings` — 8 applied, 1 proposed,
 2 dismissed, 1 dropped, 3 skipped/deferred (all filed). No separate `/simplify` report file exists.
 
 ## Tests & suite
@@ -109,14 +69,15 @@ dedup and EX-586). Every result is folded into `## Findings` above — 8 applied
 - `pnpm test` — pass, 92 files / 1146 tests (20 files, 51 tests skipped), 31.75s.
 - `pnpm test:e2e` — skipped by the user; the slice's browser risk is filed as EX-570.
 - `pnpm build` — skipped by the user; typecheck + lint cover the compile surface for a UI-only diff.
-- No new automated tests authored: every correctness finding above is layout/keyboard/navigation
+- No new automated tests authored: every correctness finding was layout/keyboard/navigation
   behavior that only a browser can observe. The one unit-testable surface (`firstNoteLine`) already
   has 6 specs, carried over intact through the rename.
 
 ## Archive gate
 
-**Blocked — not archivable.** All findings are closed (0 open `[ ]`), but one blocker remains:
-
-- The EX-585 section of `context/foundation/manual-checks.md` has 14 unticked boxes. Manual checks
-  passing is a hard blocker for `Done`, so EX-585 stays in progress with the `in review` label and the
-  change stays at `status: implemented`. Run those checks, then `/10x-archive`.
+**Archived 2026-07-26 with the manual-checks gate open, on the owner's explicit call.** All findings
+were closed (0 open `[ ]`), but 16 boxes in the EX-585 section of
+`context/foundation/manual-checks.md` were still unticked at archive time — normally a hard blocker
+for `Done`. The owner reaffirmed the archive after the blocker was stated, so the folder closed with
+the verification still owed. The manual-checks section stays in the registry until a human ticks it;
+EX-585's Linear card stays in review rather than `Done` for the same reason.

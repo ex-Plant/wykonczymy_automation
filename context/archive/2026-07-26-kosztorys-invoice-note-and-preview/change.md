@@ -1,11 +1,11 @@
 ---
 change_id: kosztorys-invoice-note-and-preview
 title: Notatka column and per-row invoice preview in the kosztorys Wydatki list
-status: implemented
+status: archived
 linear: EX-585
 created: 2026-07-26
 updated: 2026-07-26
-archived_at: null
+archived_at: 2026-07-26T13:19:30Z
 branch: feat/ex-569-kosztorys-client-invoices
 worktree: .claude/worktrees/ex-569-invoice-note
 ---
