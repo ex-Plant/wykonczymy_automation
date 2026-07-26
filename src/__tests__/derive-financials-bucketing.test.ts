@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
 import { billedAmountFor, TRANSFER_TYPES } from '@/lib/constants/transfers'
-import { partitionWydatkiRows, sumBilled } from '@/lib/kosztorys/wydatki-datasets'
+import {
+  availableWydatkiDatasets,
+  partitionWydatkiRows,
+  sumBilled,
+} from '@/lib/kosztorys/wydatki-datasets'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { MaterialTransactionRowT } from '@/types/reference-data'
 
@@ -340,5 +344,21 @@ describe('the wydatki tabs partition the billed total', () => {
 
     expect(net).toHaveLength(1)
     expect(settled).toHaveLength(0)
+  })
+
+  // The tab strip is built from this list, so an empty set must not reach it: the common investment
+  // has neither netto nor settled rows, and a tab that opens onto „brak danych" is a dead end.
+  it('offers a tab only for a non-empty set, in reading order', () => {
+    expect(availableWydatkiDatasets(partitionWydatkiRows(rows))).toEqual([
+      'gross',
+      'net',
+      'settled',
+    ])
+    expect(availableWydatkiDatasets(partitionWydatkiRows([rows[0]!, rows[3]!]))).toEqual([
+      'gross',
+      'settled',
+    ])
+    expect(availableWydatkiDatasets(partitionWydatkiRows([rows[2]!]))).toEqual(['net'])
+    expect(availableWydatkiDatasets(partitionWydatkiRows([]))).toEqual([])
   })
 })

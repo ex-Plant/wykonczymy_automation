@@ -216,19 +216,19 @@ brutto/unfiltered rather than throwing.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `pnpm tsc --noEmit`
-- [x] 1.2 New partition guard passes: `pnpm exec vitest run src/__tests__/derive-financials-bucketing.test.ts`
-- [x] 1.3 Existing B5 guard still green in the same run
-- [x] 1.4 Partition helper treats a row with no `type` as brutto
+- [x] 1.1 Type checking passes: `pnpm tsc --noEmit` — d638f984
+- [x] 1.2 New partition guard passes: `pnpm exec vitest run src/__tests__/derive-financials-bucketing.test.ts` — d638f984
+- [x] 1.3 Existing B5 guard still green in the same run — d638f984
+- [x] 1.4 Partition helper treats a row with no `type` as brutto — d638f984
 
 ### Phase 2: Three tabs + per-tab „Razem"
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 2.2 Full unit suite passes: `pnpm exec vitest run`
-- [ ] 2.3 `DataTable` footer renders in both the virtualized and non-virtualized paths
-- [ ] 2.4 No tab offered for an empty dataset; single non-empty set renders no toggle
+- [x] 2.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 2.2 Full unit suite passes: `pnpm exec vitest run`
+- [ ] 2.3 `DataTable` footer renders in both the virtualized and non-virtualized paths — not automatable: vitest here is node-env, `*.test.ts` only, no RTL/jsdom; moved to the manual-checks registry
+- [x] 2.4 No tab offered for an empty dataset; single non-empty set renders no toggle
 
 ### Phase 3: Honest row links + a visible affordance
 

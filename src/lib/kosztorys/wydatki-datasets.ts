@@ -24,6 +24,16 @@ export function partitionWydatkiRows(rows: MaterialTransactionRowT[]): WydatkiPa
   return partition
 }
 
+// The two expense sets first, in the order their „Razem" figures add to the breakdown's total; the
+// set that never bills the investor comes last.
+const DATASET_ORDER = ['gross', 'net', 'settled'] as const satisfies readonly WydatkiDatasetT[]
+
+// Which tabs the list may offer. An empty set gets no tab at all — an investment with no netto and
+// no settled materials is the common case, and a tab that shows „brak danych" is just a dead end.
+export function availableWydatkiDatasets(partition: WydatkiPartitionT): WydatkiDatasetT[] {
+  return DATASET_ORDER.filter((set) => partition[set].length > 0)
+}
+
 // What the investor is charged for this set — the figure a tab's „Razem" shows. Σ over the two
 // expense sets is `totalMaterialCosts`, which is what makes the split checkable against the
 // breakdown above the list.

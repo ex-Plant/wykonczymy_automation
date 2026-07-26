@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils/cn'
 import { DataTableRow } from './data-table-row'
 import { VirtualizedTableBody } from './virtualized-table-body'
 import { TableHeader } from './table-header'
+import { TableFooter } from './table-footer'
 import { EmptyRow } from './empty-row'
 import { readVisibility, writeVisibility } from './column-visibility-storage'
 
@@ -32,6 +33,8 @@ type DataTablePropsT<TData> = {
   /** Makes the row clickable — navigates to the returned URL */
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
+  /** Summary `<tr>` pinned below the rows. Receives the visible column count so it can span them. */
+  footer?: (colCount: number) => React.ReactNode
   toolbar?: (
     table: Table<TData>,
     columnVisibility: VisibilityState,
@@ -50,6 +53,7 @@ export function DataTable<TData>({
   initialSorting = [],
   getRowHref,
   getRowClassName,
+  footer,
   toolbar,
   className,
 }: DataTablePropsT<TData>) {
@@ -111,6 +115,7 @@ export function DataTable<TData>({
             visibleColumnIds={visibleColumnIds}
             getRowHref={getRowHref}
             getRowClassName={getRowClassName}
+            footer={footer}
           />
         ) : (
           <table className="w-full text-sm">
@@ -130,6 +135,7 @@ export function DataTable<TData>({
                 ))
               )}
             </tbody>
+            {footer && rows.length > 0 && <TableFooter>{footer(visibleColCount)}</TableFooter>}
           </table>
         )}
       </div>

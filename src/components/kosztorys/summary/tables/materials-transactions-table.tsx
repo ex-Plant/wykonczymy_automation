@@ -5,33 +5,34 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { formatNet } from '@/lib/kosztorys/format'
+import {
+  availableWydatkiDatasets,
+  partitionWydatkiRows,
+  sumBilled,
+  type WydatkiDatasetT,
+} from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
 import type { MaterialTransactionRowT } from '@/types/reference-data'
 
 type PropsT = {
   investmentId: number
-  // Both settled states — the toggle splits them.
+  // Every expense type and both settled states — the tabs split them.
   rows: MaterialTransactionRowT[]
   // Read-only public/preview render: no row links (they point into the app, which a client can't reach).
   clientView?: boolean
 }
 
-type DatasetT = 'unsettled' | 'settled'
-
-// „Wydatki inwestycyjne" (unsettled — Σ billed === totalMaterialCosts) vs „Materiały wliczone w robociznę"
-// (settled). Both sets show in every view, the client's included.
-const DATASET_OPTIONS: OptionT<DatasetT>[] = [
-  { value: 'unsettled', label: 'Wydatki inwestycyjne' },
-  { value: 'settled', label: 'Materiały wliczone w robociznę' },
-]
+const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
+  gross: 'Wydatki inwestycyjne',
+  net: 'Wydatki netto',
+  settled: 'Materiały wliczone w robociznę',
+}
 
 // Fixed height for the virtualizer's scroll container (px, not a flex track). Mirrors the wypłaty list.
 const TABLE_HEIGHT = 400
 const ROW_HEIGHT = 36
 
-// Brutto is what left the kasa; a netto-billed row adds the billed figure beneath it, because that
-// is the number the breakdown above this list sums — without it the two disagree by the VAT reclaim.
-const MATERIAL_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
+const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'date',
     header: 'Data',
@@ -48,49 +49,73 @@ const MATERIAL_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
       <span className="text-muted-foreground">{getValue<string | null>() || '—'}</span>
     ),
   },
+]
+
+// On its own tab the netto figure leads: it is what the tab's „Razem" sums and what bills the
+// investor, with the brutto that left the kasa beneath it.
+const NET_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
+  ...SHARED_COLUMNS,
   {
-    accessorKey: 'amount',
-    header: 'Kwota brutto',
+    accessorKey: 'billed',
+    header: 'Kwota netto',
     meta: { align: 'right' },
     cell: ({ row, getValue }) => (
       <span className="flex flex-col tabular-nums">
         {formatNet(getValue<number>())}
-        {row.original.billed !== row.original.amount && (
-          <span className="text-muted-foreground text-xs">
-            netto {formatNet(row.original.billed)}
-          </span>
-        )}
+        <span className="text-muted-foreground text-xs">
+          brutto {formatNet(row.original.amount)}
+        </span>
       </span>
     ),
   },
 ]
 
-// The wydatki inwestycyjne list — one row per materiały transaction, the un-summed twin of the
-// „Wydatki inwestycyjne" breakdown above it. Same DataTable shell as the wypłaty list, with a toggle
-// to the settled („wliczone w robociznę") set.
+// The brutto sets bill at `amount`, so no sub-line — it would repeat the same number.
+const GROSS_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
+  ...SHARED_COLUMNS,
+  {
+    accessorKey: 'amount',
+    header: 'Kwota brutto',
+    meta: { align: 'right' },
+    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
+  },
+]
+
+// The wydatki list — one row per materiały transaction, the un-summed twin of the „Wydatki
+// inwestycyjne" breakdown above it. Three mutually exclusive tabs, each with its own „Razem": the
+// brutto and netto expense totals add to the breakdown's „Razem", the settled one is separate money.
 export function MaterialsTransactionsTable({ investmentId, rows, clientView = false }: PropsT) {
-  const [dataset, setDataset] = useState<DatasetT>('unsettled')
-  const visibleRows = rows.filter((row) => row.settled === (dataset === 'settled'))
-  const hasSettled = rows.some((row) => row.settled)
+  const partition = partitionWydatkiRows(rows)
+  const available = availableWydatkiDatasets(partition)
+  const [dataset, setDataset] = useState<WydatkiDatasetT>('gross')
+  // A prop change can empty the picked set (an expense re-categorised away); fall back rather than
+  // render a tab with nothing in it.
+  const activeDataset = available.includes(dataset) ? dataset : (available[0] ?? 'gross')
+  const visibleRows = partition[activeDataset]
+
+  const options: OptionT<WydatkiDatasetT>[] = available.map((set) => ({
+    value: set,
+    label: DATASET_LABELS[set],
+  }))
 
   if (rows.length === 0) return null
 
   return (
     <div className="mt-6 flex flex-col gap-y-2">
       <div>
-        {hasSettled && (
+        {options.length > 1 && (
           <ToggleGroup
-            options={DATASET_OPTIONS}
-            value={dataset}
+            options={options}
+            value={activeDataset}
             onChange={setDataset}
             aria-label="Zestaw wydatków"
           />
         )}
       </div>
       <DataTable
-        key={dataset}
+        key={activeDataset}
         data={visibleRows}
-        columns={MATERIAL_COLUMNS}
+        columns={activeDataset === 'net' ? NET_COLUMNS : GROSS_COLUMNS}
         enableVirtualization
         virtualRowHeight={ROW_HEIGHT}
         virtualContainerHeight={TABLE_HEIGHT}
@@ -100,6 +125,12 @@ export function MaterialsTransactionsTable({ investmentId, rows, clientView = fa
             ? undefined
             : (row) => `/inwestycje/${investmentId}?type=INVESTMENT_EXPENSE&id=${row.id}`
         }
+        footer={(colCount) => (
+          <tr>
+            <td colSpan={colCount - 1}>Razem</td>
+            <td className="text-right tabular-nums">{formatNet(sumBilled(visibleRows))}</td>
+          </tr>
+        )}
         className="w-full max-w-5xl"
       />
     </div>
