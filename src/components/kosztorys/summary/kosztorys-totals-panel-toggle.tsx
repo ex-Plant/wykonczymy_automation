@@ -5,19 +5,24 @@ import { Button } from '@/components/ui/button'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
 import { cn } from '@/lib/utils/cn'
 
-export function KosztorysToolbarTotalsToggle() {
+// The panel itself has no chrome of its own — this button is the ONLY way to open or close it, so
+// every bar that can show the panel (the owner's toolbar, the client view's slim header) must mount
+// it, or the panel gets stuck in whatever state localStorage remembered.
+// `size` is caller-chosen: the owner's toolbar packs it into a dense `sm` row, while the client
+// view's header carries only two controls and needs this one to read as the primary way in.
+export function KosztorysTotalsPanelToggle({ size = 'sm' }: { size?: 'sm' | 'default' }) {
   const [totalsOpen, setTotalsOpen] = useTotalsPanelOpen()
 
   return (
     <Button
-      size="sm"
+      size={size}
       variant={totalsOpen ? 'default' : 'outline'}
       // default variant has no border, outline does — keep the box identical so toggling doesn't
       // shift the right-aligned neighbour by the border's width.
       className={cn(totalsOpen && 'border border-transparent')}
       onClick={() => setTotalsOpen(!totalsOpen)}
     >
-      Podsumowanie
+      Pokaż podsumowanie
       <ChevronDown
         className={cn('transition-transform duration-200', totalsOpen && 'rotate-180')}
       />

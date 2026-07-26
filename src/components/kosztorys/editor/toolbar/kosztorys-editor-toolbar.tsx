@@ -6,7 +6,7 @@ import { SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
 import { KosztorysActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu'
-import { KosztorysToolbarTotalsToggle } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-totals-toggle'
+import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { ToolbarToggle } from '@/components/ui/toolbar-toggle'
 import {
   VIEWS,
@@ -28,7 +28,7 @@ export function KosztorysEditorToolbar() {
             {investmentName}
           </Link>
         </h1>
-        <KosztorysToolbarTotalsToggle />
+        <KosztorysTotalsPanelToggle />
         <ToolbarToggle
           legend={VIEW_LEGEND}
           options={VIEWS}
