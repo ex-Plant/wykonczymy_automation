@@ -544,5 +544,5 @@ that reads the column ships.
 
 #### Automated
 
-- [x] 4.1 Type checking passes
-- [x] 4.2 Linting passes
+- [x] 4.1 Type checking passes — b5c9dbf1
+- [x] 4.2 Linting passes — b5c9dbf1

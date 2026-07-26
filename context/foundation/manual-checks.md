@@ -405,3 +405,33 @@ came with EX-588.
 - [ ] A MANAGER (non-owner) sees the v2 panel but **none** of the owner strip
 - [ ] `/raporty` renders its tiles exactly as before, deselect included
 - [ ] Printing from the transfers table works in both readings: v1 keeps the dynamic bilans, v2 produces a header with all fields and a static bilans (accepted degradation — see `lessons.md`)
+
+## EX-596 — materials-net-pricing-persisted
+
+The panel's materiały netto concession stops being a per-browser display trick and becomes a saved
+per-investment rate (`investments.materials_net_rate`, `null` = off). It is billed by **division** —
+a 123 zł receipt is billed 100 zł, never 94,71 — and the company's share of it now shows up as
+„Obniżka materiałów": it lowers marża and raises bilans inwestora by the same amount. Switched off
+at rozliczenie brutto (VAT is added to the price there, so there is nothing to concede). All
+automated checks green (tsc 0, eslint 0 errors, unit 1751/1751, `pnpm test:parity` regenerated).
+Branch `investment-summary-panel`.
+
+Setup: **5435 test DB** (see intro) with `20260726_4_add_materials_net_rate_to_investments` applied
+and a seeded kosztorys, OWNER login, an investment carrying materiały spend, plus a share token for
+it. `/raporty` needs the OWNER/ADMIN role.
+
+- [ ] An investment with materiały spend and no rate set shows marża and bilans exactly as before the change (the `null` default changes nothing)
+- [ ] Checking „rozliczane po kwocie netto" (opens at the VAT rate) moves marża down and bilans inwestora up by the **same** amount
+- [ ] That amount equals `materiały brutto − materiały brutto / 1,23` — not `materiały brutto × 0,23`
+- [ ] The „Obniżka materiałów" row in Podsumowanie quotes that same amount, and so does the „Obniżka materiałów" stat under the panel
+- [ ] The investments list shows the same marża as the investment's own page
+- [ ] A „Wydatek inwestycyjny netto" row (frozen netto bucket) is **not** discounted — its Netto column equals its Brutto in the per-category table, and the concession is computed off the brutto bucket only
+- [ ] Switching to rozliczenie brutto returns marża and bilans to their no-rate values and shows the notice that the rate changes nothing there
+- [ ] Switching back to netto restores the figures — the saved rate was kept, not cleared
+- [ ] Editing the % writes through: reload and both the on/off state and the number survive
+- [ ] The client share (`/k/<token>`, logged out) shows the discounted „Do zapłaty" and **no** pricing control
+- [ ] `/raporty` shows the warning banner above the figures without scrolling
+
+### Deploy note (migration ordering — deploy-time, not a code check)
+
+- [ ] **`20260726_4_add_materials_net_rate_to_investments` must be applied to preview/prod before the code lands there.** Adds a nullable `materials_net_rate` to `investments`; standard column-**add** ordering — migrate first or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. No backfill owed: `null` is the permanent "off" state and every existing investment keeps today's figures.
