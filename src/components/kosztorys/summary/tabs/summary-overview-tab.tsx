@@ -2,7 +2,12 @@
 
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import { materialsPair, type MaterialsT, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
+import {
+  materialsPair,
+  sumaPracPreRabat,
+  type MaterialsT,
+  type MoneyPairT,
+} from '@/lib/kosztorys/summary-economics'
 import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summary'
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
 import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
@@ -56,7 +61,9 @@ export function SummaryOverviewTab({
   const mixedMode = moneyAxis === 'mixed'
   const displayAxis: MoneyAxisT = mixedMode ? 'both' : moneyAxis
   // The „Struktura kosztów" pie is a netto robocizna/materiały split, identical in every mode — so it
-  // sits here beside the settlement rather than inside any one mode's block.
+  // sits here beside the settlement rather than inside any one mode's block. Robocizna enters PRZED
+  // rabatem: a rabat is a concession on the price, not a change in what the job is made of, and a
+  // rabat exceeding the executed work would otherwise feed the pie a negative slice.
   const materialsNet = materialsPair(materials, vatRate, deriveMaterialsNet, materialsReduction).net
 
   return (
@@ -92,7 +99,10 @@ export function SummaryOverviewTab({
         )}
         <SlicePie
           caption="Struktura kosztów"
-          slices={costTotalsPieSlices(laborCostsNetFromKosztorys, materialsNet)}
+          slices={costTotalsPieSlices(
+            sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
+            materialsNet,
+          )}
           formatValue={formatNet}
         />
       </div>
