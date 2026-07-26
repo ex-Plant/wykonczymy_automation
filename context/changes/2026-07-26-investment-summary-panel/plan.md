@@ -84,9 +84,9 @@ five views.
 - The panel already remaps a persisted-but-hidden view back to a visible one
   (`kosztorys-totals-panel.tsx:133-136`); the `views` allowlist generalizes that existing logic.
 - `brutto-netto-summary.tsx:95` gates the reconciliation scream on
-  `clientView ? false : priceView === 'client'` — a host with no grid must pass `priceView="client"`
-  to get the scream.
-- `print-button.tsx:27-33` passes all `headerFields` through when the visibility store is empty, so
+  `clientView ? false : priceView === 'client'`. `priceView="client"` is already hardcoded at
+  `kosztorys-totals-panel.tsx:229`, so a host gets the scream for free by passing `reconciliation`.
+- `print-button.tsx:24-36` passes all `headerFields` through when the visibility store is empty, so
   removing the tiles degrades the printout to a static bilans rather than breaking it.
 - `/raporty/page.tsx:62-69` renders `FinancialStats` with the identical prop set — the component and
   `header-fields-store` both survive this change.
@@ -122,8 +122,11 @@ panel's axis is still a shared `localStorage` key and mounting a second surface 
 it. Do not start Phase 3 before that branch lands.
 
 **The reconciliation scream is a prop, not panel logic.** It is computed in the editor body
-(`kosztorys-editor-body.tsx:211-219`) and passed down. The investment page must build its own verdict
-with `buildKosztorysReconciliation`, and must pass `priceView="client"` or the scream never renders.
+(`kosztorys-editor-body.tsx:211-219`) and passed down, so the investment page must build its own
+verdict with `buildKosztorysReconciliation`. That is the host's whole obligation — `priceView="client"`
+is already a hardcoded literal inside the panel (`kosztorys-totals-panel.tsx:229`), not a prop, so
+there is nothing for a host to pass. What suppresses the scream downstream is `clientView`
+(`brutto-netto-summary.tsx:95`).
 
 **No skeleton exists.** The Suspense fallback reuses the pattern already at `page.tsx:96-105`: the same
 panel content rendered on the v1 (transaction) reading with the reading toggle omitted, swapped for the
@@ -293,8 +296,9 @@ with no toggle.
 fetch off the critical path as it is today.
 
 **Contract**: `CollapsibleSection` (the same primitive `TransfersSection` uses) wraps the panel. The
-`<Suspense>` fallback renders `SummaryPanelContent` with the v1 figures and no `topBarSlot`. The panel
-receives `priceView="client"` so the reconciliation scream can render.
+`<Suspense>` fallback renders `SummaryPanelContent` with the v1 figures and no `topBarSlot`. The
+reconciliation scream needs only the `reconciliation` prop — `priceView` is hardcoded inside the panel
+and must stay that way, so do not lift it into the content component's contract.
 
 ### Success Criteria
 
@@ -409,10 +413,10 @@ keeps them.
 
 **File**: `context/foundation/lessons.md` (or the change's own notes)
 
-**Intent**: `print-button.tsx:27-33` now always takes the all-fields branch on this page, so the
+**Intent**: `print-button.tsx:24-36` now always takes the all-fields branch on this page, so the
 printed bilans is static. That is accepted, not a bug — write it down so it is not "fixed" later.
 
-**Contract**: One short entry naming `print-button.tsx:27-33` and the owner's ruling.
+**Contract**: One short entry naming `print-button.tsx:24-36` and the owner's ruling.
 
 ### Success Criteria
 
