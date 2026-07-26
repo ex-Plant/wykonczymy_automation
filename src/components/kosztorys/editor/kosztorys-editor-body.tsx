@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom'
 // `DynamicDataSheetGrid`, not `DataSheetGrid`: the library aliases the plain name to
 // StaticDataSheetGrid, which snapshots `columns` via useState at mount (EX-422).
 import { DynamicDataSheetGrid } from 'react-datasheet-grid'
-import { KosztorysSectionSummary } from '@/components/kosztorys/editor/kosztorys-sections-drawer'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
 import { MoneyAxisToggle } from '@/components/kosztorys/editor/grid/money-axis-toggle'
@@ -81,13 +80,7 @@ export function KosztorysEditorBody({
     view,
     moneyAxis,
     setMoneyAxis,
-    summaryOpen,
-    setSummaryOpen,
     onChange,
-    handleAddItem,
-    handleAddSection,
-    handleRenameSection,
-    handleRemoveSection,
   } = editor
 
   useUndoKeyboard(editor.undo, editor.redo)
@@ -203,16 +196,6 @@ export function KosztorysEditorBody({
               rowKey={({ rowData }) => String(rowData.id)}
             />
           </div>
-          {!clientView && summaryOpen && (
-            <KosztorysSectionSummary
-              subtotals={subtotals}
-              onClose={() => setSummaryOpen(false)}
-              onAddSection={handleAddSection}
-              onAddItem={handleAddItem}
-              onRenameSection={handleRenameSection}
-              onRemoveSection={handleRemoveSection}
-            />
-          )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel

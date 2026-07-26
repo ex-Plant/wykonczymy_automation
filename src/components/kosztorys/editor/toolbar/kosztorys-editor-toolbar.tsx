@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
-import { KosztorysToolbarActions } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-actions'
+import { KosztorysActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu'
 import { KosztorysToolbarTotalsToggle } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-totals-toggle'
 import { KosztorysToolbarViewToggles } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-view-toggles'
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
@@ -13,7 +13,17 @@ import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolba
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
-  const { investmentId, investmentName, search, setSearch } = useKosztorysEditorContext()
+  const {
+    investmentId,
+    investmentName,
+    search,
+    setSearch,
+    onOpenVersions,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useKosztorysEditorContext()
 
   return (
     <div className="border-border shrink-0 border-b">
@@ -39,7 +49,14 @@ export function KosztorysEditorToolbar() {
           </div>
         </SimpleTooltip>
         <div className="ml-auto flex items-center gap-1">
-          <KosztorysToolbarActions />
+          <KosztorysActionsMenu
+            investmentId={investmentId}
+            onOpenVersions={onOpenVersions}
+            undo={undo}
+            redo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+          />
           <KosztorysSectionFilterMenu />
           <KosztorysViewMenu />
         </div>
