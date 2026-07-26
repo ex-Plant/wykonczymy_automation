@@ -23,8 +23,8 @@ export function SectionColorPicker({ value, onChange }: PropsT) {
           <button
             key={color.key}
             type="button"
-            title={color.key}
-            aria-label={color.key}
+            title={color.label}
+            aria-label={color.label}
             aria-pressed={value === color.key}
             onClick={() => onChange(color.key)}
             className={cn(
