@@ -134,12 +134,14 @@ export function SubcontractorSummary({
 
       {payoutTransactions.length > 0 && (
         <div className="flex flex-col gap-y-2">
-          <ToggleGroup
-            options={MODE_OPTIONS}
-            value={mode}
-            onChange={setMode}
-            aria-label="Grupowanie wypłat"
-          />
+          <div className="w-fit">
+            <ToggleGroup
+              options={MODE_OPTIONS}
+              value={mode}
+              onChange={setMode}
+              aria-label="Grupowanie wypłat"
+            />
+          </div>
           <DataTable
             key={mode}
             data={tableRows}
