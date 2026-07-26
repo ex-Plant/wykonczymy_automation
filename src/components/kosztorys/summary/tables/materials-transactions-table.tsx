@@ -157,9 +157,11 @@ export function MaterialsTransactionsTable({
   // button that could only ever answer „brak faktur". (The transfers variant can't know until it fetches.)
   const hasInvoices = visibleRows.some((row) => row.invoiceUrl)
 
+  // The count rides in the label because a tab is otherwise silent about its size — „Pobierz faktury"
+  // packs the whole active set, so how many rows that is has to be visible before the click.
   const options: OptionT<WydatkiDatasetT>[] = available.map((set) => ({
     value: set,
-    label: DATASET_LABELS[set],
+    label: `${DATASET_LABELS[set]} (${partition[set].length})`,
   }))
 
   if (rows.length === 0) return null
