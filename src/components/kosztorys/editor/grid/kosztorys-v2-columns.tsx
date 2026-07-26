@@ -276,8 +276,11 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     keyCol('description', textColumn, {
       id: 'description',
       title: title('description', opts),
-      minWidth: 240,
+      minWidth: 360,
       grow: 2,
+      // Tailwind Preflight resets `text-transform: none` directly on <input>, so the class must
+      // target the cell's own input (`capitalize` on the wrapping .dsg-cell div is overridden).
+      cellClassName: '[&_input]:capitalize',
     }),
   ]
 
