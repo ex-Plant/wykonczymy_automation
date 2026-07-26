@@ -136,6 +136,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // empty Set = show none. The „show none" state is why this can't be a plain Set with empty=all —
   // the FilterMultiSelect toggle-all needs a distinct „Odznacz wszystkie" target.
   const [shownSectionIds, setShownSectionIds] = useState<Set<number> | null>(null)
+  // Which sections are folded shut under their band. Deliberately NOT persisted: a fold is a reading
+  // gesture for the current session, and a remembered one would greet the next visit with rows the
+  // user can't see and doesn't remember hiding.
+  const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  )
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel). During the drag we only show a vertical guide
   // (guideX = cursor X), without touching the grid.
@@ -321,6 +327,14 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // row hides by unticking rather than filtering rows on its own, so the picker's checkmarks stay
   // the single description of what the grid shows.
   const emptySections = useMemo(() => emptySectionIds(subtotals), [subtotals])
+
+  function toggleSectionCollapsed(sectionId: number) {
+    setCollapsedSectionIds((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(sectionId)) next.add(sectionId)
+      return next
+    })
+  }
 
   // View = filter + sort. Edits are mapped back into the full dataset by id.
   const viewRows = useMemo(() => {
@@ -1167,6 +1181,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     view,
     sort,
     guideX,
+    collapsedSectionIds,
+    toggleSectionCollapsed,
     // subtotals + section panel
     subtotals,
     // client-priced, view-invariant per-section subtotals — the section pie's structure source.

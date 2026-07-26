@@ -1,5 +1,7 @@
 'use client'
 
+import { ChevronDown, ChevronRight } from 'lucide-react'
+
 import { formatNet } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -14,6 +16,8 @@ export type SectionHeaderFigureT = {
 // the section's identity, not its numbers.
 export type SectionHeaderContextT = {
   figures: Map<number, SectionHeaderFigureT>
+  collapsedSectionIds: ReadonlySet<number>
+  onToggleCollapsed: (sectionId: number) => void
 }
 
 // Which piece of the band this column paints. The band spans no columns — each cell renders its own
@@ -51,21 +55,30 @@ export function SectionHeaderCell({
   const figure = context.figures.get(rowData.sectionId)
 
   if (slot === 'label') {
+    const collapsed = context.collapsedSectionIds.has(rowData.sectionId)
+    const Chevron = collapsed ? ChevronRight : ChevronDown
     return (
-      <div className="flex size-full items-center gap-2 px-2 text-sm font-semibold">
+      <button
+        type="button"
+        onClick={() => context.onToggleCollapsed(rowData.sectionId)}
+        aria-expanded={!collapsed}
+        className="flex size-full items-center gap-2 px-2 text-left text-base font-semibold"
+      >
+        <Chevron className="text-muted-foreground size-4 shrink-0" />
         <SectionDot />
         <span className="truncate">{rowData.sectionName ?? ''}</span>
         <span className="text-muted-foreground shrink-0 text-xs font-normal">
           {figure?.itemCount ?? 0} poz.
         </span>
-      </div>
+      </button>
     )
   }
 
   if (slot === 'blank' || figure == null) return <div className="size-full" />
 
+  // Same weight and size as the „Razem" row's figures — both are totals, so they read at one glance.
   return (
-    <div className="flex size-full items-center px-2 text-sm font-semibold tabular-nums">
+    <div className="flex size-full items-center px-2 text-base font-semibold tabular-nums">
       {formatNet(slot === 'net' ? figure.net : figure.gross)}
     </div>
   )

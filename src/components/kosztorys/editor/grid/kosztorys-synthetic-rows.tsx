@@ -1,6 +1,6 @@
 'use client'
 
-import { type CellProps, type Column } from 'react-datasheet-grid'
+import { type CellProps, type Column, type SimpleColumn } from 'react-datasheet-grid'
 import {
   SectionHeaderCell,
   sectionHeaderSlot,
@@ -74,6 +74,19 @@ function SyntheticAwareCell(props: CellProps<KosztorysV2RowT, SyntheticColumnDat
     )
   const Base = columnData.base
   return Base ? <Base {...props} /> : null
+}
+
+// Same module-level-identity rule as SyntheticAwareCell: the ordinals ride on `columnData`, never a
+// closure. dsg's default gutter prints `rowIndex + 1`, which counts bands and the spacer/„Razem"
+// rows; the precomputed map numbers only the real item rows, and returns nothing for the rest.
+function OrdinalGutterCell({ rowData, columnData }: CellProps<KosztorysV2RowT, Map<number, number>>) {
+  return <>{columnData.get(rowData.id) ?? ''}</>
+}
+
+export function ordinalGutterColumn(
+  ordinalByRowId: Map<number, number>,
+): SimpleColumn<KosztorysV2RowT, Map<number, number>> {
+  return { component: OrdinalGutterCell, columnData: ordinalByRowId }
 }
 
 // Wrap a column so it renders the baked total on the totals row, its piece of the band on a section

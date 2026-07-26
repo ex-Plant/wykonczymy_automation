@@ -15,6 +15,7 @@ import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-ke
 import {
   makeSpacerRow,
   makeTotalsRow,
+  ordinalGutterColumn,
   withSyntheticRows,
 } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import type { SectionHeaderFigureT } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
@@ -34,9 +35,6 @@ import {
   type UndoRedoApiT,
 } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
-
-// Collapse arrives in the next phase; a shared frozen empty set keeps the memo below stable meanwhile.
-const NO_COLLAPSED: ReadonlySet<number> = new Set()
 
 type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim axis
@@ -89,6 +87,8 @@ export function KosztorysEditorBody({
     subcontractorDue,
     view,
     sort,
+    collapsedSectionIds,
+    toggleSectionCollapsed,
     moneyAxis,
     setMoneyAxis,
     onChange,
@@ -158,8 +158,8 @@ export function KosztorysEditorBody({
         itemCount: section.itemCount,
       })
     }
-    return { figures }
-  }, [subtotals, tree.vatRate])
+    return { figures, collapsedSectionIds, onToggleCollapsed: toggleSectionCollapsed }
+  }, [subtotals, tree.vatRate, collapsedSectionIds, toggleSectionCollapsed])
 
   const gridColumns = useMemo(
     () =>
@@ -168,13 +168,13 @@ export function KosztorysEditorBody({
   )
   // Grouping presumes section-contiguous rows, which a column sort breaks — under one the bands are
   // dropped and the grid reads as a flat table.
-  const bodyRows = useMemo(
-    () =>
-      buildSectionHeaderRows(viewRows, { collapsedSectionIds: NO_COLLAPSED, enabled: sort == null })
-        .rows,
-    [viewRows, sort],
+  const { rows: bodyRows, ordinalByRowId } = useMemo(
+    () => buildSectionHeaderRows(viewRows, { collapsedSectionIds, enabled: sort == null }),
+    [viewRows, collapsedSectionIds, sort],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  // Bands and the spacer/„Razem" rows are unnumbered, so the gutter can't use dsg's row index.
+  const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
   // rabatClientNet, view-independent) vs the investment's transaction sums — net to net, since the
@@ -221,6 +221,7 @@ export function KosztorysEditorBody({
               // Strip the appended spacer + „Razem" rows before the editor's diff sees them — display-only.
               onChange={(rows) => onChange(rows.filter((row) => !isSyntheticRow(row.id)))}
               columns={gridColumns}
+              gutterColumn={gutterColumn}
               height={gridHeight}
               rowHeight={32}
               // Taller header so verbose column labels („Pozostało netto (względem przedmiaru)" etc.)
