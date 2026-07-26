@@ -125,7 +125,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           <InvestmentOwnerFigures
             margin={calculateMargin(financials)}
             totalLoss={financials.totalLoss}
-            settledFields={settledFields}
           />
         </>
       )}
