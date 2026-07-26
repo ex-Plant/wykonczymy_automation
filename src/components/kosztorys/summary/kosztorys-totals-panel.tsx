@@ -22,6 +22,7 @@ import {
   type PanelAxisT,
 } from '@/components/kosztorys/summary/hooks/use-summary-axis'
 import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
+import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
 import { Description } from '@/components/ui/description'
 import {
   useSummaryView,
@@ -198,8 +199,10 @@ export function KosztorysTotalsPanel({
                 value={moneyAxis}
                 onValueChange={(next) => setMoneyAxis(next as PanelAxisT)}
                 options={AXIS_SELECT_OPTIONS}
+                disabled={vatRate === 0}
                 className="w-40"
               />
+              {vatRate === 0 && <ZeroVatWarning />}
             </div>
           )}
         </div>
