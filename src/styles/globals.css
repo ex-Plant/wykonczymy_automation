@@ -284,12 +284,17 @@
   padding-bottom: 3rem;
 }
 
-/* dsg's sticky scroll-indicator overlay (.dsg-scrollable-view) draws its own top/left 1px border on
-   top of that — position: sticky, so it stays pinned to the viewport edge and doesn't move with the
-   internal scroll either, reading as the same kind of static line. Its box-shadow (the "more content
-   this way" scroll cue) is dynamic and worth keeping; only the flat border is the stray line. */
+/* dsg overlays a position: sticky "scrollable view" frame over the virtualized row list, meant to
+   draw a "more content this way" scroll-shadow cue at whichever edges still have unscrolled content.
+   Because it's sticky, the frame itself never moves with the internal scroll — border AND box-shadow
+   both paint on its own static edges, so both read as a line floating over content scrolling past
+   it, not just the border. Kill the whole thing; the per-cell borders already draw the grid. */
 .kosztorys-grid .dsg-scrollable-view {
   border: none;
+  /* dsg's -t/-r/-b/-l edge-combo classes (e.g. .dsg-scrollable-view-t.dsg-scrollable-view-r) restate
+     the scroll-shadow box-shadow with higher selector specificity than this rule — !important is the
+     only way to beat that without matching their exact combinatorial class chains. */
+  box-shadow: none !important;
 }
 
 /* The Akcje column is `disabled` only to keep the cell cursor out of it, so dsg's grey
