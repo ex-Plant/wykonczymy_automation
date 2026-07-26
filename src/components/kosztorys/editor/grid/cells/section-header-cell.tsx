@@ -72,22 +72,29 @@ export function SectionHeaderCell({
     const collapsed = context.collapsedSectionIds.has(rowData.sectionId)
     const Chevron = collapsed ? ChevronRight : ChevronDown
     return (
-      <div className="flex size-full items-center gap-2 px-2 text-base font-semibold">
-        <button
-          type="button"
-          title={collapsed ? 'Rozwiń sekcję' : 'Zwiń sekcję'}
-          aria-expanded={!collapsed}
-          onClick={() => context.onToggleCollapsed(rowData.sectionId)}
-          className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-        >
-          <Chevron className="size-4" />
-        </button>
+      // The whole band (not just the chevron) is the toggle target — rename stays reachable by
+      // stopping its own click from bubbling here.
+      <div
+        role="button"
+        tabIndex={0}
+        title={collapsed ? 'Rozwiń sekcję' : 'Zwiń sekcję'}
+        aria-expanded={!collapsed}
+        onClick={() => context.onToggleCollapsed(rowData.sectionId)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          context.onToggleCollapsed(rowData.sectionId)
+        }}
+        className="hover:bg-accent/50 flex size-full cursor-pointer items-center gap-2 px-2 text-lg font-semibold"
+      >
+        <Chevron className="text-muted-foreground size-4 shrink-0" />
         <SectionDot />
         {handlers ? (
           <SectionNameCell
             rowData={rowData}
             onRename={handlers.onRename}
-            className="min-w-0 flex-1 px-0 text-base font-semibold"
+            className="min-w-0 flex-1 px-0 text-lg font-semibold"
+            onClick={(event) => event.stopPropagation()}
           />
         ) : (
           <span className="min-w-0 flex-1 truncate">{rowData.sectionName ?? ''}</span>

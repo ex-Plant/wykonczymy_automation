@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
@@ -11,11 +12,13 @@ export function SectionNameCell({
   onRename,
   disabled,
   className,
+  onClick,
 }: {
   rowData: KosztorysV2RowT
   onRename?: (sectionId: number, name: string) => void
   disabled?: boolean
   className?: string
+  onClick?: (event: MouseEvent<HTMLInputElement>) => void
 }) {
   const { editing, start, inputProps } = useInlineRename((name) =>
     onRename?.(rowData.sectionId, name),
@@ -31,6 +34,7 @@ export function SectionNameCell({
       // rename (from the section panel) can't go stale behind a leftover draft.
       value={editing ? inputProps.value : (rowData.sectionName ?? '')}
       onFocus={() => start(rowData.sectionName ?? '')}
+      onClick={onClick}
     />
   )
 }
