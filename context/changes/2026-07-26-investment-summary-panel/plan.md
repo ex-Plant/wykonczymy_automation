@@ -508,18 +508,18 @@ None. The settlement-mode field and its migration belong to
 
 #### Automated
 
-- [x] 3.1 Type checking passes
-- [x] 3.2 Linting passes
-- [x] 3.3 Unit tests pass
-- [x] 3.4 Build succeeds
+- [x] 3.1 Type checking passes — 8ecbbcb1
+- [x] 3.2 Linting passes — 8ecbbcb1
+- [x] 3.3 Unit tests pass — 8ecbbcb1
+- [x] 3.4 Build succeeds — 8ecbbcb1
 
 ### Phase 4: Move the v1/v2 reading toggle into the panel
 
 #### Automated
 
-- [ ] 4.1 Type checking passes
-- [ ] 4.2 Reading-toggle projection unit test passes
-- [ ] 4.3 Linting passes
+- [x] 4.1 Type checking passes
+- [x] 4.2 Reading-toggle projection unit test passes
+- [x] 4.3 Linting passes
 
 ### Phase 5: Owner strip, and retire the tiles from this page
 

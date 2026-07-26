@@ -2,6 +2,7 @@ import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
+import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
 import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
@@ -38,24 +39,17 @@ export async function InvestmentSummaryPanel({
   const clientTotals =
     rows.length === 0 ? null : kosztorysClientTotals(rows, tree.stages, tree.globalDiscount)
 
-  // The panel's robocizna figure is POST-rabat and its rabat is carried alongside — the pie adds them
-  // back (`sumaPracPreRabat`). Σ LABOR_COST is pre-rabat like `sumaPracNet`, so the transaction
-  // reading subtracts Σ RABAT to land on the same axis the kosztorys reading uses.
-  const laborCostsNetFromKosztorys = clientTotals
-    ? clientTotals.sumaPracNet - clientTotals.rabatClientNet
-    : financials.totalLaborCosts - financials.totalRabat
-
   return (
     <InvestmentSummaryPanelClient
       investmentId={investmentId}
       investmentName={investmentName}
       depositTransactions={depositTransactions}
-      laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
       materialyBreakdown={materialyBreakdown}
       wplatyNet={wplatyNet}
-      rabatAmount={clientTotals?.rabatClientNet ?? financials.totalRabat}
+      fromTransactions={readingFromTransactions(financials)}
+      fromKosztorys={clientTotals ? readingFromKosztorys(clientTotals) : undefined}
       // Nothing to reconcile without a kosztorys: feeding the transaction figures to both sides keeps
       // the verdict silent rather than screaming a gap against an empty kosztorys.
       reconciliation={buildKosztorysReconciliation({

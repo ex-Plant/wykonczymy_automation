@@ -14,6 +14,7 @@ import { calculateMargin } from '@/lib/db/calculate-margin'
 import { InvestmentSummaryPanel } from '@/components/investments/investment-summary-panel'
 import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
+import { readingFromTransactions } from '@/lib/kosztorys/summary-reading'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
@@ -130,12 +131,11 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
               investmentId={investmentId}
               investmentName={investment.name}
               depositTransactions={depositTransactions}
-              laborCostsNetFromKosztorys={financials.totalLaborCosts - financials.totalRabat}
               materialsGrossBase={financials.materialsGrossBase}
               materialsNetBilled={financials.materialsNetBilled}
               materialyBreakdown={materialyBreakdown}
               wplatyNet={wplatyNet}
-              rabatAmount={financials.totalRabat}
+              fromTransactions={readingFromTransactions(financials)}
               reconciliation={buildKosztorysReconciliation({
                 sumaPracNet: financials.totalLaborCosts,
                 rabatClientNet: financials.totalRabat,
