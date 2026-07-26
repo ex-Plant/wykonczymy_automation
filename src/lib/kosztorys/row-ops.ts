@@ -145,25 +145,9 @@ export function swapItemInSection(
   return next
 }
 
-// Splice the first row of a newly inserted section into the display sequence, just before or just
-// after the anchor section's block. Goes through the block sequence rather than array indices for
-// the same reason swapSectionBlock does: applyAddItem appends at the END of the array, so a
-// section's rows are not guaranteed adjacent and a positional splice would land past the wrong block.
-export function applyInsertSectionRow(
-  rows: KosztorysV2RowT[],
-  anchorSectionId: number,
-  row: KosztorysV2RowT,
-  dir: 'above' | 'below',
-): KosztorysV2RowT[] {
-  const seq = sectionSequence(rows)
-  const pos = seq.indexOf(anchorSectionId)
-  if (pos < 0) return [...rows, row]
-  seq.splice(dir === 'above' ? pos : pos + 1, 0, row.sectionId)
-  const blocks = groupBySection(rows)
-  blocks.set(row.sectionId, [row])
-  return seq.flatMap((id) => blocks.get(id) ?? [])
-}
-
+// Rows grouped by section, in the order the sections first appear. A Map keeps insertion order, so
+// its keys ARE the section display sequence — both section movers below read the order off this one
+// pass rather than a second stored sequence.
 function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]> {
   const blocks = new Map<number, KosztorysV2RowT[]>()
   for (const r of rows) {
@@ -174,17 +158,29 @@ function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]>
   return blocks
 }
 
-// The display order of sections, read off the same array that drives the grid rather than a second
-// stored sequence.
-function sectionSequence(rows: KosztorysV2RowT[]): number[] {
-  const seq: number[] = []
-  const seen = new Set<number>()
-  for (const r of rows) {
-    if (seen.has(r.sectionId)) continue
-    seen.add(r.sectionId)
-    seq.push(r.sectionId)
-  }
-  return seq
+// Both section movers work by editing the section SEQUENCE and re-concatenating the blocks, never by
+// splicing array indices: applyAddItem appends a new item at the END of `rows`, so a section's rows
+// are not guaranteed adjacent — the regroup pulls such a stray row back into its block, where an
+// index splice would land past the wrong one.
+function regroup(blocks: Map<number, KosztorysV2RowT[]>, seq: number[]): KosztorysV2RowT[] {
+  return seq.flatMap((id) => blocks.get(id) ?? [])
+}
+
+// Splice the first row of a newly inserted section into the display sequence, just before or just
+// after the anchor section's block.
+export function applyInsertSectionRow(
+  rows: KosztorysV2RowT[],
+  anchorSectionId: number,
+  row: KosztorysV2RowT,
+  dir: 'above' | 'below',
+): KosztorysV2RowT[] {
+  const blocks = groupBySection(rows)
+  const seq = [...blocks.keys()]
+  const pos = seq.indexOf(anchorSectionId)
+  if (pos < 0) return [...rows, row]
+  seq.splice(dir === 'above' ? pos : pos + 1, 0, row.sectionId)
+  blocks.set(row.sectionId, [row])
+  return regroup(blocks, seq)
 }
 
 export function neighborSectionId(
@@ -192,28 +188,25 @@ export function neighborSectionId(
   sectionId: number,
   dir: 'up' | 'down',
 ): number | undefined {
-  const seq = sectionSequence(rows)
+  const seq = [...groupBySection(rows).keys()]
   const pos = seq.indexOf(sectionId)
   if (pos < 0) return undefined
   return seq[dir === 'up' ? pos - 1 : pos + 1]
 }
 
-// Move a whole section one place (▲/▼) by regrouping `rows` into section blocks in the new sequence.
-// Regrouping (not a slice-swap) is what makes this safe against a non-contiguous section: applyAddItem
-// appends a new item at the END of the array, so a section's rows are not guaranteed adjacent — the
-// regroup pulls such a stray row back into its block. Same reference on a no-op (edge / unknown id).
+// Move a whole section one place (▲/▼). Same reference on a no-op (edge / unknown id).
 export function swapSectionBlock(
   rows: KosztorysV2RowT[],
   sectionId: number,
   dir: 'up' | 'down',
 ): KosztorysV2RowT[] {
-  const seq = sectionSequence(rows)
+  const blocks = groupBySection(rows)
+  const seq = [...blocks.keys()]
   const pos = seq.indexOf(sectionId)
   const targetPos = dir === 'up' ? pos - 1 : pos + 1
   if (pos < 0 || targetPos < 0 || targetPos >= seq.length) return rows
   ;[seq[pos], seq[targetPos]] = [seq[targetPos], seq[pos]]
-  const blocks = groupBySection(rows)
-  return seq.flatMap((id) => blocks.get(id) ?? [])
+  return regroup(blocks, seq)
 }
 
 // Neighbor of an item within ITS section in the ▲/▼ direction (same sequence as swapItemInSection).

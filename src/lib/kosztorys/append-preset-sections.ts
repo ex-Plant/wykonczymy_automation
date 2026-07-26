@@ -1,6 +1,5 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
-import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { insertItems, insertSections, nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
 import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'

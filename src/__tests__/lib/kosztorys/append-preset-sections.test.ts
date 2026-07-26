@@ -46,7 +46,12 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
   // Add one section + one item (with job fields populated and a coefficient override) to
   // `investmentId`; returns the created section id. Job fields are populated so the zeroing at
   // serialize time is observable on the appended copy.
-  async function addSection(investmentId: number, name: string, displayOrder: number) {
+  async function addSection(
+    investmentId: number,
+    name: string,
+    displayOrder: number,
+    color: string | null = null,
+  ) {
     const section = await payload.create({
       collection: 'kosztorys-sections',
       data: {
@@ -54,6 +59,7 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
         name,
         displayOrder,
         defaultCostVariant: 'w_tools',
+        color,
       },
       context: { skipRevalidation: true },
     })
@@ -81,9 +87,9 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
 
   // Build a source investment with one named section, serialize it as a preset, store it, and return
   // the preset id + the in-payload section id the picker/action addresses it by.
-  async function buildPreset(nameSuffix: string, sectionName: string) {
+  async function buildPreset(nameSuffix: string, sectionName: string, color: string | null = null) {
     const sourceId = await createInvestment(`${PRESET_PREFIX}src-${nameSuffix}`)
-    await addSection(sourceId, sectionName, 0)
+    await addSection(sourceId, sectionName, 0, color)
     const payloadSnap = await serializeKosztorysAsPreset(sourceId)
     const presetId = await insertPreset(db, {
       name: `${PRESET_PREFIX}${nameSuffix}`,
@@ -198,5 +204,29 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
 
     const after = await serializeKosztorys(targetId)
     expect(after.sections.filter((s) => s.name === 'Łazienka')).toHaveLength(2)
+  })
+
+  // Regression: insertSections built its INSERT column list by hand, so a column added to the
+  // section table (here `color`) silently never round-tripped — the preset kept the colour, the
+  // appended copy came back unpinned.
+  it('(f) the section colour survives the preset round trip', async () => {
+    const { presetId, sectionId } = await buildPreset('f', 'Sekcja F', 'teal-deep')
+
+    const targetId = await createInvestment(`${PRESET_PREFIX}target-f`)
+    const result = await appendPresetSectionsAction(targetId, [{ presetId, sectionId }])
+    expect(result.success).toBe(true)
+
+    const after = await serializeKosztorys(targetId)
+    expect(after.sections.find((s) => s.name === 'Sekcja F')?.color).toBe('teal-deep')
+  })
+
+  it('(g) an unpinned section round-trips as unpinned, not as a dropped column', async () => {
+    const { presetId, sectionId } = await buildPreset('g', 'Sekcja G')
+
+    const targetId = await createInvestment(`${PRESET_PREFIX}target-g`)
+    await appendPresetSectionsAction(targetId, [{ presetId, sectionId }])
+
+    const after = await serializeKosztorys(targetId)
+    expect(after.sections.find((s) => s.name === 'Sekcja G')?.color).toBeNull()
   })
 })
