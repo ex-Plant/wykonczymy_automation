@@ -266,7 +266,26 @@ describe('bucketDepositsByPlane', () => {
 
   it('empty list yields zeroed buckets', () => {
     const b = bucketDepositsByPlane([])
-    expect(b).toEqual({ paidNet: 0, paidGross: 0 })
+    expect(b).toEqual({
+      paidNet: 0,
+      paidGross: 0,
+      taggedNet: { total: 0, count: 0 },
+      taggedGross: { total: 0, count: 0 },
+    })
+  })
+
+  // The tagged tallies count ONLY what was actually typed — an unmarked deposit lands in paidNet by
+  // the settlement ruling but must leave taggedNet at zero, or the plane warning reads "untagged" as
+  // "contradicts the mode".
+  it('tagged tallies exclude unmarked deposits', () => {
+    const b = bucketDepositsByPlane([
+      deposit(100, 'NET'),
+      deposit(400, null),
+      deposit(200, 'GROSS'),
+    ])
+    expect(b.paidNet).toBe(500)
+    expect(b.taggedNet).toEqual({ total: 100, count: 1 })
+    expect(b.taggedGross).toEqual({ total: 200, count: 1 })
   })
 })
 

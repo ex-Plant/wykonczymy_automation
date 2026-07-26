@@ -80,7 +80,7 @@ export function SummaryOverviewTab({
   return (
     <div className="flex w-full flex-col gap-y-4">
       {!clientView && settlementVerdict.mismatch && (
-        <SettlementPlaneWarning verdict={settlementVerdict} />
+        <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         {mixedMode ? (

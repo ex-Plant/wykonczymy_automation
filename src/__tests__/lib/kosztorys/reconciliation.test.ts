@@ -269,29 +269,62 @@ describe('grosz-exact tolerance (no fuzzy epsilon)', () => {
 })
 
 describe('buildSettlementPlaneVerdict', () => {
+  const none = { total: 0, count: 0 }
+
   it('screams when a netto-settled investment took brutto wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({ mode: 'NET', paidNet: 1000, paidGross: 250 })
+    const verdict = buildSettlementPlaneVerdict({
+      mode: 'NET',
+      taggedNet: { total: 1000, count: 4 },
+      taggedGross: { total: 250, count: 2 },
+    })
     expect(verdict.mismatch).toBe(true)
     expect(verdict.offendingAmount).toBe(250)
+    expect(verdict.offendingCount).toBe(2)
     expect(verdict.offendingPlane).toBe('GROSS')
   })
 
-  // paidNet already absorbs unmarked deposits (the null→netto ruling), so netto-only is the clean case.
-  it('stays clean when a netto-settled investment took only netto wpłaty', () => {
-    expect(buildSettlementPlaneVerdict({ mode: 'NET', paidNet: 1000, paidGross: 0 }).mismatch).toBe(
-      false,
-    )
-  })
-
   it('screams when a brutto-settled investment took netto wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({ mode: 'GROSS', paidNet: 400, paidGross: 900 })
+    const verdict = buildSettlementPlaneVerdict({
+      mode: 'GROSS',
+      taggedNet: { total: 400, count: 1 },
+      taggedGross: { total: 900, count: 3 },
+    })
     expect(verdict.mismatch).toBe(true)
     expect(verdict.offendingAmount).toBe(400)
+    expect(verdict.offendingCount).toBe(1)
     expect(verdict.offendingPlane).toBe('NET')
   })
 
+  // The regression this shape exists for: `paidNet` folds unmarked deposits into netto under the
+  // null→netto settlement ruling, so reading it as evidence fired the warning on every brutto
+  // investment whose deposits nobody had ever tagged.
+  it('stays silent when a brutto-settled investment has only untagged wpłaty', () => {
+    const verdict = buildSettlementPlaneVerdict({
+      mode: 'GROSS',
+      taggedNet: none,
+      taggedGross: none,
+    })
+    expect(verdict.mismatch).toBe(false)
+    expect(verdict.offendingAmount).toBe(0)
+    expect(verdict.offendingCount).toBe(0)
+  })
+
+  it('stays clean when a netto-settled investment took only netto wpłaty', () => {
+    expect(
+      buildSettlementPlaneVerdict({
+        mode: 'NET',
+        taggedNet: { total: 1000, count: 3 },
+        taggedGross: none,
+      }).mismatch,
+    ).toBe(false)
+  })
+
   it('never screams in MIXED, whatever the wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({ mode: 'MIXED', paidNet: 500, paidGross: 700 })
+    const verdict = buildSettlementPlaneVerdict({
+      mode: 'MIXED',
+      taggedNet: { total: 500, count: 2 },
+      taggedGross: { total: 700, count: 2 },
+    })
     expect(verdict.mismatch).toBe(false)
     expect(verdict.offendingAmount).toBe(0)
     // No plane to name — the warning renders nothing rather than mislabelling one of the two.
@@ -300,7 +333,9 @@ describe('buildSettlementPlaneVerdict', () => {
 
   it('stays clean with no wpłaty at all, in every mode', () => {
     for (const mode of SETTLEMENT_MODES) {
-      expect(buildSettlementPlaneVerdict({ mode, paidNet: 0, paidGross: 0 }).mismatch).toBe(false)
+      expect(
+        buildSettlementPlaneVerdict({ mode, taggedNet: none, taggedGross: none }).mismatch,
+      ).toBe(false)
     }
   })
 })

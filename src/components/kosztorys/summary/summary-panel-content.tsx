@@ -160,13 +160,13 @@ export function SummaryPanelContent({
   const isSubcontractorView = view === 'podwykonawcy'
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
-  const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
+  const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
   // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
-  // rather than deciding it.
+  // rather than deciding it. Fed the tagged tallies, not paidNet/paidGross — see the verdict's doc.
   const settlementVerdict = buildSettlementPlaneVerdict({
     mode: settlementMode,
-    paidNet,
-    paidGross,
+    taggedNet,
+    taggedGross,
   })
   // The tables show one money column — the settled one. Mieszane is the exception: it's a mixed
   // netto+brutto settlement, so it shows both columns alongside the gotówka block. Same projection

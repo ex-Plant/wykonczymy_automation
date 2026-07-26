@@ -1,5 +1,6 @@
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { DepositTallyT } from '@/lib/kosztorys/summary-economics'
 
 // One figure's reconciliation verdict: the kosztorys client-view NET vs the transaction-sourced
 // figure, and whether they disagree. Shared contract — the editor Podsumowanie and the investment
@@ -66,6 +67,7 @@ export type SettlementPlaneVerdictT = {
   // which plane that is. Named here rather than re-derived at the render site, where a two-branch
   // ternary over a three-value mode would quietly mislabel `MIXED`.
   offendingAmount: number
+  offendingCount: number
   offendingPlane: VatPlaneT | null
 }
 
@@ -74,22 +76,30 @@ export type SettlementPlaneVerdictT = {
  * either the mode is wrong or the wpłata was tagged wrong, and both are invisible in the totals.
  * `MIXED` is settled on both planes, so nothing can contradict it.
  *
- * `paidNet` / `paidGross` come from `bucketDepositsByPlane` — never from a second read of `vatPlane`,
- * which would risk a different reading of the null→netto ruling.
+ * Reads the **tagged** tallies from `bucketDepositsByPlane`, never `paidNet` / `paidGross`. Those
+ * fold unmarked deposits into netto under the null→netto settlement ruling, which is right for
+ * settling and wrong as evidence: an unmarked deposit says nothing about its plane, so counting it
+ * fired this warning on every brutto investment where nobody had tagged anything.
  */
 export function buildSettlementPlaneVerdict({
   mode,
-  paidNet,
-  paidGross,
+  taggedNet,
+  taggedGross,
 }: {
   mode: SettlementModeT
-  paidNet: number
-  paidGross: number
+  taggedNet: DepositTallyT
+  taggedGross: DepositTallyT
 }): SettlementPlaneVerdictT {
   const offendingPlane = mode === 'NET' ? 'GROSS' : mode === 'GROSS' ? 'NET' : null
-  const offendingAmount =
-    offendingPlane === 'GROSS' ? paidGross : offendingPlane === 'NET' ? paidNet : 0
-  return { mismatch: offendingAmount > 0, mode, offendingAmount, offendingPlane }
+  const offending =
+    offendingPlane === 'GROSS' ? taggedGross : offendingPlane === 'NET' ? taggedNet : null
+  return {
+    mismatch: (offending?.count ?? 0) > 0,
+    mode,
+    offendingAmount: offending?.total ?? 0,
+    offendingCount: offending?.count ?? 0,
+    offendingPlane,
+  }
 }
 
 /**
