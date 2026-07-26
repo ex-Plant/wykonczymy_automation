@@ -92,7 +92,7 @@ investment 7 (the ~1000-row perf dataset).
 
 ## Implementation Approach
 
-A section band is *a totals row scoped to one section*. So: generalize the existing synthetic-row
+A section band is _a totals row scoped to one section_. So: generalize the existing synthetic-row
 wrapper from two row kinds to three, insert the bands in a pure function over `viewRows`, and let
 the band's cells read the section figure out of the `subtotals` the hook already computes.
 
@@ -108,7 +108,7 @@ per render remounts the cell and drops keystrokes (see the comment at
 `grid/kosztorys-totals-row.tsx:45-52`). This is the trap this change is most likely to fall into.
 
 **Sort ⨉ collapse.** Under an active sort the bands are not rendered, so the collapsed set must be
-*ignored* rather than applied — otherwise sorting would silently hide rows with no band left to
+_ignored_ rather than applied — otherwise sorting would silently hide rows with no band left to
 re-expand them. Keep the set in state (so clearing the sort restores the posture), but gate its
 application on `sort == null`.
 
@@ -303,7 +303,7 @@ condition gates the collapsed set.
 
 - Collapsing a section hides its rows, keeps its band and its netto, and leaves „Razem" unchanged.
 - Item numbers run 1…N with no gaps and no number on a band, collapsed or not.
-- Sorting a column removes the bands; clearing the sort restores them *and* the collapsed sections.
+- Sorting a column removes the bands; clearing the sort restores them _and_ the collapsed sections.
 - Investment 7 (~1000 rows): scrolling stays smooth, collapse is instant.
 
 ---
@@ -449,7 +449,7 @@ numbering has no gap after a collapse.
 ## Performance Considerations
 
 `buildSectionHeaderRows` is one O(n) pass over `viewRows`, memoized alongside the existing
-`viewRows` memo — negligible next to the per-row pricing the grid already does. Collapsing *reduces*
+`viewRows` memo — negligible next to the per-row pricing the grid already does. Collapsing _reduces_
 the rendered row count. The per-section figure map is O(sections).
 
 ## Migration Notes

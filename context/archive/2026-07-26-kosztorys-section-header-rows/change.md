@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-section-header-rows
 title: Group header row per section in the kosztorys grid, replacing the repeated „Sekcja" column
-status: implemented
+status: archived
 created: 2026-07-26
 updated: 2026-07-26
-archived_at: null
+archived_at: 2026-07-26T12:33:20Z
 branch: kosztorys-section-header-rows
 worktree: ../wykonczymy-worktrees/kosztorys-section-header-rows
 ---

@@ -28,18 +28,18 @@ The client-facing offer view shows the same bands, read-only.
 
 ## Key Decisions Made
 
-| Decision | Choice | Why |
-| --- | --- | --- |
-| Band content | Name + section's wartość netto | Reads the existing `subtotals`, so it can't drift from „Razem" or Podsumowanie |
-| Band mechanism | A synthetic grid row, per-column content | Column alignment and horizontal scroll come free; no spanning hacks against dsg's absolute cells |
-| „Sekcja" column | Kept, hidden by default | Owner's call — redundant beside the band, but still reachable in „Kolumny" |
-| Under a sort | Bands disappear entirely | Grouping presumes section-contiguous rows; a sort breaks that, so a half-correct band is worse than none |
-| Numbering | Continuous item numbers, bands unnumbered | The gutter answers "which position is this"; a band is not a position — needs a custom gutter column |
-| Collapse | Yes, in this change | Owner's call; 14 bands make a 325-row kosztorys a readable table of contents |
-| Collapse persistence | None (per mount) | A reading posture, not a setting; avoids a store and a restore-remount edge case |
-| Section actions | Move onto the band | Two routes to one action is exactly the confusion being removed |
-| Client view | Bands included | This is the layout the owner composes by hand in the sheet before sending an offer |
-| Figure scope | Whole section, even when a search narrows the rows | Matches „Razem", which is full-dataset too |
+| Decision             | Choice                                             | Why                                                                                                      |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Band content         | Name + section's wartość netto                     | Reads the existing `subtotals`, so it can't drift from „Razem" or Podsumowanie                           |
+| Band mechanism       | A synthetic grid row, per-column content           | Column alignment and horizontal scroll come free; no spanning hacks against dsg's absolute cells         |
+| „Sekcja" column      | Kept, hidden by default                            | Owner's call — redundant beside the band, but still reachable in „Kolumny"                               |
+| Under a sort         | Bands disappear entirely                           | Grouping presumes section-contiguous rows; a sort breaks that, so a half-correct band is worse than none |
+| Numbering            | Continuous item numbers, bands unnumbered          | The gutter answers "which position is this"; a band is not a position — needs a custom gutter column     |
+| Collapse             | Yes, in this change                                | Owner's call; 14 bands make a 325-row kosztorys a readable table of contents                             |
+| Collapse persistence | None (per mount)                                   | A reading posture, not a setting; avoids a store and a restore-remount edge case                         |
+| Section actions      | Move onto the band                                 | Two routes to one action is exactly the confusion being removed                                          |
+| Client view          | Bands included                                     | This is the layout the owner composes by hand in the sheet before sending an offer                       |
+| Figure scope         | Whole section, even when a search narrows the rows | Matches „Razem", which is full-dataset too                                                               |
 
 ## Scope
 
@@ -61,13 +61,13 @@ cells paint per column: label under `description`, figure under `net`/`gross`, m
 
 ## Phases at a Glance
 
-| Phase | What it delivers | Key risk |
-| --- | --- | --- |
-| 1. Row model | Pure assembly fn + unit spec | Ordinal/boundary rules subtler than they look |
-| 2. Rendering the band | Bands visible with name + netto | dsg cell-identity trap; unlayered CSS |
-| 3. Numbering & collapse | Continuous numbers, collapsible blocks | Custom gutter column must keep the rail's CSS hook |
-| 4. Section actions | Menu + rename on the band, column hidden | Removing the row menu's section group must leave no orphan path |
-| 5. Client view & E2E | Bands in the offer view, Playwright guard | E2E fixture must have multiple sections |
+| Phase                   | What it delivers                          | Key risk                                                        |
+| ----------------------- | ----------------------------------------- | --------------------------------------------------------------- |
+| 1. Row model            | Pure assembly fn + unit spec              | Ordinal/boundary rules subtler than they look                   |
+| 2. Rendering the band   | Bands visible with name + netto           | dsg cell-identity trap; unlayered CSS                           |
+| 3. Numbering & collapse | Continuous numbers, collapsible blocks    | Custom gutter column must keep the rail's CSS hook              |
+| 4. Section actions      | Menu + rename on the band, column hidden  | Removing the row menu's section group must leave no orphan path |
+| 5. Client view & E2E    | Bands in the offer view, Playwright guard | E2E fixture must have multiple sections                         |
 
 **Prerequisites:** none — no schema, no server action, no migration. Local dev DB + investment 42
 (14 sections) and 7 (~1000 rows) for the visual passes.
