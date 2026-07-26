@@ -23,14 +23,52 @@ The project keeps one living QA registry at `context/foundation/manual-checks.md
 per slice, checkboxes ticked by hand as behavior is verified against the running app. A slice with
 unticked boxes is **not `Done`** (hard gate in `/10x-implement`). This skill drives that pass.
 
-You know how to run this project's app and exercise its flows. Two entry modes:
+## Who runs the pass — always a dispatched Sonnet subagent
+
+**The model reading this skill does NOT drive the pass itself. It dispatches a Sonnet subagent to do
+the whole thing (Steps 0–4) and relays the result.** The pass is long, mechanical work — boot a
+server, seed the test DB, click through flows in the browser, tick boxes, write findings. That's
+squarely within Sonnet's ability and does not need the orchestrator's model burning tokens on it.
+Everything below Step 0 is the **subagent's** playbook; the orchestrator's job is only to resolve the
+target, dispatch, and report back.
+
+**Orchestrator (whatever model invoked this skill):**
+
+1. **Resolve the target** before dispatching:
+   - _Checklist mode_ — the user named a slice section (e.g. "run S-03's Phase 4 checks"). Pass that
+     section as the target.
+   - _Audit mode_ — the user named an area with no checklist ("audit the kosztorys editor"). Deriving
+     and **confirming the check list with the user is interactive**, so do that yourself first (read
+     the code, list the behaviors/edge cases, confirm with the user), then hand the confirmed list to
+     the subagent to drive.
+2. **Dispatch one Sonnet subagent** — a single agent, because the pass holds the `db-test` lock and
+   must run serially. Use the `Agent` tool with `subagent_type: "general-purpose"` and
+   `model: "sonnet"`. Give it the target plus the skill path so it follows Steps 0–4 verbatim:
+
+   > Run the project's manual verification pass by following
+   > `.claude/skills/verify-manual-checks/SKILL.md` Steps 0 through 4 exactly (Step 0 preflight incl.
+   > the db-test lock, Step 1 drive, Step 2 fix-obvious-bugs, Step 3 record findings into
+   > `context/foundation/manual-checks.md`, Step 4 close out).
+   > **Target:** <the slice section, or the confirmed audit checklist>.
+   > Do the whole thing yourself — do not sub-dispatch further. Return the Step 4 tally: boxes ticked,
+   > findings opened, findings fixed, anything that blocked the pass, and the registry section link.
+
+3. **Relay** the subagent's tally to the user (the subagent's report isn't shown to them). Keep
+   Linear/slice status in sync per the gate rules — open findings mean the slice is **not `Done`**.
+
+Do not run Steps 0–4 in the main loop yourself, even if the pass "looks quick" — the dispatch is the
+point of this skill.
+
+---
+
+The rest of this file is the **subagent's** instructions. You know how to run this project's app and
+exercise its flows. Two entry modes:
 
 - **Checklist mode** — the user points at a slice section (e.g. "run S-03's Phase 4 checks"). Drive
   each existing checkbox.
-- **Audit mode** — the user names an area with no checklist ready ("audit the kosztorys editor"). You
-  derive the checks: read the relevant code, list the behaviors and edge cases a human would verify,
-  confirm the list with the user, then drive them. Write them into `manual-checks.md` as a new
-  section so the pass is repeatable.
+- **Audit mode** — the orchestrator hands you a confirmed check list for a named area. Write it into
+  `manual-checks.md` as a new section so the pass is repeatable, then drive it. (Deriving/confirming
+  the list is the orchestrator's job — you already have it; don't loop back to the user, you can't.)
 
 ## Non-negotiables
 
