@@ -4,7 +4,12 @@ import { useState } from 'react'
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
 import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -36,8 +41,14 @@ export function KosztorysSectionActionsMenu({
   return (
     <>
       <DropdownMenu>
-        <CellMenuTrigger title="Akcje sekcji" />
+        {/* The ⋯ carries the section's hue so the band's identity survives a horizontal scroll —
+            the Akcje column is sticky, the colour dot beside the name is not. */}
+        <CellMenuTrigger
+          title="Akcje sekcji"
+          className="[&>span]:text-(--section-rail,var(--color-foreground))"
+        />
         <DropdownMenuContent align="start" className="min-w-44">
+          <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={actions.onInsertAbove}>
             <ArrowUpToLine />
             Wstaw powyżej

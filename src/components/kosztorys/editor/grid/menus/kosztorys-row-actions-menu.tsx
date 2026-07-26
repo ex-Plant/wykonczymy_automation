@@ -5,7 +5,12 @@ import type { ReactNode } from 'react'
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
 import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 
@@ -79,6 +84,9 @@ export function KosztorysRowActionsMenu({
             cell-sized and unstyled. */}
         <CellMenuTrigger title="Akcje wiersza" />
         <DropdownMenuContent align="start" className="min-w-44">
+          {/* Names the target: this menu and the band's carry the same four order commands, so
+              without it the only cue is which row you happened to click. */}
+          <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {withHint(orderItems(item), sortHint)}
           {withHint(
             <DropdownMenuItem

@@ -36,9 +36,18 @@ import {
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 
 const ITEM_ROW_HEIGHT = 32
-// The extra height over an item row is spent above the band's content (the cells align to the
-// bottom), so a section reads as opening after a gap rather than as one taller stripe.
 const SECTION_BAND_ROW_HEIGHT = 52
+
+// dsg's leftmost column is the only sticky-left element it gives us, so it is the one place a
+// per-row indicator survives horizontal scroll — which is why the section rail is painted on
+// `.dsg-cell-gutter` (globals.css) rather than on a cell of our own. Content-free and 6px wide:
+// wide enough for the 3px rail plus its tint, narrow enough to read as a margin rather than a
+// column. Module-level so its `component` identity is stable across renders.
+const SECTION_RAIL_GUTTER = {
+  basis: 6,
+  title: <></>,
+  component: () => <></>,
+}
 
 type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim axis
@@ -250,7 +259,7 @@ export function KosztorysEditorBody({
               // Strip the appended spacer + „Razem" rows before the editor's diff sees them — display-only.
               onChange={(rows) => onChange(rows.filter((row) => !isSyntheticRow(row.id)))}
               columns={gridColumns}
-              gutterColumn={false}
+              gutterColumn={SECTION_RAIL_GUTTER}
               height={gridHeight}
               rowHeight={({ rowData }) =>
                 isSectionHeaderRow(rowData.id) ? SECTION_BAND_ROW_HEIGHT : ITEM_ROW_HEIGHT
