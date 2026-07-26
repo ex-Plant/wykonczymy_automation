@@ -19,11 +19,12 @@ import {
   TOTALS_ROW_ID,
   withTotalsRow,
 } from '@/components/kosztorys/editor/grid/kosztorys-totals-row'
+import { sectionColorRail } from '@/lib/kosztorys/section-colors'
+import { cn } from '@/lib/utils/cn'
 import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { stagesForView } from '@/lib/kosztorys/settlement'
-import { sectionColorRowTint } from '@/lib/kosztorys/section-colors'
 import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
@@ -144,6 +145,22 @@ export function KosztorysEditorBody({
   const gridRows = useMemo(() => [...viewRows, makeSpacerRow(), makeTotalsRow()], [viewRows])
   const isSyntheticRow = (id: number) => id === SPACER_ROW_ID || id === TOTALS_ROW_ID
 
+  // Ids of the rows that open a section — the divider needs a boundary, and dsg hands rowClassName one
+  // row at a time with no view of its neighbours. Keyed by row id rather than index because the
+  // callback fires per virtualized row, long after this order was decided.
+  const sectionStartRowIds = useMemo(() => {
+    let previousSectionId: number | undefined
+    return new Set(
+      viewRows
+        .filter((row) => {
+          const isStart = row.sectionId !== previousSectionId
+          previousSectionId = row.sectionId
+          return isStart
+        })
+        .map((row) => row.id),
+    )
+  }, [viewRows])
+
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
   // rabatClientNet, view-independent) vs the investment's transaction sums — net to net, since the
   // ledger carries no VAT. Built via the shared lib fn — the same one the investment page calls — so
@@ -196,9 +213,12 @@ export function KosztorysEditorBody({
               headerRowHeight={56}
               lockRows
               rowKey={({ rowData }) => String(rowData.id)}
-              // Every row of a pinned section carries the wash — there is no section header row to
-              // hang the colour on, so the block of tinted rows IS the section boundary.
-              rowClassName={({ rowData }) => sectionColorRowTint(rowData.sectionColor)}
+              rowClassName={({ rowData }) =>
+                cn(
+                  sectionColorRail(rowData.sectionColor),
+                  sectionStartRowIds.has(rowData.id) && 'kosztorys-section-start',
+                )
+              }
             />
           </div>
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
