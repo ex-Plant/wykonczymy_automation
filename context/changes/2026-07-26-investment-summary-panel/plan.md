@@ -517,15 +517,15 @@ None. The settlement-mode field and its migration belong to
 
 #### Automated
 
-- [x] 4.1 Type checking passes
-- [x] 4.2 Reading-toggle projection unit test passes
-- [x] 4.3 Linting passes
+- [x] 4.1 Type checking passes — d6d618c3
+- [x] 4.2 Reading-toggle projection unit test passes — d6d618c3
+- [x] 4.3 Linting passes — d6d618c3
 
 ### Phase 5: Owner strip, and retire the tiles from this page
 
 #### Automated
 
-- [ ] 5.1 Type checking passes
-- [ ] 5.2 Linting passes
-- [ ] 5.3 Full unit suite passes
-- [ ] 5.4 Build succeeds
+- [x] 5.1 Type checking passes
+- [x] 5.2 Linting passes
+- [x] 5.3 Full unit suite passes
+- [x] 5.4 Build succeeds

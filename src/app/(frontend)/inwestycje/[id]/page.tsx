@@ -30,7 +30,7 @@ import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
 import { ContactLink } from '@/components/ui/contact-link'
-import { FinancialStats } from '@/components/investments/financial-stats'
+import { InvestmentOwnerFigures } from '@/components/investments/investment-owner-figures'
 import { STATUS_LABELS } from '@/components/investments/investment-status-badge'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
@@ -113,8 +113,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
       </div>
       <InfoList items={infoFields.filter((f) => f.value)} />
 
-      <FinancialStats
-        fields={financialFields}
+      <InvestmentOwnerFigures
         margin={calculateMargin(financials)}
         totalPayouts={financials.totalPayouts}
         totalLoss={financials.totalLoss}
