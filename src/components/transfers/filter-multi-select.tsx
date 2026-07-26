@@ -23,6 +23,7 @@ type FilterMultiSelectPropsT = {
   options: OptionT[]
   label: string
   icon?: LucideIcon
+  iconPosition?: 'left' | 'right'
   searchable?: boolean
   triggerClassName?: string
   // Render just the icon (no label / count) — for tight surfaces where a tooltip carries the meaning.
@@ -49,6 +50,7 @@ export function FilterMultiSelect({
   options,
   label,
   icon: Icon,
+  iconPosition = 'left',
   searchable = false,
   triggerClassName,
   iconOnly = false,
@@ -140,6 +142,7 @@ export function FilterMultiSelect({
         <FilterTriggerButton
           active={!allSelected}
           icon={Icon}
+          iconPosition={iconPosition}
           className={triggerClassName}
           title={title}
         >

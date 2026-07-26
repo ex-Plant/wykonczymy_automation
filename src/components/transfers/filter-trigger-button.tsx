@@ -6,13 +6,17 @@ import { cn } from '@/lib/utils/cn'
 type FilterTriggerButtonPropsT = {
   active: boolean
   icon?: LucideIcon
+  iconPosition?: 'left' | 'right'
   children?: React.ReactNode
   className?: string
   title?: string
 }
 
 export const FilterTriggerButton = forwardRef<HTMLButtonElement, FilterTriggerButtonPropsT>(
-  function FilterTriggerButton({ active, icon: Icon, children, className, ...props }, ref) {
+  function FilterTriggerButton(
+    { active, icon: Icon, iconPosition = 'left', children, className, ...props },
+    ref,
+  ) {
     return (
       <Button
         ref={ref}
@@ -22,8 +26,9 @@ export const FilterTriggerButton = forwardRef<HTMLButtonElement, FilterTriggerBu
         className={cn('min-w-40', className)}
         {...props}
       >
-        {Icon && <Icon />}
+        {Icon && iconPosition === 'left' && <Icon />}
         {children}
+        {Icon && iconPosition === 'right' && <Icon />}
       </Button>
     )
   },

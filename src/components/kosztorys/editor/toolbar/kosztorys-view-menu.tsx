@@ -107,8 +107,8 @@ export function KosztorysViewMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
-          <SlidersHorizontal />
           Kolumny
+          <SlidersHorizontal />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
