@@ -255,6 +255,9 @@ function actionColumn(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT> {
     minWidth: 64,
     maxWidth: 64,
     disabled: true,
+    // `disabled` is here to keep the cell cursor out of a column that holds a button, but dsg also
+    // paints every disabled cell its grey "unavailable input" fill — see globals.css.
+    cellClassName: 'kosztorys-actions-cell',
     component: ({ rowData }) => <RowActionsCell rowData={rowData} opts={opts} />,
   }
 }

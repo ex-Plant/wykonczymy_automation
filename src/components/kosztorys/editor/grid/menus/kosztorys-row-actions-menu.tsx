@@ -103,12 +103,16 @@ export function KosztorysRowActionsMenu({
   return (
     <>
       <DropdownMenu>
-        {/* size-full: whole cell is the click target, else dsg selects the dead space around the icon. */}
+        {/* size-full: whole cell is the click target, else dsg selects the dead space around the icon.
+            The button chrome therefore sits on an inner span — the trigger itself has to stay
+            cell-sized and unstyled. */}
         <DropdownMenuTrigger
           title="Akcje wiersza"
-          className="text-muted-foreground hover:text-foreground hover:bg-accent flex size-full cursor-pointer items-center justify-center outline-none"
+          className="group flex size-full cursor-pointer items-center justify-center outline-none"
         >
-          <MoreHorizontal />
+          <span className="text-foreground group-hover:bg-accent group-hover:text-accent-foreground group-data-[state=open]:bg-accent flex size-6 items-center justify-center rounded-md transition-colors">
+            <MoreHorizontal className="size-3.5" />
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-44">
           <DropdownMenuLabel>Prace</DropdownMenuLabel>

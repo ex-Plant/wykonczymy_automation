@@ -282,6 +282,13 @@
   padding-bottom: 3rem;
 }
 
+/* The Akcje column is `disabled` only to keep the cell cursor out of it, so dsg's grey
+   "unavailable input" fill is wrong there — the cell holds a button. Transparent rather than the
+   cell colour so a section's row tint still shows through. */
+.kosztorys-grid .dsg-cell.kosztorys-actions-cell {
+  background: transparent;
+}
+
 /* dsg virtualizes rows with @tanstack/react-virtual keyed by row id, so a row scrolling into view is
    a fresh DOM node — the keyframe replays on every mount and softens the hard pop-in. The header row
    is excluded — it never unmounts. */
