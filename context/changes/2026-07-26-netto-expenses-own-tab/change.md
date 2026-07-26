@@ -41,3 +41,7 @@ tab split needs, so the two changes share one data-layer edit.
 
 The owner also called the link affordance „not obvious enough" — a bare whole-row href with no
 visual cue. In scope.
+
+**Owner ruling (2026-07-26, during implementation): no chevron.** The trailing chevron column was
+built in phase 3 and then removed on the owner's call — the affordance stays the shipped hover cue
+(`data-table-row.tsx`). Phase 3's plan text still describes the chevron; the code is the authority.
