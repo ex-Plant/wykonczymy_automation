@@ -56,27 +56,38 @@ export function buildMaterialyBreakdown(
   return rows
 }
 
-/** Map ALL expense categories to header fields, showing 0 for categories with no transactions. */
+/** Map expense categories to header fields. By default ALL of them, showing 0 for a category with
+ *  no transactions — a zero tile still says "this cost bucket exists and is empty", which the export
+ *  header and the v1 reading both rely on for a stable column set. */
 function mapCategoryCostsToFields(
   categoryCosts: CategoryCostT[],
   expenseCategories: { id: number; name: string }[],
+  hideZeroCosts: boolean,
 ): FinancialFieldT[] {
-  return expenseCategories.map((cat) => {
-    const total = costForCategory(categoryCosts, cat.id)
-    return { label: cat.name, value: formatPLN(total), amount: -total }
-  })
+  return expenseCategories
+    .map((cat) => ({ cat, total: costForCategory(categoryCosts, cat.id) }))
+    .filter(({ total }) => !hideZeroCosts || total !== 0)
+    .map(({ cat, total }) => ({ label: cat.name, value: formatPLN(total), amount: -total }))
+}
+
+type BuildOptionsT = {
+  /** Drop expense categories with no spend instead of rendering them at 0. Scopes to the cost
+   *  tiles only — Robocizna and Wpłaty are the figures under comparison and must stay visible
+   *  even at zero, or the block would silently shrink to nothing on an empty investment. */
+  hideZeroCosts?: boolean
 }
 
 /** Build the shared financial header fields (category costs + totals). */
 export function buildFinancialFields(
   financials: InvestmentFinancialsT,
   expenseCategories: { id: number; name: string }[],
+  { hideZeroCosts = false }: BuildOptionsT = {},
 ): FinancialFieldT[] {
   const { categoryCosts, totalIncome, totalLaborCosts, totalRabat } = financials
   const uncategorised = uncategorisedRemainder(financials)
 
   return [
-    ...mapCategoryCostsToFields(categoryCosts, expenseCategories),
+    ...mapCategoryCostsToFields(categoryCosts, expenseCategories, hideZeroCosts),
     ...(uncategorised !== 0
       ? [
           {

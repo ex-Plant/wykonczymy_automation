@@ -10,7 +10,7 @@ import {
 } from '@/lib/queries/reference-data'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { calculateMargin } from '@/lib/db/calculate-margin'
-import { InvestmentReconBlock } from '@/components/investments/investment-recon-block'
+import { InvestmentStatsVersions } from '@/components/investments/investment-stats-versions'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
 import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-costs'
 import { perfStart } from '@/lib/perf'
@@ -90,21 +90,27 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
       </div>
       <InfoList items={infoFields.filter((f) => f.value)} />
 
-      <FinancialStats
-        fields={financialFields}
-        margin={calculateMargin(financials)}
-        totalPayouts={financials.totalPayouts}
-        totalLoss={financials.totalLoss}
-        settledFields={settledFields}
-        recon={
-          // Streamed off the critical path: only this block awaits the kosztorys tree (the page's
-          // long-pole fetch); the rest renders immediately. It fetches its own investment-wide
-          // transaction sums so the reconciliation never inherits this page's URL filters.
-          <Suspense fallback={null}>
-            <InvestmentReconBlock investmentId={investmentId} />
-          </Suspense>
+      {/* Streamed off the critical path: only this block awaits the kosztorys tree (the page's
+          long-pole fetch), so until it lands the fallback shows the transaction-driven figures
+          alone — the same block, minus the v1/v2 toggle. */}
+      <Suspense
+        fallback={
+          <FinancialStats
+            fields={financialFields}
+            margin={calculateMargin(financials)}
+            totalPayouts={financials.totalPayouts}
+            totalLoss={financials.totalLoss}
+            settledFields={settledFields}
+          />
         }
-      />
+      >
+        <InvestmentStatsVersions
+          investmentId={investmentId}
+          financials={financials}
+          expenseCategories={refData.expenseCategories}
+          settledFields={settledFields}
+        />
+      </Suspense>
 
       {/* Transactions table */}
       <TransfersSection

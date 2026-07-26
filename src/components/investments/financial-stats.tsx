@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import { useEffect } from 'react'
 import { useHeaderFieldsStore } from '@/stores/header-fields-store'
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
@@ -57,10 +57,6 @@ type FinancialStatsPropsT = {
   totalPayouts?: number
   totalLoss?: number
   settledFields?: FinancialFieldT[]
-  // The „z kosztorysu" reconciliation block, streamed in behind <Suspense> by the page so its
-  // kosztorys-tree fetch stays off the critical render path. A slot (not data) because the fetch +
-  // compute now live in the async InvestmentReconBlock server component.
-  recon?: ReactNode
 }
 
 export function FinancialStats({
@@ -69,7 +65,6 @@ export function FinancialStats({
   totalPayouts = 0,
   totalLoss = 0,
   settledFields = [],
-  recon,
 }: FinancialStatsPropsT) {
   const { role: userRole } = useCurrentUser()
   const toggle = useHeaderFieldsStore((s) => s.toggle)
@@ -154,8 +149,6 @@ export function FinancialStats({
           <SaldoDisplay saldo={margin} label="Marża" tooltip={TOOLTIPS.margin} />
         </div>
       )}
-
-      {recon}
     </div>
   )
 }
