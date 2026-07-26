@@ -84,6 +84,9 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
+  // Off on a host that already lists every transaction next to the panel (the investment page's
+  // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
+  showTransactionLists?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   clientView?: boolean
   stages?: KosztorysStageT[]
@@ -123,6 +126,7 @@ export function SummaryPanelContent({
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
+  showTransactionLists = true,
   clientView = false,
   stages,
   stageTotals,
@@ -249,6 +253,7 @@ export function SummaryPanelContent({
                 materialsReductionPercent={materialsReductionPercent}
                 onMaterialsReductionPercentChange={setMaterialsReductionPercent}
                 clientView={clientView}
+                showTransactions={showTransactionLists}
               />
             )}
 
@@ -259,6 +264,7 @@ export function SummaryPanelContent({
                 paidNet={paidNet}
                 paidGross={paidGross}
                 clientView={clientView}
+                totalsOnly={!showTransactionLists}
               />
             )}
             {view === 'etapy' && stages && stageTotals && (

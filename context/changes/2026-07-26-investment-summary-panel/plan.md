@@ -508,10 +508,10 @@ None. The settlement-mode field and its migration belong to
 
 #### Automated
 
-- [ ] 3.1 Type checking passes
-- [ ] 3.2 Linting passes
-- [ ] 3.3 Unit tests pass
-- [ ] 3.4 Build succeeds
+- [x] 3.1 Type checking passes
+- [x] 3.2 Linting passes
+- [x] 3.3 Unit tests pass
+- [x] 3.4 Build succeeds
 
 ### Phase 4: Move the v1/v2 reading toggle into the panel
 
