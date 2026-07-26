@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import * as Collapsible from '@radix-ui/react-collapsible'
-import { ChevronDown } from 'lucide-react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
@@ -16,7 +15,6 @@ import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
-import { CollapsiblePanelTrigger } from '@/components/ui/collapsible-panel-trigger'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
 import {
@@ -165,37 +163,22 @@ export function KosztorysTotalsPanel({
     <Collapsible.Root
       open={open}
       onOpenChange={setOpen}
-      // The open/close animation lives on the ROOT's height (h-12 ↔ 100%), not on the Content's
-      // Radix keyframes — those animate the measured natural content height, which disagrees with
-      // the flex-stretched full height and made the close look two-phased. Content stays mounted
+      // The open/close animation lives on the ROOT's height (0 ↔ 100%), not on the Content's Radix
+      // keyframes — those animate the measured natural content height, which disagrees with the
+      // flex-stretched full height and made the close look two-phased. Content stays mounted
       // (forceMount) so it can't blink out mid-transition; visibility flips only once closed.
-      className="border-border bg-background text-foreground shadow-panel absolute inset-x-0 bottom-0 z-20 flex h-15 flex-col overflow-hidden border-t transition-[height] duration-200 ease-out data-[state=open]:h-full"
+      // Collapsed it takes no height at all: with the toolbar owning the toggle, the panel has
+      // nothing left to show down here, so the border goes transparent too rather than leaving a
+      // hairline ruled across the bottom of the grid.
+      className="border-border bg-background text-foreground shadow-panel absolute inset-x-0 bottom-0 z-20 flex h-0 flex-col overflow-hidden border-t transition-[height] duration-200 ease-out data-[state=closed]:border-transparent data-[state=open]:h-full"
     >
-      {/* Open, the toolbar's Podsumowanie button is the close affordance — the trigger row only
-          renders collapsed, as the visible handle for the panel. */}
-      <CollapsiblePanelTrigger
-        label={isSubcontractorView ? 'Podsumowanie podwykonawców' : 'Podsumowanie'}
-        className="data-[state=open]:hidden"
-      />
-      {/* Pinned to the panel, not the scroll region, so it stays put while content scrolls.
-          top-4 + h-8 mirror the axis toggle's offset and height, centering the two on one line. */}
-      {open && (
-        <button
-          onClick={() => setOpen(false)}
-          aria-label="Zwiń podsumowanie"
-          className="absolute top-4 right-4 z-10 flex h-8 cursor-pointer items-center"
-        >
-          <ChevronDown className="text-muted-foreground hover:text-foreground size-8" />
-        </button>
-      )}
       <Collapsible.Content
         forceMount
         className="flex min-h-0 flex-1 flex-col overflow-hidden transition-[visibility] duration-200 data-[state=closed]:invisible"
       >
         {/* Pinned top bar — the view toggle (Podsumowanie / Wydatki / Wpłaty / Robocizna /
             Podwykonawcy) stays visible while the content scrolls below it. „Podwykonawcy" is dropped
-            from the options in the client read-only view. pr keeps the toggle clear of the absolute
-            close affordance in the top-right corner. */}
+            from the options in the client read-only view. */}
         <div className="flex flex-col items-start gap-2 px-4 pt-4">
           <ToggleGroup
             options={viewOptions}
