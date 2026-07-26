@@ -228,3 +228,28 @@ Pass ran clean — **no bugs found**, all 12 boxes ticked. Two non-blocking obse
 
 - The „Różnica" column prints `−0,00` on a frozen netto row (the `−` prefix is unconditional). Pre-existing formatting shape, not introduced here.
 - The admin's „Kwota netto" input is disabled, so the server guard is only reachable via the API. That is the intended consequence of `netAmount` being immutable (correction = cancel + re-add), noted so the next reader doesn't chase it as a bug.
+
+
+## EX-580 — section header rows (bands) in the kosztorys grid
+
+**Authored 2026-07-26.** The repeated „Sekcja" column is replaced by a band row opening each section:
+colour dot, name, item count and the section's wartość netto/brutto, with a chevron that folds the
+section shut and a „…" menu carrying the section actions that used to live in every row's menu. Item
+numbering in the gutter is continuous and skips the bands. Branch `kosztorys-section-header-rows`.
+
+Automated: tsc 0, eslint 0 errors, 1661 unit tests. `e2e/kosztorys-section-headers.spec.ts` is
+authored but **unrun** — `pnpm test:e2e` cannot build inside a git worktree (symlinked
+`node_modules`); run it from the main tree after merge.
+
+- [ ] Every section opens with a band; its netto equals that section's row in the Podsumowanie
+- [ ] The band's figure is unmoved by a search filter or a section filter (full-dataset subtotal)
+- [ ] Sorting a column makes the bands disappear and the grid read as one flat list; clearing the sort brings them back
+- [ ] Collapsing a section hides exactly its rows, leaves its band, and leaves no gap in the numbering
+- [ ] „Razem" is unchanged by a collapse
+- [ ] Renaming a section on the band renames it everywhere (Podsumowanie, filter menu, the hidden „Sekcja" column)
+- [ ] The band's „…" inserts / moves / recolours / deletes the section, and the delete confirm names the right item count
+- [ ] The row „…" menu no longer offers any section action
+- [ ] „Sekcja" is hidden by default in a fresh browser profile and can still be re-enabled from the column picker
+- [ ] Typing into a cell right below a band drops no characters (no remount from the wrapped columns)
+- [ ] The share/preview link renders the bands read-only — no rename, no „…" menu — and collapse still works
+- [ ] The client view's netto/brutto toggle moves the band's figure with the columns

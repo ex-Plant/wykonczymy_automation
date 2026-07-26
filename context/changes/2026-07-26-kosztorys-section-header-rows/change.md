@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-section-header-rows
 title: Group header row per section in the kosztorys grid, replacing the repeated „Sekcja" column
-status: implementing
+status: implemented
 created: 2026-07-26
 updated: 2026-07-26
 archived_at: null
