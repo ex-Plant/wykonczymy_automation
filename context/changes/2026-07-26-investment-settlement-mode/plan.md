@@ -389,18 +389,18 @@ Hand-written per repo rule. `NOT NULL DEFAULT 'NET'` means the backfill is the d
 
 #### Automated
 
-- [x] 2.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts` — PENDING_SHA
-- [x] 2.2 No reference to the removed hook remains: `! grep -rn "use-summary-axis" src` — PENDING_SHA
-- [x] 2.3 Type checking passes: `pnpm exec tsc --noEmit` — PENDING_SHA
-- [x] 2.4 Lint passes: `pnpm lint` — PENDING_SHA
+- [x] 2.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts` — be17774b
+- [x] 2.2 No reference to the removed hook remains: `! grep -rn "use-summary-axis" src` — be17774b
+- [x] 2.3 Type checking passes: `pnpm exec tsc --noEmit` — be17774b
+- [x] 2.4 Lint passes: `pnpm lint` — be17774b
 
 ### Phase 3: The client reads it — one plane, no controls
 
 #### Automated
 
-- [ ] 3.1 Deleted primitives have no remaining callers: `! grep -rn "MoneyAxisToggle\|toClientAxis" src`
-- [ ] 3.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 3.3 Existing unit suite passes: `pnpm test`
+- [x] 3.1 Deleted primitives have no remaining callers: `! grep -rn "MoneyAxisToggle\|toClientAxis" src` — PENDING_SHA
+- [x] 3.2 Type checking passes: `pnpm exec tsc --noEmit` — PENDING_SHA
+- [x] 3.3 Existing unit suite passes: `pnpm test` — PENDING_SHA
 
 ### Phase 4: Scream when a deposit contradicts the mode
 

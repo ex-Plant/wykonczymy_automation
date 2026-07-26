@@ -9,15 +9,6 @@ export type MoneyAxisT = 'net' | 'gross' | 'both' | 'none'
 
 export const MONEY_AXIS_DEFAULT: MoneyAxisT = 'both'
 
-// The client view offers one plane at a time, so its two-value subset is a type of its own — the
-// persisted axis is shared with the owner's Kwoty control and can arrive as 'both'/'none', which the
-// client's toggle has no item for (an unmatched value would leave the group with nothing active).
-export type ClientMoneyAxisT = Extract<MoneyAxisT, 'net' | 'gross'>
-
-export function toClientAxis(axis: MoneyAxisT): ClientMoneyAxisT {
-  return axis === 'gross' ? 'gross' : 'net'
-}
-
 // How the investment is settled with the client — a decision about the deal, stored on the
 // investment, NOT a per-person reading preference. Every reader projects the same plane from it, so
 // the owner and the client can never be looking at different money.

@@ -9,7 +9,6 @@ import { DynamicDataSheetGrid } from 'react-datasheet-grid'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
-import { MoneyAxisToggle } from '@/components/kosztorys/editor/grid/money-axis-toggle'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
@@ -25,7 +24,6 @@ import {
 import { sectionColorRail } from '@/lib/kosztorys/section-colors'
 import { cn } from '@/lib/utils/cn'
 import { toGross } from '@/lib/kosztorys/calc'
-import { toClientAxis } from '@/lib/kosztorys/money-axis'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { stagesForView } from '@/lib/kosztorys/settlement'
@@ -105,7 +103,6 @@ export function KosztorysEditorBody({
     toggleSectionCollapsed,
     sectionHandlers,
     moneyAxis,
-    setMoneyAxis,
     onChange,
   } = editor
 
@@ -236,7 +233,6 @@ export function KosztorysEditorBody({
           <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
             <h1 className="truncate text-base font-medium">{investmentName}</h1>
             <div className="flex shrink-0 items-center gap-2">
-              <MoneyAxisToggle value={toClientAxis(moneyAxis)} onChange={setMoneyAxis} />
               {/* The panel's open state is persisted per person, not per view, so without this the
                   client view inherits whatever the toolbar last left and can never fold it back. */}
               <KosztorysTotalsPanelToggle size="default" />

@@ -14,7 +14,11 @@ import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
-import { toClientAxis, type MoneyAxisT, type SettlementModeT } from '@/lib/kosztorys/money-axis'
+import {
+  settlementModeToGridAxis,
+  type MoneyAxisT,
+  type SettlementModeT,
+} from '@/lib/kosztorys/money-axis'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -150,11 +154,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. clientView narrows further: its header offers only net/brutto, and the axis is
-  // persisted per person (shared with the owner's Kwoty control), so a stored 'both'/'none' has to
-  // land on 'net' here — otherwise the grid would show both planes while the toggle shows neither.
+  // Kwoty control. clientView ignores the persisted axis entirely: the client reads the plane the
+  // investment is settled on, so its grid can't disagree with the Podsumowanie panel beside it.
   const effectiveMoneyAxis: MoneyAxisT = clientView
-    ? toClientAxis(moneyAxis)
+    ? settlementModeToGridAxis(tree.settlementMode)
     : view !== 'client'
       ? 'net'
       : moneyAxis === 'none'
