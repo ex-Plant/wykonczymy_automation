@@ -3,9 +3,10 @@ id: investment-recon-suspense
 linear: EX-542
 branch: investment-recon-suspense
 base: kosztorys-bridge
-status: implementing
+status: archived
 created: 2026-07-19
-updated: 2026-07-19
+updated: 2026-07-26
+archived_at: 2026-07-26T14:49:32Z
 ---
 
 # Stream the investment-page „z kosztorysu" recon block via Suspense
