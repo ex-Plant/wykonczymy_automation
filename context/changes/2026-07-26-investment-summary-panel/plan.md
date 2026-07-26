@@ -493,9 +493,9 @@ None. The settlement-mode field and its migration belong to
 
 #### Automated
 
-- [ ] 1.1 Type checking passes
-- [ ] 1.2 Linting passes
-- [ ] 1.3 Unit tests pass
+- [x] 1.1 Type checking passes
+- [x] 1.2 Linting passes
+- [x] 1.3 Unit tests pass
 
 ### Phase 2: Strip the two reused tabs
 

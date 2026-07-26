@@ -1,11 +1,11 @@
 ---
 change_id: investment-summary-panel
 title: Replace the investment page's stat tiles with the kosztorys Podsumowanie panel
-status: planned
+status: implementing
 created: 2026-07-26
 updated: 2026-07-26
 archived_at: null
-branch: null
+branch: investment-summary-panel
 worktree: null
 ---
 

@@ -40,6 +40,9 @@ type PropsT = {
   // Wpłaty split by VAT plane — feeds the tryb mieszany settlement.
   paidNet: number
   paidGross: number
+  // VAT + rabat globalny editing. SummarySettingsBar reads the editor context, so a host outside
+  // KosztorysEditorProvider must leave this off or it throws.
+  showSettingsBar?: boolean
   clientView?: boolean
 }
 
@@ -61,6 +64,7 @@ export function SummaryOverviewTab({
   materialsReduction,
   paidNet,
   paidGross,
+  showSettingsBar = false,
   clientView = false,
 }: PropsT) {
   const mixedMode = moneyAxis === 'mixed'
@@ -114,7 +118,7 @@ export function SummaryOverviewTab({
           formatValue={formatNet}
         />
       </div>
-      {!clientView && <SummarySettingsBar />}
+      {showSettingsBar && !clientView && <SummarySettingsBar />}
     </div>
   )
 }

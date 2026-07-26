@@ -297,6 +297,7 @@ export function KosztorysEditorBody({
             vatRate={tree.vatRate}
             settlementMode={tree.settlementMode}
             onSettlementModeChange={editor.handleSettlementModeChange}
+            showSettingsBar
             clientView={clientView}
           />
         </div>
