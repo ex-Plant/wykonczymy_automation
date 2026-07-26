@@ -1,6 +1,5 @@
 import type { RoleT } from '@/lib/auth/roles'
 import type { TransferTypeT, VatPlaneT } from '@/lib/constants/transfers'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 export type ReferenceItemT = {
   id: number
@@ -28,12 +27,6 @@ export type InvestmentRefT = ReferenceItemT & {
   notes: string
   review: string
   hasSheet: boolean
-  // Kosztorys client-pricing settings, carried here so the investment detail page can render the
-  // summary panel without a second investment fetch (the kosztorys tree exposes the same pair).
-  // Optional because the listing row type (`InvestmentRowT`) also flows through this shape and
-  // carries neither — `fetchReferenceData` always supplies both, defaulted.
-  vatRate?: number
-  settlementMode?: SettlementModeT
 }
 
 export type WorkerRefT = Omit<ReferenceItemT, 'type'> & {

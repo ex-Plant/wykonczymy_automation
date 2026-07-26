@@ -21,8 +21,6 @@ import { findTransfersRaw } from '@/lib/queries/transfers'
 import { fetchMediaByIds } from '@/lib/queries/media'
 import { extractInvoiceIds } from '@/lib/queries/transfer-mapping'
 import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
-import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
-import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
@@ -80,7 +78,6 @@ export const fetchReferenceData = unstable_cache(
       db.execute(sql`
         SELECT i.id, i.name, i.status::text,
                i.address, i.phone, i.email, i.contact_person, i.notes, i.review,
-               i.vat_rate, i.settlement_mode::text,
                (k.google_sheet_id IS NOT NULL) AS has_sheet
         FROM investments i
         LEFT JOIN kosztoryses k ON k.investment_id = i.id
@@ -129,8 +126,6 @@ export const fetchReferenceData = unstable_cache(
       notes: (row.notes as string) ?? '',
       review: (row.review as string) ?? '',
       hasSheet: Boolean(row.has_sheet),
-      vatRate: row.vat_rate === null ? DEFAULT_VAT : Number(row.vat_rate),
-      settlementMode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
     }))
 
     const workers: WorkerRefT[] = usersResult.rows.map((row) => ({
