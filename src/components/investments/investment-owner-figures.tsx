@@ -12,9 +12,6 @@ import type { FinancialFieldT } from '@/types/export'
 
 const RESTRICTED_NOTE = '\nWidoczność — właściciel'
 const TOOLTIPS = {
-  payouts:
-    'Kwoty wypłacone pracownikom. Obniżają marżę. Nie wchodzą do bilansu inwestora.' +
-    RESTRICTED_NOTE,
   loss: 'Koszt pokrywany przez firmę. Obniża marżę. Nie wchodzi do bilansu inwestora.',
   settledMaterials:
     'Materiały kupione przez firmę, wliczone w robociznę. ' +
@@ -29,7 +26,6 @@ type PropsT = {
   // Computed server-side via calculateMargin(financials) — never re-derived here, so listing and
   // detail can't drift on marża.
   margin: number
-  totalPayouts: number
   totalLoss: number
   settledFields: FinancialFieldT[]
 }
@@ -37,7 +33,8 @@ type PropsT = {
 // Company-plane figures, kept OUTSIDE the summary panel: the panel renders the client settlement, and
 // a gating mistake inside it must never be able to leak marża to a client. The whole strip is gated,
 // not just marża — nothing here is the investor's business.
-export function InvestmentOwnerFigures({ margin, totalPayouts, totalLoss, settledFields }: PropsT) {
+// Wypłaty are deliberately absent: the panel's „Podwykonawcy" view already carries them.
+export function InvestmentOwnerFigures({ margin, totalLoss, settledFields }: PropsT) {
   const { role: userRole } = useCurrentUser()
   if (!isAdminOrOwnerRole(userRole)) return null
 
@@ -45,12 +42,6 @@ export function InvestmentOwnerFigures({ margin, totalPayouts, totalLoss, settle
     <div className="text-muted-foreground space-y-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <SaldoDisplay saldo={margin} label="Marża" tooltip={TOOLTIPS.margin} />
-        <StatButton
-          label="Wypłaty"
-          value={formatPLN(totalPayouts)}
-          className="border-chart-red"
-          tooltip={TOOLTIPS.payouts}
-        />
         {totalLoss !== 0 && (
           <StatButton
             label="Strata"
