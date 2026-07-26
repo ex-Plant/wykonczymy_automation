@@ -21,12 +21,9 @@ Two things moved under the gate and are folded in rather than reviewed separatel
 
 ## Findings
 
-- [x] fixed · reuse-scan · `src/components/kosztorys/summary/tables/materials-transactions-table.tsx:60`
-      · three byte-identical amount-cell renderers (`amount`/„Brutto", `billed`/„Netto",
-      `amount`/„Kwota") — collapsed into one `moneyColumn(accessorKey, header)` factory. An in-diff
-      copy, not a reach past a repo primitive: only two files in the whole repo declare tanstack
-      `ColumnDef`s, so there is no shared money-cell primitive to route to, and four call sites across
-      two style variants don't justify inventing one.
+The 10 `fixed` findings were trimmed at archive time — the fix is now just the code. What remains is
+the set that records a _decision_ rather than an edit.
+
 - [x] dismissed · reuse-scan · `src/lib/utils/investment-transfers-href.ts:15` · **not** a duplicate
       of `src/lib/utils/build-url-with-params.ts:5` — contracts verified against the source: that
       helper needs a `currentParams` string to merge overrides into (empty value deletes the key) and
@@ -44,50 +41,11 @@ Two things moved under the gate and are folded in rather than reviewed separatel
 - [x] dropped · reuse-scan · `src/components/kosztorys/summary/blocks/subcontractor-summary.tsx:89` ·
       a fourth right-aligned `formatNet` cell, but `text-chart-green` and a lone occurrence — there is
       no duplication left to remove there.
-- [x] 🟡 WARNING · fixed · `src/types/reference-data.ts:89` · `type` was declared required
-      (`TransferTypeT`) while both consumers and two specs deliberately handle its absence — a warm
-      `unstable_cache` entry written before the field existed serves rows without it. The specs only
-      compiled via `as MaterialTransactionRowT`, so the guards were provably-always-true and a
-      cleanup pass (or `no-unnecessary-condition`) would have deleted the tolerance. Now
-      `TransferTypeT | undefined`; both casts gone.
-      test: TDD · unit — the two stale-row specs now compile without a cast, so `tsc` enforces the
-      guard rather than the comment.
-- [x] 🟡 WARNING · fixed · `context/foundation/manual-checks.md:247` · the registry named tabs
-      („Wydatki inwestycyjne", „Wydatki netto") the code never rendered — a check that cannot pass as
-      worded, in the file that hard-blocks Done. Reworded to the shipped labels, and the amount-column
-      check rewritten for the two-column netto tab.
-      test: no automated test — a QA registry line, verified by reading it against `DATASET_LABELS`.
-- [x] 🔵 OBSERVATION · fixed · `src/lib/kosztorys/wydatki-datasets.ts:29` · `DATASET_ORDER` was
-      membership-checked (`satisfies readonly WydatkiDatasetT[]`), not exhaustive: a fourth dataset
-      would compile and silently never get a tab. Now derived from a `Record<WydatkiDatasetT, number>`
-      rank map, matching the spec-table pattern in `lib/constants/transfers.ts`.
-- [x] 🔵 OBSERVATION · fixed · `src/lib/kosztorys/wydatki-datasets.ts:46` · fifth hand-rolled
-      `/inwestycje/:id?type=…` template literal in this feature, and a drifting one is exactly the bug
-      this slice fixed. Extracted `src/lib/utils/investment-transfers-href.ts` and routed all five
-      sites through it (`deposits-table:43`, `summary-totals-table:36`,
-      `subcontractor-summary:156,233`, `wydatkiRowHref`).
-      test: TDD · unit — new `investment-transfers-href.test.ts` pins the query shape
-      `buildTransferFilters` parses: unescaped comma separator, param order, and no bare `?type=`
-      (which the filter reads as "no valid type" → zero rows).
-- [x] fixed · feature-first-structure · `src/__tests__/derive-financials-bucketing.test.ts:319-378` ·
-      five isolation specs sat in a flat characterization suite whose stated job is pinning
-      `deriveFinancials`. Moved to the mirrored home `src/__tests__/lib/kosztorys/wydatki-datasets.test.ts`;
-      only the genuinely cross-cutting `Σ over the two expense tabs === totalMaterialCosts` stayed.
-- [x] fixed · comment-noise · 1 deleted (`TABLE_HEIGHT`'s restatement), 4 trimmed, and the
-      four-times-restated `Σ(billed) === totalMaterialCosts` invariant reduced to one prose home
-      (`sumBilled`) plus the test that enforces it.
-- [x] fixed · comment-noise · `src/lib/queries/reference-data.ts:279` · the docstring named two tab
-      labels that no longer exist. Now points at `partitionWydatkiRows` instead of restating labels
-      it cannot keep in sync.
-- [x] fixed · impl-review · `plan.md:101` · the plan specifies `settled` → netto → brutto; the code
-      tests netto **first** and is right (mirrors `materialsNetBilled`, which ignores `settled`).
-      Recorded inline in the plan so nobody "corrects" the code back.
-- [x] fixed · impl-review · `change.md` · the label ruling existed only in a commit message while the
-      chevron ruling was in Notes. Both rulings are now in Notes, plus the new two-column one.
 - [x] 🟡 → dismissed · `src/lib/queries/reference-data.ts:310` · `type: doc.type` assigns from
       `Record<string, any>` with no coercion, unlike every sibling field. Benign: the query's own
       `where.type: { in: EXPENSES_TAB_TYPES }` makes an out-of-union value unreachable. The real hole
-      was _absence_, not garbage — fixed above.
+      was _absence_, which narrowing cannot fix — closed instead by declaring `type` as
+      `TransferTypeT | undefined` in `src/types/reference-data.ts`.
 - [x] dismissed · module-cohesion · `wydatkiRowHref` looked off-topic in a partitioning module. After
       the extraction it is a 4-line delegate; the URL contract lives with the builder and only the
       wydatki-specific decision (no type → unfiltered list) stays with the row.
