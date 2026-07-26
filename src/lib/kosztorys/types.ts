@@ -148,6 +148,10 @@ export type KosztorysEditorDataT = {
   materialsGrossBase: number
   materialsNetBilled: number
   materialyBreakdown: MaterialyBreakdownRowT[]
+  // Company-plane material folded into robocizna, split per category — its own table beside the
+  // wydatki split, since it lowers marża and never touches the investor's bilans. Optional because
+  // omitting it IS the gate: the client share never builds it, so it can't leak into a client render.
+  settledBreakdown?: MaterialyBreakdownRowT[]
   wplatyNet: number
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
   laborCostsNetFromTransactions: number

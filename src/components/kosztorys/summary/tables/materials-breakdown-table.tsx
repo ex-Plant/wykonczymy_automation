@@ -21,12 +21,16 @@ export function MaterialsBreakdownTable({
   rows,
   reduction,
   showReduction = false,
+  caption = 'Wydatki inwestycyjne',
 }: {
   rows: MaterialyBreakdownRowT[]
   // Fraction knocked off brutto to reach netto: netto = brutto × (1 − reduction).
   reduction: number
   // Show the Netto + Różnica columns (the reduction detail); off = brutto-only category split.
   showReduction?: boolean
+  // Names the split — the same per-category shape also renders the settled („wliczone w robociznę")
+  // spend, which must never read as part of the investor's wydatki.
+  caption?: string
 }) {
   const shown = rows.filter((row) => row.net !== 0)
   if (shown.length === 0) return null
@@ -43,7 +47,7 @@ export function MaterialsBreakdownTable({
 
   return (
     <SummaryTable cols={cols} className="w-fit">
-      <SummaryHeaderCell variant="label">Wydatki inwestycyjne</SummaryHeaderCell>
+      <SummaryHeaderCell variant="label">{caption}</SummaryHeaderCell>
       <SummaryHeaderCell>{showReduction ? 'Brutto' : 'Kwota brutto'}</SummaryHeaderCell>
       {showReduction && <SummaryHeaderCell>Netto</SummaryHeaderCell>}
       {showReduction && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}

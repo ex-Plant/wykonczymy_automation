@@ -11,7 +11,7 @@ import {
 } from '@/lib/queries/reference-data'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
-import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
+import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 
 // The in-app kosztorys editor ("kosztorys_v2"). Always available — every investment has one,
@@ -64,9 +64,9 @@ export default async function InvestmentKosztorysV2Page({
     depositTxPromise,
     materialTxPromise,
   ])
-  // categoryCosts feed the Materiały split; settledCategoryCosts stay unused here — the „Materiały"
-  // breakdown figure mirrors v1, which counts unsettled only. (The wydatki LIST is a separate
-  // surface and does carry both settled states.)
+  // categoryCosts feed the Materiały split; settledCategoryCosts stay OUT of `financials` — the
+  // „Materiały" breakdown figure mirrors v1, which counts unsettled only. They render as their own
+  // company-plane table instead. (The wydatki LIST is a separate surface and carries both states.)
   const financials = deriveFinancials(typeDistribution, breakdowns.categoryCosts)
   // v1 client-facing „Materiały" split by expense category; Σ === totalMaterialCosts, so the
   // podsumowanie stays byte-identical to the investment page's materiały.
@@ -91,6 +91,10 @@ export default async function InvestmentKosztorysV2Page({
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
       materialyBreakdown={materialyBreakdown}
+      settledBreakdown={buildSettledBreakdown(
+        breakdowns.settledCategoryCosts,
+        refData.expenseCategories,
+      )}
       wplatyNet={wplatyNet}
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation
       // scream — compared against the kosztorys figures during the population/verification transition.

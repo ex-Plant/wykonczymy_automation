@@ -65,6 +65,9 @@ type PropsT = {
   materialsNetBilled: number
   // Per-expense-category split of both buckets (v1 parity); Σ === materiały billed total.
   materialyBreakdown: MaterialyBreakdownRowT[]
+  // Company-plane material folded into robocizna, split per category — its own table in the wydatki
+  // view. Omitted by a host that doesn't compute it (the editor).
+  settledBreakdown?: MaterialyBreakdownRowT[]
   // Investor's wpłaty (totalIncome — every deposit on the investment) — subtracted to reach the
   // still-owed „Do zapłaty" total.
   wplatyNet: number
@@ -120,6 +123,7 @@ export function SummaryPanelContent({
   materialsGrossBase,
   materialsNetBilled,
   materialyBreakdown,
+  settledBreakdown,
   wplatyNet,
   rabatAmount,
   reconciliation,
@@ -256,6 +260,9 @@ export function SummaryPanelContent({
                 investmentName={investmentName}
                 materials={materials}
                 materialyBreakdown={materialyBreakdown}
+                // Owner plane — dropped here too, not only by the client share omitting it upstream:
+                // marża-side spend must fail closed on every path into a client render.
+                settledBreakdown={clientView ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
                 nettoShown={nettoShown}
                 materialsAsNet={materialsAsNet}

@@ -8,7 +8,7 @@ import { kosztorysClientTotals, subcontractorDueByPlane } from '@/lib/kosztorys/
 import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
-import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
+import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { CategoryCostT } from '@/types/investment-financials'
@@ -64,6 +64,7 @@ export async function InvestmentSummaryPanel({
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
       materialyBreakdown={buildMaterialyBreakdown(financials, expenseCategories, netCategoryCosts)}
+      settledBreakdown={buildSettledBreakdown(financials.settledCategoryCosts, expenseCategories)}
       wplatyNet={wplatyNet}
       {...reading}
       // Nothing to reconcile without a kosztorys: feeding the transaction figures to both sides keeps
