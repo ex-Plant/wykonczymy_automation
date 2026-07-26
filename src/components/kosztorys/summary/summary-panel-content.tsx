@@ -231,7 +231,7 @@ export function SummaryPanelContent({
             showBreakdown={showTransactionLists}
           />
         ) : (
-          <div className="flex w-full flex-col gap-y-4 px-4 pt-4 pb-10">
+          <div className="flex w-full flex-col gap-y-4 px-4 pt-4 pb-4">
             {view === 'summary' && (
               <SummaryOverviewTab
                 investmentId={investmentId}
