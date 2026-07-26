@@ -26,7 +26,7 @@ export function SaldoDisplay({
   selectionCount,
 }: SaldoDisplayPropsT) {
   return (
-    <Description>
+    <Description withIcon={false}>
       {label}: <span className={cn('font-semibold', saldoColor(saldo))}>{formatPLN(saldo)}</span>
       {tooltip && (
         <InfoTooltip content={tooltip} label={`Jak liczony jest: ${label}`} className="ml-1" />
