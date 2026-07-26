@@ -432,6 +432,20 @@ already recovered onto `staging` by `d72d91b4`). The issue has been `In Progress
 
 ## Open Questions
 
+> **Resolved 2026-07-26** — items 1-5 below were ruled on by the owner; the rulings live in
+> `decisions.md` (Q4-Q8) and supersede the framing here. Item 6 (T3) is the only one still open.
+> Items 7-10 are unchanged and still owed.
+>
+> - 1 → **delete** `sumaPracPreRabat`, don't rename (Q4)
+> - 2 → **collapse** `rabatAmount` onto `discountNetFromKosztorys`; decisions.md Q2 superseded (Q5)
+> - 3 → **`balance`**, accept the overload (Q6)
+> - 4 → **keep both members Polish**, under a new narrow "Cat A by association" exemption (Q7)
+> - 5 → **fold `saldo` into this change** and add the stem now — the size argument below did not
+>   survive contact with the code: the SQL already aliases `AS balance`
+>   (`sum-transfers.ts:57,83,91,100,123`) and `register-saldo.ts` renames it back to `saldo`, so it
+>   is a half-renamed seam, not a decision (Q8)
+> - 6 → still open; the recommendation is **stay bare**
+
 Owner rulings needed before the codemod runs:
 
 1. **`sumaPracPreRabat` — rename or delete?** Provably identical to `sumaPracNet`
