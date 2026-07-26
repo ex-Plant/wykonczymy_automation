@@ -31,7 +31,10 @@ import {
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import { useMaterialsNetPricing } from '@/components/kosztorys/summary/hooks/use-materials-net-pricing'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
-import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
+import {
+  buildSettlementPlaneVerdict,
+  type KosztorysReconciliationT,
+} from '@/lib/kosztorys/reconciliation'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
 import type {
@@ -144,6 +147,9 @@ export function KosztorysTotalsPanel({
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
+  // Do the wpłaty sit on the declared plane? Computed here, where both the mode and the bucketed
+  // deposits already are; the tab renders the verdict rather than deciding it.
+  const settlementVerdict = buildSettlementPlaneVerdict({ mode: settlementMode, paidNet, paidGross })
   // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
   // netto+brutto settlement, so it shows both columns alongside the gotówka block.
   const displayAxis: MoneyAxisT = moneyAxis === 'mixed' ? 'both' : moneyAxis
@@ -232,6 +238,7 @@ export function KosztorysTotalsPanel({
                   wplatyNet={wplatyNet}
                   rabatAmount={rabatAmount}
                   reconciliation={reconciliation}
+                  settlementVerdict={settlementVerdict}
                   priceView="client"
                   vatRate={vatRate}
                   deriveMaterialsNet={materialsAsNet}

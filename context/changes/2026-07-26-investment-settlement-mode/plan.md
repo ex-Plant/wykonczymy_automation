@@ -398,14 +398,14 @@ Hand-written per repo rule. `NOT NULL DEFAULT 'NET'` means the backfill is the d
 
 #### Automated
 
-- [x] 3.1 Deleted primitives have no remaining callers: `! grep -rn "MoneyAxisToggle\|toClientAxis" src` — PENDING_SHA
-- [x] 3.2 Type checking passes: `pnpm exec tsc --noEmit` — PENDING_SHA
-- [x] 3.3 Existing unit suite passes: `pnpm test` — PENDING_SHA
+- [x] 3.1 Deleted primitives have no remaining callers: `! grep -rn "MoneyAxisToggle\|toClientAxis" src` — 49f23d6c
+- [x] 3.2 Type checking passes: `pnpm exec tsc --noEmit` — 49f23d6c
+- [x] 3.3 Existing unit suite passes: `pnpm test` — 49f23d6c
 
 ### Phase 4: Scream when a deposit contradicts the mode
 
 #### Automated
 
-- [ ] 4.1 Spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts`
-- [ ] 4.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 4.3 Full unit suite passes: `pnpm test`
+- [x] 4.1 Spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts` — PENDING_SHA
+- [x] 4.2 Type checking passes: `pnpm exec tsc --noEmit` — PENDING_SHA
+- [x] 4.3 Full unit suite passes: `pnpm test` — PENDING_SHA
