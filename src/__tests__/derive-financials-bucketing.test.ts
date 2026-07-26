@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
 import { billedAmountFor, TRANSFER_TYPES } from '@/lib/constants/transfers'
+import { partitionWydatkiRows, sumBilled } from '@/lib/kosztorys/wydatki-datasets'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
+import type { MaterialTransactionRowT } from '@/types/reference-data'
 
 // CHARACTERIZATION SUITE (EX-573 phase 0) — the bucketing rule, pinned before phase 2
 // rewrites deriveFinancials to read the spec table.
@@ -12,6 +14,8 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 // names the exact pair that moved.
 
 const AMOUNT = 100
+
+const ROW_BASE = { date: '2026-07-26', label: 'Materiały', description: null } as const
 
 type BucketNameT = Exclude<keyof InvestmentFinancialsT, 'categoryCosts' | 'settledCategoryCosts'>
 
@@ -183,7 +187,13 @@ describe('deriveCategoryBreakdowns — same membership, split by settled', () =>
   it('names the netto share per category without removing it from categoryCosts', () => {
     const { categoryCosts, netCategoryCosts } = deriveCategoryBreakdowns([
       { categoryId: 7, type: 'INVESTMENT_EXPENSE', settled: false, total: 200 },
-      { categoryId: 7, type: 'INVESTMENT_EXPENSE_NET', settled: false, total: 1230, netTotal: 1000 },
+      {
+        categoryId: 7,
+        type: 'INVESTMENT_EXPENSE_NET',
+        settled: false,
+        total: 1230,
+        netTotal: 1000,
+      },
     ])
     expect(categoryCosts).toEqual([{ categoryId: 7, total: 1200 }])
     expect(netCategoryCosts).toEqual([{ categoryId: 7, total: 1000 }])
@@ -217,7 +227,13 @@ describe('deriveCategoryBreakdowns — same membership, split by settled', () =>
       { categoryId: 2, type: 'CORRECTION', settled: false, total: 25 },
       { categoryId: 2, type: 'CORRECTION', settled: true, total: 5 },
       { categoryId: 3, type: 'PAYOUT', settled: false, total: 999 },
-      { categoryId: 1, type: 'INVESTMENT_EXPENSE_NET', settled: false, total: 1230, netTotal: 1000 },
+      {
+        categoryId: 1,
+        type: 'INVESTMENT_EXPENSE_NET',
+        settled: false,
+        total: 1230,
+        netTotal: 1000,
+      },
     ]
     const breakdowns = deriveCategoryBreakdowns(rows)
     const financials = deriveFinancials(
@@ -248,10 +264,81 @@ describe('per-row billed figure reconciles with the aggregate', () => {
       0,
     )
     const financials = deriveFinancials(
-      rows.map((r) => ({ type: r.type, settled: r.settled, total: r.amount, netTotal: r.netAmount ?? undefined })),
+      rows.map((r) => ({
+        type: r.type,
+        settled: r.settled,
+        total: r.amount,
+        netTotal: r.netAmount ?? undefined,
+      })),
     )
 
     expect(listTotal).toBe(financials.totalMaterialCosts)
     expect(listTotal).toBe(1125)
+  })
+})
+
+// The wydatki list splits into three mutually exclusive tabs, so no single tab's Σ equals the
+// breakdown's „Razem" any more — the two expense tabs must add up to it instead. Without this the
+// tab filter could silently drop or double-count a type and no figure on screen would contradict it.
+describe('the wydatki tabs partition the billed total', () => {
+  const rows: MaterialTransactionRowT[] = [
+    { ...ROW_BASE, id: 1, type: 'INVESTMENT_EXPENSE', amount: 100, billed: 100, settled: false },
+    { ...ROW_BASE, id: 2, type: 'CORRECTION', amount: -25, billed: -25, settled: false },
+    {
+      ...ROW_BASE,
+      id: 3,
+      type: 'INVESTMENT_EXPENSE_NET',
+      amount: 1230,
+      billed: 1000,
+      settled: false,
+    },
+    { ...ROW_BASE, id: 4, type: 'INVESTMENT_EXPENSE', amount: 40, billed: 40, settled: true },
+  ]
+
+  it('Σ billed over the two expense tabs === totalMaterialCosts', () => {
+    const { gross, net, settled } = partitionWydatkiRows(rows)
+    const financials = deriveFinancials(
+      rows.map((row) => ({
+        type: row.type,
+        settled: row.settled,
+        total: row.amount,
+        netTotal: row.billed,
+      })),
+    )
+
+    expect(sumBilled(gross) + sumBilled(net)).toBe(financials.totalMaterialCosts)
+    expect(sumBilled(settled)).toBe(financials.totalSettled)
+  })
+
+  it('assigns every row to exactly one tab', () => {
+    const { gross, net, settled } = partitionWydatkiRows(rows)
+    expect([...gross, ...net, ...settled].map((row) => row.id).sort()).toEqual([1, 2, 3, 4])
+  })
+
+  // The client share read is `unstable_cache`d, so a warm entry written before `type` existed
+  // serves rows without it until KOSZTORYS_TAGS invalidates. Such a row belongs with the brutto
+  // expenses — the set that reconciles at `amount` — not silently dropped from every tab.
+  it('files a row with no type under the brutto expenses', () => {
+    const stale = { ...ROW_BASE, id: 6, amount: 100, billed: 100, settled: false }
+    const { gross, net, settled } = partitionWydatkiRows([stale as MaterialTransactionRowT])
+
+    expect(gross).toHaveLength(1)
+    expect(net).toHaveLength(0)
+    expect(settled).toHaveLength(0)
+  })
+
+  it('keeps a forged settled netto row in the netto tab, where the model still bills it', () => {
+    const forged: MaterialTransactionRowT = {
+      ...ROW_BASE,
+      id: 5,
+      type: 'INVESTMENT_EXPENSE_NET',
+      amount: 1230,
+      billed: 1000,
+      settled: true,
+    }
+    const { net, settled } = partitionWydatkiRows([forged])
+
+    expect(net).toHaveLength(1)
+    expect(settled).toHaveLength(0)
   })
 })

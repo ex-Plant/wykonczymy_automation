@@ -276,9 +276,9 @@ export async function fetchDepositTransactionsForInvestment(
 
 /**
  * The individual materiały rows for the Podsumowanie's wydatki list — this investment's
- * INVESTMENT_EXPENSE + INVESTMENT_EXPENSE_NET + CORRECTION, both settled states, so the list toggle
- * can split „Wydatki inwestycyjne" (unsettled, Σ billed === totalMaterialCosts) from „Materiały
- * wliczone w robociznę" (settled).
+ * INVESTMENT_EXPENSE + INVESTMENT_EXPENSE_NET + CORRECTION, both settled states, so the list can
+ * split them into „Wydatki inwestycyjne", „Wydatki netto" and „Materiały wliczone w robociznę"
+ * (`partitionWydatkiRows`).
  *
  * Shared by the owner's editor page and the unauthenticated client share read, which is why the
  * category-name join lives here rather than at either page: the two surfaces must label a row
@@ -307,6 +307,7 @@ export async function fetchMaterialTransactionsForInvestment(
   return docs.map((doc) => ({
     id: Number(doc.id),
     date: String(doc.date),
+    type: doc.type,
     amount: Number(doc.amount),
     billed: billedAmountFor(
       doc.type,
