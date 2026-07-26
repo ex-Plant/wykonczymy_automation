@@ -49,11 +49,10 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
     <>
       {hasInvoice ? (
         <InvoicePreviewTrigger
-          isImage={mimeType?.startsWith('image/') ?? false}
+          mimeType={mimeType}
           label={filename ?? 'faktura'}
           onClick={() => setPreviewOpen(true)}
           variant="compact"
-          className="size-9"
         />
       ) : (
         <Button

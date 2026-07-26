@@ -5,7 +5,7 @@ import type { Where } from 'payload'
 import { FileArchive, Loader2 } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { Button } from '@/components/ui/button'
-import { useInvoiceZip } from '@/components/transfers/use-invoice-zip'
+import { useInvoiceZip } from '@/hooks/use-invoice-zip'
 import { fetchFilteredTransfers } from '@/lib/actions/export'
 import { buildInvoiceArchiveName } from '@/lib/export/invoice-zip'
 

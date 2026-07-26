@@ -73,8 +73,8 @@ export type DepositTransactionRowT = {
 // and the client share view label a row identically. `settled` splits „Wydatki inwestycyjne" (false —
 // Σ === materialsGross) from „Materiały wliczone w robociznę" (true) behind the list toggle; both
 // sets show in every view. The invoice triple feeds the list's bulk-ZIP download and its per-row
-// preview, and is null when no invoice is attached. `invoiceNote` is the AI scan's extracted FV data
-// — line 1 the numer faktury, the pozycje below it — null on any row that never went through a scan.
+// preview, and is null when no invoice is attached. `invoiceNote` is the transfer's free-text note —
+// written by the AI scan in a known shape, but just as often typed by hand (see `lib/utils/invoice-note`).
 export type MaterialTransactionRowT = {
   id: number
   date: string

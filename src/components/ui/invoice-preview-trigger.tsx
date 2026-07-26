@@ -1,19 +1,19 @@
 import { FileText, Search } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils/cn'
 
-type InvoicePreviewTriggerPropsT = {
-  isImage: boolean
+export type InvoicePreviewTriggerPropsT = {
+  mimeType: string | null
   label: string
   onClick: () => void
-  // `compact` is the icon-only shape for a table cell; it carries no box size of its own, so each
-  // caller sets one via `className` — the transfers table and a fixed-height virtualized row have
-  // different height budgets and can't share a number.
+  // `compact` defaults to the ghost icon-button's 36px box but lets `className` override it — the
+  // transfers table and a fixed-height virtualized row have different height budgets.
   variant?: 'field' | 'compact'
   className?: string
 }
 
 export function InvoicePreviewTrigger({
-  isImage,
+  mimeType,
   label,
   onClick,
   variant = 'field',
@@ -25,16 +25,16 @@ export function InvoicePreviewTrigger({
     <button
       type="button"
       onClick={onClick}
-      aria-label={`Podgląd: ${label}`}
+      aria-label={`Podgląd faktury: ${label}`}
       className={cn(
-        'text-muted-foreground hover:text-foreground flex cursor-pointer items-center transition-colors',
+        'text-muted-foreground hover:text-foreground cursor-pointer',
         isCompact
-          ? 'hover:bg-muted justify-center rounded [&_svg]:size-4'
-          : 'border-input hover:border-primary/50 hover:bg-muted/50 h-9 w-full min-w-0 gap-2 rounded-md border px-3',
+          ? cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'mx-auto')
+          : 'border-input hover:border-primary/50 hover:bg-muted/50 flex h-9 w-full min-w-0 items-center gap-2 rounded-md border px-3 transition-colors',
         className,
       )}
     >
-      {isImage ? <Search /> : <FileText />}
+      {mimeType?.startsWith('image/') ? <Search /> : <FileText />}
       {!isCompact && <span className="truncate text-sm">{label}</span>}
     </button>
   )

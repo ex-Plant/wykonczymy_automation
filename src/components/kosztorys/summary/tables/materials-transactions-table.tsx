@@ -5,12 +5,12 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { FileArchive, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { HintTooltip } from '@/components/ui/tooltip'
+import { SimpleTooltip } from '@/components/ui/tooltip'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
-import { useInvoiceZip } from '@/components/transfers/use-invoice-zip'
+import { useInvoiceZip } from '@/hooks/use-invoice-zip'
 import { buildInvoiceArchiveName } from '@/lib/export/invoice-zip'
-import { invoiceNumberFromNote } from '@/lib/utils/invoice-note'
+import { firstNoteLine } from '@/lib/utils/invoice-note'
 import { formatNet } from '@/lib/kosztorys/format'
 import { formatPLDate } from '@/lib/utils/format-date'
 import type { MaterialTransactionRowT } from '@/types/reference-data'
@@ -36,9 +36,9 @@ const DATASET_OPTIONS: OptionT<DatasetT>[] = [
 
 // Fixed height for the virtualizer's scroll container (px, not a flex track). Mirrors the wypłaty list.
 const TABLE_HEIGHT = 400
-// 8px taller than the wypłaty list: a text-only row is exactly 36 (20px line box + py-2), leaving no
-// budget for the „Faktura" control. The virtualizer computes offsets from this number, so it has to
-// match what the row actually renders.
+// 8px taller than the wypłaty list: a text-only row is 36 (20px line box + py-2), leaving no budget
+// for the „Faktura" control's 28px box. The virtualizer estimates from this number and never measures,
+// so drift here is silent — keep it in step with whatever the tallest cell renders.
 const ROW_HEIGHT = 44
 
 // The recorded `amount` is brutto, so the Kwota column is brutto and Σ (unsettled) === materialsGross.
@@ -65,14 +65,21 @@ const MATERIAL_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
     enableSorting: false,
     cell: ({ getValue }) => {
       const note = getValue<string | null>()
-      const invoiceNumber = invoiceNumberFromNote(note)
-      if (!invoiceNumber || !note) return <span className="text-muted-foreground">—</span>
-      // The cell shows the numer faktury; the pozycje under it are tooltip-only. Width has to be
-      // capped here — DataTable has no column sizing, so an auto-width <td> ignores `truncate`.
+      const firstLine = firstNoteLine(note)
+      if (!firstLine || !note) return <span className="text-muted-foreground">—</span>
+      // A <button>, not plain text: it gives the tooltip a tab stop (the rest of the note exists
+      // nowhere else on the page), and DataTable's row-link handler skips clicks landing on a button,
+      // so reading the note doesn't navigate away. The width cap has to live here too — DataTable has
+      // no column sizing, so an auto-width <td> ignores `truncate`.
       return (
-        <HintTooltip content={note} className="text-muted-foreground max-w-32">
-          <span className="truncate">{invoiceNumber}</span>
-        </HintTooltip>
+        <SimpleTooltip content={note}>
+          <button
+            type="button"
+            className="text-muted-foreground focus-visible:ring-ring/50 block max-w-32 cursor-help truncate text-left focus-visible:ring-3"
+          >
+            {firstLine}
+          </button>
+        </SimpleTooltip>
       )
     },
   },
@@ -97,7 +104,7 @@ const MATERIAL_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
           filename={row.original.invoiceFilename}
           mimeType={row.original.invoiceMimeType}
           variant="compact"
-          className="mx-auto size-7"
+          className="size-7"
         />
       ) : (
         <span className="mx-auto block size-7" />
