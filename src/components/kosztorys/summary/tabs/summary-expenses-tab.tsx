@@ -28,7 +28,8 @@ type PropsT = {
   // Brutto→netto reduction %, shared panel state seeded from the VAT rate.
   materialsReductionPercent: number
   onMaterialsReductionPercentChange: (value: number) => void
-  // Read-only client render — no row links on the transactions list.
+  // Read-only client render — no row links on the transactions list, and no netto-pricing controls:
+  // how wydatki are priced is the company's call, so the client only ever sees the resulting figures.
   clientView?: boolean
 }
 
@@ -48,6 +49,9 @@ export function SummaryExpensesTab({
 }: PropsT) {
   const materialsReduction = materialsReductionPercent / 100
   const materialsReductionAmount = materials.grossBase * materialsReduction
+  // The pricing controls are owner-only; the table's `showReduction` is not, so a client still sees
+  // the reduced figures the owner's setting produces — just not the switch that produced them.
+  const showPricingControls = nettoShown && !clientView
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -61,7 +65,7 @@ export function SummaryExpensesTab({
               reduction={materialsReduction}
               showReduction={nettoShown && materialsAsNet}
             />
-            {nettoShown && (
+            {showPricingControls && (
               <label
                 className={cn(
                   'flex w-fit cursor-pointer items-center gap-2 text-xs',
@@ -75,7 +79,7 @@ export function SummaryExpensesTab({
                 Zaznacz jeśli wydatki mają być rozliczane po kwocie netto
               </label>
             )}
-            {nettoShown && materialsAsNet && (
+            {showPricingControls && materialsAsNet && (
               <>
                 <span className="text-muted-foreground text-xs">Stawka netto wydatków</span>
                 <div className="flex items-center gap-2">

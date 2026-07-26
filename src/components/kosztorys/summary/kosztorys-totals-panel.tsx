@@ -131,6 +131,9 @@ export function KosztorysTotalsPanel({
     : SUMMARY_VIEW_OPTIONS
   const view: SummaryViewT = clientView && summaryView === 'podwykonawcy' ? 'summary' : summaryView
   const isSubcontractorView = view === 'podwykonawcy'
+  // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
+  // GROSS the brutto section. Derived from the deposit list, never typed.
+  const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
   // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
   // netto+brutto settlement, so it shows both columns alongside the gotówka block.
   const displayAxis: MoneyAxisT = moneyAxis === 'mixed' ? 'both' : moneyAxis
@@ -145,9 +148,6 @@ export function KosztorysTotalsPanel({
   // rate, then the owner moves it to test whether a straight brutto reduction is the right model.
   const [materialsReductionPercent, setMaterialsReductionPercent] = useState(vatPercent)
   const materialsReduction = materialsReductionPercent / 100
-  // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
-  // GROSS the brutto section. Derived from the deposit list, never typed.
-  const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
   // Computed here and passed down: the collapsed headline and the Podsumowanie row show the same
   // „Do zapłaty", so it has one source rather than two calls that must be kept in step.
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
@@ -186,7 +186,7 @@ export function KosztorysTotalsPanel({
             onChange={setSummaryView}
             aria-label="Widok podsumowania"
           />
-          {!isSubcontractorView && (
+          {!isSubcontractorView && !clientView && (
             <div className="my-2 flex flex-col gap-2">
               <Description className="max-w-xs" size="sm" withIcon={false}>
                 Wybierz jak rozliczana będzie inwestycja.
