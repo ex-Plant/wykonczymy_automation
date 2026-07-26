@@ -9,6 +9,15 @@ export type MoneyAxisT = 'net' | 'gross' | 'both' | 'none'
 
 export const MONEY_AXIS_DEFAULT: MoneyAxisT = 'both'
 
+// The client view offers one plane at a time, so its two-value subset is a type of its own — the
+// persisted axis is shared with the owner's Kwoty control and can arrive as 'both'/'none', which the
+// client's toggle has no item for (an unmatched value would leave the group with nothing active).
+export type ClientMoneyAxisT = Extract<MoneyAxisT, 'net' | 'gross'>
+
+export function toClientAxis(axis: MoneyAxisT): ClientMoneyAxisT {
+  return axis === 'gross' ? 'gross' : 'net'
+}
+
 // The Podsumowanie panel's own default. It opens on netto; „Mieszane" ('both') is now the
 // Mieszane settlement view, not a both-columns readout, so it must not be the panel's opening state.
 export const SUMMARY_AXIS_DEFAULT: MoneyAxisT = 'net'

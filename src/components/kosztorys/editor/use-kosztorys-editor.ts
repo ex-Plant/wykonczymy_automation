@@ -14,6 +14,7 @@ import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
+import { toClientAxis, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -148,9 +149,16 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. In the client view a stored 'none' normalizes up to 'both' (the slim client header
-  // only offers net/brutto/both).
-  const effectiveMoneyAxis = view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
+  // Kwoty control. clientView narrows further: its header offers only net/brutto, and the axis is
+  // persisted per person (shared with the owner's Kwoty control), so a stored 'both'/'none' has to
+  // land on 'net' here — otherwise the grid would show both planes while the toggle shows neither.
+  const effectiveMoneyAxis: MoneyAxisT = clientView
+    ? toClientAxis(moneyAxis)
+    : view !== 'client'
+      ? 'net'
+      : moneyAxis === 'none'
+        ? 'both'
+        : moneyAxis
   const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
   const [guideX, setGuideX] = useState<number | null>(null)
