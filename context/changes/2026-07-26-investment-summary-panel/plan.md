@@ -502,7 +502,7 @@ None. The settlement-mode field and its migration belong to
 #### Automated
 
 - [x] 2.1 Type checking passes — 86dc9e1c
-- [ ] 2.2 `DepositsTable` totals-only unit test passes
+- [x] 2.2 `DepositsTable` totals-only unit test passes
 
 ### Phase 3: Mount the panel on the investment page
 
