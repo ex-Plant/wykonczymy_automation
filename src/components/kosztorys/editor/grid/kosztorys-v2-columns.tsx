@@ -219,6 +219,18 @@ function RowActionsCell({
       onMoveDown={() => opts.onReorderItem?.(rowData, 'down')}
       onRemove={() => opts.onRemoveItem?.(rowData)}
       onRemoveSection={opts.onRemoveSection && (() => opts.onRemoveSection?.(rowData.sectionId))}
+      onInsertSectionAbove={
+        opts.onInsertSection && (() => opts.onInsertSection?.(rowData, 'above'))
+      }
+      onInsertSectionBelow={
+        opts.onInsertSection && (() => opts.onInsertSection?.(rowData, 'below'))
+      }
+      onMoveSectionUp={
+        opts.onReorderSection && (() => opts.onReorderSection?.(rowData.sectionId, 'up'))
+      }
+      onMoveSectionDown={
+        opts.onReorderSection && (() => opts.onReorderSection?.(rowData.sectionId, 'down'))
+      }
       sectionName={rowData.sectionName ?? undefined}
       sectionItemCount={opts.getSectionItemCount?.(rowData.sectionId) ?? 0}
     />

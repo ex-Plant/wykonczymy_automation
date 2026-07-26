@@ -24,13 +24,16 @@ import { diffRow, inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2
 import {
   applyAddItem,
   applyInsertItem,
+  applyInsertSectionRow,
   applyRemoveItem,
   applyRestoreItem,
   buildBlankRow,
   insertDisplayOrder,
+  neighborSectionId,
   revertField,
   sectionNeighbor,
   swapItemInSection,
+  swapSectionBlock,
 } from '@/lib/kosztorys/row-ops'
 import {
   planItemRemoval,
@@ -62,11 +65,13 @@ import {
   addStageAction,
   applyPercentRabatToAllItemsAction,
   insertItemAction,
+  insertSectionAction,
   removeItemAction,
   removeSectionAction,
   removeStageAction,
   setStageProgressAction,
   swapItemOrderAction,
+  swapSectionOrderAction,
   updateInvestmentCoeffsAction,
   updateInvestmentGlobalDiscountAction,
   updateInvestmentVatAction,
@@ -159,6 +164,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const rowsRef = useRef(rows)
   // eslint-disable-next-line react-hooks/refs
   rowsRef.current = rows
+  // Persisted display_order per section, seeded at mount like `rows` and kept current on
+  // add/append/move. The grid rows carry no section order (the array's block sequence IS the order),
+  // so a section move needs this to know which two numbers to exchange in the DB.
+  const sectionOrderRef = useRef(new Map(tree.sections.map((s) => [s.id, s.displayOrder])))
   // Same, for the stage-rename handler's no-op guard (compares against the fresh label).
   const stagesRef = useRef(stages)
   // eslint-disable-next-line react-hooks/refs
@@ -282,6 +291,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onInsertItem: editorOnly(handleInsertItem),
     onRenameSection: editorOnly(handleRenameSection),
     onRemoveSection: editorOnly(handleRemoveSection),
+    onReorderSection: editorOnly(handleReorderSection),
+    onInsertSection: editorOnly(handleInsertSection),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
@@ -620,6 +631,75 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     })
   }
 
+  // Move a whole section one place, mirroring handleReorderItem one level up: the grid regroups its
+  // blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
+  // false at the edge so the undo command isn't pushed for a no-op.
+  function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
+    const rs = rowsRef.current
+    const neighborId = neighborSectionId(rs, sectionId, dir)
+    if (neighborId == null) return false
+    const orders = sectionOrderRef.current
+    const order = orders.get(sectionId)
+    const neighborOrder = orders.get(neighborId)
+    if (order == null || neighborOrder == null) return false
+    setRows(swapSectionBlock(rs, sectionId, dir))
+    orders.set(sectionId, neighborOrder)
+    orders.set(neighborId, order)
+    void swapSectionOrderAction(
+      { id: sectionId, displayOrder: neighborOrder },
+      { id: neighborId, displayOrder: order },
+    )
+    return true
+  }
+
+  function handleReorderSection(sectionId: number, dir: 'up' | 'down') {
+    // „w górę/w dół" has no meaning against a price-sorted view (the menu also disables it).
+    if (sort) return
+    if (!applySectionSwap(sectionId, dir)) return
+    const back = dir === 'up' ? 'down' : 'up'
+    pushCommand({
+      label: 'Zmiana kolejności sekcji',
+      undo: () => void applySectionSwap(sectionId, back),
+      redo: () => void applySectionSwap(sectionId, dir),
+    })
+  }
+
+  // ⋯ → Sekcje → Wstaw powyżej/poniżej. The section-level twin of handleInsertItem: a new section
+  // (plus its first blank item — a 0-item section renders as 0 rows) lands right before or after the
+  // anchor row's section instead of at the end. No-op under an active column sort, like every other
+  // order-dependent action.
+  async function handleInsertSection(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
+    if (sort) return
+    const anchorOrder = sectionOrderRef.current.get(anchorRow.sectionId)
+    if (anchorOrder == null) return
+    const at = dir === 'above' ? anchorOrder : anchorOrder + 1
+    const sec = await insertSectionAction(investmentId, at)
+    if (!sec.success) return
+    const item = await addItemAction(sec.data.id)
+    if (!item.success) return
+    const row = buildBlankRow({
+      id: item.data.id,
+      displayOrder: item.data.displayOrder,
+      sectionId: sec.data.id,
+      sectionName: NEW_SECTION_DEFAULTS.name,
+      vatRate: tree.vatRate,
+      globalDiscountActive,
+      sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
+      globalWToolsCoeff: tree.globalCoeffs.wTools,
+      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
+      stages,
+    })
+    // Mirror the server's tail shift locally so a later insert/move exchanges the right numbers.
+    for (const [id, order] of sectionOrderRef.current) {
+      if (order >= at) sectionOrderRef.current.set(id, order + 1)
+    }
+    sectionOrderRef.current.set(sec.data.id, at)
+    prevById.current.set(row.id, row)
+    setRows((rs) => applyInsertSectionRow(rs, anchorRow.sectionId, row, dir))
+    // A filter would hide the new section's only row, making the insert look like a no-op.
+    setShownSectionIds(null)
+  }
+
   async function handleAddSection() {
     const sec = await addSectionAction(investmentId)
     if (!sec.success) return
@@ -638,6 +718,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
       stages,
     })
+    sectionOrderRef.current.set(sec.data.id, sec.data.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
     // Drop a section filter: the new section's row lives outside it, so keeping the filter would
@@ -660,6 +741,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       globalDiscount,
       revision: tree.revision,
     })
+    for (const section of slice) sectionOrderRef.current.set(section.id, section.displayOrder)
     for (const row of appended) prevById.current.set(row.id, row)
     setRows((rs) => [...rs, ...appended])
     // The appended sections live outside any active filter — clear it so they're visible.

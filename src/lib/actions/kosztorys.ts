@@ -257,6 +257,86 @@ export async function removeSectionAction(sectionId: number) {
   )
 }
 
+const insertSectionSchema = z.object({
+  investmentId: z.number(),
+  atDisplayOrder: z.coerce.number().int().min(0),
+})
+
+// Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej): shifts the sections at
+// and after the insert point down by one to open the slot, then creates the section there. The
+// caller adds the section's first item (a 0-item section renders as 0 rows), exactly as the append
+// path does. Shift + create are atomic, so a double-fired insert can't land two sections on one
+// display_order.
+export async function insertSectionAction(
+  investmentId: number,
+  atDisplayOrder: number,
+): Promise<ActionResultT<{ id: number; displayOrder: number }>> {
+  return protectedAction(
+    'insertSectionAction',
+    async ({ payload }) => {
+      const parsed = validateAction(insertSectionSchema, { investmentId, atDisplayOrder })
+      if (!parsed.success) return parsed
+      const at = parsed.data.atDisplayOrder
+      const created = await withPayloadTransaction(
+        payload,
+        async (req) => {
+          const txDb = await getDb(payload, req)
+          await txDb.execute(sql`
+            UPDATE kosztorys_sections SET display_order = display_order + 1
+            WHERE investment_id = ${parsed.data.investmentId} AND display_order >= ${at}
+          `)
+          return payload.create({
+            collection: 'kosztorys-sections',
+            req,
+            data: {
+              investment: parsed.data.investmentId,
+              name: NEW_SECTION_DEFAULTS.name,
+              displayOrder: at,
+              defaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
+            },
+          })
+        },
+        { skipRevalidation: true },
+      )
+      return { success: true, data: { id: created.id, displayOrder: at } }
+    },
+    ['kosztorysSections'],
+  )
+}
+
+const sectionOrderSchema = z.object({ id: z.number(), displayOrder: z.number() })
+const swapSectionOrderSchema = z.object({ first: sectionOrderSchema, second: sectionOrderSchema })
+
+// Section-level twin of swapItemOrderAction (⋯ → Przesuń sekcję w górę/dół): exchanges the
+// display_order of two adjacent sections, so a move is 2 updates regardless of how many items the
+// sections hold. Each argument carries the NEW display_order its section should take on.
+export async function swapSectionOrderAction(
+  first: { id: number; displayOrder: number },
+  second: { id: number; displayOrder: number },
+): Promise<ActionResultT> {
+  return protectedAction(
+    'swapSectionOrderAction',
+    async ({ payload }) => {
+      const parsed = validateAction(swapSectionOrderSchema, { first, second })
+      if (!parsed.success) return parsed
+      await Promise.all([
+        payload.update({
+          collection: 'kosztorys-sections',
+          id: parsed.data.first.id,
+          data: { displayOrder: parsed.data.first.displayOrder },
+        }),
+        payload.update({
+          collection: 'kosztorys-sections',
+          id: parsed.data.second.id,
+          data: { displayOrder: parsed.data.second.displayOrder },
+        }),
+      ])
+      return { success: true }
+    },
+    ['kosztorysSections'],
+  )
+}
+
 export async function addItemAction(
   sectionId: number,
 ): Promise<ActionResultT<{ id: number; displayOrder: number }>> {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   ArrowDown,
   ArrowDownToLine,
@@ -15,6 +16,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -34,8 +36,13 @@ type PropsT = {
   onMoveUp: () => void
   onMoveDown: () => void
   onRemove: () => void
-  // Deleting the whole section this row belongs to. Absent (read-only view) → the item is hidden.
+  // Section-level actions, all keyed off the row's section. Absent (read-only view) → the whole
+  // „Sekcje" group is hidden.
   onRemoveSection?: () => void
+  onInsertSectionAbove?: () => void
+  onInsertSectionBelow?: () => void
+  onMoveSectionUp?: () => void
+  onMoveSectionDown?: () => void
   sectionName?: string
   sectionItemCount?: number
 }
@@ -50,24 +57,36 @@ export function KosztorysRowActionsMenu({
   onMoveDown,
   onRemove,
   onRemoveSection,
+  onInsertSectionAbove,
+  onInsertSectionBelow,
+  onMoveSectionUp,
+  onMoveSectionDown,
   sectionName,
   sectionItemCount,
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
-  // Disabled items are pointer-events-none, so the group is wrapped in a tooltip trigger
-  // (which catches the hover the disabled items would otherwise pass through).
-  const insertMoveItems = (
+  // Disabled items are pointer-events-none, so an order-dependent group is wrapped in a tooltip
+  // trigger (which catches the hover the disabled items would otherwise pass through).
+  const withSortHint = (items: ReactNode) =>
+    sortActive ? (
+      <SimpleTooltip content="Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować">
+        <div>{items}</div>
+      </SimpleTooltip>
+    ) : (
+      items
+    )
+
+  const itemOrderItems = (
     <>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertAbove}>
         <ArrowUpToLine />
-        Wstaw pozycję powyżej
+        Wstaw powyżej
       </DropdownMenuItem>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertBelow}>
         <ArrowDownToLine />
-        Wstaw pozycję poniżej
+        Wstaw poniżej
       </DropdownMenuItem>
-      <DropdownMenuSeparator />
       <DropdownMenuItem disabled={sortActive} onSelect={onMoveUp}>
         <ArrowUp />
         Przesuń w górę
@@ -76,6 +95,35 @@ export function KosztorysRowActionsMenu({
         <ArrowDown />
         Przesuń w dół
       </DropdownMenuItem>
+    </>
+  )
+
+  const sectionOrderItems = (
+    <>
+      {onInsertSectionAbove && (
+        <DropdownMenuItem disabled={sortActive} onSelect={onInsertSectionAbove}>
+          <ArrowUpToLine />
+          Wstaw powyżej
+        </DropdownMenuItem>
+      )}
+      {onInsertSectionBelow && (
+        <DropdownMenuItem disabled={sortActive} onSelect={onInsertSectionBelow}>
+          <ArrowDownToLine />
+          Wstaw poniżej
+        </DropdownMenuItem>
+      )}
+      {onMoveSectionUp && (
+        <DropdownMenuItem disabled={sortActive} onSelect={onMoveSectionUp}>
+          <ArrowUp />
+          Przesuń w górę
+        </DropdownMenuItem>
+      )}
+      {onMoveSectionDown && (
+        <DropdownMenuItem disabled={sortActive} onSelect={onMoveSectionDown}>
+          <ArrowDown />
+          Przesuń w dół
+        </DropdownMenuItem>
+      )}
     </>
   )
 
@@ -90,6 +138,9 @@ export function KosztorysRowActionsMenu({
     </DropdownMenuItem>
   )
 
+  const sectionGroupShown =
+    onRemoveSection ?? onInsertSectionAbove ?? onInsertSectionBelow ?? onMoveSectionUp
+
   return (
     <>
       <DropdownMenu>
@@ -101,14 +152,8 @@ export function KosztorysRowActionsMenu({
           <MoreHorizontal />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-44">
-          {sortActive ? (
-            <SimpleTooltip content="Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować">
-              <div>{insertMoveItems}</div>
-            </SimpleTooltip>
-          ) : (
-            insertMoveItems
-          )}
-          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Prace</DropdownMenuLabel>
+          {withSortHint(itemOrderItems)}
           {removeBlockReason == null ? (
             removeItem
           ) : (
@@ -116,11 +161,21 @@ export function KosztorysRowActionsMenu({
               <div>{removeItem}</div>
             </SimpleTooltip>
           )}
-          {onRemoveSection && (
-            <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
-              <Trash2 />
-              Usuń sekcję
-            </DropdownMenuItem>
+          {sectionGroupShown && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Sekcje</DropdownMenuLabel>
+              {withSortHint(sectionOrderItems)}
+              {onRemoveSection && (
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setSectionConfirmOpen(true)}
+                >
+                  <Trash2 />
+                  Usuń sekcję
+                </DropdownMenuItem>
+              )}
+            </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

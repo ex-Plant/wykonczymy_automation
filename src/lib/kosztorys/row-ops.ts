@@ -142,6 +142,73 @@ export function swapItemInSection(
   return next
 }
 
+// Splice the first row of a newly inserted section into the display sequence, just before the
+// anchor section's block or just after it. The anchor's rows are located by scan (not by block
+// bounds) so a stray row appended by applyAddItem still counts toward the block's extent.
+export function applyInsertSectionRow(
+  rows: KosztorysV2RowT[],
+  anchorSectionId: number,
+  row: KosztorysV2RowT,
+  dir: 'above' | 'below',
+): KosztorysV2RowT[] {
+  const first = rows.findIndex((r) => r.sectionId === anchorSectionId)
+  if (first < 0) return [...rows, row]
+  let last = first
+  for (let i = first + 1; i < rows.length; i++) {
+    if (rows[i].sectionId === anchorSectionId) last = i
+  }
+  const at = dir === 'above' ? first : last + 1
+  return [...rows.slice(0, at), row, ...rows.slice(at)]
+}
+
+// Section ids in the order their blocks first appear in `rows` — the display order of sections,
+// read off the same array that drives the grid rather than a second stored sequence.
+function sectionSequence(rows: KosztorysV2RowT[]): number[] {
+  const seq: number[] = []
+  const seen = new Set<number>()
+  for (const r of rows) {
+    if (seen.has(r.sectionId)) continue
+    seen.add(r.sectionId)
+    seq.push(r.sectionId)
+  }
+  return seq
+}
+
+// Section that would trade places with `sectionId` on a ▲/▼ section move; undefined at the edge.
+export function neighborSectionId(
+  rows: KosztorysV2RowT[],
+  sectionId: number,
+  dir: 'up' | 'down',
+): number | undefined {
+  const seq = sectionSequence(rows)
+  const pos = seq.indexOf(sectionId)
+  if (pos < 0) return undefined
+  return seq[dir === 'up' ? pos - 1 : pos + 1]
+}
+
+// Move a whole section one place (▲/▼) by regrouping `rows` into section blocks in the new sequence.
+// Regrouping (not a slice-swap) is what makes this safe against a non-contiguous section: applyAddItem
+// appends a new item at the END of the array, so a section's rows are not guaranteed adjacent — the
+// regroup pulls such a stray row back into its block. Same reference on a no-op (edge / unknown id).
+export function swapSectionBlock(
+  rows: KosztorysV2RowT[],
+  sectionId: number,
+  dir: 'up' | 'down',
+): KosztorysV2RowT[] {
+  const seq = sectionSequence(rows)
+  const pos = seq.indexOf(sectionId)
+  const targetPos = dir === 'up' ? pos - 1 : pos + 1
+  if (pos < 0 || targetPos < 0 || targetPos >= seq.length) return rows
+  ;[seq[pos], seq[targetPos]] = [seq[targetPos], seq[pos]]
+  const blocks = new Map<number, KosztorysV2RowT[]>()
+  for (const r of rows) {
+    const block = blocks.get(r.sectionId)
+    if (block) block.push(r)
+    else blocks.set(r.sectionId, [r])
+  }
+  return seq.flatMap((id) => blocks.get(id) ?? [])
+}
+
 // Neighbor of an item within ITS section in the ▲/▼ direction (same sequence as swapItemInSection).
 // `undefined` at the block edge — a no-op signal. Used to swap the display_order of two rows.
 export function sectionNeighbor(

@@ -51,6 +51,11 @@ export type BuildV2ColumnsOptsT = {
   // Deleting the whole section a row belongs to, from the row-actions menu. Cascade-deletes the
   // section's items + stage_progress (same path as the section panel), guarded by a confirm dialog.
   onRemoveSection?: (sectionId: number) => void
+  // Moving the whole section one place (Przesuń sekcję w górę/dół) from the row-actions menu.
+  // Greyed out under an active column sort, for the same reason as the per-item ▲▼.
+  onReorderSection?: (sectionId: number, dir: 'up' | 'down') => void
+  // Inserting a new section right before/after the row's section (Wstaw sekcję powyżej/poniżej).
+  onInsertSection?: (row: KosztorysV2RowT, dir: 'above' | 'below') => void
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from
