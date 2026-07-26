@@ -341,3 +341,8 @@ estimates and never measures, so any row rendering at a different height drifts 
 - [ ] Scroll a list of ~100+ rows to the bottom and back — rows stay aligned with the header and no gap or overlap appears at either end
 - [ ] A dataset mixing rows with and without invoices scrolls without drift (the invoice-less cell reserves the control's box on purpose)
 - [ ] A very long note (many pozycje) does not wrap the cell onto a second line — it stays truncated at one line
+
+### Post-merge: toolbar
+
+- [ ] Each dataset tab shows its row count in the label (`Materiały (152)`), and the number matches the rows the list actually renders
+- [ ] „Pobierz faktury" sits flush with the table's right edge, not the panel's
