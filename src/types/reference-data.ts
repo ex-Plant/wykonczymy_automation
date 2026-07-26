@@ -1,5 +1,5 @@
 import type { RoleT } from '@/lib/auth/roles'
-import type { VatPlaneT } from '@/lib/constants/transfers'
+import type { TransferTypeT, VatPlaneT } from '@/lib/constants/transfers'
 
 export type ReferenceItemT = {
   id: number
@@ -71,20 +71,22 @@ export type DepositTransactionRowT = {
 // One materiały (Wydatki inwestycyjne) transaction for the Podsumowanie's wydatki list — an
 // INVESTMENT_EXPENSE / INVESTMENT_EXPENSE_NET / CORRECTION row. Sourced from the existing
 // `findTransfersRaw` fetch; the expense-category `label` is resolved at the page from reference
-// data (like worker names on the payout list). `settled` splits the client-facing „Wydatki
-// inwestycyjne" (false) from the owner-only „Materiały wliczone w robociznę" (true) behind the
-// list toggle.
+// data (like worker names on the payout list). `settled` and `type` together pick the row's tab —
+// see `partitionWydatkiRows`; the list shows exactly one of the three sets at a time.
 export type MaterialTransactionRowT = {
   id: number
   date: string
-  // Brutto — what left the kasa. `billed` is what the investor is charged for this row, and the
-  // two differ only on the netto type; Σ(billed) over the unsettled set is the figure that
-  // reconciles with the breakdown above the list.
+  // Brutto — what left the kasa. `billed` is what the investor is charged for this row; the two
+  // differ only on the netto type (see `sumBilled` for what the tab totals must reconcile with).
   amount: number
   billed: number
   label: string
   description: string | null
   settled: boolean
+  // Optional because the client share read is `unstable_cache`d: a warm entry written before this
+  // field existed serves rows without it until KOSZTORYS_TAGS invalidates. Every consumer has to
+  // handle that, and `undefined` here is what stops a cleanup pass deleting the guards as dead.
+  type: TransferTypeT | undefined
 }
 
 export type OtherCategoryRefT = {

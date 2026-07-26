@@ -8,6 +8,7 @@ import { type HeaderGroup, type Row } from '@tanstack/react-table'
 import { type useVirtualizer } from '@tanstack/react-virtual'
 import { DataTableRow } from './data-table-row'
 import { TableHeader } from './table-header'
+import { TableFooter } from './table-footer'
 import { EmptyRow } from './empty-row'
 
 type VirtualizedTableBodyPropsT<TData> = {
@@ -20,6 +21,7 @@ type VirtualizedTableBodyPropsT<TData> = {
   visibleColumnIds: Set<string>
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
+  footer?: (colCount: number) => React.ReactNode
 }
 
 export function VirtualizedTableBody<TData>({
@@ -32,6 +34,7 @@ export function VirtualizedTableBody<TData>({
   visibleColumnIds,
   getRowHref,
   getRowClassName,
+  footer,
 }: VirtualizedTableBodyPropsT<TData>) {
   const virtualItems = virtualizer.getVirtualItems()
 
@@ -78,6 +81,7 @@ export function VirtualizedTableBody<TData>({
             </>
           )}
         </tbody>
+        {footer && rows.length > 0 && <TableFooter>{footer(colCount)}</TableFooter>}
       </table>
     </div>
   )

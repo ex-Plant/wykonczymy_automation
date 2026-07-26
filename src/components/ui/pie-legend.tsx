@@ -21,10 +21,14 @@ export function PieSliceLegend({
         <li key={slice.id} className="flex items-center gap-2">
           <span className="size-3 shrink-0 rounded-xs" style={{ backgroundColor: slice.fill }} />
           <span className="truncate">{slice.name}</span>
-          <span className="text-muted-foreground ml-auto pl-4 tabular-nums">
-            {formatPercent(total > 0 ? slice.value / total : null)}
+          <span className="ml-auto flex items-center gap-2">
+            {total > 0 && (
+              <span className="text-muted-foreground tabular-nums">
+                {formatPercent(slice.value / total)}
+              </span>
+            )}
+            <span className="tabular-nums">{formatValue(slice.value)}</span>
           </span>
-          <span className="tabular-nums">{formatValue(slice.value)}</span>
         </li>
       ))}
     </ul>

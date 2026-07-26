@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import Link from 'next/link'
 import { DEPOSIT_TYPES, VAT_PLANE_LABELS } from '@/lib/constants/transfers'
 import { formatPLDate } from '@/lib/utils/format-date'
+import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
   SUMMARY_LABEL_COL,
@@ -40,7 +41,7 @@ export function DepositsTable({
         formatPLDate(row.date)
       ) : (
         <Link
-          href={`/inwestycje/${investmentId}?type=${DEPOSIT_TYPES.join(',')}`}
+          href={investmentTransfersHref(investmentId, { types: DEPOSIT_TYPES })}
           className="hover:underline"
         >
           {formatPLDate(row.date)}

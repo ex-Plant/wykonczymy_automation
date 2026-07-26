@@ -33,6 +33,7 @@ export function KosztorysSectionFilterMenu() {
       options={options}
       label="Sekcje"
       icon={ListFilter}
+      iconPosition="right"
       searchable
       title="Filtruj sekcje"
       triggerClassName="w-fit min-w-0"

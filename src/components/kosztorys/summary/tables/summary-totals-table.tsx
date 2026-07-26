@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { DEPOSIT_TYPES } from '@/lib/constants/transfers'
+import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import type { MoneyPairT } from '@/lib/kosztorys/summary-economics'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { SummaryTable } from '@/components/ui/summary-grid'
@@ -33,7 +34,7 @@ export function SummaryTotalsTable({
             'Wpłaty'
           ) : (
             <Link
-              href={`/inwestycje/${investmentId}?type=${DEPOSIT_TYPES.join(',')}`}
+              href={investmentTransfersHref(investmentId, { types: DEPOSIT_TYPES })}
               className="hover:underline"
             >
               Wpłaty
