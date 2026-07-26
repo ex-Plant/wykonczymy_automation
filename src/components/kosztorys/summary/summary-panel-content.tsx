@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import {
   settlementModeToGridAxis,
@@ -25,7 +25,6 @@ import {
   useSummaryView,
   type SummaryViewT,
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
-import { useMaterialsNetPricing } from '@/components/kosztorys/summary/hooks/use-materials-net-pricing'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 import {
   buildSettlementPlaneVerdict,
@@ -79,6 +78,10 @@ type PropsT = {
   vatRate: number
   settlementMode: SettlementModeT
   onSettlementModeChange: (mode: SettlementModeT) => void
+  // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
+  // Server-owned on purpose — the panel and the marża the server computed read one value.
+  materialsNetRate: number | null
+  onMaterialsNetRateChange: (rate: number | null) => void
   // Which views this host offers, in toggle order. A host that omits a view need not supply the props
   // that only feed it — hence every prop below is optional.
   views?: SummaryViewT[]
@@ -130,6 +133,8 @@ export function SummaryPanelContent({
   vatRate,
   settlementMode,
   onSettlementModeChange,
+  materialsNetRate,
+  onMaterialsNetRateChange,
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
@@ -172,17 +177,12 @@ export function SummaryPanelContent({
   // netto+brutto settlement, so it shows both columns alongside the gotówka block. Same projection
   // the grid uses, so a table and a column can't disagree about what „Mieszane" means.
   const displayAxis: MoneyAxisT = settlementModeToGridAxis(settlementMode)
-  // Materiały netto pricing: when on, netto = brutto − VAT (the historical default); when off,
-  // materiały stay at their raw brutto amount on both axes. Only moves netto figures, so the toggle
-  // is offered only where netto is on show and there are materiały to reprice.
-  const [materialsAsNet, setMaterialsAsNet] = useMaterialsNetPricing()
   const nettoShown = moneyAxis !== 'gross'
-  const vatPercent = Math.round(vatRate * 100)
-  // Temporary client-side experiment (server-persisted later, so the transactions balance can
-  // reconcile): by how many % to knock brutto down to reach materiały netto. Seeded from the VAT
-  // rate, then the owner moves it to test whether a straight brutto reduction is the right model.
-  const [materialsReductionPercent, setMaterialsReductionPercent] = useState(vatPercent)
-  const materialsReduction = materialsReductionPercent / 100
+  // A brutto-settled investment adds VAT on top, so there is nothing to strip and the saved rate goes
+  // inert — the same gate the server applies to `materialsNetDiscount`. Both sides fall silent
+  // together rather than the panel discounting a figure marża never saw. The rate itself is kept, not
+  // cleared: switching back to netto restores the old figures with nothing to re-enter.
+  const effectiveNetRate = settlementMode === 'GROSS' ? null : materialsNetRate
   // Computed here and passed down: the collapsed headline and the Podsumowanie row show the same
   // „Do zapłaty", so it has one source rather than two calls that must be kept in step.
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
@@ -191,8 +191,7 @@ export function SummaryPanelContent({
     wplatyNet,
     materials,
     vatRate,
-    materialsAsNet,
-    materialsReduction,
+    effectiveNetRate,
   )
   return (
     <>
@@ -245,8 +244,7 @@ export function SummaryPanelContent({
                 settlementVerdict={settlementVerdict}
                 priceView="client"
                 vatRate={vatRate}
-                deriveMaterialsNet={materialsAsNet}
-                materialsReduction={materialsReduction}
+                materialsNetRate={effectiveNetRate}
                 paidNet={paidNet}
                 paidGross={paidGross}
                 showSettingsBar={showSettingsBar}
@@ -265,10 +263,12 @@ export function SummaryPanelContent({
                 settledBreakdown={clientView ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
                 nettoShown={nettoShown}
-                materialsAsNet={materialsAsNet}
-                onMaterialsAsNetChange={setMaterialsAsNet}
-                materialsReductionPercent={materialsReductionPercent}
-                onMaterialsReductionPercentChange={setMaterialsReductionPercent}
+                vatRate={vatRate}
+                materialsNetRate={materialsNetRate}
+                onMaterialsNetRateChange={onMaterialsNetRateChange}
+                // The control shows the SAVED rate even when the mode makes it inert, so an owner who
+                // switched to brutto still sees what they set — the notice explains why it does nothing.
+                inertOnBruttoSettlement={settlementMode === 'GROSS'}
                 clientView={clientView}
                 showTransactions={showTransactionLists}
                 showPie={showPies}

@@ -529,16 +529,16 @@ that reads the column ships.
 
 #### Automated
 
-- [x] 2.1 Unit tests pass
-- [x] 2.2 Parity audit passes against the regenerated fixture
-- [x] 2.3 Type checking passes
+- [x] 2.1 Unit tests pass — a500703a
+- [x] 2.2 Parity audit passes against the regenerated fixture — a500703a
+- [x] 2.3 Type checking passes — a500703a
 
 ### Phase 3: Panel writes to the server, and the difference is visible
 
 #### Automated
 
-- [ ] 3.1 Type checking passes
-- [ ] 3.2 Linting passes
+- [x] 3.1 Type checking passes
+- [x] 3.2 Linting passes
 
 ### Phase 4: Guard the reports page
 

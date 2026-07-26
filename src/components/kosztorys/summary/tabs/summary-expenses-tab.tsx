@@ -8,7 +8,7 @@ import { SlicePie } from '@/components/ui/slice-pie'
 import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { formatNet } from '@/lib/kosztorys/format'
-import type { MaterialsT } from '@/lib/kosztorys/summary-economics'
+import { materialsNetDiscount, type MaterialsT } from '@/lib/kosztorys/summary-economics'
 import { cn } from '@/lib/utils/cn'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 import type { MaterialTransactionRowT } from '@/types/reference-data'
@@ -26,15 +26,17 @@ type PropsT = {
   // „Razem". Absent on a host that doesn't compute it (the editor).
   settledBreakdown?: MaterialyBreakdownRowT[]
   materialTransactions: MaterialTransactionRowT[]
-  // Netto column is on show (axis ≠ Brutto) — gates the netto-pricing controls.
+  // Netto column is on show (axis ≠ Brutto) — gates the reduction split inside the table.
   nettoShown: boolean
-  // Materiały-netto pricing toggle + its setter (shared panel state — also feeds the Podsumowanie
-  // materiały figure, so it stays lifted rather than owned here).
-  materialsAsNet: boolean
-  onMaterialsAsNetChange: (value: boolean) => void
-  // Brutto→netto reduction %, shared panel state seeded from the VAT rate.
-  materialsReductionPercent: number
-  onMaterialsReductionPercentChange: (value: number) => void
+  // Opening value when the owner switches the concession on: billing materiały netto at the VAT rate
+  // is the case this feature was built for, so it is one click rather than a number to look up.
+  vatRate: number
+  // The investment's saved netto rate (fraction) and its writer — persisted, not browser-local.
+  materialsNetRate: number | null
+  onMaterialsNetRateChange: (rate: number | null) => void
+  // Brutto-settled investment: the saved rate changes nothing. Shows a notice instead of silently
+  // pricing at brutto while the control reads 23%.
+  inertOnBruttoSettlement?: boolean
   // Read-only client render — no row links on the transactions list, and no netto-pricing controls:
   // how wydatki are priced is the company's call, so the client only ever sees the resulting figures.
   clientView?: boolean
@@ -54,19 +56,22 @@ export function SummaryExpensesTab({
   settledBreakdown = [],
   materialTransactions,
   nettoShown,
-  materialsAsNet,
-  onMaterialsAsNetChange,
-  materialsReductionPercent,
-  onMaterialsReductionPercentChange,
+  vatRate,
+  materialsNetRate,
+  onMaterialsNetRateChange,
+  inertOnBruttoSettlement = false,
   clientView = false,
   showTransactions = true,
   showPie = true,
 }: PropsT) {
-  const materialsReduction = materialsReductionPercent / 100
-  const materialsReductionAmount = materials.grossBase * materialsReduction
+  const netPricingOn = materialsNetRate != null
+  const materialsNetPercent = Math.round((materialsNetRate ?? vatRate) * 100)
+  const discountAmount = materialsNetDiscount(materials.grossBase, materialsNetRate)
   // The pricing controls are owner-only; the table's `showReduction` is not, so a client still sees
   // the reduced figures the owner's setting produces — just not the switch that produced them.
-  const showPricingControls = nettoShown && !clientView
+  // Offered on a brutto-settled investment too, alongside the notice: hiding the control there would
+  // leave a saved rate with no way to see or clear it.
+  const showPricingControls = !clientView
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -79,36 +84,46 @@ export function SummaryExpensesTab({
             <div className="flex flex-col gap-2">
               <MaterialsBreakdownTable
                 rows={materialyBreakdown}
-                reduction={materialsReduction}
-                showReduction={nettoShown && materialsAsNet}
+                netRate={materialsNetRate}
+                showReduction={nettoShown && netPricingOn}
               />
               {showPricingControls && (
                 <label
                   className={cn(
                     'flex w-fit cursor-pointer items-center gap-2 text-xs',
-                    materialsAsNet ? 'text-foreground' : 'text-muted-foreground',
+                    netPricingOn ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
                   <Checkbox
-                    checked={materialsAsNet}
-                    onCheckedChange={(value) => onMaterialsAsNetChange(value === true)}
+                    checked={netPricingOn}
+                    // Switching off clears the rate rather than storing 0: „nigdy nie ustawiono" is
+                    // the state that leaves marża exactly where it was.
+                    onCheckedChange={(value) =>
+                      onMaterialsNetRateChange(value === true ? vatRate : null)
+                    }
                   />
                   Zaznacz jeśli wydatki mają być rozliczane po kwocie netto
                 </label>
               )}
-              {showPricingControls && materialsAsNet && (
+              {showPricingControls && netPricingOn && (
                 <>
                   <span className="text-muted-foreground text-xs">Stawka netto wydatków</span>
                   <div className="flex items-center gap-2">
                     <DecimalField
                       label=""
-                      value={materialsReductionPercent}
-                      onCommit={(n) => onMaterialsReductionPercentChange(n)}
+                      value={materialsNetPercent}
+                      onCommit={(percent) => onMaterialsNetRateChange(percent / 100)}
                     />
                     <span className="text-muted-foreground text-xs">
-                      % (−{formatNet(materialsReductionAmount)} zł)
+                      % (−{formatNet(discountAmount)} zł)
                     </span>
                   </div>
+                  {inertOnBruttoSettlement && (
+                    <span className="text-muted-foreground text-xs">
+                      Przy rozliczeniu brutto VAT jest doliczany do ceny, więc ta stawka nic nie
+                      zmienia — ani w kwotach, ani w marży.
+                    </span>
+                  )}
                 </>
               )}
             </div>
@@ -123,10 +138,10 @@ export function SummaryExpensesTab({
                 caption={SETTLED_TYPE.label}
                 // Settled material is never billed to the investor, so the netto reduction has
                 // nothing to reduce here — brutto-only split.
-                reduction={0}
+                netRate={null}
               />
               <span className="text-muted-foreground text-xs">
-                Obniża marżę, nie wchodzi do bilansu inwestora.
+                Obniżają marżę, nie wchodzą do bilansu inwestora.
               </span>
             </div>
           )}

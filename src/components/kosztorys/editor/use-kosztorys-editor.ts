@@ -77,6 +77,7 @@ import {
   swapSectionOrderAction,
   updateInvestmentCoeffsAction,
   updateInvestmentGlobalDiscountAction,
+  updateInvestmentMaterialsNetRateAction,
   updateInvestmentSettlementModeAction,
   updateInvestmentVatAction,
   updateItemFieldAction,
@@ -760,6 +761,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       globalCoeffs: tree.globalCoeffs,
       vatRate: tree.vatRate,
       settlementMode: tree.settlementMode,
+      materialsNetRate: tree.materialsNetRate,
       globalDiscount,
       revision: tree.revision,
     })
@@ -1047,6 +1049,23 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       pushReversible('Zmiana sposobu rozliczenia', applySettlementMode, before, mode)
   }
 
+  // Same shape as the settlement mode: not denormalized onto the rows, so there is nothing to patch
+  // optimistically — persist, then let the refresh reseed `tree` for the panel that reads it.
+  async function applyMaterialsNetRate(rate: number | null) {
+    await optimisticSettingSave(
+      () => updateInvestmentMaterialsNetRateAction(investmentId, rate),
+      () => {},
+      'Nie udało się zapisać stawki netto wydatków',
+    )
+  }
+
+  async function handleMaterialsNetRateChange(rate: number | null) {
+    const before = tree.materialsNetRate
+    await applyMaterialsNetRate(rate)
+    if (before !== rate)
+      pushReversible('Zmiana stawki netto wydatków', applyMaterialsNetRate, before, rate)
+  }
+
   // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
   // local discount (drives the derived totals + column visibility) and patch the denormalized active
   // flag on every row in the same render, so all three surfaces move together; then persist + refresh.
@@ -1233,6 +1252,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     handleGlobalCoeffChange,
     handleVatChange,
     handleSettlementModeChange,
+    handleMaterialsNetRateChange,
     handleGlobalDiscountChange,
     handleApplyPercentRabat,
     // undo/redo (stack lives in the shell; consumed by the toolbar + keyboard). Both flush a

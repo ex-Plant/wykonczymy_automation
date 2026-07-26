@@ -22,9 +22,7 @@ export function SummaryBreakdownTable({
   materials,
   combinedNet,
   combined,
-  vatRate,
-  deriveMaterialsNet,
-  materialsReduction,
+  materialsNetRate,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
@@ -34,12 +32,8 @@ export function SummaryBreakdownTable({
   materials: MaterialsT
   combinedNet: number
   combined: MoneyPairT
-  vatRate: number
-  // Price the materiały brutto base as brutto − VAT (true) or keep it at raw brutto (false).
-  deriveMaterialsNet: boolean
-  // When set (and deriveMaterialsNet), netto = brutto × (1 − materialsReduction) instead of the
-  // VAT-strip default (temporary client-side experiment).
-  materialsReduction?: number
+  // The investment's saved materiały netto rate (null = billed at the raw brutto receipt).
+  materialsNetRate: number | null
 }) {
   return (
     <SummaryTable cols={cols}>
@@ -49,13 +43,7 @@ export function SummaryBreakdownTable({
       {materials.grossBase + materials.netBilled !== 0 && (
         <SummaryRow
           label="Materiały"
-          line={summaryLineMaterials(
-            materials,
-            combinedNet,
-            vatRate,
-            deriveMaterialsNet,
-            materialsReduction,
-          )}
+          line={summaryLineMaterials(materials, combinedNet, materialsNetRate)}
           axis={moneyAxis}
         />
       )}

@@ -16,6 +16,7 @@ export function SummaryTotalsTable({
   wplaty,
   rabat,
   rabatMismatch,
+  materialsDiscount,
   doZaplaty,
   investmentId,
   clientView,
@@ -28,6 +29,10 @@ export function SummaryTotalsTable({
   // so this row makes the concession visible without moving the total.
   rabat?: MoneyPairT
   rabatMismatch?: string
+  // „Obniżka materiałów" — what billing materiały netto gives away, already negative. Undefined at
+  // zero (no rate saved, or a brutto-settled investment). Informational like Rabat: Łącznie is
+  // already net of it, but a figure that silently lowers marża has to be readable somewhere.
+  materialsDiscount?: MoneyPairT
   doZaplaty: MoneyPairT
   investmentId: number
   clientView: boolean
@@ -54,6 +59,16 @@ export function SummaryTotalsTable({
       />
       {rabat && (
         <SummaryRow label="Rabat" line={rabat} axis={moneyAxis} mismatch={rabatMismatch} discount />
+      )}
+      {materialsDiscount && (
+        <SummaryRow
+          label="Obniżka materiałów"
+          hint="Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu"
+          line={materialsDiscount}
+          axis={moneyAxis}
+          discount
+          noBrutto
+        />
       )}
       <SummaryRow
         label="Do zapłaty"

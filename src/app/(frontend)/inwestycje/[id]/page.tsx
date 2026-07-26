@@ -112,17 +112,25 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           settledFields={settledFields}
         />
       ) : (
-        /* Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
-           long-pole query, so the rest of the page paints without waiting on it. */
-        <Suspense fallback={null}>
-          <InvestmentSummaryPanel
-            investmentId={investmentId}
-            investmentName={investment.name}
-            financials={financials}
-            expenseCategories={refData.expenseCategories}
-            netCategoryCosts={breakdowns.netCategoryCosts}
+        <>
+          {/* Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
+              long-pole query, so the rest of the page paints without waiting on it. */}
+          <Suspense fallback={null}>
+            <InvestmentSummaryPanel
+              investmentId={investmentId}
+              investmentName={investment.name}
+              financials={financials}
+              expenseCategories={refData.expenseCategories}
+              netCategoryCosts={breakdowns.netCategoryCosts}
+            />
+          </Suspense>
+
+          <InvestmentOwnerFigures
+            margin={calculateMargin(financials)}
+            totalLoss={financials.totalLoss}
+            materialsNetDiscount={financials.materialsNetDiscount}
           />
-        </Suspense>
+        </>
       )}
 
       {/* Transactions table */}
@@ -139,13 +147,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
       />
-
-      {version === 'v2' && (
-        <InvestmentOwnerFigures
-          margin={calculateMargin(financials)}
-          totalLoss={financials.totalLoss}
-        />
-      )}
     </PageWrapper>
   )
 }

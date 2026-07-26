@@ -1,6 +1,7 @@
 import {
   computeMixedSettlement,
   faceValue,
+  materialsNetDiscount,
   sumaPracPreRabat,
   type MaterialsT,
 } from '@/lib/kosztorys/summary-economics'
@@ -13,8 +14,7 @@ type PropsT = {
   laborCostsNetFromKosztorys: number
   materials: MaterialsT
   vatRate: number
-  deriveMaterialsNet: boolean
-  materialsReduction: number
+  materialsNetRate: number | null
   // Wpłaty split by VAT plane: NET (+ unmarked) settle the netto section, GROSS the brutto section.
   paidNet: number
   paidGross: number
@@ -31,8 +31,7 @@ export function MixedSummary({
   laborCostsNetFromKosztorys,
   materials,
   vatRate,
-  deriveMaterialsNet,
-  materialsReduction,
+  materialsNetRate,
   paidNet,
   paidGross,
   rabatAmount,
@@ -43,9 +42,9 @@ export function MixedSummary({
     vatRate,
     paidNet,
     paidGross,
-    deriveMaterialsNet,
-    materialsReduction,
+    materialsNetRate,
   )
+  const materialsDiscount = materialsNetDiscount(materials.grossBase, materialsNetRate)
   const vatPercent = Math.round(vatRate * 100)
   const cols = summaryMoneyCols('net')
 
@@ -71,6 +70,16 @@ export function MixedSummary({
         />
         {rabatAmount > 0 && (
           <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
+        )}
+        {/* Informational, like Rabat: Łącznie above is already net of it. */}
+        {materialsDiscount > 0 && (
+          <SummaryRow
+            label="Obniżka materiałów"
+            hint="Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu"
+            line={faceValue(-materialsDiscount)}
+            axis="net"
+            discount
+          />
         )}
         <SummaryRow
           label="Do zapłaty netto"

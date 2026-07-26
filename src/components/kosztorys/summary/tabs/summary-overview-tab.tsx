@@ -34,9 +34,9 @@ type PropsT = {
   settlementVerdict: SettlementPlaneVerdictT
   priceView: PriceViewT
   vatRate: number
-  // Materiały-netto pricing (checkbox + reduction %) — shared panel state, feeds both figures.
-  deriveMaterialsNet: boolean
-  materialsReduction: number
+  // The investment's saved materiały netto rate (null = off), already gated on the settlement mode
+  // by the panel — feeds every materiały figure in this tab.
+  materialsNetRate: number | null
   // Wpłaty split by VAT plane — feeds the tryb mieszany settlement.
   paidNet: number
   paidGross: number
@@ -61,8 +61,7 @@ export function SummaryOverviewTab({
   settlementVerdict,
   priceView,
   vatRate,
-  deriveMaterialsNet,
-  materialsReduction,
+  materialsNetRate,
   paidNet,
   paidGross,
   showSettingsBar = false,
@@ -75,7 +74,7 @@ export function SummaryOverviewTab({
   // sits here beside the settlement rather than inside any one mode's block. Robocizna enters PRZED
   // rabatem: a rabat is a concession on the price, not a change in what the job is made of, and a
   // rabat exceeding the executed work would otherwise feed the pie a negative slice.
-  const materialsNet = materialsPair(materials, vatRate, deriveMaterialsNet, materialsReduction).net
+  const materialsNet = materialsPair(materials, materialsNetRate).net
 
   return (
     <div className="flex w-full flex-col gap-y-4">
@@ -88,8 +87,7 @@ export function SummaryOverviewTab({
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
             materials={materials}
             vatRate={vatRate}
-            deriveMaterialsNet={deriveMaterialsNet}
-            materialsReduction={materialsReduction}
+            materialsNetRate={materialsNetRate}
             paidNet={paidNet}
             paidGross={paidGross}
             rabatAmount={rabatAmount}
@@ -106,8 +104,7 @@ export function SummaryOverviewTab({
             priceView={priceView}
             vatRate={vatRate}
             moneyAxis={displayAxis}
-            deriveMaterialsNet={deriveMaterialsNet}
-            materialsReduction={materialsReduction}
+            materialsNetRate={materialsNetRate}
             clientView={clientView}
           />
         )}

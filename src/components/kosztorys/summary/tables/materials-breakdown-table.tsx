@@ -2,6 +2,7 @@
 
 import { Fragment } from 'react'
 import { formatNet } from '@/lib/kosztorys/format'
+import { materialyPair } from '@/lib/kosztorys/summary-economics'
 import {
   SUMMARY_LABEL_COL,
   SUMMARY_VALUE_COL,
@@ -19,13 +20,13 @@ import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 // `row.net` is the brutto sum (financials-layer field name kept; reinterpreted as gross here).
 export function MaterialsBreakdownTable({
   rows,
-  reduction,
+  netRate,
   showReduction = false,
   caption = 'Wydatki inwestycyjne',
 }: {
   rows: MaterialyBreakdownRowT[]
-  // Fraction knocked off brutto to reach netto: netto = brutto × (1 − reduction).
-  reduction: number
+  // The investment's netto rate as a fraction; null = billed at the raw brutto receipt.
+  netRate: number | null
   // Show the Netto + Różnica columns (the reduction detail); off = brutto-only category split.
   showReduction?: boolean
   // Names the split — the same per-category shape also renders the settled („wliczone w robociznę")
@@ -41,7 +42,7 @@ export function MaterialsBreakdownTable({
   // A netBilled row is ALREADY the netto the investor is billed, so the reduction must not touch it —
   // cutting it here would deduct the same VAT a second time. Its Netto column equals its Brutto.
   const netOf = (row: MaterialyBreakdownRowT) =>
-    row.origin === 'netBilled' ? row.net : row.net * (1 - reduction)
+    row.origin === 'netBilled' ? row.net : materialyPair(row.net, netRate).net
   const totalGross = shown.reduce((sum, row) => sum + row.net, 0)
   const totalNet = shown.reduce((sum, row) => sum + netOf(row), 0)
 

@@ -126,6 +126,9 @@ export type KosztorysTreeT = {
   // Rides the tree (not the rows) because it is one value for the whole sheet and nothing per-row
   // branches on it — unlike vatRate above.
   settlementMode: SettlementModeT
+  // Fraction (0.23 = 23%) at which materiały are billed netto instead of at the brutto receipt.
+  // `null` = the concession is off, which is a different state from 0% — see the migration.
+  materialsNetRate: number | null
   // A single global discount per investment — its `active` flag is denormalized onto each row (see
   // KosztorysV2RowBaseT.globalDiscountActive), the amount is subtracted once at the total level.
   globalDiscount: GlobalDiscountT

@@ -3,6 +3,7 @@
 import {
   computeSummarySplit,
   faceValue,
+  materialsNetDiscount,
   moneyPair,
   type MaterialsT,
   summaryLine,
@@ -51,11 +52,9 @@ type PropsT = {
   priceView: PriceViewT
   vatRate: number
   moneyAxis: MoneyAxisT
-  // Price materiały netto as brutto − VAT (true, the default) or keep them at raw brutto (false).
-  deriveMaterialsNet?: boolean
-  // When set (and deriveMaterialsNet), netto = brutto × (1 − materialsReduction) instead of the
-  // VAT-strip default — the owner-set brutto reduction (temporary client-side experiment).
-  materialsReduction?: number
+  // The investment's saved materiały netto rate (null = off) — drives both the Materiały row and the
+  // „Obniżka materiałów" line that makes the concession visible.
+  materialsNetRate: number | null
   // Read-only client render: the mismatch scream is an owner-internal signal (a client's view is
   // always 'client', which is exactly when the scream would fire), and the internal drill-down links
   // point at owner-only pages — so gate the scream off and render those labels as plain text.
@@ -76,8 +75,7 @@ export function BruttoNettoSummary({
   priceView,
   vatRate,
   moneyAxis,
-  deriveMaterialsNet = true,
-  materialsReduction,
+  materialsNetRate,
   clientView = false,
 }: PropsT) {
   // Łącznie = Robocizna (przed rabatem) − Rabat + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
@@ -87,8 +85,7 @@ export function BruttoNettoSummary({
     laborCostsNetFromKosztorys,
     materials,
     vatRate,
-    deriveMaterialsNet,
-    materialsReduction,
+    materialsNetRate,
   )
   // The scream compares client-view nets; a subcontractor view reprices the displayed figure, so the
   // scream would sit next to a number it isn't comparing. Show it only in the client view.
@@ -109,6 +106,10 @@ export function BruttoNettoSummary({
   // and a positive figure in a subtracted row reads as if it were being added.
   const rabat = moneyPair(-rabatAmount, vatRate)
   const wplaty = faceValue(-wplatyNet)
+  // Informational, like Rabat: Łącznie above is already net of it. Netto-only (faceValue + noBrutto
+  // downstream) — the brutto column keeps the raw receipt, which is exactly what the concession does
+  // NOT touch. Hidden at 0 so a brutto-settled or opted-out investment shows no dead row.
+  const materialsDiscount = materialsNetDiscount(materials.grossBase, materialsNetRate)
 
   const moneyCols = summaryMoneyCols(moneyAxis)
 
@@ -127,9 +128,7 @@ export function BruttoNettoSummary({
           materials={materials}
           combinedNet={combined.net}
           combined={combined}
-          vatRate={vatRate}
-          deriveMaterialsNet={deriveMaterialsNet}
-          materialsReduction={materialsReduction}
+          materialsNetRate={materialsNetRate}
         />
         <SummaryTotalsTable
           cols={moneyCols}
@@ -141,6 +140,7 @@ export function BruttoNettoSummary({
               ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
               : undefined
           }
+          materialsDiscount={materialsDiscount > 0 ? faceValue(-materialsDiscount) : undefined}
           doZaplaty={doZaplaty}
           investmentId={investmentId}
           clientView={clientView}

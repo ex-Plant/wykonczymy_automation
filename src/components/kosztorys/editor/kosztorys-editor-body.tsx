@@ -299,6 +299,8 @@ export function KosztorysEditorBody({
             vatRate={tree.vatRate}
             settlementMode={tree.settlementMode}
             onSettlementModeChange={editor.handleSettlementModeChange}
+            materialsNetRate={tree.materialsNetRate}
+            onMaterialsNetRateChange={editor.handleMaterialsNetRateChange}
             showSettingsBar
             clientView={clientView}
           />
