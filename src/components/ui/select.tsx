@@ -5,6 +5,7 @@ import * as SelectPrimitive from '@radix-ui/react-select'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils/cn'
+import { Button } from '@/components/ui/button'
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />
@@ -40,6 +41,28 @@ function SelectTrigger({
       <SelectPrimitive.Icon asChild>
         <ChevronDownIcon className="opacity-50" />
       </SelectPrimitive.Icon>
+    </SelectPrimitive.Trigger>
+  )
+}
+
+// Trigger that IS the toolbar button — same Button primitive the „Opcje" and „Sekcje" triggers use,
+// so a select sitting in a toolbar row can't drift from the buttons beside it on height, radius,
+// text size, or chevron colour. SelectTrigger above keeps the form-field look.
+function SelectButtonTrigger({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
+  return (
+    <SelectPrimitive.Trigger data-slot="select-trigger" asChild {...props}>
+      {/* w-fit, not inherited: a toolbar button hugs its label, but this one is often dropped into a
+          stacked flex column, where the default `stretch` would blow it to the column's width. */}
+      <Button variant="outline" size="sm" className={cn('w-fit', className)}>
+        {children}
+        <SelectPrimitive.Icon asChild>
+          <ChevronDownIcon />
+        </SelectPrimitive.Icon>
+      </Button>
     </SelectPrimitive.Trigger>
   )
 }
@@ -171,5 +194,6 @@ export {
   SelectScrollUpButton,
   SelectSeparator,
   SelectTrigger,
+  SelectButtonTrigger,
   SelectValue,
 }

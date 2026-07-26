@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import {
   Select,
+  SelectButtonTrigger,
   SelectContent,
   SelectItem,
   SelectTrigger,
@@ -11,7 +12,7 @@ import {
 import { cn } from '@/lib/utils/cn'
 
 export type SelectOptionT = { value: string; label: ReactNode; className?: string }
-export type SelectVariantT = 'default' | 'soft' | 'pill'
+export type SelectVariantT = 'default' | 'soft' | 'pill' | 'toolbar'
 
 // Complete trigger presets — each variant carries its whole look (height, radius, text, gap, width)
 // so a call site picks a variant and needs no className. `soft`/`pill` are the compact toolbar
@@ -20,6 +21,9 @@ const VARIANT: Record<SelectVariantT, { size: 'xs' | 'sm' | 'default'; className
   default: { size: 'default', className: '' },
   soft: { size: 'xs', className: 'w-fit gap-1 rounded text-xs' },
   pill: { size: 'xs', className: 'w-fit gap-1 rounded-full text-xs' },
+  // Not a preset at all — `toolbar` swaps the trigger for the Button primitive, so its geometry is
+  // whatever the toolbar buttons beside it have. Hence the empty className.
+  toolbar: { size: 'sm', className: '' },
 }
 
 type PropsT = {
@@ -47,9 +51,15 @@ export function SimpleSelect({
   const preset = VARIANT[variant]
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger size={preset.size} className={cn(preset.className, className)}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
+      {variant === 'toolbar' ? (
+        <SelectButtonTrigger className={className}>
+          <SelectValue placeholder={placeholder} />
+        </SelectButtonTrigger>
+      ) : (
+        <SelectTrigger size={preset.size} className={cn(preset.className, className)}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+      )}
       <SelectContent>
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value} className={option.className}>

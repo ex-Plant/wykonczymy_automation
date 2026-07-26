@@ -25,7 +25,7 @@ export function SettlementModeSelect({ value, onChange, vatRate }: PropsT) {
         onValueChange={(next) => onChange(next as SettlementModeT)}
         options={SETTLEMENT_MODE_OPTIONS}
         disabled={vatRate === 0}
-        className="w-40"
+        variant="toolbar"
       />
       {vatRate === 0 && <ZeroVatWarning />}
     </div>
