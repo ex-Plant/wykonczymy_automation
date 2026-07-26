@@ -222,6 +222,9 @@ export function SummaryPanelContent({
             payoutTransactions={payoutTransactions ?? []}
             showGlobalSettings={showSettingsBar}
             showTransactions={showTransactionLists}
+            // Same signal, not a second one: the host that drops the lists is the compact host, and
+            // the plane split + per-worker table are detail of the same kind.
+            showBreakdown={showTransactionLists}
           />
         ) : (
           <div className="flex w-full flex-col gap-y-4 px-4 pt-4 pb-10">

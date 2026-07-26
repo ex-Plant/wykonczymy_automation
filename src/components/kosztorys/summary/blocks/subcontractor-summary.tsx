@@ -43,6 +43,9 @@ type PropsT = {
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): only the headline + per-worker totals remain.
   showTransactions?: boolean
+  // Off where the tab is a quick readout rather than the settlement workbench (the investment page):
+  // drops the per-plane split rows and the per-worker table, leaving the three totals that matter.
+  showBreakdown?: boolean
 }
 
 type GroupModeT = 'worker' | 'date'
@@ -108,6 +111,7 @@ export function SubcontractorSummary({
   payoutTransactions,
   showGlobalSettings = true,
   showTransactions = true,
+  showBreakdown = true,
 }: PropsT) {
   const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts)
   const nameByWorker = new Map(payouts.map((payout) => [workerKey(payout.workerId), payout.name]))
@@ -130,8 +134,8 @@ export function SubcontractorSummary({
   return (
     <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-        <HeadlineSummary summary={summary} due={subcontractorDue} />
-        {summary.rows.length > 0 && (
+        <HeadlineSummary summary={summary} due={subcontractorDue} showPlanes={showBreakdown} />
+        {showBreakdown && summary.rows.length > 0 && (
           <WorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
       </div>
@@ -191,9 +195,11 @@ const UNCONFIRMED_PLANE_HINT =
 function HeadlineSummary({
   summary,
   due,
+  showPlanes,
 }: {
   summary: ReturnType<typeof computeSubcontractorSummary>
   due: SubcontractorDueByPlaneT
+  showPlanes: boolean
 }) {
   return (
     <SummaryTable cols={`${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`} className="w-fit">
@@ -202,11 +208,15 @@ function HeadlineSummary({
 
       {/* Split by plane: each etap valued at its own price, so Z + Bez = razem exactly. Shown even
           when one side is 0, so the reader sees the settlement is plane-aware. */}
-      <SummaryLabelCell>{PLANE_LABELS.w_tools}</SummaryLabelCell>
-      <SummaryValueCell>{formatNet(due.wTools)}</SummaryValueCell>
+      {showPlanes && (
+        <div className="contents">
+          <SummaryLabelCell>{PLANE_LABELS.w_tools}</SummaryLabelCell>
+          <SummaryValueCell>{formatNet(due.wTools)}</SummaryValueCell>
 
-      <SummaryLabelCell>{PLANE_LABELS.own_tools}</SummaryLabelCell>
-      <SummaryValueCell>{formatNet(due.ownTools)}</SummaryValueCell>
+          <SummaryLabelCell>{PLANE_LABELS.own_tools}</SummaryLabelCell>
+          <SummaryValueCell>{formatNet(due.ownTools)}</SummaryValueCell>
+        </div>
+      )}
 
       <SummaryLabelCell className="flex items-center gap-x-2 font-bold">
         Suma wykonanej pracy
