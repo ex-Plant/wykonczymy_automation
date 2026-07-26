@@ -44,3 +44,25 @@ Owner's calls so far (2026-07-26):
 - **The panel is a bottom-anchored `Collapsible` overlay** glued to the editor grid
   (`absolute inset-x-0 bottom-0`, `h-0` → `h-full`). The tabs and blocks inside are portable; the
   shell is not — the content has to come out of `KosztorysTotalsPanel`.
+
+## Correction (2026-07-26, after phase 5)
+
+The plan built one panel with the v1/v2 toggle swapping two figures inside it, and retired the tiles
+from the page outright. **Wrong reading of the owner's intent.** The axis is a _temporary comparison
+affordance_: the point is to look at the old page and the new one and check the totals agree, so v1
+must be the page **exactly as it was** — same queries, same computations, same layout — and only v2 is
+new work.
+
+Restructured in `36204b17`:
+
+- The reading is a **search param**, `?widok=v1|v2` (default `v2`, `src/lib/constants/stats-version.ts`).
+  Client state can't do this: v1 has to skip v2's server fetches, which only a server render can. It
+  also makes each reading a link, so both can sit open in adjacent tabs.
+- `?widok=v1` renders `FinancialStats` and nothing else, off the original three-query `Promise.all`.
+- `?widok=v2` renders the owner strip + the panel; `InvestmentSummaryPanel` owns **every** v2 fetch
+  and derivation (kosztorys tree, deposits, materiały breakdown, `vatRate`, settlement mode).
+- Reverted the two extra columns added to `fetchReferenceData` / `InvestmentRefT` — that query is
+  shared, so v1 was paying for them.
+
+Delete the whole axis (param, toggle, `FinancialStats` on this page) once the owner calls the
+comparison over.
