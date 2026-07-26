@@ -35,31 +35,38 @@ function uncategorisedRemainder(financials: InvestmentFinancialsT): number {
  *
  *  A category billed partly at netto splits into two rows: the brutto remainder and a frozen
  *  „… netto" row. `netCategoryCosts` is a subset of `financials.categoryCosts`, so subtracting
- *  it keeps the Σ invariant intact — the split only decides which rows the toggle may reprice. */
+ *  it keeps the Σ invariant intact — the split only decides which rows the toggle may reprice.
+ *
+ *  Rows are grouped by origin, not interleaved per category: every brutto row first, then the frozen
+ *  netto ones as a block. The netto rows are the exception the reduction can't touch, so they read as
+ *  a set — interleaved they look like a per-category sub-row and invite summing the pair. */
 export function buildMaterialyBreakdown(
   financials: InvestmentFinancialsT,
   expenseCategories: { id: number; name: string }[],
   netCategoryCosts: CategoryCostT[] = [],
 ): MaterialyBreakdownRowT[] {
-  const rows: MaterialyBreakdownRowT[] = expenseCategories.flatMap((cat) => {
-    const billed = costForCategory(financials.categoryCosts, cat.id)
-    const netBilled = costForCategory(netCategoryCosts, cat.id)
-    const grossRow: MaterialyBreakdownRowT = {
-      id: cat.id,
-      label: cat.name,
-      net: billed - netBilled,
-      origin: 'gross',
-    }
-    if (netBilled === 0) return [grossRow]
-    return [
-      grossRow,
-      { id: cat.id, label: `${cat.name} netto`, net: netBilled, origin: 'netBilled' as const },
-    ]
-  })
+  const grossRows: MaterialyBreakdownRowT[] = expenseCategories.map((cat) => ({
+    id: cat.id,
+    label: cat.name,
+    net:
+      costForCategory(financials.categoryCosts, cat.id) - costForCategory(netCategoryCosts, cat.id),
+    origin: 'gross',
+  }))
   const uncategorised = uncategorisedRemainder(financials)
   if (uncategorised !== 0)
-    rows.push({ id: null, label: KOREKTA_LABEL, net: uncategorised, origin: 'gross' })
-  return rows
+    grossRows.push({ id: null, label: KOREKTA_LABEL, net: uncategorised, origin: 'gross' })
+
+  const netRows: MaterialyBreakdownRowT[] = expenseCategories
+    .map((cat) => ({ cat, netBilled: costForCategory(netCategoryCosts, cat.id) }))
+    .filter(({ netBilled }) => netBilled !== 0)
+    .map(({ cat, netBilled }) => ({
+      id: cat.id,
+      label: `${cat.name} netto`,
+      net: netBilled,
+      origin: 'netBilled' as const,
+    }))
+
+  return [...grossRows, ...netRows]
 }
 
 /** Map expense categories to header fields. By default ALL of them, showing 0 for a category with
@@ -113,6 +120,26 @@ export function buildFinancialFields(
       ? [{ label: RABAT_LABEL, value: formatPLN(totalRabat), amount: totalRabat }]
       : []),
   ]
+}
+
+/** The same per-category split as `buildSettledFields`, but as numeric breakdown rows for the
+ *  summary panel's table. Kept separate from `buildMaterialyBreakdown` because settled material is
+ *  never billed to the investor: it carries no netto bucket, takes no reduction, and its Σ must NOT
+ *  join `totalMaterialCosts`. A category with no settled spend is dropped — a zero row here would
+ *  read as "the company absorbed nothing in this bucket", which is the same thing as absent. */
+export function buildSettledBreakdown(
+  settledCategoryCosts: CategoryCostT[],
+  expenseCategories: { id: number; name: string }[],
+): MaterialyBreakdownRowT[] {
+  return expenseCategories
+    .map((cat) => ({ cat, total: costForCategory(settledCategoryCosts, cat.id) }))
+    .filter(({ total }) => total !== 0)
+    .map(({ cat, total }) => ({
+      id: cat.id,
+      label: cat.name,
+      net: total,
+      origin: 'gross' as const,
+    }))
 }
 
 /** Build labelled fields for settled internal material, split per expense category.
