@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import * as Collapsible from '@radix-ui/react-collapsible'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import {
+  settlementModeToGridAxis,
+  settlementModeToPanelAxis,
+  type SettlementModeT,
+} from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
@@ -17,20 +22,17 @@ import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
-import {
-  useSummaryAxis,
-  type PanelAxisT,
-} from '@/components/kosztorys/summary/hooks/use-summary-axis'
-import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
-import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
-import { Description } from '@/components/ui/description'
+import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
 import {
   useSummaryView,
   type SummaryViewT,
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import { useMaterialsNetPricing } from '@/components/kosztorys/summary/hooks/use-materials-net-pricing'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
-import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
+import {
+  buildSettlementPlaneVerdict,
+  type KosztorysReconciliationT,
+} from '@/lib/kosztorys/reconciliation'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
 import type {
@@ -46,12 +48,6 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
-]
-
-const AXIS_SELECT_OPTIONS: SelectOptionT[] = [
-  { value: 'net', label: 'Netto' },
-  { value: 'gross', label: 'Brutto' },
-  { value: 'mixed', label: 'Mix' },
 ]
 
 type PropsT = {
@@ -92,6 +88,8 @@ type PropsT = {
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
   vatRate: number
+  settlementMode: SettlementModeT
+  onSettlementModeChange: (mode: SettlementModeT) => void
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   clientView?: boolean
 }
@@ -119,12 +117,12 @@ export function KosztorysTotalsPanel({
   rabatAmount,
   reconciliation,
   vatRate,
+  settlementMode,
+  onSettlementModeChange,
   clientView = false,
 }: PropsT) {
   const [open, setOpen] = useTotalsPanelOpen()
-  // The panel's own netto/brutto axis, independent of the Widok dropdown — that one keeps
-  // governing the grid columns only; this switch governs every figure inside the panel.
-  const [moneyAxis, setMoneyAxis] = useSummaryAxis()
+  const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only: filtered from
   // the client read-only toggle, and a persisted pick of it falls back to „Podsumowanie" there so a
@@ -138,9 +136,13 @@ export function KosztorysTotalsPanel({
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
-  // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
-  // netto+brutto settlement, so it shows both columns alongside the gotówka block.
-  const displayAxis: MoneyAxisT = moneyAxis === 'mixed' ? 'both' : moneyAxis
+  // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
+  // rather than deciding it.
+  const settlementVerdict = buildSettlementPlaneVerdict({ mode: settlementMode, paidNet, paidGross })
+  // The tables show one money column — the settled one. Mieszane is the exception: it's a mixed
+  // netto+brutto settlement, so it shows both columns alongside the gotówka block. Same projection
+  // the grid uses, so a table and a column can't disagree about what „Mieszane" means.
+  const displayAxis: MoneyAxisT = settlementModeToGridAxis(settlementMode)
   // Materiały netto pricing: when on, netto = brutto − VAT (the historical default); when off,
   // materiały stay at their raw brutto amount on both axes. Only moves netto figures, so the toggle
   // is offered only where netto is on show and there are materiały to reprice.
@@ -190,20 +192,14 @@ export function KosztorysTotalsPanel({
             onChange={setSummaryView}
             aria-label="Widok podsumowania"
           />
+          {/* A client reads the mode, never writes it — the same `clientView` gate every other
+              owner-only affordance in this panel uses. */}
           {!isSubcontractorView && !clientView && (
-            <div className="my-2 flex flex-col gap-2">
-              <Description className="max-w-xs" size="sm" withIcon={false}>
-                Wybierz jak rozliczana będzie inwestycja.
-              </Description>
-              <SimpleSelect
-                value={moneyAxis}
-                onValueChange={(next) => setMoneyAxis(next as PanelAxisT)}
-                options={AXIS_SELECT_OPTIONS}
-                disabled={vatRate === 0}
-                className="w-40"
-              />
-              {vatRate === 0 && <ZeroVatWarning />}
-            </div>
+            <SettlementModeSelect
+              value={settlementMode}
+              onChange={onSettlementModeChange}
+              vatRate={vatRate}
+            />
           )}
         </div>
         <SummaryScrollRegion>
@@ -226,6 +222,7 @@ export function KosztorysTotalsPanel({
                   wplatyNet={wplatyNet}
                   rabatAmount={rabatAmount}
                   reconciliation={reconciliation}
+                  settlementVerdict={settlementVerdict}
                   priceView="client"
                   vatRate={vatRate}
                   deriveMaterialsNet={materialsAsNet}

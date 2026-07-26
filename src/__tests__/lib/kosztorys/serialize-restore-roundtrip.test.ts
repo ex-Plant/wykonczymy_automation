@@ -83,6 +83,7 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       data: {
         name: 'snapshot-roundtrip-test',
         status: 'active',
+        settlementMode: 'NET',
         wToolsCoeff: 0.7,
         ownToolsCoeff: 0.5,
       },

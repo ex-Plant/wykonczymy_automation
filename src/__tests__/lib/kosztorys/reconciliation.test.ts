@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
-import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
+import {
+  buildKosztorysReconciliation,
+  buildSettlementPlaneVerdict,
+} from '@/lib/kosztorys/reconciliation'
+import { SETTLEMENT_MODES } from '@/lib/kosztorys/settlement-mode'
 import { deriveFinancials } from '@/lib/db/investment-financials'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
 import type { TypeSettledTotalT } from '@/types/investment-financials'
@@ -65,6 +69,7 @@ function makeTree(overrides: Partial<KosztorysTreeT> = {}): KosztorysTreeT {
     ],
     globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
     vatRate: 0.08,
+    settlementMode: 'NET',
     globalDiscount: { type: null, value: 0 },
     revision: '2026-01-01T00:00:00.000Z',
     ...overrides,
@@ -260,5 +265,42 @@ describe('grosz-exact tolerance (no fuzzy epsilon)', () => {
       laborCostsNetFromTransactions: 100.001,
     })
     expect(verdict.laborCosts.mismatch).toBe(false)
+  })
+})
+
+describe('buildSettlementPlaneVerdict', () => {
+  it('screams when a netto-settled investment took brutto wpłaty', () => {
+    const verdict = buildSettlementPlaneVerdict({ mode: 'NET', paidNet: 1000, paidGross: 250 })
+    expect(verdict.mismatch).toBe(true)
+    expect(verdict.offendingAmount).toBe(250)
+    expect(verdict.offendingPlane).toBe('GROSS')
+  })
+
+  // paidNet already absorbs unmarked deposits (the null→netto ruling), so netto-only is the clean case.
+  it('stays clean when a netto-settled investment took only netto wpłaty', () => {
+    expect(buildSettlementPlaneVerdict({ mode: 'NET', paidNet: 1000, paidGross: 0 }).mismatch).toBe(
+      false,
+    )
+  })
+
+  it('screams when a brutto-settled investment took netto wpłaty', () => {
+    const verdict = buildSettlementPlaneVerdict({ mode: 'GROSS', paidNet: 400, paidGross: 900 })
+    expect(verdict.mismatch).toBe(true)
+    expect(verdict.offendingAmount).toBe(400)
+    expect(verdict.offendingPlane).toBe('NET')
+  })
+
+  it('never screams in MIXED, whatever the wpłaty', () => {
+    const verdict = buildSettlementPlaneVerdict({ mode: 'MIXED', paidNet: 500, paidGross: 700 })
+    expect(verdict.mismatch).toBe(false)
+    expect(verdict.offendingAmount).toBe(0)
+    // No plane to name — the warning renders nothing rather than mislabelling one of the two.
+    expect(verdict.offendingPlane).toBeNull()
+  })
+
+  it('stays clean with no wpłaty at all, in every mode', () => {
+    for (const mode of SETTLEMENT_MODES) {
+      expect(buildSettlementPlaneVerdict({ mode, paidNet: 0, paidGross: 0 }).mismatch).toBe(false)
+    }
   })
 })

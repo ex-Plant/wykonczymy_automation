@@ -32,7 +32,7 @@ async function seedKosztorys(
 ): Promise<SeededInvestment> {
   const investment = await payload.create({
     collection: 'investments',
-    data: { name, status: 'active', vatRate: 0.23 },
+    data: { name, status: 'active', vatRate: 0.23, settlementMode: 'NET' },
     ...ctx,
   })
   const stage = await payload.create({

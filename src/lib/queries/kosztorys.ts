@@ -148,6 +148,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
     progress,
     globalCoeffs,
     vatRate: investment.vatRate ?? DEFAULT_VAT,
+    settlementMode: investment.settlementMode,
     globalDiscount: {
       // Amount-only stored discount — fail closed on a legacy 'percent' row (treat it as none).
       type: investment.globalDiscountType === 'amount' ? 'amount' : null,

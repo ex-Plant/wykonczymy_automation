@@ -47,7 +47,7 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
 
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'EX-532 share lifecycle spec', status: 'active' },
+      data: { name: 'EX-532 share lifecycle spec', status: 'active', settlementMode: 'NET' },
     })
     investmentId = investment.id
   })

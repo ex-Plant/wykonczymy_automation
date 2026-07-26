@@ -44,13 +44,13 @@ describe.skipIf(!ENV_READY)('sumPayoutsByWorkerForInvestment (DB)', () => {
 
     const inv = await payload.create({
       collection: 'investments',
-      data: { name: 'payouts-by-worker-test', status: 'active' },
+      data: { name: 'payouts-by-worker-test', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(inv.id)
     const other = await payload.create({
       collection: 'investments',
-      data: { name: 'payouts-by-worker-other', status: 'active' },
+      data: { name: 'payouts-by-worker-other', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     otherInvestmentId = Number(other.id)

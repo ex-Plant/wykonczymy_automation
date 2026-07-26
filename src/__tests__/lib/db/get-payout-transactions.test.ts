@@ -38,7 +38,7 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
 
     const inv = await payload.create({
       collection: 'investments',
-      data: { name: 'get-payout-transactions-test', status: 'active' },
+      data: { name: 'get-payout-transactions-test', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(inv.id)

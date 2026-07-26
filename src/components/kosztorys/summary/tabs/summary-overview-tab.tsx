@@ -1,6 +1,6 @@
 'use client'
 
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import type { MoneyAxisT, PanelAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import {
   materialsPair,
@@ -12,8 +12,11 @@ import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summar
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
 import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
 import { SlicePie } from '@/components/ui/slice-pie'
-import { type PanelAxisT } from '@/components/kosztorys/summary/hooks/use-summary-axis'
-import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
+import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
+import type {
+  KosztorysReconciliationT,
+  SettlementPlaneVerdictT,
+} from '@/lib/kosztorys/reconciliation'
 import { costTotalsPieSlices } from '@/lib/kosztorys/chart-slices'
 import { formatNet } from '@/lib/kosztorys/format'
 
@@ -28,6 +31,7 @@ type PropsT = {
   wplatyNet: number
   rabatAmount: number
   reconciliation: KosztorysReconciliationT
+  settlementVerdict: SettlementPlaneVerdictT
   priceView: PriceViewT
   vatRate: number
   // Materiały-netto pricing (checkbox + reduction %) — shared panel state, feeds both figures.
@@ -50,6 +54,7 @@ export function SummaryOverviewTab({
   wplatyNet,
   rabatAmount,
   reconciliation,
+  settlementVerdict,
   priceView,
   vatRate,
   deriveMaterialsNet,
@@ -68,6 +73,9 @@ export function SummaryOverviewTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4">
+      {!clientView && settlementVerdict.mismatch && (
+        <SettlementPlaneWarning verdict={settlementVerdict} />
+      )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         {mixedMode ? (
           <MixedSummary

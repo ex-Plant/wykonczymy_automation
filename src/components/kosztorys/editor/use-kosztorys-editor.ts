@@ -14,7 +14,11 @@ import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
-import { toClientAxis, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import {
+  settlementModeToGridAxis,
+  type SettlementModeT,
+} from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -76,6 +80,7 @@ import {
   swapSectionOrderAction,
   updateInvestmentCoeffsAction,
   updateInvestmentGlobalDiscountAction,
+  updateInvestmentSettlementModeAction,
   updateInvestmentVatAction,
   updateItemFieldAction,
   updateSectionFieldAction,
@@ -149,11 +154,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. clientView narrows further: its header offers only net/brutto, and the axis is
-  // persisted per person (shared with the owner's Kwoty control), so a stored 'both'/'none' has to
-  // land on 'net' here — otherwise the grid would show both planes while the toggle shows neither.
+  // Kwoty control. clientView ignores the persisted axis entirely: the client reads the plane the
+  // investment is settled on, so its grid can't disagree with the Podsumowanie panel beside it. That
+  // guarantee is client-side only — the owner's „Kwoty" pick deliberately stays a per-person column
+  // preference, so an owner can read netto in the grid while the panel shows brutto.
   const effectiveMoneyAxis: MoneyAxisT = clientView
-    ? toClientAxis(moneyAxis)
+    ? settlementModeToGridAxis(tree.settlementMode)
     : view !== 'client'
       ? 'net'
       : moneyAxis === 'none'
@@ -751,6 +757,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       progress: [],
       globalCoeffs: tree.globalCoeffs,
       vatRate: tree.vatRate,
+      settlementMode: tree.settlementMode,
       globalDiscount,
       revision: tree.revision,
     })
@@ -1019,6 +1026,25 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     if (before !== vatRate) pushReversible('Zmiana stawki VAT', applyVat, before, vatRate)
   }
 
+  // The settlement mode isn't denormalized onto the rows, so there's nothing to patch optimistically:
+  // persist, then let the refresh reseed `tree` for the panel that reads it.
+  async function applySettlementMode(mode: SettlementModeT) {
+    await optimisticSettingSave(
+      () => updateInvestmentSettlementModeAction(investmentId, mode),
+      () => {},
+      'Nie udało się zapisać sposobu rozliczenia',
+    )
+  }
+
+  async function handleSettlementModeChange(mode: SettlementModeT) {
+    // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
+    // silently reverts whatever unrelated edit preceded it.
+    const before = tree.settlementMode
+    await applySettlementMode(mode)
+    if (before !== mode)
+      pushReversible('Zmiana sposobu rozliczenia', applySettlementMode, before, mode)
+  }
+
   // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
   // local discount (drives the derived totals + column visibility) and patch the denormalized active
   // flag on every row in the same render, so all three surfaces move together; then persist + refresh.
@@ -1211,6 +1237,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     handleAddStage,
     handleGlobalCoeffChange,
     handleVatChange,
+    handleSettlementModeChange,
     handleGlobalDiscountChange,
     handleApplyPercentRabat,
     // undo/redo (stack lives in the shell; consumed by the toolbar + keyboard). Both flush a

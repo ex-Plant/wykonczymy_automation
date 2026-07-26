@@ -9,6 +9,7 @@ import {
   investmentSchema,
   type InvestmentFormDataT,
 } from '@/components/forms/investment-form/investment-schema'
+import { SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
 import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
 import { validateAction, protectedAction } from './run-action'
@@ -48,7 +49,8 @@ export async function createInvestmentAction(data: InvestmentFormDataT) {
       const { presetId, ...investmentData } = parsed.data
       const created = await payload.create({
         collection: 'investments',
-        data: investmentData,
+        // Not on the create form — the mode is chosen later in the kosztorys panel.
+        data: { ...investmentData, settlementMode: SETTLEMENT_MODE_DEFAULT },
       })
 
       // Seed the new (trivially empty) investment's kosztorys from the chosen preset. Best-effort and

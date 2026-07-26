@@ -1,3 +1,6 @@
+import type { VatPlaneT } from '@/lib/constants/transfers'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+
 // One figure's reconciliation verdict: the kosztorys client-view NET vs the transaction-sourced
 // figure, and whether they disagree. Shared contract — the editor Podsumowanie and the investment
 // page both render off this shape.
@@ -5,6 +8,7 @@
 // Both sides are netto. VAT is a client-pricing concept (prace only); the transaction ledger carries
 // no VAT axis, so the check compares net-to-net — grossing the kosztorys side would false-fire by the
 // whole VAT amount (context/reference/kosztorys-editor-domain-notes.md, „VAT dotyczy wyłącznie prac").
+
 export type ReconT = {
   // Kosztorys side: the client-view net („Suma prac wykonanych" / rabat).
   expected: number
@@ -53,6 +57,39 @@ export function reconciliationTooltip(
     `Różnica: ${format(recon.actual - recon.expected)}`,
     'Zweryfikuj przed oznaczeniem inwestycji jako rozliczonej.',
   ].join('\n')
+}
+
+export type SettlementPlaneVerdictT = {
+  mismatch: boolean
+  mode: SettlementModeT
+  // The wpłaty that sit on the wrong plane (netto sum for a GROSS investment, and vice versa), and
+  // which plane that is. Named here rather than re-derived at the render site, where a two-branch
+  // ternary over a three-value mode would quietly mislabel `MIXED`.
+  offendingAmount: number
+  offendingPlane: VatPlaneT | null
+}
+
+/**
+ * A deposit whose plane contradicts the declared settlement mode records normally but must be seen:
+ * either the mode is wrong or the wpłata was tagged wrong, and both are invisible in the totals.
+ * `MIXED` is settled on both planes, so nothing can contradict it.
+ *
+ * `paidNet` / `paidGross` come from `bucketDepositsByPlane` — never from a second read of `vatPlane`,
+ * which would risk a different reading of the null→netto ruling.
+ */
+export function buildSettlementPlaneVerdict({
+  mode,
+  paidNet,
+  paidGross,
+}: {
+  mode: SettlementModeT
+  paidNet: number
+  paidGross: number
+}): SettlementPlaneVerdictT {
+  const offendingPlane = mode === 'NET' ? 'GROSS' : mode === 'GROSS' ? 'NET' : null
+  const offendingAmount =
+    offendingPlane === 'GROSS' ? paidGross : offendingPlane === 'NET' ? paidNet : 0
+  return { mismatch: offendingAmount > 0, mode, offendingAmount, offendingPlane }
 }
 
 /**

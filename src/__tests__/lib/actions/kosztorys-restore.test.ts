@@ -58,7 +58,7 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
     authState.userId = Number(firstUser.id)
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'restore-snapshot-test', status: 'active' },
+      data: { name: 'restore-snapshot-test', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(investment.id)
@@ -168,7 +168,7 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
     // A separate investment B — the editor's current context.
     const investmentB = await payload.create({
       collection: 'investments',
-      data: { name: 'restore-scope-other', status: 'active' },
+      data: { name: 'restore-scope-other', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     const investmentIdB = Number(investmentB.id)
