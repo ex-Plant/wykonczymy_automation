@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-share-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
@@ -18,15 +19,6 @@ import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { toastMessage } from '@/lib/utils/toast'
 import type { PresetMetaT } from '@/lib/db/presets'
-
-type PropsT = {
-  investmentId: number
-  onOpenVersions?: () => void
-  undo: () => void
-  redo: () => void
-  canUndo: boolean
-  canRedo: boolean
-}
 
 // A menu item rendered as icon + label + a muted one-line explanation, so each action says what it
 // does inline (a hover tooltip inside an already-open Radix menu fights it for focus).
@@ -41,14 +33,8 @@ function MenuItemBody({ label, description }: { label: string; description: stri
 
 // The Save-preset dialog is a controlled sibling of the menu, not a child of DropdownMenuContent —
 // onSelect closes the menu, so opening the dialog from inside it would fight the menu for focus.
-export function KosztorysActionsMenu({
-  investmentId,
-  onOpenVersions,
-  undo,
-  redo,
-  canUndo,
-  canRedo,
-}: PropsT) {
+export function KosztorysActionsMenu() {
+  const { investmentId, onOpenVersions, undo, redo, canUndo, canRedo } = useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)

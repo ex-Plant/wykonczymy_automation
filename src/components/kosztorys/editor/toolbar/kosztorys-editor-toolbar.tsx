@@ -7,23 +7,18 @@ import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
 import { KosztorysActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu'
 import { KosztorysToolbarTotalsToggle } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-totals-toggle'
-import { KosztorysToolbarViewToggles } from '@/components/kosztorys/editor/toolbar/kosztorys-toolbar-view-toggles'
+import { ToolbarToggle } from '@/components/ui/toolbar-toggle'
+import {
+  VIEWS,
+  VIEW_LEGEND,
+} from '@/components/kosztorys/editor/toolbar/kosztorys-view-axis-options'
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
 import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-section-filter-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
-  const {
-    investmentId,
-    investmentName,
-    search,
-    setSearch,
-    onOpenVersions,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-  } = useKosztorysEditorContext()
+  const { investmentId, investmentName, search, setSearch, view, setView } =
+    useKosztorysEditorContext()
 
   return (
     <div className="border-border shrink-0 border-b">
@@ -34,7 +29,13 @@ export function KosztorysEditorToolbar() {
           </Link>
         </h1>
         <KosztorysToolbarTotalsToggle />
-        <KosztorysToolbarViewToggles />
+        <ToolbarToggle
+          legend={VIEW_LEGEND}
+          options={VIEWS}
+          value={view}
+          onChange={setView}
+          aria-label="Widok cen"
+        />
 
         <KosztorysAddMenu />
         <SimpleTooltip content="Szukaj pozycji / sekcji">
@@ -49,14 +50,7 @@ export function KosztorysEditorToolbar() {
           </div>
         </SimpleTooltip>
         <div className="ml-auto flex items-center gap-1">
-          <KosztorysActionsMenu
-            investmentId={investmentId}
-            onOpenVersions={onOpenVersions}
-            undo={undo}
-            redo={redo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-          />
+          <KosztorysActionsMenu />
           <KosztorysSectionFilterMenu />
           <KosztorysViewMenu />
         </div>
