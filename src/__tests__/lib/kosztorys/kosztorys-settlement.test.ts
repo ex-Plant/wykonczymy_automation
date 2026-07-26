@@ -91,7 +91,10 @@ describe('stageTotalsForView', () => {
     const rows = treeToRows(tree)
     const client = stageTotalsForView(rows, tree.stages, 'client')
     const wTools = stageTotalsForView(rows, tree.stages, 'w_tools')
-    expect(wTools.get(100)).not.toBeCloseTo(client.get(100)!)
+    // Compare the summed totals, not stage 100 alone: with rabat now client-only both rows sit at
+    // w_tools price 12, so stage 100 happens to coincide (72) while the views still differ overall.
+    const sum = (totals: Map<number, number>) => [...totals.values()].reduce((s, v) => s + v, 0)
+    expect(sum(wTools)).not.toBeCloseTo(sum(client))
   })
 })
 
@@ -105,10 +108,20 @@ describe('sectionSubtotalsForView › discount (per-item rabat aggregate)', () =
   })
 
   it('reads 0 when the global discount is active (it overrides per-item rabat)', () => {
-    const globalTree = { ...tree, globalDiscount: { type: 'percent' as const, value: 10 } }
+    const globalTree = { ...tree, globalDiscount: { type: 'amount' as const, value: 10 } }
     const rows = treeToRows(globalTree)
     const [section] = sectionSubtotalsForView(rows, globalTree.stages, 'client')
     expect(section.discount).toBeCloseTo(0)
+  })
+
+  // Rabat is a client concession, never passed to the subcontractor — so the subcontractor subtotal
+  // carries no discount even though item 2 has a flat-8 per-item rabat on the client side.
+  it('reads 0 in a subcontractor view (rabat is client-only)', () => {
+    const rows = treeToRows(tree)
+    for (const view of ['w_tools', 'own_tools'] as const) {
+      const [section] = sectionSubtotalsForView(rows, tree.stages, view)
+      expect(section.discount).toBeCloseTo(0)
+    }
   })
 })
 
@@ -124,7 +137,7 @@ describe('executedWorkNetPreRabat (subcontractor należne)', () => {
   })
 
   it('is unaffected by an active global discount (net already gross, discount 0)', () => {
-    const globalTree = { ...tree, globalDiscount: { type: 'percent' as const, value: 10 } }
+    const globalTree = { ...tree, globalDiscount: { type: 'amount' as const, value: 10 } }
     const rows = treeToRows(globalTree)
     const subtotals = sectionSubtotalsForView(rows, globalTree.stages, 'client')
     expect(executedWorkNetPreRabat(subtotals)).toBeCloseTo(PRE_RABAT_CLIENT)

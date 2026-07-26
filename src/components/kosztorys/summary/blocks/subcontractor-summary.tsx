@@ -22,6 +22,8 @@ import {
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
 import { PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
+import { KosztorysGlobalSettings } from '@/components/kosztorys/editor/toolbar/kosztorys-global-settings'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/reference-data'
 import { cn } from '@/lib/utils/cn'
 
@@ -101,6 +103,7 @@ export function SubcontractorSummary({
   const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts)
   const nameByWorker = new Map(payouts.map((payout) => [workerKey(payout.workerId), payout.name]))
   const [mode, setMode] = useState<GroupModeT>('worker')
+  const { tree, handleGlobalCoeffChange } = useKosztorysEditorContext()
 
   const tableRows: PayoutTableRowT[] = payoutTransactions.map((tx) => ({
     workerId: tx.workerId,
@@ -118,6 +121,10 @@ export function SubcontractorSummary({
 
   return (
     <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-2 pb-6 text-sm">
+      <KosztorysGlobalSettings
+        globalCoeffs={tree.globalCoeffs}
+        onGlobalCoeffChange={handleGlobalCoeffChange}
+      />
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
         <HeadlineSummary summary={summary} due={subcontractorDue} />
         {summary.rows.length > 0 && (

@@ -70,6 +70,53 @@ stored value — the feature is usable end-to-end after phase 1. Phase 2 narrows
 amount-only and strips percent + snapshot fields, updating tests. This ordering keeps every commit
 green: the UI stops offering percent-as-state in phase 1, so phase 2's narrowing breaks nothing.
 
+## Phase 0: Subcontractor views are rabat-free
+
+### Overview
+
+Owner scope added mid-implementation (2026-07-24): rabat is a **client** concession, absorbed by the
+company margin and never passed to the crew. The subcontractor summary total already enforces this
+(`executedWorkNetPreRabat` adds the rabat back), but the grid cells, per-stage values, subtotals, and
+the discount columns did not. Make the whole subcontractor plane obey the rule the summary already
+follows.
+
+### Changes Required:
+
+#### 1. Discount is client-only at the pricing choke point
+
+**File**: `src/lib/kosztorys/calc.ts`
+
+**Intent**: `netForQtyForView` applies the discount only when `view === 'client'`; the two
+subcontractor views price gross. This is the single source every subcontractor figure flows through
+(`rowDiscountForView`, `stageValueForView`, section subtotals), so it zeroes them all at once.
+`executedWorkNetPreRabat`'s `Σ(net + discount)` identity is preserved (discount is now 0 for the
+crew, net is already gross).
+
+#### 2. Hide the four discount columns in subcontractor views
+
+**File**: `src/components/kosztorys/editor/grid/kosztorys-v2-columns.tsx`
+
+**Intent**: `assembleV2Columns` adds `discountValue/discountType/discountAmount/discountAmountGross`
+only when `view === 'client'`; subcontractor views never assemble them (their figures would be zero
+anyway). The existing `globalDiscountActive` filter still hides per-item rabat columns in client view.
+
+#### 3. Tests
+
+**Files**: `src/__tests__/lib/kosztorys/kosztorys-calc.test.ts`, `kosztorys-settlement.test.ts`
+
+**Intent**: Guard that a subcontractor view prices gross of both percent and amount rabat end-to-end
+(`netForQtyForView` equals the no-rabat row, `rowDiscountForView` = 0, section subtotal `.discount` = 0),
+while the client view still subtracts it.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- Typecheck passes: `pnpm exec tsc --noEmit`
+- Kosztorys calc + settlement suites green
+
+---
+
 ## Phase 1: Bulk-apply action + settings UI
 
 ### Overview
@@ -235,18 +282,28 @@ emits phantom drift).
 
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands.
 
+### Phase 0: Subcontractor views are rabat-free
+
+#### Automated
+
+- [x] 0.1 Discount client-only in calc + discount columns gated to client view — 2d474610
+- [x] 0.2 Calc + settlement suites green (subcontractor rabat-free guards) — 2d474610
+
 ### Phase 1: Bulk-apply action + settings UI
 
 #### Automated
 
-- [ ] 1.1 Typecheck passes
-- [ ] 1.2 Bulk action schema validation tests
-- [ ] 1.3 Existing kosztorys unit suites green
+- [x] 1.1 Typecheck passes — c5f4079e
+- [x] 1.2 Bulk action schema validation tests — c5f4079e
+- [x] 1.3 Existing kosztorys unit suites green — c5f4079e
 
 ### Phase 2: Amount-only stored discount + snapshot cleanup
 
 #### Automated
 
-- [ ] 2.1 Typecheck passes
-- [ ] 2.2 Full unit suite green
-- [ ] 2.3 Lint passes
+- [x] 2.1 Typecheck passes — f4605bf4
+- [x] 2.2 Full unit suite green — f4605bf4
+- [x] 2.3 Lint passes — f4605bf4
+
+Migration skipped: `investments.globalDiscountType` is a plain `text` field (no DB enum/constraint),
+so narrowing to amount-only needs no schema touch — plan item #3's gate isn't tripped.

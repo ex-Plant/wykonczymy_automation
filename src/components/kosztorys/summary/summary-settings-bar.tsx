@@ -1,19 +1,10 @@
 'use client'
 
+import { Checkbox } from '@/components/ui/checkbox'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import { SimpleSelect } from '@/components/ui/simple-select'
+import { PercentRabatTool } from '@/components/kosztorys/summary/percent-rabat-tool'
 import { HintTooltip } from '@/components/ui/tooltip'
-import type { DiscountTypeT } from '@/lib/kosztorys/types'
-
-// Radix Select rejects an empty-string item value, so "brak" (clear the discount) carries this.
-const NONE = 'none'
-
-const DISCOUNT_MODE_OPTIONS = [
-  { value: NONE, label: 'brak', className: 'text-muted-foreground' },
-  { value: 'amount', label: 'zł' },
-  { value: 'percent', label: '%' },
-]
 
 const VAT_TIP = [
   'Stawka VAT dla całej inwestycji.',
@@ -21,20 +12,24 @@ const VAT_TIP = [
 ].join('\n')
 
 const DISCOUNT_TIP = [
-  'Rabat za całość wykonanych prac, wpisywany raz na cały kosztorys.',
   'Gdy ustawiony, nadpisuje rabaty per pozycja — ich kolumny znikają i przestają liczyć (dane zostają).',
-  'Odejmuje się raz od sumy wykonanych prac; wpisujesz netto (kwota) lub punkty procentowe.',
+  'Odejmuje się raz od sumy wykonanych prac; wpisujesz kwotę netto.',
 ].join('\n')
 
 // VAT + rabat, lifted out of the toolbar to sit at the top of the Podsumowanie tab. Reads the setters
 // straight from the editor context (the panel renders inside the provider), so no props thread through
 // KosztorysTotalsPanel.
 export function SummarySettingsBar() {
-  const { tree, globalDiscount, handleVatChange, handleGlobalDiscountChange } =
-    useKosztorysEditorContext()
+  const {
+    tree,
+    globalDiscount,
+    handleVatChange,
+    handleGlobalDiscountChange,
+    handleApplyPercentRabat,
+  } = useKosztorysEditorContext()
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-x-4">
+    <div className="flex w-full flex-col gap-2">
       {/* VAT is stored as a fraction but entered as a percent: show ×100, commit ÷100. */}
       <DecimalField
         label="VAT %"
@@ -43,29 +38,36 @@ export function SummarySettingsBar() {
         valueClassName="text-foreground"
         onCommit={(n) => handleVatChange(n / 100)}
       />
-      <div className="flex items-center gap-2">
-        <HintTooltip content={DISCOUNT_TIP} className="text-muted-foreground text-xs">
-          Rabat całościowy
-        </HintTooltip>
-        {globalDiscount.type != null && (
-          <DecimalField
-            label=""
-            value={globalDiscount.value}
-            valueClassName="text-chart-green"
-            onCommit={(n) => handleGlobalDiscountChange({ type: globalDiscount.type, value: n })}
-          />
-        )}
-        {/* "brak" clears the discount (type null); the value field shows only once a mode is
-            chosen. Value entered netto (zł) or as percentage points (%). */}
-        <SimpleSelect
-          value={globalDiscount.type ?? NONE}
-          onValueChange={(v) => {
-            const type = v === NONE ? null : (v as DiscountTypeT)
-            handleGlobalDiscountChange({ type, value: type == null ? 0 : globalDiscount.value })
-          }}
-          options={DISCOUNT_MODE_OPTIONS}
-          variant="soft"
-          className={globalDiscount.type == null ? 'text-muted-foreground' : undefined}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          {/* Checked = amount discount on (netto zł); unchecking clears it (type null). Percent is
+              never a stored mode here — that's the one-shot PercentRabatTool beside this. */}
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={globalDiscount.type != null}
+              onCheckedChange={(c) =>
+                handleGlobalDiscountChange({
+                  type: c === true ? 'amount' : null,
+                  value: c === true ? globalDiscount.value : 0,
+                })
+              }
+            />
+            <HintTooltip content={DISCOUNT_TIP} className="text-muted-foreground text-xs">
+              Rabat kwotowy
+            </HintTooltip>
+          </label>
+          {globalDiscount.type != null && (
+            <DecimalField
+              label=""
+              value={globalDiscount.value}
+              valueClassName="text-chart-green"
+              onCommit={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
+            />
+          )}
+        </div>
+        <PercentRabatTool
+          onApply={handleApplyPercentRabat}
+          disabled={globalDiscount.type != null}
         />
       </div>
     </div>

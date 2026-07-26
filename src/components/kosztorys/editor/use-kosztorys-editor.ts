@@ -59,6 +59,7 @@ import {
   addItemAction,
   addSectionAction,
   addStageAction,
+  applyPercentRabatToAllItemsAction,
   insertItemAction,
   removeItemAction,
   removeSectionAction,
@@ -844,10 +845,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const res = await persist()
     if (res.success) {
       router.refresh()
-      return
+      return true
     }
     revert()
     toastMessage(res.error ?? errorMessage, 'warning', 4000)
+    return false
   }
 
   // Changing the global coefficient recomputes the derived prices of all non-overridden items.
@@ -945,6 +947,34 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
         )
       },
       'Nie udało się zapisać rabatu',
+    )
+  }
+
+  // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
+  // Overwrites every item's per-item rabat with `percent X` — optimistically on the rows, then one
+  // bulk SQL update. No undo entry (owner: recovery = re-typing). Returns success so the settings
+  // control clears its input only when the write landed.
+  async function handleApplyPercentRabat(percent: number): Promise<boolean> {
+    const prev = new Map(
+      rowsRef.current.map((r) => [
+        r.id,
+        { discountType: r.discountType, discountValue: r.discountValue },
+      ]),
+    )
+    patchRows(
+      () => true,
+      (r) => ({ ...r, discountType: 'percent', discountValue: percent }),
+    )
+    // Roll each row's rabat back to its pre-apply value on failure — the once-only useState seed means
+    // a refresh can't reseed it.
+    return optimisticSettingSave(
+      () => applyPercentRabatToAllItemsAction(investmentId, percent),
+      () =>
+        patchRows(
+          () => true,
+          (r) => ({ ...r, ...(prev.get(r.id) ?? {}) }),
+        ),
+      'Nie udało się zastosować rabatu',
     )
   }
 
@@ -1077,6 +1107,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     handleGlobalCoeffChange,
     handleVatChange,
     handleGlobalDiscountChange,
+    handleApplyPercentRabat,
     // undo/redo (stack lives in the shell; consumed by the toolbar + keyboard). Both flush a
     // still-buffering edit burst first, so an undo pops the just-typed edit (correct LIFO) rather
     // than an older command that the un-pushed burst is sitting in front of.
