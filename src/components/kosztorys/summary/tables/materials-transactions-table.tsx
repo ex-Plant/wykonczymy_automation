@@ -29,9 +29,14 @@ const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
   settled: 'Materiały wliczone w robociznę',
 }
 
-// Fixed height for the virtualizer's scroll container (px, not a flex track). Mirrors the wypłaty list.
 const TABLE_HEIGHT = 400
 const ROW_HEIGHT = 36
+// Net cells render two lines (netto + a „brutto ..." subline), so they need a taller row.
+const NET_ROW_HEIGHT = 56
+// The scroll container wraps thead + tbody + tfoot together, so a height computed from body rows
+// alone clips the header and the „Razem" footer — budget their rendered height too.
+const HEADER_HEIGHT = 41
+const FOOTER_HEIGHT = 41
 
 const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
@@ -83,8 +88,7 @@ const GROSS_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
 ]
 
 // The wydatki list — one row per materiały transaction, the un-summed twin of the „Wydatki
-// inwestycyjne" breakdown above it. Three mutually exclusive tabs, each with its own „Razem": the
-// brutto and netto expense totals add to the breakdown's „Razem", the settled one is separate money.
+// inwestycyjne" breakdown above it.
 export function MaterialsTransactionsTable({ investmentId, rows, clientView = false }: PropsT) {
   const partition = partitionWydatkiRows(rows)
   const available = availableWydatkiDatasets(partition)
@@ -118,14 +122,23 @@ export function MaterialsTransactionsTable({ investmentId, rows, clientView = fa
         data={visibleRows}
         columns={activeDataset === 'net' ? NET_COLUMNS : GROSS_COLUMNS}
         enableVirtualization
-        virtualRowHeight={ROW_HEIGHT}
-        virtualContainerHeight={TABLE_HEIGHT}
+        virtualRowHeight={activeDataset === 'net' ? NET_ROW_HEIGHT : ROW_HEIGHT}
+        virtualContainerHeight={Math.min(
+          visibleRows.length * (activeDataset === 'net' ? NET_ROW_HEIGHT : ROW_HEIGHT) +
+            HEADER_HEIGHT +
+            FOOTER_HEIGHT,
+          TABLE_HEIGHT,
+        )}
         initialSorting={[{ id: 'date', desc: true }]}
         getRowHref={clientView ? undefined : (row) => wydatkiRowHref(investmentId, row)}
         footer={(colCount) => (
-          <tr className="font-bold">
-            <td colSpan={colCount - 1}>Razem</td>
-            <td className="text-right tabular-nums">{formatNet(sumBilled(visibleRows))}</td>
+          <tr>
+            <td className="font-bold" colSpan={colCount - 1}>
+              Razem
+            </td>
+            <td className="text-right font-bold tabular-nums">
+              {formatNet(sumBilled(visibleRows))}
+            </td>
           </tr>
         )}
         className="w-full max-w-5xl"
