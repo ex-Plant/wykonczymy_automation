@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { FileText, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { InvoicePreviewTrigger } from '@/components/ui/invoice-preview-trigger'
 import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
 import { removeTransferInvoiceAction } from '@/lib/actions/transfers'
 import { toastMessage } from '@/lib/utils/toast'
@@ -47,15 +48,12 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
   return (
     <>
       {hasInvoice ? (
-        <Button
-          variant="ghost"
-          size="icon"
+        <InvoicePreviewTrigger
+          mimeType={mimeType}
+          label={filename ?? 'faktura'}
           onClick={() => setPreviewOpen(true)}
-          className="text-muted-foreground"
-          aria-label={`Podgląd faktury: ${filename ?? 'faktura'}`}
-        >
-          <FileText />
-        </Button>
+          variant="compact"
+        />
       ) : (
         <Button
           variant="ghost"

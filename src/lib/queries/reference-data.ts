@@ -18,6 +18,8 @@ import {
 } from '@/lib/db/sum-transfers'
 import { getDb } from '@/lib/db/get-db'
 import { findTransfersRaw } from '@/lib/queries/transfers'
+import { fetchMediaByIds } from '@/lib/queries/media'
+import { extractInvoiceIds } from '@/lib/queries/transfer-mapping'
 import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
   InvestmentFinancialsT,
@@ -280,9 +282,10 @@ export async function fetchDepositTransactionsForInvestment(
  * split them into its three tabs (`partitionWydatkiRows` owns the rule and the labels).
  *
  * Shared by the owner's editor page and the unauthenticated client share read, which is why the
- * category-name join lives here rather than at either page: the two surfaces must label a row
- * identically. Only names are joined — `fetchReferenceData` would drag along company-wide PII that
- * has no business on the share path. `limit: 0` = all rows.
+ * category-name and invoice joins live here rather than at either page: the two surfaces must label a
+ * row — and agree on which rows have a downloadable invoice — identically. Only names are joined;
+ * `fetchReferenceData` would drag along company-wide PII that has no business on the share path.
+ * `limit: 0` = all rows.
  */
 export async function fetchMaterialTransactionsForInvestment(
   investmentId: number,
@@ -301,27 +304,36 @@ export async function fetchMaterialTransactionsForInvestment(
     fetchExpenseCategories(),
   ])
   const nameById = new Map(expenseCategories.map((category) => [category.id, category.name]))
+  const mediaById = await fetchMediaByIds(extractInvoiceIds(docs))
 
-  // depth: 0 → `expenseCategory` is a raw id (null for a legacy uncategorised row / a CORRECTION).
-  return docs.map((doc) => ({
-    id: Number(doc.id),
-    date: String(doc.date),
-    type: doc.type,
-    amount: Number(doc.amount),
-    billed: billedAmountFor(
-      doc.type,
-      Number(doc.amount),
-      doc.netAmount == null ? null : Number(doc.netAmount),
-    ),
-    description: doc.description != null ? String(doc.description) : null,
-    settled: doc.settled === true,
-    label:
-      doc.expenseCategory != null
-        ? (nameById.get(Number(doc.expenseCategory)) ?? 'Nieznana kategoria')
-        : doc.type === 'CORRECTION'
-          ? 'Korekta'
-          : 'Bez kategorii',
-  }))
+  // depth: 0 → `expenseCategory` and `invoice` are raw ids (`expenseCategory` null for a legacy
+  // uncategorised row / a CORRECTION).
+  return docs.map((doc) => {
+    const media = typeof doc.invoice === 'number' ? mediaById.get(doc.invoice) : undefined
+    return {
+      id: Number(doc.id),
+      date: String(doc.date),
+      type: doc.type,
+      amount: Number(doc.amount),
+      billed: billedAmountFor(
+        doc.type,
+        Number(doc.amount),
+        doc.netAmount == null ? null : Number(doc.netAmount),
+      ),
+      description: doc.description != null ? String(doc.description) : null,
+      settled: doc.settled === true,
+      label:
+        doc.expenseCategory != null
+          ? (nameById.get(Number(doc.expenseCategory)) ?? 'Nieznana kategoria')
+          : doc.type === 'CORRECTION'
+            ? 'Korekta'
+            : 'Bez kategorii',
+      invoiceUrl: media?.url ?? null,
+      invoiceFilename: media?.filename ?? null,
+      invoiceMimeType: media?.mimeType ?? null,
+      invoiceNote: doc.invoiceNote != null ? String(doc.invoiceNote) : null,
+    }
+  })
 }
 
 export async function fetchCategoryBreakdowns(where: Where): Promise<CategoryBreakdownsT> {

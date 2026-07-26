@@ -55,6 +55,8 @@ const AXIS_SELECT_OPTIONS: SelectOptionT[] = [
 
 type PropsT = {
   investmentId: number
+  // Only reaches the wydatki list, which names its invoice archive after the investment.
+  investmentName: string
   stages: KosztorysStageT[]
   stageTotals: Map<number, number>
   // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
@@ -98,6 +100,7 @@ type PropsT = {
 // Collapsed, it keeps the still-owed „Do zapłaty" total visible so the headline never disappears.
 export function KosztorysTotalsPanel({
   investmentId,
+  investmentName,
   stages,
   stageTotals,
   payoutsByWorker,
@@ -232,6 +235,7 @@ export function KosztorysTotalsPanel({
               {view === 'wydatki' && (
                 <SummaryExpensesTab
                   investmentId={investmentId}
+                  investmentName={investmentName}
                   materials={materials}
                   materialyBreakdown={materialyBreakdown}
                   materialTransactions={materialTransactions}

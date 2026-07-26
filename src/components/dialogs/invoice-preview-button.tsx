@@ -2,25 +2,34 @@
 
 import { useState } from 'react'
 import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
-import { InvoicePreviewTrigger } from '@/components/ui/invoice-preview-trigger'
+import {
+  InvoicePreviewTrigger,
+  type InvoicePreviewTriggerPropsT,
+} from '@/components/ui/invoice-preview-trigger'
 
 type InvoicePreviewButtonPropsT = {
   url: string
   filename: string | null
   mimeType: string | null
-}
+} & Pick<InvoicePreviewTriggerPropsT, 'variant' | 'className'>
 
-export function InvoicePreviewButton({ url, filename, mimeType }: InvoicePreviewButtonPropsT) {
+export function InvoicePreviewButton({
+  url,
+  filename,
+  mimeType,
+  variant,
+  className,
+}: InvoicePreviewButtonPropsT) {
   const [previewOpen, setPreviewOpen] = useState(false)
-  const isImage = mimeType?.startsWith('image/') ?? false
-  const displayName = filename ?? 'Faktura'
 
   return (
     <>
       <InvoicePreviewTrigger
-        isImage={isImage}
-        label={displayName}
+        mimeType={mimeType}
+        label={filename ?? 'Faktura'}
         onClick={() => setPreviewOpen(true)}
+        variant={variant}
+        className={className}
       />
 
       {previewOpen && (

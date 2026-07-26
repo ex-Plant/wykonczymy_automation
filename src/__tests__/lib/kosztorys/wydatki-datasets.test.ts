@@ -10,7 +10,17 @@ import type { MaterialTransactionRowT } from '@/types/reference-data'
 // two expense tabs === totalMaterialCosts — stays in derive-financials-bucketing.test.ts, where the
 // bucketing matrix it reconciles against lives.
 
-const ROW_BASE = { date: '2026-07-26', label: 'Materiały', description: null } as const
+// The invoice fields are null throughout: the tab split keys off `type` and `settled` only, so a
+// row's invoice is irrelevant here — it is pinned where the list renders it, not where it is sorted.
+const ROW_BASE = {
+  date: '2026-07-26',
+  label: 'Materiały',
+  description: null,
+  invoiceUrl: null,
+  invoiceFilename: null,
+  invoiceMimeType: null,
+  invoiceNote: null,
+} as const
 
 const rows: MaterialTransactionRowT[] = [
   { ...ROW_BASE, id: 1, type: 'INVESTMENT_EXPENSE', amount: 100, billed: 100, settled: false },

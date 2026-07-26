@@ -15,7 +15,17 @@ import type { MaterialTransactionRowT } from '@/types/reference-data'
 
 const AMOUNT = 100
 
-const ROW_BASE = { date: '2026-07-26', label: 'Materiały', description: null } as const
+// Invoice fields null throughout — the bucketing reconciles amounts, and a row's attached invoice
+// has no bearing on which bucket it lands in.
+const ROW_BASE = {
+  date: '2026-07-26',
+  label: 'Materiały',
+  description: null,
+  invoiceUrl: null,
+  invoiceFilename: null,
+  invoiceMimeType: null,
+  invoiceNote: null,
+} as const
 
 type BucketNameT = Exclude<keyof InvestmentFinancialsT, 'categoryCosts' | 'settledCategoryCosts'>
 

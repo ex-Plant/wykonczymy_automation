@@ -1,13 +1,13 @@
 ---
 change_id: kosztorys-client-invoices
 title: Client-facing „Pobierz faktury" in the kosztorys Wydatki tab
-status: planned
+status: implemented
 linear: EX-569
 created: 2026-07-25
 updated: 2026-07-25
 archived_at: null
-branch: null
-worktree: null
+branch: feat/ex-569-kosztorys-client-invoices
+worktree: .claude/worktrees/kosztorys-client-invoices
 ---
 
 ## Notes

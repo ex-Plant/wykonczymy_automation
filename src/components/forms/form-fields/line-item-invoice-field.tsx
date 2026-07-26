@@ -53,13 +53,11 @@ export function LineItemInvoiceField({
     )
   }
 
-  const isImage = file.type.startsWith('image/')
-
   return (
     <div className={cn('flex w-full flex-col gap-1', fieldClassName)}>
       <FieldLabel>FV</FieldLabel>
       <InvoicePreviewTrigger
-        isImage={isImage}
+        mimeType={file.type}
         label={file.name}
         onClick={() => setPreviewOpen(true)}
       />

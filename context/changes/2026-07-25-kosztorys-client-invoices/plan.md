@@ -79,8 +79,20 @@ belongs in the manual checks.
 
 **Payload weight and cache.** `fetchMaterialTransactionsForInvestment` feeds
 `buildClientKosztorysEditorData`, which sits inside an `unstable_cache` entry. Adding invoice fields
-grows that entry by two strings per materiały row. Invalidation already works: the entry is tagged
-`CACHE_TAGS.transfers`, and replacing an invoice writes the transfer. No new tag is needed.
+grows that entry by two strings per materiały row. Invalidation already works for the normal flow:
+the entry is tagged `CACHE_TAGS.transfers`, `recalcAfterChange` is an `afterChange` hook (create _and_
+update), and attaching or detaching an invoice writes the transfer. No new tag is needed.
+
+**Known gap, accepted, not fixed here**: `media` has no cache tag (`lib/cache/tags.ts`) and no
+revalidation hook (`collections/media.ts` carries only a filename-sanitizing `beforeChange`). Swapping
+the file on an _existing_ media doc therefore writes no transfer, busts nothing, and leaves the cached
+entry serving a URL that Blob has already replaced — a silently missing file in the archive. Closing
+it means a `media` tag plus a hook, which is its own change.
+
+**Bundle weight on the public page.** After Phase 3 the import chain is
+`materials-transactions-table.tsx` → `use-invoice-zip.ts` → `jszip`, inside the `KosztorysEditorBody`
+tree that `/k/<token>` also mounts. A static import would ship ~28 kB gzip of ZIP machinery to a client
+who may never click. The hook therefore loads JSZip with a dynamic `import()` inside the handler.
 
 **Media join placement.** The join belongs inside `fetchMaterialTransactionsForInvestment`, not at
 either page — that function is the single source both surfaces read, and splitting the join would let
@@ -147,9 +159,13 @@ Callers supply rows and an archive name.
 
 **Contract**: `useInvoiceZip()` returns `{ download, isPending }` where
 `download(rows: InvoiceZipRowT[], archiveName: string): void`, and
-`InvoiceZipRowT = { date: string; description: string; invoiceUrl: string | null; invoiceFilename: string | null }`
-— the structural subset both `TransferRowT` and `MaterialTransactionRowT` satisfy. `BATCH_SIZE = 6`
-carries over unchanged (browser connection cap).
+`InvoiceZipRowT = { date: string; description: string | null; invoiceUrl: string | null; invoiceFilename: string | null }`
+— the structural subset both `TransferRowT` and `MaterialTransactionRowT` satisfy. `description` is
+**nullable**: `TransferRowT.description` is `string` but `MaterialTransactionRowT.description` is
+`string | null`, so the widened field is what makes both assignable; the hook coalesces to `''` before
+`buildUniqueFilename`, which takes a plain `string`. `BATCH_SIZE = 6` carries over unchanged (browser
+connection cap). JSZip is loaded via a dynamic `import()` inside the handler, not a module-level
+import — see "Bundle weight on the public page" above.
 
 Reporting changes per the decision: the final toast distinguishes rows that had no invoice attached
 from files that failed to download, rather than reporting only the success count. A dedicated pure
@@ -210,9 +226,18 @@ follows the active dataset for free. Rendered in every view, the client's includ
 `getRowHref`, it is not gated on `clientView`.
 
 **Contract**: The component needs the investment name for the archive; it currently receives only
-`investmentId`, so a `investmentName: string` prop is threaded from `KosztorysEditorDataT` (which
-already carries it) through `KosztorysTotalsPanel` → `SummaryExpensesTab`. Dataset label comes from
-the existing `DATASET_OPTIONS`.
+`investmentId`, and `KosztorysTotalsPanel` has no `investmentName` prop either — so the thread starts
+one hop higher, at `kosztorys-editor-body.tsx` (which already holds it), and runs
+`KosztorysEditorBody` → `KosztorysTotalsPanel` → `SummaryExpensesTab` → the table. Four files, not
+three. Rejected alternative: reading it off the editor context that `kosztorys-editor-body.tsx`
+already builds — it would save the threading but turn a context-free leaf table into a
+provider-dependent one for the sake of one string.
+
+The button is **hidden when the active dataset has no invoice at all**. The transfers variant shows it
+unconditionally and toasts „Brak faktur do pobrania" only because its rows aren't known until after the
+fetch; here they're already in props, so an affordance that provably does nothing is not rendered.
+
+Dataset label comes from the existing `DATASET_OPTIONS`.
 
 #### 3. Unit tests
 
@@ -251,6 +276,7 @@ archive. Reality-check the Linear MCP first — if it is unreachable, say so rat
   day do not collide in the Downloads folder
 - A dataset where some rows have no invoice reports the shortfall rather than implying a complete set
 - An investment with zero materiały transactions still renders no list and no button
+- A dataset whose rows all lack an invoice renders the list but no „Faktury" button
 
 ---
 
@@ -286,23 +312,23 @@ archive. Reality-check the Linear MCP first — if it is unreachable, say so rat
 
 #### Automated
 
-- [ ] 1.1 Type checking passes
-- [ ] 1.2 Linting passes
-- [ ] 1.3 Existing unit suite passes
+- [x] 1.1 Type checking passes — ed724650
+- [x] 1.2 Linting passes — ed724650
+- [x] 1.3 Existing unit suite passes — ed724650
 
 ### Phase 2: Extract the zip loop into `useInvoiceZip`
 
 #### Automated
 
-- [ ] 2.1 Type checking passes
-- [ ] 2.2 Linting passes
-- [ ] 2.3 Existing unit suite passes
+- [x] 2.1 Type checking passes — 35e18250
+- [x] 2.2 Linting passes — 35e18250
+- [x] 2.3 Existing unit suite passes — 35e18250
 
 ### Phase 3: Mount the button in the Wydatki list
 
 #### Automated
 
-- [ ] 3.1 New unit tests pass
-- [ ] 3.2 Full unit suite passes
-- [ ] 3.3 Type checking passes
-- [ ] 3.4 Linting passes
+- [x] 3.1 New unit tests pass — 45d9f865
+- [x] 3.2 Full unit suite passes — 45d9f865
+- [x] 3.3 Type checking passes — 45d9f865
+- [x] 3.4 Linting passes — 45d9f865

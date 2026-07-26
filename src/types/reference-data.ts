@@ -70,9 +70,12 @@ export type DepositTransactionRowT = {
 
 // One materiały (Wydatki inwestycyjne) transaction for the Podsumowanie's wydatki list — an
 // INVESTMENT_EXPENSE / INVESTMENT_EXPENSE_NET / CORRECTION row. Sourced from the existing
-// `findTransfersRaw` fetch; the expense-category `label` is resolved at the page from reference
-// data (like worker names on the payout list). `settled` and `type` together pick the row's tab —
-// see `partitionWydatkiRows`; the list shows exactly one of the three sets at a time.
+// `findTransfersRaw` fetch; the expense-category `label` is resolved in the shared fetcher, not at
+// either page, so the owner view and the client share view label a row identically. `settled` and
+// `type` together pick the row's tab — see `partitionWydatkiRows`; the list shows exactly one of the
+// three sets at a time. The invoice triple feeds the list's bulk-ZIP download and its per-row
+// preview, and is null when no invoice is attached. `invoiceNote` is the transfer's free-text note —
+// written by the AI scan in a known shape, but just as often typed by hand (see `lib/utils/invoice-note`).
 export type MaterialTransactionRowT = {
   id: number
   date: string
@@ -87,6 +90,10 @@ export type MaterialTransactionRowT = {
   // field existed serves rows without it until KOSZTORYS_TAGS invalidates. Every consumer has to
   // handle that, and `undefined` here is what stops a cleanup pass deleting the guards as dead.
   type: TransferTypeT | undefined
+  invoiceUrl: string | null
+  invoiceFilename: string | null
+  invoiceMimeType: string | null
+  invoiceNote: string | null
 }
 
 export type OtherCategoryRefT = {

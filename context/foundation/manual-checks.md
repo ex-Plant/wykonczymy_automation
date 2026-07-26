@@ -275,3 +275,69 @@ expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w roboc
 - [ ] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row
 - [ ] **clientView (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
 - [ ] An investment with neither netto nor settled rows shows no toggle at all
+
+---
+
+## EX-569 — client-facing „Pobierz faktury" in the kosztorys Wydatki tab
+
+**In review** — automated green (tsc 0, eslint 0, unit 1140/1140, 33 in `invoice-zip.test.ts`).
+Branch `feat/ex-569-kosztorys-client-invoices` (worktree). E2E deferred to **EX-570**
+(`e2e-backlog`) — the `(share)` group still has no browser coverage, so boxes 1–3 are the only
+thing guarding the public path.
+
+Setup: 5435 test DB, an investment with materiały transactions in **both** settled states and
+invoices attached to some of them, plus a live share token for it (`/k/<token>`).
+
+### Client share path
+
+- [ ] Logged out on `/k/<token>` → Podsumowanie → Wydatki: the „Faktury" button downloads an archive of the visible dataset
+- [ ] Switching to „Materiały wliczone w robociznę" and downloading yields that dataset's invoices, not the other one's
+- [ ] The archive name carries the investment name and the dataset label; two investments downloaded the same day do not collide in Downloads
+- [ ] A dataset where some rows have no invoice reports the shortfall („Pobrano 3 z 5 — 2 bez faktury") rather than implying a complete set
+- [ ] An investment with zero materiały transactions renders no list and no button
+- [ ] A dataset whose rows all lack an invoice renders the list but no „Faktury" button
+
+### Owner app view
+
+- [ ] Same three checks on `/inwestycje/<id>/kosztorys_v2` — button present, follows the toggle, archive correct
+- [ ] A materiały transaction with an attached invoice reaches the list with a live `invoiceUrl` on both surfaces (the file actually opens from the archive)
+
+### Regression on the authenticated transfers table
+
+The zip/toast loop moved into the shared `useInvoiceZip`, so the transfers export changed behavior.
+
+- [ ] The transfers table's „Faktury" button still downloads a working archive with correct filenames
+- [ ] Its final toast now reports missing invoices honestly on a filter set where some rows have none (the pre-fetch „Pobieram…" toast is gone — the button spinner replaces it)
+
+## EX-585 — kosztorys-invoice-note-and-preview
+
+Extends EX-569's Wydatki list with a „Notatka" column (numer faktury + tooltip) and a per-row
+invoice preview. Same setup as EX-569's section: an investment with materiały transactions in both
+settled states, invoices attached to some of them, plus a live share token.
+
+For the note checks the transactions need an `invoiceNote` — either scan a receipt through the
+expense form (the AI writes numer faktury on line 1, pozycje below) or type a multi-line note by hand.
+
+### Phase 2: Compact preview trigger
+
+- [ ] Transfers table: the invoice icon still opens the preview dialog, and Usuń / Zamień inside it still work
+- [ ] Transfers table: rows with no invoice still show the `+` upload button, unchanged
+- [ ] Transfers table: a row whose invoice is an **image** now shows the magnifier icon instead of the document icon (the shared trigger picks the icon by mime type; the hand-rolled button always showed a document)
+- [ ] The line-item invoice field in the expense form still renders the full-width bordered trigger
+
+### Phase 3: The two columns
+
+- [ ] Kosztorys Podsumowanie → Wydatki (owner view): rows with a scanned invoice show the numer faktury in „Notatka"; hovering reveals the full note with the pozycje on separate lines
+- [ ] A row whose transfer has no note shows „—" and no hover affordance
+- [ ] Clicking the „Faktura" icon opens the preview dialog — a PDF in the native viewer, an image inline
+- [ ] Clicking the „Faktura" icon does NOT navigate to the transfer detail page (the row link must not fire)
+- [ ] The client share view (`/k/<token>`, logged out) shows both new columns with the same content, and its rows still don't navigate anywhere
+- [ ] All three dataset tabs („Materiały" / „Materiały rozliczane netto" / „Materiały wliczone w robociznę" — EX-581's split) carry the new columns
+- [ ] „Notatka" and „Faktura" sit **before** the amount columns, so the „Razem" footer's total still lands under the column it sums (on the netto tab, under „Netto")
+
+**Row height changed 36 → 44** (a text-only row had no budget for the icon). The virtualizer
+estimates and never measures, so any row rendering at a different height drifts the scroll spacers:
+
+- [ ] Scroll a list of ~100+ rows to the bottom and back — rows stay aligned with the header and no gap or overlap appears at either end
+- [ ] A dataset mixing rows with and without invoices scrolls without drift (the invoice-less cell reserves the control's box on purpose)
+- [ ] A very long note (many pozycje) does not wrap the cell onto a second line — it stays truncated at one line

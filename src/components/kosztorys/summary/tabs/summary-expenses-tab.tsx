@@ -14,6 +14,8 @@ import type { MaterialTransactionRowT } from '@/types/reference-data'
 
 type PropsT = {
   investmentId: number
+  // Names the transactions list's downloaded invoice archive.
+  investmentName: string
   // Materiały in two buckets — a zero total hides the breakdown + controls. The reduction readout
   // quotes only the brutto base, since that is all the toggle can reach.
   materials: MaterialsT
@@ -37,6 +39,7 @@ type PropsT = {
 // reduction %, shared with the Podsumowanie materiały figure), and the flat wydatki transactions list.
 export function SummaryExpensesTab({
   investmentId,
+  investmentName,
   materials,
   materialyBreakdown,
   materialTransactions,
@@ -104,6 +107,7 @@ export function SummaryExpensesTab({
       )}
       <MaterialsTransactionsTable
         investmentId={investmentId}
+        investmentName={investmentName}
         rows={materialTransactions}
         clientView={clientView}
       />
