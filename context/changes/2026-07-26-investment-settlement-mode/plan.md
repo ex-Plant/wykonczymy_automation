@@ -406,6 +406,6 @@ Hand-written per repo rule. `NOT NULL DEFAULT 'NET'` means the backfill is the d
 
 #### Automated
 
-- [x] 4.1 Spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts` — PENDING_SHA
-- [x] 4.2 Type checking passes: `pnpm exec tsc --noEmit` — PENDING_SHA
-- [x] 4.3 Full unit suite passes: `pnpm test` — PENDING_SHA
+- [x] 4.1 Spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts` — 9f3ce9fa
+- [x] 4.2 Type checking passes: `pnpm exec tsc --noEmit` — 9f3ce9fa
+- [x] 4.3 Full unit suite passes: `pnpm test` — 9f3ce9fa

@@ -346,3 +346,28 @@ estimates and never measures, so any row rendering at a different height drifts 
 
 - [ ] Each dataset tab shows its row count in the label (`Materiały (152)`), and the number matches the rows the list actually renders
 - [ ] „Pobierz faktury" sits flush with the table's right edge, not the panel's
+
+## EX-588 — investment-settlement-mode
+
+Stores how an investment is settled (`NET` / `GROSS` / `MIXED`) on the investment and makes it the
+only source of the money plane for the Podsumowanie panel **and** the client view's grid. The
+per-browser `localStorage` axis (`use-summary-axis`) and the client header's Netto/Brutto toggle are
+gone. All automated checks green (tsc 0, eslint 0 errors, unit 1707/1707).
+
+Setup: run against the **5435 test DB** (see intro) with a seeded kosztorys, log in as OWNER, and have
+a share token for the same investment so `/podglad-klienta/<id>` (or `/k/<token>`) can be opened in a
+**second browser profile with its own `localStorage`** — that second profile is the whole point of
+several boxes below. Needs ≥1 `INVESTOR_DEPOSIT` tagged `GROSS` for the mismatch checks.
+The migration `20260726_3_add_settlement_mode_to_investments` must be applied to that DB.
+
+- [ ] Payload admin: „Sposób rozliczenia" is visible and editable on an investment
+- [ ] An existing investment (e.g. the seeded dogfooding one) reads „Netto" rather than empty
+- [ ] Owner switches the mode in the Podsumowanie select; the panel's figures change and the pick survives a hard reload
+- [ ] The same investment opened in a second browser profile shows the owner's stored mode, not that profile's old `localStorage` value
+- [ ] Client view shows exactly one money plane in the grid, matching the panel, and has **no** axis control in its header
+- [ ] With the mode „Mieszane", the client sees both the netto and brutto parts and their wpłaty
+- [ ] With the mode „Mieszane", the owner's grid shows both money columns
+- [ ] The client view still fills the viewport with no dead band at the bottom (guards the `h-dvh` fix from `7b70ec2a`, whose header this change edits)
+- [ ] A brutto wpłata on a netto-declared investment raises the owner-only warning in Podsumowanie, naming the mode and the offending amount
+- [ ] The client view of that same investment shows no warning
+- [ ] With VAT 0% the mode select is disabled and the VAT 0% scream still shows

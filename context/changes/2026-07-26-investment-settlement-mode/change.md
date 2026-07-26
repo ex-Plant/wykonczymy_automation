@@ -1,7 +1,7 @@
 ---
 change_id: investment-settlement-mode
 title: Store how an investment is settled (netto / brutto / mieszane) on the investment
-status: implementing
+status: implemented
 created: 2026-07-26
 updated: 2026-07-26
 archived_at: null
