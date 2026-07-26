@@ -1,3 +1,4 @@
+import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import type { MaterialTransactionRowT } from '@/types/reference-data'
 
 export type WydatkiDatasetT = 'gross' | 'net' | 'settled'
@@ -25,28 +26,31 @@ export function partitionWydatkiRows(rows: MaterialTransactionRowT[]): WydatkiPa
 }
 
 // The two expense sets first, in the order their „Razem" figures add to the breakdown's total; the
-// set that never bills the investor comes last.
-const DATASET_ORDER = ['gross', 'net', 'settled'] as const satisfies readonly WydatkiDatasetT[]
+// set that never bills the investor comes last. A `Record` rather than a tuple so a new dataset
+// cannot compile until it has been given a place in the strip.
+const DATASET_RANK: Record<WydatkiDatasetT, number> = { gross: 0, net: 1, settled: 2 }
 
-// Which tabs the list may offer. An empty set gets no tab at all — an investment with no netto and
-// no settled materials is the common case, and a tab that shows „brak danych" is just a dead end.
+const DATASET_ORDER = (Object.keys(DATASET_RANK) as WydatkiDatasetT[]).sort(
+  (a, b) => DATASET_RANK[a] - DATASET_RANK[b],
+)
+
+// An empty set gets no tab at all — an investment with no netto and no settled materials is the
+// common case, and a tab that shows „brak danych" is just a dead end.
 export function availableWydatkiDatasets(partition: WydatkiPartitionT): WydatkiDatasetT[] {
   return DATASET_ORDER.filter((set) => partition[set].length > 0)
 }
 
-// What the investor is charged for this set — the figure a tab's „Razem" shows. Σ over the two
-// expense sets is `totalMaterialCosts`, which is what makes the split checkable against the
-// breakdown above the list.
+// Σ over the two expense sets is `totalMaterialCosts`, which is what makes the split checkable
+// against the breakdown above the list.
 export function sumBilled(rows: MaterialTransactionRowT[]): number {
   return rows.reduce((acc, row) => acc + row.billed, 0)
 }
 
-// The destination list filters by `type` (`buildTransferFilters`), so a href must carry the row's OWN
-// type — a hardcoded one filters out the very row that was clicked. A row served from a stale cache
-// has no type yet; link to the unfiltered list rather than to a wrong filter.
+// A row served from a stale cache has no type yet; link to the unfiltered list rather than to a
+// filter that would exclude the row it points at.
 export function wydatkiRowHref(investmentId: number, row: MaterialTransactionRowT): string {
-  const params = new URLSearchParams()
-  if (row.type) params.set('type', row.type)
-  params.set('id', String(row.id))
-  return `/inwestycje/${investmentId}?${params}`
+  return investmentTransfersHref(investmentId, {
+    types: row.type ? [row.type] : undefined,
+    id: row.id,
+  })
 }

@@ -42,6 +42,15 @@ tab split needs, so the two changes share one data-layer edit.
 The owner also called the link affordance „not obvious enough" — a bare whole-row href with no
 visual cue. In scope.
 
+**Owner ruling (2026-07-26, during the review gate): the netto tab gets two amount columns**,
+„Brutto" then „Netto" — not one cell stacking both figures. Netto sits last so the tab's „Razem",
+which sums `billed`, lands under the column it totals. Supersedes the plan's „netto leads, brutto
+beneath it as a grey sub-line" (plan.md:56, :137-139) and the taller netto row height it needed.
+
+**Owner ruling (2026-07-26, during implementation): the tab labels are „Materiały" / „Materiały
+rozliczane netto" / „Materiały wliczone w robociznę"**, and both amount columns are headed plain
+„Kwota" (`79669e58`). The plan's „Wydatki inwestycyjne" / „Wydatki netto" wording is superseded.
+
 **Owner ruling (2026-07-26, during implementation): no chevron.** The trailing chevron column was
 built in phase 3 and then removed on the owner's call — the affordance stays the shipped hover cue
 (`data-table-row.tsx`). Phase 3's plan text still describes the chevron; the code is the authority.

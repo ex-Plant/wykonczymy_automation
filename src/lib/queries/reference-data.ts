@@ -277,8 +277,7 @@ export async function fetchDepositTransactionsForInvestment(
 /**
  * The individual materiały rows for the Podsumowanie's wydatki list — this investment's
  * INVESTMENT_EXPENSE + INVESTMENT_EXPENSE_NET + CORRECTION, both settled states, so the list can
- * split them into „Wydatki inwestycyjne", „Wydatki netto" and „Materiały wliczone w robociznę"
- * (`partitionWydatkiRows`).
+ * split them into its three tabs (`partitionWydatkiRows` owns the rule and the labels).
  *
  * Shared by the owner's editor page and the unauthenticated client share read, which is why the
  * category-name join lives here rather than at either page: the two surfaces must label a row

@@ -98,7 +98,10 @@ guard the three-way reconciliation.
   `fetchMaterialTransactionsForInvestment`.
 - New pure helper (co-located with the table, or `src/lib/kosztorys/` if it needs a non-component
   home) partitioning rows into `grossExpenses` / `netExpenses` / `settled`: `settled === true` →
-  settled; else `type === 'INVESTMENT_EXPENSE_NET'` → netto; else brutto. Tolerate a missing `type`
+  settled; else `type === 'INVESTMENT_EXPENSE_NET'` → netto; else brutto. (Shipped the other way
+  round — netto is tested BEFORE `settled`, mirroring `materialsNetBilled`, which ignores `settled`;
+  the plan's order would hide a forged settled netto row from the two totals that must reconcile.)
+  Tolerate a missing `type`
   (stale cache) by treating it as brutto rather than throwing.
 - `src/__tests__/derive-financials-bucketing.test.ts` — new `it` beside the B5 case asserting
   `Σ(billed over grossExpenses) + Σ(billed over netExpenses) === totalMaterialCosts`, over a fixture

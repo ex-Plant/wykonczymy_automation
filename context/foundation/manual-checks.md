@@ -244,10 +244,10 @@ the clientView check (3.4).
 Setup: 5435 test DB (see intro), OWNER, an investment carrying a brutto expense, a korekta, a netto
 expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w robociznę") materiał.
 
-- [ ] Three tabs appear — „Wydatki inwestycyjne", „Wydatki netto", „Materiały wliczone w robociznę" — and each shows only its own rows
+- [ ] Three tabs appear — „Materiały", „Materiały rozliczane netto", „Materiały wliczone w robociznę" — and each shows only its own rows
 - [ ] The brutto „Razem" plus the netto „Razem" equals the breakdown „Razem" above the list
 - [ ] **Footer stays pinned (2.3).** With enough rows to scroll the list, „Razem" remains visible at the bottom instead of scrolling away with the rows
-- [ ] The netto tab leads with the netto figure under the header „Kwota netto", brutto beneath it in grey; the other tabs show „Kwota brutto" with no sub-line
+- [ ] The netto tab shows two amount columns, „Brutto" then „Netto", and the „Razem" figure sits under „Netto"; the other tabs show a single „Kwota" column
 - [ ] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row
 - [ ] **clientView (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
 - [ ] An investment with neither netto nor settled rows shows no toggle at all

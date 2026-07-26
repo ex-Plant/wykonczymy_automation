@@ -76,17 +76,17 @@ export type DepositTransactionRowT = {
 export type MaterialTransactionRowT = {
   id: number
   date: string
-  // Brutto — what left the kasa. `billed` is what the investor is charged for this row, and the
-  // two differ only on the netto type; Σ(billed) over the two expense tabs is the figure that
-  // reconciles with the breakdown above the list.
+  // Brutto — what left the kasa. `billed` is what the investor is charged for this row; the two
+  // differ only on the netto type (see `sumBilled` for what the tab totals must reconcile with).
   amount: number
   billed: number
   label: string
   description: string | null
   settled: boolean
-  // Also drives the row's link: a href must filter the destination list by the row's OWN type or
-  // the row it points at is filtered out of it.
-  type: TransferTypeT
+  // Optional because the client share read is `unstable_cache`d: a warm entry written before this
+  // field existed serves rows without it until KOSZTORYS_TAGS invalidates. Every consumer has to
+  // handle that, and `undefined` here is what stops a cleanup pass deleting the guards as dead.
+  type: TransferTypeT | undefined
 }
 
 export type OtherCategoryRefT = {

@@ -31,8 +31,6 @@ const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
 
 const TABLE_HEIGHT = 400
 const ROW_HEIGHT = 36
-// Net cells render two lines (netto + a „brutto ..." subline), so they need a taller row.
-const NET_ROW_HEIGHT = 56
 // The scroll container wraps thead + tbody + tfoot together, so a height computed from body rows
 // alone clips the header and the „Razem" footer — budget their rendered height too.
 const HEADER_HEIGHT = 41
@@ -57,26 +55,25 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   },
 ]
 
-// On its own tab the netto figure leads: it is what the tab's „Razem" sums and what bills the
-// investor, with the brutto that left the kasa beneath it.
+// Netto comes last of the two so the „Razem" cell — which sums `billed` — sits under the column it
+// actually totals.
 const NET_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
   {
-    accessorKey: 'billed',
-    header: 'Kwota',
+    accessorKey: 'amount',
+    header: 'Brutto',
     meta: { align: 'right' },
-    cell: ({ row, getValue }) => (
-      <span className="flex flex-col tabular-nums">
-        {formatNet(getValue<number>())}
-        <span className="text-muted-foreground text-xs">
-          brutto {formatNet(row.original.amount)}
-        </span>
-      </span>
-    ),
+    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
+  },
+  {
+    accessorKey: 'billed',
+    header: 'Netto',
+    meta: { align: 'right' },
+    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
   },
 ]
 
-// The brutto sets bill at `amount`, so no sub-line — it would repeat the same number.
+// The brutto sets bill at `amount`, so one column says everything.
 const GROSS_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
   {
@@ -122,11 +119,9 @@ export function MaterialsTransactionsTable({ investmentId, rows, clientView = fa
         data={visibleRows}
         columns={activeDataset === 'net' ? NET_COLUMNS : GROSS_COLUMNS}
         enableVirtualization
-        virtualRowHeight={activeDataset === 'net' ? NET_ROW_HEIGHT : ROW_HEIGHT}
+        virtualRowHeight={ROW_HEIGHT}
         virtualContainerHeight={Math.min(
-          visibleRows.length * (activeDataset === 'net' ? NET_ROW_HEIGHT : ROW_HEIGHT) +
-            HEADER_HEIGHT +
-            FOOTER_HEIGHT,
+          visibleRows.length * ROW_HEIGHT + HEADER_HEIGHT + FOOTER_HEIGHT,
           TABLE_HEIGHT,
         )}
         initialSorting={[{ id: 'date', desc: true }]}

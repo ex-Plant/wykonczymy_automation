@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/summary-grid'
 import { formatNet } from '@/lib/kosztorys/format'
 import { formatPLDate } from '@/lib/utils/format-date'
+import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import {
   computeSubcontractorSummary,
   UNASSIGNED_WORKER_NAME,
@@ -153,7 +154,10 @@ export function SubcontractorSummary({
             getRowHref={(row) =>
               row.workerId === null
                 ? undefined
-                : `/inwestycje/${investmentId}?type=PAYOUT&worker=${row.workerId}`
+                : investmentTransfersHref(investmentId, {
+                    types: ['PAYOUT'],
+                    worker: row.workerId,
+                  })
             }
             className="w-full max-w-5xl"
           />
@@ -230,7 +234,10 @@ function WorkerTotals({
               row.name
             ) : (
               <Link
-                href={`/inwestycje/${investmentId}?type=PAYOUT&worker=${row.workerId}`}
+                href={investmentTransfersHref(investmentId, {
+                  types: ['PAYOUT'],
+                  worker: row.workerId,
+                })}
                 className="hover:underline"
               >
                 {row.name}
