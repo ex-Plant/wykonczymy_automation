@@ -275,11 +275,21 @@
   min-height: 0;
 }
 
-/* Negative margins clip the grid's outer top/left border out of the wrapper's overflow-hidden. */
+/* dsg draws its own 1px border around .dsg-container on all four sides, on top of the per-cell
+   box-shadow grid lines every cell already draws. Because .dsg-container is the scrolling element
+   itself, that border sits on its own box edges and never moves with the internal scroll — it reads
+   as a static line floating over content scrolling past it. Kill it; the cell shadows are enough. */
 .kosztorys-grid .dsg-container {
-  margin-top: -1px;
-  margin-left: -1px;
+  border: none;
   padding-bottom: 3rem;
+}
+
+/* dsg's sticky scroll-indicator overlay (.dsg-scrollable-view) draws its own top/left 1px border on
+   top of that — position: sticky, so it stays pinned to the viewport edge and doesn't move with the
+   internal scroll either, reading as the same kind of static line. Its box-shadow (the "more content
+   this way" scroll cue) is dynamic and worth keeping; only the flat border is the stray line. */
+.kosztorys-grid .dsg-scrollable-view {
+  border: none;
 }
 
 /* The Akcje column is `disabled` only to keep the cell cursor out of it, so dsg's grey
