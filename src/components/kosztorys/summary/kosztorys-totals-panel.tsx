@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import * as Collapsible from '@radix-ui/react-collapsible'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import {
+  settlementModeToPanelAxis,
+  SETTLEMENT_MODE_OPTIONS,
+  type MoneyAxisT,
+  type SettlementModeT,
+} from '@/lib/kosztorys/money-axis'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
@@ -17,10 +22,6 @@ import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
-import {
-  useSummaryAxis,
-  type PanelAxisT,
-} from '@/components/kosztorys/summary/hooks/use-summary-axis'
 import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
 import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
 import { Description } from '@/components/ui/description'
@@ -48,11 +49,9 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
 ]
 
-const AXIS_SELECT_OPTIONS: SelectOptionT[] = [
-  { value: 'net', label: 'Netto' },
-  { value: 'gross', label: 'Brutto' },
-  { value: 'mixed', label: 'Mix' },
-]
+const SETTLEMENT_SELECT_OPTIONS: SelectOptionT[] = SETTLEMENT_MODE_OPTIONS.map(
+  ({ value, label }) => ({ value, label }),
+)
 
 type PropsT = {
   investmentId: number
@@ -92,6 +91,11 @@ type PropsT = {
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
   vatRate: number
+  // How the investment is settled — stored on the investment, so every reader of this panel sees the
+  // same money plane. The panel projects it; it does not own it.
+  settlementMode: SettlementModeT
+  // Absent under clientView — a client reads the mode, never writes it.
+  onSettlementModeChange?: (mode: SettlementModeT) => void
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   clientView?: boolean
 }
@@ -119,12 +123,14 @@ export function KosztorysTotalsPanel({
   rabatAmount,
   reconciliation,
   vatRate,
+  settlementMode,
+  onSettlementModeChange,
   clientView = false,
 }: PropsT) {
   const [open, setOpen] = useTotalsPanelOpen()
-  // The panel's own netto/brutto axis, independent of the Widok dropdown — that one keeps
-  // governing the grid columns only; this switch governs every figure inside the panel.
-  const [moneyAxis, setMoneyAxis] = useSummaryAxis()
+  // Every figure in the panel reads the stored settlement mode, independent of the Widok dropdown —
+  // that one keeps governing the grid columns only.
+  const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only: filtered from
   // the client read-only toggle, and a persisted pick of it falls back to „Podsumowanie" there so a
@@ -190,15 +196,15 @@ export function KosztorysTotalsPanel({
             onChange={setSummaryView}
             aria-label="Widok podsumowania"
           />
-          {!isSubcontractorView && !clientView && (
+          {!isSubcontractorView && onSettlementModeChange && (
             <div className="my-2 flex flex-col gap-2">
               <Description className="max-w-xs" size="sm" withIcon={false}>
                 Wybierz jak rozliczana będzie inwestycja.
               </Description>
               <SimpleSelect
-                value={moneyAxis}
-                onValueChange={(next) => setMoneyAxis(next as PanelAxisT)}
-                options={AXIS_SELECT_OPTIONS}
+                value={settlementMode}
+                onValueChange={(next) => onSettlementModeChange(next as SettlementModeT)}
+                options={SETTLEMENT_SELECT_OPTIONS}
                 disabled={vatRate === 0}
                 className="w-40"
               />

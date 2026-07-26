@@ -10,6 +10,7 @@ import { nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
 import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
 import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
+import { SETTLEMENT_MODES, type SettlementModeT } from '@/lib/kosztorys/money-axis'
 import {
   DEFAULT_ITEM_DESCRIPTION,
   DEFAULT_UNIT,
@@ -67,6 +68,12 @@ const investmentCoeffsSchema = z
 // Fraction bounds: a per-investment VAT rate below 0% or above 100% is never valid, so reject it
 // at the action regardless of UI guarding — a bad rate feeds every brutto figure (net × (1 + vatRate)).
 const investmentVatSchema = z.object({ vatRate: z.coerce.number().min(0).max(1) })
+
+// How the investment is settled with the client. Derived from SETTLEMENT_MODES so a mode added to
+// the picker can't be silently rejected here.
+const investmentSettlementModeSchema = z.object({
+  settlementMode: z.enum(SETTLEMENT_MODES),
+})
 
 // Per-investment global discount over the whole kosztorys. type null = none (clears the discount).
 // Amount-only: value is netto PLN; never negative. A percent rabat isn't stored here —
@@ -140,6 +147,24 @@ export async function updateInvestmentVatAction(investmentId: number, vatRate: n
     // invalidates the cached readers of the mutated source row (getInvestment, fetchReferenceData)
     // immediately, rather than waiting on the investments afterChange hook.
     ['kosztorysItems', 'investments'],
+  )
+}
+
+export async function updateInvestmentSettlementModeAction(
+  investmentId: number,
+  settlementMode: SettlementModeT,
+) {
+  return protectedAction(
+    'updateInvestmentSettlementModeAction',
+    async ({ payload }) => {
+      const parsed = validateAction(investmentSettlementModeSchema, { settlementMode })
+      if (!parsed.success) return parsed
+      await payload.update({ collection: 'investments', id: investmentId, data: parsed.data })
+      return { success: true }
+    },
+    // Unlike vatRate, the mode isn't denormalized onto items — every reader projects it from the
+    // tree, so invalidating the investment row is enough.
+    ['investments'],
   )
 }
 

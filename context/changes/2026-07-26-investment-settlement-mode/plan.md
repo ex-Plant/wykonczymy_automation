@@ -380,19 +380,19 @@ Hand-written per repo rule. `NOT NULL DEFAULT 'NET'` means the backfill is the d
 
 #### Automated
 
-- [x] 1.1 Types regenerate with the new field: `pnpm generate:types`
-- [x] 1.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [x] 1.3 Migration applies against the local docker DB: `pnpm payload migrate`
-- [x] 1.4 Existing unit suite passes: `pnpm test`
+- [x] 1.1 Types regenerate with the new field: `pnpm generate:types` — 05df6fe6
+- [x] 1.2 Type checking passes: `pnpm exec tsc --noEmit` — 05df6fe6
+- [x] 1.3 Migration applies against the local docker DB: `pnpm payload migrate` — 05df6fe6
+- [x] 1.4 Existing unit suite passes: `pnpm test` — 05df6fe6
 
 ### Phase 2: The owner writes it; localStorage goes away
 
 #### Automated
 
-- [ ] 2.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts`
-- [ ] 2.2 No reference to the removed hook remains: `! grep -rn "use-summary-axis" src`
-- [ ] 2.3 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 2.4 Lint passes: `pnpm lint`
+- [x] 2.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/settlement-mode.test.ts` — PENDING_SHA
+- [x] 2.2 No reference to the removed hook remains: `! grep -rn "use-summary-axis" src` — PENDING_SHA
+- [x] 2.3 Type checking passes: `pnpm exec tsc --noEmit` — PENDING_SHA
+- [x] 2.4 Lint passes: `pnpm lint` — PENDING_SHA
 
 ### Phase 3: The client reads it — one plane, no controls
 

@@ -18,14 +18,12 @@ export function toClientAxis(axis: MoneyAxisT): ClientMoneyAxisT {
   return axis === 'gross' ? 'gross' : 'net'
 }
 
-// The Podsumowanie panel's own default. It opens on netto; „Mieszane" ('both') is now the
-// Mieszane settlement view, not a both-columns readout, so it must not be the panel's opening state.
-export const SUMMARY_AXIS_DEFAULT: MoneyAxisT = 'net'
-
 // How the investment is settled with the client — a decision about the deal, stored on the
 // investment, NOT a per-person reading preference. Every reader projects the same plane from it, so
 // the owner and the client can never be looking at different money.
-export type SettlementModeT = 'NET' | 'GROSS' | 'MIXED'
+export const SETTLEMENT_MODES = ['NET', 'GROSS', 'MIXED'] as const
+
+export type SettlementModeT = (typeof SETTLEMENT_MODES)[number]
 
 export const SETTLEMENT_MODE_OPTIONS = [
   { value: 'NET', label: 'Netto' },

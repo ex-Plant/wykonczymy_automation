@@ -14,7 +14,7 @@ import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
-import { toClientAxis, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import { toClientAxis, type MoneyAxisT, type SettlementModeT } from '@/lib/kosztorys/money-axis'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -76,6 +76,7 @@ import {
   swapSectionOrderAction,
   updateInvestmentCoeffsAction,
   updateInvestmentGlobalDiscountAction,
+  updateInvestmentSettlementModeAction,
   updateInvestmentVatAction,
   updateItemFieldAction,
   updateSectionFieldAction,
@@ -1020,6 +1021,16 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     if (before !== vatRate) pushReversible('Zmiana stawki VAT', applyVat, before, vatRate)
   }
 
+  // The settlement mode isn't denormalized onto the rows, so there's nothing to patch optimistically:
+  // persist, then let the refresh reseed `tree` for the panel that reads it.
+  async function handleSettlementModeChange(mode: SettlementModeT) {
+    await optimisticSettingSave(
+      () => updateInvestmentSettlementModeAction(investmentId, mode),
+      () => {},
+      'Nie udało się zapisać sposobu rozliczenia',
+    )
+  }
+
   // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
   // local discount (drives the derived totals + column visibility) and patch the denormalized active
   // flag on every row in the same render, so all three surfaces move together; then persist + refresh.
@@ -1212,6 +1223,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     handleAddStage,
     handleGlobalCoeffChange,
     handleVatChange,
+    handleSettlementModeChange,
     handleGlobalDiscountChange,
     handleApplyPercentRabat,
     // undo/redo (stack lives in the shell; consumed by the toolbar + keyboard). Both flush a

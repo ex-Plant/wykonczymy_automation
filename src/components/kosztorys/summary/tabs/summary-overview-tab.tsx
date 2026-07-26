@@ -1,6 +1,6 @@
 'use client'
 
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import type { MoneyAxisT, PanelAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import {
   materialsPair,
@@ -12,7 +12,6 @@ import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summar
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
 import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
 import { SlicePie } from '@/components/ui/slice-pie'
-import { type PanelAxisT } from '@/components/kosztorys/summary/hooks/use-summary-axis'
 import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
 import { costTotalsPieSlices } from '@/lib/kosztorys/chart-slices'
 import { formatNet } from '@/lib/kosztorys/format'
