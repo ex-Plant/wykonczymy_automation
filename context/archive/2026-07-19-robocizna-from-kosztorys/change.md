@@ -1,10 +1,10 @@
 ---
 change_id: robocizna-from-kosztorys
 title: Derive investment robocizna from the kosztorys executed-work total (retire the manual LABOR_COST workaround)
-status: implementing
+status: archived
 created: 2026-07-19
-updated: 2026-07-19
-archived_at: null
+updated: 2026-07-26
+archived_at: 2026-07-26T14:46:15Z
 branch: kosztorys-bridge
 worktree: null
 ---
