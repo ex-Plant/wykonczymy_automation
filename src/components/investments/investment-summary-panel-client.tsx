@@ -14,7 +14,7 @@ const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'wplaty']
 
 type PropsT = Omit<
   ComponentProps<typeof SummaryPanelContent>,
-  'onSettlementModeChange' | 'views' | 'showSettingsBar' | 'showTransactionLists'
+  'onSettlementModeChange' | 'views' | 'showSettingsBar' | 'showTransactionLists' | 'showPies'
 >
 
 // The investment page's host for the summary panel. Exists to own the settlement-mode write: the
@@ -39,6 +39,7 @@ export function InvestmentSummaryPanelClient(props: PropsT) {
       onSettlementModeChange={handleSettlementModeChange}
       views={INVESTMENT_PANEL_VIEWS}
       showTransactionLists={false}
+      showPies={false}
     />
   )
 }

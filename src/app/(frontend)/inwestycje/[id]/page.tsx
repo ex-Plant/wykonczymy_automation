@@ -18,7 +18,6 @@ import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
-import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
 import { ContactLink } from '@/components/ui/contact-link'
@@ -110,26 +109,24 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         />
       ) : (
         <>
+          {/* Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
+              long-pole query, so the rest of the page paints without waiting on it. */}
+          <Suspense fallback={null}>
+            <InvestmentSummaryPanel
+              investmentId={investmentId}
+              investmentName={investment.name}
+              financials={financials}
+              expenseCategories={refData.expenseCategories}
+              netCategoryCosts={breakdowns.netCategoryCosts}
+            />
+          </Suspense>
+
           <InvestmentOwnerFigures
             margin={calculateMargin(financials)}
             totalPayouts={financials.totalPayouts}
             totalLoss={financials.totalLoss}
             settledFields={settledFields}
           />
-
-          <CollapsibleSection title="Podsumowanie">
-            {/* Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
-                long-pole query, so the rest of the page paints without waiting on it. */}
-            <Suspense fallback={null}>
-              <InvestmentSummaryPanel
-                investmentId={investmentId}
-                investmentName={investment.name}
-                financials={financials}
-                expenseCategories={refData.expenseCategories}
-                netCategoryCosts={breakdowns.netCategoryCosts}
-              />
-            </Suspense>
-          </CollapsibleSection>
         </>
       )}
 

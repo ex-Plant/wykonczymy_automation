@@ -17,6 +17,7 @@ type PropsT = {
   clientView?: boolean
   // Keep only the three Razem buckets — for a host that already lists every wpłata elsewhere.
   totalsOnly?: boolean
+  showPie?: boolean
 }
 
 // The „Wpłaty" view: the sortable deposits list with its netto/brutto plane split + share pie, or an
@@ -28,6 +29,7 @@ export function SummaryDepositsTab({
   paidGross,
   clientView = false,
   totalsOnly = false,
+  showPie = true,
 }: PropsT) {
   if (rows.length === 0) return <Description withIcon={false}>Brak wpłat.</Description>
 
@@ -44,11 +46,13 @@ export function SummaryDepositsTab({
           Wpłaty bez oznaczenia netto/brutto są traktowane jako netto.
         </Description>
       </div>
-      <SlicePie
-        caption="Udział wpłat netto / brutto"
-        slices={depositPlanePieSlices(paidNet, paidGross)}
-        formatValue={formatNet}
-      />
+      {showPie && (
+        <SlicePie
+          caption="Udział wpłat netto / brutto"
+          slices={depositPlanePieSlices(paidNet, paidGross)}
+          formatValue={formatNet}
+        />
+      )}
     </div>
   )
 }

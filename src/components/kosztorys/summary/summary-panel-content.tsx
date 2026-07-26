@@ -87,6 +87,9 @@ type PropsT = {
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
   showTransactionLists?: boolean
+  // Off on a host where the panel is one block among several rather than a full-height overlay (the
+  // investment page): the share pies are the first thing worth dropping when vertical space is tight.
+  showPies?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   clientView?: boolean
   stages?: KosztorysStageT[]
@@ -127,6 +130,7 @@ export function SummaryPanelContent({
   topBarSlot,
   showSettingsBar = false,
   showTransactionLists = true,
+  showPies = true,
   clientView = false,
   stages,
   stageTotals,
@@ -238,6 +242,7 @@ export function SummaryPanelContent({
                 paidGross={paidGross}
                 showSettingsBar={showSettingsBar}
                 clientView={clientView}
+                showPie={showPies}
               />
             )}
             {view === 'wydatki' && (
@@ -254,6 +259,7 @@ export function SummaryPanelContent({
                 onMaterialsReductionPercentChange={setMaterialsReductionPercent}
                 clientView={clientView}
                 showTransactions={showTransactionLists}
+                showPie={showPies}
               />
             )}
 
@@ -265,6 +271,7 @@ export function SummaryPanelContent({
                 paidGross={paidGross}
                 clientView={clientView}
                 totalsOnly={!showTransactionLists}
+                showPie={showPies}
               />
             )}
             {view === 'etapy' && stages && stageTotals && (

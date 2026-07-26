@@ -36,6 +36,7 @@ type PropsT = {
   // Off on a host that already lists every materiały transaction next to the panel (the investment
   // page's transfers table), where the in-panel list would only repeat it.
   showTransactions?: boolean
+  showPie?: boolean
 }
 
 // The „Wydatki" view: per-category materiały breakdown, the brutto→netto pricing controls (checkbox +
@@ -53,6 +54,7 @@ export function SummaryExpensesTab({
   onMaterialsReductionPercentChange,
   clientView = false,
   showTransactions = true,
+  showPie = true,
 }: PropsT) {
   const materialsReduction = materialsReductionPercent / 100
   const materialsReductionAmount = materials.grossBase * materialsReduction
@@ -102,11 +104,13 @@ export function SummaryExpensesTab({
               </>
             )}
           </div>
-          <SlicePie
-            caption="Struktura wydatków inwestycyjnych"
-            slices={expensePieSlices(materialyBreakdown)}
-            formatValue={formatNet}
-          />
+          {showPie && (
+            <SlicePie
+              caption="Struktura wydatków inwestycyjnych"
+              slices={expensePieSlices(materialyBreakdown)}
+              formatValue={formatNet}
+            />
+          )}
         </div>
       )}
       {showTransactions && (

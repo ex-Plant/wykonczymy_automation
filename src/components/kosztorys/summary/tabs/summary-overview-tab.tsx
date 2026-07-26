@@ -44,6 +44,7 @@ type PropsT = {
   // KosztorysEditorProvider must leave this off or it throws.
   showSettingsBar?: boolean
   clientView?: boolean
+  showPie?: boolean
 }
 
 // The „Podsumowanie" view: its own axis control on top, then the settlement below. Mieszane swaps the
@@ -66,6 +67,7 @@ export function SummaryOverviewTab({
   paidGross,
   showSettingsBar = false,
   clientView = false,
+  showPie = true,
 }: PropsT) {
   const mixedMode = moneyAxis === 'mixed'
   const displayAxis: MoneyAxisT = mixedMode ? 'both' : moneyAxis
@@ -109,14 +111,16 @@ export function SummaryOverviewTab({
             clientView={clientView}
           />
         )}
-        <SlicePie
-          caption="Struktura kosztów"
-          slices={costTotalsPieSlices(
-            sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
-            materialsNet,
-          )}
-          formatValue={formatNet}
-        />
+        {showPie && (
+          <SlicePie
+            caption="Struktura kosztów"
+            slices={costTotalsPieSlices(
+              sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
+              materialsNet,
+            )}
+            formatValue={formatNet}
+          />
+        )}
       </div>
       {showSettingsBar && !clientView && <SummarySettingsBar />}
     </div>
