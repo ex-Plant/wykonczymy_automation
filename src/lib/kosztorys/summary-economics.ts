@@ -117,6 +117,14 @@ export function computeSummarySplit(
   return { laborCosts, combined }
 }
 
+// „Robocizna" is shown PRE-rabat, with the rabat as its own deduction row below it — the same figure
+// the investment page's „z kosztorysu" block labels Robocizna, so one label never means two numbers.
+// Łącznie is unaffected: `laborCostsNetFromKosztorys` is already post-rabat, so the row pair adds
+// back and deducts the same amount.
+export function sumaPracPreRabat(laborCostsNetFromKosztorys: number, rabatAmount: number): number {
+  return laborCostsNetFromKosztorys + rabatAmount
+}
+
 // „Aktualnie do zapłaty R + M" (sheet footer r456–464): the headline still-owed figure —
 // robocizna do zapłaty plus materiały, less the investor's wpłaty (Σ INVESTOR_DEPOSIT on the
 // investment). Can go negative when wpłaty exceed R + M — a real overpaid state, not clamped here.

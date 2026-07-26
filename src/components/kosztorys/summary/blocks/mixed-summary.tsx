@@ -1,6 +1,7 @@
 import {
   computeMixedSettlement,
   faceValue,
+  sumaPracPreRabat,
   type MaterialsT,
 } from '@/lib/kosztorys/summary-economics'
 import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
@@ -17,14 +18,15 @@ type PropsT = {
   // Wpłaty split by VAT plane: NET (+ unmarked) settle the netto section, GROSS the brutto section.
   paidNet: number
   paidGross: number
-  // Rabat taken off the executed robocizna (net zł) — informational only; already inside robocizna netto.
+  // Rabat taken off the executed robocizna (net zł). Already inside `settlement.robocizna`, so the
+  // Robocizna row adds it back and the Rabat row deducts it — Łącznie never moves.
   rabatAmount: number
 }
 
 // Tryb mieszany: one vertical netto→brutto tor (no netto/brutto columns). The netto section resolves
 // Łącznie − wpłaty netto → „Do rozliczenia netto"; that remainder is grossed onto the invoice, where
-// wpłaty brutto pay it down → „Do zapłaty brutto". Rabat is a trailing informational netto row — it's
-// already baked into robocizna netto, so it never deducts twice.
+// wpłaty brutto pay it down → „Do zapłaty brutto". Robocizna is shown przed rabatem with Rabat as its
+// own deduction row, matching the Netto/Brutto block and the investment page's „z kosztorysu".
 export function MixedSummary({
   laborCostsNetFromKosztorys,
   materials,
@@ -53,7 +55,14 @@ export function MixedSummary({
         <SummaryHeaderCell variant="label">Rozliczenie netto</SummaryHeaderCell>
         <SummaryHeaderCell>Kwota</SummaryHeaderCell>
 
-        <SummaryRow label="Robocizna" line={faceValue(settlement.robocizna)} axis="net" />
+        <SummaryRow
+          label="Robocizna"
+          line={faceValue(sumaPracPreRabat(settlement.robocizna, rabatAmount))}
+          axis="net"
+        />
+        {rabatAmount > 0 && (
+          <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
+        )}
         <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
         <SummaryRow label="Łącznie" line={faceValue(settlement.combinedNet)} axis="net" emphasize />
         <SummaryRow label="Wpłaty netto" line={faceValue(settlement.paidNet)} axis="net" discount />
@@ -91,12 +100,6 @@ export function MixedSummary({
           danger={settlement.doZaplatyGross > 0}
         />
       </SummaryTable>
-
-      {rabatAmount > 0 && (
-        <SummaryTable cols={cols} className="w-fit">
-          <SummaryRow label="Udzielono rabatu na kwotę" line={faceValue(rabatAmount)} axis="net" />
-        </SummaryTable>
-      )}
     </div>
   )
 }

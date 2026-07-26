@@ -6,11 +6,15 @@ import {
   computeSummarySplit,
   faceValue,
   grossPair,
+  materialsPair,
   materialyPair,
   moneyPair,
+  sumaPracPreRabat,
   summaryLine,
   summaryLineMaterials,
 } from '@/lib/kosztorys/summary-economics'
+import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement'
+import type { SectionSubtotalT } from '@/lib/kosztorys/types'
 import type { DepositTransactionRowT } from '@/types/reference-data'
 
 // Materiały with nothing billed netto — the pre-netto-type world, so the existing expectations
@@ -345,5 +349,61 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
       0,
     )
     expect(withNet.combinedNet - base.combinedNet).toBeCloseTo(NET_BILLED)
+  })
+})
+
+// A section subtotal reduced to the two fields the totals formula reads, so the fixture states the
+// scenario instead of restating `sectionSubtotalsForView`'s whole output shape.
+const subtotal = (net: number, discount: number): SectionSubtotalT => ({
+  sectionId: 1,
+  sectionName: 'Sekcja',
+  sectionColor: null,
+  net,
+  plannedNet: net,
+  discount,
+  share: 1,
+  completionRatio: null,
+  itemCount: 1,
+})
+
+describe('sumaPracPreRabat — one „Robocizna", one number', () => {
+  it('matches the suma prac the investment page reconciles against', () => {
+    // Inwestycja 31: 18 000 zł wykonane, rabat na cały kosztorys 100 000 zł. The panel used to show
+    // „Robocizna −82 000 zł" while „z kosztorysu" showed 18 000 zł — same label, two figures.
+    const totals = clientTotalsFromSubtotals([subtotal(18_000, 0)], {
+      type: 'amount',
+      value: 100_000,
+    })
+    const laborCostsNetFromKosztorys = totals.doneNet - totals.globalRabatNet
+    expect(laborCostsNetFromKosztorys).toBe(-82_000)
+
+    expect(sumaPracPreRabat(laborCostsNetFromKosztorys, totals.rabatClientNet)).toBe(
+      totals.sumaPracNet,
+    )
+    expect(totals.sumaPracNet).toBe(18_000)
+  })
+
+  it('holds for a per-item rabat too, not just a global one', () => {
+    const totals = clientTotalsFromSubtotals([subtotal(9_200, 800)], { type: null, value: 0 })
+    const laborCostsNetFromKosztorys = totals.doneNet - totals.globalRabatNet
+
+    expect(sumaPracPreRabat(laborCostsNetFromKosztorys, totals.rabatClientNet)).toBe(
+      totals.sumaPracNet,
+    )
+    expect(totals.sumaPracNet).toBe(10_000)
+  })
+
+  it('relocating the rabat leaves Łącznie where it was: Robocizna − Rabat + Materiały', () => {
+    const laborCostsNetFromKosztorys = 90_000 // already post-rabat
+    const rabatAmount = 10_000
+    const materials = justGross(12_300)
+    const { combined } = computeSummarySplit(laborCostsNetFromKosztorys, materials, 0.23)
+
+    const rows =
+      sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount) -
+      rabatAmount +
+      materialsPair(materials, 0.23, true).net
+
+    expect(rows).toBeCloseTo(combined.net)
   })
 })

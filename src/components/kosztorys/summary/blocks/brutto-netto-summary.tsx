@@ -6,13 +6,12 @@ import {
   moneyPair,
   type MaterialsT,
   summaryLine,
+  sumaPracPreRabat,
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import { SummaryTable } from '@/components/ui/summary-grid'
-import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
 import { SummaryBreakdownTable } from '@/components/kosztorys/summary/tables/summary-breakdown-table'
 import { SummaryTotalsTable } from '@/components/kosztorys/summary/tables/summary-totals-table'
@@ -81,9 +80,9 @@ export function BruttoNettoSummary({
   materialsReduction,
   clientView = false,
 }: PropsT) {
-  // „Suma prac wykonanych" is shown net of rabat, matching „Suma transzy" (both are the executed
-  // value after discount). Rabat is an informational line below „Do zapłaty", not a step in the sum:
-  // Łącznie = Suma prac (po rabacie) + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
+  // Łącznie = Robocizna (przed rabatem) − Rabat + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
+  // The split below feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — the
+  // two rows above it only make the concession visible, they never move the total.
   const { combined } = computeSummarySplit(
     laborCostsNetFromKosztorys,
     materials,
@@ -100,10 +99,14 @@ export function BruttoNettoSummary({
   const showRabat =
     rabatAmount > 0 ||
     (reconVisible && (reconciliation.rabat.actual > 0 || reconciliation.rabat.mismatch))
-  const sumaPrac = summaryLine(laborCostsNetFromKosztorys, combined.net, vatRate)
+  const sumaPrac = summaryLine(
+    sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
+    combined.net,
+    vatRate,
+  )
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
-  // figure.
-  const rabat = moneyPair(rabatAmount, vatRate)
+  // figure. Negative: it renders as a deduction step between Robocizna and Materiały.
+  const rabat = moneyPair(-rabatAmount, vatRate)
   const wplaty = faceValue(wplatyNet)
 
   const moneyCols = summaryMoneyCols(moneyAxis)
@@ -118,6 +121,12 @@ export function BruttoNettoSummary({
           sumaPracMismatch={
             reconVisible && reconciliation.laborCosts.mismatch
               ? mismatchTooltip(reconciliation.laborCosts, 'Transakcje robocizny')
+              : undefined
+          }
+          rabat={showRabat ? rabat : undefined}
+          rabatMismatch={
+            reconVisible && reconciliation.rabat.mismatch
+              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
               : undefined
           }
           materials={materials}
@@ -135,22 +144,6 @@ export function BruttoNettoSummary({
           investmentId={investmentId}
           clientView={clientView}
         />
-        {/* Informational only — Suma prac is already net of rabat, so this is NOT a deduction
-            step. Its own segment keeps it out of the Wpłaty → Do zapłaty arithmetic. */}
-        {showRabat && (
-          <SummaryTable cols={moneyCols} className="w-fit">
-            <SummaryRow
-              label="Udzielono rabatu na łączną kwotę"
-              line={rabat}
-              axis={moneyAxis}
-              mismatch={
-                reconVisible && reconciliation.rabat.mismatch
-                  ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
-                  : undefined
-              }
-            />
-          </SummaryTable>
-        )}
       </div>
     </div>
   )
