@@ -11,16 +11,14 @@ import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryMoneyHeaders } from '@/components/kosztorys/summary/grid/summary-money-headers'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 
-// The upper grid: „Robocizna" (pre-rabat) − „Rabat" + „Materiały" (one aggregate line — the
-// per-category split lives in the Wydatki view), summing to „Łącznie". This is the sheet
-// Podsumowanie split; the waterfall below deducts from its Łącznie.
+// The upper grid: „Robocizna" (pre-rabat) + „Materiały" (one aggregate line — the per-category split
+// lives in the Wydatki view), summing to „Łącznie". This is the sheet Podsumowanie split; the
+// waterfall below deducts Wpłaty and Rabat from its Łącznie.
 export function SummaryBreakdownTable({
   cols,
   moneyAxis,
   sumaPrac,
   sumaPracMismatch,
-  rabat,
-  rabatMismatch,
   materials,
   combinedNet,
   combined,
@@ -32,10 +30,6 @@ export function SummaryBreakdownTable({
   moneyAxis: MoneyAxisT
   sumaPrac: SummaryLineT
   sumaPracMismatch?: string
-  // The rabat as a NEGATIVE pair, already built by the caller (it owns the VAT rate). Undefined
-  // hides the row entirely — there is no rabat worth showing.
-  rabat?: MoneyPairT
-  rabatMismatch?: string
   // Materiały in two buckets; Σ === the per-category Wydatki rows.
   materials: MaterialsT
   combinedNet: number
@@ -52,9 +46,6 @@ export function SummaryBreakdownTable({
       <SummaryHeaderCell variant="label">Podsumowanie</SummaryHeaderCell>
       <SummaryMoneyHeaders axis={moneyAxis} />
       <SummaryRow label="Robocizna" line={sumaPrac} axis={moneyAxis} mismatch={sumaPracMismatch} />
-      {rabat && (
-        <SummaryRow label="Rabat" line={rabat} axis={moneyAxis} mismatch={rabatMismatch} discount />
-      )}
       {materials.grossBase + materials.netBilled !== 0 && (
         <SummaryRow
           label="Materiały"

@@ -26,7 +26,7 @@ type PropsT = {
 // Tryb mieszany: one vertical netto→brutto tor (no netto/brutto columns). The netto section resolves
 // Łącznie − wpłaty netto → „Do rozliczenia netto"; that remainder is grossed onto the invoice, where
 // wpłaty brutto pay it down → „Do zapłaty brutto". Robocizna is shown przed rabatem with Rabat as its
-// own deduction row, matching the Netto/Brutto block and the investment page's „z kosztorysu".
+// own row below Wpłaty, matching the Netto/Brutto block and the investment page's „z kosztorysu".
 export function MixedSummary({
   laborCostsNetFromKosztorys,
   materials,
@@ -60,12 +60,18 @@ export function MixedSummary({
           line={faceValue(sumaPracPreRabat(settlement.robocizna, rabatAmount))}
           axis="net"
         />
+        <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
+        <SummaryRow label="Łącznie" line={faceValue(settlement.combinedNet)} axis="net" emphasize />
+        {/* Negative: both are deduction steps down to „Do zapłaty netto". */}
+        <SummaryRow
+          label="Wpłaty netto"
+          line={faceValue(-settlement.paidNet)}
+          axis="net"
+          discount
+        />
         {rabatAmount > 0 && (
           <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
         )}
-        <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
-        <SummaryRow label="Łącznie" line={faceValue(settlement.combinedNet)} axis="net" emphasize />
-        <SummaryRow label="Wpłaty netto" line={faceValue(settlement.paidNet)} axis="net" discount />
         <SummaryRow
           label="Do zapłaty netto"
           hint="Łącznie netto − wpłaty netto"
@@ -87,7 +93,7 @@ export function MixedSummary({
         />
         <SummaryRow
           label="Wpłaty brutto"
-          line={faceValue(settlement.paidGross)}
+          line={faceValue(-settlement.paidGross)}
           axis="net"
           discount
         />

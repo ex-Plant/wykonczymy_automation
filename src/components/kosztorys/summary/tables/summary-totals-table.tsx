@@ -8,13 +8,14 @@ import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 
-// The lower grid: Wpłaty deducted off Łącznie down to the bold „Do zapłaty". The informational
-// „Udzielono rabatu" line lives in its own segment below (BruttoNettoSummary) so it can't read as a
-// deduction step. Shares the money tracks with the breakdown above so both columns align.
+// The lower grid: Wpłaty then Rabat off Łącznie, down to the bold „Do zapłaty". Shares the money
+// tracks with the breakdown above so both columns align.
 export function SummaryTotalsTable({
   cols,
   moneyAxis,
   wplaty,
+  rabat,
+  rabatMismatch,
   doZaplaty,
   investmentId,
   clientView,
@@ -22,6 +23,11 @@ export function SummaryTotalsTable({
   cols: string
   moneyAxis: MoneyAxisT
   wplaty: MoneyPairT
+  // The rabat pair, already built by the caller (it owns the VAT rate). Undefined hides the row
+  // entirely — there is no rabat worth showing. Informational: Łącznie above is already post-rabat,
+  // so this row makes the concession visible without moving the total.
+  rabat?: MoneyPairT
+  rabatMismatch?: string
   doZaplaty: MoneyPairT
   investmentId: number
   clientView: boolean
@@ -46,6 +52,9 @@ export function SummaryTotalsTable({
         discount
         noBrutto
       />
+      {rabat && (
+        <SummaryRow label="Rabat" line={rabat} axis={moneyAxis} mismatch={rabatMismatch} discount />
+      )}
       <SummaryRow
         label="Do zapłaty"
         line={doZaplaty}

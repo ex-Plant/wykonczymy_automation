@@ -81,8 +81,8 @@ export function BruttoNettoSummary({
   clientView = false,
 }: PropsT) {
   // Łącznie = Robocizna (przed rabatem) − Rabat + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
-  // The split below feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — the
-  // two rows above it only make the concession visible, they never move the total.
+  // The split feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — the Rabat
+  // row only makes the concession visible, it never moves the total.
   const { combined } = computeSummarySplit(
     laborCostsNetFromKosztorys,
     materials,
@@ -105,9 +105,10 @@ export function BruttoNettoSummary({
     vatRate,
   )
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
-  // figure. Negative: it renders as a deduction step between Robocizna and Materiały.
+  // figure. Both it and Wpłaty render negative: they are the two deduction steps down to „Do zapłaty",
+  // and a positive figure in a subtracted row reads as if it were being added.
   const rabat = moneyPair(-rabatAmount, vatRate)
-  const wplaty = faceValue(wplatyNet)
+  const wplaty = faceValue(-wplatyNet)
 
   const moneyCols = summaryMoneyCols(moneyAxis)
 
@@ -123,12 +124,6 @@ export function BruttoNettoSummary({
               ? mismatchTooltip(reconciliation.laborCosts, 'Transakcje robocizny')
               : undefined
           }
-          rabat={showRabat ? rabat : undefined}
-          rabatMismatch={
-            reconVisible && reconciliation.rabat.mismatch
-              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
-              : undefined
-          }
           materials={materials}
           combinedNet={combined.net}
           combined={combined}
@@ -140,6 +135,12 @@ export function BruttoNettoSummary({
           cols={moneyCols}
           moneyAxis={moneyAxis}
           wplaty={wplaty}
+          rabat={showRabat ? rabat : undefined}
+          rabatMismatch={
+            reconVisible && reconciliation.rabat.mismatch
+              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
+              : undefined
+          }
           doZaplaty={doZaplaty}
           investmentId={investmentId}
           clientView={clientView}
