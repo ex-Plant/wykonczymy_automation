@@ -5,6 +5,7 @@ import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
+import { isSectionColorKey } from '@/lib/kosztorys/section-colors'
 import type {
   DiscountTypeT,
   KosztorysItemT,
@@ -115,6 +116,9 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
       id: d.id,
       name: d.name,
       displayOrder: num(d.displayOrder),
+      // Validated on read, not trusted: a key retired from the palette reads as unpinned rather
+      // than painting with a CSS var that no longer exists.
+      color: isSectionColorKey(d.color) ? d.color : null,
       defaultCostVariant: (d.defaultCostVariant as ToolPlaneT) ?? 'w_tools',
       items: itemsBySection.get(d.id) ?? [],
     }),

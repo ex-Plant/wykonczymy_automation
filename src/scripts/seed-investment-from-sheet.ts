@@ -132,6 +132,7 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
         name: currentSection,
         displayOrder: sections.length,
         defaultCostVariant: 'w_tools',
+        color: null,
       })
     }
 

@@ -1,3 +1,4 @@
+import { sectionColorFill } from '@/lib/kosztorys/section-colors'
 import type { SectionSubtotalClientT } from '@/lib/kosztorys/types'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 
@@ -19,14 +20,27 @@ export const CHART_FILLS = [
   'var(--color-chart-teal)',
 ] as const
 
-const fillAt = (index: number) => CHART_FILLS[index % CHART_FILLS.length]
+// A slice before painting. `fill` present = the caller pinned this one (a section with a chosen
+// colour); absent = paint it from the positional palette.
+type RawSliceT = Omit<PieSliceT, 'fill'> & { fill?: string }
 
-// Drop zero-value slices, then color the survivors by position — the shared tail of every pie
+// Drop zero-value slices, then color the unpinned survivors by position — the shared tail of every pie
 // builder. Coloring after the filter keeps the palette contiguous (no gaps where a zero was).
-function paintSlices(raw: Omit<PieSliceT, 'fill'>[]): PieSliceT[] {
-  return raw
-    .filter((slice) => slice.value !== 0)
-    .map((slice, index) => ({ ...slice, fill: fillAt(index) }))
+//
+// Pinned slices are honoured as-is and their colours are REMOVED from the pool the unpinned ones
+// draw from: without that, a section pinned to blue plus an unpinned one that lands on blue by
+// position would render two identical wedges — the exact ambiguity the pie exists to avoid. If the
+// pins exhaust the palette the pool falls back to the full list (a repeat beats no fill at all).
+function paintSlices(raw: RawSliceT[]): PieSliceT[] {
+  const kept = raw.filter((slice) => slice.value !== 0)
+  const pinned = new Set(kept.map((slice) => slice.fill).filter((fill) => fill != null))
+  const free = CHART_FILLS.filter((fill) => !pinned.has(fill))
+  const pool = free.length > 0 ? free : CHART_FILLS
+  let next = 0
+  return kept.map((slice) => ({
+    ...slice,
+    fill: slice.fill ?? pool[next++ % pool.length],
+  }))
 }
 
 export type SectionPieBaseT = 'przedmiar' | 'wykonane'
@@ -37,7 +51,7 @@ export type SectionPieBaseT = 'przedmiar' | 'wykonane'
 // withheld, and the pie would have nothing to slice.
 export type SectionSliceInputT = Pick<
   SectionSubtotalClientT,
-  'sectionId' | 'sectionName' | 'plannedNet' | 'net'
+  'sectionId' | 'sectionName' | 'sectionColor' | 'plannedNet' | 'net'
 >
 
 export function sectionPieSlices(
@@ -49,6 +63,7 @@ export function sectionPieSlices(
       id: `section-${section.sectionId}`,
       name: section.sectionName,
       value: base === 'przedmiar' ? section.plannedNet : section.net,
+      fill: sectionColorFill(section.sectionColor),
     })),
   )
 }

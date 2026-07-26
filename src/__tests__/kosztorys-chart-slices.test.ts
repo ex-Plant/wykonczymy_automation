@@ -6,8 +6,8 @@ import {
 } from '@/lib/kosztorys/chart-slices'
 
 const sections: SectionSliceInputT[] = [
-  { sectionId: 1, sectionName: 'Łazienka', plannedNet: 1000, net: 400 },
-  { sectionId: 2, sectionName: 'Podłogi', plannedNet: 500, net: 600 },
+  { sectionId: 1, sectionName: 'Łazienka', sectionColor: null, plannedNet: 1000, net: 400 },
+  { sectionId: 2, sectionName: 'Podłogi', sectionColor: null, plannedNet: 500, net: 600 },
 ]
 
 describe('sectionPieSlices', () => {
@@ -27,8 +27,8 @@ describe('sectionPieSlices', () => {
 
   it('gives colliding section names distinct stable ids (React key safety)', () => {
     const collide: SectionSliceInputT[] = [
-      { sectionId: 7, sectionName: 'Łazienka', plannedNet: 100, net: 0 },
-      { sectionId: 9, sectionName: 'Łazienka', plannedNet: 200, net: 0 },
+      { sectionId: 7, sectionName: 'Łazienka', sectionColor: null, plannedNet: 100, net: 0 },
+      { sectionId: 9, sectionName: 'Łazienka', sectionColor: null, plannedNet: 200, net: 0 },
     ]
     const ids = sectionPieSlices(collide, 'przedmiar').map((s) => s.id)
     expect(new Set(ids).size).toBe(2)
@@ -39,6 +39,7 @@ describe('sectionPieSlices', () => {
     const many: SectionSliceInputT[] = Array.from({ length: CHART_FILLS.length + 1 }, (_, i) => ({
       sectionId: i,
       sectionName: `S${i}`,
+      sectionColor: null,
       plannedNet: 1,
       net: 1,
     }))
@@ -46,5 +47,16 @@ describe('sectionPieSlices', () => {
     expect(slices[0].fill).toBe(CHART_FILLS[0])
     // Wraps around after the palette is exhausted.
     expect(slices[CHART_FILLS.length].fill).toBe(CHART_FILLS[0])
+  })
+
+  it('honours a pinned colour and keeps it out of the positional pool', () => {
+    // 'blue' is the base tint, i.e. literally CHART_FILLS[0] — which position 0 would otherwise take.
+    const pinned: SectionSliceInputT[] = [
+      { sectionId: 1, sectionName: 'A', sectionColor: null, plannedNet: 1, net: 1 },
+      { sectionId: 2, sectionName: 'B', sectionColor: 'blue', plannedNet: 1, net: 1 },
+    ]
+    const fills = sectionPieSlices(pinned, 'przedmiar').map((s) => s.fill)
+    expect(fills[1]).toBe('var(--color-chart-blue)')
+    expect(fills[0]).not.toBe(fills[1])
   })
 })

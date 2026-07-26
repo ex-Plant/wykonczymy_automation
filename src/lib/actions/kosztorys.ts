@@ -9,6 +9,7 @@ import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
 import { nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
 import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
 import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
+import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
   DEFAULT_ITEM_DESCRIPTION,
   DEFAULT_UNIT,
@@ -49,6 +50,8 @@ const sectionPatchSchema = z
     name: z.string(),
     defaultCostVariant: stagePlaneSchema,
     displayOrder: z.coerce.number(),
+    // null clears the pin (back to the pie's positional palette).
+    color: z.custom<SectionColorKeyT>(isSectionColorKey).nullable(),
   })
   .partial()
 
@@ -262,9 +265,7 @@ const insertSectionSchema = z.object({
   atDisplayOrder: z.coerce.number().int().min(0),
 })
 
-// Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej): shifts the sections at
-// and after the insert point down by one to open the slot, then creates the section there. The
-// caller adds the section's first item (a 0-item section renders as 0 rows), exactly as the append
+// Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej). The caller adds the section's first item (a 0-item section renders as 0 rows), exactly as the append
 // path does. Shift + create are atomic, so a double-fired insert can't land two sections on one
 // display_order.
 export async function insertSectionAction(
@@ -319,18 +320,22 @@ export async function swapSectionOrderAction(
     async ({ payload }) => {
       const parsed = validateAction(swapSectionOrderSchema, { first, second })
       if (!parsed.success) return parsed
-      await Promise.all([
-        payload.update({
-          collection: 'kosztorys-sections',
-          id: parsed.data.first.id,
-          data: { displayOrder: parsed.data.first.displayOrder },
-        }),
-        payload.update({
-          collection: 'kosztorys-sections',
-          id: parsed.data.second.id,
-          data: { displayOrder: parsed.data.second.displayOrder },
-        }),
-      ])
+      // Atomic: a half-applied swap leaves the two sections on the SAME display_order (there is no
+      // unique constraint), which makes the reloaded section order non-deterministic.
+      await withPayloadTransaction(
+        payload,
+        async (req) => {
+          for (const target of [parsed.data.first, parsed.data.second]) {
+            await payload.update({
+              collection: 'kosztorys-sections',
+              id: target.id,
+              req,
+              data: { displayOrder: target.displayOrder },
+            })
+          }
+        },
+        { skipRevalidation: true },
+      )
       return { success: true }
     },
     ['kosztorysSections'],

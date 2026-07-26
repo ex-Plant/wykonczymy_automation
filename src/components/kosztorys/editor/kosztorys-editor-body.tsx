@@ -23,6 +23,7 @@ import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { stagesForView } from '@/lib/kosztorys/settlement'
+import { sectionColorRowTint } from '@/lib/kosztorys/section-colors'
 import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
@@ -194,6 +195,9 @@ export function KosztorysEditorBody({
               headerRowHeight={56}
               lockRows
               rowKey={({ rowData }) => String(rowData.id)}
+              // Every row of a pinned section carries the wash — there is no section header row to
+              // hang the colour on, so the block of tinted rows IS the section boundary.
+              rowClassName={({ rowData }) => sectionColorRowTint(rowData.sectionColor)}
             />
           </div>
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its

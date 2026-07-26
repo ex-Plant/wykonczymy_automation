@@ -39,6 +39,7 @@ function makeTree(overrides: Partial<KosztorysTreeT> = {}): KosztorysTreeT {
         name: 'Sekcja A',
         displayOrder: 0,
         defaultCostVariant: 'w_tools',
+        color: null,
         items: [
           { ...baseItem, id: 1, description: 'A', plannedQty: 5, clientPrice: 20 },
           {

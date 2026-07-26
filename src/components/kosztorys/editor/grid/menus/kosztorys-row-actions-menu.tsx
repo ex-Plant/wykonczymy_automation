@@ -21,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SimpleTooltip } from '@/components/ui/tooltip'
+import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type PropsT = {
   // Insert + move have no meaning against a price-sorted view — disabled with a hint.
@@ -43,6 +45,8 @@ type PropsT = {
   onInsertSectionBelow?: () => void
   onMoveSectionUp?: () => void
   onMoveSectionDown?: () => void
+  onSetSectionColor?: (color: SectionColorKeyT | null) => void
+  sectionColor?: SectionColorKeyT | null
   sectionName?: string
   sectionItemCount?: number
 }
@@ -61,6 +65,8 @@ export function KosztorysRowActionsMenu({
   onInsertSectionBelow,
   onMoveSectionUp,
   onMoveSectionDown,
+  onSetSectionColor,
+  sectionColor,
   sectionName,
   sectionItemCount,
 }: PropsT) {
@@ -138,8 +144,14 @@ export function KosztorysRowActionsMenu({
     </DropdownMenuItem>
   )
 
-  const sectionGroupShown =
-    onRemoveSection ?? onInsertSectionAbove ?? onInsertSectionBelow ?? onMoveSectionUp
+  const sectionGroupShown = Boolean(
+    onRemoveSection ??
+      onInsertSectionAbove ??
+      onInsertSectionBelow ??
+      onMoveSectionUp ??
+      onMoveSectionDown ??
+      onSetSectionColor,
+  )
 
   return (
     <>
@@ -166,6 +178,9 @@ export function KosztorysRowActionsMenu({
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcje</DropdownMenuLabel>
               {withSortHint(sectionOrderItems)}
+              {onSetSectionColor && (
+                <SectionColorPicker value={sectionColor ?? null} onChange={onSetSectionColor} />
+              )}
               {onRemoveSection && (
                 <DropdownMenuItem
                   variant="destructive"

@@ -52,6 +52,7 @@ import {
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { NEW_SECTION_DEFAULTS } from '@/lib/kosztorys/constants'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
   stageKey,
   stageValueGrossKey,
@@ -292,6 +293,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onRemoveSection: editorOnly(handleRemoveSection),
     onReorderSection: editorOnly(handleReorderSection),
     onInsertSection: editorOnly(handleInsertSection),
+    onSetSectionColor: editorOnly(handleSetSectionColor),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
@@ -506,6 +508,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       displayOrder: res.data.displayOrder,
       sectionId,
       sectionName: sample?.sectionName ?? NEW_SECTION_DEFAULTS.name,
+      sectionColor: sample?.sectionColor ?? null,
       vatRate: tree.vatRate,
       globalDiscountActive,
       sectionDefaultCostVariant:
@@ -539,6 +542,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       displayOrder: res.data.displayOrder,
       sectionId: anchorRow.sectionId,
       sectionName: sample.sectionName,
+      sectionColor: sample.sectionColor,
       vatRate: tree.vatRate,
       globalDiscountActive,
       sectionDefaultCostVariant: sample.sectionDefaultCostVariant,
@@ -630,18 +634,16 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     })
   }
 
-  // Move a whole section one place, mirroring handleReorderItem one level up: the grid regroups its
-  // blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
+  // Mirrors handleReorderItem one level up: the grid regroups its blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
   // false at the edge so the undo command isn't pushed for a no-op.
   function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
-    const rs = rowsRef.current
-    const neighborId = neighborSectionId(rs, sectionId, dir)
+    const neighborId = neighborSectionId(rowsRef.current, sectionId, dir)
     if (neighborId == null) return false
     const orders = sectionOrderRef.current
     const order = orders.get(sectionId)
     const neighborOrder = orders.get(neighborId)
     if (order == null || neighborOrder == null) return false
-    setRows(swapSectionBlock(rs, sectionId, dir))
+    setRows((rs) => swapSectionBlock(rs, sectionId, dir))
     orders.set(sectionId, neighborOrder)
     orders.set(neighborId, order)
     void swapSectionOrderAction(
@@ -654,19 +656,22 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   function handleReorderSection(sectionId: number, dir: 'up' | 'down') {
     // „w górę/w dół" has no meaning against a price-sorted view (the menu also disables it).
     if (sort) return
+    // Captured BEFORE the swap: deleting the section later prunes this command, so an undo can
+    // never re-derive a neighbour from rows the section no longer has.
+    const touchedIds = rowsRef.current.filter((r) => r.sectionId === sectionId).map((r) => r.id)
     if (!applySectionSwap(sectionId, dir)) return
     const back = dir === 'up' ? 'down' : 'up'
     pushCommand({
       label: 'Zmiana kolejności sekcji',
       undo: () => void applySectionSwap(sectionId, back),
       redo: () => void applySectionSwap(sectionId, dir),
+      touchedIds,
     })
   }
 
   // ⋯ → Sekcje → Wstaw powyżej/poniżej. The section-level twin of handleInsertItem: a new section
   // (plus its first blank item — a 0-item section renders as 0 rows) lands right before or after the
-  // anchor row's section instead of at the end. No-op under an active column sort, like every other
-  // order-dependent action.
+  // anchor row's section instead of at the end.
   async function handleInsertSection(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
     if (sort) return
     const anchorOrder = sectionOrderRef.current.get(anchorRow.sectionId)
@@ -674,6 +679,13 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const at = dir === 'above' ? anchorOrder : anchorOrder + 1
     const sec = await insertSectionAction(investmentId, at)
     if (!sec.success) return
+    // The tail shift has COMMITTED, so mirror it before anything else can bail — unlike an item
+    // insert (where order is relative within a section), the client caches these absolute numbers
+    // and a missed shift makes every later section move exchange the wrong ones.
+    for (const [id, order] of sectionOrderRef.current) {
+      if (order >= at) sectionOrderRef.current.set(id, order + 1)
+    }
+    sectionOrderRef.current.set(sec.data.id, at)
     const item = await addItemAction(sec.data.id)
     if (!item.success) return
     const row = buildBlankRow({
@@ -681,6 +693,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       displayOrder: item.data.displayOrder,
       sectionId: sec.data.id,
       sectionName: NEW_SECTION_DEFAULTS.name,
+      sectionColor: null,
       vatRate: tree.vatRate,
       globalDiscountActive,
       sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
@@ -688,11 +701,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
       stages,
     })
-    // Mirror the server's tail shift locally so a later insert/move exchanges the right numbers.
-    for (const [id, order] of sectionOrderRef.current) {
-      if (order >= at) sectionOrderRef.current.set(id, order + 1)
-    }
-    sectionOrderRef.current.set(sec.data.id, at)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorRow.sectionId, row, dir))
     // A filter would hide the new section's only row, making the insert look like a no-op.
@@ -710,6 +718,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       displayOrder: item.data.displayOrder,
       sectionId: sec.data.id,
       sectionName: NEW_SECTION_DEFAULTS.name,
+      sectionColor: null,
       vatRate: tree.vatRate,
       globalDiscountActive,
       sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
@@ -873,6 +882,29 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
       (r) => ({ ...r, sectionName: name }),
     )
     void updateSectionFieldAction(sectionId, { name })
+  }
+
+  // null clears the pin.
+  function applySectionColor(sectionId: number, color: SectionColorKeyT | null) {
+    patchRows(
+      (r) => r.sectionId === sectionId,
+      (r) => ({ ...r, sectionColor: color }),
+    )
+    void updateSectionFieldAction(sectionId, { color })
+  }
+
+  function handleSetSectionColor(sectionId: number, color: SectionColorKeyT | null) {
+    const sectionRow = rowsRef.current.find((r) => r.sectionId === sectionId)
+    if (!sectionRow) return
+    const before = sectionRow.sectionColor ?? null
+    if (before === color) return
+    applySectionColor(sectionId, color)
+    pushReversible(
+      'Zmiana koloru sekcji',
+      (c: SectionColorKeyT | null) => applySectionColor(sectionId, c),
+      before,
+      color,
+    )
   }
 
   function handleRenameSection(sectionId: number, name: string) {

@@ -88,6 +88,37 @@
   --color-chart-teal: #3ae2d1;
   --color-chart-purple: #976cdf;
 
+  /* Section palette — the chart hues above at three tints (jasny / bazowy / ciemny), so a section's
+     colour is always in-family with the pies it feeds. Derived with color-mix rather than typed as
+     new hex values: a tweak to a chart hue carries into all three of its tints. */
+  --color-section-blue-soft: color-mix(in oklch, var(--color-chart-blue) 45%, white);
+  --color-section-blue: var(--color-chart-blue);
+  --color-section-blue-deep: color-mix(in oklch, var(--color-chart-blue) 78%, black);
+  --color-section-turquoise-soft: color-mix(in oklch, var(--color-chart-turquoise) 45%, white);
+  --color-section-turquoise: var(--color-chart-turquoise);
+  --color-section-turquoise-deep: color-mix(in oklch, var(--color-chart-turquoise) 78%, black);
+  --color-section-teal-soft: color-mix(in oklch, var(--color-chart-teal) 45%, white);
+  --color-section-teal: var(--color-chart-teal);
+  --color-section-teal-deep: color-mix(in oklch, var(--color-chart-teal) 78%, black);
+  --color-section-green-soft: color-mix(in oklch, var(--color-chart-green) 45%, white);
+  --color-section-green: var(--color-chart-green);
+  --color-section-green-deep: color-mix(in oklch, var(--color-chart-green) 78%, black);
+  --color-section-yellow-soft: color-mix(in oklch, var(--color-chart-yellow) 45%, white);
+  --color-section-yellow: var(--color-chart-yellow);
+  --color-section-yellow-deep: color-mix(in oklch, var(--color-chart-yellow) 78%, black);
+  --color-section-orange-soft: color-mix(in oklch, var(--color-chart-orange) 45%, white);
+  --color-section-orange: var(--color-chart-orange);
+  --color-section-orange-deep: color-mix(in oklch, var(--color-chart-orange) 78%, black);
+  --color-section-red-soft: color-mix(in oklch, var(--color-chart-red) 45%, white);
+  --color-section-red: var(--color-chart-red);
+  --color-section-red-deep: color-mix(in oklch, var(--color-chart-red) 78%, black);
+  --color-section-pink-soft: color-mix(in oklch, var(--color-chart-pink) 45%, white);
+  --color-section-pink: var(--color-chart-pink);
+  --color-section-pink-deep: color-mix(in oklch, var(--color-chart-pink) 78%, black);
+  --color-section-purple-soft: color-mix(in oklch, var(--color-chart-purple) 45%, white);
+  --color-section-purple: var(--color-chart-purple);
+  --color-section-purple-deep: color-mix(in oklch, var(--color-chart-purple) 78%, black);
+
   /* AI-accent hues for the `ai` button variant's fuchsia→cyan gradient border. */
   --color-neon-fuchsia: #d946ef;
   --color-neon-cyan: #00e5ff;

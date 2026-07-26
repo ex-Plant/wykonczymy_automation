@@ -6,7 +6,7 @@ import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
-import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-row-actions-menu'
+import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
 import {
@@ -231,6 +231,10 @@ function RowActionsCell({
       onMoveSectionDown={
         opts.onReorderSection && (() => opts.onReorderSection?.(rowData.sectionId, 'down'))
       }
+      onSetSectionColor={
+        opts.onSetSectionColor && ((color) => opts.onSetSectionColor?.(rowData.sectionId, color))
+      }
+      sectionColor={rowData.sectionColor}
       sectionName={rowData.sectionName ?? undefined}
       sectionItemCount={opts.getSectionItemCount?.(rowData.sectionId) ?? 0}
     />

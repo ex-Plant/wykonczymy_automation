@@ -319,6 +319,7 @@ export function sectionSubtotalsForView(
       acc = {
         sectionId: row.sectionId,
         sectionName: row.sectionName,
+        sectionColor: row.sectionColor,
         net: 0,
         plannedNet: view === 'client' ? 0 : null,
         discount: 0,

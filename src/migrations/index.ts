@@ -57,6 +57,7 @@ import * as migration_20260721_0_drop_kosztorys_stage_from_transactions from './
 import * as migration_20260721_1_add_vat_plane_to_transactions from './20260721_1_add_vat_plane_to_transactions'
 import * as migration_20260724_1_drop_kosztorys_section_coeff from './20260724_1_drop_kosztorys_section_coeff'
 import * as migration_20260724_2_add_plane_to_kosztorys_stages from './20260724_2_add_plane_to_kosztorys_stages'
+import * as migration_20260726_2_add_color_to_kosztorys_sections from './20260726_2_add_color_to_kosztorys_sections'
 
 export const migrations = [
   {
@@ -353,5 +354,10 @@ export const migrations = [
     up: migration_20260724_2_add_plane_to_kosztorys_stages.up,
     down: migration_20260724_2_add_plane_to_kosztorys_stages.down,
     name: '20260724_2_add_plane_to_kosztorys_stages',
+  },
+  {
+    up: migration_20260726_2_add_color_to_kosztorys_sections.up,
+    down: migration_20260726_2_add_color_to_kosztorys_sections.down,
+    name: '20260726_2_add_color_to_kosztorys_sections',
   },
 ]

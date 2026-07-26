@@ -16,6 +16,7 @@ const tree: KosztorysTreeT = {
       name: 'Sekcja A',
       displayOrder: 0,
       defaultCostVariant: 'w_tools',
+      color: null,
       items: [
         {
           id: 1,

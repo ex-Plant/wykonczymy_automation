@@ -33,6 +33,7 @@ const tree: KosztorysTreeT = {
       name: 'Sekcja A',
       displayOrder: 0,
       defaultCostVariant: 'w_tools',
+      color: null,
       items: [item(1, 10)],
     },
     {
@@ -40,6 +41,7 @@ const tree: KosztorysTreeT = {
       name: 'Sekcja B',
       displayOrder: 1,
       defaultCostVariant: 'w_tools',
+      color: null,
       items: [item(2, 20)],
     },
     {
@@ -47,6 +49,7 @@ const tree: KosztorysTreeT = {
       name: 'Sekcja C',
       displayOrder: 2,
       defaultCostVariant: 'w_tools',
+      color: null,
       items: [item(3, 30)],
     },
   ],

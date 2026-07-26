@@ -3,6 +3,7 @@
 // VAT is a single rate per investment (KosztorysTreeT.vatRate), not per section/item.
 
 import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 import type {
   SubcontractorPayoutRowT,
@@ -25,6 +26,9 @@ export type KosztorysSectionT = {
   id: number
   name: string
   displayOrder: number
+  // Palette key (src/lib/kosztorys/section-colors.ts); null = unpinned — the pie colours this
+  // section by position.
+  color: SectionColorKeyT | null
   defaultCostVariant: ToolPlaneT
 }
 
@@ -158,6 +162,9 @@ export type KosztorysEditorDataT = {
 // into stage_<stageId> keys so that keyColumn maps 1:1. ---
 export type KosztorysV2RowBaseT = KosztorysItemT & {
   sectionName: string
+  // Denormalized like sectionName: `rows` is the only carrier that reaches the summary subtotals,
+  // and the grid marker reads it per row.
+  sectionColor: SectionColorKeyT | null
   // Denormalized investment VAT rate (one for the whole kosztorys) — gross = net × (1 + vatRate).
   vatRate: number
   globalDiscountActive: boolean
@@ -179,6 +186,8 @@ export type KosztorysV2RowT = KosztorysV2RowBaseT & {
 export type SectionSubtotalT = {
   sectionId: number
   sectionName: string
+  // Carried through so the Podsumowanie pie can honour the section's pinned colour.
+  sectionColor: SectionColorKeyT | null
   net: number // executed (the sheet's T), at the active price view — a MONEY figure
   // Offered (the sheet's S), at the active price view — a MONEY figure. `null` outside the client
   // view, and that is the whole point: the przedmiar is typed once per row for the WHOLE offered

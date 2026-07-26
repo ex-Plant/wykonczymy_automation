@@ -38,6 +38,7 @@ export function treeToRows(tree: KosztorysTreeT): KosztorysV2RowT[] {
       rows.push({
         ...item,
         sectionName: section.name,
+        sectionColor: section.color,
         vatRate: tree.vatRate,
         globalDiscountActive,
         sectionDefaultCostVariant: section.defaultCostVariant,

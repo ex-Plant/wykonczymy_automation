@@ -1,5 +1,6 @@
 import { DEFAULT_ITEM_DESCRIPTION, DEFAULT_UNIT } from '@/lib/kosztorys/constants'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { ToolPlaneT, KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Revert a row field to its pre-edit value (revert-on-error autosave), but ONLY
@@ -23,6 +24,7 @@ export type BlankRowInputT = {
   displayOrder: number
   sectionId: number
   sectionName: string
+  sectionColor: SectionColorKeyT | null
   vatRate: number
   globalDiscountActive: boolean
   sectionDefaultCostVariant: ToolPlaneT
@@ -54,6 +56,7 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
     hiddenInExport: false,
     note: null,
     sectionName: input.sectionName,
+    sectionColor: input.sectionColor,
     vatRate: input.vatRate,
     globalDiscountActive: input.globalDiscountActive,
     sectionDefaultCostVariant: input.sectionDefaultCostVariant,
@@ -142,27 +145,37 @@ export function swapItemInSection(
   return next
 }
 
-// Splice the first row of a newly inserted section into the display sequence, just before the
-// anchor section's block or just after it. The anchor's rows are located by scan (not by block
-// bounds) so a stray row appended by applyAddItem still counts toward the block's extent.
+// Splice the first row of a newly inserted section into the display sequence, just before or just
+// after the anchor section's block. Goes through the block sequence rather than array indices for
+// the same reason swapSectionBlock does: applyAddItem appends at the END of the array, so a
+// section's rows are not guaranteed adjacent and a positional splice would land past the wrong block.
 export function applyInsertSectionRow(
   rows: KosztorysV2RowT[],
   anchorSectionId: number,
   row: KosztorysV2RowT,
   dir: 'above' | 'below',
 ): KosztorysV2RowT[] {
-  const first = rows.findIndex((r) => r.sectionId === anchorSectionId)
-  if (first < 0) return [...rows, row]
-  let last = first
-  for (let i = first + 1; i < rows.length; i++) {
-    if (rows[i].sectionId === anchorSectionId) last = i
-  }
-  const at = dir === 'above' ? first : last + 1
-  return [...rows.slice(0, at), row, ...rows.slice(at)]
+  const seq = sectionSequence(rows)
+  const pos = seq.indexOf(anchorSectionId)
+  if (pos < 0) return [...rows, row]
+  seq.splice(dir === 'above' ? pos : pos + 1, 0, row.sectionId)
+  const blocks = groupBySection(rows)
+  blocks.set(row.sectionId, [row])
+  return seq.flatMap((id) => blocks.get(id) ?? [])
 }
 
-// Section ids in the order their blocks first appear in `rows` — the display order of sections,
-// read off the same array that drives the grid rather than a second stored sequence.
+function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]> {
+  const blocks = new Map<number, KosztorysV2RowT[]>()
+  for (const r of rows) {
+    const block = blocks.get(r.sectionId)
+    if (block) block.push(r)
+    else blocks.set(r.sectionId, [r])
+  }
+  return blocks
+}
+
+// The display order of sections, read off the same array that drives the grid rather than a second
+// stored sequence.
 function sectionSequence(rows: KosztorysV2RowT[]): number[] {
   const seq: number[] = []
   const seen = new Set<number>()
@@ -174,7 +187,6 @@ function sectionSequence(rows: KosztorysV2RowT[]): number[] {
   return seq
 }
 
-// Section that would trade places with `sectionId` on a ▲/▼ section move; undefined at the edge.
 export function neighborSectionId(
   rows: KosztorysV2RowT[],
   sectionId: number,
@@ -200,12 +212,7 @@ export function swapSectionBlock(
   const targetPos = dir === 'up' ? pos - 1 : pos + 1
   if (pos < 0 || targetPos < 0 || targetPos >= seq.length) return rows
   ;[seq[pos], seq[targetPos]] = [seq[targetPos], seq[pos]]
-  const blocks = new Map<number, KosztorysV2RowT[]>()
-  for (const r of rows) {
-    const block = blocks.get(r.sectionId)
-    if (block) block.push(r)
-    else blocks.set(r.sectionId, [r])
-  }
+  const blocks = groupBySection(rows)
   return seq.flatMap((id) => blocks.get(id) ?? [])
 }
 
