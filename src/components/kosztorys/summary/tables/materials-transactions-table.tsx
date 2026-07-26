@@ -55,33 +55,28 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   },
 ]
 
+const moneyColumn = (
+  accessorKey: 'amount' | 'billed',
+  header: string,
+): ColumnDef<MaterialTransactionRowT> => ({
+  accessorKey,
+  header,
+  meta: { align: 'right' },
+  cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
+})
+
 // Netto comes last of the two so the „Razem" cell — which sums `billed` — sits under the column it
 // actually totals.
 const NET_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
-  {
-    accessorKey: 'amount',
-    header: 'Brutto',
-    meta: { align: 'right' },
-    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
-  },
-  {
-    accessorKey: 'billed',
-    header: 'Netto',
-    meta: { align: 'right' },
-    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
-  },
+  moneyColumn('amount', 'Brutto'),
+  moneyColumn('billed', 'Netto'),
 ]
 
 // The brutto sets bill at `amount`, so one column says everything.
 const GROSS_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
-  {
-    accessorKey: 'amount',
-    header: 'Kwota',
-    meta: { align: 'right' },
-    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
-  },
+  moneyColumn('amount', 'Kwota'),
 ]
 
 // The wydatki list — one row per materiały transaction, the un-summed twin of the „Wydatki

@@ -6,8 +6,10 @@ skipped — it needs the 5435 stack plus a seeded kosztorys; its checks are regi
 
 Fan-out (7 read-only checks, all in parallel): `/10x-impl-review`, `/code-review`,
 `tailwind-v4-audit`, `feature-first-structure`, `module-cohesion-audit`, `structure-scatter-audit`,
-`comment-noise-audit` (flag-only). `primitive-reuse-scan` was dispatched and **did not complete** —
-see the open box below.
+`comment-noise-audit` (flag-only). `primitive-reuse-scan` died on an API session limit on its first
+dispatch and was **re-run after the merge to staging**; its five findings are folded in below.
+That run also wrote `.reuse-scan.json` at the repo root — the primitive-homes map (`components/ui`,
+`hooks`, `lib/**`, `types`), so the next scan reads the layout instead of re-deriving it.
 
 Two things moved under the gate and are folded in rather than reviewed separately:
 
@@ -19,11 +21,29 @@ Two things moved under the gate and are folded in rather than reviewed separatel
 
 ## Findings
 
-- [ ] not-run · `primitive-reuse-scan` · the check terminated on an API session limit before
-      reporting. Its highest-value question — "does the new href builder duplicate
-      `src/lib/utils/build-url-with-params.ts`?" — was answered by hand instead (that helper merges
-      overrides into _existing_ params, with empty-string deletes; different problem), so no known
-      gap remains. Box stays open until the check is actually re-run.
+- [x] fixed · reuse-scan · `src/components/kosztorys/summary/tables/materials-transactions-table.tsx:60`
+      · three byte-identical amount-cell renderers (`amount`/„Brutto", `billed`/„Netto",
+      `amount`/„Kwota") — collapsed into one `moneyColumn(accessorKey, header)` factory. An in-diff
+      copy, not a reach past a repo primitive: only two files in the whole repo declare tanstack
+      `ColumnDef`s, so there is no shared money-cell primitive to route to, and four call sites across
+      two style variants don't justify inventing one.
+- [x] dismissed · reuse-scan · `src/lib/utils/investment-transfers-href.ts:15` · **not** a duplicate
+      of `src/lib/utils/build-url-with-params.ts:5` — contracts verified against the source: that
+      helper needs a `currentParams` string to merge overrides into (empty value deletes the key) and
+      returns `URLSearchParams.toString()`, which percent-escapes the multi-type comma as
+      `type=A%2CB`. Routing through it would rewrite the existing deposit links; that load-bearing
+      difference is the one the new spec's `not.toContain('%2C')` assertion pins.
+- [x] dismissed · reuse-scan · `src/lib/kosztorys/wydatki-datasets.ts:45` · `sumBilled` reinvents
+      nothing: the repo ships no generic `sum`/`sumBy`, and its idiom is a field-specific inline
+      reduce (15+ sites — `settlement.ts:97`, `summary-economics.ts:200`,
+      `subcontractor-summary.ts:28`, …). This one is named only because a spec asserts its Σ invariant.
+- [x] dismissed · reuse-scan · `src/lib/kosztorys/wydatki-datasets.ts:16` · `partitionWydatkiRows` vs
+      `bucketDepositsByPlane` (`summary-economics.ts:193`) · both one-pass classifiers, but different
+      contracts — that returns two sums keyed by VAT plane, this returns three row lists. No shared
+      form to extract.
+- [x] dropped · reuse-scan · `src/components/kosztorys/summary/blocks/subcontractor-summary.tsx:89` ·
+      a fourth right-aligned `formatNet` cell, but `text-chart-green` and a lone occurrence — there is
+      no duplication left to remove there.
 - [x] 🟡 WARNING · fixed · `src/types/reference-data.ts:89` · `type` was declared required
       (`TransferTypeT`) while both consumers and two specs deliberately handle its absence — a warm
       `unstable_cache` entry written before the field existed serves rows without it. The specs only
@@ -108,8 +128,8 @@ Two things moved under the gate and are folded in rather than reviewed separatel
 
 Run in the main thread rather than dispatched: a parallel session holds uncommitted work in
 `kosztorys-editor-body.tsx`, `slice-pie.tsx`, `section-colors.ts` and `globals.css`, and a mutating
-agent must not touch those. Every fix above was applied directly — 9 fixed, 6 dismissed, 2 skipped,
-3 dropped, 1 filed, 1 check unrun.
+agent must not touch those. Every fix above was applied directly — 10 fixed, 9 dismissed, 2 skipped,
+4 dropped, 1 filed · 0 open.
 
 ## Tests & suite
 
@@ -118,3 +138,5 @@ agent must not touch those. Every fix above was applied directly — 9 fixed, 6 
 - `pnpm exec vitest run` → **1664 passed, 57 skipped, 0 failed** (96 files passed, 22 skipped);
   +4 from the new href spec, net of the 5 specs relocated
 - `test:e2e` not run — this slice adds no browser-level spec (see the skipped 3.4 finding)
+- After the reuse-scan fix: `tsc --noEmit` clean, `eslint` on the touched component clean, and the
+  three specs covering it → **274 passed**
