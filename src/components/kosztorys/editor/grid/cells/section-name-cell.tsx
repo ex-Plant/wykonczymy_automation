@@ -26,13 +26,18 @@ export function SectionNameCell({
 
   if (disabled) return <ReadOnlyCellText>{rowData.sectionName ?? ''}</ReadOnlyCellText>
 
+  // The cell stays mounted when not editing, so it shows the row's canonical name — an external
+  // rename (from the section panel) can't go stale behind a leftover draft.
+  const shown = editing ? String(inputProps.value ?? '') : (rowData.sectionName ?? '')
+
   return (
     <EditableCellInput
       {...inputProps}
       className={className}
-      // The cell stays mounted when not editing, so it shows the row's canonical name — an external
-      // rename (from the section panel) can't go stale behind a leftover draft.
-      value={editing ? inputProps.value : (rowData.sectionName ?? '')}
+      value={shown}
+      // Fallback for engines without `field-sizing: content` (which the band relies on to hug the
+      // name): without it an input ignores its value and renders at a fixed ~20-character default.
+      size={Math.max(shown.length, 1)}
       onFocus={() => start(rowData.sectionName ?? '')}
       onClick={onClick}
     />

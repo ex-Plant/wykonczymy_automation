@@ -105,26 +105,26 @@ export function SectionHeaderCell({
           <SectionNameCell
             rowData={rowData}
             onRename={handlers.onRename}
-            className="w-fit min-w-0 px-0 text-lg font-semibold"
+            // `field-sizing-content` (not w-fit) is what makes the input hug its value — an input's
+            // fit-content is its ~20-character default width, so w-fit clipped long names and left
+            // the chevron floating mid-cell. w-auto is needed to beat the base cell's w-full.
+            className="field-sizing-content w-auto max-w-full min-w-0 px-0 text-lg font-semibold"
             onClick={(event) => event.stopPropagation()}
           />
         ) : (
-          <span className="w-fit min-w-0 truncate">{rowData.sectionName ?? ''}</span>
+          <span className="min-w-0 truncate">{rowData.sectionName ?? ''}</span>
         )}
-        {/* Not flex-1 on the label: the chevron is the fold affordance, so it has to sit against the
-            name it folds rather than be pushed to the far edge by a greedy label. The money stack
-            takes the slack instead (ml-auto). */}
-        <Chevron className="text-muted-foreground size-4 shrink-0" />
-        {/* Counter under the figure, right-aligned: it is metadata about the section, not a peer of
-            its name, and it belongs to the money it qualifies — N positions for this much. */}
-        <span className="ml-auto flex shrink-0 flex-col items-end leading-tight">
-          {figure && (
-            <span className="text-base tabular-nums">{bandMoney(figure, context.moneyAxis)}</span>
-          )}
-          <span className="text-muted-foreground text-xs font-normal">
-            {figure?.itemCount ?? 0} poz.
-          </span>
+        <span className="text-muted-foreground shrink-0 text-sm font-normal">
+          ({figure?.itemCount ?? 0} poz.)
         </span>
+        {/* The chevron is the fold affordance, so it sits against the name it folds; the money takes
+            the slack instead (ml-auto). */}
+        <Chevron className="text-muted-foreground size-4 shrink-0" />
+        {figure && (
+          <span className="ml-auto shrink-0 text-base tabular-nums">
+            {bandMoney(figure, context.moneyAxis)}
+          </span>
+        )}
       </div>
     )
   }
