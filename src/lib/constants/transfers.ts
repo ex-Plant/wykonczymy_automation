@@ -10,6 +10,7 @@ export const TRANSFER_TYPES = [
   'REGISTER_TRANSFER', // Transfer między kasami
   'INVESTOR_DEPOSIT', // Wpłata od inwestora
   'INVESTMENT_EXPENSE', // Wydatek inwestycyjny
+  'INVESTMENT_EXPENSE_NET', // Wydatek inwestycyjny netto
   'PAYOUT', // Wypłata
   'COMPANY_FUNDING', // Zasilenie z konta firmowego
 ] as const
@@ -41,10 +42,10 @@ type TransferSpecT = {
   /**
    * The „wliczone w robociznę" flag means something for this type.
    *
-   * Equal to `expensesSheetTab` for all twelve types today — which is exactly why the two
-   * were once a single predicate. The equality is a coincidence of the current type set,
-   * not a rule: INVESTMENT_EXPENSE_NET owns an expenses-tab row but must NOT be settleable,
-   * and collapsing them is what leaks netto into totalSettled → marża.
+   * It was equal to `expensesSheetTab` for all twelve pre-netto types — which is exactly
+   * why the two were once a single predicate. INVESTMENT_EXPENSE_NET ended that: it owns
+   * an expenses-tab row but is NOT settleable, because collapsing them leaks netto into
+   * totalSettled → marża.
    */
   settleable: boolean
   /**
@@ -55,8 +56,28 @@ type TransferSpecT = {
    * `'materials'` splits further on the `settled` flag: unsettled → totalMaterialCosts,
    * settled → totalSettled. That split lives in deriveFinancials, not here, because it
    * is a per-ROW fact, not a per-type one.
+   *
+   * `'materialsNet'` is a bucket of its own, NOT a flavour of `'materials'`: its rows are
+   * already netto, so the global kosztorys „wszystko netto" toggle must never reach them.
+   * Keeping it out of the number the toggle multiplies makes the double cut structurally
+   * impossible, instead of an `if` someone has to remember.
    */
-  financialBucket: 'materials' | 'income' | 'laborCosts' | 'payouts' | 'discount' | 'loss' | 'none'
+  financialBucket:
+    | 'materials'
+    | 'materialsNet'
+    | 'income'
+    | 'laborCosts'
+    | 'payouts'
+    | 'discount'
+    | 'loss'
+    | 'none'
+  /**
+   * Which stored column bills the investor. Every type but the netto expense bills at
+   * `amount`; INVESTMENT_EXPENSE_NET leaves the register at `amount` (brutto) and bills
+   * at `netAmount`. Separate from `financialBucket` — that says WHICH figure a type
+   * feeds, this says WHICH number it feeds it with.
+   */
+  billedAmount: 'amount' | 'netAmount'
   /** Whether a source register is required, or meaningless (a P&L figure, no cash moves). */
   sourceRegister: 'required' | 'never'
 }
@@ -72,6 +93,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: false,
     financialBucket: 'none',
+    billedAmount: 'amount',
     // A cancellation moves no cash of its own — it annotates the row it reverses, whose
     // register already carries the reversal. A register set here would reach the `ELSE
     // -amount` arm in sum-transfers and silently drain that register.
@@ -85,6 +107,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: false,
     financialBucket: 'income',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
   OTHER: {
@@ -95,6 +118,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: false,
     financialBucket: 'none',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
   CORRECTION: {
@@ -105,6 +129,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: true,
     financialBucket: 'materials',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
   LABOR_COST: {
@@ -115,6 +140,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: true,
     settleable: false,
     financialBucket: 'laborCosts',
+    billedAmount: 'amount',
     sourceRegister: 'never',
   },
   RABAT: {
@@ -125,6 +151,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: true,
     settleable: false,
     financialBucket: 'discount',
+    billedAmount: 'amount',
     sourceRegister: 'never',
   },
   LOSS: {
@@ -135,6 +162,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: true,
     settleable: false,
     financialBucket: 'loss',
+    billedAmount: 'amount',
     sourceRegister: 'never',
   },
   REGISTER_TRANSFER: {
@@ -145,6 +173,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: false,
     financialBucket: 'none',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
   INVESTOR_DEPOSIT: {
@@ -155,6 +184,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: true,
     settleable: false,
     financialBucket: 'income',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
   INVESTMENT_EXPENSE: {
@@ -165,6 +195,23 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: true,
     financialBucket: 'materials',
+    billedAmount: 'amount',
+    sourceRegister: 'required',
+  },
+  INVESTMENT_EXPENSE_NET: {
+    label: 'Wydatek inwestycyjny netto',
+    color: 'chart-blue',
+    deposit: false,
+    // Shares routing, category and sheet-sync with the brutto expense — only the money
+    // differs.
+    expensesSheetTab: true,
+    transfersSheetTab: false,
+    // The one column that separates it from INVESTMENT_EXPENSE: „wliczone w robociznę"
+    // would route its amount into totalSettled, which marża reads — and the netto figure
+    // must never reach marża.
+    settleable: false,
+    financialBucket: 'materialsNet',
+    billedAmount: 'netAmount',
     sourceRegister: 'required',
   },
   PAYOUT: {
@@ -175,6 +222,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: true,
     settleable: false,
     financialBucket: 'payouts',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
   COMPANY_FUNDING: {
@@ -185,6 +233,7 @@ export const TRANSFER_TYPE_SPECS = {
     transfersSheetTab: false,
     settleable: false,
     financialBucket: 'income',
+    billedAmount: 'amount',
     sourceRegister: 'required',
   },
 } satisfies Record<TransferTypeT, TransferSpecT>
@@ -229,6 +278,7 @@ export const TRANSACTION_TRANSFER_TYPES: TransferTypeT[] = [
   'RABAT', // Rabat
   'LOSS', // Strata
   'INVESTMENT_EXPENSE', // Wydatek inwestycyjny
+  'INVESTMENT_EXPENSE_NET', // Wydatek inwestycyjny netto
   'PAYOUT', // Wypłata
 ]
 
@@ -254,6 +304,7 @@ export type SheetTransferTabTypeT = (typeof SHEET_TRANSFER_TAB_TYPES)[number]
 // the consistency test.
 export const EXPENSES_TAB_TYPES = [
   'INVESTMENT_EXPENSE',
+  'INVESTMENT_EXPENSE_NET',
   'CORRECTION',
 ] as const satisfies readonly TransferTypeT[]
 
@@ -336,6 +387,31 @@ export const needsSourceRegister = (type: string) => specOf(type)?.sourceRegiste
 export const financialBucketOf = (type: unknown): FinancialBucketT =>
   specOf(type)?.financialBucket ?? 'none'
 
+// An unknown type answers `amount` — the column every row has — so a stale type can never sum a
+// NULL column into a silent zero.
+export const billedAmountOf = (type: unknown): 'amount' | 'netAmount' =>
+  specOf(type)?.billedAmount ?? 'amount'
+
+// Does this type bill at the netto column? Every consumer that reads a billed figure, renders
+// the netto beside the brutto, or gates the netto input asks exactly this — as a named predicate
+// so `'netAmount'` stays a spec-table detail instead of a literal spread across three layers.
+export const billsNetAmount = (type: unknown): boolean => billedAmountOf(type) === 'netAmount'
+
+/**
+ * The figure this row bills the investor — the one number every billing surface must read, so the
+ * app's totals, the „Wydatki inwestycyjne" list and the owner's sheet can't disagree about what a
+ * netto row costs the client.
+ *
+ * A netto row missing its netAmount bills 0 rather than falling back to brutto: the write path
+ * guarantees the column (hooks/transfers/validate.ts), and a silent brutto fallback would be the
+ * exact over-billing this type exists to prevent.
+ */
+export const billedAmountFor = (
+  type: unknown,
+  amount: number,
+  netAmount: number | null | undefined,
+): number => (billsNetAmount(type) ? (netAmount ?? 0) : amount)
+
 // Field-rule predicates. NOT folded into the table: a field is governed by up to five
 // independent axes (shown / required / auto-cleared / optional / exempt), and `investment`
 // alone uses three of them over two different type sets. One boolean column per predicate
@@ -343,6 +419,7 @@ export const financialBucketOf = (type: unknown): FinancialBucketT =>
 
 const INVESTMENT_TYPES: TransferTypeT[] = [
   'INVESTMENT_EXPENSE',
+  'INVESTMENT_EXPENSE_NET',
   'LABOR_COST',
   'INVESTOR_DEPOSIT',
   'COMPANY_FUNDING',
@@ -357,6 +434,7 @@ const INVESTMENT_TYPES: TransferTypeT[] = [
 const REQUIRES_INVESTMENT_TYPES: TransferTypeT[] = [
   'INVESTOR_DEPOSIT',
   'INVESTMENT_EXPENSE',
+  'INVESTMENT_EXPENSE_NET',
   'LABOR_COST',
   'RABAT',
 ]
@@ -374,12 +452,16 @@ export const needsWorker = (type: string) => isTransferType(type) && type === 'P
 
 export const needsOtherCategory = (type: string) => isTransferType(type) && type === 'OTHER'
 
+// Brutto and netto investment expense differ only in which amount bills the investor —
+// every form-field rule below treats them as one type.
+const isInvestmentExpense = (type: string) =>
+  type === 'INVESTMENT_EXPENSE' || type === 'INVESTMENT_EXPENSE_NET'
+
 export const showsOtherCategory = (type: string) =>
-  isTransferType(type) && (type === 'OTHER' || type === 'INVESTMENT_EXPENSE' || type === 'PAYOUT')
+  isTransferType(type) && (type === 'OTHER' || isInvestmentExpense(type) || type === 'PAYOUT')
 
 export const needsExpenseCategory = (type: string, hasInvestment?: boolean) =>
-  isTransferType(type) &&
-  (type === 'INVESTMENT_EXPENSE' || (type === 'CORRECTION' && !!hasInvestment))
+  isTransferType(type) && (isInvestmentExpense(type) || (type === 'CORRECTION' && !!hasInvestment))
 
 export const isLaborCost = (type: string) => isTransferType(type) && type === 'LABOR_COST'
 

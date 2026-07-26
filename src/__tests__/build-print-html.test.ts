@@ -7,6 +7,7 @@ const makeRow = (overrides: Partial<TransferRowT> = {}): TransferRowT => ({
   id: 1,
   description: 'Test transfer',
   amount: 100,
+  netAmount: null,
   type: 'INVESTMENT_EXPENSE',
   paymentMethod: 'CASH',
   date: '2026-01-15',

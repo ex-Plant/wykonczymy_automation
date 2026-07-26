@@ -18,6 +18,10 @@ const TRANSFER_TYPES = [
   { label: { en: 'Company Funding', pl: 'Zasilenie z konta firmowego' }, value: 'COMPANY_FUNDING' },
   { label: { en: 'Other Deposit', pl: 'Inna wpłata' }, value: 'OTHER_DEPOSIT' },
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
+  {
+    label: { en: 'Investment Expense (net)', pl: 'Wydatek inwestycyjny netto' },
+    value: 'INVESTMENT_EXPENSE_NET',
+  },
   { label: { en: 'Labor Cost', pl: 'Koszty robocizny' }, value: 'LABOR_COST' },
   { label: { en: 'Rebate', pl: 'Rabat' }, value: 'RABAT' },
   { label: { en: 'Loss', pl: 'Strata' }, value: 'LOSS' },
@@ -88,6 +92,19 @@ export const Transfers: CollectionConfig = {
           en: 'Positive for most types — CORRECTION allows negative (invoice corrections)',
           pl: 'Dodatnia dla większości typów — KOREKTA pozwala na ujemne (korekty faktur)',
         },
+      },
+    },
+    {
+      // The netto amount billed to the investor, while `amount` (brutto) is what left the
+      // register. Immutable like `amount` — a wrong netto is corrected by cancelling the
+      // row and re-adding it, so no edit path can move a figure both bilanses read.
+      // The netAmount ≤ amount rule has one authority: hooks/transfers/validate.ts.
+      name: 'netAmount',
+      type: 'number',
+      label: { en: 'Net amount', pl: 'Kwota netto' },
+      access: { update: () => false },
+      admin: {
+        condition: (data) => typeOf(data) === 'INVESTMENT_EXPENSE_NET',
       },
     },
     {

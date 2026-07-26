@@ -4,6 +4,7 @@ import {
   computeSummarySplit,
   faceValue,
   moneyPair,
+  type MaterialsT,
   summaryLine,
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
@@ -34,9 +35,9 @@ type PropsT = {
   // The „Do zapłaty" pair (robocizna + materiały − wpłaty), computed by the panel so its collapsed
   // headline and this table's bottom row can't drift apart.
   doZaplaty: MoneyPairT
-  // Materiały brutto — live server sum of the investment's unsettled transactions (recorded brutto;
-  // netto is derived by removing VAT).
-  materialsGross: number
+  // Materiały in two buckets — the brutto base (netto derived by removing VAT) and the netto-billed
+  // part, which is already netto and stays at face value on both axes.
+  materials: MaterialsT
   // Wpłaty netto — Σ of the investment's INVESTOR_DEPOSIT rows; subtracted from Łącznie to reach
   // „Do zapłaty". Same base the deposit list / Wpłaty tab / plane pie draw.
   wplatyNet: number
@@ -70,7 +71,7 @@ export function BruttoNettoSummary({
   investmentId,
   laborCostsNetFromKosztorys,
   doZaplaty,
-  materialsGross,
+  materials,
   wplatyNet,
   rabatAmount,
   reconciliation,
@@ -86,7 +87,7 @@ export function BruttoNettoSummary({
   // Łącznie = Suma prac (po rabacie) + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
   const { combined } = computeSummarySplit(
     laborCostsNetFromKosztorys,
-    materialsGross,
+    materials,
     vatRate,
     deriveMaterialsNet,
     materialsReduction,
@@ -120,7 +121,7 @@ export function BruttoNettoSummary({
               ? mismatchTooltip(reconciliation.laborCosts, 'Transakcje robocizny')
               : undefined
           }
-          materialsGross={materialsGross}
+          materials={materials}
           combinedNet={combined.net}
           combined={combined}
           vatRate={vatRate}

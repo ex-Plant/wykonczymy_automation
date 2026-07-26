@@ -41,6 +41,14 @@ const VALID_DATA: Record<string, Record<string, unknown>> = {
     investment: 1,
     expenseCategory: 1,
   },
+  INVESTMENT_EXPENSE_NET: {
+    ...base,
+    type: 'INVESTMENT_EXPENSE_NET',
+    sourceRegister: 1,
+    investment: 1,
+    expenseCategory: 1,
+    netAmount: 80,
+  },
   LABOR_COST: { ...base, type: 'LABOR_COST', investment: 1 },
   REGISTER_TRANSFER: { ...base, type: 'REGISTER_TRANSFER', sourceRegister: 1, targetRegister: 2 },
   OTHER: { ...base, type: 'OTHER', sourceRegister: 1, otherCategory: 1 },
@@ -252,5 +260,48 @@ describe('validateTransfer — a CANCELLATION never keeps a register', () => {
     expect(() => validateTransfer(hookArgs(data, { operation: 'create' }))).toThrow(
       /Cancelled transaction reference is required/,
     )
+  })
+})
+
+// GUARD B7 — the netto figure is what the investor is billed, and the hook is the single server-side
+// authority on it (the form schema is a convenience mirror the API can bypass entirely).
+describe('validateTransfer — netAmount (the netto expense type)', () => {
+  const netExpense = VALID_DATA.INVESTMENT_EXPENSE_NET
+
+  it('refuses a netto above the brutto that left the kasa', () => {
+    const data = { ...netExpense, amount: 100, netAmount: 101 }
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
+  })
+
+  it('accepts a netto equal to brutto (0% VAT is a real case)', () => {
+    const data = { ...netExpense, amount: 100, netAmount: 100 }
+    expect(() => validateTransfer(hookArgs(data))).not.toThrow()
+  })
+
+  it('refuses a missing netto — deriveFinancials would bill 0, never brutto', () => {
+    const { netAmount, ...data } = netExpense
+    void netAmount
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/Kwota netto jest wymagana/)
+  })
+
+  it('refuses a non-positive netto', () => {
+    expect(() => validateTransfer(hookArgs({ ...netExpense, netAmount: 0 }))).toThrow(
+      /Kwota netto musi być większa niż 0/,
+    )
+  })
+
+  it('strips a netAmount smuggled onto a brutto-billed type', () => {
+    const data = { ...VALID_DATA.INVESTMENT_EXPENSE, netAmount: 80 }
+    expect(validateTransfer(hookArgs(data)).netAmount).toBeNull()
+  })
+
+  // A partial update sends only the changed field; the rule must still compare against the stored
+  // twin, or raising just `netAmount` past the stored brutto would sail through.
+  it('compares a partial update against the stored amount', () => {
+    const args = hookArgs(
+      { type: 'INVESTMENT_EXPENSE_NET', netAmount: 5000 },
+      { operation: 'update', originalDoc: { ...netExpense, amount: 1230, netAmount: 1000 } },
+    )
+    expect(() => validateTransfer(args)).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
   })
 })

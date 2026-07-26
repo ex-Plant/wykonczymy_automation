@@ -135,7 +135,10 @@ export type KosztorysEditorDataT = {
   investmentId: number
   tree: KosztorysTreeT
   investmentName: string
-  materialsGross: number
+  // The two materiały buckets, kept apart all the way down: only `materialsGrossBase` may be
+  // repriced by the global „wszystko netto" toggle. Their sum is the billed materiały total.
+  materialsGrossBase: number
+  materialsNetBilled: number
   materialyBreakdown: MaterialyBreakdownRowT[]
   wplatyNet: number
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.

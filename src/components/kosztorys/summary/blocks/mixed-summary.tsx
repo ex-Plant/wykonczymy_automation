@@ -1,4 +1,8 @@
-import { computeMixedSettlement, faceValue } from '@/lib/kosztorys/summary-economics'
+import {
+  computeMixedSettlement,
+  faceValue,
+  type MaterialsT,
+} from '@/lib/kosztorys/summary-economics'
 import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
@@ -6,8 +10,7 @@ import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-ax
 type PropsT = {
   // Robocizna wartość netto — already post-rabat (Suma prac po rabacie).
   laborCostsNetFromKosztorys: number
-  // Materiały brutto — netto is derived via the same deriveMaterialsNet/reduction switch as elsewhere.
-  materialsGross: number
+  materials: MaterialsT
   vatRate: number
   deriveMaterialsNet: boolean
   materialsReduction: number
@@ -24,7 +27,7 @@ type PropsT = {
 // already baked into robocizna netto, so it never deducts twice.
 export function MixedSummary({
   laborCostsNetFromKosztorys,
-  materialsGross,
+  materials,
   vatRate,
   deriveMaterialsNet,
   materialsReduction,
@@ -34,7 +37,7 @@ export function MixedSummary({
 }: PropsT) {
   const settlement = computeMixedSettlement(
     laborCostsNetFromKosztorys,
-    materialsGross,
+    materials,
     vatRate,
     paidNet,
     paidGross,

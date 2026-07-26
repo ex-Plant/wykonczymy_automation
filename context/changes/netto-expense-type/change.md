@@ -1,9 +1,10 @@
 ---
 change_id: netto-expense-type
 title: Netto investment-expense type (spike)
-status: planned
+status: impl_reviewed
 created: 2026-07-24
-updated: 2026-07-25
+updated: 2026-07-26
+branch: konradantonik/ex-573-transfer-type-spec-table
 archived_at: null
 ---
 
@@ -24,3 +25,8 @@ pre-EX-573 plan could not name: `financialBucket: 'materialsNet'` (a distinct bu
 toggle structurally cannot double-cut the netto) and the `billedAmount: 'amount' | 'netAmount'`
 column EX-573 deliberately left to this change. `design.md` predates the table and is superseded on
 those mechanics — B4 carries a note; read `plan.md` for what to actually build.
+
+**Review gate 2026-07-26** — `review-gate.md`: 19 findings, 0 open boxes (10 fixed, 4 dismissed,
+2 dropped, 1 skipped, 1 filed as EX-576 for the owed E2E). Three 🔴 client-facing money errors were
+caught and fixed (the „Wydatki inwestycyjne" list, the owner's sheet sync, and the settled-netto
+category divergence) — two of them plan gaps `plan.md` never named. Unit suite 1643 green, parity green.

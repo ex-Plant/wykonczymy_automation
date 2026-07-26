@@ -98,6 +98,7 @@ export async function createBulkTransferAction(
               data: {
                 description: item.description,
                 amount: item.amount,
+                netAmount: item.netAmount,
                 date: parsed.data.date,
                 type: parsed.data.type,
                 paymentMethod: parsed.data.paymentMethod,

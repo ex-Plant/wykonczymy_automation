@@ -18,7 +18,7 @@ type PropsT = {
 
 type DatasetT = 'unsettled' | 'settled'
 
-// „Wydatki inwestycyjne" (unsettled — Σ === materialsGross) vs „Materiały wliczone w robociznę"
+// „Wydatki inwestycyjne" (unsettled — Σ billed === totalMaterialCosts) vs „Materiały wliczone w robociznę"
 // (settled). Both sets show in every view, the client's included.
 const DATASET_OPTIONS: OptionT<DatasetT>[] = [
   { value: 'unsettled', label: 'Wydatki inwestycyjne' },
@@ -29,7 +29,8 @@ const DATASET_OPTIONS: OptionT<DatasetT>[] = [
 const TABLE_HEIGHT = 400
 const ROW_HEIGHT = 36
 
-// The recorded `amount` is brutto, so the Kwota column is brutto and Σ (unsettled) === materialsGross.
+// Brutto is what left the kasa; a netto-billed row adds the billed figure beneath it, because that
+// is the number the breakdown above this list sums — without it the two disagree by the VAT reclaim.
 const MATERIAL_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'date',
@@ -51,7 +52,16 @@ const MATERIAL_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
     accessorKey: 'amount',
     header: 'Kwota brutto',
     meta: { align: 'right' },
-    cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
+    cell: ({ row, getValue }) => (
+      <span className="flex flex-col tabular-nums">
+        {formatNet(getValue<number>())}
+        {row.original.billed !== row.original.amount && (
+          <span className="text-muted-foreground text-xs">
+            netto {formatNet(row.original.billed)}
+          </span>
+        )}
+      </span>
+    ),
   },
 ]
 

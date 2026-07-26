@@ -36,6 +36,7 @@ describe('spec table — structural integrity', () => {
       'transfersSheetTab',
       'settleable',
       'financialBucket',
+      'billedAmount',
       'sourceRegister',
     ]
     for (const type of TRANSFER_TYPES) {
@@ -44,9 +45,32 @@ describe('spec table — structural integrity', () => {
   })
 
   it('financialBucket is one of the allowed buckets', () => {
-    const buckets = ['materials', 'income', 'laborCosts', 'payouts', 'discount', 'loss', 'none']
+    const buckets = [
+      'materials',
+      'materialsNet',
+      'income',
+      'laborCosts',
+      'payouts',
+      'discount',
+      'loss',
+      'none',
+    ]
     for (const type of TRANSFER_TYPES) {
       expect(buckets, type).toContain(TRANSFER_TYPE_SPECS[type].financialBucket)
+    }
+  })
+
+  it('billedAmount is one of the two stored columns', () => {
+    for (const type of TRANSFER_TYPES) {
+      expect(['amount', 'netAmount'], type).toContain(TRANSFER_TYPE_SPECS[type].billedAmount)
+    }
+  })
+
+  it('only a materialsNet type bills at netAmount', () => {
+    // net_amount is written for the netto expense alone. A type that billed at netAmount
+    // from any other bucket would sum a column its rows leave NULL — a silent zero.
+    for (const type of typesWhere((s) => s.billedAmount === 'netAmount')) {
+      expect(TRANSFER_TYPE_SPECS[type].financialBucket, type).toBe('materialsNet')
     }
   })
 
@@ -121,15 +145,19 @@ describe('financialBucket vs the routing columns', () => {
     )
   })
 
-  it('the materials bucket is exactly the expenses-tab column', () => {
-    expect(sorted(typesWhere((s) => s.financialBucket === 'materials'))).toEqual(
-      sorted(typesWhere((s) => s.expensesSheetTab)),
-    )
+  it('the two materials buckets together are exactly the expenses-tab column', () => {
+    // The netto expense split materials in two — the brutto base the global kosztorys
+    // toggle may still deduct, and the frozen netto figure it must never reach. Both
+    // mirror to the expenses tab, so the union is what the column equals.
+    expect(
+      sorted(typesWhere((s) => s.financialBucket === 'materials' || s.financialBucket === 'materialsNet')),
+    ).toEqual(sorted(typesWhere((s) => s.expensesSheetTab)))
   })
 
   it('only a materials type is settleable — the settled split has no other home', () => {
-    // deriveFinancials splits ONLY the materials bucket on `settled`. A settleable type
-    // outside that bucket would carry a flag nothing reads.
+    // deriveFinancials splits ONLY the brutto materials bucket on `settled`. A settleable
+    // type outside it would carry a flag nothing reads — and `materialsNet` is excluded
+    // on purpose: settled routes into totalSettled, which marża reads.
     for (const type of typesWhere((s) => s.settleable)) {
       expect(TRANSFER_TYPE_SPECS[type].financialBucket, type).toBe('materials')
     }
@@ -137,20 +165,19 @@ describe('financialBucket vs the routing columns', () => {
 })
 
 describe('settleable vs expensesSheetTab — the split the table exists for', () => {
-  it('agree today for all twelve types', () => {
-    for (const type of TRANSFER_TYPES) {
-      expect(TRANSFER_TYPE_SPECS[type].settleable, type).toBe(
-        TRANSFER_TYPE_SPECS[type].expensesSheetTab,
-      )
-    }
-  })
-
   it('a settleable type always owns an expenses-tab row', () => {
     // This direction IS a rule, not a coincidence: the settled flag means "material
     // priced into robocizna", which only makes sense for a material expense. The reverse
-    // is what INVESTMENT_EXPENSE_NET will break.
+    // is what INVESTMENT_EXPENSE_NET broke — it mirrors to the expenses tab and is not
+    // settleable, so the two columns no longer coincide.
     for (const type of typesWhere((s) => s.settleable)) {
       expect(TRANSFER_TYPE_SPECS[type].expensesSheetTab, type).toBe(true)
     }
+  })
+
+  it('the netto expense is the one expenses-tab type that is not settleable', () => {
+    expect(sorted(typesWhere((s) => s.expensesSheetTab && !s.settleable))).toEqual([
+      'INVESTMENT_EXPENSE_NET',
+    ])
   })
 })

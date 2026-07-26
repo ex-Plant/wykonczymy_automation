@@ -10,6 +10,9 @@ export type TransferRowT = {
   id: number
   description: string
   amount: number
+  // What the investor is billed, when that differs from the brutto that left the kasa (the netto
+  // expense type). null on every type that bills at `amount`.
+  netAmount: number | null
   type: TransferTypeT
   paymentMethod: PaymentMethodT
   date: string

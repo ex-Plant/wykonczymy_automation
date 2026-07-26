@@ -5,7 +5,11 @@ import * as Collapsible from '@radix-ui/react-collapsible'
 import { ChevronDown } from 'lucide-react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
-import { bucketDepositsByPlane, computeDoZaplatyRM } from '@/lib/kosztorys/summary-economics'
+import {
+  bucketDepositsByPlane,
+  computeDoZaplatyRM,
+  type MaterialsT,
+} from '@/lib/kosztorys/summary-economics'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
@@ -70,9 +74,11 @@ type PropsT = {
   totalNet: number
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
   laborCostsNetFromKosztorys: number
-  // Materiały brutto — server sum of the investment's unsettled transactions (recorded brutto).
-  materialsGross: number
-  // Per-expense-category split of materialsGross (v1 parity); Σ === materialsGross.
+  // Materiały brutto — server sum of the investment's unsettled brutto-billed transactions.
+  materialsGrossBase: number
+  // Σ netAmount of the netto-billed wydatki — frozen: the netto pricing toggle must not touch it.
+  materialsNetBilled: number
+  // Per-expense-category split of both buckets (v1 parity); Σ === materiały billed total.
   materialyBreakdown: MaterialyBreakdownRowT[]
   // Client-priced, view-invariant per-section subtotals — the section pie's structure source.
   sectionSubtotals: SectionSliceInputT[]
@@ -103,7 +109,8 @@ export function KosztorysTotalsPanel({
   subcontractorDue,
   totalNet,
   laborCostsNetFromKosztorys,
-  materialsGross,
+  materialsGrossBase,
+  materialsNetBilled,
   materialyBreakdown,
   sectionSubtotals,
   wplatyNet,
@@ -124,8 +131,7 @@ export function KosztorysTotalsPanel({
   const viewOptions = clientView
     ? SUMMARY_VIEW_OPTIONS.filter((option) => option.value !== 'podwykonawcy')
     : SUMMARY_VIEW_OPTIONS
-  const view: SummaryViewT =
-    clientView && summaryView === 'podwykonawcy' ? 'summary' : summaryView
+  const view: SummaryViewT = clientView && summaryView === 'podwykonawcy' ? 'summary' : summaryView
   const isSubcontractorView = view === 'podwykonawcy'
   // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
   // netto+brutto settlement, so it shows both columns alongside the gotówka block.
@@ -146,10 +152,11 @@ export function KosztorysTotalsPanel({
   const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
   // Computed here and passed down: the collapsed headline and the Podsumowanie row show the same
   // „Do zapłaty", so it has one source rather than two calls that must be kept in step.
+  const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNetFromKosztorys,
     wplatyNet,
-    materialsGross,
+    materials,
     vatRate,
     materialsAsNet,
     materialsReduction,
@@ -226,7 +233,7 @@ export function KosztorysTotalsPanel({
                   moneyAxis={moneyAxis}
                   laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
                   doZaplaty={doZaplaty}
-                  materialsGross={materialsGross}
+                  materials={materials}
                   wplatyNet={wplatyNet}
                   rabatAmount={rabatAmount}
                   reconciliation={reconciliation}
@@ -242,7 +249,7 @@ export function KosztorysTotalsPanel({
               {view === 'wydatki' && (
                 <SummaryExpensesTab
                   investmentId={investmentId}
-                  materialsGross={materialsGross}
+                  materials={materials}
                   materialyBreakdown={materialyBreakdown}
                   materialTransactions={materialTransactions}
                   nettoShown={nettoShown}

@@ -9,8 +9,9 @@ import {
   needsWorker,
   needsExpenseCategory,
   canBeSettled,
+  billsNetAmount,
 } from '@/lib/constants/transfers'
-import { getAmountError } from '@/lib/utils/validation'
+import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
 type TransferData = Partial<Transaction>
 
@@ -27,7 +28,9 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.createdBy = req.user.id
   }
 
-  const type = d.type ?? ''
+  // Fall back to the stored type: a partial update (PATCH of one field) carries no `type`, and
+  // an empty one would route a netto row down the else-branch below and null its netAmount.
+  const type = d.type ?? (originalDoc as TransferData | undefined)?.type ?? ''
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
@@ -98,6 +101,21 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   // a stray flag that the reporting layer would mis-bucket.
   if (!canBeSettled(type)) {
     d.settled = false
+  }
+
+  // The netto figure is load-bearing exactly on the type whose spec row bills at `netAmount`, and
+  // meaningless anywhere else — so the type that doesn't bill at it stores null. This hook is the
+  // server-side authority; the rule itself lives once in getNetAmountError.
+  if (billsNetAmount(type)) {
+    const original = originalDoc as TransferData | undefined
+    const netErr = getNetAmountError(
+      d.netAmount ?? original?.netAmount,
+      d.amount ?? original?.amount,
+      type,
+    )
+    if (netErr) errors.push(netErr)
+  } else {
+    d.netAmount = null
   }
 
   if (needsExpenseCategory(type, !!d.investment) && !d.expenseCategory) {

@@ -1,8 +1,8 @@
 'use client'
 
 import {
-  summaryLineFace,
-  summaryLineGross,
+  summaryLineMaterials,
+  type MaterialsT,
   type MoneyPairT,
   type SummaryLineT,
 } from '@/lib/kosztorys/summary-economics'
@@ -19,7 +19,7 @@ export function SummaryBreakdownTable({
   moneyAxis,
   sumaPrac,
   sumaPracMismatch,
-  materialsGross,
+  materials,
   combinedNet,
   combined,
   vatRate,
@@ -30,12 +30,12 @@ export function SummaryBreakdownTable({
   moneyAxis: MoneyAxisT
   sumaPrac: SummaryLineT
   sumaPracMismatch?: string
-  // Materiały BRUTTO aggregate (Σ === the per-category Wydatki rows); netto derived below.
-  materialsGross: number
+  // Materiały in two buckets; Σ === the per-category Wydatki rows.
+  materials: MaterialsT
   combinedNet: number
   combined: MoneyPairT
   vatRate: number
-  // Price materiały netto as brutto − VAT (summaryLineGross) or at raw brutto (summaryLineFace).
+  // Price the materiały brutto base as brutto − VAT (true) or keep it at raw brutto (false).
   deriveMaterialsNet: boolean
   // When set (and deriveMaterialsNet), netto = brutto × (1 − materialsReduction) instead of the
   // VAT-strip default (temporary client-side experiment).
@@ -46,14 +46,16 @@ export function SummaryBreakdownTable({
       <SummaryHeaderCell variant="label">Podsumowanie</SummaryHeaderCell>
       <SummaryMoneyHeaders axis={moneyAxis} />
       <SummaryRow label="Robocizna" line={sumaPrac} axis={moneyAxis} mismatch={sumaPracMismatch} />
-      {materialsGross !== 0 && (
+      {materials.grossBase + materials.netBilled !== 0 && (
         <SummaryRow
           label="Materiały"
-          line={
-            deriveMaterialsNet
-              ? summaryLineGross(materialsGross, combinedNet, vatRate, materialsReduction)
-              : summaryLineFace(materialsGross, combinedNet)
-          }
+          line={summaryLineMaterials(
+            materials,
+            combinedNet,
+            vatRate,
+            deriveMaterialsNet,
+            materialsReduction,
+          )}
           axis={moneyAxis}
         />
       )}

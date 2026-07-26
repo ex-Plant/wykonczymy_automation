@@ -2,7 +2,7 @@
 
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import { materialyPair, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
+import { materialsPair, type MaterialsT, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
 import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summary'
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
 import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
@@ -19,7 +19,7 @@ type PropsT = {
   moneyAxis: PanelAxisT
   laborCostsNetFromKosztorys: number
   doZaplaty: MoneyPairT
-  materialsGross: number
+  materials: MaterialsT
   wplatyNet: number
   rabatAmount: number
   reconciliation: KosztorysReconciliationT
@@ -41,7 +41,7 @@ export function SummaryOverviewTab({
   moneyAxis,
   laborCostsNetFromKosztorys,
   doZaplaty,
-  materialsGross,
+  materials,
   wplatyNet,
   rabatAmount,
   reconciliation,
@@ -57,12 +57,7 @@ export function SummaryOverviewTab({
   const displayAxis: MoneyAxisT = mixedMode ? 'both' : moneyAxis
   // The „Struktura kosztów" pie is a netto robocizna/materiały split, identical in every mode — so it
   // sits here beside the settlement rather than inside any one mode's block.
-  const materialsNet = materialyPair(
-    materialsGross,
-    vatRate,
-    deriveMaterialsNet,
-    materialsReduction,
-  ).net
+  const materialsNet = materialsPair(materials, vatRate, deriveMaterialsNet, materialsReduction).net
 
   return (
     <div className="flex w-full flex-col gap-y-4">
@@ -70,7 +65,7 @@ export function SummaryOverviewTab({
         {mixedMode ? (
           <MixedSummary
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materialsGross={materialsGross}
+            materials={materials}
             vatRate={vatRate}
             deriveMaterialsNet={deriveMaterialsNet}
             materialsReduction={materialsReduction}
@@ -83,7 +78,7 @@ export function SummaryOverviewTab({
             investmentId={investmentId}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
             doZaplaty={doZaplaty}
-            materialsGross={materialsGross}
+            materials={materials}
             wplatyNet={wplatyNet}
             rabatAmount={rabatAmount}
             reconciliation={reconciliation}

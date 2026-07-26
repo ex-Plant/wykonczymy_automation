@@ -531,36 +531,36 @@ NOT part of this local implementation task. Data is throwaway (kosztorys/spike s
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `pnpm generate:types && pnpm tsc --noEmit`
-- [ ] 1.2 Constants test passes: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts`
-- [ ] 1.3 Both migrations apply cleanly to local dev DB: `pnpm payload migrate`
+- [x] 1.1 Type checking passes: `pnpm generate:types && pnpm tsc --noEmit`
+- [x] 1.2 Constants test passes: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts`
+- [x] 1.3 Both migrations apply cleanly to local dev DB: `pnpm payload migrate`
 
 ### Phase 2: Financial split (two buckets, kasa/marża untouched)
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 2.2 B2 (kasa brutto): DB integration @5435 — net-type expense moves the register by −brutto
-- [ ] 2.3 B3 (marża unmoved): marża identical across the two types for an unsettled expense
-- [ ] 2.4 B4 (no settled leak): net-type never routed to `totalSettled`; spec row `settleable: false`
-- [ ] 2.5 Bucket assignment: net-type lands in `materialsNetBilled`, never in `materialsGrossBase`
-- [ ] 2.6 Golden master unmoved: `pnpm test:parity` — zero drift lines
+- [x] 2.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 2.2 B2 (kasa brutto): DB integration @5435 — net-type expense moves the register by −brutto
+- [x] 2.3 B3 (marża unmoved): marża identical across the two types for an unsettled expense
+- [x] 2.4 B4 (no settled leak): net-type never routed to `totalSettled`; spec row `settleable: false`
+- [x] 2.5 Bucket assignment: net-type lands in `materialsNetBilled`, never in `materialsGrossBase`
+- [x] 2.6 Golden master unmoved: `pnpm test:parity` — zero drift lines
 
 ### Phase 3: Editor threading + toggle composition
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 3.2 B1 (no double deduction): net-type contribution equals `netAmount` exactly with toggle on
-- [ ] 3.3 Both axes + udziały: net-type adds `netAmount` to `.net` AND `.gross`; shares still sum to 1
-- [ ] 3.4 B5 (list == summary): net-type aggregate contribution equals stored `netAmount`
-- [ ] 3.5 Existing kosztorys economics unit tests still pass
+- [x] 3.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 3.2 B1 (no double deduction): net-type contribution equals `netAmount` exactly with toggle on
+- [x] 3.3 Both axes + udziały: net-type adds `netAmount` to `.net` AND `.gross`; shares still sum to 1
+- [x] 3.4 B5 (list == summary): net-type aggregate contribution equals stored `netAmount`
+- [x] 3.5 Existing kosztorys economics unit tests still pass
 
 ### Phase 4: Create form + transaction list
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 4.2 B7 (netto ≤ brutto): net-type line with `netAmount > amount` rejected (schema + hook)
-- [ ] 4.3 Full unit suite passes: `pnpm exec vitest run`
-- [ ] 4.4 Lint passes: `pnpm lint`
+- [x] 4.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 4.2 B7 (netto ≤ brutto): net-type line with `netAmount > amount` rejected (schema + hook)
+- [x] 4.3 Full unit suite passes: `pnpm exec vitest run`
+- [x] 4.4 Lint passes: `pnpm lint`

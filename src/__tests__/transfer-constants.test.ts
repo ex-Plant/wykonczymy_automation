@@ -22,6 +22,7 @@ import {
   needsExpenseCategory,
   isSheetTransferTabType,
   isExpensesTabType,
+  billsNetAmount,
   canBeSettled,
   isLaborCost,
   isCancellationType,
@@ -59,6 +60,7 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
       'REGISTER_TRANSFER',
       'INVESTOR_DEPOSIT',
       'INVESTMENT_EXPENSE',
+      'INVESTMENT_EXPENSE_NET',
       'PAYOUT',
       'COMPANY_FUNDING',
     ],
@@ -68,6 +70,7 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
     trueFor: [
       'INVESTOR_DEPOSIT',
       'INVESTMENT_EXPENSE',
+      'INVESTMENT_EXPENSE_NET',
       'LABOR_COST',
       'COMPANY_FUNDING',
       'OTHER_DEPOSIT',
@@ -79,7 +82,13 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
   },
   requiresInvestment: {
     fn: requiresInvestment,
-    trueFor: ['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE', 'LABOR_COST', 'RABAT'],
+    trueFor: [
+      'INVESTOR_DEPOSIT',
+      'INVESTMENT_EXPENSE',
+      'INVESTMENT_EXPENSE_NET',
+      'LABOR_COST',
+      'RABAT',
+    ],
   },
   needsTargetRegister: {
     fn: needsTargetRegister,
@@ -95,11 +104,11 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
   },
   showsOtherCategory: {
     fn: showsOtherCategory,
-    trueFor: ['OTHER', 'INVESTMENT_EXPENSE', 'PAYOUT'],
+    trueFor: ['OTHER', 'INVESTMENT_EXPENSE', 'INVESTMENT_EXPENSE_NET', 'PAYOUT'],
   },
   needsExpenseCategory: {
     fn: needsExpenseCategory,
-    trueFor: ['INVESTMENT_EXPENSE'],
+    trueFor: ['INVESTMENT_EXPENSE', 'INVESTMENT_EXPENSE_NET'],
   },
   isSheetTransferTabType: {
     fn: isSheetTransferTabType,
@@ -107,10 +116,16 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
   },
   isExpensesTabType: {
     fn: isExpensesTabType,
-    trueFor: ['INVESTMENT_EXPENSE', 'CORRECTION'],
+    trueFor: ['INVESTMENT_EXPENSE', 'INVESTMENT_EXPENSE_NET', 'CORRECTION'],
+  },
+  billsNetAmount: {
+    fn: billsNetAmount,
+    trueFor: ['INVESTMENT_EXPENSE_NET'],
   },
   canBeSettled: {
     fn: canBeSettled,
+    // No INVESTMENT_EXPENSE_NET: „wliczone w robociznę" routes an amount into
+    // totalSettled, which marża reads — the netto figure must never reach it.
     trueFor: ['INVESTMENT_EXPENSE', 'CORRECTION'],
   },
   isLaborCost: {
@@ -125,7 +140,7 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
 
 // Not boolean, so it has no row in the truth table above — its per-type answers are
 // pinned by the spec-table consistency suite instead (transfer-spec-table.test.ts).
-const NOT_A_BOOLEAN_PREDICATE = ['financialBucketOf']
+const NOT_A_BOOLEAN_PREDICATE = ['financialBucketOf', 'billedAmountOf', 'billedAmountFor']
 
 describe('transfer constants — helper truth table', () => {
   it('covers every exported predicate', () => {
@@ -165,14 +180,18 @@ describe('needsSourceRegister — CANCELLATION', () => {
   })
 })
 
-describe('canBeSettled vs isExpensesTabType — coincidental equality', () => {
-  // They agree for all 12 types today, which is exactly why they were collapsed into an
-  // alias. The equality is a coincidence of the current type set, not a rule:
-  // INVESTMENT_EXPENSE_NET owns an expenses-tab row but must NOT be settleable — and
-  // this test is what will go red when it arrives, forcing the split to be deliberate.
-  it('agree for every current type', () => {
+describe('canBeSettled vs isExpensesTabType — the equality that ended', () => {
+  // The two agreed for all 12 pre-netto types, which is why they were once a single
+  // predicate. That was a coincidence of the type set, not a rule, and
+  // INVESTMENT_EXPENSE_NET broke it: an expenses-tab row that must NOT be settleable.
+  it('INVESTMENT_EXPENSE_NET is the counterexample', () => {
+    expect(isExpensesTabType('INVESTMENT_EXPENSE_NET')).toBe(true)
+    expect(canBeSettled('INVESTMENT_EXPENSE_NET')).toBe(false)
+  })
+
+  it('settleable still implies an expenses-tab row — that direction IS a rule', () => {
     for (const type of TRANSFER_TYPES) {
-      expect(canBeSettled(type)).toBe(isExpensesTabType(type))
+      if (canBeSettled(type)) expect(isExpensesTabType(type), type).toBe(true)
     }
   })
 })
@@ -209,6 +228,7 @@ describe('membership arrays — exact contents and order', () => {
       'REGISTER_TRANSFER',
       'INVESTOR_DEPOSIT',
       'INVESTMENT_EXPENSE',
+      'INVESTMENT_EXPENSE_NET',
       'PAYOUT',
       'COMPANY_FUNDING',
     ])
@@ -230,12 +250,17 @@ describe('membership arrays — exact contents and order', () => {
       'RABAT',
       'LOSS',
       'INVESTMENT_EXPENSE',
+      'INVESTMENT_EXPENSE_NET',
       'PAYOUT',
     ])
   })
 
   it('EXPENSES_TAB_TYPES', () => {
-    expect(EXPENSES_TAB_TYPES).toEqual(['INVESTMENT_EXPENSE', 'CORRECTION'])
+    expect(EXPENSES_TAB_TYPES).toEqual([
+      'INVESTMENT_EXPENSE',
+      'INVESTMENT_EXPENSE_NET',
+      'CORRECTION',
+    ])
   })
 
   it('SHEET_TRANSFER_TAB_TYPES', () => {
@@ -300,6 +325,7 @@ describe('TRANSFER_TYPE_LABELS / TRANSFER_TYPE_COLORS', () => {
     ['REGISTER_TRANSFER', 'Transfer między kasami', 'chart-turquoise'],
     ['INVESTOR_DEPOSIT', 'Wpłata od inwestora', 'chart-green'],
     ['INVESTMENT_EXPENSE', 'Wydatek inwestycyjny', 'chart-red'],
+    ['INVESTMENT_EXPENSE_NET', 'Wydatek inwestycyjny netto', 'chart-blue'],
     ['PAYOUT', 'Wypłata', 'chart-red'],
     ['COMPANY_FUNDING', 'Zasilenie z konta firmowego', 'chart-green'],
   ] as const)('%s → %s / %s', (type, label, color) => {

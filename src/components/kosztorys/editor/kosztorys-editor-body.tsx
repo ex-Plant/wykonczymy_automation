@@ -46,7 +46,8 @@ export function KosztorysEditorBody({
   investmentId,
   tree,
   investmentName,
-  materialsGross,
+  materialsGrossBase,
+  materialsNetBilled,
   materialyBreakdown,
   wplatyNet,
   laborCostsNetFromTransactions,
@@ -226,7 +227,8 @@ export function KosztorysEditorBody({
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materialsGross={materialsGross}
+            materialsGrossBase={materialsGrossBase}
+            materialsNetBilled={materialsNetBilled}
             materialyBreakdown={materialyBreakdown}
             sectionSubtotals={progressSubtotals}
             wplatyNet={wplatyNet}

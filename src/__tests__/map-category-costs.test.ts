@@ -5,6 +5,8 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 const base: InvestmentFinancialsT = {
   categoryCosts: [],
   totalMaterialCosts: 0,
+  materialsGrossBase: 0,
+  materialsNetBilled: 0,
   totalIncome: 5000,
   totalLaborCosts: 1000,
   totalPayouts: 0,
@@ -98,5 +100,43 @@ describe('buildMaterialyBreakdown', () => {
     const ids = rows.map((r) => r.id)
     expect(ids).toEqual([7, 9])
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  // The netto expense type. `netCategoryCosts` is a SUBSET of `categoryCosts`, so splitting it out
+  // must move value between rows without changing the Σ — that invariant is what keeps the
+  // podsumowanie reconciling with the investment page.
+  describe('netto-billed rows', () => {
+    const financials = {
+      ...base,
+      categoryCosts: [
+        { categoryId: 1, total: 1500 },
+        { categoryId: 2, total: 300 },
+      ],
+      totalMaterialCosts: 1800,
+    }
+    const netCategoryCosts = [{ categoryId: 1, total: 1000 }]
+
+    it('splits a mixed category into a brutto row and its own frozen „… netto" row', () => {
+      const rows = buildMaterialyBreakdown(financials, cats, netCategoryCosts)
+      expect(rows.filter((r) => r.id === 1)).toEqual([
+        { id: 1, label: 'Materiały budowlane', net: 500, origin: 'gross' },
+        { id: 1, label: 'Materiały budowlane netto', net: 1000, origin: 'netBilled' },
+      ])
+    })
+
+    it('leaves a category with nothing billed netto as a single brutto row', () => {
+      const rows = buildMaterialyBreakdown(financials, cats, netCategoryCosts)
+      expect(rows.filter((r) => r.id === 2)).toEqual([
+        { id: 2, label: 'Materiały wykończeniowe', net: 300, origin: 'gross' },
+      ])
+    })
+
+    it('Σ rows is unchanged by the split — value moves rows, it is never added', () => {
+      const withSplit = buildMaterialyBreakdown(financials, cats, netCategoryCosts)
+      const withoutSplit = buildMaterialyBreakdown(financials, cats)
+      const sum = (rows: { net: number }[]) => rows.reduce((total, r) => total + r.net, 0)
+      expect(sum(withSplit)).toBe(sum(withoutSplit))
+      expect(sum(withSplit)).toBe(1800)
+    })
   })
 })

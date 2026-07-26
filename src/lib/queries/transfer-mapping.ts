@@ -44,6 +44,7 @@ export type TransferDocT = {
   id: number
   description?: string | null
   amount: number
+  netAmount?: number | null
   type: string
   paymentMethod: string
   date: string
@@ -72,6 +73,7 @@ export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): Tr
     id: doc.id,
     description: doc.description ?? '',
     amount: doc.amount,
+    netAmount: doc.netAmount ?? null,
     type: doc.type as TransferTypeT,
     paymentMethod: doc.paymentMethod as PaymentMethodT,
     date: doc.date,

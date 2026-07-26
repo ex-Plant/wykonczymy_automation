@@ -135,6 +135,8 @@ describe('sumAllInvestmentFinancials', () => {
     expect(map.get(1)).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 3000,
+      materialsGrossBase: 3000,
+      materialsNetBilled: 0,
       totalIncome: 10000,
       totalLaborCosts: 200,
       totalPayouts: 150,
@@ -302,6 +304,8 @@ describe('deriveFinancials', () => {
     expect(deriveFinancials(rows)).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 5000,
+      materialsGrossBase: 5000,
+      materialsNetBilled: 0,
       totalIncome: 12000,
       totalLaborCosts: 800,
       totalPayouts: 300,
@@ -316,6 +320,8 @@ describe('deriveFinancials', () => {
     expect(deriveFinancials([])).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 0,
+      materialsGrossBase: 0,
+      materialsNetBilled: 0,
       totalIncome: 0,
       totalLaborCosts: 0,
       totalPayouts: 0,
@@ -413,6 +419,7 @@ describe('deriveCategoryBreakdowns', () => {
     ]
     expect(deriveCategoryBreakdowns(rows)).toEqual({
       categoryCosts: [],
+      netCategoryCosts: [],
       settledCategoryCosts: [],
     })
   })
@@ -437,9 +444,9 @@ describe('sumFilteredByType', () => {
     })
     const result = await sumFilteredByType(fakePayload, {})
     expect(result).toEqual([
-      { type: 'INVESTMENT_EXPENSE', settled: false, total: 5000 },
-      { type: 'INVESTMENT_EXPENSE', settled: true, total: 100 },
-      { type: 'INVESTOR_DEPOSIT', settled: false, total: 12000 },
+      { type: 'INVESTMENT_EXPENSE', settled: false, total: 5000, netTotal: 0 },
+      { type: 'INVESTMENT_EXPENSE', settled: true, total: 100, netTotal: 0 },
+      { type: 'INVESTOR_DEPOSIT', settled: false, total: 12000, netTotal: 0 },
     ])
   })
 

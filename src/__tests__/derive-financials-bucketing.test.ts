@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
-import { TRANSFER_TYPES } from '@/lib/constants/transfers'
+import { billedAmountFor, TRANSFER_TYPES } from '@/lib/constants/transfers'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 // CHARACTERIZATION SUITE (EX-573 phase 0) — the bucketing rule, pinned before phase 2
@@ -17,9 +17,23 @@ type BucketNameT = Exclude<keyof InvestmentFinancialsT, 'categoryCosts' | 'settl
 
 /** Which (type, settled) pairs land in each bucket today. Hand-typed, not derived. */
 const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
+  // The headline the two bilanses read — the sum of the two material buckets below.
   totalMaterialCosts: [
     ['INVESTMENT_EXPENSE', false],
     ['CORRECTION', false],
+    ['INVESTMENT_EXPENSE_NET', false],
+    ['INVESTMENT_EXPENSE_NET', true],
+  ],
+  materialsGrossBase: [
+    ['INVESTMENT_EXPENSE', false],
+    ['CORRECTION', false],
+  ],
+  // Ignores `settled` (like the deposit buckets): the netto type is `settleable: false`,
+  // so a settled netto row cannot be written — and were one ever forged, dropping it here
+  // would hide it from every figure instead of surfacing it.
+  materialsNetBilled: [
+    ['INVESTMENT_EXPENSE_NET', false],
+    ['INVESTMENT_EXPENSE_NET', true],
   ],
   // The deposit buckets ignore `settled` entirely — a settled deposit is not a concept,
   // but the predicate does not exclude it, and that tolerance is the pinned behaviour.
@@ -71,13 +85,15 @@ describe('deriveFinancials — bucketing matrix', () => {
   })
 
   it('covers every (type × settled) pair', () => {
-    expect(ALL_PAIRS).toHaveLength(24)
+    expect(ALL_PAIRS).toHaveLength(26)
   })
 
   for (const pair of ALL_PAIRS) {
     const [type, settled] = pair
     describe(`${type} · settled=${settled}`, () => {
-      const financials = deriveFinancials([{ type, settled, total: AMOUNT }])
+      // Both columns carry AMOUNT so the matrix stays one number wide; which column a
+      // type actually bills at is pinned separately, below.
+      const financials = deriveFinancials([{ type, settled, total: AMOUNT, netTotal: AMOUNT }])
       for (const bucket of Object.keys(BUCKET_MEMBERSHIP) as BucketNameT[]) {
         const expected = isMember(bucket, pair) ? AMOUNT : 0
         it(`${bucket} → ${expected}`, () => {
@@ -88,10 +104,37 @@ describe('deriveFinancials — bucketing matrix', () => {
   }
 })
 
+describe('deriveFinancials — the netto type bills at netTotal, never at total', () => {
+  // The whole point of the type: brutto leaves the register, netto bills the investor.
+  // Reading `total` here would bill the client the VAT the owner reclaims.
+  const financials = deriveFinancials([
+    { type: 'INVESTMENT_EXPENSE_NET', settled: false, total: 1230, netTotal: 1000 },
+  ])
+
+  it('materialsNetBilled is the netto figure', () => {
+    expect(financials.materialsNetBilled).toBe(1000)
+  })
+
+  it('materialsGrossBase is untouched — the toggle can never reach the netto figure', () => {
+    expect(financials.materialsGrossBase).toBe(0)
+  })
+
+  it('totalSettled is untouched — the netto figure never reaches marża', () => {
+    expect(financials.totalSettled).toBe(0)
+  })
+
+  it('a netto row with no netAmount bills 0 rather than falling back to brutto', () => {
+    const orphan = deriveFinancials([
+      { type: 'INVESTMENT_EXPENSE_NET', settled: false, total: 1230 },
+    ])
+    expect(orphan.totalMaterialCosts).toBe(0)
+  })
+})
+
 describe('deriveFinancials — unknown type falls into no bucket', () => {
   it.each(['UNKNOWN_TYPE', '', 'investment_expense'])('%j contributes nothing', (type) => {
     for (const settled of [false, true]) {
-      const financials = deriveFinancials([{ type, settled, total: AMOUNT }])
+      const financials = deriveFinancials([{ type, settled, total: AMOUNT, netTotal: AMOUNT }])
       for (const bucket of Object.keys(BUCKET_MEMBERSHIP) as BucketNameT[]) {
         expect(financials[bucket], `${type}/${settled} leaked into ${bucket}`).toBe(0)
       }
@@ -117,14 +160,40 @@ describe('deriveFinancials — breakdowns pass through untouched', () => {
 
 describe('deriveCategoryBreakdowns — same membership, split by settled', () => {
   it.each(TRANSFER_TYPES)('%s', (type) => {
-    const isExpense = type === 'INVESTMENT_EXPENSE' || type === 'CORRECTION'
-    const live = deriveCategoryBreakdowns([{ categoryId: 7, type, settled: false, total: AMOUNT }])
-    const settled = deriveCategoryBreakdowns([{ categoryId: 7, type, settled: true, total: AMOUNT }])
+    const isMaterial =
+      type === 'INVESTMENT_EXPENSE' || type === 'CORRECTION' || type === 'INVESTMENT_EXPENSE_NET'
+    // The netto type ignores `settled` — deriveFinancials folds it into materialsNetBilled
+    // unconditionally, so honouring the flag here would leave the category with a
+    // netCategoryCosts entry and no matching cost, which renders as a negative brutto row.
+    const followsSettled = isMaterial && type !== 'INVESTMENT_EXPENSE_NET'
+    const row = { categoryId: 7, type, total: AMOUNT, netTotal: AMOUNT }
+    const cost = [{ categoryId: 7, total: AMOUNT }]
+    const live = deriveCategoryBreakdowns([{ ...row, settled: false }])
+    const settled = deriveCategoryBreakdowns([{ ...row, settled: true }])
 
-    expect(live.categoryCosts).toEqual(isExpense ? [{ categoryId: 7, total: AMOUNT }] : [])
+    expect(live.categoryCosts).toEqual(isMaterial ? cost : [])
     expect(live.settledCategoryCosts).toEqual([])
-    expect(settled.settledCategoryCosts).toEqual(isExpense ? [{ categoryId: 7, total: AMOUNT }] : [])
-    expect(settled.categoryCosts).toEqual([])
+    expect(settled.settledCategoryCosts).toEqual(followsSettled ? cost : [])
+    expect(settled.categoryCosts).toEqual(followsSettled ? [] : isMaterial ? cost : [])
+  })
+
+  // netCategoryCosts is a SUBSET of categoryCosts, not a sibling total: the netto rows are
+  // counted once in the headline and named here only so a consumer can freeze that part
+  // against the global „wszystko netto" toggle.
+  it('names the netto share per category without removing it from categoryCosts', () => {
+    const { categoryCosts, netCategoryCosts } = deriveCategoryBreakdowns([
+      { categoryId: 7, type: 'INVESTMENT_EXPENSE', settled: false, total: 200 },
+      { categoryId: 7, type: 'INVESTMENT_EXPENSE_NET', settled: false, total: 1230, netTotal: 1000 },
+    ])
+    expect(categoryCosts).toEqual([{ categoryId: 7, total: 1200 }])
+    expect(netCategoryCosts).toEqual([{ categoryId: 7, total: 1000 }])
+  })
+
+  it('leaves netCategoryCosts empty when no netto row exists', () => {
+    const { netCategoryCosts } = deriveCategoryBreakdowns([
+      { categoryId: 7, type: 'INVESTMENT_EXPENSE', settled: false, total: 200 },
+    ])
+    expect(netCategoryCosts).toEqual([])
   })
 
   it('sums repeated rows per category', () => {
@@ -148,16 +217,41 @@ describe('deriveCategoryBreakdowns — same membership, split by settled', () =>
       { categoryId: 2, type: 'CORRECTION', settled: false, total: 25 },
       { categoryId: 2, type: 'CORRECTION', settled: true, total: 5 },
       { categoryId: 3, type: 'PAYOUT', settled: false, total: 999 },
+      { categoryId: 1, type: 'INVESTMENT_EXPENSE_NET', settled: false, total: 1230, netTotal: 1000 },
     ]
     const breakdowns = deriveCategoryBreakdowns(rows)
     const financials = deriveFinancials(
-      rows.map(({ type, settled, total }) => ({ type, settled, total })),
+      rows.map(({ type, settled, total, netTotal }) => ({ type, settled, total, netTotal })),
       breakdowns.categoryCosts,
       breakdowns.settledCategoryCosts,
     )
     const sum = (costs: { total: number }[]) => costs.reduce((a, c) => a + c.total, 0)
 
     expect(sum(breakdowns.categoryCosts)).toBe(financials.totalMaterialCosts)
+    expect(sum(breakdowns.netCategoryCosts)).toBe(financials.materialsNetBilled)
     expect(sum(breakdowns.settledCategoryCosts)).toBe(financials.totalSettled)
+  })
+})
+
+// Regression: the „Wydatki inwestycyjne" list mapped every row to its brutto `amount`, so a netto
+// row showed the client the VAT-inclusive figure and the list's Σ overshot the breakdown above it.
+// The list's per-row rule (billedAmountFor) and the aggregate rule (deriveFinancials) must agree.
+describe('per-row billed figure reconciles with the aggregate', () => {
+  it('Σ billedAmountFor over the unsettled material rows === totalMaterialCosts', () => {
+    const rows = [
+      { type: 'INVESTMENT_EXPENSE', settled: false, amount: 100, netAmount: null },
+      { type: 'CORRECTION', settled: false, amount: 25, netAmount: null },
+      { type: 'INVESTMENT_EXPENSE_NET', settled: false, amount: 1230, netAmount: 1000 },
+    ]
+    const listTotal = rows.reduce(
+      (acc, r) => acc + billedAmountFor(r.type, r.amount, r.netAmount),
+      0,
+    )
+    const financials = deriveFinancials(
+      rows.map((r) => ({ type: r.type, settled: r.settled, total: r.amount, netTotal: r.netAmount ?? undefined })),
+    )
+
+    expect(listTotal).toBe(financials.totalMaterialCosts)
+    expect(listTotal).toBe(1125)
   })
 })

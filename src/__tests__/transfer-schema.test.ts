@@ -323,6 +323,49 @@ describe('createBulkExpenseSchema — per-line-item category', () => {
     })
     expect(result.success).toBe(true)
   })
+
+  // GUARD B7 at the schema layer — the form's own gate on the netto figure. The hook is the real
+  // authority; this is what stops a bad line before it ever reaches the server action.
+  describe('netAmount on the netto expense type', () => {
+    const netBase = {
+      ...bulkBase,
+      type: 'INVESTMENT_EXPENSE_NET' as const,
+      investment: 1,
+    }
+
+    it('netto below brutto → passes', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        lineItems: [{ description: 'Item', amount: 1230, netAmount: 1000, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('netto above brutto → rejected', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        lineItems: [{ description: 'Item', amount: 1000, netAmount: 1230, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('missing netto → rejected (a netto row that bills 0 is worse than a blocked one)', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        lineItems: [{ description: 'Item', amount: 1000, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('a brutto-billed type needs no netto', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        type: 'INVESTMENT_EXPENSE',
+        lineItems: [{ description: 'Item', amount: 1000, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(true)
+    })
+  })
 })
 
 // ── 2c: Client Schema — Valid payloads ──────────────────────────────────

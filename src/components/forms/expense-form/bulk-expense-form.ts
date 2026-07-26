@@ -15,6 +15,8 @@ export type BulkExpenseFormValuesT = {
     id: string
     description: string
     amount: string
+    // Netto billed to the investor — only the netto expense type reads it; blank everywhere else.
+    netAmount: string
     invoiceNote: string
     category: string
     expenseCategory: string
@@ -30,6 +32,7 @@ export function makeLineItem(overrides?: Partial<BulkLineItemT>): BulkLineItemT 
     id: crypto.randomUUID(),
     description: '',
     amount: '',
+    netAmount: '',
     invoiceNote: '',
     category: '',
     expenseCategory: '',
