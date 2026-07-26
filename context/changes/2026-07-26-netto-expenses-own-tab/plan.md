@@ -234,7 +234,7 @@ brutto/unfiltered rather than throwing.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `pnpm tsc --noEmit`
-- [x] 3.2 Full unit suite passes: `pnpm exec vitest run`
-- [x] 3.3 Href carries the row's own type for each of the three expense types
+- [x] 3.1 Type checking passes: `pnpm tsc --noEmit` — 2d388c0a
+- [x] 3.2 Full unit suite passes: `pnpm exec vitest run` — 2d388c0a
+- [x] 3.3 Href carries the row's own type for each of the three expense types — 2d388c0a
 - [ ] 3.4 `clientView` renders neither href nor chevron — chevron dropped on the owner's call, so this reduces to „no href under clientView"; not automatable here (no DOM harness), moved to the manual-checks registry

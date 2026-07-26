@@ -1,7 +1,7 @@
 ---
 change_id: netto-expenses-own-tab
 title: Netto expenses get their own tab in the wydatki list, and the row links stop lying
-status: implementing
+status: implemented
 created: 2026-07-26
 updated: 2026-07-26
 archived_at: null

@@ -207,7 +207,6 @@ one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
 - [ ] With an unassigned etap present, the badge in „Podsumowanie podwykonawców" says the sum is **lower** than the executed work (no „liczone jako z narzędziami")
 - [ ] The rabat tooltips („Rabat", „Rabat kwota netto", „Razem Netto", „Razem Brutto", „Etap — kwota netto") state that rabat never lowers the crews' prices
 
-
 ## EX-567 — netto investment-expense type (`INVESTMENT_EXPENSE_NET`)
 
 **Archived 2026-07-26.** All automated checks green (tsc 0, eslint 0 errors, 1625 unit tests, golden master
@@ -228,3 +227,27 @@ Pass ran clean — **no bugs found**, all 12 boxes ticked. Two non-blocking obse
 
 - The „Różnica" column prints `−0,00` on a frozen netto row (the `−` prefix is unconditional). Pre-existing formatting shape, not introduced here.
 - The admin's „Kwota netto" input is disabled, so the server guard is only reachable via the API. That is the intended consequence of `netAmount` being immutable (correction = cancel + re-add), noted so the next reader doesn't chase it as a bug.
+
+## EX-581 — netto expenses get their own tab in the wydatki list
+
+**In review** — automated green (tsc 0, 1660 unit tests incl. the new three-way partition + href
+guards). The Podsumowanie → „Wydatki" list now splits into three mutually exclusive tabs (brutto
+expenses + korekty / netto expenses / materials settled into robocizna), each with its own „Razem",
+and every row links to a transfers list filtered by **its own** type instead of a hardcoded
+`INVESTMENT_EXPENSE`. Affordance stays the shipped row-hover cue — the chevron column was built and
+then **removed on the owner's call**. Branch `konradantonik/netto-expenses-own-tab`.
+
+Two plan criteria are here rather than in `plan.md` Progress because this repo has no DOM test
+harness (vitest is node-env, `*.test.ts` only, no RTL/jsdom): the footer-in-both-paths check (2.3) and
+the clientView check (3.4).
+
+Setup: 5435 test DB (see intro), OWNER, an investment carrying a brutto expense, a korekta, a netto
+expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w robociznę") materiał.
+
+- [ ] Three tabs appear — „Wydatki inwestycyjne", „Wydatki netto", „Materiały wliczone w robociznę" — and each shows only its own rows
+- [ ] The brutto „Razem" plus the netto „Razem" equals the breakdown „Razem" above the list
+- [ ] **Footer stays pinned (2.3).** With enough rows to scroll the list, „Razem" remains visible at the bottom instead of scrolling away with the rows
+- [ ] The netto tab leads with the netto figure under the header „Kwota netto", brutto beneath it in grey; the other tabs show „Kwota brutto" with no sub-line
+- [ ] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row
+- [ ] **clientView (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
+- [ ] An investment with neither netto nor settled rows shows no toggle at all
