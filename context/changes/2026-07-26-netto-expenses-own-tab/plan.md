@@ -225,16 +225,16 @@ brutto/unfiltered rather than throwing.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `pnpm tsc --noEmit`
-- [x] 2.2 Full unit suite passes: `pnpm exec vitest run`
+- [x] 2.1 Type checking passes: `pnpm tsc --noEmit` — 7204b32a
+- [x] 2.2 Full unit suite passes: `pnpm exec vitest run` — 7204b32a
 - [ ] 2.3 `DataTable` footer renders in both the virtualized and non-virtualized paths — not automatable: vitest here is node-env, `*.test.ts` only, no RTL/jsdom; moved to the manual-checks registry
-- [x] 2.4 No tab offered for an empty dataset; single non-empty set renders no toggle
+- [x] 2.4 No tab offered for an empty dataset; single non-empty set renders no toggle — 7204b32a
 
 ### Phase 3: Honest row links + a visible affordance
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 3.2 Full unit suite passes: `pnpm exec vitest run`
-- [ ] 3.3 Href carries the row's own type for each of the three expense types
-- [ ] 3.4 `clientView` renders neither href nor chevron
+- [x] 3.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 3.2 Full unit suite passes: `pnpm exec vitest run`
+- [x] 3.3 Href carries the row's own type for each of the three expense types
+- [ ] 3.4 `clientView` renders neither href nor chevron — not automatable here (no DOM harness); moved to the manual-checks registry

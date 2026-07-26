@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { ChevronRight } from 'lucide-react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { formatNet } from '@/lib/kosztorys/format'
@@ -9,6 +10,7 @@ import {
   availableWydatkiDatasets,
   partitionWydatkiRows,
   sumBilled,
+  wydatkiRowHref,
   type WydatkiDatasetT,
 } from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
@@ -81,6 +83,16 @@ const GROSS_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   },
 ]
 
+// The row-wide href only announces itself on hover, which the owner called not obvious enough — this
+// column is the standing cue. Dropped under `clientView`, where the rows do not navigate at all.
+const CHEVRON_COLUMN: ColumnDef<MaterialTransactionRowT> = {
+  id: 'chevron',
+  header: '',
+  enableSorting: false,
+  meta: { align: 'right' },
+  cell: () => <ChevronRight className="text-muted-foreground inline size-4" aria-hidden />,
+}
+
 // The wydatki list — one row per materiały transaction, the un-summed twin of the „Wydatki
 // inwestycyjne" breakdown above it. Three mutually exclusive tabs, each with its own „Razem": the
 // brutto and netto expense totals add to the breakdown's „Razem", the settled one is separate money.
@@ -92,6 +104,9 @@ export function MaterialsTransactionsTable({ investmentId, rows, clientView = fa
   // render a tab with nothing in it.
   const activeDataset = available.includes(dataset) ? dataset : (available[0] ?? 'gross')
   const visibleRows = partition[activeDataset]
+
+  const baseColumns = activeDataset === 'net' ? NET_COLUMNS : GROSS_COLUMNS
+  const columns = clientView ? baseColumns : [...baseColumns, CHEVRON_COLUMN]
 
   const options: OptionT<WydatkiDatasetT>[] = available.map((set) => ({
     value: set,
@@ -115,20 +130,18 @@ export function MaterialsTransactionsTable({ investmentId, rows, clientView = fa
       <DataTable
         key={activeDataset}
         data={visibleRows}
-        columns={activeDataset === 'net' ? NET_COLUMNS : GROSS_COLUMNS}
+        columns={columns}
         enableVirtualization
         virtualRowHeight={ROW_HEIGHT}
         virtualContainerHeight={TABLE_HEIGHT}
         initialSorting={[{ id: 'date', desc: true }]}
-        getRowHref={
-          clientView
-            ? undefined
-            : (row) => `/inwestycje/${investmentId}?type=INVESTMENT_EXPENSE&id=${row.id}`
-        }
+        getRowHref={clientView ? undefined : (row) => wydatkiRowHref(investmentId, row)}
         footer={(colCount) => (
           <tr>
-            <td colSpan={colCount - 1}>Razem</td>
+            {/* The chevron column carries no figure, so „Razem" spans up to the amount, not past it. */}
+            <td colSpan={colCount - (clientView ? 1 : 2)}>Razem</td>
             <td className="text-right tabular-nums">{formatNet(sumBilled(visibleRows))}</td>
+            {!clientView && <td />}
           </tr>
         )}
         className="w-full max-w-5xl"

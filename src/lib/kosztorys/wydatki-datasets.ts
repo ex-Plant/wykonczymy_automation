@@ -40,3 +40,13 @@ export function availableWydatkiDatasets(partition: WydatkiPartitionT): WydatkiD
 export function sumBilled(rows: MaterialTransactionRowT[]): number {
   return rows.reduce((acc, row) => acc + row.billed, 0)
 }
+
+// The destination list filters by `type` (`buildTransferFilters`), so a href must carry the row's OWN
+// type — a hardcoded one filters out the very row that was clicked. A row served from a stale cache
+// has no type yet; link to the unfiltered list rather than to a wrong filter.
+export function wydatkiRowHref(investmentId: number, row: MaterialTransactionRowT): string {
+  const params = new URLSearchParams()
+  if (row.type) params.set('type', row.type)
+  params.set('id', String(row.id))
+  return `/inwestycje/${investmentId}?${params}`
+}
