@@ -1,4 +1,4 @@
-to# Netto investment-expense type — Plan Brief
+# Netto investment-expense type — Plan Brief
 
 > Full plan: `context/changes/netto-expense-type/plan.md`
 > Design/spec: `context/changes/netto-expense-type/design.md`
@@ -21,7 +21,7 @@ AND bills the investor. The kasa query (`sumRegisterBalance`) subtracts any non-
 
 Adding a netto expense, the user types both brutto and netto (netto ≤ brutto). The register drops by
 brutto; the investor's bilans / "Do zapłaty R+M" rises by netto. In Podsumowanie the net-type share is
-a frozen netto row per kategoria, immune to the global toggle (no double cut). The list shows the
+a frozen netto row per kategoria, immune to the global toggle (no double cut). The list shows both the brutto and the
 netto in a distinct color. Marża and every register balance are unchanged.
 
 ## Key Decisions Made
@@ -33,7 +33,7 @@ netto in a distinct color. Marża and every register balance are unchanged.
 | Kasa                   | Untouched; net-type stays out of `DEPOSIT_TYPES`     | Register reconciles to the grosz at brutto, structurally  | Design |
 | Double-deduction guard | Two-bucket split; net-type frozen, added post-toggle | Global toggle can't re-net an already-netto amount        | Design |
 | Settling               | Net-type is NOT settleable                           | Keeps netto out of `totalSettled`/marża entirely          | Design |
-| `EXPENSES_TAB_TYPES`   | Net-type joins it; cost math carved out in derive    | Shares routing/category/sheet; separate financial math    | Design |
+| Spec-table row         | `expensesSheetTab: true`, `settleable: false`, `financialBucket: 'materialsNet'`, new `billedAmount: 'netAmount'` | Shares routing/category/sheet; the money is its own bucket, so the toggle can't double-cut it | Plan (EX-573) |
 | Podsumowanie breakdown | Separate netto row **per kategoria**                 | Brutto rows stay pure so the toggle cuts them cleanly     | Plan   |
 | Tests                  | Structural units B1–B5, B7 now                       | "It reconciles" is the whole point of the spike           | Plan   |
 
@@ -44,12 +44,12 @@ threading, toggle composition, per-category netto rows, create form + validation
 B1–B5 + B7.
 
 **Out of scope:** `netRate`/VAT math, `netAmount` edit path (B6), touching `sumRegisterBalance` /
-`vatPlane`, settling the net-type, data backfill, audit log, B6 integration test, E2E, prod migration.
+`vatPlane`, settling the net-type, data backfill, audit log, B6, E2E, prod migration. One integration test IS in scope: B2 kasa-brutto @5435.
 
 ## Architecture / Approach
 
 The spine is a **two-bucket split** in `deriveFinancials`: `INVESTMENT_EXPENSE_NET` rows go to
-`materialsNetTypeNetto` (Σ `netAmount`, frozen), everything else to `materialsBruttoBase`. Downstream,
+`materialsNetBilled` (Σ `netAmount`, frozen), everything else to `materialsGrossBase`. Downstream,
 only the brutto base flows through the global toggle (`materialyPair` in `summary-economics.ts`); the
 net-type bucket is added afterwards, untouched — so double-deduction is structurally impossible. Kasa
 reads raw `amount` and is never touched. Bottom-up build: schema → financial split → editor threading
@@ -62,14 +62,14 @@ reads raw `amount` and is never touched. Bottom-up build: schema → financial s
 | 1. Type + schema foundation  | Legal type, immutable `netAmount`, 2 migrations, consts    | Missing a `Record`/predicate seam (build catches most)  |
 | 2. Financial split           | Two buckets; kasa/marża/settled untouched; B2–B4           | Net-type leaking into brutto base or `totalSettled`     |
 | 3. Editor threading + toggle | Buckets to editor; frozen post-toggle; per-cat rows; B1,B5 | Two assembly sites drifting; toggle re-netting net-type |
-| 4. Create form + list        | Typed netto ≤ brutto, persisted, shown in color; B7        | Which figure the list cell shows (netto)                |
+| 4. Create form + list        | Typed netto ≤ brutto, persisted, shown in color; B7        | Cell shows BOTH: brutto primary, netto secondary        |
 
 **Prerequisites:** local dev DB reachable for the two migrations; branch `konradantonik/ex-536-zaliczka-v2`.
 **Estimated effort:** ~2–3 sessions across 4 phases.
 
 ## Open Risks & Assumptions
 
-- The combined `totalMaterialCosts` is kept as base + netTypeNetto for convenience consumers; a
+- The combined `totalMaterialCosts` is kept as `materialsGrossBase + materialsNetBilled` — decided, not audited: `calculateBalance` and the golden-master fixture both read it, so it stays. A
   consumer audit in Phase 2 confirms none re-net it.
 - Row color: an unused `chart-*` token picked at implementation (owner: not amber).
 

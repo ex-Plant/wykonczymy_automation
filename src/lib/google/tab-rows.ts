@@ -1,5 +1,5 @@
 import { getRelationName } from '@/lib/utils/get-relation-name'
-import { isSheetTransferTabType, TRANSFER_TYPE_LABELS } from '@/lib/constants/transfers'
+import { billsNetAmount, isSheetTransferTabType, TRANSFER_TYPE_LABELS } from '@/lib/constants/transfers'
 import type { TabRowInputT } from './sheets'
 
 // Pure transaction-doc → sheet-row builders, split out of sheets-sync.ts because
@@ -30,6 +30,7 @@ const finiteAmount = (raw: unknown): number | undefined => {
 export type TxDocT = {
   id: number
   amount: number | string
+  netAmount?: number | string | null
   type?: string
   date?: string | null
   description?: string | null
@@ -49,9 +50,13 @@ function buildExpenseRow(
 ): TabRowInputT | undefined {
   const baseTyp = getRelationName(t.expenseCategory, '')
   if (!baseTyp) return undefined // no expense category → no typ → skip
-  const baseAmount = finiteAmount(t.amount)
+  // The sheet is the owner's client-facing bill, so a row carries what the CLIENT is billed —
+  // netto for the netto-billed type, brutto for the rest. Mirroring brutto here would put the
+  // owner's VAT reclaim on the client's invoice and leave the sheet's Σ above the app's materiały.
+  const billed = billsNetAmount(t.type) ? t.netAmount : t.amount
+  const baseAmount = finiteAmount(billed)
   if (baseAmount === undefined) {
-    console.warn(`[sheets-sync] skip expense #${t.id}: non-finite amount ${String(t.amount)}`)
+    console.warn(`[sheets-sync] skip expense #${t.id}: non-finite amount ${String(billed)}`)
     return undefined
   }
   const { typ, amount } = transform(baseTyp, baseAmount)

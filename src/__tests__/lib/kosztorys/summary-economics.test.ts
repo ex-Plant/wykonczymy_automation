@@ -9,10 +9,13 @@ import {
   materialyPair,
   moneyPair,
   summaryLine,
-  summaryLineFace,
-  summaryLineGross,
+  summaryLineMaterials,
 } from '@/lib/kosztorys/summary-economics'
 import type { DepositTransactionRowT } from '@/types/reference-data'
+
+// Materiały with nothing billed netto — the pre-netto-type world, so the existing expectations
+// keep reading as the brutto-only baseline they were written for.
+const justGross = (grossBase: number) => ({ grossBase, netBilled: 0 })
 
 const deposit = (amount: number, vatPlane: DepositTransactionRowT['vatPlane']) => ({
   amount,
@@ -60,25 +63,9 @@ describe('summary-row udział builders', () => {
     expect(line.share).toBeCloseTo(0.25)
   })
 
-  it('summaryLineFace: no-VAT row (brutto === netto) still takes an udział', () => {
-    const line = summaryLineFace(200, 1000)
-    expect(line.net).toBe(200)
-    expect(line.gross).toBe(200)
-    expect(line.share).toBeCloseTo(0.2)
-  })
-
-  it('summaryLineGross: brutto-native row, udział off the DERIVED netto', () => {
-    // 123 brutto → 100 netto at 23%; udział is 100/1000, not 123/1000.
-    const line = summaryLineGross(123, 1000, 0.23)
-    expect(line.net).toBeCloseTo(100)
-    expect(line.gross).toBe(123)
-    expect(line.share).toBeCloseTo(0.1)
-  })
-
   it('zero Łącznie yields share 0 in every builder (no division by zero)', () => {
     expect(summaryLine(250, 0, 0.23).share).toBe(0)
-    expect(summaryLineFace(200, 0).share).toBe(0)
-    expect(summaryLineGross(123, 0, 0.23).share).toBe(0)
+    expect(summaryLineMaterials({ grossBase: 123, netBilled: 0 }, 0, 0.23, true).share).toBe(0)
   })
 })
 
@@ -98,7 +85,7 @@ describe('materialyPair (netto pricing switch)', () => {
 
 describe('materiały netto pricing off (deriveMaterialsNet=false)', () => {
   it('computeSummarySplit: materiały netto === brutto, so Łącznie netto keeps the full brutto', () => {
-    const p = computeSummarySplit(1000, 123, 0.23, false)
+    const p = computeSummarySplit(1000, justGross(123), 0.23, false)
     // Materiały netto = Łącznie netto − robocizna netto = 123 (not the VAT-stripped 100).
     expect(p.combined.net - p.laborCosts.net).toBeCloseTo(123)
     expect(p.combined.net).toBeCloseTo(1123)
@@ -107,7 +94,7 @@ describe('materiały netto pricing off (deriveMaterialsNet=false)', () => {
   })
 
   it('computeDoZaplatyRM: materiały enter netto at full brutto; brutto axis unchanged', () => {
-    const r = computeDoZaplatyRM(1000, 300, 123, 0.23, false)
+    const r = computeDoZaplatyRM(1000, 300, justGross(123), 0.23, false)
     // netto: robocizna 1000 − wpłaty 300 + materiały 123 (raw brutto, not derived 100).
     expect(r.net).toBeCloseTo(823)
     expect(r.gross).toBeCloseTo(1230 - 300 + 123)
@@ -117,7 +104,7 @@ describe('materiały netto pricing off (deriveMaterialsNet=false)', () => {
 describe('computeSummarySplit', () => {
   it('materiały enters as BRUTTO — its netto is derived by removing VAT', () => {
     // materiały 123 brutto → 100 netto at 23%.
-    const p = computeSummarySplit(1000, 123, 0.23)
+    const p = computeSummarySplit(1000, justGross(123), 0.23)
     // Materiały netto = Łącznie netto − robocizna netto.
     expect(p.combined.net - p.laborCosts.net).toBeCloseTo(100)
     expect(p.combined.net).toBeCloseTo(1100)
@@ -128,21 +115,21 @@ describe('computeSummarySplit', () => {
   })
 
   it('udziały sum to 1 (100%), materiały off the DERIVED netto', () => {
-    const p = computeSummarySplit(1000, 123, 0.23)
+    const p = computeSummarySplit(1000, justGross(123), 0.23)
     expect(p.combined.share).toBe(1)
     expect(p.laborCosts.share).toBeCloseTo(1000 / 1100)
     expect(1 - p.laborCosts.share).toBeCloseTo(100 / 1100)
   })
 
   it('zero Łącznie yields 0 shares, no division by zero', () => {
-    const p = computeSummarySplit(0, 0, 0.23)
+    const p = computeSummarySplit(0, justGross(0), 0.23)
     expect(p.laborCosts.share).toBe(0)
     expect(p.combined.share).toBe(0)
     expect(p.combined.net).toBe(0)
   })
 
   it('vat = 0: materiały netto === brutto, Łącznie brutto === netto', () => {
-    const p = computeSummarySplit(0, 500, 0)
+    const p = computeSummarySplit(0, justGross(500), 0)
     expect(p.laborCosts.share).toBe(0)
     expect(p.combined.share).toBe(1)
     expect(p.combined.net).toBe(500)
@@ -152,7 +139,7 @@ describe('computeSummarySplit', () => {
 
 describe('computeDoZaplatyRM', () => {
   it('materiały added at derived netto (net) and raw brutto (gross); wpłaty at face value', () => {
-    const r = computeDoZaplatyRM(1000, 300, 123, 0.23)
+    const r = computeDoZaplatyRM(1000, 300, justGross(123), 0.23)
     // netto: robocizna 1000 − wpłaty 300 + materiały 100 (derived).
     expect(r.net).toBeCloseTo(800)
     // brutto: robocizna 1000 → 1230, − wpłaty 300 + materiały 123 (raw brutto).
@@ -160,12 +147,12 @@ describe('computeDoZaplatyRM', () => {
   })
 
   it('zero zaliczki: equals Łącznie (robocizna + materiały netto)', () => {
-    const r = computeDoZaplatyRM(1000, 0, 123, 0.23)
+    const r = computeDoZaplatyRM(1000, 0, justGross(123), 0.23)
     expect(r.net).toBeCloseTo(1100)
   })
 
   it('zaliczki exceeding R + M goes negative (overpaid)', () => {
-    const r = computeDoZaplatyRM(1000, 1800, 123, 0.23)
+    const r = computeDoZaplatyRM(1000, 1800, justGross(123), 0.23)
     expect(r.net).toBeCloseTo(1000 - 1800 + 100)
     expect(r.gross).toBeCloseTo(1230 - 1800 + 123)
   })
@@ -183,10 +170,15 @@ describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () 
     const vat = 0.23
 
     const sumaPracNet = laborCostsNetFromKosztorys + rabatNet // 1000, pre-rabat
-    const { combined } = computeSummarySplit(sumaPracNet, materialsGross, vat)
+    const { combined } = computeSummarySplit(sumaPracNet, justGross(materialsGross), vat)
     const rabat = moneyPair(rabatNet, vat)
     const wplaty = faceValue(wplatyNet)
-    const doZaplaty = computeDoZaplatyRM(laborCostsNetFromKosztorys, wplatyNet, materialsGross, vat)
+    const doZaplaty = computeDoZaplatyRM(
+      laborCostsNetFromKosztorys,
+      wplatyNet,
+      justGross(materialsGross),
+      vat,
+    )
 
     expect(combined.net - rabat.net - wplaty.net).toBeCloseTo(doZaplaty.net)
     expect(combined.gross - rabat.gross - wplaty.gross).toBeCloseTo(doZaplaty.gross)
@@ -204,7 +196,7 @@ describe('computeMixedSettlement (tryb mieszany)', () => {
   const materialsGross = 369 // netto = 300 after VAT strip (369 / 1.23)
 
   it('netto section: Łącznie = robocizna + materiały netto, minus wpłaty netto', () => {
-    const s = computeMixedSettlement(robocizna, materialsGross, vat, 400, 0)
+    const s = computeMixedSettlement(robocizna, justGross(materialsGross), vat, 400, 0)
     expect(s.robocizna).toBeCloseTo(700)
     expect(s.materialy).toBeCloseTo(300)
     expect(s.combinedNet).toBeCloseTo(1000)
@@ -212,26 +204,26 @@ describe('computeMixedSettlement (tryb mieszany)', () => {
   })
 
   it('brutto section: only the still-owed netto is grossed, then wpłaty brutto pay it down', () => {
-    const s = computeMixedSettlement(robocizna, materialsGross, vat, 400, 200)
+    const s = computeMixedSettlement(robocizna, justGross(materialsGross), vat, 400, 200)
     expect(s.resztaGross).toBeCloseTo(600 * 1.23) // Do rozliczenia netto + VAT
     expect(s.doZaplatyGross).toBeCloseTo(600 * 1.23 - 200) // − wpłaty brutto
   })
 
   it('no wpłaty netto: full Łącznie is grossed onto the invoice', () => {
-    const s = computeMixedSettlement(robocizna, materialsGross, vat, 0, 0)
+    const s = computeMixedSettlement(robocizna, justGross(materialsGross), vat, 0, 0)
     expect(s.doRozliczeniaNet).toBeCloseTo(1000)
     expect(s.resztaGross).toBeCloseTo(1230)
     expect(s.doZaplatyGross).toBeCloseTo(1230)
   })
 
   it('over-paying netto past Łącznie: Do rozliczenia netto goes negative (no clamp)', () => {
-    const s = computeMixedSettlement(robocizna, materialsGross, vat, 1500, 0)
+    const s = computeMixedSettlement(robocizna, justGross(materialsGross), vat, 1500, 0)
     expect(s.doRozliczeniaNet).toBeCloseTo(-500)
     expect(s.resztaGross).toBeCloseTo(-500 * 1.23)
   })
 
   it('vatRate = 0: no VAT — Reszta brutto equals Do rozliczenia netto', () => {
-    const s = computeMixedSettlement(700, 300, 0, 400, 100)
+    const s = computeMixedSettlement(700, justGross(300), 0, 400, 100)
     expect(s.materialy).toBeCloseTo(300) // no VAT to strip
     expect(s.doRozliczeniaNet).toBeCloseTo(600)
     expect(s.resztaGross).toBeCloseTo(600)
@@ -239,7 +231,7 @@ describe('computeMixedSettlement (tryb mieszany)', () => {
   })
 
   it('materiały reduction overrides the VAT strip for the netto figure', () => {
-    const s = computeMixedSettlement(700, 1000, vat, 0, 0, true, 0.1)
+    const s = computeMixedSettlement(700, justGross(1000), vat, 0, 0, true, 0.1)
     expect(s.materialy).toBeCloseTo(900) // 1000 × (1 − 0.1)
     expect(s.combinedNet).toBeCloseTo(1600)
   })
@@ -271,5 +263,87 @@ describe('bucketDepositsByPlane', () => {
   it('empty list yields zeroed buckets', () => {
     const b = bucketDepositsByPlane([])
     expect(b).toEqual({ paidNet: 0, paidGross: 0 })
+  })
+})
+
+// GUARDS B1 / B5 — the netto expense type. The whole reason the two buckets are separate props is
+// that the global „wszystko netto" toggle may reach ONE of them. These pin the seam by differencing
+// against an identical composition with nothing billed netto, so they read the netto bucket's
+// contribution directly rather than a hand-computed total.
+describe('the netto-billed bucket is frozen against the materiały toggle', () => {
+  const VAT = 0.23
+  const REDUCTION = 0.08
+  const NET_BILLED = 1000
+  const GROSS_BASE = 123
+
+  it('B1: at a −8% toggle the netto bucket contributes its full amount, not ×0.92', () => {
+    const base = computeSummarySplit(1000, justGross(GROSS_BASE), VAT, true, REDUCTION)
+    const withNet = computeSummarySplit(
+      1000,
+      { grossBase: GROSS_BASE, netBilled: NET_BILLED },
+      VAT,
+      true,
+      REDUCTION,
+    )
+    expect(withNet.combined.net - base.combined.net).toBeCloseTo(NET_BILLED)
+    expect(withNet.combined.net - base.combined.net).not.toBeCloseTo(NET_BILLED * (1 - REDUCTION))
+  })
+
+  it('the VAT-strip default cannot reach it either', () => {
+    const base = computeSummarySplit(1000, justGross(GROSS_BASE), VAT)
+    const withNet = computeSummarySplit(1000, { grossBase: GROSS_BASE, netBilled: NET_BILLED }, VAT)
+    expect(withNet.combined.net - base.combined.net).toBeCloseTo(NET_BILLED)
+  })
+
+  it('both axes: a netto expense raises Do zapłaty .net AND .gross by exactly its netAmount', () => {
+    const base = computeDoZaplatyRM(1000, 300, justGross(GROSS_BASE), VAT, true, REDUCTION)
+    const withNet = computeDoZaplatyRM(
+      1000,
+      300,
+      { grossBase: GROSS_BASE, netBilled: NET_BILLED },
+      VAT,
+      true,
+      REDUCTION,
+    )
+    expect(withNet.net - base.net).toBeCloseTo(NET_BILLED)
+    expect(withNet.gross - base.gross).toBeCloseTo(NET_BILLED)
+  })
+
+  it('udziały still sum to 1 — the bucket lands in the denominator, not after the shares', () => {
+    const p = computeSummarySplit(
+      1000,
+      { grossBase: GROSS_BASE, netBilled: NET_BILLED },
+      VAT,
+      true,
+      REDUCTION,
+    )
+    const materialy = summaryLineMaterials(
+      { grossBase: GROSS_BASE, netBilled: NET_BILLED },
+      p.combined.net,
+      VAT,
+      true,
+      REDUCTION,
+    )
+    expect(p.laborCosts.share + materialy.share).toBeCloseTo(1)
+    expect(p.combined.share).toBe(1)
+  })
+
+  it('B5: the aggregate row carries the stored netAmount unrounded — list and summary agree', () => {
+    const odd = 1234.56
+    const withNet = summaryLineMaterials({ grossBase: 0, netBilled: odd }, 0, VAT, true, REDUCTION)
+    expect(withNet.net).toBe(odd)
+    expect(withNet.gross).toBe(odd)
+  })
+
+  it('tryb mieszany sees it too — the netto section is not a separate composition', () => {
+    const base = computeMixedSettlement(700, justGross(369), VAT, 400, 0)
+    const withNet = computeMixedSettlement(
+      700,
+      { grossBase: 369, netBilled: NET_BILLED },
+      VAT,
+      400,
+      0,
+    )
+    expect(withNet.combinedNet - base.combinedNet).toBeCloseTo(NET_BILLED)
   })
 })

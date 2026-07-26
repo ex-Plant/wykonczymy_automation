@@ -1,8 +1,9 @@
-import { needsExpenseCategory, type TransferTypeT } from '@/lib/constants/transfers'
+import { billsNetAmount, needsExpenseCategory, type TransferTypeT } from '@/lib/constants/transfers'
 
 type FormLineItemT = {
   description: string
   amount: string
+  netAmount: string
   invoiceNote: string
   category: string
   expenseCategory: string
@@ -11,6 +12,7 @@ type FormLineItemT = {
 type PayloadLineItemT = {
   description: string
   amount: number
+  netAmount: number | undefined
   invoiceNote: string | undefined
   category: number | undefined
   expenseCategory: number | undefined
@@ -26,6 +28,10 @@ export function mapLineItem(
   return {
     description: item.description,
     amount: Number(item.amount),
+    // On any other type a persisted netAmount would sit unread — and a later type change would
+    // silently start billing it.
+    netAmount:
+      billsNetAmount(type) && item.netAmount ? Number(item.netAmount) : undefined,
     invoiceNote: item.invoiceNote || undefined,
     category: item.category ? Number(item.category) : undefined,
     expenseCategory:

@@ -15,6 +15,7 @@ import {
   EXPENSE_CATEGORY_LABEL,
   SETTLED_TYPE,
   VAT_PLANE_LABELS,
+  billsNetAmount,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
@@ -37,15 +38,21 @@ const allColumns = [
     id: 'amount',
     header: 'Kwota',
     cell: (info) => {
-      const { type, cancelled, settled } = info.row.original
+      const { type, cancelled, settled, netAmount } = info.row.original
       const isMuted = cancelled || type === 'CANCELLATION'
       const color = settled ? SETTLED_TYPE.color : TRANSFER_TYPE_COLORS[type]
+      // Brutto stays the primary figure: this column is summed against the kasa balance, and only
+      // the amount that left the register reconciles there.
+      const showsNet = billsNetAmount(type) && netAmount !== null
       return (
         <span
-          className="font-medium"
+          className="flex flex-col font-medium"
           style={isMuted ? undefined : { color: `var(--color-${color})` }}
         >
           {formatPLN(info.getValue())}
+          {showsNet && (
+            <span className="text-muted-foreground text-xs">netto {formatPLN(netAmount)}</span>
+          )}
         </span>
       )
     },

@@ -1,9 +1,10 @@
 ---
 change_id: netto-expense-type
 title: Netto investment-expense type (spike)
-status: planned
+status: impl_reviewed
 created: 2026-07-24
-updated: 2026-07-24
+updated: 2026-07-26
+branch: konradantonik/ex-573-transfer-type-spec-table
 archived_at: null
 ---
 
@@ -14,11 +15,18 @@ second stored `netAmount`: the expense leaves the register at brutto (`amount`) 
 at netto (`netAmount`, immutable, `netAmount ≤ amount`). Design + resolved decisions:
 `design.md`. Plan: `plan.md` / `plan-brief.md`. Guards B1–B5 + B7. Kosztorys/spike data is throwaway.
 
-**Blocked on EX-573** (`context/changes/2026-07-25-transfer-type-spec-table/`) — the transfer-type
-predicate sets become one compile-checked `TRANSFER_SPECS` table first, so Phase 1 shrinks to adding
-one row instead of visiting ~12 membership arrays. That refactor also makes the `canBeSettled` ≠
-`isExpensesTabType` carve-out (B4) a compile error rather than a silent marża leak.
+**Unblocked 2026-07-25** — EX-573 has landed (`context/changes/2026-07-25-transfer-type-spec-table/`,
+status `implemented`). The transfer-type predicate sets are now one compile-checked
+`TRANSFER_TYPE_SPECS` table, so Phase 1 is a single row rather than ~12 membership arrays, and the
+B4 carve-out is the `settleable: false` column instead of a hand-written exclusion.
 
-EX-573 deliberately leaves the `billedAmount: 'amount' | 'netAmount'` column to **this** change:
-adding it here removes the hardcoded type-name `if` that Phase 2 would otherwise mirror across
-`deriveFinancials` and `deriveCategoryBreakdowns`. Fold it into Phase 2 when replanning.
+`plan.md` §1–§2 were rewritten for the table on the same day. They also resolve the two columns the
+pre-EX-573 plan could not name: `financialBucket: 'materialsNet'` (a distinct bucket, so the global
+toggle structurally cannot double-cut the netto) and the `billedAmount: 'amount' | 'netAmount'`
+column EX-573 deliberately left to this change. `design.md` predates the table and is superseded on
+those mechanics — B4 carries a note; read `plan.md` for what to actually build.
+
+**Review gate 2026-07-26** — `review-gate.md`: 19 findings, 0 open boxes (10 fixed, 4 dismissed,
+2 dropped, 1 skipped, 1 filed as EX-576 for the owed E2E). Three 🔴 client-facing money errors were
+caught and fixed (the „Wydatki inwestycyjne" list, the owner's sheet sync, and the settled-netto
+category divergence) — two of them plan gaps `plan.md` never named. Unit suite 1643 green, parity green.

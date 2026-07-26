@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
-import { getAmountError, refineAmount, refineDate } from '@/lib/utils/validation'
+import {
+  getAmountError,
+  getNetAmountError,
+  refineAmount,
+  refineDate,
+} from '@/lib/utils/validation'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
 import {
   validateTransferFields,
@@ -9,6 +14,18 @@ import {
 } from '@/lib/schemas/transfer'
 
 export { createTransferSchema }
+
+function refineNetAmount(
+  item: { amount: number; netAmount?: number },
+  type: string,
+  ctx: z.RefinementCtx,
+  index: number,
+) {
+  const error = getNetAmountError(item.netAmount, item.amount, type)
+  if (error) {
+    ctx.addIssue({ code: 'custom', message: error, path: ['lineItems', index, 'netAmount'] })
+  }
+}
 
 /**
  * Client-side form validation schema.
@@ -45,6 +62,11 @@ const lineItemClientSchema = z.object({
   id: z.string(),
   description: z.string(),
   amount: z.string(),
+  // `.catch` not `.optional()`: a recovery snapshot persisted before the netto type existed has no
+  // netAmount and must still parse, but the form's value type declares it required — an optional
+  // input type would no longer satisfy TanStack's validator slot. The per-row refine below is what
+  // makes it required on the type that bills at it.
+  netAmount: z.string().catch(''),
   invoiceNote: z.string(),
   category: z.string(),
   expenseCategory: z.string(),
@@ -98,6 +120,12 @@ export const bulkExpenseFormSchema = z
           path: ['lineItems', index, 'amount'],
         })
       }
+      refineNetAmount(
+        { amount: Number(item.amount), netAmount: item.netAmount ? Number(item.netAmount) : undefined },
+        data.type,
+        ctx,
+        index,
+      )
     })
     validateLineItemCategories(data.type, data.lineItems, ctx, !!data.investment)
   })
@@ -120,6 +148,7 @@ export const createBulkExpenseSchema = z
         z.object({
           description: z.string(),
           amount: z.number(),
+          netAmount: z.number().optional(),
           invoiceNote: z.string().optional(),
           category: z.number().positive().optional(),
           expenseCategory: z.number().positive().optional(),
@@ -146,6 +175,7 @@ export const createBulkExpenseSchema = z
           path: ['lineItems', index, 'amount'],
         })
       }
+      refineNetAmount(item, data.type, ctx, index)
     })
 
     validateLineItemCategories(data.type, data.lineItems, ctx, !!data.investment)

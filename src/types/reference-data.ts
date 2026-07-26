@@ -69,14 +69,19 @@ export type DepositTransactionRowT = {
 }
 
 // One materiały (Wydatki inwestycyjne) transaction for the Podsumowanie's wydatki list — an
-// INVESTMENT_EXPENSE / CORRECTION row. Sourced from the existing `findTransfersRaw` fetch; the
-// expense-category `label` is resolved at the page from reference data (like worker names on the
-// payout list). `settled` splits the client-facing „Wydatki inwestycyjne" (false — Σ ===
-// materialsGross) from the owner-only „Materiały wliczone w robociznę" (true) behind the list toggle.
+// INVESTMENT_EXPENSE / INVESTMENT_EXPENSE_NET / CORRECTION row. Sourced from the existing
+// `findTransfersRaw` fetch; the expense-category `label` is resolved at the page from reference
+// data (like worker names on the payout list). `settled` splits the client-facing „Wydatki
+// inwestycyjne" (false) from the owner-only „Materiały wliczone w robociznę" (true) behind the
+// list toggle.
 export type MaterialTransactionRowT = {
   id: number
   date: string
+  // Brutto — what left the kasa. `billed` is what the investor is charged for this row, and the
+  // two differ only on the netto type; Σ(billed) over the unsettled set is the figure that
+  // reconciles with the breakdown above the list.
   amount: number
+  billed: number
   label: string
   description: string | null
   settled: boolean

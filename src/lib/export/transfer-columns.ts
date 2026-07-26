@@ -1,4 +1,5 @@
 import {
+  billsNetAmount,
   TRANSFER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
   EXPENSE_CATEGORY_LABEL,
@@ -17,7 +18,15 @@ type ColumnDefT = {
 export const TRANSFER_EXPORT_COLUMNS: Record<string, ColumnDefT> = {
   id: { label: 'ID', getValue: (r) => `#${r.id}` },
   date: { label: 'Data', getValue: (r) => formatPLDate(r.date) },
-  amount: { label: 'Kwota', getValue: (r) => formatPLN(r.amount) },
+  amount: {
+    label: 'Kwota',
+    // Mirrors the table cell: brutto is the primary figure (it reconciles with the kasa), with the
+    // billed netto appended so an exported netto row can't be read as costing the client its brutto.
+    getValue: (r) =>
+      billsNetAmount(r.type) && r.netAmount !== null
+        ? `${formatPLN(r.amount)} (netto ${formatPLN(r.netAmount)})`
+        : formatPLN(r.amount),
+  },
   investment: { label: 'Inwestycja', getValue: (r) => r.investmentName },
   type: {
     label: 'Typ',

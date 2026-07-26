@@ -18,7 +18,7 @@ import {
 } from '@/lib/db/sum-transfers'
 import { getDb } from '@/lib/db/get-db'
 import { findTransfersRaw } from '@/lib/queries/transfers'
-import { EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
+import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
@@ -276,8 +276,9 @@ export async function fetchDepositTransactionsForInvestment(
 
 /**
  * The individual materiały rows for the Podsumowanie's wydatki list — this investment's
- * INVESTMENT_EXPENSE + CORRECTION, both settled states, so the list toggle can split „Wydatki
- * inwestycyjne" (unsettled, Σ === materialsGross) from „Materiały wliczone w robociznę" (settled).
+ * INVESTMENT_EXPENSE + INVESTMENT_EXPENSE_NET + CORRECTION, both settled states, so the list toggle
+ * can split „Wydatki inwestycyjne" (unsettled, Σ billed === totalMaterialCosts) from „Materiały
+ * wliczone w robociznę" (settled).
  *
  * Shared by the owner's editor page and the unauthenticated client share read, which is why the
  * category-name join lives here rather than at either page: the two surfaces must label a row
@@ -307,6 +308,11 @@ export async function fetchMaterialTransactionsForInvestment(
     id: Number(doc.id),
     date: String(doc.date),
     amount: Number(doc.amount),
+    billed: billedAmountFor(
+      doc.type,
+      Number(doc.amount),
+      doc.netAmount == null ? null : Number(doc.netAmount),
+    ),
     description: doc.description != null ? String(doc.description) : null,
     settled: doc.settled === true,
     label:

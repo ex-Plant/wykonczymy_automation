@@ -68,10 +68,13 @@ export default async function InvestmentKosztorysV2Page({
   // breakdown figure mirrors v1, which counts unsettled only. (The wydatki LIST is a separate
   // surface and does carry both settled states.)
   const financials = deriveFinancials(typeDistribution, breakdowns.categoryCosts)
-  const materialsGross = financials.totalMaterialCosts
-  // v1 client-facing „Materiały" split by expense category; Σ === materialsGross, so the
+  // v1 client-facing „Materiały" split by expense category; Σ === totalMaterialCosts, so the
   // podsumowanie stays byte-identical to the investment page's materiały.
-  const materialyBreakdown = buildMaterialyBreakdown(financials, refData.expenseCategories)
+  const materialyBreakdown = buildMaterialyBreakdown(
+    financials,
+    refData.expenseCategories,
+    breakdowns.netCategoryCosts,
+  )
   // „Wpłaty" = only INVESTOR_DEPOSIT rows — the same base the deposit list, Wpłaty tab, plane pie,
   // and Mieszane draw (COMPANY_FUNDING / OTHER_DEPOSIT are legacy and stay out of client wpłaty, per
   // getDepositTransactionsForInvestment). Drives the podsumowanie „Wpłaty"/„Do zapłaty".
@@ -92,7 +95,8 @@ export default async function InvestmentKosztorysV2Page({
       investmentId={investmentId}
       tree={tree}
       investmentName={investment.name}
-      materialsGross={materialsGross}
+      materialsGrossBase={financials.materialsGrossBase}
+      materialsNetBilled={financials.materialsNetBilled}
       materialyBreakdown={materialyBreakdown}
       wplatyNet={wplatyNet}
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation

@@ -25,18 +25,34 @@ function uncategorisedRemainder(financials: InvestmentFinancialsT): number {
 /** The kosztorys „Materiały" split — one row per expense category (v1 mirror parity:
  *  Materiały budowlane / wykończeniowe / Pozostałe koszty), plus the uncategorised remainder,
  *  so Σ rows === totalMaterialCosts and the podsumowanie reconciles with the investment page's
- *  materiały byte-for-byte. */
+ *  materiały byte-for-byte.
+ *
+ *  A category billed partly at netto splits into two rows: the brutto remainder and a frozen
+ *  „… netto" row. `netCategoryCosts` is a subset of `financials.categoryCosts`, so subtracting
+ *  it keeps the Σ invariant intact — the split only decides which rows the toggle may reprice. */
 export function buildMaterialyBreakdown(
   financials: InvestmentFinancialsT,
   expenseCategories: { id: number; name: string }[],
+  netCategoryCosts: CategoryCostT[] = [],
 ): MaterialyBreakdownRowT[] {
-  const rows: MaterialyBreakdownRowT[] = expenseCategories.map((cat) => ({
-    id: cat.id,
-    label: cat.name,
-    net: costForCategory(financials.categoryCosts, cat.id),
-  }))
+  const rows: MaterialyBreakdownRowT[] = expenseCategories.flatMap((cat) => {
+    const billed = costForCategory(financials.categoryCosts, cat.id)
+    const netBilled = costForCategory(netCategoryCosts, cat.id)
+    const grossRow: MaterialyBreakdownRowT = {
+      id: cat.id,
+      label: cat.name,
+      net: billed - netBilled,
+      origin: 'gross',
+    }
+    if (netBilled === 0) return [grossRow]
+    return [
+      grossRow,
+      { id: cat.id, label: `${cat.name} netto`, net: netBilled, origin: 'netBilled' as const },
+    ]
+  })
   const uncategorised = uncategorisedRemainder(financials)
-  if (uncategorised !== 0) rows.push({ id: null, label: KOREKTA_LABEL, net: uncategorised })
+  if (uncategorised !== 0)
+    rows.push({ id: null, label: KOREKTA_LABEL, net: uncategorised, origin: 'gross' })
   return rows
 }
 
