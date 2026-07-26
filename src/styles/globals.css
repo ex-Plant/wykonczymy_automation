@@ -282,6 +282,25 @@
   padding-bottom: 3rem;
 }
 
+/* dsg virtualizes rows with @tanstack/react-virtual keyed by row id, so a row scrolling into view is
+   a fresh DOM node — the keyframe replays on every mount and softens the hard pop-in. The header row
+   is excluded — it never unmounts. */
+@keyframes kosztorys-row-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.kosztorys-grid .dsg-row:not(.dsg-row-header) {
+  animation: kosztorys-row-in 500ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kosztorys-grid .dsg-row:not(.dsg-row-header) {
+    animation: none;
+  }
+}
+
 /* Retint dsg's native selection blue to the app's monochrome theme (border = primary,
    faint primary-tinted fill), so the selection rect / active cell / row+col markers all
    track light/dark via the theme tokens instead of a hardcoded rgb(69,128,230). */
