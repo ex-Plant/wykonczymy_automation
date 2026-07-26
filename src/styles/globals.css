@@ -340,6 +340,17 @@
     1px 1px var(--dsg-border-color);
 }
 
+/* The band opening a section: a wash of its hue across every cell, so the group header reads as one
+   bar even though dsg paints each cell separately. Outranks the gutter rule and the transparent
+   Akcje cell on specificity, which is what keeps the wash unbroken across the row. */
+.kosztorys-grid .dsg-row.kosztorys-section-header .dsg-cell {
+  background: color-mix(
+    in oklab,
+    var(--section-rail, var(--color-muted-foreground)) 18%,
+    var(--color-background)
+  );
+}
+
 .kosztorys-grid .dsg-row.kosztorys-section-start .dsg-cell-gutter {
   box-shadow:
     inset -3px 0 0 var(--section-rail, transparent),

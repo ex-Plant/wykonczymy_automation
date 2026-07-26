@@ -1,13 +1,21 @@
 'use client'
 
 import { type CellProps, type Column } from 'react-datasheet-grid'
+import {
+  SectionHeaderCell,
+  sectionHeaderSlot,
+  type SectionHeaderContextT,
+  type SectionHeaderSlotT,
+} from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { formatNet } from '@/lib/kosztorys/format'
+import { isSectionHeaderRow } from '@/lib/kosztorys/section-header-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // A single „Razem" row pinned as the grid's last row — the familiar spreadsheet SUM under each
 // column. It rides the grid's own layout, so column alignment and horizontal scroll come for free;
-// the price of that is that dsg renders EVERY column's cell against it, so `withTotalsRow` wraps each
-// column to render a baked total on this row (and its normal cell on every real row).
+// the price of that is that dsg renders EVERY column's cell against it, so `withSyntheticRows` wraps
+// each column to render a baked total on this row (and its normal cell on every real row). The
+// section bands (lib/kosztorys/section-header-rows.ts) are the same mechanism, one branch further.
 export const TOTALS_ROW_ID = -1
 // A blank spacer row directly above „Razem", separating the data rows from the totals.
 export const SPACER_ROW_ID = -2
@@ -35,42 +43,59 @@ function TotalsRowCell({ content }: { content: string }) {
   )
 }
 
-// Per-column totals metadata carried on the wrapped column's `columnData`, not baked into a closure.
-// `base` is the wrapped column's own cell (its columnData type varies per column — keyColumn,
-// floatColumn, …); Column's default C already widens it, so no explicit `any` is needed.
-type TotalsColumnDataT = {
+// Per-column synthetic-row metadata carried on the wrapped column's `columnData`, not baked into a
+// closure. `base` is the wrapped column's own cell (its columnData type varies per column —
+// keyColumn, floatColumn, …); Column's default C already widens it, so no explicit `any` is needed.
+type SyntheticColumnDataT = {
   content: string
+  slot: SectionHeaderSlotT
+  sectionHeader: SectionHeaderContextT
   base: Column<KosztorysV2RowT>['component']
 }
 
 // A SINGLE stable component reused for every wrapped column. It must be module-level, not a fresh
-// closure per `withTotalsRow` call: `columns` is rebuilt on every render (harmlessly — dsg's own
+// closure per `withSyntheticRows` call: `columns` is rebuilt on every render (harmlessly — dsg's own
 // `keyColumn` keeps a stable `component` across those rebuilds), so a per-call closure would give
 // every cell a new `component` identity each render, and dsg remounts a cell whose component type
 // changed — tearing down the focused <input> mid-edit and dropping all but the last character typed.
 // The per-column total + underlying cell ride on `columnData` (a prop → re-render, not remount),
 // exactly the indirection `keyColumn` uses to stay stable.
-function TotalsAwareCell(props: CellProps<KosztorysV2RowT, TotalsColumnDataT>) {
-  if (props.rowData.id === SPACER_ROW_ID) return <div className="bg-background size-full" />
-  if (props.rowData.id === TOTALS_ROW_ID)
-    return <TotalsRowCell content={props.columnData.content} />
-  const Base = props.columnData.base
+function SyntheticAwareCell(props: CellProps<KosztorysV2RowT, SyntheticColumnDataT>) {
+  const { rowData, columnData } = props
+  if (rowData.id === SPACER_ROW_ID) return <div className="bg-background size-full" />
+  if (rowData.id === TOTALS_ROW_ID) return <TotalsRowCell content={columnData.content} />
+  if (isSectionHeaderRow(rowData.id))
+    return (
+      <SectionHeaderCell
+        rowData={rowData}
+        slot={columnData.slot}
+        context={columnData.sectionHeader}
+      />
+    )
+  const Base = columnData.base
   return Base ? <Base {...props} /> : null
 }
 
-// Wrap a column so it renders the baked total on the totals row and its normal cell everywhere else.
-// One pass over the column list replaces N per-column edits.
-export function withTotalsRow(
+// Wrap a column so it renders the baked total on the totals row, its piece of the band on a section
+// header row, and its normal cell everywhere else. One pass over the column list replaces N
+// per-column edits.
+export function withSyntheticRows(
   column: Column<KosztorysV2RowT>,
-  totals: Map<string, number>,
+  { totals, sectionHeader }: { totals: Map<string, number>; sectionHeader: SectionHeaderContextT },
 ): Column<KosztorysV2RowT> {
   const total = column.id != null ? totals.get(column.id) : undefined
   const content = column.id === LABEL_COLUMN_ID ? 'Razem' : total != null ? formatNet(total) : ''
   return {
     ...column,
-    component: TotalsAwareCell as Column<KosztorysV2RowT>['component'],
+    component: SyntheticAwareCell as Column<KosztorysV2RowT>['component'],
     // Merge over the wrapped column's own columnData so a delegated base cell (e.g. keyColumn's
     // KeyComponent, which reads columnData.key/original) still finds what it needs.
-    columnData: { ...column.columnData, content, base: column.component },
+    columnData: {
+      ...column.columnData,
+      content,
+      slot: sectionHeaderSlot(column.id),
+      sectionHeader,
+      base: column.component,
+    },
   }
 }

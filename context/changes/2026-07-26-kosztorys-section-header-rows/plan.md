@@ -473,16 +473,16 @@ localStorage column map, and it is deliberately left sparse so an explicit choic
 
 #### Automated
 
-- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-header-rows.test.ts`
-- [x] 1.2 Type checking passes: `pnpm typecheck`
+- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-header-rows.test.ts` — f9c825f1
+- [x] 1.2 Type checking passes: `pnpm typecheck` — f9c825f1
 
 ### Phase 2: Rendering the band
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm typecheck`
-- [ ] 2.2 Linting passes: `pnpm lint`
-- [ ] 2.3 Existing unit suite passes: `pnpm test`
+- [x] 2.1 Type checking passes: `pnpm typecheck`
+- [x] 2.2 Linting passes: `pnpm lint`
+- [x] 2.3 Existing unit suite passes: `pnpm test`
 
 ### Phase 3: Numbering and collapse
 
