@@ -1,11 +1,11 @@
 ---
 change_id: netto-expense-type
 title: Netto investment-expense type (spike)
-status: impl_reviewed
+status: archived
 created: 2026-07-24
 updated: 2026-07-26
 branch: konradantonik/ex-573-transfer-type-spec-table
-archived_at: null
+archived_at: 2026-07-26T06:27:25Z
 ---
 
 ## Notes

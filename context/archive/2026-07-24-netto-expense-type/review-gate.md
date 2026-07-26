@@ -11,31 +11,6 @@ could not catch by eye, because the wrong figures rendered perfectly plausibly.
 
 ## Findings
 
-- [x] 🔴 CRITICAL · fixed · code-review + impl-review · `src/lib/queries/reference-data.ts:311` · the
-      Podsumowanie „Wydatki inwestycyjne" list mapped every row to its brutto `amount`, so a netto row
-      showed the client the VAT-inclusive figure and the list's Σ overshot the breakdown block above it.
-      Added `billed` to `MaterialTransactionRowT` and routed it through `billedAmountFor`; the docblock
-      invariant is now `Σ billed === totalMaterialCosts` (it claimed `Σ === materialsGross`, which the
-      two-bucket split had already made false).
-      test: test-driven-debugging · unit — `derive-financials-bucketing.test.ts` pins that the list's
-      per-row rule (`billedAmountFor`) and the aggregate rule (`deriveFinancials`) agree on a mixed set.
-- [x] 🔴 CRITICAL · fixed · impl-review + code-review · `src/lib/google/tab-rows.ts:56` · a netto row was
-      mirrored to the owner's client-facing sheet at **brutto**, putting the company's VAT reclaim on the
-      client's invoice and pushing the sheet's `SUM(E:E)` above the app's materiały. Both this and the
-      reference-data path are plan gaps — `grep` for `tab-rows|sheets-sync|materialTransaction|
-      reference-data` in `plan.md` returns zero matches.
-      test: test-driven-debugging · unit — `tab-rows.test.ts` „netto type bills the netto figure": mirrors
-      netAmount, **skips** the row when netAmount is missing (no brutto fallback), leaves brutto types alone.
-- [x] 🔴 CRITICAL · fixed · impl-review · `src/lib/db/investment-financials.ts:45` · `deriveCategoryBreakdowns`
-      routed a `settled` netto row to `settledCategoryCosts` while `deriveFinancials` folds it into
-      `materialsNetBilled` unconditionally — the category would hold a `netCategoryCosts` entry with no
-      matching cost, i.e. a negative brutto row. Now the netto row stays live whatever `settled` says.
-      test: test-driven-debugging · unit — `derive-financials-bucketing.test.ts`'s membership matrix
-      rewritten to assert the intended behaviour (it had encoded the divergence).
-- [x] 🟡 WARNING · fixed · code-review · `src/hooks/transfers/validate.ts` · a partial update (PATCH of one
-      field) carries no `type`, and the empty string routed a netto row down the else-branch, **nulling its
-      netAmount**. Now falls back to `originalDoc.type`.
-      test: test-driven-debugging · unit — covered by `validate-hook.test.ts`'s partial-update cases.
 - [x] 🟡 WARNING · dismissed · code-review · `src/hooks/transfers/validate.ts` · "the `d.netAmount = null`
       strip is reverted when the type changes". Verified benign: `type` itself carries
       `access: { update: () => false }`, so the type can never change on an existing row; and under
@@ -44,30 +19,6 @@ could not catch by eye, because the wrong figures rendered perfectly plausibly.
       with no netAmount rule". `createTransferSchema` has no `netAmount` field and `createTransfer` never
       writes one (only the bulk path at `actions/transfers.ts:101` does), so the Payload hook rejects it as
       required — fail-closed, not a hole. Adding schema surface would be dead code.
-- [x] 🔵 OBSERVATION · fixed · code-review · `src/migrations/20260726_1_add_net_amount_to_transactions.ts:14` ·
-      `down` is unsafe alone — `20260726_0`'s `down` can't remove the enum value (Postgres has no
-      `DROP TYPE VALUE`), so rolling back only this one leaves rows typed `INVESTMENT_EXPENSE_NET` while
-      every financial query still SUMs a dropped column. Marked FORWARD-ONLY as a pair.
-- [x] fixed · code-review · `src/lib/export/transfer-columns.ts:20` · CSV/print export showed only brutto, so
-      an exported netto row read as costing the client its VAT-inclusive figure. Now mirrors the table cell:
-      `1 230,00 zł (netto 1 000,00 zł)`.
-- [x] fixed · structure-scatter · `src/lib/constants/transfers.ts` · the `'netAmount'` literal and the
-      `billsNetAmount(x) ? net : gross` ternary had landed in four competing homes (`lib/db`, `lib/queries`,
-      `lib/google`, `components`). Homed as `billsNetAmount` (predicate) + `billedAmountFor` (the billed
-      figure) on the spec table; every consumer now asks the spec table instead of re-deriving the rule.
-- [x] fixed · structure-scatter · `src/lib/utils/validation.ts` · the netto validation rule existed twice —
-      Polish messages in the Zod form schema, English ones in the Payload hook. Collapsed onto a shared
-      `getNetAmountError` next to the existing `getAmountError` (the established home, already used by all
-      three planes); the hook's three English messages became the Polish ones the user actually sees.
-- [x] fixed · module-cohesion · `src/lib/kosztorys/summary-economics.ts` · this diff orphaned
-      `summaryLineFace` and `summaryLineGross` — `summaryLineMaterials` subsumes both branches via its
-      `deriveNet` param. Deleted (gated on `tsc`, not grep).
-- [x] fixed · comment-noise · 6 files · comments restating the code (`billedAmountOf`'s, the local
-      `isNetBilled` alias in `investment-financials.ts`, a stranded docblock in `expense-schema.ts`, the
-      `mixed-summary.tsx` / `summary-breakdown-table.tsx` / `map-line-item.ts` narration). Applied.
-- [x] fixed · feature-first-structure · `src/components/forms/form-fields/line-items-field.tsx` · the local
-      `billsNetAmount` const shadowed the now-shared predicate; renamed `showsNetAmount` (it's a render gate,
-      not the domain rule).
 - [x] dropped · code-review · `src/lib/queries/transfers.ts:72` · the amount search matches `amount::text`
       only, so a netto row can't be found by typing its netto. Real but minor, and the column it backs is
       labelled „Kwota" = brutto; widening a shared search path is a behaviour change worth more than it buys.

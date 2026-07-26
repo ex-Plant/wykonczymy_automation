@@ -210,7 +210,7 @@ one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
 
 ## EX-567 — netto investment-expense type (`INVESTMENT_EXPENSE_NET`)
 
-**In review** — all automated checks green (tsc 0, eslint 0 errors, 1625 unit tests, golden master
+**Archived 2026-07-26.** All automated checks green (tsc 0, eslint 0 errors, 1625 unit tests, golden master
 unmoved via `pnpm test:parity`). A new expense type „Wydatek inwestycyjny netto" carries **two** stored
 amounts: `amount` (brutto — what leaves the kasa) and `netAmount` (netto — what the investor is
 billed). The netto figure lands in its own **frozen** materiały bucket, so the global „wszystko netto
@@ -221,31 +221,6 @@ branch `konradantonik/ex-573-transfer-type-spec-table` (after EX-573's spec tabl
 (Kasa - Adam Orłowski), 5435 test DB (both migrations applied, kosztorys seeded via
 `seed-kosztorys.ts`), throwaway `:3010` dev server. Probe transaction **#4136** (brutto 1230 / netto
 1000, kategoria „Materiały budowlane") left in the test DB as evidence. All boxes pass.
-
-### Phase 1: Type + schema
-
-- [x] In the Payload admin, a transaction of type „Wydatek inwestycyjny netto" shows the `netAmount` field; every other type does not. _Verified: `/admin/collections/transactions/4136` renders „Kwota netto"; the `INVESTMENT_EXPENSE` row #2344 does not._
-- [x] Saving with `netAmount > amount` is rejected (server-side, admin panel included). _Verified at the API layer, not the admin form — `netAmount` is immutable by design (`access.update: () => false`), so the admin's „Kwota netto" input renders **disabled**. Driving `payload.update` with `overrideAccess` on #4136: `netAmount: 2000` → „Net amount cannot exceed the gross amount.", `netAmount: 0` → „Net amount must be greater than 0."; the row stayed 1230/1000._
-
-### Phase 2: Financial split (kasa / marża isolation)
-
-- [x] After adding a net-type expense of brutto 1230 / netto 1000, the **source register balance drops by 1230** (brutto), not 1000. _Verified: register 14 saldo 1290,99 → 60,99. The form's live „Saldo po transakcji" previewed the same brutto-driven 60,99._
-- [x] Bilans inwestora for that investment rises by **1000** (netto), not 1230. _Verified: „Materiały budowlane" 24 805,57 → 25 805,57 and „Bilans inwestora" −94,57 → −1094,57 — exactly 1000 on both._
-- [x] **Marża is unchanged** by the net-type expense (it is not settleable — it never reaches `totalSettled`). _Verified: 39 471,00 zł before and after._
-
-### Phase 3: Podsumowanie / toggle composition
-
-- [x] In Podsumowanie, the net-type expense appears as its **own** „‹kategoria› netto" row under its kategoria; the kategoria's brutto row drops by the same amount (Σ „Razem" unchanged). _Verified: „Materiały budowlane" 24 805,57 (unchanged) + „Materiały budowlane netto" 1000,00, Razem 26 223,57 = the investment page's material total._
-- [x] Turning on „wszystko netto −8%" leaves the netto row's figure **identical** (its Netto column equals its Brutto column); only the brutto rows are cut. _Verified at −8% and again at −20%: netto row 1000,00/1000,00 (Różnica 0) both times, while „Materiały budowlane" went 24 805,57 → 22 821,12 (×0,92) → 19 844,46 (×0,80). No double deduction._
-- [x] „Do zapłaty R+M" equals the bilans inwestora for the same investment, toggle on and off. _Verified as the **delta**, which is what the netto type governs — the two absolute figures differ by design (kosztorys robocizna 1940 vs the app's 110 871; the kosztorys plane is deliberately disconnected). „Do zapłaty" moved −110 854,32 → −109 854,32, i.e. exactly the 1000 netto, matching the bilans move._
-- [x] The udziały (%) column still sums to 100% with a net-type expense present. _Verified: „Struktura wydatków" 94,6 + 3,8 + 1,6 = 100; „Struktura kosztów" 8,4 + 91,6 = 100. Materiały in the overview (21 178,86 at −20%) equals the Wydatki tab's Razem netto._
-
-### Phase 4: Form + transaction list
-
-- [x] Picking type „Wydatek inwestycyjny netto" in „Nowy wydatek" reveals the **Netto** field per line item; switching to any other type hides it. _Verified in the dialog: the „Netto" label appears only on the netto type._
-- [x] Submitting with netto > brutto is blocked in the form with „Kwota netto nie może przekraczać kwoty brutto"; submitting with the netto field blank is blocked with „Kwota netto jest wymagana". _Verified: 1230/1500 and 1230/blank both refused with those exact messages, form stayed open._
-- [x] A valid submit persists **both** amounts, and the transaction list shows the row with brutto primary and „netto ‹kwota›" as a secondary line. _Verified: row #4136 stored `amount 1230, net_amount 1000, settled false`; the list cell reads „1230,00 zł" over „netto 1000,00 zł"._
-- [x] Rows of every other type are visually unchanged (no stray netto line). _Verified: the netto row's amount renders in its own colour (`rgb(96,150,255)`) against an ordinary investment expense's red (`rgb(239,68,68)`), and no other row gained a secondary line._
 
 ### Findings — 2026-07-26
 

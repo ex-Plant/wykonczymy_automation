@@ -1,10 +1,10 @@
 ---
 change_id: transfer-type-spec-table
 title: One spec table for transfer types, membership arrays derived
-status: implemented
+status: archived
 created: 2026-07-25
-updated: 2026-07-25
-archived_at: null
+updated: 2026-07-26
+archived_at: 2026-07-26T06:27:25Z
 branch: konradantonik/ex-573-transfer-type-spec-table
 worktree: .claude/worktrees/ex-573-spec-table
 ---
