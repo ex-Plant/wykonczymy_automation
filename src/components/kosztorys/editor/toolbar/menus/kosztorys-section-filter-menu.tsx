@@ -31,7 +31,7 @@ export function KosztorysSectionFilterMenu() {
       values={values}
       onValuesChange={onValuesChange}
       options={options}
-      label="Widok sekcji"
+      label="Sekcje"
       icon={ListFilter}
       searchable
       title="Filtruj sekcje"
