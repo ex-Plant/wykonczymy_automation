@@ -209,7 +209,11 @@ export function LineItemsField({
             {lineItemsField.state.value.map((item, index: number) => (
               <Fragment key={item.id}>
                 <div className="space-y-2">
-                  <div className="flex items-end gap-2">
+                  {/* Top-aligned, not bottom: every field here carries a label, so their inputs
+                    line up on their own — and a validation error growing under one field can no
+                    longer drag its neighbours (and the delete button) down a line. The label-less
+                    slots below pay for it with an mt-6 that clears a label + its gap. */}
+                  <div className="flex items-start gap-2">
                     <form.AppField name={`lineItems[${index}].amount`}>
                       {(field: AppFieldComponentsT) => (
                         <field.Input
@@ -253,7 +257,7 @@ export function LineItemsField({
                       />
                     )}
                     {failedIds?.has(item.id) && (
-                      <span className="text-destructive mb-2 shrink-0 text-xs whitespace-nowrap">
+                      <span className="text-destructive mt-8 shrink-0 text-xs whitespace-nowrap">
                         nie odczytano
                       </span>
                     )}
@@ -261,7 +265,7 @@ export function LineItemsField({
                       shows the loader in its slot and queued rows keep it disabled — removing a
                       row mid-generation shifts the array under in-flight extraction tasks (captured
                       index), landing a result on the wrong row. */}
-                    <div className="flex size-9 shrink-0 items-center justify-center">
+                    <div className="mt-6 flex size-9 shrink-0 items-center justify-center">
                       {generatingIds?.has(item.id) || ingestingIds?.has(item.id) ? (
                         <GradientSpinner />
                       ) : (

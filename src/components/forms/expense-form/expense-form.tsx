@@ -13,6 +13,7 @@ import { SubmitPill } from '@/components/forms/submit-pill'
 import {
   TRANSACTION_TRANSFER_TYPES,
   TRANSFER_TYPE_LABELS,
+  billsNetAmount,
   isDepositType,
   needsSourceRegister,
   showsInvestment,
@@ -312,7 +313,17 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         <div className="flex items-start gap-4">
           <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
             {(field) => (
-              <field.Select label="Typ wydatku" showError fieldClassName="min-w-0 flex-1">
+              <field.Select
+                className="mt-2"
+                label="Typ wydatku"
+                description={
+                  billsNetAmount(currentType)
+                    ? 'Z kasy schodzi kwota brutto, a klienta obciąża kwota netto — dlatego przy każdej pozycji podajesz obie.'
+                    : undefined
+                }
+                showError
+                fieldClassName="min-w-0 flex-1 mb-4 "
+              >
                 {TRANSACTION_TRANSFER_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {TRANSFER_TYPE_LABELS[t]}
