@@ -164,9 +164,17 @@ export function KosztorysEditorBody({
       figures,
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
+      moneyAxis,
       handlers: sectionHandlers,
     }
-  }, [subtotals, tree.vatRate, collapsedSectionIds, toggleSectionCollapsed, sectionHandlers])
+  }, [
+    subtotals,
+    tree.vatRate,
+    collapsedSectionIds,
+    toggleSectionCollapsed,
+    moneyAxis,
+    sectionHandlers,
+  ])
 
   const gridColumns = useMemo(
     () =>

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
 import { KosztorysSectionActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-section-actions-menu'
 import { formatNet } from '@/lib/kosztorys/format'
+import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -32,18 +33,20 @@ export type SectionHeaderContextT = {
   figures: Map<number, SectionHeaderFigureT>
   collapsedSectionIds: ReadonlySet<number>
   onToggleCollapsed: (sectionId: number) => void
+  // Which of the section's two figures the label carries — the money columns themselves are hidden
+  // per axis, so the band has to be told rather than infer it from the column it sits in.
+  moneyAxis: MoneyAxisT
   handlers?: SectionHeaderHandlersT
 }
 
 // Which piece of the band this column paints. The band spans no columns — each cell renders its own
-// piece under the column it sits in, so dsg's layout keeps the figure aligned with „Razem netto"
-// through horizontal scroll.
-export type SectionHeaderSlotT = 'label' | 'net' | 'gross' | 'actions' | 'blank'
+// piece under the column it sits in, which is why the money sits in the label slot: unlike „Razem",
+// whose figures line up under their own columns, the band's total belongs to the section name and
+// stays readable without scrolling right to find it.
+export type SectionHeaderSlotT = 'label' | 'actions' | 'blank'
 
 export function sectionHeaderSlot(columnId: string | undefined): SectionHeaderSlotT {
   if (columnId === 'description') return 'label'
-  if (columnId === 'net') return 'net'
-  if (columnId === 'gross') return 'gross'
   if (columnId === 'actions') return 'actions'
   return 'blank'
 }
@@ -54,6 +57,16 @@ function SectionDot() {
   return (
     <span className="size-2.5 shrink-0 rounded-full bg-(--section-rail,var(--color-muted-foreground))" />
   )
+}
+
+// Out of its own column the bare number would be ambiguous, so each figure names its plane. 'none'
+// never reaches here (the editor maps it to 'both'), but it must still resolve to no figure rather
+// than a wrong one.
+function bandMoney(figure: SectionHeaderFigureT, axis: MoneyAxisT): string {
+  const parts: string[] = []
+  if (axis === 'net' || axis === 'both') parts.push(`${formatNet(figure.net)} netto`)
+  if (axis === 'gross' || axis === 'both') parts.push(`${formatNet(figure.gross)} brutto`)
+  return parts.join(' · ')
 }
 
 export function SectionHeaderCell({
@@ -87,20 +100,30 @@ export function SectionHeaderCell({
         }}
         className="hover:bg-accent/50 flex size-full cursor-pointer items-center gap-2 px-2 text-lg font-semibold"
       >
-        <Chevron className="text-muted-foreground size-4 shrink-0" />
         <SectionDot />
         {handlers ? (
           <SectionNameCell
             rowData={rowData}
             onRename={handlers.onRename}
-            className="min-w-0 flex-1 px-0 text-lg font-semibold"
+            className="w-fit min-w-0 px-0 text-lg font-semibold"
             onClick={(event) => event.stopPropagation()}
           />
         ) : (
-          <span className="min-w-0 flex-1 truncate">{rowData.sectionName ?? ''}</span>
+          <span className="w-fit min-w-0 truncate">{rowData.sectionName ?? ''}</span>
         )}
-        <span className="text-muted-foreground shrink-0 text-xs font-normal">
-          {figure?.itemCount ?? 0} poz.
+        {/* Not flex-1 on the label: the chevron is the fold affordance, so it has to sit against the
+            name it folds rather than be pushed to the far edge by a greedy label. The money stack
+            takes the slack instead (ml-auto). */}
+        <Chevron className="text-muted-foreground size-4 shrink-0" />
+        {/* Counter under the figure, right-aligned: it is metadata about the section, not a peer of
+            its name, and it belongs to the money it qualifies — N positions for this much. */}
+        <span className="ml-auto flex shrink-0 flex-col items-end leading-tight">
+          {figure && (
+            <span className="text-base tabular-nums">{bandMoney(figure, context.moneyAxis)}</span>
+          )}
+          <span className="text-muted-foreground text-xs font-normal">
+            {figure?.itemCount ?? 0} poz.
+          </span>
         </span>
       </div>
     )
@@ -125,12 +148,5 @@ export function SectionHeaderCell({
     )
   }
 
-  if (slot === 'blank' || figure == null) return <div className="size-full" />
-
-  // Same weight and size as the „Razem" row's figures — both are totals, so they read at one glance.
-  return (
-    <div className="flex size-full items-center px-2 text-base font-semibold tabular-nums">
-      {formatNet(slot === 'net' ? figure.net : figure.gross)}
-    </div>
-  )
+  return <div className="size-full" />
 }
