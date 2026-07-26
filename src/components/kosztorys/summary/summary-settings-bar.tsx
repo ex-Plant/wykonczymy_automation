@@ -75,6 +75,8 @@ export function SummarySettingsBar() {
         hint={VAT_TIP}
         value={tree.vatRate * 100}
         valueClassName="text-foreground"
+        min={0}
+        max={100}
         onCommit={(n) => handleVatChange(n / 100)}
       />
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -97,6 +99,7 @@ export function SummarySettingsBar() {
                 label=""
                 value={globalDiscount.value}
                 valueClassName="text-chart-green"
+                min={0}
                 onCommit={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
               />
             ) : (

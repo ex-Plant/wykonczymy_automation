@@ -13,6 +13,12 @@ type PropsT = {
   placeholder?: number
   // Colours the value only; a direct color on the input overrides the muted colour the label inherits.
   valueClassName?: string
+  // Accepted range. An entry outside it is REJECTED here — the field snaps back to `value` and no
+  // commit fires — rather than travelling to the server action to come back as a Zod error toast.
+  // A bound the action already enforces (`vatRate` is `.min(0).max(1)`) belongs on the input too:
+  // the toast tells the user what they may not do only after they have already done it.
+  min?: number
+  max?: number
   onCommit: (n: number) => void
 }
 
@@ -24,11 +30,22 @@ export function DecimalField({
   value,
   placeholder,
   valueClassName,
+  min,
+  max,
   onCommit,
 }: PropsT) {
+  const outOfRange = (n: number) => (min != null && n < min) || (max != null && n > max)
+
   const commit = (e: FocusEvent<HTMLInputElement>) => {
     const parsed = parseDecimalInput(e.target.value)
-    if (parsed.kind === 'value') onCommit(parsed.value)
+    if (parsed.kind !== 'value') return
+    // Written back by hand: the input is uncontrolled and its `key` only remounts when `value`
+    // CHANGES, so a rejected entry would otherwise stay on screen as text the app has not accepted.
+    if (outOfRange(parsed.value)) {
+      e.target.value = value == null ? '' : String(value)
+      return
+    }
+    onCommit(parsed.value)
   }
 
   const commitOnEnter = (e: KeyboardEvent<HTMLInputElement>) => {
