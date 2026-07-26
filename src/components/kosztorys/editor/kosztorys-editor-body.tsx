@@ -13,17 +13,23 @@ import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import {
+  ordinalGutterColumn,
+  withSyntheticRows,
+} from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
+import type { SectionHeaderFigureT } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
+import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
+import {
+  isSectionHeaderRow,
+  isSyntheticRow,
   makeSpacerRow,
   makeTotalsRow,
-  SPACER_ROW_ID,
-  TOTALS_ROW_ID,
-  withTotalsRow,
-} from '@/components/kosztorys/editor/grid/kosztorys-totals-row'
+} from '@/lib/kosztorys/synthetic-rows'
+import { sectionColorRail } from '@/lib/kosztorys/section-colors'
+import { cn } from '@/lib/utils/cn'
 import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { stagesForView } from '@/lib/kosztorys/settlement'
-import { sectionColorRowTint } from '@/lib/kosztorys/section-colors'
 import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
@@ -80,6 +86,11 @@ export function KosztorysEditorBody({
     laborCostsNetFromKosztorys,
     subcontractorDue,
     view,
+    sort,
+    search,
+    collapsedSectionIds,
+    toggleSectionCollapsed,
+    sectionHandlers,
     moneyAxis,
     setMoneyAxis,
     onChange,
@@ -87,8 +98,6 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
-  // The „Razem" totals row is a real last grid row, so per-column sums stay aligned and scroll with
-  // the grid for free. columnTotals bakes one sum per summable column id; withTotalsRow renders it.
   const columnTotals = useMemo(() => {
     const totals = new Map<string, number>()
     // Money: executed value + offered przedmiar, net and gross. The Przedmiar „Razem" must track
@@ -137,12 +146,42 @@ export function KosztorysEditorBody({
     view,
   ])
 
+  // What a band shows: the section's own figures, read out of the same full-dataset `subtotals` the
+  // Podsumowanie uses — so a band, „Razem" and the panel can't disagree, and a search filter narrows
+  // the visible rows without moving the section's total.
+  const sectionHeader = useMemo(() => {
+    const figures = new Map<number, SectionHeaderFigureT>()
+    for (const section of subtotals) {
+      figures.set(section.sectionId, {
+        net: section.net,
+        gross: toGross(section.net, tree.vatRate),
+        itemCount: section.itemCount,
+      })
+    }
+    return {
+      figures,
+      collapsedSectionIds,
+      onToggleCollapsed: toggleSectionCollapsed,
+      handlers: sectionHandlers,
+    }
+  }, [subtotals, tree.vatRate, collapsedSectionIds, toggleSectionCollapsed, sectionHandlers])
+
   const gridColumns = useMemo(
-    () => columns.map((column) => withTotalsRow(column, columnTotals)),
-    [columns, columnTotals],
+    () =>
+      columns.map((column) => withSyntheticRows(column, { totals: columnTotals, sectionHeader })),
+    [columns, columnTotals, sectionHeader],
   )
-  const gridRows = useMemo(() => [...viewRows, makeSpacerRow(), makeTotalsRow()], [viewRows])
-  const isSyntheticRow = (id: number) => id === SPACER_ROW_ID || id === TOTALS_ROW_ID
+  const { rows: bodyRows, ordinalByRowId } = useMemo(
+    () =>
+      buildSectionHeaderRows(viewRows, {
+        collapsedSectionIds,
+        enabled: sort == null,
+        searchActive: search.trim() !== '',
+      }),
+    [viewRows, collapsedSectionIds, sort, search],
+  )
+  const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
   // rabatClientNet, view-independent) vs the investment's transaction sums — net to net, since the
@@ -189,6 +228,7 @@ export function KosztorysEditorBody({
               // Strip the appended spacer + „Razem" rows before the editor's diff sees them — display-only.
               onChange={(rows) => onChange(rows.filter((row) => !isSyntheticRow(row.id)))}
               columns={gridColumns}
+              gutterColumn={gutterColumn}
               height={gridHeight}
               rowHeight={32}
               // Taller header so verbose column labels („Pozostało netto (względem przedmiaru)" etc.)
@@ -196,9 +236,12 @@ export function KosztorysEditorBody({
               headerRowHeight={56}
               lockRows
               rowKey={({ rowData }) => String(rowData.id)}
-              // Every row of a pinned section carries the wash — there is no section header row to
-              // hang the colour on, so the block of tinted rows IS the section boundary.
-              rowClassName={({ rowData }) => sectionColorRowTint(rowData.sectionColor)}
+              rowClassName={({ rowData }) =>
+                cn(
+                  sectionColorRail(rowData.sectionColor),
+                  isSectionHeaderRow(rowData.id) && 'kosztorys-section-header',
+                )
+              }
             />
           </div>
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its

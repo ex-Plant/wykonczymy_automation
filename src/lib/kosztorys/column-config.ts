@@ -180,6 +180,11 @@ export const CLIENT_VISIBLE_COLUMNS: ReadonlySet<string> = new Set([
 ])
 
 // The stage axis triples the grid's stage block, and brutto per stage is the least-read of the three
-// — derivable from the netto beside it at a fixed rate. Declared here rather than seeded into the
-// stored map; useHiddenColumns owns that argument.
-export const DEFAULT_HIDDEN_COLUMNS: ReadonlySet<string> = new Set([STAGE_VALUE_GROSS_COLUMN_GROUP])
+// — derivable from the netto beside it at a fixed rate. „Sekcja" repeats one name down every row of
+// its section, which the band above the section now says once; the column stays available for
+// copy/paste and sorting. Declared here rather than seeded into the stored map; useHiddenColumns
+// owns that argument.
+export const DEFAULT_HIDDEN_COLUMNS: ReadonlySet<string> = new Set([
+  STAGE_VALUE_GROSS_COLUMN_GROUP,
+  'sectionName',
+])

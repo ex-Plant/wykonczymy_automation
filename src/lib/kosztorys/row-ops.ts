@@ -66,8 +66,16 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
   } as KosztorysV2RowT
 }
 
+// Lands after the LAST row of its own section, not at the end of the array: the grid groups rows into
+// section bands by walking them in order, so a row parked past a later section would open a second
+// band for a section that already has one — one id, two rows, duplicate keys in dsg's virtualizer.
+// A section with no rows yet (a fresh section's first item) has nothing to follow, so it appends.
 export function applyAddItem(rows: KosztorysV2RowT[], row: KosztorysV2RowT): KosztorysV2RowT[] {
-  return [...rows, row]
+  let at = rows.length
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].sectionId === row.sectionId) at = i + 1
+  }
+  return [...rows.slice(0, at), row, ...rows.slice(at)]
 }
 
 export function applyRemoveItem(rows: KosztorysV2RowT[], itemId: number): KosztorysV2RowT[] {
@@ -121,7 +129,7 @@ export function applyInsertItem(
 
 // Move an item one place within ITS section (▲/▼). Operates on the display sequence
 // of items in the same section (their order in `rows`), NOT on block contiguity —
-// this way it tolerates an item appended to the end of `rows` by applyAddItem (Slice 1).
+// this way a section whose rows are not adjacent still moves the pair the user sees.
 // Returns the same reference on a no-op (block edge / unknown id) — a signal to the editor
 // that there is nothing to save.
 export function swapItemInSection(
@@ -159,9 +167,8 @@ function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]>
 }
 
 // Both section movers work by editing the section SEQUENCE and re-concatenating the blocks, never by
-// splicing array indices: applyAddItem appends a new item at the END of `rows`, so a section's rows
-// are not guaranteed adjacent — the regroup pulls such a stray row back into its block, where an
-// index splice would land past the wrong one.
+// splicing array indices: a section's rows are not guaranteed adjacent, and the regroup pulls a stray
+// row back into its block, where an index splice would land past the wrong one.
 function regroup(blocks: Map<number, KosztorysV2RowT[]>, seq: number[]): KosztorysV2RowT[] {
   return seq.flatMap((id) => blocks.get(id) ?? [])
 }

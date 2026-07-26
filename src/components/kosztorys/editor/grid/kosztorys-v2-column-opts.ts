@@ -4,7 +4,6 @@ import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
 import type { SortDirT } from '@/lib/kosztorys/row-view'
-import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 
 export type V2SortStateT = { field: string; dir: SortDirT } | null
@@ -49,18 +48,6 @@ export type BuildV2ColumnsOptsT = {
   // Renaming the whole section from its (denormalized) name cell. Routes through the same fan-out
   // as the section panel — never a per-row setRowData, which would desync the other rows' copies.
   onRenameSection?: (sectionId: number, name: string) => void
-  // Deleting the whole section a row belongs to, from the row-actions menu. Cascade-deletes the
-  // section's items + stage_progress (same path as the section panel), guarded by a confirm dialog.
-  onRemoveSection?: (sectionId: number) => void
-  // Moving the whole section one place (Przesuń sekcję w górę/dół) from the row-actions menu.
-  // Greyed out under an active column sort, for the same reason as the per-item ▲▼.
-  onReorderSection?: (sectionId: number, dir: 'up' | 'down') => void
-  onInsertSection?: (row: KosztorysV2RowT, dir: 'above' | 'below') => void
-  // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
-  // for this section's wycinek.
-  onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
-  // Item count for a section, to size the "removes N items" confirm before deleting it.
-  getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from
   // the grid and the picker (the underlying data stays and returns when the discount is cleared).
   globalDiscountActive?: boolean
