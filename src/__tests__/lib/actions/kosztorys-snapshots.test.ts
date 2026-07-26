@@ -46,7 +46,7 @@ describe.skipIf(!ENV_READY)('saveSnapshotAction — required label (DB)', () => 
     authState.userId = Number(firstUser.id)
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'save-snapshot-test', status: 'active' },
+      data: { name: 'save-snapshot-test', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(investment.id)

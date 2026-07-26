@@ -83,7 +83,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
   async function createInvestment(name: string, vat: number, wCoeff: number, oCoeff: number) {
     const inv = await payload.create({
       collection: 'investments',
-      data: { name, status: 'active', wToolsCoeff: wCoeff, ownToolsCoeff: oCoeff },
+      data: { name, status: 'active', settlementMode: 'NET', wToolsCoeff: wCoeff, ownToolsCoeff: oCoeff },
       context: { skipRevalidation: true },
     })
     const id = Number(inv.id)

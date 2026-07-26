@@ -1,13 +1,23 @@
 ---
 change_id: investment-settlement-mode
 title: Store how an investment is settled (netto / brutto / mieszane) on the investment
-status: implemented
+status: in_review
 created: 2026-07-26
 updated: 2026-07-26
 archived_at: null
 branch: investment-settlement-mode
 worktree: ../wykonczymy-worktrees/investment-settlement-mode
 ---
+
+## Review gate
+
+Passed 2026-07-26 — ledger: `review-gate.md`. Read-only fan-out (7 checks) + `/simplify` +
+`primitive-reuse-scan`; tsc / lint / 1707 unit tests green. Four findings deferred to Linear:
+**EX-589**, **EX-590**, **EX-591**, **EX-592**, **EX-593**.
+
+**Not archivable yet:** the 11 manual checks under `## EX-588` in `context/foundation/manual-checks.md`
+are unticked — the Step 0.5 browser pass was skipped by the user, and this slice has no E2E by plan,
+so those boxes are its only behavioural evidence.
 
 ## Notes
 

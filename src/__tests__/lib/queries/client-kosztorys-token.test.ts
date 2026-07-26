@@ -28,7 +28,7 @@ describe.skipIf(!ENV_READY)('getClientKosztorysByToken (DB)', () => {
 
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'EX-532 share token spec', status: 'active' },
+      data: { name: 'EX-532 share token spec', status: 'active', settlementMode: 'NET' },
     })
     investmentId = investment.id
     await payload.create({

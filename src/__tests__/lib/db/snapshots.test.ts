@@ -36,7 +36,7 @@ describe.skipIf(!ENV_READY)('pruneAutoCount (DB)', () => {
     db = await getDb(payload)
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'prune-auto-test', status: 'active' },
+      data: { name: 'prune-auto-test', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(investment.id)
@@ -111,7 +111,7 @@ describe.skipIf(!ENV_READY)('gcSnapshots age caps (DB)', () => {
     db = await getDb(payload)
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'gc-snapshots-test', status: 'active' },
+      data: { name: 'gc-snapshots-test', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(investment.id)

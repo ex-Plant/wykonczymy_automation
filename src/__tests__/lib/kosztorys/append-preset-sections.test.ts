@@ -35,7 +35,7 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
   async function createInvestment(name: string) {
     const inv = await payload.create({
       collection: 'investments',
-      data: { name, status: 'active', wToolsCoeff: 0.7, ownToolsCoeff: 0.5 },
+      data: { name, status: 'active', settlementMode: 'NET', wToolsCoeff: 0.7, ownToolsCoeff: 0.5 },
       context: { skipRevalidation: true },
     })
     const id = Number(inv.id)

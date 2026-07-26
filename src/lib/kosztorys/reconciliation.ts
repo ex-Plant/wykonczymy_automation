@@ -1,4 +1,5 @@
-import type { SettlementModeT } from '@/lib/kosztorys/money-axis'
+import type { VatPlaneT } from '@/lib/constants/transfers'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 // One figure's reconciliation verdict: the kosztorys client-view NET vs the transaction-sourced
 // figure, and whether they disagree. Shared contract — the editor Podsumowanie and the investment
@@ -58,12 +59,14 @@ export function reconciliationTooltip(
   ].join('\n')
 }
 
-// Does the money actually paid sit on the plane the investment is declared to be settled on?
 export type SettlementPlaneVerdictT = {
   mismatch: boolean
   mode: SettlementModeT
-  // The wpłaty that sit on the wrong plane (netto sum for a GROSS investment, and vice versa).
+  // The wpłaty that sit on the wrong plane (netto sum for a GROSS investment, and vice versa), and
+  // which plane that is. Named here rather than re-derived at the render site, where a two-branch
+  // ternary over a three-value mode would quietly mislabel `MIXED`.
   offendingAmount: number
+  offendingPlane: VatPlaneT | null
 }
 
 /**
@@ -83,8 +86,10 @@ export function buildSettlementPlaneVerdict({
   paidNet: number
   paidGross: number
 }): SettlementPlaneVerdictT {
-  const offendingAmount = mode === 'NET' ? paidGross : mode === 'GROSS' ? paidNet : 0
-  return { mismatch: offendingAmount > 0, mode, offendingAmount }
+  const offendingPlane = mode === 'NET' ? 'GROSS' : mode === 'GROSS' ? 'NET' : null
+  const offendingAmount =
+    offendingPlane === 'GROSS' ? paidGross : offendingPlane === 'NET' ? paidNet : 0
+  return { mismatch: offendingAmount > 0, mode, offendingAmount, offendingPlane }
 }
 
 /**

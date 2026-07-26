@@ -52,7 +52,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
 
     const investment = await payload.create({
       collection: 'investments',
-      data: { name: 'net-expense-investment', status: 'active' },
+      data: { name: 'net-expense-investment', status: 'active', settlementMode: 'NET' },
       context: { skipRevalidation: true },
     })
     investmentId = Number(investment.id)

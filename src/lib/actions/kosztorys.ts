@@ -10,7 +10,7 @@ import { nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
 import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
 import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
-import { SETTLEMENT_MODES, type SettlementModeT } from '@/lib/kosztorys/money-axis'
+import { SETTLEMENT_MODES, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
   DEFAULT_ITEM_DESCRIPTION,
   DEFAULT_UNIT,
@@ -69,8 +69,7 @@ const investmentCoeffsSchema = z
 // at the action regardless of UI guarding — a bad rate feeds every brutto figure (net × (1 + vatRate)).
 const investmentVatSchema = z.object({ vatRate: z.coerce.number().min(0).max(1) })
 
-// How the investment is settled with the client. Derived from SETTLEMENT_MODES so a mode added to
-// the picker can't be silently rejected here.
+// Derived from SETTLEMENT_MODES so a mode added to the picker can't be silently rejected here.
 const investmentSettlementModeSchema = z.object({
   settlementMode: z.enum(SETTLEMENT_MODES),
 })

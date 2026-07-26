@@ -2,7 +2,10 @@ import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
-import { SETTLEMENT_MODE_DEFAULT, SETTLEMENT_MODE_OPTIONS } from '@/lib/kosztorys/money-axis'
+import {
+  SETTLEMENT_MODE_ADMIN_OPTIONS,
+  SETTLEMENT_MODE_DEFAULT,
+} from '@/lib/kosztorys/settlement-mode'
 
 const STATUS_OPTIONS = [
   { label: { en: 'Planned', pl: 'Planowana' }, value: 'planowana' },
@@ -104,15 +107,16 @@ export const Investments: CollectionConfig = {
       defaultValue: DEFAULT_VAT,
       label: { en: 'VAT rate (fraction)', pl: 'Stawka VAT (ułamek)' },
     },
-    // How this investment is settled with the client. The panel's netto/brutto/mieszane select writes
-    // here; it used to be a localStorage reading preference, which made the same investment read
-    // differently per browser — and let a client read the owner's remembered value.
+    // Edited from the kosztorys editor's Podsumowanie panel, not typically here. `required` pairs
+    // with the column's NOT NULL: without it Payload lets the admin clear the select, and the write
+    // surfaces as a raw constraint violation instead of a field error.
     {
       name: 'settlementMode',
       type: 'select',
+      required: true,
       defaultValue: SETTLEMENT_MODE_DEFAULT,
       label: { en: 'Settlement mode', pl: 'Sposób rozliczenia' },
-      options: SETTLEMENT_MODE_OPTIONS.map(({ value, label }) => ({ value, label })),
+      options: SETTLEMENT_MODE_ADMIN_OPTIONS,
     },
     // Global kosztorys discount: amount-only ('amount' | null). Overrides per-item discounts and is
     // subtracted once from the executed total. `type` null = no global discount (per-item discounts

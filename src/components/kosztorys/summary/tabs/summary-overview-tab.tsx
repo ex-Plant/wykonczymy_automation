@@ -31,7 +31,6 @@ type PropsT = {
   wplatyNet: number
   rabatAmount: number
   reconciliation: KosztorysReconciliationT
-  // Wpłaty vs the declared settlement plane — screamed owner-only, like the robocizna/rabat mismatch.
   settlementVerdict: SettlementPlaneVerdictT
   priceView: PriceViewT
   vatRate: number

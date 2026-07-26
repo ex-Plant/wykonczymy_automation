@@ -29,7 +29,7 @@ async function main() {
 
   const investment = await payload.create({
     collection: 'investments',
-    data: { name: `E2E Bands ${stamp}`, status: 'active', vatRate: 0.23 },
+    data: { name: `E2E Bands ${stamp}`, status: 'active', vatRate: 0.23, settlementMode: 'NET' },
     ...ctx,
   })
   const stage = await payload.create({

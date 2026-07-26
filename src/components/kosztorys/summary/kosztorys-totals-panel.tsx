@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import * as Collapsible from '@radix-ui/react-collapsible'
+import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import {
+  settlementModeToGridAxis,
   settlementModeToPanelAxis,
-  SETTLEMENT_MODE_OPTIONS,
-  type MoneyAxisT,
   type SettlementModeT,
-} from '@/lib/kosztorys/money-axis'
+} from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
@@ -22,9 +22,7 @@ import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
-import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
-import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
-import { Description } from '@/components/ui/description'
+import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
 import {
   useSummaryView,
   type SummaryViewT,
@@ -51,10 +49,6 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'etapy', label: 'Robocizna' },
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
 ]
-
-const SETTLEMENT_SELECT_OPTIONS: SelectOptionT[] = SETTLEMENT_MODE_OPTIONS.map(
-  ({ value, label }) => ({ value, label }),
-)
 
 type PropsT = {
   investmentId: number
@@ -94,11 +88,8 @@ type PropsT = {
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
   vatRate: number
-  // How the investment is settled — stored on the investment, so every reader of this panel sees the
-  // same money plane. The panel projects it; it does not own it.
   settlementMode: SettlementModeT
-  // Absent under clientView — a client reads the mode, never writes it.
-  onSettlementModeChange?: (mode: SettlementModeT) => void
+  onSettlementModeChange: (mode: SettlementModeT) => void
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   clientView?: boolean
 }
@@ -131,8 +122,6 @@ export function KosztorysTotalsPanel({
   clientView = false,
 }: PropsT) {
   const [open, setOpen] = useTotalsPanelOpen()
-  // Every figure in the panel reads the stored settlement mode, independent of the Widok dropdown —
-  // that one keeps governing the grid columns only.
   const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only: filtered from
@@ -147,12 +136,13 @@ export function KosztorysTotalsPanel({
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
-  // Do the wpłaty sit on the declared plane? Computed here, where both the mode and the bucketed
-  // deposits already are; the tab renders the verdict rather than deciding it.
+  // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
+  // rather than deciding it.
   const settlementVerdict = buildSettlementPlaneVerdict({ mode: settlementMode, paidNet, paidGross })
-  // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
-  // netto+brutto settlement, so it shows both columns alongside the gotówka block.
-  const displayAxis: MoneyAxisT = moneyAxis === 'mixed' ? 'both' : moneyAxis
+  // The tables show one money column — the settled one. Mieszane is the exception: it's a mixed
+  // netto+brutto settlement, so it shows both columns alongside the gotówka block. Same projection
+  // the grid uses, so a table and a column can't disagree about what „Mieszane" means.
+  const displayAxis: MoneyAxisT = settlementModeToGridAxis(settlementMode)
   // Materiały netto pricing: when on, netto = brutto − VAT (the historical default); when off,
   // materiały stay at their raw brutto amount on both axes. Only moves netto figures, so the toggle
   // is offered only where netto is on show and there are materiały to reprice.
@@ -202,20 +192,14 @@ export function KosztorysTotalsPanel({
             onChange={setSummaryView}
             aria-label="Widok podsumowania"
           />
-          {!isSubcontractorView && onSettlementModeChange && (
-            <div className="my-2 flex flex-col gap-2">
-              <Description className="max-w-xs" size="sm" withIcon={false}>
-                Wybierz jak rozliczana będzie inwestycja.
-              </Description>
-              <SimpleSelect
-                value={settlementMode}
-                onValueChange={(next) => onSettlementModeChange(next as SettlementModeT)}
-                options={SETTLEMENT_SELECT_OPTIONS}
-                disabled={vatRate === 0}
-                className="w-40"
-              />
-              {vatRate === 0 && <ZeroVatWarning />}
-            </div>
+          {/* A client reads the mode, never writes it — the same `clientView` gate every other
+              owner-only affordance in this panel uses. */}
+          {!isSubcontractorView && !clientView && (
+            <SettlementModeSelect
+              value={settlementMode}
+              onChange={onSettlementModeChange}
+              vatRate={vatRate}
+            />
           )}
         </div>
         <SummaryScrollRegion>

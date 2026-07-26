@@ -296,9 +296,7 @@ export function KosztorysEditorBody({
             reconciliation={reconciliation}
             vatRate={tree.vatRate}
             settlementMode={tree.settlementMode}
-            // Withheld in the client view: the mode is the owner's decision about the deal, and the
-            // absent handler is what hides the select.
-            onSettlementModeChange={clientView ? undefined : editor.handleSettlementModeChange}
+            onSettlementModeChange={editor.handleSettlementModeChange}
             clientView={clientView}
           />
         </div>
