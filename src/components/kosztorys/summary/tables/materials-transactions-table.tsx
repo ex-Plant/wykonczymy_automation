@@ -58,7 +58,7 @@ const NET_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
   {
     accessorKey: 'billed',
-    header: 'Kwota netto',
+    header: 'Kwota',
     meta: { align: 'right' },
     cell: ({ row, getValue }) => (
       <span className="flex flex-col tabular-nums">
@@ -76,7 +76,7 @@ const GROSS_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
   {
     accessorKey: 'amount',
-    header: 'Kwota brutto',
+    header: 'Kwota',
     meta: { align: 'right' },
     cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
   },
@@ -123,7 +123,7 @@ export function MaterialsTransactionsTable({ investmentId, rows, clientView = fa
         initialSorting={[{ id: 'date', desc: true }]}
         getRowHref={clientView ? undefined : (row) => wydatkiRowHref(investmentId, row)}
         footer={(colCount) => (
-          <tr>
+          <tr className="font-bold">
             <td colSpan={colCount - 1}>Razem</td>
             <td className="text-right tabular-nums">{formatNet(sumBilled(visibleRows))}</td>
           </tr>
