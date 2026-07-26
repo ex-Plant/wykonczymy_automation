@@ -371,3 +371,30 @@ The migration `20260726_3_add_settlement_mode_to_investments` must be applied to
 - [ ] A brutto wpłata on a netto-declared investment raises the owner-only warning in Podsumowanie, naming the mode and the offending amount
 - [ ] The client view of that same investment shows no warning
 - [ ] With VAT 0% the mode select is disabled and the VAT 0% scream still shows
+
+## EX-594 — investment-summary-panel
+
+Replaces the investment detail page's financial stat tiles with the kosztorys Podsumowanie panel
+(Podsumowanie + Wydatki + Wpłaty), moves the v1/v2 reading toggle into the panel's top bar (v2 is now
+the default reading), and lifts the company-plane figures into an owner-only strip above it. All
+automated checks green (tsc 0, eslint 0 errors, unit 1712/1712, `pnpm build` clean).
+
+Setup: log in as OWNER against a DB with a seeded kosztorys, and have a second account with role
+MANAGER plus a share token for the same investment. No migration owed — the settlement-mode column
+came with EX-588.
+
+- [ ] The editor panel at `/inwestycje/<id>/kosztorys_v2` opens, collapses, and renders all five views exactly as before, including the settings bar
+- [ ] In the editor, Wydatki and Wpłaty are unchanged (both new flags default to today's behaviour)
+- [ ] `/k/<token>` renders four client views, no settings bar, no reconciliation scream, and no marża anywhere
+- [ ] For an investment with kosztorys rows, every Podsumowanie figure on `/inwestycje/<id>` matches the same figure in the editor panel on the same settlement mode
+- [ ] Wydatki on the investment page shows the per-category breakdown and the pie, with no transaction list
+- [ ] Wpłaty shows exactly three Razem buckets (netto / brutto / nie określono) and the udział pie, with no per-deposit rows
+- [ ] An investment with **no** kosztorys rows renders the panel on transaction figures with no reading toggle — not an all-zero panel
+- [ ] The panel appears without blocking first paint; the transfers table below still filters and paginates
+- [ ] Switching v1 ↔ v2 in the panel top bar changes only Robocizna and Rabat; Materiały and Wpłaty stay identical
+- [ ] The reconciliation scream still fires when the two readings disagree
+- [ ] Changing the settlement mode from the panel persists and survives a hard reload
+- [ ] `/inwestycje/<id>` shows the owner strip (Marża / Wypłaty / Strata / Rozliczone R+M) above the panel and no tile block
+- [ ] A MANAGER (non-owner) sees the panel but **none** of the owner strip
+- [ ] `/raporty` renders its tiles exactly as before, deselect included
+- [ ] Printing from the transfers table produces a header with all fields and a static bilans (accepted degradation — see `lessons.md`)

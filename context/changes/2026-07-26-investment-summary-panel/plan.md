@@ -525,7 +525,7 @@ None. The settlement-mode field and its migration belong to
 
 #### Automated
 
-- [x] 5.1 Type checking passes
-- [x] 5.2 Linting passes
-- [x] 5.3 Full unit suite passes
-- [x] 5.4 Build succeeds
+- [x] 5.1 Type checking passes — 4c67e2a0
+- [x] 5.2 Linting passes — 4c67e2a0
+- [x] 5.3 Full unit suite passes — 4c67e2a0
+- [x] 5.4 Build succeeds — 4c67e2a0
