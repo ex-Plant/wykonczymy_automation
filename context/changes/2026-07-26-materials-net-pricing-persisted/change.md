@@ -1,7 +1,7 @@
 ---
 change_id: materials-net-pricing-persisted
 title: Give marża a materiały term — persist the netto reduction per investment and fix the settled-material VAT
-status: implementing
+status: implemented
 created: 2026-07-26
 updated: 2026-07-26
 archived_at: null

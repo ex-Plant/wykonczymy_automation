@@ -455,7 +455,7 @@ footnote; it stays until the deferred fix lands.
 
 **Contract**: an issue in project "Wykonczymy" describing the per-investment materiały aggregate under
 the reports filter, and naming the removal of the Phase 4 warning as its definition of done. Record
-the id here once filed. Reality-check the Linear MCP first; if unreachable, say so rather than claim a
+the id here once filed. **Filed: EX-598.** Reality-check the Linear MCP first; if unreachable, say so rather than claim a
 filing.
 
 ### Success Criteria:
@@ -537,12 +537,12 @@ that reads the column ships.
 
 #### Automated
 
-- [x] 3.1 Type checking passes
-- [x] 3.2 Linting passes
+- [x] 3.1 Type checking passes — 88306dd1
+- [x] 3.2 Linting passes — 88306dd1
 
 ### Phase 4: Guard the reports page
 
 #### Automated
 
-- [ ] 4.1 Type checking passes
-- [ ] 4.2 Linting passes
+- [x] 4.1 Type checking passes
+- [x] 4.2 Linting passes
