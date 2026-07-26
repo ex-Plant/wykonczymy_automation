@@ -220,6 +220,8 @@ export function SummaryPanelContent({
             subcontractorDue={subcontractorDue}
             payouts={payoutsByWorker ?? []}
             payoutTransactions={payoutTransactions ?? []}
+            showGlobalSettings={showSettingsBar}
+            showTransactions={showTransactionLists}
           />
         ) : (
           <div className="flex w-full flex-col gap-y-4 px-4 pt-4 pb-10">

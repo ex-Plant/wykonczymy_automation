@@ -10,7 +10,7 @@ import {
   fetchReferenceData,
 } from '@/lib/queries/reference-data'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
-import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/subcontractor-summary'
+import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
 import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 
@@ -79,16 +79,9 @@ export default async function InvestmentKosztorysV2Page({
   // and Mieszane draw (COMPANY_FUNDING / OTHER_DEPOSIT are legacy and stay out of client wpłaty, per
   // getDepositTransactionsForInvestment). Drives the podsumowanie „Wpłaty"/„Do zapłaty".
   const wplatyNet = depositTransactions.reduce((sum, deposit) => sum + deposit.amount, 0)
-  // Names join here (not in the cached query): resolve each worker id against reference data; a null
-  // worker id is the „Bez przypisanego pracownika" bucket. Sorting/totals live in the pure block helper.
-  const workerNameById = new Map(refData.workers.map((worker) => [worker.id, worker.name]))
-  const payoutsByWorker = payouts.map((row) => ({
-    ...row,
-    name:
-      row.workerId === null
-        ? UNASSIGNED_WORKER_NAME
-        : (workerNameById.get(row.workerId) ?? 'Nieznany pracownik'),
-  }))
+  // Names join here (not in the cached query): resolve each worker id against reference data.
+  // Sorting/totals live in the pure block helper.
+  const payoutsByWorker = resolvePayoutWorkerNames(payouts, refData.workers)
 
   return (
     <KosztorysEditorV2

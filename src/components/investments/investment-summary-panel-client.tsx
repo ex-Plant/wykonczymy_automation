@@ -8,9 +8,8 @@ import { updateInvestmentSettlementModeAction } from '@/lib/actions/kosztorys'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { toastMessage } from '@/lib/utils/toast'
 
-// Robocizna (etapy) and Podwykonawcy stay editor-only: the first needs the stage grid to make sense,
-// the second is a company-plane figure that has no place next to the client settlement.
-const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'wplaty']
+// Robocizna (etapy) stays editor-only — it needs the stage grid to make sense.
+const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'wplaty', 'podwykonawcy']
 
 type PropsT = Omit<
   ComponentProps<typeof SummaryPanelContent>,

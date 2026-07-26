@@ -1,7 +1,12 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
-import { fetchDepositTransactionsForInvestment } from '@/lib/queries/reference-data'
+import {
+  fetchDepositTransactionsForInvestment,
+  fetchPayoutsByWorkerForInvestment,
+  fetchReferenceData,
+} from '@/lib/queries/reference-data'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
-import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
+import { kosztorysClientTotals, subcontractorDueByPlane } from '@/lib/kosztorys/settlement'
+import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
 import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
@@ -28,10 +33,13 @@ export async function InvestmentSummaryPanel({
   expenseCategories,
   netCategoryCosts,
 }: PropsT) {
-  const [tree, depositTransactions] = await Promise.all([
+  const [tree, depositTransactions, payouts, refData] = await Promise.all([
     getKosztorysTree(investmentId),
     // Same cached fetcher the kosztorys page uses, so both surfaces read wpłaty from one source.
     fetchDepositTransactionsForInvestment(investmentId),
+    // Realized PAYOUTs per worker — the „Podwykonawcy" view's zaliczki side.
+    fetchPayoutsByWorkerForInvestment(investmentId),
+    fetchReferenceData(),
   ])
 
   const rows = treeToRows(tree)
@@ -64,6 +72,11 @@ export async function InvestmentSummaryPanel({
         laborCostsNetFromTransactions: financials.totalLaborCosts,
         investmentRabat: financials.totalRabat,
       })}
+      // The subcontractor plane — computed here from the same rows the client settlement reads, so
+      // the two views can't disagree about what was executed. No payout list on this host: the
+      // transfers table below already carries every wypłata.
+      subcontractorDue={subcontractorDueByPlane(rows, tree.stages)}
+      payoutsByWorker={resolvePayoutWorkerNames(payouts, refData.workers)}
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}
     />

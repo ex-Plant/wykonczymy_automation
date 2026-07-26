@@ -37,6 +37,12 @@ type PropsT = {
   payouts: SubcontractorPayoutRowT[]
   // The un-summed PAYOUT rows, already date-desc from the query. Feed the sortable/virtualized list.
   payoutTransactions: PayoutTransactionRowT[]
+  // Off on a host outside KosztorysEditorProvider (the investment page) — the coefficient controls
+  // read the editor context, which only exists inside the editor.
+  showGlobalSettings?: boolean
+  // Off on a host that already lists every transaction next to the panel (the investment page's
+  // transfers table): only the headline + per-worker totals remain.
+  showTransactions?: boolean
 }
 
 type GroupModeT = 'worker' | 'date'
@@ -100,11 +106,12 @@ export function SubcontractorSummary({
   subcontractorDue,
   payouts,
   payoutTransactions,
+  showGlobalSettings = true,
+  showTransactions = true,
 }: PropsT) {
   const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts)
   const nameByWorker = new Map(payouts.map((payout) => [workerKey(payout.workerId), payout.name]))
   const [mode, setMode] = useState<GroupModeT>('worker')
-  const { tree, handleGlobalCoeffChange } = useKosztorysEditorContext()
 
   const tableRows: PayoutTableRowT[] = payoutTransactions.map((tx) => ({
     workerId: tx.workerId,
@@ -128,12 +135,9 @@ export function SubcontractorSummary({
           <WorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
       </div>
-      <KosztorysGlobalSettings
-        globalCoeffs={tree.globalCoeffs}
-        onGlobalCoeffChange={handleGlobalCoeffChange}
-      />
+      {showGlobalSettings && <EditorGlobalSettings />}
 
-      {payoutTransactions.length > 0 && (
+      {showTransactions && payoutTransactions.length > 0 && (
         <div className="flex flex-col gap-y-2">
           <div className="w-fit">
             <ToggleGroup
@@ -164,6 +168,18 @@ export function SubcontractorSummary({
         </div>
       )}
     </div>
+  )
+}
+
+// Split out so the context read happens only where the provider exists — a hook can't be conditional,
+// but rendering the component that calls it can.
+function EditorGlobalSettings() {
+  const { tree, handleGlobalCoeffChange } = useKosztorysEditorContext()
+  return (
+    <KosztorysGlobalSettings
+      globalCoeffs={tree.globalCoeffs}
+      onGlobalCoeffChange={handleGlobalCoeffChange}
+    />
   )
 }
 
