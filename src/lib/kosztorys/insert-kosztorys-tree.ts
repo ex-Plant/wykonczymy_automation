@@ -40,9 +40,11 @@ export async function insertKosztorysTree(
   const stages = tree.stages ?? []
   const stageIdMap = new Map<number, number>()
   if (stages.length > 0) {
-    const rows = stages.map((s) => sql`(${investmentId}, ${s.ordinal}, ${s.label ?? null})`)
+    const rows = stages.map(
+      (s) => sql`(${investmentId}, ${s.ordinal}, ${s.label ?? null}, ${s.plane ?? null})`,
+    )
     const res = await db.execute(sql`
-      INSERT INTO kosztorys_stages (investment_id, ordinal, label)
+      INSERT INTO kosztorys_stages (investment_id, ordinal, label, plane)
       VALUES ${sql.join(rows, sql.raw(', '))}
       RETURNING id
     `)

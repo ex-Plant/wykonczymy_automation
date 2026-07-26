@@ -344,40 +344,40 @@ Kosztorys data is throwaway (AGENTS.md) — existing stages read `plane = null` 
 
 #### Automated
 
-- [ ] 1.1 Migration applies cleanly to local dev DB: `node --env-file=.env node_modules/.bin/payload migrate`
-- [ ] 1.2 Type checking passes: `pnpm exec tsc --noEmit` (after `pnpm generate:types`)
-- [ ] 1.3 Existing unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 1.4 Lint passes: `pnpm lint`
+- [x] 1.1 Migration applies cleanly to local dev DB: `node --env-file=.env node_modules/.bin/payload migrate` — 0b038e53
+- [x] 1.2 Type checking passes: `pnpm exec tsc --noEmit` (after `pnpm generate:types`) — 0b038e53
+- [x] 1.3 Existing unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 0b038e53
+- [x] 1.4 Lint passes: `pnpm lint` — 0b038e53
 
 ### Phase 2: Settlement Math (TDD)
 
 #### Automated
 
-- [ ] 2.1 New settlement spec red→green: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 2.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 2.3 Lint passes: `pnpm lint`
+- [x] 2.1 New settlement spec red→green: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 65db3ba9
+- [x] 2.2 Type checking passes: `pnpm exec tsc --noEmit` — 65db3ba9
+- [x] 2.3 Lint passes: `pnpm lint` — 65db3ba9
 
 ### Phase 3: Etap Header UI — Picker, Icon, Warning
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 3.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 3.3 Lint passes: `pnpm lint`
+- [x] 3.1 Type checking passes: `pnpm exec tsc --noEmit` — 6bcc5b2c
+- [x] 3.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — 6bcc5b2c
+- [x] 3.3 Lint passes: `pnpm lint` — 6bcc5b2c
 
 ### Phase 4: Grid „Nie dotyczy" for Other-Plane Etapy
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 4.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
-- [ ] 4.3 Lint passes: `pnpm lint`
+- [x] 4.1 Type checking passes: `pnpm exec tsc --noEmit` — e813550e
+- [x] 4.2 Unit tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/` — e813550e
+- [x] 4.3 Lint passes: `pnpm lint` — e813550e
 
 ### Phase 5: Subcontractor Summary Rebuild
 
 #### Automated
 
-- [ ] 5.1 Full unit suite passes: `pnpm exec vitest run`
-- [ ] 5.2 Type checking passes: `pnpm exec tsc --noEmit`
-- [ ] 5.3 Lint passes: `pnpm lint`
-- [ ] 5.4 Build passes: `pnpm build`
+- [x] 5.1 Full unit suite passes: `pnpm exec vitest run` — 1c0af48d
+- [x] 5.2 Type checking passes: `pnpm exec tsc --noEmit` — 1c0af48d
+- [x] 5.3 Lint passes: `pnpm lint` — 1c0af48d
+- [x] 5.4 Build passes: `pnpm build` (via `next build --webpack` — worktree's symlinked node_modules is incompatible with Next 16's default Turbopack builder; webpack compile is the equivalent signal) — 1c0af48d

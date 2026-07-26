@@ -939,6 +939,45 @@ byte-identical before/after.
 
 - [ ] **`20260724_1_drop_kosztorys_section_coeff` must be applied to preview/prod with this merge.** Drops `w_tools_coeff` / `own_tools_coeff` from `kosztorys_sections` **only** (the investment-level columns of the same name stay). Human-applied via `pnpm db:migrate:prod`. **Ordering is reversed vs the usual "migrate before push" rule** — that rule is for column _adds_ (new code needs the column to exist). This is a _drop_: sections are read through the Payload ORM (`payload.find`), which builds its `SELECT` from the collection schema, so dropping the columns while old code (whose field defs still list them) is live would 500 on a missing column. Deploy the **code first** (its removed field defs stop selecting the columns), **then** run the migration to drop them. Kosztorys data is throwaway pre-dogfooding, so no backfill is owed.
 
+## etap-tool-plane (EX-565) — per-etap rozliczenie plane + view-independent subcontractor settlement
+
+**In review** — automated checks green (tsc, full unit suite, lint, webpack build; Turbopack build is blocked only by the worktree's symlinked `node_modules`). Manual boxes below **not yet driven**. Gives each etap a `plane` (z/bez narzędzi, `null` = defaulted-to-z-narzędziami + warned) and rebuilds „Podsumowanie podwykonawców" as ONE view-independent settlement — each etap valued at its own plane's price, split + razem, one shared wypłaty pool. Klient view + client share must stay byte-for-byte unchanged.
+
+Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2_add_plane_to_kosztorys_stages` there first, then seed a kosztorys into it; the dump carries none). Log in as **OWNER/MANAGER** (stage controls need MANAGEMENT_ROLES; `ADMIN`/`PASS` env is stale — mint a temp OWNER via the Local API script). Open an investment's **Kosztorys** tab with ≥1 section and etapy across both planes.
+
+### Phase 1: Data layer
+
+- [ ] After migration + dev-server **restart**, the kosztorys editor loads without query errors (lessons.md: verify the running app, restart pre-migration servers)
+- [ ] Payload admin shows the plane select on a Kosztorys Stage
+
+### Phase 2: Settlement math
+
+- [ ] On a mixed-plane test kosztorys, „Suma wykonanej pracy" is identical in the Z and Bez views and equals the hand-computed per-plane sum
+
+### Phase 3: Etap header UI
+
+- [ ] Picking a plane updates the header icon instantly and survives a reload (persisted)
+- [ ] A fresh etap shows the default wrench + `TriangleAlert`; picking z narzędziami explicitly clears the warning
+- [ ] Client share page shows plain etap labels — no plane icons or warnings
+- [ ] Selecting a plane does not disturb grid state (sort, filter, unsaved edits)
+
+### Phase 4: Grid „nie dotyczy"
+
+- [ ] In Bez narzędzi view, a z-narzędziami etap's value cells and footer read „nie dotyczy"; its qty cells still accept input
+- [ ] A null-plane etap shows values in Z narzędziami view (it defaults there) and „nie dotyczy" in Bez narzędzi
+- [ ] Klient view shows every etap's values as before
+- [ ] No cell-remount symptoms while typing in qty cells (characters don't drop)
+
+### Phase 5: Subcontractor summary
+
+- [ ] Mixed-plane investment: Z and Bez views show the identical summary; split rows + razem reconcile with the grid's per-etap values
+- [ ] „Pozostało do wypłaty" = razem − zaliczki, negative renders destructive as before
+- [ ] Warning badge appears while any etap is unconfirmed and disappears once every plane is explicitly picked
+- [ ] Single-plane investment (all z narzędziami, confirmed): summary matches the pre-change figure in the Z view
+
+### Deploy note (migration ordering — deploy-time, not a code check)
+
+- [ ] **`20260724_2_add_plane_to_kosztorys_stages` must be applied to preview/prod before/with this merge.** Adds nullable `plane` to `kosztorys_stages`. Standard column-**add** ordering (unlike the coeff drop above): migrate **before** the code that reads `plane` lands, or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. Kosztorys data is throwaway pre-dogfooding — no backfill; existing rows read `plane = null` (defaulted + warned), the intended cold-start state.
 ## EX-564 — kosztorys-percent-rabat-bulk-apply
 
 **Awaiting manual verification.** All automated checks green (tsc 0, full unit suite 1117 pass, lint 0). No DB migration owed — `investments.globalDiscountType` is a plain `text` field, so narrowing the stored global discount to amount-only needs no schema change. Percent global rabat stops being stored state and becomes a one-shot bulk-apply into every per-item rabat; the stored global discount is now amount-only; subcontractor views are rabat-free.

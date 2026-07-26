@@ -2,6 +2,7 @@
 
 import { type CellProps, type Column } from 'react-datasheet-grid'
 import { formatNet } from '@/lib/kosztorys/format'
+import { STAGE_NA_LABEL } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // A single „Razem" row pinned as the grid's last row — the familiar spreadsheet SUM under each
@@ -63,10 +64,18 @@ function TotalsAwareCell(props: CellProps<KosztorysV2RowT, TotalsColumnDataT>) {
 export function withTotalsRow(
   column: Column<KosztorysV2RowT>,
   totals: Map<string, number>,
+  naColumnIds?: ReadonlySet<string>,
 ): Column<KosztorysV2RowT> {
   const isLabel = column.id === LABEL_COLUMN_ID
+  const isNa = column.id != null && naColumnIds?.has(column.id) === true
   const total = column.id != null ? totals.get(column.id) : undefined
-  const content = isLabel ? 'Razem' : total != null ? formatNet(total) : ''
+  const content = isLabel
+    ? 'Razem'
+    : isNa
+      ? STAGE_NA_LABEL
+      : total != null
+        ? formatNet(total)
+        : ''
   return {
     ...column,
     component: TotalsAwareCell as Column<KosztorysV2RowT>['component'],

@@ -40,10 +40,10 @@ import {
 } from '@/lib/kosztorys/delete-policy'
 import {
   clientTotalsFromSubtotals,
-  executedWorkNetPreRabat,
   rowRemainingForView,
   sectionSubtotalsForView,
   stageTotalsForView,
+  subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
@@ -71,7 +71,7 @@ import {
   updateInvestmentVatAction,
   updateItemFieldAction,
   updateSectionFieldAction,
-  updateStageFieldAction,
+  updateStageAction,
 } from '@/lib/actions/kosztorys'
 import type {
   GlobalDiscountT,
@@ -79,6 +79,7 @@ import type {
   KosztorysStageT,
   KosztorysTreeT,
   KosztorysV2RowT,
+  StagePlaneT,
 } from '@/lib/kosztorys/types'
 
 type ArgsT = {
@@ -265,6 +266,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     stages,
     onRemoveStage: editorOnly(handleRemoveStage),
     onRenameStage: editorOnly(handleRenameStage),
+    onSetStagePlane: editorOnly(handleSetStagePlane),
     sort,
     onSetSort: editorOnly(setSortField),
     isHidden,
@@ -387,9 +389,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   )
   const rabatAmount = discountAmount + itemRabatTotal
 
-  // „Suma wykonanej pracy" (należne) for the subcontractor summary — executed value at the ACTIVE
-  // view's subcontractor price, pre-rabat. Reactive to unsaved edits and the view toggle via subtotals.
-  const subcontractorDueNet = useMemo(() => executedWorkNetPreRabat(subtotals), [subtotals])
+  // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
+  // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
+  // no `view` dependency (the settlement is the same in both subcontractor views, honest on mixed).
+  const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
   // revert-on-error: roll an optimistic field edit back to its pre-save value
   // (rows + diff snapshot) when the server rejects it. The "current === attempted" guard lives
@@ -680,7 +683,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const res = await addStageAction(investmentId)
     if (!res.success) return
     const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null }])
+    setStages((s) => [...s, { id, ordinal, label: null, plane: null }])
     patchRows(
       () => true,
       (r) => ({ ...r, [stageKey(id)]: 0 }),
@@ -725,11 +728,31 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     // The revert restores the prior label only if nothing newer was typed (label still === next).
     save(
       `stage-label:${stageId}`,
-      () => updateStageFieldAction(stageId, next),
+      () => updateStageAction(stageId, { label: next }),
       () =>
         setStages((s) =>
           s.map((st) =>
             st.id === stageId && st.label === next ? { ...st, label: prevLabel } : st,
+          ),
+        ),
+    )
+  }
+
+  // Optimistic plane pick. Fired from the header's onValueChange (an event handler, never inside a
+  // state updater), with the same revert-on-error discipline as the rename saver. Picking any plane
+  // (even the default w_tools) writes it, which is what clears the unconfirmed warning.
+  function handleSetStagePlane(stageId: number, plane: StagePlaneT) {
+    const current = stagesRef.current.find((st) => st.id === stageId)
+    if (current && current.plane === plane) return
+    const prevPlane = current?.plane ?? null
+    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, plane } : st)))
+    save(
+      `stage-plane:${stageId}`,
+      () => updateStageAction(stageId, { plane }),
+      () =>
+        setStages((s) =>
+          s.map((st) =>
+            st.id === stageId && st.plane === plane ? { ...st, plane: prevPlane } : st,
           ),
         ),
     )
@@ -1063,7 +1086,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     globalDiscount,
     discountAmount,
     rabatAmount,
-    subcontractorDueNet,
+    subcontractorDue,
     laborCostsNetFromKosztorys,
     // toolbar / panel state
     setView,

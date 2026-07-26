@@ -10,8 +10,8 @@ import type { KosztorysStageT } from '@/lib/kosztorys/types'
 // derivation — work = untagged-and-not-neutral, progress = tagged, neutral = always visible.
 
 const STAGES: KosztorysStageT[] = [
-  { id: 7, ordinal: 1, label: 'Etap 1' },
-  { id: 9, ordinal: 2, label: 'Etap 2' },
+  { id: 7, ordinal: 1, label: 'Etap 1', plane: null },
+  { id: 9, ordinal: 2, label: 'Etap 2', plane: null },
 ]
 
 function ids(layer: LayerT, isHidden?: (id: string) => boolean): string[] {

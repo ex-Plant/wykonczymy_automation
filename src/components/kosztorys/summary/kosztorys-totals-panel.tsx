@@ -7,6 +7,7 @@ import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { bucketDepositsByPlane, computeDoZaplatyRM } from '@/lib/kosztorys/summary-economics'
+import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
@@ -48,9 +49,9 @@ type PropsT = {
   depositTransactions: DepositTransactionRowT[]
   // Individual materiały rows — feed the Podsumowanie's wydatki list (data · typ · kwota).
   materialTransactions: MaterialTransactionRowT[]
-  // „Suma wykonanej pracy" (należne) at the active view's subcontractor price, pre-rabat — the
-  // subcontractor block's headline figure. Ignored in the client view.
-  subcontractorDueNet: number
+  // View-independent subcontractor settlement — each etap at its own plane's price, split + combined
+  // + unconfirmed flag. The subcontractor block's headline figures. Ignored in the client view.
+  subcontractorDue: SubcontractorDueByPlaneT
   // Suma prac wykonanych — the executed total BEFORE rabat (Σ etap totals); EtapTotals' readout.
   totalNet: number
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
@@ -88,7 +89,7 @@ export function KosztorysTotalsPanel({
   payoutTransactions,
   depositTransactions,
   materialTransactions,
-  subcontractorDueNet,
+  subcontractorDue,
   totalNet,
   laborCostsNetFromKosztorys,
   materialsGross,
@@ -248,7 +249,7 @@ export function KosztorysTotalsPanel({
           ) : (
             <SubcontractorSummary
               investmentId={investmentId}
-              dueNet={subcontractorDueNet}
+              subcontractorDue={subcontractorDue}
               payouts={payoutsByWorker}
               payoutTransactions={payoutTransactions}
             />

@@ -52,8 +52,8 @@ const tree: KosztorysTreeT = {
     },
   ],
   stages: [
-    { id: 100, ordinal: 1, label: null },
-    { id: 101, ordinal: 2, label: null },
+    { id: 100, ordinal: 1, label: null, plane: null },
+    { id: 101, ordinal: 2, label: null, plane: null },
   ],
   progress: [{ itemId: 1, stageId: 100, qtyDone: 2 }],
   globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
@@ -199,7 +199,7 @@ describe('rowTotalQtyDone', () => {
   // A stage added after the row was built carries no key on it — without ?? 0 the sum would be NaN.
   it('counts a stage missing its key on the row as zero', () => {
     const [row] = treeToRows(tree)
-    const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null }]
+    const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null, plane: null }]
     expect(rowTotalQtyDone(row, withGhost)).toBe(2)
   })
 })
@@ -208,8 +208,8 @@ describe('rowTotalQtyDone', () => {
 // be what the stages say. Everything below pins that rule at the layer that settles it.
 describe('wartość wiersza idzie za etapami', () => {
   const stages: KosztorysStageT[] = [
-    { id: 100, ordinal: 1, label: null },
-    { id: 101, ordinal: 2, label: null },
+    { id: 100, ordinal: 1, label: null, plane: null },
+    { id: 101, ordinal: 2, label: null, plane: null },
   ]
   const row = (over: Partial<KosztorysV2RowT>) =>
     ({
@@ -495,7 +495,7 @@ describe('wartość wiersza idzie za etapami', () => {
 })
 
 describe('planItemRemoval', () => {
-  const stages = [{ id: 100, ordinal: 1, label: null }]
+  const stages = [{ id: 100, ordinal: 1, label: null, plane: null }]
   const row = (id: number, sectionId: number, over: Partial<KosztorysV2RowT> = {}) =>
     ({ id, sectionId, [stageKey(100)]: 0, ...over }) as unknown as KosztorysV2RowT
 

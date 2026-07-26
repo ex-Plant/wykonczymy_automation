@@ -3,6 +3,7 @@ import {
   netForQtyForView,
   rowDiscountForView,
   rowPlannedNetForView,
+  viewPrice,
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
@@ -11,7 +12,23 @@ import type {
   KosztorysStageT,
   KosztorysV2RowT,
   SectionSubtotalT,
+  StagePlaneT,
 } from '@/lib/kosztorys/types'
+
+/** An etap with no explicitly picked plane is counted as z narzędziami — and warned about. */
+export const DEFAULT_STAGE_PLANE: StagePlaneT = 'w_tools'
+
+/**
+ * Does this etap belong to the active price view? The client view shows every etap (it never filters,
+ * only reprices). In a subcontractor view an etap belongs only if its effective plane (null →
+ * DEFAULT_STAGE_PLANE) matches the view — the other plane's per-etap VALUE would otherwise be a
+ * repriced lie (per etap the relationship is OR: one crew executed it). Owned here so Phase 2's
+ * settlement math and the grid's „nie dotyczy" gate can never disagree on the rule.
+ */
+export function stageAppliesToView(stage: KosztorysStageT, view: PriceViewT): boolean {
+  if (view === 'client') return true
+  return (stage.plane ?? DEFAULT_STAGE_PLANE) === view
+}
 
 export type KosztorysClientTotalsT = {
   // Executed value at client prices, POST-rabat (Σ section net). The progress counter divides it by
@@ -69,15 +86,65 @@ export function clientTotalsFromSubtotals(
 }
 
 /**
- * „Suma wykonanej pracy" (należne) for the subcontractor summary: the executed value at the ACTIVE
- * view's price, PRE-rabat — `Σ(net + discount)` over that view's subtotals. Same net+discount
- * construction as `clientTotalsFromSubtotals`'s `sumaPracNet`, but view-agnostic and with no
- * global-discount add-back: the crew is owed its price regardless of any client concession (rabat is
- * absorbed by the company margin, not passed to the subcontractor). Under a global discount `net` is
- * already gross and `discount` is 0, so the identity still holds.
+ * Executed value at the ACTIVE view's price, PRE-rabat — `Σ(net + discount)` over that view's
+ * subtotals. Same net+discount construction as `clientTotalsFromSubtotals`'s `sumaPracNet`, but
+ * view-agnostic and with no global-discount add-back: the crew is owed its price regardless of any
+ * client concession (rabat is absorbed by the company margin, not passed to the subcontractor). Under
+ * a global discount `net` is already gross and `discount` is 0, so the identity still holds.
+ *
+ * The subcontractor summary now uses `subcontractorDueByPlane` (per-etap, plane-aware); this remains
+ * as the single-plane parity oracle its per-stage sum collapses to.
  */
 export function executedWorkNetPreRabat(subtotals: SectionSubtotalT[]): number {
   return subtotals.reduce((sum, s) => sum + s.net + s.discount, 0)
+}
+
+export type SubcontractorDueByPlaneT = {
+  wTools: number
+  ownTools: number
+  combined: number
+  hasUnconfirmedPlane: boolean
+}
+
+/**
+ * The view-independent subcontractor settlement: each etap's executed qty valued PRE-rabat at that
+ * etap's OWN plane, summed per plane and combined. This is the honest money „Podsumowanie
+ * podwykonawców" shows — unlike the per-view passes, which reprice 100% of executed work at one
+ * plane's price and so double-count on a mixed investment (per etap the relationship is OR: one crew
+ * executed it, at one plane's price).
+ *
+ * Per-stage value = `stageQty × viewPrice(row, plane)`. Pre-rabat is LINEAR in qty (the
+ * `rowDiscountForView` identity: `qty·viewPrice − netForQtyForView = discount`), so no qty-share
+ * splitting and no discount handling — rabat is a client concession the crew is still owed past, and
+ * a global discount never reaches subcontractors either. For a single-plane investment the per-stage
+ * sum collapses to `totalQty × viewPrice`, i.e. exactly `executedWorkNetPreRabat` at that view.
+ *
+ * `null` plane → DEFAULT_STAGE_PLANE (z narzędziami) and raises `hasUnconfirmedPlane`: the number
+ * renders, the warning sits next to it (recon-mismatch pattern).
+ */
+export function subcontractorDueByPlane(
+  rows: KosztorysV2RowT[],
+  stages: KosztorysStageT[],
+): SubcontractorDueByPlaneT {
+  let wTools = 0
+  let ownTools = 0
+  for (const st of stages) {
+    const plane = st.plane ?? DEFAULT_STAGE_PLANE
+    const key = stageKey(st.id)
+    let planeTotal = 0
+    for (const row of rows) {
+      const qty = row[key] ?? 0
+      if (qty) planeTotal += qty * viewPrice(row, plane)
+    }
+    if (plane === 'w_tools') wTools += planeTotal
+    else ownTools += planeTotal
+  }
+  return {
+    wTools,
+    ownTools,
+    combined: wTools + ownTools,
+    hasUnconfirmedPlane: stages.some((st) => st.plane === null),
+  }
 }
 
 /** The "Pomiar z natury" itself — the sheet's O = SUM(D:M), not a stored field (EX-494). */

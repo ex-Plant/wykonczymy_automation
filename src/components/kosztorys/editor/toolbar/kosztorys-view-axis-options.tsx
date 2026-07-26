@@ -1,15 +1,6 @@
-import {
-  Activity,
-  Banknote,
-  Coins,
-  Hammer,
-  Percent,
-  Receipt,
-  Slash,
-  User,
-  Wrench,
-} from 'lucide-react'
+import { Activity, Banknote, Coins, Hammer, Percent, Receipt, User } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import type { PairAxisConfigT } from '@/lib/kosztorys/axis-checkboxes'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { LayerT } from '@/lib/kosztorys/layer'
@@ -18,22 +9,12 @@ import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 
 const ICON_CLASS = 'size-4'
 
-// Three views over one dataset: they only change the active price and its derived values.
+// Three views over one dataset: they only change the active price and its derived values. The two
+// subcontractor views share their glyphs with the etap header via planeIcon (can't drift).
 export const VIEWS: { value: PriceViewT; label: string; icon: ReactNode }[] = [
   { value: 'client', label: 'Klient', icon: <User className={ICON_CLASS} /> },
-  { value: 'w_tools', label: 'Z narzędziami', icon: <Wrench className={ICON_CLASS} /> },
-  {
-    value: 'own_tools',
-    label: 'Bez narzędzi',
-    // No native crossed-wrench glyph — overlay two mirrored Slashes into an X to read as "tools off".
-    icon: (
-      <span className="relative inline-flex">
-        <Wrench className={ICON_CLASS} />
-        <Slash className="absolute inset-0" />
-        <Slash className="absolute inset-0 -scale-x-100" />
-      </span>
-    ),
-  },
+  { value: 'w_tools', label: 'Z narzędziami', icon: planeIcon('w_tools', ICON_CLASS) },
+  { value: 'own_tools', label: 'Bez narzędzi', icon: planeIcon('own_tools', ICON_CLASS) },
 ]
 
 export const VIEW_LEGEND = [

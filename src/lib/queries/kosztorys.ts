@@ -12,6 +12,7 @@ import type {
   KosztorysSectionT,
   KosztorysStageT,
   KosztorysTreeT,
+  StagePlaneT,
   StageProgressT,
   SubcontractorOverrideTypeT,
 } from '@/lib/kosztorys/types'
@@ -125,6 +126,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
       id: d.id,
       ordinal: num(d.ordinal),
       label: d.label ?? null,
+      plane: (d.plane as StagePlaneT | null) ?? null,
     }),
   )
 

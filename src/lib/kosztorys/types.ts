@@ -84,11 +84,25 @@ export type ViewPricingT = KosztorysItemT & {
   globalOwnToolsCoeff: number
 }
 
+// A stage's subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a
+// valid price view and flows straight into viewPrice(). null = defaulted to DEFAULT_STAGE_PLANE
+// (z narzędziami), unconfirmed — the state the TriangleAlert warning screams about.
+export type StagePlaneT = 'w_tools' | 'own_tools'
+
 export type KosztorysStageT = {
   id: number
   ordinal: number
   label: string | null
+  plane: StagePlaneT | null
 }
+
+// Stage autosave patch = the fields the header edits one at a time (rename → label, plane picker →
+// plane). Mirrors ItemPatchT; the action's zod validation is derived from this shape. plane is never
+// patched to null — an explicit pick only ever confirms a concrete plane.
+export type StagePatchT = Partial<{
+  label: string | null
+  plane: StagePlaneT
+}>
 
 export type StageProgressT = {
   itemId: number
