@@ -33,6 +33,9 @@ type PropsT = {
   // Read-only client render — no row links on the transactions list, and no netto-pricing controls:
   // how wydatki are priced is the company's call, so the client only ever sees the resulting figures.
   clientView?: boolean
+  // Off on a host that already lists every materiały transaction next to the panel (the investment
+  // page's transfers table), where the in-panel list would only repeat it.
+  showTransactions?: boolean
 }
 
 // The „Wydatki" view: per-category materiały breakdown, the brutto→netto pricing controls (checkbox +
@@ -49,6 +52,7 @@ export function SummaryExpensesTab({
   materialsReductionPercent,
   onMaterialsReductionPercentChange,
   clientView = false,
+  showTransactions = true,
 }: PropsT) {
   const materialsReduction = materialsReductionPercent / 100
   const materialsReductionAmount = materials.grossBase * materialsReduction
@@ -105,12 +109,14 @@ export function SummaryExpensesTab({
           />
         </div>
       )}
-      <MaterialsTransactionsTable
-        investmentId={investmentId}
-        investmentName={investmentName}
-        rows={materialTransactions}
-        clientView={clientView}
-      />
+      {showTransactions && (
+        <MaterialsTransactionsTable
+          investmentId={investmentId}
+          investmentName={investmentName}
+          rows={materialTransactions}
+          clientView={clientView}
+        />
+      )}
     </div>
   )
 }

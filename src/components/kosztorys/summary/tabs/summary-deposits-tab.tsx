@@ -15,6 +15,8 @@ type PropsT = {
   paidGross: number
   // Read-only client render — no row links.
   clientView?: boolean
+  // Keep only the three Razem buckets — for a host that already lists every wpłata elsewhere.
+  totalsOnly?: boolean
 }
 
 // The „Wpłaty" view: the sortable deposits list with its netto/brutto plane split + share pie, or an
@@ -25,13 +27,19 @@ export function SummaryDepositsTab({
   paidNet,
   paidGross,
   clientView = false,
+  totalsOnly = false,
 }: PropsT) {
   if (rows.length === 0) return <Description withIcon={false}>Brak wpłat.</Description>
 
   return (
     <div className="flex flex-col items-start gap-8 lg:flex-row">
       <div className="flex flex-col gap-1">
-        <DepositsTable investmentId={investmentId} rows={rows} clientView={clientView} />
+        <DepositsTable
+          investmentId={investmentId}
+          rows={rows}
+          clientView={clientView}
+          totalsOnly={totalsOnly}
+        />
         <Description size="xs" className="mt-2 w-fit max-w-sm text-balance">
           Wpłaty bez oznaczenia netto/brutto są traktowane jako netto.
         </Description>

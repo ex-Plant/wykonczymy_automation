@@ -6,6 +6,7 @@ import { DEPOSIT_TYPES, VAT_PLANE_LABELS } from '@/lib/constants/transfers'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import { formatNet } from '@/lib/kosztorys/format'
+import { cn } from '@/lib/utils/cn'
 import {
   SUMMARY_LABEL_COL,
   SUMMARY_VALUE_COL,
@@ -30,10 +31,14 @@ export function DepositsTable({
   investmentId,
   rows,
   clientView,
+  totalsOnly = false,
 }: {
   investmentId: number
   rows: DepositTransactionRowT[]
   clientView: boolean
+  // Drops the per-wpłata grid and keeps the three Razem buckets — for a host whose own transfers
+  // table already lists every deposit.
+  totalsOnly?: boolean
 }) {
   const dateCell = (row: DepositTransactionRowT) => (
     <SummaryLabelCell className="tabular-nums">
@@ -64,23 +69,25 @@ export function DepositsTable({
   const totalCols = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
   return (
     <div className="flex w-fit flex-col">
-      <SummaryTable cols={listCols} className="w-fit">
-        <SummaryHeaderCell variant="label">Wpłaty</SummaryHeaderCell>
-        <SummaryHeaderCell>Kwota</SummaryHeaderCell>
-        <SummaryHeaderCell variant="label">Rozliczenie netto/brutto</SummaryHeaderCell>
+      {!totalsOnly && (
+        <SummaryTable cols={listCols} className="w-fit">
+          <SummaryHeaderCell variant="label">Wpłaty</SummaryHeaderCell>
+          <SummaryHeaderCell>Kwota</SummaryHeaderCell>
+          <SummaryHeaderCell variant="label">Rozliczenie netto/brutto</SummaryHeaderCell>
 
-        {rows.map((row) => (
-          <Fragment key={row.id}>
-            {dateCell(row)}
-            <SummaryValueCell className="text-chart-green">
-              {formatNet(row.amount)}
-            </SummaryValueCell>
-            <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>
-          </Fragment>
-        ))}
-      </SummaryTable>
+          {rows.map((row) => (
+            <Fragment key={row.id}>
+              {dateCell(row)}
+              <SummaryValueCell className="text-chart-green">
+                {formatNet(row.amount)}
+              </SummaryValueCell>
+              <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>
+            </Fragment>
+          ))}
+        </SummaryTable>
+      )}
 
-      <SummaryTable cols={totalCols} className="-mt-px w-fit">
+      <SummaryTable cols={totalCols} className={cn('w-fit', !totalsOnly && '-mt-px')}>
         {perPlane.map((bucket) => (
           <Fragment key={bucket.plane ?? 'null'}>
             <SummaryLabelCell className="font-bold">

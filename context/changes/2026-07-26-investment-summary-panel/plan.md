@@ -493,15 +493,15 @@ None. The settlement-mode field and its migration belong to
 
 #### Automated
 
-- [x] 1.1 Type checking passes
-- [x] 1.2 Linting passes
-- [x] 1.3 Unit tests pass
+- [x] 1.1 Type checking passes — c081cd07
+- [x] 1.2 Linting passes — c081cd07
+- [x] 1.3 Unit tests pass — c081cd07
 
 ### Phase 2: Strip the two reused tabs
 
 #### Automated
 
-- [ ] 2.1 Type checking passes
+- [x] 2.1 Type checking passes
 - [ ] 2.2 `DepositsTable` totals-only unit test passes
 
 ### Phase 3: Mount the panel on the investment page
