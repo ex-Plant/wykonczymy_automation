@@ -275,14 +275,10 @@
   min-height: 0;
 }
 
-/* dsg shrink-wraps the container to its rows, so a short kosztorys leaves no empty band below the
-   last row. Negative margins clip the grid's outer top/left border out of the wrapper's
-   overflow-hidden. padding-bottom clears the last row (+ h-scrollbar) past the floating Podsumowanie
-   panel that overlays the grid's bottom edge. */
+/* Negative margins clip the grid's outer top/left border out of the wrapper's overflow-hidden. */
 .kosztorys-grid .dsg-container {
   margin-top: -1px;
   margin-left: -1px;
-  padding-bottom: 3rem;
 }
 
 /* Retint dsg's native selection blue to the app's monochrome theme (border = primary,
