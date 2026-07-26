@@ -354,7 +354,7 @@ export function sectionSubtotalsForView(
 }
 
 /**
- * Sections with nothing executed yet — the ones the filter menu's „Ukryj puste sekcje" row unticks,
+ * Sections with nothing executed yet — the ones the filter menu's „Zwiń puste sekcje" row unticks,
  * and the count it shows.
  *
  * "Pusta" is no WORK DONE, not no positions: a section with no items is cascade-deleted, so that

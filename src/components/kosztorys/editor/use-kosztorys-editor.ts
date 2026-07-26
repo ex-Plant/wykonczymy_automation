@@ -132,13 +132,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const view = clientView ? 'client' : persistedView
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<V2SortStateT>(null)
-  // Section filter, three states: null = no filter (all sections), a Set = show exactly those, an
-  // empty Set = show none. The „show none" state is why this can't be a plain Set with empty=all —
-  // the FilterMultiSelect toggle-all needs a distinct „Odznacz wszystkie" target.
-  const [shownSectionIds, setShownSectionIds] = useState<Set<number> | null>(null)
-  // Which sections are folded shut under their band. Deliberately NOT persisted: a fold is a reading
-  // gesture for the current session, and a remembered one would greet the next visit with rows the
-  // user can't see and doesn't remember hiding.
+  // Which sections are folded shut under their band — the single description of what the grid shows,
+  // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
+  // filtering the rows away, so a hidden section still announces itself and its total). Deliberately
+  // NOT persisted: a fold is a reading gesture for the current session, and a remembered one would
+  // greet the next visit with rows the user can't see and doesn't remember hiding.
   const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
@@ -316,10 +314,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
   // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort. Sits above viewRows because „Ukryj puste sekcje" reads its net.
+  // the filter/sort. Sits above viewRows because „Zwiń puste sekcje" reads its net.
   const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
-  // Feeds the filter menu's „Ukryj puste sekcje" row — both its count and the ids it unticks. That
-  // row hides by unticking rather than filtering rows on its own, so the picker's checkmarks stay
+  // Feeds the filter menu's „Zwiń puste sekcje" row — both its count and the ids it unticks. That
+  // row folds by unticking rather than filtering rows on its own, so the picker's checkmarks stay
   // the single description of what the grid shows.
   const emptySections = useMemo(() => emptySectionIds(subtotals), [subtotals])
 
@@ -331,14 +329,13 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     })
   }
 
-  // View = filter + sort. Edits are mapped back into the full dataset by id.
+  // View = search + sort. Sections are not filtered here: hiding one is a fold, applied further down
+  // by buildSectionHeaderRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
-    const scoped =
-      shownSectionIds === null ? rows : rows.filter((r) => shownSectionIds.has(r.sectionId))
-    const filtered = filterRows(scoped, search)
+    const filtered = filterRows(rows, search)
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
-  }, [rows, shownSectionIds, search, sort, view, stages])
+  }, [rows, search, sort, view, stages])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -528,11 +525,13 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     })
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
-    // With a section filter active, a row added to a hidden section would be invisible — pull its
-    // section into the filter so the add is visible.
-    setShownSectionIds((prev) =>
-      prev === null || prev.has(sectionId) ? prev : new Set(prev).add(sectionId),
-    )
+    // A row added to a folded section would be invisible — unfold it so the add is visible.
+    setCollapsedSectionIds((prev) => {
+      if (!prev.has(sectionId)) return prev
+      const next = new Set(prev)
+      next.delete(sectionId)
+      return next
+    })
   }
 
   // ⋯ menu → Wstaw pozycję powyżej/poniżej. Inserts a blank row at the anchor's display slot
@@ -718,8 +717,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const row = buildNewSectionRow(sec.data.id, item.data)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
-    // A filter would hide the new section's only row, making the insert look like a no-op.
-    setShownSectionIds(null)
   }
 
   async function handleAddSection() {
@@ -732,9 +729,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     sectionOrderRef.current.set(sec.data.id, sec.data.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
-    // Drop a section filter: the new section's row lives outside it, so keeping the filter would
-    // make the add look like a no-op (nothing visibly happens).
-    setShownSectionIds(null)
   }
 
   // Append the sections returned by appendPresetSectionsAction to the grid without a reload. The rows
@@ -755,8 +749,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     for (const section of slice) sectionOrderRef.current.set(section.id, section.displayOrder)
     for (const row of appended) prevById.current.set(row.id, row)
     setRows((rs) => [...rs, ...appended])
-    // The appended sections live outside any active filter — clear it so they're visible.
-    setShownSectionIds(null)
     router.refresh()
   }
 
@@ -856,22 +848,13 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     // Drop stack commands touching any of the cascade-deleted rows (EX-526 #2) — see handleRemoveItem.
     flushUndoBuffer()
     pruneByIds(removed.map((r) => r.id))
-    const wasShown = shownSectionIds?.has(sectionId) ?? false
-    if (wasShown) {
-      setShownSectionIds((prev) => {
-        if (prev === null) return prev
-        const next = new Set(prev)
-        next.delete(sectionId)
-        return next
-      })
-    }
+    // collapsedSectionIds is left alone: with no rows there is no band to fold, so a leftover id is
+    // inert — and it keeps the section's fold state if the server rejects and the rows come back.
     const res = await removeSectionAction(sectionId)
     if (!res.success) {
       // Server rejected (predicate drift) — restore the section's rows and surface the block.
       for (const r of removed) prevById.current.set(r.id, r)
       setRows((rs) => [...rs, ...removed])
-      if (wasShown)
-        setShownSectionIds((prev) => (prev === null ? prev : new Set(prev).add(sectionId)))
       toastMessage(res.error ?? 'Nie udało się usunąć sekcji', 'warning', 4000)
     }
   }
@@ -1178,6 +1161,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     guideX,
     collapsedSectionIds,
     toggleSectionCollapsed,
+    setCollapsedSectionIds,
     // Undefined in the read-only client view — one gate for the whole bundle, so the band's menu
     // can't half-appear.
     sectionHandlers: clientView
@@ -1210,8 +1194,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     setView,
     search,
     setSearch,
-    shownSectionIds,
-    setShownSectionIds,
     emptySections,
     // handlers
     onChange,

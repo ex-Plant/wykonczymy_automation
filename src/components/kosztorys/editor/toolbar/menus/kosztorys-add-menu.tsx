@@ -17,7 +17,7 @@ import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 export function KosztorysAddMenu() {
   const {
     investmentId,
-    shownSectionIds,
+    collapsedSectionIds,
     subtotals,
     handleAddItem,
     handleAddSection,
@@ -28,9 +28,10 @@ export function KosztorysAddMenu() {
   // it would unmount before it could open. The item only flips this flag.
   const [pickerOpen, setPickerOpen] = useState(false)
 
-  // The new praca lands in the single shown section when the filter isolates one, else the last.
-  const onlyShown = shownSectionIds?.size === 1 ? [...shownSectionIds][0] : undefined
-  const addItemSectionId = onlyShown ?? subtotals.at(-1)?.sectionId ?? null
+  // The new praca lands in the single expanded section when the fold isolates one, else the last.
+  const expanded = subtotals.filter((s) => !collapsedSectionIds.has(s.sectionId))
+  const onlyExpanded = expanded.length === 1 ? expanded[0].sectionId : undefined
+  const addItemSectionId = onlyExpanded ?? subtotals.at(-1)?.sectionId ?? null
 
   return (
     <>

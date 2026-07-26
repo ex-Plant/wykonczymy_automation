@@ -69,7 +69,7 @@ const rows = treeToRows(tree)
 // drift from the definition the toggle's label promises.
 const empties = emptySectionIds(sectionSubtotalsForView(rows, tree.stages, 'client'))
 
-// „Ukryj puste sekcje" hides by unticking the picker's selection, so the grid can only ever show
+// „Zwiń puste sekcje" folds by unticking the picker's selection, so the grid can only ever show
 // what the checkmarks say. This guards the one domain fact it rests on — which sections count as
 // pusta — plus the deselect itself; the selection is FilterMultiSelect's string encoding.
 const deselectEmpty = (current: string[]) => current.filter((v) => !empties.has(Number(v)))
@@ -84,7 +84,7 @@ describe('emptySectionIds — a section is pusta when nothing has been executed 
   })
 })
 
-describe('„Ukryj puste sekcje" — the bulk deselect it applies to the selection', () => {
+describe('„Zwiń puste sekcje" — the bulk deselect it applies to the selection', () => {
   it('drops the pusta section and leaves the rest ticked', () => {
     expect(deselectEmpty(['10', '20', '30'])).toEqual(['10', '30'])
   })
