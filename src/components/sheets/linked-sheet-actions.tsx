@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toastMessage } from '@/lib/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
+import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
 import { unlinkSheetFromInvestmentAction, deleteSheetAction } from '@/lib/actions/sheets'
 
 type PropsT = {
@@ -21,9 +22,9 @@ type PropsT = {
 // only one can be open at a time — triggered from its own button, never together.
 type DialogT = 'unlink' | 'delete' | undefined
 
-// Row actions for a sheet that is linked to an investment, rendered as three
-// standalone buttons: open the embedded sheet, the reversible "unlink", and the
-// destructive "delete". The unlink/delete buttons each gate behind a confirm
+// Row actions for a sheet that is linked to an investment, rendered as standalone
+// buttons: open the in-app editor, open the embedded sheet, the reversible
+// "unlink", and the destructive "delete". The unlink/delete buttons each gate behind a confirm
 // step. Both server actions re-check permissions — the client gate on "delete"
 // only hides a button the user can't use anyway.
 export function LinkedSheetActions({ sheetId, investmentId, investmentName }: PropsT) {
@@ -55,10 +56,12 @@ export function LinkedSheetActions({ sheetId, investmentId, investmentName }: Pr
 
   return (
     <div className="flex items-center justify-end gap-2">
+      <OpenKosztorysV2Button investmentId={investmentId} label="kosztorys_v2" />
+
       <Button size="sm" asChild>
         <Link href={`/inwestycje/${investmentId}/kosztorys`}>
           <FileSpreadsheet />
-          Otwórz
+          Arkusz
         </Link>
       </Button>
 
