@@ -34,7 +34,17 @@ fi
 
 # Discover DB-gated specs by their shared marker (no rotting hardcoded list); parity
 # keeps its own dev-DB leg (`pnpm test:parity`), so exclude it here.
-FILES="$(grep -rl 'skipIf(!ENV_READY)' src/__tests__ | grep -v 'investment-render-parity-db' | sort)"
+#
+# The golden master is excluded for a stronger reason than "it has its own leg": unlike
+# every other spec here it does NOT self-provision — it asserts the WHOLE dataset against
+# a committed fixture, fingerprinted over every transaction id. Its neighbours create and
+# delete investments in this same DB; they clean up today, but one aborted run leaves rows
+# behind and the golden master then reports "dataset changed — regenerate". Following that
+# advice would rebaseline the net against contaminated data and destroy it. It runs where
+# the dataset is a clean restore: `pnpm test:parity`.
+FILES="$(grep -rl 'skipIf(!ENV_READY)' src/__tests__ \
+  | grep -v 'investment-render-parity-db' \
+  | grep -v 'financial-golden-master-db' | sort)"
 [ -n "$FILES" ] || { echo "✗ no DB-gated integration specs found (marker moved?)" >&2; exit 1; }
 echo "→ integration specs @ 5435:"; echo "$FILES" | sed 's/^/    /'
 

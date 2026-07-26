@@ -8,6 +8,7 @@ import { useInvoiceFiles, type IngestResultT } from '@/components/forms/hooks/us
 import { useReceiptGeneration } from '@/components/forms/hooks/use-receipt-generation'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
 import { useSaldo } from '@/components/forms/hooks/use-saldo'
+import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
 import { SubmitPill } from '@/components/forms/submit-pill'
 import {
   TRANSACTION_TRANSFER_TYPES,
@@ -178,6 +179,10 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     form.setFieldValue('lineItems', [makeLineItem()])
   }
 
+  // Fills the select only when it would otherwise be empty — a draft that already names an
+  // investment keeps it, so navigating between investments never rewrites a half-filled form.
+  const investmentFromUrl = useInvestmentFromUrl(referenceData.investments)
+
   // Held in state, not rebuilt inline: makeLineItem() mints a fresh uuid, so an inline literal
   // handed to useAppForm was a new defaultValues on every render — the form re-applied it, which
   // re-rendered, which minted another id → "Maximum update depth exceeded" the moment the dialog opened.
@@ -187,14 +192,18 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     paymentMethod: 'CASH',
     sourceRegister: '',
     targetRegister: '',
-    investment: '',
+    investment: investmentFromUrl,
     worker: '',
     settled: false,
     lineItems: [makeLineItem()],
   }))
 
+  const initialValues = storedValues
+    ? { ...storedValues, investment: storedValues.investment || investmentFromUrl }
+    : blankValues
+
   const form = useAppForm({
-    defaultValues: storedValues ?? blankValues,
+    defaultValues: initialValues,
     validators: {
       onSubmit: bulkExpenseFormSchema,
     },

@@ -15,7 +15,7 @@ export function useStatusFilter<TItem>(
   data: TItem[],
   getStatus: (item: TItem) => InvestmentStatusT,
 ) {
-  const [selectedStatuses, setSelectedStatuses] = useState(new Set(DEFAULT_STATUSES))
+  const [selectedStatuses, setSelectedStatuses] = useState(() => new Set(DEFAULT_STATUSES))
 
   const toggleStatus = (status: InvestmentStatusT) => {
     setSelectedStatuses((prev) => {

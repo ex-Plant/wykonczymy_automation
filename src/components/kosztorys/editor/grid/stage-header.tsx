@@ -5,16 +5,14 @@ import { ChevronDown, Pencil, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
+  DropdownMenuCheckboxRow,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
-import { DEFAULT_STAGE_PLANE } from '@/lib/kosztorys/settlement'
 import { cn } from '@/lib/utils/cn'
 import type { KosztorysStageT, StagePlaneT } from '@/lib/kosztorys/types'
 
@@ -25,14 +23,13 @@ type PropsT = {
   onRename?: (stageId: number, label: string) => void
   onRemove?: (stageId: number) => void
   onSetPlane?: (stageId: number, plane: StagePlaneT) => void
-  tip?: string
 }
 
 // Stage column header: „Zmień nazwę" edits the label inline (empty → the „Etap N" placeholder,
 // persisting null), „Usuń etap" deletes behind a confirm. The inline input is uncontrolled, so its
 // `defaultValue` is read only when edit mode opens — no stale value can leak if the stage behind
 // this column index shifts under the persisted DOM node.
-export function StageHeader({ stage, onRename, onRemove, onSetPlane, tip }: PropsT) {
+export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
   const label = stage.label ?? `Etap ${stage.ordinal}`
   const [editing, setEditing] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -46,10 +43,6 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane, tip }: Prop
       </span>
     )
   }
-
-  // The effective plane drives the header icon; a null (unconfirmed) plane still renders the default
-  // wrench, with the scream next to it.
-  const effectivePlane = stage.plane ?? DEFAULT_STAGE_PLANE
 
   if (editing) {
     return (
@@ -77,40 +70,46 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane, tip }: Prop
     <>
       <HeaderMenu
         label={
-          <span className="inline-flex items-center gap-1">
-            {planeIcon(effectivePlane, 'size-3.5 opacity-70')}
-            <span className={cn(stage.label == null && 'text-muted-foreground')}>{label}</span>
+          <span
+            className={cn(
+              'inline-flex items-center gap-2',
+              stage.plane == null && 'text-destructive',
+            )}
+          >
+            {/* A wrench here would claim a crew nobody picked. */}
+            {stage.plane != null && planeIcon(stage.plane)}
+            <span
+              className={cn(stage.plane != null && stage.label == null && 'text-muted-foreground')}
+            >
+              {label}
+            </span>
             {stage.plane == null && (
-              <PlaneUnconfirmedBadge
-                className="size-3.5"
-                content="Domyślnie: z narzędziami — wybierz rozliczenie etapu."
-              />
+              <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap — do tego czasu ilości w tej kolumnie są zablokowane, bo nie weszłyby do rachunku żadnej ekipy." />
             )}
           </span>
         }
         icon={<ChevronDown className="opacity-50" />}
         triggerTitle="Opcje etapu"
-        tip={tip}
       >
         {onSetPlane && (
           <>
             <DropdownMenuLabel>Rozliczenie</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={stage.plane ?? undefined}
-              onValueChange={(v) => onSetPlane(stage.id, v as StagePlaneT)}
-            >
-              {STAGE_PLANES.map((plane) => (
-                <DropdownMenuRadioItem key={plane} value={plane}>
-                  {planeIcon(plane)}
-                  {PLANE_LABELS[plane]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
+            {/* Single-select skinned as checkboxes. onCheckedChange ignores its arg — re-picking the
+                active plane can't unset it. */}
+            {STAGE_PLANES.map((plane) => (
+              <DropdownMenuCheckboxRow
+                key={plane}
+                checked={stage.plane === plane}
+                onCheckedChange={() => onSetPlane(stage.id, plane)}
+                label={PLANE_LABELS[plane]}
+                trailing={planeIcon(plane)}
+              />
+            ))}
             <DropdownMenuSeparator />
           </>
         )}
         <DropdownMenuItem onSelect={() => setEditing(true)}>
-          <Pencil className="opacity-70" />
+          <Pencil />
           Zmień nazwę
         </DropdownMenuItem>
         {onRemove && (

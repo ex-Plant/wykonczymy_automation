@@ -37,13 +37,13 @@ export function columnSortValue(
     case 'gross':
       return toGross(rowValueForView(row, stages, view), row.vatRate)
     case 'discountAmount':
-      return rowDiscountForView(row, rowTotalQtyDone(row, stages), view)
+      return rowDiscountForView(row, rowTotalQtyDone(row, stages, view), view)
     case 'discountAmountGross':
-      return toGross(rowDiscountForView(row, rowTotalQtyDone(row, stages), view), row.vatRate)
+      return toGross(rowDiscountForView(row, rowTotalQtyDone(row, stages, view), view), row.vatRate)
     case 'stageQtySum':
-      return rowTotalQtyDone(row, stages)
+      return rowTotalQtyDone(row, stages, view)
     case 'donePercent':
-      return rowDoneFraction(row, rowTotalQtyDone(row, stages))
+      return rowDoneFraction(row, rowTotalQtyDone(row, stages, view))
     case 'remaining':
       return rowRemainingForView(row, stages, view)
     case 'remainingGross': {

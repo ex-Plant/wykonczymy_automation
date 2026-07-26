@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { calculateMargin } from '@/lib/db/calculate-margin'
+import { deriveFinancials } from '@/lib/db/investment-financials'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 const fin = (p: Partial<InvestmentFinancialsT>): InvestmentFinancialsT => ({
   categoryCosts: [],
   totalMaterialCosts: 0,
-  totalCorrections: 0,
+  materialsGrossBase: 0,
+  materialsNetBilled: 0,
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
@@ -44,5 +46,27 @@ describe('calculateMargin', () => {
   it('subtracts settled internal material from margin', () => {
     // robocizna 500, settled 100 → 400
     expect(calculateMargin(fin({ totalLaborCosts: 500, totalSettled: 100 }))).toBe(400)
+  })
+})
+
+// GUARD B3 — marża is blind to the brutto/netto choice. Run through the real derivation
+// rather than hand-built financials: the risk is that the netto type leaks into a bucket
+// marża reads (totalSettled), and only deriveFinancials decides that.
+describe('calculateMargin — the netto expense type moves nothing', () => {
+  const withExpense = (type: string) =>
+    deriveFinancials([
+      { type: 'LABOR_COST', settled: false, total: 5000 },
+      { type: 'PAYOUT', settled: false, total: 1000 },
+      { type, settled: false, total: 1230, netTotal: 1000 },
+    ])
+
+  it('is identical for a brutto and a netto investment expense', () => {
+    expect(calculateMargin(withExpense('INVESTMENT_EXPENSE_NET'))).toBe(
+      calculateMargin(withExpense('INVESTMENT_EXPENSE')),
+    )
+  })
+
+  it('equals robocizna − wypłaty — materiały never entered it', () => {
+    expect(calculateMargin(withExpense('INVESTMENT_EXPENSE_NET'))).toBe(4000)
   })
 })

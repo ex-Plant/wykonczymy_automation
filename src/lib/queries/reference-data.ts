@@ -17,6 +17,8 @@ import {
   deriveCategoryBreakdowns,
 } from '@/lib/db/sum-transfers'
 import { getDb } from '@/lib/db/get-db'
+import { findTransfersRaw } from '@/lib/queries/transfers'
+import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
@@ -36,6 +38,7 @@ import type {
   PayoutByWorkerT,
   PayoutTransactionRowT,
   DepositTransactionRowT,
+  MaterialTransactionRowT,
 } from '@/types/reference-data'
 
 // Categories alone, for callers that need only these. `fetchReferenceData` also returns every user
@@ -269,6 +272,56 @@ export async function fetchDepositTransactionsForInvestment(
     ['deposit-transactions', String(investmentId)],
     { tags: [CACHE_TAGS.transfers] },
   )()
+}
+
+/**
+ * The individual materiały rows for the Podsumowanie's wydatki list — this investment's
+ * INVESTMENT_EXPENSE + INVESTMENT_EXPENSE_NET + CORRECTION, both settled states, so the list toggle
+ * can split „Wydatki inwestycyjne" (unsettled, Σ billed === totalMaterialCosts) from „Materiały
+ * wliczone w robociznę" (settled).
+ *
+ * Shared by the owner's editor page and the unauthenticated client share read, which is why the
+ * category-name join lives here rather than at either page: the two surfaces must label a row
+ * identically. Only names are joined — `fetchReferenceData` would drag along company-wide PII that
+ * has no business on the share path. `limit: 0` = all rows.
+ */
+export async function fetchMaterialTransactionsForInvestment(
+  investmentId: number,
+): Promise<MaterialTransactionRowT[]> {
+  const [{ docs }, expenseCategories] = await Promise.all([
+    findTransfersRaw({
+      where: {
+        investment: { equals: investmentId },
+        type: { in: [...EXPENSES_TAB_TYPES] },
+        cancelled: { not_equals: true },
+      },
+      page: 1,
+      limit: 0,
+      sort: '-date',
+    }),
+    fetchExpenseCategories(),
+  ])
+  const nameById = new Map(expenseCategories.map((category) => [category.id, category.name]))
+
+  // depth: 0 → `expenseCategory` is a raw id (null for a legacy uncategorised row / a CORRECTION).
+  return docs.map((doc) => ({
+    id: Number(doc.id),
+    date: String(doc.date),
+    amount: Number(doc.amount),
+    billed: billedAmountFor(
+      doc.type,
+      Number(doc.amount),
+      doc.netAmount == null ? null : Number(doc.netAmount),
+    ),
+    description: doc.description != null ? String(doc.description) : null,
+    settled: doc.settled === true,
+    label:
+      doc.expenseCategory != null
+        ? (nameById.get(Number(doc.expenseCategory)) ?? 'Nieznana kategoria')
+        : doc.type === 'CORRECTION'
+          ? 'Korekta'
+          : 'Bez kategorii',
+  }))
 }
 
 export async function fetchCategoryBreakdowns(where: Where): Promise<CategoryBreakdownsT> {

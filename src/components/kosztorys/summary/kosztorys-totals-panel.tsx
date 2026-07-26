@@ -5,8 +5,11 @@ import * as Collapsible from '@radix-ui/react-collapsible'
 import { ChevronDown } from 'lucide-react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
-import type { PriceViewT } from '@/lib/kosztorys/calc'
-import { bucketDepositsByPlane, computeDoZaplatyRM } from '@/lib/kosztorys/summary-economics'
+import {
+  bucketDepositsByPlane,
+  computeDoZaplatyRM,
+  type MaterialsT,
+} from '@/lib/kosztorys/summary-economics'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
@@ -16,8 +19,16 @@ import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subc
 import { CollapsiblePanelTrigger } from '@/components/ui/collapsible-panel-trigger'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
-import { useSummaryAxis } from '@/components/kosztorys/summary/hooks/use-summary-axis'
-import { useSummaryView, type SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
+import {
+  useSummaryAxis,
+  type PanelAxisT,
+} from '@/components/kosztorys/summary/hooks/use-summary-axis'
+import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
+import { Description } from '@/components/ui/description'
+import {
+  useSummaryView,
+  type SummaryViewT,
+} from '@/components/kosztorys/summary/hooks/use-summary-view'
 import { useMaterialsNetPricing } from '@/components/kosztorys/summary/hooks/use-materials-net-pricing'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
@@ -35,6 +46,13 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'wydatki', label: 'Wydatki' },
   { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
+  { value: 'podwykonawcy', label: 'Podwykonawcy' },
+]
+
+const AXIS_SELECT_OPTIONS: SelectOptionT[] = [
+  { value: 'net', label: 'Netto' },
+  { value: 'gross', label: 'Brutto' },
+  { value: 'mixed', label: 'Mix' },
 ]
 
 type PropsT = {
@@ -56,9 +74,11 @@ type PropsT = {
   totalNet: number
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
   laborCostsNetFromKosztorys: number
-  // Materiały brutto — server sum of the investment's unsettled transactions (recorded brutto).
-  materialsGross: number
-  // Per-expense-category split of materialsGross (v1 parity); Σ === materialsGross.
+  // Materiały brutto — server sum of the investment's unsettled brutto-billed transactions.
+  materialsGrossBase: number
+  // Σ netAmount of the netto-billed wydatki — frozen: the netto pricing toggle must not touch it.
+  materialsNetBilled: number
+  // Per-expense-category split of both buckets (v1 parity); Σ === materiały billed total.
   materialyBreakdown: MaterialyBreakdownRowT[]
   // Client-priced, view-invariant per-section subtotals — the section pie's structure source.
   sectionSubtotals: SectionSliceInputT[]
@@ -70,9 +90,6 @@ type PropsT = {
   // (the body computes it unconditionally); clientView suppresses the scream downstream, not by
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
-  // Active price view. The recon verdict is client-view-fixed, so the scream only shows in 'client';
-  // in a subcontractor view the displayed figure is repriced and the scream would misread.
-  priceView: PriceViewT
   vatRate: number
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   clientView?: boolean
@@ -92,13 +109,13 @@ export function KosztorysTotalsPanel({
   subcontractorDue,
   totalNet,
   laborCostsNetFromKosztorys,
-  materialsGross,
+  materialsGrossBase,
+  materialsNetBilled,
   materialyBreakdown,
   sectionSubtotals,
   wplatyNet,
   rabatAmount,
   reconciliation,
-  priceView,
   vatRate,
   clientView = false,
 }: PropsT) {
@@ -106,13 +123,16 @@ export function KosztorysTotalsPanel({
   // The panel's own netto/brutto axis, independent of the Widok dropdown — that one keeps
   // governing the grid columns only; this switch governs every figure inside the panel.
   const [moneyAxis, setMoneyAxis] = useSummaryAxis()
-  // Which client-plane view is shown (Podsumowanie / Wydatki / Wpłaty) — independent of the grid's
-  // price view. Disabled on the subcontractor plane, which renders its own summary instead.
+  // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
+  // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only: filtered from
+  // the client read-only toggle, and a persisted pick of it falls back to „Podsumowanie" there so a
+  // client is never stranded on a hidden view.
   const [summaryView, setSummaryView] = useSummaryView()
-  // „Mieszane" ('mixed') shows BOTH netto and brutto columns, then a cash split block — the settlement
-  // anchors on brutto (matching the brutto „Do zapłaty" column at C = 0), while netto stays visible
-  // beside it. Every other value is a real MoneyAxisT the children read directly.
-  const mixedMode = moneyAxis === 'mixed'
+  const viewOptions = clientView
+    ? SUMMARY_VIEW_OPTIONS.filter((option) => option.value !== 'podwykonawcy')
+    : SUMMARY_VIEW_OPTIONS
+  const view: SummaryViewT = clientView && summaryView === 'podwykonawcy' ? 'summary' : summaryView
+  const isSubcontractorView = view === 'podwykonawcy'
   // The toggle shows one money column — the chosen one. Mieszane is the exception: it's a mixed
   // netto+brutto settlement, so it shows both columns alongside the gotówka block.
   const displayAxis: MoneyAxisT = moneyAxis === 'mixed' ? 'both' : moneyAxis
@@ -130,15 +150,13 @@ export function KosztorysTotalsPanel({
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross } = bucketDepositsByPlane(depositTransactions)
-  // The subcontractor plane (Z/Bez narzędzi) has no VAT axis and its own headline figure, so the
-  // client „Do zapłaty" only applies in the client view.
-  const isClientPlane = priceView === 'client'
   // Computed here and passed down: the collapsed headline and the Podsumowanie row show the same
   // „Do zapłaty", so it has one source rather than two calls that must be kept in step.
+  const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNetFromKosztorys,
     wplatyNet,
-    materialsGross,
+    materials,
     vatRate,
     materialsAsNet,
     materialsReduction,
@@ -156,7 +174,7 @@ export function KosztorysTotalsPanel({
       {/* Open, the toolbar's Podsumowanie button is the close affordance — the trigger row only
           renders collapsed, as the visible handle for the panel. */}
       <CollapsiblePanelTrigger
-        label={isClientPlane ? 'Podsumowanie' : 'Podsumowanie podwykonawców'}
+        label={isSubcontractorView ? 'Podsumowanie podwykonawców' : 'Podsumowanie'}
         className="data-[state=open]:hidden"
       />
       {/* Pinned to the panel, not the scroll region, so it stays put while content scrolls.
@@ -174,34 +192,52 @@ export function KosztorysTotalsPanel({
         forceMount
         className="flex min-h-0 flex-1 flex-col overflow-hidden transition-[visibility] duration-200 data-[state=closed]:invisible"
       >
-        {/* Pinned top bar — the view toggle (Podsumowanie / Wydatki / Wpłaty) stays visible while the
-            content scrolls below it. Rendered on both planes but disabled on the subcontractor plane,
-            which has its own summary; the toggle only governs the client plane for now. pr keeps the
-            toggle clear of the absolute close affordance in the top-right corner. */}
-        <div className="px-4 pt-4">
+        {/* Pinned top bar — the view toggle (Podsumowanie / Wydatki / Wpłaty / Robocizna /
+            Podwykonawcy) stays visible while the content scrolls below it. „Podwykonawcy" is dropped
+            from the options in the client read-only view. pr keeps the toggle clear of the absolute
+            close affordance in the top-right corner. */}
+        <div className="flex flex-col items-start gap-2 px-4 pt-4">
           <ToggleGroup
-            options={SUMMARY_VIEW_OPTIONS}
-            value={summaryView}
+            options={viewOptions}
+            value={view}
             onChange={setSummaryView}
-            disabled={!isClientPlane}
             aria-label="Widok podsumowania"
           />
+          {!isSubcontractorView && (
+            <div className="my-2 flex flex-col gap-2">
+              <Description className="max-w-xs" size="sm" withIcon={false}>
+                Wybierz jak rozliczana będzie inwestycja.
+              </Description>
+              <SimpleSelect
+                value={moneyAxis}
+                onValueChange={(next) => setMoneyAxis(next as PanelAxisT)}
+                options={AXIS_SELECT_OPTIONS}
+                className="w-40"
+              />
+            </div>
+          )}
         </div>
         <SummaryScrollRegion>
-          {isClientPlane ? (
+          {isSubcontractorView ? (
+            <SubcontractorSummary
+              investmentId={investmentId}
+              subcontractorDue={subcontractorDue}
+              payouts={payoutsByWorker}
+              payoutTransactions={payoutTransactions}
+            />
+          ) : (
             <div className="flex w-full flex-col gap-y-4 px-4 pt-4 pb-10">
-              {summaryView === 'summary' && (
+              {view === 'summary' && (
                 <SummaryOverviewTab
                   investmentId={investmentId}
                   moneyAxis={moneyAxis}
-                  onMoneyAxisChange={setMoneyAxis}
                   laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
                   doZaplaty={doZaplaty}
-                  materialsGross={materialsGross}
+                  materials={materials}
                   wplatyNet={wplatyNet}
                   rabatAmount={rabatAmount}
                   reconciliation={reconciliation}
-                  priceView={priceView}
+                  priceView="client"
                   vatRate={vatRate}
                   deriveMaterialsNet={materialsAsNet}
                   materialsReduction={materialsReduction}
@@ -210,10 +246,10 @@ export function KosztorysTotalsPanel({
                   clientView={clientView}
                 />
               )}
-              {summaryView === 'wydatki' && (
+              {view === 'wydatki' && (
                 <SummaryExpensesTab
                   investmentId={investmentId}
-                  materialsGross={materialsGross}
+                  materials={materials}
                   materialyBreakdown={materialyBreakdown}
                   materialTransactions={materialTransactions}
                   nettoShown={nettoShown}
@@ -225,17 +261,16 @@ export function KosztorysTotalsPanel({
                 />
               )}
 
-              {summaryView === 'wplaty' && (
+              {view === 'wplaty' && (
                 <SummaryDepositsTab
                   investmentId={investmentId}
                   rows={depositTransactions}
-                  showPlane={mixedMode}
                   paidNet={paidNet}
                   paidGross={paidGross}
                   clientView={clientView}
                 />
               )}
-              {summaryView === 'etapy' && (
+              {view === 'etapy' && (
                 <SummaryStagesTab
                   stages={stages}
                   stageTotals={stageTotals}
@@ -246,13 +281,6 @@ export function KosztorysTotalsPanel({
                 />
               )}
             </div>
-          ) : (
-            <SubcontractorSummary
-              investmentId={investmentId}
-              subcontractorDue={subcontractorDue}
-              payouts={payoutsByWorker}
-              payoutTransactions={payoutTransactions}
-            />
           )}
         </SummaryScrollRegion>
       </Collapsible.Content>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Columns3, FolderPlus, Hammer, LibraryBig, Plus } from 'lucide-react'
+import { FolderPlus, Hammer, LibraryBig, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,7 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
+import { planeIcon, PLANE_LABELS } from '@/components/kosztorys/editor/plane-icons'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
+import type { StagePlaneT } from '@/lib/kosztorys/types'
+
+const STAGE_PLANES: StagePlaneT[] = ['w_tools', 'own_tools']
 
 export function KosztorysAddMenu() {
   const {
@@ -47,10 +51,14 @@ export function KosztorysAddMenu() {
             <Hammer />
             Praca
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleAddStage}>
-            <Columns3 />
-            Etap
-          </DropdownMenuItem>
+          {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
+              plane-less „Etap" and no new stage is ever unconfirmed. */}
+          {STAGE_PLANES.map((plane) => (
+            <DropdownMenuItem key={plane} onSelect={() => handleAddStage(plane)}>
+              {planeIcon(plane)}
+              Etap — {PLANE_LABELS[plane].toLowerCase()}
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuItem onSelect={handleAddSection}>
             <FolderPlus />
             Sekcja

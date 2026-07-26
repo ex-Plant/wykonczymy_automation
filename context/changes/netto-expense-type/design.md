@@ -82,6 +82,10 @@ They must never compound. Structural rule:
 
 So the server sends materiały in **two buckets** instead of one number:
 
+> **Renamed 2026-07-25:** `materialsNetTypeNetto` → **`materialsNetBilled`**, `materialsBruttoBase` →
+> **`materialsGrossBase`** (glossary rule 3 — no Polish root on an English affix; the codebase already
+> says `materialsGross`). This section keeps the old names; `plan.md` carries the current ones.
+
 - `materialsNetTypeNetto` — Σ(net-type `netAmount`), frozen.
 - `materialsBruttoBase` — Σ(normal brutto expenses `amount`), the only thing the global toggle may cut.
 
@@ -133,7 +137,11 @@ These are the regression guards. Each is phrased as a testable assertion.
   (`calculate-margin.ts`). _Test: unit — marża identical across the two types for an unsettled
   expense._
 
-- **B4 — no leak into `settled` (marża).** `canBeSettled === isExpensesTabType`, so adding the
+- **B4 — no leak into `settled` (marża).** _Superseded in form by EX-573 (2026-07-25), not in
+  substance: the decision below is now one column, `settleable: false`, in the type's
+  `TRANSFER_TYPE_SPECS` row — there is no `canBeSettled` to carve out, and `src/lib/constants/transfer-rules.ts`
+  no longer exists. The reasoning still stands; see `plan.md` §1–§2 for the current mechanics._
+  `canBeSettled === isExpensesTabType`, so adding the
   net-type to `EXPENSES_TAB_TYPES` would make it settleable and its amount would flow into
   `totalSettled`, which **marża** reads (`calculate-margin.ts:13`). **Spike decision: net-type is NOT
   settleable** — carve it out of `canBeSettled` so the marża-leak question cannot arise. Its netto

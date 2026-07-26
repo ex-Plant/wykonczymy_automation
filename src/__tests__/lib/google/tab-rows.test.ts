@@ -323,3 +323,31 @@ describe('settledExpenseRow (rozliczone tab)', () => {
     ).toBeUndefined()
   })
 })
+
+// Regression: the netto type used to mirror `amount` (brutto) into the owner's client-facing
+// sheet, putting the company's VAT reclaim on the client's invoice and pushing the sheet's
+// SUM(E:E) above the app's materiały total.
+describe('expenseRow — netto type bills the netto figure', () => {
+  const nettoDoc: TxDocT = {
+    ...base,
+    id: 900,
+    type: 'INVESTMENT_EXPENSE_NET',
+    amount: 1230,
+    netAmount: 1000,
+    expenseCategory: { name: 'Materiały budowlane' },
+  }
+
+  it('mirrors netAmount, not the brutto that left the register', () => {
+    expect(expenseRow(nettoDoc)?.amount).toBe(1000)
+  })
+
+  it('skips the row rather than falling back to brutto when netAmount is missing', () => {
+    expect(expenseRow({ ...nettoDoc, netAmount: null })).toBeUndefined()
+  })
+
+  it('leaves the brutto-billed type on amount', () => {
+    expect(
+      expenseRow({ ...nettoDoc, type: 'INVESTMENT_EXPENSE', netAmount: null })?.amount,
+    ).toBe(1230)
+  })
+})

@@ -15,7 +15,7 @@ import {
   NEW_SECTION_DEFAULTS,
 } from '@/lib/kosztorys/constants'
 import type { ActionResultT } from '@/types/action'
-import type { ItemPatchT, StagePatchT } from '@/lib/kosztorys/types'
+import type { ItemPatchT, StagePatchT, StagePlaneT } from '@/lib/kosztorys/types'
 
 // --- Patch schemas (all fields optional — autosave sends one field at a time) ---
 // itemPatchSchema is shaped to match ItemPatchT (a single source of the type in lib/kosztorys/types.ts).
@@ -408,12 +408,18 @@ export async function swapItemOrderAction(
 
 // --- Stages (etapy) ---
 
+// A new etap is created WITH its plane — the picker is forced at creation (the add menu offers
+// „z narzędziami" / „bez narzędzi", never a plane-less „Etap"), so no new stage is ever null.
+// Legacy stages keep their null and its unconfirmed warning until a human picks one.
 export async function addStageAction(
   investmentId: number,
+  plane: StagePlaneT,
 ): Promise<ActionResultT<{ id: number; ordinal: number }>> {
   return protectedAction(
     'addStageAction',
     async ({ payload }) => {
+      const parsed = validateAction(stagePatchSchema, { plane })
+      if (!parsed.success) return parsed
       const existing = await payload.find({
         collection: 'kosztorys-stages',
         where: { investment: { equals: investmentId } },
@@ -424,7 +430,7 @@ export async function addStageAction(
       const nextOrdinal = (existing.docs[0]?.ordinal ?? 0) + 1
       const created = await payload.create({
         collection: 'kosztorys-stages',
-        data: { investment: investmentId, ordinal: nextOrdinal },
+        data: { investment: investmentId, ordinal: nextOrdinal, plane },
       })
       return { success: true, data: { id: created.id, ordinal: nextOrdinal } }
     },

@@ -9,16 +9,12 @@ import {
   needsWorker,
   needsExpenseCategory,
   canBeSettled,
+  billsNetAmount,
 } from '@/lib/constants/transfers'
-import { getAmountError } from '@/lib/utils/validation'
+import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
 type TransferData = Partial<Transaction>
 
-/**
- * Cross-field validation for Transactions.
- * Enforces required relationships based on transaction type
- * and auto-clears inapplicable fields.
- */
 export const validateTransfer: CollectionBeforeValidateHook = ({
   data,
   req,
@@ -28,45 +24,46 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   const d = data as TransferData
   console.log('[validateTransfer] Start', { operation, type: d.type, amount: d.amount })
 
-  // Auto-set createdBy on create
   if (operation === 'create' && req.user) {
     d.createdBy = req.user.id
   }
 
-  const type = d.type ?? ''
+  // Fall back to the stored type: a partial update (PATCH of one field) carries no `type`, and
+  // an empty one would route a netto row down the else-branch below and null its netAmount.
+  const type = d.type ?? (originalDoc as TransferData | undefined)?.type ?? ''
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
     if (!d.cancelledTransaction) {
       throw new Error('Cancelled transaction reference is required.')
     }
+    // The one field the early return may NOT wave through: sumRegisterBalance has no
+    // CANCELLATION arm, so a register smuggled in here (REST / Local API — the admin
+    // panel no longer offers the picker) lands in `ELSE -amount` and drains it forever.
+    d.sourceRegister = null
     return d
   }
 
-  // Marking as cancelled — no field re-validation needed
   if (operation === 'update' && d.cancelled) {
     return d
   }
 
   const errors: string[] = []
 
-  // Amount validation — CORRECTION allows negative (invoice corrections), others must be positive
+  // CORRECTION allows negative (invoice credits); every other type must be positive.
   if (d.amount !== undefined && d.amount !== null) {
     const amountErr = getAmountError(d.amount, type)
     if (amountErr) errors.push(amountErr)
   }
 
-  // sourceRegister — required for all types except LABOR_COST
   if (needsSourceRegister(type) && !d.sourceRegister) {
     errors.push('Cash register is required for this transfer type.')
   }
 
-  // Auto-clear sourceRegister for types that don't need it
   if (!needsSourceRegister(type)) {
     d.sourceRegister = null
   }
 
-  // investment — required for INVESTOR_DEPOSIT, INVESTMENT_EXPENSE, LABOR_COST
   if (requiresInvestment(type) && !d.investment) {
     errors.push('Investment is required for this transfer type.')
   }
@@ -79,7 +76,6 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.investment = null
   }
 
-  // targetRegister — required for REGISTER_TRANSFER, must differ from source
   if (needsTargetRegister(type)) {
     if (!d.targetRegister) {
       errors.push('Target register is required for register transfers.')
@@ -88,17 +84,14 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     }
   }
 
-  // otherCategory — required for OTHER
   if (needsOtherCategory(type) && !d.otherCategory) {
     errors.push('Category is required for OTHER transfers.')
   }
 
-  // worker — required for PAYOUT
   if (needsWorker(type) && !d.worker) {
     errors.push('Worker is required for payout transfers.')
   }
 
-  // Auto-clear worker for types that don't need it
   if (!needsWorker(type)) {
     d.worker = null
   }
@@ -110,7 +103,21 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.settled = false
   }
 
-  // expenseCategory — required for INVESTMENT_EXPENSE, and for CORRECTION once it has an investment
+  // The netto figure is load-bearing exactly on the type whose spec row bills at `netAmount`, and
+  // meaningless anywhere else — so the type that doesn't bill at it stores null. This hook is the
+  // server-side authority; the rule itself lives once in getNetAmountError.
+  if (billsNetAmount(type)) {
+    const original = originalDoc as TransferData | undefined
+    const netErr = getNetAmountError(
+      d.netAmount ?? original?.netAmount,
+      d.amount ?? original?.amount,
+      type,
+    )
+    if (netErr) errors.push(netErr)
+  } else {
+    d.netAmount = null
+  }
+
   if (needsExpenseCategory(type, !!d.investment) && !d.expenseCategory) {
     errors.push('Expense category is required for investment-related expenses.')
   }

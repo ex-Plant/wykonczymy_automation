@@ -25,8 +25,9 @@ Verified by two research sweeps (2026-07-23/24), captured in `design.md`:
 - **SQL grouping is granular** — `sumAllInvestmentFinancials` groups by `(investment_id, type, settled)`
   and `sumCategoryByTypeSettled` by `(category, type, settled)`, so a new type surfaces as its own row.
   The **collapse** happens one layer up in `deriveFinancials` / `deriveCategoryBreakdowns`
-  (`src/lib/db/investment-financials.ts:16-53`), where `isExpensesTabType` folds every expense type
-  into the single scalar `totalMaterialCosts`.
+  (`src/lib/db/investment-financials.ts`), where every type whose `financialBucket` is `'materials'`
+  folds into the single scalar `totalMaterialCosts`. (Post-EX-573 that collapse reads the spec-table
+  column, not `isExpensesTabType` — the routing and the money are separate questions now.)
 - **Both bilanses read `totalMaterialCosts`** — transfers-side `calculateBalance`
   (`src/lib/db/calculate-balance.ts:6`) and kosztorys-side `computeDoZaplatyRM`
   (`src/lib/kosztorys/summary-economics.ts:110`). Netting the net-type moves both (owner: "oba").
@@ -68,7 +69,7 @@ Verify: unit suite green; manually, adding a net-type expense drops the register
 - **No edit path for `netAmount`** — immutable after create; correction is cancel + re-add. B6 removed.
 - **Not touching `sumRegisterBalance`** or `DEPOSIT_TYPES` — kasa stays brutto.
 - **Not touching `vatPlane`** (the deposit NET/GROSS field) — unrelated concept.
-- **Net-type is not settleable** — carved out of `canBeSettled`, so it can never reach `totalSettled`/marża.
+- **Net-type is not settleable** — `settleable: false` in its spec-table row, so it can never reach `totalSettled`/marża.
 - **No data backfill** — kosztorys/spike data is throwaway (AGENTS.md).
 - **No audit log** for the netto figure (amount edits are logged; this is a noted gap, out of scope).
 - **No B6 integration test** and no E2E in this PR — structural units only.
@@ -81,7 +82,7 @@ editor and rewrite the toggle composition so the net-type is frozen, (4) the cre
 Each phase typechecks on its own and lands its guards.
 
 The spine is the **two-bucket split**: `deriveFinancials` classifies `INVESTMENT_EXPENSE_NET` rows
-into `materialsNetTypeNetto` (Σ `netAmount`, frozen) instead of the brutto `totalMaterialCosts`/base.
+into `materialsNetBilled` (Σ `netAmount`, frozen) instead of the brutto `totalMaterialCosts`/base.
 Downstream, only the brutto base flows through the global toggle; the net-type bucket is added after,
 untouched. This makes double-deduction structurally impossible — the net-type amount is simply not in
 the number the toggle multiplies.
@@ -110,30 +111,91 @@ the field, the predicate-set memberships, and the migrations.
 
 ### Changes Required
 
-#### 1. Type union + labels + color
+> **Rewritten 2026-07-25 for EX-573.** This phase was planned against ~12 independent membership
+> arrays split across `transfers.ts` and `transfer-rules.ts`. That file is gone and those decisions
+> are now one compile-checked row in `TRANSFER_TYPE_SPECS`. What was "visit N arrays and remember
+> each one" is now "fill in one row, and the build refuses to compile until every column has an
+> answer". The two columns the pre-EX-573 plan could not name — `financialBucket` and the
+> brutto-vs-netto question — are decided in §2 below.
+
+#### 1. One spec-table row
 
 **File**: `src/lib/constants/transfers.ts`
 
-**Intent**: Register the new type everywhere the union fans out so the build's `Record` guards are
-satisfied and the type is routed correctly.
+**Intent**: Register the type in the union and answer every column of `TRANSFER_TYPE_SPECS`. The
+`satisfies Record<TransferTypeT, TransferSpecT>` makes a forgotten column a build error, so this
+replaces the old "add it to `EXPENSES_TAB_TYPES` / `INVESTMENT_TYPES` / carve out of `canBeSettled`"
+checklist entirely.
 
-**Contract**: Add `'INVESTMENT_EXPENSE_NET'` to `TRANSFER_TYPES`; add `TRANSFER_TYPE_LABELS` entry
-"Wydatek inwestycyjny netto"; add `TRANSFER_TYPE_COLORS` entry — a **not-yet-used** `chart-*` token
-(grep the existing map + `@theme` tokens to pick one no other type uses, not amber). Add to
-`TRANSACTION_TRANSFER_TYPES` (create-form dropdown), `INVESTMENT_TYPES` (links to an investment), and
-`EXPENSES_TAB_TYPES` (routing/category/sheet-sync). Do **not** add to `DEPOSIT_TYPES`.
+**Contract**: add `'INVESTMENT_EXPENSE_NET'` to `TRANSFER_TYPES` — that array is sorted by Polish
+label (its own header comment says so), so it goes right after `'INVESTMENT_EXPENSE'`. The
+create-form dropdown is a different array, `TRANSACTION_TRANSFER_TYPES`, ordered separately. Then
+the row:
 
-#### 2. Predicate carve-outs
+| Column | Value | Why |
+|---|---|---|
+| `label` | `'Wydatek inwestycyjny netto'` | |
+| `color` | a **not-yet-used** `chart-*` token, not amber | grep the map + `@theme` before picking |
+| `deposit` | `false` | it is an expense |
+| `expensesSheetTab` | `true` | shares routing / category / sheet-sync with the brutto expense |
+| `transfersSheetTab` | `false` | |
+| `settleable` | **`false`** | decision B4 — this is the split the whole table exists for |
+| `financialBucket` | **`'materialsNet'`** (new value) | see §2 |
+| `sourceRegister` | `'required'` | the cash leaves a register at brutto |
 
-**File**: `src/lib/constants/transfer-rules.ts`
+`TRANSFER_TYPE_LABELS` and `TRANSFER_TYPE_COLORS` are derived from the row — do not edit them.
+The literal arrays that stayed literal still need the type appended by hand, and the consistency
+suite is what tells you which: `TRANSACTION_TRANSFER_TYPES` (ordered create-form dropdown) and
+`EXPENSES_TAB_TYPES` (spread eagerly into `sync-sheet.ts` at module load). **Not** `DEPOSIT_TYPES`,
+**not** `TRANSFERS_SUMMARY_TYPES` (fixed sheet column layout, deliberately decoupled).
 
-**Intent**: The net-type behaves like a material expense for routing/category, but must NOT be
-settleable (keeps netto out of marża).
+The per-field form predicates below the table are still independent axes, not columns — add the
+net-type to `needsExpenseCategory` so it carries an expense category, and check `showsOtherCategory`.
 
-**Contract**: `canBeSettled` must return `false` for `INVESTMENT_EXPENSE_NET` (it currently aliases
-`isExpensesTabType`, which will now include the net-type — so add an explicit exclusion). Review the
-string-literal predicates `showsOtherCategory` (line 69) and `needsExpenseCategory` (71-73): add the
-net-type to `needsExpenseCategory` so it carries an expense category.
+#### 2. The two columns EX-573 deferred to this change
+
+**File**: `src/lib/constants/transfers.ts` (Phase 1 adds both columns; Phase 2 consumes
+`billedAmount` — no financial math changes here)
+
+**Intent**: `financialBucket` answers *which figure a type feeds*. It does **not** answer *which
+stored column to sum* — every existing type bills at `amount`, so that question had no second answer
+and no column. The net-type is the first type where the two diverge, so this change owns both.
+
+**Contract**:
+
+- **`financialBucket: 'materialsNet'`** — a new bucket value, NOT `'materials'`. Reusing `'materials'`
+  would put the net-type in the same bucket as brutto material and hand the brutto-vs-netto question
+  back to an `if` inside `deriveFinancials` — exactly the scattered predicate EX-573 removed. A
+  distinct bucket makes the double-cut structurally impossible: the net-type is simply not in the
+  number the global toggle multiplies (Phase 2's spine).
+- **`billedAmount: 'amount' | 'netAmount'`** — add the column, `'amount'` for all twelve existing
+  types, `'netAmount'` for the net-type. This is the column EX-573 identified and deliberately left
+  to this change, because this is the change that rewrites `deriveFinancials` and carries the tests.
+  Without it the netto rule lives as a type-name comparison mirrored across `deriveFinancials` and
+  `deriveCategoryBreakdowns` — the exact shape that leaked marża before.
+
+  **Where it is consumed is load-bearing.** `TypeSettledTotalT` is `{ type, settled, total }` — one
+  already-aggregated sum. By the time `deriveFinancials` runs, the amount-vs-netAmount choice has
+  been made in SQL, and `billedAmount` is a TypeScript value SQL cannot read. So the row shape must
+  carry **both** sums (`total` = Σ`amount`, `totalNet` = Σ`net_amount`) and `deriveFinancials` picks
+  by `billedAmount`. The alternative — `SUM(CASE WHEN type = 'INVESTMENT_EXPENSE_NET' …)` in the
+  query — puts the type name back into SQL, where the spec table cannot reach it and the next
+  netto-billed type would silently miss the CASE. Pinned to the two-sums shape; Phase 2 §2 implements
+  it.
+
+**Two spec-table tests go red on purpose, and both must be updated deliberately, not silenced:**
+
+- `transfer-spec-table.test.ts` › *"the materials bucket is exactly the expenses-tab column"* — it
+  pins that those two questions agree **today**. The net-type is what makes them disagree; that is
+  the finding the test exists to force. Rewrite it to assert the expenses-tab column equals
+  `'materials' ∪ 'materialsNet'`.
+- `transfer-spec-table.test.ts` › *"settleable vs expensesSheetTab — agree today for all twelve
+  types"* — the net-type is the counter-example the comment already names. Replace the blanket
+  equality with the one-directional rule the file already asserts separately (settleable ⇒
+  expenses-tab), and drop the coincidental-equality test with a note that the net-type ended it.
+
+Also extend `financialBucket`'s allowed-values test and the `only a materials type is settleable`
+pin, which currently reads `'materials'` literally.
 
 #### 3. Payload collection: option + `netAmount` field
 
@@ -144,8 +206,10 @@ net-type to `needsExpenseCategory` so it carries an expense category.
 **Contract**: Add the Payload `{label:{en,pl}, value:'INVESTMENT_EXPENSE_NET'}` option (satisfies
 `_AllTransferTypesCovered`). New `netAmount` number field: `access:{update:()=>false}`,
 `admin.condition:(data)=>typeOf(data)==='INVESTMENT_EXPENSE_NET'` (copy the `vatPlane` shape, lines
-120-136), no `defaultValue`. Add a field/collection validate that `netAmount != null` and
-`netAmount <= amount` when the type is net (create-time; the field is immutable so no re-validate).
+120-136), no `defaultValue`. **No validate here** — the `netAmount != null` / `netAmount <= amount`
+rule has ONE authority, `src/hooks/transfers/validate.ts` (Phase 4 §1), where every other
+type-conditional rule already lives and which every write path passes through. The form schema's
+refine is UX, not the guard.
 
 #### 4. Migrations (two, hand-written)
 
@@ -164,10 +228,14 @@ migration ordered first. Apply to local dev DB only.
 
 **File**: `src/__tests__/transfer-constants.test.ts`
 
-**Intent**: The test asserts the exact contents of `TRANSACTION_TRANSFER_TYPES` and predicate tables;
-update expectations for the new type (incl. `canBeSettled` false, `isExpensesTabType` true).
+**Intent**: The truth table asserts every predicate's answer for every type; the net-type needs a
+row in each `trueFor` list it belongs to (`isExpensesTabType` true, `canBeSettled` **false**,
+`needsSourceRegister` true, `needsExpenseCategory` true, `showsInvestment`/`requiresInvestment` true).
 
-**Contract**: Add the net-type to the asserted membership/predicate rows.
+**Contract**: Add the net-type to the asserted `trueFor` lists. The `covers every exported predicate`
+test derives from the module namespace, so a new *predicate* would fail it — a new *type* will not;
+the per-type coverage comes from `TRANSFER_TYPES` being iterated. See also the two deliberately-red
+spec-table tests in §2, which live in `transfer-spec-table.test.ts`, not here.
 
 ### Success Criteria
 
@@ -199,14 +267,17 @@ are untouched. This is the correctness core.
 
 **File**: `src/lib/db/investment-financials.ts`
 
-**Intent**: Stop the `isExpensesTabType` collapse from merging the net-type into brutto; emit a
-separate frozen netto bucket, in both the scalar totals and the per-category breakdown.
+**Intent**: Emit a separate frozen netto bucket, in both the scalar totals and the per-category
+breakdown. Post-EX-573 the classification is already done for you — `financialBucketOf(r.type)`
+returns `'materialsNet'` and `billedAmount` says which column to sum — so this is a routing change,
+not a new predicate.
 
-**Contract**: `deriveFinancials` returns new fields `materialsNetTypeNetto` (Σ `netAmount` of
-unsettled net-type rows) and `materialsBruttoBase` (the existing brutto material sum, now excluding
-net-type). Keep `totalMaterialCosts` = base + netTypeNetto for any consumer that still wants the
-combined figure, OR replace it — decide by consumer audit (both bilanses will consume the split; the
-combined stays as a convenience total). `totalSettled` unchanged (net-type never settled).
+**Contract**: `deriveFinancials` returns new fields `materialsNetBilled` (Σ `netAmount` of unsettled
+net-type rows) and `materialsGrossBase` (the existing brutto material sum, now excluding net-type).
+**`totalMaterialCosts` is KEPT** as `materialsGrossBase + materialsNetBilled` — decided, not left to
+a consumer audit. Two consumers make it non-negotiable: `calculateBalance` (which therefore needs no
+change at all — Phase 2 §3 below is a no-op) and the golden-master fixture, which snapshots it for
+100 investments. `totalSettled` unchanged (net-type never settled).
 `deriveCategoryBreakdowns` keeps `type` and emits, per category, a brutto sub-total and a net-type
 netto sub-total. `InvestmentFinancialsT` (`src/types/investment-financials.ts`) widens accordingly;
 `MaterialyBreakdownRowT` gains an origin/bucket marker.
@@ -228,21 +299,32 @@ carry it per grouped row) alongside `SUM(amount)`. `sumRegisterBalance` / `sumAl
 
 **Intent**: The transfers-side bilans must count the net-type at netto, brutto expenses at brutto.
 
-**Contract**: `calculateBalance` reads `materialsBruttoBase + materialsNetTypeNetto` where it used
-`totalMaterialCosts`. (Marża file untouched — asserted by B3.)
+**Contract**: **No change** — this section survives as a note on why. `totalMaterialCosts` is kept as
+`materialsGrossBase + materialsNetBilled` (§1), which is exactly the figure `calculateBalance`
+already reads, so the transfers-side bilans counts the net-type at netto for free. Verify by reading
+the file; do not edit it. (Marża file untouched — asserted by B3.)
 
 ### Success Criteria
 
 #### Automated Verification:
 
 - Type checking passes: `pnpm tsc --noEmit`
-- B2 (kasa brutto): unit asserts `INVESTMENT_EXPENSE_NET ∉ DEPOSIT_TYPES` and the register CASE treats
-  it as an outflow at `amount` — `pnpm exec vitest run` on the new spec.
+- B2 (kasa brutto): **DB integration**, not a unit. Asserting `INVESTMENT_EXPENSE_NET ∉ DEPOSIT_TYPES`
+  is already pinned by `transfer-spec-table.test.ts` (`DEPOSIT_TYPES === deposit column`) — a second
+  array-vs-array assertion guards nothing. The risk lives in the SQL: `sumRegisterBalance` subtracts
+  `amount`, and only a query actually executed against a DB can prove it never switched to
+  `net_amount`. New spec under `src/__tests__/lib/db/`, gated on `describe.skipIf(!ENV_READY)` so
+  `scripts/test-integration.sh` discovers it: create a net-type expense brutto 1230 / netto 1000 on a
+  self-provisioned register, assert the balance moved by exactly −1230. Run: `pnpm test:integration`.
 - B3 (marża unmoved): unit — marża identical whether an unsettled expense is `INVESTMENT_EXPENSE` or
   `INVESTMENT_EXPENSE_NET`.
-- B4 (no settled leak): unit — a net-type row is never routed to `totalSettled`; `canBeSettled` is false.
-- Bucket assignment unit — a net-type row lands in `materialsNetTypeNetto` (its `netAmount`), never in
-  `materialsBruttoBase`.
+- B4 (no settled leak): unit — a net-type row is never routed to `totalSettled`; its spec row says `settleable: false`.
+- Bucket assignment unit — a net-type row lands in `materialsNetBilled` (its `netAmount`), never in
+  `materialsGrossBase`.
+- **Golden master unmoved** — `pnpm test:parity`. No net-type row exists in the restored dataset, so
+  this refactor may not move a single figure across 100 investments, 29 registers and 36 workers.
+  It is the strongest acceptance net this phase gets, and it is free: a drift line here means the
+  split leaked into the existing brutto path.
 
 #### Manual Verification:
 
@@ -268,7 +350,7 @@ per-category netto rows in Podsumowanie.
 
 **Intent**: Replace the single `materialsGross` with the two buckets, at both assembly sites, in lockstep.
 
-**Contract**: `KosztorysEditorDataT` gains `materialsNetTypeNetto: number` + `materialsBruttoBase:
+**Contract**: `KosztorysEditorDataT` gains `materialsNetBilled: number` + `materialsGrossBase:
 number` (keep `materialsGross` only if a consumer needs the combined). Both assembly sites populate
 them from `deriveFinancials`. The `materialyBreakdown` carries the per-category netto rows.
 
@@ -280,9 +362,19 @@ them from `deriveFinancials`. The `materialyBreakdown` carries the per-category 
 untouched — the structural kill for double-deduction.
 
 **Contract**: `computeDoZaplatyRM` (110-124) and `computeSummarySplit` (85-103): pass
-`materialsBruttoBase` through `materialyPair` (the toggle), then add `materialsNetTypeNetto` to the
-`.net` result **outside** `materialyPair`. `materialyPair` itself is unchanged; the callers change what
-they feed it and add the frozen bucket post-hoc.
+`materialsGrossBase` through `materialyPair` (the toggle), then add the net-type bucket **outside**
+`materialyPair`. `materialyPair` itself is unchanged; only what the callers feed it changes.
+
+Two things the "add it afterwards" phrasing must not be read to mean:
+
+- **Both axes, at face value.** `MoneyPairT` carries `net` AND `gross`. The net-type is already netto
+  and carries no VAT toward the investor, so it enters as `faceValue(materialsNetBilled)` — the same
+  number on both axes. Adding it only to `.net` would leave the brutto "Do zapłaty R+M" silently
+  short by the whole net-type amount.
+- **Before the udziały, not after.** In `computeSummarySplit`, `combinedNet` is the denominator every
+  `share` divides by. The net-type bucket must be folded in *before* `combinedNet` is computed, or
+  the udziały stop summing to 100%. "Post-toggle" ≠ "post-share": the correct order is
+  `materialyPair(grossBase)` → add the frozen bucket → derive `combinedNet` and the shares.
 
 #### 3. Render per-category netto rows
 
@@ -291,9 +383,12 @@ they feed it and add the frozen bucket post-hoc.
 **Intent**: Show each category's net-type share as its own frozen "…netto" row, so the brutto rows the
 toggle affects stay pure.
 
-**Contract**: The breakdown maps net-type netto sub-totals to their own rows (label "<kategoria>
-netto"), rendered at their stored `netAmount` regardless of the toggle. Brutto category rows keep the
-existing toggle-driven valuation.
+**Contract**: The breakdown maps net-type netto sub-totals to their **own visible rows** (label
+"<kategoria> netto") — never folded into the kategoria's brutto row. Rendered at their stored
+`netAmount` on both axes (face value), regardless of the toggle. Brutto category rows keep the
+existing toggle-driven valuation. Note the collision: `MaterialyBreakdownRowT.net` already names a
+brutto-derived figure, so the new rows need a bucket/origin marker rather than a second meaning for
+`net`.
 
 ### Success Criteria
 
@@ -302,6 +397,9 @@ existing toggle-driven valuation.
 - Type checking passes: `pnpm tsc --noEmit`
 - B1 (no double deduction): unit on the composition — with the global toggle at −8%, the net-type's
   contribution equals its `netAmount` exactly, not `netAmount × 0.92`.
+- Both axes: unit on `computeDoZaplatyRM` — a net-type expense raises `.net` AND `.gross` by exactly
+  its `netAmount`.
+- Udziały: unit on `computeSummarySplit` — with a net-type expense present, the shares still sum to 1.
 - B5 (list == summary): unit — the value a net-type row contributes to the aggregate equals its stored
   `netAmount` (same value, no rounding).
 - Existing kosztorys summary/economics unit tests still pass: `pnpm exec vitest run src/__tests__` (economics specs).
@@ -346,16 +444,20 @@ persisted doc. Add the net-type + `netAmount≤amount` rule to `src/hooks/transf
 **Intent**: The net-type row shows its netto amount in the new color; the label/color maps already
 apply via Phase 1.
 
-**Contract**: Thread `net_amount` through `TransferRowT` + `mapTransferRow`; the amount cell renders
-`netAmount` for the net-type (brutto still what left the kasa, but the list shows the billed netto —
-confirm which figure the cell shows per design: the netto). Color comes from `TRANSFER_TYPE_COLORS`.
+**Contract**: Thread `net_amount` through `TransferRowT` + `mapTransferRow`. For a net-type row the
+amount cell shows **both** figures — brutto as the primary value, netto beneath/beside it as a
+secondary line (e.g. `1 230,00 zł` · `netto 1 000,00 zł`). Decided: showing only netto would break
+the register view, where summing the column must reconcile to the kasa balance; showing only brutto
+would hide what the investor is actually billed. Every other type renders exactly as today — the
+second line appears only when `billedAmount === 'netAmount'`, so this is not a column-wide change.
+Color comes from `TRANSFER_TYPE_COLORS`.
 
 ### Success Criteria
 
 #### Automated Verification:
 
 - Type checking passes: `pnpm tsc --noEmit`
-- B7 (netto ≤ brutto): unit on the form schema refine + validate hook — a net-type line with
+- B7 (netto ≤ brutto): unit on the validate hook (the single authority) plus the form schema refine — a net-type line with
   `netAmount > amount` is rejected.
 - Full unit suite passes: `pnpm exec vitest run`
 - Lint passes: `pnpm lint`
@@ -364,7 +466,8 @@ confirm which figure the cell shows per design: the netto). Color comes from `TR
 
 - Adding a "Wydatek inwestycyjny netto" line: the netto field appears, `netAmount > amount` is blocked,
   submit persists both amounts.
-- The transaction list shows the net-type row at its netto amount in the new color.
+- The transaction list shows the net-type row with both amounts (brutto primary, netto secondary) in
+  the new color; other types are visually unchanged.
 - The source register drops by brutto after the submit.
 
 ---
@@ -381,7 +484,13 @@ confirm which figure the cell shows per design: the netto). Color comes from `TR
 
 ### Integration Tests
 
-- None in this PR (B6 removed; kasa isolation asserted structurally at unit level).
+- **One** (Phase 2): B2 kasa-brutto against the 5435 `db-test` container — a net-type expense moves
+  the source register by its **brutto**. This is the single guard the owner cares most about ("kasa
+  zgadza się do grosza") and it is unreachable from a unit test, because the rule lives in
+  `sumRegisterBalance`'s `CASE`, not in a TypeScript array. Self-provisions its own register +
+  investment like its neighbours; must carry the `describe.skipIf(!ENV_READY)` marker or the pre-push
+  gate never runs it.
+- B6 remains removed.
 
 ### Manual Testing Steps
 
@@ -422,34 +531,36 @@ NOT part of this local implementation task. Data is throwaway (kosztorys/spike s
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `pnpm generate:types && pnpm tsc --noEmit`
-- [ ] 1.2 Constants test passes: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts`
-- [ ] 1.3 Both migrations apply cleanly to local dev DB: `pnpm payload migrate`
+- [x] 1.1 Type checking passes: `pnpm generate:types && pnpm tsc --noEmit`
+- [x] 1.2 Constants test passes: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts`
+- [x] 1.3 Both migrations apply cleanly to local dev DB: `pnpm payload migrate`
 
 ### Phase 2: Financial split (two buckets, kasa/marża untouched)
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 2.2 B2 (kasa brutto): net-type ∉ DEPOSIT_TYPES, register CASE treats it as outflow at `amount`
-- [ ] 2.3 B3 (marża unmoved): marża identical across the two types for an unsettled expense
-- [ ] 2.4 B4 (no settled leak): net-type never routed to `totalSettled`; `canBeSettled` false
-- [ ] 2.5 Bucket assignment: net-type lands in `materialsNetTypeNetto`, never in `materialsBruttoBase`
+- [x] 2.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 2.2 B2 (kasa brutto): DB integration @5435 — net-type expense moves the register by −brutto
+- [x] 2.3 B3 (marża unmoved): marża identical across the two types for an unsettled expense
+- [x] 2.4 B4 (no settled leak): net-type never routed to `totalSettled`; spec row `settleable: false`
+- [x] 2.5 Bucket assignment: net-type lands in `materialsNetBilled`, never in `materialsGrossBase`
+- [x] 2.6 Golden master unmoved: `pnpm test:parity` — zero drift lines
 
 ### Phase 3: Editor threading + toggle composition
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 3.2 B1 (no double deduction): net-type contribution equals `netAmount` exactly with toggle on
-- [ ] 3.3 B5 (list == summary): net-type aggregate contribution equals stored `netAmount`
-- [ ] 3.4 Existing kosztorys economics unit tests still pass
+- [x] 3.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 3.2 B1 (no double deduction): net-type contribution equals `netAmount` exactly with toggle on
+- [x] 3.3 Both axes + udziały: net-type adds `netAmount` to `.net` AND `.gross`; shares still sum to 1
+- [x] 3.4 B5 (list == summary): net-type aggregate contribution equals stored `netAmount`
+- [x] 3.5 Existing kosztorys economics unit tests still pass
 
 ### Phase 4: Create form + transaction list
 
 #### Automated
 
-- [ ] 4.1 Type checking passes: `pnpm tsc --noEmit`
-- [ ] 4.2 B7 (netto ≤ brutto): net-type line with `netAmount > amount` rejected (schema + hook)
-- [ ] 4.3 Full unit suite passes: `pnpm exec vitest run`
-- [ ] 4.4 Lint passes: `pnpm lint`
+- [x] 4.1 Type checking passes: `pnpm tsc --noEmit`
+- [x] 4.2 B7 (netto ≤ brutto): net-type line with `netAmount > amount` rejected (schema + hook)
+- [x] 4.3 Full unit suite passes: `pnpm exec vitest run`
+- [x] 4.4 Lint passes: `pnpm lint`

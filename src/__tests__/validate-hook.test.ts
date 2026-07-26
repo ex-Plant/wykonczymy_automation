@@ -41,6 +41,14 @@ const VALID_DATA: Record<string, Record<string, unknown>> = {
     investment: 1,
     expenseCategory: 1,
   },
+  INVESTMENT_EXPENSE_NET: {
+    ...base,
+    type: 'INVESTMENT_EXPENSE_NET',
+    sourceRegister: 1,
+    investment: 1,
+    expenseCategory: 1,
+    netAmount: 80,
+  },
   LABOR_COST: { ...base, type: 'LABOR_COST', investment: 1 },
   REGISTER_TRANSFER: { ...base, type: 'REGISTER_TRANSFER', sourceRegister: 1, targetRegister: 2 },
   OTHER: { ...base, type: 'OTHER', sourceRegister: 1, otherCategory: 1 },
@@ -226,5 +234,74 @@ describe('validateTransfer — createdBy auto-set', () => {
     const data = { ...VALID_DATA.COMPANY_FUNDING }
     const result = validateTransfer(hookArgs(data, { operation: 'create' }))
     expect(result.createdBy).toBeUndefined()
+  })
+})
+
+describe('validateTransfer — a CANCELLATION never keeps a register', () => {
+  // EX-573 review gate. The spec table says a cancellation needs no register, but that
+  // answer only reached the admin panel's field condition: the blanket early return below
+  // skipped the auto-clear, so a REST/Local-API write could persist source_register_id on
+  // a cancellation. sumRegisterBalance has no CANCELLATION arm — the row falls into
+  // `ELSE -amount` and drains that register permanently, with nothing surfacing the cause.
+  it('strips a sourceRegister smuggled in past the early return', () => {
+    const data = {
+      type: 'CANCELLATION',
+      amount: 100,
+      date: '2026-07-25',
+      cancelledTransaction: 42,
+      sourceRegister: 3,
+    }
+    const result = validateTransfer(hookArgs(data, { operation: 'create' }))
+    expect(result.sourceRegister).toBeNull()
+  })
+
+  it('still refuses a cancellation with no original to point at', () => {
+    const data = { type: 'CANCELLATION', amount: 100, date: '2026-07-25' }
+    expect(() => validateTransfer(hookArgs(data, { operation: 'create' }))).toThrow(
+      /Cancelled transaction reference is required/,
+    )
+  })
+})
+
+// GUARD B7 — the netto figure is what the investor is billed, and the hook is the single server-side
+// authority on it (the form schema is a convenience mirror the API can bypass entirely).
+describe('validateTransfer — netAmount (the netto expense type)', () => {
+  const netExpense = VALID_DATA.INVESTMENT_EXPENSE_NET
+
+  it('refuses a netto above the brutto that left the kasa', () => {
+    const data = { ...netExpense, amount: 100, netAmount: 101 }
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
+  })
+
+  it('accepts a netto equal to brutto (0% VAT is a real case)', () => {
+    const data = { ...netExpense, amount: 100, netAmount: 100 }
+    expect(() => validateTransfer(hookArgs(data))).not.toThrow()
+  })
+
+  it('refuses a missing netto — deriveFinancials would bill 0, never brutto', () => {
+    const { netAmount, ...data } = netExpense
+    void netAmount
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/Kwota netto jest wymagana/)
+  })
+
+  it('refuses a non-positive netto', () => {
+    expect(() => validateTransfer(hookArgs({ ...netExpense, netAmount: 0 }))).toThrow(
+      /Kwota netto musi być większa niż 0/,
+    )
+  })
+
+  it('strips a netAmount smuggled onto a brutto-billed type', () => {
+    const data = { ...VALID_DATA.INVESTMENT_EXPENSE, netAmount: 80 }
+    expect(validateTransfer(hookArgs(data)).netAmount).toBeNull()
+  })
+
+  // A partial update sends only the changed field; the rule must still compare against the stored
+  // twin, or raising just `netAmount` past the stored brutto would sail through.
+  it('compares a partial update against the stored amount', () => {
+    const args = hookArgs(
+      { type: 'INVESTMENT_EXPENSE_NET', netAmount: 5000 },
+      { operation: 'update', originalDoc: { ...netExpense, amount: 1230, netAmount: 1000 } },
+    )
+    expect(() => validateTransfer(args)).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
   })
 })

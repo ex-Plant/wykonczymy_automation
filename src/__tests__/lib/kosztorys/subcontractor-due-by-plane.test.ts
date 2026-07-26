@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   executedWorkNetPreRabat,
+  hasStagesOverPlanned,
+  rowTotalQtyDone,
   sectionSubtotalsForView,
   subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
@@ -96,11 +98,14 @@ describe('subcontractorDueByPlane', () => {
     expect(due.hasUnconfirmedPlane).toBe(false)
   })
 
-  it('null plane counts as z narzędziami and raises the unconfirmed flag', () => {
+  // Undecided is not a plane: charging it to a crew nobody picked would be a fabricated debt. The
+  // amount goes missing on purpose and the flag is the only thing that reports it.
+  it('null plane belongs to neither crew and raises the unconfirmed flag', () => {
     const tree = makeTree(allNull)
     const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
-    expect(due.wTools).toBeCloseTo(108)
-    expect(due.ownTools).toBeCloseTo(0)
+    expect(due.wTools).toBe(0)
+    expect(due.ownTools).toBe(0)
+    expect(due.combined).toBe(0)
     expect(due.hasUnconfirmedPlane).toBe(true)
   })
 
@@ -144,5 +149,74 @@ describe('subcontractorDueByPlane', () => {
     const tree = makeTree([])
     const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
     expect(due).toEqual({ wTools: 0, ownTools: 0, combined: 0, hasUnconfirmedPlane: false })
+  })
+})
+
+// „Pomiar z natury" is the sheet's O = SUM(D:M) (EX-494), so scoping it to the view is what makes a
+// subcontractor view one crew's bill instead of the whole rozpiska repriced. These pin the two rules
+// the scoping establishes; everything above the quantity (wartość, podsumy, „Razem") follows for free.
+describe('pomiar liczony po planie etapu', () => {
+  it('każdy widok podwykonawcy widzi tylko swoje etapy, klient widzi całe O', () => {
+    const tree = makeTree(mixed)
+    const [row1] = treeToRows(tree) // stage 100 = 2 (z narzędziami), stage 101 = 3 (bez narzędzi)
+    expect(rowTotalQtyDone(row1, tree.stages, 'w_tools')).toBe(2)
+    expect(rowTotalQtyDone(row1, tree.stages, 'own_tools')).toBe(3)
+    expect(rowTotalQtyDone(row1, tree.stages, 'client')).toBe(5)
+  })
+
+  it('etap bez wybranego trybu nie należy do żadnego widoku podwykonawcy', () => {
+    const tree = makeTree(allNull)
+    const [row1] = treeToRows(tree)
+    expect(rowTotalQtyDone(row1, tree.stages, 'w_tools')).toBe(0)
+    expect(rowTotalQtyDone(row1, tree.stages, 'own_tools')).toBe(0)
+    expect(rowTotalQtyDone(row1, tree.stages, 'client')).toBe(5)
+  })
+
+  // The consistency test the owner reads off the screen: the two bills add up to the executed work,
+  // and each equals its own row in „Podsumowanie podwykonawców". Rabat is client-only in pricing, so
+  // there is no pre/post-rabat gap between the grid's „Razem netto" and the panel's figure.
+  it('Razem(z) + Razem(bez) = wykonana praca, i każde zgadza się z panelem', () => {
+    const tree = makeTree(mixed)
+    const rows = treeToRows(tree)
+    const razem = (view: 'w_tools' | 'own_tools') =>
+      executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, view))
+    const due = subcontractorDueByPlane(rows, tree.stages)
+
+    expect(razem('w_tools')).toBeCloseTo(due.wTools)
+    expect(razem('own_tools')).toBeCloseTo(due.ownTools)
+    expect(razem('w_tools') + razem('own_tools')).toBeCloseTo(due.combined)
+  })
+
+  // The accepted cost of rule 2: while any etap is unassigned the identity above breaks, and the flag
+  // is the only thing that says so. Pinned so nobody "fixes" the shortfall by defaulting a plane.
+  it('nieprzypisany etap wypada z obu rachunków — suma jest krótsza, flaga podniesiona', () => {
+    const tree = makeTree([
+      { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
+      { id: 101, ordinal: 2, label: null, plane: null },
+    ])
+    const rows = treeToRows(tree)
+    const due = subcontractorDueByPlane(rows, tree.stages)
+    const full = executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, 'client'))
+
+    expect(due.combined).toBeCloseTo(72) // tylko etap 100: (2 + 4) · 12
+    expect(due.combined).toBeLessThan(full)
+    expect(due.hasUnconfirmedPlane).toBe(true)
+  })
+
+  // The przedmiar has no plane, so the overshoot highlight must not blink on and off as the user
+  // switches views — it is hard-anchored to the client pomiar.
+  it('przekroczenie przedmiaru jest niezależne od widoku', () => {
+    const tree = makeTree(mixed)
+    const [row1] = treeToRows(tree) // przedmiar 5, Σ etapów 5 → brak przekroczenia
+    expect(hasStagesOverPlanned(row1, tree.stages)).toBe(false)
+
+    const over = makeTree(mixed, {
+      progress: [
+        { itemId: 1, stageId: 100, qtyDone: 2 },
+        { itemId: 1, stageId: 101, qtyDone: 9 },
+      ],
+    })
+    const [overRow] = treeToRows(over)
+    expect(hasStagesOverPlanned(overRow, over.stages)).toBe(true)
   })
 })

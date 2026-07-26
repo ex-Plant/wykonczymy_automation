@@ -34,6 +34,10 @@ type PropsT = {
   onMoveUp: () => void
   onMoveDown: () => void
   onRemove: () => void
+  // Deleting the whole section this row belongs to. Absent (read-only view) → the item is hidden.
+  onRemoveSection?: () => void
+  sectionName?: string
+  sectionItemCount?: number
 }
 
 export function KosztorysRowActionsMenu({
@@ -45,8 +49,12 @@ export function KosztorysRowActionsMenu({
   onMoveUp,
   onMoveDown,
   onRemove,
+  onRemoveSection,
+  sectionName,
+  sectionItemCount,
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
   // Disabled items are pointer-events-none, so the group is wrapped in a tooltip trigger
   // (which catches the hover the disabled items would otherwise pass through).
   const insertMoveItems = (
@@ -108,6 +116,12 @@ export function KosztorysRowActionsMenu({
               <div>{removeItem}</div>
             </SimpleTooltip>
           )}
+          {onRemoveSection && (
+            <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
+              <Trash2 />
+              Usuń sekcję
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <ConfirmDialog
@@ -120,6 +134,17 @@ export function KosztorysRowActionsMenu({
           setConfirmOpen(false)
         }}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={sectionConfirmOpen}
+        title={`Usunąć sekcję „${sectionName}"?`}
+        description={`Usunie też ${sectionItemCount} pozycji wraz z wpisanymi w nich ilościami etapów. Tej operacji nie można cofnąć.`}
+        confirmLabel="Usuń"
+        onConfirm={() => {
+          onRemoveSection?.()
+          setSectionConfirmOpen(false)
+        }}
+        onCancel={() => setSectionConfirmOpen(false)}
       />
     </>
   )

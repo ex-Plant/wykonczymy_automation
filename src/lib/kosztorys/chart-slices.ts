@@ -1,4 +1,4 @@
-import type { SectionSubtotalT } from '@/lib/kosztorys/types'
+import type { SectionSubtotalClientT } from '@/lib/kosztorys/types'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 
 // `id` is a stable React key — section names / materiały labels are free-typed and can collide,
@@ -32,9 +32,11 @@ function paintSlices(raw: Omit<PieSliceT, 'fill'>[]): PieSliceT[] {
 export type SectionPieBaseT = 'przedmiar' | 'wykonane'
 
 // The section pie only needs each section's two money figures; it takes the client-priced,
-// view-invariant subtotals so a structure chart never moves with the widok cen.
+// view-invariant subtotals so a structure chart never moves with the widok cen. Picking off the
+// client variant is what makes „przedmiar" a usable base here — outside that view the figure is
+// withheld, and the pie would have nothing to slice.
 export type SectionSliceInputT = Pick<
-  SectionSubtotalT,
+  SectionSubtotalClientT,
   'sectionId' | 'sectionName' | 'plannedNet' | 'net'
 >
 
@@ -60,12 +62,13 @@ export function costTotalsPieSlices(robocizna: number, materialy: number): PieSl
   ])
 }
 
-// Per-category „Wydatki inwestycyjne" share — one slice per non-zero expense category. `row.net` is
-// the brutto sum; the reduction is uniform, so brutto and netto proportions are identical.
+// Per-category „Wydatki inwestycyjne" share — one slice per non-zero expense category, and one more
+// per category billed netto. `row.net` is the brutto sum on a `gross` row; the reduction is uniform,
+// so brutto and netto proportions are identical.
 export function expensePieSlices(rows: readonly MaterialyBreakdownRowT[]): PieSliceT[] {
   return paintSlices(
     rows.map((row) => ({
-      id: row.id !== null ? `expense-${row.id}` : 'korekta',
+      id: `${row.origin}-${row.id !== null ? `expense-${row.id}` : 'korekta'}`,
       name: row.label,
       value: row.net,
     })),

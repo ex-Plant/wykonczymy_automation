@@ -18,6 +18,10 @@ const TRANSFER_TYPES = [
   { label: { en: 'Company Funding', pl: 'Zasilenie z konta firmowego' }, value: 'COMPANY_FUNDING' },
   { label: { en: 'Other Deposit', pl: 'Inna wpłata' }, value: 'OTHER_DEPOSIT' },
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
+  {
+    label: { en: 'Investment Expense (net)', pl: 'Wydatek inwestycyjny netto' },
+    value: 'INVESTMENT_EXPENSE_NET',
+  },
   { label: { en: 'Labor Cost', pl: 'Koszty robocizny' }, value: 'LABOR_COST' },
   { label: { en: 'Rebate', pl: 'Rabat' }, value: 'RABAT' },
   { label: { en: 'Loss', pl: 'Strata' }, value: 'LOSS' },
@@ -91,6 +95,19 @@ export const Transfers: CollectionConfig = {
       },
     },
     {
+      // The netto amount billed to the investor, while `amount` (brutto) is what left the
+      // register. Immutable like `amount` — a wrong netto is corrected by cancelling the
+      // row and re-adding it, so no edit path can move a figure both bilanses read.
+      // The netAmount ≤ amount rule has one authority: hooks/transfers/validate.ts.
+      name: 'netAmount',
+      type: 'number',
+      label: { en: 'Net amount', pl: 'Kwota netto' },
+      access: { update: () => false },
+      admin: {
+        condition: (data) => typeOf(data) === 'INVESTMENT_EXPENSE_NET',
+      },
+    },
+    {
       name: 'date',
       type: 'date',
       required: true,
@@ -120,11 +137,11 @@ export const Transfers: CollectionConfig = {
     {
       // EX-536 netto/brutto wpłata bucket. Three-state: NET / GROSS / null. INVESTOR_DEPOSIT only,
       // create-only (immutable once set). Not `required`, and the create schema keeps it `.optional()`
-      // — null is the deliberate default („nie określono"), read as netto in the reconciliation, not
-      // an enforced choice.
+      // — the form always sends a plane now, but rows written before that stay null and read as netto
+      // in the reconciliation.
       name: 'vatPlane',
       type: 'select',
-      label: { en: 'Deposit VAT plane', pl: 'Wpłata netto czy brutto' },
+      label: { en: 'Deposit VAT plane', pl: 'Rozliczenie netto/brutto' },
       options: [
         { label: { en: 'Net', pl: 'Netto' }, value: 'NET' },
         { label: { en: 'Gross', pl: 'Brutto' }, value: 'GROSS' },

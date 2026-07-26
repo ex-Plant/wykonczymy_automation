@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils/cn'
 import { formatPLN } from '@/lib/utils/format-currency'
 import {
+  billsNetAmount,
   EXPENSE_CATEGORY_LABEL,
   needsExpenseCategory,
   showsOtherCategory,
@@ -147,6 +148,7 @@ export function LineItemsField({
   generationProgress,
 }: LineItemsFieldPropsT) {
   const inlineCategory = getInlineCategory(transferType, referenceData, hasInvestment)
+  const showsNetAmount = billsNetAmount(transferType)
   const secondRowCategory = getSecondRowCategory(transferType, referenceData)
   // Fresh per call — each pushed row needs its own `id` (a shared object would collide ids).
   const newItem = () =>
@@ -219,6 +221,19 @@ export function LineItemsField({
                         />
                       )}
                     </form.AppField>
+                    {showsNetAmount && (
+                      <form.AppField name={`lineItems[${index}].netAmount`}>
+                        {(field: AppFieldComponentsT) => (
+                          <field.Input
+                            label="Netto"
+                            placeholder="0.00 PLN"
+                            type="number"
+                            showError
+                            fieldClassName="w-28"
+                          />
+                        )}
+                      </form.AppField>
+                    )}
                     <form.AppField name={`lineItems[${index}].description`}>
                       {(field: AppFieldComponentsT) => (
                         <field.Input

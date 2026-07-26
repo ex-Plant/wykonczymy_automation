@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { billsNetAmount } from '@/lib/constants/transfers'
 
 /**
  * Returns an error message if the amount is invalid for the given type, or undefined if valid.
@@ -9,6 +10,26 @@ export function getAmountError(amount: number, type: string): string | undefined
     return amount >= 0 ? 'Korekta musi mieć ujemną kwotę' : undefined
   }
   return amount <= 0 ? 'Kwota musi być większa niż 0' : undefined
+}
+
+/**
+ * The netto figure a line bills the investor, checked for the type whose spec row bills at it —
+ * and only that type. Above brutto it would bill more than left the kasa; missing it would bill 0
+ * (the billed-total helper never falls back to brutto). One home for all three planes: the client
+ * form schema, the server create schema, and the Payload hook.
+ */
+export function getNetAmountError(
+  netAmount: number | null | undefined,
+  amount: number | null | undefined,
+  type: string,
+): string | undefined {
+  if (!billsNetAmount(type)) return undefined
+  if (netAmount == null || Number.isNaN(netAmount)) return 'Kwota netto jest wymagana'
+  if (netAmount <= 0) return 'Kwota netto musi być większa niż 0'
+  if (amount != null && !Number.isNaN(amount) && netAmount > amount) {
+    return 'Kwota netto nie może przekraczać kwoty brutto'
+  }
+  return undefined
 }
 
 /** Validates that a string amount is present and valid for the given type (Zod refinement). */

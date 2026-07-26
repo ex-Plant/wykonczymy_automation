@@ -21,6 +21,12 @@ type UseManagedFormArgsT<TValues, TData> = {
   action: (data: TData) => Promise<ActionResultT>
   /** Extra cleanup run alongside clearing the persisted form data (e.g. reset saldo). */
   onReset?: () => void
+  /**
+   * Last say over the restored draft — lets a form fill a field the draft left empty from context
+   * the draft can't know (e.g. the investment the URL is scoped to). Not applied to `defaultValues`,
+   * which the caller seeds directly.
+   */
+  mergeStored?: (stored: TValues) => TValues
 }
 
 /**
@@ -39,6 +45,7 @@ export function useManagedForm<TValues, TData>({
   toData,
   action,
   onReset,
+  mergeStored,
 }: UseManagedFormArgsT<TValues, TData>) {
   const { submit } = useFormSubmit(formId)
 
@@ -51,8 +58,11 @@ export function useManagedForm<TValues, TData>({
     onReset?.()
   }
 
+  const initialValues =
+    storedValues === null ? defaultValues : (mergeStored?.(storedValues) ?? storedValues)
+
   const form = useAppForm({
-    defaultValues: storedValues ?? defaultValues,
+    defaultValues: initialValues,
     validators: {
       onSubmit: schema,
     },

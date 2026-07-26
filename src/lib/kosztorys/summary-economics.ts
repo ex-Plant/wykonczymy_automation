@@ -41,6 +41,26 @@ export function materialyPair(
   return grossPair(gross, vatRate)
 }
 
+/** The two materiały buckets, always passed together. An object rather than two positional
+ *  numbers on purpose: the whole point of the split is that a caller can never feed the
+ *  toggle a figure that already carries its own netto, and a positional pair invites exactly
+ *  that mistake. `grossBase` is toggle-driven; `netBilled` is frozen at face value. */
+export type MaterialsT = { grossBase: number; netBilled: number }
+
+/** Materiały as one pair: the brutto base valued through the toggle, plus the netto-billed
+ *  bucket added at FACE VALUE on both axes. The netto figure is what the investor is billed
+ *  and carries no VAT toward him, so cutting it again — on either axis — would deduct the
+ *  same VAT twice. */
+export function materialsPair(
+  materials: MaterialsT,
+  vatRate: number,
+  deriveNet: boolean,
+  reduction?: number,
+): MoneyPairT {
+  const base = materialyPair(materials.grossBase, vatRate, deriveNet, reduction)
+  return { net: base.net + materials.netBilled, gross: base.gross + materials.netBilled }
+}
+
 export type SummaryLineT = MoneyPairT & {
   // Fraction of Łącznie netto (0..1); 0 when Łącznie is 0. Null-safe by construction.
   share: number
@@ -52,22 +72,16 @@ export function summaryLine(net: number, combinedNet: number, vatRate: number): 
   return { ...moneyPair(net, vatRate), share: combinedNet > 0 ? net / combinedNet : 0 }
 }
 
-// A no-VAT summary row (brutto === netto) with its udział — for the korekta category rows,
-// which carry no VAT but still take an udział of Łącznie.
-export function summaryLineFace(net: number, combinedNet: number): SummaryLineT {
-  return { ...faceValue(net), share: combinedNet > 0 ? net / combinedNet : 0 }
-}
-
-// A gross-native summary row (netto derived by removing VAT) with its udział — for the materiały
-// category rows, whose amount is a brutto transaction sum. Udział is off the DERIVED netto so the
-// per-category shares sum to the materiały share of Łącznie (which is also netto-based).
-export function summaryLineGross(
-  gross: number,
+// The „Materiały" aggregate row: both buckets valued by `materialsPair`, with its udział off the
+// resulting netto.
+export function summaryLineMaterials(
+  materials: MaterialsT,
   combinedNet: number,
   vatRate: number,
+  deriveNet: boolean,
   reduction?: number,
 ): SummaryLineT {
-  const pair = materialyPair(gross, vatRate, true, reduction)
+  const pair = materialsPair(materials, vatRate, deriveNet, reduction)
   return { ...pair, share: combinedNet > 0 ? pair.net / combinedNet : 0 }
 }
 
@@ -83,12 +97,14 @@ export type SummaryT = {
 // server prop, passed as BRUTTO (its netto is derived by removing VAT).
 export function computeSummarySplit(
   laborCostsNetFromKosztorys: number,
-  materialsGross: number,
+  materials: MaterialsT,
   vatRate: number,
   deriveMaterialsNet = true,
   materialsReduction?: number,
 ): SummaryT {
-  const materialy = materialyPair(materialsGross, vatRate, deriveMaterialsNet, materialsReduction)
+  // Folded in BEFORE combinedNet: that sum is the denominator every udział divides by, so a
+  // netto bucket added after the shares would leave them summing to less than 100%.
+  const materialy = materialsPair(materials, vatRate, deriveMaterialsNet, materialsReduction)
   const combinedNet = laborCostsNetFromKosztorys + materialy.net
   const laborCosts = summaryLine(laborCostsNetFromKosztorys, combinedNet, vatRate)
   // Łącznie = robocizna (netto native, grossed up) + materiały (brutto native, netto derived). Each
@@ -107,12 +123,12 @@ export function computeSummarySplit(
 export function computeDoZaplatyRM(
   laborCostsNetFromKosztorys: number,
   wplatyNet: number,
-  materialsGross: number,
+  materials: MaterialsT,
   vatRate: number,
   deriveMaterialsNet = true,
   materialsReduction?: number,
 ): MoneyPairT {
-  const materialy = materialyPair(materialsGross, vatRate, deriveMaterialsNet, materialsReduction)
+  const materialy = materialsPair(materials, vatRate, deriveMaterialsNet, materialsReduction)
   // Robocizna is netto native (grossed up); materiały is brutto native (netto derived by removing
   // VAT); wpłaty carry no VAT (face value). Each figure enters each axis at its own native amount.
   const net = laborCostsNetFromKosztorys - wplatyNet + materialy.net
@@ -145,14 +161,14 @@ export type MixedSettlementT = {
 // both sections without a second deduction — the panel shows it as an informational line only.
 export function computeMixedSettlement(
   laborCostsNetFromKosztorys: number,
-  materialsGross: number,
+  materials: MaterialsT,
   vatRate: number,
   paidNet: number,
   paidGross: number,
   deriveMaterialsNet = true,
   materialsReduction?: number,
 ): MixedSettlementT {
-  const materialy = materialyPair(materialsGross, vatRate, deriveMaterialsNet, materialsReduction)
+  const materialy = materialsPair(materials, vatRate, deriveMaterialsNet, materialsReduction)
   const combinedNet = laborCostsNetFromKosztorys + materialy.net
   const doRozliczeniaNet = combinedNet - paidNet
   const resztaGross = toGross(doRozliczeniaNet, vatRate)

@@ -59,8 +59,8 @@ export default function FormBase({
       ) : (
         <>
           {labelElem}
-          {children}
           {description && <FieldDescription>{description}</FieldDescription>}
+          {children}
           {errorElem}
         </>
       )}

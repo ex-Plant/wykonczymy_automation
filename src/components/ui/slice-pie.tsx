@@ -5,26 +5,31 @@ import { Cell, Pie, PieChart } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieSliceLegend, type PieSliceT } from '@/components/ui/pie-legend'
 
-// Shared skeleton for the footer pies: recharts donut + legend. `action` is an optional control on the
-// caption's right; without it the label stands alone. `formatValue` renders slice figures in the tooltip
-// and legend — the caller owns units/locale, so this stays domain-free.
+// Shared skeleton for the footer pies: recharts donut + legend. `description` is an optional note
+// for a pie whose figures need their derivation spelled out, and `action` an optional control above
+// it — both sit above the chart, so the base is picked and the derivation read before the numbers,
+// not offered as a footnote after them. `formatValue` renders slice
+// figures in the tooltip and legend — the caller owns units/locale, so this stays domain-free.
 export function SlicePie({
   caption,
   action,
   slices,
   formatValue,
+  description,
 }: {
   caption: string
   action?: ReactNode
   slices: PieSliceT[]
   formatValue: (value: number) => string
+  description?: ReactNode
 }) {
   return (
     <figure className="flex flex-col gap-3">
-      <figcaption className={action ? 'flex items-center justify-between gap-3' : undefined}>
-        <span className="text-muted-foreground text-xs">{caption}</span>
+      <figcaption>
+        <span className="text-muted-foreground mr-4 text-xs">{caption}</span>
         {action}
       </figcaption>
+      {description}
       <ChartContainer className="mx-auto h-40 w-40">
         <PieChart>
           {/* Each summary tab mounts fresh on switch, so the default intro sweep would replay on every

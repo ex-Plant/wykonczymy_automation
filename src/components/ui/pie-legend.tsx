@@ -1,9 +1,6 @@
-export type PieSliceT = { id: string; name: string; value: number; fill: string }
+import { formatPercentPrecise } from '@/lib/kosztorys/format'
 
-const defaultFormatPercent = (fraction: number | null) =>
-  fraction === null
-    ? '—'
-    : fraction.toLocaleString('pl-PL', { style: 'percent', maximumFractionDigits: 0 })
+export type PieSliceT = { id: string; name: string; value: number; fill: string }
 
 // Shared legend for the footer pies. `formatValue` renders each slice's figure (the caller owns
 // units/locale); percent is a share of the slice total, so it stays internal with a generic default
@@ -11,7 +8,7 @@ const defaultFormatPercent = (fraction: number | null) =>
 export function PieSliceLegend({
   slices,
   formatValue,
-  formatPercent = defaultFormatPercent,
+  formatPercent = formatPercentPrecise,
 }: {
   slices: PieSliceT[]
   formatValue: (value: number) => string

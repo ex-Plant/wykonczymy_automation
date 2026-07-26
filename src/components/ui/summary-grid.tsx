@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils/cn'
 // constants — everything else here is a component.
 export const SUMMARY_LABEL_COL = '16rem'
 // Every trailing column (netto / brutto / udział) shares one width so they read as an even set.
-export const SUMMARY_VALUE_COL = '7rem'
+export const SUMMARY_VALUE_COL = '9rem'
 
 // The shared table shell every summary grid repeats: a `bg-border` container whose `gap-px` paints
 // 1px separators between the (direct-child) cells its rows lay down; each cell repaints `bg-background`

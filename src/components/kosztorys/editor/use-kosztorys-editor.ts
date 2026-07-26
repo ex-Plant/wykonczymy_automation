@@ -40,6 +40,7 @@ import {
 } from '@/lib/kosztorys/delete-policy'
 import {
   clientTotalsFromSubtotals,
+  emptySectionIds,
   rowRemainingForView,
   sectionSubtotalsForView,
   stageTotalsForView,
@@ -54,7 +55,7 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { globalDiscountAmount, isGlobalDiscountActive, toGross } from '@/lib/kosztorys/calc'
+import { isGlobalDiscountActive, toGross } from '@/lib/kosztorys/calc'
 import {
   addItemAction,
   addSectionAction,
@@ -280,6 +281,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     onReorderItem: editorOnly(handleReorderItem),
     onInsertItem: editorOnly(handleInsertItem),
     onRenameSection: editorOnly(handleRenameSection),
+    onRemoveSection: editorOnly(handleRemoveSection),
+    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
     readOnly: clientView || undefined,
@@ -299,6 +302,14 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   )
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
+  // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
+  // the filter/sort. Sits above viewRows because „Ukryj puste sekcje" reads its net.
+  const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
+  // Feeds the filter menu's „Ukryj puste sekcje" row — both its count and the ids it unticks. That
+  // row hides by unticking rather than filtering rows on its own, so the picker's checkmarks stay
+  // the single description of what the grid shows.
+  const emptySections = useMemo(() => emptySectionIds(subtotals), [subtotals])
+
   // View = filter + sort. Edits are mapped back into the full dataset by id.
   const viewRows = useMemo(() => {
     const scoped =
@@ -307,10 +318,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
   }, [rows, shownSectionIds, search, sort, view, stages])
-
-  // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort.
-  const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -360,7 +367,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // two verification surfaces can't drift (reconciliation, lessons.md). All three are client-view and
   // view-independent — the progress ratio and the robocizna/rabat comparison must not move with the
   // price-view toggle.
-  const { doneNet, sumaPracNet, rabatClientNet } = useMemo(
+  const { doneNet, sumaPracNet, rabatClientNet, globalRabatNet } = useMemo(
     () => clientTotalsFromSubtotals(progressSubtotals, globalDiscount),
     [progressSubtotals, globalDiscount],
   )
@@ -369,25 +376,10 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     [progressSubtotals],
   )
 
-  // Global discount amount + the post-rabat robocizna, computed ONCE here off the executed total.
-  // Both total surfaces (the Sekcje Suma block and the totals bar) read these props — neither
-  // recomputes, so they can never disagree.
-  const discountAmount = useMemo(
-    () => globalDiscountAmount(totalNet, globalDiscount),
-    [totalNet, globalDiscount],
-  )
   // NOT the „Do zapłaty" the UI shows — that one adds materiały and subtracts wpłaty
-  // (computeDoZaplatyRM). This is robocizna alone, after rabat.
-  const laborCostsNetFromKosztorys = totalNet - discountAmount
-  // The single explicit rabat figure the totals show. Global and per-item rabat are mutually
-  // exclusive (a live global discount forces every row gross, zeroing its per-item rabat), so
-  // summing them yields whichever mode is active without a branch. `discountAmount` still drives
-  // `laborCostsNetFromKosztorys`; `rabatAmount` is display-only (= discountAmount when global, Σ item-rabat otherwise).
-  const itemRabatTotal = useMemo(
-    () => subtotals.reduce((sum, s) => sum + s.discount, 0),
-    [subtotals],
-  )
-  const rabatAmount = discountAmount + itemRabatTotal
+  // (computeDoZaplatyRM). This is robocizna alone, after rabat. Both total surfaces (the Sekcje Suma
+  // block and the totals bar) read this one prop, so they can never disagree.
+  const laborCostsNetFromKosztorys = doneNet - globalRabatNet
 
   // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
   // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
@@ -679,11 +671,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // A new stage adds a `stage_<id>: 0` key to every current row + snapshot (like patchRows for
   // coeffs), so the column renders 0s (not blanks) and the first progress entry diffs correctly.
-  async function handleAddStage() {
-    const res = await addStageAction(investmentId)
+  async function handleAddStage(plane: StagePlaneT) {
+    const res = await addStageAction(investmentId, plane)
     if (!res.success) return
     const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null, plane: null }])
+    setStages((s) => [...s, { id, ordinal, label: null, plane }])
     patchRows(
       () => true,
       (r) => ({ ...r, [stageKey(id)]: 0 }),
@@ -1084,8 +1076,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     rabatClientNet,
     plannedNet,
     globalDiscount,
-    discountAmount,
-    rabatAmount,
     subcontractorDue,
     laborCostsNetFromKosztorys,
     // toolbar / panel state
@@ -1094,6 +1084,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     setSearch,
     shownSectionIds,
     setShownSectionIds,
+    emptySections,
     summaryOpen,
     setSummaryOpen,
     // handlers

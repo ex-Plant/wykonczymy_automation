@@ -22,13 +22,8 @@ import {
 } from '@/components/kosztorys/editor/grid/kosztorys-totals-row'
 import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
-import {
-  stageKey,
-  stageValueGrossKey,
-  stageValueNetKey,
-  stageValuePercentKey,
-} from '@/lib/kosztorys/stage-keys'
-import { stageAppliesToView } from '@/lib/kosztorys/settlement'
+import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
+import { stagesForView } from '@/lib/kosztorys/settlement'
 import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
@@ -51,7 +46,8 @@ export function KosztorysEditorBody({
   investmentId,
   tree,
   investmentName,
-  materialsGross,
+  materialsGrossBase,
+  materialsNetBilled,
   materialyBreakdown,
   wplatyNet,
   laborCostsNetFromTransactions,
@@ -59,7 +55,7 @@ export function KosztorysEditorBody({
   payoutsByWorker = [],
   payoutTransactions = [],
   depositTransactions = [],
-  materialTransactions = [],
+  materialTransactions,
   clientView = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
@@ -81,7 +77,6 @@ export function KosztorysEditorBody({
     totalNet,
     sumaPracNet,
     rabatClientNet,
-    rabatAmount,
     laborCostsNetFromKosztorys,
     subcontractorDue,
     view,
@@ -105,11 +100,18 @@ export function KosztorysEditorBody({
     // Money: executed value + offered przedmiar, net and gross. The Przedmiar „Razem" must track
     // the active price view (its column reprices per view), so sum the view-aware subtotals — NOT
     // the hook's `plannedNet`, which is fixed to client prices for the progress counter.
-    const plannedNetForView = subtotals.reduce((sum, section) => sum + section.plannedNet, 0)
     totals.set('net', totalNet)
     totals.set('gross', toGross(totalNet, tree.vatRate))
-    totals.set('plannedNet', plannedNetForView)
-    totals.set('plannedGross', toGross(plannedNetForView, tree.vatRate))
+    // `null` outside the client view — the przedmiar has no per-rozliczenie reading, so the subtotals
+    // withhold it. Nothing to sum, and the columns it would total are hidden there anyway.
+    if (view === 'client') {
+      const plannedNetForView = subtotals.reduce(
+        (sum, section) => sum + (section.plannedNet ?? 0),
+        0,
+      )
+      totals.set('plannedNet', plannedNetForView)
+      totals.set('plannedGross', toGross(plannedNetForView, tree.vatRate))
+    }
     totals.set('remaining', remainingTotals.net)
     totals.set('remainingGross', remainingTotals.gross)
     // Rabat: Σ per-item discount taken on executed qty, view-aware like the columns themselves.
@@ -118,13 +120,10 @@ export function KosztorysEditorBody({
     totals.set('discountAmountGross', toGross(discountNetForView, tree.vatRate))
     // Qty (Pomiar z natury): per-etap column, their sum, and the offered przedmiar column.
     let qtySum = 0
-    for (const stage of stages) {
+    for (const stage of stagesForView(stages, view)) {
       const stageQty = stageQtyTotals.get(stage.id) ?? 0
       qtySum += stageQty
       totals.set(stageKey(stage.id), stageQty)
-      // Skip the value footers for an etap that doesn't belong to this view — its cells read „nie
-      // dotyczy" (naStageColumnIds), and a repriced „Razem" underneath them would contradict that.
-      if (!stageAppliesToView(stage, view)) continue
       const stageNet = stageTotals.get(stage.id) ?? 0
       totals.set(stageValueNetKey(stage.id), stageNet)
       totals.set(stageValueGrossKey(stage.id), toGross(stageNet, tree.vatRate))
@@ -144,22 +143,9 @@ export function KosztorysEditorBody({
     view,
   ])
 
-  // Which stage-value column ids render „nie dotyczy" on the footer — the value/percent keys of etapy
-  // whose plane isn't the active view. Client view filters nothing, so this is always empty there.
-  const naStageColumnIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const stage of stages) {
-      if (stageAppliesToView(stage, view)) continue
-      ids.add(stageValueNetKey(stage.id))
-      ids.add(stageValueGrossKey(stage.id))
-      ids.add(stageValuePercentKey(stage.id))
-    }
-    return ids
-  }, [stages, view])
-
   const gridColumns = useMemo(
-    () => columns.map((column) => withTotalsRow(column, columnTotals, naStageColumnIds)),
-    [columns, columnTotals, naStageColumnIds],
+    () => columns.map((column) => withTotalsRow(column, columnTotals)),
+    [columns, columnTotals],
   )
   const gridRows = useMemo(() => [...viewRows, makeSpacerRow(), makeTotalsRow()], [viewRows])
   const isSyntheticRow = (id: number) => id === SPACER_ROW_ID || id === TOTALS_ROW_ID
@@ -241,13 +227,13 @@ export function KosztorysEditorBody({
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materialsGross={materialsGross}
+            materialsGrossBase={materialsGrossBase}
+            materialsNetBilled={materialsNetBilled}
             materialyBreakdown={materialyBreakdown}
             sectionSubtotals={progressSubtotals}
             wplatyNet={wplatyNet}
-            rabatAmount={rabatAmount}
+            rabatAmount={rabatClientNet}
             reconciliation={reconciliation}
-            priceView={view}
             vatRate={tree.vatRate}
             clientView={clientView}
           />

@@ -10,22 +10,18 @@ import type { DepositTransactionRowT } from '@/types/reference-data'
 type PropsT = {
   investmentId: number
   rows: DepositTransactionRowT[]
-  // Tryb mieszany — adds the „Rozliczenie netto/brutto" plane column + the netto-default note, and
-  // shows the netto/brutto share pie (the plane split only exists in this mode).
-  showPlane: boolean
-  // Wpłaty split by VAT plane — feeds the plane pie. Only meaningful (and shown) when showPlane.
+  // Wpłaty split by VAT plane — feeds the netto/brutto share pie.
   paidNet: number
   paidGross: number
   // Read-only client render — no row links.
   clientView?: boolean
 }
 
-// The „Wpłaty" view: the sortable deposits list, or an empty-state line when there are none. In tryb
-// mieszany it adds a netto/brutto share pie beside the list.
+// The „Wpłaty" view: the sortable deposits list with its netto/brutto plane split + share pie, or an
+// empty-state line when there are none.
 export function SummaryDepositsTab({
   investmentId,
   rows,
-  showPlane,
   paidNet,
   paidGross,
   clientView = false,
@@ -35,23 +31,16 @@ export function SummaryDepositsTab({
   return (
     <div className="flex flex-col items-start gap-8 lg:flex-row">
       <div className="flex flex-col gap-1">
-        <DepositsTable
-          investmentId={investmentId}
-          rows={rows}
-          clientView={clientView}
-          showPlane={showPlane}
-        />
-        <Description className="mt-2 w-fit max-w-sm text-xs text-balance">
+        <DepositsTable investmentId={investmentId} rows={rows} clientView={clientView} />
+        <Description size="xs" className="mt-2 w-fit max-w-sm text-balance">
           Wpłaty bez oznaczenia netto/brutto są traktowane jako netto.
         </Description>
       </div>
-      {showPlane && (
-        <SlicePie
-          caption="Udział wpłat netto / brutto"
-          slices={depositPlanePieSlices(paidNet, paidGross)}
-          formatValue={formatNet}
-        />
-      )}
+      <SlicePie
+        caption="Udział wpłat netto / brutto"
+        slices={depositPlanePieSlices(paidNet, paidGross)}
+        formatValue={formatNet}
+      />
     </div>
   )
 }

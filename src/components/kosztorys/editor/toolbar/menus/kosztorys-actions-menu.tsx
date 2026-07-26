@@ -15,6 +15,8 @@ import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosz
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
+import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
+import { toastMessage } from '@/lib/utils/toast'
 import type { PresetMetaT } from '@/lib/db/presets'
 
 type PropsT = {
@@ -50,6 +52,8 @@ export function KosztorysActionsMenu({
   const [presetOpen, setPresetOpen] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+  const [shareLoaded, setShareLoaded] = useState(false)
   const [existingPresets, setExistingPresets] = useState<PresetMetaT[]>([])
 
   function handleOpenPreset() {
@@ -57,6 +61,24 @@ export function KosztorysActionsMenu({
     void listPresetsAction().then((res) => {
       if (res.success) setExistingPresets(res.data)
     })
+  }
+
+  // Fetch on the click, not inside the dialog: Radix onOpenChange never fires for a programmatic
+  // `open`, so the dialog can't fetch itself. Re-fetching each open avoids showing a link that may
+  // have been rotated or revoked elsewhere since last time as though it were still live.
+  function handleOpenShare() {
+    setShareOpen(true)
+    setShareLoaded(false)
+    void getShareLinkAction(investmentId)
+      .then((res) => {
+        setShareToken(res.success ? res.data : null)
+        if (!res.success) toastMessage(res.error, 'error')
+      })
+      .catch(() => {
+        setShareToken(null)
+        toastMessage('Nie udało się sprawdzić linku', 'error')
+      })
+      .finally(() => setShareLoaded(true))
   }
 
   return (
@@ -110,7 +132,7 @@ export function KosztorysActionsMenu({
               />
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+          <DropdownMenuItem onSelect={handleOpenShare}>
             <Share2 />
             <MenuItemBody
               label="Udostępnij"
@@ -134,6 +156,9 @@ export function KosztorysActionsMenu({
         investmentId={investmentId}
         open={shareOpen}
         onOpenChange={setShareOpen}
+        token={shareToken}
+        loaded={shareLoaded}
+        onTokenChange={setShareToken}
       />
     </>
   )

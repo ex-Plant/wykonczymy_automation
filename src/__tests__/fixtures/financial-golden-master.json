@@ -1,0 +1,1970 @@
+{
+  "fingerprint": {
+    "transactionCount": 3208,
+    "checksum": "5df5464e7ee307cf7edf65529868f6ae"
+  },
+  "investments": {
+    "6": {
+      "totalMaterialCosts": 25223.57,
+      "totalIncome": 136000,
+      "totalLaborCosts": 110871,
+      "totalPayouts": 71400,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -94.57,
+      "margin": 39471,
+      "categoryCosts": [
+        [
+          1,
+          24805.57
+        ],
+        [
+          2,
+          418
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "7": {
+      "totalMaterialCosts": 20976.55,
+      "totalIncome": 122508,
+      "totalLaborCosts": 101532,
+      "totalPayouts": 44170,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -0.55,
+      "margin": 57362,
+      "categoryCosts": [
+        [
+          1,
+          20976.55
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "8": {
+      "totalMaterialCosts": 33325.89,
+      "totalIncome": 139781,
+      "totalLaborCosts": 106455.11,
+      "totalPayouts": 56350,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 50105.11,
+      "categoryCosts": [
+        [
+          1,
+          32353.89
+        ],
+        [
+          3,
+          972
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "9": {
+      "totalMaterialCosts": 6277.76,
+      "totalIncome": 48060,
+      "totalLaborCosts": 41782,
+      "totalPayouts": 16572,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.24,
+      "margin": 25210,
+      "categoryCosts": [
+        [
+          1,
+          6277.76
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "10": {
+      "totalMaterialCosts": 15885.69,
+      "totalIncome": 114472,
+      "totalLaborCosts": 98662.5,
+      "totalPayouts": 41840,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -76.19,
+      "margin": 56822.5,
+      "categoryCosts": [
+        [
+          1,
+          15817.39
+        ],
+        [
+          2,
+          68.3
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "11": {
+      "totalMaterialCosts": 20531.47,
+      "totalIncome": 124100,
+      "totalLaborCosts": 103652,
+      "totalPayouts": 52140,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -83.47,
+      "margin": 51512,
+      "categoryCosts": [
+        [
+          1,
+          20531.47
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "12": {
+      "totalMaterialCosts": 2764.53,
+      "totalIncome": 39673,
+      "totalLaborCosts": 42587,
+      "totalPayouts": 15160,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -5678.53,
+      "margin": 27427,
+      "categoryCosts": [
+        [
+          1,
+          2764.53
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "13": {
+      "totalMaterialCosts": 171.8,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 1690,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -171.8,
+      "margin": -1690,
+      "categoryCosts": [
+        [
+          1,
+          171.8
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "14": {
+      "totalMaterialCosts": 64643.19,
+      "totalIncome": 159421,
+      "totalLaborCosts": 95004,
+      "totalPayouts": 47025,
+      "totalRabat": 226.19,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 47752.81,
+      "categoryCosts": [
+        [
+          1,
+          21280.19
+        ],
+        [
+          2,
+          43363
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "15": {
+      "totalMaterialCosts": 5543.02,
+      "totalIncome": 51330,
+      "totalLaborCosts": 45786,
+      "totalPayouts": 22215,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.98,
+      "margin": 23571,
+      "categoryCosts": [
+        [
+          1,
+          5543.02
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "16": {
+      "totalMaterialCosts": 67900.02,
+      "totalIncome": 228193.35,
+      "totalLaborCosts": 160457.8,
+      "totalPayouts": 86652.5,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -164.47,
+      "margin": 73805.3,
+      "categoryCosts": [
+        [
+          1,
+          67900.02
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "17": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "18": {
+      "totalMaterialCosts": 2032.87,
+      "totalIncome": 9532.87,
+      "totalLaborCosts": 7500,
+      "totalPayouts": 5500,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 2000,
+      "categoryCosts": [
+        [
+          1,
+          1432.87
+        ],
+        [
+          3,
+          600
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "19": {
+      "totalMaterialCosts": 9839.37,
+      "totalIncome": 89212.47,
+      "totalLaborCosts": 80251,
+      "totalPayouts": 34640,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -877.9,
+      "margin": 45611,
+      "categoryCosts": [
+        [
+          1,
+          9839.37
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "20": {
+      "totalMaterialCosts": 7429.77,
+      "totalIncome": 46721,
+      "totalLaborCosts": 39291,
+      "totalPayouts": 21270,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.23,
+      "margin": 18021,
+      "categoryCosts": [
+        [
+          1,
+          7429.77
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "21": {
+      "totalMaterialCosts": 80113.18,
+      "totalIncome": 145152,
+      "totalLaborCosts": 65921,
+      "totalPayouts": 23610,
+      "totalRabat": 882.18,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 41428.82,
+      "categoryCosts": [
+        [
+          1,
+          15571.11
+        ],
+        [
+          2,
+          64542.07
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "22": {
+      "totalMaterialCosts": 16850,
+      "totalIncome": 56850,
+      "totalLaborCosts": 40000,
+      "totalPayouts": 25070,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 14930,
+      "categoryCosts": [
+        [
+          1,
+          6473.42
+        ],
+        [
+          2,
+          10621
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "25": {
+      "totalMaterialCosts": 94760.41,
+      "totalIncome": 309723.41,
+      "totalLaborCosts": 214963,
+      "totalPayouts": 118710,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 96253,
+      "categoryCosts": [
+        [
+          1,
+          94110.41
+        ],
+        [
+          2,
+          650
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "26": {
+      "totalMaterialCosts": 593265.77,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 296322.5,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -593265.77,
+      "margin": -296322.5,
+      "categoryCosts": [
+        [
+          1,
+          171578.38
+        ],
+        [
+          2,
+          148173.26
+        ],
+        [
+          3,
+          273609.09
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "28": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "31": {
+      "totalMaterialCosts": 180660.57,
+      "totalIncome": 303382.34,
+      "totalLaborCosts": 235911,
+      "totalPayouts": 198634,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 4421.85,
+      "balance": -113189.23,
+      "margin": 32855.15,
+      "categoryCosts": [
+        [
+          1,
+          122015.13
+        ],
+        [
+          2,
+          58945.44
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          2,
+          4421.85
+        ]
+      ]
+    },
+    "32": {
+      "totalMaterialCosts": 31717.29,
+      "totalIncome": 215934,
+      "totalLaborCosts": 184311,
+      "totalPayouts": 80324,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -94.29,
+      "margin": 103987,
+      "categoryCosts": [
+        [
+          1,
+          29537.46
+        ],
+        [
+          2,
+          2179.83
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "33": {
+      "totalMaterialCosts": 4735.18,
+      "totalIncome": 37616.18,
+      "totalLaborCosts": 32881,
+      "totalPayouts": 17907.9,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 14973.1,
+      "categoryCosts": [
+        [
+          1,
+          4735.18
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "34": {
+      "totalMaterialCosts": 11962.45,
+      "totalIncome": 63278.9,
+      "totalLaborCosts": 51597.47,
+      "totalPayouts": 26350,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -281.02,
+      "margin": 25247.47,
+      "categoryCosts": [
+        [
+          1,
+          11962.45
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "35": {
+      "totalMaterialCosts": 34369.68,
+      "totalIncome": 154155,
+      "totalLaborCosts": 119685,
+      "totalPayouts": 61286,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 100.32,
+      "margin": 58399,
+      "categoryCosts": [
+        [
+          1,
+          34369.68
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "36": {
+      "totalMaterialCosts": 13992.8,
+      "totalIncome": 41333.98,
+      "totalLaborCosts": 27569,
+      "totalPayouts": 13500,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -227.82,
+      "margin": 14069,
+      "categoryCosts": [
+        [
+          1,
+          7387.18
+        ],
+        [
+          2,
+          6605.62
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "37": {
+      "totalMaterialCosts": 4933.81,
+      "totalIncome": 38362,
+      "totalLaborCosts": 33428,
+      "totalPayouts": 14750,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.19,
+      "margin": 18678,
+      "categoryCosts": [
+        [
+          1,
+          3826.81
+        ],
+        [
+          3,
+          1107
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "38": {
+      "totalMaterialCosts": 1896.31,
+      "totalIncome": 61989.88,
+      "totalLaborCosts": 0,
+      "totalPayouts": 3000,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 60093.57,
+      "margin": -3000,
+      "categoryCosts": [
+        [
+          1,
+          1364.03
+        ],
+        [
+          3,
+          1089.58
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "39": {
+      "totalMaterialCosts": 1000,
+      "totalIncome": 3000,
+      "totalLaborCosts": 2000,
+      "totalPayouts": 650,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 1350,
+      "categoryCosts": [
+        [
+          1,
+          1000
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "40": {
+      "totalMaterialCosts": 62380.15,
+      "totalIncome": 0,
+      "totalLaborCosts": 13000,
+      "totalPayouts": 9200,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -75380.15,
+      "margin": 3800,
+      "categoryCosts": [
+        [
+          1,
+          61642.15
+        ],
+        [
+          3,
+          738
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "41": {
+      "totalMaterialCosts": 10687.24,
+      "totalIncome": 77704.73,
+      "totalLaborCosts": 67027,
+      "totalPayouts": 35036,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -9.51,
+      "margin": 31991,
+      "categoryCosts": [
+        [
+          1,
+          10687.24
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "42": {
+      "totalMaterialCosts": 56258.15,
+      "totalIncome": 185738,
+      "totalLaborCosts": 129036,
+      "totalPayouts": 56840,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 400,
+      "balance": 443.85,
+      "margin": 71796,
+      "categoryCosts": [
+        [
+          1,
+          27548.27
+        ],
+        [
+          2,
+          28646.88
+        ],
+        [
+          3,
+          63
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          3,
+          400
+        ]
+      ]
+    },
+    "43": {
+      "totalMaterialCosts": 3725.8,
+      "totalIncome": 37200,
+      "totalLaborCosts": 33441,
+      "totalPayouts": 18430,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 33.2,
+      "margin": 15011,
+      "categoryCosts": [
+        [
+          1,
+          3725.8
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "45": {
+      "totalMaterialCosts": 60673.49,
+      "totalIncome": 104787.62,
+      "totalLaborCosts": 59037,
+      "totalPayouts": 28500,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -14922.87,
+      "margin": 30537,
+      "categoryCosts": [
+        [
+          1,
+          10973.49
+        ],
+        [
+          2,
+          49700
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "46": {
+      "totalMaterialCosts": 4819.76,
+      "totalIncome": 32450,
+      "totalLaborCosts": 27630,
+      "totalPayouts": 18200,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.24,
+      "margin": 9430,
+      "categoryCosts": [
+        [
+          1,
+          4819.76
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "47": {
+      "totalMaterialCosts": 142.65,
+      "totalIncome": 142.65,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          1,
+          142.65
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "48": {
+      "totalMaterialCosts": 16463.57,
+      "totalIncome": 77840,
+      "totalLaborCosts": 5590,
+      "totalPayouts": 27170,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 55786.43,
+      "margin": -21580,
+      "categoryCosts": [
+        [
+          1,
+          16433.57
+        ],
+        [
+          3,
+          30
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "49": {
+      "totalMaterialCosts": 4378.74,
+      "totalIncome": 38693,
+      "totalLaborCosts": 34314,
+      "totalPayouts": 17130,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.26,
+      "margin": 17184,
+      "categoryCosts": [
+        [
+          1,
+          4225.86
+        ],
+        [
+          2,
+          152.88
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "50": {
+      "totalMaterialCosts": 5463.98,
+      "totalIncome": 49836.98,
+      "totalLaborCosts": 44373,
+      "totalPayouts": 21200.75,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 23172.25,
+      "categoryCosts": [
+        [
+          1,
+          5463.98
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "51": {
+      "totalMaterialCosts": 49.02,
+      "totalIncome": 3259,
+      "totalLaborCosts": 3210,
+      "totalPayouts": 2132,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -0.02,
+      "margin": 1078,
+      "categoryCosts": [
+        [
+          1,
+          49.02
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "52": {
+      "totalMaterialCosts": 4165.48,
+      "totalIncome": 30579,
+      "totalLaborCosts": 26229,
+      "totalPayouts": 13020,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 184.52,
+      "margin": 13209,
+      "categoryCosts": [
+        [
+          1,
+          4165.48
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "53": {
+      "totalMaterialCosts": 1377.57,
+      "totalIncome": 8502,
+      "totalLaborCosts": 7124,
+      "totalPayouts": 3375,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.43,
+      "margin": 3749,
+      "categoryCosts": [
+        [
+          1,
+          1377.57
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "54": {
+      "totalMaterialCosts": 130.86,
+      "totalIncome": 7940,
+      "totalLaborCosts": 0,
+      "totalPayouts": 11007,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 7809.14,
+      "margin": -11007,
+      "categoryCosts": [
+        [
+          1,
+          130.86
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "55": {
+      "totalMaterialCosts": 6886,
+      "totalIncome": 38680,
+      "totalLaborCosts": 31916,
+      "totalPayouts": 19850,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -122,
+      "margin": 12066,
+      "categoryCosts": [
+        [
+          1,
+          6886
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "57": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 430,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": -430,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "58": {
+      "totalMaterialCosts": 3773.62,
+      "totalIncome": 27110,
+      "totalLaborCosts": 30127,
+      "totalPayouts": 15660,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -6790.62,
+      "margin": 14467,
+      "categoryCosts": [
+        [
+          1,
+          3773.62
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "59": {
+      "totalMaterialCosts": -153.1,
+      "totalIncome": 9394,
+      "totalLaborCosts": 9547,
+      "totalPayouts": 4800,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.1,
+      "margin": 4747,
+      "categoryCosts": [
+        [
+          1,
+          646.9
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "60": {
+      "totalMaterialCosts": 15039.35,
+      "totalIncome": 77849.11,
+      "totalLaborCosts": 62909,
+      "totalPayouts": 34823,
+      "totalRabat": 99.24,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 27986.76,
+      "categoryCosts": [
+        [
+          1,
+          15039.35
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "61": {
+      "totalMaterialCosts": 435.53,
+      "totalIncome": 4222,
+      "totalLaborCosts": 3786.47,
+      "totalPayouts": 1500,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 2286.47,
+      "categoryCosts": [
+        [
+          1,
+          435.53
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "62": {
+      "totalMaterialCosts": 362.84,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 362.84,
+      "totalSettled": 0,
+      "balance": -362.84,
+      "margin": -362.84,
+      "categoryCosts": [
+        [
+          1,
+          362.84
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "63": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          1,
+          0
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "64": {
+      "totalMaterialCosts": 32903.46,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 11861.14,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 19.99,
+      "balance": -32903.46,
+      "margin": -11881.13,
+      "categoryCosts": [
+        [
+          1,
+          16736.4
+        ],
+        [
+          2,
+          16167.06
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          3,
+          19.99
+        ]
+      ]
+    },
+    "65": {
+      "totalMaterialCosts": 58378.06,
+      "totalIncome": 149053.6,
+      "totalLaborCosts": 73571,
+      "totalPayouts": 44100,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 17104.54,
+      "margin": 29471,
+      "categoryCosts": [
+        [
+          1,
+          34979.94
+        ],
+        [
+          2,
+          21528.12
+        ],
+        [
+          3,
+          1870
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "66": {
+      "totalMaterialCosts": 44584.84,
+      "totalIncome": 197957,
+      "totalLaborCosts": 168477,
+      "totalPayouts": 89820,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -15104.84,
+      "margin": 78657,
+      "categoryCosts": [
+        [
+          1,
+          43965.64
+        ],
+        [
+          2,
+          619.2
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "67": {
+      "totalMaterialCosts": 25338.53,
+      "totalIncome": 116000,
+      "totalLaborCosts": 91618,
+      "totalPayouts": 48986,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -956.53,
+      "margin": 42632,
+      "categoryCosts": [
+        [
+          1,
+          24310.02
+        ],
+        [
+          2,
+          1028.51
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "68": {
+      "totalMaterialCosts": 5230.86,
+      "totalIncome": 23980,
+      "totalLaborCosts": 18780,
+      "totalPayouts": 10650,
+      "totalRabat": 30.86,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 8099.14,
+      "categoryCosts": [
+        [
+          1,
+          5230.86
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "70": {
+      "totalMaterialCosts": 349.31,
+      "totalIncome": 5950,
+      "totalLaborCosts": 6850,
+      "totalPayouts": 1350,
+      "totalRabat": 1249.31,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 4250.69,
+      "categoryCosts": [
+        [
+          1,
+          349.31
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "71": {
+      "totalMaterialCosts": 226.11,
+      "totalIncome": 2300,
+      "totalLaborCosts": 2153,
+      "totalPayouts": 1490,
+      "totalRabat": 79.11,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 583.89,
+      "categoryCosts": [
+        [
+          1,
+          226.11
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "72": {
+      "totalMaterialCosts": 5438.21,
+      "totalIncome": 30900,
+      "totalLaborCosts": 25476,
+      "totalPayouts": 14100,
+      "totalRabat": 14.21,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 11361.79,
+      "categoryCosts": [
+        [
+          1,
+          5438.21
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "73": {
+      "totalMaterialCosts": 595.9,
+      "totalIncome": 2595.9,
+      "totalLaborCosts": 2000,
+      "totalPayouts": 1200,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 800,
+      "categoryCosts": [
+        [
+          1,
+          595.9
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "74": {
+      "totalMaterialCosts": 14298.89,
+      "totalIncome": 57776.59,
+      "totalLaborCosts": 44491,
+      "totalPayouts": 30900,
+      "totalRabat": 1289.89,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 276.59,
+      "margin": 12301.11,
+      "categoryCosts": [
+        [
+          1,
+          6000.11
+        ],
+        [
+          2,
+          8298.78
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "75": {
+      "totalMaterialCosts": 6780.66,
+      "totalIncome": 54400,
+      "totalLaborCosts": 47623,
+      "totalPayouts": 25000,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -3.66,
+      "margin": 22623,
+      "categoryCosts": [
+        [
+          1,
+          6780.66
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "76": {
+      "totalMaterialCosts": 28613.15,
+      "totalIncome": 69228,
+      "totalLaborCosts": 0,
+      "totalPayouts": 26485,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 40614.85,
+      "margin": -26485,
+      "categoryCosts": [
+        [
+          1,
+          24509.15
+        ],
+        [
+          3,
+          4104
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "77": {
+      "totalMaterialCosts": 3731.8,
+      "totalIncome": 29257,
+      "totalLaborCosts": 25525,
+      "totalPayouts": 12649.04,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0.2,
+      "margin": 12875.96,
+      "categoryCosts": [
+        [
+          1,
+          3731.8
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "78": {
+      "totalMaterialCosts": 3044.67,
+      "totalIncome": 41900,
+      "totalLaborCosts": 43848,
+      "totalPayouts": 24800,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -4992.67,
+      "margin": 19048,
+      "categoryCosts": [
+        [
+          1,
+          3044.67
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "80": {
+      "totalMaterialCosts": 417.96,
+      "totalIncome": 3417.96,
+      "totalLaborCosts": 3000,
+      "totalPayouts": 1000,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 2000,
+      "categoryCosts": [
+        [
+          1,
+          417.96
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "81": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 1678.95,
+      "totalLaborCosts": 1678.95,
+      "totalPayouts": 630,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 1048.95,
+      "categoryCosts": [
+        [
+          1,
+          91.02
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "83": {
+      "totalMaterialCosts": 184.27,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 3050,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -184.27,
+      "margin": -3050,
+      "categoryCosts": [
+        [
+          1,
+          184.27
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "84": {
+      "totalMaterialCosts": 332.7,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 332.7,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": -332.7,
+      "categoryCosts": [
+        [
+          1,
+          332.7
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "85": {
+      "totalMaterialCosts": 56957.51,
+      "totalIncome": 75143,
+      "totalLaborCosts": 0,
+      "totalPayouts": 48392,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 18185.49,
+      "margin": -48392,
+      "categoryCosts": [
+        [
+          1,
+          56957.51
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "86": {
+      "totalMaterialCosts": 8340.76,
+      "totalIncome": 21000,
+      "totalLaborCosts": 0,
+      "totalPayouts": 6550,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 12659.24,
+      "margin": -6550,
+      "categoryCosts": [
+        [
+          1,
+          6893.76
+        ],
+        [
+          2,
+          1447
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "87": {
+      "totalMaterialCosts": 4242.06,
+      "totalIncome": 35363,
+      "totalLaborCosts": 0,
+      "totalPayouts": 21290,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 31120.94,
+      "margin": -21290,
+      "categoryCosts": [
+        [
+          1,
+          4242.06
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "88": {
+      "totalMaterialCosts": 13014,
+      "totalIncome": 47000,
+      "totalLaborCosts": 0,
+      "totalPayouts": 16350,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 900,
+      "balance": 33986,
+      "margin": -17250,
+      "categoryCosts": [
+        [
+          1,
+          13014
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          1,
+          900
+        ]
+      ]
+    },
+    "89": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "90": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "91": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 1500,
+      "totalLaborCosts": 7000,
+      "totalPayouts": 7000,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -5500,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "93": {
+      "totalMaterialCosts": 4561.75,
+      "totalIncome": 0,
+      "totalLaborCosts": 16891,
+      "totalPayouts": 16900,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -21452.75,
+      "margin": -9,
+      "categoryCosts": [
+        [
+          1,
+          4561.75
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "94": {
+      "totalMaterialCosts": 1021.64,
+      "totalIncome": 3721.64,
+      "totalLaborCosts": 2700,
+      "totalPayouts": 1200,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 1500,
+      "categoryCosts": [
+        [
+          1,
+          1021.64
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "96": {
+      "totalMaterialCosts": 2477.5,
+      "totalIncome": 13335.5,
+      "totalLaborCosts": 10858,
+      "totalPayouts": 4500,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 6358,
+      "categoryCosts": [
+        [
+          1,
+          2477.5
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "97": {
+      "totalMaterialCosts": 10155.49,
+      "totalIncome": 44700,
+      "totalLaborCosts": 0,
+      "totalPayouts": 17700,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 34544.51,
+      "margin": -17700,
+      "categoryCosts": [
+        [
+          1,
+          10155.49
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "98": {
+      "totalMaterialCosts": 39,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 39,
+      "totalSettled": 0,
+      "balance": -39,
+      "margin": -39,
+      "categoryCosts": [
+        [
+          1,
+          39
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "99": {
+      "totalMaterialCosts": 173.34,
+      "totalIncome": 973,
+      "totalLaborCosts": 800,
+      "totalPayouts": 500,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -0.34,
+      "margin": 300,
+      "categoryCosts": [
+        [
+          1,
+          173.34
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "100": {
+      "totalMaterialCosts": 1305.39,
+      "totalIncome": 30859.34,
+      "totalLaborCosts": 0,
+      "totalPayouts": 2600,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 29553.95,
+      "margin": -2600,
+      "categoryCosts": [
+        [
+          1,
+          1305.39
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "101": {
+      "totalMaterialCosts": 11782.73,
+      "totalIncome": 22633.8,
+      "totalLaborCosts": 0,
+      "totalPayouts": 20350,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 10851.07,
+      "margin": -20350,
+      "categoryCosts": [
+        [
+          1,
+          11782.73
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "102": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 900,
+      "totalLaborCosts": 900,
+      "totalPayouts": 450,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 450,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "103": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 5454,
+      "totalLaborCosts": 5454,
+      "totalPayouts": 2600,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 2854,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "104": {
+      "totalMaterialCosts": 26.98,
+      "totalIncome": 1900,
+      "totalLaborCosts": 1900,
+      "totalPayouts": 400,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 900,
+      "balance": -26.98,
+      "margin": 600,
+      "categoryCosts": [
+        [
+          1,
+          26.98
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          1,
+          900
+        ]
+      ]
+    },
+    "105": {
+      "totalMaterialCosts": 25970.27,
+      "totalIncome": 21000,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -4970.27,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          1,
+          12582.67
+        ],
+        [
+          2,
+          13387.6
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "106": {
+      "totalMaterialCosts": 4561.48,
+      "totalIncome": 15135,
+      "totalLaborCosts": 14493,
+      "totalPayouts": 300,
+      "totalRabat": 2419,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -1500.48,
+      "margin": 11774,
+      "categoryCosts": [
+        [
+          1,
+          4410.19
+        ],
+        [
+          2,
+          151.29
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "107": {
+      "totalMaterialCosts": 321.02,
+      "totalIncome": 3321,
+      "totalLaborCosts": 3000,
+      "totalPayouts": 1800,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -0.02,
+      "margin": 1200,
+      "categoryCosts": [
+        [
+          1,
+          321.02
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "108": {
+      "totalMaterialCosts": 5952.1,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 6150,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 238.2,
+      "balance": -5952.1,
+      "margin": -6388.2,
+      "categoryCosts": [
+        [
+          1,
+          5952.1
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          1,
+          238.2
+        ]
+      ]
+    },
+    "109": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 1865,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 1865,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "110": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 6633.79,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 6633.79,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "111": {
+      "totalMaterialCosts": 458.48,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -458.48,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          1,
+          458.48
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "112": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "113": {
+      "totalMaterialCosts": 3786.24,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -3786.24,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          1,
+          3786.24
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "114": {
+      "totalMaterialCosts": 18034.14,
+      "totalIncome": 6960,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -11074.14,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          1,
+          5736.74
+        ],
+        [
+          2,
+          12297.4
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "115": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 4500,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 4500,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "116": {
+      "totalMaterialCosts": 550,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": -550,
+      "margin": 0,
+      "categoryCosts": [
+        [
+          3,
+          550
+        ]
+      ],
+      "settledCategoryCosts": []
+    },
+    "247": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    }
+  },
+  "registers": {
+    "5": 601849.07,
+    "7": 47985.29,
+    "8": 7225.42,
+    "9": 15573.07,
+    "10": 8494.98,
+    "11": -261960.4,
+    "12": 979.81,
+    "13": 2114.04,
+    "14": 1290.99,
+    "15": 1909.45,
+    "16": 1688.43,
+    "17": 2925.95,
+    "18": 734.66,
+    "19": 1764.14,
+    "20": 2550.06,
+    "21": -84.09,
+    "22": 463.1,
+    "23": 305.15,
+    "24": 141.36,
+    "25": 260.54,
+    "26": 1231.29,
+    "27": 219.38,
+    "29": 1429.93,
+    "32": -12546,
+    "33": -24624,
+    "34": -13.71,
+    "35": 287.47,
+    "36": 120.83,
+    "37": -872.14
+  },
+  "workers": {
+    "16": 700,
+    "17": 25500,
+    "18": 47840,
+    "19": 125710,
+    "21": 67387.04,
+    "22": 60725,
+    "24": 142571,
+    "25": 126910,
+    "27": 21110,
+    "28": 2000,
+    "30": 288522,
+    "31": 24000,
+    "32": 55070,
+    "33": 313996.5,
+    "34": 1850,
+    "36": 121200,
+    "38": 25482,
+    "39": 69395,
+    "40": 77800,
+    "41": 61695,
+    "43": 121185,
+    "45": 34007.9,
+    "47": 211176,
+    "48": 7000,
+    "49": 40724,
+    "50": 38801.89,
+    "51": 19324,
+    "52": 32752.5,
+    "53": 26150,
+    "54": 1960,
+    "55": 33669,
+    "56": 6500,
+    "57": 23190,
+    "58": 8600,
+    "59": 11700,
+    "60": 23990
+  }
+}

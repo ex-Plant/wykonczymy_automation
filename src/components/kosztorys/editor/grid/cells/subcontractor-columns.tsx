@@ -47,8 +47,8 @@ export function subcontractorCoeffColumn(
       if (type === 'amount') {
         return <span className="text-muted-foreground block w-full px-2 text-left">—</span>
       }
-      // auto: the row carries no multiplier of its own — show the inherited one as a placeholder
-      // (section coeff, else the investment default), italic to read as "not set here".
+      // auto: the row carries no multiplier of its own — show the inherited investment default as a
+      // placeholder, italic to read as "not set here".
       const inherited = type == null
       return (
         <input

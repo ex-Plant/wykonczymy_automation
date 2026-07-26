@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { BackButton } from '@/components/ui/back-button'
 import { cn } from '@/lib/utils/cn'
 
 type PageWrapperPropsT = {
@@ -14,20 +15,26 @@ type PageWrapperPropsT = {
 export function PageWrapper({
   title,
   description,
-  backHref = '/',
-  backLabel = 'Pulpit',
+  backHref,
+  backLabel = 'Wstecz',
   children,
   className,
 }: PageWrapperPropsT) {
+  // An explicit '' opts a page out of the back affordance entirely.
+  const hasBack = backHref !== ''
+
   return (
     <div className={cn('grid grid-cols-1 gap-6 p-6 lg:p-8', className)}>
-      {backHref && (
-        <Link href={backHref} className="text-muted-foreground hover:text-foreground text-sm">
-          &larr; {backLabel}
-        </Link>
-      )}
+      {hasBack &&
+        (backHref ? (
+          <Link href={backHref} className="text-muted-foreground hover:text-foreground text-sm">
+            &larr; {backLabel}
+          </Link>
+        ) : (
+          <BackButton label={backLabel} fallbackHref="/" />
+        ))}
 
-      <h1 className={cn('text-foreground text-2xl font-semibold', backHref && 'mt-2')}>{title}</h1>
+      <h1 className={cn('text-foreground text-2xl font-semibold', hasBack && 'mt-2')}>{title}</h1>
 
       {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
 

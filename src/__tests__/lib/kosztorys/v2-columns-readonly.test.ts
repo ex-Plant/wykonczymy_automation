@@ -61,3 +61,22 @@ describe('clientVisible', () => {
     expect(ids({ ...editorOpts, view: 'w_tools' })).toContain('priceMode')
   })
 })
+
+describe('przedmiar-anchored columns', () => {
+  // The filter sits at the selection chokepoint, not in the assembly, so a column that starts being
+  // built unconditionally can only leak through here — the assertion is on the built grid, never on
+  // the set constant, which would just restate itself.
+  it('are dropped in a subcontractor view', () => {
+    const columns = ids({ ...editorOpts, view: 'w_tools' })
+    for (const id of ['plannedQty', 'plannedNet', 'plannedGross', 'donePercent', 'remaining']) {
+      expect(columns).not.toContain(id)
+    }
+  })
+
+  it('stay in the client view', () => {
+    const columns = ids(editorOpts)
+    for (const id of ['plannedQty', 'plannedNet', 'donePercent', 'remaining']) {
+      expect(columns).toContain(id)
+    }
+  })
+})

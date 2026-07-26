@@ -193,23 +193,26 @@ describe('sortRows', () => {
 describe('rowTotalQtyDone', () => {
   it('sums the quantities across every stage of the row', () => {
     const [row] = treeToRows(tree) // stage 100 = 2, stage 101 = 0
-    expect(rowTotalQtyDone(row, tree.stages)).toBe(2)
+    expect(rowTotalQtyDone(row, tree.stages, 'client')).toBe(2)
   })
 
   // A stage added after the row was built carries no key on it — without ?? 0 the sum would be NaN.
   it('counts a stage missing its key on the row as zero', () => {
     const [row] = treeToRows(tree)
     const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null, plane: null }]
-    expect(rowTotalQtyDone(row, withGhost)).toBe(2)
+    expect(rowTotalQtyDone(row, withGhost, 'client')).toBe(2)
   })
 })
 
 // EX-494. The pomiar IS the stage sum (the sheet's O = SUM(D:M)), so the row's value can only ever
 // be what the stages say. Everything below pins that rule at the layer that settles it.
 describe('wartość wiersza idzie za etapami', () => {
+  // Both etapy sit on the same plane on purpose: these cases pin how the PRICE follows the view, so
+  // the plane filter must not also be moving quantities underneath them. Plane scoping has its own
+  // fixture in subcontractor-due-by-plane.test.ts.
   const stages: KosztorysStageT[] = [
-    { id: 100, ordinal: 1, label: null, plane: null },
-    { id: 101, ordinal: 2, label: null, plane: null },
+    { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
+    { id: 101, ordinal: 2, label: null, plane: 'w_tools' },
   ]
   const row = (over: Partial<KosztorysV2RowT>) =>
     ({
@@ -306,7 +309,7 @@ describe('wartość wiersza idzie za etapami', () => {
     it('procent wiersza i procent kosztorysu opowiadają tę samą historię', () => {
       const subtotals = sectionSubtotalsForView([rows[0]], stages, 'client')
       expect(subtotals[0].net / subtotals[0].plannedNet).toBeCloseTo(
-        rowDoneFraction(rows[0], rowTotalQtyDone(rows[0], stages)) as number,
+        rowDoneFraction(rows[0], rowTotalQtyDone(rows[0], stages, 'client')) as number,
         10,
       )
     })

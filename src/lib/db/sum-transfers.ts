@@ -151,7 +151,8 @@ export const sumAllInvestmentFinancials = async (
       SELECT investment_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE investment_id IS NOT NULL
         AND cancelled IS NOT TRUE
@@ -161,7 +162,8 @@ export const sumAllInvestmentFinancials = async (
       SELECT investment_id, expense_category_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE investment_id IS NOT NULL
         AND cancelled IS NOT TRUE
@@ -183,6 +185,7 @@ export const sumAllInvestmentFinancials = async (
       type: row.type as string,
       settled: row.settled === true,
       total: Number(row.total),
+      netTotal: Number(row.net_total ?? 0),
     })
   }
 
@@ -200,6 +203,7 @@ export const sumAllInvestmentFinancials = async (
       type: row.type as string,
       settled: row.settled === true,
       total: Number(row.total),
+      netTotal: Number(row.net_total ?? 0),
     })
   }
 
@@ -235,7 +239,8 @@ export const sumCategoryByTypeSettled = async (
       SELECT expense_category_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE cancelled IS NOT TRUE
         AND expense_category_id IS NOT NULL
@@ -250,6 +255,7 @@ export const sumCategoryByTypeSettled = async (
     type: row.type as string,
     settled: row.settled === true,
     total: Number(row.total),
+    netTotal: Number(row.net_total ?? 0),
   }))
 }
 
@@ -383,7 +389,8 @@ export const sumFilteredByType = async (
     SELECT
       type::text AS type,
       (settled IS TRUE) AS settled,
-      COALESCE(SUM(amount), 0) AS total
+      COALESCE(SUM(amount), 0) AS total,
+      COALESCE(SUM(net_amount), 0) AS net_total
     FROM transactions
     WHERE cancelled IS NOT TRUE
       ${conditions}
@@ -397,5 +404,6 @@ export const sumFilteredByType = async (
     type: row.type as string,
     settled: row.settled === true,
     total: Number(row.total),
+    netTotal: Number(row.net_total ?? 0),
   }))
 }
