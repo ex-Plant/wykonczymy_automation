@@ -118,6 +118,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
               financials={financials}
               expenseCategories={refData.expenseCategories}
               netCategoryCosts={breakdowns.netCategoryCosts}
+              workers={refData.workers}
             />
           </Suspense>
 

@@ -2,7 +2,6 @@ import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import {
   fetchDepositTransactionsForInvestment,
   fetchPayoutsByWorkerForInvestment,
-  fetchReferenceData,
 } from '@/lib/queries/reference-data'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals, subcontractorDueByPlane } from '@/lib/kosztorys/settlement'
@@ -13,7 +12,7 @@ import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
 import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { CategoryCostT } from '@/types/investment-financials'
-import type { ExpenseCategoryRefT } from '@/types/reference-data'
+import type { ExpenseCategoryRefT, WorkerRefT } from '@/types/reference-data'
 
 type PropsT = {
   investmentId: number
@@ -21,6 +20,9 @@ type PropsT = {
   financials: InvestmentFinancialsT
   expenseCategories: ExpenseCategoryRefT[]
   netCategoryCosts: CategoryCostT[]
+  // Relayed from the page's own fetchReferenceData rather than re-read here: the panel needs nothing
+  // else off that company-wide payload.
+  workers: WorkerRefT[]
 }
 
 // Everything the v2 reading needs — both fetches and every derivation — is owned here rather than by
@@ -32,14 +34,14 @@ export async function InvestmentSummaryPanel({
   financials,
   expenseCategories,
   netCategoryCosts,
+  workers,
 }: PropsT) {
-  const [tree, depositTransactions, payouts, refData] = await Promise.all([
+  const [tree, depositTransactions, payouts] = await Promise.all([
     getKosztorysTree(investmentId),
     // Same cached fetcher the kosztorys page uses, so both surfaces read wpłaty from one source.
     fetchDepositTransactionsForInvestment(investmentId),
     // Realized PAYOUTs per worker — the „Podwykonawcy" view's zaliczki side.
     fetchPayoutsByWorkerForInvestment(investmentId),
-    fetchReferenceData(),
   ])
 
   const rows = treeToRows(tree)
@@ -76,7 +78,7 @@ export async function InvestmentSummaryPanel({
       // the two views can't disagree about what was executed. No payout list on this host: the
       // transfers table below already carries every wypłata.
       subcontractorDue={subcontractorDueByPlane(rows, tree.stages)}
-      payoutsByWorker={resolvePayoutWorkerNames(payouts, refData.workers)}
+      payoutsByWorker={resolvePayoutWorkerNames(payouts, workers)}
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}
     />
