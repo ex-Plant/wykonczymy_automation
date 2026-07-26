@@ -13,10 +13,7 @@ import { formatPLN } from '@/lib/utils/format-currency'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { useCurrentUser } from '@/hooks/use-current-user'
-
-const INCOME_LABEL = 'Wpłaty'
-const LABOR_LABEL = 'Robocizna'
-const RABAT_LABEL = 'Rabat'
+import { INCOME_LABEL, LABOR_LABEL, RABAT_LABEL } from '@/lib/db/map-category-costs'
 
 // Both figures render only inside the isAdminOrOwnerRole(...) block below, so this
 // note is shown exclusively to Admin/Owner — flags the figure as owner-level.

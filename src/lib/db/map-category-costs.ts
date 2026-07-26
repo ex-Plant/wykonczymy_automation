@@ -12,6 +12,12 @@ import { formatPLN } from '@/lib/utils/format-currency'
 // the listing's bilans.
 const KOREKTA_LABEL = 'Korekta (bez kategorii)'
 
+// The tile labels the investment header matches on to pick a figure out of the field list — exported
+// so the consumer reads the same string this builder writes.
+export const LABOR_LABEL = 'Robocizna netto'
+export const RABAT_LABEL = 'Rabat netto'
+export const INCOME_LABEL = 'Wpłaty'
+
 /** Amount booked to a given expense category, 0 when that category has no rows. */
 export function costForCategory(categoryCosts: CategoryCostT[], categoryId: number): number {
   return categoryCosts.find((c) => c.categoryId === categoryId)?.total ?? 0
@@ -98,13 +104,13 @@ export function buildFinancialFields(
         ]
       : []),
     {
-      label: 'Robocizna',
+      label: LABOR_LABEL,
       value: formatPLN(totalLaborCosts),
       amount: -totalLaborCosts,
     },
-    { label: 'Wpłaty', value: formatPLN(totalIncome), amount: totalIncome },
+    { label: INCOME_LABEL, value: formatPLN(totalIncome), amount: totalIncome },
     ...(totalRabat !== 0
-      ? [{ label: 'Rabat', value: formatPLN(totalRabat), amount: totalRabat }]
+      ? [{ label: RABAT_LABEL, value: formatPLN(totalRabat), amount: totalRabat }]
       : []),
   ]
 }

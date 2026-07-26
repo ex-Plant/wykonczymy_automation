@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { buildFinancialFields, buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
+import {
+  buildFinancialFields,
+  buildMaterialyBreakdown,
+  RABAT_LABEL,
+} from '@/lib/db/map-category-costs'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 const base: InvestmentFinancialsT = {
@@ -19,12 +23,12 @@ const base: InvestmentFinancialsT = {
 describe('buildFinancialFields — rabat row', () => {
   it('omits the Rabat field when totalRabat is 0', () => {
     const fields = buildFinancialFields(base, [])
-    expect(fields.find((f) => f.label === 'Rabat')).toBeUndefined()
+    expect(fields.find((f) => f.label === RABAT_LABEL)).toBeUndefined()
   })
 
   it('emits a positive Rabat field when there is a rabat', () => {
     const fields = buildFinancialFields({ ...base, totalRabat: 800 }, [])
-    const rabat = fields.find((f) => f.label === 'Rabat')
+    const rabat = fields.find((f) => f.label === RABAT_LABEL)
     expect(rabat).toBeDefined()
     expect(rabat!.amount).toBe(800)
   })
