@@ -1,10 +1,10 @@
 ---
 change_id: investment-settlement-mode
 title: Store how an investment is settled (netto / brutto / mieszane) on the investment
-status: in_review
+status: archived
 created: 2026-07-26
-updated: 2026-07-26
-archived_at: null
+updated: 2026-07-27
+archived_at: 2026-07-27T17:18:46Z
 branch: investment-settlement-mode
 worktree: ../wykonczymy-worktrees/investment-settlement-mode
 ---
