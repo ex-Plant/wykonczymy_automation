@@ -107,28 +107,18 @@ export async function requireInvestmentOr404(id: string) {
   return { investmentId, investment, user: session.user }
 }
 
-// Name only — the top-bar crumb renders on every /inwestycje/[id]/** navigation and must not drag
-// the whole document (and its afterRead hooks) along for one string. Shares getInvestment's tags, so
-// an investment edit already invalidates both.
+// Name only, for the top-bar crumb. Reads it off the reference data instead of issuing its own
+// query: the layout nav already pulls that list on every management route and it is request-deduped,
+// so the name costs nothing here — where a dedicated read was a third trip to the same row, and one
+// its own `investments` tag re-paid after every settings write (EX-608).
+// The role gate is what keeps it free: without a management session there is no warm list to read,
+// and the crumb only ever renders over routes that already require one.
 export async function getInvestmentName(id: string): Promise<string | null> {
-  return unstable_cache(
-    async () => {
-      const payload = await getPayload({ config })
-      try {
-        const investment = await payload.findByID({
-          collection: 'investments',
-          id,
-          select: { name: true },
-          overrideAccess: true,
-        })
-        return investment?.name ?? null
-      } catch {
-        return null
-      }
-    },
-    ['investment-name', id],
-    { tags: [CACHE_TAGS.investments, entityTag('investment', id)] },
-  )()
+  const { success } = await requireAuth(MANAGEMENT_ROLES)
+  if (!success) return null
+
+  const { investments } = await fetchReferenceData()
+  return investments.find((investment) => String(investment.id) === id)?.name ?? null
 }
 
 export async function getInvestment(id: string) {

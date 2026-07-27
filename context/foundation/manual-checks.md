@@ -537,6 +537,17 @@ przedmiar and rabat footer cells are blank without them.
 - [ ] Typing into a cell directly above a footer keeps focus and accepts every character — a remount would drop all but the last one
 - [ ] Saving persists nothing new: reload and the same figures come back, with no phantom row in the kosztorys
 
+## EX-608 — nazwa inwestycji w górnym pasku bez trzeciego zapytania
+
+Nazwa w górnym pasku czyta się z danych, które nawigacja i tak pobiera, zamiast osobnym zapytaniem.
+Setup: DevTools → Network, wejście na `/inwestycje/<id>/kosztorys_v2`.
+
+- [ ] Nazwa inwestycji i strzałka „wróć" są w górnym pasku tak jak przed zmianą, na obu podstronach (`/kosztorys`, `/kosztorys_v2`)
+- [ ] Zmiana czegokolwiek w „Opcjach rozliczenia" (VAT / tryb / materiały netto / rabat globalny) nie gasi nazwy ani jej nie miga — pasek zostaje wypełniony przez cały zapis
+- [ ] Zmiana nazwy inwestycji w jej edycji jest widoczna w górnym pasku po powrocie na podstronę kosztorysu
+- [ ] Na stronach spoza inwestycji (`/`, `/kasa/<id>`, `/pracownicy`) pasek nadal nie pokazuje nic w tym miejscu
+- [ ] Wejście na `/inwestycje/999999/kosztorys_v2` (nieistniejąca) nie wywala paska — po prostu brak nazwy
+
 ## EX-609 — subcontractor-price-guard
 
 Cena wykonawcy nie może przekroczyć 80% ceny klienta (błąd, zapis blokowany), a powyżej stawki
