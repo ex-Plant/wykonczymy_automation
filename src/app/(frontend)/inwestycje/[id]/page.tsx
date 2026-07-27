@@ -127,7 +127,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         </Suspense>
       )}
 
-      {/* Transactions table */}
       <TransfersSection
         config={{
           query: { where: transferWhere, page, limit },

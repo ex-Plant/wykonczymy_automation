@@ -20,7 +20,6 @@ export function TopNav({ referenceData, investmentCrumb }: TopNavPropsT) {
         </Link>
       </div>
       <Suspense fallback={null}>{investmentCrumb}</Suspense>
-      {/* Right: action buttons */}
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <Suspense fallback={null}>
           <NavOpenRouterBalance />

@@ -125,9 +125,8 @@ type PropsT = {
   financials?: InvestmentFinancialsT
 }
 
-// The portable body of the summary panel — pinned top bar + the scrolling view. Deliberately holds no
-// shell: the editor wraps it in a bottom-anchored Collapsible overlay, the investment page in an
-// ordinary section, and neither layout leaks in here.
+// Deliberately holds no shell: the editor wraps it in a bottom-anchored Collapsible overlay, the
+// investment page in an ordinary section, and neither layout leaks in here.
 export function SummaryPanelContent({
   investmentId,
   investmentName,

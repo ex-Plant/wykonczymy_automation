@@ -28,13 +28,7 @@ export default function FrontendLayout({ children, investmentCrumb }: FrontendLa
   return (
     <html
       lang="pl"
-      className={cn(
-        abcFavorit.variable,
-        spaceMono.variable,
-        'overscroll-none antialiased',
-        // Non-prod (local/preview) renders dark so it's impossible to mistake for prod.
-        // process.env.NODE_ENV !== 'production' && 'dark',
-      )}
+      className={cn(abcFavorit.variable, spaceMono.variable, 'overscroll-none antialiased')}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground relative min-h-screen scroll-smooth">
