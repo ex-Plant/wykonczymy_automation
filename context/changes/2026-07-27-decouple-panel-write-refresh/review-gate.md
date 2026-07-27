@@ -175,8 +175,11 @@ landing in one is deferred **with that reason**.
       `doRozliczeniaNet: number` no longer says it is `combinedNet − paidNet`.
 - [x] fixed · comment-noise · `decimal-field.tsx:10,29`, `summary-panel-content.tsx:128` · 3 trims
       applied — symbol-restating first clause cut, design rationale kept.
-- [ ] deferred · comment-noise · `kosztorys-totals-panel.tsx:15` · 4th trim. **Still blocked by the
-      parallel-session hold** — this file remains uncommitted in another agent's tree.
+- [x] fixed · comment-noise · `kosztorys-totals-panel.tsx:15` · 4th trim, applied together with the
+      module-cohesion finding below (same three lines). **Hold lifted 2026-07-27:** the parallel
+      session's only edit to this file is a comment deletion near line 32, untouched for hours and
+      textually disjoint from the header block — the hold guarded against racing a live agent, not
+      against the file ever being dirty.
 - [x] dismissed · comment-noise · slice comments overall · 21 flagged-keep, incl. every comment in the
       4 highest-risk new modules (`kosztorys-tree.ts`, `reference-data.ts`, `media.ts`, `revalidate.ts`)
       and all three new test files. The comment-heaviest new code is the best-justified — measured numbers,
@@ -191,12 +194,13 @@ landing in one is deferred **with that reason**.
       `global-discount-control.tsx` · the same rationale sentence now lives in 2–3 places and can drift.
       Each copy is individually load-bearing, so no comment edit is right — the real fix is deduping the
       **overlapping prop types**, a refactor of its own, and 3 of the files are in the dirty set.
-- [ ] fix-now · module-cohesion · `src/components/kosztorys/summary/kosztorys-totals-panel.tsx:14` ·
+- [x] fixed · module-cohesion · `src/components/kosztorys/summary/kosztorys-totals-panel.tsx:14` ·
       header comment ("this file owns nothing but the overlay, so the investment page can mount the same
       content without inheriting the editor's geometry") is now **factually false** — the slice added
       `OPEN_SETTINGS_PARAM`, a `useSearchParams` read and a `forcedOpen` state machine, so the file also
       owns the `?ustawienia=1` deep-link arrival protocol. Doc drift, not a split.
-      **Blocked by the parallel-session hold** — this file is uncommitted in another agent's tree.
+      **Fixed 2026-07-27** (hold lifted, see the comment-noise finding above): the header now names both
+      things it owns — overlay geometry and the arrival protocol — and drops the restating first clause.
 - [x] skipped · module-cohesion · `src/components/kosztorys/editor/use-kosztorys-editor.ts` · 1289 LOC,
       one export, ~50-key return object, 6 co-resident responsibilities; this slice added +115 LOC and one
       more state slice to it. **Not a new kind of mixing** — settings-persistence already lived here — and
@@ -290,17 +294,21 @@ landing in one is deferred **with that reason**.
       `investments`, so **every settings write this slice added** expires it. Not fixed here because the
       fix (read the name off `fetchReferenceData`) assumes that cache is warm on every route the slot
       renders on — a per-route behaviour change, not a cleanup.
-- [ ] deferred · simplify (simplification + altitude) · `summary-panel-content.tsx` host-capability props
-      (`totalsOnly`, `showTransactions`, `showSettingsBar`/`showGlobalSettings`) · a five-boolean bag
-      encoding one host identity, with `totalsOnly` reachable only from its own spec.
-      **Correction (2026-07-27):** first triaged as "another slice's in-flight work, not ours" on the
-      strength of `git log -S` pointing at `86dc9e1c`. That was wrong — `86dc9e1c` is an **ancestor of
-      this branch and already on `staging`**, i.e. landed history this slice was built on, not a
-      parallel agent's dirty tree. So the agents' original call stands: this is unused plumbing built
-      for a host that was never wired, and `showSettingsBar` additionally names a component that no
-      longer exists while being forwarded on as `showGlobalSettings`. Deferred rather than fixed
-      because collapsing five booleans to named host profiles is a design change to a shared component
-      with three call sites — a slice of its own, not a gate cleanup. Box checks once filed.
+- [x] fixed (partly) + dropped (partly) · simplify (simplification + altitude) ·
+      `summary-panel-content.tsx` host-capability props (`totalsOnly`, `showTransactionLists`,
+      `showSettingsBar`/`showGlobalSettings`) · filed as a five-boolean bag with `totalsOnly` reachable
+      only from its own spec.
+      **Correction (2026-07-27, second pass):** the earlier framing over-counted. Only **one** of the
+      five was dead — `DepositsTable`'s `totalsOnly`, born in `86dc9e1c` as the first attempt at a host
+      without the per-wpłata list; that host ended up going through `showTransactionLists={false}` →
+      `showDeposits={false}`, so the table never renders at all and the branch was unreachable.
+      **Fixed:** `totalsOnly`, its `!totalsOnly` branch, the `-mt-px` conditional, the now-unused `cn`
+      import, and its only exerciser `src/__tests__/components/kosztorys/summary/deposits-table.test.ts`
+      are deleted. The remaining four are **live and correct**: `showTransactionLists` is passed by
+      `investment-summary-panel.tsx:99`, `showSettingsBar` by `kosztorys-editor-body.tsx:244`,
+      `showPies` / `clientView` by both. **Dropped:** collapsing the four live booleans into named host
+      profiles — with the dead one gone the bag is a legible four-flag capability set, not worth a
+      design change to a shared component with three call sites, and not worth a backlog entry.
 - [x] skipped · simplify (altitude) · `use-kosztorys-editor.ts` `handleGlobalCoeffChange` · alone among
       the settings handlers it never opts into `startSettingsSave`, so it shows no saving pill and isn't
       disabled in flight. Real inconsistency, but it is a **UX behaviour change** to a figure-moving

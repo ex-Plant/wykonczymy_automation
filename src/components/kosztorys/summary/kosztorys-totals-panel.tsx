@@ -12,9 +12,9 @@ import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-tot
 // default for every future visit. This is a one-shot intent, so it stays in the URL.
 const OPEN_SETTINGS_PARAM = 'ustawienia'
 
-// The editor's host for the summary panel: a bottom-anchored collapsible overlay over the grid.
-// Everything it shows lives in SummaryPanelContent — this file owns nothing but the overlay, so the
-// investment page can mount the same content without inheriting the editor's geometry.
+// Owns the overlay geometry and the `?ustawienia=1` arrival protocol, nothing of what is displayed —
+// that all lives in SummaryPanelContent, so the investment page can mount the same content without
+// inheriting the editor's bottom-anchored collapsible.
 export function KosztorysTotalsPanel(props: ComponentProps<typeof SummaryPanelContent>) {
   const [open, setOpen] = useTotalsPanelOpen()
   // Seeded once rather than read every render, so the arrival override survives in the URL without
