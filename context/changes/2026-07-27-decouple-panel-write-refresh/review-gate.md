@@ -49,6 +49,14 @@ landing in one is deferred **with that reason**.
       reviewer's.
       test: test-driven-debugging · unit — the assertion is pure (`isGlobalDiscountActive` after entering
       the mode), so it does **not** need the missing component-test layer; author it with the fix.
+      **Resolved 2026-07-27 (EX-605, commits `4df66ebe` + `a75714c8`).** Owner adjudicated: activate on
+      selection, seeded with Σ rabatów per pozycja so no figure moves, **and** put it on the undo stack.
+      `globalDiscountForMode` in `calc.ts` carries the rule; the red-first unit spec landed with it. The
+      discount now saves through `saveSetting` like its three sibling investment settings — it was the only
+      one of the four missing an undo entry. Owner then extended the scope: both modes commit through one
+      „Zapisz" button (`RabatValueField`, replacing `PercentRabatTool`), because blur is the wrong commit
+      gesture for a deal-level concession. Manual checks: `## EX-605` in `manual-checks.md`; durable rule
+      recorded in `context/reference/kosztorys-editor-domain-notes.md`.
 - [x] 🟡 WARNING · skipped, **filed EX-606** (High) · code-review · `src/lib/kosztorys/percent-rabat.ts:9` +
       `use-kosztorys-editor.ts:1116-1138` · the intended 0% mass-clear lands on **no undo stack**.
       `handleApplyPercentRabat` captures `prev` and hands it to `optimisticSettingSave` as the _failure_
@@ -268,13 +276,13 @@ landing in one is deferred **with that reason**.
       `"0"`). The split exists because a slot cannot use the `notFound()` form: a 404 in a parallel
       route takes the whole shell down when all it wants is to render nothing.
 - [x] fixed · simplify (simplification) · `src/lib/db/kosztorys-tree.ts:108-112` · `x == null ? null :
-    num(x)` written out three times → `numOrNull`, with the note on why it is not just `num` (a
+  num(x)` written out three times → `numOrNull`, with the note on why it is not just `num` (a
       nullable coefficient means "inherit the default", which `0` would answer as "free").
 - [x] fixed · simplify (simplification) · `collapsible-section.tsx` · two parallel
       `Record<SizeT, string>` keyed identically → one `Record<SizeT, {title, chevron}>`, so a new size
       can't be half-added.
 - [x] fixed · simplify (simplification) · `simple-select.tsx:55` · `variant === 'toolbar' || variant ===
-    'toolbarSm'` → a `buttonTrigger` flag in the VARIANT table. The table already claims to be the one
+  'toolbarSm'` → a `buttonTrigger` flag in the VARIANT table. The table already claims to be the one
       place a variant is described; the `||` was a second, drift-prone place.
 - [x] skipped, **filed EX-608** · simplify (reuse + efficiency, **converged independently**) ·
       `investment-crumb.tsx:15` → `getInvestmentName` · third read of the same investment row per render
@@ -360,9 +368,10 @@ discharge it.
 
 ## Archive gate
 
-| Blocker                        | State                                                                                                                                                                                                                                    |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No open `[ ]` findings         | ⛔ **1 open** — the host-capability boolean bag, reopened by the `86dc9e1c` correction above; owes a Linear issue                                                                                                                        |
-| Manual verification signed off | ⛔ **open** — the `## EX-597` section in `context/foundation/manual-checks.md` is authored but unperformed. Two of its checks need a human at the Network tab (write-path request counts), and two carry EX-605/EX-606 as known-unfixed. |
+| Blocker                        | State                                                                                                                                                                                                                                                                                               |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No open `[ ]` findings         | ⛔ **1 open** — the host-capability boolean bag, reopened by the `86dc9e1c` correction above; owes a Linear issue                                                                                                                                                                                   |
+| Manual verification signed off | ⛔ **open** — the `## EX-597` section in `context/foundation/manual-checks.md` is authored but unperformed. Two of its checks need a human at the Network tab (write-path request counts), and one still carries EX-606 as known-unfixed. EX-605 shipped and has its own `## EX-605` check section. |
 
-**Not archivable yet**, and nothing is committed. The code side of the gate is finished.
+**Not archivable yet.** The slice's own code is committed and merged to `staging`; EX-605 shipped as a
+follow-up on top of it.

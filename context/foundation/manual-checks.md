@@ -480,5 +480,21 @@ refresh-coalescing checks — they are only observable as request counts.
 ### Rabat globalny (fixed / deliberately left at the review gate)
 
 - [ ] With a stored „Kwotowy" rabat, switching to „Wyłączony" while the save **fails** leaves the select showing „Kwotowy" again, matching the figures — it must not read „Wyłączony" while the totals still subtract a rabat
-- [ ] **Known, deliberately not fixed:** selecting „Kwotowy" persists nothing until an amount is typed, so per-item rabaty keep applying even though the description says they are replaced. Confirm this is the behaviour you want before it ships — the fix activates the global rabat the instant the mode is picked.
 - [ ] **Known, deliberately not fixed:** applying 0% in „%" clears every per-item rabat as intended, but **Ctrl+Z cannot undo it**. Confirm that is acceptable.
+
+## EX-605 — rabat globalny: activates on selection, undoable, one „Zapisz"
+
+Fixes the „Kwotowy" finding left open above. Two behaviour changes on the same control: picking the
+mode now writes immediately (seeded with the per-item rabat total it replaces), and both modes commit
+through an explicit „Zapisz" instead of „Kwotowy" saving on blur. Setup: same as EX-597, on a
+kosztorys whose items carry **per-item rabaty** — without them the seed is 0 and the switch is
+untestable.
+
+- [ ] Picking „Kwotowy" replaces the per-item rabaty **immediately**, with no amount typed — the rabat column stops applying and „do rozliczenia" does not move (the seed equals what it replaced)
+- [ ] Ctrl+Z after that switch restores the per-item rabaty **and** puts the select back on „Wyłączony" — the select must not sit on „Kwotowy" over a rabat that is no longer stored
+- [ ] Ctrl+Shift+Z redoes it, and the figures land where they were after the original switch
+- [ ] Switching to „Wyłączony" brings every per-item rabat back at its original value — „Kwotowy" must never have deleted anything
+- [ ] Typing a kwota and **not** pressing „Zapisz" (click elsewhere, blur the field) changes nothing; the previous kwota still applies
+- [ ] „Zapisz" is inert until the typed value actually differs from the stored one, and Enter does the same as the click
+- [ ] Ctrl+Z after saving a kwota restores the previous kwota, both in the field and in the totals
+- [ ] „%" still commits through the same button and clears its input on success — only its label changed

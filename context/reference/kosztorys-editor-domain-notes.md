@@ -352,6 +352,25 @@ pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „d
   - procent: `wartość = ilość × cena × (1 − %)`
   - kwota: `wartość = ilość × cena − kwota`
 
+### Rabat globalny — kontrakt sterowania (EX-605, 2026-07-27)
+
+O zastąpieniu rabatów per pozycja decyduje **tryb, nie kwota**: „Kwotowy" wyłącza rabaty
+per pozycja przy **każdej** wartości, łącznie z 0 zł. Stąd wybór trybu **od razu zapisuje** —
+czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik nie robił.
+
+- **Kwota startowa = suma rabatów per pozycja** przy aktywnym widoku, więc przełączenie
+  na „Kwotowy" nie rusza żadnej liczby na ekranie: użytkownik najpierw wybiera mechanizm,
+  potem zmienia liczbę. (0 zł też by działało, ale czytałoby się jak „skasuj rabaty".)
+- **Odwracalne**: rabaty per pozycja nigdy nie są kasowane, tylko pomijane w liczeniu —
+  „Wyłączony" przywraca je w całości. To jedyny powód, dla którego wybór trybu może
+  zapisywać od razu.
+- **Ctrl+Z cofa zmianę trybu i kwoty** — rabat globalny chodzi tą samą ścieżką zapisu co
+  stawka VAT, sposób rozliczenia i stawka netto wydatków (`saveSetting`).
+- **Oba tryby zatwierdza się przyciskiem „Zapisz"** (lub Enterem). Nic nie zapisuje się na
+  wyjściu z pola: rabat to ustalenie handlowe, więc samo opuszczenie pola nie może go zmienić.
+- **„%" nadal jest destrukcyjne** — jednorazowo nadpisuje rabat każdej pozycji i nie ma
+  cofania (decyzja właściciela: naprawa = wpisać ponownie).
+
 ## Domyślne
 
 PLN • netto+brutto z `vat_rate` per pozycja • hard-delete • reorder strzałkami
