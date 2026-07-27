@@ -3,10 +3,9 @@
 import { usePersistedEnum } from '@/hooks/use-persisted-enum'
 
 // Which view the totals panel shows — the top toggle drives it directly, fully independent of the
-// grid's price view: the „Podsumowanie" summary block, the „Wydatki" transaction list, the „Wpłaty"
-// deposit list, „Robocizna" (etapy), the „Podwykonawcy" subcontractor settlement, or „Marża" — the
-// last two are owner-only, filtered out of the client read-only view (see SummaryPanelContent).
-export type SummaryViewT = 'summary' | 'wydatki' | 'wplaty' | 'etapy' | 'podwykonawcy' | 'marza'
+// grid's price view. „Podwykonawcy" and „Marża" are owner-only, filtered out of the client read-only
+// view (see SummaryPanelContent).
+export type SummaryViewT = 'summary' | 'wydatki' | 'wplaty' | 'etapy' | 'podwykonawcy' | 'margin'
 
 // Persisted globally in localStorage — a reading position of the person, not of one kosztorys, same
 // `table-columns:` family as the panel's axis pick. Survives refresh and the editor restore-remount.
@@ -17,7 +16,7 @@ const VALID_VIEWS: readonly SummaryViewT[] = [
   'wplaty',
   'etapy',
   'podwykonawcy',
-  'marza',
+  'margin',
 ]
 const SUMMARY_VIEW_DEFAULT: SummaryViewT = 'summary'
 

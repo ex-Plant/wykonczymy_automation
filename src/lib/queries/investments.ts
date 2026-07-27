@@ -98,7 +98,7 @@ export async function requireInvestmentOr404(id: string) {
   const investment = await getInvestment(id)
   if (!investment) notFound()
 
-  return { investmentId, investment }
+  return { investmentId, investment, user: session.user }
 }
 
 export async function getInvestment(id: string) {

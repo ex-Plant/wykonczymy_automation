@@ -19,15 +19,13 @@ import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
-import { InvestmentOwnerFigures } from '@/components/investments/investment-owner-figures'
+import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
 import {
   useSummaryView,
   type SummaryViewT,
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
-import { useCurrentUser } from '@/hooks/use-current-user'
-import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
 import {
   buildSettlementPlaneVerdict,
@@ -48,14 +46,10 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
-  { value: 'marza', label: 'Marża' },
+  { value: 'margin', label: 'Marża' },
 ]
 
-// `marza` is opt-in only: a host must name it explicitly in `views` (and supply `financials`) rather
-// than inherit it by default — the editor host has no financials to render there.
-const ALL_SUMMARY_VIEWS = SUMMARY_VIEW_OPTIONS.map((option) => option.value).filter(
-  (value) => value !== 'marza',
-)
+const ALL_SUMMARY_VIEWS = SUMMARY_VIEW_OPTIONS.map((option) => option.value)
 
 type PropsT = {
   investmentId: number
@@ -73,7 +67,7 @@ type PropsT = {
   // Per-expense-category split of both buckets (v1 parity); Σ === materiały billed total.
   materialyBreakdown: MaterialyBreakdownRowT[]
   // Company-plane material folded into robocizna, split per category — its own table in the wydatki
-  // view. Omitted by a host that doesn't compute it (the editor).
+  // view. Omitted by the client share, which never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
   // Investor's wpłaty (totalIncome — every deposit on the investment) — subtracted to reach the
   // still-owed „Do zapłaty" total.
@@ -121,8 +115,8 @@ type PropsT = {
   totalNet?: number
   // Client-priced, view-invariant per-section subtotals — the section pie's structure source.
   sectionSubtotals?: SectionSliceInputT[]
-  // Company-plane transfer aggregates — feeds the „Marża" tab. Owner-only and omitted by the editor
-  // host, which has no transfer data to derive it from.
+  // Company-plane transfer aggregates — feeds the „Marża" tab. Supplying it IS the visibility gate:
+  // every host omits it for anyone but ADMIN/OWNER, and the client share never builds it at all.
   financials?: InvestmentFinancialsT
 }
 
@@ -162,8 +156,6 @@ export function SummaryPanelContent({
   sectionSubtotals,
   financials,
 }: PropsT) {
-  const { role: userRole } = useCurrentUser()
-  const isOwnerRole = isAdminOrOwnerRole(userRole)
   const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only, so it drops out
@@ -171,12 +163,13 @@ export function SummaryPanelContent({
   // across hosts, so it can name a view this host doesn't offer — fall back to the first one it does,
   // rather than stranding the reader on a hidden view.
   const [summaryView, setSummaryView] = useSummaryView()
-  // „Podwykonawcy" is owner-only relative to the client share; „Marża" is owner-only full stop — it
-  // must never render for a client link regardless of the viewer's role, and never for a non-owner
-  // staff account either.
+  // „Marża" rides entirely on `financials` being present, and the hosts only build it for ADMIN/OWNER
+  // — so the figures never reach a non-owner's RSC payload, which a client-side role check could not
+  // have achieved. This component reads no session on purpose: it also renders under (share), which
+  // mounts no CurrentUserProvider.
   const allowedViews = views.filter((value) => {
     if (value === 'podwykonawcy') return !clientView
-    if (value === 'marza') return !clientView && isOwnerRole && financials !== undefined
+    if (value === 'margin') return !clientView && financials !== undefined
     return true
   })
   const viewOptions = SUMMARY_VIEW_OPTIONS.filter((option) => allowedViews.includes(option.value))
@@ -188,7 +181,7 @@ export function SummaryPanelContent({
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
   // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
-  // rather than deciding it. Fed the tagged tallies, not paidNet/paidGross — see the verdict's doc.
+  // rather than deciding it.
   const settlementVerdict = buildSettlementPlaneVerdict({
     mode: settlementMode,
     taggedNet,
@@ -317,7 +310,7 @@ export function SummaryPanelContent({
                 moneyAxis={displayAxis}
               />
             )}
-            {view === 'marza' && financials && <InvestmentOwnerFigures financials={financials} />}
+            {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
           </div>
         )}
       </SummaryScrollRegion>

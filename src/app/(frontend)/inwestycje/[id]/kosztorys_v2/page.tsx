@@ -10,6 +10,7 @@ import {
   fetchReferenceData,
 } from '@/lib/queries/reference-data'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
+import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
@@ -44,7 +45,7 @@ export default async function InvestmentKosztorysV2Page({
   // data fetches rather than gating them; its notFound() rejection propagates through Promise.all.
   const investmentPromise = requireInvestmentOr404(id)
   const [
-    { investment },
+    { investment, user },
     tree,
     typeDistribution,
     breakdowns,
@@ -64,10 +65,15 @@ export default async function InvestmentKosztorysV2Page({
     depositTxPromise,
     materialTxPromise,
   ])
-  // categoryCosts feed the Materiały split; settledCategoryCosts stay OUT of `financials` — the
-  // „Materiały" breakdown figure mirrors v1, which counts unsettled only. They render as their own
-  // company-plane table instead. (The wydatki LIST is a separate surface and carries both states.)
-  const financials = deriveFinancials(typeDistribution, breakdowns.categoryCosts)
+  // The rate + mode are what make `materialsNetDiscount` a real term rather than 0, so „Marża" reads
+  // the same figure the investment page does.
+  const financials = deriveFinancials(
+    typeDistribution,
+    breakdowns.categoryCosts,
+    breakdowns.settledCategoryCosts,
+    tree.materialsNetRate,
+    tree.settlementMode,
+  )
   // v1 client-facing „Materiały" split by expense category; Σ === totalMaterialCosts, so the
   // podsumowanie stays byte-identical to the investment page's materiały.
   const materialyBreakdown = buildMaterialyBreakdown(
@@ -95,6 +101,7 @@ export default async function InvestmentKosztorysV2Page({
         breakdowns.settledCategoryCosts,
         refData.expenseCategories,
       )}
+      financials={isAdminOrOwnerRole(user.role) ? financials : undefined}
       wplatyNet={wplatyNet}
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation
       // scream — compared against the kosztorys figures during the population/verification transition.

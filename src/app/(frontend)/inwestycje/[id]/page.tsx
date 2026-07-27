@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect, notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
-import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
+import { MANAGEMENT_ROLES, isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { parsePagination } from '@/lib/utils/pagination'
 import {
   fetchReferenceData,
@@ -103,8 +103,8 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         <StatsVersionToggle version={version} />
       </div>
 
-      {/* Collapsible so the transfers table below can be brought into view without scrolling past the
-          whole settlement — the same affordance that section already has. */}
+      {/* Collapsible so the transfers table below can be reached without scrolling past the whole
+          settlement. */}
       <CollapsibleSection title="Finanse">
         {version === 'v1' ? (
           <FinancialStats
@@ -116,13 +116,13 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           />
         ) : (
           // Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
-          // long-pole query, so the rest of the page paints without waiting on it. Marża is one of the
-          // panel's own tabs (owner-only) — see summary-panel-content.tsx.
+          // long-pole query, so the rest of the page paints without waiting on it.
           <Suspense fallback={null}>
             <InvestmentSummaryPanel
               investmentId={investmentId}
               investmentName={investment.name}
               financials={financials}
+              canSeeMargin={isAdminOrOwnerRole(user.role)}
               expenseCategories={refData.expenseCategories}
               netCategoryCosts={breakdowns.netCategoryCosts}
             />

@@ -14,6 +14,9 @@ type PropsT = {
   investmentId: number
   investmentName: string
   financials: InvestmentFinancialsT
+  // ADMIN/OWNER only. Gates whether `financials` crosses into the client component at all — the
+  // „Marża" tab's figures must stay out of a MANAGER's RSC payload, not merely off their screen.
+  canSeeMargin: boolean
   expenseCategories: ExpenseCategoryRefT[]
   netCategoryCosts: CategoryCostT[]
 }
@@ -25,6 +28,7 @@ export async function InvestmentSummaryPanel({
   investmentId,
   investmentName,
   financials,
+  canSeeMargin,
   expenseCategories,
   netCategoryCosts,
 }: PropsT) {
@@ -56,7 +60,7 @@ export async function InvestmentSummaryPanel({
       materialyBreakdown={buildMaterialyBreakdown(financials, expenseCategories, netCategoryCosts)}
       settledBreakdown={buildSettledBreakdown(financials.settledCategoryCosts, expenseCategories)}
       wplatyNet={wplatyNet}
-      financials={financials}
+      financials={canSeeMargin ? financials : undefined}
       {...reading}
       // Nothing to reconcile without a kosztorys: feeding the transaction figures to both sides keeps
       // the verdict silent rather than screaming a gap against an empty kosztorys.

@@ -5,7 +5,7 @@
 import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
 import type {
   SubcontractorPayoutRowT,
   PayoutTransactionRowT,
@@ -127,7 +127,7 @@ export type KosztorysTreeT = {
   // branches on it — unlike vatRate above.
   settlementMode: SettlementModeT
   // Fraction (0.23 = 23%) at which materiały are billed netto instead of at the brutto receipt.
-  // `null` = the concession is off, which is a different state from 0% — see the migration.
+  // `null` = the concession is off, which is a different state from 0%.
   materialsNetRate: number | null
   // A single global discount per investment — its `active` flag is denormalized onto each row (see
   // KosztorysV2RowBaseT.globalDiscountActive), the amount is subtracted once at the total level.
@@ -151,9 +151,8 @@ export type KosztorysEditorDataT = {
   materialsGrossBase: number
   materialsNetBilled: number
   materialyBreakdown: MaterialyBreakdownRowT[]
-  // Company-plane material folded into robocizna, split per category — its own table beside the
-  // wydatki split, since it lowers marża and never touches the investor's bilans. Optional because
-  // omitting it IS the gate: the client share never builds it, so it can't leak into a client render.
+  // Company-plane material folded into robocizna, split per category. Optional because omitting it IS
+  // the gate: the client share never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
   wplatyNet: number
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
@@ -170,6 +169,9 @@ export type KosztorysEditorDataT = {
   // Individual materiały rows for the Podsumowanie's wydatki list (data · typ · kwota), both settled
   // states. Required: every entry point serves this list, the client share path included.
   materialTransactions: MaterialTransactionRowT[]
+  // Company-plane transfer aggregates behind the „Marża" tab. Optional for the same gating reason as
+  // settledBreakdown, plus the ADMIN/OWNER check the page applies before passing it.
+  financials?: InvestmentFinancialsT
 }
 
 // --- v2 variant (react-datasheet-grid): a flat row with stages flattened

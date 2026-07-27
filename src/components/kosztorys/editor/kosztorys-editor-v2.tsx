@@ -23,6 +23,7 @@ export function KosztorysEditorV2({
   materialsNetBilled,
   materialyBreakdown,
   settledBreakdown,
+  financials,
   wplatyNet,
   laborCostsNetFromTransactions,
   investmentRabat,
@@ -71,6 +72,7 @@ export function KosztorysEditorV2({
         materialsNetBilled={materialsNetBilled}
         materialyBreakdown={materialyBreakdown}
         settledBreakdown={settledBreakdown}
+        financials={financials}
         wplatyNet={wplatyNet}
         laborCostsNetFromTransactions={laborCostsNetFromTransactions}
         investmentRabat={investmentRabat}

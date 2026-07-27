@@ -13,9 +13,8 @@ import { toastMessage } from '@/lib/utils/toast'
 
 // Robocizna (etapy) stays editor-only — it needs the stage grid to make sense. Wpłaty and
 // Podwykonawcy are dropped for the opposite reason: the transfers table below this panel already
-// lists every deposit and every wypłata. Marża is this host's own tab — the panel gates it to
-// owner/admin and drops it from any client share regardless of this list.
-const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'marza']
+// lists every deposit and every wypłata. Marża renders only when the page hands the panel `financials`, which it does for ADMIN/OWNER only.
+const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'margin']
 
 type PropsT = Omit<
   ComponentProps<typeof SummaryPanelContent>,
@@ -43,8 +42,6 @@ export function InvestmentSummaryPanelClient(props: PropsT) {
     router.refresh()
   }
 
-  // Same shape as the mode write above — the rate is read straight off the server prop, so the
-  // refresh IS the update.
   async function handleMaterialsNetRateChange(rate: number | null) {
     const result = await updateInvestmentMaterialsNetRateAction(props.investmentId, rate)
     if (!result.success) {
