@@ -4,30 +4,10 @@ import config from '@payload-config'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { getDb } from '@/lib/db/get-db'
-import {
-  selectInvestmentKosztorysSettings,
-  selectKosztorysItems,
-  selectKosztorysSections,
-  selectKosztorysStages,
-  selectStageProgress,
-} from '@/lib/db/kosztorys-tree'
+import { selectKosztorysTreeData } from '@/lib/db/kosztorys-tree'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { perfStart } from '@/lib/perf'
 import type { KosztorysItemT, KosztorysSectionT, KosztorysTreeT } from '@/lib/kosztorys/types'
-
-// The five reads below share one Promise.all, so a lap timer would credit the entire wall-clock to
-// whichever settled last and report the other four as ~0ms. Each read times itself instead, which is
-// what makes the slowest of the five identifiable rather than just the batch total.
-async function timedRead<T>(
-  label: string,
-  run: () => Promise<T>,
-  rowCount: (result: T) => number,
-): Promise<T> {
-  const elapsed = perfStart()
-  const result = await run()
-  console.log(`[PERF] query.kosztorysTree.${label} ${elapsed()}ms (${rowCount(result)} rows)`)
-  return result
-}
 
 // S-01: sections + items of a single investment, ordered by displayOrder → displayOrder.
 // S-04: stages (ordered by ordinal) + sparse per-item progress. S-05: per-investment VAT rate.
@@ -50,20 +30,11 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
   const db = await getDb(payload)
   const setupMs = elapsed()
 
-  const [sectionRows, items, stages, progress, investment] = await Promise.all([
-    timedRead('sections', () => selectKosztorysSections(db, investmentId), (r) => r.length),
-    timedRead('items', () => selectKosztorysItems(db, investmentId), (r) => r.length),
-    timedRead('stages', () => selectKosztorysStages(db, investmentId), (r) => r.length),
-    timedRead('progress', () => selectStageProgress(db, investmentId), (r) => r.length),
-    timedRead(
-      'investment',
-      () => selectInvestmentKosztorysSettings(db, investmentId),
-      () => 1,
-    ),
-  ])
+  const data = await selectKosztorysTreeData(db, investmentId)
   const queriesMs = elapsed()
 
-  if (!investment) throw new Error(`Investment ${investmentId} not found`)
+  if (!data) throw new Error(`Investment ${investmentId} not found`)
+  const { sections: sectionRows, items, stages, progress, investment } = data
 
   // Distinguish an unset coefficient from a legitimate 0 — `|| default` would rewrite a stored 0.
   const globalCoeffs = {
