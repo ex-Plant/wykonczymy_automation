@@ -141,7 +141,7 @@ tooltip has to name the ceiling and the settings hint has to name the same const
 Messages (Polish UI, amounts via `formatNet`):
 
 - error — `Cena wykonawcy nie może przekroczyć 80% ceny klienta (maks. <kwota>).`
-- warning — `Cena powyżej stawki z globalnego mnożnika (<kwota>). Pozycja liczy się normalnie.`
+- warning — `Cena powyżej stawki z globalnego mnożnika (<kwota>).`
 
 #### 2. Unit test
 

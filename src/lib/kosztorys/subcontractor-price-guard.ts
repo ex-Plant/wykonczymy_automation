@@ -54,7 +54,7 @@ export function checkSubcontractorPrice(
   if (price > coeffPrice + TOLERANCE) {
     return {
       severity: 'warning',
-      message: `Cena powyżej stawki z globalnego mnożnika (${formatNet(coeffPrice)}). Pozycja liczy się normalnie.`,
+      message: `Cena powyżej stawki z globalnego mnożnika (${formatNet(coeffPrice)}).`,
     }
   }
 
