@@ -1,4 +1,4 @@
-import { unstable_cache, cacheLife, cacheTag } from 'next/cache'
+import { unstable_cache } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -99,6 +99,30 @@ export async function requireInvestmentOr404(id: string) {
   if (!investment) notFound()
 
   return { investmentId, investment, user: session.user }
+}
+
+// Name only — the top-bar crumb renders on every /inwestycje/[id]/** navigation and must not drag
+// the whole document (and its afterRead hooks) along for one string. Shares getInvestment's tags, so
+// an investment edit already invalidates both.
+export async function getInvestmentName(id: string): Promise<string | null> {
+  return unstable_cache(
+    async () => {
+      const payload = await getPayload({ config })
+      try {
+        const investment = await payload.findByID({
+          collection: 'investments',
+          id,
+          select: { name: true },
+          overrideAccess: true,
+        })
+        return investment?.name ?? null
+      } catch {
+        return null
+      }
+    },
+    ['investment-name', id],
+    { tags: [CACHE_TAGS.investments, entityTag('investment', id)] },
+  )()
 }
 
 export async function getInvestment(id: string) {
