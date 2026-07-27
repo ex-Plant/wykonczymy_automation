@@ -23,7 +23,6 @@ export function SummaryBreakdownTable({
   rabat,
   rabatMismatch,
   materials,
-  materialsDiscount,
   combinedNet,
   combined,
   materialsNetRate,
@@ -39,11 +38,6 @@ export function SummaryBreakdownTable({
   rabatMismatch?: string
   // Materiały in two buckets; Σ === the per-category Wydatki rows.
   materials: MaterialsT
-  // What billing materiały netto gives away, already negative. Undefined at zero. NOT a term of
-  // Łącznie — the Materiały row above is already reduced by it — so it is labelled „w tym" and the
-  // reader skips it when adding the column. It exists because a figure that quietly lowers marża
-  // must be readable next to the number it moved.
-  materialsDiscount?: MoneyPairT
   combinedNet: number
   combined: MoneyPairT
   // The investment's saved materiały netto rate (null = billed at the raw brutto receipt).
@@ -64,16 +58,6 @@ export function SummaryBreakdownTable({
           label="Materiały"
           line={summaryLineMaterials(materials, combinedNet, materialsNetRate)}
           axis={moneyAxis}
-        />
-      )}
-      {materialsDiscount && (
-        <SummaryRow
-          label="w tym obniżka materiałów"
-          hint="Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu — kwota już odjęta od Materiałów powyżej"
-          line={materialsDiscount}
-          axis={moneyAxis}
-          discount
-          noBrutto
         />
       )}
       <SummaryRow label="Łącznie" line={combined} axis={moneyAxis} emphasize />

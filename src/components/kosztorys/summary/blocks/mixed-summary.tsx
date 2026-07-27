@@ -1,7 +1,6 @@
 import {
   computeMixedSettlement,
   faceValue,
-  materialsNetDiscount,
   sumaPracPreRabat,
   type MaterialsT,
 } from '@/lib/kosztorys/summary-economics'
@@ -45,7 +44,6 @@ export function MixedSummary({
     paidGross,
     materialsNetRate,
   )
-  const materialsDiscount = materialsNetDiscount(materials.grossBase, materialsNetRate)
   const vatPercent = Math.round(vatRate * 100)
   const cols = summaryMoneyCols('net')
 
@@ -64,17 +62,6 @@ export function MixedSummary({
           <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
         )}
         <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
-        {/* Not a term — Materiały above is already reduced by it, so „w tym" tells the reader to
-            skip it when adding the column down to Łącznie. */}
-        {materialsDiscount > 0 && (
-          <SummaryRow
-            label="w tym obniżka materiałów"
-            hint="Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu — kwota już odjęta od Materiałów powyżej"
-            line={faceValue(-materialsDiscount)}
-            axis="net"
-            discount
-          />
-        )}
         <SummaryRow label="Łącznie" line={faceValue(settlement.combinedNet)} axis="net" emphasize />
         {/* Negative: the one deduction step left down to „Do zapłaty netto". */}
         <SummaryRow
