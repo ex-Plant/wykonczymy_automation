@@ -37,7 +37,12 @@ We measure the **deployed app against real data**, not local dev. Key facts:
 - **Spike protocol (owner):** push with `--no-verify`, no typecheck/test gating — speed of iteration
   over correctness gates while measuring. Document every finding immediately.
 
-### In scope — `sumAllRegisterBalances` is 1015 ms on the dashboard (owner's call, 2026-07-27)
+### ~~In scope — `sumAllRegisterBalances` is 1015 ms on the dashboard~~ — SUPERSEDED 2026-07-27
+
+**The section below is wrong and is kept only as the record of what we believed.** `EXPLAIN ANALYZE`
+puts this query at **2.4 ms** over 3 044 rows, both legs index-scanned. The 1015 ms is Neon
+connection setup on a cold request, billed to whichever query touches the DB first. There is no
+query-level fix. See `research.md` → "S2 investigation".
 
 First real measurement off the deployed app: `sumAllRegisterBalances` costs **1015 ms** for 29
 registers on `/`, with `fetchRegisterBalances` a 1 ms cache wrapper around it and

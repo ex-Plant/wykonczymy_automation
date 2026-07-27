@@ -914,3 +914,148 @@ before/after on this branch needs more samples than this.
 exercised in this window. Its risk is specific and different from the panel's — `rows` lives in
 `useState` with a once-only initializer, so if any settings path leaned on the refresh for something
 `patchRows` does not cover, the symptom is a stale cell rather than a slow page.
+
+## S2 investigation 2026-07-27 — `sumAllRegisterBalances` is not a query problem
+
+The owner ranked this first. It is not fixable as ranked, and the reason matters more than the
+number: **the 1015 ms was never in the SQL.**
+
+`EXPLAIN (ANALYZE, BUFFERS)` of the exact query against the local prod-restored copy:
+
+| Fact                     | Value                                                                  |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `transactions` rows      | 3 044 (2 667 with `source_register_id`, 182 with `target_register_id`) |
+| Table size incl. indexes | 1 256 kB                                                               |
+| Planning time            | 3.6 ms                                                                 |
+| **Execution time**       | **2.4 ms**                                                             |
+
+Both `GROUP BY` legs already index-scan (`transactions_source_register_idx`,
+`transactions_target_register_idx`). The whole table is ~1 MB — it fits in shared buffers many times
+over. There is no scan to optimise.
+
+**So where does 1015 ms come from?** `perfStart()` fires at function entry, before
+`await getDb(payload)` and before the first `db.execute`. `getDb` itself opens nothing — it reads
+`payload.db.drizzle` off the adapter (`src/lib/db/get-db.ts:12-19`) — so the entire second is inside
+the first `db.execute` of a **cold request**: Neon compute wake + TLS handshake + pool establishment.
+`sumAllRegisterBalances` doesn't cost a second; it is simply the first query to touch the database in
+a cold lambda, and it pays the connection bill for everything after it.
+
+Corroborating evidence already in this doc: `fetchManagerDashboardData` measured 36–215 ms **total**
+whenever the lambda was warm. That is arithmetically impossible if its own child query cost 1015 ms.
+The ~28× cliff recorded earlier was the cold/warm boundary, not a cache hit/miss boundary.
+
+### Consequences
+
+- **No index, running-balance column, materialized view, or SQL rewrite would move this number.**
+  All of them optimise the 2.4 ms. Writing one would have been cargo cult, and would have added a
+  denormalised balance to maintain on every transfer create/delete for zero gain.
+- The earlier framing in `change.md` — _"two full GROUP BY scans of the whole transactions table;
+  cost scales with transaction history"_ — is **wrong on both counts**. They are index scans, and at
+  3 044 rows history is not the driver. Superseded by this section.
+- The real lever is connection warmth, which is infrastructure, not application code: Fluid Compute
+  instance reuse (already the default) and Neon's scale-to-zero wake. Both are outside this change.
+- **`unstable_cache` on this is still correct** — it keeps warm requests off the DB entirely — but its
+  value is avoiding a round-trip, not avoiding an expensive query.
+
+### What this says about the whole spike
+
+Every server-side number captured so far has a warm median under ~100 ms, and the one outlier turns
+out to be connection setup. The server is not where the perceived 1–2 s lives; the client-side
+capture already showed ~520 ms median click→paint with ~220 ms of it after the action resolves. This
+is further evidence that the remaining wins are in the render/commit path, not in SQL.
+
+## S3 landed 2026-07-27 — `fetchReferenceData` deduped per request
+
+`src/lib/queries/reference-data.ts` — `cache()` wrapped **around** the existing `unstable_cache()`.
+The two dedupe on different axes and both are wanted: `unstable_cache` spans requests and dies on tag
+invalidation; React `cache()` collapses the 3 calls **within one render** (page + transfer table +
+root-layout nav), which is the 3× measured in the baseline.
+
+**Safety argument, since this one has a real failure mode.** A request-scoped cache returns stale data
+if the same request reads _before_ it writes. Verified no server action reads `fetchReferenceData`
+(only three comments mention it, `src/lib/actions/kosztorys.ts:137,152,208`), so the render's first
+call is always post-mutation. Typecheck clean.
+
+### Rejected: the same treatment for `getKosztorysTree`
+
+Ranked #2 and approved by the owner, then **dropped on inspection** —
+`applyPercentRabatToAllItemsAction` reads the tree, mutates rows, and the ensuing render reads it
+again. Request-scoped memoisation would hand the render the **pre-mutation** tree and the grid would
+render stale prices. This is a silent wrong-data bug, not a latency trade, so no. It only becomes
+available if that read moves after the write.
+
+### Correction — the whole-tree-for-two-scalars finding stands (2026-07-27)
+
+I ranked this last with the reasoning "SQL aggregation is unjustified since `map` is 0–1 ms." That
+is a bad argument and is withdrawn. `map` being free proves the **JS reduction** isn't the cost; it
+says nothing about the **5 ORM round-trips and row serialization** feeding it, which is where the
+measured 71–339 ms actually goes (`fetch` 71–339 ms vs `derive` 1–16 ms — the split is already in the
+log line at `investment-summary-panel.tsx:58`).
+
+Verified against the code rather than re-quoted. `InvestmentSummaryPanel` reduces the whole tree to
+exactly **two** scalars — `sumaPracNet` + `rabatClientNet` (`:44-47`). The three other tree values it
+forwards (`vatRate`, `settlementMode`, `materialsNetRate`, `:83-85`) come off the investment row,
+i.e. query #5 (`findByID`). So the four unbounded queries — sections `limit 1000`, items `limit 5000`,
+stages `limit 1000`, **stage-progress `limit 100000`** — are paid entirely for those two numbers.
+
+**But "move it to SQL" is the wrong first instinct.** `kosztorysClientTotals` is not a `SUM`: it
+applies the global discount, per-section coefficients and VAT, and the editor runs that same logic on
+the same rows. A SQL port forks that business logic into two implementations that must agree forever
+— the exact seam AGENTS.md's "one concept, one name" rule exists to prevent. The cheaper framing is
+**stop making the investment page pay for the editor's tree**: a narrower query shaped to this
+consumer, or caching the two scalars under the `kosztoryses` tag. Decide the shape before the ticket.
+
+Worst case remains **unmeasured** — no kosztorys in this DB exceeds 125 stage-progress rows against a
+`limit: 100000`, so the unbounded read has never actually been stressed.
+
+## S4 mechanism 2026-07-27 — why no cache-tag arrangement can decouple the render
+
+Traced through Next 16's own source (`node_modules/next`), because two earlier notes in this doc were
+wrong about it. **Correcting the record first:** the note that "only tags without a profile
+(`updateTag`) count as requiring client cache invalidation" is misleading as I used it.
+`addRevalidationHeader` sets `x-action-revalidated` on `pendingRevalidatedTags.length` **alone**
+(`server/app-render/action-handler.js:108-112`), and _both_ `revalidateTag` and `updateTag` push into
+that array (`server/web/spec-extension/revalidate.js:174-193`). The profile only gates a different
+variable, `pathWasRevalidated`.
+
+### The three-way interaction
+
+1. **`pathWasRevalidated` controls whether the POST carries a page render.**
+   `skipPageRendering ||= workStore.pathWasRevalidated === undefined || ... === ActionDidNotRevalidate`
+   (`action-handler.js:831`). It is set only when `!profile || cacheLife?.expire === 0`
+   (`revalidate.js:199-203`). So a **profile**-revalidation skips the render in the action response.
+2. **But the header is set regardless**, so the client's `revalidationKind !== ActionDidNotRevalidate`.
+3. **With `flightData === undefined` and a non-zero revalidationKind, the client falls through to a
+   plain `navigate(...)` with `FreshnessPolicy.RefreshAll`** (`client/components/router-reducer/
+reducers/server-action-reducer.js:244-273`) — an unseeded navigation, i.e. **a fresh GET of the
+   current route**.
+
+Net: profile-revalidation does not remove the re-render, it **relocates** it from the POST to a
+follow-up GET, adding a round-trip. That is the exact trailing GET S1 deleted.
+
+### The only branch that re-renders nothing
+
+```js
+revalidationKind === ActionDidNotRevalidate && flightData === undefined // → "No navigation is required."
+```
+
+(`server-action-reducer.js:216-222`)
+
+**Conclusion: a server action that invalidates any tag, by any API, forces a full route render
+somewhere.** Cache tags cannot decouple the transfers table from a settings write. The tagging was
+never the problem and no amount of tag precision fixes it.
+
+### Consequence for the design
+
+The write must leave the server-action path. Shape:
+
+- `PATCH /api/investments/[id]/kosztorys-settings` route handler — `requireAuth`, write,
+  `revalidateTag(CACHE_TAGS.investments)` (route-handler context, per the AGENTS.md rule). Route
+  handlers set no `x-action-revalidated`, so nothing re-renders.
+- It returns the recomputed figures; the panel seeds from server props and owns them in client state.
+
+**This cannot ship without client-side ownership of the figures.** `materialsNetRate` reaches four
+consumers, three of them page-level siblings of the panel (Marża strip, materials tile, transfers
+header/CSV). Remove the route render and those three go stale until the next navigation. So the
+decoupling (#3) and the optimistic/pending work (parked as "the end") are **one refactor**, not two —
+#3 without it ships visibly stale numbers. They should be planned and built together.
