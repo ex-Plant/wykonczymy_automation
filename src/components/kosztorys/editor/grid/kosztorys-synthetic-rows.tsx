@@ -7,8 +7,17 @@ import {
   type SectionHeaderContextT,
   type SectionHeaderSlotT,
 } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
+import {
+  SectionFooterCell,
+  type SectionFooterContextT,
+} from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { formatNet } from '@/lib/kosztorys/format'
-import { isSectionHeaderRow, SPACER_ROW_ID, TOTALS_ROW_ID } from '@/lib/kosztorys/synthetic-rows'
+import {
+  isSectionFooterRow,
+  isSectionHeaderRow,
+  SPACER_ROW_ID,
+  TOTALS_ROW_ID,
+} from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // „Razem" rides the grid's own layout, so column alignment and horizontal scroll come for free; the
@@ -35,7 +44,9 @@ function TotalsRowCell({ content }: { content: string }) {
 type SyntheticColumnDataT = {
   content: string
   slot: SectionHeaderSlotT
+  columnId: string | undefined
   sectionHeader: SectionHeaderContextT
+  sectionFooter: SectionFooterContextT
   base: Column<KosztorysV2RowT>['component']
 }
 
@@ -58,13 +69,29 @@ function SyntheticAwareCell(props: CellProps<KosztorysV2RowT, SyntheticColumnDat
         context={columnData.sectionHeader}
       />
     )
+  if (isSectionFooterRow(rowData.id))
+    return (
+      <SectionFooterCell
+        rowData={rowData}
+        columnId={columnData.columnId}
+        context={columnData.sectionFooter}
+      />
+    )
   const Base = columnData.base
   return Base ? <Base {...props} /> : null
 }
 
 export function withSyntheticRows(
   column: Column<KosztorysV2RowT>,
-  { totals, sectionHeader }: { totals: Map<string, number>; sectionHeader: SectionHeaderContextT },
+  {
+    totals,
+    sectionHeader,
+    sectionFooter,
+  }: {
+    totals: Map<string, number>
+    sectionHeader: SectionHeaderContextT
+    sectionFooter: SectionFooterContextT
+  },
 ): Column<KosztorysV2RowT> {
   const total = column.id != null ? totals.get(column.id) : undefined
   const content = column.id === LABEL_COLUMN_ID ? 'Razem' : total != null ? formatNet(total) : ''
@@ -77,7 +104,9 @@ export function withSyntheticRows(
       ...column.columnData,
       content,
       slot: sectionHeaderSlot(column.id),
+      columnId: column.id,
       sectionHeader,
+      sectionFooter,
       base: column.component,
     },
   }

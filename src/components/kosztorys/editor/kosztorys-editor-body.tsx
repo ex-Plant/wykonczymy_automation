@@ -16,6 +16,7 @@ import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-
 import type { SectionHeaderFigureT } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
 import {
+  isSectionFooterRow,
   isSectionHeaderRow,
   isSyntheticRow,
   makeSpacerRow,
@@ -186,10 +187,32 @@ export function KosztorysEditorBody({
     onRenameSection,
   ])
 
+  // Only what a per-section subtotal can honestly supply: money, not quantities and not „Pozostało"
+  // (a per-row loop over rows that carry a przedmiar, not a subtraction of two section figures). A
+  // column with no entry renders blank rather than a wrong number.
+  const sectionFooter = useMemo(() => {
+    const figures = new Map<number, Map<string, number>>()
+    for (const section of subtotals) {
+      const byColumn = new Map<string, number>()
+      byColumn.set('net', section.net)
+      byColumn.set('gross', toGross(section.net, tree.vatRate))
+      if (section.plannedNet != null) {
+        byColumn.set('plannedNet', section.plannedNet)
+        byColumn.set('plannedGross', toGross(section.plannedNet, tree.vatRate))
+      }
+      byColumn.set('discountAmount', section.discount)
+      byColumn.set('discountAmountGross', toGross(section.discount, tree.vatRate))
+      figures.set(section.sectionId, byColumn)
+    }
+    return { figures }
+  }, [subtotals, tree.vatRate])
+
   const gridColumns = useMemo(
     () =>
-      columns.map((column) => withSyntheticRows(column, { totals: columnTotals, sectionHeader })),
-    [columns, columnTotals, sectionHeader],
+      columns.map((column) =>
+        withSyntheticRows(column, { totals: columnTotals, sectionHeader, sectionFooter }),
+      ),
+    [columns, columnTotals, sectionHeader, sectionFooter],
   )
   const { rows: bodyRows } = useMemo(
     () =>
@@ -271,6 +294,7 @@ export function KosztorysEditorBody({
                 cn(
                   sectionColorRail(rowData.sectionColor),
                   isSectionHeaderRow(rowData.id) && 'kosztorys-section-header',
+                  isSectionFooterRow(rowData.id) && 'kosztorys-section-footer',
                 )
               }
             />
