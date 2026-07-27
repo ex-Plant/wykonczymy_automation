@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { priceExitEdit, priceKeystroke } from '@/lib/kosztorys/subcontractor-price-edit'
+import {
+  overrideSnapshot,
+  priceKeystroke,
+  priceSettle,
+} from '@/lib/kosztorys/subcontractor-price-edit'
 import type { ViewPricingT } from '@/lib/kosztorys/types'
 
 // Client price 100 makes every threshold readable at a glance: ceiling 80, w_tools coefficient
@@ -14,8 +18,8 @@ const row: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 100,
-  wToolsOverrideType: 'amount',
-  wToolsOverrideValue: 70,
+  wToolsOverrideType: null,
+  wToolsOverrideValue: 0,
   ownToolsOverrideType: null,
   ownToolsOverrideValue: 0,
   costVariant: null,
@@ -26,62 +30,109 @@ const row: ViewPricingT = {
   globalOwnToolsCoeff: 0.55,
 }
 
+const flat = (value: number): ViewPricingT => ({
+  ...row,
+  wToolsOverrideType: 'amount',
+  wToolsOverrideValue: value,
+})
+
 describe('priceKeystroke', () => {
   it('nie zapisuje nic po wyczyszczeniu pola', () => {
     // The bug this guards: writing `type: null` here swapped the input for read-only text mid-edit,
     // killing the caret and restoring the old price.
-    expect(priceKeystroke('', row, 'w_tools')).toEqual({ kind: 'hold' })
+    expect(priceKeystroke('', flat(70), 'w_tools')).toEqual({ kind: 'hold' })
   })
 
   it('trzyma niedokończony wpis zamiast go odrzucać', () => {
-    expect(priceKeystroke('1e', row, 'w_tools')).toEqual({ kind: 'hold' })
+    expect(priceKeystroke('1e', flat(70), 'w_tools')).toEqual({ kind: 'hold' })
   })
 
-  it('zapisuje kwotę poniżej sufitu jako override „kwota stała"', () => {
-    const result = priceKeystroke('50', row, 'w_tools')
-    expect(result).toMatchObject({
+  it('na „auto" przelicza cenę na mnożnik, zamiast robić z niej kwotę stałą', () => {
+    expect(priceKeystroke('50', row, 'w_tools')).toMatchObject({
+      kind: 'commit',
+      row: { wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.5 },
+    })
+  })
+
+  it('na „własnym mnożniku" nadal pisze mnożnik', () => {
+    const coeffRow: ViewPricingT = {
+      ...row,
+      wToolsOverrideType: 'coeff',
+      wToolsOverrideValue: 0.6,
+    }
+    expect(priceKeystroke('75', coeffRow, 'w_tools')).toMatchObject({
+      kind: 'commit',
+      row: { wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.75 },
+    })
+  })
+
+  it('na „kwocie stałej" zostawia kwotę stałą', () => {
+    expect(priceKeystroke('50', flat(70), 'w_tools')).toMatchObject({
+      kind: 'commit',
+      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 50 },
+    })
+  })
+
+  it('bez ceny klienta nie ma czego dzielić — zapisuje kwotę stałą', () => {
+    expect(priceKeystroke('50', { ...row, clientPrice: 0 }, 'w_tools')).toMatchObject({
       kind: 'commit',
       row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 50 },
     })
   })
 
   it('przyjmuje przecinek jako separator dziesiętny', () => {
-    expect(priceKeystroke('50,5', row, 'w_tools')).toMatchObject({
+    expect(priceKeystroke('50,5', flat(70), 'w_tools')).toMatchObject({
       kind: 'commit',
       row: { wToolsOverrideValue: 50.5 },
     })
   })
 
-  it('zapisuje kwotę powyżej stawki z mnożnika — to tylko ostrzeżenie', () => {
-    expect(priceKeystroke('70', row, 'w_tools').kind).toBe('commit')
+  it('zapisuje cenę powyżej stawki z mnożnika — to tylko ostrzeżenie', () => {
+    expect(priceKeystroke('70', flat(50), 'w_tools').kind).toBe('commit')
   })
 
-  it('blokuje kwotę powyżej sufitu', () => {
-    const result = priceKeystroke('81', row, 'w_tools')
-    expect(result.kind).toBe('blocked')
+  it('blokuje cenę powyżej sufitu', () => {
+    expect(priceKeystroke('81', flat(70), 'w_tools').kind).toBe('blocked')
   })
 
   it('pisze do pól planu, w którym edytujemy', () => {
-    expect(priceKeystroke('30', row, 'own_tools')).toMatchObject({
+    expect(priceKeystroke('30', flat(70), 'own_tools')).toMatchObject({
       kind: 'commit',
-      row: { ownToolsOverrideType: 'amount', ownToolsOverrideValue: 30, wToolsOverrideValue: 70 },
+      row: { ownToolsOverrideType: 'coeff', wToolsOverrideValue: 70 },
     })
   })
 })
 
-describe('priceExitEdit', () => {
+describe('priceSettle', () => {
+  const entry = overrideSnapshot(flat(70), 'w_tools')
+
   it('puste pole wraca do „auto" dopiero po wyjściu z komórki', () => {
-    expect(priceExitEdit('', row, 'w_tools')).toMatchObject({
+    expect(priceSettle('', flat(70), 'w_tools', entry)).toMatchObject({
       wToolsOverrideType: null,
       wToolsOverrideValue: 0,
     })
   })
 
-  it('nie rusza wiersza, gdy w polu coś zostało', () => {
-    expect(priceExitEdit('70', row, 'w_tools')).toBeNull()
+  it('przyjęta wartość nie wymaga dopisku — wiersz już ją ma', () => {
+    expect(priceSettle('70', flat(70), 'w_tools', entry)).toBeNull()
   })
 
-  it('odrzucona wartość nie zapisuje się przy wyjściu — wiersz zostaje jak był', () => {
-    expect(priceExitEdit('81', row, 'w_tools')).toBeNull()
+  it('odrzucona wartość cofa wiersz do stanu sprzed edycji', () => {
+    // Typing „2344000" commits the prefixes 2, 23, 234 … until one breaches the ceiling. Walking
+    // away used to leave 234 standing — a price the user never chose.
+    expect(priceSettle('2344000', flat(234), 'w_tools', entry)).toMatchObject({
+      wToolsOverrideType: 'amount',
+      wToolsOverrideValue: 70,
+    })
+  })
+
+  it('niedokończony wpis też cofa się do stanu sprzed edycji', () => {
+    expect(priceSettle('1e', flat(1), 'w_tools', entry)).toMatchObject({
+      wToolsOverrideValue: 70,
+    })
+  })
+
+  it('cofnięcie do stanu, w którym wiersz już jest, nic nie zapisuje', () => {
+    expect(priceSettle('1e', flat(70), 'w_tools', entry)).toBeNull()
   })
 })

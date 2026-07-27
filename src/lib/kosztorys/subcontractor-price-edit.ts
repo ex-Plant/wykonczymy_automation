@@ -1,11 +1,6 @@
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
-import type {
-  KosztorysV2RowT,
-  SubcontractorOverrideTypeT,
-  ToolPlaneT,
-  ViewPricingT,
-} from '@/lib/kosztorys/types'
+import type { SubcontractorOverrideTypeT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
 // Which pair of row fields a subcontractor plane writes to. Lives here rather than next to the cells
 // because the edit transitions below are the only thing that has to agree with it.

@@ -10,11 +10,12 @@ import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import {
   OVERRIDE_FIELDS,
-  priceExitEdit,
+  overrideSnapshot,
   priceKeystroke,
+  priceSettle,
+  type OverrideSnapshotT,
 } from '@/lib/kosztorys/subcontractor-price-edit'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
-import { formatNet as fmt } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { ReactNode } from 'react'
 
@@ -59,6 +60,9 @@ const ALERT_TONE: Record<keyof typeof TONE, AlertToneT> = {
 // Reproduces the flex centring .dsg-cell applies to its direct children, which a plain wrapper span
 // would otherwise take away from the cell body.
 const CELL_WRAPPER = 'flex size-full items-center'
+
+// A derived price carries the float tail of client × coeff; the cell edits grosze, not the tail.
+const round2 = (value: number): string => String(Math.round(value * 100) / 100)
 
 /**
  * The rejection half of the guard, shared by both editable cells: would this write breach the
@@ -160,55 +164,52 @@ function SubcontractorCoeffCell({
   )
 }
 
-// The "Cena" column in the subcontractor view: shows either the derived price (greyed out when
-// the override is null) or the entered override value. Entering a value while in the null state
-// creates an 'amount' (flat) override; clearing it reverts to the derived price (null). The
-// coeff vs amount mode is set by a separate "Tryb" column.
+// The "Cena" column in the subcontractor view. Editable in EVERY mode — the price is the figure the
+// user actually reasons about, so typing one is never a mode question: on „kwota stała" it writes the
+// flat amount, otherwise it back-computes the multiplier and „Mnożnik" follows (see
+// subcontractor-price-edit.ts). Clearing it reverts the row to „auto".
 //
-// This is the one cell carrying the guard's STANDING verdict, in every mode: the rule is about the
-// price, and a breach caused from outside these columns — a lowered client price, a raised global
+// This is also the one cell carrying the guard's STANDING verdict, in every mode: the rule is about
+// the price, and a breach caused from outside these columns — a lowered client price, a raised global
 // coefficient — has to surface without anyone opening them.
 function SubcontractorPriceCell({
   rowData,
   setRowData,
   columnData,
 }: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
-  const { view, valueField, typeField } = columnData
+  const { view, typeField } = columnData
   const [blockReason, setBlockReason] = useState<string | null>(null)
-  // The text as typed, held for as long as the caret is in the cell. Without it the input is bound
-  // straight to the row, so anything the row won't accept — a cleared field, a half-typed „50," —
-  // snaps back under the user's hands on the very next keystroke.
-  const [draft, setDraft] = useState<string | null>(null)
+  // The text as typed, plus the override it started from. The draft is held for as long as the caret
+  // is in the cell — bound straight to the row, anything the row won't accept (a cleared field, a
+  // half-typed „50,") snaps back under the user's hands on the very next keystroke. The entry
+  // snapshot is what a rejected edit rolls back to when they walk away.
+  const [edit, setEdit] = useState<{ draft: string; entry: OverrideSnapshotT } | null>(null)
 
   const issue = checkSubcontractorPrice(rowData, view)
-  const type = rowData[typeField] as SubcontractorOverrideTypeT | null
-  // An open draft keeps the cell editable even while it holds nothing the row has accepted.
-  const editing = type === 'amount' || draft !== null
+  const inherited = rowData[typeField] == null
   // A live rejection outranks the standing verdict: it describes the value on screen, which the row
   // has not accepted.
   const message = blockReason ?? issue?.message ?? null
   const severity = blockReason ? 'error' : issue?.severity
   const tone = severity ? TONE[severity] : undefined
 
-  const body = !editing ? (
-    <ReadOnlyCellText muted={tone == null} className={tone}>
-      {fmt(viewPrice(rowData, view))}
-    </ReadOnlyCellText>
-  ) : (
+  const body = (
     <EditableCellInput
-      className={tone}
-      value={draft ?? String(rowData[valueField] ?? '')}
+      // Italic muted mirrors „Mnożnik": the row carries no price of its own, it is showing the one
+      // the investment default derives.
+      className={tone ?? (inherited ? 'text-muted-foreground italic' : undefined)}
+      value={edit?.draft ?? round2(viewPrice(rowData, view))}
       inputMode="decimal"
       onBlur={() => {
         setBlockReason(null)
-        // Clearing the field is what reverts to „auto" — but only now, once the caret has left.
-        const settled = draft == null ? null : priceExitEdit(draft, rowData, view)
+        const settled = edit && priceSettle(edit.draft, rowData, view, edit.entry)
         if (settled) setRowData(settled)
-        setDraft(null)
+        setEdit(null)
       }}
       onChange={(e) => {
-        setDraft(e.target.value)
-        const result = priceKeystroke(e.target.value, rowData, view)
+        const draft = e.target.value
+        setEdit({ draft, entry: edit?.entry ?? overrideSnapshot(rowData, view) })
+        const result = priceKeystroke(draft, rowData, view)
         setBlockReason(result.kind === 'blocked' ? result.message : null)
         if (result.kind === 'commit') setRowData(result.row)
       }}
