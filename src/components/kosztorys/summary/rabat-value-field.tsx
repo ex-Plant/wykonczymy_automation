@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DecimalInput } from '@/components/ui/decimal-input'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
@@ -15,6 +16,9 @@ type PropsT = {
   onApply: (value: number) => Promise<boolean> | void
   // The percent tool stamps and forgets, so its input empties; the kwota keeps showing what is stored.
   clearOnApply?: boolean
+  // Takes the value about to be written and returns what the confirm dialog should say. Present only
+  // for a write that cannot be taken back — the kwota is undoable and asks nothing.
+  confirm?: (value: number) => { title: ReactNode; description?: ReactNode; confirmLabel?: string }
 }
 
 // Both rabat-globalny modes commit the same way: type, then press „Zapisz" (or Enter). Nothing is
@@ -27,9 +31,13 @@ export function RabatValueField({
   isValid,
   onApply,
   clearOnApply = false,
+  confirm,
 }: PropsT) {
   const [raw, setRaw] = useState(value)
   const [pending, setPending] = useState(false)
+  // The value waiting on the dialog. Held rather than re-read at confirm time so the dialog's text
+  // and the write can never describe two different numbers.
+  const [confirming, setConfirming] = useState<number | null>(null)
 
   // Undo, a failed save rolling back, or a mode switch reseeding the kwota all move the stored figure
   // without touching this input — resync so the field never shows a value that is no longer stored.
@@ -45,10 +53,16 @@ export function RabatValueField({
   // the answer to „did my edit go through".
   const canApply = parsedValue != null && isValid(parsedValue) && raw !== value
 
-  async function apply() {
+  function requestApply() {
     if (!canApply || pending || parsedValue == null) return
+    if (confirm) setConfirming(parsedValue)
+    else void write(parsedValue)
+  }
+
+  async function write(next: number) {
+    setConfirming(null)
     setPending(true)
-    const ok = await onApply(parsedValue)
+    const ok = await onApply(next)
     setPending(false)
     if (ok !== false && clearOnApply) setRaw('')
   }
@@ -61,7 +75,7 @@ export function RabatValueField({
         disabled={disabled || pending}
         onChange={(e) => setRaw(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') void apply()
+          if (e.key === 'Enter') requestApply()
         }}
         className="text-chart-green"
       />
@@ -70,10 +84,20 @@ export function RabatValueField({
         size="sm"
         className="h-7 px-2"
         disabled={disabled || !canApply || pending}
-        onClick={() => void apply()}
+        onClick={requestApply}
       >
         Zapisz
       </Button>
+      {confirm != null && confirming != null && (
+        <ConfirmDialog
+          open
+          {...confirm(confirming)}
+          pending={pending}
+          pendingLabel="Zapisywanie…"
+          onConfirm={() => void write(confirming)}
+          onCancel={() => setConfirming(null)}
+        />
+      )}
     </div>
   )
 }

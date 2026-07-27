@@ -95,6 +95,17 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
             isValid={(percent) => applyPercentRabatSchema.safeParse({ percent }).success}
             onApply={handleApplyPercentRabat}
             clearOnApply
+            confirm={(percent) => ({
+              title: `Wpisać ${percent}% w rabat każdej pozycji?`,
+              // Owner's ruling stands: the overwrite is not undoable and recovery is re-typing. The
+              // dialog is the guard in undo's place, so it has to say both what is lost and where the
+              // way back is — the auto-saved version the action captures before every apply.
+              description:
+                percent === 0
+                  ? 'Rabaty wpisane ręcznie w poszczególnych pozycjach zostaną wyzerowane. Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.'
+                  : 'Rabaty wpisane ręcznie w poszczególnych pozycjach zostaną nadpisane. Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.',
+              confirmLabel: 'Nadpisz rabaty',
+            })}
           />
           <span className="text-muted-foreground text-xs">%</span>
         </div>
