@@ -13,8 +13,9 @@ import { toastMessage } from '@/lib/utils/toast'
 
 // Robocizna (etapy) stays editor-only — it needs the stage grid to make sense. Wpłaty and
 // Podwykonawcy are dropped for the opposite reason: the transfers table below this panel already
-// lists every deposit and every wypłata.
-const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki']
+// lists every deposit and every wypłata. Marża is this host's own tab — the panel gates it to
+// owner/admin and drops it from any client share regardless of this list.
+const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'marza']
 
 type PropsT = Omit<
   ComponentProps<typeof SummaryPanelContent>,

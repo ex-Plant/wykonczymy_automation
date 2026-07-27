@@ -8,7 +8,6 @@
 // Billing materiały netto instead of at the brutto receipt is a concession off a pass-through
 // cost: the client returns less than was spent, so the company eats the difference — same
 // two-sided shape as a rabat (lowers margin here, raises bilans there).
-// Margin = laborCosts - payouts - rabat - loss - settled - materialsNetDiscount.
 // Takes the whole financials object (symmetric with calculateBalance) so no call site
 // hand-passes five same-typed positional numbers that could be transposed.
 import type { InvestmentFinancialsT } from '@/types/investment-financials'

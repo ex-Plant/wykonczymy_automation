@@ -22,16 +22,17 @@ export function faceValue(net: number): MoneyPairT {
 // Division, not `× (1 − rate)`: at 23% a 123 zł receipt is billed 100 zł, and 123 × 0,77 = 94,71 is a
 // different (larger) concession than the server's `materialsNetDiscount` computes — the two figures
 // would then disagree on screen, which is the defect this whole change exists to close.
-export function materialyPair(gross: number, netRate: number | null): MoneyPairT {
+export function billedMaterialsPair(gross: number, netRate: number | null): MoneyPairT {
   return netRate == null ? faceValue(gross) : { net: gross / (1 + netRate), gross }
 }
 
 // The concession in złotych — brutto receipt minus what the investor is billed. The netto-billed
 // bucket is deliberately out of reach: it carries no VAT toward the investor, so cutting it here
-// would deduct the same VAT twice. Mirrors the server's `materialsNetDiscount`, so the panel's
-// „Obniżka materiałów" row and the marża it lowers can never quote two different amounts.
+// would deduct the same VAT twice. `deriveFinancials` calls THIS for the marża/bilans term, so the
+// panel's „Obniżka materiałów" row and the figures it moves are one formula, not two that agree by
+// convention. The settlement-mode gate stays server-side — it is about who owes VAT, not arithmetic.
 export function materialsNetDiscount(grossBase: number, netRate: number | null): number {
-  const { net, gross } = materialyPair(grossBase, netRate)
+  const { net, gross } = billedMaterialsPair(grossBase, netRate)
   return gross - net
 }
 
@@ -46,7 +47,7 @@ export type MaterialsT = { grossBase: number; netBilled: number }
  *  and carries no VAT toward him, so cutting it again — on either axis — would deduct the
  *  same VAT twice. */
 export function materialsPair(materials: MaterialsT, netRate: number | null): MoneyPairT {
-  const base = materialyPair(materials.grossBase, netRate)
+  const base = billedMaterialsPair(materials.grossBase, netRate)
   return { net: base.net + materials.netBilled, gross: base.gross + materials.netBilled }
 }
 

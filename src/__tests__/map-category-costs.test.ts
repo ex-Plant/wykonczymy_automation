@@ -4,6 +4,7 @@ import {
   buildMaterialyBreakdown,
   RABAT_LABEL,
 } from '@/lib/db/map-category-costs'
+import { calculateBalance } from '@/lib/db/calculate-balance'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 const base: InvestmentFinancialsT = {
@@ -143,5 +144,36 @@ describe('buildMaterialyBreakdown', () => {
       expect(sum(withSplit)).toBe(sum(withoutSplit))
       expect(sum(withSplit)).toBe(1800)
     })
+  })
+})
+
+// The investment header renders „Bilans inwestora" as the SUM of these tiles, while every other
+// surface (listing, export, print) calls calculateBalance. A term that gains a place in the formula
+// but no tile makes the two readings disagree silently — that is the regression this pins.
+describe('buildFinancialFields — Σ tiles reconciles with calculateBalance', () => {
+  const cats = [
+    { id: 1, name: 'Materiały budowlane' },
+    { id: 2, name: 'Materiały wykończeniowe' },
+  ]
+  const sumTiles = (financials: InvestmentFinancialsT) =>
+    buildFinancialFields(financials, cats).reduce((total, f) => total + f.amount, 0)
+
+  const withMaterials: InvestmentFinancialsT = {
+    ...base,
+    categoryCosts: [
+      { categoryId: 1, total: 1000 },
+      { categoryId: 2, total: 200 },
+    ],
+    totalMaterialCosts: 1500,
+    materialsGrossBase: 1500,
+  }
+
+  it('reconciles on an investment with rabat and a materiały concession', () => {
+    const financials = { ...withMaterials, totalRabat: 300, materialsNetDiscount: 280.49 }
+    expect(sumTiles(financials)).toBeCloseTo(calculateBalance(financials), 2)
+  })
+
+  it('reconciles when neither concession is present', () => {
+    expect(sumTiles(withMaterials)).toBeCloseTo(calculateBalance(withMaterials), 2)
   })
 })

@@ -56,6 +56,7 @@ export async function InvestmentSummaryPanel({
       materialyBreakdown={buildMaterialyBreakdown(financials, expenseCategories, netCategoryCosts)}
       settledBreakdown={buildSettledBreakdown(financials.settledCategoryCosts, expenseCategories)}
       wplatyNet={wplatyNet}
+      financials={financials}
       {...reading}
       // Nothing to reconcile without a kosztorys: feeding the transaction figures to both sides keeps
       // the verdict silent rather than screaming a gap against an empty kosztorys.

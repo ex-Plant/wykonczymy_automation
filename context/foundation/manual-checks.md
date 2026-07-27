@@ -423,7 +423,7 @@ it. `/raporty` needs the OWNER/ADMIN role.
 - [ ] An investment with materiały spend and no rate set shows marża and bilans exactly as before the change (the `null` default changes nothing)
 - [ ] Checking „rozliczane po kwocie netto" (opens at the VAT rate) moves marża down and bilans inwestora up by the **same** amount
 - [ ] That amount equals `materiały brutto − materiały brutto / 1,23` — not `materiały brutto × 0,23`
-- [ ] The „Obniżka materiałów" row in Podsumowanie quotes that same amount, and so does the „Obniżka materiałów" stat under the panel
+- [ ] The „w tym obniżka materiałów" sub-line under Materiały in Podsumowanie quotes that same amount, and the Podsumowanie column still adds up top-down (Robocizna − Rabat + Materiały = Łącznie; the „w tym" line is not added)
 - [ ] The investments list shows the same marża as the investment's own page
 - [ ] A „Wydatek inwestycyjny netto" row (frozen netto bucket) is **not** discounted — its Netto column equals its Brutto in the per-category table, and the concession is computed off the brutto bucket only
 - [ ] Switching to rozliczenie brutto returns marża and bilans to their no-rate values and shows the notice that the rate changes nothing there

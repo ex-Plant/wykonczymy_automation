@@ -25,8 +25,9 @@ type PropsT = {
 
 // Tryb mieszany: one vertical netto→brutto tor (no netto/brutto columns). The netto section resolves
 // Łącznie − wpłaty netto → „Do rozliczenia netto"; that remainder is grossed onto the invoice, where
-// wpłaty brutto pay it down → „Do zapłaty brutto". Robocizna is shown przed rabatem with Rabat as its
-// own row below Wpłaty, matching the Netto/Brutto block and the investment page's „z kosztorysu".
+// wpłaty brutto pay it down → „Do zapłaty brutto". Robocizna is shown przed rabatem with Rabat
+// immediately below it — above Łącznie, so the netto column reconciles when read top-down. Matches
+// the Netto/Brutto block and the investment page's „z kosztorysu".
 export function MixedSummary({
   laborCostsNetFromKosztorys,
   materials,
@@ -59,28 +60,29 @@ export function MixedSummary({
           line={faceValue(sumaPracPreRabat(settlement.robocizna, rabatAmount))}
           axis="net"
         />
+        {rabatAmount > 0 && (
+          <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
+        )}
         <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
+        {/* Not a term — Materiały above is already reduced by it, so „w tym" tells the reader to
+            skip it when adding the column down to Łącznie. */}
+        {materialsDiscount > 0 && (
+          <SummaryRow
+            label="w tym obniżka materiałów"
+            hint="Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu — kwota już odjęta od Materiałów powyżej"
+            line={faceValue(-materialsDiscount)}
+            axis="net"
+            discount
+          />
+        )}
         <SummaryRow label="Łącznie" line={faceValue(settlement.combinedNet)} axis="net" emphasize />
-        {/* Negative: both are deduction steps down to „Do zapłaty netto". */}
+        {/* Negative: the one deduction step left down to „Do zapłaty netto". */}
         <SummaryRow
           label="Wpłaty netto"
           line={faceValue(-settlement.paidNet)}
           axis="net"
           discount
         />
-        {rabatAmount > 0 && (
-          <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
-        )}
-        {/* Informational, like Rabat: Łącznie above is already net of it. */}
-        {materialsDiscount > 0 && (
-          <SummaryRow
-            label="Obniżka materiałów"
-            hint="Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu"
-            line={faceValue(-materialsDiscount)}
-            axis="net"
-            discount
-          />
-        )}
         <SummaryRow
           label="Do zapłaty netto"
           hint="Łącznie netto − wpłaty netto"

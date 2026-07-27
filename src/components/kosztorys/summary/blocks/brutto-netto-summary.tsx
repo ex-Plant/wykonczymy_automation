@@ -79,8 +79,9 @@ export function BruttoNettoSummary({
   clientView = false,
 }: PropsT) {
   // Łącznie = Robocizna (przed rabatem) − Rabat + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
-  // The split feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — the Rabat
-  // row only makes the concession visible, it never moves the total.
+  // The split feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — which is
+  // exactly why the Rabat row belongs above it, between the pre-rabat Robocizna and Łącznie, where
+  // the column the reader adds actually reconciles.
   const { combined } = computeSummarySplit(
     laborCostsNetFromKosztorys,
     materials,
@@ -102,13 +103,15 @@ export function BruttoNettoSummary({
     vatRate,
   )
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
-  // figure. Both it and Wpłaty render negative: they are the two deduction steps down to „Do zapłaty",
-  // and a positive figure in a subtracted row reads as if it were being added.
+  // figure. Both it and Wpłaty render negative: they are the two deduction steps down to „Do zapłaty"
+  // (rabat off Robocizna, wpłaty off Łącznie), and a positive figure in a subtracted row reads as if
+  // it were being added.
   const rabat = moneyPair(-rabatAmount, vatRate)
   const wplaty = faceValue(-wplatyNet)
-  // Informational, like Rabat: Łącznie above is already net of it. Netto-only (faceValue + noBrutto
-  // downstream) — the brutto column keeps the raw receipt, which is exactly what the concession does
-  // NOT touch. Hidden at 0 so a brutto-settled or opted-out investment shows no dead row.
+  // Unlike Rabat, this is NOT a term: the Materiały row is already reduced by it, so it renders as a
+  // „w tym" sub-line. Netto-only (faceValue + noBrutto downstream) — the brutto column keeps the raw
+  // receipt, which is exactly what the concession does NOT touch. Hidden at 0 so a brutto-settled or
+  // opted-out investment shows no dead row.
   const materialsDiscount = materialsNetDiscount(materials.grossBase, materialsNetRate)
 
   const moneyCols = summaryMoneyCols(moneyAxis)
@@ -125,7 +128,14 @@ export function BruttoNettoSummary({
               ? mismatchTooltip(reconciliation.laborCosts, 'Transakcje robocizny')
               : undefined
           }
+          rabat={showRabat ? rabat : undefined}
+          rabatMismatch={
+            reconVisible && reconciliation.rabat.mismatch
+              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
+              : undefined
+          }
           materials={materials}
+          materialsDiscount={materialsDiscount > 0 ? faceValue(-materialsDiscount) : undefined}
           combinedNet={combined.net}
           combined={combined}
           materialsNetRate={materialsNetRate}
@@ -134,13 +144,6 @@ export function BruttoNettoSummary({
           cols={moneyCols}
           moneyAxis={moneyAxis}
           wplaty={wplaty}
-          rabat={showRabat ? rabat : undefined}
-          rabatMismatch={
-            reconVisible && reconciliation.rabat.mismatch
-              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
-              : undefined
-          }
-          materialsDiscount={materialsDiscount > 0 ? faceValue(-materialsDiscount) : undefined}
           doZaplaty={doZaplaty}
           investmentId={investmentId}
           clientView={clientView}

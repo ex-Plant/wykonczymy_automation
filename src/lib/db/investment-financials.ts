@@ -12,6 +12,7 @@ import type {
   TypeSettledTotalT,
 } from '@/types/investment-financials'
 import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import { materialsNetDiscount as concessionOn } from '@/lib/kosztorys/summary-economics'
 
 type BilledRowT = { type: string; total: number; netTotal?: number }
 
@@ -82,11 +83,10 @@ export function deriveFinancials(
   // The gate lives here, not with the readers, so no surface can forget it: a brutto-settled client
   // has VAT added on top of the bill, which leaves nothing to strip off. The base is the brutto
   // bucket ALONE — running this off totalMaterialCosts would cut VAT off materialsNetBilled a
-  // second time, which is already netto.
+  // second time, which is already netto. The arithmetic itself is the panel's, imported rather than
+  // restated, so the marża term and the row that explains it cannot drift apart.
   const materialsNetDiscount =
-    materialsNetRate == null || settlementMode === 'GROSS'
-      ? 0
-      : materialsGrossBase - materialsGrossBase / (1 + materialsNetRate)
+    settlementMode === 'GROSS' ? 0 : concessionOn(materialsGrossBase, materialsNetRate)
   return {
     categoryCosts,
     // The only bucket that splits on the per-ROW settled flag: settled material has been

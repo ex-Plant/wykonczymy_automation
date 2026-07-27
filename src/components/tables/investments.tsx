@@ -34,6 +34,8 @@ export type InvestmentRowT = {
   review: string
   notes: string
   hasSheet: boolean
+  // No column renders these two — the whole row is handed to EditInvestmentDialog, whose form
+  // needs them.
   materialsNetRate: number | null
   settlementMode: SettlementModeT
 }

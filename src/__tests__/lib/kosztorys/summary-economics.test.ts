@@ -7,7 +7,7 @@ import {
   faceValue,
   materialsNetDiscount,
   materialsPair,
-  materialyPair,
+  billedMaterialsPair,
   moneyPair,
   sumaPracPreRabat,
   summaryLine,
@@ -39,9 +39,9 @@ describe('moneyPair / faceValue (VAT direction primitives)', () => {
     expect(p.gross).toBe(300)
   })
 
-  it('moneyPair and materialyPair are inverse directions at the same rate', () => {
+  it('moneyPair and billedMaterialsPair are inverse directions at the same rate', () => {
     // 100 netto → 123 brutto → back to 100 netto.
-    expect(materialyPair(moneyPair(100, 0.23).gross, 0.23).net).toBeCloseTo(100)
+    expect(billedMaterialsPair(moneyPair(100, 0.23).gross, 0.23).net).toBeCloseTo(100)
   })
 })
 
@@ -59,19 +59,19 @@ describe('summary-row udział builders', () => {
   })
 })
 
-describe('materialyPair (netto pricing switch)', () => {
+describe('billedMaterialsPair (netto pricing switch)', () => {
   // 123 brutto at a 23% rate is billed 100 netto — the price whose gross-up returns the receipt.
   // `123 × (1 − 0,23) = 94,71` is a different, larger concession than the server computes, so this
   // pins the division against a re-derivation of the old subtraction.
   it('a rate divides brutto down to the netto price, brutto native', () => {
-    const p = materialyPair(123, 0.23)
+    const p = billedMaterialsPair(123, 0.23)
     expect(p.net).toBeCloseTo(100)
     expect(p.net).not.toBeCloseTo(123 * (1 - 0.23))
     expect(p.gross).toBe(123)
   })
 
   it('no rate keeps the raw brutto on both axes — where every investment starts', () => {
-    const p = materialyPair(123, null)
+    const p = billedMaterialsPair(123, null)
     expect(p.net).toBe(123)
     expect(p.gross).toBe(123)
   })

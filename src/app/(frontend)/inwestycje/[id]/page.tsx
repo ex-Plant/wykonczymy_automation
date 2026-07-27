@@ -20,9 +20,9 @@ import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { ContactLink } from '@/components/ui/contact-link'
 import { FinancialStats } from '@/components/investments/financial-stats'
-import { InvestmentOwnerFigures } from '@/components/investments/investment-owner-figures'
 import { STATUS_LABELS } from '@/components/investments/investment-status-badge'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
@@ -103,18 +103,21 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         <StatsVersionToggle version={version} />
       </div>
 
-      {version === 'v1' ? (
-        <FinancialStats
-          fields={financialFields}
-          margin={calculateMargin(financials)}
-          totalPayouts={financials.totalPayouts}
-          totalLoss={financials.totalLoss}
-          settledFields={settledFields}
-        />
-      ) : (
-        <>
-          {/* Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
-              long-pole query, so the rest of the page paints without waiting on it. */}
+      {/* Collapsible so the transfers table below can be brought into view without scrolling past the
+          whole settlement — the same affordance that section already has. */}
+      <CollapsibleSection title="Finanse">
+        {version === 'v1' ? (
+          <FinancialStats
+            fields={financialFields}
+            margin={calculateMargin(financials)}
+            totalPayouts={financials.totalPayouts}
+            totalLoss={financials.totalLoss}
+            settledFields={settledFields}
+          />
+        ) : (
+          // Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
+          // long-pole query, so the rest of the page paints without waiting on it. Marża is one of the
+          // panel's own tabs (owner-only) — see summary-panel-content.tsx.
           <Suspense fallback={null}>
             <InvestmentSummaryPanel
               investmentId={investmentId}
@@ -124,14 +127,8 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
               netCategoryCosts={breakdowns.netCategoryCosts}
             />
           </Suspense>
-
-          <InvestmentOwnerFigures
-            margin={calculateMargin(financials)}
-            totalLoss={financials.totalLoss}
-            materialsNetDiscount={financials.materialsNetDiscount}
-          />
-        </>
-      )}
+        )}
+      </CollapsibleSection>
 
       {/* Transactions table */}
       <TransfersSection

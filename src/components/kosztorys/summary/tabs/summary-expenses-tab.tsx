@@ -46,8 +46,8 @@ type PropsT = {
   showPie?: boolean
 }
 
-// The „Wydatki" view: per-category materiały breakdown, the brutto→netto pricing controls (checkbox +
-// reduction %, shared with the Podsumowanie materiały figure), and the flat wydatki transactions list.
+// The pricing controls live here rather than in Podsumowanie even though they move that view's
+// materiały figure: they are a property of the wydatki they reduce.
 export function SummaryExpensesTab({
   investmentId,
   investmentName,
@@ -66,7 +66,12 @@ export function SummaryExpensesTab({
 }: PropsT) {
   const netPricingOn = materialsNetRate != null
   const materialsNetPercent = Math.round((materialsNetRate ?? vatRate) * 100)
-  const discountAmount = materialsNetDiscount(materials.grossBase, materialsNetRate)
+  // Quoted from the rate the SERVER will honour, not the saved one: on a brutto-settled investment
+  // the concession is switched off, so printing its złotówki next to a notice saying it changes
+  // nothing would contradict both the notice and the marża.
+  const discountAmount = inertOnBruttoSettlement
+    ? 0
+    : materialsNetDiscount(materials.grossBase, materialsNetRate)
   // The pricing controls are owner-only; the table's `showReduction` is not, so a client still sees
   // the reduced figures the owner's setting produces — just not the switch that produced them.
   // Offered on a brutto-settled investment too, alongside the notice: hiding the control there would
@@ -115,10 +120,14 @@ export function SummaryExpensesTab({
                     <DecimalField
                       label=""
                       value={materialsNetPercent}
-                      onCommit={(percent) => onMaterialsNetRateChange(percent / 100)}
+                      // Clamped to the range the action's schema accepts, so a fat-fingered 230
+                      // lands on 100% instead of bouncing back as a validation toast.
+                      onCommit={(percent) =>
+                        onMaterialsNetRateChange(Math.min(Math.max(percent, 0), 100) / 100)
+                      }
                     />
                     <span className="text-muted-foreground text-xs">
-                      % (−{formatNet(discountAmount)} zł)
+                      %{!inertOnBruttoSettlement && ` (−${formatNet(discountAmount)} zł)`}
                     </span>
                   </div>
                   {inertOnBruttoSettlement && (

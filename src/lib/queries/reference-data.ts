@@ -222,7 +222,11 @@ export const fetchInvestmentFinancials = unstable_cache(
     return record
   },
   ['investment-financials'],
-  { tags: [CACHE_TAGS.transfers] },
+  // Two tags, not one: the figures are summed from transfers, but the materiały concession and the
+  // settlement mode that gates it are columns on `investments`. Tagged on transfers alone, saving a
+  // rate left the listing serving the pre-change marża until an unrelated transfer happened to
+  // expire it, while the detail page (uncached) already showed the new one.
+  { tags: [CACHE_TAGS.transfers, CACHE_TAGS.investments] },
 )
 
 export async function fetchFilteredByType(where: Where): Promise<TypeSettledTotalT[]> {

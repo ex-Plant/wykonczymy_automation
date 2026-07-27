@@ -1,7 +1,9 @@
 // Bare pl-PL number with 2 decimals (no currency symbol) for dense grid cells and subtotals —
 // distinct from `formatPLN`, which emits "zł" and is too wide for the spreadsheet layout.
+// `n + 0` collapses JS's negative zero: a deduction row negates its amount for display, so an
+// investment with no wpłaty reached toLocaleString as -0 and rendered „-0,00".
 export const formatNet = (n: number) =>
-  n.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  (n + 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // A fraction (0.746) as a percentage; `null` (no denominator — see stageDoneFraction) renders as a
 // dash. Two precisions: integer for the dense grid cells, one decimal for the headline figures where

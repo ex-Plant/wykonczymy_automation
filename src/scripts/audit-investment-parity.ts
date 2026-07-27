@@ -77,7 +77,15 @@ async function main() {
     depth: 0,
     overrideAccess: true,
   })
-  const investments = invResult.docs.map((d) => ({ id: Number(d.id), name: String(d.name) }))
+  // The concession columns travel with each investment: the listing aggregate reads them from SQL,
+  // so the detail path must be handed the same two or every investment with a rate set reports a
+  // false mismatch on bilans and marża.
+  const investments = invResult.docs.map((d) => ({
+    id: Number(d.id),
+    name: String(d.name),
+    materialsNetRate: d.materialsNetRate ?? null,
+    settlementMode: d.settlementMode ?? undefined,
+  }))
 
   const listingMap = await sumAllInvestmentFinancials(payload)
 
@@ -93,6 +101,8 @@ async function main() {
       byType,
       breakdowns.categoryCosts,
       breakdowns.settledCategoryCosts,
+      inv.materialsNetRate,
+      inv.settlementMode,
     )
     const listingFin = listingMap.get(inv.id)
 

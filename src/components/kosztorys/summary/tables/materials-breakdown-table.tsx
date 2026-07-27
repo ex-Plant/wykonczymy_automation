@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react'
 import { formatNet } from '@/lib/kosztorys/format'
-import { materialyPair } from '@/lib/kosztorys/summary-economics'
+import { billedMaterialsPair } from '@/lib/kosztorys/summary-economics'
 import {
   SUMMARY_LABEL_COL,
   SUMMARY_VALUE_COL,
@@ -42,7 +42,7 @@ export function MaterialsBreakdownTable({
   // A netBilled row is ALREADY the netto the investor is billed, so the reduction must not touch it —
   // cutting it here would deduct the same VAT a second time. Its Netto column equals its Brutto.
   const netOf = (row: MaterialyBreakdownRowT) =>
-    row.origin === 'netBilled' ? row.net : materialyPair(row.net, netRate).net
+    row.origin === 'netBilled' ? row.net : billedMaterialsPair(row.net, netRate).net
   const totalGross = shown.reduce((sum, row) => sum + row.net, 0)
   const totalNet = shown.reduce((sum, row) => sum + netOf(row), 0)
 

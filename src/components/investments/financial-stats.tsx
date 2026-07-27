@@ -13,7 +13,16 @@ import { formatPLN } from '@/lib/utils/format-currency'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import { INCOME_LABEL, LABOR_LABEL, RABAT_LABEL } from '@/lib/db/map-category-costs'
+import {
+  INCOME_LABEL,
+  LABOR_LABEL,
+  MATERIALS_DISCOUNT_LABEL,
+  RABAT_LABEL,
+} from '@/lib/db/map-category-costs'
+
+// The tiles that RAISE the balance — everything else in `fields` is a cost. Routed by label because
+// the field list is flat strings + amounts by the time it reaches here.
+const CREDIT_LABELS: string[] = [INCOME_LABEL, RABAT_LABEL, MATERIALS_DISCOUNT_LABEL]
 
 // Both figures render only inside the isAdminOrOwnerRole(...) block below, so this
 // note is shown exclusively to Admin/Owner — flags the figure as owner-level.
@@ -29,6 +38,9 @@ const TOOLTIPS = {
   discount:
     'Rabat na robociznę — obniża dług klienta, więc podnosi bilans inwestora. ' +
     'Jednocześnie obniża marżę firmy.',
+  materialsDiscount:
+    'Wydatki rozliczane po kwocie netto — klient zwraca mniej, niż firma wydała. ' +
+    'Podnosi bilans inwestora i obniża marżę firmy.',
   payouts:
     'Kwoty wypłacone pracownikom. Obniżają marżę. Nie wchodzą do bilansu inwestora.' +
     RESTRICTED_NOTE,
@@ -37,14 +49,19 @@ const TOOLTIPS = {
     'Materiały kupione przez firmę, wliczone w robociznę. ' +
     'Obniżają marżę, ale nie obciążają bilansu inwestora.',
   balance:
-    'Bilans inwestora = Wpłaty − Materiały − Robocizna + Rabat.\n' +
+    'Bilans inwestora = Wpłaty − Materiały − Robocizna + Rabat + obniżka materiałów.\n' +
     'Jeśli minus — inwestor wisi pieniądze.\n' +
     'Dynamiczny: odznaczenie kafelka usuwa go z wyliczenia i z wydruku.',
   margin:
-    'Marża = Robocizna − Wypłaty − Rabat − Strata − materiały wliczone w robociznę.\n' +
+    'Marża = Robocizna − Wypłaty − Rabat − Strata − materiały wliczone w robociznę − obniżka materiałów.\n' +
     'Ile firma zarabia na inwestycji.' +
     RESTRICTED_NOTE,
 } as const
+
+const CREDIT_TOOLTIPS: Record<string, string> = {
+  [RABAT_LABEL]: TOOLTIPS.discount,
+  [MATERIALS_DISCOUNT_LABEL]: TOOLTIPS.materialsDiscount,
+}
 
 type FinancialStatsPropsT = {
   fields: FinancialFieldT[]
@@ -77,7 +94,7 @@ export function FinancialStats({
   })
 
   const expenseRow = fields
-    .filter((f) => f.label !== INCOME_LABEL && f.label !== LABOR_LABEL && f.label !== RABAT_LABEL)
+    .filter((f) => f.label !== LABOR_LABEL && !CREDIT_LABELS.includes(f.label))
     .map((f) => addBtnBorderColor(f, 'border-chart-red'))
 
   const laborRow = fields
@@ -85,10 +102,10 @@ export function FinancialStats({
     .map((f) => ({ ...addBtnBorderColor(f, 'border-chart-orange'), tooltip: TOOLTIPS.laborCosts }))
 
   const incomeRow = fields
-    .filter((f) => f.label === INCOME_LABEL || f.label === RABAT_LABEL)
+    .filter((f) => CREDIT_LABELS.includes(f.label))
     .map((f) => ({
       ...addBtnBorderColor(f, 'border-chart-green'),
-      tooltip: f.label === RABAT_LABEL ? TOOLTIPS.discount : TOOLTIPS.deposits,
+      tooltip: CREDIT_TOOLTIPS[f.label] ?? TOOLTIPS.deposits,
     }))
 
   const rows = [

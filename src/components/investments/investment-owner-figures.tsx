@@ -1,61 +1,124 @@
 'use client'
 
-import { StatButton } from '@/components/ui/stat-button'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { faceValue } from '@/lib/kosztorys/summary-economics'
+import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
+import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
+import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
-import { formatPLN } from '@/lib/utils/format-currency'
+import type { InvestmentFinancialsT } from '@/types/investment-financials'
+import { calculateMargin } from '@/lib/db/calculate-margin'
 
-const RESTRICTED_NOTE = '\nWidoczność — właściciel'
-const TOOLTIPS = {
-  loss: 'Koszt pokrywany przez firmę. Obniża marżę. Nie wchodzi do bilansu inwestora.',
-  materialsNetDiscount:
-    'Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu.\n' +
-    'Obniża marżę i podnosi bilans inwestora — inwestor płaci mniej.',
-  margin:
-    'Marża = Robocizna − Wypłaty − Rabat − Strata − materiały wliczone w robociznę − obniżka materiałów.\n' +
-    'Ile firma zarabia na inwestycji.' +
-    RESTRICTED_NOTE,
+const HINTS = {
+  laborCosts: 'Kwota, którą inwestor płaci firmie za pracę. Podstawa marży.',
+  payouts: 'Kwoty wypłacone pracownikom.',
+  rabat: 'Rabat na robociznę — firma rezygnuje z części ceny.',
+  settled: 'Materiały kupione przez firmę, wliczone w cenę robocizny. Nie obciążają inwestora.',
+  materialsDiscount:
+    'Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu — inwestor zwraca mniej, ' +
+    'niż firma wydała.',
+  loss: 'Koszt pokrywany przez firmę.',
+  margin: 'Ile firma zarabia na inwestycji.\nWidoczność — właściciel.',
 } as const
 
 type PropsT = {
-  // Computed server-side via calculateMargin(financials) — never re-derived here, so listing and
-  // detail can't drift on marża.
-  margin: number
-  totalLoss: number
-  // What billing materiały netto gives away — already inside `margin`. Shown so a figure that lowers
-  // marża is readable rather than silent. 0 (no rate saved, or a brutto-settled investment) hides it.
-  materialsNetDiscount: number
+  financials: InvestmentFinancialsT
 }
 
-// Company-plane figures, kept OUTSIDE the summary panel: the panel renders the client settlement, and
-// a gating mistake inside it must never be able to leak marża to a client. The whole strip is gated,
-// not just marża — nothing here is the investor's business.
-// Wypłaty are deliberately absent: the panel's „Podwykonawcy" view already carries them, and so are
-// the settled-material tiles — the panel's „Wydatki" view now carries that split as its own table.
-export function InvestmentOwnerFigures({ margin, totalLoss, materialsNetDiscount }: PropsT) {
+// Company-plane figures — rendered as its own tab in the summary panel (owner-only, dropped from
+// every client share by the panel's view gate). The role check here is a second, redundant gate:
+// nothing in this component is the investor's business, so it fails closed even if the host's gate
+// were ever wrong.
+//
+// A waterfall, not a lone marża figure with badges beside it: every subtrahend is shown as its own
+// row, so the reader adds the column down and lands on the total. That is the difference between a
+// number you can check and a number you have to trust — a marża of −1 mln driven by a settled-material
+// row is unreadable until that row is on screen next to it.
+export function InvestmentOwnerFigures({ financials }: PropsT) {
   const { role: userRole } = useCurrentUser()
   if (!isAdminOrOwnerRole(userRole)) return null
 
+  const {
+    totalLaborCosts,
+    totalPayouts,
+    totalRabat,
+    totalLoss,
+    totalSettled,
+    materialsNetDiscount,
+  } = financials
+  const margin = calculateMargin(financials)
+
+  // No VAT plane here: marża is a company-internal figure summed from net transfer amounts, so every
+  // row is a face value on a single „Kwota" track.
+  const cols = summaryMoneyCols('net')
+
   return (
-    <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
-      <SaldoDisplay saldo={margin} label="Marża" tooltip={TOOLTIPS.margin} />
+    <SummaryTable cols={cols} className="w-fit">
+      <SummaryHeaderCell variant="label">Marża</SummaryHeaderCell>
+      <SummaryHeaderCell>Kwota</SummaryHeaderCell>
+
+      <SummaryRow
+        label="Robocizna"
+        hint={HINTS.laborCosts}
+        line={faceValue(totalLaborCosts)}
+        axis="net"
+      />
+      {/* Each deduction renders negative: a positive figure in a subtracted row reads as if it were
+          being added, which is exactly the confusion this block exists to remove. Rows at 0 are
+          dropped — a zero deduction is noise, not information. */}
+      {totalPayouts !== 0 && (
+        <SummaryRow
+          label="Wypłaty"
+          hint={HINTS.payouts}
+          line={faceValue(-totalPayouts)}
+          axis="net"
+          discount
+        />
+      )}
+      {totalRabat !== 0 && (
+        <SummaryRow
+          label="Rabat"
+          hint={HINTS.rabat}
+          line={faceValue(-totalRabat)}
+          axis="net"
+          discount
+        />
+      )}
+      {totalSettled !== 0 && (
+        <SummaryRow
+          label="Materiały wliczone w robociznę"
+          hint={HINTS.settled}
+          line={faceValue(-totalSettled)}
+          axis="net"
+          discount
+        />
+      )}
       {materialsNetDiscount !== 0 && (
-        <StatButton
+        <SummaryRow
           label="Obniżka materiałów"
-          value={formatPLN(materialsNetDiscount)}
-          className="border-chart-purple"
-          tooltip={TOOLTIPS.materialsNetDiscount}
+          hint={HINTS.materialsDiscount}
+          line={faceValue(-materialsNetDiscount)}
+          axis="net"
+          discount
         />
       )}
       {totalLoss !== 0 && (
-        <StatButton
+        <SummaryRow
           label="Strata"
-          value={formatPLN(totalLoss)}
-          className="border-chart-purple"
-          tooltip={TOOLTIPS.loss}
+          hint={HINTS.loss}
+          line={faceValue(-totalLoss)}
+          axis="net"
+          discount
         />
       )}
-    </div>
+      <SummaryRow
+        label="Marża"
+        hint={HINTS.margin}
+        line={faceValue(margin)}
+        axis="net"
+        bold
+        danger={margin < 0}
+      />
+    </SummaryTable>
   )
 }

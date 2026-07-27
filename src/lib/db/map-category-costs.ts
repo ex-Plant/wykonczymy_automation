@@ -17,6 +17,7 @@ const KOREKTA_LABEL = 'Korekta (bez kategorii)'
 export const LABOR_LABEL = 'Robocizna netto'
 export const RABAT_LABEL = 'Rabat netto'
 export const INCOME_LABEL = 'Wpłaty'
+export const MATERIALS_DISCOUNT_LABEL = 'Obniżka materiałów'
 
 /** Amount booked to a given expense category, 0 when that category has no rows. */
 export function costForCategory(categoryCosts: CategoryCostT[], categoryId: number): number {
@@ -96,7 +97,8 @@ export function buildFinancialFields(
   expenseCategories: { id: number; name: string }[],
   { hideZeroCosts = false }: BuildOptionsT = {},
 ): FinancialFieldT[] {
-  const { categoryCosts, totalIncome, totalLaborCosts, totalRabat } = financials
+  const { categoryCosts, totalIncome, totalLaborCosts, totalRabat, materialsNetDiscount } =
+    financials
   const uncategorised = uncategorisedRemainder(financials)
 
   return [
@@ -118,6 +120,18 @@ export function buildFinancialFields(
     { label: INCOME_LABEL, value: formatPLN(totalIncome), amount: totalIncome },
     ...(totalRabat !== 0
       ? [{ label: RABAT_LABEL, value: formatPLN(totalRabat), amount: totalRabat }]
+      : []),
+    // The header's bilans is the SUM of these tiles, so every term of `calculateBalance` owes one or
+    // the two readings drift apart. Rabat has a tile for exactly this reason; the materiały
+    // concession raises the balance the same way and needs the same seat.
+    ...(materialsNetDiscount !== 0
+      ? [
+          {
+            label: MATERIALS_DISCOUNT_LABEL,
+            value: formatPLN(materialsNetDiscount),
+            amount: materialsNetDiscount,
+          },
+        ]
       : []),
   ]
 }

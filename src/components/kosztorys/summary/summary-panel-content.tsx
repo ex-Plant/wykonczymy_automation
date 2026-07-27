@@ -19,13 +19,16 @@ import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
+import { InvestmentOwnerFigures } from '@/components/investments/investment-owner-figures'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
 import {
   useSummaryView,
   type SummaryViewT,
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { isAdminOrOwnerRole } from '@/lib/auth/roles'
+import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
 import {
   buildSettlementPlaneVerdict,
   type KosztorysReconciliationT,
@@ -45,9 +48,14 @@ const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
+  { value: 'marza', label: 'Marża' },
 ]
 
-const ALL_SUMMARY_VIEWS = SUMMARY_VIEW_OPTIONS.map((option) => option.value)
+// `marza` is opt-in only: a host must name it explicitly in `views` (and supply `financials`) rather
+// than inherit it by default — the editor host has no financials to render there.
+const ALL_SUMMARY_VIEWS = SUMMARY_VIEW_OPTIONS.map((option) => option.value).filter(
+  (value) => value !== 'marza',
+)
 
 type PropsT = {
   investmentId: number
@@ -113,6 +121,9 @@ type PropsT = {
   totalNet?: number
   // Client-priced, view-invariant per-section subtotals — the section pie's structure source.
   sectionSubtotals?: SectionSliceInputT[]
+  // Company-plane transfer aggregates — feeds the „Marża" tab. Owner-only and omitted by the editor
+  // host, which has no transfer data to derive it from.
+  financials?: InvestmentFinancialsT
 }
 
 // The portable body of the summary panel — pinned top bar + the scrolling view. Deliberately holds no
@@ -149,7 +160,10 @@ export function SummaryPanelContent({
   subcontractorDue,
   totalNet,
   sectionSubtotals,
+  financials,
 }: PropsT) {
+  const { role: userRole } = useCurrentUser()
+  const isOwnerRole = isAdminOrOwnerRole(userRole)
   const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only, so it drops out
@@ -157,7 +171,14 @@ export function SummaryPanelContent({
   // across hosts, so it can name a view this host doesn't offer — fall back to the first one it does,
   // rather than stranding the reader on a hidden view.
   const [summaryView, setSummaryView] = useSummaryView()
-  const allowedViews = views.filter((value) => !(clientView && value === 'podwykonawcy'))
+  // „Podwykonawcy" is owner-only relative to the client share; „Marża" is owner-only full stop — it
+  // must never render for a client link regardless of the viewer's role, and never for a non-owner
+  // staff account either.
+  const allowedViews = views.filter((value) => {
+    if (value === 'podwykonawcy') return !clientView
+    if (value === 'marza') return !clientView && isOwnerRole && financials !== undefined
+    return true
+  })
   const viewOptions = SUMMARY_VIEW_OPTIONS.filter((option) => allowedViews.includes(option.value))
   const view: SummaryViewT = allowedViews.includes(summaryView)
     ? summaryView
@@ -296,6 +317,7 @@ export function SummaryPanelContent({
                 moneyAxis={displayAxis}
               />
             )}
+            {view === 'marza' && financials && <InvestmentOwnerFigures financials={financials} />}
           </div>
         )}
       </SummaryScrollRegion>
