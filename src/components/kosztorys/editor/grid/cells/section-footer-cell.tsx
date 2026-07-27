@@ -25,7 +25,7 @@ export function SectionFooterCell({
 }) {
   if (columnId === CAPTION_COLUMN_ID)
     return (
-      <div className="text-muted-foreground flex size-full items-center gap-1 px-2 text-sm font-semibold">
+      <div className="text-foreground flex size-full items-center gap-1 px-2 text-sm font-bold">
         <span className="shrink-0">Razem</span>
         <span className="min-w-0 truncate">{rowData.sectionName ?? ''}</span>
       </div>
