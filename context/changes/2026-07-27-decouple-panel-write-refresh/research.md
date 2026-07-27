@@ -741,3 +741,176 @@ Supersedes the local-dev protocol above:
 Points 1–3 of the earlier local protocol (mint a dev session, assert a page-specific string, count
 all requests) still apply to any **browser-side** measurement of the `router.refresh()` round-trip
 count, which server logs cannot see. That one is verifiable by eye in DevTools' Network panel.
+
+---
+
+## Baseline captured 2026-07-27 14:38–14:40 — instrumented preview, owner browsing
+
+Deployment `wykonczymy-gooxkhwi5` (branch `ex-597-decouple-panel-write-refresh`), read via
+`vercel logs <url> -q "PERF" --since 30m --json`. Investment **31**: 13 sections, **324 items,
+1 stage, 0 stage-progress rows**.
+
+### Q1 ANSWERED — the double render is real, and it is visible in the server logs
+
+One click on the materials-net-rate control produces **two full server renders of the route**:
+
+| t (ms) | Request               | What ran                                                                                                                                                                                         |
+| ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0      | `POST /inwestycje/31` | `updateInvestmentMaterialsNetRateAction` **126 ms** — _then the entire page_: `fetchReferenceData` ×3, `buildKosztorysTree` 104 ms, `InvestmentSummaryPanel` 107 ms, `TransferTableServer` 81 ms |
+| +566   | `GET /inwestycje/31`  | **the entire page again**: `fetchReferenceData` ×3, `buildKosztorysTree` 77 ms, `InvestmentSummaryPanel` 80 ms, `TransferTableServer` 64 ms                                                      |
+
+Reproduced on both toggles in the session (`937256`/`938246` and `959911`/`960477`). The POST
+carrying a full page render is `updateTag` doing exactly what the framework-source trace predicted;
+the GET 0.5 s later is the redundant `router.refresh()`. **The hypothesis in `change.md` is
+confirmed against a running deployment, not just against Next's source.** The actual write is
+~126 ms of the ~1.1 s the user waits; the rest is rendering the page twice.
+
+Note the ordering: the action's own work finishes at 126 ms, and the re-render is then paid
+**twice, sequentially** — the refresh GET does not start until the action's render has streamed.
+
+### `fetchReferenceData` runs 3× per render — confirmed live, so 6× per toggle
+
+Every render logs three separate `query.fetchReferenceData 5 SQL, 192 rows` lines (15/21/24 ms warm,
+68/84/34 ms cold). The 2026-03-19 dedup note was right and is still unactioned. With the double
+render, **one toggle executes 30 SQL statements' worth of reference data to change one number.**
+
+### The tree is NOT the bottleneck at this size — and its worst case is untested
+
+`buildKosztorysTree` at 324 items: **77–309 ms, of which `map` is 0–1 ms**. The JS reduction the
+change doc flagged as a smell costs nothing measurable; the entire cost is the `items` query
+round-trip (76–211 ms for 324 rows). `InvestmentSummaryPanel` `derive` is likewise **1 ms** for
+324 rows → 2 scalars.
+
+**But investment 31 has `stages 1, progress 0`.** The `limit: 100000` stage-progress read returned
+zero rows, so the fetch-everything-and-reduce-in-JS concern is **unmeasured, not disproven**. A
+kosztorys with real stage progress (~10 stages × 1000 items ⇒ ~10 000 rows) is the case that
+matters and it was not exercised. Do not close that finding on this data.
+
+The variance is worth noting on its own: the same `items` query ranged 76 → 309 ms across renders
+seconds apart. Preview-lambda cold starts and the shared preview DB make any single number
+unreliable; only the ×2 render count is a clean signal here.
+
+### `kosztorys_v2` fan-out is ~100–220 ms — the nine-way `Promise.all` is not the problem
+
+`kosztorys_v2/31 9-fetch fan-out`: 93, 106, 114, 114, 117, 209, 222 ms. It parallelises properly.
+The editor page's own actions (`addItemAction` 121–168 ms, `addSectionAction` 131 ms) show the same
+double-render shape as the investment page — POST re-renders, then a GET re-renders again.
+
+### `sumAllRegisterBalances` did not appear — because the cache was warm
+
+`/` logged `fetchManagerDashboardData` at **36, 41, 162, 172, 215 ms** and no
+`sumAllRegisterBalances` line at all. That is the cache **hit** path. Against the 1015 ms cold
+measurement, the cliff is roughly **28×**, and which side of it a page load lands on is decided by
+whether anyone has touched a transfer since the last load. This does not soften the finding — it
+sharpens it: the dashboard is fast until someone books a transfer, then it is not.
+
+Also visible: **four `GET /` renders fired within 350 ms of each other** (`909304`, `909623`,
+`909640`, `909655`). Not explained yet — prefetch is the obvious suspect. Flagged, not investigated.
+
+### What this changes about the plan
+
+The read-path rebuild (SQL aggregation, slim projections) is **not** where the user-visible second
+goes at today's data size. The ranked order the numbers actually support:
+
+1. **Delete the two `router.refresh()` calls** — halves the work per toggle, touches two lines,
+   zero parity risk. This is S1 and it is now evidence-backed rather than hypothesised.
+2. **React `cache()` on `fetchReferenceData`** — 3 → 1 per render, and the effect doubles under (1).
+3. **`sumAllRegisterBalances`** — the only genuine second-scale query found, and it is on `/`.
+4. **The tree** — defer until measured against a kosztorys with real stage progress.
+
+## Second capture 14:45–14:46 — investment 42 (Białostocka), instrumented preview
+
+`inv 42: 13 sections, 324 items, 10 stages, 125 progress`. Roughly 20 toggles of the materials
+net-rate control plus two `applyPercentRabatToAllItemsAction` runs on `/inwestycje/42/kosztorys_v2`.
+
+### The double render is now airtight — ~15 consecutive POST→GET pairs
+
+Every `updateInvestmentMaterialsNetRateAction` / `updateInvestmentSettlementModeAction` POST carries
+a full page render, and 200–300 ms later a `GET` runs the **entire nine-way fan-out again**:
+
+```
+14:45:45.713 POST  action 72ms   → tree 96ms,  fan-out 101ms
+14:45:45.904 GET                 → tree 93ms,  fan-out  96ms
+14:45:46.143 POST  action 71ms   → tree 88ms,  fan-out  92ms
+14:45:46.357 GET                 → tree 100ms, fan-out 102ms
+```
+
+Not a sampling artifact: it repeats on **every** toggle in the window, on both actions, and on the
+investment page as well as the editor. `change.md`'s hypothesis is settled.
+
+### `applyPercentRabatToAllItemsAction` builds the tree THREE times per click
+
+```
+14:46:07.337 POST  buildKosztorysTree 109ms   ← inside the action
+                   applyPercentRabatToAllItemsAction 209ms
+                   buildKosztorysTree 103ms   ← the action response's page render
+                   fan-out 113ms
+14:46:07.964 GET   buildKosztorysTree  74ms   ← the router.refresh()
+```
+
+The action reads the tree to compute the rabat, then the route re-renders and reads it again, then
+the refresh reads it a third time. Deleting `router.refresh()` removes one of the three; the
+remaining duplicate is the action and its own re-render, which **no cache tag can dedupe** because
+`getKosztorysTree` is uncached and `unstable_cache` has no request-scoped memoisation anyway. This
+is the strongest argument yet for caching or React-`cache()`-ing the tree — not the row count.
+
+### Rapid clicking is where "unusable" comes from
+
+Six toggles between 14:45:46.387 and 14:45:48.320 — under two seconds — produced **twelve full route
+renders**, one pair per click, each re-running the fan-out. Nothing debounces, nothing coalesces, and
+each render is 80–315 ms of server work. The control is inert throughout (no `useOptimistic`), so the
+user keeps clicking, which multiplies the stampede.
+
+### The tree's worst case is STILL untested — this dataset does not have it
+
+Investment 42 has **125 stage-progress rows**, not the ~10 000 the `limit: 100000` read is sized for.
+`buildKosztorysTree` ranged 71–311 ms across ~25 samples with `map` at **0–1 ms every single time**,
+and `derive` at 4–8 ms. At the data sizes that actually exist in this database, the JS reduction the
+change doc flagged is free and the cost is purely query round-trips. **No investment in the preview
+DB exercises the 1000-item case recorded in memory.** Treat the aggregate-in-SQL rebuild as
+unjustified-by-measurement until such a kosztorys exists.
+
+### Nothing on any page exceeded ~320 ms of server time
+
+Across both captures the ceiling was `buildKosztorysTree 311ms` / `fan-out 315ms`, and the median was
+~90 ms. The single second-scale query found anywhere remains `sumAllRegisterBalances` on a cold
+`transfers` tag. **The perceived slowness is therefore not one slow query — it is doing the same
+80–300 ms of work two to three times per interaction, with no optimistic feedback while it happens.**
+
+### Revised ranking (supersedes the previous section)
+
+1. **Delete the two `router.refresh()` calls** — removes one full render per interaction.
+2. **`useOptimistic`/`useTransition` on the controls** — promoted; the stampede above is a direct
+   consequence of the control looking dead, and this is what makes the remaining ~100 ms invisible.
+3. **React `cache()` on `fetchReferenceData` and `getKosztorysTree`** — kills the intra-request
+   triplicate and the action-plus-render tree duplicate.
+4. **`sumAllRegisterBalances`** — the only genuine second-scale query.
+5. **SQL aggregation / slim projections** — parked. `map 0ms` says the current shape is not the cost
+   at real data sizes.
+
+## S1 result 15:08 — `router.refresh()` deleted, render count halved
+
+Deployment `wykonczymy-65rd4hlny` (commits `a61fdd5a` + `dd148c15`), investment 42, same pages.
+
+```
+15:08:12.136 POST  updateInvestmentSettlementModeAction  189ms → tree 153ms, panel 159ms
+15:08:15.225 POST  updateInvestmentSettlementModeAction  250ms → tree 230ms, panel 240ms
+15:08:17.950 POST  updateInvestmentMaterialsNetRateAction 253ms → tree 152ms, panel 162ms
+```
+
+**No trailing `GET` on any of them.** Before S1 every settings POST was followed 200–300 ms later by
+a GET re-running the whole fan-out; that GET is gone. Server work per interaction is halved, and the
+hypothesis that `updateTag` alone delivers the fresh render is confirmed end-to-end — the values
+still land, so nothing depended on the second render.
+
+**Caveat, recorded rather than assumed away:** the action's own lap time rose from 72–126 ms
+pre-S1 to 189–253 ms in this window. Nothing in S1 touches the action, and the tree query in the
+same requests spanned 150–318 ms (it spanned 71–311 ms pre-S1), so preview-lambda variance is the
+overwhelmingly likely explanation. But it is a swing in the very number the improvement is claimed
+against, and the preview environment is too noisy to prove otherwise from one window. Any future
+before/after on this branch needs more samples than this.
+
+**Still unverified: `dd148c15`** (the editor's `optimisticSettingSave` tail). The editor was not
+exercised in this window. Its risk is specific and different from the panel's — `rows` lives in
+`useState` with a once-only initializer, so if any settings path leaned on the refresh for something
+`patchRows` does not cover, the symptom is a stale cell rather than a slow page.
