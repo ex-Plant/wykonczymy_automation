@@ -26,12 +26,18 @@ const DISCOUNT_MODE_DESCRIPTIONS: Record<DiscountModeT, string> = {
     'Jednorazowo wpisuje ten sam % w rabat każdej pozycji, nadpisując istniejące. Rabat nie wpływa na ceny podwykonawców.',
 }
 
+// Locative of „pozycja" — „w 1 pozycji" vs „w 3 pozycjach".
+function pozycji(count: number): string {
+  return count === 1 ? 'pozycji' : 'pozycjach'
+}
+
 // Reads the setters straight from the editor context (the panel renders inside the provider), so no
 // props thread through KosztorysTotalsPanel.
 export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean }) {
   const {
     globalDiscount,
     perItemDiscountTotal,
+    itemsWithDiscountCount,
     handleGlobalDiscountChange,
     handleApplyPercentRabat,
   } = useKosztorysEditorContext()
@@ -95,17 +101,28 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
             isValid={(percent) => applyPercentRabatSchema.safeParse({ percent }).success}
             onApply={handleApplyPercentRabat}
             clearOnApply
-            confirm={(percent) => ({
-              title: `Wpisać ${percent}% w rabat każdej pozycji?`,
-              // Owner's ruling stands: the overwrite is not undoable and recovery is re-typing. The
-              // dialog is the guard in undo's place, so it has to say both what is lost and where the
-              // way back is — the auto-saved version the action captures before every apply.
-              description:
-                percent === 0
-                  ? 'Rabaty wpisane ręcznie w poszczególnych pozycjach zostaną wyzerowane. Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.'
-                  : 'Rabaty wpisane ręcznie w poszczególnych pozycjach zostaną nadpisane. Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.',
-              confirmLabel: 'Nadpisz rabaty',
-            })}
+            // Only asks when there is something to lose. With no rabat anywhere the write is not
+            // destructive — it writes the same percent into rows that all read 0 — so a dialog there
+            // would be a warning about nothing, and warnings that fire on nothing stop being read.
+            confirm={
+              itemsWithDiscountCount === 0
+                ? undefined
+                : (percent) => ({
+                    title:
+                      percent === 0
+                        ? `Wyzerować rabat w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)}?`
+                        : `Wpisać ${percent}% w rabat każdej pozycji?`,
+                    // Owner's ruling stands: the overwrite is not undoable and recovery is re-typing.
+                    // The dialog is the guard in undo's place, so it has to say both what is lost and
+                    // where the way back is — the version the action auto-saves before every apply.
+                    description: `${
+                      percent === 0
+                        ? `Rabaty wpisane ręcznie w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)} zostaną wyzerowane.`
+                        : `Rabaty wpisane ręcznie w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)} zostaną nadpisane.`
+                    } Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.`,
+                    confirmLabel: percent === 0 ? 'Wyzeruj rabaty' : 'Nadpisz rabaty',
+                  })
+            }
           />
           <span className="text-muted-foreground text-xs">%</span>
         </div>

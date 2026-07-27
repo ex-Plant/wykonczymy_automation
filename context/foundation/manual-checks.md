@@ -508,6 +508,9 @@ is restorable from the versions drawer. The dialog's job is to make both facts v
 of the click. Setup: a kosztorys with **hand-typed per-item rabaty** on several items, tryb „%".
 
 - [ ] „Zapisz" in „%" opens a confirm dialog naming the typed percent, and **nothing is written** until you confirm
+- [ ] On a kosztorys where **no** item carries a rabat, „Zapisz" writes straight through with **no dialog** — there is nothing to overwrite
+- [ ] The dialog counts the affected items and gets the Polish right: „w 1 pozycji" vs „w 3 pozycjach"
+- [ ] That count is correct while a rabat globalny „Kwotowy" is active — the stored per-item rabaty still exist and still get overwritten, even though the totals show no per-item rabat
 - [ ] Cancel / Escape / clicking the overlay leaves every per-item rabat exactly as it was
 - [ ] The 0% dialog says rabaty will be **zeroed**; a non-zero one says they will be **overwritten**
 - [ ] Both dialogs say Ctrl+Z will not undo it and point at the auto-saved version
