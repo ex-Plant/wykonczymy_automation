@@ -75,19 +75,36 @@ function blockedBy(candidate: KosztorysV2RowT, view: ToolPlaneT): string | null 
 // The refusal explains itself where the user is typing rather than in a corner toast, mirroring the
 // blocked-action tooltip in kosztorys-row-actions-menu.tsx. `open` is forced while a rejection stands
 // because nobody hovers a cell they are typing into.
+//
+// The tree shape NEVER varies with `message`: returning bare children when there is nothing to say
+// would change the element type at this position the moment a verdict appears, and React answers a
+// changed type by unmounting the subtree — which destroys the input the user is typing into, one
+// keystroke after they cross the threshold. Same reason `open` is driven by our own hover state
+// rather than left uncontrolled some of the time: Radix would be switching controlled modes.
 function CellTooltip({
   message,
   forceOpen,
+  trailing,
   children,
 }: {
   message: string | null
   forceOpen: boolean
+  trailing?: ReactNode
   children: ReactNode
 }) {
-  if (message == null) return <>{children}</>
+  const [hovered, setHovered] = useState(false)
   return (
-    <SimpleTooltip content={message} open={forceOpen ? true : undefined}>
-      <span className={CELL_WRAPPER}>{children}</span>
+    <SimpleTooltip content={message ?? ''} open={message != null && (forceOpen || hovered)}>
+      <span
+        // The gutter is owed only to a trailing glyph — without one it would just shave 8px off the
+        // input's clickable width.
+        className={cn(CELL_WRAPPER, 'min-w-0', trailing && 'pr-2')}
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+      >
+        {children}
+        {trailing}
+      </span>
     </SimpleTooltip>
   )
 }
@@ -200,16 +217,15 @@ function SubcontractorPriceCell({
 
   // Colour alone can't carry the verdict: red and yellow are the same cell to a colour-blind reader,
   // and across a thousand rows a tinted number reads as a formatting quirk rather than an alarm.
+  // The icon is a SIBLING after the body, never a wrapper around it — appearing at a fixed position
+  // it leaves the body's own subtree untouched, where wrapping would remount it mid-keystroke.
   return (
-    <CellTooltip message={message} forceOpen={blockReason != null}>
-      {severity == null ? (
-        body
-      ) : (
-        <span className={cn(CELL_WRAPPER, 'min-w-0 pr-2')}>
-          {body}
-          <AlertIcon tone={ALERT_TONE[severity]} className="size-3.5" />
-        </span>
-      )}
+    <CellTooltip
+      message={message}
+      forceOpen={blockReason != null}
+      trailing={severity != null && <AlertIcon tone={ALERT_TONE[severity]} className="size-3.5" />}
+    >
+      {body}
     </CellTooltip>
   )
 }
