@@ -18,7 +18,7 @@ const DISCOUNT_MODE_OPTIONS: SelectOptionT[] = [
 // Rabat is a client concession only (calc.ts netForQtyForView) — it never reaches the subcontractor
 // views, so their prices stay whatever the plane sets.
 const DISCOUNT_MODE_DESCRIPTIONS: Record<DiscountModeT, string> = {
-  off: 'Brak rabatu globalnego.',
+  off: 'Rabaty dodane do poszczególnych pozycji nadal wpływają na kwotę rozliczenia.',
   amount:
     'Kwota netto odejmowana raz od sumy wykonanych prac. Nie łączy się z rabatami per pozycja — zastępuje je. Rabat nie wpływa na ceny podwykonawców.',
   percent:
