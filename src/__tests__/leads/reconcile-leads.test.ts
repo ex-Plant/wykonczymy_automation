@@ -10,7 +10,7 @@ const { update } = vi.hoisted(() => ({ update: vi.fn() }))
 vi.mock('@payload-config', () => ({ default: {} }))
 vi.mock('payload', () => ({ getPayload: async () => ({ update }) }))
 vi.mock('@/lib/auth/require-auth', () => ({ requireAuth: vi.fn() }))
-vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollection: vi.fn() }))
+vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 vi.mock('@/lib/leads/fetch-recent-leads', () => ({
   listLeadForms: vi.fn(),
   fetchRecentLeads: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock('@/lib/leads/store-lead', () => ({ storeLead: vi.fn() }))
 
 import { reconcileLeads } from '@/lib/actions/reconcile-leads'
 import { requireAuth } from '@/lib/auth/require-auth'
-import { revalidateCollection } from '@/lib/cache/revalidate'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { listLeadForms, fetchRecentLeads } from '@/lib/leads/fetch-recent-leads'
 import { fetchFormQuestions } from '@/lib/leads/fetch-form-questions'
 import { storeLead } from '@/lib/leads/store-lead'
@@ -68,7 +68,7 @@ describe('reconcileLeads', () => {
         context: { skipRevalidation: true },
       }),
     )
-    expect(revalidateCollection).toHaveBeenCalledWith('leads')
+    expect(revalidateCollections).toHaveBeenCalledWith(['leads'])
   })
 
   it('does not re-count or re-touch a lead that already exists (idempotent)', async () => {
@@ -80,7 +80,7 @@ describe('reconcileLeads', () => {
 
     expect(result).toEqual({ success: true, data: { added: 0, scanned: 1 } })
     expect(update).not.toHaveBeenCalled()
-    expect(revalidateCollection).not.toHaveBeenCalled()
+    expect(revalidateCollections).not.toHaveBeenCalled()
   })
 
   it('sweeps every non-empty form and skips forms with zero leads', async () => {
