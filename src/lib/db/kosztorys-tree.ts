@@ -26,6 +26,9 @@ import type { DbExecutorT } from './get-db'
 // because a null column must read as 0, not NaN.
 
 const num = (v: unknown): number => Number(v ?? 0)
+// Distinct from `num`: these columns are nullable in the domain sense — an unset coefficient means
+// „inherit the default", which 0 would silently answer as „free".
+const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v))
 const str = (v: unknown): string | null => (v == null ? null : String(v))
 
 export type KosztorysTreeDataT = {
@@ -105,11 +108,11 @@ export async function selectKosztorysTreeData(
     stages: (row.stages as RowT[]).map(mapStage),
     progress: (row.progress as RowT[]).map(mapProgress),
     investment: {
-      wToolsCoeff: row.w_tools_coeff == null ? null : num(row.w_tools_coeff),
-      ownToolsCoeff: row.own_tools_coeff == null ? null : num(row.own_tools_coeff),
-      vatRate: row.vat_rate == null ? null : num(row.vat_rate),
+      wToolsCoeff: numOrNull(row.w_tools_coeff),
+      ownToolsCoeff: numOrNull(row.own_tools_coeff),
+      vatRate: numOrNull(row.vat_rate),
       settlementMode: String(row.settlement_mode) as SettlementModeT,
-      materialsNetRate: row.materials_net_rate == null ? null : num(row.materials_net_rate),
+      materialsNetRate: numOrNull(row.materials_net_rate),
       globalDiscountType: str(row.global_discount_type),
       globalDiscountValue: num(row.global_discount_value),
       // Payload handed callers an ISO string; the driver hands back a Date. The revision token is
