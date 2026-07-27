@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import type { ComponentProps } from 'react'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
@@ -29,26 +28,17 @@ type PropsT = Omit<
 // The investment page's host for the summary panel. Exists to own the settlement-mode write: the
 // panel offers the control, but persisting it is a client concern the server page can't hold.
 export function InvestmentSummaryPanelClient(props: PropsT) {
-  const router = useRouter()
-
+  // No router.refresh() on success: the action's `updateTag` already re-renders this route and
+  // streams the fresh tree back in the action response, so refreshing asked the server for the same
+  // page a second time — a full duplicate render per click, measured in the EX-597 baseline.
   async function handleSettlementModeChange(mode: SettlementModeT) {
     const result = await updateInvestmentSettlementModeAction(props.investmentId, mode)
-    if (!result.success) {
-      toastMessage(result.error, 'warning', 4000)
-      return
-    }
-    // The mode is read straight off the server prop (no optimistic copy), so the refresh IS the
-    // update — same contract the editor's settings saves use.
-    router.refresh()
+    if (!result.success) toastMessage(result.error, 'warning', 4000)
   }
 
   async function handleMaterialsNetRateChange(rate: number | null) {
     const result = await updateInvestmentMaterialsNetRateAction(props.investmentId, rate)
-    if (!result.success) {
-      toastMessage(result.error, 'warning', 4000)
-      return
-    }
-    router.refresh()
+    if (!result.success) toastMessage(result.error, 'warning', 4000)
   }
 
   return (
