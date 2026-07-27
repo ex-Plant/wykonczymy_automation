@@ -480,7 +480,7 @@ refresh-coalescing checks — they are only observable as request counts.
 ### Rabat globalny (fixed / deliberately left at the review gate)
 
 - [ ] With a stored „Kwotowy" rabat, switching to „Wyłączony" while the save **fails** leaves the select showing „Kwotowy" again, matching the figures — it must not read „Wyłączony" while the totals still subtract a rabat
-- [ ] **Known, deliberately not fixed:** applying 0% in „%" clears every per-item rabat as intended, but **Ctrl+Z cannot undo it**. Confirm that is acceptable.
+- [ ] Applying a % still cannot be undone with Ctrl+Z — **by decision** (owner, 2026-07-27). Guarded by a confirm dialog instead; see `## EX-606`.
 
 ## EX-605 — rabat globalny: activates on selection, undoable, one „Zapisz"
 
@@ -498,6 +498,21 @@ untestable.
 - [ ] „Zapisz" is inert until the typed value actually differs from the stored one, and Enter does the same as the click
 - [ ] Ctrl+Z after saving a kwota restores the previous kwota, both in the field and in the totals
 - [ ] „%" still commits through the same button and clears its input on success — only its label changed
+
+## EX-606 — the % mass-overwrite gets a confirm dialog, not an undo entry
+
+**Owner's ruling (2026-07-27):** the overwrite stays destructive and stays outside Ctrl+Z. The
+guard is a confirm dialog. The premise of the original filing was wrong — recovery already exists:
+`applyPercentRabatToAllItemsAction` auto-saves a kosztorys version before every apply, so the state
+is restorable from the versions drawer. The dialog's job is to make both facts visible at the moment
+of the click. Setup: a kosztorys with **hand-typed per-item rabaty** on several items, tryb „%".
+
+- [ ] „Zapisz" in „%" opens a confirm dialog naming the typed percent, and **nothing is written** until you confirm
+- [ ] Cancel / Escape / clicking the overlay leaves every per-item rabat exactly as it was
+- [ ] The 0% dialog says rabaty will be **zeroed**; a non-zero one says they will be **overwritten**
+- [ ] Both dialogs say Ctrl+Z will not undo it and point at the auto-saved version
+- [ ] After confirming, that pre-change state really is in the versions drawer, and restoring it brings the hand-typed rabaty back
+- [ ] Ctrl+Z after a confirmed apply does **not** revert the rabaty (this is the intended behaviour, not a bug)
 
 ## EX-607 — kosztorys-section-footer-row
 

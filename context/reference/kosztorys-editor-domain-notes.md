@@ -368,8 +368,13 @@ czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik
   stawka VAT, sposób rozliczenia i stawka netto wydatków (`saveSetting`).
 - **Oba tryby zatwierdza się przyciskiem „Zapisz"** (lub Enterem). Nic nie zapisuje się na
   wyjściu z pola: rabat to ustalenie handlowe, więc samo opuszczenie pola nie może go zmienić.
-- **„%" nadal jest destrukcyjne** — jednorazowo nadpisuje rabat każdej pozycji i nie ma
-  cofania (decyzja właściciela: naprawa = wpisać ponownie).
+- **„%" pozostaje destrukcyjne i niecofalne** — jednorazowo nadpisuje rabat każdej pozycji,
+  Ctrl+Z tego nie cofa (decyzja właściciela, podtrzymana 2026-07-27 przy EX-606). Zamiast
+  cofania: **okno potwierdzenia** przed zapisem, mówiące co ginie i gdzie jest droga powrotna.
+  Droga powrotna istnieje i jest starsza od tej decyzji — `applyPercentRabatToAllItemsAction`
+  robi automatyczny zapis wersji kosztorysu przed każdym nadpisaniem, tak samo jak usunięcie
+  sekcji. **Nie zgłaszaj ponownie „brak cofania" jako buga** — to wybór, a stan da się odzyskać
+  z listy wersji.
 
 ## Domyślne
 
