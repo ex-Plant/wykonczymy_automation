@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 
 import { SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
@@ -19,10 +21,24 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 export function KosztorysEditorToolbar() {
   const { investmentId, investmentName, search, setSearch, view, setView } =
     useKosztorysEditorContext()
+  const router = useRouter()
 
   return (
     <div className="border-border shrink-0 border-b">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+        <SimpleTooltip content="Wróć">
+          <button
+            type="button"
+            // History back, not a link to the investment — the reader may have arrived from the
+            // investment page's settings link, the listing, or anywhere else, and „wróć" should
+            // undo that navigation rather than always land on one fixed page.
+            onClick={() => router.back()}
+            aria-label="Wróć"
+            className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+        </SimpleTooltip>
         <h1 className="text-foreground text-sm font-medium">
           <Link href={`/inwestycje/${investmentId}`} className="hover:underline">
             {investmentName}
