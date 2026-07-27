@@ -214,17 +214,20 @@ export function SummaryPanelContent({
   )
   return (
     <>
-      {/* Pinned top bar — the view toggle stays visible while the content scrolls below it. */}
-      <div className="flex flex-col items-start gap-3 px-4 pt-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <ToggleGroup
-            options={viewOptions}
-            value={view}
-            onChange={setSummaryView}
-            aria-label="Widok podsumowania"
-          />
-          {topBarSlot}
-        </div>
+      {/* Pinned top bar — only the view toggle, so its height never moves. "Opcje rozliczenia" scrolls
+          with the rest of the content instead of sharing this bar: it used to live here, and growing
+          it squeezed SummaryScrollRegion into a sliver — two containers fighting over one fixed
+          height. One scrolling container below a fixed-height bar has nothing left to fight over. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4">
+        <ToggleGroup
+          options={viewOptions}
+          value={view}
+          onChange={setSummaryView}
+          aria-label="Widok podsumowania"
+        />
+        {topBarSlot}
+      </div>
+      <SummaryScrollRegion>
         {/* A client reads the mode, never writes it — the same `clientView` gate every other
             owner-only affordance in this panel uses. Collapsed by default: these are set-once
             decisions about the deal, not something the reader needs on every visit.
@@ -235,19 +238,19 @@ export function SummaryPanelContent({
           !clientView &&
           onSettlementModeChange &&
           onMaterialsNetRateChange && (
-            <SummaryInvestmentSettings
-              vatRate={vatRate}
-              settlementMode={settlementMode}
-              onSettlementModeChange={onSettlementModeChange}
-              materialsGrossBase={materialsGrossBase}
-              materialsNetRate={materialsNetRate}
-              onMaterialsNetRateChange={onMaterialsNetRateChange}
-              showSettingsBar={showSettingsBar}
-              defaultOpen={settingsDefaultOpen}
-            />
+            <div className="px-4 pt-4">
+              <SummaryInvestmentSettings
+                vatRate={vatRate}
+                settlementMode={settlementMode}
+                onSettlementModeChange={onSettlementModeChange}
+                materialsGrossBase={materialsGrossBase}
+                materialsNetRate={materialsNetRate}
+                onMaterialsNetRateChange={onMaterialsNetRateChange}
+                showSettingsBar={showSettingsBar}
+                defaultOpen={settingsDefaultOpen}
+              />
+            </div>
           )}
-      </div>
-      <SummaryScrollRegion>
         {isSubcontractorView && subcontractorDue ? (
           <SubcontractorSummary
             investmentId={investmentId}
