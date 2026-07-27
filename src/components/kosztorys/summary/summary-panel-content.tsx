@@ -17,7 +17,6 @@ import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
-import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
@@ -43,7 +42,6 @@ import type {
 const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'summary', label: 'Podsumowanie' },
   { value: 'wydatki', label: 'Wydatki' },
-  { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
   { value: 'margin', label: 'Marża' },
@@ -283,6 +281,8 @@ export function SummaryPanelContent({
                 materialsNetRate={effectiveNetRate}
                 paidNet={paidNet}
                 paidGross={paidGross}
+                depositRows={depositTransactions}
+                showDeposits={showTransactionLists}
                 clientView={clientView}
                 showPie={showPies}
               />
@@ -305,17 +305,6 @@ export function SummaryPanelContent({
               />
             )}
 
-            {view === 'wplaty' && (
-              <SummaryDepositsTab
-                investmentId={investmentId}
-                rows={depositTransactions}
-                paidNet={paidNet}
-                paidGross={paidGross}
-                clientView={clientView}
-                totalsOnly={!showTransactionLists}
-                showPie={showPies}
-              />
-            )}
             {view === 'etapy' && stages && stageTotals && (
               <SummaryStagesTab
                 stages={stages}
