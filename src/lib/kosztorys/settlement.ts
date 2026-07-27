@@ -36,7 +36,7 @@ export function stageAppliesToView(stage: KosztorysStageT, view: PriceViewT): bo
  * The view's own etapy as a named collection, so view-scoped code iterates something that says it is
  * view-scoped. Every per-stage aggregation used to re-derive this inline, which made a plain
  * `for (const st of stages)` inside view-scoped code look normal — that shape is exactly how
- * `stageTotalsForView` came to price one crew's etap at the other crew's rate.
+ * `stageAxisForView` came to price one crew's etap at the other crew's rate.
  *
  * Idempotent, so it is safe to hand the filtered array back to `rowTotalQtyDone` et al.
  */
@@ -246,39 +246,52 @@ export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStag
   return rowTotalQtyDone(row, stages, 'client') > (row.plannedQty ?? 0)
 }
 
+export type StageAxisT = {
+  // Per-stage executed value at the view's price — the sheet's `SUM(<stage col>)` per etap.
+  net: Map<number, number>
+  // Per-stage executed quantity, the axis the value above is split by.
+  qty: Map<number, number>
+}
+
 /**
- * The etap axis: per-stage column total across all rows at the active view's price — the sheet's
- * `SUM(<stage col>)` per etap (filled r396/r397). The suma transzy: how much value each etap has
- * executed. Every stage in `stages` gets an entry (0 when no row touched it).
+ * The etap axis: per-stage column totals across all rows at the active view's price (the sheet's
+ * filled r396/r397). The suma transzy: how much each etap has executed, in value and in quantity.
+ * Every stage in `stages` gets an entry in both maps (0 when no row touched it).
  *
  * Uses the same `stageValueForView` primitive the grid's per-stage cells show — each stage's value
  * is its qty share of the row's executed net — so Σ over the stages equals the row's executed value,
  * and Σ over all stages equals the executed total (the 'amount'-rabat reconciliation the sheet's
  * V–AE block exists for holds here by construction).
+ *
+ * The two axes ship together because the value is DERIVED from the quantity: this loop already reads
+ * every `qtyInStage` to compute the share, so summing it costs nothing, whereas a caller wanting the
+ * qty axis on its own has to walk the rows once per stage (EX-612).
  */
-export function stageTotalsForView(
+export function stageAxisForView(
   rows: KosztorysV2RowT[],
   stages: KosztorysStageT[],
   view: PriceViewT,
-): Map<number, number> {
+): StageAxisT {
   // Seeded over ALL stages, iterated over the view's own: an out-of-view etap must still report 0
   // rather than go missing, but it must never take a share of a total built without it — give it one
   // and it draws > 1 of the row, so Σ per-etap overshoots „Razem" by a multiple.
-  const totals = new Map<number, number>(stages.map((st) => [st.id, 0]))
+  const net = new Map<number, number>(stages.map((st) => [st.id, 0]))
+  const qty = new Map<number, number>(stages.map((st) => [st.id, 0]))
   const viewStages = stagesForView(stages, view)
   for (const row of rows) {
     const totalQty = rowTotalQtyDone(row, viewStages, view)
-    if (!(totalQty > 0)) continue
     // Price the row's executed net once, then split it by each stage's qty share — same figure
-    // stageValueForView yields per cell, but without re-pricing the row on every stage.
-    const rowNet = netForQtyForView(row, totalQty, view)
+    // stageValueForView yields per cell, but without re-pricing the row on every stage. A row with
+    // nothing executed has no value to split, but its quantities still belong on the qty axis.
+    const rowNet = totalQty > 0 ? netForQtyForView(row, totalQty, view) : 0
     for (const st of viewStages) {
       const qtyInStage = row[stageKey(st.id)] ?? 0
       if (!qtyInStage) continue
-      totals.set(st.id, (totals.get(st.id) ?? 0) + rowNet * (qtyInStage / totalQty))
+      qty.set(st.id, (qty.get(st.id) ?? 0) + qtyInStage)
+      if (totalQty > 0) net.set(st.id, (net.get(st.id) ?? 0) + rowNet * (qtyInStage / totalQty))
     }
   }
-  return totals
+  return { net, qty }
 }
 
 /**

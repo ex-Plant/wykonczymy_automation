@@ -8,7 +8,7 @@ import type { PriceViewT } from '@/lib/kosztorys/calc'
 import {
   rowRemainingForView,
   rowTotalQtyDone,
-  stageTotalsForView,
+  stageAxisForView,
   stagesForView,
 } from '@/lib/kosztorys/settlement'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
@@ -73,14 +73,14 @@ export function columnTotalsForRows(
   totals.set('plannedQty', plannedQty)
 
   // Iterated over the view's own stages only: an out-of-view etap has no column here to total, and
-  // stageTotalsForView deliberately gives it no share of the value either.
-  const stageNet = stageTotalsForView(rows, stages, view)
+  // stageAxisForView deliberately gives it no share of the value either.
+  const stageAxis = stageAxisForView(rows, stages, view)
   let stageQtySum = 0
   for (const stage of viewStages) {
-    const stageQty = rows.reduce((sum, row) => sum + (row[stageKey(stage.id)] ?? 0), 0)
+    const stageQty = stageAxis.qty.get(stage.id) ?? 0
     stageQtySum += stageQty
     totals.set(stageKey(stage.id), stageQty)
-    const stageValueNet = stageNet.get(stage.id) ?? 0
+    const stageValueNet = stageAxis.net.get(stage.id) ?? 0
     totals.set(stageValueNetKey(stage.id), stageValueNet)
     totals.set(stageValueGrossKey(stage.id), toGross(stageValueNet, vatRate))
   }

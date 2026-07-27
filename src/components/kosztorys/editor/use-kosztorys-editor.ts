@@ -50,7 +50,7 @@ import {
   emptySectionIds,
   rowRemainingForView,
   sectionSubtotalsForView,
-  stageTotalsForView,
+  stageAxisForView,
   subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
@@ -393,7 +393,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // Per-etap „suma transzy" at the active view — the executed value each stage delivered. Full-dataset
   // (like the subtotals): Σ over stages equals totalNet, so the etap totals and the wykonane readout
   // reconcile by construction.
-  const stageTotals = useMemo(() => stageTotalsForView(rows, stages, view), [rows, stages, view])
+  const stageTotals = useMemo(() => stageAxisForView(rows, stages, view).net, [rows, stages, view])
   // Full-dataset like every other total here, so a search never moves the two synthetic totals rows.
   const columnTotals = useMemo(
     () => columnTotalsForRows(rows, stages, view, tree.vatRate),
