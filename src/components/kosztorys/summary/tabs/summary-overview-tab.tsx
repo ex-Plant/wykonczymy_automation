@@ -10,7 +10,6 @@ import {
 } from '@/lib/kosztorys/summary-economics'
 import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summary'
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
-import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
 import type {
@@ -40,9 +39,6 @@ type PropsT = {
   // Wpłaty split by VAT plane — feeds the tryb mieszany settlement.
   paidNet: number
   paidGross: number
-  // VAT + rabat globalny editing. SummarySettingsBar reads the editor context, so a host outside
-  // KosztorysEditorProvider must leave this off or it throws.
-  showSettingsBar?: boolean
   clientView?: boolean
   showPie?: boolean
 }
@@ -64,7 +60,6 @@ export function SummaryOverviewTab({
   materialsNetRate,
   paidNet,
   paidGross,
-  showSettingsBar = false,
   clientView = false,
   showPie = true,
 }: PropsT) {
@@ -82,9 +77,6 @@ export function SummaryOverviewTab({
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
-        {/* VAT + rabat globalny belong to the tables, not to the row: as a sibling of the row they
-            stayed pinned under both columns, so once the pie wrapped it landed between the tables and
-            the controls that drive them. */}
         <div className="flex flex-col gap-y-4">
           {mixedMode ? (
             <MixedSummary
@@ -112,7 +104,6 @@ export function SummaryOverviewTab({
               clientView={clientView}
             />
           )}
-          {showSettingsBar && !clientView && <SummarySettingsBar />}
         </div>
         {showPie && (
           <SlicePie

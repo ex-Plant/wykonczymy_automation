@@ -21,7 +21,7 @@ import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
-import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
+import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
 import {
   useSummaryView,
   type SummaryViewT,
@@ -210,7 +210,7 @@ export function SummaryPanelContent({
   return (
     <>
       {/* Pinned top bar — the view toggle stays visible while the content scrolls below it. */}
-      <div className="flex flex-col items-start gap-2 px-4 pt-4">
+      <div className="flex flex-col items-start gap-3 px-4 pt-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <ToggleGroup
             options={viewOptions}
@@ -221,12 +221,17 @@ export function SummaryPanelContent({
           {topBarSlot}
         </div>
         {/* A client reads the mode, never writes it — the same `clientView` gate every other
-            owner-only affordance in this panel uses. */}
+            owner-only affordance in this panel uses. Collapsed by default: these are set-once
+            decisions about the deal, not something the reader needs on every visit. */}
         {!isSubcontractorView && !clientView && (
-          <SettlementModeSelect
-            value={settlementMode}
-            onChange={onSettlementModeChange}
+          <SummaryInvestmentSettings
             vatRate={vatRate}
+            settlementMode={settlementMode}
+            onSettlementModeChange={onSettlementModeChange}
+            materialsGrossBase={materialsGrossBase}
+            materialsNetRate={materialsNetRate}
+            onMaterialsNetRateChange={onMaterialsNetRateChange}
+            showSettingsBar={showSettingsBar}
           />
         )}
       </div>
@@ -261,7 +266,6 @@ export function SummaryPanelContent({
                 materialsNetRate={effectiveNetRate}
                 paidNet={paidNet}
                 paidGross={paidGross}
-                showSettingsBar={showSettingsBar}
                 clientView={clientView}
                 showPie={showPies}
               />
@@ -277,12 +281,7 @@ export function SummaryPanelContent({
                 settledBreakdown={clientView ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
                 nettoShown={nettoShown}
-                vatRate={vatRate}
                 materialsNetRate={materialsNetRate}
-                onMaterialsNetRateChange={onMaterialsNetRateChange}
-                // The control shows the SAVED rate even when the mode makes it inert, so an owner who
-                // switched to brutto still sees what they set — the notice explains why it does nothing.
-                inertOnBruttoSettlement={settlementMode === 'GROSS'}
                 clientView={clientView}
                 showTransactions={showTransactionLists}
                 showPie={showPies}

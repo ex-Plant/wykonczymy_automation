@@ -12,7 +12,7 @@ import {
 import { cn } from '@/lib/utils/cn'
 
 export type SelectOptionT = { value: string; label: ReactNode; className?: string }
-export type SelectVariantT = 'default' | 'soft' | 'pill' | 'toolbar'
+export type SelectVariantT = 'default' | 'soft' | 'pill' | 'toolbar' | 'toolbarSm'
 
 // Complete trigger presets — each variant carries its whole look (height, radius, text, gap, width)
 // so a call site picks a variant and needs no className. `soft`/`pill` are the compact toolbar
@@ -24,6 +24,9 @@ const VARIANT: Record<SelectVariantT, { size: 'xs' | 'sm' | 'default'; className
   // Not a preset at all — `toolbar` swaps the trigger for the Button primitive, so its geometry is
   // whatever the toolbar buttons beside it have. Hence the empty className.
   toolbar: { size: 'sm', className: '' },
+  // Same Button-trigger swap as `toolbar`, shrunk down — the settings selects (settlement mode,
+  // materiały netto, rabat globalny) sit inside a dense collapsible panel, not a full toolbar.
+  toolbarSm: { size: 'sm', className: 'h-7 px-2 text-xs' },
 }
 
 type PropsT = {
@@ -51,8 +54,8 @@ export function SimpleSelect({
   const preset = VARIANT[variant]
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      {variant === 'toolbar' ? (
-        <SelectButtonTrigger className={className}>
+      {variant === 'toolbar' || variant === 'toolbarSm' ? (
+        <SelectButtonTrigger className={cn(preset.className, className)}>
           <SelectValue placeholder={placeholder} />
         </SelectButtonTrigger>
       ) : (
