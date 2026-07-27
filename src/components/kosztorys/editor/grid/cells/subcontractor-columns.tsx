@@ -4,6 +4,8 @@ import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
 import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
+import { AlertIcon, type AlertToneT } from '@/components/ui/alert-icon'
+import { cn } from '@/lib/utils/cn'
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
@@ -49,6 +51,13 @@ const TONE = {
   error: 'text-destructive font-medium',
   warning: 'text-warning font-medium',
 } as const
+
+// The guard's severities named in the icon's vocabulary: an error is a refused write, which is the
+// same alarm the rest of the app spells „destructive".
+const ALERT_TONE: Record<keyof typeof TONE, AlertToneT> = {
+  error: 'danger',
+  warning: 'warning',
+}
 
 // Reproduces the flex centring .dsg-cell applies to its direct children, which a plain wrapper span
 // would otherwise take away from the cell body.
@@ -158,7 +167,8 @@ function SubcontractorPriceCell({
   // A live rejection outranks the standing verdict: it describes the value on screen, which the row
   // has not accepted.
   const message = blockReason ?? issue?.message ?? null
-  const tone = blockReason ? TONE.error : issue ? TONE[issue.severity] : undefined
+  const severity = blockReason ? 'error' : issue?.severity
+  const tone = severity ? TONE[severity] : undefined
 
   const body =
     type !== 'amount' ? (
@@ -187,9 +197,18 @@ function SubcontractorPriceCell({
       />
     )
 
+  // Colour alone can't carry the verdict: red and yellow are the same cell to a colour-blind reader,
+  // and across a thousand rows a tinted number reads as a formatting quirk rather than an alarm.
   return (
     <CellTooltip message={message} forceOpen={blockReason != null}>
-      {body}
+      {severity == null ? (
+        body
+      ) : (
+        <span className={cn(CELL_WRAPPER, 'min-w-0 pr-2')}>
+          {body}
+          <AlertIcon tone={ALERT_TONE[severity]} className="size-3.5" />
+        </span>
+      )}
     </CellTooltip>
   )
 }

@@ -72,8 +72,10 @@
   --color-accent: oklch(0.97 0 0);
   --color-accent-foreground: oklch(0.205 0 0);
   --color-destructive: oklch(0.577 0.245 27.325);
-  /* The rung below destructive: "off the expected rate, but still counts" — never a blocked action. */
-  --color-warning: oklch(0.646 0.163 65.5);
+  /* The rung below destructive: "off the expected rate, but still counts" — never a blocked action.
+     Toxic highlighter yellow, deliberately near the sRGB gamut edge: it has to read as a DIFFERENT
+     alarm from destructive red at a glance across a thousand rows, not as a dimmer red. */
+  --color-warning: oklch(0.8 0.19 104);
   --color-border: oklch(0.922 0 0);
   --color-input: oklch(0.922 0 0);
   --color-ring: oklch(0.708 0 0);
@@ -160,7 +162,7 @@
   --color-accent: oklch(0.269 0 0);
   --color-accent-foreground: oklch(0.985 0 0);
   --color-destructive: oklch(0.704 0.191 22.216);
-  --color-warning: oklch(0.769 0.146 70.1);
+  --color-warning: oklch(0.88 0.2 105);
   --color-border: oklch(1 0 0 / 10%);
   --color-input: oklch(1 0 0 / 15%);
   --color-ring: oklch(0.556 0 0);
