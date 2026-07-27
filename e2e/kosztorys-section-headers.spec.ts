@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process'
 import { test, expect, type Page } from '@playwright/test'
-import { formatNet } from '@/lib/kosztorys/format'
 
 // Proves the band is wired end-to-end: it reads the same per-section subtotals the Podsumowanie does,
 // its chevron folds exactly its own section away, and the gutter keeps numbering the surviving items
@@ -41,10 +40,14 @@ async function itemOrdinals(page: Page): Promise<string[]> {
   return texts.map((t) => t.trim()).filter(Boolean)
 }
 
-// The „Razem" row rides the grid's own layout as its last row, so it is a `.dsg-row` like any other —
-// only the header row also carries the word (in „Razem netto"), and it is excluded by class.
+// The „Razem" row rides the grid's own layout as its last row, so it is a `.dsg-row` like any other.
+// Two other rows carry the word — the column header („Razem netto") and every section footer („Razem
+// sekcja") — so both are excluded by class before the filter runs.
 function totalsRow(page: Page) {
-  return page.locator('.dsg-row:not(.dsg-row-header)').filter({ hasText: 'Razem' }).first()
+  return page
+    .locator('.dsg-row:not(.dsg-row-header):not(.kosztorys-section-footer)')
+    .filter({ hasText: 'Razem' })
+    .first()
 }
 
 async function gotoEditor(page: Page): Promise<void> {
@@ -52,7 +55,7 @@ async function gotoEditor(page: Page): Promise<void> {
   await bands(page).first().waitFor()
 }
 
-test('one band per section, carrying its own wartość netto', async ({ page }) => {
+test('one band per section, carrying its name and item count', async ({ page }) => {
   await gotoEditor(page)
   await expect(bands(page)).toHaveCount(seed.sections.length)
 
@@ -60,7 +63,6 @@ test('one band per section, carrying its own wartość netto', async ({ page }) 
     const band = bands(page).nth(index)
     await expect(band).toContainText(section.name)
     await expect(band).toContainText(`${section.itemCount} poz.`)
-    await expect(band).toContainText(formatNet(section.net))
   }
 })
 

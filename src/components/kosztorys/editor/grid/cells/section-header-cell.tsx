@@ -3,34 +3,26 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
-import { formatNet } from '@/lib/kosztorys/format'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 export type SectionHeaderFigureT = {
-  net: number
-  gross: number
   itemCount: number
 }
 
 // What every band cell needs, carried on the wrapped column's `columnData` (never a closure — see
 // kosztorys-synthetic-rows.tsx). Figures are keyed by section id because the band row carries only
-// the section's identity, not its numbers. `onRename` is absent in the read-only client view, which
+// the section's identity, not its count. `onRename` is absent in the read-only client view, which
 // is what freezes the name. Every other section command lives in the row „…" menu, not here.
 export type SectionHeaderContextT = {
   figures: Map<number, SectionHeaderFigureT>
   collapsedSectionIds: ReadonlySet<number>
   onToggleCollapsed: (sectionId: number) => void
-  // Which of the section's two figures the label carries — the money columns themselves are hidden
-  // per axis, so the band has to be told rather than infer it from the column it sits in.
-  moneyAxis: MoneyAxisT
   onRename?: (sectionId: number, name: string) => void
 }
 
-// Which piece of the band this column paints. The band spans no columns — each cell renders its own
-// piece under the column it sits in, which is why the money sits in the label slot: unlike „Razem",
-// whose figures line up under their own columns, the band's total belongs to the section name and
-// stays readable without scrolling right to find it.
+// Which piece of the band this column paints. The band spans no columns, and the header carries only
+// identity — the money moved to the closing footer band, where each figure sits under its own column
+// instead of trailing the section name out of context.
 export type SectionHeaderSlotT = 'label' | 'blank'
 
 export function sectionHeaderSlot(columnId: string | undefined): SectionHeaderSlotT {
@@ -43,16 +35,6 @@ function SectionDot() {
   return (
     <span className="size-2.5 shrink-0 rounded-full bg-(--section-rail,var(--color-muted-foreground))" />
   )
-}
-
-// Out of its own column the bare number would be ambiguous, so each figure names its plane. 'none'
-// never reaches here (the editor maps it to 'both'), but it must still resolve to no figure rather
-// than a wrong one.
-function bandMoney(figure: SectionHeaderFigureT, axis: MoneyAxisT): string {
-  const parts: string[] = []
-  if (axis === 'net' || axis === 'both') parts.push(`${formatNet(figure.net)} netto`)
-  if (axis === 'gross' || axis === 'both') parts.push(`${formatNet(figure.gross)} brutto`)
-  return parts.join(' · ')
 }
 
 export function SectionHeaderCell({
@@ -103,14 +85,7 @@ export function SectionHeaderCell({
         <span className="text-muted-foreground shrink-0 text-sm font-normal">
           ({figure?.itemCount ?? 0} poz.)
         </span>
-        {/* The chevron is the fold affordance, so it sits against the name it folds; the money takes
-            the slack instead (ml-auto). */}
         <Chevron className="text-muted-foreground size-4 shrink-0" />
-        {figure && (
-          <span className="ml-auto shrink-0 text-base tabular-nums">
-            {bandMoney(figure, context.moneyAxis)}
-          </span>
-        )}
       </div>
     )
   }

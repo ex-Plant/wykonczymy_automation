@@ -105,7 +105,6 @@ export function KosztorysEditorBody({
     collapsedSectionIds,
     toggleSectionCollapsed,
     onRenameSection,
-    moneyAxis,
     onChange,
   } = editor
 
@@ -159,33 +158,20 @@ export function KosztorysEditorBody({
     view,
   ])
 
-  // What a band shows: the section's own figures, read out of the same full-dataset `subtotals` the
-  // Podsumowanie uses — so a band, „Razem" and the panel can't disagree, and a search filter narrows
-  // the visible rows without moving the section's total.
+  // The opening band shows identity only — its count comes off the full-dataset `subtotals`, so a
+  // search filter narrows the visible rows without changing what the section says it holds.
   const sectionHeader = useMemo(() => {
     const figures = new Map<number, SectionHeaderFigureT>()
     for (const section of subtotals) {
-      figures.set(section.sectionId, {
-        net: section.net,
-        gross: toGross(section.net, tree.vatRate),
-        itemCount: section.itemCount,
-      })
+      figures.set(section.sectionId, { itemCount: section.itemCount })
     }
     return {
       figures,
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
-      moneyAxis,
       onRename: onRenameSection,
     }
-  }, [
-    subtotals,
-    tree.vatRate,
-    collapsedSectionIds,
-    toggleSectionCollapsed,
-    moneyAxis,
-    onRenameSection,
-  ])
+  }, [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection])
 
   // Only what a per-section subtotal can honestly supply: money, not quantities and not „Pozostało"
   // (a per-row loop over rows that carry a przedmiar, not a subtraction of two section figures). A

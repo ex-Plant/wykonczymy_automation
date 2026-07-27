@@ -317,7 +317,7 @@ assertions stay, as does the collapse test's „Razem"-unchanged check. The thre
 that read the removed numbering gutter (`:72`, `:84`, `:90`) are **left alone** — they are already
 broken and are not this change's scope.
 
-#### 4. E2E backlog issue
+#### 4. E2E backlog issue — filed as **EX-610**
 
 **File**: Linear, project "Wykonczymy", label `e2e-backlog`
 
@@ -417,16 +417,16 @@ before the editor's diff sees it, and the footer lands inside that namespace.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `pnpm typecheck`
-- [x] 1.2 Linting passes: `pnpm lint`
-- [x] 1.3 Section row-assembly specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-header-rows.test.ts`
-- [x] 1.4 Full unit suite passes: `pnpm test`
+- [x] 1.1 Type checking passes: `pnpm typecheck` — addaabb5
+- [x] 1.2 Linting passes: `pnpm lint` — addaabb5
+- [x] 1.3 Section row-assembly specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-header-rows.test.ts` — addaabb5
+- [x] 1.4 Full unit suite passes: `pnpm test` — addaabb5
 
 ### Phase 2: Header reverts to identity
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm typecheck`
-- [ ] 2.2 Linting passes: `pnpm lint`
-- [ ] 2.3 Full unit suite passes: `pnpm test`
-- [ ] 2.4 No stale references remain: `grep -rn "bandMoney\|moneyAxis" src/components/kosztorys/editor/grid/cells/section-header-cell.tsx` returns nothing
+- [x] 2.1 Type checking passes: `pnpm typecheck`
+- [x] 2.2 Linting passes: `pnpm lint`
+- [x] 2.3 Full unit suite passes: `pnpm test`
+- [x] 2.4 No stale references remain: `grep -rn "bandMoney\|moneyAxis" src/components/kosztorys/editor/grid/cells/section-header-cell.tsx` returns nothing
