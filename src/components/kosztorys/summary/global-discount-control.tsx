@@ -60,6 +60,7 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
             value={globalDiscount.value}
             valueClassName="text-chart-green"
             min={0}
+            emptyAs={0}
             disabled={disabled}
             onCommit={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
           />
