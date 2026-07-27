@@ -158,11 +158,21 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 - `src/app/(auth)` — login page
 - `src/app/(payload)` — Payload admin panel and API routes
 
+**Parallel-route slots.** Shell chrome that needs route params (it can't read them from the layout)
+gets a `@slot` directory under `(frontend)/`. The slot's `page.tsx` is a **re-export only** — the
+component itself lives in `src/components/nav/` — and the slot needs a `default.tsx` for routes that
+don't match. `@investmentCrumb` (the investment name + back arrow in the top bar) is the first and
+currently only instance; mirror its shape rather than inventing a second arrangement.
+
 ### Important Directories
 
 Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). The non-obvious ones:
 
-- `src/lib/db` — raw SQL financial calculations (not `src/lib/actions`, which is server actions for mutations)
+- `src/lib/db` — the raw-SQL **data-access** layer: a statement plus its row mapper, nothing else. Auth,
+  caching and view-shaping belong one layer up in `src/lib/queries`, and mutations in `src/lib/actions`.
+  It started as financial calculations only and is now much wider (`get-db`, `where-to-sql`,
+  `with-payload-transaction`, `snapshots`, `presets`, `notifications`, `kosztorys-tree`) — read the rule,
+  not the original theme, when deciding whether a new file lands here.
 - `src/lib/cache` — cache tags + revalidation helpers
 - Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only)
 
@@ -226,7 +236,7 @@ Don't hand-roll tests or pick the layer by feel — route to a skill. Always sta
 - **Browser-level / multi-boundary risk** → **`/10x-e2e`** — Playwright harness lives in `e2e/` (`pnpm test:e2e`, isolated 5435 `db-test`); add browser specs there. A browser-level slice **owes** its E2E: author it at the review gate, or defer it into the **E2E backlog** — a Linear issue labelled `e2e-backlog` in project "Wykonczymy" (`slice-review-gate` Step 3 blocks archive until the E2E box is authored or filed with that issue id). "Deferred to `/10x-e2e`" in a commit message does **not** discharge it.
 - **A bug that slipped past the tests (test-driven debugging) — mandatory, not optional.** Reproduce it with a **failing test first**, then fix — never silently patch. Assert the **persisted / observable state, not the action's return value** — a success result can hide a failed write. The repro test stays as the regression guard for the path that had none.
 
-There is no `context/foundation/test-plan.md` here yet — for a larger test rollout, generate one with `/10x-test-plan` first and anchor new tests on its risks.
+`context/foundation/test-plan.md` exists — anchor new tests on a risk it names rather than on "cover this file". For a risk it doesn't cover yet, extend it with `/10x-test-plan` before writing the tests.
 
 ## Tech Debt
 
