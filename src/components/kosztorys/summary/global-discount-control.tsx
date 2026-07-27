@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { DecimalField } from '@/components/ui/decimal-field'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import { PercentRabatTool } from '@/components/kosztorys/summary/percent-rabat-tool'
+import { RabatValueField } from '@/components/kosztorys/summary/rabat-value-field'
 import { globalDiscountForMode } from '@/lib/kosztorys/calc'
+import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
 import type { SelectOptionT } from '@/components/ui/simple-select'
 
@@ -74,14 +74,13 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
     >
       {mode === 'amount' && (
         <div className="flex items-center gap-2">
-          <DecimalField
-            label="Kwota"
-            value={globalDiscount.value}
-            valueClassName="text-chart-green"
-            min={0}
-            emptyAs={0}
+          <span className="text-muted-foreground text-xs">Kwota</span>
+          <RabatValueField
+            value={String(globalDiscount.value)}
+            placeholder="zł"
             disabled={disabled}
-            onCommit={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
+            isValid={(n) => n >= 0}
+            onApply={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
           />
           <span className="text-muted-foreground text-xs">zł</span>
         </div>
@@ -89,7 +88,14 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
       {mode === 'percent' && (
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs">Procent</span>
-          <PercentRabatTool onApply={handleApplyPercentRabat} />
+          <RabatValueField
+            value=""
+            placeholder="%"
+            disabled={disabled}
+            isValid={(percent) => applyPercentRabatSchema.safeParse({ percent }).success}
+            onApply={handleApplyPercentRabat}
+            clearOnApply
+          />
           <span className="text-muted-foreground text-xs">%</span>
         </div>
       )}
