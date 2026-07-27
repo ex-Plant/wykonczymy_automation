@@ -943,27 +943,28 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // Shared tail of every optimistic settings write (global coeff / VAT / discount / section coeff).
   // The caller has already applied its optimistic patch and captured whatever `revert` needs; this
-  // persists, then on success refreshes so the panel re-reads `tree`, or on failure runs `revert` and
-  // surfaces the error. Tail-only on purpose: the optimistic apply and the pre-patch capture differ
-  // per setting and stay at the call site — only this success-or-rollback tail was identical.
+  // persists, then on failure runs `revert` and surfaces the error. Tail-only on purpose: the
+  // optimistic apply and the pre-patch capture differ per setting and stay at the call site — only
+  // this success-or-rollback tail was identical.
+  //
+  // No router.refresh() on success: the action's `updateTag` already re-renders the route and
+  // streams the fresh `tree` back in the action response, so the refresh was a second full render
+  // of the same page per click (EX-597 baseline).
   async function optimisticSettingSave(
     persist: () => Promise<{ success: boolean; error?: string }>,
     revert: () => void,
     errorMessage: string,
   ) {
     const res = await persist()
-    if (res.success) {
-      router.refresh()
-      return true
-    }
+    if (res.success) return true
     revert()
     toastMessage(res.error ?? errorMessage, 'warning', 4000)
     return false
   }
 
   // Changing the global coefficient recomputes the derived prices of all non-overridden items.
-  // Optimistic patch on the rows + a refresh for the panel (which reads from `tree`). Extracted so
-  // undo/redo can re-run it with a before/after patch of the same keys.
+  // Optimistic patch on the rows; the panel (which reads from `tree`) is reseeded by the action's
+  // own re-render. Extracted so undo/redo can re-run it with a before/after patch of the same keys.
   async function applyGlobalCoeff(patch: { wToolsCoeff?: number; ownToolsCoeff?: number }) {
     // patchRows builds fresh row objects, so `sample` still holds the pre-patch coefficients for the
     // revert. Only the coefficients present in `patch` map to their denormalized row fields.
