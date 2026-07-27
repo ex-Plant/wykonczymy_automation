@@ -47,14 +47,14 @@ describe('priceKeystroke', () => {
     expect(priceKeystroke('1e', flat(70), 'w_tools')).toEqual({ kind: 'hold' })
   })
 
-  it('na „auto" przelicza cenę na mnożnik, zamiast robić z niej kwotę stałą', () => {
+  it('wpisana cena przestawia „auto" na kwotę stałą', () => {
     expect(priceKeystroke('50', row, 'w_tools')).toMatchObject({
       kind: 'commit',
-      row: { wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.5 },
+      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 50 },
     })
   })
 
-  it('na „własnym mnożniku" nadal pisze mnożnik', () => {
+  it('wpisana cena kasuje własny mnożnik — zostaje kwota stała', () => {
     const coeffRow: ViewPricingT = {
       ...row,
       wToolsOverrideType: 'coeff',
@@ -62,21 +62,7 @@ describe('priceKeystroke', () => {
     }
     expect(priceKeystroke('75', coeffRow, 'w_tools')).toMatchObject({
       kind: 'commit',
-      row: { wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.75 },
-    })
-  })
-
-  it('na „kwocie stałej" zostawia kwotę stałą', () => {
-    expect(priceKeystroke('50', flat(70), 'w_tools')).toMatchObject({
-      kind: 'commit',
-      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 50 },
-    })
-  })
-
-  it('bez ceny klienta nie ma czego dzielić — zapisuje kwotę stałą', () => {
-    expect(priceKeystroke('50', { ...row, clientPrice: 0 }, 'w_tools')).toMatchObject({
-      kind: 'commit',
-      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 50 },
+      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 75 },
     })
   })
 
@@ -98,7 +84,7 @@ describe('priceKeystroke', () => {
   it('pisze do pól planu, w którym edytujemy', () => {
     expect(priceKeystroke('30', flat(70), 'own_tools')).toMatchObject({
       kind: 'commit',
-      row: { ownToolsOverrideType: 'coeff', wToolsOverrideValue: 70 },
+      row: { ownToolsOverrideType: 'amount', ownToolsOverrideValue: 30, wToolsOverrideValue: 70 },
     })
   })
 })

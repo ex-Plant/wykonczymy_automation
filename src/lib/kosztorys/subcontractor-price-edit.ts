@@ -22,10 +22,6 @@ export type PriceKeystrokeT<RowT> =
   /** Text stands on screen, the row is untouched — a cleared field or half-typed garbage. */
   { kind: 'hold' } | { kind: 'blocked'; message: string } | { kind: 'commit'; row: RowT }
 
-// A derived multiplier is stored, not displayed arithmetic, so it must not carry the full float tail
-// of price ÷ price. Six places keep the round-trip exact to the grosz at any realistic unit price.
-const COEFF_PLACES = 1e6
-
 export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): OverrideSnapshotT {
   const { type, value } = OVERRIDE_FIELDS[view]
   return {
@@ -44,26 +40,11 @@ function withOverride<RowT extends ViewPricingT>(
 }
 
 /**
- * Typing a price does NOT mean "make this a flat amount". Unless the row is already on „kwota stała",
- * the price is expressed as a share of the client price, so we back-compute the multiplier and let
- * „Mnożnik" follow — the user changes the figure they care about and the mode stays where they put
- * it. A zero client price has no share to express, so it can only be a flat amount.
- */
-function overrideForPrice(
-  price: number,
-  rowData: ViewPricingT,
-  view: ToolPlaneT,
-): OverrideSnapshotT {
-  const current = overrideSnapshot(rowData, view).type
-  if (current === 'amount' || !(rowData.clientPrice > 0)) return { type: 'amount', value: price }
-  return {
-    type: 'coeff',
-    value: Math.round((price / rowData.clientPrice) * COEFF_PLACES) / COEFF_PLACES,
-  }
-}
-
-/**
  * One keystroke in the „Cena j.m." cell of a subcontractor view.
+ *
+ * A hand-typed price IS „kwota stała" — a figure the row states outright rather than derives — so
+ * the keystroke carries the mode with it: „Źródło" flips to „kwota stała" and „Mnożnik" goes to „—",
+ * because the row no longer has one. Nobody has to visit „Źródło" first to be allowed to type.
  *
  * `hold` is the important case: an emptied field must NOT write `type: null` back to the row.
  * Doing so flips the cell out of edit mode mid-typing, which swaps the input for read-only text —
@@ -78,7 +59,7 @@ export function priceKeystroke<RowT extends ViewPricingT>(
   const parsed = parseDecimalInput(raw)
   if (parsed.kind !== 'value') return { kind: 'hold' }
 
-  const row = withOverride(rowData, view, overrideForPrice(parsed.value, rowData, view))
+  const row = withOverride(rowData, view, { type: 'amount', value: parsed.value })
   const issue = checkSubcontractorPrice(row, view)
   // A warning commits like any other value — it is a colour, not a refusal.
   if (issue?.severity === 'error') return { kind: 'blocked', message: issue.message }

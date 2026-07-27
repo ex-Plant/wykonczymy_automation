@@ -164,10 +164,9 @@ function SubcontractorCoeffCell({
   )
 }
 
-// The "Cena" column in the subcontractor view. Editable in EVERY mode — the price is the figure the
-// user actually reasons about, so typing one is never a mode question: on „kwota stała" it writes the
-// flat amount, otherwise it back-computes the multiplier and „Mnożnik" follows (see
-// subcontractor-price-edit.ts). Clearing it reverts the row to „auto".
+// The "Cena" column in the subcontractor view. Editable in EVERY mode — a hand-typed price IS „kwota
+// stała", so the keystroke carries the mode with it rather than making the user set „Źródło" first.
+// Clearing it reverts the row to „auto".
 //
 // This is also the one cell carrying the guard's STANDING verdict, in every mode: the rule is about
 // the price, and a breach caused from outside these columns — a lowered client price, a raised global
