@@ -17,7 +17,14 @@ import { Loader } from '@/components/ui/loader/loader'
 import { EnvBadge } from '@/components/ui/env-badge'
 import { PendingSubmitIndicator } from '@/components/forms/pending-submit-indicator'
 
-export default function FrontendLayout({ children }: { children: React.ReactNode }) {
+type FrontendLayoutPropsT = {
+  children: React.ReactNode
+  // Parallel route slot: the only way the top bar can know which investment it's on, since this
+  // layout has no params of its own. See src/app/(frontend)/@investmentCrumb.
+  investmentCrumb: React.ReactNode
+}
+
+export default function FrontendLayout({ children, investmentCrumb }: FrontendLayoutPropsT) {
   return (
     <html
       lang="pl"
@@ -32,7 +39,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
     >
       <body className="bg-background text-foreground relative min-h-screen scroll-smooth">
         <Suspense fallback={<Loader loading={true} />}>
-          <AuthenticatedShell>{children}</AuthenticatedShell>
+          <AuthenticatedShell investmentCrumb={investmentCrumb}>{children}</AuthenticatedShell>
         </Suspense>
         <ToastContainer style={{ zIndex: 10001 }} />
         <PendingSubmitIndicator />
@@ -42,7 +49,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   )
 }
 
-async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
+async function AuthenticatedShell({ children, investmentCrumb }: FrontendLayoutPropsT) {
   const user = await getCurrentUserJwt()
   if (!user) redirect('/zaloguj')
 
@@ -51,7 +58,7 @@ async function AuthenticatedShell({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex flex-1 flex-col">
-          <Navigation user={user} />
+          <Navigation user={user} investmentCrumb={investmentCrumb} />
           {/* transform-gpu forces a compositing layer: Safari otherwise fails to
               repaint content streamed into this overflow scroll container after
               the initial paint (blank until you scroll / move the cursor). */}
