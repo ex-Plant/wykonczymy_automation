@@ -30,16 +30,29 @@ We measure the **deployed app against real data**, not local dev. Key facts:
 - **`vercel logs --branch <b> -q "PERF" --expand --json` is the channel** and needs no SSO bypass:
   it returns the app's own per-request `[PERF]` telemetry. Owner browses, agent reads. Log _bodies_
   have short retention (metadata outlives them), so measurement must be a live session.
-- **Scope widened to two coupled surfaces** at the owner's direction: `/inwestycje/[id]` and
-  `/inwestycje/[id]/kosztorys_v2`. They share one uncached `getKosztorysTree` sized for the editor;
-  the investment page reduces the whole tree to two scalars. The editor page additionally runs an
-  uninstrumented **nine-way `Promise.all`**.
+- **Scope widened to three surfaces** at the owner's direction: `/inwestycje/[id]`,
+  `/inwestycje/[id]/kosztorys_v2`, and `/` (the manager dashboard). The first two share one uncached
+  `getKosztorysTree` sized for the editor; the investment page reduces the whole tree to two scalars.
+  The editor page additionally runs an uninstrumented **nine-way `Promise.all`**.
 - **Spike protocol (owner):** push with `--no-verify`, no typecheck/test gating — speed of iteration
   over correctness gates while measuring. Document every finding immediately.
 
-**Out-of-scope finding, worth its own issue:** `sumAllRegisterBalances` costs **1015 ms** for 29
-registers on the manager dashboard (`/`) — two full `GROUP BY` scans of the whole `transactions`
-table; cost scales with transaction history, not register count. Details in `research.md`.
+### In scope — `sumAllRegisterBalances` is 1015 ms on the dashboard (owner's call, 2026-07-27)
+
+First real measurement off the deployed app: `sumAllRegisterBalances` costs **1015 ms** for 29
+registers on `/`, with `fetchRegisterBalances` a 1 ms cache wrapper around it and
+`fetchManagerDashboardData` totalling 1195 ms. Two full `GROUP BY` scans of the whole `transactions`
+table (`src/lib/db/sum-transfers.ts:71-112`); **cost scales with transaction history, not with the 29
+registers returned**.
+
+I initially filed this as out of scope — wrong, and the owner corrected it. The acceptance bar for
+this change is _"the app feels as fast as it did originally"_, and `/` is the first page loaded in
+every session. A one-second query there is the same problem as the panel, not a neighbouring one.
+It also sits on `/kasa/[id]`.
+
+It is `unstable_cache`d under the `transfers` tag, so 1015 ms is a **cache miss** — but every
+transfer create/delete invalidates that tag, so on an active day misses are the normal case, not the
+exception. Details and candidate fixes in `research.md`.
 
 ### Goal and severity (owner, 2026-07-27)
 

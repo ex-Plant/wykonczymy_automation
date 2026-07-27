@@ -658,10 +658,9 @@ Flags that matter: `-q` (full-text over log bodies), `--expand` (attach bodies),
 `--since`, `--limit`, `--branch`. Note `vercel logs` resolves the project from the **current working
 directory** — running it from `$CLAUDE_JOB_DIR/tmp` fails with "codebase isn't linked".
 
-### New finding: `sumAllRegisterBalances` is a 1-second query on the dashboard
+### New finding: `sumAllRegisterBalances` is a 1-second query on the dashboard — IN SCOPE
 
-Not part of either page under investigation, but it surfaced on the first real log read and is the
-slowest single query yet observed anywhere in the app:
+Surfaced on the first real log read, and the slowest single query yet observed anywhere in the app:
 
 | Log line                          | Value                                    |
 | --------------------------------- | ---------------------------------------- |
@@ -686,8 +685,12 @@ are routine. Candidate fixes (unranked, unmeasured): a partial index on
 `(source_register_id) WHERE cancelled IS NOT TRUE`, the same for `target_register_id`, or a
 materialised running balance maintained by the existing recalculation hooks.
 
-**Scope call: out of scope for EX-597, worth its own issue.** It is neither of the two pages the
-owner named and shares no code path with them. Recorded here so the finding is not lost.
+**Scope call: IN SCOPE (owner, 2026-07-27).** I first recorded this as out of scope on the reasoning
+that it touches neither page named and shares no code path with them. The owner overruled it, and the
+correction is worth keeping visible because the reasoning error is reusable: **scope here is defined
+by the acceptance bar, not by the code path.** The bar is _"the app feels as fast as it did
+originally"_; `/` is the first page loaded in every session, so a one-second query on it is the same
+defect as the panel, reached by a different route. "Different file" is not "different problem".
 
 ### Confirmation of the owner's coupling instinct
 
