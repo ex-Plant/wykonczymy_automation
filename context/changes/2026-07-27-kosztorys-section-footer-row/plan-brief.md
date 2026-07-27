@@ -34,7 +34,7 @@ is untouched, and Σ of the section footers still equals it.
 | -------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Which columns fill   | Only those `SectionSubtotalT` already supplies           | Owner's explicit constraint — no new figure math; a column with no entry renders blank by construction   |
 | Folded section       | Footer hides with the rows                               | The footer belongs to the rows it sums, so it goes when they go — one rule, no state-dependent placement |
-| Footer caption       | `Razem sekcja` in the description column                 | Names the scope without repeating the section name, which is three rows up and on the colour rail        |
+| Footer caption       | `Razem <nazwa sekcji>` in the description column         | A long section reaches its footer with the header scrolled off; naming it there says which block closed  |
 | Under an active sort | No footer, same as no header                             | Grouping presumes section-contiguous rows; a sort scatters a section into runs, so per-run footers lie   |
 | Styling              | Section wash + top border, lighter than „Razem"          | Reads as the section's closing line; N footers styled as the grand total would dilute the real one       |
 | Test layer           | Unit only; footer E2E filed to `e2e-backlog`             | Row assembly is where this silently breaks; the browser claim is owed but deferred                       |

@@ -176,7 +176,7 @@ figure where the section has one, blank everywhere else.
 
 **Contract**: `SectionFooterCell({ rowData, columnId, context })` plus
 `SectionFooterContextT = { figures: Map<number, Map<string, number>> }` — outer key section id, inner
-key column id. Caption column is `description`, text `Razem sekcja`. Figures format with `formatNet`
+key column id. Caption column is `description`, text `Razem <nazwa sekcji>`. Figures format with `formatNet`
 and use the same left-aligned `px-2 tabular-nums` treatment as `TotalsRowCell`, so a footer figure
 lines up with the column's own values and with „Razem" below.
 

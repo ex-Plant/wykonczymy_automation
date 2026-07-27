@@ -520,10 +520,11 @@ of the click. Setup: a kosztorys with **hand-typed per-item rabaty** on several 
 ## EX-607 — kosztorys-section-footer-row
 
 The section band split in two: the header keeps identity only (colour dot, name, „N poz.", chevron),
-and a new „Razem sekcja" footer closes each section with its figures under their own columns. Setup:
-a kosztorys with **≥2 sections**, per-item rabaty on some rows, and a przedmiar filled in — the
+and a new „Razem <nazwa sekcji>" footer closes each section with its figures under their own columns.
+Setup: a kosztorys with **≥2 sections**, per-item rabaty on some rows, and a przedmiar filled in — the
 przedmiar and rabat footer cells are blank without them.
 
+- [ ] Each footer's caption reads „Razem <nazwa sekcji>" and follows a rename immediately; a long name truncates rather than pushing the figures out of their columns
 - [ ] Each section's netto sits directly under `Wartość netto` and equals what the band's label used to show; brutto likewise
 - [ ] Σ of the section footers' netto equals the grand „Razem" netto at the bottom
 - [ ] The przedmiar pair fills in the client view and the footer cells are blank in the other views (the przedmiar has no per-rozliczenie reading)
