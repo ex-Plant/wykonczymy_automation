@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
+import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 import { sanitizeFileName } from '@/lib/utils/sanitize-filename'
 
 export const Media: CollectionConfig = {
@@ -20,6 +21,14 @@ export const Media: CollectionConfig = {
         return data
       },
     ],
+    // Hooks rather than the server action, against the usual preference: the admin panel writes
+    // media straight through Payload, and `setTransferInvoice` drops the replaced file
+    // fire-and-forget (unawaited), so an action-level invalidation would both miss the admin
+    // path and race the delete. The collection is the one seam every writer crosses.
+    afterChange: [makeRevalidateAfterChange('media')],
+    // Bumps transfers too: `transactions_invoice_id_media_id_fk` is ON DELETE SET NULL, so deleting
+    // a media row silently nulls every transfer pointing at it.
+    afterDelete: [makeRevalidateAfterDelete('media', 'transfers')],
   },
   upload: {
     staticDir: 'media',
