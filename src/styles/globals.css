@@ -338,9 +338,6 @@
   --section-divider-width: 2px;
   --section-rail-tint: 14%;
   --section-band-tint: 18%;
-  /* Lighter than the opening band: a dozen sections would otherwise stripe the grid, and a footer
-     painted as loudly as „Razem" dilutes the real one at the bottom. */
-  --section-footer-tint: 9%;
 }
 
 /* Section identity is carried by two quiet cues instead of a background wash: a colour rail down the
@@ -388,12 +385,12 @@
     1px 0 var(--dsg-border-color);
 }
 
-/* The band closing a section: same construction as the opening one, tuned down — a fainter wash and a
-   1px rule, so the section reads as bracketed rather than as two headers. */
+/* The band closing a section: the opening band's construction and its wash, so the pair reads as one
+   bracket; only the rule above it is thinner, since the heavy divider marks where a section starts. */
 .kosztorys-grid .dsg-row.kosztorys-section-footer .dsg-cell {
   background: color-mix(
     in oklab,
-    var(--section-rail, var(--color-muted-foreground)) var(--section-footer-tint),
+    var(--section-rail, var(--color-muted-foreground)) var(--section-band-tint),
     var(--color-background)
   );
   box-shadow:

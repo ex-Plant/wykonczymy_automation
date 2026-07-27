@@ -24,10 +24,7 @@ import {
 } from '@/lib/kosztorys/synthetic-rows'
 import { sectionColorRail } from '@/lib/kosztorys/section-colors'
 import { cn } from '@/lib/utils/cn'
-import { toGross } from '@/lib/kosztorys/calc'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
-import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
-import { stagesForView } from '@/lib/kosztorys/settlement'
 import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
@@ -89,17 +86,15 @@ export function KosztorysEditorBody({
     guideX,
     subtotals,
     progressSubtotals,
+    columnTotals,
+    sectionColumnTotals,
     stageTotals,
-    stageQtyTotals,
-    plannedQtyTotal,
-    remainingTotals,
     stages,
     totalNet,
     sumaPracNet,
     rabatClientNet,
     laborCostsNetFromKosztorys,
     subcontractorDue,
-    view,
     sort,
     search,
     collapsedSectionIds,
@@ -109,54 +104,6 @@ export function KosztorysEditorBody({
   } = editor
 
   useUndoKeyboard(editor.undo, editor.redo)
-
-  const columnTotals = useMemo(() => {
-    const totals = new Map<string, number>()
-    // Money: executed value + offered przedmiar, net and gross. The Przedmiar „Razem" must track
-    // the active price view (its column reprices per view), so sum the view-aware subtotals — NOT
-    // the hook's `plannedNet`, which is fixed to client prices for the progress counter.
-    totals.set('net', totalNet)
-    totals.set('gross', toGross(totalNet, tree.vatRate))
-    // `null` outside the client view — the przedmiar has no per-rozliczenie reading, so the subtotals
-    // withhold it. Nothing to sum, and the columns it would total are hidden there anyway.
-    if (view === 'client') {
-      const plannedNetForView = subtotals.reduce(
-        (sum, section) => sum + (section.plannedNet ?? 0),
-        0,
-      )
-      totals.set('plannedNet', plannedNetForView)
-      totals.set('plannedGross', toGross(plannedNetForView, tree.vatRate))
-    }
-    totals.set('remaining', remainingTotals.net)
-    totals.set('remainingGross', remainingTotals.gross)
-    // Rabat: Σ per-item discount taken on executed qty, view-aware like the columns themselves.
-    const discountNetForView = subtotals.reduce((sum, section) => sum + section.discount, 0)
-    totals.set('discountAmount', discountNetForView)
-    totals.set('discountAmountGross', toGross(discountNetForView, tree.vatRate))
-    // Qty (Pomiar z natury): per-etap column, their sum, and the offered przedmiar column.
-    let qtySum = 0
-    for (const stage of stagesForView(stages, view)) {
-      const stageQty = stageQtyTotals.get(stage.id) ?? 0
-      qtySum += stageQty
-      totals.set(stageKey(stage.id), stageQty)
-      const stageNet = stageTotals.get(stage.id) ?? 0
-      totals.set(stageValueNetKey(stage.id), stageNet)
-      totals.set(stageValueGrossKey(stage.id), toGross(stageNet, tree.vatRate))
-    }
-    totals.set('stageQtySum', qtySum)
-    totals.set('plannedQty', plannedQtyTotal)
-    return totals
-  }, [
-    stages,
-    stageTotals,
-    stageQtyTotals,
-    plannedQtyTotal,
-    remainingTotals,
-    totalNet,
-    subtotals,
-    tree.vatRate,
-    view,
-  ])
 
   // The opening band shows identity only — its count comes off the full-dataset `subtotals`, so a
   // search filter narrows the visible rows without changing what the section says it holds.
@@ -173,32 +120,16 @@ export function KosztorysEditorBody({
     }
   }, [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection])
 
-  // Only what a per-section subtotal can honestly supply: money, not quantities and not „Pozostało"
-  // (a per-row loop over rows that carry a przedmiar, not a subtraction of two section figures). A
-  // column with no entry renders blank rather than a wrong number.
-  const sectionFooter = useMemo(() => {
-    const figures = new Map<number, Map<string, number>>()
-    for (const section of subtotals) {
-      const byColumn = new Map<string, number>()
-      byColumn.set('net', section.net)
-      byColumn.set('gross', toGross(section.net, tree.vatRate))
-      if (section.plannedNet != null) {
-        byColumn.set('plannedNet', section.plannedNet)
-        byColumn.set('plannedGross', toGross(section.plannedNet, tree.vatRate))
-      }
-      byColumn.set('discountAmount', section.discount)
-      byColumn.set('discountAmountGross', toGross(section.discount, tree.vatRate))
-      figures.set(section.sectionId, byColumn)
-    }
-    return { figures }
-  }, [subtotals, tree.vatRate])
-
   const gridColumns = useMemo(
     () =>
       columns.map((column) =>
-        withSyntheticRows(column, { totals: columnTotals, sectionHeader, sectionFooter }),
+        withSyntheticRows(column, {
+          totals: columnTotals,
+          sectionHeader,
+          sectionFooter: { figures: sectionColumnTotals },
+        }),
       ),
-    [columns, columnTotals, sectionHeader, sectionFooter],
+    [columns, columnTotals, sectionHeader, sectionColumnTotals],
   )
   const { rows: bodyRows } = useMemo(
     () =>

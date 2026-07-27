@@ -18,6 +18,11 @@ hidden per axis and the figure vanished. The answer this time is a second row ra
 relocated label: the header keeps identity, a footer carries the figures under the columns they
 belong to.
 
-Constraint the owner set explicitly: **only the columns we can already total**. No new figure math —
-the footer reads `SectionSubtotalT`, which is what the archived
-`kosztorys-section-header-rows` plan also refused to touch.
+Constraint the owner set explicitly: **only the columns we can already total**.
+
+Follow-up after the first look at it (owner, same day): that constraint means _everything that can be
+calculated_, not only what `SectionSubtotalT` happened to carry — the etap axis, „Pozostało" and the
+przedmiar qty are all plain sums of their own column and belong in the footer. Resolved by moving the
+column-id → total mapping into one lib function, `columnTotalsForRows` (`lib/kosztorys/settlement.ts`),
+called at two scopes: all rows for „Razem", one section's rows for each footer. Σ of the footers is
+„Razem" by construction, and a column stays blank only where its total is not a sum of its own cells.

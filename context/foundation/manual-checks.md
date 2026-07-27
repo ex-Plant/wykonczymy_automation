@@ -524,7 +524,9 @@ przedmiar and rabat footer cells are blank without them.
 - [ ] Each section's netto sits directly under `Wartość netto` and equals what the band's label used to show; brutto likewise
 - [ ] Σ of the section footers' netto equals the grand „Razem" netto at the bottom
 - [ ] The przedmiar pair fills in the client view and the footer cells are blank in the other views (the przedmiar has no per-rozliczenie reading)
-- [ ] Columns the subtotals cannot supply are **blank, not zero**: „Pozostało", „Przedmiar" qty, the etap qty columns and the per-etap wartość columns
+- [ ] The etap axis is filled per section: each etap's qty column, their sum, and each etap's wartość netto/brutto — and per section Σ of the etap wartości equals that section's netto
+- [ ] „Pozostało" and „Przedmiar" (qty) are filled per section; a section holding a row with no przedmiar does not count that row as settled
+- [ ] Every footer column reads as the sum of the cells above it in that section — a column with no honest total (a share, a ratio) is **blank, never a 0**
 - [ ] Folding a section leaves the header line alone — items **and** footer gone; unfolding brings both back
 - [ ] Switching the money axis to netto-only hides the brutto footer cells with their columns; no number is left stranded under a hidden header
 - [ ] Sorting by any column removes headers and footers together; clearing the sort restores both

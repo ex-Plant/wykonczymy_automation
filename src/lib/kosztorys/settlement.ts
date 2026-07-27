@@ -3,10 +3,11 @@ import {
   netForQtyForView,
   rowDiscountForView,
   rowPlannedNetForView,
+  toGross,
   viewPrice,
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
-import { stageKey } from '@/lib/kosztorys/stage-keys'
+import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import type {
   GlobalDiscountT,
   KosztorysStageT,
@@ -360,6 +361,79 @@ export function sectionSubtotalsForView(
  * "Pusta" is no WORK DONE, not no positions: a section with no items is cascade-deleted, so that
  * state never reaches the grid.
  */
+/**
+ * Every column's total over a set of rows, keyed by the grid's own column ids — the shape both the
+ * „Razem" row and each section's footer render from.
+ *
+ * One function for both, because they are the same figure at two scopes: the footer is this over one
+ * section's rows, „Razem" is this over all of them. Σ of the footers therefore equals „Razem" by
+ * construction rather than by two implementations happening to agree.
+ *
+ * A column absent from the map renders blank. That is the honest outcome for a column whose total is
+ * not a sum of its own cells (a share, a ratio) — never a 0, which would claim a reading.
+ */
+export function columnTotalsForRows(
+  rows: KosztorysV2RowT[],
+  stages: KosztorysStageT[],
+  view: PriceViewT,
+  vatRate: number,
+): Map<string, number> {
+  const totals = new Map<string, number>()
+  const viewStages = stagesForView(stages, view)
+
+  let net = 0
+  let plannedNet = 0
+  let discount = 0
+  let plannedQty = 0
+  // „Pozostało": rows with no przedmiar read `null` — no offer to subtract from — and are skipped, so
+  // the total sums what the column actually shows rather than a 0 it never claimed. Gross accumulates
+  // each row's own VAT instead of grossing the net sum once, so a row-level vatRate can't drift them.
+  let remainingNet = 0
+  let remainingGross = 0
+  for (const row of rows) {
+    // One pomiar per row, priced twice: the value and the rabat taken on it must stand on the same
+    // quantity, exactly as in sectionSubtotalsForView.
+    const qtyDone = rowTotalQtyDone(row, viewStages, view)
+    net += netForQtyForView(row, qtyDone, view)
+    plannedNet += rowPlannedNetForView(row, view)
+    discount += rowDiscountForView(row, qtyDone, view)
+    plannedQty += row.plannedQty ?? 0
+    const rowRemaining = rowRemainingForView(row, stages, view)
+    if (rowRemaining === null) continue
+    remainingNet += rowRemaining
+    remainingGross += toGross(rowRemaining, row.vatRate)
+  }
+
+  totals.set('net', net)
+  totals.set('gross', toGross(net, vatRate))
+  // The przedmiar has no per-rozliczenie reading, so outside the client view there is nothing to sum —
+  // and the columns it would total are hidden there anyway.
+  if (view === 'client') {
+    totals.set('plannedNet', plannedNet)
+    totals.set('plannedGross', toGross(plannedNet, vatRate))
+  }
+  totals.set('remaining', remainingNet)
+  totals.set('remainingGross', remainingGross)
+  totals.set('discountAmount', discount)
+  totals.set('discountAmountGross', toGross(discount, vatRate))
+  totals.set('plannedQty', plannedQty)
+
+  // The etap axis. Iterated over the view's own stages only: an out-of-view etap has no column here to
+  // total, and stageTotalsForView deliberately gives it no share of the value either.
+  const stageNet = stageTotalsForView(rows, stages, view)
+  let stageQtySum = 0
+  for (const stage of viewStages) {
+    const stageQty = rows.reduce((sum, row) => sum + (row[stageKey(stage.id)] ?? 0), 0)
+    stageQtySum += stageQty
+    totals.set(stageKey(stage.id), stageQty)
+    const stageValueNet = stageNet.get(stage.id) ?? 0
+    totals.set(stageValueNetKey(stage.id), stageValueNet)
+    totals.set(stageValueGrossKey(stage.id), toGross(stageValueNet, vatRate))
+  }
+  totals.set('stageQtySum', stageQtySum)
+  return totals
+}
+
 export function emptySectionIds(subtotals: SectionSubtotalT[]): Set<number> {
   return new Set(subtotals.filter((s) => s.net === 0).map((s) => s.sectionId))
 }

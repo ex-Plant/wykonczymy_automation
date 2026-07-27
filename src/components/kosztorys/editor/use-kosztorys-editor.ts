@@ -48,6 +48,7 @@ import {
   emptySectionIds,
   rowRemainingForView,
   sectionSubtotalsForView,
+  columnTotalsForRows,
   stageTotalsForView,
   subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
@@ -381,6 +382,13 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     () => subtotals.reduce((s, x) => s + x.discount, 0),
     [subtotals],
   )
+  // How many items actually carry a rabat — what the percent bulk-overwrite would destroy. Counted off
+  // the rows rather than off `subtotals`, whose discount is 0 while the global discount is active and
+  // 0 in the subcontractor views; the stored per-item rabaty exist in all three cases.
+  const itemsWithDiscountCount = useMemo(
+    () => rows.filter((r) => r.discountValue > 0).length,
+    [rows],
+  )
   // Per-etap „suma transzy" at the active view — the executed value each stage delivered. Full-dataset
   // (like the subtotals): Σ over stages equals totalNet, so the etap totals and the wykonane readout
   // reconcile by construction.
@@ -400,6 +408,26 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     () => rows.reduce((sum, row) => sum + (row.plannedQty ?? 0), 0),
     [rows],
   )
+  // The two synthetic totals rows, built from one definition at two scopes — Σ of the section footers
+  // is „Razem" by construction. Full-dataset like every other total here, so a search never moves them.
+  const columnTotals = useMemo(
+    () => columnTotalsForRows(rows, stages, view, tree.vatRate),
+    [rows, stages, view, tree.vatRate],
+  )
+  const sectionColumnTotals = useMemo(() => {
+    const rowsBySection = new Map<number, KosztorysV2RowT[]>()
+    for (const row of rows) {
+      const bucket = rowsBySection.get(row.sectionId)
+      if (bucket) bucket.push(row)
+      else rowsBySection.set(row.sectionId, [row])
+    }
+    return new Map(
+      [...rowsBySection].map(([sectionId, sectionRows]) => [
+        sectionId,
+        columnTotalsForRows(sectionRows, stages, view, tree.vatRate),
+      ]),
+    )
+  }, [rows, stages, view, tree.vatRate])
   // Σ of the „Pozostało" columns for the grid's Razem row. Rows with no przedmiar read `null` — no
   // offer to subtract from — and are skipped, so the total is the sum of what the column actually
   // shows rather than of a 0 it never claimed. Gross accumulates each row's own VAT instead of
@@ -1266,6 +1294,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     // client-priced, view-invariant per-section subtotals — the section pie's structure source.
     progressSubtotals,
     totalNet,
+    columnTotals,
+    sectionColumnTotals,
     stageTotals,
     stageQtyTotals,
     plannedQtyTotal,
@@ -1277,6 +1307,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     plannedNet,
     globalDiscount,
     perItemDiscountTotal,
+    itemsWithDiscountCount,
     isSavingSettings,
     subcontractorDue,
     laborCostsNetFromKosztorys,
