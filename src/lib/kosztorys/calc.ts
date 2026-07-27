@@ -23,6 +23,25 @@ export function isGlobalDiscountActive({ type }: GlobalDiscountT): boolean {
   return type === 'amount'
 }
 
+// What entering a rabat-globalny mode has to persist. Since the MODE decides the replacement, picking
+// „Kwotowy" must write immediately — waiting for an amount left the select promising a suppression the
+// engine wasn't performing (EX-605).
+//
+// The seed is the per-item rabat total the global one is replacing, so switching moves no figure: the
+// user opts into the mechanism first and changes the number second. Seeding 0 would work too, but it
+// makes „Kwotowy" read as „skasuj rabaty" at the moment of the click.
+//
+// Reversible either way — the per-item rabaty are never written, only bypassed, so „Wyłączony" brings
+// them all back. That is why this can activate on selection at all.
+export function globalDiscountForMode(
+  mode: 'off' | 'amount' | 'percent',
+  perItemDiscountTotal: number,
+): GlobalDiscountT {
+  return mode === 'amount'
+    ? { type: 'amount', value: perItemDiscountTotal }
+    : { type: null, value: 0 }
+}
+
 function applyDiscount(gross: number, item: ViewPricingT): number {
   // Global discount overrides per-item rabat: when it is active the row prices gross-of-its-own
   // discount (the per-item fields stay in the DB, untouched), and the global discount is subtracted

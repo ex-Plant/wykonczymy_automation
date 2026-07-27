@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   globalDiscountAmount,
+  globalDiscountForMode,
   isGlobalDiscountActive,
   netForQtyForView,
   rowDiscountForView,
@@ -321,5 +322,26 @@ describe('isGlobalDiscountActive', () => {
     // globalDiscountAmount subtracts nothing.
     expect(isGlobalDiscountActive({ type: 'percent' as never, value: 100 })).toBe(false)
     expect(isGlobalDiscountActive({ type: 'bogus' as never, value: 100 })).toBe(false)
+  })
+})
+
+// EX-605: picking „Kwotowy" used to persist NOTHING — the select read „Kwotowy" and its description
+// promised „zastępuje je", while every rabat per pozycja was still applied. The mode decides the
+// replacement (see isGlobalDiscountActive above), so entering it has to write.
+describe('globalDiscountForMode', () => {
+  it('wejście w „Kwotowy" aktywuje rabat globalny, nie czeka na kwotę', () => {
+    expect(globalDiscountForMode('amount', 340)).toEqual({ type: 'amount', value: 340 })
+  })
+
+  it('kwota startowa = suma rabatów per pozycja, więc przełączenie nie rusza żadnej liczby', () => {
+    // Rabat globalny zastępuje rabaty per pozycja, więc startując równy ich sumie zostawia
+    // „do rozliczenia" dokładnie tam, gdzie było przed przełączeniem.
+    expect(globalDiscountForMode('amount', 0).value).toBe(0)
+    expect(globalDiscountForMode('amount', 1234.56).value).toBe(1234.56)
+  })
+
+  it('„Wyłączony" i „%" czyszczą rabat globalny — obie są drogą powrotną do rabatów per pozycja', () => {
+    expect(globalDiscountForMode('off', 340)).toEqual({ type: null, value: 0 })
+    expect(globalDiscountForMode('percent', 340)).toEqual({ type: null, value: 0 })
   })
 })

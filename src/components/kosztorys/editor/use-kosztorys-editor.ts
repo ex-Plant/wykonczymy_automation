@@ -131,6 +131,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // router.refresh() lands — the transient the "never disagree" invariant below forbids.
   const [globalDiscount, setGlobalDiscount] = useState<GlobalDiscountT>(tree.globalDiscount)
   const globalDiscountActive = isGlobalDiscountActive(globalDiscount)
+  // Undo/redo call applyGlobalDiscount through a closure captured when the entry was pushed, where
+  // `globalDiscount` is already stale — so its failure rollback reads the live value from here.
+  // Same latest-value ref pattern as `rowsRef` below, for the same reason.
+  const globalDiscountRef = useRef(globalDiscount)
+  // eslint-disable-next-line react-hooks/refs
+  globalDiscountRef.current = globalDiscount
   // „Opcje rozliczenia" writes nothing optimistically — every figure the four settings move is
   // recomputed on the server, so the panel can only change once the write lands. One shared flag for
   // the block (they are set-once decisions about the deal; nobody edits two at a time) disables it
@@ -367,6 +373,14 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
+  // Σ rabatów per pozycja at the active view — the figure the global discount seeds itself from when
+  // „Kwotowy" is picked, so the switch replaces without moving the total (EX-605). Reads 0 while the
+  // global discount is already active (rowDiscountForView is 0 under it), which is why the seed is
+  // only ever taken on the null→'amount' transition.
+  const perItemDiscountTotal = useMemo(
+    () => subtotals.reduce((s, x) => s + x.discount, 0),
+    [subtotals],
+  )
   // Per-etap „suma transzy" at the active view — the executed value each stage delivered. Full-dataset
   // (like the subtotals): Σ over stages equals totalNet, so the etap totals and the wykonane readout
   // reconcile by construction.
@@ -1082,33 +1096,40 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
   // local discount (drives the derived totals + column visibility) and patch the denormalized active
-  // flag on every row in the same render, so all three surfaces move together; then persist + refresh.
+  // flag on every row in the same render, so all three surfaces move together; then persist.
+  // Extracted like applyVat so undo/redo replays the whole move — reverting only the stored value
+  // would leave the row flag disagreeing with it.
+  async function applyGlobalDiscount(discount: GlobalDiscountT) {
+    const prevDiscount = globalDiscountRef.current
+    setGlobalDiscount(discount)
+    patchRows(
+      () => true,
+      (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(discount) }),
+    )
+    await optimisticSettingSave(
+      () =>
+        updateInvestmentGlobalDiscountAction(investmentId, {
+          globalDiscountType: discount.type,
+          globalDiscountValue: discount.value,
+        }),
+      () => {
+        // Roll all three surfaces back so they don't disagree on an unsaved discount.
+        setGlobalDiscount(prevDiscount)
+        patchRows(
+          () => true,
+          (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(prevDiscount) }),
+        )
+      },
+      'Nie udało się zapisać rabatu',
+    )
+  }
+
   function handleGlobalDiscountChange(next: GlobalDiscountT) {
-    startSettingsSave(async () => {
-      const prevDiscount = globalDiscount
-      const active = isGlobalDiscountActive(next)
-      setGlobalDiscount(next)
-      patchRows(
-        () => true,
-        (r) => ({ ...r, globalDiscountActive: active }),
-      )
-      await optimisticSettingSave(
-        () =>
-          updateInvestmentGlobalDiscountAction(investmentId, {
-            globalDiscountType: next.type,
-            globalDiscountValue: next.value,
-          }),
-        () => {
-          // Roll all three surfaces back so they don't disagree on an unsaved discount.
-          setGlobalDiscount(prevDiscount)
-          patchRows(
-            () => true,
-            (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(prevDiscount) }),
-          )
-        },
-        'Nie udało się zapisać rabatu',
-      )
-    })
+    // saveSetting's own guard is identity-based, which never fires on a fresh object — so the
+    // no-op check is here, by field. Without it every „Kwotowy" re-pick and every re-commit of an
+    // unchanged kwota would put a do-nothing entry on the undo stack.
+    if (globalDiscount.type === next.type && globalDiscount.value === next.value) return
+    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, next)
   }
 
   // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
@@ -1255,6 +1276,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     rabatClientNet,
     plannedNet,
     globalDiscount,
+    perItemDiscountTotal,
     isSavingSettings,
     subcontractorDue,
     laborCostsNetFromKosztorys,

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { PercentRabatTool } from '@/components/kosztorys/summary/percent-rabat-tool'
+import { globalDiscountForMode } from '@/lib/kosztorys/calc'
 import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
 import type { SelectOptionT } from '@/components/ui/simple-select'
 
@@ -28,31 +29,38 @@ const DISCOUNT_MODE_DESCRIPTIONS: Record<DiscountModeT, string> = {
 // Reads the setters straight from the editor context (the panel renders inside the provider), so no
 // props thread through KosztorysTotalsPanel.
 export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean }) {
-  const { globalDiscount, handleGlobalDiscountChange, handleApplyPercentRabat } =
-    useKosztorysEditorContext()
+  const {
+    globalDiscount,
+    perItemDiscountTotal,
+    handleGlobalDiscountChange,
+    handleApplyPercentRabat,
+  } = useKosztorysEditorContext()
 
   // Percent is a one-shot bulk-write with no stored footprint, so „off vs percent" can't be told apart
   // from globalDiscount alone — the picked mode is its own local state. A stored amount discount seeds
   // the group onto „Kwotowy".
   const [mode, setMode] = useState<DiscountModeT>(globalDiscount.type != null ? 'amount' : 'off')
 
-  // A stored discount reappearing without the user picking it means the save failed and the optimistic
-  // value rolled back — that revert reaches `globalDiscount` but has no way into this local state, so
-  // without the resync the select reads „Wyłączony" while the data still applies the discount. Only the
-  // null→stored direction is corrected; the reverse is the user's own `changeMode`, which may have gone
-  // to „%" rather than „Wyłączony".
+  // The stored type can move without the user touching the select — a failed save rolling the
+  // optimistic value back, or Ctrl+Z replaying an earlier discount. Neither reaches this local state,
+  // so without the resync the select reads „Wyłączony" while the data still applies the discount (or
+  // „Kwotowy" over a kwota that is no longer stored). Clearing only pulls „Kwotowy" back to
+  // „Wyłączony": „%" also sits at null and is not something an undo should walk away from.
   const [seenType, setSeenType] = useState(globalDiscount.type)
   if (seenType !== globalDiscount.type) {
     setSeenType(globalDiscount.type)
     if (globalDiscount.type != null) setMode('amount')
+    else if (mode === 'amount') setMode('off')
   }
 
+  // The mode itself is the decision — „Kwotowy" suppresses per-item rabat at any kwota — so entering
+  // it must write straight away rather than wait for a kwota that may never be typed. Leaving it
+  // (→ „Wyłączony" or „%") clears the stored discount so the two never coexist; that mutual exclusion
+  // is what keeps the percent one-shot always effective.
   function changeMode(next: string) {
-    setMode(next as DiscountModeT)
-    // Amount is the only stored mode; leaving it (→ off or %) clears the stored discount so the two
-    // never coexist — that mutual exclusion is what keeps the percent one-shot always effective.
-    if (next !== 'amount' && globalDiscount.type != null)
-      handleGlobalDiscountChange({ type: null, value: 0 })
+    const nextMode = next as DiscountModeT
+    setMode(nextMode)
+    handleGlobalDiscountChange(globalDiscountForMode(nextMode, perItemDiscountTotal))
   }
 
   return (
