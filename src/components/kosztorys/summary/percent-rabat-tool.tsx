@@ -42,7 +42,13 @@ export function PercentRabatTool({ onApply }: PropsT) {
         }}
         className="text-chart-green"
       />
-      <Button variant="outline" size="sm" disabled={!valid || pending} onClick={() => void apply()}>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 px-2"
+        disabled={!valid || pending}
+        onClick={() => void apply()}
+      >
         Zastosuj
       </Button>
     </div>

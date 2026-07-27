@@ -7,7 +7,7 @@ import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 type PropsT = {
   label: ReactNode
-  // Optional explanatory tooltip on the LABEL only — the input stays a clean text field.
+  // On the LABEL only — the input stays a clean text field.
   hint?: string
   value: number | null
   placeholder?: number
@@ -19,11 +19,15 @@ type PropsT = {
   // the toast tells the user what they may not do only after they have already done it.
   min?: number
   max?: number
+  // What a cleared field commits. Without it, blanking the input is a silent no-op — the field looks
+  // empty while the old value is still stored, so „skasuj kwotę" never actually clears anything.
+  emptyAs?: number
+  disabled?: boolean
   onCommit: (n: number) => void
 }
 
-// Decimal-number field. Uncontrolled + `key` on the value (remount after router.refresh),
-// commit on blur/Enter — no useEffect (project rule).
+// Uncontrolled + `key` on the value (remount after router.refresh), commit on blur/Enter — no
+// useEffect (project rule).
 export function DecimalField({
   label,
   hint,
@@ -32,12 +36,18 @@ export function DecimalField({
   valueClassName,
   min,
   max,
+  emptyAs,
+  disabled = false,
   onCommit,
 }: PropsT) {
   const outOfRange = (n: number) => (min != null && n < min) || (max != null && n > max)
 
   const commit = (e: FocusEvent<HTMLInputElement>) => {
     const parsed = parseDecimalInput(e.target.value)
+    if (parsed.kind === 'empty' && emptyAs != null) {
+      onCommit(emptyAs)
+      return
+    }
     if (parsed.kind !== 'value') return
     // Written back by hand: the input is uncontrolled and its `key` only remounts when `value`
     // CHANGES, so a rejected entry would otherwise stay on screen as text the app has not accepted.
@@ -60,6 +70,7 @@ export function DecimalField({
         defaultValue={value == null ? '' : String(value)}
         placeholder={placeholder != null ? String(placeholder) : ''}
         className={valueClassName}
+        disabled={disabled}
         onBlur={commit}
         onKeyDown={commitOnEnter}
       />

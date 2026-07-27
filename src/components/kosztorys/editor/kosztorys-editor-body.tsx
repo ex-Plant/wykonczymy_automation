@@ -303,6 +303,7 @@ export function KosztorysEditorBody({
             onSettlementModeChange={editor.handleSettlementModeChange}
             materialsNetRate={tree.materialsNetRate}
             onMaterialsNetRateChange={editor.handleMaterialsNetRateChange}
+            isSavingSettings={editor.isSavingSettings}
             showSettingsBar
             clientView={clientView}
           />

@@ -435,3 +435,50 @@ it. `/raporty` needs the OWNER/ADMIN role.
 ### Deploy note (migration ordering — deploy-time, not a code check)
 
 - [ ] **`20260726_4_add_materials_net_rate_to_investments` must be applied to preview/prod before the code lands there.** Adds a nullable `materials_net_rate` to `investments`; standard column-**add** ordering — migrate first or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. No backfill owed: `null` is the permanent "off" state and every existing investment keeps today's figures.
+
+## EX-597 — decouple-panel-write-refresh
+
+The investment page's data-fetching architecture. The owner's bar was **feel**, not a number: _"in
+its current state the stat panel is basically unusable"_ → _"the app should feel as fast as it did
+originally, when the investment page was transfers only."_ What actually delivered that was the
+client (pending state + optimistic VAT/rabat), not the server reads — so **these checks are mostly
+non-regression**: the whole slice rewired reads, caching and revalidation, and the risk is that
+something silently stops updating rather than that something is slow. Branch
+`ex-597-decouple-panel-write-refresh`. No migration; no schema change.
+
+Setup: **5435 test DB** (see intro) with a seeded kosztorys (`INV=6 node --env-file=.env --import tsx
+src/scripts/seed-kosztorys.ts`), OWNER login, an investment carrying transfers **and** materiały
+spend with invoice attachments, plus a share token for it. Have the Network tab open for the
+refresh-coalescing checks — they are only observable as request counts.
+
+### Feel (the acceptance bar)
+
+- [ ] Opening an investment page with a populated kosztorys feels no slower than a transfers-only investment
+- [ ] Changing VAT and rabat globalny in „Opcje rozliczenia" shows the new value **immediately**, with a pending indicator, and no full-page flash
+- [ ] Changing „sposób rozliczenia" and „stawka netto wydatków" shows a pending indicator and settles — these two are deliberately **not** optimistic (their value lives only on `tree`, which is frozen at mount)
+
+### Write-path coalescing (the `deferRefresh` win, and the gate fix to it)
+
+- [ ] Editing a single grid cell fires the autosave and **no** full-route refresh alongside it
+- [ ] Editing 5–10 cells in quick succession produces **one** route refresh after the typing stops — not one per cell (this is the uncleared-timer bug fixed at the review gate; unfixed it queues a refresh per edited cell)
+- [ ] After that single refresh lands, the totals panel figures match the grid
+
+### Non-regression on the rewired reads
+
+- [ ] Renaming an investment updates the name in the top-bar crumb without a hard reload (the per-entity cache tag path)
+- [ ] Uploading a new invoice attachment makes it appear in the transfers table on the next render (the whole-table media cache is invalidated by the media write hook)
+- [ ] Deleting an invoice attachment removes it from the transfers table on the next render
+- [ ] A brand-new investment with **zero** kosztorys rows opens the editor without a 500 (the `coalesce` on the `json_agg` query — pinned by a DB spec, worth eyeballing once)
+- [ ] Sections render in `displayOrder`, not insertion order
+- [ ] The client share link (`/k/<token>`, logged out) shows figures consistent with the owner's view after an edit — `deferRefresh` expires the tags without re-rendering, and the share route is the only place a dropped invalidation would show
+
+### Nav crumb (adjacent strand on the same branch)
+
+- [ ] The crumb's back arrow returns to wherever you came from (investment page → editor → arrow → back to the investment page)
+- [ ] Opening an editor URL **directly in a fresh tab** and clicking the back arrow lands on `/inwestycje/<id>` rather than doing nothing or leaving the app (the empty-history fallback added at the review gate)
+
+### Rabat globalny (fixed / deliberately left at the review gate)
+
+- [ ] With a stored „Kwotowy" rabat, switching to „Wyłączony" while the save **fails** leaves the select showing „Kwotowy" again, matching the figures — it must not read „Wyłączony" while the totals still subtract a rabat
+- [ ] **Known, deliberately not fixed:** selecting „Kwotowy" persists nothing until an amount is typed, so per-item rabaty keep applying even though the description says they are replaced. Confirm this is the behaviour you want before it ships — the fix activates the global rabat the instant the mode is picked.
+- [ ] **Known, deliberately not fixed:** applying 0% in „%" clears every per-item rabat as intended, but **Ctrl+Z cannot undo it**. Confirm that is acceptable.

@@ -2,7 +2,7 @@
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { revalidateCollection } from '@/lib/cache/revalidate'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import type { CACHE_TAGS } from '@/lib/cache/tags'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
@@ -33,7 +33,7 @@ async function toggleActive(
       ...(cfg.overrideAccess ? { overrideAccess: true } : {}),
     })
 
-    revalidateCollection(cfg.cacheTag)
+    revalidateCollections([cfg.cacheTag])
     return { success: true }
   } catch (err) {
     return { success: false, error: getErrorMessage(err) }

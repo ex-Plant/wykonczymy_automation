@@ -143,6 +143,10 @@ export type MixedSettlementT = {
   paidGross: number
   // resztaGross − paidGross: what the client still owes on the invoice.
   doZaplatyGross: number
+  // The same outstanding amount de-grossed: what closes the settlement if the client pays the rest
+  // off-invoice (gotówka, no VAT) instead of brutto. Not a term of either column — an alternative
+  // reading of doZaplatyGross.
+  doZaplatyNet: number
 }
 
 // Tryb mieszany: the client settles part in cash (no invoice → no VAT) and the rest on an invoice
@@ -165,6 +169,7 @@ export function computeMixedSettlement(
   const combinedNet = laborCostsNetFromKosztorys + materialy.net
   const doRozliczeniaNet = combinedNet - paidNet
   const resztaGross = toGross(doRozliczeniaNet, vatRate)
+  const doZaplatyGross = resztaGross - paidGross
   return {
     robocizna: laborCostsNetFromKosztorys,
     materialy: materialy.net,
@@ -173,7 +178,8 @@ export function computeMixedSettlement(
     doRozliczeniaNet,
     resztaGross,
     paidGross,
-    doZaplatyGross: resztaGross - paidGross,
+    doZaplatyGross,
+    doZaplatyNet: doZaplatyGross / (1 + vatRate),
   }
 }
 

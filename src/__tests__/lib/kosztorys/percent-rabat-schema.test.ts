@@ -4,16 +4,16 @@ import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 const parse = (percent: unknown) => applyPercentRabatSchema.safeParse({ percent })
 
 describe('applyPercentRabatSchema', () => {
-  it('accepts a percent in (0, 100]', () => {
+  it('accepts a percent in [0, 100]', () => {
     for (const percent of [0.5, 10, 99.9, 100]) {
       const res = parse(percent)
       expect(res.success).toBe(true)
     }
   })
 
-  // 0 is a mass rabat-clear, not an apply — the owner did not ask for it, so it must not slip through.
-  it('rejects 0 (a 0% apply would clear every rabat)', () => {
-    expect(parse(0).success).toBe(false)
+  // 0 IS the owner's way of turning the rabat off, so the mass-clear it causes is the intent.
+  it('accepts 0 (turning the rabat off)', () => {
+    expect(parse(0).success).toBe(true)
   })
 
   it('rejects negatives', () => {

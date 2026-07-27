@@ -7,7 +7,7 @@ type CollectionSlugT = keyof typeof CACHE_TAGS
 /**
  * Payload hooks run in Route Handler context (not Server Actions),
  * so they must use `revalidateTag` — `updateTag` throws in this context.
- * Server Actions use `revalidateCollection()` from `lib/cache/revalidate.ts` instead.
+ * Server Actions use `revalidateCollections()` from `lib/cache/revalidate.ts` instead.
  *
  * `alsoBump` lets a collection invalidate sibling caches it's joined into —
  * e.g. kosztoryses afterChange bumps investments so admin-panel edits refresh

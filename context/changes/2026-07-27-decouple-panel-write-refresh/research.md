@@ -584,3 +584,928 @@ harness is worse than no number.
 5. **Where should the slim reference-data projection live** — a new slim fetcher alongside
    `fetchExpenseCategories`, or a `select`-narrowed variant of the existing one? Affects whether the
    PII-in-payload concern (`reference-data.ts:47-49`) gets closed as a side effect.
+
+---
+
+## Follow-up Research 2026-07-27 — measurement channel on the deployed app
+
+The owner's direction: measure against the deployed app with real data, and treat the **kosztorys
+editor page** (`/inwestycje/[id]/kosztorys_v2`) as a second, coupled surface alongside the investment
+detail page. First task was to establish whether that environment is reachable at all.
+
+### There is no live production deployment
+
+The last 12 deployments are **all `target: preview`** — none production. The production alias
+`wykonczymy.vercel.app` returns an identical 15 060-byte Next 404 ("This page could not be found")
+on `/`, `/login`, `/inwestycje`, and `/inwestycje/6` alike, i.e. it is not serving the app at all.
+
+**The live app is the `staging` branch preview.** So "prod data" in this change means the preview
+Neon DB behind `wykonczymy-git-staging-wykonczymys-projects.vercel.app`, which is safe to load-test.
+Only one domain is registered on the project (`wykonczymy.vercel.app`, no `gitBranch`).
+
+### HTTP to staging is walled by Vercel SSO — and the wall lies convincingly
+
+Project protection is `ssoProtection: { deploymentType: "all_except_custom_domains" }`, with
+`passwordProtection: null`, `trustedIps: null`, and **no `protectionBypass` secret configured**.
+Since the project has no custom domain, every reachable URL is protected.
+
+A plain `curl` of the staging investment URL returns:
+
+```
+status=200  ttfb=1.259s  total=1.838s  size=484184
+```
+
+— which is **Vercel's SSO login page**, `<title>Login – Vercel</title>`, not the app. This is the
+third instance of the failure mode lessons.md already names twice: _a 200 with plausible timings is
+not evidence you measured the thing you named._ Verify a page-specific string in the body first.
+Driving staging over HTTP would require either a Protection-Bypass-for-Automation secret
+(`x-vercel-protection-bypass` header) or a borrowed `_vercel_jwt` cookie.
+
+### `vercel logs` is the measurement channel, and it needs neither
+
+The Vercel CLI is authenticated (`vercel whoami` → `admin-63074310`) and the repo is linked
+(`.vercel/project.json`). Runtime logs are readable **without touching the SSO wall**:
+
+```bash
+vercel logs --branch staging --since 12h -q "PERF" --expand --json
+```
+
+This returns the app's own server-side `[PERF]` telemetry, grouped per request. Real capture from
+the owner's own browsing:
+
+```
+GET /
+  [PERF] query.sumAllRegisterBalances      1015ms (29 registers)
+  [PERF] query.fetchRegisterBalances       1016ms (29 registers)
+  [PERF] query.fetchManagerDashboardData   1195ms
+  [PERF] ManagerDashboard …                1196ms
+  [PERF] TransferTableServer findTransfersRaw + fetchReferenceData  20ms
+  [PERF] query.fetchMediaByIds              104ms (12 docs)
+```
+
+**This is strictly better than external HTTP timing** — per-query attribution instead of one opaque
+wall-clock number, and it measures the real deployment against real data volumes. The protocol is:
+the owner browses, the agent queries the logs. No credentials change hands and no project config is
+modified.
+
+**Retention caveat — the binding constraint.** Request _metadata_ (path, method, status) is retained
+far longer than the log _bodies_: of 500 request records over 12 h, only the two most recent still
+carried their `logs[]` array; the rest came back `logs: []`. Measurement must therefore be a live
+session — browse, then query within minutes. A `--since 12h` sweep run the next morning will show
+that the requests happened and nothing about what they cost.
+
+Flags that matter: `-q` (full-text over log bodies), `--expand` (attach bodies), `--json`,
+`--since`, `--limit`, `--branch`. Note `vercel logs` resolves the project from the **current working
+directory** — running it from `$CLAUDE_JOB_DIR/tmp` fails with "codebase isn't linked".
+
+### New finding: `sumAllRegisterBalances` is a 1-second query on the dashboard — IN SCOPE
+
+Surfaced on the first real log read, and the slowest single query yet observed anywhere in the app:
+
+| Log line                          | Value                                    |
+| --------------------------------- | ---------------------------------------- |
+| `query.sumAllRegisterBalances`    | **1015 ms** (29 registers)               |
+| `query.fetchRegisterBalances`     | 1016 ms — a 1 ms cache wrapper around it |
+| `query.fetchManagerDashboardData` | 1195 ms                                  |
+
+`sumAllRegisterBalances` (`src/lib/db/sum-transfers.ts:71-112`) is two full `GROUP BY` scans of the
+entire `transactions` table joined with `FULL OUTER JOIN`:
+
+- `source_balances` — every row where `source_register_id IS NOT NULL AND cancelled IS NOT TRUE`
+- `target_balances` — every row where `target_register_id IS NOT NULL AND type = 'REGISTER_TRANSFER'`
+
+Neither predicate is selective; both are effectively full-table aggregations, and the cost scales
+with **total transaction history**, not with the 29 registers returned. It sits on `/` (the
+manager dashboard — the first page loaded every session) via `fetchManagerDashboardData`, and on
+`/kasa/[id]` via `fetchRegisterBalances`.
+
+It is `unstable_cache`d under the `transfers` tag (`reference-data.ts:182-188`), so the 1015 ms is a
+**cache miss** — but every transfer create/delete invalidates that tag, so on an active day misses
+are routine. Candidate fixes (unranked, unmeasured): a partial index on
+`(source_register_id) WHERE cancelled IS NOT TRUE`, the same for `target_register_id`, or a
+materialised running balance maintained by the existing recalculation hooks.
+
+**Scope call: IN SCOPE (owner, 2026-07-27).** I first recorded this as out of scope on the reasoning
+that it touches neither page named and shares no code path with them. The owner overruled it, and the
+correction is worth keeping visible because the reasoning error is reusable: **scope here is defined
+by the acceptance bar, not by the code path.** The bar is _"the app feels as fast as it did
+originally"_; `/` is the first page loaded in every session, so a one-second query on it is the same
+defect as the panel, reached by a different route. "Different file" is not "different problem".
+
+### Confirmation of the owner's coupling instinct
+
+The two pages share `getKosztorysTree` and size it for the heavier consumer:
+
+| Surface                                       | Tree consumption                                   |
+| --------------------------------------------- | -------------------------------------------------- |
+| `/inwestycje/[id]` → `InvestmentSummaryPanel` | 100% aggregate → **two numbers** (see Q3 above)    |
+| `/inwestycje/[id]/kosztorys_v2`               | genuinely per-row — the editor needs the full tree |
+
+Additionally the editor page runs a **nine-way `Promise.all`** (`kosztorys_v2/page.tsx:47-67`):
+tree, `fetchFilteredByType`, `fetchCategoryBreakdowns`, `fetchReferenceData`,
+`fetchPayoutsByWorkerForInvestment`, `fetchPayoutTransactionsForInvestment`,
+`fetchDepositTransactionsForInvestment`, `fetchMaterialTransactionsForInvestment`,
+`requireInvestmentOr404` — with **zero `[PERF]` instrumentation** before this change, and no
+`<Suspense>` boundary of its own. So the coupling is not a shared component; it is one uncached
+query sized for the editor and paid in full by a page that reduces it to two scalars.
+
+### Instrumentation added (step 0 of any measurement)
+
+Three files, log-only — no behavior change:
+
+- `src/lib/queries/kosztorys.ts` — `buildKosztorysTree` now emits a per-sub-query line
+  (`[PERF] query.kosztorysTree.{sections,items,stages,progress,investment}` with row counts) plus a
+  summary splitting **setup / queries / map**. The five reads share a `Promise.all`, so each read
+  times itself via a local `timedRead` helper — a lap timer would have credited the whole
+  wall-clock to whichever settled last. The `map` figure is the one that matters for the
+  aggregate-in-SQL argument: it isolates the cost of materialising the tree in JS, which a cache
+  amortises but does not remove.
+- `src/components/investments/investment-summary-panel.tsx` — `[PERF] InvestmentSummaryPanel`
+  splitting **fetch / derive**, tagged with the row count that produced the two output scalars.
+- `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx` — `[PERF] kosztorys_v2/<id> 9-fetch
+fan-out`.
+
+This closes the blind spot named in "Baseline: NOT captured" — the route's suspected long pole was
+the one thing uninstrumented. It must reach `staging` before any measurement is meaningful.
+
+### Corrected baseline protocol
+
+Supersedes the local-dev protocol above:
+
+1. Land the instrumentation on `staging` (a human pushes).
+2. Owner loads `/inwestycje/<id>` and `/inwestycje/<id>/kosztorys_v2` on staging — pick both a small
+   and a large kosztorys, since the shape argument only bites at scale.
+3. Agent immediately runs `vercel logs --branch staging --since 30m -q "PERF" --expand --json`.
+4. Repeat after each spike, comparing the same log lines.
+
+Points 1–3 of the earlier local protocol (mint a dev session, assert a page-specific string, count
+all requests) still apply to any **browser-side** measurement of the `router.refresh()` round-trip
+count, which server logs cannot see. That one is verifiable by eye in DevTools' Network panel.
+
+---
+
+## Baseline captured 2026-07-27 14:38–14:40 — instrumented preview, owner browsing
+
+Deployment `wykonczymy-gooxkhwi5` (branch `ex-597-decouple-panel-write-refresh`), read via
+`vercel logs <url> -q "PERF" --since 30m --json`. Investment **31**: 13 sections, **324 items,
+1 stage, 0 stage-progress rows**.
+
+### Q1 ANSWERED — the double render is real, and it is visible in the server logs
+
+One click on the materials-net-rate control produces **two full server renders of the route**:
+
+| t (ms) | Request               | What ran                                                                                                                                                                                         |
+| ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 0      | `POST /inwestycje/31` | `updateInvestmentMaterialsNetRateAction` **126 ms** — _then the entire page_: `fetchReferenceData` ×3, `buildKosztorysTree` 104 ms, `InvestmentSummaryPanel` 107 ms, `TransferTableServer` 81 ms |
+| +566   | `GET /inwestycje/31`  | **the entire page again**: `fetchReferenceData` ×3, `buildKosztorysTree` 77 ms, `InvestmentSummaryPanel` 80 ms, `TransferTableServer` 64 ms                                                      |
+
+Reproduced on both toggles in the session (`937256`/`938246` and `959911`/`960477`). The POST
+carrying a full page render is `updateTag` doing exactly what the framework-source trace predicted;
+the GET 0.5 s later is the redundant `router.refresh()`. **The hypothesis in `change.md` is
+confirmed against a running deployment, not just against Next's source.** The actual write is
+~126 ms of the ~1.1 s the user waits; the rest is rendering the page twice.
+
+Note the ordering: the action's own work finishes at 126 ms, and the re-render is then paid
+**twice, sequentially** — the refresh GET does not start until the action's render has streamed.
+
+### `fetchReferenceData` runs 3× per render — confirmed live, so 6× per toggle
+
+Every render logs three separate `query.fetchReferenceData 5 SQL, 192 rows` lines (15/21/24 ms warm,
+68/84/34 ms cold). The 2026-03-19 dedup note was right and is still unactioned. With the double
+render, **one toggle executes 30 SQL statements' worth of reference data to change one number.**
+
+### The tree is NOT the bottleneck at this size — and its worst case is untested
+
+`buildKosztorysTree` at 324 items: **77–309 ms, of which `map` is 0–1 ms**. The JS reduction the
+change doc flagged as a smell costs nothing measurable; the entire cost is the `items` query
+round-trip (76–211 ms for 324 rows). `InvestmentSummaryPanel` `derive` is likewise **1 ms** for
+324 rows → 2 scalars.
+
+**But investment 31 has `stages 1, progress 0`.** The `limit: 100000` stage-progress read returned
+zero rows, so the fetch-everything-and-reduce-in-JS concern is **unmeasured, not disproven**. A
+kosztorys with real stage progress (~10 stages × 1000 items ⇒ ~10 000 rows) is the case that
+matters and it was not exercised. Do not close that finding on this data.
+
+The variance is worth noting on its own: the same `items` query ranged 76 → 309 ms across renders
+seconds apart. Preview-lambda cold starts and the shared preview DB make any single number
+unreliable; only the ×2 render count is a clean signal here.
+
+### `kosztorys_v2` fan-out is ~100–220 ms — the nine-way `Promise.all` is not the problem
+
+`kosztorys_v2/31 9-fetch fan-out`: 93, 106, 114, 114, 117, 209, 222 ms. It parallelises properly.
+The editor page's own actions (`addItemAction` 121–168 ms, `addSectionAction` 131 ms) show the same
+double-render shape as the investment page — POST re-renders, then a GET re-renders again.
+
+### `sumAllRegisterBalances` did not appear — because the cache was warm
+
+`/` logged `fetchManagerDashboardData` at **36, 41, 162, 172, 215 ms** and no
+`sumAllRegisterBalances` line at all. That is the cache **hit** path. Against the 1015 ms cold
+measurement, the cliff is roughly **28×**, and which side of it a page load lands on is decided by
+whether anyone has touched a transfer since the last load. This does not soften the finding — it
+sharpens it: the dashboard is fast until someone books a transfer, then it is not.
+
+Also visible: **four `GET /` renders fired within 350 ms of each other** (`909304`, `909623`,
+`909640`, `909655`). Not explained yet — prefetch is the obvious suspect. Flagged, not investigated.
+
+### What this changes about the plan
+
+The read-path rebuild (SQL aggregation, slim projections) is **not** where the user-visible second
+goes at today's data size. The ranked order the numbers actually support:
+
+1. **Delete the two `router.refresh()` calls** — halves the work per toggle, touches two lines,
+   zero parity risk. This is S1 and it is now evidence-backed rather than hypothesised.
+2. **React `cache()` on `fetchReferenceData`** — 3 → 1 per render, and the effect doubles under (1).
+3. **`sumAllRegisterBalances`** — the only genuine second-scale query found, and it is on `/`.
+4. **The tree** — defer until measured against a kosztorys with real stage progress.
+
+## Second capture 14:45–14:46 — investment 42 (Białostocka), instrumented preview
+
+`inv 42: 13 sections, 324 items, 10 stages, 125 progress`. Roughly 20 toggles of the materials
+net-rate control plus two `applyPercentRabatToAllItemsAction` runs on `/inwestycje/42/kosztorys_v2`.
+
+### The double render is now airtight — ~15 consecutive POST→GET pairs
+
+Every `updateInvestmentMaterialsNetRateAction` / `updateInvestmentSettlementModeAction` POST carries
+a full page render, and 200–300 ms later a `GET` runs the **entire nine-way fan-out again**:
+
+```
+14:45:45.713 POST  action 72ms   → tree 96ms,  fan-out 101ms
+14:45:45.904 GET                 → tree 93ms,  fan-out  96ms
+14:45:46.143 POST  action 71ms   → tree 88ms,  fan-out  92ms
+14:45:46.357 GET                 → tree 100ms, fan-out 102ms
+```
+
+Not a sampling artifact: it repeats on **every** toggle in the window, on both actions, and on the
+investment page as well as the editor. `change.md`'s hypothesis is settled.
+
+### `applyPercentRabatToAllItemsAction` builds the tree THREE times per click
+
+```
+14:46:07.337 POST  buildKosztorysTree 109ms   ← inside the action
+                   applyPercentRabatToAllItemsAction 209ms
+                   buildKosztorysTree 103ms   ← the action response's page render
+                   fan-out 113ms
+14:46:07.964 GET   buildKosztorysTree  74ms   ← the router.refresh()
+```
+
+The action reads the tree to compute the rabat, then the route re-renders and reads it again, then
+the refresh reads it a third time. Deleting `router.refresh()` removes one of the three; the
+remaining duplicate is the action and its own re-render, which **no cache tag can dedupe** because
+`getKosztorysTree` is uncached and `unstable_cache` has no request-scoped memoisation anyway. This
+is the strongest argument yet for caching or React-`cache()`-ing the tree — not the row count.
+
+### Rapid clicking is where "unusable" comes from
+
+Six toggles between 14:45:46.387 and 14:45:48.320 — under two seconds — produced **twelve full route
+renders**, one pair per click, each re-running the fan-out. Nothing debounces, nothing coalesces, and
+each render is 80–315 ms of server work. The control is inert throughout (no `useOptimistic`), so the
+user keeps clicking, which multiplies the stampede.
+
+### The tree's worst case is STILL untested — this dataset does not have it
+
+Investment 42 has **125 stage-progress rows**, not the ~10 000 the `limit: 100000` read is sized for.
+`buildKosztorysTree` ranged 71–311 ms across ~25 samples with `map` at **0–1 ms every single time**,
+and `derive` at 4–8 ms. At the data sizes that actually exist in this database, the JS reduction the
+change doc flagged is free and the cost is purely query round-trips. **No investment in the preview
+DB exercises the 1000-item case recorded in memory.** Treat the aggregate-in-SQL rebuild as
+unjustified-by-measurement until such a kosztorys exists.
+
+### Nothing on any page exceeded ~320 ms of server time
+
+Across both captures the ceiling was `buildKosztorysTree 311ms` / `fan-out 315ms`, and the median was
+~90 ms. The single second-scale query found anywhere remains `sumAllRegisterBalances` on a cold
+`transfers` tag. **The perceived slowness is therefore not one slow query — it is doing the same
+80–300 ms of work two to three times per interaction, with no optimistic feedback while it happens.**
+
+### Revised ranking (supersedes the previous section)
+
+1. **Delete the two `router.refresh()` calls** — removes one full render per interaction.
+2. **`useOptimistic`/`useTransition` on the controls** — promoted; the stampede above is a direct
+   consequence of the control looking dead, and this is what makes the remaining ~100 ms invisible.
+3. **React `cache()` on `fetchReferenceData` and `getKosztorysTree`** — kills the intra-request
+   triplicate and the action-plus-render tree duplicate.
+4. **`sumAllRegisterBalances`** — the only genuine second-scale query.
+5. **SQL aggregation / slim projections** — parked. `map 0ms` says the current shape is not the cost
+   at real data sizes.
+
+## S1 result 15:08 — `router.refresh()` deleted, render count halved
+
+Deployment `wykonczymy-65rd4hlny` (commits `a61fdd5a` + `dd148c15`), investment 42, same pages.
+
+```
+15:08:12.136 POST  updateInvestmentSettlementModeAction  189ms → tree 153ms, panel 159ms
+15:08:15.225 POST  updateInvestmentSettlementModeAction  250ms → tree 230ms, panel 240ms
+15:08:17.950 POST  updateInvestmentMaterialsNetRateAction 253ms → tree 152ms, panel 162ms
+```
+
+**No trailing `GET` on any of them.** Before S1 every settings POST was followed 200–300 ms later by
+a GET re-running the whole fan-out; that GET is gone. Server work per interaction is halved, and the
+hypothesis that `updateTag` alone delivers the fresh render is confirmed end-to-end — the values
+still land, so nothing depended on the second render.
+
+**Caveat, recorded rather than assumed away:** the action's own lap time rose from 72–126 ms
+pre-S1 to 189–253 ms in this window. Nothing in S1 touches the action, and the tree query in the
+same requests spanned 150–318 ms (it spanned 71–311 ms pre-S1), so preview-lambda variance is the
+overwhelmingly likely explanation. But it is a swing in the very number the improvement is claimed
+against, and the preview environment is too noisy to prove otherwise from one window. Any future
+before/after on this branch needs more samples than this.
+
+**Still unverified: `dd148c15`** (the editor's `optimisticSettingSave` tail). The editor was not
+exercised in this window. Its risk is specific and different from the panel's — `rows` lives in
+`useState` with a once-only initializer, so if any settings path leaned on the refresh for something
+`patchRows` does not cover, the symptom is a stale cell rather than a slow page.
+
+## S2 investigation 2026-07-27 — `sumAllRegisterBalances` is not a query problem
+
+The owner ranked this first. It is not fixable as ranked, and the reason matters more than the
+number: **the 1015 ms was never in the SQL.**
+
+`EXPLAIN (ANALYZE, BUFFERS)` of the exact query against the local prod-restored copy:
+
+| Fact                     | Value                                                                  |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `transactions` rows      | 3 044 (2 667 with `source_register_id`, 182 with `target_register_id`) |
+| Table size incl. indexes | 1 256 kB                                                               |
+| Planning time            | 3.6 ms                                                                 |
+| **Execution time**       | **2.4 ms**                                                             |
+
+Both `GROUP BY` legs already index-scan (`transactions_source_register_idx`,
+`transactions_target_register_idx`). The whole table is ~1 MB — it fits in shared buffers many times
+over. There is no scan to optimise.
+
+**So where does 1015 ms come from?** `perfStart()` fires at function entry, before
+`await getDb(payload)` and before the first `db.execute`. `getDb` itself opens nothing — it reads
+`payload.db.drizzle` off the adapter (`src/lib/db/get-db.ts:12-19`) — so the entire second is inside
+the first `db.execute` of a **cold request**: Neon compute wake + TLS handshake + pool establishment.
+`sumAllRegisterBalances` doesn't cost a second; it is simply the first query to touch the database in
+a cold lambda, and it pays the connection bill for everything after it.
+
+Corroborating evidence already in this doc: `fetchManagerDashboardData` measured 36–215 ms **total**
+whenever the lambda was warm. That is arithmetically impossible if its own child query cost 1015 ms.
+The ~28× cliff recorded earlier was the cold/warm boundary, not a cache hit/miss boundary.
+
+### Consequences
+
+- **No index, running-balance column, materialized view, or SQL rewrite would move this number.**
+  All of them optimise the 2.4 ms. Writing one would have been cargo cult, and would have added a
+  denormalised balance to maintain on every transfer create/delete for zero gain.
+- The earlier framing in `change.md` — _"two full GROUP BY scans of the whole transactions table;
+  cost scales with transaction history"_ — is **wrong on both counts**. They are index scans, and at
+  3 044 rows history is not the driver. Superseded by this section.
+- The real lever is connection warmth, which is infrastructure, not application code: Fluid Compute
+  instance reuse (already the default) and Neon's scale-to-zero wake. Both are outside this change.
+- **`unstable_cache` on this is still correct** — it keeps warm requests off the DB entirely — but its
+  value is avoiding a round-trip, not avoiding an expensive query.
+
+### What this says about the whole spike
+
+Every server-side number captured so far has a warm median under ~100 ms, and the one outlier turns
+out to be connection setup. The server is not where the perceived 1–2 s lives; the client-side
+capture already showed ~520 ms median click→paint with ~220 ms of it after the action resolves. This
+is further evidence that the remaining wins are in the render/commit path, not in SQL.
+
+## S3 landed 2026-07-27 — `fetchReferenceData` deduped per request
+
+`src/lib/queries/reference-data.ts` — `cache()` wrapped **around** the existing `unstable_cache()`.
+The two dedupe on different axes and both are wanted: `unstable_cache` spans requests and dies on tag
+invalidation; React `cache()` collapses the 3 calls **within one render** (page + transfer table +
+root-layout nav), which is the 3× measured in the baseline.
+
+**Safety argument, since this one has a real failure mode.** A request-scoped cache returns stale data
+if the same request reads _before_ it writes. Verified no server action reads `fetchReferenceData`
+(only three comments mention it, `src/lib/actions/kosztorys.ts:137,152,208`), so the render's first
+call is always post-mutation. Typecheck clean.
+
+### Rejected: the same treatment for `getKosztorysTree`
+
+Ranked #2 and approved by the owner, then **dropped on inspection** —
+`applyPercentRabatToAllItemsAction` reads the tree, mutates rows, and the ensuing render reads it
+again. Request-scoped memoisation would hand the render the **pre-mutation** tree and the grid would
+render stale prices. This is a silent wrong-data bug, not a latency trade, so no. It only becomes
+available if that read moves after the write.
+
+### Correction — the whole-tree-for-two-scalars finding stands (2026-07-27)
+
+I ranked this last with the reasoning "SQL aggregation is unjustified since `map` is 0–1 ms." That
+is a bad argument and is withdrawn. `map` being free proves the **JS reduction** isn't the cost; it
+says nothing about the **5 ORM round-trips and row serialization** feeding it, which is where the
+measured 71–339 ms actually goes (`fetch` 71–339 ms vs `derive` 1–16 ms — the split is already in the
+log line at `investment-summary-panel.tsx:58`).
+
+Verified against the code rather than re-quoted. `InvestmentSummaryPanel` reduces the whole tree to
+exactly **two** scalars — `sumaPracNet` + `rabatClientNet` (`:44-47`). The three other tree values it
+forwards (`vatRate`, `settlementMode`, `materialsNetRate`, `:83-85`) come off the investment row,
+i.e. query #5 (`findByID`). So the four unbounded queries — sections `limit 1000`, items `limit 5000`,
+stages `limit 1000`, **stage-progress `limit 100000`** — are paid entirely for those two numbers.
+
+**But "move it to SQL" is the wrong first instinct.** `kosztorysClientTotals` is not a `SUM`: it
+applies the global discount, per-section coefficients and VAT, and the editor runs that same logic on
+the same rows. A SQL port forks that business logic into two implementations that must agree forever
+— the exact seam AGENTS.md's "one concept, one name" rule exists to prevent. The cheaper framing is
+**stop making the investment page pay for the editor's tree**: a narrower query shaped to this
+consumer, or caching the two scalars under the `kosztoryses` tag. Decide the shape before the ticket.
+
+Worst case remains **unmeasured** — no kosztorys in this DB exceeds 125 stage-progress rows against a
+`limit: 100000`, so the unbounded read has never actually been stressed.
+
+## S4 mechanism 2026-07-27 — why no cache-tag arrangement can decouple the render
+
+Traced through Next 16's own source (`node_modules/next`), because two earlier notes in this doc were
+wrong about it. **Correcting the record first:** the note that "only tags without a profile
+(`updateTag`) count as requiring client cache invalidation" is misleading as I used it.
+`addRevalidationHeader` sets `x-action-revalidated` on `pendingRevalidatedTags.length` **alone**
+(`server/app-render/action-handler.js:108-112`), and _both_ `revalidateTag` and `updateTag` push into
+that array (`server/web/spec-extension/revalidate.js:174-193`). The profile only gates a different
+variable, `pathWasRevalidated`.
+
+### The three-way interaction
+
+1. **`pathWasRevalidated` controls whether the POST carries a page render.**
+   `skipPageRendering ||= workStore.pathWasRevalidated === undefined || ... === ActionDidNotRevalidate`
+   (`action-handler.js:831`). It is set only when `!profile || cacheLife?.expire === 0`
+   (`revalidate.js:199-203`). So a **profile**-revalidation skips the render in the action response.
+2. **But the header is set regardless**, so the client's `revalidationKind !== ActionDidNotRevalidate`.
+3. **With `flightData === undefined` and a non-zero revalidationKind, the client falls through to a
+   plain `navigate(...)` with `FreshnessPolicy.RefreshAll`** (`client/components/router-reducer/
+reducers/server-action-reducer.js:244-273`) — an unseeded navigation, i.e. **a fresh GET of the
+   current route**.
+
+Net: profile-revalidation does not remove the re-render, it **relocates** it from the POST to a
+follow-up GET, adding a round-trip. That is the exact trailing GET S1 deleted.
+
+### The only branch that re-renders nothing
+
+```js
+revalidationKind === ActionDidNotRevalidate && flightData === undefined // → "No navigation is required."
+```
+
+(`server-action-reducer.js:216-222`)
+
+**Conclusion: a server action that invalidates any tag, by any API, forces a full route render
+somewhere.** Cache tags cannot decouple the transfers table from a settings write. The tagging was
+never the problem and no amount of tag precision fixes it.
+
+### Consequence for the design
+
+The write must leave the server-action path. Shape:
+
+- `PATCH /api/investments/[id]/kosztorys-settings` route handler — `requireAuth`, write,
+  `revalidateTag(CACHE_TAGS.investments)` (route-handler context, per the AGENTS.md rule). Route
+  handlers set no `x-action-revalidated`, so nothing re-renders.
+- It returns the recomputed figures; the panel seeds from server props and owns them in client state.
+
+**This cannot ship without client-side ownership of the figures.** `materialsNetRate` reaches four
+consumers, three of them page-level siblings of the panel (Marża strip, materials tile, transfers
+header/CSV). Remove the route render and those three go stale until the next navigation. So the
+decoupling (#3) and the optimistic/pending work (parked as "the end") are **one refactor**, not two —
+#3 without it ships visibly stale numbers. They should be planned and built together.
+
+## Scope change 2026-07-27 — settings left the investment page instead of being decoupled
+
+The owner cut the problem rather than solving it: **investment settings are edited in the kosztorys
+editor only.** The investment page's panel now renders the figures read-only and links across with
+`?ustawienia=1`, which opens the totals panel with the „Ustawienia inwestycji" block expanded.
+
+This retires S4's route-handler design **for this route**. With no settings write on
+`/inwestycje/[id]`, there is nothing there to decouple from the transfers table — the render that S4
+proved unavoidable simply never fires. The mechanism finding stands and still governs the editor
+side, where the same writes now live; it is just no longer blocking.
+
+Landed in `37349c77` (panel split, `investment-summary-panel-client.tsx` deleted) and `94e881a4`
+
+<!-- 37349c77 was later rewritten; its replacement on the branch is a6050f2c, same subject. -->
+
+(editor back arrow). Note the client `[PERF:client]` marks went with the deleted wrapper, so
+client-side click→paint is no longer instrumented on that route.
+
+### The `?ustawienia=1` arrival is URL state, deliberately
+
+Rejected a localStorage write from the linking page. The panel's open state is a persisted
+**preference** (`usePersistedEnum`, key `table-columns:kosztorys-totals-open`), so writing it would
+flip the reader's default for every future visit off one click. It also covers only half the target —
+the settings block itself is `CollapsibleSection`'s `useState(defaultOpen)`, not persisted. A one-shot
+arrival intent belongs in the URL; the flag is seeded into `useState` once rather than read every
+render, so closing the panel hands control back to the preference.
+
+## S3 measured 2026-07-27 — the `cache()` dedup works and is not felt
+
+`query.fetchReferenceData` fires **once** per render, confirmed across every POST in the deployed
+logs (was 3×). Worth ~60 ms and invisible next to the variance. Five instrumented clicks:
+
+| action resolved | painted | client gap |
+| --------------- | ------- | ---------- |
+| 1123 ms         | 1399 ms | 276 ms     |
+| 226 ms          | 444 ms  | 218 ms     |
+| 1311 ms         | 1935 ms | 624 ms     |
+| 222 ms          | 422 ms  | 200 ms     |
+| 293 ms          | 679 ms  | 386 ms     |
+
+Server-side those same clicks cost **200–450 ms total**. So the two ~1.2 s clicks are ~900 ms of
+cold lambda + Neon wake — **not our code**, the same cold/warm boundary that produced S2's fake
+"28× cache cliff". And **every** click pays 200–620 ms between the server answering and the pixel
+changing: pure client-side React rebuilding the transfers table.
+
+**Conclusion: server work is no longer the problem on this page.** The remaining perceived latency is
+(1) the client re-render, (2) intermittent cold starts. Neither is a slow query, so the owner's
+"we're hiding slow queries" objection to optimistic UI no longer applies — there is no slow query
+left to hide.
+
+## S6 landed 2026-07-27 — the media lookup, cached whole and read via raw SQL
+
+`fetchMediaByIds` ran **uncached on every render**, as a serial hop behind the transfers query (it
+needs their invoice ids). Now the whole table is cached under a new `CACHE_TAGS.media` and filtered
+in memory. `a1bf7234` + `72ff0ea1`.
+
+**Why cache the whole table and not the id set** — the inversion is the point. The id-filtered read
+ran on every render; the whole-table read runs only after a media write, and reads outnumber media
+writes by orders of magnitude. The full sweep is also cheaper outright: **0.26 ms vs 1.6 ms**
+(`EXPLAIN ANALYZE`, prod restore) — 988 rows / 808 kB read sequentially beats one index probe per id.
+
+**Why a Payload collection hook, against the "side effects go in the server action" rule** — four
+write paths exist, not the two initially assumed:
+
+1. `POST /api/upload-file` → `uploadFile()` → `payload.create`. Three UI entry points funnel here
+   (`invoice-upload-dialog`, `edit-transfer-form`, `expense-form` via `resolveInvoiceMediaIds` —
+   the last uploads 10–20 receipts per submit, 4 concurrent).
+2. `setTransferInvoice` (`src/lib/actions/transfers.ts:311`) deletes the replaced media
+   **fire-and-forget** — unawaited, so it can land after the action returns and after any
+   action-level revalidation. An action-side bump races it and sometimes loses.
+3. - 4. Payload admin panel create/update/delete. _(Owner: `/admin` is never used, so this is not a
+        live path — but it costs nothing to cover and the hook is one line either way.)_
+
+The collection is the one seam all four cross. `afterDelete` also bumps `transfers`:
+`transactions_invoice_id_media_id_fk` is `ON DELETE SET NULL`, so removing a media row silently nulls
+every transfer pointing at it — a pre-existing staleness nothing invalidated before.
+
+**Invalidation verified from code, not by clicking.** `fetchReferenceData` is `unstable_cache`d under
+six tags (`users`, `investments`, `cashRegisters`, `otherCategories`, `expenseCategories`,
+`kosztoryses`) and every one of those collections invalidates through the same
+`makeRevalidateAfterChange` helper. If `revalidateTag(tag, 'default')` from a Payload hook did not
+expire an `unstable_cache` entry, reference data would be permanently stale app-wide. Media is the
+seventh tag on a mechanism already proven six times. `skipRevalidation` is never set on any media
+path (tests, seed scripts and kosztorys batch ops only).
+
+### Raw SQL over `payload.find` — and the prediction that was wrong
+
+First cut used `payload.find`; the cold populate measured **375 ms for 949 docs** while the DB does
+the select in 0.26 ms. That is ORM hydration, and it is re-paid on the first render after every media
+write — which the bulk expense form triggers 10–20 times per submit. Swapped for
+`select id, url, filename, mime_type from media` via `getDb`.
+
+Safe because `url` is a **stored column** holding the finished serving path
+(`/api/media/file/<filename>`, populated on all 988 rows), so the string is byte-identical to what
+`payload.find` returns; the collection is `read: () => true` and the old call already passed
+`overrideAccess`. Residual risk is theoretical: reconfiguring the media serving path would leave
+stored URLs stale where `payload.find` would recompute — and would break every existing link anyway.
+
+**Result: 375 ms → 100–124 ms (950 docs). I predicted single digits and was wrong** — the residual is
+the Neon round-trip plus ~100 kB of rows on the wire, not ORM overhead. Floor doesn't move without
+shipping fewer columns.
+
+Warm renders, which is what matters — `TransferTableServer buildTransferRows`:
+
+| before any of this work              | after             |
+| ------------------------------------ | ----------------- |
+| 25, 30, 33, 39, 41, 143, 151, 265 ms | 11, 16, 17, 33 ms |
+
+### Still open
+
+- **The tree** (Q3 / the correction above) — ~120–175 ms warm on the investment page, four unbounded
+  queries for two scalars. Fix shape still unsettled; **not** a SQL port of `kosztorysClientTotals`.
+- **Worst-case tree read** remains unmeasured — no kosztorys in this DB approaches the
+  `limit: 100000` on stage progress.
+- **Optimistic / pending UI** — now the only remaining lever on perceived latency (see S3's client
+  gap), still parked by the owner.
+- **Media invalidation** never exercised by a live upload/delete; accepted on the shared-mechanism
+  argument above.
+
+## S7 research 2026-07-27 — the panel settings are optimistic candidates, and the payload cost is zero
+
+Unparking the optimistic UI item above. The objection that stopped it was "the panel's figures come
+from the server, so faking them means faking money" — false on this route.
+
+**Every input to every panel figure is already client-side at click time.** `SummaryPanelContent` is
+`'use client'` and derives the lot from props the mode cannot change
+(`summary-panel-content.tsx:164-214`): `moneyAxis`, `displayAxis`, `effectiveNetRate`,
+`buildSettlementPlaneVerdict`, `computeDoZaplatyRM`. Its inputs — `laborCostsNetFromKosztorys`,
+`wplatyNet`, `materialsGrossBase`, `materialsNetBilled`, `vatRate`, `depositTransactions` — are all
+mode-independent. The new value itself originates at the client (a select pick, a typed rate), and
+`updateInvestmentMaterialsNetRateAction` (`src/lib/actions/kosztorys.ts:185-201`) only validates and
+persists — it computes nothing and returns no figure. The round trip is a receipt, not data.
+
+### Marża costs one field, not a payload
+
+`deriveFinancials` (`src/lib/db/investment-financials.ts:70-105`) returns exactly **one**
+mode-dependent field:
+
+```ts
+materialsNetDiscount =
+  settlementMode === 'GROSS' ? 0 : concessionOn(materialsGrossBase, materialsNetRate)
+```
+
+`concessionOn` is `materialsNetDiscount` from `summary-economics`, **already imported and called by
+the client panel** (`brutto-netto-summary.tsx:115`, `mixed-summary.tsx:48`), and `materialsGrossBase`
+is already a prop. `SummaryMarginTab` is already `'use client'` and already calls
+`calculateMargin(financials)` in the browser (`summary-margin-tab.tsx:1,38`).
+
+So the client re-derive is `{ ...financials, materialsNetDiscount: <same call> }` — no aggregates
+shipped, no payload growth, no second copy of the formula. The earlier idea of shipping
+`typeDistribution` + the breakdown maps was over-built and is dropped.
+
+**Import trap for whoever implements it:** all three pages import `deriveFinancials` from
+`@/lib/db/sum-transfers`, which re-exports it (`:21`) while itself pulling `sql`, `payload` and
+`getDb`. Anything client-side must import from `@/lib/db/investment-financials` directly. Moot under
+the one-field patch, but it will bite the first person who reaches for the whole function.
+
+### The pattern is already in the same hook
+
+`use-kosztorys-editor.ts:125-129` holds `globalDiscount` — a tree-level scalar, not on rows — in local
+state, with a comment giving exactly this argument: reading `tree.globalDiscount` "would leave the
+total + columns lagging the row flag until router.refresh() lands". The comments at `:1034` and
+`:1053` that deny the same treatment to the settlement mode and the rate ("isn't denormalized onto the
+rows, so there's nothing to patch optimistically") test the wrong consumer: the panel reads a prop, not
+a row. Both `revert` arms are `() => {}` today — that is the actual defect.
+
+### Reader inventory (editor route)
+
+`kosztorys-editor-body.tsx:302,304` (panel props) · `use-kosztorys-editor.ts:160` (**`clientView`
+branch only** — the read-only share, which has no writers, so the owner's grid axis does _not_ move
+with the mode; an earlier note in this conversation claiming a grid coupling was wrong) ·
+`:763-764` (constructing a `treeToRows` argument, ignored by row building) · `:1047,1064` (the `before`
+capture for undo).
+
+### VAT is the same case, half-done
+
+`applyVat` patches `vatRate` onto every row, so the **grid** flips instantly — but the panel gets
+`vatRate={tree.vatRate}` (`kosztorys-editor-body.tsx:301`) and the body's brutto totals use
+`tree.vatRate` (`:119-144`), so both still wait for the round trip. `toGross(net, rate)` is pure and
+the nets are client-side. Folded into scope for consistency: three scalars, one pattern.
+
+### Consequence to accept, not solve
+
+`rows`, `stages` and `globalDiscount` are seeded once and never reseeded from a fresh `tree`
+("mount-frozen `rows`, EX-441"). The two settings are today the only panel inputs that _do_ track a
+fresh tree, because the panel reads the prop directly. Holding them locally ends that: a change made
+in another tab won't show until remount. Same staleness class the whole grid already has — decided in
+favour of retire-on-arrival (the local value steps aside once the server value catches up) rather than
+a permanent freeze, which costs a few lines and keeps external changes visible.
+
+## S5 — the tree read is round-trip bound, not hydration bound (2026-07-27, preview)
+
+Two commits were measured on preview against Neon, inv 42 (13 sections, 324 items, 10 stages,
+125 progress rows).
+
+**`d15ba6ab` — `deferRefresh` on the three per-cell autosaves.** Measured directly in a browser as
+the action response size, control vs treatment on the same tree and the same three cell edits:
+
+|                         | POST response |
+| ----------------------- | ------------- |
+| `updateTag` (before)    | 324 766 B     |
+| `revalidateTag` (after) | 127–128 B     |
+
+Every debounced cell autosave was streaming a full RSC re-render of the grid back to the browser,
+discarded on arrival: `rows` is `useState`-seeded once at mount and never reseeded from a fresh
+`tree`. Kept — the evidence is the payload, not a timing.
+
+**`9f14cbeb` — the five tree reads ported from `payload.find` to raw SQL.** No measurable effect:
+
+| read                   | old (`payload.find`) | new (raw SQL)   |
+| ---------------------- | -------------------- | --------------- |
+| sections (13 rows)     | 43 / 87 ms           | 39 / 40 ms      |
+| stages (10 rows)       | 43 / 89 ms           | 85 / 114 ms     |
+| items (324 rows)       | 86 / 131 ms          | 101 / 138 ms    |
+| progress (125 rows)    | 100 / 176 ms         | 86 / 122 ms     |
+| **investment (1 row)** | 23 / 25 ms           | **83 / 119 ms** |
+| `buildKosztorysTree`   | 101 / 178 ms         | 104 / 139 ms    |
+
+**The 1-row `investment` read is the control that settles it.** One row cannot take 100 ms to
+hydrate, and all five reads land within ~50 ms of each other regardless of row count or join
+complexity.
+
+This retires the hypothesis two earlier passes were built on: that ORM hydration costs ~0.53 ms/row
+and therefore dominates at the 1000-item bar. That figure was an artifact of reading the slowest of
+five staggered parallel round trips and attributing its wall-clock to the rows it returned. A local
+bench cannot see this at all (no network, no pool), which is why local measurement agreed with the
+wrong answer twice.
+
+**That much survives. The explanation attached to it did not — see S8.** The reading above was that
+the cost is per-round-trip latency under pool contention, scaling with the _number_ of reads. Every
+number in the table is a 2-sample cold read, and the conclusion drawn from them was wrong.
+
+The port was kept for its own sake — 70 fewer lines, and the four `assertCompletePage` guards go with
+it, since they only ever guarded Payload truncating a page at `limit`. It is not a performance change.
+
+## S8 — the round-trip theory was a cold-start artifact; the reads were always parallel (2026-07-27)
+
+`ca5ae1af` collapsed the five reads into one `json_agg` query, on the S5 prediction that round-trip
+_count_ was the variable. It is not a performance improvement either, and a single warm request on
+the five-read deployment shows why more clearly than any median:
+
+```
+query.kosztorysTree.stages      20ms (10 rows)
+query.kosztorysTree.sections    21ms (13 rows)
+query.kosztorysTree.progress    21ms (125 rows)
+query.kosztorysTree.investment  21ms (1 rows)
+query.kosztorysTree.items       44ms (324 rows)
+buildKosztorysTree              45ms (setup 1ms, queries 44ms, map 0ms)
+```
+
+**Total equals the slowest read, not their sum.** The five reads genuinely overlap in the
+`Promise.all`; four of them cost 20–21 ms and cost nothing _additional_ because they run inside the
+`items` read's window. There was never a serialized per-round-trip cost to remove, so collapsing five
+into one could not win anything — and measured, it doesn't.
+
+The 83–119 ms `investment` read in the S5 table is **cold-start connection setup**, not pool
+contention. Warm, that same 1-row read is 21 ms, in line with its siblings.
+
+With enough samples the whole surface is bimodal — **~20–60 ms warm, ~160–200 ms cold** — and which
+one a request gets is decided by Neon connection state, not by anything in our code. All three
+variants (`payload.find`, five raw-SQL reads, one raw-SQL query) sit in that same band:
+
+| variant                     | samples                              | median  |
+| --------------------------- | ------------------------------------ | ------- |
+| five raw-SQL reads (inv 42) | 34 36 37 38 43 43 45 46 58 68 99 178 | ≈ 44 ms |
+| one raw-SQL query (inv 31)  | 21 44 46 49 49 52 58                 | ≈ 49 ms |
+
+Not a matched pair — the two investments differ (inv 31 has 326 items and no progress rows, which if
+anything favours the one-query side). It doesn't matter: the parallelism sample above is direct
+evidence, and a matched run cannot flip a result this flat.
+
+`ca5ae1af` is kept on maintainability grounds only — one statement instead of a `Promise.all` plus the
+`timedRead` scaffolding that existed solely to rank five reads against each other. **Its cost:** the
+column list is hand-maintained, so a new field on `kosztorys_items` is silently omitted and a renamed
+one fails at runtime rather than at `tsc`. Live risk while the schema is still moving.
+
+**The method lesson, which is the durable part of this whole section:** three or four samples against
+Neon is noise, and a theory was built on two of them twice. Cold-start dominates any small sample and
+looks exactly like a structural cost. Separate warm from cold before believing a per-request number,
+and prefer one request that shows the _mechanism_ (overlapping timings) to a dozen that show a median.
+
+## S7 shipped — the panel feedback change is the one that was actually felt (2026-07-27)
+
+`b4b8a48e` landed the settled design and `6ef19850` routed the save through the global submit pill.
+
+**What shipped is pending state on all four controls, plus optimistic values on the two that can have
+them.** The split is not a compromise — it is mechanical, and worth stating because the section header
+"optimistic panel" would otherwise mislead:
+
+| control               | optimistic | why                                                                                                                                        |
+| --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| VAT                   | **yes**    | `applyVat` patches `vatRate` onto every row; grid brutto flips instantly, rollback on failure                                              |
+| Rabat globalny        | **yes**    | local `globalDiscount` + the denormalized `globalDiscountActive` row flag move in one render — totals, rows and column visibility together |
+| Sposób rozliczenia    | no         | _"isn't denormalized onto the rows, so there's nothing to patch optimistically"_                                                           |
+| Stawka netto wydatków | no         | same                                                                                                                                       |
+
+**The rule: a setting is optimistic exactly when its value is denormalized onto the rows.** `rows` is
+client-owned and patchable; `tree` is server-owned and mount-frozen (EX-441), so a setting that lives
+only on `tree` has nothing local to move. That is why S7's research read as "optimistic is technically
+free" and the decision note read as "pending state, not optimistic values" — both were describing half
+the set.
+
+On top of that, `b4b8a48e` wraps all four handlers in one shared `useTransition` (`isSavingSettings`)
+and disables the block while the write is in flight, so the two non-optimistic controls stop reading as
+inert even though they still wait.
+
+Naming trap for whoever touches this next: all four call `optimisticSettingSave`, but two pass `() => {}`
+as the rollback arm. The helper is really save + rollback + toast; its name overstates what two of its
+callers do.
+
+**Owner verdict: "the feeling is drastically improved."** That is the acceptance bar this spike was
+opened against — _"in current state this stat panel is basically unusable"_ / _"I need the app to feel
+as fast as it was originally with transfers only"_ — and it is met.
+
+### What that ranks, against everything else measured here
+
+| change                                                        | measured effect                                | felt                |
+| ------------------------------------------------------------- | ---------------------------------------------- | ------------------- |
+| `b4b8a48e` + `6ef19850` — pending state on the settings block | none on the clock — the wait is unchanged      | **yes, decisively** |
+| `d15ba6ab` — `deferRefresh` on cell autosaves                 | 324 766 B → 128 B per keystroke-debounced save | not reported        |
+| `9f14cbeb` — five reads to raw SQL                            | none                                           | no                  |
+| `ca5ae1af` — five reads to one query                          | none                                           | no                  |
+
+The two server-read commits are kept for code shape only (S8). The two that changed the experience
+both worked on the **client** side of the interaction: one stopped shipping a render nobody consumed,
+the other made the wait legible (and, for VAT and rabat, skipped it outright).
+
+### The generalisation worth keeping
+
+Every server-side hypothesis in this spike measured flat, and the fix was in the interaction path all
+along. The tree read was never the problem: 20–60 ms warm, and even its cold 160–200 ms is invisible
+next to a panel commit the user watches and gets no feedback from. **Optimising the read was optimising
+the term the user cannot see.** Before the next round of query work on this route, get a number for what
+the user is actually waiting on — the spike spent three commits proving the server wasn't it.
+
+Note the ranking this produces: the change with **no measurable effect on the clock** is the one the
+owner called drastic. Perceived latency and elapsed latency came apart completely here, and every
+instrument in this spike measured only the second one.
+
+### Non-blocking settings — considered and declined (owner, 2026-07-27)
+
+The disabled block is a blocking treatment: it also stops the user doing anything else in the panel
+while a write is in flight. Making it non-blocking is **not** a matter of adding a transition — the
+existing `useTransition` already keeps React responsive; the `disabled` prop is what stops the user.
+
+Removing `disabled` alone would be worse than today: sposób rozliczenia and stawka netto wydatków read
+from the server-owned `tree`, so they would sit enabled while still showing the **old** value, inviting
+a second click on a stale display with two writes racing. Doing it properly means giving those two a
+local retire-on-arrival value (the treatment VAT and rabat already have) plus a sequence guard.
+
+**Declined — "the write is fast enough, this is fine."** The blocking window is short enough not to be
+felt, so the local state, the ordering guard, and their interaction with `pushReversible` buy nothing.
+Revisit only if the write path slows down.
+
+---
+
+# Synthesis — what this change actually is (2026-07-27)
+
+S1–S8 above are a chronological spike log: each section is what was believed at the time, several were
+later overturned, and reading them in order does not answer "what shipped and what is now true". This
+section does. Where it contradicts an earlier section, this one is current.
+
+## Scope: the branch is wider than the ticket
+
+`ex-597-decouple-panel-write-refresh` carries three strands, only one of which is EX-597:
+
+| strand                                  | commits                                                                      | relation to EX-597                                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| perf / data-fetching                    | `dd148c15` `73480ff1` `a1bf7234` `72ff0ea1` `d15ba6ab` `9f14cbeb` `ca5ae1af` | the ticket                                                                                                       |
+| settings relocation + panel restructure | `983b8086` `d02df88a` `64d887b9` `2b78a2b9` `7a9e8123` `a6050f2c`            | enabler — moving settings off the investment page **retired** the decoupling problem rather than solving it      |
+| nav crumb                               | `6676c7f6` `ad1f5661` `09c5a101` `94e881a4`                                  | adjacent; `getInvestmentName` is a perf decision (name-only read instead of the whole doc + its afterRead hooks) |
+| settlement-view display                 | `e7bc98dd` `0d54ad16`                                                        | **unrelated** — a domain/display change riding the same branch                                                   |
+
+Only the first strand is tagged `EX-597`. Anyone reviewing this branch as "the perf change" will be
+reading two other features at the same time; the settlement-view pair in particular has no bearing on
+performance and should be judged on its own terms.
+
+## The read path as it now stands
+
+Four distinct caching strategies now coexist, each chosen for a different reason. This is the part
+worth understanding, because the strategies are _not_ interchangeable:
+
+| read                 | strategy                             | why this one                                                                                                                                                             |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fetchReferenceData` | `cache(unstable_cache(...))`         | two axes: `unstable_cache` spans requests and dies on tag invalidation; `cache()` collapses the 3 calls **within one render** (page + transfers table + root-layout nav) |
+| `fetchAllMedia`      | `unstable_cache`, whole table        | inverted from per-id: the id-filtered read was a serial hop behind the transfers query on every render; the full sweep runs only after a media write                     |
+| `getInvestmentName`  | `unstable_cache`, name only          | the crumb renders on every `/inwestycje/[id]/**` navigation; shares `getInvestment`'s tags so one invalidation covers both                                               |
+| `buildKosztorysTree` | **uncached**, one raw-SQL round trip | still uncached — and per S8 that turned out not to matter                                                                                                                |
+
+## What was verified, and what the code's own comments get wrong
+
+Three claims were checked against the code rather than taken from the comments that assert them:
+
+- **Media invalidation is genuinely wired.** `src/collections/media.ts` registers
+  `makeRevalidateAfterChange('media')` and `makeRevalidateAfterDelete('media', 'transfers')`, and the
+  helper calls `revalidateTag(CACHE_TAGS[slug], 'default')`. Earlier notes recorded this as unverified;
+  it is correct **by construction**. It has still never been exercised by a live upload or delete.
+- **The `fetchAllMedia` size headroom is ~10×, not ~2×.** The comment cites "988 rows / 808kB", which
+  is the table read, not the cached payload. The four projected columns measure **95 kB** across 988
+  rows on the dev DB. Serialized as JSON that is a few hundred kB against the Vercel Data Cache's
+  ~2 MB per-entry ceiling. Not a risk today; revisit around ~10 000 media rows, where the entry would
+  silently stop being cached and every render would pay the full sweep.
+- **The `cache()` safety condition holds, but only circumstantially.** The comment concedes it is
+  "safe here only because nothing reads reference data before a mutation in the same request". Checked:
+  all ~20 call sites are pages, the root layout, or read-only query modules — no server action reads
+  reference data after mutating in the same request. Nothing _enforces_ that. A future action that
+  writes an investment and then reads `fetchReferenceData()` in the same request gets the pre-write
+  value, silently. This is the sharpest latent trap the change introduces.
+
+## The thing this whole spike got wrong, twice
+
+Every server-side hypothesis measured flat. The tree read — attacked in two separate commits — is
+20–60 ms warm, its five reads were already fully parallel (total = slowest read, not the sum), and the
+83–119 ms figure that motivated the raw-SQL work was cold-start connection setup misread as pool
+contention. Details and the retracted numbers in S8.
+
+What the owner actually felt was `b4b8a48e` + `6ef19850`: pending state on the settings block, plus
+optimistic values on the two controls that can carry them (VAT, rabat globalny — the two denormalized
+onto `rows`). **That change has no measurable effect on elapsed time.** Perceived latency and elapsed
+latency came apart completely, and every instrument used here measured only the second.
+
+Method lesson, stated once so it survives: small samples against Neon are dominated by cold-start and
+look exactly like structural cost. Separate warm from cold before believing a per-request number, and
+prefer one request that exposes the _mechanism_ to a dozen that produce a median.
+
+## Test coverage added (2026-07-27)
+
+The hand-written SQL introduced a class of silent failure the ORM did not have, so it owes guards.
+Three specs, 13 tests, each verified by mutation (break the code, confirm the right test fails):
+
+| spec                                                | layer         | guards                                                                                                                                                       |
+| --------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `__tests__/lib/db/kosztorys-tree-sql-drift.test.ts` | source, no DB | a mapper reading a column the SELECT stopped providing — `num(undefined)` is **0**, so a price silently becomes zero                                         |
+| `__tests__/lib/db/kosztorys-tree.db.test.ts`        | DB @5435      | empty-investment `coalesce` (json_agg over zero rows is NULL), section ordering, progress scoped through its item, `revision` ISO format, missing investment |
+| `__tests__/lib/cache/revalidate.test.ts`            | unit          | `deferRefresh` skipping invalidation rather than only the re-render                                                                                          |
+
+`tsc` already covers the adjacent case — a field added to `KosztorysItemT` fails to compile until the
+mapper assigns it — so the drift guard deliberately covers only what the type system cannot see.
+
+## Open
+
+- **No end-to-end guard on the write path.** `deferRefresh` means a broken write is invisible in the
+  session that made it: the grid keeps rendering the typed value from its own `rows` state whether or
+  not anything reached Postgres. Browser-level by nature; owed as an `e2e-backlog` issue, **not filed**
+  (owner declined E2E work this session).
+- `buildKosztorysTree` is still uncached. Per S8 this is no longer believed to matter, and it should
+  not be picked up again without a fresh measurement that separates warm from cold.
+- The `cache()` mutation-ordering constraint above is undocumented outside this file and unenforced.
+- Non-blocking settings: raised and declined — the write is fast enough.

@@ -10,9 +10,11 @@ import {
 } from '@/lib/kosztorys/summary-economics'
 import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summary'
 import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
-import { SummarySettingsBar } from '@/components/kosztorys/summary/summary-settings-bar'
+import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
+import type { DepositTransactionRowT } from '@/types/reference-data'
 import type {
   KosztorysReconciliationT,
   SettlementPlaneVerdictT,
@@ -40,9 +42,11 @@ type PropsT = {
   // Wpłaty split by VAT plane — feeds the tryb mieszany settlement.
   paidNet: number
   paidGross: number
-  // VAT + rabat globalny editing. SummarySettingsBar reads the editor context, so a host outside
-  // KosztorysEditorProvider must leave this off or it throws.
-  showSettingsBar?: boolean
+  // The individual wpłaty, for the folded list below the settlement.
+  depositRows: DepositTransactionRowT[]
+  // Off on a host whose own transfers table already lists every wpłata (the investment page), where a
+  // second copy of the same list is noise rather than detail.
+  showDeposits?: boolean
   clientView?: boolean
   showPie?: boolean
 }
@@ -64,7 +68,8 @@ export function SummaryOverviewTab({
   materialsNetRate,
   paidNet,
   paidGross,
-  showSettingsBar = false,
+  depositRows,
+  showDeposits = true,
   clientView = false,
   showPie = true,
 }: PropsT) {
@@ -82,9 +87,6 @@ export function SummaryOverviewTab({
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
-        {/* VAT + rabat globalny belong to the tables, not to the row: as a sibling of the row they
-            stayed pinned under both columns, so once the pie wrapped it landed between the tables and
-            the controls that drive them. */}
         <div className="flex flex-col gap-y-4">
           {mixedMode ? (
             <MixedSummary
@@ -112,7 +114,6 @@ export function SummaryOverviewTab({
               clientView={clientView}
             />
           )}
-          {showSettingsBar && !clientView && <SummarySettingsBar />}
         </div>
         {showPie && (
           <SlicePie
@@ -124,6 +125,20 @@ export function SummaryOverviewTab({
           />
         )}
       </div>
+      {showDeposits && (
+        <CollapsibleSection title="Lista wpłat" size="sm" className="w-fit">
+          <div className="pt-4">
+            <SummaryDepositsTab
+              investmentId={investmentId}
+              rows={depositRows}
+              paidNet={paidNet}
+              paidGross={paidGross}
+              clientView={clientView}
+              showPie={showPie}
+            />
+          </div>
+        </CollapsibleSection>
+      )}
     </div>
   )
 }

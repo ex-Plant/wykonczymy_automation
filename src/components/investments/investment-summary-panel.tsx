@@ -1,14 +1,23 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
+import { perfStart } from '@/lib/perf'
 import { fetchDepositTransactionsForInvestment } from '@/lib/queries/reference-data'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
-import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
+import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
+import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { CategoryCostT } from '@/types/investment-financials'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
+
+// Robocizna (etapy) stays editor-only — it needs the stage grid to make sense. Podwykonawcy is
+// dropped for the opposite reason: the transfers table below this panel already lists every wypłata
+// — as it does every wpłata, which is why `showTransactionLists={false}` also folds the wpłaty block
+// out of Podsumowanie here. Marża renders only when the page hands the panel `financials`, which it
+// does for ADMIN/OWNER only.
+const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'margin']
 
 type PropsT = {
   investmentId: number
@@ -32,11 +41,13 @@ export async function InvestmentSummaryPanel({
   expenseCategories,
   netCategoryCosts,
 }: PropsT) {
+  const elapsed = perfStart()
   const [tree, depositTransactions] = await Promise.all([
     getKosztorysTree(investmentId),
     // Same cached fetcher the kosztorys page uses, so both surfaces read wpłaty from one source.
     fetchDepositTransactionsForInvestment(investmentId),
   ])
+  const fetchMs = elapsed()
 
   const rows = treeToRows(tree)
   // No kosztorys rows ⇒ the transaction reading: there is no kosztorys to read from.
@@ -49,9 +60,16 @@ export async function InvestmentSummaryPanel({
   // „Wpłaty" = only INVESTOR_DEPOSIT rows, mirroring the kosztorys page — the same base the panel's
   // plane buckets and „Do zapłaty" draw from.
   const wplatyNet = depositTransactions.reduce((sum, deposit) => sum + deposit.amount, 0)
+  // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
+  // next to the row count it consumed, because that ratio is the argument for aggregating in SQL.
+  const deriveMs = elapsed()
+  console.log(
+    `[PERF] InvestmentSummaryPanel ${fetchMs + deriveMs}ms ` +
+      `(fetch ${fetchMs}ms, derive ${deriveMs}ms) [${rows.length} rows → sumaPracNet + rabatClientNet]`,
+  )
 
   return (
-    <InvestmentSummaryPanelClient
+    <SummaryPanelContent
       investmentId={investmentId}
       investmentName={investmentName}
       depositTransactions={depositTransactions}
@@ -73,6 +91,13 @@ export async function InvestmentSummaryPanel({
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}
       materialsNetRate={tree.materialsNetRate}
+      // No writers passed on purpose: these settings are edited in the kosztorys editor only —
+      // the investment page's action row links there instead of persisting them itself. That also
+      // keeps every write off the one route that renders the transfers table, which a route-wide
+      // re-render would rebuild.
+      views={INVESTMENT_PANEL_VIEWS}
+      showTransactionLists={false}
+      showPies={false}
     />
   )
 }

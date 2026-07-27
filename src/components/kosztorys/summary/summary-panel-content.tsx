@@ -17,11 +17,10 @@ import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
-import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
-import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
+import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
 import {
   useSummaryView,
   type SummaryViewT,
@@ -43,7 +42,6 @@ import type {
 const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'summary', label: 'Podsumowanie' },
   { value: 'wydatki', label: 'Wydatki' },
-  { value: 'wplaty', label: 'Wpłaty' },
   { value: 'etapy', label: 'Robocizna' },
   { value: 'podwykonawcy', label: 'Podwykonawcy' },
   { value: 'margin', label: 'Marża' },
@@ -79,11 +77,16 @@ type PropsT = {
   reconciliation: KosztorysReconciliationT
   vatRate: number
   settlementMode: SettlementModeT
-  onSettlementModeChange: (mode: SettlementModeT) => void
+  // Optional because supplying them is what makes a host an *editor* of these settings. A host that
+  // omits them renders the figures without the „Opcje rozliczenia" block — see the gate below.
+  onSettlementModeChange?: (mode: SettlementModeT) => void
   // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
   // Server-owned on purpose — the panel and the marża the server computed read one value.
   materialsNetRate: number | null
-  onMaterialsNetRateChange: (rate: number | null) => void
+  onMaterialsNetRateChange?: (rate: number | null) => void
+  // A settings write is in flight. None of them is optimistic — the server recomputes every figure
+  // they move — so the block is disabled until the fresh values arrive.
+  isSavingSettings?: boolean
   // Which views this host offers, in toggle order. A host that omits a view need not supply the props
   // that only feed it — hence every prop below is optional.
   views?: SummaryViewT[]
@@ -92,6 +95,8 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
+  // Expanded on arrival when the investment page's settings link was followed here.
+  settingsDefaultOpen?: boolean
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
   showTransactionLists?: boolean
@@ -120,9 +125,8 @@ type PropsT = {
   financials?: InvestmentFinancialsT
 }
 
-// The portable body of the summary panel — pinned top bar + the scrolling view. Deliberately holds no
-// shell: the editor wraps it in a bottom-anchored Collapsible overlay, the investment page in an
-// ordinary section, and neither layout leaks in here.
+// Deliberately holds no shell: the editor wraps it in a bottom-anchored Collapsible overlay, the
+// investment page in an ordinary section, and neither layout leaks in here.
 export function SummaryPanelContent({
   investmentId,
   investmentName,
@@ -140,9 +144,11 @@ export function SummaryPanelContent({
   onSettlementModeChange,
   materialsNetRate,
   onMaterialsNetRateChange,
+  isSavingSettings = false,
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
+  settingsDefaultOpen = false,
   showTransactionLists = true,
   showPies = true,
   clientView = false,
@@ -209,28 +215,41 @@ export function SummaryPanelContent({
   )
   return (
     <>
-      {/* Pinned top bar — the view toggle stays visible while the content scrolls below it. */}
-      <div className="flex flex-col items-start gap-2 px-4 pt-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <ToggleGroup
-            options={viewOptions}
-            value={view}
-            onChange={setSummaryView}
-            aria-label="Widok podsumowania"
-          />
-          {topBarSlot}
-        </div>
-        {/* A client reads the mode, never writes it — the same `clientView` gate every other
-            owner-only affordance in this panel uses. */}
-        {!isSubcontractorView && !clientView && (
-          <SettlementModeSelect
-            value={settlementMode}
-            onChange={onSettlementModeChange}
-            vatRate={vatRate}
-          />
-        )}
+      {/* Pinned top bar — only the view toggle, so its height never moves. "Opcje rozliczenia" scrolls
+          with the rest of the content instead of sharing this bar: it used to live here, and growing
+          it squeezed SummaryScrollRegion into a sliver — two containers fighting over one fixed
+          height. One scrolling container below a fixed-height bar has nothing left to fight over. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4">
+        <ToggleGroup
+          options={viewOptions}
+          value={view}
+          onChange={setSummaryView}
+          aria-label="Widok podsumowania"
+        />
+        {topBarSlot}
       </div>
       <SummaryScrollRegion>
+        {/* A client reads the mode, never writes it — the same `clientView` gate every other
+            owner-only affordance in this panel uses. Collapsed by default: these are set-once
+            decisions about the deal, not something the reader needs on every visit.
+            Supplying the two writers is what makes a host an editor of these settings; a
+            read-only host (no writers) renders no settings block at all — the investment page
+            links to the editor from its own action row instead. */}
+        {!clientView && onSettlementModeChange && onMaterialsNetRateChange && (
+          <div className="max-w-lg px-4 pt-4">
+            <SummaryInvestmentSettings
+              vatRate={vatRate}
+              settlementMode={settlementMode}
+              onSettlementModeChange={onSettlementModeChange}
+              materialsGrossBase={materialsGrossBase}
+              materialsNetRate={materialsNetRate}
+              onMaterialsNetRateChange={onMaterialsNetRateChange}
+              isSaving={isSavingSettings}
+              showSettingsBar={showSettingsBar}
+              defaultOpen={settingsDefaultOpen}
+            />
+          </div>
+        )}
         {isSubcontractorView && subcontractorDue ? (
           <SubcontractorSummary
             investmentId={investmentId}
@@ -261,7 +280,8 @@ export function SummaryPanelContent({
                 materialsNetRate={effectiveNetRate}
                 paidNet={paidNet}
                 paidGross={paidGross}
-                showSettingsBar={showSettingsBar}
+                depositRows={depositTransactions}
+                showDeposits={showTransactionLists}
                 clientView={clientView}
                 showPie={showPies}
               />
@@ -277,29 +297,13 @@ export function SummaryPanelContent({
                 settledBreakdown={clientView ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
                 nettoShown={nettoShown}
-                vatRate={vatRate}
                 materialsNetRate={materialsNetRate}
-                onMaterialsNetRateChange={onMaterialsNetRateChange}
-                // The control shows the SAVED rate even when the mode makes it inert, so an owner who
-                // switched to brutto still sees what they set — the notice explains why it does nothing.
-                inertOnBruttoSettlement={settlementMode === 'GROSS'}
                 clientView={clientView}
                 showTransactions={showTransactionLists}
                 showPie={showPies}
               />
             )}
 
-            {view === 'wplaty' && (
-              <SummaryDepositsTab
-                investmentId={investmentId}
-                rows={depositTransactions}
-                paidNet={paidNet}
-                paidGross={paidGross}
-                clientView={clientView}
-                totalsOnly={!showTransactionLists}
-                showPie={showPies}
-              />
-            )}
             {view === 'etapy' && stages && stageTotals && (
               <SummaryStagesTab
                 stages={stages}

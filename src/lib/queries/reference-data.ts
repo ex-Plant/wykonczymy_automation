@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -61,22 +62,28 @@ export const fetchExpenseCategories = unstable_cache(
   { tags: [CACHE_TAGS.expenseCategories] },
 )
 
-export const fetchReferenceData = unstable_cache(
-  async (): Promise<ReferenceDataBaseT> => {
-    const elapsed = perfStart()
-    const payload = await getPayload({ config })
-    const db = await getDb(payload)
+// `cache()` over `unstable_cache()` on purpose: the two dedupe on different axes. `unstable_cache`
+// spans requests but re-runs whenever its tag is invalidated; `cache()` collapses the calls *within*
+// one render, which is what actually hurt — the page, the transfers table and the root-layout nav
+// each call this, so it ran 3× per render (EX-597 baseline). Safe here only because nothing reads
+// reference data before a mutation in the same request, so the first call is always post-write.
+export const fetchReferenceData = cache(
+  unstable_cache(
+    async (): Promise<ReferenceDataBaseT> => {
+      const elapsed = perfStart()
+      const payload = await getPayload({ config })
+      const db = await getDb(payload)
 
-    const [crResult, invResult, usersResult, catResult, expCatResult] = await Promise.all([
-      db.execute(sql`
+      const [crResult, invResult, usersResult, catResult, expCatResult] = await Promise.all([
+        db.execute(sql`
         SELECT id, name, type::text, active::boolean, owner_id::integer
         FROM cash_registers
         ORDER BY name
       `),
-      // The sheet id lives on kosztoryses now (1:1 via partial unique index on
-      // investment_id). LEFT JOIN so investments without a kosztorys still appear,
-      // and we project a boolean instead of leaking the sheet id into the cache.
-      db.execute(sql`
+        // The sheet id lives on kosztoryses now (1:1 via partial unique index on
+        // investment_id). LEFT JOIN so investments without a kosztorys still appear,
+        // and we project a boolean instead of leaking the sheet id into the cache.
+        db.execute(sql`
         SELECT i.id, i.name, i.status::text,
                i.address, i.phone, i.email, i.contact_person, i.notes, i.review,
                i.materials_net_rate::float8, i.settlement_mode::text,
@@ -85,96 +92,97 @@ export const fetchReferenceData = unstable_cache(
         LEFT JOIN kosztoryses k ON k.investment_id = i.id
         ORDER BY i.name
       `),
-      db.execute(sql`
+        db.execute(sql`
         SELECT id, name, role::text, active::boolean, email, default_cash_register_id::integer
         FROM users
         ORDER BY name
       `),
-      db.execute(sql`
+        db.execute(sql`
         SELECT id, name FROM other_categories
         ORDER BY name
       `),
-      db.execute(sql`
+        db.execute(sql`
         SELECT id, name FROM expense_categories
         ORDER BY name
       `),
-    ])
+      ])
 
-    const totalRows =
-      crResult.rows.length +
-      invResult.rows.length +
-      usersResult.rows.length +
-      catResult.rows.length +
-      expCatResult.rows.length
-    console.log(`[PERF] query.fetchReferenceData ${elapsed()}ms (5 SQL, ${totalRows} rows)`)
+      const totalRows =
+        crResult.rows.length +
+        invResult.rows.length +
+        usersResult.rows.length +
+        catResult.rows.length +
+        expCatResult.rows.length
+      console.log(`[PERF] query.fetchReferenceData ${elapsed()}ms (5 SQL, ${totalRows} rows)`)
 
-    const cashRegisters: CashRegisterRefT[] = crResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-      type: (row.type as CashRegisterTypeT) ?? 'AUXILIARY',
-      active: row.active as boolean,
-      ownerId: row.owner_id ? Number(row.owner_id) : undefined,
-    }))
+      const cashRegisters: CashRegisterRefT[] = crResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+        type: (row.type as CashRegisterTypeT) ?? 'AUXILIARY',
+        active: row.active as boolean,
+        ownerId: row.owner_id ? Number(row.owner_id) : undefined,
+      }))
 
-    const investments: InvestmentRefT[] = invResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-      status: (row.status as InvestmentStatusT) ?? 'active',
-      active: row.status === 'active',
-      address: (row.address as string) ?? '',
-      phone: (row.phone as string) ?? '',
-      email: (row.email as string) ?? '',
-      contactPerson: (row.contact_person as string) ?? '',
-      notes: (row.notes as string) ?? '',
-      review: (row.review as string) ?? '',
-      materialsNetRate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
-      settlementMode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
-      hasSheet: Boolean(row.has_sheet),
-    }))
+      const investments: InvestmentRefT[] = invResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+        status: (row.status as InvestmentStatusT) ?? 'active',
+        active: row.status === 'active',
+        address: (row.address as string) ?? '',
+        phone: (row.phone as string) ?? '',
+        email: (row.email as string) ?? '',
+        contactPerson: (row.contact_person as string) ?? '',
+        notes: (row.notes as string) ?? '',
+        review: (row.review as string) ?? '',
+        materialsNetRate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
+        settlementMode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+        hasSheet: Boolean(row.has_sheet),
+      }))
 
-    const workers: WorkerRefT[] = usersResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-      role: (row.role as RoleT) ?? 'EMPLOYEE',
-      active: row.active as boolean,
-      email: (row.email as string) ?? '',
-      defaultCashRegisterId: row.default_cash_register_id
-        ? Number(row.default_cash_register_id)
-        : undefined,
-    }))
+      const workers: WorkerRefT[] = usersResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+        role: (row.role as RoleT) ?? 'EMPLOYEE',
+        active: row.active as boolean,
+        email: (row.email as string) ?? '',
+        defaultCashRegisterId: row.default_cash_register_id
+          ? Number(row.default_cash_register_id)
+          : undefined,
+      }))
 
-    const otherCategories: OtherCategoryRefT[] = catResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-    }))
+      const otherCategories: OtherCategoryRefT[] = catResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+      }))
 
-    const expenseCategories: ExpenseCategoryRefT[] = expCatResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-    }))
+      const expenseCategories: ExpenseCategoryRefT[] = expCatResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+      }))
 
-    return {
-      cashRegisters,
-      investments,
-      workers,
-      otherCategories,
-      expenseCategories,
-    }
-  },
-  ['reference-data'],
-  {
-    tags: [
-      CACHE_TAGS.cashRegisters,
-      CACHE_TAGS.investments,
-      CACHE_TAGS.users,
-      CACHE_TAGS.otherCategories,
-      CACHE_TAGS.expenseCategories,
-      // hasSheet derives from kosztoryses via JOIN — invalidate on kosztorys
-      // create/link/unlink/delete too, otherwise the listing's "kosztorys" badge
-      // stays stale.
-      CACHE_TAGS.kosztoryses,
-    ],
-  },
+      return {
+        cashRegisters,
+        investments,
+        workers,
+        otherCategories,
+        expenseCategories,
+      }
+    },
+    ['reference-data'],
+    {
+      tags: [
+        CACHE_TAGS.cashRegisters,
+        CACHE_TAGS.investments,
+        CACHE_TAGS.users,
+        CACHE_TAGS.otherCategories,
+        CACHE_TAGS.expenseCategories,
+        // hasSheet derives from kosztoryses via JOIN — invalidate on kosztorys
+        // create/link/unlink/delete too, otherwise the listing's "kosztorys" badge
+        // stays stale.
+        CACHE_TAGS.kosztoryses,
+      ],
+    },
+  ),
 )
 
 export type RegisterBalanceMapT = Record<string, number>

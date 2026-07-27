@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useHistoryBack } from '@/components/ui/use-history-back'
 
 type BackButtonPropsT = {
   label: string
@@ -8,16 +8,7 @@ type BackButtonPropsT = {
 }
 
 export function BackButton({ label, fallbackHref }: BackButtonPropsT) {
-  const router = useRouter()
-
-  // A direct load (shared link, refresh) has no in-app history to pop.
-  function goBack() {
-    if (window.history.length > 1) {
-      router.back()
-      return
-    }
-    router.push(fallbackHref)
-  }
+  const goBack = useHistoryBack(fallbackHref)
 
   return (
     <button

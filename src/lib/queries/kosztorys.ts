@@ -3,24 +3,11 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
+import { getDb } from '@/lib/db/get-db'
+import { selectKosztorysTreeData } from '@/lib/db/kosztorys-tree'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
-import { assertCompletePage } from '@/lib/queries/assert-complete-page'
-import { isSectionColorKey } from '@/lib/kosztorys/section-colors'
-import type {
-  DiscountTypeT,
-  KosztorysItemT,
-  KosztorysSectionT,
-  KosztorysStageT,
-  KosztorysTreeT,
-  StageProgressT,
-  SubcontractorOverrideTypeT,
-  ToolPlaneT,
-} from '@/lib/kosztorys/types'
-
-// Relationships arrive as a number (depth 0) or an object — we normalize to the id.
-const relId = (v: unknown): number =>
-  typeof v === 'object' && v ? (v as { id: number }).id : Number(v)
-const num = (v: unknown): number => Number(v ?? 0)
+import { perfStart } from '@/lib/perf'
+import type { KosztorysItemT, KosztorysSectionT, KosztorysTreeT } from '@/lib/kosztorys/types'
 
 // S-01: sections + items of a single investment, ordered by displayOrder → displayOrder.
 // S-04: stages (ordered by ordinal) + sparse per-item progress. S-05: per-investment VAT rate.
@@ -38,69 +25,22 @@ export async function getKosztorysTree(investmentId: number): Promise<KosztorysT
 // tree through the same code. Two copies of this mapping would drift, and the client projection
 // would then be projecting a different tree from the one the owner edits.
 export async function buildKosztorysTree(investmentId: number): Promise<KosztorysTreeT> {
+  const elapsed = perfStart()
   const payload = await getPayload({ config })
-  const where = { investment: { equals: investmentId } }
+  const db = await getDb(payload)
+  const setupMs = elapsed()
 
-  const [sectionsRes, itemsRes, stagesRes, progressRes, investment] = await Promise.all([
-    payload.find({
-      collection: 'kosztorys-sections',
-      where,
-      depth: 0,
-      limit: 1000,
-      sort: 'displayOrder',
-    }),
-    payload.find({
-      collection: 'kosztorys-items',
-      where,
-      depth: 0,
-      limit: 5000,
-      sort: 'displayOrder',
-    }),
-    payload.find({
-      collection: 'kosztorys-stages',
-      where,
-      depth: 0,
-      limit: 1000,
-      sort: 'ordinal',
-    }),
-    // Progress is filtered by the item's investment (stage-progress has no direct investment
-    // column); depth 0 keeps item/stage as ids.
-    payload.find({
-      collection: 'stage-progress',
-      where: { 'item.investment': { equals: investmentId } },
-      depth: 0,
-      limit: 100000,
-    }),
-    payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
-  ])
+  const data = await selectKosztorysTreeData(db, investmentId)
+  const queriesMs = elapsed()
+
+  if (!data) throw new Error(`Investment ${investmentId} not found`)
+  const { sections: sectionRows, items, stages, progress, investment } = data
 
   // Distinguish an unset coefficient from a legitimate 0 — `|| default` would rewrite a stored 0.
   const globalCoeffs = {
-    wTools: investment.wToolsCoeff == null ? DEFAULT_COEFFS.wTools : num(investment.wToolsCoeff),
-    ownTools:
-      investment.ownToolsCoeff == null ? DEFAULT_COEFFS.ownTools : num(investment.ownToolsCoeff),
+    wTools: investment.wToolsCoeff ?? DEFAULT_COEFFS.wTools,
+    ownTools: investment.ownToolsCoeff ?? DEFAULT_COEFFS.ownTools,
   }
-
-  const items: KosztorysItemT[] = assertCompletePage(itemsRes, 'getKosztorysTree items').map(
-    (d) => ({
-      id: d.id,
-      sectionId: relId(d.section),
-      displayOrder: num(d.displayOrder),
-      description: d.description ?? null,
-      unit: d.unit ?? null,
-      plannedQty: num(d.plannedQty),
-      discountType: (d.discountType as DiscountTypeT | null) ?? null,
-      discountValue: num(d.discountValue),
-      clientPrice: num(d.clientPrice),
-      wToolsOverrideType: (d.wToolsOverrideType as SubcontractorOverrideTypeT | null) ?? null,
-      wToolsOverrideValue: num(d.wToolsOverrideValue),
-      ownToolsOverrideType: (d.ownToolsOverrideType as SubcontractorOverrideTypeT | null) ?? null,
-      ownToolsOverrideValue: num(d.ownToolsOverrideValue),
-      costVariant: (d.costVariant as ToolPlaneT | null) ?? null,
-      hiddenInExport: Boolean(d.hiddenInExport),
-      note: d.note ?? null,
-    }),
-  )
 
   // Bucket items by section in one O(items) pass — a per-section filter would be O(sections × items),
   // quadratic at the 1000+-row bar this editor targets.
@@ -111,36 +51,20 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
     else itemsBySection.set(it.sectionId, [it])
   }
 
-  const sections = assertCompletePage(sectionsRes, 'getKosztorysTree sections').map(
-    (d): KosztorysSectionT & { items: KosztorysItemT[] } => ({
-      id: d.id,
-      name: d.name,
-      displayOrder: num(d.displayOrder),
-      // Validated on read, not trusted: a key retired from the palette reads as unpinned rather
-      // than painting with a CSS var that no longer exists.
-      color: isSectionColorKey(d.color) ? d.color : null,
-      defaultCostVariant: (d.defaultCostVariant as ToolPlaneT) ?? 'w_tools',
-      items: itemsBySection.get(d.id) ?? [],
-    }),
+  const sections: (KosztorysSectionT & { items: KosztorysItemT[] })[] = sectionRows.map(
+    (section) => ({ ...section, items: itemsBySection.get(section.id) ?? [] }),
   )
 
-  const stages: KosztorysStageT[] = assertCompletePage(stagesRes, 'getKosztorysTree stages').map(
-    (d) => ({
-      id: d.id,
-      ordinal: num(d.ordinal),
-      label: d.label ?? null,
-      plane: (d.plane as ToolPlaneT | null) ?? null,
-    }),
+  // Split from the query time because they answer different questions: a slow `queries` number argues
+  // for caching or aggregating in SQL, a slow `map` number argues that materialising the tree in JS is
+  // itself the cost — and only one of those is fixed by a cache.
+  const mapMs = elapsed()
+  console.log(
+    `[PERF] buildKosztorysTree ${setupMs + queriesMs + mapMs}ms ` +
+      `(setup ${setupMs}ms, queries ${queriesMs}ms, map ${mapMs}ms) ` +
+      `[inv ${investmentId}: ${sections.length} sections, ${items.length} items, ` +
+      `${stages.length} stages, ${progress.length} progress]`,
   )
-
-  const progress: StageProgressT[] = assertCompletePage(
-    progressRes,
-    'getKosztorysTree progress',
-  ).map((d) => ({
-    itemId: relId(d.item),
-    stageId: relId(d.stage),
-    qtyDone: num(d.qtyDone),
-  }))
 
   return {
     sections,
@@ -153,7 +77,7 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
     globalDiscount: {
       // Amount-only stored discount — fail closed on a legacy 'percent' row (treat it as none).
       type: investment.globalDiscountType === 'amount' ? 'amount' : null,
-      value: num(investment.globalDiscountValue),
+      value: investment.globalDiscountValue,
     },
     revision: investment.updatedAt,
   }

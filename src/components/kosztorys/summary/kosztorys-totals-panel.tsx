@@ -1,19 +1,34 @@
 'use client'
 
 import * as Collapsible from '@radix-ui/react-collapsible'
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import { useTotalsPanelOpen } from '@/components/kosztorys/summary/hooks/use-totals-panel-open'
+
+// `?ustawienia=1` — the investment page's settings link lands here and needs the panel open with the
+// settings block expanded. Deliberately NOT a localStorage write from the linking page: the panel's
+// open state is a persisted *preference*, so writing it would make one click flip the reader's
+// default for every future visit. This is a one-shot intent, so it stays in the URL.
+const OPEN_SETTINGS_PARAM = 'ustawienia'
 
 // The editor's host for the summary panel: a bottom-anchored collapsible overlay over the grid.
 // Everything it shows lives in SummaryPanelContent — this file owns nothing but the overlay, so the
 // investment page can mount the same content without inheriting the editor's geometry.
 export function KosztorysTotalsPanel(props: ComponentProps<typeof SummaryPanelContent>) {
   const [open, setOpen] = useTotalsPanelOpen()
+  // Seeded once rather than read every render, so the arrival override survives in the URL without
+  // pinning the panel open — closing it clears the override and hands control back to the preference.
+  const wantsSettings = useSearchParams().get(OPEN_SETTINGS_PARAM) === '1'
+  const [forcedOpen, setForcedOpen] = useState(wantsSettings)
+
   return (
     <Collapsible.Root
-      open={open}
-      onOpenChange={setOpen}
+      open={open || forcedOpen}
+      onOpenChange={(next) => {
+        setForcedOpen(false)
+        setOpen(next)
+      }}
       // The open/close animation lives on the ROOT's height (0 ↔ 100%), not on the Content's Radix
       // keyframes — those animate the measured natural content height, which disagrees with the
       // flex-stretched full height and made the close look two-phased. Content stays mounted
@@ -27,7 +42,7 @@ export function KosztorysTotalsPanel(props: ComponentProps<typeof SummaryPanelCo
         forceMount
         className="flex min-h-0 flex-1 flex-col overflow-hidden transition-[visibility] duration-200 data-[state=closed]:invisible"
       >
-        <SummaryPanelContent {...props} />
+        <SummaryPanelContent {...props} settingsDefaultOpen={wantsSettings} />
       </Collapsible.Content>
     </Collapsible.Root>
   )

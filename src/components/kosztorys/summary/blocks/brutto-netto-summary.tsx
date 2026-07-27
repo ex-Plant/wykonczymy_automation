@@ -3,7 +3,6 @@
 import {
   computeSummarySplit,
   faceValue,
-  materialsNetDiscount,
   moneyPair,
   type MaterialsT,
   summaryLine,
@@ -108,11 +107,6 @@ export function BruttoNettoSummary({
   // it were being added.
   const rabat = moneyPair(-rabatAmount, vatRate)
   const wplaty = faceValue(-wplatyNet)
-  // Unlike Rabat, this is NOT a term: the Materiały row is already reduced by it, so it renders as a
-  // „w tym" sub-line. Netto-only (faceValue + noBrutto downstream) — the brutto column keeps the raw
-  // receipt, which is exactly what the concession does NOT touch. Hidden at 0 so a brutto-settled or
-  // opted-out investment shows no dead row.
-  const materialsDiscount = materialsNetDiscount(materials.grossBase, materialsNetRate)
 
   const moneyCols = summaryMoneyCols(moneyAxis)
 
@@ -135,7 +129,6 @@ export function BruttoNettoSummary({
               : undefined
           }
           materials={materials}
-          materialsDiscount={materialsDiscount > 0 ? faceValue(-materialsDiscount) : undefined}
           combinedNet={combined.net}
           combined={combined}
           materialsNetRate={materialsNetRate}

@@ -1,4 +1,4 @@
-import { unstable_cache, cacheLife, cacheTag } from 'next/cache'
+import { unstable_cache } from 'next/cache'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
@@ -75,13 +75,19 @@ export async function fetchAllInvestments(): Promise<InvestmentRowT[]> {
   return shapeInvestments(refData.investments, financials)
 }
 
-// Parse a route id to a positive investment id, notFound() on anything else. The single home for the
-// id-validity rule so a page that needs the number before the guard (to fire a fetch concurrently)
-// doesn't re-inline the check and drift from it.
-export function parseInvestmentId(id: string): number {
+// The single home for the id-validity rule so nothing re-inlines the check and drifts from it.
+// Split from parseInvestmentId because a parallel-route slot can't use the notFound() form — a slot
+// that 404s takes the whole shell with it, when all it wants is to render nothing.
+export function isInvestmentId(id: string): boolean {
   const investmentId = Number(id)
-  if (!Number.isFinite(investmentId) || investmentId <= 0) notFound()
-  return investmentId
+  return Number.isFinite(investmentId) && investmentId > 0
+}
+
+// Parse a route id to a positive investment id, notFound() on anything else — for pages that need the
+// number before the guard (to fire a fetch concurrently).
+export function parseInvestmentId(id: string): number {
+  if (!isInvestmentId(id)) notFound()
+  return Number(id)
 }
 
 // Shared page guard: parse the route id, require a management session, and load the investment —
@@ -99,6 +105,30 @@ export async function requireInvestmentOr404(id: string) {
   if (!investment) notFound()
 
   return { investmentId, investment, user: session.user }
+}
+
+// Name only — the top-bar crumb renders on every /inwestycje/[id]/** navigation and must not drag
+// the whole document (and its afterRead hooks) along for one string. Shares getInvestment's tags, so
+// an investment edit already invalidates both.
+export async function getInvestmentName(id: string): Promise<string | null> {
+  return unstable_cache(
+    async () => {
+      const payload = await getPayload({ config })
+      try {
+        const investment = await payload.findByID({
+          collection: 'investments',
+          id,
+          select: { name: true },
+          overrideAccess: true,
+        })
+        return investment?.name ?? null
+      } catch {
+        return null
+      }
+    },
+    ['investment-name', id],
+    { tags: [CACHE_TAGS.investments, entityTag('investment', id)] },
+  )()
 }
 
 export async function getInvestment(id: string) {

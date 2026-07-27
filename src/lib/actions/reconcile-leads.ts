@@ -4,7 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
-import { revalidateCollection } from '@/lib/cache/revalidate'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { listLeadForms, fetchRecentLeads } from '@/lib/leads/fetch-recent-leads'
 import { fetchFormQuestions } from '@/lib/leads/fetch-form-questions'
 import { leadSchema } from '@/lib/leads/lead-schema'
@@ -83,14 +83,14 @@ export async function reconcileLeads(): Promise<ReconcileLeadsResultT> {
           data: { notifyStatus: 'skipped', autoReplyStatus: 'skipped' },
           overrideAccess: true,
           // Skip the afterChange revalidateTag hook — this action does one
-          // updateTag-based revalidateCollection after the whole sweep instead.
+          // updateTag-based revalidateCollections after the whole sweep instead.
           context: { skipRevalidation: true },
         })
         added += 1
       }
     }
 
-    if (added > 0) revalidateCollection('leads')
+    if (added > 0) revalidateCollections(['leads'])
     return { success: true, data: { added, scanned } }
   } catch (err) {
     return { success: false, error: getErrorMessage(err) }
