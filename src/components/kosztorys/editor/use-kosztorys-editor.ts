@@ -30,6 +30,7 @@ import {
   applyRemoveItem,
   applyRestoreItem,
   buildBlankRow,
+  groupBySection,
   insertDisplayOrder,
   neighborSectionId,
   revertField,
@@ -43,12 +44,12 @@ import {
   sectionItemCounts,
   type ItemRemovalPlanT,
 } from '@/lib/kosztorys/delete-policy'
+import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import {
   clientTotalsFromSubtotals,
   emptySectionIds,
   rowRemainingForView,
   sectionSubtotalsForView,
-  columnTotalsForRows,
   stageTotalsForView,
   subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
@@ -365,7 +366,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   // View = search + sort. Sections are not filtered here: hiding one is a fold, applied further down
-  // by buildSectionHeaderRows so the band survives its own collapse.
+  // by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
     const filtered = filterRows(rows, search)
     if (!sort) return filtered
@@ -393,56 +394,21 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // (like the subtotals): Σ over stages equals totalNet, so the etap totals and the wykonane readout
   // reconcile by construction.
   const stageTotals = useMemo(() => stageTotalsForView(rows, stages, view), [rows, stages, view])
-  // Σ recorded qty per etap (the „Pomiar z natury" the column footer totals) — full-dataset, price-
-  // independent, so a search/section filter or a view switch never moves it.
-  const stageQtyTotals = useMemo(() => {
-    const totals = new Map<number, number>()
-    for (const stage of stages)
-      totals.set(
-        stage.id,
-        rows.reduce((sum, row) => sum + ((row[stageKey(stage.id)] as number | undefined) ?? 0), 0),
-      )
-    return totals
-  }, [rows, stages])
-  const plannedQtyTotal = useMemo(
-    () => rows.reduce((sum, row) => sum + (row.plannedQty ?? 0), 0),
-    [rows],
-  )
-  // The two synthetic totals rows, built from one definition at two scopes — Σ of the section footers
-  // is „Razem" by construction. Full-dataset like every other total here, so a search never moves them.
+  // Full-dataset like every other total here, so a search never moves the two synthetic totals rows.
   const columnTotals = useMemo(
     () => columnTotalsForRows(rows, stages, view, tree.vatRate),
     [rows, stages, view, tree.vatRate],
   )
-  const sectionColumnTotals = useMemo(() => {
-    const rowsBySection = new Map<number, KosztorysV2RowT[]>()
-    for (const row of rows) {
-      const bucket = rowsBySection.get(row.sectionId)
-      if (bucket) bucket.push(row)
-      else rowsBySection.set(row.sectionId, [row])
-    }
-    return new Map(
-      [...rowsBySection].map(([sectionId, sectionRows]) => [
-        sectionId,
-        columnTotalsForRows(sectionRows, stages, view, tree.vatRate),
-      ]),
-    )
-  }, [rows, stages, view, tree.vatRate])
-  // Σ of the „Pozostało" columns for the grid's Razem row. Rows with no przedmiar read `null` — no
-  // offer to subtract from — and are skipped, so the total is the sum of what the column actually
-  // shows rather than of a 0 it never claimed. Gross accumulates each row's own VAT instead of
-  // grossing the net sum once, so a row-level vatRate can't drift the two apart.
-  const remainingTotals = useMemo(() => {
-    let net = 0
-    let gross = 0
-    for (const row of rows) {
-      const rowNet = rowRemainingForView(row, stages, view)
-      if (rowNet === null) continue
-      net += rowNet
-      gross += toGross(rowNet, row.vatRate)
-    }
-    return { net, gross }
-  }, [rows, stages, view])
+  const sectionColumnTotals = useMemo(
+    () =>
+      new Map(
+        [...groupBySection(rows)].map(([sectionId, sectionRows]) => [
+          sectionId,
+          columnTotalsForRows(sectionRows, stages, view, tree.vatRate),
+        ]),
+      ),
+    [rows, stages, view, tree.vatRate],
+  )
   // The progress counter is a PROGRESS figure, not money — it must read the same in every price view,
   // so its executed/offered are weighted at the client price (a separate client-priced pass), never
   // the active `view`. Same client basis as each section's completionRatio.
@@ -1297,9 +1263,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     columnTotals,
     sectionColumnTotals,
     stageTotals,
-    stageQtyTotals,
-    plannedQtyTotal,
-    remainingTotals,
     stages,
     doneNet,
     sumaPracNet,

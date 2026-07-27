@@ -156,7 +156,7 @@ export function swapItemInSection(
 // Rows grouped by section, in the order the sections first appear. A Map keeps insertion order, so
 // its keys ARE the section display sequence — both section movers below read the order off this one
 // pass rather than a second stored sequence.
-function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]> {
+export function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]> {
   const blocks = new Map<number, KosztorysV2RowT[]>()
   for (const r of rows) {
     const block = blocks.get(r.sectionId)

@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test'
 // Proves the band is wired end-to-end: it reads the same per-section subtotals the Podsumowanie does,
 // its chevron folds exactly its own section away, and the gutter keeps numbering the surviving items
 // without a gap. All three cross the grid, the editor hook and the settlement layer — where a unit
-// test on buildSectionHeaderRows alone sees nothing.
+// test on buildSectionBandRows alone sees nothing.
 test.use({ storageState: 'e2e/.auth/user.json' })
 
 type BandsSeed = {

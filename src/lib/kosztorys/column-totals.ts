@@ -1,4 +1,9 @@
-import { netForQtyForView, rowDiscountForView, rowPlannedNetForView, toGross } from '@/lib/kosztorys/calc'
+import {
+  netForQtyForView,
+  rowDiscountForView,
+  rowPlannedNetForView,
+  toGross,
+} from '@/lib/kosztorys/calc'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import {
   rowRemainingForView,
