@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-debounced-save'
 import {
@@ -128,6 +128,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // router.refresh() lands — the transient the "never disagree" invariant below forbids.
   const [globalDiscount, setGlobalDiscount] = useState<GlobalDiscountT>(tree.globalDiscount)
   const globalDiscountActive = isGlobalDiscountActive(globalDiscount)
+  // „Opcje rozliczenia" writes nothing optimistically — every figure the four settings move is
+  // recomputed on the server, so the panel can only change once the write lands. One shared flag for
+  // the block (they are set-once decisions about the deal; nobody edits two at a time) disables it
+  // meanwhile, so the click stops reading as inert.
+  const [isSavingSettings, startSettingsSave] = useTransition()
   const [persistedView, setView] = usePriceView(investmentId)
   // clientView pins the price plane to 'client'. The public page ships the full tree (coefficients
   // included), so an un-pinned view would let a client set localStorage['kosztorys-view:<id>'] to a
@@ -1025,10 +1030,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     )
   }
 
-  async function handleVatChange(vatRate: number) {
-    const before = rowsRef.current[0]?.vatRate ?? tree.vatRate
-    await applyVat(vatRate)
-    if (before !== vatRate) pushReversible('Zmiana stawki VAT', applyVat, before, vatRate)
+  function handleVatChange(vatRate: number) {
+    startSettingsSave(async () => {
+      const before = rowsRef.current[0]?.vatRate ?? tree.vatRate
+      await applyVat(vatRate)
+      if (before !== vatRate) pushReversible('Zmiana stawki VAT', applyVat, before, vatRate)
+    })
   }
 
   // The settlement mode isn't denormalized onto the rows, so there's nothing to patch optimistically:
@@ -1041,13 +1048,15 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     )
   }
 
-  async function handleSettlementModeChange(mode: SettlementModeT) {
-    // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
-    // silently reverts whatever unrelated edit preceded it.
-    const before = tree.settlementMode
-    await applySettlementMode(mode)
-    if (before !== mode)
-      pushReversible('Zmiana sposobu rozliczenia', applySettlementMode, before, mode)
+  function handleSettlementModeChange(mode: SettlementModeT) {
+    startSettingsSave(async () => {
+      // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
+      // silently reverts whatever unrelated edit preceded it.
+      const before = tree.settlementMode
+      await applySettlementMode(mode)
+      if (before !== mode)
+        pushReversible('Zmiana sposobu rozliczenia', applySettlementMode, before, mode)
+    })
   }
 
   // Same shape as the settlement mode: not denormalized onto the rows, so there is nothing to patch
@@ -1060,40 +1069,44 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     )
   }
 
-  async function handleMaterialsNetRateChange(rate: number | null) {
-    const before = tree.materialsNetRate
-    await applyMaterialsNetRate(rate)
-    if (before !== rate)
-      pushReversible('Zmiana stawki netto wydatków', applyMaterialsNetRate, before, rate)
+  function handleMaterialsNetRateChange(rate: number | null) {
+    startSettingsSave(async () => {
+      const before = tree.materialsNetRate
+      await applyMaterialsNetRate(rate)
+      if (before !== rate)
+        pushReversible('Zmiana stawki netto wydatków', applyMaterialsNetRate, before, rate)
+    })
   }
 
   // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
   // local discount (drives the derived totals + column visibility) and patch the denormalized active
   // flag on every row in the same render, so all three surfaces move together; then persist + refresh.
-  async function handleGlobalDiscountChange(next: GlobalDiscountT) {
-    const prevDiscount = globalDiscount
-    const active = isGlobalDiscountActive(next)
-    setGlobalDiscount(next)
-    patchRows(
-      () => true,
-      (r) => ({ ...r, globalDiscountActive: active }),
-    )
-    await optimisticSettingSave(
-      () =>
-        updateInvestmentGlobalDiscountAction(investmentId, {
-          globalDiscountType: next.type,
-          globalDiscountValue: next.value,
-        }),
-      () => {
-        // Roll all three surfaces back so they don't disagree on an unsaved discount.
-        setGlobalDiscount(prevDiscount)
-        patchRows(
-          () => true,
-          (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(prevDiscount) }),
-        )
-      },
-      'Nie udało się zapisać rabatu',
-    )
+  function handleGlobalDiscountChange(next: GlobalDiscountT) {
+    startSettingsSave(async () => {
+      const prevDiscount = globalDiscount
+      const active = isGlobalDiscountActive(next)
+      setGlobalDiscount(next)
+      patchRows(
+        () => true,
+        (r) => ({ ...r, globalDiscountActive: active }),
+      )
+      await optimisticSettingSave(
+        () =>
+          updateInvestmentGlobalDiscountAction(investmentId, {
+            globalDiscountType: next.type,
+            globalDiscountValue: next.value,
+          }),
+        () => {
+          // Roll all three surfaces back so they don't disagree on an unsaved discount.
+          setGlobalDiscount(prevDiscount)
+          patchRows(
+            () => true,
+            (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(prevDiscount) }),
+          )
+        },
+        'Nie udało się zapisać rabatu',
+      )
+    })
   }
 
   // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
@@ -1237,6 +1250,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     rabatClientNet,
     plannedNet,
     globalDiscount,
+    isSavingSettings,
     subcontractorDue,
     laborCostsNetFromKosztorys,
     // toolbar / panel state

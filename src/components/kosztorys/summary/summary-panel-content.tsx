@@ -86,6 +86,9 @@ type PropsT = {
   // Server-owned on purpose — the panel and the marża the server computed read one value.
   materialsNetRate: number | null
   onMaterialsNetRateChange?: (rate: number | null) => void
+  // A settings write is in flight. None of them is optimistic — the server recomputes every figure
+  // they move — so the block is disabled until the fresh values arrive.
+  isSavingSettings?: boolean
   // Which views this host offers, in toggle order. A host that omits a view need not supply the props
   // that only feed it — hence every prop below is optional.
   views?: SummaryViewT[]
@@ -144,6 +147,7 @@ export function SummaryPanelContent({
   onSettlementModeChange,
   materialsNetRate,
   onMaterialsNetRateChange,
+  isSavingSettings = false,
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
@@ -243,6 +247,7 @@ export function SummaryPanelContent({
               materialsGrossBase={materialsGrossBase}
               materialsNetRate={materialsNetRate}
               onMaterialsNetRateChange={onMaterialsNetRateChange}
+              isSaving={isSavingSettings}
               showSettingsBar={showSettingsBar}
               defaultOpen={settingsDefaultOpen}
             />

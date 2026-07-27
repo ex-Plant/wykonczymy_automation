@@ -19,6 +19,7 @@ type PropsT = {
   // the toast tells the user what they may not do only after they have already done it.
   min?: number
   max?: number
+  disabled?: boolean
   onCommit: (n: number) => void
 }
 
@@ -32,6 +33,7 @@ export function DecimalField({
   valueClassName,
   min,
   max,
+  disabled = false,
   onCommit,
 }: PropsT) {
   const outOfRange = (n: number) => (min != null && n < min) || (max != null && n > max)
@@ -60,6 +62,7 @@ export function DecimalField({
         defaultValue={value == null ? '' : String(value)}
         placeholder={placeholder != null ? String(placeholder) : ''}
         className={valueClassName}
+        disabled={disabled}
         onBlur={commit}
         onKeyDown={commitOnEnter}
       />

@@ -15,12 +15,13 @@ type PropsT = {
   value: SettlementModeT
   onChange: (mode: SettlementModeT) => void
   vatRate: number
+  disabled?: boolean
 }
 
 // The owner's only edit surface for the stored settlement mode — the panel renders it, the
 // investment owns it. Pinned beside the view toggle rather than in the scrolling settings bar,
 // because the reader who wonders why figures aren't moving is looking here.
-export function SettlementModeSelect({ value, onChange, vatRate }: PropsT) {
+export function SettlementModeSelect({ value, onChange, vatRate, disabled = false }: PropsT) {
   return (
     <LabeledModeSelect
       label="Rozliczenie"
@@ -28,7 +29,7 @@ export function SettlementModeSelect({ value, onChange, vatRate }: PropsT) {
       onValueChange={(next) => onChange(next as SettlementModeT)}
       options={SETTLEMENT_MODE_OPTIONS}
       description={MODE_DESCRIPTIONS[value]}
-      disabled={vatRate === 0}
+      disabled={disabled || vatRate === 0}
     >
       {vatRate === 0 && <ZeroVatWarning />}
     </LabeledModeSelect>

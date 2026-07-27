@@ -1,7 +1,7 @@
 ---
 change_id: decouple-panel-write-refresh
 title: Investment page data-fetching architecture — the summary panel made it unusably slow
-status: preparing
+status: in-progress
 created: 2026-07-27
 updated: 2026-07-27
 archived_at: null
@@ -250,3 +250,27 @@ Shipped on `ex-597-decouple-panel-write-refresh`; per-step evidence in `research
 
 Still open: the whole-tree-for-two-scalars read (~120–175 ms warm, fix shape unsettled), its
 unmeasured worst case, and the two items under "Owed regardless of approach" above.
+
+## Decision 2026-07-27 — pending state, not optimistic values
+
+The "Owed regardless of approach" item above is settled: `useTransition` + a disabled block, **not**
+optimistic figures.
+
+Optimistic was investigated and is technically free — `research.md` → S7 shows every panel figure is
+already derived client-side from mode-independent props, and `deriveFinancials` has exactly one
+mode-dependent field. It was rejected on cost, not feasibility: these are **set-once decisions about
+the deal**, so a rare write does not earn three local values, three rollback arms, and their
+entanglement with `pushReversible` (undo re-runs the same `apply*` functions).
+
+What ships instead: one shared pending flag for the whole „Opcje rozliczenia" block, threaded to the
+four controls as `disabled`. The click stops being inert — which is what read as broken — while the
+server stays the single source of truth for every figure.
+
+Accepted: the select keeps showing the old value while disabled, then flips when the server confirms.
+
+The real risk is not the disabling but its window — if pending clears before the fresh value paints,
+the control is briefly enabled and stale, which is worse than today. `startTransition` around the
+`apply*` functions (not the `handle*` wrappers) is what holds it through the resulting render.
+
+Still open and unaffected: the uncached `getKosztorysTree` (`research.md` → Still open) — the remaining
+server-side lever, and a bigger one than anything on the client.

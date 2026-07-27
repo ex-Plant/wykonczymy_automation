@@ -27,7 +27,7 @@ const DISCOUNT_MODE_DESCRIPTIONS: Record<DiscountModeT, string> = {
 
 // Reads the setters straight from the editor context (the panel renders inside the provider), so no
 // props thread through KosztorysTotalsPanel.
-export function GlobalDiscountControl() {
+export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean }) {
   const { globalDiscount, handleGlobalDiscountChange, handleApplyPercentRabat } =
     useKosztorysEditorContext()
 
@@ -51,6 +51,7 @@ export function GlobalDiscountControl() {
       onValueChange={changeMode}
       options={DISCOUNT_MODE_OPTIONS}
       description={DISCOUNT_MODE_DESCRIPTIONS[mode]}
+      disabled={disabled}
     >
       {mode === 'amount' && (
         <div className="flex items-center gap-2">
@@ -59,6 +60,7 @@ export function GlobalDiscountControl() {
             value={globalDiscount.value}
             valueClassName="text-chart-green"
             min={0}
+            disabled={disabled}
             onCommit={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
           />
           <span className="text-muted-foreground text-xs">zł</span>

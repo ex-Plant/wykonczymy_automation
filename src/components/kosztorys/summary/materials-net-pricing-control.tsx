@@ -27,6 +27,7 @@ type PropsT = {
   // The investment's saved netto rate (fraction) and its writer — persisted, not browser-local.
   materialsNetRate: number | null
   onMaterialsNetRateChange: (rate: number | null) => void
+  disabled?: boolean
 }
 
 // Sits with the settlement mode rather than in the wydatki view: which plane the investment settles on
@@ -37,6 +38,7 @@ export function MaterialsNetPricingControl({
   vatRate,
   materialsNetRate,
   onMaterialsNetRateChange,
+  disabled = false,
 }: PropsT) {
   const netPricingOn = materialsNetRate != null
   const mode: PricingModeT = netPricingOn ? 'net' : 'gross'
@@ -56,6 +58,7 @@ export function MaterialsNetPricingControl({
       onValueChange={changeMode}
       options={PRICING_MODE_OPTIONS}
       description={PRICING_MODE_DESCRIPTIONS[mode]}
+      disabled={disabled}
     >
       {netPricingOn && (
         <div className="flex items-center gap-2">
@@ -63,6 +66,7 @@ export function MaterialsNetPricingControl({
           <DecimalField
             label=""
             value={materialsNetPercent}
+            disabled={disabled}
             // Clamped to the range the action's schema accepts, so a fat-fingered 230 lands on 100%
             // instead of bouncing back as a validation toast.
             onCommit={(percent) =>

@@ -1175,3 +1175,74 @@ Warm renders, which is what matters — `TransferTableServer buildTransferRows`:
   gap), still parked by the owner.
 - **Media invalidation** never exercised by a live upload/delete; accepted on the shared-mechanism
   argument above.
+
+## S7 research 2026-07-27 — the panel settings are optimistic candidates, and the payload cost is zero
+
+Unparking the optimistic UI item above. The objection that stopped it was "the panel's figures come
+from the server, so faking them means faking money" — false on this route.
+
+**Every input to every panel figure is already client-side at click time.** `SummaryPanelContent` is
+`'use client'` and derives the lot from props the mode cannot change
+(`summary-panel-content.tsx:164-214`): `moneyAxis`, `displayAxis`, `effectiveNetRate`,
+`buildSettlementPlaneVerdict`, `computeDoZaplatyRM`. Its inputs — `laborCostsNetFromKosztorys`,
+`wplatyNet`, `materialsGrossBase`, `materialsNetBilled`, `vatRate`, `depositTransactions` — are all
+mode-independent. The new value itself originates at the client (a select pick, a typed rate), and
+`updateInvestmentMaterialsNetRateAction` (`src/lib/actions/kosztorys.ts:185-201`) only validates and
+persists — it computes nothing and returns no figure. The round trip is a receipt, not data.
+
+### Marża costs one field, not a payload
+
+`deriveFinancials` (`src/lib/db/investment-financials.ts:70-105`) returns exactly **one**
+mode-dependent field:
+
+```ts
+materialsNetDiscount =
+  settlementMode === 'GROSS' ? 0 : concessionOn(materialsGrossBase, materialsNetRate)
+```
+
+`concessionOn` is `materialsNetDiscount` from `summary-economics`, **already imported and called by
+the client panel** (`brutto-netto-summary.tsx:115`, `mixed-summary.tsx:48`), and `materialsGrossBase`
+is already a prop. `SummaryMarginTab` is already `'use client'` and already calls
+`calculateMargin(financials)` in the browser (`summary-margin-tab.tsx:1,38`).
+
+So the client re-derive is `{ ...financials, materialsNetDiscount: <same call> }` — no aggregates
+shipped, no payload growth, no second copy of the formula. The earlier idea of shipping
+`typeDistribution` + the breakdown maps was over-built and is dropped.
+
+**Import trap for whoever implements it:** all three pages import `deriveFinancials` from
+`@/lib/db/sum-transfers`, which re-exports it (`:21`) while itself pulling `sql`, `payload` and
+`getDb`. Anything client-side must import from `@/lib/db/investment-financials` directly. Moot under
+the one-field patch, but it will bite the first person who reaches for the whole function.
+
+### The pattern is already in the same hook
+
+`use-kosztorys-editor.ts:125-129` holds `globalDiscount` — a tree-level scalar, not on rows — in local
+state, with a comment giving exactly this argument: reading `tree.globalDiscount` "would leave the
+total + columns lagging the row flag until router.refresh() lands". The comments at `:1034` and
+`:1053` that deny the same treatment to the settlement mode and the rate ("isn't denormalized onto the
+rows, so there's nothing to patch optimistically") test the wrong consumer: the panel reads a prop, not
+a row. Both `revert` arms are `() => {}` today — that is the actual defect.
+
+### Reader inventory (editor route)
+
+`kosztorys-editor-body.tsx:302,304` (panel props) · `use-kosztorys-editor.ts:160` (**`clientView`
+branch only** — the read-only share, which has no writers, so the owner's grid axis does _not_ move
+with the mode; an earlier note in this conversation claiming a grid coupling was wrong) ·
+`:763-764` (constructing a `treeToRows` argument, ignored by row building) · `:1047,1064` (the `before`
+capture for undo).
+
+### VAT is the same case, half-done
+
+`applyVat` patches `vatRate` onto every row, so the **grid** flips instantly — but the panel gets
+`vatRate={tree.vatRate}` (`kosztorys-editor-body.tsx:301`) and the body's brutto totals use
+`tree.vatRate` (`:119-144`), so both still wait for the round trip. `toGross(net, rate)` is pure and
+the nets are client-side. Folded into scope for consistency: three scalars, one pattern.
+
+### Consequence to accept, not solve
+
+`rows`, `stages` and `globalDiscount` are seeded once and never reseeded from a fresh `tree`
+("mount-frozen `rows`, EX-441"). The two settings are today the only panel inputs that _do_ track a
+fresh tree, because the panel reads the prop directly. Holding them locally ends that: a change made
+in another tab won't show until remount. Same staleness class the whole grid already has — decided in
+favour of retire-on-arrival (the local value steps aside once the server value catches up) rather than
+a permanent freeze, which costs a few lines and keeps external changes visible.

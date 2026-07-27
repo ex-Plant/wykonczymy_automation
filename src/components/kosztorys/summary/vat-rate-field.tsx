@@ -10,7 +10,7 @@ const VAT_TIP = [
 
 // Reads the setter straight from the editor context (the panel renders inside the provider), so no
 // prop threads through KosztorysTotalsPanel.
-export function VatRateField() {
+export function VatRateField({ disabled = false }: { disabled?: boolean }) {
   const { tree, handleVatChange } = useKosztorysEditorContext()
 
   return (
@@ -22,6 +22,7 @@ export function VatRateField() {
       valueClassName="text-foreground"
       min={0}
       max={100}
+      disabled={disabled}
       onCommit={(n) => handleVatChange(n / 100)}
     />
   )

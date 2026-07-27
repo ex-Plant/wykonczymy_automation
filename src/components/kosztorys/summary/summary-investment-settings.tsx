@@ -18,6 +18,9 @@ type PropsT = {
   // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
   materialsNetRate: number | null
   onMaterialsNetRateChange: (rate: number | null) => void
+  // One flag for all four: they are set-once decisions nobody edits two at a time, and none of them
+  // is optimistic — the figures they move are recomputed on the server.
+  isSaving?: boolean
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
@@ -36,6 +39,7 @@ export function SummaryInvestmentSettings({
   materialsGrossBase,
   materialsNetRate,
   onMaterialsNetRateChange,
+  isSaving = false,
   showSettingsBar = false,
   defaultOpen = false,
 }: PropsT) {
@@ -43,12 +47,16 @@ export function SummaryInvestmentSettings({
     <CollapsibleSection title="Opcje rozliczenia" size="sm" defaultOpen={defaultOpen}>
       {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
           never double up or dangle when the brutto mode or the host drops one. */}
+      {/* Outside the divide-y group on purpose — as its first child it would push a stray rule onto
+          the settlement row for exactly as long as the write is in flight. */}
+      {isSaving && <p className="text-muted-foreground pt-2 text-xs">Zapisywanie…</p>}
       <div className="divide-border flex flex-col divide-y">
         <div className="py-3">
           <SettlementModeSelect
             value={settlementMode}
             onChange={onSettlementModeChange}
             vatRate={vatRate}
+            disabled={isSaving}
           />
         </div>
         {/* Brutto settlement prices at brutto by design, so the concession has nothing to strip —
@@ -61,17 +69,18 @@ export function SummaryInvestmentSettings({
               vatRate={vatRate}
               materialsNetRate={materialsNetRate}
               onMaterialsNetRateChange={onMaterialsNetRateChange}
+              disabled={isSaving}
             />
           </div>
         )}
         {showSettingsBar && (
           <div className="py-3">
-            <VatRateField />
+            <VatRateField disabled={isSaving} />
           </div>
         )}
         {showSettingsBar && (
           <div className="py-3">
-            <GlobalDiscountControl />
+            <GlobalDiscountControl disabled={isSaving} />
           </div>
         )}
       </div>
