@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { PercentRabatTool } from '@/components/kosztorys/summary/percent-rabat-tool'
-import { LabeledModeSelect } from '@/components/kosztorys/summary/labeled-mode-select'
+import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
 import type { SelectOptionT } from '@/components/ui/simple-select'
 
 type DiscountModeT = 'off' | 'amount' | 'percent'
@@ -35,6 +35,17 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
   // from globalDiscount alone — the picked mode is its own local state. A stored amount discount seeds
   // the group onto „Kwotowy".
   const [mode, setMode] = useState<DiscountModeT>(globalDiscount.type != null ? 'amount' : 'off')
+
+  // A stored discount reappearing without the user picking it means the save failed and the optimistic
+  // value rolled back — that revert reaches `globalDiscount` but has no way into this local state, so
+  // without the resync the select reads „Wyłączony" while the data still applies the discount. Only the
+  // null→stored direction is corrected; the reverse is the user's own `changeMode`, which may have gone
+  // to „%" rather than „Wyłączony".
+  const [seenType, setSeenType] = useState(globalDiscount.type)
+  if (seenType !== globalDiscount.type) {
+    setSeenType(globalDiscount.type)
+    if (globalDiscount.type != null) setMode('amount')
+  }
 
   function changeMode(next: string) {
     setMode(next as DiscountModeT)
