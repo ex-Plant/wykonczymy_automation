@@ -584,3 +584,157 @@ harness is worse than no number.
 5. **Where should the slim reference-data projection live** — a new slim fetcher alongside
    `fetchExpenseCategories`, or a `select`-narrowed variant of the existing one? Affects whether the
    PII-in-payload concern (`reference-data.ts:47-49`) gets closed as a side effect.
+
+---
+
+## Follow-up Research 2026-07-27 — measurement channel on the deployed app
+
+The owner's direction: measure against the deployed app with real data, and treat the **kosztorys
+editor page** (`/inwestycje/[id]/kosztorys_v2`) as a second, coupled surface alongside the investment
+detail page. First task was to establish whether that environment is reachable at all.
+
+### There is no live production deployment
+
+The last 12 deployments are **all `target: preview`** — none production. The production alias
+`wykonczymy.vercel.app` returns an identical 15 060-byte Next 404 ("This page could not be found")
+on `/`, `/login`, `/inwestycje`, and `/inwestycje/6` alike, i.e. it is not serving the app at all.
+
+**The live app is the `staging` branch preview.** So "prod data" in this change means the preview
+Neon DB behind `wykonczymy-git-staging-wykonczymys-projects.vercel.app`, which is safe to load-test.
+Only one domain is registered on the project (`wykonczymy.vercel.app`, no `gitBranch`).
+
+### HTTP to staging is walled by Vercel SSO — and the wall lies convincingly
+
+Project protection is `ssoProtection: { deploymentType: "all_except_custom_domains" }`, with
+`passwordProtection: null`, `trustedIps: null`, and **no `protectionBypass` secret configured**.
+Since the project has no custom domain, every reachable URL is protected.
+
+A plain `curl` of the staging investment URL returns:
+
+```
+status=200  ttfb=1.259s  total=1.838s  size=484184
+```
+
+— which is **Vercel's SSO login page**, `<title>Login – Vercel</title>`, not the app. This is the
+third instance of the failure mode lessons.md already names twice: _a 200 with plausible timings is
+not evidence you measured the thing you named._ Verify a page-specific string in the body first.
+Driving staging over HTTP would require either a Protection-Bypass-for-Automation secret
+(`x-vercel-protection-bypass` header) or a borrowed `_vercel_jwt` cookie.
+
+### `vercel logs` is the measurement channel, and it needs neither
+
+The Vercel CLI is authenticated (`vercel whoami` → `admin-63074310`) and the repo is linked
+(`.vercel/project.json`). Runtime logs are readable **without touching the SSO wall**:
+
+```bash
+vercel logs --branch staging --since 12h -q "PERF" --expand --json
+```
+
+This returns the app's own server-side `[PERF]` telemetry, grouped per request. Real capture from
+the owner's own browsing:
+
+```
+GET /
+  [PERF] query.sumAllRegisterBalances      1015ms (29 registers)
+  [PERF] query.fetchRegisterBalances       1016ms (29 registers)
+  [PERF] query.fetchManagerDashboardData   1195ms
+  [PERF] ManagerDashboard …                1196ms
+  [PERF] TransferTableServer findTransfersRaw + fetchReferenceData  20ms
+  [PERF] query.fetchMediaByIds              104ms (12 docs)
+```
+
+**This is strictly better than external HTTP timing** — per-query attribution instead of one opaque
+wall-clock number, and it measures the real deployment against real data volumes. The protocol is:
+the owner browses, the agent queries the logs. No credentials change hands and no project config is
+modified.
+
+**Retention caveat — the binding constraint.** Request _metadata_ (path, method, status) is retained
+far longer than the log _bodies_: of 500 request records over 12 h, only the two most recent still
+carried their `logs[]` array; the rest came back `logs: []`. Measurement must therefore be a live
+session — browse, then query within minutes. A `--since 12h` sweep run the next morning will show
+that the requests happened and nothing about what they cost.
+
+Flags that matter: `-q` (full-text over log bodies), `--expand` (attach bodies), `--json`,
+`--since`, `--limit`, `--branch`. Note `vercel logs` resolves the project from the **current working
+directory** — running it from `$CLAUDE_JOB_DIR/tmp` fails with "codebase isn't linked".
+
+### New finding: `sumAllRegisterBalances` is a 1-second query on the dashboard
+
+Not part of either page under investigation, but it surfaced on the first real log read and is the
+slowest single query yet observed anywhere in the app:
+
+| Log line                          | Value                                    |
+| --------------------------------- | ---------------------------------------- |
+| `query.sumAllRegisterBalances`    | **1015 ms** (29 registers)               |
+| `query.fetchRegisterBalances`     | 1016 ms — a 1 ms cache wrapper around it |
+| `query.fetchManagerDashboardData` | 1195 ms                                  |
+
+`sumAllRegisterBalances` (`src/lib/db/sum-transfers.ts:71-112`) is two full `GROUP BY` scans of the
+entire `transactions` table joined with `FULL OUTER JOIN`:
+
+- `source_balances` — every row where `source_register_id IS NOT NULL AND cancelled IS NOT TRUE`
+- `target_balances` — every row where `target_register_id IS NOT NULL AND type = 'REGISTER_TRANSFER'`
+
+Neither predicate is selective; both are effectively full-table aggregations, and the cost scales
+with **total transaction history**, not with the 29 registers returned. It sits on `/` (the
+manager dashboard — the first page loaded every session) via `fetchManagerDashboardData`, and on
+`/kasa/[id]` via `fetchRegisterBalances`.
+
+It is `unstable_cache`d under the `transfers` tag (`reference-data.ts:182-188`), so the 1015 ms is a
+**cache miss** — but every transfer create/delete invalidates that tag, so on an active day misses
+are routine. Candidate fixes (unranked, unmeasured): a partial index on
+`(source_register_id) WHERE cancelled IS NOT TRUE`, the same for `target_register_id`, or a
+materialised running balance maintained by the existing recalculation hooks.
+
+**Scope call: out of scope for EX-597, worth its own issue.** It is neither of the two pages the
+owner named and shares no code path with them. Recorded here so the finding is not lost.
+
+### Confirmation of the owner's coupling instinct
+
+The two pages share `getKosztorysTree` and size it for the heavier consumer:
+
+| Surface                                       | Tree consumption                                   |
+| --------------------------------------------- | -------------------------------------------------- |
+| `/inwestycje/[id]` → `InvestmentSummaryPanel` | 100% aggregate → **two numbers** (see Q3 above)    |
+| `/inwestycje/[id]/kosztorys_v2`               | genuinely per-row — the editor needs the full tree |
+
+Additionally the editor page runs a **nine-way `Promise.all`** (`kosztorys_v2/page.tsx:47-67`):
+tree, `fetchFilteredByType`, `fetchCategoryBreakdowns`, `fetchReferenceData`,
+`fetchPayoutsByWorkerForInvestment`, `fetchPayoutTransactionsForInvestment`,
+`fetchDepositTransactionsForInvestment`, `fetchMaterialTransactionsForInvestment`,
+`requireInvestmentOr404` — with **zero `[PERF]` instrumentation** before this change, and no
+`<Suspense>` boundary of its own. So the coupling is not a shared component; it is one uncached
+query sized for the editor and paid in full by a page that reduces it to two scalars.
+
+### Instrumentation added (step 0 of any measurement)
+
+Three files, log-only — no behavior change:
+
+- `src/lib/queries/kosztorys.ts` — `buildKosztorysTree` now emits a per-sub-query line
+  (`[PERF] query.kosztorysTree.{sections,items,stages,progress,investment}` with row counts) plus a
+  summary splitting **setup / queries / map**. The five reads share a `Promise.all`, so each read
+  times itself via a local `timedRead` helper — a lap timer would have credited the whole
+  wall-clock to whichever settled last. The `map` figure is the one that matters for the
+  aggregate-in-SQL argument: it isolates the cost of materialising the tree in JS, which a cache
+  amortises but does not remove.
+- `src/components/investments/investment-summary-panel.tsx` — `[PERF] InvestmentSummaryPanel`
+  splitting **fetch / derive**, tagged with the row count that produced the two output scalars.
+- `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx` — `[PERF] kosztorys_v2/<id> 9-fetch
+fan-out`.
+
+This closes the blind spot named in "Baseline: NOT captured" — the route's suspected long pole was
+the one thing uninstrumented. It must reach `staging` before any measurement is meaningful.
+
+### Corrected baseline protocol
+
+Supersedes the local-dev protocol above:
+
+1. Land the instrumentation on `staging` (a human pushes).
+2. Owner loads `/inwestycje/<id>` and `/inwestycje/<id>/kosztorys_v2` on staging — pick both a small
+   and a large kosztorys, since the shape argument only bites at scale.
+3. Agent immediately runs `vercel logs --branch staging --since 30m -q "PERF" --expand --json`.
+4. Repeat after each spike, comparing the same log lines.
+
+Points 1–3 of the earlier local protocol (mint a dev session, assert a page-specific string, count
+all requests) still apply to any **browser-side** measurement of the `router.refresh()` round-trip
+count, which server logs cannot see. That one is verifiable by eye in DevTools' Network panel.

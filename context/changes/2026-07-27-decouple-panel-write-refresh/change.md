@@ -5,7 +5,7 @@ status: preparing
 created: 2026-07-27
 updated: 2026-07-27
 archived_at: null
-branch: null
+branch: ex-597-decouple-panel-write-refresh
 worktree: null
 ---
 
@@ -18,6 +18,28 @@ Research complete → `research.md` (2026-07-27). It answers Q2/Q3/Q5 and correc
 directly; and the baseline **was not captured** — the attempt authenticated against the wrong DB and
 was silently served the login page. Q1 and Q4 stay open, with a corrected capture protocol in
 `research.md`. **EX-540** already owns the tree fetch and must be reconciled with this change.
+
+### Measurement environment settled (2026-07-27) — see `research.md` follow-up section
+
+We measure the **deployed app against real data**, not local dev. Key facts:
+
+- **There is no live production deployment** — the last 12 deploys are all `preview`, and
+  `wykonczymy.vercel.app` 404s on every route. The live app is the `staging` branch preview.
+- **Staging HTTP is behind Vercel SSO**, with no bypass secret configured. A `curl` returns a
+  convincing `200 / 1.26s / 484 KB` that is the **Vercel login page**, not the app.
+- **`vercel logs --branch <b> -q "PERF" --expand --json` is the channel** and needs no SSO bypass:
+  it returns the app's own per-request `[PERF]` telemetry. Owner browses, agent reads. Log _bodies_
+  have short retention (metadata outlives them), so measurement must be a live session.
+- **Scope widened to two coupled surfaces** at the owner's direction: `/inwestycje/[id]` and
+  `/inwestycje/[id]/kosztorys_v2`. They share one uncached `getKosztorysTree` sized for the editor;
+  the investment page reduces the whole tree to two scalars. The editor page additionally runs an
+  uninstrumented **nine-way `Promise.all`**.
+- **Spike protocol (owner):** push with `--no-verify`, no typecheck/test gating — speed of iteration
+  over correctness gates while measuring. Document every finding immediately.
+
+**Out-of-scope finding, worth its own issue:** `sumAllRegisterBalances` costs **1015 ms** for 29
+registers on the manager dashboard (`/`) — two full `GROUP BY` scans of the whole `transactions`
+table; cost scales with transaction history, not register count. Details in `research.md`.
 
 ### Goal and severity (owner, 2026-07-27)
 
