@@ -1,18 +1,15 @@
 'use client'
 
+import { IDENTITY_COLUMN_ID } from '@/lib/kosztorys/constants'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-// The section's figures, keyed section id → column id → value, carried on the wrapped column's
-// `columnData` (never a closure — see kosztorys-synthetic-rows.tsx). A map rather than named fields
-// is what keeps the footer honest about its own limits: a column the per-section subtotals cannot
-// supply simply has no entry and renders blank, so adding one later is an entry, not a branch.
+// Carried on the wrapped column's `columnData`, never a closure — see kosztorys-synthetic-rows.tsx.
+// A map rather than named fields is what keeps the footer open-ended: a column with no entry renders
+// blank, so covering one later is an entry, not a branch here.
 export type SectionFooterContextT = {
   figures: Map<number, Map<string, number>>
 }
-
-// The identity column carries the caption instead of a number, the way „Razem" does.
-const CAPTION_COLUMN_ID = 'description'
 
 export function SectionFooterCell({
   rowData,
@@ -23,7 +20,7 @@ export function SectionFooterCell({
   columnId: string | undefined
   context: SectionFooterContextT
 }) {
-  if (columnId === CAPTION_COLUMN_ID)
+  if (columnId === IDENTITY_COLUMN_ID)
     return (
       <div className="text-foreground flex size-full items-center gap-1 px-2 text-sm font-bold">
         <span className="shrink-0">Razem</span>

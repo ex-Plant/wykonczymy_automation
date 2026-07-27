@@ -33,3 +33,7 @@ export const NEW_SECTION_DEFAULTS = {
   name: 'Nowa sekcja',
   defaultCostVariant: 'w_tools',
 } as const satisfies { name: string; defaultCostVariant: ToolPlaneT }
+
+// The grid's identity column. Every synthetic row (the „Razem" band and both section bands) puts its
+// caption here instead of a figure, so the three cells must agree on which column that is.
+export const IDENTITY_COLUMN_ID = 'description'

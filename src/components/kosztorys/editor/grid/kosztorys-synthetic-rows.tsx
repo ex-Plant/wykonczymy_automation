@@ -11,6 +11,7 @@ import {
   SectionFooterCell,
   type SectionFooterContextT,
 } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
+import { IDENTITY_COLUMN_ID } from '@/lib/kosztorys/constants'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
   isSectionFooterRow,
@@ -24,9 +25,6 @@ import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 // price of that is that dsg renders EVERY column's cell against it, so `withSyntheticRows` wraps each
 // column to render a baked total on this row (and its normal cell on every real row). The section
 // bands are the same mechanism, one branch further.
-
-// The label column (widest identity column) carries the „Razem" caption instead of a number.
-const LABEL_COLUMN_ID = 'description'
 
 // Left-aligned like the data cells (computed-cell.tsx / floatColumnLeft are `text-left px-2`), so a
 // column's total sits directly under its values.
@@ -94,7 +92,7 @@ export function withSyntheticRows(
   },
 ): Column<KosztorysV2RowT> {
   const total = column.id != null ? totals.get(column.id) : undefined
-  const content = column.id === LABEL_COLUMN_ID ? 'Razem' : total != null ? formatNet(total) : ''
+  const content = column.id === IDENTITY_COLUMN_ID ? 'Razem' : total != null ? formatNet(total) : ''
   return {
     ...column,
     component: SyntheticAwareCell as Column<KosztorysV2RowT>['component'],

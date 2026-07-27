@@ -3,30 +3,26 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
+import { IDENTITY_COLUMN_ID } from '@/lib/kosztorys/constants'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-export type SectionHeaderFigureT = {
-  itemCount: number
-}
-
 // What every band cell needs, carried on the wrapped column's `columnData` (never a closure — see
-// kosztorys-synthetic-rows.tsx). Figures are keyed by section id because the band row carries only
-// the section's identity, not its count. `onRename` is absent in the read-only client view, which
-// is what freezes the name. Every other section command lives in the row „…" menu, not here.
+// kosztorys-synthetic-rows.tsx). `onRename` is absent in the read-only client view, which is what
+// freezes the name. Every other section command lives in the row „…" menu, not here.
 export type SectionHeaderContextT = {
-  figures: Map<number, SectionHeaderFigureT>
+  // Item count per section id — the band row carries the section's identity, not its count.
+  figures: Map<number, number>
   collapsedSectionIds: ReadonlySet<number>
   onToggleCollapsed: (sectionId: number) => void
   onRename?: (sectionId: number, name: string) => void
 }
 
-// Which piece of the band this column paints. The band spans no columns, and the header carries only
-// identity — the money moved to the closing footer band, where each figure sits under its own column
-// instead of trailing the section name out of context.
+// dsg has no colspan, so the band is painted per column: one column carries the whole label, the
+// rest paint blank.
 export type SectionHeaderSlotT = 'label' | 'blank'
 
 export function sectionHeaderSlot(columnId: string | undefined): SectionHeaderSlotT {
-  return columnId === 'description' ? 'label' : 'blank'
+  return columnId === IDENTITY_COLUMN_ID ? 'label' : 'blank'
 }
 
 // The dot reads `--section-rail` off the row (set by rowClassName from the section's palette entry),
@@ -46,7 +42,7 @@ export function SectionHeaderCell({
   slot: SectionHeaderSlotT
   context: SectionHeaderContextT
 }) {
-  const figure = context.figures.get(rowData.sectionId)
+  const itemCount = context.figures.get(rowData.sectionId) ?? 0
   const { onRename } = context
 
   if (slot === 'label') {
@@ -83,7 +79,7 @@ export function SectionHeaderCell({
           <span className="min-w-0 truncate">{rowData.sectionName ?? ''}</span>
         )}
         <span className="text-muted-foreground shrink-0 text-sm font-normal">
-          ({figure?.itemCount ?? 0} poz.)
+          ({itemCount} poz.)
         </span>
         <Chevron className="text-muted-foreground size-4 shrink-0" />
       </div>

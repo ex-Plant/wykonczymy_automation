@@ -13,8 +13,7 @@ import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
-import type { SectionHeaderFigureT } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
-import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
+import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -105,20 +104,17 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
-  // The opening band shows identity only — its count comes off the full-dataset `subtotals`, so a
-  // search filter narrows the visible rows without changing what the section says it holds.
-  const sectionHeader = useMemo(() => {
-    const figures = new Map<number, SectionHeaderFigureT>()
-    for (const section of subtotals) {
-      figures.set(section.sectionId, { itemCount: section.itemCount })
-    }
-    return {
-      figures,
+  // The count comes off the full-dataset `subtotals`, so a search filter narrows the visible rows
+  // without changing what the section says it holds.
+  const sectionHeader = useMemo(
+    () => ({
+      figures: new Map(subtotals.map((section) => [section.sectionId, section.itemCount])),
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
-    }
-  }, [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection])
+    }),
+    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection],
+  )
 
   const gridColumns = useMemo(
     () =>
@@ -133,7 +129,7 @@ export function KosztorysEditorBody({
   )
   const { rows: bodyRows } = useMemo(
     () =>
-      buildSectionHeaderRows(viewRows, {
+      buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
         searchActive: search.trim() !== '',
