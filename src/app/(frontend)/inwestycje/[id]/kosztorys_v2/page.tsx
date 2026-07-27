@@ -14,6 +14,7 @@ import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
+import { perfStart } from '@/lib/perf'
 
 // The in-app kosztorys editor ("kosztorys_v2"). Always available — every investment has one,
 // the editor renders its own empty state. The legacy Google Sheet lives at /kosztorys.
@@ -22,6 +23,7 @@ export default async function InvestmentKosztorysV2Page({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const elapsed = perfStart()
   const { id } = await params
   const investmentId = parseInvestmentId(id)
 
@@ -65,6 +67,10 @@ export default async function InvestmentKosztorysV2Page({
     depositTxPromise,
     materialTxPromise,
   ])
+  console.log(
+    `[PERF] kosztorys_v2/${investmentId} 9-fetch fan-out ${elapsed()}ms ` +
+      `(tree + typeDistribution + breakdowns + referenceData + payouts + 3 transaction lists + investment)`,
+  )
   // The rate + mode are what make `materialsNetDiscount` a real term rather than 0, so „Marża" reads
   // the same figure the investment page does.
   const financials = deriveFinancials(

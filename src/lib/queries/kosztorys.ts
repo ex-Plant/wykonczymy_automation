@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 import { isSectionColorKey } from '@/lib/kosztorys/section-colors'
+import { perfStart } from '@/lib/perf'
 import type {
   DiscountTypeT,
   KosztorysItemT,
@@ -21,6 +22,20 @@ import type {
 const relId = (v: unknown): number =>
   typeof v === 'object' && v ? (v as { id: number }).id : Number(v)
 const num = (v: unknown): number => Number(v ?? 0)
+
+// The five reads below share one Promise.all, so a lap timer would credit the entire wall-clock to
+// whichever settled last and report the other four as ~0ms. Each read times itself instead, which is
+// what makes the slowest of the five identifiable rather than just the batch total.
+async function timedRead<T>(
+  label: string,
+  run: () => Promise<T>,
+  rowCount: (result: T) => number,
+): Promise<T> {
+  const elapsed = perfStart()
+  const result = await run()
+  console.log(`[PERF] query.kosztorysTree.${label} ${elapsed()}ms (${rowCount(result)} rows)`)
+  return result
+}
 
 // S-01: sections + items of a single investment, ordered by displayOrder → displayOrder.
 // S-04: stages (ordered by ordinal) + sparse per-item progress. S-05: per-investment VAT rate.
@@ -38,41 +53,68 @@ export async function getKosztorysTree(investmentId: number): Promise<KosztorysT
 // tree through the same code. Two copies of this mapping would drift, and the client projection
 // would then be projecting a different tree from the one the owner edits.
 export async function buildKosztorysTree(investmentId: number): Promise<KosztorysTreeT> {
+  const elapsed = perfStart()
   const payload = await getPayload({ config })
   const where = { investment: { equals: investmentId } }
+  const setupMs = elapsed()
 
   const [sectionsRes, itemsRes, stagesRes, progressRes, investment] = await Promise.all([
-    payload.find({
-      collection: 'kosztorys-sections',
-      where,
-      depth: 0,
-      limit: 1000,
-      sort: 'displayOrder',
-    }),
-    payload.find({
-      collection: 'kosztorys-items',
-      where,
-      depth: 0,
-      limit: 5000,
-      sort: 'displayOrder',
-    }),
-    payload.find({
-      collection: 'kosztorys-stages',
-      where,
-      depth: 0,
-      limit: 1000,
-      sort: 'ordinal',
-    }),
+    timedRead(
+      'sections',
+      () =>
+        payload.find({
+          collection: 'kosztorys-sections',
+          where,
+          depth: 0,
+          limit: 1000,
+          sort: 'displayOrder',
+        }),
+      (r) => r.docs.length,
+    ),
+    timedRead(
+      'items',
+      () =>
+        payload.find({
+          collection: 'kosztorys-items',
+          where,
+          depth: 0,
+          limit: 5000,
+          sort: 'displayOrder',
+        }),
+      (r) => r.docs.length,
+    ),
+    timedRead(
+      'stages',
+      () =>
+        payload.find({
+          collection: 'kosztorys-stages',
+          where,
+          depth: 0,
+          limit: 1000,
+          sort: 'ordinal',
+        }),
+      (r) => r.docs.length,
+    ),
     // Progress is filtered by the item's investment (stage-progress has no direct investment
     // column); depth 0 keeps item/stage as ids.
-    payload.find({
-      collection: 'stage-progress',
-      where: { 'item.investment': { equals: investmentId } },
-      depth: 0,
-      limit: 100000,
-    }),
-    payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
+    timedRead(
+      'progress',
+      () =>
+        payload.find({
+          collection: 'stage-progress',
+          where: { 'item.investment': { equals: investmentId } },
+          depth: 0,
+          limit: 100000,
+        }),
+      (r) => r.docs.length,
+    ),
+    timedRead(
+      'investment',
+      () => payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
+      () => 1,
+    ),
   ])
+  const queriesMs = elapsed()
 
   // Distinguish an unset coefficient from a legitimate 0 — `|| default` would rewrite a stored 0.
   const globalCoeffs = {
@@ -141,6 +183,17 @@ export async function buildKosztorysTree(investmentId: number): Promise<Kosztory
     stageId: relId(d.stage),
     qtyDone: num(d.qtyDone),
   }))
+
+  // Split from the query time because they answer different questions: a slow `queries` number argues
+  // for caching or aggregating in SQL, a slow `map` number argues that materialising the tree in JS is
+  // itself the cost — and only one of those is fixed by a cache.
+  const mapMs = elapsed()
+  console.log(
+    `[PERF] buildKosztorysTree ${setupMs + queriesMs + mapMs}ms ` +
+      `(setup ${setupMs}ms, queries ${queriesMs}ms, map ${mapMs}ms) ` +
+      `[inv ${investmentId}: ${sections.length} sections, ${items.length} items, ` +
+      `${stages.length} stages, ${progress.length} progress]`,
+  )
 
   return {
     sections,

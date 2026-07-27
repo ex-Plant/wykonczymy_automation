@@ -1,4 +1,5 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
+import { perfStart } from '@/lib/perf'
 import { fetchDepositTransactionsForInvestment } from '@/lib/queries/reference-data'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
@@ -32,11 +33,13 @@ export async function InvestmentSummaryPanel({
   expenseCategories,
   netCategoryCosts,
 }: PropsT) {
+  const elapsed = perfStart()
   const [tree, depositTransactions] = await Promise.all([
     getKosztorysTree(investmentId),
     // Same cached fetcher the kosztorys page uses, so both surfaces read wpłaty from one source.
     fetchDepositTransactionsForInvestment(investmentId),
   ])
+  const fetchMs = elapsed()
 
   const rows = treeToRows(tree)
   // No kosztorys rows ⇒ the transaction reading: there is no kosztorys to read from.
@@ -49,6 +52,13 @@ export async function InvestmentSummaryPanel({
   // „Wpłaty" = only INVESTOR_DEPOSIT rows, mirroring the kosztorys page — the same base the panel's
   // plane buckets and „Do zapłaty" draw from.
   const wplatyNet = depositTransactions.reduce((sum, deposit) => sum + deposit.amount, 0)
+  // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
+  // next to the row count it consumed, because that ratio is the argument for aggregating in SQL.
+  const deriveMs = elapsed()
+  console.log(
+    `[PERF] InvestmentSummaryPanel ${fetchMs + deriveMs}ms ` +
+      `(fetch ${fetchMs}ms, derive ${deriveMs}ms) [${rows.length} rows → sumaPracNet + rabatClientNet]`,
+  )
 
   return (
     <InvestmentSummaryPanelClient
