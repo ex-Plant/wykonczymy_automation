@@ -1,7 +1,9 @@
 import { unstable_cache } from 'next/cache'
+import { sql } from '@payloadcms/db-vercel-postgres'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
+import { getDb } from '@/lib/db/get-db'
 import { perfStart } from '@/lib/perf'
 
 export type MediaInfoT = {
@@ -18,23 +20,23 @@ type MediaRowT = MediaInfoT & { id: number }
 // The full sweep is also cheaper outright (0.26ms vs 1.6ms measured): 988 rows / 808kB read
 // sequentially beats one index probe per id. Returns an array, not a Map — `unstable_cache`
 // serializes its result and a Map would not survive the round-trip.
+//
+// Raw SQL rather than `payload.find`: hydrating 949 docs through the ORM measured 375ms against
+// 0.26ms for the same select, and that cost is re-paid on the first render after every media write
+// — which the bulk expense form fires 10-20 of per submit. `url` is a stored column holding the
+// finished serving path (`/api/media/file/<filename>`), so the string is identical either way.
 const fetchAllMedia = unstable_cache(
   async (): Promise<MediaRowT[]> => {
     const elapsed = perfStart()
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'media',
-      pagination: false,
-      depth: 0,
-      overrideAccess: true,
-    })
-    console.log(`[PERF] query.fetchAllMedia ${elapsed()}ms (${result.docs.length} docs)`)
+    const db = await getDb(await getPayload({ config }))
+    const { rows } = await db.execute(sql`select id, url, filename, mime_type from media`)
+    console.log(`[PERF] query.fetchAllMedia ${elapsed()}ms (${rows.length} docs)`)
 
-    return result.docs.map((doc) => ({
-      id: doc.id,
-      url: (doc.url as string) ?? null,
-      filename: (doc.filename as string) ?? null,
-      mimeType: (doc.mimeType as string) ?? null,
+    return rows.map((row) => ({
+      id: row.id as number,
+      url: (row.url as string) ?? null,
+      filename: (row.filename as string) ?? null,
+      mimeType: (row.mime_type as string) ?? null,
     }))
   },
   ['media-all'],
