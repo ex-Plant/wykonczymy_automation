@@ -16,6 +16,8 @@ import {
   type OverrideSnapshotT,
 } from '@/lib/kosztorys/subcontractor-price-edit'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
+import { toastMessage } from '@/lib/utils/toast'
+import { formatNet as fmt } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { ReactNode } from 'react'
 
@@ -63,6 +65,10 @@ const CELL_WRAPPER = 'flex size-full items-center'
 
 // A derived price carries the float tail of client × coeff; the cell edits grosze, not the tail.
 const round2 = (value: number): string => String(Math.round(value * 100) / 100)
+
+// Longer than the default 2s: this one reports work being undone, and it fires as the user's eyes
+// are already moving to the next cell.
+const REVERT_TOAST_MS = 5000
 
 /**
  * The rejection half of the guard, shared by both editable cells: would this write breach the
@@ -202,8 +208,19 @@ function SubcontractorPriceCell({
       onBlur={() => {
         setBlockReason(null)
         const settled = edit && priceSettle(edit.draft, rowData, view, edit.entry)
-        if (settled) setRowData(settled)
         setEdit(null)
+        if (!settled || settled.kind === 'keep') return
+        if (settled.row) setRowData(settled.row)
+        // A refused price leaves an older number on screen in its place, so the revert says so out
+        // loud — silently swapping the figure under the user is how they end up trusting a price
+        // they never chose.
+        if (settled.kind === 'rollback' && settled.reason === 'blocked') {
+          toastMessage(
+            `Cena odrzucona — przywrócono ${fmt(settled.restoredPrice)}.`,
+            'error',
+            REVERT_TOAST_MS,
+          )
+        }
       }}
       onChange={(e) => {
         const draft = e.target.value

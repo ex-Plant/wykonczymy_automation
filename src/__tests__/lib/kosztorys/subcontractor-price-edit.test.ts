@@ -94,31 +94,45 @@ describe('priceSettle', () => {
 
   it('puste pole wraca do „auto" dopiero po wyjściu z komórki', () => {
     expect(priceSettle('', flat(70), 'w_tools', entry)).toMatchObject({
-      wToolsOverrideType: null,
-      wToolsOverrideValue: 0,
+      kind: 'clear',
+      row: { wToolsOverrideType: null, wToolsOverrideValue: 0 },
     })
   })
 
   it('przyjęta wartość nie wymaga dopisku — wiersz już ją ma', () => {
-    expect(priceSettle('70', flat(70), 'w_tools', entry)).toBeNull()
+    expect(priceSettle('70', flat(70), 'w_tools', entry)).toEqual({ kind: 'keep' })
   })
 
   it('odrzucona wartość cofa wiersz do stanu sprzed edycji', () => {
     // Typing „2344000" commits the prefixes 2, 23, 234 … until one breaches the ceiling. Walking
     // away used to leave 234 standing — a price the user never chose.
     expect(priceSettle('2344000', flat(234), 'w_tools', entry)).toMatchObject({
-      wToolsOverrideType: 'amount',
-      wToolsOverrideValue: 70,
+      kind: 'rollback',
+      reason: 'blocked',
+      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 70 },
     })
   })
 
-  it('niedokończony wpis też cofa się do stanu sprzed edycji', () => {
+  it('podaje przywróconą cenę, żeby dało się ją ogłosić', () => {
+    expect(priceSettle('2344000', flat(234), 'w_tools', entry)).toMatchObject({
+      restoredPrice: 70,
+    })
+  })
+
+  it('niedokończony wpis cofa się bez ogłaszania', () => {
     expect(priceSettle('1e', flat(1), 'w_tools', entry)).toMatchObject({
-      wToolsOverrideValue: 70,
+      kind: 'rollback',
+      reason: 'invalid',
+      row: { wToolsOverrideValue: 70 },
     })
   })
 
-  it('cofnięcie do stanu, w którym wiersz już jest, nic nie zapisuje', () => {
-    expect(priceSettle('1e', flat(70), 'w_tools', entry)).toBeNull()
+  it('cofnięcie do stanu, w którym wiersz już jest, nic nie zapisuje — ale nadal jest odrzuceniem', () => {
+    expect(priceSettle('81', flat(70), 'w_tools', entry)).toMatchObject({
+      kind: 'rollback',
+      reason: 'blocked',
+      row: null,
+      restoredPrice: 70,
+    })
   })
 })

@@ -1,3 +1,4 @@
+import { subcontractorPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 import type { SubcontractorOverrideTypeT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
@@ -17,6 +18,19 @@ export type OverrideSnapshotT = {
   type: SubcontractorOverrideTypeT | null
   value: number
 }
+
+export type PriceSettleT<RowT> =
+  /** The row already says what the user left behind. */
+  | { kind: 'keep' }
+  /** An emptied field — the override reverts to „auto". */
+  | { kind: 'clear'; row: RowT }
+  | {
+      kind: 'rollback'
+      reason: 'blocked' | 'invalid'
+      /** `null` when the row is already back where it started and only the announcement is owed. */
+      row: RowT | null
+      restoredPrice: number
+    }
 
 export type PriceKeystrokeT<RowT> =
   /** Text stands on screen, the row is untouched — a cleared field or half-typed garbage. */
@@ -67,27 +81,40 @@ export function priceKeystroke<RowT extends ViewPricingT>(
 }
 
 /**
- * Leaving the cell. Returns the row to write, or `null` when the row already says what the user
- * left behind.
+ * Leaving the cell.
  *
  * The rollback is what makes a rejected edit safe: keystrokes commit as they go, so typing
  * „2344000" writes 2, 23, 234 … until one crosses the ceiling and the rest are refused. Without
  * this, walking away left the last accepted PREFIX standing as if the user had chosen it — a price
  * they never typed, in a cell they were told had failed.
+ *
+ * `reason` is what the caller announces: a refused price owes the user a word, because their number
+ * is gone and an older one is on screen in its place. Garbage they were still mid-typing does not —
+ * every text field on earth discards that silently.
  */
 export function priceSettle<RowT extends ViewPricingT>(
   draft: string,
   rowData: RowT,
   view: ToolPlaneT,
   entry: OverrideSnapshotT,
-): RowT | null {
+): PriceSettleT<RowT> {
   const parsed = parseDecimalInput(draft)
-  if (parsed.kind === 'empty') return withOverride(rowData, view, { type: null, value: 0 })
+  if (parsed.kind === 'empty') {
+    return { kind: 'clear', row: withOverride(rowData, view, { type: null, value: 0 }) }
+  }
 
   const result = priceKeystroke(draft, rowData, view)
-  if (result.kind === 'commit') return null
+  if (result.kind === 'commit') return { kind: 'keep' }
 
+  const restored = withOverride(rowData, view, entry)
   const current = overrideSnapshot(rowData, view)
-  if (current.type === entry.type && current.value === entry.value) return null
-  return withOverride(rowData, view, entry)
+  const settled = current.type === entry.type && current.value === entry.value
+  return {
+    kind: 'rollback',
+    reason: result.kind === 'blocked' ? 'blocked' : 'invalid',
+    // Null once the row already stands where the rollback would put it — the announcement is still
+    // owed, only the write isn't.
+    row: settled ? null : restored,
+    restoredPrice: subcontractorPrice(restored, view),
+  }
 }
