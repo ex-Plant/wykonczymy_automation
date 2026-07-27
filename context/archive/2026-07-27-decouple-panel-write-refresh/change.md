@@ -1,10 +1,10 @@
 ---
 change_id: decouple-panel-write-refresh
 title: Investment page data-fetching architecture — the summary panel made it unusably slow
-status: in-progress
+status: archived
 created: 2026-07-27
 updated: 2026-07-27
-archived_at: null
+archived_at: 2026-07-27T21:28:21Z
 branch: ex-597-decouple-panel-write-refresh
 worktree: null
 ---

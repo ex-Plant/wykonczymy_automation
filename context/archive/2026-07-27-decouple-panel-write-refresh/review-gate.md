@@ -23,19 +23,6 @@ landing in one is deferred **with that reason**.
 
 ### Correctness (code-review + cross-check)
 
-- [x] 🟡 WARNING · fixed · code-review · `src/components/kosztorys/summary/global-discount-control.tsx:37` ·
-      `mode` is `useState`-seeded **once** and never resynchronised, so it can contradict the data it
-      describes. `optimisticSettingSave`'s failure path restores `globalDiscount` but has no reach into
-      the component's local state.
-      Failure: rabat „Kwotowy" 500 zł → pick „Wyłączony" → the write fails → the revert puts `type:'amount'`
-      back, the select still reads „Wyłączony". The user sees no rabat while every total still subtracts one.
-      Fixed by reconciling during render (React's adjust-state-from-props pattern, not `useEffect` — repo
-      rule): a `seenType` shadow flips `mode` back to `'amount'` when a stored discount reappears unbidden.
-      Only the null→stored direction is corrected; the reverse is the user's own `changeMode`, which may
-      have gone to „%".
-      test: no automated test · unit — the repo has **no component-test layer** (no jsdom/testing-library
-      in `package.json`, no `environment` in `vitest.config.ts`); standing it up is repo-level
-      infrastructure, not this slice's work. Browser-level by nature → belongs to the E2E backlog below.
 - [x] 🟡 WARNING · skipped, **filed EX-605** · code-review · `global-discount-control.tsx:50-56` · selecting „Kwotowy"
       **persists nothing** — `changeMode` only writes when _leaving_ `'amount'`. So the select reads
       „Kwotowy" and its own description promises „Nie łączy się z rabatami per pozycja — zastępuje je",
@@ -70,28 +57,6 @@ landing in one is deferred **with that reason**.
       own size (coalescing window, interaction with `flushUndoBuffer`), review-worthy separately.
       test: TDD · unit — assert the undo stack depth grows by one after a successful apply, and that
       popping it restores the per-row `discountType`/`discountValue`.
-- [x] 🔵 OBSERVATION → **upgraded** · fixed · code-review · `use-kosztorys-editor.ts:1209` ·
-      `setTimeout(() => router.refresh(), 700)` on the grid-change path was **never cleared**, so the
-      comment beside it ("after the save quiets down") was false: a run of edited cells queued one
-      full-route refresh _each_. This is precisely the cost `d15ba6ab`'s `deferRefresh` removed from the
-      autosave — **the slice's #2 win was being partly handed back** a few lines away.
-      Fixed by storing the handle in a `refreshTimer` ref and restarting it, mirroring `flushTimer`
-      directly above. Pre-existing (moved here by `08310f68`), but reaching outside the diff is not a
-      reason to defer a fix that restores the change's own headline claim.
-      test: no automated test · e2e — timer coalescing is only observable as request count in a browser
-      session; folded into the E2E backlog item below.
-- [x] 🟡 WARNING · fixed · feature-first-structure · `src/components/ui/history-back-button.tsx:16` ·
-      bare `router.back()` with no empty-history fallback — on a direct load the crumb's „wróć" is dead.
-      Sibling `back-button.tsx:14` already guarded `window.history.length > 1`; the new component
-      re-solved the problem and dropped the guard.
-      Failure: shared link → fresh tab → `history.length === 1` → „wróć" does nothing / leaves the app.
-      Fixed by **deduping rather than copying the guard**: the decision moved into
-      `src/components/ui/use-history-back.ts`, now the single implementation behind both back
-      affordances, and `HistoryBackButton` takes a `fallbackHref` (`/inwestycje/${id}` from the crumb,
-      the same target as the `<Link>` beside it). One hook is what stops the guard being dropped a
-      third time.
-      test: no automated test · unit — needs the component-test layer this repo doesn't have (see W1).
-      The dedup is the structural guard in its place.
 - [x] 🔵 OBSERVATION · dismissed · code-review · `src/lib/queries/investments.ts:124,146` ·
       `getInvestmentName` reads with `overrideAccess: true` and no auth guard. Identical to
       `getInvestment` beside it, returns a name only, and the crumb renders solely on authenticated
@@ -109,11 +74,6 @@ landing in one is deferred **with that reason**.
       a delete's invalidation is not awaited against an in-flight read, so a render racing the delete can
       cache a row that no longer exists until the next write. Window is milliseconds, the payload is a
       filename, and the next media write clears it. Not worth a fix or an issue.
-- [x] 🔵 OBSERVATION · fixed · code-review · `src/lib/queries/media.ts:20` · the size-headroom comment
-      cited "988 rows / 808kB", which is the **table** read, not the cached payload — and it was the
-      number the headroom conclusion rested on. The four projected columns measure **95 kB** across those
-      988 rows against the Data Cache's ~2 MB ceiling, i.e. ~10× headroom, not ~2×. Comment corrected,
-      with the ~10 000-row revisit threshold recorded.
 - [x] 🔵 OBSERVATION · skipped · code-review · `summary-panel-content.tsx` → `SummaryExpensesTab` ·
       passes the raw rate where the effective rate is what the tab displays; latent, no wrong figure
       renders today because the two coincide on every current settlement mode. Belongs with the
@@ -139,47 +99,13 @@ landing in one is deferred **with that reason**.
 
 ### Doc drift found while running the gate
 
-- [x] fixed · gate · `AGENTS.md:239` · claimed "There is no `context/foundation/test-plan.md` here yet"
-      — the file exists. A test-routing rule that denies its own anchor sends every new test back to
-      "cover this file". Rewritten to point at it.
-- [x] fixed · gate · `context/foundation/manual-checks.md` · no EX-597 section existed (an archive
-      blocker). Added, structured around what this slice actually risks: it is a perf change, so the
-      checks are mostly **non-regression** on the rewired reads/caches plus the two coalescing behaviours
-      only observable as request counts. Also carries EX-605 and EX-606 as explicit
-      known-unfixed items awaiting the owner's confirmation.
-- [x] fixed · gate · `change.md` · the Outcome table ranked `deferRefresh` #2 without knowing an
-      uncleared `router.refresh()` timer was handing part of it back. Caveat added, with the
-      generalisation: **a per-write saving is only real if nothing downstream re-adds per-write work** —
-      the 324 766 B → 127 B measurement was taken on the action's own payload and structurally could not
-      have seen a second refresh path 80 lines away.
-
 ### Structure, cohesion, comments
 
-- [x] fixed · feature-first-structure · `labeled-mode-select.tsx` · born-generic primitive (label +
-      SimpleSelect + Description + children, zero domain tokens) filed under a feature folder with 3
-      consumers. Moved to `src/components/ui/`; all 3 imports rewritten; `tsc` clean. The
-      parallel-session block on this lifted when that agent committed.
-- [x] fixed · comment-noise · `src/app/(frontend)/layout.tsx:35-36` · **commented-out code**, not a
-      comment: `// process.env.NODE_ENV !== 'production' && 'dark',`. Uncommenting it would also violate
-      the repo's `no-restricted-syntax` raw-`process.env` ban (AGENTS.md — env only through `src/lib/env/`).
-      Deleted.
-- [x] fixed · comment-noise · 3 deletes + 1 trim · deleted `top-nav.tsx:23` + `inwestycje/[id]/page.tsx:130`
-      (layout narration), `labeled-mode-select.tsx:12` (triple restatement of `description: ReactNode`);
-      trimmed `revalidate.ts:5` (dropped the body-restating first line, kept the `WARNING:` Route-Handler
-      constraint). `simple-select.tsx:25` was rewritten wholesale by the `buttonTrigger` fix below, which
-      dissolved the flagged clause.
 - [x] dismissed · comment-noise · `@investmentCrumb/default.tsx:1` and `summary-economics.ts:139` ·
       both survive the strip test on a second read. The `default.tsx` line explains **why the file exists
       at all** (a reader who doesn't know the slot convention cannot derive "no-match fallback" from an
       empty component), and `summary-economics.ts:139` carries the _formula_ — delete it and
       `doRozliczeniaNet: number` no longer says it is `combinedNet − paidNet`.
-- [x] fixed · comment-noise · `decimal-field.tsx:10,29`, `summary-panel-content.tsx:128` · 3 trims
-      applied — symbol-restating first clause cut, design rationale kept.
-- [x] fixed · comment-noise · `kosztorys-totals-panel.tsx:15` · 4th trim, applied together with the
-      module-cohesion finding below (same three lines). **Hold lifted 2026-07-27:** the parallel
-      session's only edit to this file is a comment deletion near line 32, untouched for hours and
-      textually disjoint from the header block — the hold guarded against racing a live agent, not
-      against the file ever being dirty.
 - [x] dismissed · comment-noise · slice comments overall · 21 flagged-keep, incl. every comment in the
       4 highest-risk new modules (`kosztorys-tree.ts`, `reference-data.ts`, `media.ts`, `revalidate.ts`)
       and all three new test files. The comment-heaviest new code is the best-justified — measured numbers,
@@ -194,13 +120,6 @@ landing in one is deferred **with that reason**.
       `global-discount-control.tsx` · the same rationale sentence now lives in 2–3 places and can drift.
       Each copy is individually load-bearing, so no comment edit is right — the real fix is deduping the
       **overlapping prop types**, a refactor of its own, and 3 of the files are in the dirty set.
-- [x] fixed · module-cohesion · `src/components/kosztorys/summary/kosztorys-totals-panel.tsx:14` ·
-      header comment ("this file owns nothing but the overlay, so the investment page can mount the same
-      content without inheriting the editor's geometry") is now **factually false** — the slice added
-      `OPEN_SETTINGS_PARAM`, a `useSearchParams` read and a `forcedOpen` state machine, so the file also
-      owns the `?ustawienia=1` deep-link arrival protocol. Doc drift, not a split.
-      **Fixed 2026-07-27** (hold lifted, see the comment-noise finding above): the header now names both
-      things it owns — overlay geometry and the arrival protocol — and drops the restating first clause.
 - [x] skipped · module-cohesion · `src/components/kosztorys/editor/use-kosztorys-editor.ts` · 1289 LOC,
       one export, ~50-key return object, 6 co-resident responsibilities; this slice added +115 LOC and one
       more state slice to it. **Not a new kind of mixing** — settings-persistence already lived here — and
@@ -224,16 +143,6 @@ landing in one is deferred **with that reason**.
       query + 4 mappers"; verified **cohesive** — the four mappers are private, unexported, unreachable
       from any other read, and exist only because of that exact `SELECT`. One reason to change: the tree's
       columns. No split warranted.
-- [x] fixed · structure-scatter · `AGENTS.md:165` · said `src/lib/db` is "raw SQL financial
-      calculations", but it now holds `get-db`, `where-to-sql`, `with-payload-transaction`, `snapshots`,
-      `presets`, `notifications` and the new `kosztorys-tree` — none of them financial. The real rule the
-      slice followed is "raw-SQL data-access layer: statement + row mapper; auth/cache/shaping live in
-      `lib/queries`". Stale wording is what sends the next `lib/db` file to the wrong home.
-- [x] fixed · structure-scatter · `AGENTS.md` (Route Groups section) · the `@investmentCrumb` slot is
-      the repo's **first and only** parallel route slot. Name the convention now, while there's one
-      instance: shell content needing route params gets a `@slot` under `(frontend)/`; the slot file is a
-      re-export only, the component lives in `components/nav/`. Undocumented, a second one gets mirrored
-      badly.
 - [x] skipped · structure-scatter · `src/components/kosztorys/summary/summary-investment-settings.tsx` ·
       composes 4 children on two different contracts — 2 take value+callback props, 2 reach into
       `useKosztorysEditorContext()` directly, which is why the `showSettingsBar` prop exists as a
@@ -259,35 +168,11 @@ landing in one is deferred **with that reason**.
 
 ### Simplify pass (reuse / simplification / efficiency / altitude)
 
-- [x] fixed · simplify (altitude + efficiency, **converged independently**) ·
-      `use-kosztorys-editor.ts:259-263` · **a real defect in this gate's own earlier fix.** The refresh
-      timer added at :1212 was never added to the unmount cleanup that `flushTimer` has, so navigating
-      away right after typing left a `router.refresh()` armed for up to 700ms — firing a full-route
-      re-render (90–193ms of server work, per this slice's own figure) of the route the user just left.
-      Cleanup now clears both timers, and the literal `700` became `TOTALS_REFRESH_DEBOUNCE_MS` rather
-      than silently sharing `UNDO_COALESCE_MS`'s value — they are two knobs that happen to agree.
-      test: `no automated test` — unmount-timer behaviour needs a component harness this repo has no
-      layer for (no jsdom, no testing-library). Covered by the EX-597 manual check instead.
-- [x] fixed · simplify (altitude) · `src/lib/cache/revalidate.ts` · deleted `revalidateCollection`
-      (singular) and repointed its 3 callers + 2 test mocks at `revalidateCollections`. The singular was
-      strictly weaker — same behaviour minus the `deferRefresh` option — so a caller reaching for the
-      obvious-looking name silently could not opt into the very mechanism this slice exists to provide.
-      One entry point, one place to make the choice.
-- [x] fixed · simplify (reuse) · `src/lib/queries/investments.ts:81` + `investment-crumb.tsx:12` ·
-      split `isInvestmentId` out of `parseInvestmentId`. `parseInvestmentId`'s own comment says it is
-      "the single home for the id-validity rule so … doesn't re-inline the check and drift from it" —
-      and the crumb re-inlined it as `/^\d+$/`, which had **already drifted** (rejects `"07"`, accepts
-      `"0"`). The split exists because a slot cannot use the `notFound()` form: a 404 in a parallel
-      route takes the whole shell down when all it wants is to render nothing.
-- [x] fixed · simplify (simplification) · `src/lib/db/kosztorys-tree.ts:108-112` · `x == null ? null :
-num(x)` written out three times → `numOrNull`, with the note on why it is not just `num` (a
-      nullable coefficient means "inherit the default", which `0` would answer as "free").
-- [x] fixed · simplify (simplification) · `collapsible-section.tsx` · two parallel
-      `Record<SizeT, string>` keyed identically → one `Record<SizeT, {title, chevron}>`, so a new size
-      can't be half-added.
-- [x] fixed · simplify (simplification) · `simple-select.tsx:55` · `variant === 'toolbar' || variant ===
+num(x)`written out three times →`numOrNull`, with the note on why it is not just `num`(a
+      nullable coefficient means "inherit the default", which`0` would answer as "free").
 'toolbarSm'` → a `buttonTrigger` flag in the VARIANT table. The table already claims to be the one
-      place a variant is described; the `||` was a second, drift-prone place.
+place a variant is described; the `||` was a second, drift-prone place.
+
 - [x] skipped, **filed EX-608** · simplify (reuse + efficiency, **converged independently**) ·
       `investment-crumb.tsx:15` → `getInvestmentName` · third read of the same investment row per render
       (`getInvestment` in the page guard, `fetchReferenceData`, then this), and it is tagged
