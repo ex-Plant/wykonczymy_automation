@@ -10,7 +10,7 @@ type PropsT = {
   onValueChange: (value: string) => void
   options: SelectOptionT[]
   // The chosen option's explanation, shown below the select — switches with the value.
-  description: string
+  description: ReactNode
   disabled?: boolean
   // Rendered below the description — the settlement mode's zero-VAT warning, the netto pricing rate
   // field. Only shown when the caller has one for the current value.
