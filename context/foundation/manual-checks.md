@@ -515,3 +515,23 @@ przedmiar and rabat footer cells are blank without them.
 - [ ] Sorting by any column removes headers and footers together; clearing the sort restores both
 - [ ] Typing into a cell directly above a footer keeps focus and accepts every character — a remount would drop all but the last one
 - [ ] Saving persists nothing new: reload and the same figures come back, with no phantom row in the kosztorys
+
+## EX-609 — subcontractor-price-guard
+
+Cena wykonawcy nie może przekroczyć 80% ceny klienta (błąd, zapis blokowany), a powyżej stawki
+z globalnego mnożnika świeci bursztynowo (ostrzeżenie, pozycja liczy się normalnie). Setup: kosztorys
+z wypełnionymi cenami klienta, globalny mnożnik „z narzędziami" wyraźnie poniżej 0,8 (np. 0,65), oba
+widoki wykonawcy dostępne z przełącznika.
+
+**Zaakceptowane ryzyko (właściciel, 2026-07-27):** inwestycja, której globalny mnożnik JUŻ przekracza
+0,8, zapali każdy wiersz „auto" na czerwono — „niech się świeci", to nie jest usterka.
+
+- [ ] Widok „z narzędziami", tryb „kwota stała": kwota powyżej 80% ceny klienta nie zmienia wiersza — komórka czerwienieje i pokazuje tooltip z maksymalną kwotą; poprawna kwota kasuje czerwień
+- [ ] Kolumna „Mnożnik" w trybie „własny mnożnik": mnożnik powyżej 0,8 zostaje odrzucony tak samo
+- [ ] Wyjście z komórki (blur) po odrzuconym wpisie gasi czerwień i tooltip, a wiersz wraca do poprzedniej wartości
+- [ ] Kwota stała powyżej stawki z globalnego mnożnika, ale poniżej 80%, wpisuje się normalnie i świeci bursztynowo z tooltipem
+- [ ] Sumy w „Podsumowaniu" wykonawcy są identyczne jak przed zmianą — bursztynowy wiersz liczy się w pełni
+- [ ] Obniżenie „Cena j.m." klienta na tyle, by istniejąca kwota stała przekroczyła 80%, zapala „Cenę" na czerwono po powrocie do widoku wykonawcy — mimo że nikt nie tknął kolumn wykonawcy
+- [ ] To samo zachowanie w widoku „bez narzędzi", mierzone względem JEGO mnożnika
+- [ ] „Ustawienia": mnożnik powyżej 0,8 cofa pole do poprzedniej wartości i nie zapisuje; 0,8 przechodzi; opis pod polami mówi o suficie
+- [ ] Wpisywanie w komórce „Cena" nie gubi znaków — hoisting komórek do modułu miał usunąć remount, więc długa kwota wchodzi w całości
