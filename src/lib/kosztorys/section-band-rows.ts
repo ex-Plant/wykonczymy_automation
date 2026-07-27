@@ -22,7 +22,7 @@ type OptsT = {
  * Ordinals number the rows actually rendered, so the visible column reads 1…N with no gaps; bands
  * carry no ordinal at all (a band is not a position).
  */
-export function buildSectionHeaderRows(
+export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
   { collapsedSectionIds, enabled, searchActive }: OptsT,
 ): { rows: KosztorysV2RowT[]; ordinalByRowId: Map<number, number> } {
@@ -39,8 +39,7 @@ export function buildSectionHeaderRows(
   // these keep the failure to a mis-grouped block rather than a corrupt render if one ever doesn't.
   const headered = new Set<number>()
   const footered = new Set<number>()
-  // The row that opened the block currently being emitted — carries the section identity the footer
-  // needs, and is what tells a section change from the first row of the list.
+  // A whole row, not a sectionId: the footer reads the section's name and colour off it.
   let openRow: KosztorysV2RowT | null = null
 
   function closeOpenSection() {
@@ -67,7 +66,6 @@ export function buildSectionHeaderRows(
     ordinalByRowId.set(row.id, ordinalByRowId.size + 1)
     rows.push(row)
   }
-  // The last section ends with the list, not with a boundary transition.
   closeOpenSection()
   return { rows, ordinalByRowId }
 }

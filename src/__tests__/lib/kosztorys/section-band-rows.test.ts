@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildSectionHeaderRows } from '@/lib/kosztorys/section-header-rows'
+import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -57,9 +57,9 @@ describe('section band row ids', () => {
   })
 })
 
-describe('buildSectionHeaderRows', () => {
+describe('buildSectionBandRows', () => {
   it('brackets each section with an opening and a closing band', () => {
-    const { rows } = buildSectionHeaderRows(VIEW_ROWS, enabled())
+    const { rows } = buildSectionBandRows(VIEW_ROWS, enabled())
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -78,7 +78,7 @@ describe('buildSectionHeaderRows', () => {
   })
 
   it('keeps a collapsed section header and drops its items with their footer', () => {
-    const { rows } = buildSectionHeaderRows(VIEW_ROWS, enabled([10]))
+    const { rows } = buildSectionBandRows(VIEW_ROWS, enabled([10]))
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -90,13 +90,13 @@ describe('buildSectionHeaderRows', () => {
   })
 
   it('emits no band for a section whose rows were all filtered away', () => {
-    const { rows } = buildSectionHeaderRows([row(4, 20), row(5, 20)], enabled())
+    const { rows } = buildSectionBandRows([row(4, 20), row(5, 20)], enabled())
 
     expect(rows.map((r) => r.id)).toEqual([sectionHeaderRowId(20), 4, 5, sectionFooterRowId(20)])
   })
 
   it('numbers item rows continuously across bands, never the bands themselves', () => {
-    const { rows, ordinalByRowId } = buildSectionHeaderRows(VIEW_ROWS, enabled())
+    const { rows, ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, enabled())
 
     expect([...ordinalByRowId.entries()]).toEqual([
       [1, 1],
@@ -111,7 +111,7 @@ describe('buildSectionHeaderRows', () => {
   })
 
   it('leaves no gap in the numbering when a section is collapsed', () => {
-    const { ordinalByRowId } = buildSectionHeaderRows(VIEW_ROWS, enabled([10]))
+    const { ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, enabled([10]))
 
     expect([...ordinalByRowId.entries()]).toEqual([
       [4, 1],
@@ -120,7 +120,7 @@ describe('buildSectionHeaderRows', () => {
   })
 
   it('ignores a collapsed section while a search is active', () => {
-    const { rows } = buildSectionHeaderRows(VIEW_ROWS, enabled([10], true))
+    const { rows } = buildSectionBandRows(VIEW_ROWS, enabled([10], true))
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -136,7 +136,7 @@ describe('buildSectionHeaderRows', () => {
   })
 
   it('emits one band pair per section even when its rows arrive in two blocks', () => {
-    const { rows } = buildSectionHeaderRows([row(1, 10), row(4, 20), row(2, 10)], enabled())
+    const { rows } = buildSectionBandRows([row(1, 10), row(4, 20), row(2, 10)], enabled())
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -149,8 +149,30 @@ describe('buildSectionHeaderRows', () => {
     ])
   })
 
+  // Same guard, one block further: a band id is a pure function of its section, so re-emitting the
+  // pair would hand dsg's virtualizer a duplicate key. The bounded cost is that the third block's
+  // rows render outside any band — recorded so the degradation is known, not discovered.
+  it('leaves a third block of the same section outside any band rather than repeating its id', () => {
+    const { rows } = buildSectionBandRows(
+      [row(1, 10), row(4, 20), row(2, 10), row(5, 20), row(3, 10)],
+      enabled(),
+    )
+
+    expect(rows.map((r) => r.id)).toEqual([
+      sectionHeaderRowId(10),
+      1,
+      sectionFooterRowId(10),
+      sectionHeaderRowId(20),
+      4,
+      sectionFooterRowId(20),
+      2,
+      5,
+      3,
+    ])
+  })
+
   it('passes the rows through untouched when disabled by an active sort', () => {
-    const { rows, ordinalByRowId } = buildSectionHeaderRows(VIEW_ROWS, {
+    const { rows, ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, {
       // Even a collapsed section stays visible: with no band there would be nothing to re-expand it.
       collapsedSectionIds: new Set([10]),
       enabled: false,
