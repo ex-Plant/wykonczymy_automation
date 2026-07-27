@@ -26,15 +26,15 @@ coefficient itself cannot be set above 0.8. No total changes.
 
 ## Key Decisions Made
 
-| Decision | Choice | Why | Source |
-| --- | --- | --- | --- |
-| Warning baseline | Price above the **investment's global coefficient** rate, any mode | Makes the two rules one ladder: amber above the default rate, red above 80% | Shaping |
-| Error behaviour | **Block the write**, red cell + in-place tooltip | The owner learns the ceiling at the moment of typing, not from a summary later | Shaping |
-| Scope of the check | **Standing row state**, not just the keystroke | Otherwise a lowered client price or a raised global coefficient walks past the rule unseen | Shaping |
-| Threshold home | **Code constant**, not a per-investment setting | 80% is a business rule, not a negotiated parameter; a DB column everyone leaves at default is forever | Shaping |
-| Rejection feedback | Red cell + tooltip, cleared on the next accepted entry | Same channel as the existing blocked-action tooltip; a toast would fire mid-typing with the message in the wrong corner | Plan |
-| Where the red lives | „Cena" only, never „Mnożnik" | The rule is about the price; a red multiplier points at the wrong cell when the client price is what moved | Plan |
-| Global coefficient | Capped at 0.8 in settings | One field would otherwise breach the rule on every „auto" row at once, unfixable row-side | Plan |
+| Decision            | Choice                                                             | Why                                                                                                                     | Source  |
+| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ------- |
+| Warning baseline    | Price above the **investment's global coefficient** rate, any mode | Makes the two rules one ladder: amber above the default rate, red above 80%                                             | Shaping |
+| Error behaviour     | **Block the write**, red cell + in-place tooltip                   | The owner learns the ceiling at the moment of typing, not from a summary later                                          | Shaping |
+| Scope of the check  | **Standing row state**, not just the keystroke                     | Otherwise a lowered client price or a raised global coefficient walks past the rule unseen                              | Shaping |
+| Threshold home      | **Code constant**, not a per-investment setting                    | 80% is a business rule, not a negotiated parameter; a DB column everyone leaves at default is forever                   | Shaping |
+| Rejection feedback  | Red cell + tooltip, cleared on the next accepted entry             | Same channel as the existing blocked-action tooltip; a toast would fire mid-typing with the message in the wrong corner | Plan    |
+| Where the red lives | „Cena" only, never „Mnożnik"                                       | The rule is about the price; a red multiplier points at the wrong cell when the client price is what moved              | Plan    |
+| Global coefficient  | Capped at 0.8 in settings                                          | One field would otherwise breach the rule on every „auto" row at once, unfixable row-side                               | Plan    |
 
 ## Scope
 
@@ -55,11 +55,11 @@ tooltip), and the settings field (`max` prop). Nothing is shared between them bu
 
 ## Phases at a Glance
 
-| Phase | What it delivers | Key risk |
-| --- | --- | --- |
-| 1. The rule | Pure module + boundary unit test | Off-by-a-hair at the two thresholds — which is exactly what the test pins |
-| 2. The grid | Write rejection + standing red/amber on „Cena" | `SimpleTooltip` needs an `open` prop; cell-local rejection state is a shape no cell has today |
-| 3. The settings | Global coefficient capped at 0.8 | None — `DecimalField.max` already does the work |
+| Phase           | What it delivers                               | Key risk                                                                                      |
+| --------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1. The rule     | Pure module + boundary unit test               | Off-by-a-hair at the two thresholds — which is exactly what the test pins                     |
+| 2. The grid     | Write rejection + standing red/amber on „Cena" | `SimpleTooltip` needs an `open` prop; cell-local rejection state is a shape no cell has today |
+| 3. The settings | Global coefficient capped at 0.8               | None — `DecimalField.max` already does the work                                               |
 
 **Prerequisites:** none.
 **Estimated effort:** one session.

@@ -58,6 +58,9 @@ type SimpleTooltipPropsT = {
   children: React.ReactNode
   className?: string
   delayDuration?: number // hover ms before open
+  // Controlled open state, for a tooltip that has to say something the user didn't hover for — a
+  // rejected keystroke explaining itself in place. Omitted = uncontrolled hover, as everywhere else.
+  open?: boolean
 }
 
 // Base tooltip. Use directly on INTERACTIVE triggers (buttons, toggles, sortable headers) — the
@@ -67,10 +70,11 @@ function SimpleTooltip({
   children,
   className,
   delayDuration = TOOLTIP_DELAY,
+  open,
 }: SimpleTooltipPropsT) {
   return (
     <TooltipProvider delayDuration={delayDuration}>
-      <Tooltip>
+      <Tooltip open={open}>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent className={className}>{content}</TooltipContent>
       </Tooltip>

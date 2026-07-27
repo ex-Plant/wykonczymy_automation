@@ -93,7 +93,7 @@ it a kwota stała typed at exactly the coefficient price (`clientPrice × coeff`
 rounded to two decimals) reads as "above" on a floating-point remainder and goes amber for no reason
 the owner can see.
 
-**Auto rows can only ever be red, never amber.** Under `null` the price *is* `clientPrice ×
+**Auto rows can only ever be red, never amber.** Under `null` the price _is_ `clientPrice ×
 effectiveCoeff`, so the warning comparison is an equality and never fires. Its only failure mode is a
 global coefficient above 0.8 — which Phase 3 makes unreachable through the UI, leaving the red path
 for rows whose coefficient predates the guard.
@@ -125,7 +125,10 @@ figure or writes a sentence.
 
 ```ts
 type SubcontractorPriceIssueT = { severity: 'error' | 'warning'; message: string }
-function checkSubcontractorPrice(row: ViewPricingT, view: ToolPlaneT): SubcontractorPriceIssueT | null
+function checkSubcontractorPrice(
+  row: ViewPricingT,
+  view: ToolPlaneT,
+): SubcontractorPriceIssueT | null
 ```
 
 Precedence: client price ≤ 0 → `null`; price above `clientPrice × MAX_CLIENT_SHARE` → `error`; price
@@ -323,9 +326,9 @@ rule start rendering red; nothing about them changes.
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm typecheck`
-- [ ] 2.2 Linting passes: `pnpm lint`
-- [ ] 2.3 Existing grid tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
+- [x] 2.1 Type checking passes: `pnpm typecheck`
+- [x] 2.2 Linting passes: `pnpm lint`
+- [x] 2.3 Existing grid tests pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/`
 
 ### Phase 3: The settings
 
