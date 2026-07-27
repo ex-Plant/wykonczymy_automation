@@ -1,6 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import Link from 'next/link'
+import { Settings2 } from 'lucide-react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import {
   settlementModeToGridAxis,
@@ -79,11 +81,13 @@ type PropsT = {
   reconciliation: KosztorysReconciliationT
   vatRate: number
   settlementMode: SettlementModeT
-  onSettlementModeChange: (mode: SettlementModeT) => void
+  // Optional because supplying them is what makes a host an *editor* of these settings. A host that
+  // omits them renders the figures without the „Ustawienia inwestycji" block — see the gate below.
+  onSettlementModeChange?: (mode: SettlementModeT) => void
   // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
   // Server-owned on purpose — the panel and the marża the server computed read one value.
   materialsNetRate: number | null
-  onMaterialsNetRateChange: (rate: number | null) => void
+  onMaterialsNetRateChange?: (rate: number | null) => void
   // Which views this host offers, in toggle order. A host that omits a view need not supply the props
   // that only feed it — hence every prop below is optional.
   views?: SummaryViewT[]
@@ -92,6 +96,11 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
+  // Where a read-only host sends the reader to change these settings. Rendered in place of the
+  // settings block, which only an editing host gets.
+  settingsHref?: string
+  // Expanded on arrival when `settingsHref` was followed here.
+  settingsDefaultOpen?: boolean
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
   showTransactionLists?: boolean
@@ -143,6 +152,8 @@ export function SummaryPanelContent({
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
+  settingsHref,
+  settingsDefaultOpen = false,
   showTransactionLists = true,
   showPies = true,
   clientView = false,
@@ -222,17 +233,32 @@ export function SummaryPanelContent({
         </div>
         {/* A client reads the mode, never writes it — the same `clientView` gate every other
             owner-only affordance in this panel uses. Collapsed by default: these are set-once
-            decisions about the deal, not something the reader needs on every visit. */}
-        {!isSubcontractorView && !clientView && (
-          <SummaryInvestmentSettings
-            vatRate={vatRate}
-            settlementMode={settlementMode}
-            onSettlementModeChange={onSettlementModeChange}
-            materialsGrossBase={materialsGrossBase}
-            materialsNetRate={materialsNetRate}
-            onMaterialsNetRateChange={onMaterialsNetRateChange}
-            showSettingsBar={showSettingsBar}
-          />
+            decisions about the deal, not something the reader needs on every visit.
+            Supplying the two writers is what makes a host an editor of these settings; a host that
+            omits them gets `settingsHref` instead, so the settings live in exactly one place. */}
+        {!isSubcontractorView &&
+          !clientView &&
+          onSettlementModeChange &&
+          onMaterialsNetRateChange && (
+            <SummaryInvestmentSettings
+              vatRate={vatRate}
+              settlementMode={settlementMode}
+              onSettlementModeChange={onSettlementModeChange}
+              materialsGrossBase={materialsGrossBase}
+              materialsNetRate={materialsNetRate}
+              onMaterialsNetRateChange={onMaterialsNetRateChange}
+              showSettingsBar={showSettingsBar}
+              defaultOpen={settingsDefaultOpen}
+            />
+          )}
+        {!isSubcontractorView && !clientView && !onSettlementModeChange && settingsHref && (
+          <Link
+            href={settingsHref}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-2 py-2 text-sm font-medium"
+          >
+            <Settings2 className="size-4" />
+            Ustawienia inwestycji
+          </Link>
         )}
       </div>
       <SummaryScrollRegion>

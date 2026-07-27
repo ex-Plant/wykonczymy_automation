@@ -21,6 +21,9 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
+  // Expanded on arrival when the investment page linked here to change a setting — otherwise the
+  // reader lands on the panel with the thing they came for still collapsed.
+  defaultOpen?: boolean
 }
 
 // Every set-once decision about the deal — settlement mode, materiały netto pricing, VAT + rabat
@@ -34,9 +37,10 @@ export function SummaryInvestmentSettings({
   materialsNetRate,
   onMaterialsNetRateChange,
   showSettingsBar = false,
+  defaultOpen = false,
 }: PropsT) {
   return (
-    <CollapsibleSection title="Ustawienia inwestycji" size="sm" defaultOpen={false}>
+    <CollapsibleSection title="Ustawienia inwestycji" size="sm" defaultOpen={defaultOpen}>
       {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
           never double up or dangle when the brutto mode or the host drops one. */}
       <div className="divide-border flex flex-col divide-y">

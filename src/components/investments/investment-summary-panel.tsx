@@ -6,10 +6,17 @@ import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
-import { InvestmentSummaryPanelClient } from '@/components/investments/investment-summary-panel-client'
+import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
+import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { CategoryCostT } from '@/types/investment-financials'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
+
+// Robocizna (etapy) stays editor-only — it needs the stage grid to make sense. Wpłaty and
+// Podwykonawcy are dropped for the opposite reason: the transfers table below this panel already
+// lists every deposit and every wypłata. Marża renders only when the page hands the panel
+// `financials`, which it does for ADMIN/OWNER only.
+const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'margin']
 
 type PropsT = {
   investmentId: number
@@ -61,7 +68,7 @@ export async function InvestmentSummaryPanel({
   )
 
   return (
-    <InvestmentSummaryPanelClient
+    <SummaryPanelContent
       investmentId={investmentId}
       investmentName={investmentName}
       depositTransactions={depositTransactions}
@@ -83,6 +90,13 @@ export async function InvestmentSummaryPanel({
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}
       materialsNetRate={tree.materialsNetRate}
+      // No writers passed on purpose: these settings are edited in the kosztorys editor only, so
+      // this page links there instead of persisting them itself. That also keeps every write off
+      // the one route that renders the transfers table, which a route-wide re-render would rebuild.
+      settingsHref={`/inwestycje/${investmentId}/kosztorys_v2?ustawienia=1`}
+      views={INVESTMENT_PANEL_VIEWS}
+      showTransactionLists={false}
+      showPies={false}
     />
   )
 }
