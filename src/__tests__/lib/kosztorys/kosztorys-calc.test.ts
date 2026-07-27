@@ -304,13 +304,14 @@ describe('globalDiscountAmount / do zapłaty', () => {
 })
 
 describe('isGlobalDiscountActive', () => {
-  it('aktywny tylko dla trybu kwotowego z niezerową wartością', () => {
+  it('aktywny dla trybu kwotowego przy każdej wartości', () => {
     expect(isGlobalDiscountActive({ type: 'amount', value: 250 })).toBe(true)
+    // Zero kwota still replaces per-item rabat — otherwise typing 0 resurrects every rabat pozycji.
+    expect(isGlobalDiscountActive({ type: 'amount', value: 0 })).toBe(true)
   })
 
-  it('brak trybu lub zerowa wartość → nieaktywny', () => {
+  it('brak trybu → nieaktywny', () => {
     expect(isGlobalDiscountActive({ type: null, value: 0 })).toBe(false)
-    expect(isGlobalDiscountActive({ type: 'amount', value: 0 })).toBe(false)
     expect(isGlobalDiscountActive({ type: null, value: 500 })).toBe(false)
   })
 

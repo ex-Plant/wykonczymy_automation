@@ -14,12 +14,13 @@ import type { GlobalDiscountT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/
 // Discount ("rabat"): discountValue for 'percent' = percentage points (10 => 10%), for
 // 'amount' = an amount in PLN subtracted from the net value.
 
-// Active only when amount mode is chosen AND the value is non-zero — a zero-value discount is
-// indistinguishable from none, so it must not suppress per-item rabat. The explicit mode check
-// fails closed on a persisted value that isn't 'amount' (a legacy 'percent' row, or an out-of-band
-// write): otherwise the flag would go active while globalDiscountAmount subtracts nothing.
-export function isGlobalDiscountActive({ type, value }: GlobalDiscountT): boolean {
-  return type === 'amount' && value > 0
+// The MODE decides the replacement, not the amount: „Kwotowy" suppresses per-item rabat at any value,
+// including 0. It used to also require `value > 0`, which made 0 zł resurrect every per-item rabat —
+// so typing 0 to kill the rabat instead made it jump back to Σ rabatów per pozycja. „Wyłączony"
+// (type null) is the one way back to per-item rabaty. The explicit mode check still fails closed on a
+// persisted value that isn't 'amount' (a legacy 'percent' row, or an out-of-band write).
+export function isGlobalDiscountActive({ type }: GlobalDiscountT): boolean {
+  return type === 'amount'
 }
 
 function applyDiscount(gross: number, item: ViewPricingT): number {

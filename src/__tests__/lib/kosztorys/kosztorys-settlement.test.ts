@@ -3,6 +3,7 @@ import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   executedWorkNetPreRabat,
   rowValueForView,
+  kosztorysClientTotals,
   sectionSubtotalsForView,
   stageTotalsForView,
 } from '@/lib/kosztorys/settlement'
@@ -191,5 +192,28 @@ describe('executedWorkNetPreRabat (subcontractor należne)', () => {
     const client = executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, 'client'))
     const wTools = executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, 'w_tools'))
     expect(wTools).not.toBeCloseTo(client)
+  })
+})
+
+// Regression: „Rabat globalny → Kwotowy → 0 zł" left the settlement showing a rabat. The mode is
+// supposed to REPLACE per-item rabaty („zastępuje je"), but the active flag also demanded a non-zero
+// kwota — so 0 flipped the discount inactive and every per-item rabat came back to life. Typing the
+// one value that means „no rabat" produced the largest rabat the sheet could show.
+describe('kosztorysClientTotals — rabat globalny w trybie kwotowym', () => {
+  const withDiscount = (globalDiscount: KosztorysTreeT['globalDiscount']) => {
+    const next = { ...tree, globalDiscount }
+    return kosztorysClientTotals(treeToRows(next), next.stages, globalDiscount)
+  }
+
+  it('tryb wyłączony → rabat to suma rabatów per pozycja', () => {
+    expect(withDiscount({ type: null, value: 0 }).rabatClientNet).toBeGreaterThan(0)
+  })
+
+  it('kwota 0 → zero rabatu, rabaty per pozycja pozostają wyłączone', () => {
+    expect(withDiscount({ type: 'amount', value: 0 }).rabatClientNet).toBe(0)
+  })
+
+  it('kwota dodatnia → rabat to sama kwota globalna', () => {
+    expect(withDiscount({ type: 'amount', value: 5 }).rabatClientNet).toBeCloseTo(5)
   })
 })
