@@ -55,12 +55,7 @@ export function SummaryBreakdownTable({
       <SummaryMoneyHeaders axis={moneyAxis} />
       {/* Label stays bare „Robocizna" — it is the same pre-rabat figure the investment page's
           „z kosztorysu" block calls Robocizna, and the Rabat row right below removes any doubt. */}
-      <SummaryRow
-        label="Robocizna"
-        line={sumaPrac}
-        axis={moneyAxis}
-        mismatch={sumaPracMismatch}
-      />
+      <SummaryRow label="Robocizna" line={sumaPrac} axis={moneyAxis} mismatch={sumaPracMismatch} />
       {rabat && (
         <SummaryRow label="Rabat" line={rabat} axis={moneyAxis} mismatch={rabatMismatch} discount />
       )}

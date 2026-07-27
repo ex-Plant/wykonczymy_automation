@@ -45,9 +45,8 @@ export function SettlementPlaneWarning({
     <WarningBanner className="max-w-lg">
       Ta inwestycja jest rozliczana: {settlementModeLabel(verdict.mode)}, ale{' '}
       {verdict.offendingCount} {wplatyNoun(verdict.offendingCount)}{' '}
-      {oznaczoneVerb(verdict.offendingCount)} jako {plane} (
-      {formatNet(verdict.offendingAmount)}). Albo inwestycja rozlicza się inaczej, niż jest
-      ustawiona, albo te wpłaty mają zły znacznik.{' '}
+      {oznaczoneVerb(verdict.offendingCount)} jako {plane} ({formatNet(verdict.offendingAmount)}).
+      Albo inwestycja rozlicza się inaczej, niż jest ustawiona, albo te wpłaty mają zły znacznik.{' '}
       <Link
         href={investmentTransfersHref(investmentId, { types: DEPOSIT_TYPES })}
         className="underline"
