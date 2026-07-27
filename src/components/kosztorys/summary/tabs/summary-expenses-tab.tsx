@@ -90,7 +90,10 @@ export function SummaryExpensesTab({
               {showPricingControls && (
                 <label
                   className={cn(
-                    'flex w-fit cursor-pointer items-center gap-2 text-xs',
+                    // Padded past the 16px checkbox so the whole caption is a comfortable hit target
+                    // rather than a hairline row you have to aim at; the negative margin keeps the
+                    // text aligned with the table above while the hover surface extends past it.
+                    'hover:bg-accent -mx-2 flex w-fit cursor-pointer items-center gap-2 rounded px-2 py-2 text-xs transition-colors',
                     netPricingOn ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
