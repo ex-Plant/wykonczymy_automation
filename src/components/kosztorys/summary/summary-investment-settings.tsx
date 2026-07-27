@@ -6,6 +6,7 @@ import { MaterialsNetPricingControl } from '@/components/kosztorys/summary/mater
 import { VatRateField } from '@/components/kosztorys/summary/vat-rate-field'
 import { GlobalDiscountControl } from '@/components/kosztorys/summary/global-discount-control'
 import { Separator } from '@/components/ui/separator'
+import { SubmitPill } from '@/components/forms/submit-pill'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 type PropsT = {
@@ -45,11 +46,9 @@ export function SummaryInvestmentSettings({
 }: PropsT) {
   return (
     <CollapsibleSection title="Opcje rozliczenia" size="sm" defaultOpen={defaultOpen}>
+      {isSaving && <SubmitPill label="Zapisywanie…" />}
       {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
           never double up or dangle when the brutto mode or the host drops one. */}
-      {/* Outside the divide-y group on purpose — as its first child it would push a stray rule onto
-          the settlement row for exactly as long as the write is in flight. */}
-      {isSaving && <p className="text-muted-foreground pt-2 text-xs">Zapisywanie…</p>}
       <div className="divide-border flex flex-col divide-y">
         <div className="py-3">
           <SettlementModeSelect
