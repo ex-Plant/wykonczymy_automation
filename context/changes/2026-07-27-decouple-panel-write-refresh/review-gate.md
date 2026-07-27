@@ -280,13 +280,13 @@ landing in one is deferred **with that reason**.
       `"0"`). The split exists because a slot cannot use the `notFound()` form: a 404 in a parallel
       route takes the whole shell down when all it wants is to render nothing.
 - [x] fixed · simplify (simplification) · `src/lib/db/kosztorys-tree.ts:108-112` · `x == null ? null :
-  num(x)` written out three times → `numOrNull`, with the note on why it is not just `num` (a
+num(x)` written out three times → `numOrNull`, with the note on why it is not just `num` (a
       nullable coefficient means "inherit the default", which `0` would answer as "free").
 - [x] fixed · simplify (simplification) · `collapsible-section.tsx` · two parallel
       `Record<SizeT, string>` keyed identically → one `Record<SizeT, {title, chevron}>`, so a new size
       can't be half-added.
 - [x] fixed · simplify (simplification) · `simple-select.tsx:55` · `variant === 'toolbar' || variant ===
-  'toolbarSm'` → a `buttonTrigger` flag in the VARIANT table. The table already claims to be the one
+'toolbarSm'` → a `buttonTrigger` flag in the VARIANT table. The table already claims to be the one
       place a variant is described; the `||` was a second, drift-prone place.
 - [x] skipped, **filed EX-608** · simplify (reuse + efficiency, **converged independently**) ·
       `investment-crumb.tsx:15` → `getInvestmentName` · third read of the same investment row per render
