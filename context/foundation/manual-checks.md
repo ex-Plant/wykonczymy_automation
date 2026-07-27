@@ -537,6 +537,14 @@ przedmiar and rabat footer cells are blank without them.
 - [ ] Typing into a cell directly above a footer keeps focus and accepts every character — a remount would drop all but the last one
 - [ ] Saving persists nothing new: reload and the same figures come back, with no phantom row in the kosztorys
 
+### Perf on the big dataset (review-gate finding)
+
+The footers recompute every column once per section on top of the „Razem" pass, so the per-edit totals
+work roughly doubled and has been unmeasured since the widening. Setup: `INV=7 node --env-file=.env
+--import tsx src/scripts/perf-seed-kosztorys.ts` (~1000 items), then open that kosztorys.
+
+- [ ] Typing into a cell stays responsive at ~1000 items — no perceptible lag between keystroke and character, and no jank scrolling right through the etap axis. If it drags, the O(stages × rows) etap-qty loop in `column-totals.ts` is the first suspect.
+
 ## EX-608 — nazwa inwestycji w górnym pasku bez trzeciego zapytania
 
 Nazwa w górnym pasku czyta się z danych, które nawigacja i tak pobiera, zamiast osobnym zapytaniem.

@@ -80,9 +80,10 @@ the money axis to netto-only hides the brutto footer cell along with its column.
 
 ## What We're NOT Doing
 
-- **No new figure math.** `sectionSubtotalsForView` is not touched. Columns it cannot supply render
-  blank: `remaining`, `remainingGross`, `plannedQty`, `stageQtySum`, and every per-etap qty and
-  wartość column.
+- ~~**No new figure math.**~~ **Superseded mid-implementation by the owner** (see `change.md` Notes):
+  "only the columns we can total" means everything _computable_, so `remaining`, `plannedQty`,
+  `stageQtySum` and the whole per-etap axis are filled too. Resolved by `columnTotalsForRows`
+  (`src/lib/kosztorys/column-totals.ts`) rather than by widening `sectionSubtotalsForView`.
 - **No footer under an active sort.** Bands vanish there already; the footer follows the same switch.
 - **No footer when the section is folded.** The owner's explicit call — the footer belongs to the rows
   it sums, so it goes when they go.
@@ -202,22 +203,11 @@ alongside `sectionHeader`. The column id is already available on the wrapped col
 read, so a footer, „Razem" and the panel cannot disagree. Give the footer row its height and its
 paint.
 
-**Contract**: A `sectionFooter` memo over `subtotals`, keyed by section id, each inner map holding
-only the columns the subtotal supports:
-
-| column id             | source                                      |
-| --------------------- | ------------------------------------------- |
-| `net`                 | `section.net`                               |
-| `gross`               | `toGross(section.net, tree.vatRate)`        |
-| `plannedNet`          | `section.plannedNet` — omitted when `null`  |
-| `plannedGross`        | `toGross(section.plannedNet, tree.vatRate)` |
-| `discountAmount`      | `section.discount`                          |
-| `discountAmountGross` | `toGross(section.discount, tree.vatRate)`   |
-
-`plannedNet` is `null` outside the client view and the entry is then **absent**, not zero — the same
-withholding `SectionSubtotalT` documents, and the columns it would fill are hidden there anyway.
-`section.discount` is legitimately `0` under a global discount (which overrides per-item rabat); that
-zero is a real figure and is shown.
+**Contract** (as built, after the widening): a `sectionColumnTotals` map in the hook, keyed section id
+→ the same `Map<columnId, number>` the „Razem" row renders from — both produced by one call to
+`columnTotalsForRows`, over one section's rows and over all of them respectively. Σ of the footers is
+therefore „Razem" by construction. A column absent from the map renders blank; `plannedNet` /
+`plannedGross` are absent (not zero) outside the client view, and an out-of-view etap gets no entry.
 
 `rowHeight` keeps `ITEM_ROW_HEIGHT` for footers — it is a one-line total, not a 52px band.
 `rowClassName` adds a `kosztorys-section-footer` class alongside the existing `sectionColorRail`, so
@@ -407,7 +397,9 @@ before the editor's diff sees it, and the footer lands inside that namespace.
   into its label cell_
 - Synthetic-row mechanism and the dsg remount trap:
   `src/components/kosztorys/editor/grid/kosztorys-synthetic-rows.tsx:14-48`
-- Figure source: `src/lib/kosztorys/settlement.ts:294` (`sectionSubtotalsForView`)
+- Figure source (as built): `src/lib/kosztorys/column-totals.ts` (`columnTotalsForRows`) — called once
+  over all rows for „Razem" and once per section for the footers. The header's item count still comes
+  from `sectionSubtotalsForView` (`src/lib/kosztorys/settlement.ts`).
 
 ## Progress
 
@@ -430,3 +422,22 @@ before the editor's diff sees it, and the footer lands inside that namespace.
 - [x] 2.2 Linting passes: `pnpm lint` — 1540972e
 - [x] 2.3 Full unit suite passes: `pnpm test` — 1540972e
 - [x] 2.4 No stale references remain: `grep -rn "bandMoney\|moneyAxis" src/components/kosztorys/editor/grid/cells/section-header-cell.tsx` returns nothing — 1540972e
+
+### Phase 3: Widening — every column the footer can honestly total
+
+Added after the owner's follow-up (`change.md` Notes); not in the original plan.
+
+#### Automated
+
+- [x] 3.1 Type checking passes: `pnpm typecheck` — 7ba569f6, 8223119e, 044745bd
+- [x] 3.2 `columnTotalsForRows` specs pass, incl. Σ-footers = „Razem" over every column key — 7ba569f6
+- [x] 3.3 Full unit suite passes: `pnpm test` — 7ba569f6
+
+### Phase 4: Review gate
+
+#### Automated
+
+- [x] 4.1 Seven-agent read-only fan-out + `primitive-reuse-scan`; every finding triaged into
+      `review-gate.md` — 16 fixed, 2 open (both filed/deferred with a reason)
+- [x] 4.2 Type checking passes after the mutating pass: `pnpm typecheck`
+- [x] 4.3 Full unit suite passes: `pnpm test`
