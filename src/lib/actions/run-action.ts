@@ -35,6 +35,7 @@ export async function protectedAction<TData = undefined>(
   label: string,
   handler: (ctx: ActionCtxT) => Promise<ActionResultT<TData>>,
   revalidate?: (keyof typeof CACHE_TAGS)[],
+  opts?: { deferRefresh?: boolean },
 ): Promise<ActionResultT<TData>> {
   const elapsed = perfStart()
   const started = performance.now()
@@ -51,7 +52,7 @@ export async function protectedAction<TData = undefined>(
     console.log(`[PERF]   handler done ${elapsed()}ms`)
 
     if (result.success && revalidate) {
-      revalidateCollections(revalidate)
+      revalidateCollections(revalidate, opts)
       console.log(`[PERF]   revalidateCollections ${elapsed()}ms`)
     }
 
