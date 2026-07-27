@@ -234,23 +234,20 @@ export function SummaryPanelContent({
             Supplying the two writers is what makes a host an editor of these settings; a
             read-only host (no writers) renders no settings block at all — the investment page
             links to the editor from its own action row instead. */}
-        {!isSubcontractorView &&
-          !clientView &&
-          onSettlementModeChange &&
-          onMaterialsNetRateChange && (
-            <div className="px-4 pt-4">
-              <SummaryInvestmentSettings
-                vatRate={vatRate}
-                settlementMode={settlementMode}
-                onSettlementModeChange={onSettlementModeChange}
-                materialsGrossBase={materialsGrossBase}
-                materialsNetRate={materialsNetRate}
-                onMaterialsNetRateChange={onMaterialsNetRateChange}
-                showSettingsBar={showSettingsBar}
-                defaultOpen={settingsDefaultOpen}
-              />
-            </div>
-          )}
+        {!clientView && onSettlementModeChange && onMaterialsNetRateChange && (
+          <div className="max-w-lg px-4 pt-4">
+            <SummaryInvestmentSettings
+              vatRate={vatRate}
+              settlementMode={settlementMode}
+              onSettlementModeChange={onSettlementModeChange}
+              materialsGrossBase={materialsGrossBase}
+              materialsNetRate={materialsNetRate}
+              onMaterialsNetRateChange={onMaterialsNetRateChange}
+              showSettingsBar={showSettingsBar}
+              defaultOpen={settingsDefaultOpen}
+            />
+          </div>
+        )}
         {isSubcontractorView && subcontractorDue ? (
           <SubcontractorSummary
             investmentId={investmentId}
