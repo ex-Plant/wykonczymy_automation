@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { LabeledModeSelect } from '@/components/kosztorys/summary/labeled-mode-select'
+import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
 import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
 import { SETTLEMENT_MODE_OPTIONS, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 

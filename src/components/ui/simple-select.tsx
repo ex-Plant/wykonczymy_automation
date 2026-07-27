@@ -17,16 +17,19 @@ export type SelectVariantT = 'default' | 'soft' | 'pill' | 'toolbar' | 'toolbarS
 // Complete trigger presets — each variant carries its whole look (height, radius, text, gap, width)
 // so a call site picks a variant and needs no className. `soft`/`pill` are the compact toolbar
 // controls that line up with DecimalField inputs (h-6, xs text); soft = 4px radius, pill = fully round.
-const VARIANT: Record<SelectVariantT, { size: 'xs' | 'sm' | 'default'; className: string }> = {
+const VARIANT: Record<
+  SelectVariantT,
+  { size: 'xs' | 'sm' | 'default'; className: string; buttonTrigger?: true }
+> = {
   default: { size: 'default', className: '' },
   soft: { size: 'xs', className: 'w-fit gap-1 rounded text-xs' },
   pill: { size: 'xs', className: 'w-fit gap-1 rounded-full text-xs' },
-  // Not a preset at all — `toolbar` swaps the trigger for the Button primitive, so its geometry is
-  // whatever the toolbar buttons beside it have. Hence the empty className.
-  toolbar: { size: 'sm', className: '' },
-  // Same Button-trigger swap as `toolbar`, shrunk down — the settings selects (settlement mode,
-  // materiały netto, rabat globalny) sit inside a dense collapsible panel, not a full toolbar.
-  toolbarSm: { size: 'sm', className: 'h-7 px-2 text-xs' },
+  // `buttonTrigger` swaps the trigger for the Button primitive, so the geometry is whatever the
+  // toolbar buttons beside it have — hence the empty className.
+  toolbar: { size: 'sm', className: '', buttonTrigger: true },
+  // Same swap, shrunk down — the settings selects (settlement mode, materiały netto, rabat globalny)
+  // sit inside a dense collapsible panel, not a full toolbar.
+  toolbarSm: { size: 'sm', className: 'h-7 px-2 text-xs', buttonTrigger: true },
 }
 
 type PropsT = {
@@ -54,7 +57,7 @@ export function SimpleSelect({
   const preset = VARIANT[variant]
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      {variant === 'toolbar' || variant === 'toolbarSm' ? (
+      {preset.buttonTrigger ? (
         <SelectButtonTrigger className={cn(preset.className, className)}>
           <SelectValue placeholder={placeholder} />
         </SelectButtonTrigger>

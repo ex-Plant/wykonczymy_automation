@@ -7,7 +7,7 @@ import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 type PropsT = {
   label: ReactNode
-  // Optional explanatory tooltip on the LABEL only — the input stays a clean text field.
+  // On the LABEL only — the input stays a clean text field.
   hint?: string
   value: number | null
   placeholder?: number
@@ -26,8 +26,8 @@ type PropsT = {
   onCommit: (n: number) => void
 }
 
-// Decimal-number field. Uncontrolled + `key` on the value (remount after router.refresh),
-// commit on blur/Enter — no useEffect (project rule).
+// Uncontrolled + `key` on the value (remount after router.refresh), commit on blur/Enter — no
+// useEffect (project rule).
 export function DecimalField({
   label,
   hint,

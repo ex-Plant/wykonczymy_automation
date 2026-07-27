@@ -19,14 +19,9 @@ type CollapsibleSectionPropsT = {
   children: React.ReactNode
 }
 
-const TITLE_STYLE: Record<CollapsibleSectionSizeT, string> = {
-  lg: 'text-lg font-semibold',
-  sm: 'text-sm font-medium',
-}
-
-const CHEVRON_SIZE: Record<CollapsibleSectionSizeT, string> = {
-  lg: 'size-5',
-  sm: 'size-4',
+const SIZE: Record<CollapsibleSectionSizeT, { title: string; chevron: string }> = {
+  lg: { title: 'text-lg font-semibold', chevron: 'size-5' },
+  sm: { title: 'text-sm font-medium', chevron: 'size-4' },
 }
 
 export function CollapsibleSection({
@@ -42,11 +37,11 @@ export function CollapsibleSection({
   return (
     <Collapsible.Root id={id} open={isOpen} onOpenChange={setIsOpen} className={cn(className)}>
       <Collapsible.Trigger className="flex w-full cursor-pointer items-center gap-2 py-2 text-left">
-        <h2 className={cn('text-foreground', TITLE_STYLE[size])}>{title}</h2>
+        <h2 className={cn('text-foreground', SIZE[size].title)}>{title}</h2>
         <ChevronDown
           className={cn(
             'text-muted-foreground transition-transform duration-200',
-            CHEVRON_SIZE[size],
+            SIZE[size].chevron,
             isOpen && 'rotate-180',
           )}
         />

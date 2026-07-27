@@ -1,6 +1,6 @@
 'use client'
 
-import { LabeledModeSelect } from '@/components/kosztorys/summary/labeled-mode-select'
+import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
 import type { SelectOptionT } from '@/components/ui/simple-select'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { formatNet } from '@/lib/kosztorys/format'
