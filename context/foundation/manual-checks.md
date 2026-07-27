@@ -498,3 +498,20 @@ untestable.
 - [ ] „Zapisz" is inert until the typed value actually differs from the stored one, and Enter does the same as the click
 - [ ] Ctrl+Z after saving a kwota restores the previous kwota, both in the field and in the totals
 - [ ] „%" still commits through the same button and clears its input on success — only its label changed
+
+## EX-607 — kosztorys-section-footer-row
+
+The section band split in two: the header keeps identity only (colour dot, name, „N poz.", chevron),
+and a new „Razem sekcja" footer closes each section with its figures under their own columns. Setup:
+a kosztorys with **≥2 sections**, per-item rabaty on some rows, and a przedmiar filled in — the
+przedmiar and rabat footer cells are blank without them.
+
+- [ ] Each section's netto sits directly under `Wartość netto` and equals what the band's label used to show; brutto likewise
+- [ ] Σ of the section footers' netto equals the grand „Razem" netto at the bottom
+- [ ] The przedmiar pair fills in the client view and the footer cells are blank in the other views (the przedmiar has no per-rozliczenie reading)
+- [ ] Columns the subtotals cannot supply are **blank, not zero**: „Pozostało", „Przedmiar" qty, the etap qty columns and the per-etap wartość columns
+- [ ] Folding a section leaves the header line alone — items **and** footer gone; unfolding brings both back
+- [ ] Switching the money axis to netto-only hides the brutto footer cells with their columns; no number is left stranded under a hidden header
+- [ ] Sorting by any column removes headers and footers together; clearing the sort restores both
+- [ ] Typing into a cell directly above a footer keeps focus and accepts every character — a remount would drop all but the last one
+- [ ] Saving persists nothing new: reload and the same figures come back, with no phantom row in the kosztorys

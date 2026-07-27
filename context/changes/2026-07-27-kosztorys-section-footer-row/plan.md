@@ -426,7 +426,7 @@ before the editor's diff sees it, and the footer lands inside that namespace.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `pnpm typecheck`
-- [x] 2.2 Linting passes: `pnpm lint`
-- [x] 2.3 Full unit suite passes: `pnpm test`
-- [x] 2.4 No stale references remain: `grep -rn "bandMoney\|moneyAxis" src/components/kosztorys/editor/grid/cells/section-header-cell.tsx` returns nothing
+- [x] 2.1 Type checking passes: `pnpm typecheck` — 1540972e
+- [x] 2.2 Linting passes: `pnpm lint` — 1540972e
+- [x] 2.3 Full unit suite passes: `pnpm test` — 1540972e
+- [x] 2.4 No stale references remain: `grep -rn "bandMoney\|moneyAxis" src/components/kosztorys/editor/grid/cells/section-header-cell.tsx` returns nothing — 1540972e
