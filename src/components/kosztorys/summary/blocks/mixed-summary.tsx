@@ -116,6 +116,14 @@ export function MixedSummary({
           bold
           danger={settlement.doZaplatyGross > 0}
         />
+        {/* The same debt read on the other plane, so the owner can quote both closing kwoty without
+            doing the VAT arithmetic in their head. */}
+        <SummaryRow
+          label="lub gotówką netto"
+          hint={`Do zapłaty brutto ÷ (1 + VAT ${vatPercent}%) — kwota zamykająca rozliczenie bez faktury`}
+          line={faceValue(settlement.doZaplatyNet)}
+          axis="net"
+        />
       </SummaryTable>
     </div>
   )
