@@ -1,8 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { Settings2 } from 'lucide-react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import {
   settlementModeToGridAxis,
@@ -82,7 +80,7 @@ type PropsT = {
   vatRate: number
   settlementMode: SettlementModeT
   // Optional because supplying them is what makes a host an *editor* of these settings. A host that
-  // omits them renders the figures without the „Ustawienia inwestycji" block — see the gate below.
+  // omits them renders the figures without the „Opcje rozliczenia" block — see the gate below.
   onSettlementModeChange?: (mode: SettlementModeT) => void
   // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
   // Server-owned on purpose — the panel and the marża the server computed read one value.
@@ -96,10 +94,7 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
-  // Where a read-only host sends the reader to change these settings. Rendered in place of the
-  // settings block, which only an editing host gets.
-  settingsHref?: string
-  // Expanded on arrival when `settingsHref` was followed here.
+  // Expanded on arrival when the investment page's settings link was followed here.
   settingsDefaultOpen?: boolean
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
@@ -152,7 +147,6 @@ export function SummaryPanelContent({
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
-  settingsHref,
   settingsDefaultOpen = false,
   showTransactionLists = true,
   showPies = true,
@@ -234,8 +228,9 @@ export function SummaryPanelContent({
         {/* A client reads the mode, never writes it — the same `clientView` gate every other
             owner-only affordance in this panel uses. Collapsed by default: these are set-once
             decisions about the deal, not something the reader needs on every visit.
-            Supplying the two writers is what makes a host an editor of these settings; a host that
-            omits them gets `settingsHref` instead, so the settings live in exactly one place. */}
+            Supplying the two writers is what makes a host an editor of these settings; a
+            read-only host (no writers) renders no settings block at all — the investment page
+            links to the editor from its own action row instead. */}
         {!isSubcontractorView &&
           !clientView &&
           onSettlementModeChange &&
@@ -251,15 +246,6 @@ export function SummaryPanelContent({
               defaultOpen={settingsDefaultOpen}
             />
           )}
-        {!isSubcontractorView && !clientView && !onSettlementModeChange && settingsHref && (
-          <Link
-            href={settingsHref}
-            className="text-muted-foreground hover:text-foreground flex items-center gap-2 py-2 text-sm font-medium"
-          >
-            <Settings2 className="size-4" />
-            Ustawienia inwestycji
-          </Link>
-        )}
       </div>
       <SummaryScrollRegion>
         {isSubcontractorView && subcontractorDue ? (

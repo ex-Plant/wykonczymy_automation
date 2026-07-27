@@ -20,13 +20,13 @@ import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
-import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { ContactLink } from '@/components/ui/contact-link'
 import { FinancialStats } from '@/components/investments/financial-stats'
 import { STATUS_LABELS } from '@/components/investments/investment-status-badge'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
+import { InvestmentSettingsLink } from '@/components/kosztorys/investment-settings-link'
 import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
@@ -94,6 +94,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         <EditInvestmentDialog investment={investment} />
         <SheetButton investmentId={investmentId} hasSheet={investment.hasSheet} />
         <OpenKosztorysV2Button investmentId={investmentId} />
+        <InvestmentSettingsLink investmentId={investmentId} />
       </div>
       <InfoList items={infoFields.filter((f) => f.value)} />
 
@@ -103,32 +104,28 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         <StatsVersionToggle version={version} />
       </div>
 
-      {/* Collapsible so the transfers table below can be reached without scrolling past the whole
-          settlement. */}
-      <CollapsibleSection title="Finanse">
-        {version === 'v1' ? (
-          <FinancialStats
-            fields={financialFields}
-            margin={calculateMargin(financials)}
-            totalPayouts={financials.totalPayouts}
-            totalLoss={financials.totalLoss}
-            settledFields={settledFields}
+      {version === 'v1' ? (
+        <FinancialStats
+          fields={financialFields}
+          margin={calculateMargin(financials)}
+          totalPayouts={financials.totalPayouts}
+          totalLoss={financials.totalLoss}
+          settledFields={settledFields}
+        />
+      ) : (
+        // Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
+        // long-pole query, so the rest of the page paints without waiting on it.
+        <Suspense fallback={null}>
+          <InvestmentSummaryPanel
+            investmentId={investmentId}
+            investmentName={investment.name}
+            financials={financials}
+            canSeeMargin={isAdminOrOwnerRole(user.role)}
+            expenseCategories={refData.expenseCategories}
+            netCategoryCosts={breakdowns.netCategoryCosts}
           />
-        ) : (
-          // Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
-          // long-pole query, so the rest of the page paints without waiting on it.
-          <Suspense fallback={null}>
-            <InvestmentSummaryPanel
-              investmentId={investmentId}
-              investmentName={investment.name}
-              financials={financials}
-              canSeeMargin={isAdminOrOwnerRole(user.role)}
-              expenseCategories={refData.expenseCategories}
-              netCategoryCosts={breakdowns.netCategoryCosts}
-            />
-          </Suspense>
-        )}
-      </CollapsibleSection>
+        </Suspense>
+      )}
 
       {/* Transactions table */}
       <TransfersSection

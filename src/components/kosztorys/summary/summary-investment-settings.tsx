@@ -40,7 +40,7 @@ export function SummaryInvestmentSettings({
   defaultOpen = false,
 }: PropsT) {
   return (
-    <CollapsibleSection title="Ustawienia inwestycji" size="sm" defaultOpen={defaultOpen}>
+    <CollapsibleSection title="Opcje rozliczenia" size="sm" defaultOpen={defaultOpen}>
       {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
           never double up or dangle when the brutto mode or the host drops one. */}
       <div className="divide-border flex flex-col divide-y">
