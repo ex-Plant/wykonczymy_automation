@@ -47,11 +47,7 @@ export function SummaryDepositsTab({
         </Description>
       </div>
       {showPie && (
-        <SlicePie
-          caption="Udział wpłat netto / brutto"
-          slices={depositPlanePieSlices(paidNet, paidGross)}
-          formatValue={formatNet}
-        />
+        <SlicePie slices={depositPlanePieSlices(paidNet, paidGross)} formatValue={formatNet} />
       )}
     </div>
   )

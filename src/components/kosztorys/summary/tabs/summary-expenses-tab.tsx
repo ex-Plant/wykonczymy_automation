@@ -159,11 +159,7 @@ export function SummaryExpensesTab({
           )}
         </div>
         {showPie && (
-          <SlicePie
-            caption="Struktura wydatków inwestycyjnych"
-            slices={expensePieSlices(materialyBreakdown)}
-            formatValue={formatNet}
-          />
+          <SlicePie slices={expensePieSlices(materialyBreakdown)} formatValue={formatNet} />
         )}
       </div>
       {showTransactions && (

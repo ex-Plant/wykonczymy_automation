@@ -82,35 +82,40 @@ export function SummaryOverviewTab({
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
-        {mixedMode ? (
-          <MixedSummary
-            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materials={materials}
-            vatRate={vatRate}
-            materialsNetRate={materialsNetRate}
-            paidNet={paidNet}
-            paidGross={paidGross}
-            rabatAmount={rabatAmount}
-          />
-        ) : (
-          <BruttoNettoSummary
-            investmentId={investmentId}
-            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            doZaplaty={doZaplaty}
-            materials={materials}
-            wplatyNet={wplatyNet}
-            rabatAmount={rabatAmount}
-            reconciliation={reconciliation}
-            priceView={priceView}
-            vatRate={vatRate}
-            moneyAxis={displayAxis}
-            materialsNetRate={materialsNetRate}
-            clientView={clientView}
-          />
-        )}
+        {/* VAT + rabat globalny belong to the tables, not to the row: as a sibling of the row they
+            stayed pinned under both columns, so once the pie wrapped it landed between the tables and
+            the controls that drive them. */}
+        <div className="flex flex-col gap-y-4">
+          {mixedMode ? (
+            <MixedSummary
+              laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+              materials={materials}
+              vatRate={vatRate}
+              materialsNetRate={materialsNetRate}
+              paidNet={paidNet}
+              paidGross={paidGross}
+              rabatAmount={rabatAmount}
+            />
+          ) : (
+            <BruttoNettoSummary
+              investmentId={investmentId}
+              laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+              doZaplaty={doZaplaty}
+              materials={materials}
+              wplatyNet={wplatyNet}
+              rabatAmount={rabatAmount}
+              reconciliation={reconciliation}
+              priceView={priceView}
+              vatRate={vatRate}
+              moneyAxis={displayAxis}
+              materialsNetRate={materialsNetRate}
+              clientView={clientView}
+            />
+          )}
+          {showSettingsBar && !clientView && <SummarySettingsBar />}
+        </div>
         {showPie && (
           <SlicePie
-            caption="Struktura kosztów"
             slices={costTotalsPieSlices(
               sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
               materialsNet,
@@ -119,7 +124,6 @@ export function SummaryOverviewTab({
           />
         )}
       </div>
-      {showSettingsBar && !clientView && <SummarySettingsBar />}
     </div>
   )
 }

@@ -31,7 +31,7 @@ export function SectionSharePie({ subtotals }: { subtotals: SectionSliceInputT[]
 
   return (
     <SlicePie
-      caption={`Udział sekcji w kosztach robocizny`}
+      caption="Udział sekcji w kosztach robocizny"
       action={
         <ToggleGroup
           options={BASES}
