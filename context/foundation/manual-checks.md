@@ -540,10 +540,12 @@ przedmiar and rabat footer cells are blank without them.
 ### Perf on the big dataset (review-gate finding)
 
 The footers recompute every column once per section on top of the „Razem" pass, so the per-edit totals
-work roughly doubled and has been unmeasured since the widening. Setup: `INV=7 node --env-file=.env
---import tsx src/scripts/perf-seed-kosztorys.ts` (~1000 items), then open that kosztorys.
+work roughly doubled and has been unmeasured since the widening. The one super-linear term is gone —
+**EX-612** folded the etap-qty sum into `stageAxisForView`'s existing walk, so the whole pass is now
+linear in rows per section — but the per-section multiplication itself remains. Setup: `INV=7 node
+--env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts` (~1000 items), then open that kosztorys.
 
-- [ ] Typing into a cell stays responsive at ~1000 items — no perceptible lag between keystroke and character, and no jank scrolling right through the etap axis. If it drags, the O(stages × rows) etap-qty loop in `column-totals.ts` is the first suspect.
+- [ ] Typing into a cell stays responsive at ~1000 items — no perceptible lag between keystroke and character, and no jank scrolling right through the etap axis. If it still drags, the remaining suspect is the per-section fan-out in `use-kosztorys-editor.ts` (`sectionColumnTotals`), not the etap loop.
 
 ## EX-608 — nazwa inwestycji w górnym pasku bez trzeciego zapytania
 
