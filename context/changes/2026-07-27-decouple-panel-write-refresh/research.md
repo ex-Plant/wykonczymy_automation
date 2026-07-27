@@ -1246,3 +1246,49 @@ fresh tree, because the panel reads the prop directly. Holding them locally ends
 in another tab won't show until remount. Same staleness class the whole grid already has — decided in
 favour of retire-on-arrival (the local value steps aside once the server value catches up) rather than
 a permanent freeze, which costs a few lines and keeps external changes visible.
+
+## S5 — the tree read is round-trip bound, not hydration bound (2026-07-27, preview)
+
+Two commits were measured on preview against Neon, inv 42 (13 sections, 324 items, 10 stages,
+125 progress rows).
+
+**`d15ba6ab` — `deferRefresh` on the three per-cell autosaves.** Measured directly in a browser as
+the action response size, control vs treatment on the same tree and the same three cell edits:
+
+| | POST response |
+|---|---|
+| `updateTag` (before) | 324 766 B |
+| `revalidateTag` (after) | 127–128 B |
+
+Every debounced cell autosave was streaming a full RSC re-render of the grid back to the browser,
+discarded on arrival: `rows` is `useState`-seeded once at mount and never reseeded from a fresh
+`tree`. Kept — the evidence is the payload, not a timing.
+
+**`9f14cbeb` — the five tree reads ported from `payload.find` to raw SQL.** No measurable effect:
+
+| read | old (`payload.find`) | new (raw SQL) |
+|---|---|---|
+| sections (13 rows) | 43 / 87 ms | 39 / 40 ms |
+| stages (10 rows) | 43 / 89 ms | 85 / 114 ms |
+| items (324 rows) | 86 / 131 ms | 101 / 138 ms |
+| progress (125 rows) | 100 / 176 ms | 86 / 122 ms |
+| **investment (1 row)** | 23 / 25 ms | **83 / 119 ms** |
+| `buildKosztorysTree` | 101 / 178 ms | 104 / 139 ms |
+
+**The 1-row `investment` read is the control that settles it.** One row cannot take 100 ms to
+hydrate, and all five reads land within ~50 ms of each other regardless of row count or join
+complexity. The cost is per-round-trip latency to Neon under pool contention — it scales with the
+*number* of reads, not their size.
+
+This retires the hypothesis two earlier passes were built on: that ORM hydration costs ~0.53 ms/row
+and therefore dominates at the 1000-item bar. That figure was an artifact of reading the slowest of
+five staggered parallel round trips and attributing its wall-clock to the rows it returned. A local
+bench cannot see this at all (no network, no pool), which is why local measurement agreed with the
+wrong answer twice.
+
+The port was kept for its own sake — 70 fewer lines, and the four `assertCompletePage` guards go with
+it, since they only ever guarded Payload truncating a page at `limit`. It is not a performance change.
+
+**Where the next lever is, if this is ever picked up again:** collapse the five round trips into one
+query. Round trips are the cost and their count is the variable. That is a different change from this
+one and owes its own measurement before anyone believes it.
