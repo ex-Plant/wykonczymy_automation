@@ -8,6 +8,11 @@ import { AlertIcon, type AlertToneT } from '@/components/ui/alert-icon'
 import { cn } from '@/lib/utils/cn'
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
+import {
+  OVERRIDE_FIELDS,
+  priceExitEdit,
+  priceKeystroke,
+} from '@/lib/kosztorys/subcontractor-price-edit'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 import { formatNet as fmt } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/lib/kosztorys/types'
@@ -21,14 +26,6 @@ const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
   { value: 'coeff', label: 'własny mnożnik' },
   { value: 'amount', label: 'kwota stała' },
 ]
-
-const OVERRIDE_FIELDS: Record<
-  ToolPlaneT,
-  { type: keyof KosztorysV2RowT; value: keyof KosztorysV2RowT }
-> = {
-  w_tools: { type: 'wToolsOverrideType', value: 'wToolsOverrideValue' },
-  own_tools: { type: 'ownToolsOverrideType', value: 'ownToolsOverrideValue' },
-}
 
 // Everything the three cells need to know about which plane they are editing. Travels via
 // `columnData` so each component keeps ONE identity across renders — an inline `component:
@@ -159,43 +156,47 @@ function SubcontractorPriceCell({
   setRowData,
   columnData,
 }: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
-  const { view, typeField, valueField } = columnData
+  const { view, valueField, typeField } = columnData
   const [blockReason, setBlockReason] = useState<string | null>(null)
+  // The text as typed, held for as long as the caret is in the cell. Without it the input is bound
+  // straight to the row, so anything the row won't accept — a cleared field, a half-typed „50," —
+  // snaps back under the user's hands on the very next keystroke.
+  const [draft, setDraft] = useState<string | null>(null)
 
   const issue = checkSubcontractorPrice(rowData, view)
   const type = rowData[typeField] as SubcontractorOverrideTypeT | null
+  // An open draft keeps the cell editable even while it holds nothing the row has accepted.
+  const editing = type === 'amount' || draft !== null
   // A live rejection outranks the standing verdict: it describes the value on screen, which the row
   // has not accepted.
   const message = blockReason ?? issue?.message ?? null
   const severity = blockReason ? 'error' : issue?.severity
   const tone = severity ? TONE[severity] : undefined
 
-  const body =
-    type !== 'amount' ? (
-      <ReadOnlyCellText muted={tone == null} className={tone}>
-        {fmt(viewPrice(rowData, view))}
-      </ReadOnlyCellText>
-    ) : (
-      <EditableCellInput
-        className={tone}
-        value={String(rowData[valueField] ?? '')}
-        inputMode="decimal"
-        onBlur={() => setBlockReason(null)}
-        onChange={(e) => {
-          const parsed = parseDecimalInput(e.target.value)
-          if (parsed.kind === 'empty') {
-            setBlockReason(null)
-            setRowData({ ...rowData, [typeField]: null, [valueField]: 0 })
-            return
-          }
-          if (parsed.kind === 'invalid') return
-          const candidate = { ...rowData, [typeField]: 'amount', [valueField]: parsed.value }
-          const reason = blockedBy(candidate, view)
-          setBlockReason(reason)
-          if (reason == null) setRowData(candidate)
-        }}
-      />
-    )
+  const body = !editing ? (
+    <ReadOnlyCellText muted={tone == null} className={tone}>
+      {fmt(viewPrice(rowData, view))}
+    </ReadOnlyCellText>
+  ) : (
+    <EditableCellInput
+      className={tone}
+      value={draft ?? String(rowData[valueField] ?? '')}
+      inputMode="decimal"
+      onBlur={() => {
+        setBlockReason(null)
+        // Clearing the field is what reverts to „auto" — but only now, once the caret has left.
+        const settled = draft == null ? null : priceExitEdit(draft, rowData, view)
+        if (settled) setRowData(settled)
+        setDraft(null)
+      }}
+      onChange={(e) => {
+        setDraft(e.target.value)
+        const result = priceKeystroke(e.target.value, rowData, view)
+        setBlockReason(result.kind === 'blocked' ? result.message : null)
+        if (result.kind === 'commit') setRowData(result.row)
+      }}
+    />
+  )
 
   // Colour alone can't carry the verdict: red and yellow are the same cell to a colour-blind reader,
   // and across a thousand rows a tinted number reads as a formatting quirk rather than an alarm.
