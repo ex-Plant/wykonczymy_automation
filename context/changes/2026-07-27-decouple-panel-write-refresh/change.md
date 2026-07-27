@@ -225,3 +225,28 @@ re-capture after each step so each step's gain is attributable:
   which is what makes it read as broken rather than merely slow.
 - Playwright spec in `e2e/` asserting the control reflects its new value without a full page
   refresh.
+
+## Where the spike landed (2026-07-27)
+
+Shipped on `ex-597-decouple-panel-write-refresh`; per-step evidence in `research.md`:
+
+- `router.refresh()` deleted — render count halved (S1)
+- `fetchReferenceData` deduped per request, 3× → 1× (S3)
+- Settings moved out of the investment page into the kosztorys editor, reached by a
+  `?ustawienia=1` link — this **retired** the decoupling problem on this route rather than
+  solving it (`37349c77`, `94e881a4`)
+- Media lookup cached whole under a new `media` tag + collection-hook invalidation, read via raw
+  SQL (`a1bf7234`, `72ff0ea1`)
+
+**Two findings that reframe the ticket** and belong in any follow-up:
+
+1. `sumAllRegisterBalances` is **not** a query problem — the "28× cache cliff" was the cold/warm
+   boundary. No index or materialized view would move it (S2).
+2. **Server work is no longer the bottleneck on this page.** Median server render is ~250 ms; the
+   remaining perceived 1–2 s is client-side re-render of the transfers table (200–620 ms every
+   click) plus intermittent ~900 ms cold starts. The optimistic/pending UI listed below is now the
+   only remaining lever on how this _feels_ — and the "we'd just be hiding slow queries" objection
+   no longer holds, because no slow query remains (S3).
+
+Still open: the whole-tree-for-two-scalars read (~120–175 ms warm, fix shape unsettled), its
+unmeasured worst case, and the two items under "Owed regardless of approach" above.

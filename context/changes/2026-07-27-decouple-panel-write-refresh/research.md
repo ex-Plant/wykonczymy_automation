@@ -1059,3 +1059,119 @@ consumers, three of them page-level siblings of the panel (Marża strip, materia
 header/CSV). Remove the route render and those three go stale until the next navigation. So the
 decoupling (#3) and the optimistic/pending work (parked as "the end") are **one refactor**, not two —
 #3 without it ships visibly stale numbers. They should be planned and built together.
+
+## Scope change 2026-07-27 — settings left the investment page instead of being decoupled
+
+The owner cut the problem rather than solving it: **investment settings are edited in the kosztorys
+editor only.** The investment page's panel now renders the figures read-only and links across with
+`?ustawienia=1`, which opens the totals panel with the „Ustawienia inwestycji" block expanded.
+
+This retires S4's route-handler design **for this route**. With no settings write on
+`/inwestycje/[id]`, there is nothing there to decouple from the transfers table — the render that S4
+proved unavoidable simply never fires. The mechanism finding stands and still governs the editor
+side, where the same writes now live; it is just no longer blocking.
+
+Landed in `37349c77` (panel split, `investment-summary-panel-client.tsx` deleted) and `94e881a4`
+(editor back arrow). Note the client `[PERF:client]` marks went with the deleted wrapper, so
+client-side click→paint is no longer instrumented on that route.
+
+### The `?ustawienia=1` arrival is URL state, deliberately
+
+Rejected a localStorage write from the linking page. The panel's open state is a persisted
+**preference** (`usePersistedEnum`, key `table-columns:kosztorys-totals-open`), so writing it would
+flip the reader's default for every future visit off one click. It also covers only half the target —
+the settings block itself is `CollapsibleSection`'s `useState(defaultOpen)`, not persisted. A one-shot
+arrival intent belongs in the URL; the flag is seeded into `useState` once rather than read every
+render, so closing the panel hands control back to the preference.
+
+## S3 measured 2026-07-27 — the `cache()` dedup works and is not felt
+
+`query.fetchReferenceData` fires **once** per render, confirmed across every POST in the deployed
+logs (was 3×). Worth ~60 ms and invisible next to the variance. Five instrumented clicks:
+
+| action resolved | painted | client gap |
+| --------------- | ------- | ---------- |
+| 1123 ms         | 1399 ms | 276 ms     |
+| 226 ms          | 444 ms  | 218 ms     |
+| 1311 ms         | 1935 ms | 624 ms     |
+| 222 ms          | 422 ms  | 200 ms     |
+| 293 ms          | 679 ms  | 386 ms     |
+
+Server-side those same clicks cost **200–450 ms total**. So the two ~1.2 s clicks are ~900 ms of
+cold lambda + Neon wake — **not our code**, the same cold/warm boundary that produced S2's fake
+"28× cache cliff". And **every** click pays 200–620 ms between the server answering and the pixel
+changing: pure client-side React rebuilding the transfers table.
+
+**Conclusion: server work is no longer the problem on this page.** The remaining perceived latency is
+(1) the client re-render, (2) intermittent cold starts. Neither is a slow query, so the owner's
+"we're hiding slow queries" objection to optimistic UI no longer applies — there is no slow query
+left to hide.
+
+## S6 landed 2026-07-27 — the media lookup, cached whole and read via raw SQL
+
+`fetchMediaByIds` ran **uncached on every render**, as a serial hop behind the transfers query (it
+needs their invoice ids). Now the whole table is cached under a new `CACHE_TAGS.media` and filtered
+in memory. `a1bf7234` + `72ff0ea1`.
+
+**Why cache the whole table and not the id set** — the inversion is the point. The id-filtered read
+ran on every render; the whole-table read runs only after a media write, and reads outnumber media
+writes by orders of magnitude. The full sweep is also cheaper outright: **0.26 ms vs 1.6 ms**
+(`EXPLAIN ANALYZE`, prod restore) — 988 rows / 808 kB read sequentially beats one index probe per id.
+
+**Why a Payload collection hook, against the "side effects go in the server action" rule** — four
+write paths exist, not the two initially assumed:
+
+1. `POST /api/upload-file` → `uploadFile()` → `payload.create`. Three UI entry points funnel here
+   (`invoice-upload-dialog`, `edit-transfer-form`, `expense-form` via `resolveInvoiceMediaIds` —
+   the last uploads 10–20 receipts per submit, 4 concurrent).
+2. `setTransferInvoice` (`src/lib/actions/transfers.ts:311`) deletes the replaced media
+   **fire-and-forget** — unawaited, so it can land after the action returns and after any
+   action-level revalidation. An action-side bump races it and sometimes loses.
+3. - 4. Payload admin panel create/update/delete. _(Owner: `/admin` is never used, so this is not a
+        live path — but it costs nothing to cover and the hook is one line either way.)_
+
+The collection is the one seam all four cross. `afterDelete` also bumps `transfers`:
+`transactions_invoice_id_media_id_fk` is `ON DELETE SET NULL`, so removing a media row silently nulls
+every transfer pointing at it — a pre-existing staleness nothing invalidated before.
+
+**Invalidation verified from code, not by clicking.** `fetchReferenceData` is `unstable_cache`d under
+six tags (`users`, `investments`, `cashRegisters`, `otherCategories`, `expenseCategories`,
+`kosztoryses`) and every one of those collections invalidates through the same
+`makeRevalidateAfterChange` helper. If `revalidateTag(tag, 'default')` from a Payload hook did not
+expire an `unstable_cache` entry, reference data would be permanently stale app-wide. Media is the
+seventh tag on a mechanism already proven six times. `skipRevalidation` is never set on any media
+path (tests, seed scripts and kosztorys batch ops only).
+
+### Raw SQL over `payload.find` — and the prediction that was wrong
+
+First cut used `payload.find`; the cold populate measured **375 ms for 949 docs** while the DB does
+the select in 0.26 ms. That is ORM hydration, and it is re-paid on the first render after every media
+write — which the bulk expense form triggers 10–20 times per submit. Swapped for
+`select id, url, filename, mime_type from media` via `getDb`.
+
+Safe because `url` is a **stored column** holding the finished serving path
+(`/api/media/file/<filename>`, populated on all 988 rows), so the string is byte-identical to what
+`payload.find` returns; the collection is `read: () => true` and the old call already passed
+`overrideAccess`. Residual risk is theoretical: reconfiguring the media serving path would leave
+stored URLs stale where `payload.find` would recompute — and would break every existing link anyway.
+
+**Result: 375 ms → 100–124 ms (950 docs). I predicted single digits and was wrong** — the residual is
+the Neon round-trip plus ~100 kB of rows on the wire, not ORM overhead. Floor doesn't move without
+shipping fewer columns.
+
+Warm renders, which is what matters — `TransferTableServer buildTransferRows`:
+
+| before any of this work              | after             |
+| ------------------------------------ | ----------------- |
+| 25, 30, 33, 39, 41, 143, 151, 265 ms | 11, 16, 17, 33 ms |
+
+### Still open
+
+- **The tree** (Q3 / the correction above) — ~120–175 ms warm on the investment page, four unbounded
+  queries for two scalars. Fix shape still unsettled; **not** a SQL port of `kosztorysClientTotals`.
+- **Worst-case tree read** remains unmeasured — no kosztorys in this DB approaches the
+  `limit: 100000` on stage progress.
+- **Optimistic / pending UI** — now the only remaining lever on perceived latency (see S3's client
+  gap), still parked by the owner.
+- **Media invalidation** never exercised by a live upload/delete; accepted on the shared-mechanism
+  argument above.
