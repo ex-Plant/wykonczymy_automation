@@ -1,5 +1,11 @@
 # Subcontractor Price Guard Implementation Plan
 
+> **Superseded in part — read `change.md` for what shipped.** Everything below describing a
+> `warning` / amber tier ("above the global-coefficient rate") is historical: the tier was dropped at
+> the review gate (owner, 2026-07-28) because it fired on ordinary rows. `checkSubcontractorPrice`
+> returns `string | null`, not a severity ladder. The 80% ceiling, the negative floor, and the wiring
+> into the three surfaces are as planned.
+
 ## Overview
 
 The subcontractor price in the two tool-plane views can be set to anything — a per-row coefficient, a

@@ -560,10 +560,11 @@ Setup: DevTools → Network, wejście na `/inwestycje/<id>/kosztorys_v2`.
 
 ## EX-609 — subcontractor-price-guard
 
-Cena wykonawcy nie może przekroczyć 80% ceny klienta (błąd, zapis blokowany), a powyżej stawki
-z globalnego mnożnika świeci żółto (ostrzeżenie, pozycja liczy się normalnie). Setup: kosztorys
-z wypełnionymi cenami klienta, globalny mnożnik „z narzędziami" wyraźnie poniżej 0,8 (np. 0,65), oba
-widoki wykonawcy dostępne z przełącznika.
+Cena wykonawcy nie może przekroczyć 80% ceny klienta — zapis jest blokowany, komórka czerwienieje.
+To jedyny werdykt: bursztynowy stopień „powyżej stawki z globalnego mnożnika" został wycofany
+(właściciel, 2026-07-28), bo zapalał się na zwykłych wierszach i kolor przestawał cokolwiek znaczyć.
+Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędziami" wyraźnie poniżej 0,8
+(np. 0,65), oba widoki wykonawcy dostępne z przełącznika.
 
 **Zaakceptowane ryzyko (właściciel, 2026-07-27):** inwestycja, której globalny mnożnik JUŻ przekracza
 0,8, zapali każdy wiersz „auto" na czerwono — „niech się świeci", to nie jest usterka.
@@ -572,11 +573,20 @@ widoki wykonawcy dostępne z przełącznika.
 - [ ] Kolumna „Mnożnik" w trybie „własny mnożnik": mnożnik powyżej 0,8 zostaje odrzucony tak samo
 - [ ] Wyjście z komórki (blur) po odrzuconym wpisie gasi czerwień i tooltip, a wiersz wraca do poprzedniej wartości — i mówi o tym toast „Cena odrzucona — przywrócono …"
 - [ ] Niedokończony wpis („1e") cofa się po wyjściu BEZ toasta — ogłaszamy odrzucenie, nie każdą literówkę
-- [ ] Kwota stała powyżej stawki z globalnego mnożnika, ale poniżej 80%, wpisuje się normalnie i świeci żółto z tooltipem i wykrzyknikiem przy prawej krawędzi
-- [ ] Sumy w „Podsumowaniu" wykonawcy są identyczne jak przed zmianą — bursztynowy wiersz liczy się w pełni
+- [ ] Kwota stała powyżej stawki z globalnego mnożnika, ale poniżej 80%, wpisuje się normalnie i NIE zostawia po sobie żadnego koloru ani wykrzyknika — nigdzie w tabeli nie ma już żółtego
+- [ ] Sumy w „Podsumowaniu" wykonawcy są identyczne jak przed zmianą
 - [ ] Obniżenie „Cena j.m." klienta na tyle, by istniejąca kwota stała przekroczyła 80%, zapala „Cenę" na czerwono po powrocie do widoku wykonawcy — mimo że nikt nie tknął kolumn wykonawcy
 - [ ] To samo zachowanie w widoku „bez narzędzi", mierzone względem JEGO mnożnika
 - [ ] „Ustawienia": mnożnik powyżej 0,8 cofa pole do poprzedniej wartości i nie zapisuje; 0,8 przechodzi; opis pod polami mówi o suficie
 - [ ] Wpisywanie w komórce „Cena" nie gubi znaków ANI kursora — długa kwota wchodzi w całości, także w momencie przekroczenia progu, kiedy komórka zmienia kolor
 - [ ] „Cena" jest edytowalna w każdym trybie: w wierszu „auto" da się od razu wpisać kwotę, „Źródło" przeskakuje na „kwota stała", a „Mnożnik" pokazuje „—"
 - [ ] Wyczyszczenie „Ceny" wraca do „auto" dopiero po wyjściu z komórki — w trakcie pisania pole zostaje puste i nie odbiera kursora
+- [ ] Escape w trakcie edycji („Cena" albo „Mnożnik") porzuca wpis i przywraca wartość sprzed wejścia w komórkę — bez toasta, bez podwójnego zapisu
+- [ ] Enter zatwierdza tak samo jak wyjście z komórki — przyjęta wartość zostaje, odrzucona cofa się z toastem
+- [ ] „Mnożnik" przyjmuje wartość dziesiętną w całości („0,72") — przecinek nie znika w trakcie pisania
+- [ ] Przełączenie „Źródła" nie rusza ceny: „kwota stała" 60 zł → „własny mnożnik" pokazuje 0,6 i tę samą cenę; z powrotem na „kwotę stałą" znów 60 zł
+- [ ] Rozpoczęcie edycji, przewinięcie tabeli tak, by wiersz zszedł z ekranu, i wyjście z komórki NIE zapisuje wpisu na innym wierszu
+- [ ] Tabulatorem (bez myszy) do odrzuconej komórki — tooltip z powodem pokazuje się sam, nie trzeba najeżdżać
+- [ ] Ujemna kwota („-50") jest odrzucana tak samo jak przekroczenie sufitu, również w wierszu bez ceny klienta
+- [ ] „Ustawienia": ujemny globalny mnożnik nie przechodzi (pole ma dolną granicę 0)
+- [ ] **Wydajność** — na kosztorysie ~1000 pozycji (`INV=7 node --env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts`) przewijanie i pisanie w widoku wykonawcy są tak samo płynne jak przed zmianą; każda komórka montuje własny tooltip, więc to jest miejsce, gdzie regres byłby widoczny
