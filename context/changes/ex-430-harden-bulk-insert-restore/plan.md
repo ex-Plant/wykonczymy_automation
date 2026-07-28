@@ -305,11 +305,11 @@ touches only code paths, not stored rows.
 
 #### Automated
 
-- [x] 3.1 Widened roundtrip passes
+- [x] 3.1 Widened roundtrip passes — 45c2a60f
 
 ### Phase 4: Schema-drift guard
 
 #### Automated
 
-- [ ] 4.1 Schema-drift guard passes against current schema
-- [ ] 4.2 Guard demonstrably fails when a column is dropped from an insert list
+- [x] 4.1 Schema-drift guard passes against current schema
+- [x] 4.2 Guard demonstrably fails when a column is dropped from an insert list
