@@ -41,9 +41,9 @@ import type {
 
 const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'summary', label: 'Podsumowanie' },
-  { value: 'wydatki', label: 'Wydatki' },
-  { value: 'etapy', label: 'Robocizna' },
-  { value: 'podwykonawcy', label: 'Podwykonawcy' },
+  { value: 'expenses', label: 'Wydatki' },
+  { value: 'stages', label: 'Robocizna' },
+  { value: 'subcontractors', label: 'Podwykonawcy' },
   { value: 'margin', label: 'Marża' },
 ]
 
@@ -174,7 +174,7 @@ export function SummaryPanelContent({
   // have achieved. This component reads no session on purpose: it also renders under (share), which
   // mounts no CurrentUserProvider.
   const allowedViews = views.filter((value) => {
-    if (value === 'podwykonawcy') return !clientView
+    if (value === 'subcontractors') return !clientView
     if (value === 'margin') return !clientView && financials !== undefined
     return true
   })
@@ -182,7 +182,7 @@ export function SummaryPanelContent({
   const view: SummaryViewT = allowedViews.includes(summaryView)
     ? summaryView
     : (allowedViews[0] ?? 'summary')
-  const isSubcontractorView = view === 'podwykonawcy'
+  const isSubcontractorView = view === 'subcontractors'
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
@@ -286,7 +286,7 @@ export function SummaryPanelContent({
                 showPie={showPies}
               />
             )}
-            {view === 'wydatki' && (
+            {view === 'expenses' && (
               <SummaryExpensesTab
                 investmentId={investmentId}
                 investmentName={investmentName}
@@ -304,7 +304,7 @@ export function SummaryPanelContent({
               />
             )}
 
-            {view === 'etapy' && stages && stageTotals && (
+            {view === 'stages' && stages && stageTotals && (
               <SummaryStagesTab
                 stages={stages}
                 stageTotals={stageTotals}

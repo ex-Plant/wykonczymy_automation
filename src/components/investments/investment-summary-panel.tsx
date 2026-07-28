@@ -17,7 +17,7 @@ import type { ExpenseCategoryRefT } from '@/types/reference-data'
 // — as it does every wpłata, which is why `showTransactionLists={false}` also folds the wpłaty block
 // out of Podsumowanie here. Marża renders only when the page hands the panel `financials`, which it
 // does for ADMIN/OWNER only.
-const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'wydatki', 'margin']
+const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'expenses', 'margin']
 
 type PropsT = {
   investmentId: number
