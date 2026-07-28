@@ -2,8 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
-// Labor cost sheet section (a header grouping items). defaultCostVariant
-// cascades to items (an item inherits it and may override). VAT does not live on the section —
+// Labor cost sheet section (a header grouping items). VAT does not live on the section —
 // there is a single rate per investment (S-12, not yet implemented).
 export const KosztorysSections: CollectionConfig = {
   slug: 'kosztorys-sections',
@@ -34,12 +33,5 @@ export const KosztorysSections: CollectionConfig = {
     // palette is a design-system list that grows, and each new swatch would otherwise owe an
     // ALTER TYPE). null = unpinned → the pie falls back to its positional palette.
     { name: 'color', type: 'text', label: { en: 'Color', pl: 'Kolor' } },
-    {
-      name: 'defaultCostVariant',
-      type: 'text',
-      required: true,
-      defaultValue: 'w_tools',
-      label: { en: 'Default cost variant', pl: 'Domyślny wariant kosztu' },
-    },
   ],
 }

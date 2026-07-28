@@ -1,5 +1,5 @@
 // Flat types for the labor ("robocizna") breakdown. Relations are reduced to numeric *_id
-// values — the query fetches with depth 0. costVariant = null means "inherit from the section".
+// values — the query fetches with depth 0.
 // VAT is a single rate per investment (KosztorysTreeT.vatRate), not per section/item.
 
 import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
@@ -30,7 +30,6 @@ export type KosztorysSectionT = {
   // Palette key (src/lib/kosztorys/section-colors.ts); null = unpinned — the pie colours this
   // section by position.
   color: SectionColorKeyT | null
-  defaultCostVariant: ToolPlaneT
 }
 
 export type KosztorysItemT = {
@@ -47,7 +46,6 @@ export type KosztorysItemT = {
   wToolsOverrideValue: number
   ownToolsOverrideType: SubcontractorOverrideTypeT | null
   ownToolsOverrideValue: number
-  costVariant: ToolPlaneT | null
   hiddenInExport: boolean
   note: string | null
 }
@@ -68,7 +66,6 @@ export type ItemPatchT = Partial<
     | 'wToolsOverrideValue'
     | 'ownToolsOverrideType'
     | 'ownToolsOverrideValue'
-    | 'costVariant'
     | 'hiddenInExport'
     | 'note'
   >
@@ -88,9 +85,8 @@ export type ViewPricingT = KosztorysItemT & {
 }
 
 // The subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a valid
-// price view and flows straight into viewPrice(). One type for all three carriers: a stage's `plane`,
-// an item's `costVariant`, a section's `defaultCostVariant` — they answer the same question (z
-// narzędziami czy bez), so they are not separate concepts even though the columns are named apart.
+// price view and flows straight into viewPrice(). One carrier only: a stage's `plane` (EX-565) — the
+// grain the owner confirmed is the etap, not the pozycja.
 // null = undecided, which is NOT a plane: such an etap belongs to no subcontractor bill and counts
 // toward neither settlement figure.
 export type ToolPlaneT = 'w_tools' | 'own_tools'
@@ -184,7 +180,6 @@ export type KosztorysV2RowBaseT = KosztorysItemT & {
   // Denormalized investment VAT rate (one for the whole kosztorys) — gross = net × (1 + vatRate).
   vatRate: number
   globalDiscountActive: boolean
-  sectionDefaultCostVariant: ToolPlaneT
   // Denormalized global coefficients for deriving the subcontractor price on the row (ViewPricingT).
   globalWToolsCoeff: number
   globalOwnToolsCoeff: number

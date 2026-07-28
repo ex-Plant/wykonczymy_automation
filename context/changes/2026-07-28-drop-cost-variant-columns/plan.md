@@ -539,16 +539,16 @@ The existing suites are the regression net, and they are load-bearing here:
 
 #### Automated
 
-- [x] 1.1 Migration applies clean on local: `pnpm payload migrate`
-- [x] 1.2 Test DB migrated: `pnpm db:migrate:test`
-- [x] 1.3 Both columns absent from `information_schema.columns`
+- [x] 1.1 Migration applies clean on local: `pnpm payload migrate` — 68564aa3
+- [x] 1.2 Test DB migrated: `pnpm db:migrate:test` — 68564aa3
+- [x] 1.3 Both columns absent from `information_schema.columns` — 68564aa3
 
 ### Phase 2: Payload fields + TS carriers
 
 #### Automated
 
-- [ ] 2.1 `pnpm generate:types` succeeds
-- [ ] 2.2 `pnpm typecheck` enumerates the remaining carrier sites
+- [x] 2.1 `pnpm generate:types` succeeds
+- [x] 2.2 `pnpm typecheck` enumerates the remaining carrier sites
 
 ### Phase 3: Clear the carriers
 
