@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
@@ -84,8 +85,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       ownToolsCoeff: 0.5,
     })
 
-    // Build a small tree: 3 sections, items, 2 stages, sparse progress.
-    //
     // Section C exists purely for COLUMN COVERAGE. Restore hand-writes the INSERT column list and
     // zips values into it positionally, so a column the fixture never sets is a column whose mapping
     // no test can catch being wrong. Its two items are the extremes — every nullable field null, and
@@ -167,7 +166,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       },
       context: { skipRevalidation: true },
     })
-    // Every nullable column null, every numeric at its default.
     await payload.create({
       collection: 'kosztorys-items',
       data: {
@@ -189,14 +187,13 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       },
       context: { skipRevalidation: true },
     })
-    // Every nullable column set, both override planes, amount discount, unicode + newline note.
     await payload.create({
       collection: 'kosztorys-items',
       data: {
         investment: investmentId,
         section: sectionC.id,
         displayOrder: 1,
-        description: 'Ścianka działowa — GK 12,5 „podwójna"',
+        description: 'Ścianka działowa — GK 12,5 „podwójna"\ndruga linia opisu',
         unit: 'mb',
         plannedQty: 12.5,
         discountType: 'amount',
@@ -211,6 +208,29 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       },
       context: { skipRevalidation: true },
     })
+    // The mirrored override combo. Per plane each of the two legal types must appear somewhere, or a
+    // swapped pair of override columns survives the roundtrip unnoticed.
+    await payload.create({
+      collection: 'kosztorys-items',
+      data: {
+        investment: investmentId,
+        section: sectionC.id,
+        displayOrder: 2,
+        description: 'Odwrócone nadpisania',
+        unit: 'szt',
+        plannedQty: 3,
+        discountType: 'percent',
+        discountValue: 5,
+        clientPrice: 75,
+        wToolsOverrideType: 'amount',
+        wToolsOverrideValue: 210.4,
+        ownToolsOverrideType: 'coeff',
+        ownToolsOverrideValue: 0.33,
+        hiddenInExport: false,
+        note: null,
+      },
+      context: { skipRevalidation: true },
+    })
 
     const stage1 = await payload.create({
       collection: 'kosztorys-stages',
@@ -221,6 +241,11 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
     const stage2 = await payload.create({
       collection: 'kosztorys-stages',
       data: { investment: investmentId, ordinal: 2, label: null },
+      context: { skipRevalidation: true },
+    })
+    await payload.create({
+      collection: 'kosztorys-stages',
+      data: { investment: investmentId, ordinal: 3, label: 'Etap 3', plane: 'own_tools' },
       context: { skipRevalidation: true },
     })
 
@@ -256,27 +281,17 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
     })
     await db.execute(sql`UPDATE investments SET vat_rate = 0.08 WHERE id = ${investmentId}`)
 
-    const transactionId = await payload.db.beginTransaction()
-    if (!transactionId) throw new Error('Failed to start transaction')
-    try {
-      await restoreKosztorys(
-        payload,
-        { transactionID: transactionId, context: { skipRevalidation: true } } as never,
-        investmentId,
-        before,
-      )
-      await payload.db.commitTransaction(transactionId)
-    } catch (err) {
-      await payload.db.rollbackTransaction(transactionId)
-      throw err
-    }
+    await withPayloadTransaction(
+      payload,
+      (req) => restoreKosztorys(payload, req, investmentId, before),
+      { skipRevalidation: true },
+    )
 
     const after = await serializeKosztorys(investmentId)
 
     // New ids everywhere — proves a real wipe-and-reinsert, not an in-place no-op.
-    expect(after.sections.map((s) => s.id).sort()).not.toEqual(
-      before.sections.map((s) => s.id).sort(),
-    )
+    const ids = (snap: SnapshotPayloadT) => snap.sections.map((s) => s.id).sort((a, b) => a - b)
+    expect(ids(after)).not.toEqual(ids(before))
     // ...but content + order is identical.
     expect(canonical(after)).toEqual(canonical(before))
   })

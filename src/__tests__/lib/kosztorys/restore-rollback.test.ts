@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
@@ -93,23 +94,25 @@ describe.skipIf(!ENV_READY)('restore rollback on error (DB)', () => {
       stages: before.stages.map((stage) => ({ ...stage, ordinal: before.stages[0].ordinal })),
     }
 
-    const transactionId = await payload.db.beginTransaction()
-    if (!transactionId) throw new Error('Failed to start transaction')
-    let threw = false
+    let caught: unknown
     try {
-      await restoreKosztorys(
+      await withPayloadTransaction(
         payload,
-        { transactionID: transactionId, context: { skipRevalidation: true } } as never,
-        investmentId,
-        poisoned,
+        (req) => restoreKosztorys(payload, req, investmentId, poisoned),
+        { skipRevalidation: true },
       )
-      await payload.db.commitTransaction(transactionId)
-    } catch {
-      threw = true
-      await payload.db.rollbackTransaction(transactionId)
+    } catch (err) {
+      caught = err
     }
 
-    expect(threw).toBe(true)
+    // Assert WHERE it threw, not just that it did: the danger window is after the wipe and after
+    // sections+items are reinserted, so a new guard that starts throwing earlier would leave a bare
+    // `threw === true` green while this spec silently stopped testing atomicity.
+    // Drizzle wraps the driver error, so the pg fields live on `cause`.
+    const pgError = (caught as { cause?: { code?: string; constraint?: string } } | undefined)
+      ?.cause
+    expect(pgError?.code).toBe('23505')
+    expect(pgError?.constraint).toBe('kosztorys_stages_investment_ordinal_unique')
 
     // Identity INCLUDING ids: content equality alone would also pass if the wipe had committed and
     // the tree been rebuilt from the snapshot. Same ids prove the delete itself rolled back.

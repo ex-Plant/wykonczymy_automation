@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { serializeKosztorysAsPreset } from '@/lib/kosztorys/serialize-preset'
 import { applyPreset } from '@/lib/kosztorys/apply-preset'
@@ -179,20 +180,11 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
   }
 
   async function applyPresetTx(investmentId: number, preset: SnapshotPayloadT) {
-    const transactionId = await payload.db.beginTransaction()
-    if (!transactionId) throw new Error('Failed to start transaction')
-    try {
-      await applyPreset(
-        payload,
-        { transactionID: transactionId, context: { skipRevalidation: true } } as never,
-        investmentId,
-        preset,
-      )
-      await payload.db.commitTransaction(transactionId)
-    } catch (err) {
-      await payload.db.rollbackTransaction(transactionId)
-      throw err
-    }
+    await withPayloadTransaction(
+      payload,
+      (req) => applyPreset(payload, req, investmentId, preset),
+      { skipRevalidation: true },
+    )
   }
 
   beforeAll(async () => {
