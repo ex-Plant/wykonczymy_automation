@@ -298,14 +298,14 @@ is felt — not part of this change.
 
 #### Automated
 
-- [x] 2.1 Type checking passes: `pnpm typecheck`
-- [x] 2.2 Linting passes: `pnpm lint`
-- [x] 2.3 No stale cmdk import remains in the picker
+- [x] 2.1 Type checking passes: `pnpm typecheck` — a40bdae0
+- [x] 2.2 Linting passes: `pnpm lint` — a40bdae0
+- [x] 2.3 No stale cmdk import remains in the picker — a40bdae0
 
 ### Phase 3: Narrow-screen drill-in
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm typecheck`
-- [ ] 3.2 Linting passes: `pnpm lint`
-- [ ] 3.3 Full unit suite passes: `pnpm test`
+- [x] 3.1 Type checking passes: `pnpm typecheck`
+- [x] 3.2 Linting passes: `pnpm lint`
+- [x] 3.3 Full unit suite passes: `pnpm test`

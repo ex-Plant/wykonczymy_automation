@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { SearchFilterInput } from '@/components/ui/search-filter-input'
@@ -40,6 +40,9 @@ export function AddSectionsFromPresetDialog({
   const [sections, setSections] = useState<PresetSectionMetaT[] | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [activePresetId, setActivePresetId] = useState<number | null>(null)
+  // Below `md` only one pane fits, so this drives which of the two is shown. Both stay mounted at
+  // every width — above `md` the state is inert.
+  const [pane, setPane] = useState<'presets' | 'sections'>('presets')
   const [pending, setPending] = useState(false)
 
   const groups = groupPresetSections(sections ?? [], selected)
@@ -75,6 +78,7 @@ export function AddSectionsFromPresetDialog({
       setSelected(new Set())
       setSections(null)
       setActivePresetId(null)
+      setPane('presets')
       setSearchTerm('')
     }
     onOpenChange(next)
@@ -136,7 +140,12 @@ export function AddSectionsFromPresetDialog({
           <p className="text-muted-foreground px-4 py-6 text-sm">Brak zapisanych szablonów.</p>
         ) : (
           <div className="mt-3 flex h-[55vh] min-h-0 border-t">
-            <div className="flex w-1/2 flex-col">
+            <div
+              className={cn(
+                'w-full flex-col md:flex md:w-1/2',
+                pane === 'presets' ? 'flex' : 'hidden',
+              )}
+            >
               <div className="p-2">
                 <SearchFilterInput
                   value={searchTerm}
@@ -156,7 +165,10 @@ export function AddSectionsFromPresetDialog({
                       key={group.presetId}
                       type="button"
                       // Highlight only — ticking a whole szablon goes through „Zaznacz wszystkie".
-                      onClick={() => setActivePresetId(group.presetId)}
+                      onClick={() => {
+                        setActivePresetId(group.presetId)
+                        setPane('sections')
+                      }}
                       className={cn(
                         'hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
                         group.presetId === activeGroup?.presetId && 'bg-accent',
@@ -176,7 +188,20 @@ export function AddSectionsFromPresetDialog({
                 )}
               </div>
             </div>
-            <div className="flex w-1/2 flex-col border-l">
+            <div
+              className={cn(
+                'w-full flex-col md:flex md:w-1/2 md:border-l',
+                pane === 'sections' ? 'flex' : 'hidden',
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => setPane('presets')}
+                className="hover:bg-accent flex items-center gap-1 border-b px-3 py-2 text-left text-sm md:hidden"
+              >
+                <ChevronLeft className="size-4" />
+                <span className="truncate">{activeGroup?.presetName ?? 'Szablony'}</span>
+              </button>
               <div className="min-h-0 flex-1 overflow-y-auto py-2">
                 {activeGroup && (
                   <>
