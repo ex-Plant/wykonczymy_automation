@@ -37,6 +37,7 @@ import {
   sectionNeighbor,
   swapItemInSection,
   swapSectionBlock,
+  type BlankRowInputT,
 } from '@/lib/kosztorys/row-ops'
 import {
   planItemRemoval,
@@ -48,14 +49,13 @@ import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import {
   clientTotalsFromSubtotals,
   emptySectionIds,
-  rowRemainingForView,
   sectionSubtotalsForView,
   stageAxisForView,
   subcontractorDueByPlane,
 } from '@/lib/kosztorys/settlement'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
-import { NEW_SECTION_DEFAULTS } from '@/lib/kosztorys/constants'
+import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
   stageKey,
@@ -63,7 +63,7 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { isGlobalDiscountActive, toGross } from '@/lib/kosztorys/calc'
+import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
 import {
   addItemAction,
   addSectionAction,
@@ -539,22 +539,34 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
     )
   }
 
-  async function handleAddItem(sectionId: number) {
-    const res = await addItemAction(sectionId)
-    if (!res.success) return
-    // Take the denormalized section fields from any existing row of that section.
-    const sample = [...prevById.current.values()].find((r) => r.sectionId === sectionId)
-    const row = buildBlankRow({
-      id: res.data.id,
-      displayOrder: res.data.displayOrder,
-      sectionId,
-      sectionName: sample?.sectionName ?? NEW_SECTION_DEFAULTS.name,
-      sectionColor: sample?.sectionColor ?? null,
+  // The tree-level half of a blank row (VAT, global coefficients, the stage axis) is identical at
+  // every insert point, so the three callers spell out only what differs: which row, in which section.
+  type BlankRowIdentityT = Pick<
+    BlankRowInputT,
+    'id' | 'displayOrder' | 'sectionId' | 'sectionName' | 'sectionColor'
+  >
+  function makeBlankRow(identity: BlankRowIdentityT) {
+    return buildBlankRow({
+      ...identity,
       vatRate: tree.vatRate,
       globalDiscountActive,
       globalWToolsCoeff: tree.globalCoeffs.wTools,
       globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
       stages,
+    })
+  }
+
+  async function handleAddItem(sectionId: number) {
+    const res = await addItemAction(sectionId)
+    if (!res.success) return
+    // Take the denormalized section fields from any existing row of that section.
+    const sample = [...prevById.current.values()].find((r) => r.sectionId === sectionId)
+    const row = makeBlankRow({
+      id: res.data.id,
+      displayOrder: res.data.displayOrder,
+      sectionId,
+      sectionName: sample?.sectionName ?? DEFAULT_SECTION_NAME,
+      sectionColor: sample?.sectionColor ?? null,
     })
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
@@ -578,17 +590,12 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
     if (!res.success) return
     const sample =
       [...prevById.current.values()].find((r) => r.sectionId === anchorRow.sectionId) ?? anchorRow
-    const row = buildBlankRow({
+    const row = makeBlankRow({
       id: res.data.id,
       displayOrder: res.data.displayOrder,
       sectionId: anchorRow.sectionId,
       sectionName: sample.sectionName,
       sectionColor: sample.sectionColor,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
     })
     // Mirror the section-tail display_order bump in prevById so a later insert/▲▼ diffs correctly.
     for (const [id, r] of prevById.current) {
@@ -710,19 +717,14 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
   }
 
   // The first row of a brand-new section: the section's own fields are still the defaults the action
-  // just wrote, so they come from NEW_SECTION_DEFAULTS rather than a round trip.
+  // just wrote, so they come from DEFAULT_SECTION_NAME rather than a round trip.
   function buildNewSectionRow(sectionId: number, item: { id: number; displayOrder: number }) {
-    return buildBlankRow({
+    return makeBlankRow({
       id: item.id,
       displayOrder: item.displayOrder,
       sectionId,
-      sectionName: NEW_SECTION_DEFAULTS.name,
+      sectionName: DEFAULT_SECTION_NAME,
       sectionColor: null,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
     })
   }
 
@@ -888,8 +890,7 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
   }
 
   // A section field is denormalized on every row of the section, so setting one patches them all
-  // (rows + prevById) and persists once. The two fields differ only in which row key mirrors which
-  // column, so they share one pathway.
+  // (rows + prevById) and persists once.
   const SECTION_ROW_FIELDS = { sectionName: 'name', sectionColor: 'color' } as const
   type SectionRowFieldT = keyof typeof SECTION_ROW_FIELDS
 

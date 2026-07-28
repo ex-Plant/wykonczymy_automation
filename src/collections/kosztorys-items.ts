@@ -3,7 +3,7 @@ import { isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 // A sheet item. Client price = a snapshot. Subcontractor prices are derived from the
-// markup coefficient (section/investment), with a two-state per-item override:
+// markup coefficient (investment), with a two-state per-item override:
 // *OverrideType ∈ {coeff, amount} | null (null = derive), *OverrideValue. „Pomiar z natury"
 // (the executed quantity) is not stored — it is the stage sum (Σ D:M in the sheet), computed
 // live in the settlement layer.

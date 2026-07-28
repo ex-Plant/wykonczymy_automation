@@ -570,8 +570,8 @@ The existing suites are the regression net, and they are load-bearing here:
 
 #### Automated
 
-- [x] 5.1 Roundtrip spec green — cd2326d3
-- [x] 5.2 Preset spec green — cd2326d3
+- [x] 5.1 Roundtrip spec green — cd2326d3 (via the test-DB env; a bare `vitest run` on this path skips it)
+- [x] 5.2 Preset spec green — cd2326d3 (same — DB-gated, needs `DB_POSTGRES_URL_TEST`)
 
 ### Phase 6: Documentation
 

@@ -1,7 +1,7 @@
 import { DEFAULT_ITEM_DESCRIPTION, DEFAULT_UNIT } from '@/lib/kosztorys/constants'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
-import type { ToolPlaneT, KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Revert a row field to its pre-edit value (revert-on-error autosave), but ONLY
 // if nothing newer was typed since the failed save (current === attempted) —

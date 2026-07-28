@@ -175,7 +175,7 @@ Czysto na odczyt, per inwestycja. Niezależny od P5 (linkage LABOR_COST).
 | Wykonano (postęp)        | Σ wartości odhaczonych etapów (klient) + % planu            |
 | Zafakturowano            | `LABOR_COST` inwestycji                                     |
 | Wypłacono ekipie         | `PAYOUT` inwestycji                                         |
-| Plan kosztu podwykonawcy | Σ `pomiar × cena_wariantu_kosztu_pozycji`                   |
+| Plan kosztu podwykonawcy | Σ po etapach (ilość etapu × stawka wariantu etapu)          |
 | **Marża planowana**      | plan klient − plan podwykonawcy                             |
 | **Marża rzeczywista**    | wzór aplikacji: `robocizna − wypłaty − rabat − strata`      |
 | Materiały (actuals)      | `INVESTMENT_EXPENSE` — bez planu (materiałów nie planujemy) |
@@ -390,8 +390,8 @@ dwie równoległe ceny tej samej pracy**. Dana praca jest wykonana **albo** z na
 
 **Eskalacja: wariant zmienia się per etap — POTWIERDZONE realnym przypadkiem (2026-07-21).** Kilka
 ekip na inwestycji, część pracuje z narzędziami, część bez. Ta sama praca: „etapy 1–2 robił ktoś
-z narzędziami, etapy 3–4 bez". Czyli grain wyboru wariantu to **etap**, nie praca. Tu model app się
-**rozwala** — nie ma gdzie tego zapisać (`stage_progress` trzyma tylko `qty_done`).
+z narzędziami, etapy 3–4 bez". Czyli grain wyboru wariantu to **etap**, nie praca. Wtedy model app się
+**rozwalał** — nie było gdzie tego zapisać.
 
 **Kierunek rozwiązania (czysty, zaskakująco mały).** Stawki i tak są **dwie na pracę** (z i bez, obie
 własne — już importowane). Nie trzeba „dowolnej stawki per etap" — trzeba jednej nowej rzeczy:
@@ -399,7 +399,7 @@ własne — już importowane). Nie trzeba „dowolnej stawki per etap" — trzeb
 
 - **Koszt pracy = Σ po etapach (ilość_etapu × stawka wariantu tego etapu).**
 - „Podsumowanie podwykonawców" = **jedna** zsumowana kwota z realnych miksów; globalny przełącznik
-  z/bez **znika**.
+  z/bez miał wtedy **zniknąć** — ostatecznie zostaje jako widełki, patrz „Co wdrożono" niżej.
 - Dane jednorazowe do dogfoodingu → czysty dopis kolumny, bez migracji/backfillu.
 - Przykład (malowanie, stawki 18/15): (e1+e2)×18 + (e3+e4)×15. Ani „całość z" (×18), ani „całość bez"
   (×15) tego nie odda — prawda leży pomiędzy.

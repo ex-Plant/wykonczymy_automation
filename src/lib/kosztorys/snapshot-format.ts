@@ -10,8 +10,8 @@ import type {
 // restore-kosztorys.ts for the tolerant deserialization contract.
 //
 // A field DROPPED without ever having been read is exempt: the restore mapper picks keys it knows,
-// so the stale key in an old payload is inert and the snapshot still restores whole. Precedent:
-// 20260724_1 dropped the section coeffs without a bump; 20260728_0 dropped costVariant likewise.
+// so the stale key in an old payload is inert and the snapshot still restores whole (precedent:
+// 20260724_1).
 // The exemption matters because bumping is asymmetric — the list queries (snapshots.ts, presets.ts)
 // don't assert, so every stored version and every global preset would keep being offered in the UI
 // and throw the Polish error only once clicked.

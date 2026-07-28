@@ -1,6 +1,6 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
-import { NEW_SECTION_DEFAULTS } from '@/lib/kosztorys/constants'
+import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import { createBlankItem, type NewRowT } from '@/lib/kosztorys/create-item'
 
 export type CreatedSectionWithItemT = { section: NewRowT; item: NewRowT }
@@ -18,16 +18,15 @@ export async function createSectionWithFirstItem(
   {
     investmentId,
     displayOrder,
-    name = NEW_SECTION_DEFAULTS.name,
     req,
-  }: { investmentId: number; displayOrder: number; name?: string; req?: PayloadRequest },
+  }: { investmentId: number; displayOrder: number; req?: PayloadRequest },
 ): Promise<CreatedSectionWithItemT> {
   const section = await payload.create({
     collection: 'kosztorys-sections',
     req,
     data: {
       investment: investmentId,
-      name,
+      name: DEFAULT_SECTION_NAME,
       displayOrder,
     },
   })

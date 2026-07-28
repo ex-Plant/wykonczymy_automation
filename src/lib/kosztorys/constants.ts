@@ -37,11 +37,9 @@ export const DEFAULT_UNIT = 'szt'
 // rather than a blank line. Persisted server-side by createBlankItem and mirrored optimistically.
 export const DEFAULT_ITEM_DESCRIPTION = 'Nowa praca'
 
-// Default values for a new section — the single source. createSectionWithFirstItem imports these for
-// the server-side create; the optimistic row is built from them client-side.
-export const NEW_SECTION_DEFAULTS = {
-  name: 'Nowa sekcja',
-} as const satisfies { name: string }
+// Placeholder name pre-filled on every new section — the single source. createSectionWithFirstItem
+// writes it server-side; the optimistic row mirrors it client-side.
+export const DEFAULT_SECTION_NAME = 'Nowa sekcja'
 
 // The grid's identity column. Every synthetic row (the „Razem" band and both section bands) puts its
 // caption here instead of a figure, so the three cells must agree on which column that is.

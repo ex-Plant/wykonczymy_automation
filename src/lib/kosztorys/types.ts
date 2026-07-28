@@ -85,8 +85,8 @@ export type ViewPricingT = KosztorysItemT & {
 }
 
 // The subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a valid
-// price view and flows straight into viewPrice(). One carrier only: a stage's `plane` (EX-565) — the
-// grain the owner confirmed is the etap, not the pozycja.
+// price view and flows straight into viewPrice(). The grain is the etap, not the pozycja
+// (EX-565, owner-confirmed).
 // null = undecided, which is NOT a plane: such an etap belongs to no subcontractor bill and counts
 // toward neither settlement figure.
 export type ToolPlaneT = 'w_tools' | 'own_tools'
