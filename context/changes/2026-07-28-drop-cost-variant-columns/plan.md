@@ -554,24 +554,24 @@ The existing suites are the regression net, and they are load-bearing here:
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `pnpm typecheck` — e0eb13e2
-- [x] 3.2 Linting passes: `pnpm lint` — e0eb13e2
-- [x] 3.3 `grep` over `src/` returns only `20260708_2` — e0eb13e2
+- [x] 3.1 Type checking passes: `pnpm typecheck` — 881ebc01
+- [x] 3.2 Linting passes: `pnpm lint` — 881ebc01
+- [x] 3.3 `grep` over `src/` returns only `20260708_2` — 881ebc01
 
 ### Phase 4: Fixtures, seeds, and the JSON fixture
 
 #### Automated
 
-- [x] 4.1 Unit suite green: `pnpm test` — e0eb13e2
-- [x] 4.2 Integration suite green: `pnpm test:integration` — e0eb13e2
-- [x] 4.3 Both kosztorys seeds run clean against the migrated local DB — e0eb13e2
+- [x] 4.1 Unit suite green: `pnpm test` — 881ebc01
+- [x] 4.2 Integration suite green: `pnpm test:integration` — 881ebc01
+- [x] 4.3 Both kosztorys seeds run clean against the migrated local DB — 881ebc01
 
 ### Phase 5: Snapshot format comment
 
 #### Automated
 
-- [ ] 5.1 Roundtrip spec green
-- [ ] 5.2 Preset spec green
+- [x] 5.1 Roundtrip spec green — PENDING_SHA
+- [x] 5.2 Preset spec green — PENDING_SHA
 
 ### Phase 6: Documentation
 
