@@ -898,18 +898,27 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const SECTION_ROW_FIELDS = { sectionName: 'name', sectionColor: 'color' } as const
   type SectionRowFieldT = keyof typeof SECTION_ROW_FIELDS
 
-  // Extracted from the handler so undo/redo can re-run it with the before/after value: unlike a grid
-  // cell, a section field fires the action directly, not via the debounced saver — nothing to cancel.
+  // Extracted from the handler so undo/redo can re-run it with the before/after value. The forward
+  // write debounces on the field's own lane: the colour picker is built for repeated picking (plain
+  // buttons, so the menu stays open while you compare tints), so browsing the palette is a burst and
+  // each pick would otherwise cost an auth round trip plus an UPDATE. `immediate` is what undo/redo
+  // pass — the inverse write pre-empts a still-pending forward save instead of racing it (EX-526 #1).
   function applySectionField<K extends SectionRowFieldT>(
     sectionId: number,
     rowKey: K,
     value: KosztorysV2RowT[K],
+    { immediate = false }: { immediate?: boolean } = {},
   ) {
     patchRows(
       (r) => r.sectionId === sectionId,
       (r) => ({ ...r, [rowKey]: value }),
     )
-    void updateSectionFieldAction(sectionId, { [SECTION_ROW_FIELDS[rowKey]]: value })
+    // No revert-on-error, unlike the cell savers: a section's colour and name are cosmetic, so the
+    // lane's toast is enough — yanking the swatch back mid-browse costs more than the stale tint.
+    const persist = immediate ? runNow : save
+    persist(`section-field:${sectionId}:${rowKey}`, () =>
+      updateSectionFieldAction(sectionId, { [SECTION_ROW_FIELDS[rowKey]]: value }),
+    )
   }
 
   // Bails on a no-op write: the Sekcja cell's onBlur fires on every focus-out and the colour picker
@@ -925,7 +934,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     applySectionField(sectionId, rowKey, value)
     pushReversible(
       undoLabel,
-      (v: KosztorysV2RowT[K]) => applySectionField(sectionId, rowKey, v),
+      (v: KosztorysV2RowT[K]) => applySectionField(sectionId, rowKey, v, { immediate: true }),
       before,
       value,
     )
