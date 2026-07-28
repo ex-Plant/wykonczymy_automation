@@ -1,6 +1,6 @@
 'use client'
 
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
 import { KosztorysActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu'
@@ -38,6 +38,7 @@ export function KosztorysEditorToolbar() {
               onChange={setSearch}
               placeholder="Szukaj…"
               debounceMs={200}
+              className={SEARCH_FILTER_TOOLBAR_WIDTH}
             />
           </div>
         </SimpleTooltip>

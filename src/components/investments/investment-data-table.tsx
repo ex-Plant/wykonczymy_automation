@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ColumnToggle } from '@/components/ui/column-toggle'
 import { StatusFilter } from '@/components/investments/status-filter'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { getInvestmentColumns, type InvestmentRowT } from '@/components/tables/investments'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
 import { useStatusFilter } from '@/hooks/use-status-filter'
@@ -57,7 +57,12 @@ export function InvestmentDataTable({
       getRowClassName={(row) => (row.status === 'completed' ? 'opacity-50' : '')}
       toolbar={(table, cv) => (
         <>
-          <SearchFilterInput value={searchTerm} onChange={setSearchTerm} placeholder="Szukaj..." />
+          <SearchFilterInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Szukaj..."
+            className={SEARCH_FILTER_TOOLBAR_WIDTH}
+          />
           <StatusFilter selectedStatuses={selectedStatuses} onToggle={toggleStatus} />
           <AddInvestmentDialog presets={presets} />
           <ColumnToggle table={table} columnVisibility={cv} />

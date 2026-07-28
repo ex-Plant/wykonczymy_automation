@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ColumnToggle } from '@/components/ui/column-toggle'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { getLeadColumns } from '@/components/tables/leads'
 import { ReconcileLeadsButton } from '@/components/leads/reconcile-leads-button'
 import type { LeadRowT } from '@/types/leads'
@@ -40,7 +40,12 @@ export function LeadsDataTable({ data }: { data: LeadRowT[] }) {
       initialSorting={[{ id: 'submittedAt', desc: true }]}
       toolbar={(table, cv) => (
         <>
-          <SearchFilterInput value={searchTerm} onChange={setSearchTerm} placeholder="Szukaj..." />
+          <SearchFilterInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Szukaj..."
+            className={SEARCH_FILTER_TOOLBAR_WIDTH}
+          />
           <ColumnToggle table={table} columnVisibility={cv} />
           <ReconcileLeadsButton />
         </>

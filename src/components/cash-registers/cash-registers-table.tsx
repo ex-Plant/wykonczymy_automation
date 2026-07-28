@@ -6,7 +6,7 @@ import { ActiveFilterButton } from '@/components/ui/active-filter-button'
 import { FilterMultiSelect } from '@/components/transfers/filter-multi-select'
 import { Tags, User } from 'lucide-react'
 import { ColumnToggle } from '@/components/ui/column-toggle'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { getCashRegisterColumns, REGISTER_TYPE_LABELS } from '@/components/tables/cash-registers'
 import { RegisterBalanceChart } from '@/components/dashboard/register-balance-chart'
 import { useActiveFilter } from '@/hooks/use-active-filter'
@@ -85,6 +85,7 @@ export function CashRegistersTable({ data, className }: CashRegistersTablePropsT
               value={searchTerm}
               onChange={setSearchTerm}
               placeholder="Szukaj..."
+              className={SEARCH_FILTER_TOOLBAR_WIDTH}
             />
             <FilterMultiSelect
               label="Typ"

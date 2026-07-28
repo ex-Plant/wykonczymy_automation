@@ -197,7 +197,7 @@ export function TransferFilters({
             onChange={(v) => updateParam('amount', v)}
             placeholder="Kwota"
             inputMode="decimal"
-            inputClassName="w-36 lg:w-36"
+            className="w-36"
             debounceMs={DEBOUNCE_MS}
           />
 
@@ -206,7 +206,7 @@ export function TransferFilters({
             onChange={(v) => updateParam('id', stripNonDigits(v))}
             placeholder="ID"
             inputMode="numeric"
-            inputClassName="w-24 lg:w-28"
+            className="w-24 lg:w-28"
             debounceMs={DEBOUNCE_MS}
           />
 

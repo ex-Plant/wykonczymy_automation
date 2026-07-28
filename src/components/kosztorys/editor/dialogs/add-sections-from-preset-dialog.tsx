@@ -168,7 +168,7 @@ export function AddSectionsFromPresetDialog({
                   value={searchTerm}
                   onChange={setSearchTerm}
                   placeholder="Szukaj szablonu…"
-                  inputClassName="w-full lg:w-full"
+                  className="w-full"
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
