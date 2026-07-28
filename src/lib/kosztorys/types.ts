@@ -6,6 +6,7 @@ import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { WorkerRefT } from '@/types/reference-data'
 import type {
   SubcontractorPayoutRowT,
   PayoutTransactionRowT,
@@ -96,14 +97,19 @@ export type KosztorysStageT = {
   ordinal: number
   label: string | null
   plane: ToolPlaneT | null
+  // Who is to do this etap. null = unassigned, which is a resting state, not an unconfirmed
+  // default — it earns its own residual row rather than a warning.
+  workerId: number | null
 }
 
 // Stage autosave patch = the fields the header edits one at a time (rename → label, plane picker →
-// plane). Mirrors ItemPatchT; the action's zod validation is derived from this shape. plane is never
-// patched to null — an explicit pick only ever confirms a concrete plane.
+// plane, worker picker → workerId). Mirrors ItemPatchT; the action's zod validation is derived from
+// this shape. plane is never patched to null — an explicit pick only ever confirms a concrete plane.
 export type StagePatchT = Partial<{
   label: string | null
   plane: ToolPlaneT
+  // Nullable unlike plane: „Bez przypisania" is a legal edit, so the patch must be able to clear it.
+  workerId: number | null
 }>
 
 export type StageProgressT = {
@@ -168,6 +174,9 @@ export type KosztorysEditorDataT = {
   // Company-plane transfer aggregates behind the „Marża" tab. Optional for the same gating reason as
   // settledBreakdown, plus the ADMIN/OWNER check the page applies before passing it.
   financials?: InvestmentFinancialsT
+  // Roster for the etap header's worker picker (EX-613). Optional for the same gating reason as
+  // settledBreakdown: the two client-share entry points never render a stage menu.
+  workers?: WorkerRefT[]
 }
 
 // --- v2 variant (react-datasheet-grid): a flat row with stages flattened

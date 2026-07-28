@@ -486,10 +486,13 @@ const stagePatchSchema = z
   .object({
     label: z.string().nullable(),
     plane: stagePlaneSchema,
+    // Nullable unlike plane — „Bez przypisania" clears the assignment (EX-613).
+    workerId: z.number().int().positive().nullable(),
   })
   .partial()
 
-// Stage autosave: the header patches one field at a time (rename → label, plane picker → plane).
+// Stage autosave: the header patches one field at a time (rename → label, plane picker → plane,
+// worker picker → workerId).
 // A plane patch only ever writes a concrete value — an explicit pick confirms the plane and clears
 // the unconfirmed (null) warning; there is no "un-confirm" path.
 export async function updateStageAction(
@@ -501,7 +504,11 @@ export async function updateStageAction(
     async ({ payload }) => {
       const parsed = validateAction(stagePatchSchema, patch)
       if (!parsed.success) return parsed
-      await payload.update({ collection: 'kosztorys-stages', id: stageId, data: parsed.data })
+      // The patch key is workerId (the tree carries flat *_id values); the collection field is the
+      // `worker` relationship — translate at this boundary, nowhere else.
+      const { workerId, ...rest } = parsed.data
+      const data = 'workerId' in parsed.data ? { ...rest, worker: workerId } : rest
+      await payload.update({ collection: 'kosztorys-stages', id: stageId, data })
       return { success: true }
     },
     ['kosztorysStages'],

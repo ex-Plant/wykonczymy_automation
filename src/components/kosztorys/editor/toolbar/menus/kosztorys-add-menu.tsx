@@ -51,7 +51,9 @@ export function KosztorysAddMenu() {
             Praca
           </DropdownMenuItem>
           {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
-              plane-less „Etap" and no new stage is ever unconfirmed. */}
+              plane-less „Etap" and no new stage is ever unconfirmed. The worker is deliberately NOT
+              forced the same way: an unassigned etap is a legitimate resting state (it earns its own
+              residual row), so it is picked later from the etap header, not here. */}
           {TOOL_PLANES.map((plane) => (
             <DropdownMenuItem key={plane} onSelect={() => handleAddStage(plane)}>
               {planeIcon(plane)}

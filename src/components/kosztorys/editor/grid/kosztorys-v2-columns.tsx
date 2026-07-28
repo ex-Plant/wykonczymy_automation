@@ -374,11 +374,15 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           onRename={opts.onRenameStage}
           onRemove={opts.onRemoveStage}
           onSetPlane={opts.onSetStagePlane}
+          workers={opts.workers}
+          onSetWorker={opts.onSetStageWorker}
+          executedValue={opts.executedValueByStage?.get(st.id) ?? 0}
         />
       ),
       minWidth: 150,
       // Locked until the rozliczenie is picked: qty typed here would be work nobody gets billed for,
-      // and picking one costs a click.
+      // and picking one costs a click. Deliberately NOT widened to the worker — a worker-less etap
+      // still has a price and still belongs to the executed total; it just isn't attributed to anyone.
       disabled: st.plane == null,
       ...planeUnconfirmed(st),
     }),

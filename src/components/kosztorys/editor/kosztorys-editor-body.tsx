@@ -59,9 +59,10 @@ export function KosztorysEditorBody({
   preview = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
+  workers,
   ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo })
+  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
   const {
     gridRef,
     gridHeight,

@@ -79,7 +79,7 @@ export async function selectKosztorysTreeData(
       (
         SELECT coalesce(json_agg(st ORDER BY st.ordinal, st.id), '[]'::json)
         FROM (
-          SELECT id, ordinal, label, plane
+          SELECT id, ordinal, label, plane, worker_id
           FROM kosztorys_stages WHERE investment_id = ${investmentId}
         ) st
       ) AS stages,
@@ -154,6 +154,7 @@ const mapStage = (row: RowT): KosztorysStageT => ({
   ordinal: num(row.ordinal),
   label: str(row.label),
   plane: str(row.plane) as ToolPlaneT | null,
+  workerId: numOrNull(row.worker_id),
 })
 
 const mapProgress = (row: RowT): StageProgressT => ({

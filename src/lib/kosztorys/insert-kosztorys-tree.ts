@@ -4,7 +4,13 @@ import type { DbExecutorT } from '@/lib/db/get-db'
 import type { SnapshotPayloadT } from './snapshot-format'
 import { insertItems, insertSections, remapNewIds } from './insert-rows'
 
-export const STAGE_INSERT_COLUMNS = ['investment_id', 'ordinal', 'label', 'plane'] as const
+export const STAGE_INSERT_COLUMNS = [
+  'investment_id',
+  'ordinal',
+  'label',
+  'plane',
+  'worker_id',
+] as const
 export const PROGRESS_INSERT_COLUMNS = ['item_id', 'stage_id', 'qty_done'] as const
 
 // Bulk-insert a serialized kosztorys tree onto an investment, on a caller-owned transaction handle.
@@ -43,7 +49,8 @@ export async function insertKosztorysTree(
   const stageIdMap = new Map<number, number>()
   if (stages.length > 0) {
     const rows = stages.map(
-      (s) => sql`(${investmentId}, ${s.ordinal}, ${s.label ?? null}, ${s.plane ?? null})`,
+      (s) =>
+        sql`(${investmentId}, ${s.ordinal}, ${s.label ?? null}, ${s.plane ?? null}, ${s.workerId ?? null})`,
     )
     const res = await db.execute(sql`
       INSERT INTO kosztorys_stages (${sql.raw(STAGE_INSERT_COLUMNS.join(', '))})

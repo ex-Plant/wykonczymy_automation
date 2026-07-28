@@ -63,6 +63,7 @@ import * as migration_20260726_2_add_color_to_kosztorys_sections from './2026072
 import * as migration_20260726_3_add_settlement_mode_to_investments from './20260726_3_add_settlement_mode_to_investments'
 import * as migration_20260726_4_add_materials_net_rate_to_investments from './20260726_4_add_materials_net_rate_to_investments'
 import * as migration_20260728_0_drop_kosztorys_cost_variant from './20260728_0_drop_kosztorys_cost_variant'
+import * as migration_20260728_1_add_worker_to_kosztorys_stages from './20260728_1_add_worker_to_kosztorys_stages'
 
 export const migrations = [
   {
@@ -389,5 +390,10 @@ export const migrations = [
     up: migration_20260728_0_drop_kosztorys_cost_variant.up,
     down: migration_20260728_0_drop_kosztorys_cost_variant.down,
     name: '20260728_0_drop_kosztorys_cost_variant',
+  },
+  {
+    up: migration_20260728_1_add_worker_to_kosztorys_stages.up,
+    down: migration_20260728_1_add_worker_to_kosztorys_stages.down,
+    name: '20260728_1_add_worker_to_kosztorys_stages',
   },
 ]

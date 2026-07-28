@@ -6,6 +6,7 @@ import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
 import type { SortDirT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { WorkerRefT } from '@/types/reference-data'
 
 export type V2SortStateT = { field: string; dir: SortDirT } | null
 
@@ -17,6 +18,11 @@ export type BuildV2ColumnsOptsT = {
   onRemoveStage?: (stageId: number) => void
   onRenameStage?: (stageId: number, label: string) => void
   onSetStagePlane?: (stageId: number, plane: ToolPlaneT) => void
+  // Worker↔etap assignment (EX-613): the roster the header picker offers, the write, and the etap's
+  // executed value — the last one only so the reassignment confirm can quote the amount.
+  workers?: WorkerRefT[]
+  onSetStageWorker?: (stageId: number, workerId: number | null) => void
+  executedValueByStage?: Map<number, number>
   sort?: V2SortStateT
   onSetSort?: (field: string, dir: SortDirT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by

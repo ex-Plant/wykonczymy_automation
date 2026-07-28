@@ -125,6 +125,10 @@ export type SubcontractorDueByPlaneT = {
   ownTools: number
   combined: number
   hasUnconfirmedPlane: boolean
+  // Per-etap executed value at that etap's own plane — the `planeTotal` the loop already holds.
+  // Emitted so the header's reassignment confirm quotes the same figure the panel does instead of
+  // recomputing it inline. A plane-less etap has no entry: it contributes to no bill.
+  byStage: Map<number, number>
 }
 
 /**
@@ -150,6 +154,7 @@ export function subcontractorDueByPlane(
   let wTools = 0
   let ownTools = 0
   let hasUnconfirmedPlane = false
+  const byStage = new Map<number, number>()
   for (const st of stages) {
     const plane = st.plane
     const key = stageKey(st.id)
@@ -167,8 +172,9 @@ export function subcontractorDueByPlane(
     }
     if (plane === 'w_tools') wTools += planeTotal
     else ownTools += planeTotal
+    byStage.set(st.id, planeTotal)
   }
-  return { wTools, ownTools, combined: wTools + ownTools, hasUnconfirmedPlane }
+  return { wTools, ownTools, combined: wTools + ownTools, hasUnconfirmedPlane, byStage }
 }
 
 /**

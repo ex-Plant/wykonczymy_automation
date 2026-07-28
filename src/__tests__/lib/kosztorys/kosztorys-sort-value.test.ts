@@ -55,7 +55,7 @@ const tree: KosztorysTreeT = makeTree({
       ],
     },
   ],
-  stages: [{ id: 100, ordinal: 1, label: null, plane: null }],
+  stages: [{ id: 100, ordinal: 1, label: null, plane: null, workerId: null }],
   progress: [
     { itemId: 1, stageId: 100, qtyDone: 1 },
     { itemId: 2, stageId: 100, qtyDone: 8 },

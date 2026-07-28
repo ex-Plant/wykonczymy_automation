@@ -11,8 +11,8 @@ import type { KosztorysStageT } from '@/lib/kosztorys/types'
 // reads — a constant can be right while the selection still drops half of it.
 
 const STAGES: KosztorysStageT[] = [
-  { id: 7, ordinal: 1, label: 'Etap 1', plane: null },
-  { id: 9, ordinal: 2, label: 'Etap 2', plane: null },
+  { id: 7, ordinal: 1, label: 'Etap 1', plane: null, workerId: null },
+  { id: 9, ordinal: 2, label: 'Etap 2', plane: null, workerId: null },
 ]
 
 function previewIds(extra: Partial<BuildV2ColumnsOptsT> = {}): string[] {

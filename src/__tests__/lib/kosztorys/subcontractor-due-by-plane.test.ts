@@ -49,16 +49,16 @@ const makePlaneTree = (
   })
 
 const allWTools: KosztorysStageT[] = [
-  { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-  { id: 101, ordinal: 2, label: null, plane: 'w_tools' },
+  { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+  { id: 101, ordinal: 2, label: null, plane: 'w_tools', workerId: null },
 ]
 const mixed: KosztorysStageT[] = [
-  { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-  { id: 101, ordinal: 2, label: null, plane: 'own_tools' },
+  { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+  { id: 101, ordinal: 2, label: null, plane: 'own_tools', workerId: null },
 ]
 const allNull: KosztorysStageT[] = [
-  { id: 100, ordinal: 1, label: null, plane: null },
-  { id: 101, ordinal: 2, label: null, plane: null },
+  { id: 100, ordinal: 1, label: null, plane: null, workerId: null },
+  { id: 101, ordinal: 2, label: null, plane: null, workerId: null },
 ]
 
 describe('subcontractorDueByPlane', () => {
@@ -98,8 +98,8 @@ describe('subcontractorDueByPlane', () => {
 
   it('flags unconfirmed when any single stage is null', () => {
     const tree = makePlaneTree([
-      { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-      { id: 101, ordinal: 2, label: null, plane: null },
+      { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+      { id: 101, ordinal: 2, label: null, plane: null, workerId: null },
     ])
     const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
     expect(due.hasUnconfirmedPlane).toBe(true)
@@ -178,8 +178,8 @@ describe('pomiar liczony po planie etapu', () => {
   // is the only thing that says so. Pinned so nobody "fixes" the shortfall by defaulting a plane.
   it('nieprzypisany etap wypada z obu rachunków — suma jest krótsza, flaga podniesiona', () => {
     const tree = makePlaneTree([
-      { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-      { id: 101, ordinal: 2, label: null, plane: null },
+      { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+      { id: 101, ordinal: 2, label: null, plane: null, workerId: null },
     ])
     const rows = treeToRows(tree)
     const due = subcontractorDueByPlane(rows, tree.stages)

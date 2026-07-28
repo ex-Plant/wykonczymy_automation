@@ -41,8 +41,8 @@ const tree: KosztorysTreeT = makeTree({
     },
   ],
   stages: [
-    { id: 100, ordinal: 1, label: null, plane: null },
-    { id: 101, ordinal: 2, label: null, plane: null },
+    { id: 100, ordinal: 1, label: null, plane: null, workerId: null },
+    { id: 101, ordinal: 2, label: null, plane: null, workerId: null },
   ],
   progress: [{ itemId: 1, stageId: 100, qtyDone: 2 }],
   vatRate: 0.08,
@@ -185,7 +185,7 @@ describe('rowTotalQtyDone', () => {
   // A stage added after the row was built carries no key on it — without ?? 0 the sum would be NaN.
   it('counts a stage missing its key on the row as zero', () => {
     const [row] = treeToRows(tree)
-    const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null, plane: null }]
+    const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null, plane: null, workerId: null }]
     expect(rowTotalQtyDone(row, withGhost, 'client')).toBe(2)
   })
 })
@@ -197,8 +197,8 @@ describe('wartość wiersza idzie za etapami', () => {
   // the plane filter must not also be moving quantities underneath them. Plane scoping has its own
   // fixture in subcontractor-due-by-plane.test.ts.
   const stages: KosztorysStageT[] = [
-    { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-    { id: 101, ordinal: 2, label: null, plane: 'w_tools' },
+    { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+    { id: 101, ordinal: 2, label: null, plane: 'w_tools', workerId: null },
   ]
   const row = (over: Partial<KosztorysV2RowT>) =>
     ({
@@ -483,7 +483,7 @@ describe('wartość wiersza idzie za etapami', () => {
 })
 
 describe('planItemRemoval', () => {
-  const stages = [{ id: 100, ordinal: 1, label: null, plane: null }]
+  const stages = [{ id: 100, ordinal: 1, label: null, plane: null, workerId: null }]
   const row = (id: number, sectionId: number, over: Partial<KosztorysV2RowT> = {}) =>
     ({ id, sectionId, [stageKey(100)]: 0, ...over }) as unknown as KosztorysV2RowT
 

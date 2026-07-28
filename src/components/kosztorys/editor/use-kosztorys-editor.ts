@@ -94,6 +94,7 @@ import type {
   KosztorysV2RowT,
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
+import type { WorkerRefT } from '@/types/reference-data'
 
 type ArgsT = {
   investmentId: number
@@ -104,6 +105,9 @@ type ArgsT = {
   // two must not share the word (owner ruling 2026-07-28).
   preview?: boolean
   undoRedo: UndoRedoApiT
+  // Roster for the etap header's worker picker. Absent on the client share path, which never renders
+  // a menu at all.
+  workers?: WorkerRefT[]
 }
 
 // A reorder command records the two rows' ids and pre-swap orders. FieldChangeT/StageChangeT (the
@@ -121,7 +125,13 @@ const TOTALS_REFRESH_DEBOUNCE_MS = 700
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
 // inside a setRows updater — that would move the Router during render.
-export function useKosztorysEditor({ investmentId, tree, preview = false, undoRedo }: ArgsT) {
+export function useKosztorysEditor({
+  investmentId,
+  tree,
+  preview = false,
+  undoRedo,
+  workers,
+}: ArgsT) {
   const router = useRouter()
   const { save, runNow } = useDebouncedSave(500)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
@@ -305,12 +315,23 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
   // Wired only in the interactive editor render, dropped in the read-only client view. The gate is
   // the render mode, NOT a role — OWNER/MANAGER/ADMIN all edit; the client (no login) does not.
   const editorOnly = <T>(handler: T): T | undefined => (preview ? undefined : handler)
+
+  // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
+  // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
+  // no `view` dependency (the settlement is the same in both subcontractor views, honest on mixed).
+  // Computed above the columns because the stage header's reassignment confirm quotes `byStage`,
+  // so the panel and the dialog can never cite different amounts for the same etap.
+  const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
+
   const columnOpts = {
     view,
     stages,
     onRemoveStage: editorOnly(handleRemoveStage),
     onRenameStage: editorOnly(handleRenameStage),
     onSetStagePlane: editorOnly(handleSetStagePlane),
+    onSetStageWorker: editorOnly(handleSetStageWorker),
+    workers,
+    executedValueByStage: subcontractorDue.byStage,
     sort,
     onSetSort: editorOnly(setSortField),
     isHidden,
@@ -433,11 +454,6 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
   // (computeDoZaplatyRM). This is robocizna alone, after rabat. Both total surfaces (the Sekcje Suma
   // block and the totals bar) read this one prop, so they can never disagree.
   const laborCostsNetFromKosztorys = doneNet - globalRabatNet
-
-  // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
-  // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
-  // no `view` dependency (the settlement is the same in both subcontractor views, honest on mixed).
-  const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
   // revert-on-error: roll an optimistic field edit back to its pre-save value
   // (rows + diff snapshot) when the server rejects it. The "current === attempted" guard lives
@@ -790,7 +806,7 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
     const res = await addStageAction(investmentId, plane)
     if (!res.success) return
     const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null, plane }])
+    setStages((s) => [...s, { id, ordinal, label: null, plane, workerId: null }])
     patchRows(
       () => true,
       (r) => ({ ...r, [stageKey(id)]: 0 }),
@@ -860,6 +876,26 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
         setStages((s) =>
           s.map((st) =>
             st.id === stageId && st.plane === plane ? { ...st, plane: prevPlane } : st,
+          ),
+        ),
+    )
+  }
+
+  // Optimistic worker pick, mirroring handleSetStagePlane. Diverges in one place: `null` is a legal
+  // target („Bez przypisania"), so the patch is nullable and unassigning is a normal edit, not an
+  // impossible one. No undo push — matching plane, and reassigning back is the exact inverse.
+  function handleSetStageWorker(stageId: number, workerId: number | null) {
+    const current = stagesRef.current.find((st) => st.id === stageId)
+    if (current && current.workerId === workerId) return
+    const prevWorkerId = current?.workerId ?? null
+    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, workerId } : st)))
+    save(
+      `stage-worker:${stageId}`,
+      () => updateStageAction(stageId, { workerId }),
+      () =>
+        setStages((s) =>
+          s.map((st) =>
+            st.id === stageId && st.workerId === workerId ? { ...st, workerId: prevWorkerId } : st,
           ),
         ),
     )

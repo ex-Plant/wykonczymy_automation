@@ -21,7 +21,9 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
-const { removeStageAction, setStageProgressAction } = await import('@/lib/actions/kosztorys')
+const { removeStageAction, setStageProgressAction, updateStageAction } = await import(
+  '@/lib/actions/kosztorys'
+)
 
 // Gated like the sibling guard spec: skips with no DB env (portable), FAILS if env is set but the
 // DB is unreachable. Run against the local DB with `--env-file=.env`.
@@ -185,6 +187,42 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
 
       expect(res.success).toBe(true)
       expect(await stageExists(stageId)).toBe(false)
+    })
+  })
+
+  describe('updateStageAction — worker assignment (EX-613)', () => {
+    // The patch key is `workerId`, the collection field is the `worker` relationship — the action
+    // translates between them. Assert the COLUMN, not the action's result: a silently dropped key
+    // still returns success.
+    async function workerIdOf(stageId: number): Promise<number | null> {
+      const res = await db.execute(
+        sql`SELECT worker_id FROM kosztorys_stages WHERE id = ${stageId}`,
+      )
+      const raw = (res.rows[0] as { worker_id: number | null }).worker_id
+      return raw == null ? null : Number(raw)
+    }
+
+    it('persists the assignment and clears it back to null', async () => {
+      const stageId = await createStage()
+      expect(await workerIdOf(stageId)).toBeNull()
+
+      const assigned = await updateStageAction(stageId, { workerId: authState.userId })
+      expect(assigned.success).toBe(true)
+      expect(await workerIdOf(stageId)).toBe(authState.userId)
+
+      const cleared = await updateStageAction(stageId, { workerId: null })
+      expect(cleared.success).toBe(true)
+      expect(await workerIdOf(stageId)).toBeNull()
+    })
+
+    it('leaves the assignment alone when the patch omits workerId', async () => {
+      const stageId = await createStage()
+      await updateStageAction(stageId, { workerId: authState.userId })
+
+      const res = await updateStageAction(stageId, { label: 'przemianowany' })
+
+      expect(res.success).toBe(true)
+      expect(await workerIdOf(stageId)).toBe(authState.userId)
     })
   })
 

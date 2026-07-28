@@ -232,12 +232,23 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       context: { skipRevalidation: true },
     })
 
+    // A real user id, not a hardcoded 1 — worker_id FKs users.id and a fresh prod-dump test DB has
+    // no guaranteed user 1.
+    const users = await payload.find({ collection: 'users', limit: 1, depth: 0, sort: 'id' })
+    const workerId = Number(users.docs[0]!.id)
+
     const stage1 = await payload.create({
       collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 1, label: 'Etap 1', plane: 'w_tools' },
+      data: {
+        investment: investmentId,
+        ordinal: 1,
+        label: 'Etap 1',
+        plane: 'w_tools',
+        worker: workerId,
+      },
       context: { skipRevalidation: true },
     })
-    // label null AND plane null — the all-nullable extreme on the stages row.
+    // label null AND plane null AND worker null — the all-nullable extreme on the stages row.
     const stage2 = await payload.create({
       collection: 'kosztorys-stages',
       data: { investment: investmentId, ordinal: 2, label: null },
@@ -294,5 +305,26 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
     expect(ids(after)).not.toEqual(ids(before))
     // ...but content + order is identical.
     expect(canonical(after)).toEqual(canonical(before))
+  })
+
+  // Snapshots taken before EX-613 carry stages with no `workerId` key at all. Restoring one must
+  // land `null` rather than throw or write garbage — the reason the column needed no schema-version
+  // bump. Runs last: it leaves the tree without assignments, and the identity test above is the one
+  // that depends on the fixture's.
+  it('restores a pre-EX-613 snapshot (stages with no workerId) as unassigned', async () => {
+    const current = await serializeKosztorys(investmentId)
+    const legacy = {
+      ...current,
+      stages: current.stages.map(({ workerId: _dropped, ...rest }) => rest),
+    } as SnapshotPayloadT
+
+    await withPayloadTransaction(
+      payload,
+      (req) => restoreKosztorys(payload, req, investmentId, legacy),
+      { skipRevalidation: true },
+    )
+
+    const after = await serializeKosztorys(investmentId)
+    expect(after.stages.map((stage) => stage.workerId)).toEqual(after.stages.map(() => null))
   })
 })
