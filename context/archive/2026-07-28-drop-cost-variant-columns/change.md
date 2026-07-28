@@ -1,10 +1,10 @@
 ---
 change_id: drop-cost-variant-columns
 title: Drop the dead costVariant / defaultCostVariant columns
-status: implemented
+status: archived
 created: 2026-07-28
 updated: 2026-07-28
-archived_at: null
+archived_at: 2026-07-28T19:11:40Z
 branch: staging
 worktree: null
 ---
