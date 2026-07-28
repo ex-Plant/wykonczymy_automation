@@ -96,6 +96,12 @@ export function TransferFilters({
   const hasDateFilter = !!searchParams.get('from') || !!searchParams.get('to')
   const hasAnyFilter = hasEntityFilters || hasDateFilter
 
+  // In these two views the list shows cancelled transfers but the sum's query hardcodes
+  // `cancelled IS NOT TRUE`, so the tile is deliberately narrower than the rows below it (EX-574).
+  const listsCancelled =
+    searchParams.get('showCancelled') === '1' ||
+    searchParams.get('cancelledTransactionAudit') === '1'
+
   function clearEntityFilters() {
     updateMultipleParams(Object.fromEntries(ENTITY_FILTER_KEYS.map((k) => [k, ''])))
   }
@@ -222,6 +228,11 @@ export function TransferFilters({
           label="Suma wybranych transakcji"
           value={formatPLN(totalFilteredAmount)}
           className="border-chart-blue"
+          tooltip={
+            listsCancelled
+              ? 'Suma nie obejmuje transakcji anulowanych, mimo że lista poniżej je pokazuje.'
+              : undefined
+          }
         />
       )}
     </div>
