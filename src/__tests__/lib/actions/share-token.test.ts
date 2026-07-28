@@ -50,7 +50,6 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
   })
 
   afterAll(async () => {
-    authState.role = 'OWNER'
     if (investmentId) await deleteTestInvestment(payload, investmentId)
   })
 

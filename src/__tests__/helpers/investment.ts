@@ -1,10 +1,14 @@
 import type { Payload } from 'payload'
 import type { Investment } from '@/payload-types'
+import { SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
 
 // Every DB spec needs an investment to hang its rows off, and none of them is asserting anything
-// about the investment itself — so `status` / `settlementMode` are noise that each new required
-// column taxes across ~20 specs (vatRate, then settlementMode). Defaulting them here makes the next
-// column a one-line change (EX-592).
+// about the investment itself, so only `name` is spelled out — everything else comes from the
+// collection's own `defaultValue`s and a spec can't pin a stale copy of one (EX-592).
+// `status` / `settlementMode` are the exception — they can't be omitted: Payload's generated create
+// type models neither `defaultValue` nor the draft/non-draft split, so dropping them makes the
+// literal unassignable. `settlementMode` comes from the constant the collection itself defaults to,
+// never a second literal 'NET'.
 type InvestmentOverridesT = Partial<Omit<Investment, 'id' | 'name' | 'createdAt' | 'updatedAt'>>
 
 // `skipRevalidation` matters: the specs run outside a request scope, where Payload's revalidation
@@ -16,7 +20,7 @@ export async function createTestInvestment(
 ): Promise<number> {
   const created = await payload.create({
     collection: 'investments',
-    data: { name, status: 'active', settlementMode: 'NET', ...overrides },
+    data: { name, status: 'active', settlementMode: SETTLEMENT_MODE_DEFAULT, ...overrides },
     overrideAccess: true,
     context: { skipRevalidation: true },
   })

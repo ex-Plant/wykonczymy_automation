@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
-import { SETTLEMENT_MODES } from '@/lib/kosztorys/settlement-mode'
 import { createTestInvestment } from '@/__tests__/helpers/investment'
 
 // The display_order mechanics sections and items now share (EX-578), driven against the REAL DB and
@@ -75,7 +74,6 @@ describe.skipIf(!ENV_READY)('kosztorys display_order mechanics (DB)', () => {
     const created = await createTestInvestment(
       payload,
       `${FIXTURE_PREFIX}${createdInvestments.length}-${authState.userId}`,
-      { settlementMode: SETTLEMENT_MODES[0] },
     )
     createdInvestments.push(created)
     return created
