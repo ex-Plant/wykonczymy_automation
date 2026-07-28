@@ -17,7 +17,12 @@ const ORDER_SCOPES = {
 
 export type OrderScopeT = keyof typeof ORDER_SCOPES
 
-const displayOrderRefSchema = z.object({ id: z.number(), displayOrder: z.number() })
+const displayOrderRefSchema = z.object({
+  id: z.number().int(),
+  // `.int()` is load-bearing, not cosmetic: a fractional value would round on the way into the
+  // integer column and then miss its own natural key when restore joins RETURNING back to input.
+  displayOrder: z.number().int().min(0),
+})
 export const swapDisplayOrderSchema = z.object({
   first: displayOrderRefSchema,
   second: displayOrderRefSchema,

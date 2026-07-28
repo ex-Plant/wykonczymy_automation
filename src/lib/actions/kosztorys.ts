@@ -54,7 +54,7 @@ const itemPatchSchema = z
 const sectionPatchSchema = z
   .object({
     name: z.string(),
-    displayOrder: z.coerce.number(),
+    displayOrder: z.coerce.number().int().min(0),
     // null clears the pin (back to the pie's positional palette).
     color: z.custom<SectionColorKeyT>(isSectionColorKey).nullable(),
   })
