@@ -9,6 +9,7 @@ import { DynamicDataSheetGrid } from 'react-datasheet-grid'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
@@ -203,6 +204,17 @@ export function KosztorysEditorBody({
               }
             />
           </div>
+          {/* Emptiness is judged on `subtotals` (full-dataset) rather than the rendered rows:
+              `gridRows` always carries the spacer + „Razem" rows, and a no-hit search empties
+              `viewRows` over a kosztorys that is not in fact empty. */}
+          {subtotals.length === 0 && (
+            <EmptyState
+              className="pointer-events-none absolute inset-0"
+              title="Kosztorys jest pusty"
+              // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
+              description={clientView ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
+            />
+          )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel
