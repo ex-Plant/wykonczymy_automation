@@ -21,11 +21,11 @@ export async function insertSections(
   if (rows.length === 0) return []
   const values = rows.map(
     ({ displayOrder, section: s }) =>
-      sql`(${investmentId}, ${s.name}, ${displayOrder}, ${s.defaultCostVariant}, ${s.color ?? null})`,
+      sql`(${investmentId}, ${s.name}, ${displayOrder}, ${s.color ?? null})`,
   )
   const res = await db.execute(sql`
     INSERT INTO kosztorys_sections
-      (investment_id, name, display_order, default_cost_variant, color)
+      (investment_id, name, display_order, color)
     VALUES ${sql.join(values, sql.raw(', '))}
     RETURNING id
   `)
@@ -44,13 +44,13 @@ export async function insertItems(
   if (rows.length === 0) return []
   const values = rows.map(
     ({ sectionId, item: it }) =>
-      sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideType ?? null}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideType ?? null}, ${it.ownToolsOverrideValue}, ${it.costVariant ?? null}, ${it.hiddenInExport}, ${it.note ?? null})`,
+      sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideType ?? null}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideType ?? null}, ${it.ownToolsOverrideValue}, ${it.hiddenInExport}, ${it.note ?? null})`,
   )
   const res = await db.execute(sql`
     INSERT INTO kosztorys_items
       (investment_id, section_id, display_order, description, unit, planned_qty,
        discount_type, discount_value, client_price, w_tools_override_type, w_tools_override_value,
-       own_tools_override_type, own_tools_override_value, cost_variant, hidden_in_export, note)
+       own_tools_override_type, own_tools_override_value, hidden_in_export, note)
     VALUES ${sql.join(values, sql.raw(', '))}
     RETURNING id
   `)

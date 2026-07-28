@@ -552,8 +552,6 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
       sectionColor: sample?.sectionColor ?? null,
       vatRate: tree.vatRate,
       globalDiscountActive,
-      sectionDefaultCostVariant:
-        sample?.sectionDefaultCostVariant ?? NEW_SECTION_DEFAULTS.defaultCostVariant,
       globalWToolsCoeff: tree.globalCoeffs.wTools,
       globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
       stages,
@@ -588,7 +586,6 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
       sectionColor: sample.sectionColor,
       vatRate: tree.vatRate,
       globalDiscountActive,
-      sectionDefaultCostVariant: sample.sectionDefaultCostVariant,
       globalWToolsCoeff: tree.globalCoeffs.wTools,
       globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
       stages,
@@ -723,7 +720,6 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
       sectionColor: null,
       vatRate: tree.vatRate,
       globalDiscountActive,
-      sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
       globalWToolsCoeff: tree.globalCoeffs.wTools,
       globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
       stages,
@@ -893,7 +889,7 @@ export function useKosztorysEditor({ investmentId, tree, preview = false, undoRe
 
   // A section field is denormalized on every row of the section, so setting one patches them all
   // (rows + prevById) and persists once. The two fields differ only in which row key mirrors which
-  // column, so they share one pathway rather than growing a third copy for defaultCostVariant.
+  // column, so they share one pathway.
   const SECTION_ROW_FIELDS = { sectionName: 'name', sectionColor: 'color' } as const
   type SectionRowFieldT = keyof typeof SECTION_ROW_FIELDS
 

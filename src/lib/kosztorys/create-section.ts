@@ -29,7 +29,6 @@ export async function createSectionWithFirstItem(
       investment: investmentId,
       name,
       displayOrder,
-      defaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
     },
   })
   const item = await createBlankItem(payload, {

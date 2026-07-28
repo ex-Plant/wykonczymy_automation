@@ -27,7 +27,6 @@ export type BlankRowInputT = {
   sectionColor: SectionColorKeyT | null
   vatRate: number
   globalDiscountActive: boolean
-  sectionDefaultCostVariant: ToolPlaneT
   globalWToolsCoeff: number
   globalOwnToolsCoeff: number
   stages: KosztorysStageT[]
@@ -52,14 +51,12 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    costVariant: null,
     hiddenInExport: false,
     note: null,
     sectionName: input.sectionName,
     sectionColor: input.sectionColor,
     vatRate: input.vatRate,
     globalDiscountActive: input.globalDiscountActive,
-    sectionDefaultCostVariant: input.sectionDefaultCostVariant,
     globalWToolsCoeff: input.globalWToolsCoeff,
     globalOwnToolsCoeff: input.globalOwnToolsCoeff,
     ...stageFields,

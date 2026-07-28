@@ -41,8 +41,7 @@ export const DEFAULT_ITEM_DESCRIPTION = 'Nowa praca'
 // the server-side create; the optimistic row is built from them client-side.
 export const NEW_SECTION_DEFAULTS = {
   name: 'Nowa sekcja',
-  defaultCostVariant: 'w_tools',
-} as const satisfies { name: string; defaultCostVariant: ToolPlaneT }
+} as const satisfies { name: string }
 
 // The grid's identity column. Every synthetic row (the „Razem" band and both section bands) puts its
 // caption here instead of a figure, so the three cells must agree on which column that is.

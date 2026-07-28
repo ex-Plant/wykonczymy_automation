@@ -53,7 +53,6 @@ export async function appendPresetSections(
     id: newSectionIds[i],
     name: s.name,
     displayOrder: base + i,
-    defaultCostVariant: s.defaultCostVariant,
     // A preset/snapshot written before the colour column has no `color` key at all.
     color: s.color ?? null,
     items: items.map((it) => ({ ...it, id: newItemIds[cursor++], sectionId: newSectionIds[i] })),

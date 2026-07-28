@@ -46,7 +46,6 @@ const itemPatchSchema = z
     wToolsOverrideValue: z.coerce.number(),
     ownToolsOverrideType: overrideTypeSchema.nullable(),
     ownToolsOverrideValue: z.coerce.number(),
-    costVariant: stagePlaneSchema.nullable(),
     hiddenInExport: z.boolean(),
     note: z.string().nullable(),
   })
@@ -55,7 +54,6 @@ const itemPatchSchema = z
 const sectionPatchSchema = z
   .object({
     name: z.string(),
-    defaultCostVariant: stagePlaneSchema,
     displayOrder: z.coerce.number(),
     // null clears the pin (back to the pie's positional palette).
     color: z.custom<SectionColorKeyT>(isSectionColorKey).nullable(),
