@@ -609,3 +609,25 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 
 - [ ] Creating an investment **without** a preset succeeds and opens an empty kosztorys showing the hint.
 - [ ] Creating an investment **with** a preset still seeds the full rozpiska and shows no warning toast.
+
+## EX-618 — scalable-preset-section-picker
+
+### Phase 1: Extract the derivation, fold the search
+
+- [ ] Typing `lazienka` into an existing table's search box (e.g. investments) matches a „Łazienka" row.
+
+### Phase 2: Two-pane picker (desktop)
+
+- [ ] Both panes render side by side; clicking a szablon on the left fills the right pane with its sekcje.
+- [ ] Ticking sekcje in szablon A, switching to szablon B, ticking more, then „Dodaj (N)" appends all of them — the counter reflects the cross-szablon total throughout.
+- [ ] „Zaznacz wszystkie" ticks the whole active szablon; clicking it again unticks it; the left row's `N/N` figure tracks it.
+- [ ] Filtering the left pane to hide a szablon that has ticks does not change „Dodaj (N)", and clearing the filter shows those ticks still set.
+- [ ] Searching a name with Polish characters matches from an ASCII query.
+- [ ] Closing and reopening resets both the selection and the search box.
+
+### Phase 3: Narrow-screen drill-in
+
+- [ ] At 390px width the dialog shows only the szablon list; tapping one shows only its sekcje; back returns to the list with the szablon still highlighted.
+- [ ] Ticks made before going back are still set after returning and drilling into another szablon; „Dodaj (N)" totals both.
+- [ ] Resizing across the `md` breakpoint mid-selection does not lose ticks or strand the user on a hidden pane.
+- [ ] The dialog at 390px does not scroll horizontally, and the footer stays reachable.

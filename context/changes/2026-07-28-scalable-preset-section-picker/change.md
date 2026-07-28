@@ -1,7 +1,7 @@
 ---
 change_id: scalable-preset-section-picker
 title: „Dodaj sekcję z szablonu" scales past a dozen szablony — two panes, not one long list
-status: implementing
+status: implemented
 created: 2026-07-28
 updated: 2026-07-28
 archived_at: null

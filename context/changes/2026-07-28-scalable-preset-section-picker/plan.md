@@ -306,6 +306,6 @@ is felt — not part of this change.
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `pnpm typecheck`
-- [x] 3.2 Linting passes: `pnpm lint`
-- [x] 3.3 Full unit suite passes: `pnpm test`
+- [x] 3.1 Type checking passes: `pnpm typecheck` — fd2881b8
+- [x] 3.2 Linting passes: `pnpm lint` — fd2881b8
+- [x] 3.3 Full unit suite passes: `pnpm test` — fd2881b8
