@@ -8,6 +8,7 @@ import { applyPreset } from '@/lib/kosztorys/apply-preset'
 import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import { getPreset, insertPreset, upsertPresetByName } from '@/lib/db/presets'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // Presets reuse the snapshot serialize/apply core, so we exercise it against the REAL DB and assert
 // PERSISTED state (re-serialize after apply), the same discipline as serialize-restore-roundtrip.
@@ -81,18 +82,10 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
 
   // A throwaway investment with the given settings; tracked for cascade cleanup in afterAll.
   async function createInvestment(name: string, vat: number, wCoeff: number, oCoeff: number) {
-    const inv = await payload.create({
-      collection: 'investments',
-      data: {
-        name,
-        status: 'active',
-        settlementMode: 'NET',
-        wToolsCoeff: wCoeff,
-        ownToolsCoeff: oCoeff,
-      },
-      context: { skipRevalidation: true },
+    const id = await createTestInvestment(payload, name, {
+      wToolsCoeff: wCoeff,
+      ownToolsCoeff: oCoeff,
     })
-    const id = Number(inv.id)
     await db.execute(sql`UPDATE investments SET vat_rate = ${vat} WHERE id = ${id}`)
     investmentIds.push(id)
     return id
@@ -214,7 +207,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
 
   afterAll(async () => {
     for (const id of investmentIds) {
-      await payload.delete({ collection: 'investments', id, context: { skipRevalidation: true } })
+      await deleteTestInvestment(payload, id)
     }
     await db.execute(sql`DELETE FROM kosztorys_presets WHERE name LIKE ${PRESET_PREFIX + '%'}`)
   })

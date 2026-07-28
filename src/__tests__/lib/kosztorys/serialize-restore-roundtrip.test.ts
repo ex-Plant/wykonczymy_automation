@@ -5,6 +5,7 @@ import { getDb } from '@/lib/db/get-db'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The serialize→restore pair is the dangerous wipe-and-reinsert core, so we exercise it against the
 // REAL DB and assert PERSISTED state: restore is only correct if a re-serialize of the live tree
@@ -78,18 +79,10 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
     db = await getDb(payload)
 
     // A throwaway investment so the whole-tree wipe never touches seeded data; deleted (cascade) after.
-    const investment = await payload.create({
-      collection: 'investments',
-      data: {
-        name: 'snapshot-roundtrip-test',
-        status: 'active',
-        settlementMode: 'NET',
-        wToolsCoeff: 0.7,
-        ownToolsCoeff: 0.5,
-      },
-      context: { skipRevalidation: true },
+    investmentId = await createTestInvestment(payload, 'snapshot-roundtrip-test', {
+      wToolsCoeff: 0.7,
+      ownToolsCoeff: 0.5,
     })
-    investmentId = Number(investment.id)
     await db.execute(sql`UPDATE investments SET vat_rate = 0.23 WHERE id = ${investmentId}`)
 
     // Build a small tree: 2 sections, items, 2 stages, sparse progress.
@@ -182,11 +175,7 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
 
   afterAll(async () => {
     if (investmentId) {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 

@@ -4,6 +4,7 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { sumRegisterBalance } from '@/lib/db/sum-transfers'
 import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // GUARD B2 — the kasa stays brutto. INVESTMENT_EXPENSE_NET is the one type whose billed
 // figure (`net_amount`) differs from the cash that left the register (`amount`), so the
@@ -52,12 +53,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
     })
     registerId = Number(register.id)
 
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'net-expense-investment', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'net-expense-investment')
 
     // Raw insert to bypass the balance-recalc hooks — the aggregate under test is the
     // query, not the cached `balance` column those hooks write.
@@ -79,12 +75,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
         id: registerId,
         context: { skipRevalidation: true },
       })
-    if (investmentId)
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
     if (ownerId)
       await payload.delete({
         collection: 'users',

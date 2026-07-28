@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The share token is the only credential guarding an unauthenticated page, so its lifecycle runs
 // against the REAL DB and asserts PERSISTED state (does a row with this token exist?) — a returned
@@ -45,16 +46,12 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
 
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'EX-532 share lifecycle spec', status: 'active', settlementMode: 'NET' },
-    })
-    investmentId = investment.id
+    investmentId = await createTestInvestment(payload, 'EX-532 share lifecycle spec')
   })
 
   afterAll(async () => {
     authState.role = 'OWNER'
-    if (investmentId) await payload.delete({ collection: 'investments', id: investmentId })
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
   })
 
   it('generates a token and persists exactly one share row', async () => {

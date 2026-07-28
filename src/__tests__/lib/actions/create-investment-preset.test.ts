@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // createInvestmentAction seeds the new investment's kosztorys from a preset best-effort. A seed
 // failure AFTER the investment row commits must stay NON-FATAL: the action returns success so
@@ -77,11 +78,7 @@ describe.skipIf(!ENV_READY)('createInvestmentAction — non-fatal preset seed (D
         overrideAccess: true,
       })
       for (const doc of found.docs) {
-        await payload.delete({
-          collection: 'investments',
-          id: doc.id,
-          context: { skipRevalidation: true },
-        })
+        await deleteTestInvestment(payload, Number(doc.id))
       }
     }
   })

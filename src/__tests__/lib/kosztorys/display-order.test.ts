@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { SETTLEMENT_MODES } from '@/lib/kosztorys/settlement-mode'
+import { createTestInvestment } from '@/__tests__/helpers/investment'
 
 // The display_order mechanics sections and items now share (EX-578), driven against the REAL DB and
 // asserting PERSISTED order, not an action's return value — a success result can hide a failed write.
@@ -71,18 +72,13 @@ describe.skipIf(!ENV_READY)('kosztorys display_order mechanics (DB)', () => {
   // A dedicated investment per test: the section-order assertions read the WHOLE investment's
   // sequence, so a fixture attached to a shared investment would see other specs' sections.
   async function freshInvestment(): Promise<number> {
-    const created = await payload.create({
-      collection: 'investments',
-      data: {
-        name: `${FIXTURE_PREFIX}${createdInvestments.length}-${authState.userId}`,
-        status: 'active',
-        settlementMode: SETTLEMENT_MODES[0],
-      },
-      overrideAccess: true,
-      context: { skipRevalidation: true },
-    })
-    createdInvestments.push(Number(created.id))
-    return Number(created.id)
+    const created = await createTestInvestment(
+      payload,
+      `${FIXTURE_PREFIX}${createdInvestments.length}-${authState.userId}`,
+      { settlementMode: SETTLEMENT_MODES[0] },
+    )
+    createdInvestments.push(created)
+    return created
   }
 
   afterEach(async () => {

@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { getDepositTransactionsForInvestment } from '@/lib/db/sum-transfers'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // Regression guard for the Podsumowanie „Wpłaty"/„Do zapłaty" base (code-review WARNING, 2026-07-24):
 // the client wpłaty figure sums THIS query, which must stay INVESTOR_DEPOSIT-only. COMPANY_FUNDING
@@ -39,12 +40,7 @@ describe.skipIf(!ENV_READY)('getDepositTransactionsForInvestment (DB)', () => {
     payload = await getPayload({ config })
     db = await getDb(payload)
 
-    const inv = await payload.create({
-      collection: 'investments',
-      data: { name: 'get-deposit-transactions-test', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(inv.id)
+    investmentId = await createTestInvestment(payload, 'get-deposit-transactions-test')
 
     // Two active INVESTOR_DEPOSITs (one plane-marked, one legacy-null) — the only rows the client
     // wpłaty base may include. Then the noise the query must reject: a cancelled INVESTOR_DEPOSIT,
@@ -59,11 +55,7 @@ describe.skipIf(!ENV_READY)('getDepositTransactionsForInvestment (DB)', () => {
   afterAll(async () => {
     if (investmentId) {
       await db.execute(sql`DELETE FROM transactions WHERE investment_id = ${investmentId}`)
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 

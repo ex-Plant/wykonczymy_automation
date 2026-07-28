@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { getClientKosztorysByToken } from '@/lib/queries/client-kosztorys'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The token lookup is the whole access control for the public route, so it is exercised against the
 // REAL DB rather than a mocked find — a `where` clause that silently matches everything would pass
@@ -26,11 +27,7 @@ describe.skipIf(!ENV_READY)('getClientKosztorysByToken (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
 
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'EX-532 share token spec', status: 'active', settlementMode: 'NET' },
-    })
-    investmentId = investment.id
+    investmentId = await createTestInvestment(payload, 'EX-532 share token spec')
     await payload.create({
       collection: 'kosztorys-shares',
       data: { investment: investmentId, token },
@@ -38,7 +35,7 @@ describe.skipIf(!ENV_READY)('getClientKosztorysByToken (DB)', () => {
   })
 
   afterAll(async () => {
-    if (investmentId) await payload.delete({ collection: 'investments', id: investmentId })
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
   })
 
   it('resolves a live token to that investment’s client view', async () => {

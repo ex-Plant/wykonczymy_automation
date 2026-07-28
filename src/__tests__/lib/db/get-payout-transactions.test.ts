@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { getPayoutTransactionsForInvestment } from '@/lib/db/sum-transfers'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The client DataTable re-sorts these rows lexically on the emitted `date` string, so that string MUST
 // be lexically == chronologically ordered or the „Wg daty" sort scrambles. The driver returns timestamptz
@@ -36,12 +37,7 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
     payload = await getPayload({ config })
     db = await getDb(payload)
 
-    const inv = await payload.create({
-      collection: 'investments',
-      data: { name: 'get-payout-transactions-test', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(inv.id)
+    investmentId = await createTestInvestment(payload, 'get-payout-transactions-test')
 
     for (const date of DATES) await insertPayout(date)
   })
@@ -49,11 +45,7 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
   afterAll(async () => {
     if (investmentId) {
       await db.execute(sql`DELETE FROM transactions WHERE investment_id = ${investmentId}`)
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 

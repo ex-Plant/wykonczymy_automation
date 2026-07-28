@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // restoreSnapshotAction wraps the dangerous wipe-and-reinsert in a transaction and takes a forced
 // pre-restore auto snapshot, so we run the REAL action against the REAL DB and assert PERSISTED
@@ -56,21 +57,12 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
     const firstUser = users.docs[0]
     if (!firstUser) throw new Error('no user in the DB to attribute the snapshot to')
     authState.userId = Number(firstUser.id)
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'restore-snapshot-test', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'restore-snapshot-test')
   })
 
   afterAll(async () => {
     if (investmentId) {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 
@@ -166,12 +158,7 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
     const snapshotIdA = Number(snapRow.rows[0].id)
 
     // A separate investment B — the editor's current context.
-    const investmentB = await payload.create({
-      collection: 'investments',
-      data: { name: 'restore-scope-other', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    const investmentIdB = Number(investmentB.id)
+    const investmentIdB = await createTestInvestment(payload, 'restore-scope-other')
     try {
       const namesABefore = await sectionNames()
       const autoABefore = await autoCount()
@@ -184,11 +171,7 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
       expect(await sectionNames()).toEqual(namesABefore)
       expect(await autoCount()).toBe(autoABefore)
     } finally {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentIdB,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentIdB)
     }
   })
 
