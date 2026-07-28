@@ -326,7 +326,7 @@ they are simply a kosztorys with one sekcja, which remains a valid state.
 
 #### Automated
 
-- [x] 3.1 Type checking passes (proves no orphaned import or caller): `pnpm typecheck`
-- [x] 3.2 Linting passes: `pnpm lint`
-- [x] 3.3 Unit tests pass: `pnpm test`
-- [x] 3.4 DB-backed integration specs pass: `pnpm test:integration`
+- [x] 3.1 Type checking passes (proves no orphaned import or caller): `pnpm typecheck` — 4e4ac624
+- [x] 3.2 Linting passes: `pnpm lint` — 4e4ac624
+- [x] 3.3 Unit tests pass: `pnpm test` — 4e4ac624
+- [x] 3.4 DB-backed integration specs pass: `pnpm test:integration` — 4e4ac624
