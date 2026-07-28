@@ -277,40 +277,6 @@ export async function addSectionAction(
   )
 }
 
-// Cold-start unblock for an empty kosztorys: the same named section + blank item every other create
-// path mints, at the only slot an empty kosztorys has.
-export async function seedBlankSectionAction(
-  investmentId: number,
-  name?: string,
-): Promise<ActionResultT<Record<string, never>>> {
-  return protectedAction(
-    'seedBlankSectionAction',
-    async ({ payload }) => {
-      // Idempotency guard: the client only opens the seeding dialog on an empty kosztorys, but a
-      // double-submit / stale tab could reach here after a section exists — seeding again would add
-      // a duplicate section at display_order 0. Bail as a no-op.
-      const existing = await payload.count({
-        collection: 'kosztorys-sections',
-        where: { investment: { equals: investmentId } },
-      })
-      if (existing.totalDocs > 0) return { success: true, data: {} }
-      await withPayloadTransaction(
-        payload,
-        (req) =>
-          createSectionWithFirstItem(payload, {
-            investmentId,
-            displayOrder: 0,
-            name: name?.trim() || undefined,
-            req,
-          }),
-        { skipRevalidation: true },
-      )
-      return { success: true, data: {} }
-    },
-    ['kosztorysSections', 'kosztorysItems'],
-  )
-}
-
 export async function removeSectionAction(sectionId: number) {
   return protectedAction(
     'removeSectionAction',

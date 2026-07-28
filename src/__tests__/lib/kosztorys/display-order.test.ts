@@ -191,10 +191,10 @@ describe.skipIf(!ENV_READY)('kosztorys display_order mechanics (DB)', () => {
     })
   })
 
-  // A section whose first item failed to create would survive as a 0-item section: it renders as 0
-  // rows AND hides EmptyKosztorysDialog (gated on sections.length === 0), while seedBlankSectionAction's
-  // idempotency guard then refuses to re-seed — the permanently wedged cold start EX-463 exists to
-  // prevent. So the pair must roll back together on every path that mints a section.
+  // A section whose first item failed to create would survive as a 0-item section, and a 0-item
+  // section emits zero rows — so it is invisible in the grid while still occupying a display_order
+  // slot, unreachable and undeletable. The pair must roll back together on every path that mints a
+  // section.
   describe('a section never survives a failed first item (DO4)', () => {
     it('rolls the section back when its first item fails', async () => {
       const investmentId = await freshInvestment()

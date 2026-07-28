@@ -318,15 +318,15 @@ they are simply a kosztorys with one sekcja, which remains a valid state.
 
 #### Automated
 
-- [x] 2.1 Type checking passes (proves no dangling import): `pnpm typecheck`
-- [x] 2.2 Linting passes: `pnpm lint`
-- [x] 2.3 Unit tests pass: `pnpm test`
+- [x] 2.1 Type checking passes (proves no dangling import): `pnpm typecheck` — a74f93a2
+- [x] 2.2 Linting passes: `pnpm lint` — a74f93a2
+- [x] 2.3 Unit tests pass: `pnpm test` — a74f93a2
 
 ### Phase 3: Delete the server scaffold
 
 #### Automated
 
-- [ ] 3.1 Type checking passes (proves no orphaned import or caller): `pnpm typecheck`
-- [ ] 3.2 Linting passes: `pnpm lint`
-- [ ] 3.3 Unit tests pass: `pnpm test`
-- [ ] 3.4 DB-backed integration specs pass: `pnpm test:integration`
+- [x] 3.1 Type checking passes (proves no orphaned import or caller): `pnpm typecheck`
+- [x] 3.2 Linting passes: `pnpm lint`
+- [x] 3.3 Unit tests pass: `pnpm test`
+- [x] 3.4 DB-backed integration specs pass: `pnpm test:integration`
