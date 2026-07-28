@@ -311,5 +311,5 @@ touches only code paths, not stored rows.
 
 #### Automated
 
-- [x] 4.1 Schema-drift guard passes against current schema
-- [x] 4.2 Guard demonstrably fails when a column is dropped from an insert list
+- [x] 4.1 Schema-drift guard passes against current schema — bd5d4297
+- [x] 4.2 Guard demonstrably fails when a column is dropped from an insert list — bd5d4297

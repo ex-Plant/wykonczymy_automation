@@ -1,7 +1,7 @@
 ---
 change_id: ex-430-harden-bulk-insert-restore
 title: Harden bulk-INSERT restore — ORDINALITY id-mapping + owed tests
-status: implementing
+status: implemented
 created: 2026-07-18
 updated: 2026-07-28
 archived_at: null
@@ -31,6 +31,13 @@ Source: S-06 kosztorys-snapshots review-gate ledger. Related: EX-432 (Done).
 unbounded via `getKosztorysTree`), so the save-but-fail-to-restore window reopens above the ceiling
 rather than being neutralized; tightest bound is `stage_progress` at ~21,845 rows. Chunking still
 deferred — headroom over real data holds either way.
+
+**2026-07-28 (implemented):** the RETURNING-order fix landed as the **natural-key remap** the plan
+body specifies, not the `unnest … WITH ORDINALITY` rewrite the title above names: each level joins
+`RETURNING` on a key unique within its batch (section `display_order`, item `(section_id,
+display_order)`, stage `ordinal`), with a loud throw if that key turns out non-unique. Same
+guarantee, no `unnest` casts across 15 mixed-type nullable columns. ORDINALITY stays the answer if
+the 65,535-parameter ceiling ever starts to matter — it binds one array per column.
 
 **2026-07-28 (EX-575):** the roundtrip fixture lost two axes on purpose — the cost-variant axis
 (columns dropped by `20260728_0`) and the section-coeff axis (dropped earlier by `20260724_1`).
