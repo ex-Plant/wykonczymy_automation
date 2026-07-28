@@ -12,42 +12,77 @@ import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 // caller-specific branching.
 //
 // Both return the new ids IN INPUT ORDER, which is what lets a caller zip them back to its inputs
-// positionally. That order is reconstructed here by joining RETURNING on each row's natural key — it is
-// NOT Postgres's row order. Returning rows in VALUES order holds for a plain INSERT today but is not
+// positionally. That order is reconstructed by joining RETURNING on each row's natural key rather than
+// by trusting Postgres's row order: VALUES-order RETURNING holds for a plain INSERT today but is not
 // SQL-guaranteed (partitioning, or a rewrite to `INSERT … SELECT`, may reorder), and the failure would
-// be silent: every id is a valid id, so children would simply reparent to the wrong rows with no error.
-// Joining on the key makes the contract ours to keep instead of Postgres's to honour.
+// be silent — every id is a valid id, so children would reparent to the wrong rows with no error.
+export const SECTION_INSERT_COLUMNS = ['investment_id', 'name', 'display_order', 'color'] as const
 
-// Natural keys, unique within one insert batch: a section by its display_order (unique per
-// investment), an item by (section_id, display_order) (display_order unique per section).
+export const ITEM_INSERT_COLUMNS = [
+  'investment_id',
+  'section_id',
+  'display_order',
+  'description',
+  'unit',
+  'planned_qty',
+  'discount_type',
+  'discount_value',
+  'client_price',
+  'w_tools_override_type',
+  'w_tools_override_value',
+  'own_tools_override_type',
+  'own_tools_override_value',
+  'hidden_in_export',
+  'note',
+] as const
+
+// Natural keys, unique within one insert batch ONLY BY CONVENTION: a section by its display_order, an
+// item by (section_id, display_order). Neither carries a UNIQUE constraint — a tie is a tolerated
+// state here (appendPresetSections knowingly races on a MAX select, and the read path orders by
+// `(display_order, id)` so a tie only makes relative order ambiguous). Only kosztorys_stages.ordinal
+// is constraint-backed.
 const itemKey = (sectionId: number, displayOrder: number) => `${sectionId}:${displayOrder}`
 
 /**
- * Index `RETURNING` rows by natural key. A collision collapses two rows into one map entry, which is
- * exactly the silent misparenting this join exists to prevent — so a short count throws instead.
+ * Map RETURNING ids back into input order via the natural key, degrading to positional order when
+ * that key ties.
+ *
+ * The degrade is the point: refusing to insert a tied batch would turn a state the rest of the system
+ * treats as benign into a dead restore — the snapshot preserves display_order verbatim, so the tie
+ * comes back on every attempt with no UI path to repair it. Positional is what this code did before
+ * the key join existed and is correct for a plain `INSERT … VALUES`, so the fallback is the old
+ * behaviour, not a new risk; the key join is the strictly-better path taken whenever it is available.
  */
-export function indexReturnedIds<K>(
+export function remapNewIds<K>(
   returned: Record<string, unknown>[],
   keyOf: (row: Record<string, unknown>) => K,
-  expected: number,
+  inputKeys: K[],
   table: string,
-): Map<K, number> {
-  const byKey = new Map<K, number>()
-  for (const row of returned) byKey.set(keyOf(row), Number(row.id))
-  if (byKey.size !== expected) {
+): number[] {
+  if (returned.length !== inputKeys.length) {
     throw new Error(
-      `${table}: natural key is not unique within the insert batch (${byKey.size} distinct keys for ${expected} rows) — the old→new id remap would silently misparent children`,
+      `${table}: INSERT returned ${returned.length} ids for ${inputKeys.length} rows sent`,
     )
   }
-  return byKey
-}
 
-export function requireNewId<K>(byKey: Map<K, number>, key: K, table: string): number {
-  const id = byKey.get(key)
-  if (id === undefined) {
-    throw new Error(`${table}: INSERT returned no id for natural key ${String(key)}`)
+  const byKey = new Map<K, number>()
+  for (const row of returned) byKey.set(keyOf(row), Number(row.id))
+
+  if (byKey.size !== returned.length) {
+    // TODO(EX-449) SENTRY-REQUIRED: a tie is legal but rare enough to be worth seeing.
+    console.error(
+      `${table}: natural key ties within the insert batch (${byKey.size} distinct keys for ${returned.length} rows) — falling back to positional id mapping`,
+    )
+    return returned.map((row) => Number(row.id))
   }
-  return id
+
+  return inputKeys.map((key) => {
+    const id = byKey.get(key)
+    if (id === undefined) {
+      throw new Error(`${table}: INSERT returned no id for natural key ${String(key)}`)
+    }
+    return id
+  })
 }
 
 export async function insertSections(
@@ -61,18 +96,16 @@ export async function insertSections(
       sql`(${investmentId}, ${s.name}, ${displayOrder}, ${s.color ?? null})`,
   )
   const res = await db.execute(sql`
-    INSERT INTO kosztorys_sections
-      (investment_id, name, display_order, color)
+    INSERT INTO kosztorys_sections (${sql.raw(SECTION_INSERT_COLUMNS.join(', '))})
     VALUES ${sql.join(values, sql.raw(', '))}
     RETURNING id, display_order
   `)
-  const byKey = indexReturnedIds(
+  return remapNewIds(
     res.rows,
     (row) => Number(row.display_order),
-    rows.length,
+    rows.map(({ displayOrder }) => displayOrder),
     'kosztorys_sections',
   )
-  return rows.map(({ displayOrder }) => requireNewId(byKey, displayOrder, 'kosztorys_sections'))
 }
 
 // `sectionId` is the row's FINAL (already-resolved) parent id — the caller has mapped the preset's old
@@ -90,20 +123,14 @@ export async function insertItems(
       sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideType ?? null}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideType ?? null}, ${it.ownToolsOverrideValue}, ${it.hiddenInExport}, ${it.note ?? null})`,
   )
   const res = await db.execute(sql`
-    INSERT INTO kosztorys_items
-      (investment_id, section_id, display_order, description, unit, planned_qty,
-       discount_type, discount_value, client_price, w_tools_override_type, w_tools_override_value,
-       own_tools_override_type, own_tools_override_value, hidden_in_export, note)
+    INSERT INTO kosztorys_items (${sql.raw(ITEM_INSERT_COLUMNS.join(', '))})
     VALUES ${sql.join(values, sql.raw(', '))}
     RETURNING id, section_id, display_order
   `)
-  const byKey = indexReturnedIds(
+  return remapNewIds(
     res.rows,
     (row) => itemKey(Number(row.section_id), Number(row.display_order)),
-    rows.length,
+    rows.map(({ sectionId, item }) => itemKey(sectionId, item.displayOrder)),
     'kosztorys_items',
-  )
-  return rows.map(({ sectionId, item }) =>
-    requireNewId(byKey, itemKey(sectionId, item.displayOrder), 'kosztorys_items'),
   )
 }

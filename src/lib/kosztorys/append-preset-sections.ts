@@ -22,7 +22,8 @@ export type AppendedSliceT = (KosztorysSectionT & { items: KosztorysItemT[] })[]
 // displayOrder base = MAX(display_order)+1 read inside the same transaction, then base+i per section.
 // Concurrent appends can read the same base (no lock on a MAX select, no UNIQUE) — accepted, same
 // class as seed-from-preset's empty-guard race: a duplicate display_order only makes relative order
-// ambiguous, nothing corrupts.
+// ambiguous, nothing corrupts. That tolerance is why the id remap in insert-rows.ts degrades on a
+// key tie instead of refusing the batch — this race is its source.
 export async function appendPresetSections(
   payload: Payload,
   req: PayloadRequest,
@@ -40,14 +41,13 @@ export async function appendPresetSections(
     slices.map(({ section }, i) => ({ displayOrder: base + i, section })),
   )
 
-  // Flatten items in slice order with their NEW section id (items keep the preset's per-section
-  // display_order — the offset is a section-level concern only).
+  // Items keep the preset's per-section display_order — the offset is a section concern only.
   const itemRows = slices.flatMap((slice, i) =>
     slice.items.map((item) => ({ sectionId: newSectionIds[i], item })),
   )
   const newItemIds = await insertItems(db, investmentId, itemRows)
 
-  // Rebuild the nested slice with the new ids, consuming newItemIds in the same order they were inserted.
+  // The cursor is only valid because itemRows above was flattened in this same slice order.
   let cursor = 0
   return slices.map(({ section: s, items }, i) => ({
     id: newSectionIds[i],
