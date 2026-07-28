@@ -16,8 +16,8 @@ export type AppendedSliceT = (KosztorysSectionT & { items: KosztorysItemT[] })[]
 // Append the chosen sections + their items to a (possibly non-empty) kosztorys, after the last
 // section. Deliberately NOT a fork of applyPreset (EX-438): sections+items only — a section append
 // has no stages/progress/settings. THE CALLER OWNS THE TRANSACTION (`req` carries the transactionID);
-// a throw anywhere rolls it all back. Shares the bulk insert + VALUES-order id remap with
-// insertKosztorysTree via insertSections/insertItems (Postgres returns RETURNING rows in VALUES order).
+// a throw anywhere rolls it all back. Shares the bulk insert + natural-key id remap with
+// insertKosztorysTree via insertSections/insertItems, which return new ids in input order.
 //
 // displayOrder base = MAX(display_order)+1 read inside the same transaction, then base+i per section.
 // Concurrent appends can read the same base (no lock on a MAX select, no UNIQUE) — accepted, same

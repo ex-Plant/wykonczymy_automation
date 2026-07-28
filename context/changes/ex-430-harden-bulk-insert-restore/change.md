@@ -1,11 +1,11 @@
 ---
 change_id: ex-430-harden-bulk-insert-restore
 title: Harden bulk-INSERT restore — ORDINALITY id-mapping + owed tests
-status: planned
+status: implementing
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-28
 archived_at: null
-branch: null
+branch: staging
 worktree: null
 ---
 
@@ -22,11 +22,15 @@ unnest(...) WITH ORDINALITY … RETURNING id, ord` and map old→new ids by `ord
   tripwire for a Payload upgrade silently breaking the tx handle in `getDb`); (2) wider-field-coverage
   roundtrip (nulls, every discount/override combo, unicode notes); (3) schema-drift
   guard asserting each INSERT column list matches `information_schema.columns`.
-- **Deferred by design (no code):** parameter-limit chunking (~3,855-item ceiling, ~10× headroom;
-  sibling EX-432 5000-cap truncation already Done so the ugly interaction is neutralized),
-  validation-bypass, hooks-bypass.
+- **Deferred by design (no code):** parameter-limit chunking, validation-bypass, hooks-bypass.
 
 Source: S-06 kosztorys-snapshots review-gate ledger. Related: EX-432 (Done).
+
+**2026-07-28 (validity re-check):** ticket numbers corrected in `plan.md` — items INSERT is 15 cols
+(ceiling ≈4,369, not ~3,855); EX-432's 5000-item serialize cap **no longer exists** (serialize is
+unbounded via `getKosztorysTree`), so the save-but-fail-to-restore window reopens above the ceiling
+rather than being neutralized; tightest bound is `stage_progress` at ~21,845 rows. Chunking still
+deferred — headroom over real data holds either way.
 
 **2026-07-28 (EX-575):** the roundtrip fixture lost two axes on purpose — the cost-variant axis
 (columns dropped by `20260728_0`) and the section-coeff axis (dropped earlier by `20260724_1`).

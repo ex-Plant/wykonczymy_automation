@@ -28,8 +28,13 @@ down the owed test debt from the S-06 review gate.
 - Existing coverage: `serialize-restore-roundtrip.test.ts` (real-DB identity roundtrip, small tree) +
   `kosztorys-restore.test.ts` (restore action) — both in the pre-push integration gate. Neither
   asserts rollback-on-error, wide field coverage, or column↔schema alignment.
-- Sibling EX-432 (serialize 5000-item truncation → fail-loud guard) is **Done**, so the
-  parameter-limit "save-but-fail-to-restore" interaction the ticket flagged is already neutralized.
+- **Parameter-limit facts re-verified 2026-07-28** (the ticket's numbers are stale): the items INSERT
+  is **15 columns**, not 17 (cost-variant + section-coeff columns since dropped) → ceiling ≈ **4,369
+  items**. EX-432's 5000-item serialize cap **no longer exists** — `serialize-kosztorys.ts` now goes
+  through `getKosztorysTree` with no `LIMIT` anywhere, so serialize is unbounded and the
+  "save-but-fail-to-restore" window reopens above ~4,369. Tightest ceiling is actually `stage_progress`
+  (3 params/row → **21,845 rows** ≈ 2,184 items across a 10-stage axis). All still far above real
+  kosztoryses (hundreds of items; perf seed ~1,000), so chunking stays deferred — on corrected numbers.
 
 ## Desired End State
 
@@ -51,8 +56,8 @@ wide-field roundtrip, and a schema-drift guard. All run green in the pre-push in
 
 ## What We're NOT Doing
 
-- **No chunked inserts / parameter-limit fix.** ~3,855-item ceiling, ~10× headroom, EX-432 removed the
-  ugly interaction. Documented-only, deferred by design (per ticket + owner 2026-07-11).
+- **No chunked inserts / parameter-limit fix.** ~4,369-item / ~21,845-progress-row ceilings, several ×
+  headroom over real data. Documented-only, deferred by design (per ticket + owner 2026-07-11).
 - **No snapshot validation layer** and **no re-adding suppressed hooks** — both accepted bypasses.
 - **No change to the progress insert** — it never remaps ids.
 - **No API/UX changes** — this is pure internal hardening + tests.
@@ -174,7 +179,12 @@ wiped, sections+items already reinserted).
 ### Overview
 
 Widen column-mapping coverage so the natural-key remap and every column tuple are exercised across
-nulls, all discount/cost-variant/override combos, and unicode notes.
+nulls, all discount/override combos, and unicode notes.
+
+The gap is wider than the ticket states (verified 2026-07-28): the existing fixture
+(`serialize-restore-roundtrip.test.ts:88-170`) never sets `note`, `w_tools_override_type/value`,
+`own_tools_override_type/value`, section `color`, or stage `plane` — six columns that sit in the INSERT
+lists and could be mis-mapped today with every test still green.
 
 ### Changes Required:
 
@@ -183,8 +193,8 @@ nulls, all discount/cost-variant/override combos, and unicode notes.
 **File**: `src/__tests__/lib/kosztorys/serialize-restore-roundtrip.test.ts` (extend)
 
 **Intent**: Add a second tree (or parametrize the existing one) covering: null vs set for every nullable
-column; `discountType` percent/amount/none; w/own tools override type+value combos; unicode + newline
-in `note`/`description`.
+column; `discountType` percent/amount/none; w/own tools override type+value combos; section `color`;
+stage `plane`; unicode + newline in `note`/`description`.
 
 **Contract**: Reuse the existing `canonical()` comparison — restore(serialize()) stays a content+order
 identity with fresh ids across the widened data.
@@ -279,10 +289,10 @@ touches only code paths, not stored rows.
 
 #### Automated
 
-- [ ] 1.1 Type checking passes: `pnpm typecheck`
-- [ ] 1.2 Linting passes: `pnpm lint`
-- [ ] 1.3 Roundtrip identity test passes
-- [ ] 1.4 Restore action test passes
+- [x] 1.1 Type checking passes: `pnpm typecheck`
+- [x] 1.2 Linting passes: `pnpm lint`
+- [x] 1.3 Roundtrip identity test passes
+- [x] 1.4 Restore action test passes
 
 ### Phase 2: Restore rollback-on-error integration test
 
