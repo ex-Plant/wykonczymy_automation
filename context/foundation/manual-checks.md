@@ -27,7 +27,7 @@ real `OPENROUTER_API_KEY` in `.env` for the scan/fill boxes. Have ≥3 receipt i
 
 **In review** — pending author sign-off. Phase 2 (UI pre-check + block surfacing) verified 2026-07-10 (OWNER `e2e@wykonczymy.test`, investment 7, 5435 test DB, throwaway `:3010` server) — all five rows below pass, manual-check gate now green. Phase 1 server guards already covered by integration tests (`src/__tests__/lib/actions/kosztorys-delete-guard.test.ts`).
 
-a### Phase 2: UI pre-check + block surfacing
+### Phase 2: UI pre-check + block surfacing
 
 - [x] Row with pomiar / recorded progress: blocked with toast, row stays. _Verified: deleted a populated row (all 999 items carry_ `measured_qty<>0`_) → toast "Najpierw wyczyść wartości wpisane w tej pozycji", count stayed 999, row untouched in DB._
 - [x] Plan-only row (przedmiar/price only): still deletes instantly. _Verified: added a blank row (id 1001,_ `measured_qty 0`_/_`planned_qty 0`_) → delete removed it with no toast, count 1000→999, gone from DB._
@@ -596,6 +596,7 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 ### Phase 1: Empty-grid hint
 
 - [ ] An investment with zero sekcje opens the editor showing the hint over an empty grid — not a dialog.
+- [ ] **With the totals panel expanded** (its persisted default is `open`), decide whether the hint being occluded is acceptable — the panel is `z-20` + `h-full` + opaque, the hint is an un-z-indexed `absolute inset-0` sibling, so a first-ever visitor sees the panel, not the hint. Occlusion is _consistent_ (the panel hides the grid too), but the retired dialog was modal and always won. Raised at the review gate; see EX-617.
 - [ ] Typing a search term that matches nothing on a _populated_ kosztorys does NOT show the hint.
 - [ ] The share/client view of an empty kosztorys shows the title without the „Dodaj" sentence.
 

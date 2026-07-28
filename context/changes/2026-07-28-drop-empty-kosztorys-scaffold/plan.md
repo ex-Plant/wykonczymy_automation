@@ -277,7 +277,7 @@ deleted dialog's double-submit.
 whose risk is a dangling reference, which typecheck catches deterministically. File to the E2E
 backlog (Linear, label `e2e-backlog`, project "Wykonczymy") covering: open an investment with zero
 sekcje → hint visible, no dialog → add an etap → add a sekcja → the etap column is present on the new
-row and the hint is gone.
+row and the hint is gone. **Filed as EX-617** at the review gate.
 
 ### Manual Testing Steps
 
