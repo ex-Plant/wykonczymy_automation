@@ -1,6 +1,6 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { perfStart } from '@/lib/perf'
-import { fetchDepositTransactionsForInvestment } from '@/lib/queries/reference-data'
+import { fetchDepositTransactionsForInvestment } from '@/lib/queries/investment-transactions'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'

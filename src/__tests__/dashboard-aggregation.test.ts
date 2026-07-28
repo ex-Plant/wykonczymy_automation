@@ -67,6 +67,9 @@ const mockRefData: ReferenceDataBaseT = {
 
 vi.mock('@/lib/queries/reference-data', () => ({
   fetchReferenceData: vi.fn().mockResolvedValue(mockRefData),
+}))
+
+vi.mock('@/lib/queries/balances', () => ({
   fetchRegisterBalances: vi
     .fn()
     .mockResolvedValue({ '1': 10000, '2': 5000, '3': 3000, '5': 200, '6': -50 }),

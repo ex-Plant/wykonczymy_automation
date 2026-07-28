@@ -3,11 +3,8 @@ import { redirect, notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES, isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { parsePagination } from '@/lib/utils/pagination'
-import {
-  fetchReferenceData,
-  fetchFilteredByType,
-  fetchCategoryBreakdowns,
-} from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { InvestmentSummaryPanel } from '@/components/investments/investment-summary-panel'

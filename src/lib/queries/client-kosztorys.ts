@@ -9,12 +9,9 @@ import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
-import {
-  fetchCategoryBreakdowns,
-  fetchExpenseCategories,
-  fetchFilteredByType,
-  fetchMaterialTransactionsForInvestment,
-} from '@/lib/queries/reference-data'
+import { fetchExpenseCategories } from '@/lib/queries/reference-data'
+import { fetchMaterialTransactionsForInvestment } from '@/lib/queries/investment-transactions'
+import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
 
 // The read-only render mounts the real KosztorysEditorBody, so the client read builds exactly the
 // props that body needs — the same KosztorysEditorDataT the admin kosztorys page assembles, minus the

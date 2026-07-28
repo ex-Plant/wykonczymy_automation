@@ -4,7 +4,8 @@ import {
   enrichCancellationOriginals,
 } from '@/lib/queries/transfers'
 import { stripCancelledFilters } from '@/lib/queries/transfer-filters'
-import { fetchReferenceData, fetchFilteredByType } from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { buildTransferRows } from '@/lib/queries/fetch-transfer-rows'
 import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import { perfStart } from '@/lib/perf'

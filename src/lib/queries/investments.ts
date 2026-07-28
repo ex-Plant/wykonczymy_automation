@@ -4,11 +4,8 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS, entityTag } from '@/lib/cache/tags'
 import { perfStart } from '@/lib/perf'
-import {
-  fetchReferenceData,
-  fetchInvestmentFinancials,
-  type InvestmentFinancialsMapT,
-} from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchInvestmentFinancials, type InvestmentFinancialsMapT } from '@/lib/queries/balances'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { calculateBalance } from '@/lib/db/calculate-balance'
