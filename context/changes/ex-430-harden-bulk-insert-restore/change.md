@@ -20,10 +20,14 @@ unnest(...) WITH ORDINALITY … RETURNING id, ord` and map old→new ids by `ord
   Kills the silent wrong-parent-remap class permanently.
 - **Owed tests:** (1) restore rollback-on-error integration test (impl-review 🟡 debt; also the
   tripwire for a Payload upgrade silently breaking the tx handle in `getDb`); (2) wider-field-coverage
-  roundtrip (nulls, every discount/cost-variant/override combo, unicode notes); (3) schema-drift
+  roundtrip (nulls, every discount/override combo, unicode notes); (3) schema-drift
   guard asserting each INSERT column list matches `information_schema.columns`.
 - **Deferred by design (no code):** parameter-limit chunking (~3,855-item ceiling, ~10× headroom;
   sibling EX-432 5000-cap truncation already Done so the ugly interaction is neutralized),
   validation-bypass, hooks-bypass.
 
 Source: S-06 kosztorys-snapshots review-gate ledger. Related: EX-432 (Done).
+
+**2026-07-28 (EX-575):** the roundtrip fixture lost two axes on purpose — the cost-variant axis
+(columns dropped by `20260728_0`) and the section-coeff axis (dropped earlier by `20260724_1`).
+Neither column exists, so neither can be covered.

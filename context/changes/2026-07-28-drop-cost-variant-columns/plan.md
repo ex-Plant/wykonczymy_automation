@@ -570,12 +570,12 @@ The existing suites are the regression net, and they are load-bearing here:
 
 #### Automated
 
-- [x] 5.1 Roundtrip spec green — PENDING_SHA
-- [x] 5.2 Preset spec green — PENDING_SHA
+- [x] 5.1 Roundtrip spec green — cd2326d3
+- [x] 5.2 Preset spec green — cd2326d3
 
 ### Phase 6: Documentation
 
 #### Automated
 
-- [ ] 6.1 `grep` over `context/` returns hits only in `archive/**` and this change's own docs
-- [ ] 6.2 `pnpm lint` passes
+- [x] 6.1 `grep` over `context/` returns hits only in `archive/**` and this change's own docs — PENDING_SHA
+- [x] 6.2 `pnpm lint` passes — PENDING_SHA

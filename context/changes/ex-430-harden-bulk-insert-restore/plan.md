@@ -183,9 +183,8 @@ nulls, all discount/cost-variant/override combos, and unicode notes.
 **File**: `src/__tests__/lib/kosztorys/serialize-restore-roundtrip.test.ts` (extend)
 
 **Intent**: Add a second tree (or parametrize the existing one) covering: null vs set for every nullable
-column; `discountType` percent/amount/none; `costVariant` w_tools/own_tools; w/own tools override
-type+value combos; unicode + newline in `note`/`description`; a section with both coeffs null and one
-with both set.
+column; `discountType` percent/amount/none; w/own tools override type+value combos; unicode + newline
+in `note`/`description`.
 
 **Contract**: Reuse the existing `canonical()` comparison — restore(serialize()) stays a content+order
 identity with fresh ids across the widened data.
