@@ -17,20 +17,20 @@ export function SummaryTotalsTable({
   wplaty,
   doZaplaty,
   investmentId,
-  clientView,
+  preview,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
   wplaty: MoneyPairT
   doZaplaty: MoneyPairT
   investmentId: number
-  clientView: boolean
+  preview: boolean
 }) {
   return (
     <SummaryTable cols={cols} className="w-fit">
       <SummaryRow
         label={
-          clientView ? (
+          preview ? (
             'Wpłaty'
           ) : (
             <Link

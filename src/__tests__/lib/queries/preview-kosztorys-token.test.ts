@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
-import { getClientKosztorysByToken } from '@/lib/queries/client-kosztorys'
+import { getPreviewKosztorysByToken } from '@/lib/queries/preview-kosztorys'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The token lookup is the whole access control for the public route, so it is exercised against the
@@ -15,7 +15,7 @@ vi.mock('next/cache', () => ({
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
-describe.skipIf(!ENV_READY)('getClientKosztorysByToken (DB)', () => {
+describe.skipIf(!ENV_READY)('getPreviewKosztorysByToken (DB)', () => {
   let payload: Payload
   let investmentId: number
   // Per-run suffix: `token` is globally unique, so a crash between beforeAll and afterAll would
@@ -39,16 +39,16 @@ describe.skipIf(!ENV_READY)('getClientKosztorysByToken (DB)', () => {
   })
 
   it('resolves a live token to that investment’s client view', async () => {
-    const view = await getClientKosztorysByToken(token)
+    const view = await getPreviewKosztorysByToken(token)
     expect(view).not.toBeNull()
     expect(view!.investmentName).toBe('EX-532 share token spec')
   })
 
   it('returns null for an unknown token — revoked and never-existed are indistinguishable', async () => {
-    expect(await getClientKosztorysByToken('no-such-token-ex532')).toBeNull()
+    expect(await getPreviewKosztorysByToken('no-such-token-ex532')).toBeNull()
   })
 
   it('returns null for an empty token rather than matching the first share', async () => {
-    expect(await getClientKosztorysByToken('')).toBeNull()
+    expect(await getPreviewKosztorysByToken('')).toBeNull()
   })
 })

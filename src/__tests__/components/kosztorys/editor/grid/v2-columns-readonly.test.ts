@@ -35,35 +35,6 @@ describe('readOnly', () => {
   })
 })
 
-describe('clientVisible', () => {
-  it('drops the subcontractor-only columns even when the grid is built at a subcontractor view', () => {
-    // What the allowlist actually guarantees: columns that exist ONLY to edit the subcontractor
-    // plane are never assembled. It does NOT neutralize `view` — `price`/`net` are allowlisted and
-    // still compute at whatever view is passed. That plane is held to 'client' upstream, where
-    // useKosztorysEditor pins `view = 'client'` whenever `clientView` is set.
-    const columns = ids({ ...editorOpts, view: 'w_tools', clientVisible: true, readOnly: true })
-    expect(columns).not.toContain('priceMode')
-    expect(columns).not.toContain('priceCoeff')
-  })
-
-  it('withholds the owner-authored komentarz', () => {
-    expect(ids({ ...editorOpts, clientVisible: true, readOnly: true })).not.toContain('note')
-  })
-
-  it('keeps the offer + progress columns the client is meant to read', () => {
-    const columns = ids({ ...editorOpts, clientVisible: true, readOnly: true })
-    for (const id of ['description', 'plannedQty', 'unit', 'price', 'net', 'stageQtySum']) {
-      expect(columns).toContain(id)
-    }
-    // Per-etap quantity columns are namespaced per stage id, not by the group key.
-    expect(columns).toContain('stage_100')
-  })
-
-  it('is a no-op for the editor, which passes no flag', () => {
-    expect(ids({ ...editorOpts, view: 'w_tools' })).toContain('priceMode')
-  })
-})
-
 describe('przedmiar-anchored columns', () => {
   // The filter sits at the selection chokepoint, not in the assembly, so a column that starts being
   // built unconditionally can only leak through here — the assertion is on the built grid, never on

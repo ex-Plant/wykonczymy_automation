@@ -14,7 +14,7 @@ type PropsT = {
   paidNet: number
   paidGross: number
   // Read-only client render — no row links.
-  clientView?: boolean
+  preview?: boolean
   showPie?: boolean
 }
 
@@ -25,7 +25,7 @@ export function SummaryDepositsTab({
   rows,
   paidNet,
   paidGross,
-  clientView = false,
+  preview = false,
   showPie = true,
 }: PropsT) {
   if (rows.length === 0) return <Description withIcon={false}>Brak wpłat.</Description>
@@ -33,7 +33,7 @@ export function SummaryDepositsTab({
   return (
     <div className="flex flex-col items-start gap-8 lg:flex-row">
       <div className="flex flex-col gap-1">
-        <DepositsTable investmentId={investmentId} rows={rows} clientView={clientView} />
+        <DepositsTable investmentId={investmentId} rows={rows} preview={preview} />
         <Description size="xs" className="mt-2 w-fit max-w-sm text-balance">
           Wpłaty bez oznaczenia netto/brutto są traktowane jako netto.
         </Description>

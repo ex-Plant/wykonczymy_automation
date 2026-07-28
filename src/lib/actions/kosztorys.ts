@@ -104,7 +104,7 @@ export type InvestmentGlobalDiscountPatchT = z.infer<typeof investmentGlobalDisc
 // once at mount and derives every panel figure from it, so the route re-render `updateTag` triggers
 // reseeds nothing the editor reads — the grid keeps its own state and the panel has already
 // recomputed optimistically. The only cached reader of these tags is the client share link
-// (lib/queries/client-kosztorys.ts), a different route, and `revalidateTag` still expires it for its
+// (lib/queries/preview-kosztorys.ts), a different route, and `revalidateTag` still expires it for its
 // next request. Measured on preview: the discarded re-render cost 90-193ms per debounced save,
 // dominated by the uncached kosztorys tree (EX-597).
 export async function updateItemFieldAction(itemId: number, patch: ItemPatchT) {

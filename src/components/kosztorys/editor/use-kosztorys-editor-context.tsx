@@ -10,7 +10,7 @@ type KosztorysEditorContextT = ReturnType<typeof useKosztorysEditor> & {
   investmentId: number
   investmentName: string
   tree: KosztorysTreeT
-  // Absent in clientView — the versions button lives in the toolbar, which the client render omits.
+  // Absent in preview — the versions button lives in the toolbar, which the client render omits.
   onOpenVersions?: () => void
 }
 

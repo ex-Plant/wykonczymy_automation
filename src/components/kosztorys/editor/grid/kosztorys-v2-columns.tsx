@@ -44,7 +44,7 @@ import {
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
 import {
-  CLIENT_VISIBLE_COLUMNS,
+  PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
@@ -538,29 +538,50 @@ function toggleKey(columnId: string): string {
   return columnId.startsWith(STAGE_QTY_PREFIX) ? STAGES_COLUMN_GROUP : columnId
 }
 
+// The column allowlist and the client price plane are one disclosure decision (useKosztorysEditor
+// derives them as a pair). Split them and PREVIEW_VISIBLE_COLUMNS keeps letting `price`/`net`/`gross`
+// through while they compute a subcontractor's cost basis — client-named columns holding contractor
+// numbers, a leak with no foreign column to notice. Nothing in the types forbids the split, so this
+// says it out loud at the one chokepoint both build paths cross. It throws rather than repairing the
+// opts: a caller that got this wrong has a bug worth seeing, and silently overriding its `view` would
+// hide it.
+function assertDisclosurePair(opts: BuildV2ColumnsOptsT): void {
+  if (opts.previewVisible && opts.view !== 'client') {
+    throw new Error(
+      `previewVisible requires view='client' (got '${opts.view}') — the column allowlist does not pin the price plane.`,
+    )
+  }
+}
+
 // Hide/axis/resize selection over an already-assembled column list. Split from the assembly so the
 // grid and the picker can share ONE assembleV2Columns pass (buildV2Grid) instead of two.
 function selectV2Columns(
   assembled: Column<KosztorysV2RowT>[],
   opts: BuildV2ColumnsOptsT,
 ): Column<KosztorysV2RowT>[] {
+  assertDisclosurePair(opts)
   const axis = opts.moneyAxis ?? MONEY_AXIS_DEFAULT
   const display = opts.progressDisplay ?? PROGRESS_DISPLAY_DEFAULT
   const layer = opts.layer ?? LAYER_DEFAULT
-  const base = assembled
-    .filter((c) => {
-      const key = toggleKey(c.id ?? '')
-      if (opts.clientVisible && !CLIENT_VISIBLE_COLUMNS.has(key)) return false
-      if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(key)) return false
-      if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
-      return (
-        !opts.isHidden?.(key) &&
-        axisAllows(key, axis) &&
-        progressDisplayAllows(key, display) &&
-        layerAllows(key, layer)
-      )
-    })
-    .map((c) => withResize(c, opts))
+  // Two kinds of gate live in this filter, and only one of them may touch a client's document.
+  // PREFERENCE gates — the axis, the layer, the progress display, the picker tick — say what ONE
+  // owner wants to read right now, so a preview skips them entirely and takes the allowlist as its
+  // whole answer (owner ruling 2026-07-28). The discount gate is not one of them: `globalDiscount`
+  // is a property of the investment, identical for every reader, and while it is on, the per-item
+  // rabat fields are bypassed rather than cleared (calc.ts `applyDiscount`) — so showing those
+  // columns would print „Rabat 10 %" beside „Kwota rabatu 0,00" on the offer itself.
+  const keep = (key: string): boolean => {
+    if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(key)) return false
+    if (opts.previewVisible) return PREVIEW_VISIBLE_COLUMNS.has(key)
+    if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
+    return (
+      !opts.isHidden?.(key) &&
+      axisAllows(key, axis) &&
+      progressDisplayAllows(key, display) &&
+      layerAllows(key, layer)
+    )
+  }
+  const base = assembled.filter((c) => keep(toggleKey(c.id ?? ''))).map((c) => withResize(c, opts))
   return appendTrailingGap(base, opts)
 }
 
@@ -598,11 +619,15 @@ function selectV2ToggleItems(
   assembled: Column<KosztorysV2RowT>[],
   opts: BuildV2ColumnsOptsT,
 ): ColumnToggleItemT[] {
+  // A preview has no picker at all (the body mounts the slim header, not the toolbar), and a picker
+  // is by definition the owner preference selectV2Columns just stopped honouring — so there is no
+  // coherent list to return here. Empty rather than allowlist-filtered: the latter would describe a
+  // grid whose columns no longer answer to it.
+  if (opts.previewVisible) return []
   const items: ColumnToggleItemT[] = []
   for (const col of assembled) {
     const id = toggleKey(col.id ?? '')
     if (items.some((i) => i.id === id)) continue
-    if (opts.clientVisible && !CLIENT_VISIBLE_COLUMNS.has(id)) continue
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(id)) continue
     items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })

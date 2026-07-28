@@ -28,7 +28,7 @@ type PropsT = {
   // the panel's settlement bar.
   materialsNetRate: number | null
   // Read-only client render — no row links on the transactions list.
-  clientView?: boolean
+  preview?: boolean
   // Off on a host that already lists every materiały transaction next to the panel (the investment
   // page's transfers table), where the in-panel list would only repeat it.
   showTransactions?: boolean
@@ -44,7 +44,7 @@ export function SummaryExpensesTab({
   materialTransactions,
   nettoShown,
   materialsNetRate,
-  clientView = false,
+  preview = false,
   showTransactions = true,
   showPie = true,
 }: PropsT) {
@@ -88,7 +88,7 @@ export function SummaryExpensesTab({
           investmentId={investmentId}
           investmentName={investmentName}
           rows={materialTransactions}
-          clientView={clientView}
+          preview={preview}
         />
       )}
     </div>

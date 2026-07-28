@@ -43,7 +43,7 @@ type PropsT = {
   // else Σ per-item rabat. Unified upstream so this table shows one explicit „Rabat" line. 0 = none.
   rabatAmount: number
   // Robocizna/rabat reconciliation verdict — the mismatch scream renders off this. Always supplied
-  // (the body computes it unconditionally); clientView suppresses the scream via reconVisible, not by
+  // (the body computes it unconditionally); preview suppresses the scream via reconVisible, not by
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
   // Active price view. The verdict compares client-view nets, so the scream only reads correctly in
@@ -57,7 +57,7 @@ type PropsT = {
   // Read-only client render: the mismatch scream is an owner-internal signal (a client's view is
   // always 'client', which is exactly when the scream would fire), and the internal drill-down links
   // point at owner-only pages — so gate the scream off and render those labels as plain text.
-  clientView?: boolean
+  preview?: boolean
 }
 
 // The single bottom summary block: the robocizna waterfall (Suma prac wykonanych → Rabat →
@@ -75,7 +75,7 @@ export function BruttoNettoSummary({
   vatRate,
   moneyAxis,
   materialsNetRate,
-  clientView = false,
+  preview = false,
 }: PropsT) {
   // Łącznie = Robocizna (przed rabatem) − Rabat + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
   // The split feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — which is
@@ -89,7 +89,7 @@ export function BruttoNettoSummary({
   )
   // The scream compares client-view nets; a subcontractor view reprices the displayed figure, so the
   // scream would sit next to a number it isn't comparing. Show it only in the client view.
-  const reconVisible = clientView ? false : priceView === 'client'
+  const reconVisible = !preview && priceView === 'client'
   // Force-show the „Rabat" row even at kosztorys-rabat 0, so a RABAT transfer with no kosztorys rabat
   // can't hide the mismatch — otherwise the one gap population most needs to catch stays invisible.
   // Only while the scream is visible; otherwise the row follows the normal „rabat > 0" rule.
@@ -139,7 +139,7 @@ export function BruttoNettoSummary({
           wplaty={wplaty}
           doZaplaty={doZaplaty}
           investmentId={investmentId}
-          clientView={clientView}
+          preview={preview}
         />
       </div>
     </div>

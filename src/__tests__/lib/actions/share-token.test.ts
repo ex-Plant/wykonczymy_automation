@@ -24,7 +24,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 
 const { generateShareLinkAction, getShareLinkAction, revokeShareLinkAction } =
   await import('@/lib/actions/kosztorys-share')
-const { getClientKosztorysByToken } = await import('@/lib/queries/client-kosztorys')
+const { getPreviewKosztorysByToken } = await import('@/lib/queries/preview-kosztorys')
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -59,7 +59,7 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
     expect(await countShares()).toBe(1)
 
     const token = res.success ? res.data : ''
-    expect(await getClientKosztorysByToken(token)).not.toBeNull()
+    expect(await getPreviewKosztorysByToken(token)).not.toBeNull()
   })
 
   it('rotating replaces the token in place — the old one stops resolving', async () => {
@@ -71,8 +71,8 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
     const newToken = rotated.success ? rotated.data : ''
     expect(newToken).not.toBe(oldToken)
     expect(await countShares()).toBe(1)
-    expect(await getClientKosztorysByToken(oldToken!)).toBeNull()
-    expect(await getClientKosztorysByToken(newToken)).not.toBeNull()
+    expect(await getPreviewKosztorysByToken(oldToken!)).toBeNull()
+    expect(await getPreviewKosztorysByToken(newToken)).not.toBeNull()
   })
 
   it('rejects a MANAGER without touching the row', async () => {
@@ -93,6 +93,6 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
 
     expect((await revokeShareLinkAction(investmentId)).success).toBe(true)
     expect(await countShares()).toBe(0)
-    expect(await getClientKosztorysByToken(token!)).toBeNull()
+    expect(await getPreviewKosztorysByToken(token!)).toBeNull()
   })
 })

@@ -13,10 +13,8 @@ import { fetchExpenseCategories } from '@/lib/queries/reference-data'
 import { fetchMaterialTransactionsForInvestment } from '@/lib/queries/investment-transactions'
 import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
 
-// The read-only render mounts the real KosztorysEditorBody, so the client read builds exactly the
-// props that body needs — the same KosztorysEditorDataT the admin kosztorys page assembles, minus the
-// owner-only versions callback. No projection/stripping: the owner accepted the leak, so the full tree
-// ships.
+// No projection/stripping anywhere below: the owner accepted the leak, so the full tree ships and the
+// render side alone decides what a client sees.
 
 // Every read below is invalidated by the same collections the editor writes, so a client who
 // reloads the share link sees the owner's latest etap entries — the whole point of a live view.
@@ -35,7 +33,9 @@ const KOSZTORYS_TAGS = [
 // Unexported: the only two ways in are the guarded entrances below. This one is deliberately
 // authorization-free, so exporting it would hand any caller an unauthenticated read of a kosztorys.
 // Mirrors the admin page's fetches (kosztorys_v2/page.tsx) so the client body reads the same figures.
-async function buildClientKosztorysEditorData(investmentId: number): Promise<KosztorysEditorDataT> {
+async function buildPreviewKosztorysEditorData(
+  investmentId: number,
+): Promise<KosztorysEditorDataT> {
   const investmentWhere = { investment: { equals: investmentId } }
   const payload = await getPayload({ config })
   const [tree, investment, typeDistribution, breakdowns, expenseCategories, materialTransactions] =
@@ -71,9 +71,9 @@ async function buildClientKosztorysEditorData(investmentId: number): Promise<Kos
 // client's link are the same bytes, not two independently-cached derivations that could disagree.
 // The guard cannot live inside here: `requireAuth` reads cookies, and a dynamic API inside an
 // unstable_cache callback throws.
-const cachedClientKosztorysEditorData = unstable_cache(
-  buildClientKosztorysEditorData,
-  ['client-kosztorys-editor-data'],
+const cachedPreviewKosztorysEditorData = unstable_cache(
+  buildPreviewKosztorysEditorData,
+  ['preview-kosztorys-editor-data'],
   { tags: KOSZTORYS_TAGS },
 )
 
@@ -85,7 +85,7 @@ const cachedClientKosztorysEditorData = unstable_cache(
  * The token→investment lookup stays uncached (one indexed query) so revoking a link takes effect on
  * the next request rather than when a cache tag happens to be busted.
  */
-export async function getClientKosztorysByToken(
+export async function getPreviewKosztorysByToken(
   token: string,
 ): Promise<KosztorysEditorDataT | null> {
   const payload = await getPayload({ config })
@@ -103,20 +103,17 @@ export async function getClientKosztorysByToken(
 
   const investmentId =
     typeof share.investment === 'object' ? share.investment.id : Number(share.investment)
-  return cachedClientKosztorysEditorData(investmentId)
+  return cachedPreviewKosztorysEditorData(investmentId)
 }
 
 /**
- * The owner's preview of that same payload, by investment id instead of token — so „Podgląd dla
- * klienta" shows exactly what a share link would serve, without a link having to exist yet.
- * Guarded like any other management read; the projection beneath is identical, which is what makes
- * the preview trustworthy as a check.
+ * The owner's preview of that same payload — so „Podgląd dla klienta" shows exactly what a share link
+ * would serve, without a link having to exist yet. The projection beneath is identical, which is what
+ * makes the preview trustworthy as a check.
  */
-export async function getClientKosztorysPreview(
-  investmentId: number,
-): Promise<KosztorysEditorDataT> {
+export async function getPreviewKosztorysById(investmentId: number): Promise<KosztorysEditorDataT> {
   const session = await requireAuth(MANAGEMENT_ROLES)
   if (!session.success) throw new Error(session.error)
 
-  return cachedClientKosztorysEditorData(investmentId)
+  return cachedPreviewKosztorysEditorData(investmentId)
 }

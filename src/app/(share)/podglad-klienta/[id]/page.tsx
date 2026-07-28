@@ -1,5 +1,5 @@
 import { requireInvestmentOr404 } from '@/lib/queries/investments'
-import { getClientKosztorysPreview } from '@/lib/queries/client-kosztorys'
+import { getPreviewKosztorysById } from '@/lib/queries/preview-kosztorys'
 import { KosztorysEditorBody } from '@/components/kosztorys/editor/kosztorys-editor-body'
 
 // „Podgląd dla klienta": the owner's faithful preview, rendered under the SAME bare (share) layout the
@@ -9,7 +9,7 @@ import { KosztorysEditorBody } from '@/components/kosztorys/editor/kosztorys-edi
 export default async function ClientPreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { investmentId } = await requireInvestmentOr404(id)
-  const data = await getClientKosztorysPreview(investmentId)
+  const data = await getPreviewKosztorysById(investmentId)
 
-  return <KosztorysEditorBody clientView {...data} />
+  return <KosztorysEditorBody preview {...data} />
 }

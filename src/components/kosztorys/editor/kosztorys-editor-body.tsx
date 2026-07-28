@@ -37,9 +37,9 @@ const ITEM_ROW_HEIGHT = 32
 const SECTION_BAND_ROW_HEIGHT = 52
 
 type PropsT = KosztorysEditorDataT & {
-  // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim axis
-  // header, kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
-  clientView?: boolean
+  // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim header,
+  // kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
+  preview?: boolean
   // Optional because the read-only client body omits it and falls back to NOOP_UNDO_REDO.
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
@@ -56,12 +56,12 @@ export function KosztorysEditorBody({
   investmentRabat,
   // Defaulted here rather than relayed: the panel requires it, `KosztorysEditorDataT` doesn't.
   depositTransactions = [],
-  clientView = false,
+  preview = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
   ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, clientView, undoRedo })
+  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo })
   const {
     gridRef,
     gridHeight,
@@ -151,10 +151,10 @@ export function KosztorysEditorBody({
       <div
         className={cn(
           'flex w-full flex-col overflow-hidden',
-          clientView ? 'h-dvh' : 'h-[calc(100dvh-7rem)] lg:h-[calc(100dvh-3.5rem)]',
+          preview ? 'h-dvh' : 'h-[calc(100dvh-7rem)] lg:h-[calc(100dvh-3.5rem)]',
         )}
       >
-        {clientView ? (
+        {preview ? (
           <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
             <h1 className="truncate text-base font-medium">{investmentName}</h1>
             <div className="flex shrink-0 items-center gap-2">
@@ -207,7 +207,7 @@ export function KosztorysEditorBody({
               className="pointer-events-none absolute inset-0"
               title="Kosztorys jest pusty"
               // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
-              description={clientView ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
+              description={preview ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
             />
           )}
           {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
@@ -252,7 +252,7 @@ export function KosztorysEditorBody({
             onMaterialsNetRateChange={editor.handleMaterialsNetRateChange}
             isSavingSettings={editor.isSavingSettings}
             showSettingsBar
-            clientView={clientView}
+            preview={preview}
           />
         </div>
         {/* Vertical guide while dragging a column edge (left = cursor viewport X). Portaled to body:

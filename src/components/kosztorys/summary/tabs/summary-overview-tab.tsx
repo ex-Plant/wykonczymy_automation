@@ -47,7 +47,7 @@ type PropsT = {
   // Off on a host whose own transfers table already lists every wpłata (the investment page), where a
   // second copy of the same list is noise rather than detail.
   showDeposits?: boolean
-  clientView?: boolean
+  preview?: boolean
   showPie?: boolean
 }
 
@@ -70,7 +70,7 @@ export function SummaryOverviewTab({
   paidGross,
   depositRows,
   showDeposits = true,
-  clientView = false,
+  preview = false,
   showPie = true,
 }: PropsT) {
   const mixedMode = moneyAxis === 'mixed'
@@ -83,7 +83,7 @@ export function SummaryOverviewTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4">
-      {!clientView && settlementVerdict.mismatch && (
+      {!preview && settlementVerdict.mismatch && (
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
@@ -111,7 +111,7 @@ export function SummaryOverviewTab({
               vatRate={vatRate}
               moneyAxis={displayAxis}
               materialsNetRate={materialsNetRate}
-              clientView={clientView}
+              preview={preview}
             />
           )}
         </div>
@@ -133,7 +133,7 @@ export function SummaryOverviewTab({
               rows={depositRows}
               paidNet={paidNet}
               paidGross={paidGross}
-              clientView={clientView}
+              preview={preview}
               showPie={showPie}
             />
           </div>

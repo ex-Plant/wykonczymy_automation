@@ -26,9 +26,9 @@ vi.mock('payload', () => ({
 }))
 vi.mock('@payload-config', () => ({ default: {} }))
 
-const { getClientKosztorysPreview } = await import('@/lib/queries/client-kosztorys')
+const { getPreviewKosztorysById } = await import('@/lib/queries/preview-kosztorys')
 
-describe('getClientKosztorysPreview auth gate', () => {
+describe('getPreviewKosztorysById auth gate', () => {
   beforeEach(() => {
     buildKosztorysTree.mockReset()
   })
@@ -36,14 +36,14 @@ describe('getClientKosztorysPreview auth gate', () => {
   it('rejects an unauthenticated read without touching the kosztorys', async () => {
     authState.result = { success: false, error: 'Brak autoryzacji' }
 
-    await expect(getClientKosztorysPreview(42)).rejects.toThrow('Brak autoryzacji')
+    await expect(getPreviewKosztorysById(42)).rejects.toThrow('Brak autoryzacji')
     expect(buildKosztorysTree).not.toHaveBeenCalled()
   })
 
   it('rejects a role below MANAGEMENT_ROLES the same way — requireAuth owns the role check', async () => {
     authState.result = { success: false, error: 'Brak uprawnień' }
 
-    await expect(getClientKosztorysPreview(42)).rejects.toThrow('Brak uprawnień')
+    await expect(getPreviewKosztorysById(42)).rejects.toThrow('Brak uprawnień')
     expect(buildKosztorysTree).not.toHaveBeenCalled()
   })
 })

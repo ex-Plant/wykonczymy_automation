@@ -15,7 +15,7 @@ import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import { settlementModeToGridAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -98,7 +98,11 @@ import type {
 type ArgsT = {
   investmentId: number
   tree: KosztorysTreeT
-  clientView?: boolean
+  // The read-only client-facing render — BOTH the public share link and the owner's „Podgląd dla
+  // klienta", which are deliberately the same render. Distinct from `view === 'client'`, which is a
+  // PRICE PLANE (client prices vs a subcontractor's); the render mode is what pins that plane, so the
+  // two must not share the word (owner ruling 2026-07-28).
+  preview?: boolean
   undoRedo: UndoRedoApiT
 }
 
@@ -117,7 +121,7 @@ const TOTALS_REFRESH_DEBOUNCE_MS = 700
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
 // inside a setRows updater — that would move the Router during render.
-export function useKosztorysEditor({ investmentId, tree, clientView = false, undoRedo }: ArgsT) {
+export function useKosztorysEditor({ investmentId, tree, preview = false, undoRedo }: ArgsT) {
   const router = useRouter()
   const { save, runNow } = useDebouncedSave(500)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
@@ -145,11 +149,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // meanwhile, so the click stops reading as inert.
   const [isSavingSettings, startSettingsSave] = useTransition()
   const [persistedView, setView] = usePriceView(investmentId)
-  // clientView pins the price plane to 'client'. The public page ships the full tree (coefficients
-  // included), so an un-pinned view would let a client set localStorage['kosztorys-view:<id>'] to a
-  // subcontractor view and make the allowlisted price/net/gross columns render the contractor's cost
-  // basis. This is the render-side half of the disclosure lock the deleted toClientView used to hold.
-  const view = clientView ? 'client' : persistedView
+  // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
+  // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
+  // it HERE is also what closes the attack where a client sets localStorage['kosztorys-view:<id>'] to
+  // a subcontractor view: the public page ships the full tree, coefficients included, so an unpinned
+  // plane would simply render it.
+  const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
@@ -168,17 +173,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. clientView ignores the persisted axis entirely: the client reads the plane the
-  // investment is settled on, so its grid can't disagree with the Podsumowanie panel beside it. That
-  // guarantee is client-side only — the owner's „Kwoty" pick deliberately stays a per-person column
-  // preference, so an owner can read netto in the grid while the panel shows brutto.
-  const effectiveMoneyAxis: MoneyAxisT = clientView
-    ? settlementModeToGridAxis(tree.settlementMode)
-    : view !== 'client'
-      ? 'net'
-      : moneyAxis === 'none'
-        ? 'both'
-        : moneyAxis
+  // Kwoty control. Nothing here is pinned for a preview: selectV2Columns drops every gate but the
+  // allowlist under `previewVisible`, so the axis — like the layer, the progress display and the
+  // picker below — never reaches the client's grid in the first place.
+  const effectiveMoneyAxis: MoneyAxisT =
+    view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
   const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
   const [guideX, setGuideX] = useState<number | null>(null)
@@ -298,14 +297,14 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // onRemoveItem/onReorderItem read prevById.current / rowsRef.current — stable refs —
   // only from a cell's onClick, never during render, so passing them here is safe.
-  // In clientView the grid is read-only (buildV2Grid disables every cell + drops the action column)
+  // In preview the grid is read-only (buildV2Grid disables every cell + drops the action column)
   // and column-filtered to the client-visible set, so every DATA-MUTATION callback is dropped — there
   // is no control left that could fire them. Column resize (onGuide/onCommitColumn) is the exception:
   // it only moves a localStorage width, never touches the server, so a client keeps it for readability.
   // Sort is dropped (headers render as plain labels) — the client sees a fixed, non-interactive order.
   // Wired only in the interactive editor render, dropped in the read-only client view. The gate is
   // the render mode, NOT a role — OWNER/MANAGER/ADMIN all edit; the client (no login) does not.
-  const editorOnly = <T>(handler: T): T | undefined => (clientView ? undefined : handler)
+  const editorOnly = <T>(handler: T): T | undefined => (preview ? undefined : handler)
   const columnOpts = {
     view,
     stages,
@@ -332,8 +331,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    readOnly: clientView || undefined,
-    clientVisible: clientView || undefined,
+    readOnly: preview,
+    previewVisible: preview,
   }
   const { columns, columnToggleItems } = buildV2Grid(columnOpts)
   // A column sort must not outlive its column. A money-axis or view toggle can drop the sorted
@@ -1159,9 +1158,9 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   function onChange(next: KosztorysV2RowT[]) {
-    // The load-bearing persistence kill-switch: a clientView grid is read-only, but this guards the
+    // The load-bearing persistence kill-switch: a preview grid is read-only, but this guards the
     // one path that could still POST — so no save, undo capture, or refresh ever fires on the public page.
-    if (clientView) return
+    if (preview) return
     const changedById = new Map<number, KosztorysV2RowT>()
     // One onChange batch (incl. a multi-cell paste) = one composite undo entry; accumulate every
     // field/stage change here and buffer a single coalesced command after the loop.

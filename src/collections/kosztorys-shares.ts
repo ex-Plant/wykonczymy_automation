@@ -8,7 +8,7 @@ import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 // sheet has no row there at all.
 //
 // The public read NEVER goes through this collection's access control — it resolves the token via
-// the token-scoped query in `lib/queries/client-kosztorys.ts`. These rules govern the admin panel
+// the token-scoped query in `lib/queries/preview-kosztorys.ts`. These rules govern the admin panel
 // and the share actions only. No row for an investment ⇒ no public access.
 export const KosztorysShares: CollectionConfig = {
   slug: 'kosztorys-shares',

@@ -29,7 +29,7 @@ type PropsT = {
   // Every expense type and both settled states — the tabs split them.
   rows: MaterialTransactionRowT[]
   // Read-only public/preview render: no row links (they point into the app, which a client can't reach).
-  clientView?: boolean
+  preview?: boolean
 }
 
 const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
@@ -143,7 +143,7 @@ export function MaterialsTransactionsTable({
   investmentId,
   investmentName,
   rows,
-  clientView = false,
+  preview = false,
 }: PropsT) {
   const partition = partitionWydatkiRows(rows)
   const available = availableWydatkiDatasets(partition)
@@ -211,7 +211,7 @@ export function MaterialsTransactionsTable({
           TABLE_HEIGHT,
         )}
         initialSorting={[{ id: 'date', desc: true }]}
-        getRowHref={clientView ? undefined : (row) => wydatkiRowHref(investmentId, row)}
+        getRowHref={preview ? undefined : (row) => wydatkiRowHref(investmentId, row)}
         footer={(colCount) => (
           <tr>
             <td className="font-bold" colSpan={colCount - 1}>

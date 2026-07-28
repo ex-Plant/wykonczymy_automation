@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import {
   settlementModeToGridAxis,
@@ -72,7 +72,7 @@ type PropsT = {
   wplatyNet: number
   rabatAmount: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
-  // (every host computes it unconditionally); clientView suppresses the scream downstream, not by
+  // (every host computes it unconditionally); preview suppresses the scream downstream, not by
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
   vatRate: number
@@ -104,7 +104,7 @@ type PropsT = {
   // investment page): the share pies are the first thing worth dropping when vertical space is tight.
   showPies?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
-  clientView?: boolean
+  preview?: boolean
   stages?: KosztorysStageT[]
   stageTotals?: Map<number, number>
   // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
@@ -151,7 +151,7 @@ export function SummaryPanelContent({
   settingsDefaultOpen = false,
   showTransactionLists = true,
   showPies = true,
-  clientView = false,
+  preview = false,
   stages,
   stageTotals,
   payoutsByWorker,
@@ -168,14 +168,21 @@ export function SummaryPanelContent({
   // of the client read-only toggle on top of whatever the host allowed. The persisted pick is shared
   // across hosts, so it can name a view this host doesn't offer — fall back to the first one it does,
   // rather than stranding the reader on a hidden view.
-  const [summaryView, setSummaryView] = useSummaryView()
+  const [persistedView, setPersistedView] = useSummaryView()
+  // A preview reads the same `table-columns:` localStorage family EX-591 keeps out of the client's
+  // grid, so it gets session-local state instead of the persisted pick: the owner's last tab can't
+  // decide which panel the client's document opens on. Still state, not a pin — the client switches
+  // tabs freely, the choice just dies with the tab.
+  const [sessionView, setSessionView] = useState<SummaryViewT>('summary')
+  const summaryView = preview ? sessionView : persistedView
+  const setSummaryView = preview ? setSessionView : setPersistedView
   // „Marża" rides entirely on `financials` being present, and the hosts only build it for ADMIN/OWNER
   // — so the figures never reach a non-owner's RSC payload, which a client-side role check could not
   // have achieved. This component reads no session on purpose: it also renders under (share), which
   // mounts no CurrentUserProvider.
   const allowedViews = views.filter((value) => {
-    if (value === 'subcontractors') return !clientView
-    if (value === 'margin') return !clientView && financials !== undefined
+    if (value === 'subcontractors') return !preview
+    if (value === 'margin') return !preview && financials !== undefined
     return true
   })
   const viewOptions = SUMMARY_VIEW_OPTIONS.filter((option) => allowedViews.includes(option.value))
@@ -229,13 +236,13 @@ export function SummaryPanelContent({
         {topBarSlot}
       </div>
       <SummaryScrollRegion>
-        {/* A client reads the mode, never writes it — the same `clientView` gate every other
+        {/* A client reads the mode, never writes it — the same `preview` gate every other
             owner-only affordance in this panel uses. Collapsed by default: these are set-once
             decisions about the deal, not something the reader needs on every visit.
             Supplying the two writers is what makes a host an editor of these settings; a
             read-only host (no writers) renders no settings block at all — the investment page
             links to the editor from its own action row instead. */}
-        {!clientView && onSettlementModeChange && onMaterialsNetRateChange && (
+        {!preview && onSettlementModeChange && onMaterialsNetRateChange && (
           <div className="max-w-lg px-4 pt-4">
             <SummaryInvestmentSettings
               vatRate={vatRate}
@@ -282,7 +289,7 @@ export function SummaryPanelContent({
                 paidGross={paidGross}
                 depositRows={depositTransactions}
                 showDeposits={showTransactionLists}
-                clientView={clientView}
+                preview={preview}
                 showPie={showPies}
               />
             )}
@@ -294,11 +301,11 @@ export function SummaryPanelContent({
                 materialyBreakdown={materialyBreakdown}
                 // Owner plane — dropped here too, not only by the client share omitting it upstream:
                 // marża-side spend must fail closed on every path into a client render.
-                settledBreakdown={clientView ? undefined : settledBreakdown}
+                settledBreakdown={preview ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
                 nettoShown={nettoShown}
                 materialsNetRate={materialsNetRate}
-                clientView={clientView}
+                preview={preview}
                 showTransactions={showTransactionLists}
                 showPie={showPies}
               />

@@ -35,7 +35,7 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
   )
   const [confirmOpen, setConfirmOpen] = useState(false)
 
-  // No handlers = a read-only mount (clientView): render the bare label, no menu/rename/delete AND no
+  // No handlers = a read-only mount (preview): render the bare label, no menu/rename/delete AND no
   // plane icon or warning — the rozliczenie is internal subcontractor information, never client-facing.
   if (!onRename && !onRemove && !onSetPlane) {
     return (

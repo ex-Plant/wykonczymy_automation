@@ -21,7 +21,7 @@ export async function getKosztorysTree(investmentId: number): Promise<KosztorysT
 }
 
 // The tree-building body, split from the guard above so the client-share read paths
-// (lib/queries/client-kosztorys.ts) — one of which is deliberately unauthenticated — reach the same
+// (lib/queries/preview-kosztorys.ts) — one of which is deliberately unauthenticated — reach the same
 // tree through the same code. Two copies of this mapping would drift, and the client projection
 // would then be projecting a different tree from the one the owner edits.
 export async function buildKosztorysTree(investmentId: number): Promise<KosztorysTreeT> {

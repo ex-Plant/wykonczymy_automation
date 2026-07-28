@@ -68,7 +68,12 @@ export type BuildV2ColumnsOptsT = {
   // Omitting the mutation callbacks is NOT enough — a cell with no callback still takes focus and
   // enters edit mode, so a client-facing grid would look editable and swallow keystrokes.
   readOnly?: boolean
-  // Narrow to the columns a client may see (CLIENT_VISIBLE_COLUMNS). Orthogonal to `readOnly`:
-  // read-only is about interaction, this is about disclosure.
-  clientVisible?: boolean
+  // The client's document: exactly PREVIEW_VISIBLE_COLUMNS, and it OVERRIDES every option above that
+  // describes one owner's reading preferences (isHidden / moneyAxis / progressDisplay / layer), since
+  // none of those may shape what a client is served. `globalDiscountActive` still applies — it is the
+  // investment's own state, not a preference; selectV2Columns spells the split out.
+  // Orthogonal to `readOnly`: read-only is about interaction, this is about disclosure. NOT orthogonal
+  // to `view`, which must be 'client' whenever this is set — selectV2Columns throws on the mismatch,
+  // and `assertDisclosurePair` says why.
+  previewVisible?: boolean
 }
