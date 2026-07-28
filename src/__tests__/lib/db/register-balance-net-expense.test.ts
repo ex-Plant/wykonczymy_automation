@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { sumRegisterBalance } from '@/lib/db/sum-transfers'
+import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
 
 // GUARD B2 — the kasa stays brutto. INVESTMENT_EXPENSE_NET is the one type whose billed
 // figure (`net_amount`) differs from the cash that left the register (`amount`), so the
@@ -30,6 +31,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
     db = await getDb(payload)
+    await purgeFixtureUsers(db)
 
     const owner = await payload.create({
       collection: 'users',
@@ -69,7 +71,8 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
   })
 
   afterAll(async () => {
-    if (registerId) await db.execute(sql`DELETE FROM transactions WHERE source_register_id = ${registerId}`)
+    if (registerId)
+      await db.execute(sql`DELETE FROM transactions WHERE source_register_id = ${registerId}`)
     if (registerId)
       await payload.delete({
         collection: 'cash-registers',
@@ -83,7 +86,11 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
         context: { skipRevalidation: true },
       })
     if (ownerId)
-      await payload.delete({ collection: 'users', id: ownerId, context: { skipRevalidation: true } })
+      await payload.delete({
+        collection: 'users',
+        id: ownerId,
+        context: { skipRevalidation: true },
+      })
   })
 
   it('subtracts the brutto amount, not the netto one', async () => {

@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { sumPayoutsByWorkerForInvestment } from '@/lib/db/sum-transfers'
+import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
 
 // sumPayoutsByWorkerForInvestment is raw SQL (GROUP BY worker_id, null bucket kept, investment-scoped,
 // cancelled + non-PAYOUT excluded), so its grouping is only real against the DB. Insert rows directly
@@ -41,6 +42,7 @@ describe.skipIf(!ENV_READY)('sumPayoutsByWorkerForInvestment (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
     db = await getDb(payload)
+    await purgeFixtureUsers(db)
 
     const inv = await payload.create({
       collection: 'investments',
