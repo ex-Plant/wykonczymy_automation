@@ -5,6 +5,12 @@ import type { PayoutByWorkerT, SubcontractorPayoutRowT } from '@/types/transfers
 // shared by the page's name-enrichment and the block's fallback so the two can't drift apart.
 export const UNASSIGNED_WORKER_NAME = 'Bez przypisanego pracownika'
 
+// Map/React key for a payout row: the null-worker bucket needs a stable non-null key so it can sit
+// in the same lookup as the real workers.
+const UNASSIGNED_KEY = 'unassigned'
+export const workerKey = (workerId: number | null) =>
+  workerId === null ? UNASSIGNED_KEY : workerId
+
 // The name join the cached payout query deliberately skips — every host that renders the block does
 // it, so it lives here rather than being retyped per page.
 export function resolvePayoutWorkerNames(
