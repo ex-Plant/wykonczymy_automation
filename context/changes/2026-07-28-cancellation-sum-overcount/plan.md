@@ -116,7 +116,7 @@ Commit: `feat(EX-574): the sum tile states its scope where it differs from the l
 
 #### Automated
 
-- [x] Phase 1 — bridge spec red → `stripCancelledFilters` fix → green
-- [ ] Phase 2 — amount-ceiling case red → translator fix + guard → green
+- [x] Phase 1 — bridge spec red → `stripCancelledFilters` fix → green — dc2bf98b
+- [x] Phase 2 — amount-ceiling case red → translator fix + guard → green
 - [ ] Phase 3 — scope tooltip
 - [ ] Phase 4 — EX-574 updated + closed, E2E filed to `e2e-backlog`

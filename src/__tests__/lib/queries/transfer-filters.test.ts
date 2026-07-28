@@ -54,7 +54,19 @@ describe('transfer filters → stats SQL', () => {
     )
   })
 
+  it('applies both ends of an amount range', async () => {
+    const sql = await sqlForSearchParams({ amount: '500,00' })
+    expect(sql).toContain('amount >= 500')
+    expect(sql).toContain('amount < 500.01')
+  })
+
   it('applies a prefix amount search as a text LIKE', async () => {
     expect(await sqlForSearchParams({ amount: '500' })).toContain("amount::text LIKE '500'")
+  })
+
+  it('refuses to translate an operator it does not know', async () => {
+    await expect(sumFilteredByType(fakePayload, { amount: { exists: true } })).rejects.toThrow(
+      /exists/,
+    )
   })
 })
