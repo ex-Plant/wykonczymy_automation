@@ -52,7 +52,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] Podsumowanie in **Netto** axis: „Materiały", each category row, Łącznie, and Do zapłaty all show `brutto/(1+VAT)`; in **Brutto** axis they show the raw amount; the two columns differ by the VAT.
 - [ ] The formula hint appears on materiały rows and reads correctly (VAT subtracted).
 - [ ] Robocizna („Suma prac wykonanych") figures are unchanged; udział percentages still sum sensibly.
-- [ ] Client-share view (`clientView`) renders the same derived figures without owner-only links/screams.
+- [ ] Share/preview render (`preview`) renders the same derived figures without owner-only links/screams.
 
 ## kosztorys-tryb-mieszany — cash-settlement view w Podsumowaniu (slice B)
 
@@ -64,7 +64,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] „Mieszana" shows netto-only waterfall + „Suma transzy" netto + the three cash rows.
 - [ ] ~~Typing `C` recomputes Reszta and Razem live~~ — **removed control (see SUPERSEDED note above).**
 - [ ] Netto and Brutto axes unchanged from before.
-- [ ] Client preview (`clientView`) shows the block with a **disabled** input.
+- [ ] Preview render (`preview`) shows the block with a **disabled** input.
 
 ## kosztorys-podsumowanie-tabs — zaliczka-v2 batch: tabbed Podsumowanie, Mieszane via vatPlane, wpłaty base fix (EX-536)
 
@@ -263,7 +263,7 @@ then **removed on the owner's call**. Branch `konradantonik/netto-expenses-own-t
 
 Two plan criteria are here rather than in `plan.md` Progress because this repo has no DOM test
 harness (vitest is node-env, `*.test.ts` only, no RTL/jsdom): the footer-in-both-paths check (2.3) and
-the clientView check (3.4).
+the preview-render check (3.4).
 
 Setup: 5435 test DB (see intro), OWNER, an investment carrying a brutto expense, a korekta, a netto
 expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w robociznę") materiał.
@@ -273,7 +273,7 @@ expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w roboc
 - [ ] **Footer stays pinned (2.3).** With enough rows to scroll the list, „Razem" remains visible at the bottom instead of scrolling away with the rows
 - [ ] The netto tab shows two amount columns, „Brutto" then „Netto", and the „Razem" figure sits under „Netto"; the other tabs show a single „Kwota" column
 - [ ] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row
-- [ ] **clientView (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
+- [ ] **Preview render (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
 - [ ] An investment with neither netto nor settled rows shows no toggle at all
 
 ---
@@ -635,7 +635,7 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 
 ## EX-574 — cancellation-sum-overcount
 
-Repro with live figures + copy-pasteable SQL: `context/changes/2026-07-28-cancellation-sum-overcount/repro.md`.
+Repro with live figures + copy-pasteable SQL: `context/archive/2026-07-28-cancellation-sum-overcount/repro.md`.
 Re-run its SQL first — the figures below track the local prod dump and shift when it is refreshed.
 
 ### Phase 1: The tile stops counting anulowania
