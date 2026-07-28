@@ -1,10 +1,10 @@
 ---
 change_id: subcontractor-price-guard
 title: Guard the subcontractor price against eating the client margin
-status: implemented
+status: archived
 created: 2026-07-27
-updated: 2026-07-27
-archived_at: null
+updated: 2026-07-28
+archived_at: 2026-07-28T17:47:06Z
 branch: ex-607-kosztorys-section-footer-row
 worktree: null
 ---
