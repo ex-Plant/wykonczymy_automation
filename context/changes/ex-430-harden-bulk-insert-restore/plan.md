@@ -289,17 +289,17 @@ touches only code paths, not stored rows.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `pnpm typecheck`
-- [x] 1.2 Linting passes: `pnpm lint`
-- [x] 1.3 Roundtrip identity test passes
-- [x] 1.4 Restore action test passes
+- [x] 1.1 Type checking passes: `pnpm typecheck` — a0f06298
+- [x] 1.2 Linting passes: `pnpm lint` — a0f06298
+- [x] 1.3 Roundtrip identity test passes — a0f06298
+- [x] 1.4 Restore action test passes — a0f06298
 
 ### Phase 2: Restore rollback-on-error integration test
 
 #### Automated
 
-- [ ] 2.1 Rollback test red-then-green
-- [ ] 2.2 Kosztorys unit+integration slice green
+- [x] 2.1 Rollback test red-then-green
+- [x] 2.2 Kosztorys unit+integration slice green
 
 ### Phase 3: Wide-field-coverage roundtrip
 
