@@ -83,10 +83,10 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
   // A throwaway investment with the given settings; tracked for cascade cleanup in afterAll.
   async function createInvestment(name: string, vat: number, wCoeff: number, oCoeff: number) {
     const id = await createTestInvestment(payload, name, {
+      vatRate: vat,
       wToolsCoeff: wCoeff,
       ownToolsCoeff: oCoeff,
     })
-    await db.execute(sql`UPDATE investments SET vat_rate = ${vat} WHERE id = ${id}`)
     investmentIds.push(id)
     return id
   }

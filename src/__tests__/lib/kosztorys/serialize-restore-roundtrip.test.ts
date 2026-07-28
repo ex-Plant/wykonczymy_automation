@@ -80,10 +80,10 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
 
     // A throwaway investment so the whole-tree wipe never touches seeded data; deleted (cascade) after.
     investmentId = await createTestInvestment(payload, 'snapshot-roundtrip-test', {
+      vatRate: 0.23,
       wToolsCoeff: 0.7,
       ownToolsCoeff: 0.5,
     })
-    await db.execute(sql`UPDATE investments SET vat_rate = 0.23 WHERE id = ${investmentId}`)
 
     // Build a small tree: 2 sections, items, 2 stages, sparse progress.
     const sectionA = await payload.create({
