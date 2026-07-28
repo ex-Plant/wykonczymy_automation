@@ -34,11 +34,11 @@ export const UNIT_SUGGESTIONS = ['m²', 'szt', 'mb', 'kpl', 'pkt'] as const
 export const DEFAULT_UNIT = 'szt'
 
 // Placeholder description pre-filled on every new position so a fresh row reads as an item to rename
-// rather than a blank line. Persisted server-side (add/insert actions) and mirrored optimistically.
+// rather than a blank line. Persisted server-side by createBlankItem and mirrored optimistically.
 export const DEFAULT_ITEM_DESCRIPTION = 'Nowa praca'
 
-// Default values for a new section — the single source. addSectionAction and the empty-editor seed
-// import these for the server-side create; the optimistic row is built from them client-side.
+// Default values for a new section — the single source. createSectionWithFirstItem imports these for
+// the server-side create; the optimistic row is built from them client-side.
 export const NEW_SECTION_DEFAULTS = {
   name: 'Nowa sekcja',
   defaultCostVariant: 'w_tools',

@@ -739,30 +739,25 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const anchorOrder = sectionOrderRef.current.get(anchorSectionId)
     if (anchorOrder == null) return
     const at = dir === 'above' ? anchorOrder : anchorOrder + 1
-    const sec = await insertSectionAction(investmentId, at)
-    if (!sec.success) return
-    // The tail shift has COMMITTED, so mirror it before anything else can bail — unlike an item
-    // insert (where order is relative within a section), the client caches these absolute numbers
-    // and a missed shift makes every later section move exchange the wrong ones.
+    const res = await insertSectionAction(investmentId, at)
+    if (!res.success) return
+    // Mirror the committed tail shift — unlike an item insert (where order is relative within a
+    // section), the client caches these absolute numbers and a missed shift makes every later
+    // section move exchange the wrong ones.
     for (const [id, order] of sectionOrderRef.current) {
       if (order >= at) sectionOrderRef.current.set(id, order + 1)
     }
-    sectionOrderRef.current.set(sec.data.id, at)
-    const item = await addItemAction(sec.data.id)
-    if (!item.success) return
-    const row = buildNewSectionRow(sec.data.id, item.data)
+    sectionOrderRef.current.set(res.data.section.id, at)
+    const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
   }
 
   async function handleAddSection() {
-    const sec = await addSectionAction(investmentId)
-    if (!sec.success) return
-    // A new section immediately gets a blank item (an empty section = 0 rows = invisible).
-    const item = await addItemAction(sec.data.id)
-    if (!item.success) return
-    const row = buildNewSectionRow(sec.data.id, item.data)
-    sectionOrderRef.current.set(sec.data.id, sec.data.displayOrder)
+    const res = await addSectionAction(investmentId)
+    if (!res.success) return
+    const row = buildNewSectionRow(res.data.section.id, res.data.item)
+    sectionOrderRef.current.set(res.data.section.id, res.data.section.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
   }

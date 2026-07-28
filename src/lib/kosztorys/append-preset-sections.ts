@@ -1,7 +1,8 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
-import { insertItems, insertSections, nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
+import { nextSectionDisplayOrder } from '@/lib/kosztorys/display-order'
+import { insertItems, insertSections } from '@/lib/kosztorys/insert-rows'
 import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 
 // One section from a preset payload + its items, ready to append. `section`/`items` still carry the

@@ -11,7 +11,8 @@ import {
 } from '@/components/forms/investment-form/investment-schema'
 import { SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
 import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
-import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
+import { createSectionWithFirstItem } from '@/lib/kosztorys/create-section'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { validateAction, protectedAction } from './run-action'
 import { logError } from '@/lib/utils/log-error'
 
@@ -86,7 +87,16 @@ export async function createInvestmentAction(data: InvestmentFormDataT) {
         // exist yet — a dead cold-start (EX-463). Seed one section + one blank item so the user lands
         // on a typable row. Same non-fatal contract as the preset path above.
         try {
-          await seedBlankKosztorys(payload, Number(created.id))
+          await withPayloadTransaction(
+            payload,
+            (req) =>
+              createSectionWithFirstItem(payload, {
+                investmentId: Number(created.id),
+                displayOrder: 0,
+                req,
+              }),
+            { skipRevalidation: true },
+          )
         } catch (err) {
           // TODO(EX-449) SENTRY-REQUIRED: silent blank-seed failure the user can't self-report.
           logError(

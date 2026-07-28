@@ -13,20 +13,6 @@ import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 // and return the new ids in VALUES order (Postgres returns RETURNING rows in VALUES order for a single
 // INSERT), which is what lets a caller map new ids back to inputs positionally.
 
-// Append slot for a new top-level section = MAX(display_order)+1, not COUNT — a delete leaves a gap,
-// so counting would collide with a surviving row. Shared by addSectionAction (single append) and
-// appendPresetSections (base offset for a run of preset sections) so the rule lives in one place.
-export async function nextSectionDisplayOrder(
-  db: DbExecutorT,
-  investmentId: number,
-): Promise<number> {
-  const res = await db.execute(sql`
-    SELECT COALESCE(MAX(display_order) + 1, 0) AS next
-    FROM kosztorys_sections WHERE investment_id = ${investmentId}
-  `)
-  return Number(res.rows[0]?.next ?? 0)
-}
-
 export async function insertSections(
   db: DbExecutorT,
   investmentId: number,

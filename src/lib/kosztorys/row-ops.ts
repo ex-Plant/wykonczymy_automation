@@ -33,7 +33,7 @@ export type BlankRowInputT = {
   stages: KosztorysStageT[]
 }
 
-// Blank item row = addItemAction's server defaults + denormalized section fields
+// Blank item row = createBlankItem's server defaults + denormalized section fields
 // + stage_*=0. Built optimistically from the known id/displayOrder returned by the action.
 export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
   const stageFields: Record<string, number> = {}
