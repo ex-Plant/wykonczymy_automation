@@ -407,8 +407,8 @@ distinct filter combination rather than per investment. Acceptable — the same 
 
 #### Automated
 
-- [ ] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts`
-- [ ] 1.2 Type checking passes: `pnpm typecheck`
+- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts`
+- [x] 1.2 Type checking passes: `pnpm typecheck`
 
 ### Phase 2: Wpłaty follow the filters
 

@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
+import {
+  buildTransferFilters,
+  hasActiveTransferFilters,
+  stripCancelledFilters,
+} from '@/lib/queries/transfer-filters'
 import { sumFilteredByType } from '@/lib/db/sum-transfers'
 import { fakePayload, lastSql, resetFakePayload } from '@/__tests__/helpers/fake-payload-sql'
 
@@ -67,5 +71,28 @@ describe('transfer filters → stats SQL', () => {
     expect(await sqlForSearchParams({ sourceRegister: '3,5' })).toContain(
       '(source_register_id IN (3, 5) OR target_register_id IN (3, 5))',
     )
+  })
+})
+
+describe('hasActiveTransferFilters', () => {
+  it('reports no filter for empty params', () => {
+    expect(hasActiveTransferFilters({})).toBe(false)
+  })
+
+  it('ignores pagination and the reading toggle', () => {
+    expect(hasActiveTransferFilters({ page: '2', limit: '50', statsVersion: 'v2' })).toBe(false)
+  })
+
+  it('reports a filter for a type selection', () => {
+    expect(hasActiveTransferFilters({ type: 'PAYOUT' })).toBe(true)
+  })
+
+  it('reports a filter for a date bound alone', () => {
+    expect(hasActiveTransferFilters({ from: '2026-03-01' })).toBe(true)
+  })
+
+  it('stays false where the built Where is non-empty — the trap this predicate exists for', () => {
+    expect(buildTransferFilters({}, { id: 1 })).not.toEqual({})
+    expect(hasActiveTransferFilters({})).toBe(false)
   })
 })

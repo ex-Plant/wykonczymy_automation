@@ -180,6 +180,42 @@ export function buildTransferFilters(
 }
 
 /**
+ * Every user-settable filter key `buildTransferFilters` reads. Pagination (`page`/`limit`) and the
+ * reading toggle (`statsVersion`) are excluded — they change how much is shown, not what is counted.
+ * Keep this list in step with the params read above.
+ */
+const TRANSFER_FILTER_PARAMS = [
+  'type',
+  'from',
+  'to',
+  'sourceRegister',
+  'investment',
+  'createdBy',
+  'paymentMethod',
+  'expenseCategory',
+  'otherCategory',
+  'worker',
+  'amount',
+  'id',
+  'showCancelled',
+  'cancelledTransactionAudit',
+] as const
+
+/**
+ * Has the user narrowed the view with any transfer filter?
+ *
+ * Must be answered from the raw searchParams, never from a built `Where`: `buildTransferFilters`
+ * unconditionally emits a `type`/`cancelled` condition, so its output is never empty and would read
+ * as "always filtered".
+ */
+export function hasActiveTransferFilters(searchParams: SearchParamsT): boolean {
+  return TRANSFER_FILTER_PARAMS.some((key) => {
+    const value = searchParams[key]
+    return Array.isArray(value) ? value.length > 0 : Boolean(value)
+  })
+}
+
+/**
  * Drop the `cancelled` condition for stats queries, which hardcode `cancelled IS NOT TRUE` in SQL.
  *
  * The `type` condition must survive: a CANCELLATION row copies its original's amount and carries
