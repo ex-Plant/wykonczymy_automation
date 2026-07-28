@@ -629,5 +629,5 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 
 - [ ] At 390px width the dialog shows only the szablon list; tapping one shows only its sekcje; back returns to the list with the szablon still highlighted.
 - [ ] Ticks made before going back are still set after returning and drilling into another szablon; „Dodaj (N)" totals both.
-- [ ] Resizing across the `md` breakpoint mid-selection does not lose ticks or strand the user on a hidden pane.
+- [ ] Resizing across 768px (this repo's `sm`) mid-selection does not lose ticks or strand the user on a hidden pane; at 800px both panes are visible.
 - [ ] The dialog at 390px does not scroll horizontally, and the footer stays reachable.

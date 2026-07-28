@@ -33,13 +33,26 @@ describe('groupPresetSections', () => {
     expect(groups[1].metas.map((item) => item.sectionId)).toEqual([20, 21, 22])
   })
 
-  // A section id is only unique within its preset, so the same id under two presets must land in
-  // separate groups — this is what `metaKey` exists to keep apart.
+  // A section id is only unique within its preset, so the same id under two presets is two sections.
   it('keeps a repeated section id in its own preset group', () => {
     const groups = groupPresetSections([meta(1, 5), meta(2, 5)], new Set())
 
     expect(groups).toHaveLength(2)
     expect(groups.map((group) => group.presetId)).toEqual([1, 2])
+  })
+
+  it('takes the group name from its metas', () => {
+    const groups = groupPresetSections([meta(1, 10, 'Białostocka bazowy')], new Set())
+
+    expect(groups[0].presetName).toBe('Białostocka bazowy')
+  })
+
+  // The precondition the picker's React keys rest on: `listPresetSections` returns one preset's
+  // metas consecutively. Fed interleaved, grouping splits them — two groups with one presetId.
+  it('splits a preset whose metas arrive non-consecutively', () => {
+    const groups = groupPresetSections([meta(1, 10), meta(2, 20), meta(1, 11)], new Set())
+
+    expect(groups.map((group) => group.presetId)).toEqual([1, 2, 1])
   })
 
   it('counts selections per group, ignoring keys of other presets', () => {

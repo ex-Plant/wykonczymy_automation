@@ -245,6 +245,7 @@ Non-blocking refactor/cleanup findings live in Linear (project "Wykonczymy v2").
 ## Stack Notes
 
 - React Compiler is enabled — don't hand-write `useMemo` / `useCallback` for things it handles
+- **The breakpoint scale is overridden** in `src/styles/globals.css` — `sm`=768px, `md`=1024px, `lg`=1280px, where Tailwind ships 640/768/1024. `sm:` is this app's single mobile→desktop break; `md:` is a second, tablet-large step used almost only by the marketing pages. Any snippet pasted from shadcn/upstream docs assumes the stock scale and must be re-mapped, or it fires one step too late.
 - `src/app/(payload)/layout.tsx` must include `importMap`, `serverFunction`, and `handleServerFunctions`
 - A `console.error` that must become a Sentry capture once Sentry is wired gets a `// TODO(EX-449) SENTRY-REQUIRED:` marker (greppable + shows in the IDE TODO panel) — never a bare comment
 

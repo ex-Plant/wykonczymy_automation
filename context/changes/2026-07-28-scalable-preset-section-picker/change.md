@@ -39,6 +39,11 @@ Two known consequences to plan for:
 - a narrow screen can't render two panes — it becomes szablon list → drill in → back. This is the
   fiddly part of the work, not the two-pane layout itself.
 
+**Reversed during planning (owner, 2026-07-28):** the cross-szablon sekcja search above was dropped —
+sekcja names repeat across szablony, so the flat results would be a list of identical names, and a
+szablon's contents are predictable from its name. The shipped picker searches szablon names only. See
+plan.md → „What We're NOT Doing".
+
 **Constraint carried over from the current implementation:** cmdk only filters over _mounted_ items,
 and this repo's `Command` wrapper defaults its filter to `foldFilter` (diacritic-folding). Any design
 that unmounts rows breaks search — hence the "hide, don't unmount" rule the folding sketch needed,

@@ -13,6 +13,7 @@ import { useSearchFilter } from '@/hooks/use-search-filter'
 import type { AppendedSliceT } from '@/lib/kosztorys/append-preset-sections'
 import type { PresetSectionMetaT } from '@/lib/db/presets'
 import { cn } from '@/lib/utils/cn'
+import { pluralize } from '@/lib/utils/polish-plural'
 import { toastMessage } from '@/lib/utils/toast'
 import { groupPresetSections, metaKey, type PresetGroupT } from './preset-picker-groups'
 
@@ -20,15 +21,15 @@ type PropsT = {
   investmentId: number
   open: boolean
   onOpenChange: (open: boolean) => void
-  // Called with the created sections (new ids) after a successful append — the editor patches the
-  // grid from this rather than refetching the tree.
+  // The editor patches the grid from this rather than refetching the tree.
   onAppended: (slice: AppendedSliceT) => void
 }
 
 const getPresetName = (group: PresetGroupT) => group.presetName
 
-// Two panes: szablony left (searchable), the highlighted szablon's sekcje right. Selection is
-// cumulative across szablony and confirms once.
+const sekcjeNoun = (count: number) => pluralize(count, ['sekcja', 'sekcje', 'sekcji'])
+
+// Selection is cumulative across szablony and confirms once.
 export function AddSectionsFromPresetDialog({
   investmentId,
   open,
@@ -40,8 +41,8 @@ export function AddSectionsFromPresetDialog({
   const [sections, setSections] = useState<PresetSectionMetaT[] | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [activePresetId, setActivePresetId] = useState<number | null>(null)
-  // Below `md` only one pane fits, so this drives which of the two is shown. Both stay mounted at
-  // every width — above `md` the state is inert.
+  // Below `sm` (48rem — this repo overrides the scale) only one pane fits, so this drives which of
+  // the two is shown. Both stay mounted at every width — above `sm` the state is inert.
   const [pane, setPane] = useState<'presets' | 'sections'>('presets')
   const [pending, setPending] = useState(false)
 
@@ -61,13 +62,26 @@ export function AddSectionsFromPresetDialog({
   // setState in an effect body is a cascading-render smell the lint forbids).
   useEffect(() => {
     if (!open) return
-    void listPresetSectionsAction().then((res) => {
-      if (res.success) setSections(res.data)
-      else {
-        setSections([])
-        toastMessage(res.error ?? 'Nie udało się wczytać szablonów', 'error', 4000)
-      }
-    })
+    // A close-then-reopen while the first load is in flight would otherwise resolve into the reset
+    // state — showing a stale list, or toasting an error at a dialog nobody is looking at.
+    let stale = false
+    const fail = (message: string) => {
+      if (stale) return
+      setSections([])
+      toastMessage(message, 'error', 4000)
+    }
+    void listPresetSectionsAction()
+      .then((res) => {
+        if (stale) return
+        if (res.success) setSections(res.data)
+        else fail(res.error ?? 'Nie udało się wczytać szablonów')
+      })
+      // A transport-level RPC rejection never resolves to {success:false}; without this „Ładowanie
+      // szablonów…" hangs forever on a dropped request.
+      .catch(() => fail('Nie udało się wczytać szablonów'))
+    return () => {
+      stale = true
+    }
   }, [open])
 
   // Every close routes through here (cancel / esc / overlay / post-confirm), so resetting on close
@@ -93,9 +107,7 @@ export function AddSectionsFromPresetDialog({
     })
   }
 
-  // All-or-nothing per szablon: already-full deselects, anything else fills. Loading a whole szablon
-  // into an empty kosztorys is the common case, and it was one click before the empty-editor dialog
-  // was retired.
+  // Loading a whole szablon into an empty kosztorys is the common case, so it stays one click.
   function toggleGroup(keys: string[]) {
     setSelected((prev) => {
       const next = new Set(prev)
@@ -123,8 +135,8 @@ export function AddSectionsFromPresetDialog({
   }
 
   const count = selected.size
-  const activeKeys = activeGroup?.metas.map(metaKey) ?? []
-  const allActiveSelected = activeKeys.length > 0 && activeKeys.every((key) => selected.has(key))
+  const allActiveSelected =
+    activeGroup.metas.length > 0 && activeGroup.selectedCount === activeGroup.metas.length
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -139,10 +151,10 @@ export function AddSectionsFromPresetDialog({
         ) : sections.length === 0 ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Brak zapisanych szablonów.</p>
         ) : (
-          <div className="mt-3 flex h-[55vh] min-h-0 border-t">
+          <div className="mt-3 flex max-h-[55vh] min-h-0 border-t">
             <div
               className={cn(
-                'w-full flex-col md:flex md:w-1/2',
+                'w-full flex-col sm:flex sm:w-1/2',
                 pane === 'presets' ? 'flex' : 'hidden',
               )}
             >
@@ -164,14 +176,15 @@ export function AddSectionsFromPresetDialog({
                     <button
                       key={group.presetId}
                       type="button"
-                      // Highlight only — ticking a whole szablon goes through „Zaznacz wszystkie".
+                      // Ticking a whole szablon goes through „Zaznacz wszystkie", not this row.
                       onClick={() => {
                         setActivePresetId(group.presetId)
                         setPane('sections')
                       }}
+                      aria-current={group.presetId === activeGroup.presetId}
                       className={cn(
                         'hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
-                        group.presetId === activeGroup?.presetId && 'bg-accent',
+                        group.presetId === activeGroup.presetId && 'bg-accent',
                       )}
                     >
                       <span className="flex-1 truncate">{group.presetName}</span>
@@ -181,7 +194,7 @@ export function AddSectionsFromPresetDialog({
                         </span>
                       )}
                       <span className="text-muted-foreground text-xs">
-                        {group.metas.length} sekcji
+                        {group.metas.length} {sekcjeNoun(group.metas.length)}
                       </span>
                     </button>
                   ))
@@ -190,53 +203,55 @@ export function AddSectionsFromPresetDialog({
             </div>
             <div
               className={cn(
-                'w-full flex-col md:flex md:w-1/2 md:border-l',
+                'w-full flex-col sm:flex sm:w-1/2 sm:border-l',
                 pane === 'sections' ? 'flex' : 'hidden',
               )}
             >
+              {/* The name shows at every width, not only as the drill-in's back label: with the left
+                pane filtered, the highlighted row can be off-screen, and „Zaznacz wszystkie" must
+                never be ambiguous about which szablon it fills. */}
               <button
                 type="button"
                 onClick={() => setPane('presets')}
-                className="hover:bg-accent flex items-center gap-1 border-b px-3 py-2 text-left text-sm md:hidden"
+                className="hover:bg-accent flex items-center gap-1 border-b px-3 py-2 text-left text-sm sm:hidden"
               >
-                <ChevronLeft className="size-4" />
-                <span className="truncate">{activeGroup?.presetName ?? 'Szablony'}</span>
+                <ChevronLeft />
+                <span className="truncate">{activeGroup.presetName}</span>
               </button>
+              <p className="hidden truncate border-b px-3 py-2 text-sm font-medium sm:block">
+                {activeGroup.presetName}
+              </p>
               <div className="min-h-0 flex-1 overflow-y-auto py-2">
-                {activeGroup && (
-                  <>
-                    {/* Lives in the unfiltered pane by construction: mass-select can never reach
-                      sekcje the user cannot see. */}
+                {/* Lives in the unfiltered pane by construction: mass-select can never reach sekcje
+                  the user cannot see. */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(activeGroup.metas.map(metaKey))}
+                  aria-pressed={allActiveSelected}
+                  className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left"
+                >
+                  <Check className={cn(allActiveSelected ? 'opacity-100' : 'opacity-0')} />
+                  <span className="text-muted-foreground flex-1 text-xs">
+                    {allActiveSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                  </span>
+                </button>
+                {activeGroup.metas.map((meta) => {
+                  const key = metaKey(meta)
+                  const isSelected = selected.has(key)
+                  return (
                     <button
+                      key={key}
                       type="button"
-                      onClick={() => toggleGroup(activeKeys)}
-                      className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left"
+                      onClick={() => toggle(key)}
+                      aria-pressed={isSelected}
+                      className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
                     >
-                      <Check className={cn(allActiveSelected ? 'opacity-100' : 'opacity-0')} />
-                      <span className="text-muted-foreground flex-1 text-xs">
-                        {allActiveSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
-                      </span>
+                      <Check className={cn(isSelected ? 'opacity-100' : 'opacity-0')} />
+                      <span className="flex-1 truncate">{meta.sectionName}</span>
+                      <span className="text-muted-foreground text-xs">{meta.itemCount} poz.</span>
                     </button>
-                    {activeGroup.metas.map((meta) => {
-                      const key = metaKey(meta)
-                      const isSelected = selected.has(key)
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => toggle(key)}
-                          className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
-                        >
-                          <Check className={cn(isSelected ? 'opacity-100' : 'opacity-0')} />
-                          <span className="flex-1 truncate">{meta.sectionName}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {meta.itemCount} poz.
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </>
-                )}
+                  )
+                })}
               </div>
             </div>
           </div>

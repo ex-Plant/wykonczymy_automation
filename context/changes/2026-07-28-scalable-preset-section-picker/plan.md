@@ -217,6 +217,11 @@ needs its own „Nie znaleziono szablonu." (previously `CommandEmpty` covered th
 
 The same two panes, one at a time below `md`, with a back affordance.
 
+> **Corrected at the review gate:** the gate is `sm:` (48rem/768px), not `md:`. This repo overrides
+> Tailwind's scale in `src/styles/globals.css` — `md` is 1024px — so a `md:` gate left the 768–1023px
+> band showing one pane in a dialog already widened to 768px by `sm:max-w-3xl`. Read every `md` below
+> as `sm`.
+
 ### Changes Required:
 
 #### 1. Pane switching
