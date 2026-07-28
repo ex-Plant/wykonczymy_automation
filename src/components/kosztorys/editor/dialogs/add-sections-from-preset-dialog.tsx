@@ -4,22 +4,17 @@ import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
+import { SearchFilterInput } from '@/components/ui/search-filter-input'
 import {
   appendPresetSectionsAction,
   listPresetSectionsAction,
 } from '@/lib/actions/kosztorys-presets'
+import { useSearchFilter } from '@/hooks/use-search-filter'
 import type { AppendedSliceT } from '@/lib/kosztorys/append-preset-sections'
 import type { PresetSectionMetaT } from '@/lib/db/presets'
 import { cn } from '@/lib/utils/cn'
 import { toastMessage } from '@/lib/utils/toast'
+import { groupPresetSections, metaKey, type PresetGroupT } from './preset-picker-groups'
 
 type PropsT = {
   investmentId: number
@@ -30,11 +25,10 @@ type PropsT = {
   onAppended: (slice: AppendedSliceT) => void
 }
 
-// A meta's stable identity across all presets — a section id is only unique WITHIN its preset.
-const metaKey = (meta: PresetSectionMetaT) => `${meta.presetId}:${meta.sectionId}`
+const getPresetName = (group: PresetGroupT) => group.presetName
 
-// Multi-select is why this is a cmdk list, not a combobox: toggling a row keeps the dialog open and
-// one confirm appends all checked sections.
+// Two panes: szablony left (searchable), the highlighted szablon's sekcje right. Selection is
+// cumulative across szablony and confirms once.
 export function AddSectionsFromPresetDialog({
   investmentId,
   open,
@@ -45,7 +39,18 @@ export function AddSectionsFromPresetDialog({
   // never flashes during the fetch and a failed load isn't mistaken for a genuinely empty library.
   const [sections, setSections] = useState<PresetSectionMetaT[] | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [activePresetId, setActivePresetId] = useState<number | null>(null)
   const [pending, setPending] = useState(false)
+
+  const groups = groupPresetSections(sections ?? [], selected)
+  const {
+    filteredData: filteredGroups,
+    searchTerm,
+    setSearchTerm,
+  } = useSearchFilter(groups, getPresetName)
+  // Falling back to the first szablon keeps the right pane filled from the moment the list lands,
+  // without an effect that writes state during render.
+  const activeGroup = groups.find((group) => group.presetId === activePresetId) ?? groups[0]
 
   // Fetch-on-open: the picker can be opened programmatically (from the „Dodaj" menu item, bypassing
   // Radix's own open trigger), so syncing the load to the `open` prop is the one reliable seam. Only
@@ -69,6 +74,8 @@ export function AddSectionsFromPresetDialog({
     if (!next) {
       setSelected(new Set())
       setSections(null)
+      setActivePresetId(null)
+      setSearchTerm('')
     }
     onOpenChange(next)
   }
@@ -94,14 +101,6 @@ export function AddSectionsFromPresetDialog({
     })
   }
 
-  // Consecutive metas sharing a presetId form one group (the listing is already ordered that way).
-  const groups: { presetId: number; presetName: string; metas: PresetSectionMetaT[] }[] = []
-  for (const meta of sections ?? []) {
-    const last = groups.at(-1)
-    if (last && last.presetId === meta.presetId) last.metas.push(meta)
-    else groups.push({ presetId: meta.presetId, presetName: meta.presetName, metas: [meta] })
-  }
-
   async function handleConfirm() {
     const selections = (sections ?? [])
       .filter((meta) => selected.has(metaKey(meta)))
@@ -120,10 +119,12 @@ export function AddSectionsFromPresetDialog({
   }
 
   const count = selected.size
+  const activeKeys = activeGroup?.metas.map(metaKey) ?? []
+  const allActiveSelected = activeKeys.length > 0 && activeKeys.every((key) => selected.has(key))
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <DialogHeader
           className="px-4 pt-4"
           title="Dodaj sekcję z szablonu"
@@ -134,50 +135,86 @@ export function AddSectionsFromPresetDialog({
         ) : sections.length === 0 ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Brak zapisanych szablonów.</p>
         ) : (
-          <Command className="mt-3" shouldFilter>
-            <CommandInput placeholder="Szukaj sekcji…" />
-            <CommandList>
-              <CommandEmpty>Nie znaleziono sekcji.</CommandEmpty>
-              {groups.map((group) => {
-                const groupKeys = group.metas.map(metaKey)
-                const allSelected = groupKeys.every((key) => selected.has(key))
-                return (
-                  <CommandGroup key={group.presetId} heading={group.presetName}>
-                    {/* A row, not a control in the heading: cmdk headings are not focusable, so a button
-                      there would be unreachable by keyboard. Its `value` deliberately omits the section
-                      names, so a search for one filters this row out — mass-selecting a filtered subset
-                      would silently include the hidden rest. */}
-                    <CommandItem
-                      value={`${group.presetName} zaznacz wszystkie`}
-                      onSelect={() => toggleGroup(groupKeys)}
+          <div className="mt-3 flex h-[55vh] min-h-0 border-t">
+            <div className="flex w-1/2 flex-col">
+              <div className="p-2">
+                <SearchFilterInput
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  placeholder="Szukaj szablonu…"
+                  inputClassName="w-full lg:w-full"
+                />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {filteredGroups.length === 0 ? (
+                  <p className="text-muted-foreground px-3 py-4 text-sm">
+                    Nie znaleziono szablonu.
+                  </p>
+                ) : (
+                  filteredGroups.map((group) => (
+                    <button
+                      key={group.presetId}
+                      type="button"
+                      // Highlight only — ticking a whole szablon goes through „Zaznacz wszystkie".
+                      onClick={() => setActivePresetId(group.presetId)}
+                      className={cn(
+                        'hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm',
+                        group.presetId === activeGroup?.presetId && 'bg-accent',
+                      )}
                     >
-                      <Check className={cn(allSelected ? 'opacity-100' : 'opacity-0')} />
-                      <span className="text-muted-foreground flex-1 text-xs">
-                        {allSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                      <span className="flex-1 truncate">{group.presetName}</span>
+                      {group.selectedCount > 0 && (
+                        <span className="text-primary text-xs font-medium">
+                          {group.selectedCount}/{group.metas.length}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground text-xs">
+                        {group.metas.length} sekcji
                       </span>
-                    </CommandItem>
-                    {group.metas.map((meta) => {
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="flex w-1/2 flex-col border-l">
+              <div className="min-h-0 flex-1 overflow-y-auto py-2">
+                {activeGroup && (
+                  <>
+                    {/* Lives in the unfiltered pane by construction: mass-select can never reach
+                      sekcje the user cannot see. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(activeKeys)}
+                      className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left"
+                    >
+                      <Check className={cn(allActiveSelected ? 'opacity-100' : 'opacity-0')} />
+                      <span className="text-muted-foreground flex-1 text-xs">
+                        {allActiveSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                      </span>
+                    </button>
+                    {activeGroup.metas.map((meta) => {
                       const key = metaKey(meta)
                       const isSelected = selected.has(key)
                       return (
-                        <CommandItem
+                        <button
                           key={key}
-                          value={`${meta.sectionName} ${meta.presetName} ${key}`}
-                          onSelect={() => toggle(key)}
+                          type="button"
+                          onClick={() => toggle(key)}
+                          className="hover:bg-accent flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
                         >
                           <Check className={cn(isSelected ? 'opacity-100' : 'opacity-0')} />
-                          <span className="flex-1">{meta.sectionName}</span>
+                          <span className="flex-1 truncate">{meta.sectionName}</span>
                           <span className="text-muted-foreground text-xs">
                             {meta.itemCount} poz.
                           </span>
-                        </CommandItem>
+                        </button>
                       )
                     })}
-                  </CommandGroup>
-                )
-              })}
-            </CommandList>
-          </Command>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
         <DialogActions
           className="px-4 pt-3 pb-4"

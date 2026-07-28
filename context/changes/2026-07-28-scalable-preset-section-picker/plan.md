@@ -289,18 +289,18 @@ is felt — not part of this change.
 
 #### Automated
 
-- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/components/kosztorys/preset-picker-groups.test.ts`
-- [x] 1.2 Existing preset specs still pass
-- [x] 1.3 Type checking passes: `pnpm typecheck`
-- [x] 1.4 Linting passes: `pnpm lint`
+- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/components/kosztorys/preset-picker-groups.test.ts` — b9259901
+- [x] 1.2 Existing preset specs still pass — b9259901
+- [x] 1.3 Type checking passes: `pnpm typecheck` — b9259901
+- [x] 1.4 Linting passes: `pnpm lint` — b9259901
 
 ### Phase 2: Two-pane picker (desktop)
 
 #### Automated
 
-- [ ] 2.1 Type checking passes: `pnpm typecheck`
-- [ ] 2.2 Linting passes: `pnpm lint`
-- [ ] 2.3 No stale cmdk import remains in the picker
+- [x] 2.1 Type checking passes: `pnpm typecheck`
+- [x] 2.2 Linting passes: `pnpm lint`
+- [x] 2.3 No stale cmdk import remains in the picker
 
 ### Phase 3: Narrow-screen drill-in
 
