@@ -82,6 +82,18 @@ export function AddSectionsFromPresetDialog({
     })
   }
 
+  // All-or-nothing per szablon: already-full deselects, anything else fills. Loading a whole szablon
+  // into an empty kosztorys is the common case, and it was one click before the empty-editor dialog
+  // was retired.
+  function toggleGroup(keys: string[]) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (keys.every((key) => next.has(key))) keys.forEach((key) => next.delete(key))
+      else keys.forEach((key) => next.add(key))
+      return next
+    })
+  }
+
   // Consecutive metas sharing a presetId form one group (the listing is already ordered that way).
   const groups: { presetId: number; presetName: string; metas: PresetSectionMetaT[] }[] = []
   for (const meta of sections ?? []) {
@@ -126,25 +138,44 @@ export function AddSectionsFromPresetDialog({
             <CommandInput placeholder="Szukaj sekcji…" />
             <CommandList>
               <CommandEmpty>Nie znaleziono sekcji.</CommandEmpty>
-              {groups.map((group) => (
-                <CommandGroup key={group.presetId} heading={group.presetName}>
-                  {group.metas.map((meta) => {
-                    const key = metaKey(meta)
-                    const isSelected = selected.has(key)
-                    return (
-                      <CommandItem
-                        key={key}
-                        value={`${meta.sectionName} ${meta.presetName} ${key}`}
-                        onSelect={() => toggle(key)}
-                      >
-                        <Check className={cn(isSelected ? 'opacity-100' : 'opacity-0')} />
-                        <span className="flex-1">{meta.sectionName}</span>
-                        <span className="text-muted-foreground text-xs">{meta.itemCount} poz.</span>
-                      </CommandItem>
-                    )
-                  })}
-                </CommandGroup>
-              ))}
+              {groups.map((group) => {
+                const groupKeys = group.metas.map(metaKey)
+                const allSelected = groupKeys.every((key) => selected.has(key))
+                return (
+                  <CommandGroup key={group.presetId} heading={group.presetName}>
+                    {/* A row, not a control in the heading: cmdk headings are not focusable, so a button
+                      there would be unreachable by keyboard. Its `value` deliberately omits the section
+                      names, so a search for one filters this row out — mass-selecting a filtered subset
+                      would silently include the hidden rest. */}
+                    <CommandItem
+                      value={`${group.presetName} zaznacz wszystkie`}
+                      onSelect={() => toggleGroup(groupKeys)}
+                    >
+                      <Check className={cn(allSelected ? 'opacity-100' : 'opacity-0')} />
+                      <span className="text-muted-foreground flex-1 text-xs">
+                        {allSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                      </span>
+                    </CommandItem>
+                    {group.metas.map((meta) => {
+                      const key = metaKey(meta)
+                      const isSelected = selected.has(key)
+                      return (
+                        <CommandItem
+                          key={key}
+                          value={`${meta.sectionName} ${meta.presetName} ${key}`}
+                          onSelect={() => toggle(key)}
+                        >
+                          <Check className={cn(isSelected ? 'opacity-100' : 'opacity-0')} />
+                          <span className="flex-1">{meta.sectionName}</span>
+                          <span className="text-muted-foreground text-xs">
+                            {meta.itemCount} poz.
+                          </span>
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                )
+              })}
             </CommandList>
           </Command>
         )}
