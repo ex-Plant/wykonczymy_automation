@@ -8,7 +8,7 @@ import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { MaterialsT } from '@/lib/kosztorys/summary-economics'
 import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
-import type { MaterialTransactionRowT } from '@/types/reference-data'
+import type { MaterialTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
   investmentId: number

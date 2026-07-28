@@ -20,7 +20,7 @@ import {
   type WydatkiDatasetT,
 } from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
-import type { MaterialTransactionRowT } from '@/types/reference-data'
+import type { MaterialTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
   investmentId: number

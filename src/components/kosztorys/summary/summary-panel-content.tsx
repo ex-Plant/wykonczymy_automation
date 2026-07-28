@@ -37,7 +37,7 @@ import type {
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
-} from '@/types/reference-data'
+} from '@/types/transfers'
 
 const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'summary', label: 'Podsumowanie' },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeSubcontractorSummary } from '@/lib/kosztorys/subcontractor-summary'
-import type { SubcontractorPayoutRowT } from '@/types/reference-data'
+import type { SubcontractorPayoutRowT } from '@/types/transfers'
 
 const payout = (workerId: number | null, total: number, name = 'x'): SubcontractorPayoutRowT => ({
   workerId,

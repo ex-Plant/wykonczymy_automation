@@ -5,7 +5,7 @@ import { SlicePie } from '@/components/ui/slice-pie'
 import { Description } from '@/components/ui/description'
 import { depositPlanePieSlices } from '@/lib/kosztorys/chart-slices'
 import { formatNet } from '@/lib/kosztorys/format'
-import type { DepositTransactionRowT } from '@/types/reference-data'
+import type { DepositTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
   investmentId: number

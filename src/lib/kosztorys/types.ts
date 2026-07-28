@@ -11,7 +11,7 @@ import type {
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
-} from '@/types/reference-data'
+} from '@/types/transfers'
 
 export type DiscountTypeT = 'percent' | 'amount'
 // Per-investment global discount over the whole kosztorys. type null = none (per-item discounts

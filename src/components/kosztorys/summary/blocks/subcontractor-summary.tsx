@@ -25,7 +25,7 @@ import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { KosztorysGlobalSettings } from '@/components/kosztorys/editor/toolbar/kosztorys-global-settings'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/reference-data'
+import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/transfers'
 import { cn } from '@/lib/utils/cn'
 
 type PropsT = {

@@ -1,4 +1,5 @@
-import type { PayoutByWorkerT, SubcontractorPayoutRowT, WorkerRefT } from '@/types/reference-data'
+import type { WorkerRefT } from '@/types/reference-data'
+import type { PayoutByWorkerT, SubcontractorPayoutRowT } from '@/types/transfers'
 
 // Display label for the null-worker payout bucket (a cash PAYOUT with no worker attached). One source
 // shared by the page's name-enrichment and the block's fallback so the two can't drift apart.

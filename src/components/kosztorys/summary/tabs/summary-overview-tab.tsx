@@ -14,7 +14,7 @@ import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
-import type { DepositTransactionRowT } from '@/types/reference-data'
+import type { DepositTransactionRowT } from '@/types/transfers'
 import type {
   KosztorysReconciliationT,
   SettlementPlaneVerdictT,

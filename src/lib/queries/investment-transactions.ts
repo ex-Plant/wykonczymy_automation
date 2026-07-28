@@ -17,7 +17,7 @@ import type {
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
-} from '@/types/reference-data'
+} from '@/types/transfers'
 
 // Realized PAYOUTs for one investment, grouped per worker (null-worker bucket kept). Cached under
 // CACHE_TAGS.transfers alone — names are joined at the page from reference data, so no users tag is

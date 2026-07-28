@@ -11,7 +11,7 @@ import type {
   DepositTransactionRowT,
   PayoutByWorkerT,
   PayoutTransactionRowT,
-} from '@/types/reference-data'
+} from '@/types/transfers'
 import { buildSqlConditions, isNoResultsSentinel } from '@/lib/db/where-to-sql'
 import { getDb } from '@/lib/db/get-db'
 import { DEPOSIT_TYPES, type VatPlaneT } from '@/lib/constants/transfers'

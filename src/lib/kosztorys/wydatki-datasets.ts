@@ -1,5 +1,5 @@
 import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
-import type { MaterialTransactionRowT } from '@/types/reference-data'
+import type { MaterialTransactionRowT } from '@/types/transfers'
 
 export type WydatkiDatasetT = 'gross' | 'net' | 'settled'
 

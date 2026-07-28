@@ -15,7 +15,7 @@ import {
 } from '@/lib/kosztorys/summary-economics'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement'
 import type { SectionSubtotalT } from '@/lib/kosztorys/types'
-import type { DepositTransactionRowT } from '@/types/reference-data'
+import type { DepositTransactionRowT } from '@/types/transfers'
 
 // Materiały with nothing billed netto — the pre-netto-type world, so the existing expectations
 // keep reading as the brutto-only baseline they were written for.
