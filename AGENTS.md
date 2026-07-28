@@ -223,8 +223,14 @@ Two test homes by layer: **unit** → Vitest specs under `src/__tests__` (aliase
 **Vitest specs live under `src/__tests__`, never colocated next to their source** — this is the
 one place the feature-first rule is deliberately overridden, because `scripts/test-integration.sh`
 discovers the DB-backed specs by grepping that tree. A colocated spec is simply never run by the
-pre-push gate. Inside it, mirror the source path (`src/lib/db/x.ts` → `src/__tests__/lib/db/x.test.ts`);
-the top level holds older specs that predate the mirroring and cross-cutting ones. A spec that
+pre-push gate. Inside it, mirror the source path **in full, every intermediate directory included** —
+`src/lib/db/x.ts` → `src/__tests__/lib/db/x.test.ts`, and a deep component path keeps its depth:
+`src/components/kosztorys/editor/dialogs/preset-picker-groups.ts` →
+`src/__tests__/components/kosztorys/editor/dialogs/preset-picker-groups.test.ts`. Never file a spec
+under the mirror of a directory that isn't its source — a spec for a `components/**` module goes under
+`__tests__/components/**` even when its subject is kosztorys logic. Several specs may share one source
+file; they differ by filename, not by folder. The top level holds older specs that predate the
+mirroring and cross-cutting ones. A spec that
 asserts the whole dataset against a committed fixture (the golden master) is excluded from that
 discovery on purpose and runs via `pnpm test:parity` instead — its neighbours create rows in the
 same shared DB.
