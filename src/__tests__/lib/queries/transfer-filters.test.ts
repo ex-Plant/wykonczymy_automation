@@ -91,6 +91,10 @@ describe('hasActiveTransferFilters', () => {
     expect(hasActiveTransferFilters({ from: '2026-03-01' })).toBe(true)
   })
 
+  it('stays false for the cancelled toggle, which moves no figure in the panel', () => {
+    expect(hasActiveTransferFilters({ showCancelled: '1' })).toBe(false)
+  })
+
   it('stays false where the built Where is non-empty — the trap this predicate exists for', () => {
     expect(buildTransferFilters({}, { id: 1 })).not.toEqual({})
     expect(hasActiveTransferFilters({})).toBe(false)

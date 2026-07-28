@@ -48,8 +48,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
 
   // Stats ignore cancelled toggle — SQL already excludes cancelled via hardcoded WHERE clause
   const statsWhere = stripCancelledFilters(transferWhere)
-  // Read off the raw params, not `statsWhere` — the builder always emits a default type/cancelled
-  // condition, so an unfiltered page still produces a non-empty `Where`.
   const filtersActive = hasActiveTransferFilters(sp)
 
   const version = parseStatsVersion(sp[STATS_VERSION_PARAM])

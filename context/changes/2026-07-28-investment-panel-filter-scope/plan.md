@@ -58,7 +58,7 @@ With no filter in the URL, the panel renders exactly as today. With any filter a
 
 - Materiały, marża, **and wpłaty** narrow to the filtered set.
 - Suma prac wykonanych, Rabat, Robocizna, Łącznie and „Do zapłaty" carry a `*`.
-- One footnote line sits in the panel's pinned top bar explaining the `*`.
+- One footnote line sits at the foot of the Podsumowanie content explaining the `*`.
 - The mismatch scream and the tryb-mieszany warning do not render.
 - v1 „Finanse", the transfers table, its sum tile, the print/export header and `kosztorys_v2` are
   byte-identical to today.
@@ -249,13 +249,16 @@ silence the two verdicts.
 **Intent**: One optional prop that means "this host's transaction figures are scoped", defaulting off
 so `kosztorys_v2` and the share read are untouched.
 
-**Contract**: New optional prop (default `false`). When set: render the footnote line in the pinned
-top bar next to the view toggle; pass a scope flag down to `SummaryOverviewTab`; suppress the
-tryb-mieszany warning (`summary-overview-tab.tsx:86`) and the mismatch screams. Footnote copy is
-Polish UI, one line, e.g. „\* Wartości z kosztorysu nie reagują na filtry transakcji." Keep it a
-single non-wrapping line — the top bar's fixed height is load-bearing (comment at
-`summary-panel-content.tsx:225`); if it can't fit on one line at the narrowest supported width, place
-it directly under the toggle inside the same bar rather than letting the bar grow unbounded.
+**Contract**: New optional prop (default `false`). When set: render the footnote line at the foot of
+the scroll region, gated to the Podsumowanie view (the only view carrying stars); pass a scope flag
+down to `SummaryOverviewTab`; suppress the tryb-mieszany warning (`summary-overview-tab.tsx:86`) and
+the mismatch screams. Footnote copy is Polish UI, one line: „Pola oznaczone gwiazdką nie reagują na
+filtry transakcji", in red with a `TriangleAlert` icon.
+
+**Shipped deviation from the drafted contract**: the footnote was drafted for the pinned top bar
+(whose fixed height would have constrained it to one non-wrapping line). It moved to the foot of the
+content on the owner's call — a footnote reads as one _after_ the figures it qualifies, and the foot
+has no height constraint.
 
 #### 3. Starred rows
 

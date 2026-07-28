@@ -691,9 +691,28 @@ Browser coverage of the same behaviour is filed as **EX-634** (`e2e-backlog`); t
 
 ### Phase 3: Scope marking
 
-- [ ] Z aktywnym filtrem: Robocizna, Rabat, Łącznie i „Do zapłaty" mają `*`, a Materiały i Wpłaty go nie mają.
-- [ ] Przypis „\* Wartości z kosztorysu nie reagują na filtry transakcji." pojawia się raz, w przypiętym pasku panelu.
+- [ ] Z aktywnym filtrem: Robocizna, Rabat, Łącznie i „Do zapłaty" mają czerwoną `*`, a Materiały i Wpłaty jej nie mają.
+- [ ] Przypis „Pola oznaczone gwiazdką nie reagują na filtry transakcji" pojawia się raz, na dole panelu (pod tabelami), czerwonym tekstem, z czerwoną ikoną ostrzeżenia w jednej linii z tekstem.
 - [ ] Bez filtra: żadnej gwiazdki i żadnego przypisu.
 - [ ] Z aktywnym filtrem znikają oba werdykty międzypłaszczyznowe — krzyk o rozjeździe robocizny/rabatu i ostrzeżenie o trybie mieszanym; bez filtra pojawiają się jak dotąd.
 - [ ] Tryb rozliczenia „Mieszane" — te same gwiazdki na wierszach wynikających z Łącznie, Wpłaty netto i Wpłaty brutto bez gwiazdki.
 - [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta — brak gwiazdek i przypisu.
+
+### Po bramce przeglądu (nowe zachowania, jeszcze niesprawdzone)
+
+- [ ] Inwestycja **bez kosztorysu** z aktywnym filtrem — żadnej gwiazdki, żadnego przypisu, oba werdykty jak dotąd (wszystkie liczby idą wtedy z transakcji i filtr ich dotyczy).
+- [ ] Zakładki „Wydatki" i „Marża" z aktywnym filtrem — przypis się nie pojawia (gwiazdki są tylko w „Podsumowaniu").
+- [ ] Sam przełącznik „pokaż anulowane" — brak gwiazdek i przypisu, werdykty widoczne (ten przełącznik nie zmienia żadnej kwoty w panelu).
+
+## EX-430 — harden bulk-insert restore
+
+**In review** — all automated checks green (tsc 0, eslint 0 errors, kosztorys slice 366/366).
+Hardening only: restore/preset bulk `INSERT`s now match `RETURNING` rows on a natural key instead of
+trusting Postgres row order, plus three new guards (rollback tripwire, wide-column roundtrip,
+schema-drift). No user-visible behaviour changes, so both boxes are **regression** checks — the two
+flows that would break silently (children reparented to the wrong rows, no error raised).
+
+Setup: run against the **5435 test DB** (see intro), seeded with `seed-kosztorys.ts` (`INV=6`).
+
+- [ ] **Cofnięcie do wersji odtwarza drzewo bez zmian.** Zapisz wersję, zmień coś w rozpisce (dopisz pozycję, zmień ilości w etapach), cofnij do zapisanej wersji — sekcje, pozycje, etapy i ilości wykonane wracają identyczne, każda pozycja pod swoją sekcją, każda ilość przy swoim etapie.
+- [ ] **Nałożenie szablonu na pustą inwestycję.** Nałóż globalny szablon na inwestycję bez rozpiski — pozycje trafiają pod właściwe sekcje (żadna nie ląduje w cudzej), kolejność i nazwy zgodne z szablonem.

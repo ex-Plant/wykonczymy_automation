@@ -68,9 +68,9 @@ export async function fetchDepositTransactionsForInvestment(
   )()
 }
 
-// The wpłaty rows at an arbitrary transfer scope, for a surface whose other figures already follow the
-// URL filters. A distinct cache-key prefix from the investment-only fetch above — a filtered result
-// cached under an investment-keyed entry would poison `kosztorys_v2` and the share route.
+// Deliberately a distinct cache-key prefix from the investment-only fetch above — a filtered result
+// cached under an investment-keyed entry would poison `kosztorys_v2` and the share route. The caller
+// owns the investment scope; only `INVESTOR_DEPOSIT` and `cancelled IS NOT TRUE` are fixed in SQL.
 export async function fetchFilteredDepositTransactions(
   where: Where,
 ): Promise<DepositTransactionRowT[]> {

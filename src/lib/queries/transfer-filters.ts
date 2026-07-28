@@ -182,6 +182,8 @@ export function buildTransferFilters(
 /**
  * Every user-settable filter key `buildTransferFilters` reads. Pagination (`page`/`limit`) and the
  * reading toggle (`statsVersion`) are excluded — they change how much is shown, not what is counted.
+ * `showCancelled` is excluded for the same reason: `stripCancelledFilters` drops the condition before
+ * any stats query runs, and a CANCELLATION carries no financial bucket, so it moves no figure.
  * Keep this list in step with the params read above.
  */
 const TRANSFER_FILTER_PARAMS = [
@@ -197,7 +199,6 @@ const TRANSFER_FILTER_PARAMS = [
   'worker',
   'amount',
   'id',
-  'showCancelled',
   'cancelledTransactionAudit',
 ] as const
 

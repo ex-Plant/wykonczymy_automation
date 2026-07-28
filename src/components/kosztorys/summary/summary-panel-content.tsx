@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { TriangleAlert } from 'lucide-react'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import {
   settlementModeToGridAxis,
@@ -106,9 +107,8 @@ type PropsT = {
   showPies?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   preview?: boolean
-  // The host's transaction figures are narrowed by URL filters the kosztorys can't follow (EX-600).
-  // Turns on the `*` on every kosztorys-plane figure plus the one footnote that explains it, and
-  // silences both cross-plane verdicts, which would otherwise report the filter as a gap.
+  // Silences both cross-plane verdicts on top of marking the rows: each compares the whole kosztorys
+  // against a filtered ledger, so under a filter it would report the filter itself as a gap.
   filtersActive?: boolean
   stages?: KosztorysStageT[]
   stageTotals?: Map<number, number>
@@ -240,11 +240,6 @@ export function SummaryPanelContent({
           aria-label="Widok podsumowania"
         />
         {topBarSlot}
-        {/* One footnote for every `*` in the panel — placed here so it reads once, above the tables,
-            instead of once per starred row. */}
-        {filtersActive && (
-          <p className="text-muted-foreground basis-full text-xs">{SCOPE_MARKER_FOOTNOTE}</p>
-        )}
       </div>
       <SummaryScrollRegion>
         {/* A client reads the mode, never writes it — the same `preview` gate every other
@@ -335,6 +330,15 @@ export function SummaryPanelContent({
             )}
             {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
           </div>
+        )}
+        {/* One footnote for every `*` in the panel — only Podsumowanie carries any, so the other tabs
+            would show a caveat with nothing to qualify. Red and icon-marked to read as loud as the
+            star it explains, but not a `WarningBanner`: a footnote earns a line, not a bordered box. */}
+        {filtersActive && view === 'summary' && (
+          <p className="text-destructive flex items-center gap-2 px-4 pb-4 text-xs">
+            <TriangleAlert className="size-4 shrink-0" aria-hidden />
+            <span>{SCOPE_MARKER_FOOTNOTE}</span>
+          </p>
         )}
       </SummaryScrollRegion>
     </>

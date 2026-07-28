@@ -27,8 +27,8 @@ export type SummaryRowOptsT = {
   // — the EX-535 reconciliation check against the transaction ledger. The client footer never passes
   // it, which is what lets both surfaces share this row instead of keeping two copies.
   mismatch?: string
-  // This figure draws on the kosztorys, which carries no date/type/register — so it cannot follow the
-  // host's transaction filters. One `*` here, one footnote in the panel's top bar (EX-600).
+  // Marks the figure as (partly) kosztorys-sourced, so it doesn't follow the host's transaction
+  // filters — see `SCOPE_MARKER_HINT` (EX-600).
   scopeMarked?: boolean
 }
 
@@ -57,7 +57,7 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
         <span className="inline-flex items-center gap-1">
           {label}
           {opts.scopeMarked && (
-            <sup className="text-muted-foreground" title={SCOPE_MARKER_HINT}>
+            <sup className="text-destructive" title={SCOPE_MARKER_HINT}>
               *
             </sup>
           )}

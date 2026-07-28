@@ -20,7 +20,6 @@ type PropsT = {
   // Rabat taken off the executed robocizna (net zł). Already inside `settlement.robocizna`, so the
   // Robocizna row adds it back and the Rabat row deducts it — Łącznie never moves.
   rabatAmount: number
-  // The host's transaction figures are narrowed by URL filters the kosztorys can't follow (EX-600).
   // Every remainder row descends from the kosztorys-plane Łącznie, so the star travels with it down
   // both tors; Materiały and the two Wpłaty rows are pure transaction figures and stay bare.
   filtersActive?: boolean

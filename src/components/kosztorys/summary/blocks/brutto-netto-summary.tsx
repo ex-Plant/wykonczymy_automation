@@ -58,9 +58,8 @@ type PropsT = {
   // always 'client', which is exactly when the scream would fire), and the internal drill-down links
   // point at owner-only pages — so gate the scream off and render those labels as plain text.
   preview?: boolean
-  // The host's transaction figures are narrowed by URL filters the kosztorys can't follow (EX-600).
-  // Stars the kosztorys-plane rows AND withholds the mismatch scream: that verdict compares the whole
-  // kosztorys against a filtered ledger, so under a filter it reports the filter as a gap.
+  // Also withholds the mismatch scream: that verdict compares the whole kosztorys against a filtered
+  // ledger, so under a filter it would report the filter itself as a gap.
   filtersActive?: boolean
 }
 

@@ -49,9 +49,8 @@ type PropsT = {
   showDeposits?: boolean
   preview?: boolean
   showPie?: boolean
-  // The host's transaction figures are narrowed by URL filters the kosztorys can't follow (EX-600).
   // Withholds the plane warning for the same reason the mismatch scream goes quiet: it compares the
-  // whole kosztorys against a filtered ledger, so under a filter it reports the filter as a gap.
+  // whole kosztorys against a filtered ledger, so under a filter it would report the filter as a gap.
   filtersActive?: boolean
 }
 

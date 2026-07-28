@@ -43,7 +43,7 @@ export function SummaryBreakdownTable({
   combined: MoneyPairT
   // The investment's saved materiały netto rate (null = billed at the raw brutto receipt).
   materialsNetRate: number | null
-  // Star the kosztorys-plane rows — Materiały comes off the transactions and stays bare.
+  // Materiały comes off the transactions and stays bare.
   scopeMarked?: boolean
 }) {
   return (

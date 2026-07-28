@@ -19,10 +19,9 @@ import type { ExpenseCategoryRefT } from '@/types/reference-data'
 // out of Podsumowanie here. Marża renders only when the page hands the panel `financials`, which it
 // does for ADMIN/OWNER only.
 //
-// Scope rule on this host (EX-600): every transaction-plane figure — materiały, marża AND wpłaty —
-// reads the page's `transferWhere`, so it follows the URL filters. Kosztorys-plane figures have no
-// date/type/register to filter on and stay whole; `filtersActive` is what tells the content to mark
-// them and to withhold the two cross-plane verdicts.
+// Scope rule on this host (EX-600): every transaction-plane figure — materiały, marża and wpłaty —
+// reads the page's `transferWhere`, so it follows the URL filters, while the kosztorys plane stays
+// whole. `filtersActive` is what tells the content to mark that seam.
 const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'expenses', 'margin']
 
 type PropsT = {
@@ -31,9 +30,6 @@ type PropsT = {
   // The page's stats scope (URL filters + this investment) — the same `Where` behind `financials`,
   // so wpłaty narrow with the rest of the transaction plane instead of reading the whole investment.
   statsWhere: Where
-  // Whether the URL carries any transfer filter. Not derivable from `statsWhere`: the filter builder
-  // always emits a default type/cancelled condition, so an unfiltered page still yields a non-empty
-  // `Where`.
   filtersActive: boolean
   financials: InvestmentFinancialsT
   // ADMIN/OWNER only. Gates whether `financials` crosses into the client component at all — the
@@ -112,7 +108,9 @@ export async function InvestmentSummaryPanel({
       views={INVESTMENT_PANEL_VIEWS}
       showTransactionLists={false}
       showPies={false}
-      filtersActive={filtersActive}
+      // Without a kosztorys the reading falls back to the transaction plane, where every figure DOES
+      // follow the filters — marking them would assert the opposite of the truth.
+      filtersActive={filtersActive && clientTotals !== null}
     />
   )
 }

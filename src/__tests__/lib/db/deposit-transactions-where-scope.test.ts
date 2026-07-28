@@ -5,10 +5,8 @@ import { getDb } from '@/lib/db/get-db'
 import { getDepositTransactions, getDepositTransactionsForInvestment } from '@/lib/db/sum-transfers'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
-// EX-600: the investment panel reads wpłaty at the page's filter scope, so this query took a `Where`.
-// What the spec pins is that widening the seam didn't widen the surface — the fixed
-// `INVESTOR_DEPOSIT` + `cancelled IS NOT TRUE` guards still bound every result, and a caller's own
-// conditions can only narrow further.
+// EX-600: what the spec pins is that opening this query to a caller `Where` didn't widen its surface
+// — the fixed `INVESTOR_DEPOSIT` + `cancelled IS NOT TRUE` guards still bound every result.
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -79,6 +77,15 @@ describe.skipIf(!ENV_READY)('getDepositTransactions (DB)', () => {
     const rows = await getDepositTransactions(payload, {
       investment: { equals: investmentId },
       type: { in: ['PAYOUT'] },
+    })
+
+    expect(rows).toEqual([])
+  })
+
+  it('cannot surface a cancelled deposit, even when the caller asks for one', async () => {
+    const rows = await getDepositTransactions(payload, {
+      investment: { equals: investmentId },
+      cancelled: { equals: true },
     })
 
     expect(rows).toEqual([])
