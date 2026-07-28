@@ -116,6 +116,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           <InvestmentSummaryPanel
             investmentId={investmentId}
             investmentName={investment.name}
+            statsWhere={statsWhere}
             financials={financials}
             canSeeMargin={isAdminOrOwnerRole(user.role)}
             expenseCategories={refData.expenseCategories}

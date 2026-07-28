@@ -1,10 +1,11 @@
 import { unstable_cache } from 'next/cache'
-import { getPayload } from 'payload'
+import { getPayload, type Where } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import {
   sumPayoutsByWorkerForInvestment,
   getPayoutTransactionsForInvestment,
+  getDepositTransactions,
   getDepositTransactionsForInvestment,
 } from '@/lib/db/sum-transfers'
 import { findTransfersRaw } from '@/lib/queries/transfers'
@@ -50,6 +51,10 @@ export async function fetchPayoutTransactionsForInvestment(
 }
 
 // Same cache contract as the payout-transactions fetch — transfers tag, no PII to join.
+//
+// Deliberately kept as an investment-only entry point: the unauthenticated share read reaches this
+// fetcher, so it must expose no filter parameter a caller could widen. Filtered reads go through
+// `fetchFilteredDepositTransactions` instead.
 export async function fetchDepositTransactionsForInvestment(
   investmentId: number,
 ): Promise<DepositTransactionRowT[]> {
@@ -59,6 +64,22 @@ export async function fetchDepositTransactionsForInvestment(
       return getDepositTransactionsForInvestment(payload, investmentId)
     },
     ['deposit-transactions', String(investmentId)],
+    { tags: [CACHE_TAGS.transfers] },
+  )()
+}
+
+// The wpłaty rows at an arbitrary transfer scope, for a surface whose other figures already follow the
+// URL filters. A distinct cache-key prefix from the investment-only fetch above — a filtered result
+// cached under an investment-keyed entry would poison `kosztorys_v2` and the share route.
+export async function fetchFilteredDepositTransactions(
+  where: Where,
+): Promise<DepositTransactionRowT[]> {
+  return unstable_cache(
+    async () => {
+      const payload = await getPayload({ config })
+      return getDepositTransactions(payload, where)
+    },
+    ['deposit-transactions-filtered', JSON.stringify(where)],
     { tags: [CACHE_TAGS.transfers] },
   )()
 }

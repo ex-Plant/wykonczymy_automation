@@ -407,16 +407,16 @@ distinct filter combination rather than per investment. Acceptable — the same 
 
 #### Automated
 
-- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts`
-- [x] 1.2 Type checking passes: `pnpm typecheck`
+- [x] 1.1 Unit spec passes: `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts` — 7d69f875
+- [x] 1.2 Type checking passes: `pnpm typecheck` — 7d69f875
 
 ### Phase 2: Wpłaty follow the filters
 
 #### Automated
 
-- [ ] 2.1 New DB spec passes: `pnpm exec vitest run src/__tests__/lib/db/deposit-transactions.test.ts`
-- [ ] 2.2 Type checking passes: `pnpm typecheck`
-- [ ] 2.3 Linting passes: `pnpm lint`
+- [x] 2.1 New DB spec passes: `pnpm exec vitest run src/__tests__/lib/db/deposit-transactions.test.ts`
+- [x] 2.2 Type checking passes: `pnpm typecheck`
+- [x] 2.3 Linting passes: `pnpm lint`
 
 ### Phase 3: Scope marking
 

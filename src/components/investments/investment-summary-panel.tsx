@@ -1,6 +1,6 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { perfStart } from '@/lib/perf'
-import { fetchDepositTransactionsForInvestment } from '@/lib/queries/investment-transactions'
+import { fetchFilteredDepositTransactions } from '@/lib/queries/investment-transactions'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
@@ -8,6 +8,7 @@ import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/s
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
+import type { Where } from 'payload'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { CategoryCostT } from '@/types/investment-financials'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
@@ -17,11 +18,19 @@ import type { ExpenseCategoryRefT } from '@/types/reference-data'
 // — as it does every wpłata, which is why `showTransactionLists={false}` also folds the wpłaty block
 // out of Podsumowanie here. Marża renders only when the page hands the panel `financials`, which it
 // does for ADMIN/OWNER only.
+//
+// Scope rule on this host (EX-600): every transaction-plane figure — materiały, marża AND wpłaty —
+// reads the page's `transferWhere`, so it follows the URL filters. Kosztorys-plane figures have no
+// date/type/register to filter on and stay whole; `filtersActive` is what tells the content to mark
+// them and to withhold the two cross-plane verdicts.
 const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'expenses', 'margin']
 
 type PropsT = {
   investmentId: number
   investmentName: string
+  // The page's stats scope (URL filters + this investment) — the same `Where` behind `financials`,
+  // so wpłaty narrow with the rest of the transaction plane instead of reading the whole investment.
+  statsWhere: Where
   financials: InvestmentFinancialsT
   // ADMIN/OWNER only. Gates whether `financials` crosses into the client component at all — the
   // „Marża" tab's figures must stay out of a MANAGER's RSC payload, not merely off their screen.
@@ -36,6 +45,7 @@ type PropsT = {
 export async function InvestmentSummaryPanel({
   investmentId,
   investmentName,
+  statsWhere,
   financials,
   canSeeMargin,
   expenseCategories,
@@ -44,8 +54,7 @@ export async function InvestmentSummaryPanel({
   const elapsed = perfStart()
   const [tree, depositTransactions] = await Promise.all([
     getKosztorysTree(investmentId),
-    // Same cached fetcher the kosztorys page uses, so both surfaces read wpłaty from one source.
-    fetchDepositTransactionsForInvestment(investmentId),
+    fetchFilteredDepositTransactions(statsWhere),
   ])
   const fetchMs = elapsed()
 
