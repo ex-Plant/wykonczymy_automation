@@ -25,8 +25,8 @@ type PropsT = {
   investmentId: number
   open: boolean
   onOpenChange: (open: boolean) => void
-  // Called with the created sections (new ids) after a successful append. The non-empty editor patches
-  // the grid from this; the empty-kosztorys dialog ignores the slice and remounts via its own path.
+  // Called with the created sections (new ids) after a successful append — the editor patches the
+  // grid from this rather than refetching the tree.
   onAppended: (slice: AppendedSliceT) => void
 }
 
@@ -34,7 +34,7 @@ type PropsT = {
 const metaKey = (meta: PresetSectionMetaT) => `${meta.presetId}:${meta.sectionId}`
 
 // Multi-select is why this is a cmdk list, not a combobox: toggling a row keeps the dialog open and
-// one confirm appends all checked sections. The preset list is fetched on open.
+// one confirm appends all checked sections.
 export function AddSectionsFromPresetDialog({
   investmentId,
   open,

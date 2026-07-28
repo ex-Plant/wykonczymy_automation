@@ -122,7 +122,7 @@ describe.skipIf(!ENV_READY)('createInvestmentAction — non-fatal preset seed (D
 
     const id = await investmentIdByName(name)
     expect(id).not.toBeNull()
-    // Seed skipped → the investment lands with an empty tree (the "Wypełnij z szablonu" CTA state).
+    // Seed skipped → the investment lands with an empty tree.
     expect(await sectionCount(id!)).toBe(0)
   })
 

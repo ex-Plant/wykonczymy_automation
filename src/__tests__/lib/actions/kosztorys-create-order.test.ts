@@ -3,11 +3,11 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 
-// Two structure-create invariants of the kosztorys actions, driven against the REAL DB and asserting
-// PERSISTED state (display_order rows / section counts), not the action's return value:
-//   CR1 — append (addItemAction/addSectionAction) must pick a slot that can't collide with a
-//         surviving row. removeItemAction leaves gaps, so a count-based next-order collides after
-//         any middle delete (add 3 → delete middle → append reuses the count and lands on a live row).
+// A structure-create invariant of the kosztorys actions, driven against the REAL DB and asserting
+// PERSISTED display_order rows, not the action's return value: append (addItemAction) must pick a
+// slot that can't collide with a surviving row. removeItemAction leaves gaps, so a count-based
+// next-order collides after any middle delete (add 3 → delete middle → append reuses the count and
+// lands on a live row).
 //
 // Same mock surface as the sibling action specs: requireAuth needs a request/cookie we lack in node,
 // and revalidation touches next/cache outside a request context.
@@ -90,30 +90,28 @@ describe.skipIf(!ENV_READY)('kosztorys create-order integrity (DB)', () => {
     return res.rows.map((r) => Number(r.display_order))
   }
 
-  describe('append order — addItemAction never collides on display_order (CR1)', () => {
-    it('appending after a middle delete lands on a free slot, not a surviving row', async () => {
-      const sectionId = await createSection()
+  it('appending after a middle delete lands on a free slot, not a surviving row', async () => {
+    const sectionId = await createSection()
 
-      // Add 3 blank items → display_order 0,1,2.
-      await addItemAction(sectionId)
-      const middle = await addItemAction(sectionId)
-      await addItemAction(sectionId)
-      expect(middle.success).toBe(true)
+    // Add 3 blank items → display_order 0,1,2.
+    await addItemAction(sectionId)
+    const middle = await addItemAction(sectionId)
+    await addItemAction(sectionId)
+    expect(middle.success).toBe(true)
 
-      // Delete the middle one (blank → passes the delete guard) → leaves {0,2}, a gap.
-      const del = await removeItemAction(middle.success ? middle.data.id : 0)
-      expect(del.success).toBe(true)
+    // Delete the middle one (blank → passes the delete guard) → leaves {0,2}, a gap.
+    const del = await removeItemAction(middle.success ? middle.data.id : 0)
+    expect(del.success).toBe(true)
 
-      // Append again. Count-based order would reuse 2 and collide with the surviving order-2 row.
-      const appended = await addItemAction(sectionId)
-      expect(appended.success).toBe(true)
+    // Append again. Count-based order would reuse 2 and collide with the surviving order-2 row.
+    const appended = await addItemAction(sectionId)
+    expect(appended.success).toBe(true)
 
-      const orders = await sectionItemOrders(sectionId)
-      expect(orders).toHaveLength(3)
-      // The regression: every surviving row has a distinct display_order.
-      expect(new Set(orders).size).toBe(orders.length)
-      // And the new row appended past the tail (max+1), not into the gap.
-      if (appended.success) expect(appended.data.displayOrder).toBe(Math.max(...orders))
-    })
+    const orders = await sectionItemOrders(sectionId)
+    expect(orders).toHaveLength(3)
+    // The regression: every surviving row has a distinct display_order.
+    expect(new Set(orders).size).toBe(orders.length)
+    // And the new row appended past the tail (max+1), not into the gap.
+    if (appended.success) expect(appended.data.displayOrder).toBe(Math.max(...orders))
   })
 })

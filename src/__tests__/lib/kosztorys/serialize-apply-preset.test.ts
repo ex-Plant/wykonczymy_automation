@@ -83,7 +83,13 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
   async function createInvestment(name: string, vat: number, wCoeff: number, oCoeff: number) {
     const inv = await payload.create({
       collection: 'investments',
-      data: { name, status: 'active', settlementMode: 'NET', wToolsCoeff: wCoeff, ownToolsCoeff: oCoeff },
+      data: {
+        name,
+        status: 'active',
+        settlementMode: 'NET',
+        wToolsCoeff: wCoeff,
+        ownToolsCoeff: oCoeff,
+      },
       context: { skipRevalidation: true },
     })
     const id = Number(inv.id)
@@ -279,8 +285,8 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
       payload: preset,
     })
 
-    // The live shape behind the original bug: an empty tree (no sections → the „Wypełnij z szablonu"
-    // CTA) that nonetheless already carries etapy, because „Dodaj etap" works on an empty kosztorys.
+    // The live shape behind the original bug: an empty tree (no sections) that nonetheless already
+    // carries etapy, because „Dodaj etap" works on an empty kosztorys.
     // The seed used to install a starting etap here and collided with UNIQUE(investment_id, ordinal).
     const targetId = await createInvestment(`${PRESET_PREFIX}target-hasetapy`, 0.23, 0.7, 0.5)
     await payload.create({

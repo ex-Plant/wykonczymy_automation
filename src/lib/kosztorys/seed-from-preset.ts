@@ -8,15 +8,12 @@ import { applyPreset } from './apply-preset'
 
 export type SeedResultT = 'ok' | 'not-found' | 'not-empty'
 
-// Shared seed orchestration behind both the empty-editor seed action and the investment-create flow.
-// Resolves the preset payload from its row (never a client value), then in ONE transaction re-checks
-// the target tree is empty and applies it — a throw rolls back and the tree is untouched. The
-// empty-guard's real job is to reject seeding an ALREADY-populated tree (the editor CTA on a
-// non-empty investment). It does NOT serialize two simultaneous seeds on one empty investment: under
-// READ COMMITTED a zero-row SELECT takes no lock and there's no UNIQUE(investment_id), so both could
-// pass. Accepted for v1 (the plan's call) — the only live windows are a double-submit (blocked by the
-// CTA's disabled-while-seeding state) and two concurrent tabs. Returns a discriminant; the CALLING
-// ACTION owns auth + revalidation.
+// Seed orchestration behind the investment-create flow. Resolves the preset payload from its row
+// (never a client value), then in ONE transaction re-checks the target tree is empty and applies it —
+// a throw rolls back and the tree is untouched. The empty-guard is a cheap invariant, not a lock: it
+// does NOT serialize two simultaneous seeds, since under READ COMMITTED a zero-row SELECT takes no
+// lock and there's no UNIQUE(investment_id). Returns a discriminant; the CALLING ACTION owns auth +
+// revalidation.
 export async function seedInvestmentFromPreset(
   payload: Payload,
   investmentId: number,

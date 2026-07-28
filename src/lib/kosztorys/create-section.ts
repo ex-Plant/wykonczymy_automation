@@ -6,8 +6,8 @@ import { createBlankItem, type NewRowT } from '@/lib/kosztorys/create-item'
 export type CreatedSectionWithItemT = { section: NewRowT; item: NewRowT }
 
 // A section is never created alone: a 0-item section renders as 0 rows, so it would land invisible.
-// Every path that mints one — append, insert-at, and the EX-463 new-investment auto-seed — creates
-// the pair, so the pair is one call. Passing `req` runs both creates on the caller's transaction, so
+// Every path that mints one — append and insert-at — creates the pair, so the pair is one call.
+// Passing `req` runs both creates on the caller's transaction, so
 // a section can't survive a failed first item.
 //
 // No etap is seeded — a stage's plane is forced at creation (addStageAction) and a guess would read
