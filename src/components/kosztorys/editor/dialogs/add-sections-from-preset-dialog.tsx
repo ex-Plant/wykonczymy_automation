@@ -15,7 +15,12 @@ import type { PresetSectionMetaT } from '@/lib/db/presets'
 import { cn } from '@/lib/utils/cn'
 import { pluralize } from '@/lib/utils/polish-plural'
 import { toastMessage } from '@/lib/utils/toast'
-import { groupPresetSections, metaKey, type PresetGroupT } from './preset-picker-groups'
+import {
+  groupPresetSections,
+  isGroupFullySelected,
+  metaKey,
+  type PresetGroupT,
+} from './preset-picker-groups'
 
 type PropsT = {
   investmentId: number
@@ -135,8 +140,7 @@ export function AddSectionsFromPresetDialog({
   }
 
   const count = selected.size
-  const allActiveSelected =
-    activeGroup.metas.length > 0 && activeGroup.selectedCount === activeGroup.metas.length
+  const allActiveSelected = isGroupFullySelected(activeGroup)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

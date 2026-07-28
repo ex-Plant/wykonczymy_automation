@@ -25,10 +25,19 @@ Fixed findings were trimmed at archive (their fix is now just the code, in `f561
 🔴 CRITICALs are summarised on EX-618 for anyone reading the card rather than the diff. What remains
 below is every finding that still carries a _decision_ — dismissed, dropped, or filed.
 
-- [x] 🔵 OBSERVATION · dismissed · impl-review · `add-sections-from-preset-dialog.tsx:57` ·
-      `activeGroup` falls back to `groups[0]`, which is `undefined` for an empty library — flagged as a
-      crash. Benign: the whole two-pane block sits behind `sections.length === 0`, so `groups` is
-      non-empty everywhere `activeGroup` is read.
+- [x] 🔴 CRITICAL · **dismissed in error, then fixed** · impl-review ·
+      `add-sections-from-preset-dialog.tsx:138` · `activeGroup` falls back to `groups[0]`, which is
+      `undefined` while `sections` is still `null`. Dismissed at the gate as benign — "the two-pane
+      block sits behind `sections.length === 0`" — which held for the JSX but **not** for
+      `allActiveSelected`, because the gate's own state→derived fix had moved that read _above_ the
+      guard. The dialog crashed on every open; caught in the browser right after archive. Derivation
+      extracted to `preset-picker-groups.ts` as `isGroupFullySelected(group | undefined)`.
+      test: test-driven-debugging · unit — red on `isGroupFullySelected(undefined)` first, now the
+      regression guard (`preset-picker-groups.test.ts`).
+      **Lesson:** converting state to a derived value re-anchors the read to the top of the component
+      body, above every guard the state was implicitly safe behind. `groups[0]` types as
+      `PresetGroupT`, not `| undefined`, so `tsc` cannot catch it —
+      `noUncheckedIndexedAccess` would have.
 - [x] 🔵 OBSERVATION · dismissed · impl-review · `preset-picker-groups.ts` · grouping recomputed every
       render rather than memoized. Benign — React Compiler is enabled and this is exactly what it
       handles; a hand-written `useMemo` here is the anti-pattern (`AGENTS.md` § Stack Notes).

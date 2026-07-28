@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   groupPresetSections,
+  isGroupFullySelected,
   metaKey,
 } from '@/components/kosztorys/editor/dialogs/preset-picker-groups'
 import type { PresetSectionMetaT } from '@/lib/db/presets'
@@ -69,5 +70,27 @@ describe('groupPresetSections', () => {
     const groups = groupPresetSections([meta(1, 10)], new Set(['99:10', '1:999']))
 
     expect(groups[0].selectedCount).toBe(0)
+  })
+})
+
+describe('isGroupFullySelected', () => {
+  // The picker derives this above its own loading/empty guard, so it runs on renders where there is
+  // no active group at all — while the szablon list is still fetching, and when the library is empty.
+  // Reading `.metas` there crashed the dialog on every open.
+  it('is false when there is no active group', () => {
+    expect(isGroupFullySelected(undefined)).toBe(false)
+  })
+
+  it('is true only once every sekcja of the group is selected', () => {
+    const metas = [meta(1, 10), meta(1, 11)]
+
+    expect(
+      isGroupFullySelected(groupPresetSections(metas, new Set([metaKey(meta(1, 10))]))[0]),
+    ).toBe(false)
+    expect(
+      isGroupFullySelected(
+        groupPresetSections(metas, new Set([metaKey(meta(1, 10)), metaKey(meta(1, 11))]))[0],
+      ),
+    ).toBe(true)
   })
 })
