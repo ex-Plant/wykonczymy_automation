@@ -370,7 +370,8 @@ The migration `20260726_3_add_settlement_mode_to_investments` must be applied to
 - [ ] The client view still fills the viewport with no dead band at the bottom (guards the `h-dvh` fix from `7b70ec2a`, whose header this change edits)
 - [ ] A brutto wpłata on a netto-declared investment raises the owner-only warning in Podsumowanie, naming the mode and the offending amount
 - [ ] The client view of that same investment shows no warning
-- [ ] With VAT 0% the mode select is disabled and the VAT 0% scream still shows
+- [ ] With VAT 0% the mode select is still **editable** (EX-590) and the VAT 0% scream shows beside it
+- [ ] With VAT 0% and the mode „Mieszane", the panel still shows the split netto/brutto sections and the grid still shows both money columns
 
 ## EX-594 — investment-summary-panel
 

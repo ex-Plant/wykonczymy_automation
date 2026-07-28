@@ -33,6 +33,11 @@ type PropsT = {
 // The owner's only edit surface for the stored settlement mode — the panel renders it, the
 // investment owns it. Pinned beside the view toggle rather than in the scrolling settings bar,
 // because the reader who wonders why figures aren't moving is looking here.
+//
+// Never disabled at VAT 0% (EX-590): being the sole edit surface means a disable strands the
+// investment in whatever mode it was stored as, and the mode is not inert there anyway — Mieszane
+// still splits the panel and doubles the grid's money columns, and the materiały netto rate is
+// VAT-independent. The warning below explains the one thing VAT 0% *does* flatten.
 export function SettlementModeSelect({ value, onChange, vatRate, disabled = false }: PropsT) {
   return (
     <LabeledModeSelect
@@ -41,7 +46,7 @@ export function SettlementModeSelect({ value, onChange, vatRate, disabled = fals
       onValueChange={(next) => onChange(next as SettlementModeT)}
       options={SETTLEMENT_MODE_OPTIONS}
       description={MODE_DESCRIPTIONS[value]}
-      disabled={disabled || vatRate === 0}
+      disabled={disabled}
     >
       {vatRate === 0 && <ZeroVatWarning />}
     </LabeledModeSelect>
