@@ -24,7 +24,6 @@ describe.skipIf(!ENV_READY)('listPresetSections (DB)', () => {
       name: `sekcja-${id}`,
       displayOrder,
       color: null,
-      defaultCostVariant: 'w_tools',
     }
   }
 
@@ -43,7 +42,6 @@ describe.skipIf(!ENV_READY)('listPresetSections (DB)', () => {
       wToolsOverrideValue: 0,
       ownToolsOverrideType: null,
       ownToolsOverrideValue: 0,
-      costVariant: null,
       hiddenInExport: false,
       note: null,
     }

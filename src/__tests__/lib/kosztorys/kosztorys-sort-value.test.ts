@@ -16,7 +16,6 @@ const tree: KosztorysTreeT = makeTree({
       id: 10,
       name: 'Sekcja A',
       displayOrder: 0,
-      defaultCostVariant: 'w_tools',
       color: null,
       items: [
         {
@@ -33,7 +32,6 @@ const tree: KosztorysTreeT = makeTree({
           wToolsOverrideValue: 0,
           ownToolsOverrideType: null,
           ownToolsOverrideValue: 0,
-          costVariant: null,
           hiddenInExport: false,
           note: null,
         },
@@ -51,7 +49,6 @@ const tree: KosztorysTreeT = makeTree({
           wToolsOverrideValue: 0,
           ownToolsOverrideType: null,
           ownToolsOverrideValue: 0,
-          costVariant: null,
           hiddenInExport: false,
           note: null,
         },

@@ -69,7 +69,6 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
         investment: investmentId,
         name: 'rabat-test',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       overrideAccess: true,
       ...ctx,

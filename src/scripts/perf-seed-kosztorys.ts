@@ -50,7 +50,6 @@ async function run() {
         investment: INVESTMENT_ID,
         name: `Sekcja ${si + 1}`,
         displayOrder: si,
-        defaultCostVariant: 'w_tools',
         color: sectionColorForIndex(si),
       },
       ...ctx,

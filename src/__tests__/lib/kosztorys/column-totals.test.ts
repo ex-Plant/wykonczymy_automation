@@ -14,7 +14,6 @@ const tree: KosztorysTreeT = makeTree({
       id: 10,
       name: 'Sekcja A',
       displayOrder: 0,
-      defaultCostVariant: 'w_tools',
       color: null,
       items: [
         { ...baseItem, sectionId: 10, id: 1, description: 'A', plannedQty: 5, clientPrice: 20 },
@@ -34,7 +33,6 @@ const tree: KosztorysTreeT = makeTree({
       id: 20,
       name: 'Sekcja B',
       displayOrder: 1,
-      defaultCostVariant: 'w_tools',
       color: null,
       items: [
         { ...baseItem, sectionId: 20, id: 3, description: 'C', plannedQty: 0, clientPrice: 30 },

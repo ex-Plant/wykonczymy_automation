@@ -92,7 +92,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
         investment: investmentId,
         name: 'Sekcja A',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -102,7 +101,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
         investment: investmentId,
         name: 'Sekcja B',
         displayOrder: 1,
-        defaultCostVariant: 'own_tools',
       },
       context: { skipRevalidation: true },
     })

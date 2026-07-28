@@ -26,15 +26,12 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
   async function seed(investmentId: number, qtyDone: number) {
     // Insert out of display order deliberately: ORDER BY moved from Payload's `sort` into the
     // json_agg, and insertion order is what would leak through if it were dropped.
-    // defaultCostVariant is required-with-defaultValue: Payload fills it at runtime, but the
-    // generated create-data type still demands it, so spell it out.
     const second = await payload.create({
       collection: 'kosztorys-sections',
       data: {
         investment: investmentId,
         name: 'B-second',
         displayOrder: 2,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -44,7 +41,6 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
         investment: investmentId,
         name: 'A-first',
         displayOrder: 1,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })

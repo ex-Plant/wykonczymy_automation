@@ -93,7 +93,6 @@ async function run() {
           investment: INVESTMENT_ID,
           name,
           displayOrder: order,
-          defaultCostVariant: 'w_tools',
           color: sectionColorForIndex(order),
         },
         ...ctx,

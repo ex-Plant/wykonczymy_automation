@@ -54,7 +54,6 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
         investment: investmentId,
         name,
         displayOrder,
-        defaultCostVariant: 'w_tools',
         color,
       },
       context: { skipRevalidation: true },

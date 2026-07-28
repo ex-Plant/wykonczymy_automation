@@ -74,7 +74,6 @@ describe.skipIf(!ENV_READY)('kosztorys create-order integrity (DB)', () => {
         investment: sharedInvestmentId,
         name: 'order-test',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       overrideAccess: true,
       ...ctx,

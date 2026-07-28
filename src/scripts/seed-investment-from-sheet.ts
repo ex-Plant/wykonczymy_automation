@@ -132,7 +132,6 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
         id: sectionId,
         name: currentSection,
         displayOrder: sections.length,
-        defaultCostVariant: 'w_tools',
         color: sectionColorForIndex(sections.length),
       })
     }
@@ -158,7 +157,6 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
       wToolsOverrideValue: wTools.value,
       ownToolsOverrideType: ownTools.type,
       ownToolsOverrideValue: ownTools.value,
-      costVariant: null,
       hiddenInExport: false,
       note: null,
     })
@@ -229,7 +227,6 @@ async function seed(tree: SnapshotPayloadT): Promise<void> {
         investment: INVESTMENT_ID,
         name: sec.name,
         displayOrder: sec.displayOrder,
-        defaultCostVariant: sec.defaultCostVariant,
         color: sec.color,
       },
       ...ctx,
@@ -257,7 +254,6 @@ async function seed(tree: SnapshotPayloadT): Promise<void> {
         wToolsOverrideValue: it.wToolsOverrideValue,
         ownToolsOverrideType: it.ownToolsOverrideType ?? undefined,
         ownToolsOverrideValue: it.ownToolsOverrideValue,
-        costVariant: it.costVariant ?? undefined,
         hiddenInExport: it.hiddenInExport,
         note: it.note ?? undefined,
       },

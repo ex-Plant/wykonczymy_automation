@@ -547,24 +547,24 @@ The existing suites are the regression net, and they are load-bearing here:
 
 #### Automated
 
-- [x] 2.1 `pnpm generate:types` succeeds
-- [x] 2.2 `pnpm typecheck` enumerates the remaining carrier sites
+- [x] 2.1 `pnpm generate:types` succeeds — 41032f1e
+- [x] 2.2 `pnpm typecheck` enumerates the remaining carrier sites — 41032f1e
 
 ### Phase 3: Clear the carriers
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm typecheck`
-- [ ] 3.2 Linting passes: `pnpm lint`
-- [ ] 3.3 `grep` over `src/` returns only `20260708_2`
+- [x] 3.1 Type checking passes: `pnpm typecheck` — e0eb13e2
+- [x] 3.2 Linting passes: `pnpm lint` — e0eb13e2
+- [x] 3.3 `grep` over `src/` returns only `20260708_2` — e0eb13e2
 
 ### Phase 4: Fixtures, seeds, and the JSON fixture
 
 #### Automated
 
-- [ ] 4.1 Unit suite green: `pnpm test`
-- [ ] 4.2 Integration suite green: `pnpm test:integration`
-- [ ] 4.3 Both kosztorys seeds run clean against the migrated local DB
+- [x] 4.1 Unit suite green: `pnpm test` — e0eb13e2
+- [x] 4.2 Integration suite green: `pnpm test:integration` — e0eb13e2
+- [x] 4.3 Both kosztorys seeds run clean against the migrated local DB — e0eb13e2
 
 ### Phase 5: Snapshot format comment
 

@@ -89,7 +89,6 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
         investment: investmentId,
         name: 'Original',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       ...ctx,
     })
@@ -128,7 +127,6 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
         investment: investmentId,
         name: 'Nowa',
         displayOrder: 1,
-        defaultCostVariant: 'w_tools',
       },
       ...ctx,
     })

@@ -110,7 +110,6 @@ async function run() {
           investment: INVESTMENT_ID,
           name: it.section,
           displayOrder: sectionOrder++,
-          defaultCostVariant: 'w_tools',
         },
         ...ctx,
       })

@@ -100,7 +100,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: investmentId,
         name: 'Sekcja A',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -110,7 +109,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: investmentId,
         name: 'Sekcja B',
         displayOrder: 1,
-        defaultCostVariant: 'own_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -309,7 +307,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: occupiedId,
         name: 'Istniejąca',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -340,7 +337,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: invB,
         name: 'Tylko B',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -383,7 +379,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: invB,
         name: 'Nowa treść',
         displayOrder: 0,
-        defaultCostVariant: 'own_tools',
       },
       context: { skipRevalidation: true },
     })
