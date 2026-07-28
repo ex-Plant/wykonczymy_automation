@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { getPreviewKosztorysByToken } from '@/lib/queries/preview-kosztorys'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
@@ -6,12 +6,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // The token lookup is the whole access control for the public route, so it is exercised against the
 // REAL DB rather than a mocked find — a `where` clause that silently matches everything would pass
 // any stub. Asserts the persisted-row outcome: a token that exists resolves, one that doesn't is null.
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-  updateTag: vi.fn(),
-  // The cached view wrapper is identity here: unstable_cache needs a request scope node lacks.
-  unstable_cache: (fn: unknown) => fn,
-}))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 

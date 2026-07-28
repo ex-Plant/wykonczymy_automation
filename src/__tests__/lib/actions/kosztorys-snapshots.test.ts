@@ -13,7 +13,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // fabricated id would fail the manual-insert path.
 const authState = vi.hoisted(() => ({ userId: 0 }))
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => ({
     success: true,

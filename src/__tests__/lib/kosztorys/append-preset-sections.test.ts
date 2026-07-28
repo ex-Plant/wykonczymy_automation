@@ -16,11 +16,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // bare helper (which never sees an unknown section id).
 // unstable_cache is a passthrough here: the action's graph pulls in getPresetSections, and an
 // uncached read is exactly what the test wants (it re-reads the DB directly for its assertions).
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-  updateTag: vi.fn(),
-  unstable_cache: (fn: unknown) => fn,
-}))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(async () => ({ success: true, user: { id: 1, role: 'OWNER' } })),
 }))

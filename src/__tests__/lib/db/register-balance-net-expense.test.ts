@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
@@ -13,7 +13,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // This has to be a DB test, not a unit: the risk lives inside raw SQL. Asserting that the
 // type is absent from DEPOSIT_TYPES proves nothing about which column the CASE arm reads,
 // and only a query actually executed can prove it never switched to net_amount.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 

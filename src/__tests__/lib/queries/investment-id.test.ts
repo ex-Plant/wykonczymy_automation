@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest'
 // spec for a five-line predicate.
 vi.mock('payload', () => ({ getPayload: vi.fn() }))
 vi.mock('@payload-config', () => ({ default: {} }))
-vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn(), redirect: vi.fn() }))
 
 const { isInvestmentId } = await import('@/lib/queries/investments')

@@ -1,11 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-const updateTag = vi.hoisted(() => vi.fn())
-const revalidateTag = vi.hoisted(() => vi.fn())
-vi.mock('next/cache', () => ({ updateTag, revalidateTag }))
-
-const { revalidateCollections } = await import('@/lib/cache/revalidate')
-const { CACHE_TAGS } = await import('@/lib/cache/tags')
+import { describe, it, expect, beforeEach } from 'vitest'
+import { updateTag, revalidateTag } from '@/__tests__/stubs/next-cache'
+import { revalidateCollections } from '@/lib/cache/revalidate'
+import { CACHE_TAGS } from '@/lib/cache/tags'
 
 // `deferRefresh` exists to drop the route re-render on per-cell autosaves (EX-597), NOT to skip
 // invalidation. The distinction is invisible on the editor itself — it holds `rows` in local state

@@ -7,11 +7,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // token proves nothing if the write didn't land, and a rotation that leaves the old row alive would
 // keep a second door open.
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-  updateTag: vi.fn(),
-  unstable_cache: (fn: unknown) => fn,
-}))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
 const authState = vi.hoisted(() => ({ role: 'OWNER' as string, userId: 0 }))

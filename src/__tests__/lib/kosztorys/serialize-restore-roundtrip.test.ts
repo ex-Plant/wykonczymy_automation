@@ -13,7 +13,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 //
 // Cache revalidation touches next/cache outside a request context; stub it so the collection
 // afterChange/afterDelete hooks fired during restore don't throw in node.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 // serializeKosztorys reads through getKosztorysTree, whose DAL guard self-authorizes via requireAuth →
 // cookies(), which has no request scope in node. Stub it success like the sibling DB specs.
 vi.mock('@/lib/auth/require-auth', () => ({

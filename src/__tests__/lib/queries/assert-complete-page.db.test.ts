@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 
 // The leads afterChange hook calls revalidateTag, which throws outside a Next request
 // context. Stub it — cache invalidation is not under test here.
-vi.mock('next/cache', () => ({ revalidateTag: () => {}, updateTag: () => {} }))
 
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 

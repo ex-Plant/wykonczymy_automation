@@ -15,7 +15,6 @@ import { deleteTestInvestment } from '@/__tests__/helpers/investment'
 // and revalidation touches next/cache outside a request context.
 const authState = vi.hoisted(() => ({ userId: 0 }))
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => ({
     success: true,

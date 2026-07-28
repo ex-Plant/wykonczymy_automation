@@ -1,12 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { insertPreset, listPresetSections } from '@/lib/db/presets'
 import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
-
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 

@@ -12,7 +12,6 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 vi.mock('server-only', () => ({}))
 // The action's own payload.delete fires the collection's afterDelete revalidate hook, which
 // calls next/cache's revalidateTag — that throws outside a request/static-generation store.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 // A real user id (looked up in beforeAll), not a hardcoded 1: removeSectionAction now takes a
 // pre-delete snapshot whose taken_by FKs users.id, and a fresh prod-dump test DB has no user 1.
 const authState = vi.hoisted(() => ({ userId: 0 }))

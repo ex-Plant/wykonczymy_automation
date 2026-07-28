@@ -17,7 +17,6 @@ const authState = vi.hoisted(() => ({
   next: null as null | { success: false; error: string },
 }))
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => {
     if (authState.next) {

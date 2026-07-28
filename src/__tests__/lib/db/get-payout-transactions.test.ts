@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
@@ -10,7 +10,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // as a year-first string ("2026-07-18 09:00:00+00"), which satisfies this — the regression this guards is
 // a future remap to a non-sortable form (a dd.mm.yyyy reformat, or a JS-Date `.toString()` = "Thu Jul 16
 // …"). Insert rows directly to bypass the balance-recalc hooks; we assert the query's mapped output.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 

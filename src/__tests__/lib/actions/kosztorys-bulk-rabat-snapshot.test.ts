@@ -8,7 +8,6 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 // so the hand-tuned rabaty it overwrites stay recoverable. We run the REAL action against the REAL DB
 // and assert PERSISTED STATE — the snapshot rose AND the rows were overwritten — not the return value.
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 const authState = vi.hoisted(() => ({ userId: 0 }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => ({

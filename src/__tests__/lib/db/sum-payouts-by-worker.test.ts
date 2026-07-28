@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
@@ -10,7 +10,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // cancelled + non-PAYOUT excluded), so its grouping is only real against the DB. Insert rows directly
 // to bypass the balance-recalc hooks and required-field validation — we assert the aggregate, not a
 // return value from a create.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 

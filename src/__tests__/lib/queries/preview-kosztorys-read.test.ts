@@ -4,11 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // gate is requireAuth. This spec asserts the gate holds by observable effect: on a rejected session
 // the read never reaches the DB at all, rather than reaching it and discarding the result.
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-  updateTag: vi.fn(),
-  unstable_cache: (fn: unknown) => fn,
-}))
 
 const authState = vi.hoisted(() => ({
   result: { success: true, user: { id: 1, email: 'o@t.com', name: 'Owner', role: 'OWNER' } } as

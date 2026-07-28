@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
@@ -8,7 +8,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 
 // pruneAutoCount is raw SQL, so its "keep newest 50 auto, never touch manual" invariant is only real
 // against the DB — assert persisted row counts, not a return value.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 

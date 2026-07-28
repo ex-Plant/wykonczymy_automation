@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { selectKosztorysTreeData } from '@/lib/db/kosztorys-tree'
@@ -8,7 +8,6 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // real Postgres — a mocked executor would just replay whatever shape the test author imagined. The
 // sibling spec (kosztorys-tree-sql-drift) guards the column list at source level; this one guards the
 // four behaviours that a correct column list still doesn't give you.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
