@@ -20,6 +20,7 @@ import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
+import { SCOPE_MARKER_FOOTNOTE } from '@/components/kosztorys/summary/scope-marker'
 import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
 import {
   useSummaryView,
@@ -105,6 +106,10 @@ type PropsT = {
   showPies?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   preview?: boolean
+  // The host's transaction figures are narrowed by URL filters the kosztorys can't follow (EX-600).
+  // Turns on the `*` on every kosztorys-plane figure plus the one footnote that explains it, and
+  // silences both cross-plane verdicts, which would otherwise report the filter as a gap.
+  filtersActive?: boolean
   stages?: KosztorysStageT[]
   stageTotals?: Map<number, number>
   // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
@@ -152,6 +157,7 @@ export function SummaryPanelContent({
   showTransactionLists = true,
   showPies = true,
   preview = false,
+  filtersActive = false,
   stages,
   stageTotals,
   payoutsByWorker,
@@ -234,6 +240,11 @@ export function SummaryPanelContent({
           aria-label="Widok podsumowania"
         />
         {topBarSlot}
+        {/* One footnote for every `*` in the panel — placed here so it reads once, above the tables,
+            instead of once per starred row. */}
+        {filtersActive && (
+          <p className="text-muted-foreground basis-full text-xs">{SCOPE_MARKER_FOOTNOTE}</p>
+        )}
       </div>
       <SummaryScrollRegion>
         {/* A client reads the mode, never writes it — the same `preview` gate every other
@@ -291,6 +302,7 @@ export function SummaryPanelContent({
                 showDeposits={showTransactionLists}
                 preview={preview}
                 showPie={showPies}
+                filtersActive={filtersActive}
               />
             )}
             {view === 'expenses' && (

@@ -31,6 +31,10 @@ type PropsT = {
   // The page's stats scope (URL filters + this investment) — the same `Where` behind `financials`,
   // so wpłaty narrow with the rest of the transaction plane instead of reading the whole investment.
   statsWhere: Where
+  // Whether the URL carries any transfer filter. Not derivable from `statsWhere`: the filter builder
+  // always emits a default type/cancelled condition, so an unfiltered page still yields a non-empty
+  // `Where`.
+  filtersActive: boolean
   financials: InvestmentFinancialsT
   // ADMIN/OWNER only. Gates whether `financials` crosses into the client component at all — the
   // „Marża" tab's figures must stay out of a MANAGER's RSC payload, not merely off their screen.
@@ -46,6 +50,7 @@ export async function InvestmentSummaryPanel({
   investmentId,
   investmentName,
   statsWhere,
+  filtersActive,
   financials,
   canSeeMargin,
   expenseCategories,
@@ -107,6 +112,7 @@ export async function InvestmentSummaryPanel({
       views={INVESTMENT_PANEL_VIEWS}
       showTransactionLists={false}
       showPies={false}
+      filtersActive={filtersActive}
     />
   )
 }

@@ -58,6 +58,10 @@ type PropsT = {
   // always 'client', which is exactly when the scream would fire), and the internal drill-down links
   // point at owner-only pages — so gate the scream off and render those labels as plain text.
   preview?: boolean
+  // The host's transaction figures are narrowed by URL filters the kosztorys can't follow (EX-600).
+  // Stars the kosztorys-plane rows AND withholds the mismatch scream: that verdict compares the whole
+  // kosztorys against a filtered ledger, so under a filter it reports the filter as a gap.
+  filtersActive?: boolean
 }
 
 // The single bottom summary block: the robocizna waterfall (Suma prac wykonanych → Rabat →
@@ -76,6 +80,7 @@ export function BruttoNettoSummary({
   moneyAxis,
   materialsNetRate,
   preview = false,
+  filtersActive = false,
 }: PropsT) {
   // Łącznie = Robocizna (przed rabatem) − Rabat + Materiały, and Łącznie − Wpłaty = „Do zapłaty".
   // The split feeds off the POST-rabat robocizna, so Łącznie already nets the rabat out — which is
@@ -89,7 +94,7 @@ export function BruttoNettoSummary({
   )
   // The scream compares client-view nets; a subcontractor view reprices the displayed figure, so the
   // scream would sit next to a number it isn't comparing. Show it only in the client view.
-  const reconVisible = !preview && priceView === 'client'
+  const reconVisible = !preview && !filtersActive && priceView === 'client'
   // Force-show the „Rabat" row even at kosztorys-rabat 0, so a RABAT transfer with no kosztorys rabat
   // can't hide the mismatch — otherwise the one gap population most needs to catch stays invisible.
   // Only while the scream is visible; otherwise the row follows the normal „rabat > 0" rule.
@@ -132,6 +137,7 @@ export function BruttoNettoSummary({
           combinedNet={combined.net}
           combined={combined}
           materialsNetRate={materialsNetRate}
+          scopeMarked={filtersActive}
         />
         <SummaryTotalsTable
           cols={moneyCols}
@@ -140,6 +146,7 @@ export function BruttoNettoSummary({
           doZaplaty={doZaplaty}
           investmentId={investmentId}
           preview={preview}
+          scopeMarked={filtersActive}
         />
       </div>
     </div>

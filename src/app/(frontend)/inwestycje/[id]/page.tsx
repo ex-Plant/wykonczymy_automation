@@ -10,7 +10,11 @@ import { calculateMargin } from '@/lib/db/calculate-margin'
 import { InvestmentSummaryPanel } from '@/components/investments/investment-summary-panel'
 import { StatsVersionToggle } from '@/components/investments/stats-version-toggle'
 import { parseStatsVersion, STATS_VERSION_PARAM } from '@/lib/constants/stats-version'
-import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
+import {
+  buildTransferFilters,
+  hasActiveTransferFilters,
+  stripCancelledFilters,
+} from '@/lib/queries/transfer-filters'
 import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-costs'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
@@ -44,6 +48,9 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
 
   // Stats ignore cancelled toggle — SQL already excludes cancelled via hardcoded WHERE clause
   const statsWhere = stripCancelledFilters(transferWhere)
+  // Read off the raw params, not `statsWhere` — the builder always emits a default type/cancelled
+  // condition, so an unfiltered page still produces a non-empty `Where`.
+  const filtersActive = hasActiveTransferFilters(sp)
 
   const version = parseStatsVersion(sp[STATS_VERSION_PARAM])
 
@@ -117,6 +124,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
             investmentId={investmentId}
             investmentName={investment.name}
             statsWhere={statsWhere}
+            filtersActive={filtersActive}
             financials={financials}
             canSeeMargin={isAdminOrOwnerRole(user.role)}
             expenseCategories={refData.expenseCategories}

@@ -3,6 +3,7 @@ import { Info } from 'lucide-react'
 import { HintTooltip } from '@/components/ui/tooltip'
 import { SummaryLabelCell, SummaryValueCell } from '@/components/ui/summary-grid'
 import { ReconMismatchBadge } from '@/components/ui/recon-mismatch-badge'
+import { SCOPE_MARKER_HINT } from '@/components/kosztorys/summary/scope-marker'
 import { formatNet } from '@/lib/kosztorys/format'
 import { axisShows, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { MoneyPairT, SummaryLineT } from '@/lib/kosztorys/summary-economics'
@@ -26,6 +27,9 @@ export type SummaryRowOptsT = {
   // — the EX-535 reconciliation check against the transaction ledger. The client footer never passes
   // it, which is what lets both surfaces share this row instead of keeping two copies.
   mismatch?: string
+  // This figure draws on the kosztorys, which carries no date/type/register — so it cannot follow the
+  // host's transaction filters. One `*` here, one footnote in the panel's top bar (EX-600).
+  scopeMarked?: boolean
 }
 
 type SummaryRowPropsT = SummaryRowOptsT & {
@@ -52,6 +56,11 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
       <SummaryLabelCell className={weight}>
         <span className="inline-flex items-center gap-1">
           {label}
+          {opts.scopeMarked && (
+            <sup className="text-muted-foreground" title={SCOPE_MARKER_HINT}>
+              *
+            </sup>
+          )}
           {opts.mismatch && <ReconMismatchBadge content={opts.mismatch} />}
           {/* The row's brutto cell repeats its netto figure — flagged here so the repetition reads
               as „ta pozycja nie ma VAT-u", not as a rendering slip. */}

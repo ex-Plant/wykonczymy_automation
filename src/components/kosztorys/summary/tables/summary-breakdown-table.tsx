@@ -26,6 +26,7 @@ export function SummaryBreakdownTable({
   combinedNet,
   combined,
   materialsNetRate,
+  scopeMarked = false,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
@@ -42,6 +43,8 @@ export function SummaryBreakdownTable({
   combined: MoneyPairT
   // The investment's saved materiały netto rate (null = billed at the raw brutto receipt).
   materialsNetRate: number | null
+  // Star the kosztorys-plane rows — Materiały comes off the transactions and stays bare.
+  scopeMarked?: boolean
 }) {
   return (
     <SummaryTable cols={cols}>
@@ -49,9 +52,22 @@ export function SummaryBreakdownTable({
       <SummaryMoneyHeaders axis={moneyAxis} />
       {/* Label stays bare „Robocizna" — it is the same pre-rabat figure the investment page's
           „z kosztorysu" block calls Robocizna, and the Rabat row right below removes any doubt. */}
-      <SummaryRow label="Robocizna" line={sumaPrac} axis={moneyAxis} mismatch={sumaPracMismatch} />
+      <SummaryRow
+        label="Robocizna"
+        line={sumaPrac}
+        axis={moneyAxis}
+        mismatch={sumaPracMismatch}
+        scopeMarked={scopeMarked}
+      />
       {rabat && (
-        <SummaryRow label="Rabat" line={rabat} axis={moneyAxis} mismatch={rabatMismatch} discount />
+        <SummaryRow
+          label="Rabat"
+          line={rabat}
+          axis={moneyAxis}
+          mismatch={rabatMismatch}
+          discount
+          scopeMarked={scopeMarked}
+        />
       )}
       {materials.grossBase + materials.netBilled !== 0 && (
         <SummaryRow
@@ -60,7 +76,13 @@ export function SummaryBreakdownTable({
           axis={moneyAxis}
         />
       )}
-      <SummaryRow label="Łącznie" line={combined} axis={moneyAxis} emphasize />
+      <SummaryRow
+        label="Łącznie"
+        line={combined}
+        axis={moneyAxis}
+        emphasize
+        scopeMarked={scopeMarked}
+      />
     </SummaryTable>
   )
 }

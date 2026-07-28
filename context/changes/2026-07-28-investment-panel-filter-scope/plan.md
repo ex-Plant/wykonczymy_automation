@@ -414,17 +414,17 @@ distinct filter combination rather than per investment. Acceptable — the same 
 
 #### Automated
 
-- [x] 2.1 New DB spec passes: `pnpm exec vitest run src/__tests__/lib/db/deposit-transactions.test.ts`
-- [x] 2.2 Type checking passes: `pnpm typecheck`
-- [x] 2.3 Linting passes: `pnpm lint`
+- [x] 2.1 New DB spec passes: `pnpm exec vitest run src/__tests__/lib/db/deposit-transactions.test.ts` — 325bacec
+- [x] 2.2 Type checking passes: `pnpm typecheck` — 325bacec
+- [x] 2.3 Linting passes: `pnpm lint` — 325bacec
 
 ### Phase 3: Scope marking
 
 #### Automated
 
-- [ ] 3.1 Type checking passes: `pnpm typecheck`
-- [ ] 3.2 Linting passes: `pnpm lint`
-- [ ] 3.3 Existing panel specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
+- [x] 3.1 Type checking passes: `pnpm typecheck`
+- [x] 3.2 Linting passes: `pnpm lint`
+- [x] 3.3 Existing panel specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
 
 ### Phase 4: Guards & close-out
 
