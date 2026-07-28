@@ -14,23 +14,7 @@ type PropsT = KosztorysEditorDataT
 // Thin shell around the stateful editor body: owns the auto-snapshot interval, the "Wersje" drawer, and
 // the restore-driven remount. Each of the three lives here so a restore's body remount doesn't disturb
 // them.
-export function KosztorysEditorV2({
-  investmentId,
-  tree,
-  investmentName,
-  materialsGrossBase,
-  materialsNetBilled,
-  materialyBreakdown,
-  settledBreakdown,
-  financials,
-  wplatyNet,
-  laborCostsNetFromTransactions,
-  investmentRabat,
-  payoutsByWorker = [],
-  payoutTransactions = [],
-  depositTransactions = [],
-  materialTransactions,
-}: PropsT) {
+export function KosztorysEditorV2({ investmentId, tree, investmentName, ...bodyData }: PropsT) {
   const router = useRouter()
   // One undo/redo stack per editor mount, passed to the body as a prop. It outlives the body's
   // restore remount (the shell doesn't remount), so a restore must reset() it — the stale commands
@@ -61,21 +45,10 @@ export function KosztorysEditorV2({
     <>
       <KosztorysEditorBody
         key={remountKey}
+        {...bodyData}
         investmentId={investmentId}
         tree={tree}
         investmentName={investmentName}
-        materialsGrossBase={materialsGrossBase}
-        materialsNetBilled={materialsNetBilled}
-        materialyBreakdown={materialyBreakdown}
-        settledBreakdown={settledBreakdown}
-        financials={financials}
-        wplatyNet={wplatyNet}
-        laborCostsNetFromTransactions={laborCostsNetFromTransactions}
-        investmentRabat={investmentRabat}
-        payoutsByWorker={payoutsByWorker}
-        payoutTransactions={payoutTransactions}
-        depositTransactions={depositTransactions}
-        materialTransactions={materialTransactions}
         undoRedo={undoRedo}
         onOpenVersions={() => setVersionsOpen(true)}
       />

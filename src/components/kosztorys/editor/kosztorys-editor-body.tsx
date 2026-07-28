@@ -51,21 +51,14 @@ export function KosztorysEditorBody({
   investmentId,
   tree,
   investmentName,
-  materialsGrossBase,
-  materialsNetBilled,
-  materialyBreakdown,
-  settledBreakdown,
-  financials,
-  wplatyNet,
   laborCostsNetFromTransactions,
   investmentRabat,
-  payoutsByWorker = [],
-  payoutTransactions = [],
+  // Defaulted here rather than relayed: the panel requires it, `KosztorysEditorDataT` doesn't.
   depositTransactions = [],
-  materialTransactions,
   clientView = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
+  ...panelData
 }: PropsT) {
   const editor = useKosztorysEditor({ investmentId, tree, clientView, undoRedo })
   const {
@@ -218,24 +211,16 @@ export function KosztorysEditorBody({
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel
+            {...panelData}
             investmentId={investmentId}
             investmentName={investmentName}
+            depositTransactions={depositTransactions}
             stages={stages}
             stageTotals={stageTotals}
-            payoutsByWorker={payoutsByWorker}
-            payoutTransactions={payoutTransactions}
-            depositTransactions={depositTransactions}
-            materialTransactions={materialTransactions}
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materialsGrossBase={materialsGrossBase}
-            materialsNetBilled={materialsNetBilled}
-            materialyBreakdown={materialyBreakdown}
-            settledBreakdown={settledBreakdown}
-            financials={financials}
             sectionSubtotals={progressSubtotals}
-            wplatyNet={wplatyNet}
             rabatAmount={rabatClientNet}
             reconciliation={reconciliation}
             vatRate={tree.vatRate}
