@@ -13,6 +13,7 @@ import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
+import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
 import {
   isSectionFooterRow,
@@ -32,17 +33,6 @@ import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 
 const ITEM_ROW_HEIGHT = 32
 const SECTION_BAND_ROW_HEIGHT = 52
-
-// dsg's leftmost column is the only sticky-left element it gives us, so it is the one place a
-// per-row indicator survives horizontal scroll — which is why the section rail is painted on
-// `.dsg-cell-gutter` (globals.css) rather than on a cell of our own. Content-free and 6px wide:
-// wide enough for the 3px rail plus its tint, narrow enough to read as a margin rather than a
-// column. Module-level so its `component` identity is stable across renders.
-const SECTION_RAIL_GUTTER = {
-  basis: 6,
-  title: <></>,
-  component: () => <></>,
-}
 
 type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim axis
@@ -127,7 +117,7 @@ export function KosztorysEditorBody({
       ),
     [columns, columnTotals, sectionHeader, sectionColumnTotals],
   )
-  const { rows: bodyRows } = useMemo(
+  const { rows: bodyRows, ordinalByRowId } = useMemo(
     () =>
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
@@ -137,6 +127,7 @@ export function KosztorysEditorBody({
     [viewRows, collapsedSectionIds, sort, search],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
   // rabatClientNet, view-independent) vs the investment's transaction sums — net to net, since the
@@ -193,7 +184,7 @@ export function KosztorysEditorBody({
               // Strip the appended spacer + „Razem" rows before the editor's diff sees them — display-only.
               onChange={(rows) => onChange(rows.filter((row) => !isSyntheticRow(row.id)))}
               columns={gridColumns}
-              gutterColumn={SECTION_RAIL_GUTTER}
+              gutterColumn={gutterColumn}
               height={gridHeight}
               rowHeight={({ rowData }) =>
                 isSectionHeaderRow(rowData.id) ? SECTION_BAND_ROW_HEIGHT : ITEM_ROW_HEIGHT

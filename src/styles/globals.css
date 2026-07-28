@@ -353,6 +353,11 @@
    edge with `box-shadow: 1px 1px`, and box-shadow doesn't cascade per-side — overriding it to add the
    rail would erase the grid lines. */
 .kosztorys-grid .dsg-cell-gutter {
+  /* Ordinals sit quieter than the data: a position is a landmark, not a figure to read across.
+     `tabular-nums` keeps the column of digits from jittering as the count crosses a decade. */
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
   /* The rail falls back to `transparent` (no rail drawn) but the background must not — mixing in
      `transparent` would make the sticky gutter translucent and let scrolled cells bleed through it. */
   background: color-mix(
