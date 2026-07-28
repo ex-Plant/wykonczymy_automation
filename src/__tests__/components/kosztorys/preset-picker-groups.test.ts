@@ -1,0 +1,60 @@
+import { describe, expect, it } from 'vitest'
+import {
+  groupPresetSections,
+  metaKey,
+} from '@/components/kosztorys/editor/dialogs/preset-picker-groups'
+import type { PresetSectionMetaT } from '@/lib/db/presets'
+
+const meta = (
+  presetId: number,
+  sectionId: number,
+  presetName = `szablon-${presetId}`,
+): PresetSectionMetaT => ({
+  presetId,
+  presetName,
+  sectionId,
+  sectionName: `sekcja-${sectionId}`,
+  itemCount: 3,
+})
+
+describe('groupPresetSections', () => {
+  it('returns no groups for no metas', () => {
+    expect(groupPresetSections([], new Set())).toEqual([])
+  })
+
+  it('collapses consecutive metas of one preset and keeps source order', () => {
+    const groups = groupPresetSections(
+      [meta(2, 10), meta(2, 11), meta(1, 20), meta(1, 21), meta(1, 22)],
+      new Set(),
+    )
+
+    expect(groups.map((group) => group.presetId)).toEqual([2, 1])
+    expect(groups[0].metas.map((item) => item.sectionId)).toEqual([10, 11])
+    expect(groups[1].metas.map((item) => item.sectionId)).toEqual([20, 21, 22])
+  })
+
+  // A section id is only unique within its preset, so the same id under two presets must land in
+  // separate groups — this is what `metaKey` exists to keep apart.
+  it('keeps a repeated section id in its own preset group', () => {
+    const groups = groupPresetSections([meta(1, 5), meta(2, 5)], new Set())
+
+    expect(groups).toHaveLength(2)
+    expect(groups.map((group) => group.presetId)).toEqual([1, 2])
+  })
+
+  it('counts selections per group, ignoring keys of other presets', () => {
+    const metas = [meta(1, 10), meta(1, 11), meta(2, 20), meta(2, 21), meta(2, 22)]
+    const selected = new Set([metaKey(meta(1, 10)), metaKey(meta(2, 20)), metaKey(meta(2, 22))])
+
+    const groups = groupPresetSections(metas, selected)
+
+    expect(groups[0].selectedCount).toBe(1)
+    expect(groups[1].selectedCount).toBe(2)
+  })
+
+  it('ignores a selection key belonging to no listed preset', () => {
+    const groups = groupPresetSections([meta(1, 10)], new Set(['99:10', '1:999']))
+
+    expect(groups[0].selectedCount).toBe(0)
+  })
+})
