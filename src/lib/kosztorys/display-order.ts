@@ -52,20 +52,26 @@ export async function shiftDisplayOrderFrom(
   const { table, owner } = ORDER_SCOPES[scope]
   await db.execute(sql`
     UPDATE ${table} SET display_order = display_order + 1
-    WHERE ${owner} = ${ownerId} AND display_order >= ${at}
+    WHERE id IN (
+      SELECT id FROM ${table}
+      WHERE ${owner} = ${ownerId} AND display_order >= ${at}
+      ORDER BY id FOR UPDATE
+    )
   `)
 }
 
 // Exchanges two rows' display_order in ONE statement, so ▲▼ moves a row without renumbering the
 // block. Each ref carries the NEW display_order its row should take on.
 //
-// The single statement is load-bearing twice over. A half-applied swap would leave both rows on the
-// same display_order (there is no unique constraint) and the reloaded order would be
-// non-deterministic. And it takes both row locks at once rather than holding one while it waits for
-// the other, so it cannot be one side of a lock cycle with the range UPDATE in shiftDisplayOrderFrom,
-// which scans in plan order rather than by id. That second one matters because ▲▼ fires this WITHOUT
-// awaiting and with no error handling: a losing transaction would abort silently and leave the grid
-// showing an order the DB never stored.
+// The single statement is load-bearing: a half-applied swap would leave both rows on the same
+// display_order (there is no unique constraint) and the reloaded order would be non-deterministic.
+//
+// It does NOT make the swap deadlock-proof — one UPDATE still takes its row locks one at a time, in
+// plan order (EX-632). That is why both this and shiftDisplayOrderFrom lock through `ORDER BY id FOR
+// UPDATE`: same acquisition order on both sides, so they cannot form a cycle. Without it the shift's
+// heap-order scan and this statement's id-order scan diverge as soon as MVCC moves an updated row to
+// the back of the heap, and one side aborts with 40P01 — silently, because ▲▼ fires this WITHOUT
+// awaiting and with no error handling, leaving the grid showing an order the DB never stored.
 export async function swapDisplayOrder(
   payload: Payload,
   scope: OrderScopeT,
@@ -81,6 +87,8 @@ export async function swapDisplayOrder(
           ELSE ${second.displayOrder}::int
         END,
         updated_at = now()
-    WHERE id IN (${first.id}, ${second.id})
+    WHERE id IN (
+      SELECT id FROM ${table} WHERE id IN (${first.id}, ${second.id}) ORDER BY id FOR UPDATE
+    )
   `)
 }
