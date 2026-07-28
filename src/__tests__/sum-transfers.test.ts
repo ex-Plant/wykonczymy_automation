@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Payload } from 'payload'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   sumRegisterBalance,
   sumAllRegisterBalances,
@@ -9,22 +8,14 @@ import {
   deriveFinancials,
   deriveCategoryBreakdowns,
 } from '@/lib/db/sum-transfers'
+import {
+  fakePayload,
+  lastSql,
+  mockExecute,
+  resetFakePayload,
+} from '@/__tests__/helpers/fake-payload-sql'
 
-// ── Fake Payload with controllable db.drizzle.execute ────────────────────
-
-const mockExecute = vi.fn()
-
-/**
- * getDb resolves to payload.db.drizzle (when no req/transactionID).
- * We provide a minimal shape that satisfies the internal access pattern.
- */
-const fakePayload = {
-  db: { drizzle: { execute: mockExecute }, sessions: {} },
-} as unknown as Payload
-
-beforeEach(() => {
-  mockExecute.mockReset()
-})
+beforeEach(resetFakePayload)
 
 // ── sumRegisterBalance ───────────────────────────────────────────────────
 
@@ -233,82 +224,24 @@ describe('sumAllInvestmentFinancials', () => {
   })
 })
 
-// ── buildSqlConditions — filter translation (via sumFilteredByType) ──
+// ── sumFilteredByType — how it consumes the Where ────────────────────────
+// Per-operator translation lives in lib/db/where-to-sql.test.ts; these two pin the seam.
 
-/** Extract raw SQL string from sql.raw() query object passed to db.execute */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractSql(query: any): string {
-  return query.queryChunks?.[0]?.value?.[0] ?? String(query)
-}
-
-describe('buildSqlConditions — filter translation', () => {
-  beforeEach(() => {
-    mockExecute.mockResolvedValue({ rows: [] })
-  })
-
-  it('passes type filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { type: { in: ['PAYOUT', 'OTHER'] } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("type IN ('PAYOUT', 'OTHER')")
-  })
-
-  it('passes date range to SQL', async () => {
-    await sumFilteredByType(fakePayload, {
-      date: { greater_than_equal: '2024-01-01', less_than_equal: '2024-12-31' },
-    })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("date >= '2024-01-01'")
-    expect(queryStr).toContain("date <= '2024-12-31'")
-  })
-
-  it('passes investment filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { investment: { in: [5] } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('investment_id IN (5)')
-  })
-
-  it('passes OR register filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, {
-      or: [{ sourceRegister: { in: [3] } }, { targetRegister: { in: [3] } }],
-    })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('source_register_id IN (3)')
-    expect(queryStr).toContain('target_register_id IN (3)')
-    expect(queryStr).toContain(' OR ')
-  })
-
-  it('passes worker filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { worker: { equals: 5 } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('worker_id = 5')
-  })
-
-  it('passes worker filter combined with date range to SQL', async () => {
-    await sumFilteredByType(fakePayload, {
-      worker: { equals: 3 },
-      date: { greater_than_equal: '2024-06-01', less_than_equal: '2024-12-31' },
-    })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('worker_id = 3')
-    expect(queryStr).toContain("date >= '2024-06-01'")
-    expect(queryStr).toContain("date <= '2024-12-31'")
-  })
-
-  it('passes payment method filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { paymentMethod: { in: ['CASH'] } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("payment_method IN ('CASH')")
-  })
-
+describe('sumFilteredByType — Where handling', () => {
   it('returns empty array and skips SQL when NO_RESULTS sentinel present', async () => {
     const result = await sumFilteredByType(fakePayload, { id: { equals: -1 } })
     expect(result).toEqual([])
     expect(mockExecute).not.toHaveBeenCalled()
   })
 
+  it('splices the translated conditions into the WHERE slot', async () => {
+    await sumFilteredByType(fakePayload, { investment: { in: [5] } })
+    expect(lastSql()).toContain('AND investment_id IN (5)')
+  })
+
   it('empty where produces no extra conditions', async () => {
     await sumFilteredByType(fakePayload, {})
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
+    const queryStr = lastSql()
     expect(queryStr).toContain('WHERE cancelled IS NOT TRUE')
     // No filter clauses appended in the conditions slot (between WHERE and GROUP BY).
     // The base SELECT now contains an unrelated `AND` inside the settled re-bucket CASE.
@@ -478,12 +411,5 @@ describe('sumFilteredByType', () => {
       { type: 'INVESTMENT_EXPENSE', settled: true, total: 100, netTotal: 0 },
       { type: 'INVESTOR_DEPOSIT', settled: false, total: 12000, netTotal: 0 },
     ])
-  })
-
-  it('passes filters to SQL', async () => {
-    mockExecute.mockResolvedValue({ rows: [] })
-    await sumFilteredByType(fakePayload, { date: { greater_than_equal: '2024-01-01' } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("date >= '2024-01-01'")
   })
 })

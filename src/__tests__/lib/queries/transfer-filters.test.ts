@@ -1,36 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Payload } from 'payload'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
 import { sumFilteredByType } from '@/lib/db/sum-transfers'
+import { fakePayload, lastSql, resetFakePayload } from '@/__tests__/helpers/fake-payload-sql'
 
 /**
- * The bridge between the two planes that decide „Suma wybranych transakcji" (EX-574):
- * buildTransferFilters emits the Where, stripCancelledFilters hands it to the stats query,
- * buildSqlConditions turns it into SQL. Each plane was fine on its own; the tile was wrong
- * because nothing asserted what actually reached the database.
- *
- * So these assert the EMITTED SQL, never the intermediate Where — a Where-shape assertion
- * stays green when the translator silently drops an operator, which is how the amount
- * filter's upper bound went missing for as long as it did.
+ * Assert the EMITTED SQL, never the intermediate Where: a Where-shape assertion stays green
+ * when the translator silently drops an operator (EX-574). Translation itself is covered per-operator
+ * in `lib/db/where-to-sql.test.ts`; these cases pin the whole URL → SQL chain.
  */
 
-const mockExecute = vi.fn()
-const fakePayload = {
-  db: { drizzle: { execute: mockExecute }, sessions: {} },
-} as unknown as Payload
+beforeEach(resetFakePayload)
 
-beforeEach(() => {
-  mockExecute.mockReset()
-  mockExecute.mockResolvedValue({ rows: [] })
-})
-
-/** Runs the real filter → strip → translate chain and returns the SQL the tile's query would issue. */
 async function sqlForSearchParams(searchParams: Record<string, string>): Promise<string> {
   const where = buildTransferFilters(searchParams, { id: 1 })
   await sumFilteredByType(fakePayload, stripCancelledFilters(where))
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query = mockExecute.mock.calls[0][0] as any
-  return query.queryChunks?.[0]?.value?.[0] ?? String(query)
+  return lastSql()
 }
 
 describe('transfer filters → stats SQL', () => {
@@ -45,7 +29,8 @@ describe('transfer filters → stats SQL', () => {
   })
 
   it('applies no type condition when cancelled rows are shown', async () => {
-    expect(await sqlForSearchParams({ showCancelled: '1' })).not.toContain('type ')
+    const sql = await sqlForSearchParams({ showCancelled: '1' })
+    expect(sql).not.toContain('AND type')
   })
 
   it('keeps audit mode restricted to CANCELLATION rows', async () => {
@@ -64,9 +49,23 @@ describe('transfer filters → stats SQL', () => {
     expect(await sqlForSearchParams({ amount: '500' })).toContain("amount::text LIKE '500'")
   })
 
-  it('refuses to translate an operator it does not know', async () => {
-    await expect(sumFilteredByType(fakePayload, { amount: { exists: true } })).rejects.toThrow(
-      /exists/,
+  it('applies an id search', async () => {
+    expect(await sqlForSearchParams({ id: '42' })).toContain('id = 42')
+  })
+
+  it('applies both ends of a date range', async () => {
+    const sql = await sqlForSearchParams({ from: '2026-03-01', to: '2026-03-31' })
+    expect(sql).toContain("date >= '2026-03-01'")
+    expect(sql).toContain("date <= '2026-03-31'")
+  })
+
+  it('applies a worker search', async () => {
+    expect(await sqlForSearchParams({ worker: '5' })).toContain('worker_id = 5')
+  })
+
+  it('matches a cash register on either side of the transfer', async () => {
+    expect(await sqlForSearchParams({ sourceRegister: '3,5' })).toContain(
+      '(source_register_id IN (3, 5) OR target_register_id IN (3, 5))',
     )
   })
 })
