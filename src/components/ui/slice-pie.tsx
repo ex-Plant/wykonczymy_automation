@@ -1,8 +1,8 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { AlertTriangle } from 'lucide-react'
 import { Cell, Pie, PieChart } from 'recharts'
+import { AlertIcon } from '@/components/ui/alert-icon'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieSliceLegend, type PieSliceT } from '@/components/ui/pie-legend'
 
@@ -44,7 +44,7 @@ export function SlicePie({
       {description}
       {isInvalidTotal ? (
         <div className="text-destructive mx-auto flex h-40 w-40 flex-col items-center justify-center gap-2 text-center text-xs">
-          <AlertTriangle className="size-5" />
+          <AlertIcon className="size-5" />
           <span>Błędne dane: suma wartości jest ujemna.</span>
         </div>
       ) : (

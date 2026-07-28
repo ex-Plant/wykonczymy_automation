@@ -33,6 +33,7 @@ export function KosztorysGlobalSettings({ globalCoeffs, onGlobalCoeffChange }: P
             </span>
           }
           value={globalCoeffs.wTools}
+          min={0}
           max={MAX_CLIENT_SHARE}
           onCommit={(n) => onGlobalCoeffChange({ wToolsCoeff: n })}
         />
@@ -44,6 +45,7 @@ export function KosztorysGlobalSettings({ globalCoeffs, onGlobalCoeffChange }: P
             </span>
           }
           value={globalCoeffs.ownTools}
+          min={0}
           max={MAX_CLIENT_SHARE}
           onCommit={(n) => onGlobalCoeffChange({ ownToolsCoeff: n })}
         />

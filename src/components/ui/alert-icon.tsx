@@ -1,18 +1,12 @@
 import { TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
-// Two tones of ONE glyph, on purpose: the exclamation triangle is the app's alarm shape, and a
-// warning that borrowed a different silhouette would read as a different KIND of problem rather than
-// a lesser one. Only the colour separates them — destructive = blocked, warning = counts anyway.
-export type AlertToneT = 'danger' | 'warning'
-
-const TONE_CLASS: Record<AlertToneT, string> = {
-  danger: 'text-destructive',
-  warning: 'text-warning',
-}
-
+// The app's alarm shape, in the app's alarm colour. It used to carry a second, milder tone; the one
+// rule that used it (a subcontractor price above the global multiplier) turned out to fire on
+// perfectly ordinary rows, so both the tier and the tone are gone (owner, 2026-07-28).
+//
 // `aria-hidden` because every call site pairs this with the text (a tooltip, a banner's own sentence)
 // that already says what is wrong — announcing the icon too would read the alarm twice.
-export function AlertIcon({ tone, className }: { tone: AlertToneT; className?: string }) {
-  return <TriangleAlert className={cn('shrink-0', TONE_CLASS[tone], className)} aria-hidden />
+export function AlertIcon({ className }: { className?: string }) {
+  return <TriangleAlert className={cn('text-destructive shrink-0', className)} aria-hidden />
 }
