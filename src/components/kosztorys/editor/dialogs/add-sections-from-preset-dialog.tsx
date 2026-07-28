@@ -58,8 +58,9 @@ export function AddSectionsFromPresetDialog({
     setSearchTerm,
   } = useSearchFilter(groups, getPresetName)
   // Falling back to the first szablon keeps the right pane filled from the moment the list lands,
-  // without an effect that writes state during render.
-  const activeGroup = groups.find((group) => group.presetId === activePresetId) ?? groups[0]
+  // without an effect that writes state during render. `.at(0)` rather than `[0]`: it types as
+  // `| undefined`, so the empty-library case can't be read past without narrowing first.
+  const activeGroup = groups.find((group) => group.presetId === activePresetId) ?? groups.at(0)
 
   // Fetch-on-open: the picker can be opened programmatically (from the „Dodaj" menu item, bypassing
   // Radix's own open trigger), so syncing the load to the `open` prop is the one reliable seam. Only
@@ -152,7 +153,7 @@ export function AddSectionsFromPresetDialog({
         />
         {sections === null ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Ładowanie szablonów…</p>
-        ) : sections.length === 0 ? (
+        ) : !activeGroup ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Brak zapisanych szablonów.</p>
         ) : (
           <div className="mt-3 flex max-h-[55vh] min-h-0 border-t">
