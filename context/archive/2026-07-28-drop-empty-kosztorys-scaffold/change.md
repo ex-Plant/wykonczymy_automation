@@ -1,10 +1,10 @@
 ---
 change_id: drop-empty-kosztorys-scaffold
 title: Let the kosztorys editor open empty — retire the forced-first-section scaffold
-status: implemented
+status: archived
 created: 2026-07-28
 updated: 2026-07-28
-archived_at: null
+archived_at: 2026-07-28T13:29:56Z
 branch: staging
 worktree: null
 ---
