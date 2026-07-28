@@ -298,14 +298,14 @@ touches only code paths, not stored rows.
 
 #### Automated
 
-- [x] 2.1 Rollback test red-then-green
-- [x] 2.2 Kosztorys unit+integration slice green
+- [x] 2.1 Rollback test red-then-green — 28b56c86
+- [x] 2.2 Kosztorys unit+integration slice green — 28b56c86
 
 ### Phase 3: Wide-field-coverage roundtrip
 
 #### Automated
 
-- [ ] 3.1 Widened roundtrip passes
+- [x] 3.1 Widened roundtrip passes
 
 ### Phase 4: Schema-drift guard
 

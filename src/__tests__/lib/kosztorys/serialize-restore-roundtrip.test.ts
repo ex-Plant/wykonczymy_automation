@@ -84,7 +84,13 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       ownToolsCoeff: 0.5,
     })
 
-    // Build a small tree: 2 sections, items, 2 stages, sparse progress.
+    // Build a small tree: 3 sections, items, 2 stages, sparse progress.
+    //
+    // Section C exists purely for COLUMN COVERAGE. Restore hand-writes the INSERT column list and
+    // zips values into it positionally, so a column the fixture never sets is a column whose mapping
+    // no test can catch being wrong. Its two items are the extremes — every nullable field null, and
+    // every nullable field set — plus the section colour, the stage plane, and a note carrying
+    // unicode + a newline (a naive value-quoting bug shows up there first).
     const sectionA = await payload.create({
       collection: 'kosztorys-sections',
       data: {
@@ -151,11 +157,67 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       context: { skipRevalidation: true },
     })
 
-    const stage1 = await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 1, label: 'Etap 1' },
+    const sectionC = await payload.create({
+      collection: 'kosztorys-sections',
+      data: {
+        investment: investmentId,
+        name: 'Sekcja C — pokrycie kolumn',
+        displayOrder: 2,
+        color: 'blue-soft',
+      },
       context: { skipRevalidation: true },
     })
+    // Every nullable column null, every numeric at its default.
+    await payload.create({
+      collection: 'kosztorys-items',
+      data: {
+        investment: investmentId,
+        section: sectionC.id,
+        displayOrder: 0,
+        description: null,
+        unit: null,
+        plannedQty: 0,
+        discountType: null,
+        discountValue: 0,
+        clientPrice: 0,
+        wToolsOverrideType: null,
+        wToolsOverrideValue: 0,
+        ownToolsOverrideType: null,
+        ownToolsOverrideValue: 0,
+        hiddenInExport: false,
+        note: null,
+      },
+      context: { skipRevalidation: true },
+    })
+    // Every nullable column set, both override planes, amount discount, unicode + newline note.
+    await payload.create({
+      collection: 'kosztorys-items',
+      data: {
+        investment: investmentId,
+        section: sectionC.id,
+        displayOrder: 1,
+        description: 'Ścianka działowa — GK 12,5 „podwójna"',
+        unit: 'mb',
+        plannedQty: 12.5,
+        discountType: 'amount',
+        discountValue: 33.33,
+        clientPrice: 149.99,
+        wToolsOverrideType: 'coeff',
+        wToolsOverrideValue: 0.62,
+        ownToolsOverrideType: 'amount',
+        ownToolsOverrideValue: 88.5,
+        hiddenInExport: true,
+        note: 'Uwaga: różnica ±5 cm\nDrugi wiersz — ćwierć „cudzysłów"',
+      },
+      context: { skipRevalidation: true },
+    })
+
+    const stage1 = await payload.create({
+      collection: 'kosztorys-stages',
+      data: { investment: investmentId, ordinal: 1, label: 'Etap 1', plane: 'w_tools' },
+      context: { skipRevalidation: true },
+    })
+    // label null AND plane null — the all-nullable extreme on the stages row.
     const stage2 = await payload.create({
       collection: 'kosztorys-stages',
       data: { investment: investmentId, ordinal: 2, label: null },
