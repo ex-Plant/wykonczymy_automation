@@ -1,7 +1,7 @@
 {
   "fingerprint": {
-    "transactionCount": 3208,
-    "checksum": "5df5464e7ee307cf7edf65529868f6ae"
+    "transactionCount": 3216,
+    "checksum": "b58f8e59d44d01928befbb6c88577e74"
   },
   "investments": {
     "6": {
@@ -15,14 +15,8 @@
       "balance": -94.57,
       "margin": 39471,
       "categoryCosts": [
-        [
-          1,
-          24805.57
-        ],
-        [
-          2,
-          418
-        ]
+        [1, 24805.57],
+        [2, 418]
       ],
       "settledCategoryCosts": []
     },
@@ -36,12 +30,7 @@
       "totalSettled": 0,
       "balance": -0.55,
       "margin": 57362,
-      "categoryCosts": [
-        [
-          1,
-          20976.55
-        ]
-      ],
+      "categoryCosts": [[1, 20976.55]],
       "settledCategoryCosts": []
     },
     "8": {
@@ -55,14 +44,8 @@
       "balance": 0,
       "margin": 50105.11,
       "categoryCosts": [
-        [
-          1,
-          32353.89
-        ],
-        [
-          3,
-          972
-        ]
+        [1, 32353.89],
+        [3, 972]
       ],
       "settledCategoryCosts": []
     },
@@ -76,12 +59,7 @@
       "totalSettled": 0,
       "balance": 0.24,
       "margin": 25210,
-      "categoryCosts": [
-        [
-          1,
-          6277.76
-        ]
-      ],
+      "categoryCosts": [[1, 6277.76]],
       "settledCategoryCosts": []
     },
     "10": {
@@ -95,14 +73,8 @@
       "balance": -76.19,
       "margin": 56822.5,
       "categoryCosts": [
-        [
-          1,
-          15817.39
-        ],
-        [
-          2,
-          68.3
-        ]
+        [1, 15817.39],
+        [2, 68.3]
       ],
       "settledCategoryCosts": []
     },
@@ -116,12 +88,7 @@
       "totalSettled": 0,
       "balance": -83.47,
       "margin": 51512,
-      "categoryCosts": [
-        [
-          1,
-          20531.47
-        ]
-      ],
+      "categoryCosts": [[1, 20531.47]],
       "settledCategoryCosts": []
     },
     "12": {
@@ -134,12 +101,7 @@
       "totalSettled": 0,
       "balance": -5678.53,
       "margin": 27427,
-      "categoryCosts": [
-        [
-          1,
-          2764.53
-        ]
-      ],
+      "categoryCosts": [[1, 2764.53]],
       "settledCategoryCosts": []
     },
     "13": {
@@ -152,12 +114,7 @@
       "totalSettled": 0,
       "balance": -171.8,
       "margin": -1690,
-      "categoryCosts": [
-        [
-          1,
-          171.8
-        ]
-      ],
+      "categoryCosts": [[1, 171.8]],
       "settledCategoryCosts": []
     },
     "14": {
@@ -171,14 +128,8 @@
       "balance": 0,
       "margin": 47752.81,
       "categoryCosts": [
-        [
-          1,
-          21280.19
-        ],
-        [
-          2,
-          43363
-        ]
+        [1, 21280.19],
+        [2, 43363]
       ],
       "settledCategoryCosts": []
     },
@@ -192,12 +143,7 @@
       "totalSettled": 0,
       "balance": 0.98,
       "margin": 23571,
-      "categoryCosts": [
-        [
-          1,
-          5543.02
-        ]
-      ],
+      "categoryCosts": [[1, 5543.02]],
       "settledCategoryCosts": []
     },
     "16": {
@@ -210,12 +156,7 @@
       "totalSettled": 0,
       "balance": -164.47,
       "margin": 73805.3,
-      "categoryCosts": [
-        [
-          1,
-          67900.02
-        ]
-      ],
+      "categoryCosts": [[1, 67900.02]],
       "settledCategoryCosts": []
     },
     "17": {
@@ -242,14 +183,8 @@
       "balance": 0,
       "margin": 2000,
       "categoryCosts": [
-        [
-          1,
-          1432.87
-        ],
-        [
-          3,
-          600
-        ]
+        [1, 1432.87],
+        [3, 600]
       ],
       "settledCategoryCosts": []
     },
@@ -263,12 +198,7 @@
       "totalSettled": 0,
       "balance": -877.9,
       "margin": 45611,
-      "categoryCosts": [
-        [
-          1,
-          9839.37
-        ]
-      ],
+      "categoryCosts": [[1, 9839.37]],
       "settledCategoryCosts": []
     },
     "20": {
@@ -281,12 +211,7 @@
       "totalSettled": 0,
       "balance": 0.23,
       "margin": 18021,
-      "categoryCosts": [
-        [
-          1,
-          7429.77
-        ]
-      ],
+      "categoryCosts": [[1, 7429.77]],
       "settledCategoryCosts": []
     },
     "21": {
@@ -300,14 +225,8 @@
       "balance": 0,
       "margin": 41428.82,
       "categoryCosts": [
-        [
-          1,
-          15571.11
-        ],
-        [
-          2,
-          64542.07
-        ]
+        [1, 15571.11],
+        [2, 64542.07]
       ],
       "settledCategoryCosts": []
     },
@@ -322,14 +241,8 @@
       "balance": 0,
       "margin": 14930,
       "categoryCosts": [
-        [
-          1,
-          6473.42
-        ],
-        [
-          2,
-          10621
-        ]
+        [1, 6473.42],
+        [2, 10621]
       ],
       "settledCategoryCosts": []
     },
@@ -344,40 +257,25 @@
       "balance": 0,
       "margin": 96253,
       "categoryCosts": [
-        [
-          1,
-          94110.41
-        ],
-        [
-          2,
-          650
-        ]
+        [1, 94110.41],
+        [2, 650]
       ],
       "settledCategoryCosts": []
     },
     "26": {
-      "totalMaterialCosts": 593265.77,
+      "totalMaterialCosts": 593565.67,
       "totalIncome": 0,
       "totalLaborCosts": 0,
       "totalPayouts": 296322.5,
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "balance": -593265.77,
+      "balance": -593565.67,
       "margin": -296322.5,
       "categoryCosts": [
-        [
-          1,
-          171578.38
-        ],
-        [
-          2,
-          148173.26
-        ],
-        [
-          3,
-          273609.09
-        ]
+        [1, 171578.38],
+        [2, 148473.16],
+        [3, 273609.09]
       ],
       "settledCategoryCosts": []
     },
@@ -395,31 +293,20 @@
       "settledCategoryCosts": []
     },
     "31": {
-      "totalMaterialCosts": 180660.57,
+      "totalMaterialCosts": 181738.77,
       "totalIncome": 303382.34,
       "totalLaborCosts": 235911,
       "totalPayouts": 198634,
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 4421.85,
-      "balance": -113189.23,
+      "balance": -114267.43,
       "margin": 32855.15,
       "categoryCosts": [
-        [
-          1,
-          122015.13
-        ],
-        [
-          2,
-          58945.44
-        ]
+        [1, 122015.13],
+        [2, 60023.64]
       ],
-      "settledCategoryCosts": [
-        [
-          2,
-          4421.85
-        ]
-      ]
+      "settledCategoryCosts": [[2, 4421.85]]
     },
     "32": {
       "totalMaterialCosts": 31717.29,
@@ -432,14 +319,8 @@
       "balance": -94.29,
       "margin": 103987,
       "categoryCosts": [
-        [
-          1,
-          29537.46
-        ],
-        [
-          2,
-          2179.83
-        ]
+        [1, 29537.46],
+        [2, 2179.83]
       ],
       "settledCategoryCosts": []
     },
@@ -453,12 +334,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 14973.1,
-      "categoryCosts": [
-        [
-          1,
-          4735.18
-        ]
-      ],
+      "categoryCosts": [[1, 4735.18]],
       "settledCategoryCosts": []
     },
     "34": {
@@ -471,12 +347,7 @@
       "totalSettled": 0,
       "balance": -281.02,
       "margin": 25247.47,
-      "categoryCosts": [
-        [
-          1,
-          11962.45
-        ]
-      ],
+      "categoryCosts": [[1, 11962.45]],
       "settledCategoryCosts": []
     },
     "35": {
@@ -489,12 +360,7 @@
       "totalSettled": 0,
       "balance": 100.32,
       "margin": 58399,
-      "categoryCosts": [
-        [
-          1,
-          34369.68
-        ]
-      ],
+      "categoryCosts": [[1, 34369.68]],
       "settledCategoryCosts": []
     },
     "36": {
@@ -508,14 +374,8 @@
       "balance": -227.82,
       "margin": 14069,
       "categoryCosts": [
-        [
-          1,
-          7387.18
-        ],
-        [
-          2,
-          6605.62
-        ]
+        [1, 7387.18],
+        [2, 6605.62]
       ],
       "settledCategoryCosts": []
     },
@@ -530,14 +390,8 @@
       "balance": 0.19,
       "margin": 18678,
       "categoryCosts": [
-        [
-          1,
-          3826.81
-        ],
-        [
-          3,
-          1107
-        ]
+        [1, 3826.81],
+        [3, 1107]
       ],
       "settledCategoryCosts": []
     },
@@ -552,14 +406,8 @@
       "balance": 60093.57,
       "margin": -3000,
       "categoryCosts": [
-        [
-          1,
-          1364.03
-        ],
-        [
-          3,
-          1089.58
-        ]
+        [1, 1364.03],
+        [3, 1089.58]
       ],
       "settledCategoryCosts": []
     },
@@ -573,12 +421,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 1350,
-      "categoryCosts": [
-        [
-          1,
-          1000
-        ]
-      ],
+      "categoryCosts": [[1, 1000]],
       "settledCategoryCosts": []
     },
     "40": {
@@ -592,14 +435,8 @@
       "balance": -75380.15,
       "margin": 3800,
       "categoryCosts": [
-        [
-          1,
-          61642.15
-        ],
-        [
-          3,
-          738
-        ]
+        [1, 61642.15],
+        [3, 738]
       ],
       "settledCategoryCosts": []
     },
@@ -613,12 +450,7 @@
       "totalSettled": 0,
       "balance": -9.51,
       "margin": 31991,
-      "categoryCosts": [
-        [
-          1,
-          10687.24
-        ]
-      ],
+      "categoryCosts": [[1, 10687.24]],
       "settledCategoryCosts": []
     },
     "42": {
@@ -632,25 +464,11 @@
       "balance": 443.85,
       "margin": 71796,
       "categoryCosts": [
-        [
-          1,
-          27548.27
-        ],
-        [
-          2,
-          28646.88
-        ],
-        [
-          3,
-          63
-        ]
+        [1, 27548.27],
+        [2, 28646.88],
+        [3, 63]
       ],
-      "settledCategoryCosts": [
-        [
-          3,
-          400
-        ]
-      ]
+      "settledCategoryCosts": [[3, 400]]
     },
     "43": {
       "totalMaterialCosts": 3725.8,
@@ -662,12 +480,7 @@
       "totalSettled": 0,
       "balance": 33.2,
       "margin": 15011,
-      "categoryCosts": [
-        [
-          1,
-          3725.8
-        ]
-      ],
+      "categoryCosts": [[1, 3725.8]],
       "settledCategoryCosts": []
     },
     "45": {
@@ -681,14 +494,8 @@
       "balance": -14922.87,
       "margin": 30537,
       "categoryCosts": [
-        [
-          1,
-          10973.49
-        ],
-        [
-          2,
-          49700
-        ]
+        [1, 10973.49],
+        [2, 49700]
       ],
       "settledCategoryCosts": []
     },
@@ -702,12 +509,7 @@
       "totalSettled": 0,
       "balance": 0.24,
       "margin": 9430,
-      "categoryCosts": [
-        [
-          1,
-          4819.76
-        ]
-      ],
+      "categoryCosts": [[1, 4819.76]],
       "settledCategoryCosts": []
     },
     "47": {
@@ -720,12 +522,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 0,
-      "categoryCosts": [
-        [
-          1,
-          142.65
-        ]
-      ],
+      "categoryCosts": [[1, 142.65]],
       "settledCategoryCosts": []
     },
     "48": {
@@ -739,14 +536,8 @@
       "balance": 55786.43,
       "margin": -21580,
       "categoryCosts": [
-        [
-          1,
-          16433.57
-        ],
-        [
-          3,
-          30
-        ]
+        [1, 16433.57],
+        [3, 30]
       ],
       "settledCategoryCosts": []
     },
@@ -761,14 +552,8 @@
       "balance": 0.26,
       "margin": 17184,
       "categoryCosts": [
-        [
-          1,
-          4225.86
-        ],
-        [
-          2,
-          152.88
-        ]
+        [1, 4225.86],
+        [2, 152.88]
       ],
       "settledCategoryCosts": []
     },
@@ -782,12 +567,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 23172.25,
-      "categoryCosts": [
-        [
-          1,
-          5463.98
-        ]
-      ],
+      "categoryCosts": [[1, 5463.98]],
       "settledCategoryCosts": []
     },
     "51": {
@@ -800,12 +580,7 @@
       "totalSettled": 0,
       "balance": -0.02,
       "margin": 1078,
-      "categoryCosts": [
-        [
-          1,
-          49.02
-        ]
-      ],
+      "categoryCosts": [[1, 49.02]],
       "settledCategoryCosts": []
     },
     "52": {
@@ -818,12 +593,7 @@
       "totalSettled": 0,
       "balance": 184.52,
       "margin": 13209,
-      "categoryCosts": [
-        [
-          1,
-          4165.48
-        ]
-      ],
+      "categoryCosts": [[1, 4165.48]],
       "settledCategoryCosts": []
     },
     "53": {
@@ -836,12 +606,7 @@
       "totalSettled": 0,
       "balance": 0.43,
       "margin": 3749,
-      "categoryCosts": [
-        [
-          1,
-          1377.57
-        ]
-      ],
+      "categoryCosts": [[1, 1377.57]],
       "settledCategoryCosts": []
     },
     "54": {
@@ -854,12 +619,7 @@
       "totalSettled": 0,
       "balance": 7809.14,
       "margin": -11007,
-      "categoryCosts": [
-        [
-          1,
-          130.86
-        ]
-      ],
+      "categoryCosts": [[1, 130.86]],
       "settledCategoryCosts": []
     },
     "55": {
@@ -872,12 +632,7 @@
       "totalSettled": 0,
       "balance": -122,
       "margin": 12066,
-      "categoryCosts": [
-        [
-          1,
-          6886
-        ]
-      ],
+      "categoryCosts": [[1, 6886]],
       "settledCategoryCosts": []
     },
     "57": {
@@ -903,12 +658,7 @@
       "totalSettled": 0,
       "balance": -6790.62,
       "margin": 14467,
-      "categoryCosts": [
-        [
-          1,
-          3773.62
-        ]
-      ],
+      "categoryCosts": [[1, 3773.62]],
       "settledCategoryCosts": []
     },
     "59": {
@@ -921,12 +671,7 @@
       "totalSettled": 0,
       "balance": 0.1,
       "margin": 4747,
-      "categoryCosts": [
-        [
-          1,
-          646.9
-        ]
-      ],
+      "categoryCosts": [[1, 646.9]],
       "settledCategoryCosts": []
     },
     "60": {
@@ -939,12 +684,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 27986.76,
-      "categoryCosts": [
-        [
-          1,
-          15039.35
-        ]
-      ],
+      "categoryCosts": [[1, 15039.35]],
       "settledCategoryCosts": []
     },
     "61": {
@@ -957,12 +697,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 2286.47,
-      "categoryCosts": [
-        [
-          1,
-          435.53
-        ]
-      ],
+      "categoryCosts": [[1, 435.53]],
       "settledCategoryCosts": []
     },
     "62": {
@@ -975,12 +710,7 @@
       "totalSettled": 0,
       "balance": -362.84,
       "margin": -362.84,
-      "categoryCosts": [
-        [
-          1,
-          362.84
-        ]
-      ],
+      "categoryCosts": [[1, 362.84]],
       "settledCategoryCosts": []
     },
     "63": {
@@ -993,12 +723,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 0,
-      "categoryCosts": [
-        [
-          1,
-          0
-        ]
-      ],
+      "categoryCosts": [[1, 0]],
       "settledCategoryCosts": []
     },
     "64": {
@@ -1012,21 +737,10 @@
       "balance": -32903.46,
       "margin": -11881.13,
       "categoryCosts": [
-        [
-          1,
-          16736.4
-        ],
-        [
-          2,
-          16167.06
-        ]
+        [1, 16736.4],
+        [2, 16167.06]
       ],
-      "settledCategoryCosts": [
-        [
-          3,
-          19.99
-        ]
-      ]
+      "settledCategoryCosts": [[3, 19.99]]
     },
     "65": {
       "totalMaterialCosts": 58378.06,
@@ -1039,18 +753,9 @@
       "balance": 17104.54,
       "margin": 29471,
       "categoryCosts": [
-        [
-          1,
-          34979.94
-        ],
-        [
-          2,
-          21528.12
-        ],
-        [
-          3,
-          1870
-        ]
+        [1, 34979.94],
+        [2, 21528.12],
+        [3, 1870]
       ],
       "settledCategoryCosts": []
     },
@@ -1058,21 +763,15 @@
       "totalMaterialCosts": 44584.84,
       "totalIncome": 197957,
       "totalLaborCosts": 168477,
-      "totalPayouts": 89820,
+      "totalPayouts": 91820,
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
       "balance": -15104.84,
-      "margin": 78657,
+      "margin": 76657,
       "categoryCosts": [
-        [
-          1,
-          43965.64
-        ],
-        [
-          2,
-          619.2
-        ]
+        [1, 43965.64],
+        [2, 619.2]
       ],
       "settledCategoryCosts": []
     },
@@ -1087,14 +786,8 @@
       "balance": -956.53,
       "margin": 42632,
       "categoryCosts": [
-        [
-          1,
-          24310.02
-        ],
-        [
-          2,
-          1028.51
-        ]
+        [1, 24310.02],
+        [2, 1028.51]
       ],
       "settledCategoryCosts": []
     },
@@ -1108,12 +801,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 8099.14,
-      "categoryCosts": [
-        [
-          1,
-          5230.86
-        ]
-      ],
+      "categoryCosts": [[1, 5230.86]],
       "settledCategoryCosts": []
     },
     "70": {
@@ -1126,12 +814,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 4250.69,
-      "categoryCosts": [
-        [
-          1,
-          349.31
-        ]
-      ],
+      "categoryCosts": [[1, 349.31]],
       "settledCategoryCosts": []
     },
     "71": {
@@ -1144,12 +827,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 583.89,
-      "categoryCosts": [
-        [
-          1,
-          226.11
-        ]
-      ],
+      "categoryCosts": [[1, 226.11]],
       "settledCategoryCosts": []
     },
     "72": {
@@ -1162,12 +840,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 11361.79,
-      "categoryCosts": [
-        [
-          1,
-          5438.21
-        ]
-      ],
+      "categoryCosts": [[1, 5438.21]],
       "settledCategoryCosts": []
     },
     "73": {
@@ -1180,12 +853,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 800,
-      "categoryCosts": [
-        [
-          1,
-          595.9
-        ]
-      ],
+      "categoryCosts": [[1, 595.9]],
       "settledCategoryCosts": []
     },
     "74": {
@@ -1199,14 +867,8 @@
       "balance": 276.59,
       "margin": 12301.11,
       "categoryCosts": [
-        [
-          1,
-          6000.11
-        ],
-        [
-          2,
-          8298.78
-        ]
+        [1, 6000.11],
+        [2, 8298.78]
       ],
       "settledCategoryCosts": []
     },
@@ -1220,12 +882,7 @@
       "totalSettled": 0,
       "balance": -3.66,
       "margin": 22623,
-      "categoryCosts": [
-        [
-          1,
-          6780.66
-        ]
-      ],
+      "categoryCosts": [[1, 6780.66]],
       "settledCategoryCosts": []
     },
     "76": {
@@ -1239,14 +896,8 @@
       "balance": 40614.85,
       "margin": -26485,
       "categoryCosts": [
-        [
-          1,
-          24509.15
-        ],
-        [
-          3,
-          4104
-        ]
+        [1, 24509.15],
+        [3, 4104]
       ],
       "settledCategoryCosts": []
     },
@@ -1260,12 +911,7 @@
       "totalSettled": 0,
       "balance": 0.2,
       "margin": 12875.96,
-      "categoryCosts": [
-        [
-          1,
-          3731.8
-        ]
-      ],
+      "categoryCosts": [[1, 3731.8]],
       "settledCategoryCosts": []
     },
     "78": {
@@ -1278,12 +924,7 @@
       "totalSettled": 0,
       "balance": -4992.67,
       "margin": 19048,
-      "categoryCosts": [
-        [
-          1,
-          3044.67
-        ]
-      ],
+      "categoryCosts": [[1, 3044.67]],
       "settledCategoryCosts": []
     },
     "80": {
@@ -1296,12 +937,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 2000,
-      "categoryCosts": [
-        [
-          1,
-          417.96
-        ]
-      ],
+      "categoryCosts": [[1, 417.96]],
       "settledCategoryCosts": []
     },
     "81": {
@@ -1314,12 +950,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 1048.95,
-      "categoryCosts": [
-        [
-          1,
-          91.02
-        ]
-      ],
+      "categoryCosts": [[1, 91.02]],
       "settledCategoryCosts": []
     },
     "83": {
@@ -1332,12 +963,7 @@
       "totalSettled": 0,
       "balance": -184.27,
       "margin": -3050,
-      "categoryCosts": [
-        [
-          1,
-          184.27
-        ]
-      ],
+      "categoryCosts": [[1, 184.27]],
       "settledCategoryCosts": []
     },
     "84": {
@@ -1350,12 +976,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": -332.7,
-      "categoryCosts": [
-        [
-          1,
-          332.7
-        ]
-      ],
+      "categoryCosts": [[1, 332.7]],
       "settledCategoryCosts": []
     },
     "85": {
@@ -1368,12 +989,7 @@
       "totalSettled": 0,
       "balance": 18185.49,
       "margin": -48392,
-      "categoryCosts": [
-        [
-          1,
-          56957.51
-        ]
-      ],
+      "categoryCosts": [[1, 56957.51]],
       "settledCategoryCosts": []
     },
     "86": {
@@ -1387,14 +1003,8 @@
       "balance": 12659.24,
       "margin": -6550,
       "categoryCosts": [
-        [
-          1,
-          6893.76
-        ],
-        [
-          2,
-          1447
-        ]
+        [1, 6893.76],
+        [2, 1447]
       ],
       "settledCategoryCosts": []
     },
@@ -1408,12 +1018,7 @@
       "totalSettled": 0,
       "balance": 31120.94,
       "margin": -21290,
-      "categoryCosts": [
-        [
-          1,
-          4242.06
-        ]
-      ],
+      "categoryCosts": [[1, 4242.06]],
       "settledCategoryCosts": []
     },
     "88": {
@@ -1426,18 +1031,8 @@
       "totalSettled": 900,
       "balance": 33986,
       "margin": -17250,
-      "categoryCosts": [
-        [
-          1,
-          13014
-        ]
-      ],
-      "settledCategoryCosts": [
-        [
-          1,
-          900
-        ]
-      ]
+      "categoryCosts": [[1, 13014]],
+      "settledCategoryCosts": [[1, 900]]
     },
     "89": {
       "totalMaterialCosts": 0,
@@ -1488,12 +1083,7 @@
       "totalSettled": 0,
       "balance": -21452.75,
       "margin": -9,
-      "categoryCosts": [
-        [
-          1,
-          4561.75
-        ]
-      ],
+      "categoryCosts": [[1, 4561.75]],
       "settledCategoryCosts": []
     },
     "94": {
@@ -1506,12 +1096,7 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 1500,
-      "categoryCosts": [
-        [
-          1,
-          1021.64
-        ]
-      ],
+      "categoryCosts": [[1, 1021.64]],
       "settledCategoryCosts": []
     },
     "96": {
@@ -1524,30 +1109,20 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 6358,
-      "categoryCosts": [
-        [
-          1,
-          2477.5
-        ]
-      ],
+      "categoryCosts": [[1, 2477.5]],
       "settledCategoryCosts": []
     },
     "97": {
       "totalMaterialCosts": 10155.49,
       "totalIncome": 44700,
       "totalLaborCosts": 0,
-      "totalPayouts": 17700,
+      "totalPayouts": 30600,
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
       "balance": 34544.51,
-      "margin": -17700,
-      "categoryCosts": [
-        [
-          1,
-          10155.49
-        ]
-      ],
+      "margin": -30600,
+      "categoryCosts": [[1, 10155.49]],
       "settledCategoryCosts": []
     },
     "98": {
@@ -1560,12 +1135,7 @@
       "totalSettled": 0,
       "balance": -39,
       "margin": -39,
-      "categoryCosts": [
-        [
-          1,
-          39
-        ]
-      ],
+      "categoryCosts": [[1, 39]],
       "settledCategoryCosts": []
     },
     "99": {
@@ -1578,12 +1148,7 @@
       "totalSettled": 0,
       "balance": -0.34,
       "margin": 300,
-      "categoryCosts": [
-        [
-          1,
-          173.34
-        ]
-      ],
+      "categoryCosts": [[1, 173.34]],
       "settledCategoryCosts": []
     },
     "100": {
@@ -1596,12 +1161,7 @@
       "totalSettled": 0,
       "balance": 29553.95,
       "margin": -2600,
-      "categoryCosts": [
-        [
-          1,
-          1305.39
-        ]
-      ],
+      "categoryCosts": [[1, 1305.39]],
       "settledCategoryCosts": []
     },
     "101": {
@@ -1614,12 +1174,7 @@
       "totalSettled": 0,
       "balance": 10851.07,
       "margin": -20350,
-      "categoryCosts": [
-        [
-          1,
-          11782.73
-        ]
-      ],
+      "categoryCosts": [[1, 11782.73]],
       "settledCategoryCosts": []
     },
     "102": {
@@ -1658,18 +1213,8 @@
       "totalSettled": 900,
       "balance": -26.98,
       "margin": 600,
-      "categoryCosts": [
-        [
-          1,
-          26.98
-        ]
-      ],
-      "settledCategoryCosts": [
-        [
-          1,
-          900
-        ]
-      ]
+      "categoryCosts": [[1, 26.98]],
+      "settledCategoryCosts": [[1, 900]]
     },
     "105": {
       "totalMaterialCosts": 25970.27,
@@ -1682,14 +1227,8 @@
       "balance": -4970.27,
       "margin": 0,
       "categoryCosts": [
-        [
-          1,
-          12582.67
-        ],
-        [
-          2,
-          13387.6
-        ]
+        [1, 12582.67],
+        [2, 13387.6]
       ],
       "settledCategoryCosts": []
     },
@@ -1704,14 +1243,8 @@
       "balance": -1500.48,
       "margin": 11774,
       "categoryCosts": [
-        [
-          1,
-          4410.19
-        ],
-        [
-          2,
-          151.29
-        ]
+        [1, 4410.19],
+        [2, 151.29]
       ],
       "settledCategoryCosts": []
     },
@@ -1725,12 +1258,7 @@
       "totalSettled": 0,
       "balance": -0.02,
       "margin": 1200,
-      "categoryCosts": [
-        [
-          1,
-          321.02
-        ]
-      ],
+      "categoryCosts": [[1, 321.02]],
       "settledCategoryCosts": []
     },
     "108": {
@@ -1743,18 +1271,8 @@
       "totalSettled": 238.2,
       "balance": -5952.1,
       "margin": -6388.2,
-      "categoryCosts": [
-        [
-          1,
-          5952.1
-        ]
-      ],
-      "settledCategoryCosts": [
-        [
-          1,
-          238.2
-        ]
-      ]
+      "categoryCosts": [[1, 5952.1]],
+      "settledCategoryCosts": [[1, 238.2]]
     },
     "109": {
       "totalMaterialCosts": 0,
@@ -1792,12 +1310,7 @@
       "totalSettled": 0,
       "balance": -458.48,
       "margin": 0,
-      "categoryCosts": [
-        [
-          1,
-          458.48
-        ]
-      ],
+      "categoryCosts": [[1, 458.48]],
       "settledCategoryCosts": []
     },
     "112": {
@@ -1823,33 +1336,22 @@
       "totalSettled": 0,
       "balance": -3786.24,
       "margin": 0,
-      "categoryCosts": [
-        [
-          1,
-          3786.24
-        ]
-      ],
+      "categoryCosts": [[1, 3786.24]],
       "settledCategoryCosts": []
     },
     "114": {
       "totalMaterialCosts": 18034.14,
       "totalIncome": 6960,
       "totalLaborCosts": 0,
-      "totalPayouts": 0,
+      "totalPayouts": 7350,
       "totalRabat": 0,
       "totalLoss": 0,
       "totalSettled": 0,
       "balance": -11074.14,
-      "margin": 0,
+      "margin": -7350,
       "categoryCosts": [
-        [
-          1,
-          5736.74
-        ],
-        [
-          2,
-          12297.4
-        ]
+        [1, 5736.74],
+        [2, 12297.4]
       ],
       "settledCategoryCosts": []
     },
@@ -1876,12 +1378,7 @@
       "totalSettled": 0,
       "balance": -550,
       "margin": 0,
-      "categoryCosts": [
-        [
-          3,
-          550
-        ]
-      ],
+      "categoryCosts": [[3, 550]],
       "settledCategoryCosts": []
     },
     "247": {
@@ -1896,13 +1393,377 @@
       "margin": 0,
       "categoryCosts": [],
       "settledCategoryCosts": []
+    },
+    "307": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "308": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "373": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "374": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "375": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "376": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "377": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "378": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "379": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "380": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "381": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "382": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "385": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "386": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "387": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "388": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "389": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "390": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "391": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "392": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "393": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "394": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "396": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "397": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "398": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "399": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "400": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
+    },
+    "404": {
+      "totalMaterialCosts": 0,
+      "totalIncome": 0,
+      "totalLaborCosts": 0,
+      "totalPayouts": 0,
+      "totalRabat": 0,
+      "totalLoss": 0,
+      "totalSettled": 0,
+      "balance": 0,
+      "margin": 0,
+      "categoryCosts": [],
+      "settledCategoryCosts": []
     }
   },
   "registers": {
-    "5": 601849.07,
-    "7": 47985.29,
+    "5": 600855.87,
+    "7": 27650.29,
     "8": 7225.42,
-    "9": 15573.07,
+    "9": 12174.78,
     "10": 8494.98,
     "11": -261960.4,
     "12": 979.81,
@@ -1914,7 +1775,7 @@
     "18": 734.66,
     "19": 1764.14,
     "20": 2550.06,
-    "21": -84.09,
+    "21": 915.91,
     "22": 463.1,
     "23": 305.15,
     "24": 141.36,
@@ -1936,7 +1797,7 @@
     "19": 125710,
     "21": 67387.04,
     "22": 60725,
-    "24": 142571,
+    "24": 155471,
     "25": 126910,
     "27": 21110,
     "28": 2000,
@@ -1948,11 +1809,11 @@
     "36": 121200,
     "38": 25482,
     "39": 69395,
-    "40": 77800,
+    "40": 85150,
     "41": 61695,
     "43": 121185,
     "45": 34007.9,
-    "47": 211176,
+    "47": 213176,
     "48": 7000,
     "49": 40724,
     "50": 38801.89,
