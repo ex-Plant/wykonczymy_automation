@@ -3,9 +3,11 @@ import { buildV2Columns } from '@/components/kosztorys/editor/grid/kosztorys-v2-
 import type { BuildV2ColumnsOptsT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 
+// One etap per plane, so a subcontractor view has both something to keep and something to drop —
+// with both planes null every view-scoped assertion below would compare against an empty axis.
 const stages: KosztorysStageT[] = [
-  { id: 100, ordinal: 1, label: 'Etap 1', plane: null },
-  { id: 101, ordinal: 2, label: null, plane: null },
+  { id: 100, ordinal: 1, label: 'Etap 1', plane: 'w_tools' },
+  { id: 101, ordinal: 2, label: null, plane: 'own_tools' },
 ]
 
 // The editor's own opts: mutation callbacks present, so the actions column is built and cells are live.
@@ -71,6 +73,12 @@ describe('przedmiar-anchored columns', () => {
     for (const id of ['plannedQty', 'plannedNet', 'plannedGross', 'donePercent', 'remaining']) {
       expect(columns).not.toContain(id)
     }
+  })
+
+  it('leaves the view its own etapy — and only its own', () => {
+    const columns = ids({ ...editorOpts, view: 'w_tools' })
+    expect(columns).toContain('stage_100')
+    expect(columns).not.toContain('stage_101')
   })
 
   it('stay in the client view', () => {
