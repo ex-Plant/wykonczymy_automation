@@ -180,6 +180,10 @@ were challenged and resolved as "stands as written."
   > Considered: "an empty catalogue is dead weight until seeded; could grow
   > organically from typed items." Stands — the master price list is required at
   > release.
+  > **CUT (2026-07-28, owner).** The catalogue half shipped as szablony
+  > (`kosztorys_presets`, S-09); the autocomplete half never will — superseded by
+  > „Dodaj sekcję z szablonu" (EX-503), which composes from existing prace at
+  > section granularity. See roadmap → Cut & folded slices.
 - **[new] FR-007** — Owner sees per-row, per-section, and grand totals computed
   live.
   > Considered: "scale risk at 1000+ rows; server-computed totals safer." Stands —
@@ -318,9 +322,9 @@ and remain open — they are load-bearing for implementation, not invented gaps.
 5. **Ordering of sections / items / stages.** Drag-to-reorder or by-creation /
    alphabetical? FR-001 and FR-002 assume reorder; confirm the interaction cost is
    accepted. — Owner: user. Ref: spec Q6.
-6. **Catalogue seeding.** FR-006 requires the catalogue at release. Hand-type from
-   scratch, parse a live sheet once to populate, or start empty and let it grow with
-   use? — Owner: user. Ref: spec Q8.
+6. ~~**Catalogue seeding.**~~ **Resolved (2026-07-09), then moot (2026-07-28):** no
+   standalone catalogue — szablony are the master price list, so building szablony is
+   seeding, and the autocomplete that would have read them is cut.
 7. **Item-to-room link.** Some items are room-scoped, some global. Does an item carry
    an optional room link in this phase, or is that deferred? — Owner: user. Ref:
    spec Q10.
