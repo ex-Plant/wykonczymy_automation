@@ -21,44 +21,10 @@ slice's browser checks live in `context/foundation/manual-checks.md` and are non
 
 ## Findings
 
-- [x] 🔴 CRITICAL · fixed · code-review · `add-sections-from-preset-dialog.tsx:154` · the pane gate
-      used `md:`, which in this repo is **1024px**, not 768 — so the whole 768–1023px band rendered a
-      768px-wide dialog with a single pane and a back button. Moved all three gate sites to `sm:`
-      (48rem/768px). Root cause is the repo's `@theme` breakpoint override in `src/styles/globals.css`;
-      documented in `AGENTS.md` § Stack Notes so the next slice doesn't repeat it.
-      test: no automated test · e2e — a CSS-breakpoint defect is only observable in a real browser;
-      the width assertion is folded into EX-505.
-- [x] 🔴 CRITICAL · fixed · code-review · `add-sections-from-preset-dialog.tsx:63` · the fetch had no
-      `.catch()`, so a transport-level RPC rejection (which never resolves to `{success:false}`) left
-      „Ładowanie szablonów…" spinning forever with no way out but closing the dialog. Added the catch
-      **and** the missing in-flight cancellation (`stale` flag), so a close-then-reopen mid-load can no
-      longer resolve into the reset state or toast at a dialog nobody is looking at. This exact hang was
-      already fixed once in `use-snapshot-list.ts` — the picker was a copy that predated the fix, which
-      is what EX-620 is for.
-      test: no automated test · e2e — needs a failed server action at the transport layer; belongs with
-      the picker E2E in EX-505, not a unit spec.
-- [x] 🟡 WARNING · fixed · code-review · `add-sections-from-preset-dialog.tsx:154` · `h-[55vh]` forced
-      the body to a fixed height regardless of content, so a two-szablon library left a large empty
-      panel and — combined with the parent's `overflow-hidden` — a tall one could clip the footer.
-      `max-h-[55vh]` makes both cases correct, and made the reviewers' disagreement about the clipping
-      moot.
-- [x] 🟡 WARNING · fixed · code-review · `add-sections-from-preset-dialog.tsx:213` · the right-pane
-      header was one button doing two jobs, neutered above `sm` with `sm:pointer-events-none` — a
-      control that is focusable and announced as a button but does nothing when activated. Split into a
-      real back `<button>` (`sm:hidden`) and a plain `<p>` (`hidden sm:block`).
-- [x] 🟡 WARNING · fixed · code-review · `add-sections-from-preset-dialog.tsx:227` · the mass-select and
-      per-sekcja rows are toggles with no pressed state exposed — a screen reader announced only the
-      label, so a ticked sekcja was indistinguishable from an unticked one. Added `aria-pressed`, plus
-      `aria-current` on the active szablon row.
-- [x] 🟡 WARNING · fixed · code-review · `add-sections-from-preset-dialog.tsx:197` · „3 sekcje" for any
-      count — the Polish 3-way plural was missing. Routed through the new `pluralize`.
-- [x] 🔵 OBSERVATION · fixed · code-review · `add-sections-from-preset-dialog.tsx:221` · the active
-      szablon's name only rendered as the drill-in back-label, so above `sm` — with the left pane
-      filtered and the highlighted row scrolled out of view — „Zaznacz wszystkie" gave no clue which
-      szablon it would fill. Name now shows at every width.
-- [x] 🔵 OBSERVATION · fixed · impl-review · `add-sections-from-preset-dialog.tsx:138` ·
-      `allActiveSelected` was tracked in state alongside the selection `Set` it is fully derivable from
-      — two sources for one fact. Derived instead.
+Fixed findings were trimmed at archive (their fix is now just the code, in `f5616d32`); the two
+🔴 CRITICALs are summarised on EX-618 for anyone reading the card rather than the diff. What remains
+below is every finding that still carries a _decision_ — dismissed, dropped, or filed.
+
 - [x] 🔵 OBSERVATION · dismissed · impl-review · `add-sections-from-preset-dialog.tsx:57` ·
       `activeGroup` falls back to `groups[0]`, which is `undefined` for an empty library — flagged as a
       crash. Benign: the whole two-pane block sits behind `sections.length === 0`, so `groups` is
@@ -66,33 +32,6 @@ slice's browser checks live in `context/foundation/manual-checks.md` and are non
 - [x] 🔵 OBSERVATION · dismissed · impl-review · `preset-picker-groups.ts` · grouping recomputed every
       render rather than memoized. Benign — React Compiler is enabled and this is exactly what it
       handles; a hand-written `useMemo` here is the anti-pattern (`AGENTS.md` § Stack Notes).
-- [x] fixed · simplify (reuse) · `src/lib/utils/polish-plural.ts` · three hand-rolled copies of the
-      Polish 1 / 2–4 / 5+ rule (`settlement-plane-warning.tsx`, `invoice-zip.ts`, and the new sekcja
-      counter). Unified into one `pluralize(count, forms)`; `pluralForm` stays un-exported. Reaching
-      into two files outside the diff to land it is fix-now by the gate's own rule, and `invoice-zip`'s
-      existing 33-test spec is the regression guard.
-- [x] fixed · simplify (efficiency) · `src/hooks/use-search-filter.ts` · `foldText` ran over every row's
-      text on every keystroke — a five-stage normalize + regex chain, against 5000 client-side rows in
-      the leads table. Haystacks are now folded once per dataset. The widening was verified safe across
-      all seven `useSearchFilter` callers first.
-- [x] fixed · simplify (altitude) · `src/hooks/use-search-filter.ts` · that memoization initially left
-      `filterBySearch` exported and spec'd but off the production path — the spec guarded a copy of the
-      logic rather than the logic. Recollapsed to one path: `foldHaystacks` + `filterBySearch`, both
-      called by the hook and both exercised by the spec.
-- [x] fixed · simplify (simplification) · `add-sections-from-preset-dialog.tsx:111` · `toggleGroup` took
-      metas and mapped them to keys internally while every other selection path spoke keys. Now maps at
-      the call site, so the whole selection surface is key-shaped.
-- [x] fixed · comment-noise · `add-sections-from-preset-dialog.tsx`, `preset-picker-groups.ts`,
-      `preset-picker-groups.test.ts` · comments restating the code they sat on (a `className` narrated
-      in prose, a `describe` block re-described). Trimmed; the load-bearing _why_ comments (the `null`
-      sentinel, the fetch-on-open seam, the reset-on-close rationale) kept.
-- [x] fixed · feature-first-structure · `preset-picker-groups.ts` · pure derivation lifted out of the
-      dialog into its own module beside it, with the spec that made it worth extracting. Placement
-      confirmed correct — picker-specific, not cross-feature.
-- [x] fixed · impl-review · `plan.md`, `change.md`, `manual-checks.md`, `AGENTS.md` · doc drift against
-      what shipped: the `md:`→`sm:` correction recorded under Phase 3, the dropped cross-szablon sekcja
-      search recorded as an owner reversal during planning, the Phase 3 resize check restated at 768px
-      with an explicit both-panes-visible assertion, and the breakpoint override added to `AGENTS.md`.
 - [x] dropped · module-cohesion · `add-sections-from-preset-dialog.tsx` · the file holds the component
       plus four small handlers (~270 lines). Real, but splitting one cohesive dialog into a hook file
       buys nothing here — the same judgement already made for `use-kosztorys-editor` under EX-515.
