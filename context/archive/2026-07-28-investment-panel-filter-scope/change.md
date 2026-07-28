@@ -1,10 +1,10 @@
 ---
 change_id: investment-panel-filter-scope
 title: EX-600 — the v2 investment panel states which figures the URL filters can't reach
-status: implemented
+status: archived
 created: 2026-07-28
 updated: 2026-07-28
-archived_at: null
+archived_at: 2026-07-28T20:26:14Z
 branch: staging
 worktree: null
 ---

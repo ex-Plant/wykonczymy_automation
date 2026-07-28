@@ -28,40 +28,6 @@ returned zero findings.
 
 ## Findings
 
-- [x] 🔴 CRITICAL · fixed · `impl-review` + `code-review` · `investment-summary-panel.tsx:115` · on an
-      investment with no kosztorys rows the reading falls back to `readingFromTransactions`, whose
-      figures DO follow the filters — yet every one of them was starred and both verdicts silenced,
-      asserting the opposite of the truth on the common case. Now `filtersActive && clientTotals !== null`.
-      test: no automated test · e2e — the panel is an async RSC with no render harness; folded into EX-634
-      (its description now names the kosztorys-less case) and into `manual-checks.md`.
-- [x] 🟡 WARNING · fixed · `code-review` · `scope-marker.ts:4` · the hint read „Wartość z kosztorysu",
-      but the marker also rides the mixed totals (Łącznie, Do zapłaty), where materiały and wpłaty
-      genuinely do move under a filter. Copy now reads „Zawiera wartość z kosztorysu". Marking the
-      mixed totals stays correct — a total containing a filter-blind share is itself not comparable.
-      test: no automated test · — copy-only.
-- [x] 🟡 WARNING · fixed · `impl-review` · `transfer-filters.ts:200` · `showCancelled` counted as an
-      active filter while moving no panel figure (`stripCancelledFilters` drops it; `CANCELLATION`
-      carries no financial bucket), so the toggle alone silenced both verdicts over unchanged numbers.
-      Dropped from `TRANSFER_FILTER_PARAMS`.
-      test: TDD · unit — `transfer-filters.test.ts` pins `showCancelled` → `false`.
-- [x] 🟡 WARNING · fixed · `impl-review` + `code-review` · `summary-panel-content.tsx:339` · the
-      footnote rendered on „Wydatki" and „Marża", which carry no stars — a red alarm qualifying
-      nothing. Now gated on `view === 'summary'`.
-      test: no automated test · e2e — added to EX-634 + `manual-checks.md`.
-- [x] 🟡 WARNING · fixed · `impl-review` · `summary-panel-content.tsx:335` · the comment claimed the
-      footnote is "deliberately NOT a WarningBanner: nothing is wrong here" directly above red
-      `text-destructive` + `TriangleAlert`. Rewritten to state the decision that actually holds.
-- [x] 🔵 OBSERVATION · fixed · `code-review` · `deposit-transactions-where-scope.test.ts` · the spec
-      claimed to pin both fixed guards but only covered `type`. Added a `cancelled: { equals: true }`
-      case (the fixture already carries a cancelled deposit, so it is not vacuous).
-- [x] fixed · `comment-noise` · 8 files · one rationale ("the host's transaction figures are narrowed
-      by URL filters…") had been copied verbatim into four prop comments plus two more sites, and the
-      non-empty-`Where` gotcha into three. Trimmed each site to its own site-specific consequence;
-      the shared statement lives once, at `scope-marker.ts` / `hasActiveTransferFilters`.
-- [x] fixed · `structure-scatter` · `src/__tests__/lib/db/deposit-transactions.test.ts` · the new
-      spec's filename was a substring of the pre-existing `get-deposit-transactions.test.ts`, so no
-      rule told a future author which file a deposit test belongs in. Renamed to
-      `deposit-transactions-where-scope.test.ts` — the `Where` seam is what it pins.
 - [x] 🔵 OBSERVATION · dismissed · `code-review` · `sum-transfers.ts:311` · `getDepositTransactions`
       no longer hardcodes `investment_id`. Verified: `page.tsx:47` appends the page's investment
       **last**, so `?investment=99` cannot override it, and the share/`kosztorys_v2` path never enters
@@ -77,8 +43,6 @@ returned zero findings.
       is hand-maintained against what `buildTransferFilters` reads, with no test pinning the pairing.
       Verified in sync today (14 keys). Deriving one from the other is a refactor of the builder, not
       a review fix.
-- [x] fixed · `impl-review` · `plan.md:61,252` · the plan still specified the footnote in the pinned
-      top bar. Amended to the shipped foot placement, with the deviation recorded.
 - [x] dropped · `structure-scatter` · `investment-status-badge.tsx` / `cash-registers.tsx` ·
       `STATUS_LABELS` / `REGISTER_TYPE_LABELS` sit in component files against a 7-instance `lib/`
       convention. Pre-existing; this slice only imports one. Not worth the churn.
@@ -87,6 +51,8 @@ returned zero findings.
 - [x] dismissed · `feature-first-structure` · `scope-marker.ts` · flagged as a stray colocated `.ts`
       under `components/`; matches a 42-instance repo convention and has two consumers in two files,
       so it cannot live inline in either.
+
+_The `fixed` findings were trimmed at archive — those fixes are now just the code. What stays is every finding that ended in a decision rather than an edit._
 
 ## Simplify pass
 
