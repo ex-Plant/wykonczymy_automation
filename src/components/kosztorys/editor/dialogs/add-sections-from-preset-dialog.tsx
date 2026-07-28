@@ -34,7 +34,7 @@ type PropsT = {
 const metaKey = (meta: PresetSectionMetaT) => `${meta.presetId}:${meta.sectionId}`
 
 // Multi-select is why this is a cmdk list, not a combobox: toggling a row keeps the dialog open and
-// one confirm appends all checked sections. Fetch-on-open, mirroring seed-from-preset-button.
+// one confirm appends all checked sections. The preset list is fetched on open.
 export function AddSectionsFromPresetDialog({
   investmentId,
   open,

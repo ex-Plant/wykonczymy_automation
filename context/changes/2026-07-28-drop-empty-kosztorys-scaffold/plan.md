@@ -311,16 +311,16 @@ they are simply a kosztorys with one sekcja, which remains a valid state.
 
 #### Automated
 
-- [x] 1.1 Type checking passes: `pnpm typecheck`
-- [x] 1.2 Linting passes: `pnpm lint`
+- [x] 1.1 Type checking passes: `pnpm typecheck` — 0ccea6c2
+- [x] 1.2 Linting passes: `pnpm lint` — 0ccea6c2
 
 ### Phase 2: Delete the client scaffold
 
 #### Automated
 
-- [ ] 2.1 Type checking passes (proves no dangling import): `pnpm typecheck`
-- [ ] 2.2 Linting passes: `pnpm lint`
-- [ ] 2.3 Unit tests pass: `pnpm test`
+- [x] 2.1 Type checking passes (proves no dangling import): `pnpm typecheck`
+- [x] 2.2 Linting passes: `pnpm lint`
+- [x] 2.3 Unit tests pass: `pnpm test`
 
 ### Phase 3: Delete the server scaffold
 

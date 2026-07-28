@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { EmptyKosztorysDialog } from '@/components/kosztorys/editor/dialogs/empty-kosztorys-dialog'
 import { KosztorysEditorBody } from '@/components/kosztorys/editor/kosztorys-editor-body'
 import { KosztorysVersionsDrawer } from '@/components/kosztorys/editor/dialogs/kosztorys-versions-drawer'
 import { useAutoSnapshot } from '@/components/kosztorys/editor/hooks/use-auto-snapshot'
@@ -60,9 +59,6 @@ export function KosztorysEditorV2({
 
   return (
     <>
-      {tree.sections.length === 0 && (
-        <EmptyKosztorysDialog investmentId={investmentId} onCreated={handleRestored} />
-      )}
       <KosztorysEditorBody
         key={remountKey}
         investmentId={investmentId}
