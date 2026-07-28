@@ -676,3 +676,24 @@ Prod migration is owed at ship time, by a human.
 
 - [ ] `context/reference/kosztorys-editor-domain-notes.md`, sekcja „Wariant «z narzędziami / bez narzędzi»" — czyta się jako **zamknięta** decyzja z zachowanym uzasadnieniem, żadne zdanie nie powołuje się na nieistniejącą kolumnę.
 - [ ] Żadne zdanie nie miesza rejestrów (słownictwo arkusza vs identyfikatory kodu).
+
+## EX-600 — investment-panel-filter-scope
+
+Browser coverage of the same behaviour is filed as **EX-634** (`e2e-backlog`); these stay manual until it lands.
+
+### Phase 2: Wpłaty follow the filters
+
+- [ ] `/inwestycje/<id>` bez filtrów w v2 — „Wpłaty" i „Do zapłaty" czytają się tak samo jak przed zmianą.
+- [ ] `?from`/`?to` na zakres obejmujący część wpłat — „Wpłaty" zwęża się do wpłat z tego zakresu i zgadza się z tabelą transakcji poniżej.
+- [ ] `?type=PAYOUT` — „Wpłaty" czyta 0 zł (żadna wpłata nie mieści się w filtrze).
+- [ ] Przełączenie na odczyt v1 („Finanse") — bez zmian względem stanu sprzed zmiany.
+- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta (share) — pełne sumy wpłat, filtry ich nie dotyczą.
+
+### Phase 3: Scope marking
+
+- [ ] Z aktywnym filtrem: Robocizna, Rabat, Łącznie i „Do zapłaty" mają `*`, a Materiały i Wpłaty go nie mają.
+- [ ] Przypis „\* Wartości z kosztorysu nie reagują na filtry transakcji." pojawia się raz, w przypiętym pasku panelu.
+- [ ] Bez filtra: żadnej gwiazdki i żadnego przypisu.
+- [ ] Z aktywnym filtrem znikają oba werdykty międzypłaszczyznowe — krzyk o rozjeździe robocizny/rabatu i ostrzeżenie o trybie mieszanym; bez filtra pojawiają się jak dotąd.
+- [ ] Tryb rozliczenia „Mieszane" — te same gwiazdki na wierszach wynikających z Łącznie, Wpłaty netto i Wpłaty brutto bez gwiazdki.
+- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta — brak gwiazdek i przypisu.

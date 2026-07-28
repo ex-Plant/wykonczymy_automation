@@ -323,6 +323,8 @@ is only catchable in a browser, and this change deliberately doesn't author that
 filtered and unfiltered, assert which panel figures move, that the footnote and stars appear, and
 that the screams stay hidden. Record its id here and in `manual-checks.md`.
 
+**Filed**: **EX-634** — https://linear.app/ex-plant/issue/EX-634
+
 #### 2. Living docs
 
 **Files**: `context/foundation/manual-checks.md`, `context/reference/kosztorys-editor-domain-notes.md`
@@ -355,7 +357,7 @@ close-out.
 
 #### Manual Verification:
 
-- The `e2e-backlog` issue exists and its id is recorded in the plan and the manual-checks registry.
+- The `e2e-backlog` issue exists and its id is recorded in the plan and the manual-checks registry — **EX-634**.
 
 ---
 
@@ -422,15 +424,15 @@ distinct filter combination rather than per investment. Acceptable — the same 
 
 #### Automated
 
-- [x] 3.1 Type checking passes: `pnpm typecheck`
-- [x] 3.2 Linting passes: `pnpm lint`
-- [x] 3.3 Existing panel specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
+- [x] 3.1 Type checking passes: `pnpm typecheck` — 7225e90c
+- [x] 3.2 Linting passes: `pnpm lint` — 7225e90c
+- [x] 3.3 Existing panel specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys` — 7225e90c
 
 ### Phase 4: Guards & close-out
 
 #### Automated
 
-- [ ] 4.1 Full unit suite passes: `pnpm test`
-- [ ] 4.2 Integration suite passes: `pnpm test:integration`
-- [ ] 4.3 Type checking passes: `pnpm typecheck`
-- [ ] 4.4 Linting passes: `pnpm lint`
+- [x] 4.1 Full unit suite passes: `pnpm test`
+- [x] 4.2 Integration suite passes: `pnpm test:integration`
+- [x] 4.3 Type checking passes: `pnpm typecheck`
+- [x] 4.4 Linting passes: `pnpm lint`

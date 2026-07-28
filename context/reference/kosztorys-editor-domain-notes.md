@@ -375,6 +375,24 @@ czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik
   sekcji. **Nie zgłaszaj ponownie „brak cofania" jako buga** — to wybór, a stan da się odzyskać
   z listy wersji.
 
+### Zasięg filtrów na stronie inwestycji (EX-600, 2026-07-28)
+
+Panel podsumowania na `/inwestycje/<id>` pokazuje obok siebie liczby z dwóch źródeł, a filtry z
+adresu (data, typ, kasa, …) sięgają tylko do jednego z nich:
+
+- **Płaszczyzna transakcji** — Materiały, marża i **Wpłaty** — zwęża się razem z filtrem. Wpłaty
+  dołączyły do tej grupy dopiero teraz; wcześniej czytały całą inwestycję niezależnie od filtra,
+  co było regresją względem odczytu v1, gdzie ta sama liczba filtrowi podlegała.
+- **Płaszczyzna kosztorysu** — Robocizna, Rabat, Łącznie, „Do zapłaty" — filtrowi podlegać nie
+  może: pozycja kosztorysu nie ma daty, typu ani kasy, po których dałoby się ciąć. Przy aktywnym
+  filtrze każda taka liczba dostaje `*`, a panel raz drukuje przypis, co ta gwiazdka znaczy.
+- **Werdykty porównujące obie płaszczyzny** — krzyk o rozjeździe robocizny/rabatu z transakcjami
+  oraz ostrzeżenie o trybie mieszanym — przy aktywnym filtrze milkną. Zestawiają całość kosztorysu
+  z zawężoną księgą, więc pod filtrem zgłaszałyby sam filtr jako lukę.
+
+Reguła generalna dla nowych liczb w tym panelu: jeśli liczba pochodzi z kosztorysu, oznacz ją
+gwiazdką; jeśli porównuje kosztorys z transakcjami — wycisz ją pod filtrem.
+
 ## Domyślne
 
 PLN • netto+brutto z `vat_rate` per pozycja • hard-delete • reorder strzałkami

@@ -1,7 +1,7 @@
 ---
 change_id: investment-panel-filter-scope
 title: EX-600 — the v2 investment panel states which figures the URL filters can't reach
-status: implementing
+status: implemented
 created: 2026-07-28
 updated: 2026-07-28
 archived_at: null
@@ -22,8 +22,9 @@ figures without saying so. Decisions taken with the owner before planning:
   separate from the share-path call so no caller-supplied filter can reach the unauthenticated route.
 - Wypłaty / materiały already respond here (they come off `financials`) — no work.
 - Unfilterable fields get a `*`, with a single panel-level footnote rendered only while a filter is
-  active. „Do zapłaty" and the reconciliation verdict inherit the star (one term of each is
-  kosztorys-plane) rather than being suppressed.
+  active. „Do zapłaty" inherits the star (one of its terms is kosztorys-plane). The reconciliation
+  verdict was first meant to inherit it too; planning settled on suppressing it instead — a verdict
+  is a claim, not a figure, and a starred false alarm is still a false alarm.
 - "A filter is active" must read the raw `searchParams`, not `statsWhere` — `buildTransferFilters`
   always emits a default `type`/`cancelled` condition, so that object is never empty.
 
