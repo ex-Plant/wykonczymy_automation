@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { computeSubcontractorSummary } from '@/lib/kosztorys/subcontractor-summary'
+import type { WorkerRefT } from '@/types/reference-data'
+import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { SubcontractorPayoutRowT } from '@/types/transfers'
 
 const payout = (workerId: number | null, total: number, name = 'x'): SubcontractorPayoutRowT => ({
   workerId,
   total,
   name,
+})
+
+const worker = (id: number, name: string): WorkerRefT => ({
+  id,
+  name,
+  role: 'EMPLOYEE',
+  email: `${name.toLowerCase()}@t.com`,
 })
 
 describe('computeSubcontractorSummary', () => {
@@ -35,12 +44,108 @@ describe('computeSubcontractorSummary', () => {
     expect(remaining).toBe(-250)
   })
 
-  it('sorts by total desc and pins the null-worker bucket last regardless of amount', () => {
+  it('sorts by remaining desc and pins the null-worker bucket last regardless of amount', () => {
     const { rows } = computeSubcontractorSummary(0, [
       payout(1, 100),
       payout(null, 999),
       payout(2, 300),
     ])
-    expect(rows.map((row) => row.workerId)).toEqual([2, 1, null])
+    // With no należne every remaining is −paid, so the smallest payout is the least negative.
+    expect(rows.map((row) => row.workerId)).toEqual([1, 2, null])
+  })
+})
+
+// EX-613: rows are per person, over the union of both sides. The failure this guards against is a
+// worker who is owed money going MISSING because they have no wypłata yet — the ledger alone would
+// never mention them.
+describe('computeSubcontractorSummary — per-worker attribution', () => {
+  const stage = (id: number, workerId: number | null): KosztorysStageT => ({
+    id,
+    ordinal: id,
+    label: null,
+    plane: 'w_tools',
+    workerId,
+  })
+
+  it('includes a worker with należne and no wypłaty at all', () => {
+    const { rows } = computeSubcontractorSummary(500, [payout(1, 200, 'Anna')], {
+      byWorker: new Map([
+        [1, 200],
+        [2, 300],
+      ]),
+      stages: [stage(10, 1), stage(11, 2)],
+      workers: [worker(2, 'Bartek')],
+    })
+    expect(rows.map((row) => [row.workerId, row.due, row.paid, row.remaining])).toEqual([
+      [2, 300, 0, 300],
+      [1, 200, 200, 0],
+    ])
+    expect(rows[0].name).toBe('Bartek')
+  })
+
+  it('includes a worker with wypłaty and no etapy, at due 0', () => {
+    const { rows } = computeSubcontractorSummary(0, [payout(3, 400, 'Celina')], {
+      byWorker: new Map(),
+      stages: [],
+    })
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ workerId: 3, due: 0, paid: 400, remaining: -400 })
+  })
+
+  it('keeps the unassigned-etapy residual as its own row, never spread over the workers', () => {
+    const { rows } = computeSubcontractorSummary(300, [], {
+      byWorker: new Map([
+        [1, 100],
+        [null, 200],
+      ]),
+      stages: [stage(10, 1), stage(11, null)],
+      workers: [worker(1, 'Anna')],
+    })
+    expect(rows.map((row) => [row.workerId, row.due])).toEqual([
+      [1, 100],
+      [null, 200],
+    ])
+  })
+
+  it('drops an all-zero unassigned bucket but keeps an assigned worker with nothing done', () => {
+    const { rows } = computeSubcontractorSummary(0, [], {
+      byWorker: new Map(),
+      stages: [stage(10, 1), stage(11, null)],
+      workers: [worker(1, 'Anna')],
+    })
+    expect(rows.map((row) => row.workerId)).toEqual([1])
+  })
+
+  describe('the three kinds of red', () => {
+    const stateFor = (
+      due: number,
+      paid: number,
+      stages: KosztorysStageT[],
+    ): string | undefined => {
+      const byWorker = due > 0 ? new Map([[1, due]]) : new Map<number | null, number>()
+      return computeSubcontractorSummary(due, [payout(1, paid, 'Anna')], { byWorker, stages })
+        .rows[0]?.state
+    }
+
+    it('overpaid — real work assigned, paid past it', () => {
+      expect(stateFor(100, 150, [stage(10, 1)])).toBe('overpaid')
+    })
+
+    it('no_stages — paid, but nobody assigned them anything', () => {
+      expect(stateFor(0, 150, [])).toBe('no_stages')
+    })
+
+    // Assigned but owed 0: nothing executed yet, OR the etapy still have no rozliczenie. Read off
+    // `stages`, not off the money — a plane-less etap is absent from byWorker entirely.
+    it('no_executed_work — etapy assigned, nothing earned on them yet', () => {
+      expect(stateFor(0, 150, [stage(10, 1)])).toBe('no_executed_work')
+      expect(
+        stateFor(0, 150, [{ id: 10, ordinal: 1, label: null, plane: null, workerId: 1 }]),
+      ).toBe('no_executed_work')
+    })
+
+    it('settled — nothing negative to explain', () => {
+      expect(stateFor(200, 150, [stage(10, 1)])).toBe('settled')
+    })
   })
 })

@@ -135,7 +135,75 @@ describe('subcontractorDueByPlane', () => {
   it('no stages → zeros and no warning', () => {
     const tree = makePlaneTree([])
     const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
-    expect(due).toEqual({ wTools: 0, ownTools: 0, combined: 0, hasUnconfirmedPlane: false })
+    expect(due).toEqual({
+      wTools: 0,
+      ownTools: 0,
+      combined: 0,
+      hasUnconfirmedPlane: false,
+      byStage: new Map(),
+      byWorker: new Map(),
+    })
+  })
+})
+
+// EX-613: the same executed money, partitioned by who is to do it. The load-bearing property is the
+// partition — every złoty lands in exactly one bucket, and the unassigned residual is a bucket, not a
+// rounding difference sprinkled over the named workers.
+describe('subcontractorDueByPlane — byWorker', () => {
+  const assigned = (stages: KosztorysStageT[], workerIds: (number | null)[]): KosztorysStageT[] =>
+    stages.map((stage, index) => ({ ...stage, workerId: workerIds[index] }))
+
+  const sumOf = (byWorker: Map<number | null, number>) =>
+    [...byWorker.values()].reduce((sum, value) => sum + value, 0)
+
+  it('partitions combined across workers, unassigned included', () => {
+    const tree = makePlaneTree(assigned(mixed, [7, null]))
+    const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
+    // Stage 100 (worker 7, z narzędziami) = 72; stage 101 (nobody, bez narzędzi) = 30.
+    expect(due.byWorker.get(7)).toBeCloseTo(72)
+    expect(due.byWorker.get(null)).toBeCloseTo(30)
+    expect(sumOf(due.byWorker)).toBeCloseTo(due.combined)
+  })
+
+  it('accumulates a worker holding etapy on BOTH planes into one figure', () => {
+    const tree = makePlaneTree(assigned(mixed, [7, 7]))
+    const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
+    expect(due.byWorker.get(7)).toBeCloseTo(102)
+    // The whole point of the map: this figure is not reachable from the plane split.
+    expect(due.byWorker.get(7)).not.toBeCloseTo(due.wTools)
+    expect(sumOf(due.byWorker)).toBeCloseTo(due.combined)
+  })
+
+  // Same invariance the combined figure has — a worker's należne is what they executed, not what the
+  // client was charged, so neither discount mode may move it.
+  it('a worker´s należne is unmoved by per-item rabat or a global discount', () => {
+    const plain = makePlaneTree(assigned(mixed, [7, 8]))
+    const discounted = makePlaneTree(assigned(mixed, [7, 8]), {
+      globalDiscount: { type: 'amount', value: 10 },
+    })
+    const a = subcontractorDueByPlane(treeToRows(plain), plain.stages)
+    const b = subcontractorDueByPlane(treeToRows(discounted), discounted.stages)
+    // Row 2 carries the flat-8 per-item rabat and lands entirely in stage 100 → worker 7.
+    expect(a.byWorker.get(7)).toBeCloseTo(72)
+    expect(b.byWorker.get(7)).toBeCloseTo(a.byWorker.get(7)!)
+    expect(b.byWorker.get(8)).toBeCloseTo(a.byWorker.get(8)!)
+  })
+
+  // A plane-less etap is skipped before any value is computed, so its worker earns nothing from it —
+  // they are assigned but owed 0, which is what the panel's `no_executed_work` state exists to say.
+  it('credits nobody for a plane-less etap, even when it is assigned', () => {
+    const tree = makePlaneTree(
+      assigned(
+        [
+          { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+          { id: 101, ordinal: 2, label: null, plane: null, workerId: null },
+        ],
+        [7, 8],
+      ),
+    )
+    const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
+    expect(due.byWorker.has(8)).toBe(false)
+    expect(sumOf(due.byWorker)).toBeCloseTo(due.combined)
   })
 })
 

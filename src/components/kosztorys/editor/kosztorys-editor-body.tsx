@@ -240,6 +240,7 @@ export function KosztorysEditorBody({
             depositTransactions={depositTransactions}
             stages={stages}
             stageTotals={stageTotals}
+            workers={workers}
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}

@@ -7,6 +7,8 @@ import { SubcontractorPayoutsTable } from '@/components/kosztorys/summary/tables
 import { EditorGlobalSettings } from '@/components/kosztorys/editor/toolbar/editor-global-settings'
 import { computeSubcontractorSummary } from '@/lib/kosztorys/subcontractor-summary'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
+import type { KosztorysStageT } from '@/lib/kosztorys/types'
+import type { WorkerRefT } from '@/types/reference-data'
 import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/transfers'
 
 type PropsT = {
@@ -18,6 +20,10 @@ type PropsT = {
   payouts: SubcontractorPayoutRowT[]
   // The un-summed PAYOUT rows, already date-desc from the query. Feed the sortable/virtualized list.
   payoutTransactions: PayoutTransactionRowT[]
+  // The etap list and the roster, both only for the per-worker table: stages say who is ASSIGNED
+  // (even where nothing is owed yet), workers supply names the payout rows don't carry.
+  stages?: KosztorysStageT[]
+  workers?: WorkerRefT[]
   // Off on a host outside KosztorysEditorProvider (the investment page) — the coefficient controls
   // read the editor context, which only exists inside the editor.
   showGlobalSettings?: boolean
@@ -36,11 +42,17 @@ export function SubcontractorSummary({
   subcontractorDue,
   payouts,
   payoutTransactions,
+  stages,
+  workers,
   showGlobalSettings = true,
   showTransactions = true,
   showBreakdown = true,
 }: PropsT) {
-  const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts)
+  const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts, {
+    byWorker: subcontractorDue.byWorker,
+    stages,
+    workers,
+  })
 
   return (
     <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">

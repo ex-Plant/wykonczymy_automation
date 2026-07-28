@@ -129,6 +129,13 @@ export type SubcontractorDueByPlaneT = {
   // Emitted so the header's reassignment confirm quotes the same figure the panel does instead of
   // recomputing it inline. A plane-less etap has no entry: it contributes to no bill.
   byStage: Map<number, number>
+  // The same money partitioned by WHO is to do it (EX-613), `null` = etapy with nobody assigned.
+  // Σ values === `combined` by construction — the residual is its own entry, never spread over the
+  // assigned workers. Two consequences worth knowing before reading a figure off this:
+  // - a worker spanning both planes is NOT derivable from `wTools`/`ownTools`; only this map knows.
+  // - a plane-less etap credits nobody, assigned or not — it is skipped before this map is touched,
+  //   so a worker can hold etapy and still owe 0 (`hasUnconfirmedPlane` is what says why).
+  byWorker: Map<number | null, number>
 }
 
 /**
@@ -155,6 +162,7 @@ export function subcontractorDueByPlane(
   let ownTools = 0
   let hasUnconfirmedPlane = false
   const byStage = new Map<number, number>()
+  const byWorker = new Map<number | null, number>()
   for (const st of stages) {
     const plane = st.plane
     const key = stageKey(st.id)
@@ -173,8 +181,9 @@ export function subcontractorDueByPlane(
     if (plane === 'w_tools') wTools += planeTotal
     else ownTools += planeTotal
     byStage.set(st.id, planeTotal)
+    byWorker.set(st.workerId, (byWorker.get(st.workerId) ?? 0) + planeTotal)
   }
-  return { wTools, ownTools, combined: wTools + ownTools, hasUnconfirmedPlane, byStage }
+  return { wTools, ownTools, combined: wTools + ownTools, hasUnconfirmedPlane, byStage, byWorker }
 }
 
 /**

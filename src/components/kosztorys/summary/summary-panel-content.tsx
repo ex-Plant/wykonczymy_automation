@@ -34,6 +34,7 @@ import {
 } from '@/lib/kosztorys/reconciliation'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
+import type { WorkerRefT } from '@/types/reference-data'
 import type {
   SubcontractorPayoutRowT,
   PayoutTransactionRowT,
@@ -114,6 +115,9 @@ type PropsT = {
   stageTotals?: Map<number, number>
   // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
   payoutsByWorker?: SubcontractorPayoutRowT[]
+  // Name lookup for a worker who holds etapy but has no wypłata yet (EX-613) — such a worker exists
+  // only in the settlement's `byWorker`, which carries ids and no names.
+  workers?: WorkerRefT[]
   // Individual realized PAYOUT rows — feed the subcontractor block's sortable wypłaty list.
   payoutTransactions?: PayoutTransactionRowT[]
   // Individual materiały rows — feed the wydatki tab's transaction list (data · typ · kwota).
@@ -161,6 +165,7 @@ export function SummaryPanelContent({
   stages,
   stageTotals,
   payoutsByWorker,
+  workers,
   payoutTransactions,
   materialTransactions,
   subcontractorDue,
@@ -269,6 +274,8 @@ export function SummaryPanelContent({
             subcontractorDue={subcontractorDue}
             payouts={payoutsByWorker ?? []}
             payoutTransactions={payoutTransactions ?? []}
+            stages={stages ?? []}
+            workers={workers ?? []}
             showGlobalSettings={showSettingsBar}
             showTransactions={showTransactionLists}
             // Same signal, not a second one: the host that drops the lists is the compact host, and

@@ -1,3 +1,4 @@
+import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 import type { PayoutByWorkerT, SubcontractorPayoutRowT } from '@/types/transfers'
 
@@ -27,6 +28,38 @@ export function resolvePayoutWorkerNames(
   }))
 }
 
+// Why a row's „Pozostało" is red. All three are `remaining < 0`, but they mean different things and
+// a reader who can't tell them apart reads a data-entry gap as a debt:
+// - `overpaid` — real work is assigned, and more has been paid out than earned.
+// - `no_stages` — nobody assigned this person any etap, so their należne is 0 by omission. The
+//   wypłata is probably fine; the assignment is missing.
+// - `no_executed_work` — etapy ARE assigned but nothing has been executed on them yet (or they are
+//   still plane-less, which credits nobody). A prepayment, not an overpayment.
+export type WorkerSettlementStateT = 'settled' | 'overpaid' | 'no_stages' | 'no_executed_work'
+
+export type SubcontractorWorkerRowT = {
+  workerId: number | null
+  name: string
+  // Executed value of this worker's etapy, pre-rabat at each etap's own plane.
+  due: number
+  // Σ realized PAYOUTs to this worker on this investment.
+  paid: number
+  remaining: number
+  state: WorkerSettlementStateT
+}
+
+// The per-worker inputs, grouped so the two investment-level figures stay positional and the
+// attribution data arrives as one optional bag — a host that has none of it (the client share path)
+// passes nothing and gets the pre-EX-613 headline behaviour.
+export type SubcontractorSummaryInputT = {
+  byWorker?: Map<number | null, number>
+  // The full etap list, INCLUDING plane-less ones — see `assignedWorkerIds` below for why the money
+  // map is not a substitute.
+  stages?: KosztorysStageT[]
+  // Name fallback for a worker who has an assignment but no wypłata yet (payout rows carry names).
+  workers?: WorkerRefT[]
+}
+
 export type SubcontractorSummaryT = {
   // „Suma wykonanej pracy" (należne) — executed value at the active view's subcontractor price, pre-rabat.
   dueNet: number
@@ -34,26 +67,82 @@ export type SubcontractorSummaryT = {
   payoutsTotal: number
   // „Pozostało do wypłaty" = dueNet − payoutsTotal. Negative = the crew has been overpaid.
   remaining: number
-  // Per-worker rows, sorted by amount desc with the null-worker bucket („Bez przypisanego pracownika")
-  // pinned last regardless of its total, so an unattributed lump never leads the list.
-  rows: SubcontractorPayoutRowT[]
+  // Per-worker rows over the UNION of both sides, sorted by `remaining` desc with the null bucket
+  // („Bez przypisanego pracownika") pinned last regardless of amount.
+  rows: SubcontractorWorkerRowT[]
+}
+
+function settlementState(
+  due: number,
+  remaining: number,
+  hasStages: boolean,
+): WorkerSettlementStateT {
+  if (remaining >= 0) return 'settled'
+  if (due > 0) return 'overpaid'
+  return hasStages ? 'no_executed_work' : 'no_stages'
 }
 
 /**
- * Pure block figures for „Podsumowanie podwykonawców". Whole-investment amounts (both `dueNet` and
- * `payoutsTotal` are investment-level), so `remaining` is the total still owed to the whole crew — it
- * deliberately does not attribute work to individual workers (no work↔worker link exists).
+ * Pure block figures for „Podsumowanie podwykonawców", per person since EX-613: `byWorker` attributes
+ * the executed work, so a row's `remaining` is what THIS worker is still owed rather than a share of
+ * an investment-level lump.
+ *
+ * The row set is the UNION of both sides — a worker with assigned etapy and no wypłaty yet is exactly
+ * the person the owner needs to see, and they exist only in `byWorker`. Etapy nobody is assigned to
+ * land in the same `null` bucket as wypłaty with no worker: one unattributed residual row, never
+ * spread across the named workers (spreading it would invent a debt the owner never recorded).
+ *
+ * The headline totals stay investment-level and are NOT Σ rows: `dueNet` is passed in from the
+ * settlement's `combined` so the headline can't drift from the split even mid-edit.
  */
 export function computeSubcontractorSummary(
   dueNet: number,
   payouts: SubcontractorPayoutRowT[],
+  { byWorker = new Map(), stages = [], workers = [] }: SubcontractorSummaryInputT = {},
 ): SubcontractorSummaryT {
   const payoutsTotal = payouts.reduce((sum, row) => sum + row.total, 0)
-  const rows = [...payouts].sort((a, b) => {
-    // Null-worker bucket last, no matter its amount.
+  const paidByWorker = new Map(payouts.map((row) => [row.workerId, row.total]))
+  // Payout rows already carry a resolved name; a worker who appears only through an assignment does
+  // not, so the roster is the fallback lookup.
+  const nameById = new Map(workers.map((worker) => [worker.id, worker.name]))
+  const nameByWorkerId = new Map(payouts.map((row) => [row.workerId, row.name]))
+  // From `stages`, NOT from `byWorker`: an etap with no rozliczenie is skipped before the settlement
+  // credits anyone, so a worker holding only plane-less etapy is absent from `byWorker` while being
+  // very much assigned. Reading "has etapy" off the money is what would mislabel them „nie ma
+  // przypisanych etapów" and send the owner looking for the wrong mistake.
+  const assignedWorkerIds = new Set<number | null>(stages.map((stage) => stage.workerId))
+
+  const workerIds = new Set<number | null>([
+    ...paidByWorker.keys(),
+    ...byWorker.keys(),
+    ...assignedWorkerIds,
+  ])
+  const rows: SubcontractorWorkerRowT[] = [...workerIds]
+    .map((workerId) => {
+      const due = byWorker.get(workerId) ?? 0
+      const paid = paidByWorker.get(workerId) ?? 0
+      return {
+        workerId,
+        name:
+          workerId === null
+            ? UNASSIGNED_WORKER_NAME
+            : (nameByWorkerId.get(workerId) ?? nameById.get(workerId) ?? 'Nieznany pracownik'),
+        due,
+        paid,
+        remaining: due - paid,
+        state: settlementState(due, due - paid, assignedWorkerIds.has(workerId)),
+      }
+    })
+    // A named worker with 0/0 still earns a row — „przypisany, nic nie zrobione" is information. The
+    // null bucket doesn't: „nobody is owed nothing" is not a fact worth a line.
+    .filter((row) => row.workerId !== null || row.due !== 0 || row.paid !== 0)
+
+  rows.sort((a, b) => {
+    // Null bucket last, no matter its amount — an unattributed lump never leads the list.
     if (a.workerId === null) return 1
     if (b.workerId === null) return -1
-    return b.total - a.total
+    return b.remaining - a.remaining
   })
+
   return { dueNet, payoutsTotal, remaining: dueNet - payoutsTotal, rows }
 }

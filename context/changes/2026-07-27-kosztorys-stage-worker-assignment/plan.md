@@ -475,20 +475,20 @@ Run once, after the final phase:
 
 #### Automated
 
-- [x] 1.1 Migration applies against the local DB
-- [x] 1.2 Types regenerate clean
-- [x] 1.3 `updateStageAction` persists and clears `workerId` (DB-backed)
-- [x] 1.4 Snapshot round-trip preserves the assignment; pre-change snapshot restores `null`
+- [x] 1.1 Migration applies against the local DB — afda6fc3
+- [x] 1.2 Types regenerate clean — afda6fc3
+- [x] 1.3 `updateStageAction` persists and clears `workerId` (DB-backed) — afda6fc3
+- [x] 1.4 Snapshot round-trip preserves the assignment; pre-change snapshot restores `null` — afda6fc3
 
 ### Phase 2: Money per worker
 
 #### Automated
 
-- [ ] 2.1 `subcontractor-due-by-plane.test.ts` updated for the new shape and green
-- [ ] 2.2 Invariant: Σ per-worker należne + unassigned residual === `combined`
-- [ ] 2.3 Rabat- and global-discount-invariance of a worker's należne
-- [ ] 2.4 Three negative-`remaining` states and the union source set
-- [ ] 2.5 Sort by `remaining` desc with the null bucket pinned last
+- [x] 2.1 `subcontractor-due-by-plane.test.ts` updated for the new shape and green
+- [x] 2.2 Invariant: Σ per-worker należne + unassigned residual === `combined`
+- [x] 2.3 Rabat- and global-discount-invariance of a worker's należne
+- [x] 2.4 Three negative-`remaining` states and the union source set
+- [x] 2.5 Sort by `remaining` desc with the null bucket pinned last
 
 ### Phase 3: The roster on the wypłata form
 
