@@ -577,5 +577,5 @@ The existing suites are the regression net, and they are load-bearing here:
 
 #### Automated
 
-- [x] 6.1 `grep` over `context/` returns hits only in `archive/**` and this change's own docs — PENDING_SHA
-- [x] 6.2 `pnpm lint` passes — PENDING_SHA
+- [x] 6.1 `grep` over `context/` returns hits only in `archive/**` and this change's own docs — 837998df
+- [x] 6.2 `pnpm lint` passes — 837998df

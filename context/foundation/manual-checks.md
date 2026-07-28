@@ -655,3 +655,24 @@ Re-run its SQL first — the figures below track the local prod dump and shift w
 
 - [ ] `/raporty?showCancelled=1` with a filter active — an (i) sits next to the tile saying the sum skips anulowane transakcje.
 - [ ] Without `showCancelled`, no such (i) appears.
+
+## EX-575 — drop-cost-variant-columns
+
+Both dead columns are gone (migration `20260728_0`), applied locally on 5433 and 5435.
+Prod migration is owed at ship time, by a human.
+
+### Phase 4: The editor still works against the narrowed schema
+
+- [ ] Seeded kosztorys editor (`INV=6`) opens: siatka renderuje się, autozapis komórki utrwala się po odświeżeniu.
+- [ ] „Dodaj sekcję" i „Dodaj pozycję" działają — nowa sekcja przychodzi z pierwszą pozycją.
+- [ ] „Dodaj sekcję z szablonu" listuje szablony i dokłada wybrane sekcje.
+
+### Phase 5: Pre-migration payloads still load
+
+- [ ] Wersja kosztorysu zapisana **przed** migracją wczytuje się bez błędu, a drzewo jest kompletne.
+- [ ] Globalny szablon zapisany przed migracją nakłada się tak samo.
+
+### Phase 6: The domain note reads as closed
+
+- [ ] `context/reference/kosztorys-editor-domain-notes.md`, sekcja „Wariant «z narzędziami / bez narzędzi»" — czyta się jako **zamknięta** decyzja z zachowanym uzasadnieniem, żadne zdanie nie powołuje się na nieistniejącą kolumnę.
+- [ ] Żadne zdanie nie miesza rejestrów (słownictwo arkusza vs identyfikatory kodu).
