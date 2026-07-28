@@ -1,3 +1,4 @@
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type { DepositTallyT } from '@/lib/kosztorys/summary-economics'
@@ -37,7 +38,7 @@ type InputT = {
 // Exact grosz equality on rounded values, not a fuzzy epsilon: a hand-entered transfer can differ
 // sub-grosz from the derived figure, and that must NOT fire — only a real ≥1-grosz gap is a mismatch.
 function reconcile(expected: number, actual: number): ReconT {
-  const mismatch = Math.round(expected * 100) !== Math.round(actual * 100)
+  const mismatch = roundToCents(expected) !== roundToCents(actual)
   return { expected, actual, mismatch }
 }
 

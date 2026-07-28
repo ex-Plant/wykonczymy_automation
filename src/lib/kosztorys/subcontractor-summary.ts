@@ -1,41 +1,25 @@
+import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payout-worker-names'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
-import type { PayoutByWorkerT, SubcontractorPayoutRowT } from '@/types/transfers'
+import type { SubcontractorPayoutRowT } from '@/types/transfers'
 
-// Display label for the null-worker payout bucket (a cash PAYOUT with no worker attached). One source
-// shared by the page's name-enrichment and the block's fallback so the two can't drift apart.
-export const UNASSIGNED_WORKER_NAME = 'Bez przypisanego pracownika'
-
-// Map/React key for a payout row: the null-worker bucket needs a stable non-null key so it can sit
-// in the same lookup as the real workers.
-const UNASSIGNED_KEY = 'unassigned'
-export const workerKey = (workerId: number | null) =>
-  workerId === null ? UNASSIGNED_KEY : workerId
-
-// The name join the cached payout query deliberately skips — every host that renders the block does
-// it, so it lives here rather than being retyped per page.
-export function resolvePayoutWorkerNames(
-  payouts: PayoutByWorkerT[],
-  workers: WorkerRefT[],
-): SubcontractorPayoutRowT[] {
-  const nameById = new Map(workers.map((worker) => [worker.id, worker.name]))
-  return payouts.map((row) => ({
-    ...row,
-    name:
-      row.workerId === null
-        ? UNASSIGNED_WORKER_NAME
-        : (nameById.get(row.workerId) ?? 'Nieznany pracownik'),
-  }))
-}
-
-// Why a row's „Pozostało" is red. All three are `remaining < 0`, but they mean different things and
-// a reader who can't tell them apart reads a data-entry gap as a debt:
+// Why a row's „Pozostało" is red. The first three are `remaining < 0`, but they mean different things
+// and a reader who can't tell them apart reads a data-entry gap as a debt:
 // - `overpaid` — real work is assigned, and more has been paid out than earned.
 // - `no_stages` — nobody assigned this person any etap, so their należne is 0 by omission. The
 //   wypłata is probably fine; the assignment is missing.
 // - `no_executed_work` — etapy ARE assigned but nothing has been executed on them yet (or they are
 //   still plane-less, which credits nobody). A prepayment, not an overpayment.
-export type WorkerSettlementStateT = 'settled' | 'overpaid' | 'no_stages' | 'no_executed_work'
+// - `unattributed` — the null bucket, which is not a person. The other three are all sentences ABOUT
+//   somebody, so attaching any of them to a residual states something untrue; this one exists so the
+//   row can be rendered without a person-shaped qualifier.
+export type WorkerSettlementStateT =
+  | 'settled'
+  | 'overpaid'
+  | 'no_stages'
+  | 'no_executed_work'
+  | 'unattributed'
 
 export type SubcontractorWorkerRowT = {
   workerId: number | null
@@ -67,16 +51,16 @@ export type SubcontractorSummaryT = {
   payoutsTotal: number
   // „Pozostało do wypłaty" = dueNet − payoutsTotal. Negative = the crew has been overpaid.
   remaining: number
-  // Per-worker rows over the UNION of both sides, sorted by `remaining` desc with the null bucket
-  // („Bez przypisanego pracownika") pinned last regardless of amount.
   rows: SubcontractorWorkerRowT[]
 }
 
 function settlementState(
+  workerId: number | null,
   due: number,
   remaining: number,
   hasStages: boolean,
 ): WorkerSettlementStateT {
+  if (workerId === null) return 'unattributed'
   if (remaining >= 0) return 'settled'
   if (due > 0) return 'overpaid'
   return hasStages ? 'no_executed_work' : 'no_stages'
@@ -121,6 +105,11 @@ export function computeSubcontractorSummary(
     .map((workerId) => {
       const due = byWorker.get(workerId) ?? 0
       const paid = paidByWorker.get(workerId) ?? 0
+      // Rounded at the seam: `due` is Σ qty × viewPrice through fractional plane coefficients, `paid`
+      // a raw SUM(amount). Subtracting them leaves a sub-grosz residue, and an unrounded `remaining`
+      // sends „paid exactly what was displayed" — the commonest case there is — down the `< 0` branch,
+      // where it renders destructive-red „nadpłata / pozostało -0,00".
+      const remaining = roundToCents(due - paid)
       return {
         workerId,
         name:
@@ -129,8 +118,8 @@ export function computeSubcontractorSummary(
             : (nameByWorkerId.get(workerId) ?? nameById.get(workerId) ?? 'Nieznany pracownik'),
         due,
         paid,
-        remaining: due - paid,
-        state: settlementState(due, due - paid, assignedWorkerIds.has(workerId)),
+        remaining,
+        state: settlementState(workerId, due, remaining, assignedWorkerIds.has(workerId)),
       }
     })
     // A named worker with 0/0 still earns a row — „przypisany, nic nie zrobione" is information. The
@@ -144,5 +133,5 @@ export function computeSubcontractorSummary(
     return b.remaining - a.remaining
   })
 
-  return { dueNet, payoutsTotal, remaining: dueNet - payoutsTotal, rows }
+  return { dueNet, payoutsTotal, remaining: roundToCents(dueNet - payoutsTotal), rows }
 }

@@ -9,9 +9,9 @@ import { subcontractorDueByPlane } from '@/lib/kosztorys/settlement'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   computeSubcontractorSummary,
-  resolvePayoutWorkerNames,
   type SubcontractorWorkerRowT,
 } from '@/lib/kosztorys/subcontractor-summary'
+import { resolvePayoutWorkerNames } from '@/lib/kosztorys/payout-worker-names'
 import { perfStart } from '@/lib/perf'
 
 export type SubcontractorRosterT = {

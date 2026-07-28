@@ -5,10 +5,10 @@ import { HintTooltip } from '@/components/ui/tooltip'
 import { formatNet } from '@/lib/kosztorys/format'
 import { pluralize } from '@/lib/utils/polish-plural'
 import { cn } from '@/lib/utils/cn'
-import { workerKey } from '@/lib/kosztorys/subcontractor-summary'
+import { workerKey } from '@/lib/kosztorys/worker-key'
 import type { SubcontractorRosterT } from '@/lib/queries/subcontractor-roster'
 
-function etapNoun(count: number): string {
+function stageNoun(count: number): string {
   return pluralize(count, ['etap', 'etapy', 'etapów'])
 }
 
@@ -78,7 +78,7 @@ export function PayoutRosterSummary({
 
       {roster.unassignedStageCount > 0 && (
         <WarningBanner>
-          {roster.unassignedStageCount} {etapNoun(roster.unassignedStageCount)} z wykonanymi pracami
+          {roster.unassignedStageCount} {stageNoun(roster.unassignedStageCount)} z wykonanymi pracami
           nie ma przypisanej osoby — kwoty poniżej są zaniżone o tę robociznę.{' '}
           <Link href={`/inwestycje/${investmentId}/kosztorys_v2`} className="underline">
             Przypisz etapy

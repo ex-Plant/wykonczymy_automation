@@ -34,8 +34,12 @@ export function useRoster() {
     } catch {
       // A failed load must not leave the id marked as loaded, or the retry path (re-picking the same
       // investment) silently no-ops and the user is stuck with no roster and no way to ask again.
-      if (requestRef.current === requestId) loadedForRef.current = null
-      toastMessage('Nie udało się pobrać rozliczenia pracowników', 'error')
+      if (requestRef.current === requestId) {
+        loadedForRef.current = null
+        // Inside the guard with the rest: a superseded request that fails must not toast over the
+        // roster a newer request has already loaded fine.
+        toastMessage('Nie udało się pobrać rozliczenia pracowników', 'error')
+      }
     } finally {
       if (requestRef.current === requestId) setIsRosterLoading(false)
     }
@@ -47,6 +51,10 @@ export function useRoster() {
     requestRef.current++
     loadedForRef.current = null
     setRoster(null)
+    // Lower the flag here rather than leaving it to the disowned request's `finally`, which now
+    // no-ops against the bumped id: without this the spinner is stranded on and the panel reads
+    // „Wczytywanie rozliczenia…" forever.
+    setIsRosterLoading(false)
   }
 
   return { roster, isRosterLoading, loadRoster, resetRoster }

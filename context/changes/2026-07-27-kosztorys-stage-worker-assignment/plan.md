@@ -354,10 +354,13 @@ owed, and warns twice without ever blocking.
 **Intent**: The same figures the editor shows, computed server-side for a host that cannot reach
 editor state.
 
-**Contract**: `getSubcontractorRosterForInvestment(investmentId)` → fetch the tree (existing cached
-query) → `treeToRows` → **the same `subcontractorDueByWorker` derivation from Phase 2** → join with
-`sumPayoutsByWorkerForInvestment` → the same row shape the panel renders. Cached on the existing
-`CACHE_TAGS` for tree + transfers. **Not a second derivation** — decision #1.
+**Contract**: `getSubcontractorRoster(investmentId)` → fetch the tree → `treeToRows` → **the same
+`subcontractorDueByWorker` derivation from Phase 2** → join with `sumPayoutsByWorkerForInvestment` →
+the same row shape the panel renders. **Not a second derivation** — decision #1.
+
+_(Corrected at the review gate: the shorter `getSubcontractorRoster` is what shipped — the module
+name already carries the investment scope. The original contract also claimed the roster is cached
+on the existing `CACHE_TAGS`; see Performance Considerations for why that was false.)_
 
 #### 2. On-demand fetch
 
@@ -443,8 +446,13 @@ The editor already runs ~6 independent O(rows × stages) passes per render over 
 per-worker grouping adds **O(stages)** inside an existing pass — no seventh sweep. A standalone
 `useMemo` recomputing the same partition is the wrong shape and must not be written.
 
-The server roster costs one cached tree read plus one cached payout aggregate, both already existing
-queries with their own tags.
+The server roster costs one **uncached** tree read plus one payout aggregate.
+
+_(Corrected at the review gate — the plan asserted both were cached; `buildKosztorysTree` is not
+wrapped in `unstable_cache` anywhere in the repo, so every roster load re-materialises the tree.
+The **code was left alone**: freshness is what a money dialog wants, and the tree answering to four
+invalidating tags is precisely why it was never cached. The standing `[PERF] getSubcontractorRoster`
+log line is the measurement hook if this ever shows up as slow.)_
 
 ## Migration Notes
 
@@ -497,6 +505,6 @@ Run once, after the final phase:
 
 #### Automated
 
-- [x] 3.1 Parity: server roster `due` === client derivation `due`, per worker
-- [x] 3.2 Roster shape: no investment → no roster; payout-only rows when no etapy
-- [x] 3.3 A PAYOUT for a worker with no assigned etapy persists
+- [x] 3.1 Parity: server roster `due` === client derivation `due`, per worker — d9b3a06a
+- [x] 3.2 Roster shape: no investment → no roster; payout-only rows when no etapy — d9b3a06a
+- [x] 3.3 A PAYOUT for a worker with no assigned etapy persists — d9b3a06a

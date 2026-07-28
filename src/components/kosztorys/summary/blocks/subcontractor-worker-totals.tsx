@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/summary-grid'
 import { formatNet } from '@/lib/kosztorys/format'
 import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
-import { workerKey } from '@/lib/kosztorys/subcontractor-summary'
+import { workerKey } from '@/lib/kosztorys/worker-key'
 import { cn } from '@/lib/utils/cn'
 import type {
   SubcontractorWorkerRowT,
@@ -26,6 +26,9 @@ const STATE_QUALIFIER: Record<WorkerSettlementStateT, string | null> = {
   overpaid: 'nadpłata',
   no_stages: 'brak przypisanych etapów',
   no_executed_work: 'przypisane etapy bez wykonanych prac',
+  // The residual is not a person, so every qualifier above would be a false sentence about it; its
+  // own „Bez przypisanego pracownika" label already says what it is.
+  unattributed: null,
 }
 
 // Należne / wypłacono / pozostało per worker, each name linking into the investment's PAYOUT ledger

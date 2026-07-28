@@ -18,7 +18,7 @@ import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
 import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 import { STAGE_HEADER_COPY as COPY } from './stage-header-copy'
-import { isActiveRef } from '@/lib/utils/is-active-ref'
+import { stageWorkerOptions } from './stage-worker-options'
 import { cn } from '@/lib/utils/cn'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
@@ -54,11 +54,13 @@ export function StageHeader({
   // `null` can't carry that, it is the legitimate „Bez przypisania" target.
   const [pendingWorkerId, setPendingWorkerId] = useState<number | null | undefined>(undefined)
 
-  // The reference query is unfiltered, so without this a deactivated worker stays pickable here
-  // after disappearing from every form. No activeOnly escape hatch — unlike the entity comboboxes,
-  // there is no reason to assign new work to someone who no longer works here.
-  const activeWorkers = (workers ?? []).filter(isActiveRef)
-  const currentWorkerName = activeWorkers.find((worker) => worker.id === stage.workerId)?.name
+  // No activeOnly escape hatch — unlike the entity comboboxes, there is no reason to assign new work
+  // to someone who no longer works here.
+  const {
+    options: workerOptions,
+    currentWorkerName,
+    nameOf: workerNameOf,
+  } = stageWorkerOptions(workers ?? [], stage.workerId)
 
   // Moving executed work off someone is the one destructive-feeling edit here: it drops their
   // „pozostało" by the amount and raises the new person's. Confirm only in that case — assigning an
@@ -145,7 +147,7 @@ export function StageHeader({
               <p className="text-muted-foreground px-2 py-1.5 text-xs">{COPY.workerNeedsPlane}</p>
             ) : (
               <>
-                {activeWorkers.map((worker) => (
+                {workerOptions.map((worker) => (
                   <DropdownMenuCheckboxRow
                     key={worker.id}
                     checked={stage.workerId === worker.id}
@@ -190,8 +192,8 @@ export function StageHeader({
         onCancel={() => setConfirmOpen(false)}
       />
 
-      {/* Conditional: mounted only while a reassignment is pending, so the copy can name the amount
-          and both people without a placeholder branch for the far commoner no-op case. */}
+      {/* Mounted only while a reassignment is pending, so the copy can name the amount and both
+          people without a placeholder branch for the far commoner no-op case. */}
       {pendingWorkerId !== undefined && (
         <ConfirmDialog
           open
@@ -200,8 +202,7 @@ export function StageHeader({
             label,
             executedValue,
             currentWorkerName ?? COPY.workerUnknown,
-            activeWorkers.find((worker) => worker.id === pendingWorkerId)?.name ??
-              COPY.workerUnassigned,
+            workerNameOf(pendingWorkerId) ?? COPY.workerUnassigned,
           )}
           confirmLabel={COPY.reassignConfirm.confirmLabel}
           onConfirm={() => {

@@ -491,8 +491,6 @@ const stagePatchSchema = z
   })
   .partial()
 
-// Stage autosave: the header patches one field at a time (rename → label, plane picker → plane,
-// worker picker → workerId).
 // A plane patch only ever writes a concrete value — an explicit pick confirms the plane and clears
 // the unconfirmed (null) warning; there is no "un-confirm" path.
 export async function updateStageAction(
