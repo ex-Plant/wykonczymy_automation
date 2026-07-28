@@ -55,11 +55,15 @@ export async function TransferTableServer({ config }: TransferTableServerPropsT)
     ? typeDistribution.reduce((sum, t) => sum + t.total, 0)
     : undefined
 
+  // buildTransferFilters only adds the `cancelled` exclusion when the list hides cancelled rows, so
+  // its absence is exactly the case where the tile is narrower than the rows below it (EX-574).
+  const listsCancelled = !('cancelled' in config.query.where)
+
   return (
     <TransferDataTable
       data={rows}
       paginationMeta={rawTxResult.paginationMeta}
-      config={{ ...config, totalFilteredAmount }}
+      config={{ ...config, totalFilteredAmount, listsCancelled }}
       referenceData={refData}
     />
   )

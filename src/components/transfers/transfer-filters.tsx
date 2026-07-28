@@ -46,6 +46,8 @@ type TransferFiltersPropsT = {
   baseUrl: string
   className?: string
   totalFilteredAmount?: number
+  /** Server-derived (see TransferTableServer) — the list shows cancelled rows, the sum never does. */
+  listsCancelled?: boolean
 }
 
 export function TransferFilters({
@@ -59,6 +61,7 @@ export function TransferFilters({
   baseUrl,
   className,
   totalFilteredAmount,
+  listsCancelled,
 }: TransferFiltersPropsT) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -95,12 +98,6 @@ export function TransferFilters({
   const hasEntityFilters = ENTITY_FILTER_KEYS.some((k) => getMultiParam(k).length > 0)
   const hasDateFilter = !!searchParams.get('from') || !!searchParams.get('to')
   const hasAnyFilter = hasEntityFilters || hasDateFilter
-
-  // In these two views the list shows cancelled transfers but the sum's query hardcodes
-  // `cancelled IS NOT TRUE`, so the tile is deliberately narrower than the rows below it (EX-574).
-  const listsCancelled =
-    searchParams.get('showCancelled') === '1' ||
-    searchParams.get('cancelledTransactionAudit') === '1'
 
   function clearEntityFilters() {
     updateMultipleParams(Object.fromEntries(ENTITY_FILTER_KEYS.map((k) => [k, ''])))
@@ -230,7 +227,7 @@ export function TransferFilters({
           className="border-chart-blue"
           tooltip={
             listsCancelled
-              ? 'Suma nie obejmuje transakcji anulowanych, mimo że lista poniżej je pokazuje.'
+              ? 'Suma pomija transakcje anulowane, ale liczy anulowania, które je cofają — dlatego nie zgadza się z listą poniżej.'
               : undefined
           }
         />

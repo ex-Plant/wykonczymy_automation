@@ -182,10 +182,9 @@ export function buildTransferFilters(
 /**
  * Drop the `cancelled` condition for stats queries, which hardcode `cancelled IS NOT TRUE` in SQL.
  *
- * The `type` condition stays (EX-574). It used to be stripped alongside it, which threw away the
- * default `not_in: ['CANCELLATION']` — and since a CANCELLATION row copies its original's amount
- * and carries `cancelled = false`, nothing downstream excluded it. A cancelled transaction then
- * counted +1× in the sum instead of netting to zero.
+ * The `type` condition must survive: a CANCELLATION row copies its original's amount and carries
+ * `cancelled = false`, so the default `not_in: ['CANCELLATION']` is the only thing keeping it out
+ * of the sum (EX-574).
  */
 export function stripCancelledFilters(where: Where): Where {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
