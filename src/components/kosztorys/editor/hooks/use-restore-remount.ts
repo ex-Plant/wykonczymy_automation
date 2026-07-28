@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import type { KosztorysTreeT } from '@/lib/kosztorys/types'
 
 type RestoreRemountT = {
   // Bump on the body's `key` to remount it. A restore reseeds the WHOLE grid, so it remounts the body
@@ -20,16 +19,16 @@ type RestoreRemountT = {
 // never fire an identity compare, leaving the latch stuck). `restorePending` gates it so the routine
 // totals-refresh an ordinary edit triggers doesn't remount. No useEffect: this render-phase compare is
 // flash-free.
-export function useRestoreRemount(tree: KosztorysTreeT): RestoreRemountT {
+export function useRestoreRemount(revision: string): RestoreRemountT {
   const [remountKey, setRemountKey] = useState(0)
   const [restorePending, setRestorePending] = useState(false)
-  const prevRevision = useRef(tree.revision)
+  const prevRevision = useRef(revision)
   // Comparing/advancing the prev-value ref during render is the documented "store info from previous
   // render" pattern (the rule is too strict here) — same sanctioned use as use-kosztorys-editor.ts.
   // eslint-disable-next-line react-hooks/refs
-  const revisionChanged = tree.revision !== prevRevision.current
+  const revisionChanged = revision !== prevRevision.current
   // eslint-disable-next-line react-hooks/refs
-  prevRevision.current = tree.revision
+  prevRevision.current = revision
   if (restorePending && revisionChanged) {
     setRestorePending(false)
     setRemountKey((k) => k + 1)
