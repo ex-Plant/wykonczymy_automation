@@ -9,6 +9,7 @@ import { DynamicDataSheetGrid } from 'react-datasheet-grid'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -80,6 +81,7 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
+    setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
     onRenameSection,
@@ -207,6 +209,26 @@ export function KosztorysEditorBody({
               // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
               description={clientView ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
             />
+          )}
+          {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
+              rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
+              who never typed anything. Unreachable in the client view, which renders no search field. */}
+          {viewRows.length === 0 && search.trim() !== '' && (
+            <EmptyState
+              className="pointer-events-none absolute inset-0"
+              title="Brak wyników"
+              description={`Żadna pozycja nie pasuje do „${search.trim()}".`}
+            >
+              {/* The overlay is click-through so the grid stays usable; the button opts back in. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto"
+                onClick={() => setSearch('')}
+              >
+                Wyczyść wyszukiwanie
+              </Button>
+            </EmptyState>
           )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
