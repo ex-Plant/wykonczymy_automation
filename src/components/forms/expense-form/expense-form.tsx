@@ -8,6 +8,7 @@ import { useInvoiceFiles, type IngestResultT } from '@/components/forms/hooks/us
 import { useReceiptGeneration } from '@/components/forms/hooks/use-receipt-generation'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
 import { useSaldo } from '@/components/forms/hooks/use-saldo'
+import { useRoster } from '@/components/forms/hooks/use-roster'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
 import { SubmitPill } from '@/components/forms/submit-pill'
 import {
@@ -54,6 +55,7 @@ import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
 import { FormShell } from '../form-components/form-shell'
 import { SaldoSummary } from '../form-components/saldo-summary'
+import { PayoutRosterSummary } from '../form-components/payout-roster-summary'
 import { useExpenseFormStore } from '@/stores/form-stores'
 
 type TransferFormPropsT = {
@@ -96,6 +98,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const resetFormData = useExpenseFormStore((s) => s.resetFormData)
 
   const { saldo, isSaldoLoading, fetchSaldo, resetSaldo } = useSaldo()
+  const { roster, isRosterLoading, loadRoster, resetRoster } = useRoster()
 
   // Rows whose picked file is still being processed at ingest (HEIC convert can take ~1-2 s). The
   // row shows a spinner and its actions are disabled meanwhile, and a batch scan waits for ingest
@@ -175,6 +178,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   function handleReset() {
     resetFormData()
     resetSaldo()
+    resetRoster()
     resetInvoiceFiles()
     resetGeneration()
     form.setFieldValue('lineItems', [makeLineItem()])
@@ -286,6 +290,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
 
   const currentType = useStore(form.store, (s) => s.values.type)
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
+  const currentWorker = useStore(form.store, (s) => s.values.worker)
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
@@ -305,6 +310,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     resetInvoiceFiles()
     resetGeneration()
     resetSaldo()
+    resetRoster()
   }
 
   return (
@@ -336,7 +342,19 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         </div>
 
         {showsInvestment(currentType) && (
-          <EntityComboboxField form={form} variant="investment" items={referenceData.investments} />
+          <EntityComboboxField
+            form={form}
+            variant="investment"
+            items={referenceData.investments}
+            // Only a wypłata has anything to reconcile against the kosztorys, so only a wypłata pays
+            // for the fetch. Clearing the investment clears the roster rather than leaving the
+            // previous investment's figures on screen under a new one.
+            listeners={
+              needsWorker(currentType)
+                ? { onChange: ({ value }) => void loadRoster(value) }
+                : undefined
+            }
+          />
         )}
 
         {canBeSettled(currentType) && (
@@ -370,7 +388,15 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         <PaymentMethodField form={form} />
 
         {needsWorker(currentType) && (
-          <EntityComboboxField form={form} variant="worker" items={referenceData.workers} />
+          <EntityComboboxField
+            form={form}
+            variant="worker"
+            items={referenceData.workers}
+            // Also loads the roster: the investment is often pre-filled from the URL and never
+            // picked by hand, so the investment listener would never fire. `loadRoster` is
+            // idempotent per id, so the common path (both fields picked) still fetches once.
+            listeners={{ onChange: () => void loadRoster(currentInvestment) }}
+          />
         )}
 
         {!isDepositType(currentType) && (
@@ -393,6 +419,18 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           />
         )}
       </FieldGroup>
+
+      {needsWorker(currentType) && currentInvestment && (
+        <PayoutRosterSummary
+          roster={roster}
+          isLoading={isRosterLoading}
+          investmentId={Number(currentInvestment)}
+          selectedWorkerId={currentWorker ? Number(currentWorker) : null}
+          selectedWorkerName={
+            referenceData.workers.find((worker) => String(worker.id) === currentWorker)?.name
+          }
+        />
+      )}
 
       {saldo !== null && <SaldoSummary saldo={saldo} total={total} />}
 

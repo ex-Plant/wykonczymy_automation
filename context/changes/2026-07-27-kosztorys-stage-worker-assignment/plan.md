@@ -194,6 +194,7 @@ optimistic `setStages`, debounced save with the same revert closure. Exposed as
 executed quantities.
 
 **Contract**:
+
 - Props gain `workers?: WorkerRefT[]`, `onSetWorker?: (stageId: number, workerId: number | null) => void`,
   and `executedValue?: number` (the etap's own-plane total, for the confirm copy).
 - **Extend the read-only predicate** to `!onRename && !onRemove && !onSetPlane && !onSetWorker`.
@@ -290,6 +291,7 @@ union of both source sets.
 
 **Contract**: `computeSubcontractorSummary(dueNet, payouts, byWorker, stages?)` returns rows of
 `{ workerId, name, due, paid, remaining, state }` where:
+
 - source set = workers with wypłaty **∪** workers with assigned etapy (a worker with należne and no
   wypłaty must appear)
 - sort = `remaining` **desc**, the null-worker bucket pinned last regardless of amount (keep the
@@ -378,6 +380,7 @@ on screen is wrong, so they use the existing destructive-toned primitives at ful
 
 **Contract**: two independent, purely presentational warnings rendered beside the roster; neither
 touches `transferFieldRules`, neither becomes a zod issue, neither gates submit:
+
 - (a) the investment has etapy with no assigned worker → the roster's „pozostało" figures read short
 - (b) the selected worker has no etapy on this investment → their „pozostało" will look like an
   overpayment
@@ -484,16 +487,16 @@ Run once, after the final phase:
 
 #### Automated
 
-- [x] 2.1 `subcontractor-due-by-plane.test.ts` updated for the new shape and green
-- [x] 2.2 Invariant: Σ per-worker należne + unassigned residual === `combined`
-- [x] 2.3 Rabat- and global-discount-invariance of a worker's należne
-- [x] 2.4 Three negative-`remaining` states and the union source set
-- [x] 2.5 Sort by `remaining` desc with the null bucket pinned last
+- [x] 2.1 `subcontractor-due-by-plane.test.ts` updated for the new shape and green — 3f18d858
+- [x] 2.2 Invariant: Σ per-worker należne + unassigned residual === `combined` — 3f18d858
+- [x] 2.3 Rabat- and global-discount-invariance of a worker's należne — 3f18d858
+- [x] 2.4 Three negative-`remaining` states and the union source set — 3f18d858
+- [x] 2.5 Sort by `remaining` desc with the null bucket pinned last — 3f18d858
 
 ### Phase 3: The roster on the wypłata form
 
 #### Automated
 
-- [ ] 3.1 Parity: server roster `due` === client derivation `due`, per worker
-- [ ] 3.2 Roster shape: no investment → no roster; payout-only rows when no etapy
-- [ ] 3.3 A PAYOUT for a worker with no assigned etapy persists
+- [x] 3.1 Parity: server roster `due` === client derivation `due`, per worker
+- [x] 3.2 Roster shape: no investment → no roster; payout-only rows when no etapy
+- [x] 3.3 A PAYOUT for a worker with no assigned etapy persists
