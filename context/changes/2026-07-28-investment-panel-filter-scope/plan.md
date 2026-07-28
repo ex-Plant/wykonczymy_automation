@@ -112,9 +112,11 @@ current view is scoped, without re-deriving it from a built `Where`.
 
 **Contract**: `(searchParams: SearchParamsT) => boolean`. True when any user-settable filter key
 carries a value: `type`, `from`, `to`, `sourceRegister`, `investment`, `createdBy`, `paymentMethod`,
-`expenseCategory`, `otherCategory`, `worker`, `amount`, `id`, `showCancelled`,
+`expenseCategory`, `otherCategory`, `worker`, `amount`, `id`,
 `cancelledTransactionAudit`. Pagination (`page`, `limit`) and the reading toggle
-(`statsVersion`) are not filters. The key list is derived from the params `buildTransferFilters`
+(`statsVersion`) are not filters — and neither is `showCancelled` (dropped at the review gate: the
+condition is stripped before any stats query and a `CANCELLATION` carries no financial bucket, so
+the toggle moves no panel figure). The key list is derived from the params `buildTransferFilters`
 actually reads — keep the two in step, and add a comment saying so.
 
 #### 2. Spec
