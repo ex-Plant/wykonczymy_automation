@@ -432,7 +432,7 @@ distinct filter combination rather than per investment. Acceptable — the same 
 
 #### Automated
 
-- [x] 4.1 Full unit suite passes: `pnpm test`
-- [x] 4.2 Integration suite passes: `pnpm test:integration`
-- [x] 4.3 Type checking passes: `pnpm typecheck`
-- [x] 4.4 Linting passes: `pnpm lint`
+- [x] 4.1 Full unit suite passes: `pnpm test` — 33164e42
+- [x] 4.2 Integration suite passes: `pnpm test:integration` — 33164e42
+- [x] 4.3 Type checking passes: `pnpm typecheck` — 33164e42
+- [x] 4.4 Linting passes: `pnpm lint` — 33164e42
