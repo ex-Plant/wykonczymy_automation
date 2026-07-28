@@ -3,13 +3,14 @@ import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { sortRows } from '@/lib/kosztorys/row-view'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
+import { makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 // Two rows whose COMPUTED figures order differently from their raw fields, so a test that passes
 // can only pass because the computed value was actually resolved — not because input order survived.
 //
 // Item 1 (id 1): big przedmiar, tiny stage sum, a 10% rabat → high plannedNet/remaining, low net.
 // Item 2 (id 2): tiny przedmiar, stage sum OVER przedmiar, no rabat → high net, negative remaining.
-const tree: KosztorysTreeT = {
+const tree: KosztorysTreeT = makeTree({
   sections: [
     {
       id: 10,
@@ -62,13 +63,7 @@ const tree: KosztorysTreeT = {
     { itemId: 1, stageId: 100, qtyDone: 1 },
     { itemId: 2, stageId: 100, qtyDone: 8 },
   ],
-  globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
-  vatRate: 0.23,
-  settlementMode: 'NET',
-  materialsNetRate: null,
-  globalDiscount: { type: null, value: 0 },
-  revision: '2026-01-01T00:00:00.000Z',
-}
+})
 
 const rows = treeToRows(tree)
 const idsSortedBy = (field: string) =>

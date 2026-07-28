@@ -4,24 +4,11 @@ import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
-
-const baseItem = {
-  displayOrder: 0,
-  unit: 'm2',
-  discountType: null,
-  discountValue: 0,
-  wToolsOverrideType: 'amount' as const,
-  wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount' as const,
-  ownToolsOverrideValue: 10,
-  costVariant: null,
-  hiddenInExport: false,
-  note: null,
-}
+import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 // Two sections so the Σ-of-footers claim is non-trivial, one row with NO przedmiar (id 3) so
 // „Pozostało" has something to skip, and a row-level rabat so the discount columns are non-zero.
-const tree: KosztorysTreeT = {
+const tree: KosztorysTreeT = makeTree({
   sections: [
     {
       id: 10,
@@ -66,13 +53,8 @@ const tree: KosztorysTreeT = {
     { itemId: 3, stageId: 100, qtyDone: 1 },
     { itemId: 4, stageId: 101, qtyDone: 2 },
   ],
-  globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
   vatRate: 0.08,
-  settlementMode: 'NET',
-  materialsNetRate: null,
-  globalDiscount: { type: null, value: 0 },
-  revision: '2026-01-01T00:00:00.000Z',
-}
+})
 
 const rows = treeToRows(tree)
 const rowsOf = (sectionId: number) => rows.filter((row) => row.sectionId === sectionId)

@@ -8,6 +8,7 @@ import {
 import { SETTLEMENT_MODES } from '@/lib/kosztorys/settlement-mode'
 import { deriveFinancials } from '@/lib/db/investment-financials'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
+import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 import type { TypeSettledTotalT } from '@/types/investment-financials'
 
 // Why this test exists (context/foundation/lessons.md): kosztorys v1 and the app once disagreed on a
@@ -17,26 +18,11 @@ import type { TypeSettledTotalT } from '@/types/investment-financials'
 // against ONE dataset and assert the shared reconciler sees them agree. A second copy of either formula
 // would drift and this test would go red.
 
-const baseItem = {
-  sectionId: 10,
-  displayOrder: 0,
-  unit: 'm2',
-  discountType: null,
-  discountValue: 0,
-  wToolsOverrideType: 'amount' as const,
-  wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount' as const,
-  ownToolsOverrideValue: 10,
-  costVariant: null,
-  hiddenInExport: false,
-  note: null,
-}
-
 // Two rows across two etapy: row 1 executes 2+3 (of planned 5) at client price 20 = 100, no rabat;
 // row 2 executes 4+0 at client price 10 = 40, with a flat 'amount' rabat of 8 on the whole row.
 // So executed post-rabat = 132, per-item rabat taken = 8, pre-rabat „Suma prac wykonanych" = 140.
-function makeTree(overrides: Partial<KosztorysTreeT> = {}): KosztorysTreeT {
-  return {
+function makeReconTree(overrides: Partial<KosztorysTreeT> = {}): KosztorysTreeT {
+  return makeTree({
     sections: [
       {
         id: 10,
@@ -67,14 +53,9 @@ function makeTree(overrides: Partial<KosztorysTreeT> = {}): KosztorysTreeT {
       { itemId: 1, stageId: 101, qtyDone: 3 },
       { itemId: 2, stageId: 100, qtyDone: 4 },
     ],
-    globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
     vatRate: 0.08,
-    settlementMode: 'NET',
-    materialsNetRate: null,
-    globalDiscount: { type: null, value: 0 },
-    revision: '2026-01-01T00:00:00.000Z',
     ...overrides,
-  }
+  })
 }
 
 // The editor-side client totals for a tree, via the exact shared helper both surfaces call.
@@ -108,14 +89,14 @@ function reconcile(tree: KosztorysTreeT, txns: TypeSettledTotalT[]) {
 
 describe('cross-boundary parity: kosztorys client totals vs transaction sums', () => {
   it('per-item rabat: matching transfers reconcile silently on both figures', () => {
-    const tree = makeTree()
+    const tree = makeReconTree()
     const verdict = reconcile(tree, syncedTransactions(tree))
     expect(verdict.laborCosts.mismatch).toBe(false)
     expect(verdict.rabat.mismatch).toBe(false)
   })
 
   it('global amount discount (per-item rabat suppressed): matching transfers reconcile silently', () => {
-    const tree = makeTree({ globalDiscount: { type: 'amount', value: 14 } })
+    const tree = makeReconTree({ globalDiscount: { type: 'amount', value: 14 } })
     // Sanity: a live global discount zeroes per-item rabat, so the rabat figure is the flat amount.
     const { sumaPracNet, rabatClientNet } = clientTotals(tree)
     expect(sumaPracNet).toBeCloseTo(140) // rows go gross → no per-item rabat added back
@@ -131,7 +112,7 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
   // stored global-percent produced: Σ per-item percent rabaty = the same rabatClientNet (14), so the
   // investment-page recon is unchanged by the migration away from a stored percent discount.
   it('per-item percent (bulk-apply): Σ rabaty feed rabatClientNet like the old global percent', () => {
-    const base = makeTree()
+    const base = makeReconTree()
     const tree: KosztorysTreeT = {
       ...base,
       sections: base.sections.map((section) => ({
@@ -153,14 +134,14 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
   })
 
   it('vatRate 0: gross equals net, matching transfers still reconcile', () => {
-    const tree = makeTree({ vatRate: 0 })
+    const tree = makeReconTree({ vatRate: 0 })
     const verdict = reconcile(tree, syncedTransactions(tree))
     expect(verdict.laborCosts.mismatch).toBe(false)
     expect(verdict.rabat.mismatch).toBe(false)
   })
 
   it('empty progress + no transfers: zero vs zero is silent', () => {
-    const tree = makeTree({ progress: [] })
+    const tree = makeReconTree({ progress: [] })
     const { sumaPracNet, rabatClientNet } = clientTotals(tree)
     expect(sumaPracNet).toBe(0)
     expect(rabatClientNet).toBe(0)
@@ -170,7 +151,7 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
   })
 
   it('a de-synced LABOR_COST fires robocizna and leaves rabat silent', () => {
-    const tree = makeTree()
+    const tree = makeReconTree()
     const txns = syncedTransactions(tree)
     // Nudge only the LABOR_COST transfer a full grosz off.
     const laborRow = txns.find((t) => t.type === 'LABOR_COST')!
@@ -188,7 +169,7 @@ describe('robocizna compares the PRE-rabat suma prac (EX-535 regression)', () =>
   // carrying a per-item rabat. The scream also sits on the „Suma prac wykonanych" row, whose displayed
   // value is pre-rabat — so the verdict must be about that same number.
   it('pre-rabat basis is silent; the old post-rabat basis would scream', () => {
-    const tree = makeTree()
+    const tree = makeReconTree()
     const { sumaPracNet, rabatClientNet } = clientTotals(tree)
     expect(sumaPracNet).toBeCloseTo(140) // pre-rabat: 132 executed + 8 rabat taken
     expect(rabatClientNet).toBeCloseTo(8)

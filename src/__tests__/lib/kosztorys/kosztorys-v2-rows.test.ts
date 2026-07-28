@@ -20,28 +20,17 @@ import {
   stageValueNetKey,
 } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysTreeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { baseItem as sharedBaseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 const baseItem = {
+  ...sharedBaseItem,
   id: 1,
-  sectionId: 10,
-  displayOrder: 0,
   description: 'Malowanie',
-  unit: 'm2',
   plannedQty: 5,
-  discountType: null,
-  discountValue: 0,
   clientPrice: 20,
-  // 'amount' override (flat 12/10) — preserves the test values from before the migration.
-  wToolsOverrideType: 'amount' as const,
-  wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount' as const,
-  ownToolsOverrideValue: 10,
-  costVariant: null,
-  hiddenInExport: false,
-  note: null,
 }
 
-const tree: KosztorysTreeT = {
+const tree: KosztorysTreeT = makeTree({
   sections: [
     {
       id: 10,
@@ -57,13 +46,8 @@ const tree: KosztorysTreeT = {
     { id: 101, ordinal: 2, label: null, plane: null },
   ],
   progress: [{ itemId: 1, stageId: 100, qtyDone: 2 }],
-  globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
   vatRate: 0.08,
-  settlementMode: 'NET',
-  materialsNetRate: null,
-  globalDiscount: { type: null, value: 0 },
-  revision: '2026-01-01T00:00:00.000Z',
-}
+})
 
 describe('treeToRows', () => {
   it('spłaszcza pozycję z sekcją i etapami', () => {

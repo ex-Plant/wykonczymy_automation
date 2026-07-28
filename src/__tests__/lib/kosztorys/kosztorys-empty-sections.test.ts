@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { sectionSubtotalsForView, emptySectionIds } from '@/lib/kosztorys/settlement'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysItemT, KosztorysTreeT } from '@/lib/kosztorys/types'
+import { makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 function item(id: number, sectionId: number): KosztorysItemT {
   return {
@@ -26,7 +27,7 @@ function item(id: number, sectionId: number): KosztorysItemT {
 
 // Three sections, one of them "pusta" — B carries a position but no executed work (no progress row),
 // which is the only sense of empty that exists here: a section with no ITEMS is cascade-deleted.
-const tree: KosztorysTreeT = {
+const tree: KosztorysTreeT = makeTree({
   sections: [
     {
       id: 10,
@@ -58,13 +59,7 @@ const tree: KosztorysTreeT = {
     { itemId: 1, stageId: 100, qtyDone: 4 },
     { itemId: 3, stageId: 100, qtyDone: 2 },
   ],
-  globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
-  vatRate: 0.23,
-  settlementMode: 'NET',
-  materialsNetRate: null,
-  globalDiscount: { type: null, value: 0 },
-  revision: '2026-01-01T00:00:00.000Z',
-}
+})
 
 const rows = treeToRows(tree)
 // Derived, not hand-written: proves "pusta" means net === 0 at the live subtotals, so the test can't
