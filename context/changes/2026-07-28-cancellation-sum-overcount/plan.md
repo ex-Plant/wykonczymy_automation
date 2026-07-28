@@ -84,7 +84,7 @@ Commit: `feat(EX-574): the sum tile states its scope where it differs from the l
 - Extend EX-574's description to cover defect 2 (title stays about anulowania; add a „Drugi defekt"
   section with the `?amount=500,00` figures), then → Done.
 - File the `/raporty` E2E as a new issue in project **Wykonczymy**, label `e2e-backlog`, carrying the
-  acceptance sentence and the two repro URLs. Record its id here.
+  acceptance sentence and the two repro URLs. → **EX-627**.
 - Update `change.md` → `status: implemented`; note the Pulpit blast radius in the EX-574 comment.
 
 ## Files Touched
@@ -118,5 +118,5 @@ Commit: `feat(EX-574): the sum tile states its scope where it differs from the l
 
 - [x] Phase 1 — bridge spec red → `stripCancelledFilters` fix → green — dc2bf98b
 - [x] Phase 2 — amount-ceiling case red → translator fix + guard → green — 5ed00e78
-- [x] Phase 3 — scope tooltip
-- [ ] Phase 4 — EX-574 updated + closed, E2E filed to `e2e-backlog`
+- [x] Phase 3 — scope tooltip — 27444def
+- [x] Phase 4 — EX-574 updated + `in review`, E2E filed as EX-627 (`e2e-backlog`)

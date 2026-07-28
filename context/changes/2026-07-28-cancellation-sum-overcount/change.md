@@ -1,7 +1,7 @@
 ---
 change_id: cancellation-sum-overcount
 title: „Suma wybranych transakcji" overcounts by the amount of every CANCELLATION row
-status: implementing
+status: implemented
 created: 2026-07-28
 updated: 2026-07-28
 archived_at: null

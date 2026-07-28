@@ -632,3 +632,26 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 - [ ] Ticks made before going back are still set after returning and drilling into another szablon; „Dodaj (N)" totals both.
 - [ ] Resizing across 768px (this repo's `sm`) mid-selection does not lose ticks or strand the user on a hidden pane; at 800px both panes are visible.
 - [ ] The dialog at 390px does not scroll horizontally, and the footer stays reachable.
+
+## EX-574 — cancellation-sum-overcount
+
+Repro with live figures + copy-pasteable SQL: `context/changes/2026-07-28-cancellation-sum-overcount/repro.md`.
+Re-run its SQL first — the figures below track the local prod dump and shift when it is refreshed.
+
+### Phase 1: The tile stops counting anulowania
+
+- [ ] `/raporty?from=2026-03-01&to=2026-03-31` — the tile reads 4 202 513,34 zł, not 7 192 866,38 zł.
+- [ ] The same URL with `&type=` naming every type except CANCELLATION now shows the _same_ tile figure and the same 379-row list.
+- [ ] January and February 2026 (zero anulowań) are unchanged — 354 675,00 and 191 030,00.
+- [ ] Pulpit as a MANAGER, `/?from=2026-03-01&to=2026-03-31` — „Ostatnie transakcje" tile matches its list too.
+- [ ] `?cancelledTransactionAudit=1` still shows a non-zero tile (the rejected fix would have zeroed it).
+
+### Phase 2: The amount filter's ceiling reaches the tile
+
+- [ ] `/raporty?amount=500,00` — 20 rows totalling 10 000,00 zł, and the tile reads 10 000,00 zł.
+- [ ] `/raporty?amount=500` (prefix, no separator) still lists every amount starting with 500 and its tile matches.
+
+### Phase 3: The tile says what it counts
+
+- [ ] `/raporty?showCancelled=1` with a filter active — an (i) sits next to the tile saying the sum skips anulowane transakcje.
+- [ ] Without `showCancelled`, no such (i) appears.
