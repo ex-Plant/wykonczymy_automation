@@ -206,7 +206,6 @@ export function SummaryPanelContent({
     taggedNet,
     taggedGross,
   })
-  const nettoShown = moneyAxis !== 'gross'
   // A brutto-settled investment adds VAT on top, so there is nothing to strip and the saved rate goes
   // inert — the same gate the server applies to `materialsNetDiscount`. Both sides fall silent
   // together rather than the panel discounting a figure marża never saw. The rate itself is kept, not
@@ -308,8 +307,8 @@ export function SummaryPanelContent({
                 // marża-side spend must fail closed on every path into a client render.
                 settledBreakdown={preview ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
-                nettoShown={nettoShown}
-                materialsNetRate={materialsNetRate}
+                materialsNetRate={effectiveNetRate}
+                vatRate={vatRate}
                 preview={preview}
                 showTransactions={showTransactionLists}
                 showPie={showPies}

@@ -23,11 +23,12 @@ type PropsT = {
   // „Razem". Absent on a host that doesn't compute it (the editor).
   settledBreakdown?: MaterialyBreakdownRowT[]
   materialTransactions: MaterialTransactionRowT[]
-  // Netto column is on show (axis ≠ Brutto) — gates the reduction split inside the table.
-  nettoShown: boolean
-  // The investment's saved netto rate (fraction) — read-only here; the control that writes it lives in
-  // the panel's settlement bar.
+  // The netto rate already gated by the settlement mode (fraction) — read-only here; the control that
+  // writes it lives in the panel's settlement bar. null = no rate governs, and the Netto column falls
+  // back to `vatRate`.
   materialsNetRate: number | null
+  // Fallback for the Netto column when no materiały rate is set.
+  vatRate: number
   // Read-only client render — no row links on the transactions list.
   preview?: boolean
   // Off on a host that already lists every materiały transaction next to the panel (the investment
@@ -43,24 +44,24 @@ export function SummaryExpensesTab({
   materialyBreakdown,
   settledBreakdown = [],
   materialTransactions,
-  nettoShown,
   materialsNetRate,
+  vatRate,
   preview = false,
   showTransactions = true,
   showPie = true,
 }: PropsT) {
-  const netPricingOn = materialsNetRate != null
+  // Presentation only: the column stands even where no rate governs and marża/bilans still run on the
+  // brutto receipts. Hence the VAT fallback — „ile to kosztowało bez VAT-u" is answerable on every
+  // investment, in every tryb rozliczenia. At rozliczenie brutto the incoming rate is null by design,
+  // so the column reads the VAT that actually prices the deal rather than an inert saved concession.
+  const displayNetRate = materialsNetRate ?? vatRate
 
   return (
     <div className="flex w-full flex-col gap-4">
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="flex flex-col gap-6">
           {materials.grossBase + materials.netBilled !== 0 && (
-            <MaterialsBreakdownTable
-              rows={materialyBreakdown}
-              netRate={materialsNetRate}
-              showReduction={nettoShown && netPricingOn}
-            />
+            <MaterialsBreakdownTable rows={materialyBreakdown} netRate={displayNetRate} />
           )}
           {/* Never rows inside the wydatki table: this spend is the company's, so it must be
               impossible to read as part of „Razem" or of the pie's shares. Its own gate too — an
