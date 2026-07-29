@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-merged-row-menu
 title: Merge the section and row action menus back into one two-group menu
-status: implemented
+status: archived
 created: 2026-07-26
-updated: 2026-07-26
-archived_at: null
+updated: 2026-07-29
+archived_at: 2026-07-29T11:57:21Z
 branch: null
 worktree: null
 ---
