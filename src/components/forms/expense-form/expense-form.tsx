@@ -8,7 +8,6 @@ import { useInvoiceFiles, type IngestResultT } from '@/components/forms/hooks/us
 import { useReceiptGeneration } from '@/components/forms/hooks/use-receipt-generation'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
 import { useSaldo } from '@/components/forms/hooks/use-saldo'
-import { useRoster } from '@/components/forms/hooks/use-roster'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
 import { SubmitPill } from '@/components/forms/submit-pill'
 import {
@@ -55,7 +54,6 @@ import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
 import { FormShell } from '../form-components/form-shell'
 import { SaldoSummary } from '../form-components/saldo-summary'
-import { PayoutRosterSummary } from '../form-components/payout-roster-summary'
 import { useExpenseFormStore } from '@/stores/form-stores'
 
 type TransferFormPropsT = {
@@ -288,11 +286,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
 
   const currentType = useStore(form.store, (s) => s.values.type)
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
-  const currentWorker = useStore(form.store, (s) => s.values.worker)
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
-  const { roster, isRosterLoading } = useRoster(
-    needsWorker(currentType) && currentInvestment ? currentInvestment : null,
-  )
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
   // TanStack Form preserves values of unmounted fields. When the user switches
@@ -320,7 +314,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
             {(field) => (
               <field.Select
-                className="mt-2"
                 label="Typ wydatku"
                 description={
                   billsNetAmount(currentType)
@@ -328,7 +321,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
                     : undefined
                 }
                 showError
-                fieldClassName="min-w-0 flex-1 mb-4 "
+                fieldClassName="min-w-0 flex-1"
               >
                 {TRANSACTION_TRANSFER_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
@@ -399,18 +392,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           />
         )}
       </FieldGroup>
-
-      {needsWorker(currentType) && currentInvestment && (
-        <PayoutRosterSummary
-          roster={roster}
-          isLoading={isRosterLoading}
-          investmentId={Number(currentInvestment)}
-          selectedWorkerId={currentWorker ? Number(currentWorker) : null}
-          selectedWorkerName={
-            referenceData.workers.find((worker) => String(worker.id) === currentWorker)?.name
-          }
-        />
-      )}
 
       {saldo !== null && <SaldoSummary saldo={saldo} total={total} />}
 
