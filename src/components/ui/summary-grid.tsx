@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils/cn'
+import { Description } from '@/components/ui/description'
 
 // Shared column widths for the stacked summary grids. Both render as CSS grids and pin their first
 // (label) column to the SAME width so the grids line up down the panel instead of each auto-sizing
@@ -50,6 +51,14 @@ const CELL_WEIGHT = {
 export type SummaryCellToneT = keyof typeof CELL_TONE
 export type SummaryCellWeightT = keyof typeof CELL_WEIGHT
 
+// A one-line note tucked under a cell's value — an inline explanation (why it's negative, why it's
+// unassigned) instead of a fourth unrelated row. Callers opt in with `note`; there is no second way
+// to attach one, so every cell's note reads and lays out the same.
+type SummaryCellNoteT = {
+  text: string
+  tone?: 'muted' | 'error'
+}
+
 type SummaryCellPropsT = {
   // Grey this cell (the inactive money column while both netto and brutto show). `opacity`, not a
   // muted text colour, so it also dims coloured amounts — success green, error red.
@@ -58,10 +67,26 @@ type SummaryCellPropsT = {
   weight?: SummaryCellWeightT
   className?: string
   children: ReactNode
+  note?: SummaryCellNoteT | null
+}
+
+function CellNote({ note }: { note: SummaryCellNoteT }) {
+  return (
+    <Description size="2xs" tone={note.tone ?? 'muted'} className="font-normal">
+      {note.text}
+    </Description>
+  )
 }
 
 // A label-track cell — one of the direct grid children the separators run between.
-export function SummaryLabelCell({ muted, tone, weight, className, children }: SummaryCellPropsT) {
+export function SummaryLabelCell({
+  muted,
+  tone,
+  weight,
+  className,
+  children,
+  note,
+}: SummaryCellPropsT) {
   return (
     <span
       className={cn(
@@ -69,16 +94,25 @@ export function SummaryLabelCell({ muted, tone, weight, className, children }: S
         CELL_TONE[tone ?? 'default'],
         CELL_WEIGHT[weight ?? 'default'],
         muted && 'opacity-40',
+        note && 'flex flex-col items-start',
         className,
       )}
     >
       {children}
+      {note && <CellNote note={note} />}
     </span>
   )
 }
 
 // A value-track cell — right-aligned, tabular figures.
-export function SummaryValueCell({ muted, tone, weight, className, children }: SummaryCellPropsT) {
+export function SummaryValueCell({
+  muted,
+  tone,
+  weight,
+  className,
+  children,
+  note,
+}: SummaryCellPropsT) {
   return (
     <span
       className={cn(
@@ -86,10 +120,12 @@ export function SummaryValueCell({ muted, tone, weight, className, children }: S
         CELL_TONE[tone ?? 'default'],
         CELL_WEIGHT[weight ?? 'default'],
         muted && 'opacity-40',
+        note && 'flex flex-col items-end',
         className,
       )}
     >
       {children}
+      {note && <CellNote note={note} />}
     </span>
   )
 }

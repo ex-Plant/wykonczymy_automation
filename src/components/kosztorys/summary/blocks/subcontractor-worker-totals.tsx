@@ -8,7 +8,6 @@ import {
   SummaryTable,
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
-import { Description } from '@/components/ui/description'
 import { OptionalLink } from '@/components/ui/optional-link'
 import { formatNet } from '@/lib/kosztorys/format'
 import { normalize } from '@/lib/utils/format-currency'
@@ -24,11 +23,14 @@ import type {
 // three cases call for three different responses — and only two of them are anybody's mistake:
 // `no_stages` and `overpaid` are wrong and read as alarms, while `no_executed_work` is an ordinary
 // prepayment and must stay quiet or it cries wolf on every advance. `settled` has nothing to explain.
-const STATE_QUALIFIER: Record<WorkerSettlementStateT, { text: string; isError: boolean } | null> = {
+const STATE_QUALIFIER: Record<
+  WorkerSettlementStateT,
+  { text: string; tone: 'muted' | 'error' } | null
+> = {
   settled: null,
-  overpaid: { text: 'Wypłacono więcej niż wykonano', isError: true },
-  no_stages: { text: 'Brak przypisanych etapów', isError: true },
-  no_executed_work: { text: 'Przypisane etapy bez wykonanych prac', isError: false },
+  overpaid: { text: 'Wypłacono więcej niż wykonano', tone: 'error' },
+  no_stages: { text: 'Brak przypisanych etapów', tone: 'error' },
+  no_executed_work: { text: 'Przypisane etapy bez wykonanych prac', tone: 'muted' },
 }
 
 // A negative „Pozostało do wypłaty" means the opposite of what the column header promises — nothing is
@@ -41,14 +43,9 @@ function RemainingCell({ amount, weight }: { amount: number; weight?: 'medium' |
     <SummaryValueCell
       tone={isNegative ? 'error' : 'default'}
       weight={weight}
-      className="flex flex-col items-end"
+      note={isNegative ? { text: 'nadpłacone', tone: 'error' } : undefined}
     >
       {formatNet(amount)}
-      {isNegative && (
-        <Description size="2xs" tone="error" className="font-normal">
-          nadpłacone
-        </Description>
-      )}
     </SummaryValueCell>
   )
 }
@@ -86,7 +83,7 @@ export function SubcontractorWorkerTotals({
         const qualifier = STATE_QUALIFIER[row.state]
         return (
           <div key={workerKey(row.workerId)} className="contents">
-            <SummaryLabelCell weight="medium" className="flex flex-col items-start">
+            <SummaryLabelCell weight="medium" note={qualifier}>
               <OptionalLink
                 href={
                   row.workerId === null
@@ -99,11 +96,6 @@ export function SubcontractorWorkerTotals({
               >
                 {row.name}
               </OptionalLink>
-              {qualifier && (
-                <Description size="2xs" tone={qualifier.isError ? 'error' : 'muted'}>
-                  {qualifier.text}
-                </Description>
-              )}
             </SummaryLabelCell>
             <SummaryValueCell>{formatNet(row.due)}</SummaryValueCell>
             <SummaryValueCell tone="success" weight="medium">
