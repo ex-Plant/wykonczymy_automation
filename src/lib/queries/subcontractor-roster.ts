@@ -17,8 +17,7 @@ import { perfStart } from '@/lib/perf'
 export type SubcontractorRosterT = {
   rows: SubcontractorWorkerRowT[]
   // Etapy with executed work and nobody assigned — the reason the per-person „pozostało" figures
-  // below read SHORT. The count, not just a sum: a warning that names a number gives the reader
-  // something to go and open.
+  // below read SHORT.
   unassignedStageCount: number
 }
 
@@ -33,8 +32,7 @@ export type SubcontractorRosterT = {
  * the one `context/foundation/lessons.md` records: two surfaces quoting a different amount for the
  * same money, both green.
  *
- * The consequence of using the SAVED tree is worth stating: unsaved edits in an open editor are not
- * in these figures. That is correct for a dialog on another page — it can only honestly report what
+ * Unsaved edits in an open editor are not in these figures. That is correct for a dialog on another page — it can only honestly report what
  * is persisted — but it is why the manual check compares the two with nothing unsaved.
  */
 export async function getSubcontractorRoster(investmentId: number): Promise<SubcontractorRosterT> {

@@ -1,3 +1,4 @@
+import { normalize } from '@/lib/utils/format-currency'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 import type { PayoutByWorkerT, SubcontractorPayoutRowT } from '@/types/transfers'
@@ -67,18 +68,19 @@ export type SubcontractorSummaryT = {
   payoutsTotal: number
   // „Pozostało do wypłaty" = dueNet − payoutsTotal. Negative = the crew has been overpaid.
   remaining: number
-  // Per-worker rows over the UNION of both sides, sorted by `remaining` desc with the null bucket
-  // („Bez przypisanego pracownika") pinned last regardless of amount.
   rows: SubcontractorWorkerRowT[]
 }
 
 function settlementState(
+  workerId: number | null,
   due: number,
   remaining: number,
   hasStages: boolean,
 ): WorkerSettlementStateT {
   if (remaining >= 0) return 'settled'
-  if (due > 0) return 'overpaid'
+  // The residual bucket is not a person, so the two assignment-shaped explanations would be nonsense
+  // against it — „nikt nie przypisał mu etapów" IS the definition of the bucket.
+  if (workerId === null || due > 0) return 'overpaid'
   return hasStages ? 'no_executed_work' : 'no_stages'
 }
 
@@ -101,11 +103,10 @@ export function computeSubcontractorSummary(
   { byWorker = new Map(), stages = [], workers = [] }: SubcontractorSummaryInputT = {},
 ): SubcontractorSummaryT {
   const payoutsTotal = payouts.reduce((sum, row) => sum + row.total, 0)
-  const paidByWorker = new Map(payouts.map((row) => [row.workerId, row.total]))
+  const payoutByWorker = new Map(payouts.map((row) => [row.workerId, row]))
   // Payout rows already carry a resolved name; a worker who appears only through an assignment does
   // not, so the roster is the fallback lookup.
   const nameById = new Map(workers.map((worker) => [worker.id, worker.name]))
-  const nameByWorkerId = new Map(payouts.map((row) => [row.workerId, row.name]))
   // From `stages`, NOT from `byWorker`: an etap with no rozliczenie is skipped before the settlement
   // credits anyone, so a worker holding only plane-less etapy is absent from `byWorker` while being
   // very much assigned. Reading "has etapy" off the money is what would mislabel them „nie ma
@@ -113,24 +114,29 @@ export function computeSubcontractorSummary(
   const assignedWorkerIds = new Set<number | null>(stages.map((stage) => stage.workerId))
 
   const workerIds = new Set<number | null>([
-    ...paidByWorker.keys(),
+    ...payoutByWorker.keys(),
     ...byWorker.keys(),
     ...assignedWorkerIds,
   ])
   const rows: SubcontractorWorkerRowT[] = [...workerIds]
     .map((workerId) => {
+      const payout = payoutByWorker.get(workerId)
       const due = byWorker.get(workerId) ?? 0
-      const paid = paidByWorker.get(workerId) ?? 0
+      const paid = payout?.total ?? 0
+      // `due` is a repeated float multiply/add over the etap quantities while `paid` is a Postgres
+      // SUM, so paying out exactly the computed należne — the normal case — leaves the two differing
+      // by ~1e-13. Unnormalized that is enough to paint a square worker red as „nadpłata -0,00".
+      const remaining = normalize(due - paid)
       return {
         workerId,
         name:
           workerId === null
             ? UNASSIGNED_WORKER_NAME
-            : (nameByWorkerId.get(workerId) ?? nameById.get(workerId) ?? 'Nieznany pracownik'),
+            : (payout?.name ?? nameById.get(workerId) ?? 'Nieznany pracownik'),
         due,
         paid,
-        remaining: due - paid,
-        state: settlementState(due, due - paid, assignedWorkerIds.has(workerId)),
+        remaining,
+        state: settlementState(workerId, due, remaining, assignedWorkerIds.has(workerId)),
       }
     })
     // A named worker with 0/0 still earns a row — „przypisany, nic nie zrobione" is information. The
@@ -144,5 +150,5 @@ export function computeSubcontractorSummary(
     return b.remaining - a.remaining
   })
 
-  return { dueNet, payoutsTotal, remaining: dueNet - payoutsTotal, rows }
+  return { dueNet, payoutsTotal, remaining: normalize(dueNet - payoutsTotal), rows }
 }

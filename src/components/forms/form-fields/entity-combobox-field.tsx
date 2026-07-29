@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { ActiveFilterLabel } from './active-filter-label'
+import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
+import { isActiveRef } from '@/lib/utils/is-active-ref'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type EntityItemT = {
@@ -59,7 +60,7 @@ export function EntityComboboxField({
   const config = VARIANT_CONFIG[variant]
 
   const filtered = items
-    .filter((item) => !activeOnly || item.active !== false)
+    .filter((item) => !activeOnly || isActiveRef(item))
     .map((item) => ({ value: String(item.id), label: item.name }))
 
   const emptyMessage = items.length === 0 ? config.noItemsMessage : config.noActiveItemsMessage

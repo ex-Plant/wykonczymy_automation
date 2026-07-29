@@ -98,7 +98,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const resetFormData = useExpenseFormStore((s) => s.resetFormData)
 
   const { saldo, isSaldoLoading, fetchSaldo, resetSaldo } = useSaldo()
-  const { roster, isRosterLoading, loadRoster, resetRoster } = useRoster()
 
   // Rows whose picked file is still being processed at ingest (HEIC convert can take ~1-2 s). The
   // row shows a spinner and its actions are disabled meanwhile, and a batch scan waits for ingest
@@ -178,7 +177,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   function handleReset() {
     resetFormData()
     resetSaldo()
-    resetRoster()
     resetInvoiceFiles()
     resetGeneration()
     form.setFieldValue('lineItems', [makeLineItem()])
@@ -292,6 +290,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
   const currentWorker = useStore(form.store, (s) => s.values.worker)
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
+  const { roster, isRosterLoading } = useRoster(
+    needsWorker(currentType) && currentInvestment ? currentInvestment : null,
+  )
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
   // TanStack Form preserves values of unmounted fields. When the user switches
@@ -310,7 +311,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     resetInvoiceFiles()
     resetGeneration()
     resetSaldo()
-    resetRoster()
   }
 
   return (
@@ -342,19 +342,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         </div>
 
         {showsInvestment(currentType) && (
-          <EntityComboboxField
-            form={form}
-            variant="investment"
-            items={referenceData.investments}
-            // Only a wypłata has anything to reconcile against the kosztorys, so only a wypłata pays
-            // for the fetch. Clearing the investment clears the roster rather than leaving the
-            // previous investment's figures on screen under a new one.
-            listeners={
-              needsWorker(currentType)
-                ? { onChange: ({ value }) => void loadRoster(value) }
-                : undefined
-            }
-          />
+          <EntityComboboxField form={form} variant="investment" items={referenceData.investments} />
         )}
 
         {canBeSettled(currentType) && (
@@ -388,15 +376,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         <PaymentMethodField form={form} />
 
         {needsWorker(currentType) && (
-          <EntityComboboxField
-            form={form}
-            variant="worker"
-            items={referenceData.workers}
-            // Also loads the roster: the investment is often pre-filled from the URL and never
-            // picked by hand, so the investment listener would never fire. `loadRoster` is
-            // idempotent per id, so the common path (both fields picked) still fetches once.
-            listeners={{ onChange: () => void loadRoster(currentInvestment) }}
-          />
+          <EntityComboboxField form={form} variant="worker" items={referenceData.workers} />
         )}
 
         {!isDepositType(currentType) && (

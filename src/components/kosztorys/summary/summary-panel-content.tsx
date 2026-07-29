@@ -274,8 +274,8 @@ export function SummaryPanelContent({
             subcontractorDue={subcontractorDue}
             payouts={payoutsByWorker ?? []}
             payoutTransactions={payoutTransactions ?? []}
-            stages={stages ?? []}
-            workers={workers ?? []}
+            stages={stages}
+            workers={workers}
             showGlobalSettings={showSettingsBar}
             showTransactions={showTransactionLists}
             // Same signal, not a second one: the host that drops the lists is the compact host, and

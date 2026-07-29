@@ -18,8 +18,7 @@ export type BuildV2ColumnsOptsT = {
   onRemoveStage?: (stageId: number) => void
   onRenameStage?: (stageId: number, label: string) => void
   onSetStagePlane?: (stageId: number, plane: ToolPlaneT) => void
-  // Worker↔etap assignment (EX-613): the roster the header picker offers, the write, and the etap's
-  // executed value — the last one only so the reassignment confirm can quote the amount.
+  // `executedValueByStage` is passed only so the reassignment confirm can quote the amount.
   workers?: WorkerRefT[]
   onSetStageWorker?: (stageId: number, workerId: number | null) => void
   executedValueByStage?: Map<number, number>

@@ -117,11 +117,7 @@ describe('computeSubcontractorSummary — per-worker attribution', () => {
   })
 
   describe('the three kinds of red', () => {
-    const stateFor = (
-      due: number,
-      paid: number,
-      stages: KosztorysStageT[],
-    ): string | undefined => {
+    const stateFor = (due: number, paid: number, stages: KosztorysStageT[]): string | undefined => {
       const byWorker = due > 0 ? new Map([[1, due]]) : new Map<number | null, number>()
       return computeSubcontractorSummary(due, [payout(1, paid, 'Anna')], { byWorker, stages })
         .rows[0]?.state
@@ -144,8 +140,32 @@ describe('computeSubcontractorSummary — per-worker attribution', () => {
       ).toBe('no_executed_work')
     })
 
+    // The residual bucket is not a person. Left person-shaped it came back `no_stages`, and every
+    // renderer of that state says „ta osoba nie ma przypisanych etapów" — which is the bucket's own
+    // definition, not a finding.
+    it('the null bucket is only ever settled or overpaid', () => {
+      const { rows } = computeSubcontractorSummary(0, [payout(null, 500)], {
+        byWorker: new Map(),
+        stages: [],
+      })
+      expect(rows[0]?.workerId).toBe(null)
+      expect(rows[0]?.state).toBe('overpaid')
+    })
+
     it('settled — nothing negative to explain', () => {
       expect(stateFor(200, 150, [stage(10, 1)])).toBe('settled')
+    })
+
+    // `due` is a float sum over etap quantities, `paid` a Postgres SUM. Paying exactly what is owed
+    // used to leave remaining at ~-1e-13, which rendered a square worker as a red „nadpłata -0,00".
+    it('paying exactly the należne is settled, not a float-noise overpayment', () => {
+      const due = 0.1 + 0.2
+      const { rows } = computeSubcontractorSummary(due, [payout(1, 0.3, 'Anna')], {
+        byWorker: new Map([[1, due]]),
+        stages: [stage(10, 1)],
+      })
+      expect(rows[0]?.remaining).toBe(0)
+      expect(rows[0]?.state).toBe('settled')
     })
   })
 })

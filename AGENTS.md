@@ -173,6 +173,8 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   It started as financial calculations only and is now much wider (`get-db`, `where-to-sql`,
   `with-payload-transaction`, `snapshots`, `presets`, `notifications`, `kosztorys-tree`) — read the rule,
   not the original theme, when deciding whether a new file lands here.
+  A **read** a client component invokes on demand is a `'use server'` function in `src/lib/queries`
+  (`register-saldo.ts`, `subcontractor-roster.ts`) — never in `src/lib/actions`, which is mutations only.
 - `src/lib/cache` — cache tags + revalidation helpers
 - Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only)
 

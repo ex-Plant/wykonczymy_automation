@@ -4,7 +4,6 @@ import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-ve
 // Per-etap worker assignment (EX-613): who is to do this etap, so należne stops being an
 // investment-level lump. Nullable and no backfill — unlike `plane`, NULL is a legitimate resting
 // state (an unassigned etap gets its own residual row) and never locks quantity entry.
-// ON DELETE SET NULL so removing a user only unassigns their etapy.
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     ALTER TABLE "kosztorys_stages"

@@ -28,6 +28,7 @@ vi.mock('@/lib/queries/investment-transactions', () => ({ fetchPayoutsByWorkerFo
 vi.mock('@/lib/queries/reference-data', () => ({ fetchReferenceData }))
 
 const { getSubcontractorRoster } = await import('@/lib/queries/subcontractor-roster')
+const { requireAuth } = await import('@/lib/auth/require-auth')
 
 const worker = (id: number, name: string): WorkerRefT => ({
   id,
@@ -128,5 +129,14 @@ describe('getSubcontractorRoster', () => {
     expect(rows[0]).toMatchObject({ workerId: 2, due: 0, paid: 300, remaining: -300 })
     // „Nikt ci nie przypisał etapów" — not „przepłaciłeś". The dialog leans on this to pick its badge.
     expect(rows[0].state).toBe('no_stages')
+  })
+
+  // The roster is a new server entry point that newly exposes per-person owed money, so the gate
+  // itself is worth pinning — not just what it returns once you are through it.
+  it('throws instead of returning figures when the caller is not MANAGEMENT', async () => {
+    vi.mocked(requireAuth).mockResolvedValueOnce({ success: false, error: 'Brak uprawnień' })
+
+    await expect(getSubcontractorRoster(7)).rejects.toThrow('Brak uprawnień')
+    expect(buildKosztorysTree).not.toHaveBeenCalled()
   })
 })

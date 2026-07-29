@@ -298,7 +298,10 @@ union of both source sets.
   existing pin)
 - `state` distinguishes the three red cases: `'overpaid'` (`due > 0 && remaining < 0`),
   `'no_stages'` (`due === 0` and the worker has no assigned etap), `'no_executed_work'` (`due === 0`
-  but etapy are assigned — nothing executed yet)
+  but etapy are assigned — nothing executed yet). **As implemented these three are gated behind
+  `remaining < 0` first, so a `due 0 / paid 0` worker reads as `settled` and carries no qualifier —
+  a deliberate narrowing (pinned by `subcontractor-summary.test.ts`), recorded here at the review
+  gate so it isn't re-read as drift.**
 - the residual row for **etapy with no worker** is its own row, never distributed across assigned
   workers
 
@@ -497,6 +500,6 @@ Run once, after the final phase:
 
 #### Automated
 
-- [x] 3.1 Parity: server roster `due` === client derivation `due`, per worker
-- [x] 3.2 Roster shape: no investment → no roster; payout-only rows when no etapy
-- [x] 3.3 A PAYOUT for a worker with no assigned etapy persists
+- [x] 3.1 Parity: server roster `due` === client derivation `due`, per worker — d9b3a06a
+- [x] 3.2 Roster shape: no investment → no roster; payout-only rows when no etapy — d9b3a06a
+- [x] 3.3 A PAYOUT for a worker with no assigned etapy persists — d9b3a06a

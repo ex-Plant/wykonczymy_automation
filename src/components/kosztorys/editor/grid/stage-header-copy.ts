@@ -5,6 +5,8 @@ export const STAGE_HEADER_COPY = {
   workerSectionLabel: 'Pracownik / ekipa',
   workerUnassigned: 'Bez przypisania',
   workerUnknown: 'nieznana osoba',
+  searchPlaceholder: 'Szukaj pracownika...',
+  searchEmpty: 'Nie znaleziono pracownika.',
   workerNeedsPlane:
     'Najpierw wybierz rozliczenie etapu — bez niego etap nie ma ceny, więc nikomu nic nie nalicza.',
   planeUnconfirmed:

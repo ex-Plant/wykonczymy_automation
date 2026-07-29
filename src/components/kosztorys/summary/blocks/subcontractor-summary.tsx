@@ -57,16 +57,21 @@ export function SubcontractorSummary({
   return (
     <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-        <SubcontractorHeadlineSummary
-          summary={summary}
-          due={subcontractorDue}
-          showPlanes={showBreakdown}
-        />
+        {/* The multiplier controls ride under the headline rather than under the whole row: they
+            price exactly the figures in that table, and the per-worker table next to it is taller,
+            so sitting below both left them floating an inch from what they act on. */}
+        <div className="flex flex-col gap-y-4">
+          <SubcontractorHeadlineSummary
+            summary={summary}
+            due={subcontractorDue}
+            showPlanes={showBreakdown}
+          />
+          {showGlobalSettings && <EditorGlobalSettings />}
+        </div>
         {showBreakdown && summary.rows.length > 0 && (
           <SubcontractorWorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
       </div>
-      {showGlobalSettings && <EditorGlobalSettings />}
 
       {showTransactions && payoutTransactions.length > 0 && (
         <CollapsibleSection title="Lista wpłat" size="sm" className="w-fit">

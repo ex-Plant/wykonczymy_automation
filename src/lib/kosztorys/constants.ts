@@ -18,6 +18,15 @@ export const PLANE_LABELS: Record<ToolPlaneT, string> = {
   own_tools: 'Bez narzędzi',
 }
 
+// The three figures of the subcontractor settlement, named once. The headline block reads them as row
+// labels and the per-worker table as column headers — the same three amounts, so a reader must never
+// have to work out that „Należne" and „Suma wykonanej pracy" were the same thing.
+export const SUBCONTRACTOR_FIGURE_LABELS = {
+  due: 'Suma wykonanej pracy',
+  payouts: 'Zaliczki (wypłaty)',
+  remaining: 'Pozostało do wypłaty',
+} as const
+
 // Default subcontractor markup coefficients for an investment — the single source for both the
 // Payload column `defaultValue` (src/collections/investments.ts) and the query fallback
 // (src/lib/queries/kosztorys.ts). A section or item may override them.

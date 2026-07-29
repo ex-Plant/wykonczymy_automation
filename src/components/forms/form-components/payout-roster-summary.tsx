@@ -8,13 +8,13 @@ import { cn } from '@/lib/utils/cn'
 import { workerKey } from '@/lib/kosztorys/subcontractor-summary'
 import type { SubcontractorRosterT } from '@/lib/queries/subcontractor-roster'
 
-function etapNoun(count: number): string {
+function stageNoun(count: number): string {
   return pluralize(count, ['etap', 'etapy', 'etapów'])
 }
 
 // The badge next to ONE worker's figure, so it needs its own aria-label: `PlaneUnconfirmedBadge`'s
-// names rozliczenie etapu and `ReconMismatchBadge`'s is asserted by E2E — reusing either would make
-// the wrong sentence readable to a screen reader and to a test.
+// names rozliczenie etapu and `LabelHintIcon`'s `mismatch` variant is asserted by E2E — reusing
+// either would make the wrong sentence readable to a screen reader and to a test.
 function NoStagesBadge() {
   return (
     <HintTooltip
@@ -27,14 +27,10 @@ function NoStagesBadge() {
 }
 
 /**
- * What this investment already owes each person, shown while a wypłata is being written. Read-only
- * and non-blocking on purpose: it never touches `transferFieldRules`, never becomes a zod issue and
- * never gates submit — a wypłata to somebody with no etapy is a legitimate thing to record, it is
- * just a thing worth seeing before you record it.
+ * Read-only and non-blocking on purpose: it never touches `transferFieldRules`, never becomes a zod
+ * issue and never gates submit — a wypłata to somebody with no etapy is legitimate to record.
  *
- * Both warnings say the same underlying thing from two directions — the assignment is missing, so a
- * figure on screen is wrong — and both name a count and offer somewhere to go, per
- * `SettlementPlaneWarning`'s rule. A red banner that only states a sum becomes furniture.
+ * Both warnings name a count and offer somewhere to go, per `SettlementPlaneWarning`'s rule.
  */
 export function PayoutRosterSummary({
   roster,
@@ -78,8 +74,8 @@ export function PayoutRosterSummary({
 
       {roster.unassignedStageCount > 0 && (
         <WarningBanner>
-          {roster.unassignedStageCount} {etapNoun(roster.unassignedStageCount)} z wykonanymi pracami
-          nie ma przypisanej osoby — kwoty poniżej są zaniżone o tę robociznę.{' '}
+          {roster.unassignedStageCount} {stageNoun(roster.unassignedStageCount)} z wykonanymi
+          pracami nie ma przypisanej osoby — kwoty poniżej są zaniżone o tę robociznę.{' '}
           <Link href={`/inwestycje/${investmentId}/kosztorys_v2`} className="underline">
             Przypisz etapy
           </Link>

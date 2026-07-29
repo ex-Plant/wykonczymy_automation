@@ -882,8 +882,8 @@ export function useKosztorysEditor({
   }
 
   // Optimistic worker pick, mirroring handleSetStagePlane. Diverges in one place: `null` is a legal
-  // target („Bez przypisania"), so the patch is nullable and unassigning is a normal edit, not an
-  // impossible one. No undo push — matching plane, and reassigning back is the exact inverse.
+  // target („Bez przypisania"). No undo push — matching plane, and reassigning back is the exact
+  // inverse.
   function handleSetStageWorker(stageId: number, workerId: number | null) {
     const current = stagesRef.current.find((st) => st.id === stageId)
     if (current && current.workerId === workerId) return

@@ -97,8 +97,6 @@ export type KosztorysStageT = {
   ordinal: number
   label: string | null
   plane: ToolPlaneT | null
-  // Who is to do this etap. null = unassigned, which is a resting state, not an unconfirmed
-  // default — it earns its own residual row rather than a warning.
   workerId: number | null
 }
 
