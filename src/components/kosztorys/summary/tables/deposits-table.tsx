@@ -72,9 +72,7 @@ export function DepositsTable({
         {rows.map((row) => (
           <Fragment key={row.id}>
             {dateCell(row)}
-            <SummaryValueCell className="text-chart-green">
-              {formatNet(row.amount)}
-            </SummaryValueCell>
+            <SummaryValueCell tone="success">{formatNet(row.amount)}</SummaryValueCell>
             <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>
           </Fragment>
         ))}
@@ -83,10 +81,10 @@ export function DepositsTable({
       <SummaryTable cols={totalCols} className="-mt-px w-fit">
         {perPlane.map((bucket) => (
           <Fragment key={bucket.plane ?? 'null'}>
-            <SummaryLabelCell className="font-bold">
+            <SummaryLabelCell weight="bold">
               Razem {planeLabel(bucket.plane).toLowerCase()}
             </SummaryLabelCell>
-            <SummaryValueCell className="text-chart-green font-bold">
+            <SummaryValueCell tone="success" weight="bold">
               {formatNet(bucket.total)}
             </SummaryValueCell>
           </Fragment>

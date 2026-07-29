@@ -7,7 +7,6 @@ import { SCOPE_MARKER_HINT } from '@/components/kosztorys/summary/scope-marker'
 import { formatNet } from '@/lib/kosztorys/format'
 import { axisShows, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { MoneyPairT, SummaryLineT } from '@/lib/kosztorys/summary-economics'
-import { cn } from '@/lib/utils/cn'
 
 export type SummaryRowOptsT = {
   emphasize?: boolean
@@ -48,12 +47,12 @@ type SummaryRowPropsT = SummaryRowOptsT & {
  */
 export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
   const { net: showNet, gross: showGross } = axisShows(axis)
-  const weight = cn(opts.emphasize && 'font-medium', opts.bold && 'font-bold')
-  const accent = cn(opts.discount && 'text-chart-green', opts.danger && 'text-destructive')
+  const weight = opts.bold ? 'bold' : opts.emphasize ? 'medium' : 'default'
+  const tone = opts.discount ? 'success' : opts.danger ? 'error' : 'default'
 
   return (
     <Fragment>
-      <SummaryLabelCell className={weight}>
+      <SummaryLabelCell weight={weight}>
         <span className="inline-flex items-center gap-1">
           {label}
           {opts.scopeMarked && (
@@ -80,14 +79,14 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
         </span>
       </SummaryLabelCell>
       {showNet && (
-        <SummaryValueCell key="net" className={cn(weight, accent)}>
+        <SummaryValueCell key="net" weight={weight} tone={tone}>
           {formatNet(line.net)}
         </SummaryValueCell>
       )}
       {/* A no-VAT row repeats its netto figure in the brutto cell rather than blanking: the amount
           IS the brutto (VAT doesn't apply), so restating it reads clearer than an absence. */}
       {showGross && (
-        <SummaryValueCell key="gross" className={cn(weight, accent)}>
+        <SummaryValueCell key="gross" weight={weight} tone={tone}>
           {formatNet(opts.noBrutto ? line.net : line.gross)}
         </SummaryValueCell>
       )}

@@ -10,10 +10,9 @@ import {
 } from '@/components/ui/summary-grid'
 import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { formatNet } from '@/lib/kosztorys/format'
-import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { PLANE_LABELS, SUBCONTRACTOR_FIGURE_LABELS } from '@/lib/kosztorys/constants'
 import type { SubcontractorSummaryT } from '@/lib/kosztorys/subcontractor-summary'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
-import { cn } from '@/lib/utils/cn'
 
 // Explains the badge: an etap with no rozliczenie belongs to neither crew, so it lands in neither
 // amount — „Suma wykonanej pracy" UNDERstates the executed work until every etap is assigned.
@@ -48,23 +47,23 @@ export function SubcontractorHeadlineSummary({
         </div>
       )}
 
-      <SummaryLabelCell className="flex items-center gap-x-2 font-bold">
-        Suma wykonanej pracy
+      <SummaryLabelCell weight="bold" className="flex items-center gap-x-2">
+        {SUBCONTRACTOR_FIGURE_LABELS.due}
         {due.hasUnconfirmedPlane && (
           <PlaneUnconfirmedBadge content={UNCONFIRMED_PLANE_HINT} className="size-4" />
         )}
       </SummaryLabelCell>
-      <SummaryValueCell className="font-bold">{formatNet(due.combined)}</SummaryValueCell>
+      <SummaryValueCell weight="bold">{formatNet(due.combined)}</SummaryValueCell>
 
-      <SummaryLabelCell className="font-medium">Zaliczki (wypłaty) razem</SummaryLabelCell>
-      <SummaryValueCell className="text-chart-green font-medium">
+      <SummaryLabelCell weight="medium">{SUBCONTRACTOR_FIGURE_LABELS.payouts}</SummaryLabelCell>
+      <SummaryValueCell tone="success" weight="medium">
         {formatNet(summary.payoutsTotal)}
       </SummaryValueCell>
 
       {/* Pozostało do wypłaty = należne − zaliczki. Negative = the crew has been overpaid — an
           anomaly, so it reads red; a normal positive „still owed" stays neutral bold. */}
-      <SummaryLabelCell className="font-bold">Pozostało do wypłaty</SummaryLabelCell>
-      <SummaryValueCell className={cn('font-bold', summary.remaining < 0 && 'text-destructive')}>
+      <SummaryLabelCell weight="bold">{SUBCONTRACTOR_FIGURE_LABELS.remaining}</SummaryLabelCell>
+      <SummaryValueCell tone={summary.remaining < 0 ? 'error' : 'default'} weight="bold">
         {formatNet(summary.remaining)}
       </SummaryValueCell>
     </SummaryTable>

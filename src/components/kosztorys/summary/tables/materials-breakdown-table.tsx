@@ -64,13 +64,11 @@ export function MaterialsBreakdownTable({
           )}
         </Fragment>
       ))}
-      <SummaryLabelCell className="font-bold">Razem</SummaryLabelCell>
-      <SummaryValueCell className="font-bold">{formatNet(totalGross)}</SummaryValueCell>
+      <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
+      <SummaryValueCell weight="bold">{formatNet(totalGross)}</SummaryValueCell>
+      {showReduction && <SummaryValueCell weight="bold">{formatNet(totalNet)}</SummaryValueCell>}
       {showReduction && (
-        <SummaryValueCell className="font-bold">{formatNet(totalNet)}</SummaryValueCell>
-      )}
-      {showReduction && (
-        <SummaryValueCell className="text-muted-foreground font-bold">
+        <SummaryValueCell weight="bold" className="text-muted-foreground">
           −{formatNet(totalGross - totalNet)}
         </SummaryValueCell>
       )}

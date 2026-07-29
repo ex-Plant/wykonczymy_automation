@@ -32,29 +32,59 @@ export function SummaryTable({
   )
 }
 
+// The only three colours a summary cell may take — a bare grep for `text-chart-green` /
+// `text-destructive` anywhere under summary/ means someone bypassed this and repaint drifts.
+const CELL_TONE = {
+  default: '',
+  success: 'text-chart-green',
+  error: 'text-destructive',
+} as const
+
+// The only two weights a summary cell may take, beyond the unstyled default.
+const CELL_WEIGHT = {
+  default: '',
+  medium: 'font-medium',
+  bold: 'font-bold',
+} as const
+
+export type SummaryCellToneT = keyof typeof CELL_TONE
+export type SummaryCellWeightT = keyof typeof CELL_WEIGHT
+
 type SummaryCellPropsT = {
   // Grey this cell (the inactive money column while both netto and brutto show). `opacity`, not a
-  // muted text colour, so it also dims coloured amounts — discount green, danger red.
+  // muted text colour, so it also dims coloured amounts — success green, error red.
   muted?: boolean
+  tone?: SummaryCellToneT
+  weight?: SummaryCellWeightT
   className?: string
   children: ReactNode
 }
 
 // A label-track cell — one of the direct grid children the separators run between.
-export function SummaryLabelCell({ muted, className, children }: SummaryCellPropsT) {
+export function SummaryLabelCell({ muted, tone, weight, className, children }: SummaryCellPropsT) {
   return (
-    <span className={cn('bg-background px-3 py-1', muted && 'opacity-40', className)}>
+    <span
+      className={cn(
+        'bg-background px-3 py-1',
+        CELL_TONE[tone ?? 'default'],
+        CELL_WEIGHT[weight ?? 'default'],
+        muted && 'opacity-40',
+        className,
+      )}
+    >
       {children}
     </span>
   )
 }
 
 // A value-track cell — right-aligned, tabular figures.
-export function SummaryValueCell({ muted, className, children }: SummaryCellPropsT) {
+export function SummaryValueCell({ muted, tone, weight, className, children }: SummaryCellPropsT) {
   return (
     <span
       className={cn(
         'bg-background px-3 py-1 text-right tabular-nums',
+        CELL_TONE[tone ?? 'default'],
+        CELL_WEIGHT[weight ?? 'default'],
         muted && 'opacity-40',
         className,
       )}
