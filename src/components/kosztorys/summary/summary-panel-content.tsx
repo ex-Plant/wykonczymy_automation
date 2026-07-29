@@ -2,12 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { TriangleAlert } from 'lucide-react'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import {
-  settlementModeToGridAxis,
-  settlementModeToPanelAxis,
-  type SettlementModeT,
-} from '@/lib/kosztorys/settlement-mode'
+import { settlementModeToPanelAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
@@ -44,7 +39,7 @@ import type {
 
 const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'summary', label: 'Podsumowanie' },
-  { value: 'expenses', label: 'Wydatki' },
+  { value: 'expenses', label: 'Materiały' },
   { value: 'stages', label: 'Robocizna' },
   { value: 'subcontractors', label: 'Podwykonawcy' },
   { value: 'margin', label: 'Marża' },
@@ -211,10 +206,6 @@ export function SummaryPanelContent({
     taggedNet,
     taggedGross,
   })
-  // The tables show one money column — the settled one. Mieszane is the exception: it's a mixed
-  // netto+brutto settlement, so it shows both columns alongside the gotówka block. Same projection
-  // the grid uses, so a table and a column can't disagree about what „Mieszane" means.
-  const displayAxis: MoneyAxisT = settlementModeToGridAxis(settlementMode)
   const nettoShown = moneyAxis !== 'gross'
   // A brutto-settled investment adds VAT on top, so there is nothing to strip and the saved rate goes
   // inert — the same gate the server applies to `materialsNetDiscount`. Both sides fall silent
@@ -332,7 +323,6 @@ export function SummaryPanelContent({
                 wykonaneNet={totalNet ?? 0}
                 sectionSubtotals={sectionSubtotals ?? []}
                 vatRate={vatRate}
-                moneyAxis={displayAxis}
               />
             )}
             {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
