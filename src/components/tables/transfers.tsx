@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
+import { OptionalLink } from '@/components/ui/optional-link'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { formatPLDate, formatPLDateTime } from '@/lib/utils/format-date'
 import { InvoiceCell } from '@/components/transfers/invoice-cell'
@@ -71,11 +71,10 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.investmentId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/inwestycje/${id}`} className="hover:underline">
+        <OptionalLink href={name !== '—' && id ? `/inwestycje/${id}` : undefined}>
           {name}
-        </Link>
+        </OptionalLink>
       )
     },
   }),
@@ -148,11 +147,8 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.sourceRegisterId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/kasa/${id}`} className="hover:underline">
-          {name}
-        </Link>
+        <OptionalLink href={name !== '—' && id ? `/kasa/${id}` : undefined}>{name}</OptionalLink>
       )
     },
   }),
@@ -162,11 +158,8 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.targetRegisterId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/kasa/${id}`} className="hover:underline">
-          {name}
-        </Link>
+        <OptionalLink href={name !== '—' && id ? `/kasa/${id}` : undefined}>{name}</OptionalLink>
       )
     },
   }),
@@ -182,11 +175,10 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.workerId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/pracownicy/${id}`} className="hover:underline">
+        <OptionalLink href={name !== '—' && id ? `/pracownicy/${id}` : undefined}>
           {name}
-        </Link>
+        </OptionalLink>
       )
     },
   }),

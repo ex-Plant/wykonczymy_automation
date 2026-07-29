@@ -45,10 +45,8 @@ type EntityComboboxFieldPropsT = {
   form: any
   variant: keyof typeof VARIANT_CONFIG
   items: EntityItemT[]
-  // Forwarded to the inner AppField; only onChange is used at call sites (reset a dependent field,
-  // or load something keyed on the new selection). Declared with the arg so a call site can read the
-  // picked value — a zero-arg callback stays assignable.
-  listeners?: { onChange?: (info: { value: string }) => void }
+  // Forwarded to the inner AppField; only onChange is used at call sites (reset a dependent field).
+  listeners?: { onChange?: () => void }
 }
 
 export function EntityComboboxField({
