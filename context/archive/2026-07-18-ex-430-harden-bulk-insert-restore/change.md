@@ -1,10 +1,10 @@
 ---
 change_id: ex-430-harden-bulk-insert-restore
 title: Harden bulk-INSERT restore — ORDINALITY id-mapping + owed tests
-status: implemented
+status: archived
 created: 2026-07-18
-updated: 2026-07-28
-archived_at: null
+updated: 2026-07-29
+archived_at: 2026-07-29T11:54:06Z
 branch: staging
 worktree: null
 ---
