@@ -1,8 +1,6 @@
 import { Fragment, type ReactNode } from 'react'
-import { Info } from 'lucide-react'
-import { HintTooltip } from '@/components/ui/tooltip'
 import { SummaryLabelCell, SummaryValueCell } from '@/components/ui/summary-grid'
-import { ReconMismatchBadge } from '@/components/ui/recon-mismatch-badge'
+import type { LabelHintT } from '@/components/ui/label-hint-icon'
 import { SCOPE_MARKER_HINT } from '@/components/kosztorys/summary/scope-marker'
 import { formatNet } from '@/lib/kosztorys/format'
 import { axisShows, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
@@ -53,29 +51,23 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
   // netto-less row) as an always-visible caption, the same primitive the negative-remaining and
   // worker-qualifier notes use.
   const note = opts.hint ? { text: opts.hint, tone: 'muted' as const } : undefined
+  // The row states WHICH hints it wants; the cell owns how every one of them renders. `noVat` flags
+  // the brutto cell repeating its netto figure, so the repetition reads as „ta pozycja nie ma VAT-u"
+  // rather than as a rendering slip.
+  const hints: LabelHintT[] = [
+    ...(opts.mismatch ? [{ variant: 'mismatch' as const, content: opts.mismatch }] : []),
+    ...(opts.noBrutto && showGross ? [{ variant: 'noVat' as const }] : []),
+  ]
 
   return (
     <Fragment>
-      <SummaryLabelCell weight={weight}>
-        <span className="inline-flex items-center gap-1">
-          {label}
-          {opts.scopeMarked && (
-            <sup className="text-destructive" title={SCOPE_MARKER_HINT}>
-              *
-            </sup>
-          )}
-          {opts.mismatch && <ReconMismatchBadge content={opts.mismatch} />}
-          {/* The row's brutto cell repeats its netto figure — flagged here so the repetition reads
-              as „ta pozycja nie ma VAT-u", not as a rendering slip. */}
-          {opts.noBrutto && showGross && (
-            <HintTooltip
-              content="Pozycja bez VAT — kwota brutto równa się netto"
-              className="text-muted-foreground"
-            >
-              <Info className="size-3.5" aria-label="Pozycja bez VAT" />
-            </HintTooltip>
-          )}
-        </span>
+      <SummaryLabelCell weight={weight} hints={hints}>
+        {label}
+        {opts.scopeMarked && (
+          <sup className="text-destructive" title={SCOPE_MARKER_HINT}>
+            *
+          </sup>
+        )}
       </SummaryLabelCell>
       {showNet && (
         <SummaryValueCell key="net" weight={weight} tone={tone} note={note}>

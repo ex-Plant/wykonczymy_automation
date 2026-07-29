@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils/cn'
 import { Description } from '@/components/ui/description'
+import { LabelHintIcon, type LabelHintT } from '@/components/ui/label-hint-icon'
 
 // Shared column widths for the stacked summary grids. Both render as CSS grids and pin their first
 // (label) column to the SAME width so the grids line up down the panel instead of each auto-sizing
@@ -68,6 +69,9 @@ type SummaryCellPropsT = {
   className?: string
   children: ReactNode
   note?: SummaryCellNoteT | null
+  // Hover-only explanation icons trailing the cell's content — the label-side counterpart to `note`.
+  // Passed as variants rather than composed as children so every cell's hints render identically.
+  hints?: LabelHintT[]
 }
 
 function CellNote({ note }: { note: SummaryCellNoteT }) {
@@ -75,6 +79,20 @@ function CellNote({ note }: { note: SummaryCellNoteT }) {
     <Description size="2xs" tone={note.tone ?? 'muted'} className="font-normal">
       {note.text}
     </Description>
+  )
+}
+
+// Keeps the hint icons on the content's own line (the note stacks below it), and stays out of the
+// way entirely when a cell has no hints — most don't, and an extra wrapper would break `text-right`.
+function CellContent({ children, hints }: { children: ReactNode; hints?: LabelHintT[] }) {
+  if (!hints?.length) return children
+  return (
+    <span className="inline-flex items-center gap-1">
+      {children}
+      {hints.map((hint) => (
+        <LabelHintIcon key={hint.variant} {...hint} />
+      ))}
+    </span>
   )
 }
 
@@ -86,6 +104,7 @@ export function SummaryLabelCell({
   className,
   children,
   note,
+  hints,
 }: SummaryCellPropsT) {
   return (
     <span
@@ -98,7 +117,7 @@ export function SummaryLabelCell({
         className,
       )}
     >
-      {children}
+      <CellContent hints={hints}>{children}</CellContent>
       {note && <CellNote note={note} />}
     </span>
   )
@@ -112,6 +131,7 @@ export function SummaryValueCell({
   className,
   children,
   note,
+  hints,
 }: SummaryCellPropsT) {
   return (
     <span
@@ -124,7 +144,7 @@ export function SummaryValueCell({
         className,
       )}
     >
-      {children}
+      <CellContent hints={hints}>{children}</CellContent>
       {note && <CellNote note={note} />}
     </span>
   )
