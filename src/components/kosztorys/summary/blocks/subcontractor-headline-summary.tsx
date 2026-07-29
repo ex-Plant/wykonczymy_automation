@@ -8,7 +8,6 @@ import {
   SummaryTable,
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
-import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
 import { formatNet } from '@/lib/kosztorys/format'
 import { PLANE_LABELS, SUBCONTRACTOR_FIGURE_LABELS } from '@/lib/kosztorys/constants'
 import type { SubcontractorSummaryT } from '@/lib/kosztorys/subcontractor-summary'
@@ -47,11 +46,15 @@ export function SubcontractorHeadlineSummary({
         </div>
       )}
 
-      <SummaryLabelCell weight="bold" className="flex items-center gap-x-2">
+      <SummaryLabelCell
+        weight="bold"
+        hints={
+          due.hasUnconfirmedPlane
+            ? [{ variant: 'planeUnconfirmed', content: UNCONFIRMED_PLANE_HINT }]
+            : undefined
+        }
+      >
         {SUBCONTRACTOR_FIGURE_LABELS.due}
-        {due.hasUnconfirmedPlane && (
-          <PlaneUnconfirmedBadge content={UNCONFIRMED_PLANE_HINT} className="size-4" />
-        )}
       </SummaryLabelCell>
       <SummaryValueCell weight="bold">{formatNet(due.combined)}</SummaryValueCell>
 

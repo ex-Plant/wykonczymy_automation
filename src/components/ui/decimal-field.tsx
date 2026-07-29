@@ -2,12 +2,13 @@
 
 import type { FocusEvent, KeyboardEvent, ReactNode } from 'react'
 import { DecimalInput } from '@/components/ui/decimal-input'
-import { HintTooltip } from '@/components/ui/tooltip'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 type PropsT = {
   label: ReactNode
-  // On the LABEL only — the input stays a clean text field.
+  // Shown as an (i) icon beside the label — the input stays a clean text field. An icon, not a
+  // hover target on the label text: nothing about bare text says a hint is hiding behind it.
   hint?: string
   value: number | null
   placeholder?: number
@@ -64,7 +65,8 @@ export function DecimalField({
 
   return (
     <label className="text-muted-foreground flex items-center gap-1 text-xs">
-      {hint ? <HintTooltip content={hint}>{label}</HintTooltip> : label}
+      {label}
+      {hint && <InfoTooltip content={hint} />}
       <DecimalInput
         key={value == null ? 'null' : String(value)}
         defaultValue={value == null ? '' : String(value)}
