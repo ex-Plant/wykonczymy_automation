@@ -37,10 +37,23 @@ export function VirtualizedTableBody<TData>({
   footer,
 }: VirtualizedTableBodyPropsT<TData>) {
   const virtualItems = virtualizer.getVirtualItems()
+  // `table-auto` sizes columns from the cells currently in the DOM — which, under virtualization, is
+  // whatever the scroll window happens to hold, so columns resize mid-scroll. A colgroup + fixed
+  // layout pins them to the column defs' own sizes instead, and the summed width becomes the table's
+  // floor so a narrow container scrolls rather than squeezing every column.
+  const leafHeaders = (headerGroups.at(-1)?.headers ?? []).filter((header) =>
+    visibleColumnIds.has(header.column.id),
+  )
+  const totalWidth = leafHeaders.reduce((sum, header) => sum + header.getSize(), 0)
 
   return (
     <div ref={parentRef} style={{ height: containerHeight, overflow: 'auto' }}>
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm" style={{ minWidth: totalWidth }}>
+        <colgroup>
+          {leafHeaders.map((header) => (
+            <col key={header.id} style={{ width: header.getSize() }} />
+          ))}
+        </colgroup>
         <TableHeader headerGroups={headerGroups} />
         <tbody>
           {rows.length === 0 ? (

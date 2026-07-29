@@ -23,18 +23,22 @@ type PayoutTableRowT = {
 const TABLE_HEIGHT = 400
 const ROW_HEIGHT = 36
 
+// Sized explicitly for the same reason as the wydatki list: a fixed-layout virtualized table falls
+// back to a uniform 150 per unsized column.
 const PAYOUT_COLUMNS: ColumnDef<PayoutTableRowT>[] = [
   {
     accessorKey: 'date',
     header: 'Data',
+    size: 96,
     cell: ({ getValue }) => (
       <span className="tabular-nums">{formatPLDate(getValue<string>())}</span>
     ),
   },
-  { accessorKey: 'workerName', header: 'Pracownik' },
+  { accessorKey: 'workerName', header: 'Pracownik', size: 200 },
   {
     accessorKey: 'description',
     header: 'Opis',
+    size: 320,
     enableSorting: false,
     cell: ({ getValue }) => (
       <span className="text-muted-foreground">{getValue<string | null>() || '—'}</span>
@@ -43,6 +47,7 @@ const PAYOUT_COLUMNS: ColumnDef<PayoutTableRowT>[] = [
   {
     accessorKey: 'amount',
     header: 'Kwota',
+    size: 140,
     meta: { align: 'right' },
     cell: ({ getValue }) => (
       <span className="text-chart-green tabular-nums">{formatNet(getValue<number>())}</span>
@@ -88,7 +93,7 @@ export function SubcontractorPayoutsTable({
               worker: row.workerId,
             })
       }
-      className="mt-4 w-full max-w-5xl"
+      className="mt-4 w-full"
     />
   )
 }

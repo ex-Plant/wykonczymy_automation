@@ -48,18 +48,22 @@ const ROW_HEIGHT = 44
 const HEADER_HEIGHT = 41
 const FOOTER_HEIGHT = 41
 
+// Every column carries an explicit size: the virtualized table lays out fixed, so an unsized column
+// would fall back to TanStack's uniform 150 and hand „Data" as much room as „Opis".
 const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'date',
     header: 'Data',
+    size: 96,
     cell: ({ getValue }) => (
       <span className="tabular-nums">{formatPLDate(getValue<string>())}</span>
     ),
   },
-  { accessorKey: 'label', header: 'Kategoria' },
+  { accessorKey: 'label', header: 'Kategoria', size: 160 },
   {
     accessorKey: 'description',
     header: 'Opis',
+    size: 260,
     enableSorting: false,
     cell: ({ getValue }) => (
       <span className="text-muted-foreground">{getValue<string | null>() || '—'}</span>
@@ -68,6 +72,7 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'invoiceNote',
     header: 'Notatka',
+    size: 160,
     enableSorting: false,
     cell: ({ getValue }) => {
       const note = getValue<string | null>()
@@ -92,6 +97,7 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'invoiceUrl',
     header: 'Faktura',
+    size: 88,
     enableSorting: false,
     meta: { align: 'center' },
     // Sits before the money columns, not last, so the „Razem" footer's total stays under the column
@@ -119,6 +125,7 @@ const moneyColumn = (
 ): ColumnDef<MaterialTransactionRowT> => ({
   accessorKey,
   header,
+  size: 120,
   meta: { align: 'right' },
   cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
 })
@@ -175,10 +182,8 @@ export function MaterialsTransactionsTable({
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-y-2">
-      {/* Shares the table's max width so the right-aligned download button lands flush with the
-          table's right edge rather than the panel's. */}
-      <div className="flex w-full max-w-5xl items-center gap-2">
+    <div className="flex flex-col gap-y-2">
+      <div className="flex w-full items-center gap-2">
         {options.length > 1 && (
           <ToggleGroup
             options={options}
@@ -222,7 +227,7 @@ export function MaterialsTransactionsTable({
             </td>
           </tr>
         )}
-        className="w-full max-w-5xl"
+        className="w-full"
       />
     </div>
   )
