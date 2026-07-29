@@ -132,7 +132,7 @@ export function SummaryOverviewTab({
         )}
       </div>
       {showDeposits && (
-        <CollapsibleSection title="Lista wpłat" size="sm" className="w-fit">
+        <CollapsibleSection title="Lista wpłat" size="sm">
           <div className="pt-4">
             <SummaryDepositsTab
               investmentId={investmentId}

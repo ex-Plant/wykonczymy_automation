@@ -2,6 +2,7 @@
 
 import { MaterialsBreakdownTable } from '@/components/kosztorys/summary/tables/materials-breakdown-table'
 import { MaterialsTransactionsTable } from '@/components/kosztorys/summary/tables/materials-transactions-table'
+import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
@@ -83,13 +84,17 @@ export function SummaryExpensesTab({
           <SlicePie slices={expensePieSlices(materialyBreakdown)} formatValue={formatNet} />
         )}
       </div>
-      {showTransactions && (
-        <MaterialsTransactionsTable
-          investmentId={investmentId}
-          investmentName={investmentName}
-          rows={materialTransactions}
-          preview={preview}
-        />
+      {showTransactions && materialTransactions.length > 0 && (
+        <CollapsibleSection title="Lista wydatków" size="sm">
+          <div className="pt-4">
+            <MaterialsTransactionsTable
+              investmentId={investmentId}
+              investmentName={investmentName}
+              rows={materialTransactions}
+              preview={preview}
+            />
+          </div>
+        </CollapsibleSection>
       )}
     </div>
   )
