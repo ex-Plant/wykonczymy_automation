@@ -1,42 +1,25 @@
+import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payout-worker-names'
 import { normalize } from '@/lib/utils/format-currency'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
-import type { PayoutByWorkerT, SubcontractorPayoutRowT } from '@/types/transfers'
+import type { SubcontractorPayoutRowT } from '@/types/transfers'
 
-// Display label for the null-worker payout bucket (a cash PAYOUT with no worker attached). One source
-// shared by the page's name-enrichment and the block's fallback so the two can't drift apart.
-export const UNASSIGNED_WORKER_NAME = 'Bez przypisanego pracownika'
-
-// Map/React key for a payout row: the null-worker bucket needs a stable non-null key so it can sit
-// in the same lookup as the real workers.
-const UNASSIGNED_KEY = 'unassigned'
-export const workerKey = (workerId: number | null) =>
-  workerId === null ? UNASSIGNED_KEY : workerId
-
-// The name join the cached payout query deliberately skips — every host that renders the block does
-// it, so it lives here rather than being retyped per page.
-export function resolvePayoutWorkerNames(
-  payouts: PayoutByWorkerT[],
-  workers: WorkerRefT[],
-): SubcontractorPayoutRowT[] {
-  const nameById = new Map(workers.map((worker) => [worker.id, worker.name]))
-  return payouts.map((row) => ({
-    ...row,
-    name:
-      row.workerId === null
-        ? UNASSIGNED_WORKER_NAME
-        : (nameById.get(row.workerId) ?? 'Nieznany pracownik'),
-  }))
-}
-
-// Why a row's „Pozostało" is red. All three are `remaining < 0`, but they mean different things and
-// a reader who can't tell them apart reads a data-entry gap as a debt:
+// Why a row's „Pozostało" is red. The first three are `remaining < 0`, but they mean different things
+// and a reader who can't tell them apart reads a data-entry gap as a debt:
 // - `overpaid` — real work is assigned, and more has been paid out than earned.
 // - `no_stages` — nobody assigned this person any etap, so their należne is 0 by omission. The
 //   wypłata is probably fine; the assignment is missing.
 // - `no_executed_work` — etapy ARE assigned but nothing has been executed on them yet (or they are
 //   still plane-less, which credits nobody). A prepayment, not an overpayment.
-export type WorkerSettlementStateT = 'settled' | 'overpaid' | 'no_stages' | 'no_executed_work'
+// - `unattributed` — the null bucket, which is not a person. The other three are all sentences ABOUT
+//   somebody, so attaching any of them to a residual states something untrue; this one exists so the
+//   row can be rendered without a person-shaped qualifier.
+export type WorkerSettlementStateT =
+  | 'settled'
+  | 'overpaid'
+  | 'no_stages'
+  | 'no_executed_work'
+  | 'unattributed'
 
 export type SubcontractorWorkerRowT = {
   workerId: number | null
@@ -77,6 +60,7 @@ function settlementState(
   remaining: number,
   hasStages: boolean,
 ): WorkerSettlementStateT {
+  if (workerId === null) return 'unattributed'
   if (remaining >= 0) return 'settled'
   // The residual bucket is not a person, so the two assignment-shaped explanations would be nonsense
   // against it — „nikt nie przypisał mu etapów" IS the definition of the bucket.
@@ -123,9 +107,10 @@ export function computeSubcontractorSummary(
       const payout = payoutByWorker.get(workerId)
       const due = byWorker.get(workerId) ?? 0
       const paid = payout?.total ?? 0
-      // `due` is a repeated float multiply/add over the etap quantities while `paid` is a Postgres
-      // SUM, so paying out exactly the computed należne — the normal case — leaves the two differing
-      // by ~1e-13. Unnormalized that is enough to paint a square worker red as „nadpłata -0,00".
+      // `due` is Σ qty × viewPrice through fractional plane coefficients while `paid` is a raw
+      // Postgres SUM, so paying out exactly the displayed należne — the commonest case there is —
+      // leaves the two differing by ~1e-13. Unnormalized that is enough to send the row down the
+      // `< 0` branch and paint a square worker destructive-red as „nadpłata / pozostało -0,00".
       const remaining = normalize(due - paid)
       return {
         workerId,

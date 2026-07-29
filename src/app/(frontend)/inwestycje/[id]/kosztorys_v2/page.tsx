@@ -10,7 +10,7 @@ import {
 import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
-import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
+import { resolvePayoutWorkerNames } from '@/lib/kosztorys/payout-worker-names'
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 import { perfStart } from '@/lib/perf'

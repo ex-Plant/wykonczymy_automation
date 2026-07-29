@@ -5,7 +5,8 @@ import { DataTable } from '@/components/ui/data-table/data-table'
 import { formatNet } from '@/lib/kosztorys/format'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
-import { UNASSIGNED_WORKER_NAME, workerKey } from '@/lib/kosztorys/subcontractor-summary'
+import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payout-worker-names'
+import { workerKey } from '@/lib/kosztorys/worker-key'
 import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/transfers'
 
 // One flat row per wypłata for the virtualized DataTable — worker name resolved up front so the

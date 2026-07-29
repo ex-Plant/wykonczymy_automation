@@ -13,7 +13,7 @@ import { formatNet } from '@/lib/kosztorys/format'
 import { normalize } from '@/lib/utils/format-currency'
 import { SUBCONTRACTOR_FIGURE_LABELS } from '@/lib/kosztorys/constants'
 import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
-import { workerKey } from '@/lib/kosztorys/subcontractor-summary'
+import { workerKey } from '@/lib/kosztorys/worker-key'
 import type {
   SubcontractorWorkerRowT,
   WorkerSettlementStateT,
@@ -31,6 +31,9 @@ const STATE_QUALIFIER: Record<
   overpaid: { text: 'Wypłacono więcej niż wykonano', tone: 'error' },
   no_stages: { text: 'Brak przypisanych etapów', tone: 'error' },
   no_executed_work: { text: 'Przypisane etapy bez wykonanych prac', tone: 'muted' },
+  // The residual is not a person, so every qualifier above would be a false sentence about it; its
+  // own „Bez przypisanego pracownika" label already says what it is.
+  unattributed: null,
 }
 
 // A negative „Pozostało do wypłaty" means the opposite of what the column header promises — nothing is

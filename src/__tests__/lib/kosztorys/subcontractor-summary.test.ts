@@ -140,18 +140,6 @@ describe('computeSubcontractorSummary — per-worker attribution', () => {
       ).toBe('no_executed_work')
     })
 
-    // The residual bucket is not a person. Left person-shaped it came back `no_stages`, and every
-    // renderer of that state says „ta osoba nie ma przypisanych etapów" — which is the bucket's own
-    // definition, not a finding.
-    it('the null bucket is only ever settled or overpaid', () => {
-      const { rows } = computeSubcontractorSummary(0, [payout(null, 500)], {
-        byWorker: new Map(),
-        stages: [],
-      })
-      expect(rows[0]?.workerId).toBe(null)
-      expect(rows[0]?.state).toBe('overpaid')
-    })
-
     it('settled — nothing negative to explain', () => {
       expect(stateFor(200, 150, [stage(10, 1)])).toBe('settled')
     })
@@ -166,6 +154,63 @@ describe('computeSubcontractorSummary — per-worker attribution', () => {
       })
       expect(rows[0]?.remaining).toBe(0)
       expect(rows[0]?.state).toBe('settled')
+    })
+
+    // EX-613 regression: `due` is Σ qty × viewPrice (fractional plane coefficients), `paid` a raw
+    // SUM(amount) — neither rounded. Paying exactly the amount the UI displays left a −1e-13 residue,
+    // which `remaining >= 0` read as overpaid: the row turned destructive-red and claimed „nadpłata"
+    // while showing „pozostało -0,00". That is the paid-in-full case, i.e. the most common one.
+    // 4.35 × 100 is 434.99999999999994 in binary floating point — it renders „435,00" and the owner
+    // pays 435,00.
+    const RESIDUE_DUE = 4.35 * 100
+
+    it('settled — a worker paid exactly their displayed należne, float residue and all', () => {
+      expect(stateFor(RESIDUE_DUE, 435, [stage(10, 1)])).toBe('settled')
+    })
+
+    it('a sub-grosz residue never survives into remaining', () => {
+      const { rows } = computeSubcontractorSummary(RESIDUE_DUE, [payout(1, 435, 'Anna')], {
+        byWorker: new Map([[1, RESIDUE_DUE]]),
+        stages: [stage(10, 1)],
+      })
+      expect(rows[0].remaining).toBe(0)
+    })
+
+    // A real overpayment is still a grosz or more, so rounding must not swallow one.
+    it('overpaid — a one-grosz overpayment survives the rounding', () => {
+      expect(stateFor(100, 100.01, [stage(10, 1)])).toBe('overpaid')
+    })
+  })
+
+  // The residual row is not a person, so neither person-shaped qualifier („brak przypisanych etapów"
+  // / „przypisane etapy bez wykonanych prac") is a true sentence about it. Before EX-613's review it
+  // got one or the other depending on whether ANY etap happened to be unassigned, because
+  // `assignedWorkerIds` contains `null` itself.
+  describe('the unattributed residual is not a person', () => {
+    const nullRowState = (stages: KosztorysStageT[]) =>
+      computeSubcontractorSummary(0, [payout(null, 200)], {
+        byWorker: new Map(),
+        stages,
+      }).rows.find((row) => row.workerId === null)?.state
+
+    it('carries its own state when some etapy are unassigned', () => {
+      expect(nullRowState([stage(10, 1), stage(11, null)])).toBe('unattributed')
+    })
+
+    it('carries the same state when every etap is assigned', () => {
+      expect(nullRowState([stage(10, 1)])).toBe('unattributed')
+    })
+
+    it('carries the same state when there are no etapy at all', () => {
+      expect(nullRowState([])).toBe('unattributed')
+    })
+
+    it('leaves the named workers untouched', () => {
+      const { rows } = computeSubcontractorSummary(0, [payout(1, 150, 'Anna'), payout(null, 200)], {
+        byWorker: new Map(),
+        stages: [stage(11, null)],
+      })
+      expect(rows.find((row) => row.workerId === 1)?.state).toBe('no_stages')
     })
   })
 })
