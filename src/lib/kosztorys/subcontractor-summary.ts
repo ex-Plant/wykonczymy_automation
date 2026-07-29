@@ -1,5 +1,5 @@
 import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payout-worker-names'
-import { normalize } from '@/lib/utils/format-currency'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 import type { SubcontractorPayoutRowT } from '@/types/transfers'
@@ -109,9 +109,9 @@ export function computeSubcontractorSummary(
       const paid = payout?.total ?? 0
       // `due` is Σ qty × viewPrice through fractional plane coefficients while `paid` is a raw
       // Postgres SUM, so paying out exactly the displayed należne — the commonest case there is —
-      // leaves the two differing by ~1e-13. Unnormalized that is enough to send the row down the
+      // leaves the two differing by ~1e-13. Unrounded that is enough to send the row down the
       // `< 0` branch and paint a square worker destructive-red as „nadpłata / pozostało -0,00".
-      const remaining = normalize(due - paid)
+      const remaining = roundToCents(due - paid)
       return {
         workerId,
         name:
@@ -135,5 +135,5 @@ export function computeSubcontractorSummary(
     return b.remaining - a.remaining
   })
 
-  return { dueNet, payoutsTotal, remaining: normalize(dueNet - payoutsTotal), rows }
+  return { dueNet, payoutsTotal, remaining: roundToCents(dueNet - payoutsTotal), rows }
 }
