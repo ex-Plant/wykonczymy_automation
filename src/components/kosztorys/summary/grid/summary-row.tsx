@@ -18,9 +18,9 @@ export type SummaryRowOptsT = {
   // repeats the netto amount rather than blanking, which also keeps the row readable in a
   // brutto-only widok, where blanking dropped its only value.
   noBrutto?: boolean
-  // A custom formula/explanation tooltip on the label, independent of `noBrutto`. Used by the
-  // materiały rows to state that VAT is subtracted (netto derived from brutto) — the inverse of the
-  // prace direction, so the generic bez-VAT copy would be wrong here.
+  // A custom formula/explanation, independent of `noBrutto`, rendered as an always-visible caption
+  // under the figure. Used by the materiały rows to state that VAT is subtracted (netto derived from
+  // brutto) — the inverse of the prace direction, so the generic bez-VAT copy would be wrong here.
   hint?: string
   // When set, the figure screams via a red `!` icon (not a red value) whose tooltip is this string. Owner-only
   // — the EX-535 reconciliation check against the transaction ledger. The client footer never passes
@@ -49,6 +49,10 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
   const { net: showNet, gross: showGross } = axisShows(axis)
   const weight = opts.bold ? 'bold' : opts.emphasize ? 'medium' : 'default'
   const tone = opts.discount ? 'success' : opts.danger ? 'error' : 'default'
+  // `hint` used to hide behind a hover-only tooltip icon; it now rides the net cell (or gross, on a
+  // netto-less row) as an always-visible caption, the same primitive the negative-remaining and
+  // worker-qualifier notes use.
+  const note = opts.hint ? { text: opts.hint, tone: 'muted' as const } : undefined
 
   return (
     <Fragment>
@@ -71,22 +75,18 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
               <Info className="size-3.5" aria-label="Pozycja bez VAT" />
             </HintTooltip>
           )}
-          {opts.hint && (
-            <HintTooltip content={opts.hint} className="text-muted-foreground">
-              <Info className="size-3.5" aria-label="Informacja o pozycji" />
-            </HintTooltip>
-          )}
         </span>
       </SummaryLabelCell>
       {showNet && (
-        <SummaryValueCell key="net" weight={weight} tone={tone}>
+        <SummaryValueCell key="net" weight={weight} tone={tone} note={note}>
           {formatNet(line.net)}
         </SummaryValueCell>
       )}
       {/* A no-VAT row repeats its netto figure in the brutto cell rather than blanking: the amount
-          IS the brutto (VAT doesn't apply), so restating it reads clearer than an absence. */}
+          IS the brutto (VAT doesn't apply), so restating it reads clearer than an absence. The note
+          rides the net cell only — repeating it on brutto too would read as two separate captions. */}
       {showGross && (
-        <SummaryValueCell key="gross" weight={weight} tone={tone}>
+        <SummaryValueCell key="gross" weight={weight} tone={tone} note={showNet ? undefined : note}>
           {formatNet(opts.noBrutto ? line.net : line.gross)}
         </SummaryValueCell>
       )}
