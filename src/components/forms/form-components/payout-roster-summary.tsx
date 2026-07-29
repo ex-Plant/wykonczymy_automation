@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { TriangleAlert } from 'lucide-react'
 import { WarningBanner } from '@/components/ui/warning-banner'
-import { HintTooltip } from '@/components/ui/tooltip'
+import { LabelHintIcon } from '@/components/ui/label-hint-icon'
 import { formatNet } from '@/lib/kosztorys/format'
 import { pluralize } from '@/lib/utils/polish-plural'
 import { cn } from '@/lib/utils/cn'
@@ -10,20 +9,6 @@ import type { SubcontractorRosterT } from '@/lib/queries/subcontractor-roster'
 
 function stageNoun(count: number): string {
   return pluralize(count, ['etap', 'etapy', 'etapów'])
-}
-
-// The badge next to ONE worker's figure, so it needs its own aria-label: `PlaneUnconfirmedBadge`'s
-// names rozliczenie etapu and `LabelHintIcon`'s `mismatch` variant is asserted by E2E — reusing
-// either would make the wrong sentence readable to a screen reader and to a test.
-function NoStagesBadge() {
-  return (
-    <HintTooltip
-      content="Ta osoba nie ma przypisanego żadnego etapu na tej inwestycji, więc jej „należne” to 0 — wypłata pokaże się jako nadpłata, dopóki etapy nie zostaną przypisane."
-      className="text-destructive"
-    >
-      <TriangleAlert className="size-4" aria-label="Pracownik bez przypisanych etapów" />
-    </HintTooltip>
-  )
 }
 
 /**
@@ -90,7 +75,7 @@ export function PayoutRosterSummary({
             <li key={workerKey(row.workerId)} className="flex flex-wrap items-center gap-x-3">
               <span className="flex items-center gap-1.5 font-medium">
                 {row.name}
-                {row.state === 'no_stages' && <NoStagesBadge />}
+                {row.state === 'no_stages' && <LabelHintIcon variant="noStages" size="md" />}
               </span>
               <span className="text-muted-foreground">należne {formatNet(row.due)}</span>
               <span className="text-muted-foreground">wypłacono {formatNet(row.paid)}</span>

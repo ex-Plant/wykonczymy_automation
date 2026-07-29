@@ -13,7 +13,7 @@ import {
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
-import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
+import { LabelHintIcon } from '@/components/ui/label-hint-icon'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
 import { StageWorkerSection } from './stage-worker-section'
@@ -113,14 +113,15 @@ export function StageHeader({
               >
                 {label}
               </HeaderLabel>
-              {stage.plane == null && <PlaneUnconfirmedBadge content={COPY.planeUnconfirmed} />}
-              {/* The chevron belongs to the etap name, not to the two-row block — left to HeaderMenu's
-                  own icon slot it would centre against both rows and read as the worker's affordance. */}
+              {stage.plane == null && (
+                <LabelHintIcon
+                  variant="planeUnconfirmed"
+                  content={COPY.planeUnconfirmed}
+                  size="lg"
+                />
+              )}
               <ChevronDown className="opacity-50" />
             </span>
-            {/* Who owes the work, readable without opening the menu — the assignment drives the
-                subcontractor rozliczenie, so it belongs on the column it settles. Absent when nobody
-                is assigned: an empty second line every etap carries would cost more than it says. */}
             {assignedWorker && (
               <span className="text-muted-foreground text-2xs truncate">{assignedWorker.name}</span>
             )}
