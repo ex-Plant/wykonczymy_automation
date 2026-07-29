@@ -8,9 +8,15 @@ import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 // formatter here rather than as a 0 that would read as a real measurement.
 export const fmtOrDash = (value: number | null) => (value == null ? '—' : fmt(value))
 
+// The only two tones a computed cell may take, beyond the muted default — every computed value is a
+// derived read-only figure, so muted is the baseline and danger is the sole alarm state (e.g. more
+// executed than offered).
+type ComputedCellToneT = 'muted' | 'danger'
+
 type ComputedCellDataT = {
   compute: (r: KosztorysV2RowT) => number | null
-  className: string | ((r: KosztorysV2RowT) => string)
+  tone: ComputedCellToneT | ((r: KosztorysV2RowT) => ComputedCellToneT)
+  emphasize?: boolean
   format: (value: number | null) => string
 }
 
@@ -20,9 +26,14 @@ type ComputedCellDataT = {
 // per-cell compute/format travels via `columnData` instead. Not a remount `key` (see EX-422,
 // lessons.md:119-135): identity is stabilised, the grid stays reactive.
 function ComputedCell({ rowData, columnData }: CellProps<KosztorysV2RowT, ComputedCellDataT>) {
-  const { compute, className, format } = columnData
+  const { compute, tone, emphasize, format } = columnData
+  const resolvedTone = typeof tone === 'function' ? tone(rowData) : tone
   return (
-    <ReadOnlyCellText className={typeof className === 'function' ? className(rowData) : className}>
+    <ReadOnlyCellText
+      muted={resolvedTone === 'muted'}
+      danger={resolvedTone === 'danger'}
+      emphasize={emphasize}
+    >
       {format(compute(rowData))}
     </ReadOnlyCellText>
   )
@@ -32,14 +43,17 @@ export function computedColumn(
   id: string,
   titleNode: ReactNode,
   compute: (r: KosztorysV2RowT) => number | null,
-  className: string | ((r: KosztorysV2RowT) => string) = 'text-muted-foreground',
+  style: {
+    tone?: ComputedCellToneT | ((r: KosztorysV2RowT) => ComputedCellToneT)
+    emphasize?: boolean
+  } = {},
   format: (value: number | null) => string = fmtOrDash,
 ): Column<KosztorysV2RowT> {
   return {
     id,
     title: titleNode,
     disabled: true,
-    columnData: { compute, className, format },
+    columnData: { compute, tone: style.tone ?? 'muted', emphasize: style.emphasize, format },
     component: ComputedCell,
   }
 }

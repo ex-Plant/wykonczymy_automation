@@ -422,7 +422,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         stageValuePercentKey(st.id),
         header,
         (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
-        'text-muted-foreground',
+        {},
         formatPercent,
       ),
       ...planeUnconfirmed(st),
@@ -440,12 +440,12 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       'donePercent',
       title('donePercent', opts),
       (r) => rowDoneFraction(r, rowTotalQtyDone(r, stages, 'client')),
-      // Red = more was executed than was offered. The percentage says so too (>100%), but only
-      // this cell says it at a glance across a thousand rows.
-      (r) =>
-        hasStagesOverPlanned(r, stages)
-          ? 'text-destructive font-medium'
-          : 'text-muted-foreground font-medium',
+      {
+        // Red = more was executed than was offered. The percentage says so too (>100%), but only
+        // this cell says it at a glance across a thousand rows.
+        tone: (r) => (hasStagesOverPlanned(r, stages) ? 'danger' : 'muted'),
+        emphasize: true,
+      },
       formatPercent,
     ),
   ]
@@ -461,12 +461,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   const computed: Column<KosztorysV2RowT>[] = [
     ...plannedValue,
-    computedColumn(
-      'net',
-      title('net', opts),
-      (r) => rowValueForView(r, stages, view),
-      'text-muted-foreground font-medium',
-    ),
+    computedColumn('net', title('net', opts), (r) => rowValueForView(r, stages, view), {
+      emphasize: true,
+    }),
     computedColumn('gross', title('gross', opts), (r) =>
       toGross(rowValueForView(r, stages, view), r.vatRate),
     ),
