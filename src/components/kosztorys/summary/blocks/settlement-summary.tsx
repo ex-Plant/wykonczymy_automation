@@ -13,10 +13,8 @@ import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
 import { SUMMARY_LABEL_COL, SUMMARY_VALUE_COL } from '@/components/ui/summary-grid'
 import { SummaryBreakdownTable } from '@/components/kosztorys/summary/tables/summary-breakdown-table'
-import {
-  SummaryTotalsTable,
-  type SettlementGroupT,
-} from '@/components/kosztorys/summary/tables/summary-totals-table'
+import { SummaryTotalsTable } from '@/components/kosztorys/summary/tables/summary-totals-table'
+import type { SettlementGroupT } from '@/components/kosztorys/summary/settlement-groups'
 import {
   reconciliationTooltip,
   type KosztorysReconciliationT,
@@ -42,7 +40,8 @@ type PropsT = {
   // Robocizna wartość netto (po rabacie) — client-side, reacts to unsaved edits.
   laborCostsNetFromKosztorys: number
   // Materiały in two buckets — the brutto base (netto derived by removing VAT) and the netto-billed
-  // part, which is already netto and stays at face value on both axes.
+  // part, which is already netto and so stays at face value on the netto axis; it still crosses to
+  // brutto through the rate.
   materials: MaterialsT
   // The settlement steps below the breakdown, built by the caller because their sequence IS the tryb
   // rozliczenia — mieszany resolves through a reszta the other tryby don't have, and splits into two
@@ -59,8 +58,7 @@ type PropsT = {
   // 'client'; a subcontractor view reprices the displayed figure, so the scream is suppressed there.
   priceView: PriceViewT
   vatRate: number
-  // The investment's saved materiały netto rate (null = off) — drives both the Materiały row and the
-  // „Obniżka materiałów" line that makes the concession visible.
+  // The investment's saved materiały netto rate (null = off) — drives the Materiały row.
   materialsNetRate: number | null
   // Read-only client render: the mismatch scream is an owner-internal signal (a client's view is
   // always 'client', which is exactly when the scream would fire), and the internal drill-down links
@@ -74,9 +72,7 @@ type PropsT = {
 // The bottom summary block, in two tables that answer two different questions. The first prices the
 // job — the robocizna waterfall (Suma prac wykonanych → Rabat → Robocizna) merged with the sheet
 // Podsumowanie split (Robocizna / Materiały / Łącznie) — and carries both money columns, because
-// every figure in it genuinely exists on both planes. Below it comes one table per settlement tor,
-// each resolving the job into cash on a single plane: a wpłata has no twin on the other plane, so a
-// tor keeps its own wpłaty next to the debt they actually pay down.
+// every figure in it genuinely exists on both planes. Below it, one table per settlement tor.
 export function SettlementSummary({
   investmentId,
   laborCostsNetFromKosztorys,

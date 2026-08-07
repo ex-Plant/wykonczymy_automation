@@ -10,7 +10,7 @@ import {
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
 import { SettlementSummary } from '@/components/kosztorys/summary/blocks/settlement-summary'
-import type { SettlementGroupT } from '@/components/kosztorys/summary/tables/summary-totals-table'
+import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement-groups'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { SlicePie } from '@/components/ui/slice-pie'
@@ -55,9 +55,7 @@ type PropsT = {
   filtersActive?: boolean
 }
 
-// The „Podsumowanie" view: the settlement block, then the folded wpłaty list. Every tryb rozliczenia
-// renders the same block with both money columns — the tryb decides the arithmetic behind „Do zapłaty",
-// not which columns exist.
+// The „Podsumowanie" view: the settlement block, then the folded wpłaty list.
 export function SummaryOverviewTab({
   investmentId,
   moneyAxis,
@@ -93,81 +91,13 @@ export function SummaryOverviewTab({
           materialsNetRate,
         )
       : null
-  const vatPercent = Math.round(vatRate * 100)
-  // Wpłaty render negative — they are the deduction steps down to „Do zapłaty", and a positive figure
-  // in a subtracted row reads as if it were being added. Mieszany resolves through a reszta: the cash
-  // part closes on the netto plane, only what is left crosses onto the invoice, and „Do zapłaty netto"
-  // is that same debt read back without a faktura. The other tryby have no such crossing — one pool of
-  // wpłaty, one debt, shown on both planes.
-  const settlementGroups: SettlementGroupT[] = mixed
-    ? [
-        {
-          caption: 'Rozliczenie netto',
-          rows: [
-            { label: 'Wpłaty netto', amount: -mixed.paidNet, discount: true, linkToDeposits: true },
-            {
-              label: 'Pozostało netto',
-              hint: 'Łącznie netto − wpłaty netto',
-              amount: mixed.doRozliczeniaNet,
-              scopeMarked: filtersActive,
-            },
-            {
-              label: 'Do zapłaty netto',
-              hint: 'Pozostało netto − wpłaty brutto bez VAT — kwota zamykająca rozliczenie bez faktury',
-              amount: mixed.doZaplatyNet,
-              bold: true,
-              danger: mixed.doZaplatyNet > 0,
-              scopeMarked: filtersActive,
-            },
-          ],
-        },
-        {
-          caption: 'Rozliczenie fakturą',
-          rows: [
-            {
-              label: 'Pozostało brutto',
-              hint: `Pozostało netto + VAT ${vatPercent}%`,
-              amount: mixed.resztaGross,
-              scopeMarked: filtersActive,
-            },
-            {
-              label: 'Wpłaty brutto',
-              amount: -mixed.paidGross,
-              discount: true,
-              linkToDeposits: true,
-            },
-            {
-              label: 'Do zapłaty brutto',
-              hint: 'Pozostało brutto − wpłaty brutto',
-              amount: mixed.doZaplatyGross,
-              bold: true,
-              danger: mixed.doZaplatyGross > 0,
-              scopeMarked: filtersActive,
-            },
-          ],
-        },
-      ]
-    : [
-        {
-          rows: [
-            { label: 'Wpłaty', amount: -wplatyNet, discount: true, linkToDeposits: true },
-            {
-              label: 'Do zapłaty netto',
-              amount: doZaplaty.net,
-              bold: true,
-              danger: doZaplaty.net > 0,
-              scopeMarked: filtersActive,
-            },
-            {
-              label: 'Do zapłaty brutto',
-              amount: doZaplaty.gross,
-              bold: true,
-              danger: doZaplaty.net > 0,
-              scopeMarked: filtersActive,
-            },
-          ],
-        },
-      ]
+  const settlementGroups = buildSettlementGroups({
+    mixed,
+    doZaplaty,
+    wplatyNet,
+    vatRate,
+    filtersActive,
+  })
   // The „Struktura kosztów" pie is a netto robocizna/materiały split, identical in every mode — so it
   // sits here beside the settlement rather than inside any one mode's block. Robocizna enters PRZED
   // rabatem: a rabat is a concession on the price, not a change in what the job is made of, and a

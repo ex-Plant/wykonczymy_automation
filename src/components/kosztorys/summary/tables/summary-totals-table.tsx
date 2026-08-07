@@ -24,12 +24,6 @@ export type SettlementRowT = {
   scopeMarked?: boolean
 }
 
-// A settlement tor rendered as one table. Mieszany has two — the cash side and the invoice side — and
-// the split is what keeps a wpłata next to the debt it actually pays down.
-export type SettlementGroupT = { caption?: string; rows: SettlementRowT[] }
-
-// One settlement tor: wpłaty and what they leave to pay, on a single plane. Sits under the breakdown
-// grid, which is where the two money columns live — that grid prices the job, these resolve it.
 export function SummaryTotalsTable({
   cols,
   caption,
