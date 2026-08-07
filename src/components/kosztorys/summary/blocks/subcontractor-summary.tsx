@@ -62,14 +62,14 @@ export function SubcontractorSummary({
           pushed the headline table down and the two tables stopped lining up. */}
       {showGlobalSettings && <EditorGlobalSettings />}
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
+        {showBreakdown && summary.rows.length > 0 && (
+          <SubcontractorWorkerTotals investmentId={investmentId} rows={summary.rows} />
+        )}
         <SubcontractorHeadlineSummary
           summary={summary}
           due={subcontractorDue}
           showPlanes={showBreakdown}
         />
-        {showBreakdown && summary.rows.length > 0 && (
-          <SubcontractorWorkerTotals investmentId={investmentId} rows={summary.rows} />
-        )}
       </div>
 
       {showTransactions && payoutTransactions.length > 0 && (
