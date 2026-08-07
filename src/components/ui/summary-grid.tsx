@@ -76,7 +76,10 @@ type SummaryCellPropsT = {
 
 function CellNote({ note }: { note: SummaryCellNoteT }) {
   return (
-    <Description size="2xs" tone={note.tone ?? 'muted'} className="font-normal">
+    // No icon: a note here always sits directly under the figure it explains, so the leading glyph
+    // carries nothing the position doesn't already say — and it steals width from a right-aligned
+    // caption, pushing it onto a second line.
+    <Description size="2xs" tone={note.tone ?? 'muted'} withIcon={false} className="font-normal">
       {note.text}
     </Description>
   )

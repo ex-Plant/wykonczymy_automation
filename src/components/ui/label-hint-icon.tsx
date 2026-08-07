@@ -1,4 +1,4 @@
-import { Info, TriangleAlert } from 'lucide-react'
+import { TriangleAlert } from 'lucide-react'
 import { HintTooltip } from '@/components/ui/tooltip'
 
 // Variants are named by MEANING, not by look: three of these render the identical red TriangleAlert
@@ -27,12 +27,6 @@ const VARIANT = {
     content:
       'Ta osoba nie ma przypisanego żadnego etapu na tej inwestycji, więc jej „należne” to 0 — wypłata pokaże się jako nadpłata, dopóki etapy nie zostaną przypisane.',
   },
-  noVat: {
-    Icon: Info,
-    className: 'text-muted-foreground',
-    ariaLabel: 'Pozycja bez VAT',
-    content: 'Pozycja bez VAT — kwota brutto równa się netto',
-  },
 } as const
 
 // A variant that owns its copy takes no `content`; one explaining a per-row figure requires it.
@@ -40,7 +34,6 @@ export type LabelHintT =
   | { variant: 'mismatch'; content: string }
   | { variant: 'planeUnconfirmed'; content: string }
   | { variant: 'noStages' }
-  | { variant: 'noVat' }
 
 // Sized by how loud the alarm has to be for its surroundings, not by which alarm it is: `lg` sits in
 // an etap header among controls, `sm` beside a table figure.
@@ -53,12 +46,7 @@ type LabelHintIconPropsT = LabelHintT & { size?: keyof typeof SIZE }
 // HintTooltip+icon block inline and re-deciding icon, colour and aria-label each time.
 export function LabelHintIcon({ size = 'sm', ...hint }: LabelHintIconPropsT) {
   const spec = VARIANT[hint.variant]
-  const content =
-    hint.variant === 'noStages'
-      ? VARIANT.noStages.content
-      : hint.variant === 'noVat'
-        ? VARIANT.noVat.content
-        : hint.content
+  const content = hint.variant === 'noStages' ? VARIANT.noStages.content : hint.content
   const { Icon } = spec
 
   return (

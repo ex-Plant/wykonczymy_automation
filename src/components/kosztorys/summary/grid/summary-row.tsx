@@ -11,14 +11,9 @@ export type SummaryRowOptsT = {
   bold?: boolean
   discount?: boolean
   danger?: boolean
-  // No-VAT figure: one amount, no netto/brutto axis. The sheet gives brutto its own row only for
-  // prace + the R+M total; materiały/korekta/wpłaty have no brutto figure at all. The Brutto cell
-  // repeats the netto amount rather than blanking, which also keeps the row readable in a
-  // brutto-only widok, where blanking dropped its only value.
-  noBrutto?: boolean
-  // A custom formula/explanation, independent of `noBrutto`, rendered as an always-visible caption
-  // under the figure. Used by the materiały rows to state that VAT is subtracted (netto derived from
-  // brutto) — the inverse of the prace direction, so the generic bez-VAT copy would be wrong here.
+  // A formula/explanation rendered as an always-visible caption under the figure. Used by the
+  // materiały rows to state that VAT is subtracted (netto derived from brutto) and by the settlement
+  // steps to name what each row was computed from.
   hint?: string
   // When set, the figure screams via a red `!` icon (not a red value) whose tooltip is this string. Owner-only
   // — the EX-535 reconciliation check against the transaction ledger. The client footer never passes
@@ -51,13 +46,10 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
   // netto-less row) as an always-visible caption, the same primitive the negative-remaining and
   // worker-qualifier notes use.
   const note = opts.hint ? { text: opts.hint, tone: 'muted' as const } : undefined
-  // The row states WHICH hints it wants; the cell owns how every one of them renders. `noVat` flags
-  // the brutto cell repeating its netto figure, so the repetition reads as „ta pozycja nie ma VAT-u"
-  // rather than as a rendering slip.
-  const hints: LabelHintT[] = [
-    ...(opts.mismatch ? [{ variant: 'mismatch' as const, content: opts.mismatch }] : []),
-    ...(opts.noBrutto && showGross ? [{ variant: 'noVat' as const }] : []),
-  ]
+  // The row states WHICH hints it wants; the cell owns how every one of them renders.
+  const hints: LabelHintT[] = opts.mismatch
+    ? [{ variant: 'mismatch' as const, content: opts.mismatch }]
+    : []
 
   return (
     <Fragment>
@@ -74,12 +66,10 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
           {formatNet(line.net)}
         </SummaryValueCell>
       )}
-      {/* A no-VAT row repeats its netto figure in the brutto cell rather than blanking: the amount
-          IS the brutto (VAT doesn't apply), so restating it reads clearer than an absence. The note
-          rides the net cell only — repeating it on brutto too would read as two separate captions. */}
+      {/* The note rides the net cell only — repeating it on brutto too would read as two captions. */}
       {showGross && (
         <SummaryValueCell key="gross" weight={weight} tone={tone} note={showNet ? undefined : note}>
-          {formatNet(opts.noBrutto ? line.net : line.gross)}
+          {formatNet(line.gross)}
         </SummaryValueCell>
       )}
     </Fragment>
