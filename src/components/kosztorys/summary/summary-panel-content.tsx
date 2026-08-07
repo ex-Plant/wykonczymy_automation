@@ -93,8 +93,6 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
-  // Expanded on arrival when the investment page's settings link was followed here.
-  settingsDefaultOpen?: boolean
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
   showTransactionLists?: boolean
@@ -152,7 +150,6 @@ export function SummaryPanelContent({
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
-  settingsDefaultOpen = false,
   showTransactionLists = true,
   showPies = true,
   preview = false,
@@ -223,10 +220,10 @@ export function SummaryPanelContent({
   )
   return (
     <>
-      {/* Pinned top bar — only the view toggle, so its height never moves. "Opcje rozliczenia" scrolls
-          with the rest of the content instead of sharing this bar: it used to live here, and growing
-          it squeezed SummaryScrollRegion into a sliver — two containers fighting over one fixed
-          height. One scrolling container below a fixed-height bar has nothing left to fight over. */}
+      {/* Pinned top bar — the view toggle plus the settings trigger, so its height never moves. The
+          settings block sat here once as an inline section and had to be evicted: growing it squeezed
+          SummaryScrollRegion into a sliver, two containers fighting over one fixed height. It is back
+          as a popover, whose content is portalled out of flow and so adds no height to this bar. */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4">
         <ToggleGroup
           options={viewOptions}
@@ -234,30 +231,24 @@ export function SummaryPanelContent({
           onChange={setSummaryView}
           aria-label="Widok podsumowania"
         />
+        {/* A client reads the mode, never writes it — the same `preview` gate every other
+            owner-only affordance in this panel uses. Supplying the two writers is what makes a host
+            an editor of these settings; a read-only host (no writers) renders no trigger at all. */}
+        {!preview && onSettlementModeChange && onMaterialsNetRateChange && (
+          <SummaryInvestmentSettings
+            vatRate={vatRate}
+            settlementMode={settlementMode}
+            onSettlementModeChange={onSettlementModeChange}
+            materialsGrossBase={materialsGrossBase}
+            materialsNetRate={materialsNetRate}
+            onMaterialsNetRateChange={onMaterialsNetRateChange}
+            isSaving={isSavingSettings}
+            showSettingsBar={showSettingsBar}
+          />
+        )}
         {topBarSlot}
       </div>
       <SummaryScrollRegion>
-        {/* A client reads the mode, never writes it — the same `preview` gate every other
-            owner-only affordance in this panel uses. Collapsed by default: these are set-once
-            decisions about the deal, not something the reader needs on every visit.
-            Supplying the two writers is what makes a host an editor of these settings; a
-            read-only host (no writers) renders no settings block at all — the investment page
-            links to the editor from its own action row instead. */}
-        {!preview && onSettlementModeChange && onMaterialsNetRateChange && (
-          <div className="max-w-lg px-4 pt-4">
-            <SummaryInvestmentSettings
-              vatRate={vatRate}
-              settlementMode={settlementMode}
-              onSettlementModeChange={onSettlementModeChange}
-              materialsGrossBase={materialsGrossBase}
-              materialsNetRate={materialsNetRate}
-              onMaterialsNetRateChange={onMaterialsNetRateChange}
-              isSaving={isSavingSettings}
-              showSettingsBar={showSettingsBar}
-              defaultOpen={settingsDefaultOpen}
-            />
-          </div>
-        )}
         {isSubcontractorView && subcontractorDue ? (
           <SubcontractorSummary
             investmentId={investmentId}

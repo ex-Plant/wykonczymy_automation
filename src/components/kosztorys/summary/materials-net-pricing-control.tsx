@@ -53,7 +53,7 @@ export function MaterialsNetPricingControl({
 
   return (
     <LabeledModeSelect
-      label="Rozliczanie wydatków"
+      label="Rozliczanie materiałów"
       value={mode}
       onValueChange={changeMode}
       options={PRICING_MODE_OPTIONS}
