@@ -56,18 +56,17 @@ export function SubcontractorSummary({
 
   return (
     <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
+      {/* The multiplier controls lead the block, like the rozliczenie selects on the other tabs: they
+          price every figure below them, so they read as the setting the tables answer to rather than
+          a footnote to one of them. Above the row, not inside its left column — nested there they
+          pushed the headline table down and the two tables stopped lining up. */}
+      {showGlobalSettings && <EditorGlobalSettings />}
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-        {/* The multiplier controls lead the block, like the rozliczenie selects on the other tabs:
-            they price every figure below them, so they read as the setting the table answers to
-            rather than a footnote to it. */}
-        <div className="flex flex-col gap-y-4">
-          {showGlobalSettings && <EditorGlobalSettings />}
-          <SubcontractorHeadlineSummary
-            summary={summary}
-            due={subcontractorDue}
-            showPlanes={showBreakdown}
-          />
-        </div>
+        <SubcontractorHeadlineSummary
+          summary={summary}
+          due={subcontractorDue}
+          showPlanes={showBreakdown}
+        />
         {showBreakdown && summary.rows.length > 0 && (
           <SubcontractorWorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
