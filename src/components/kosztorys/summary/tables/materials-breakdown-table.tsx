@@ -15,7 +15,7 @@ import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
 
 // The per-category „Wydatki inwestycyjne" split — each expense category's recorded brutto, plus a
 // separate frozen „… netto" row per category billed at netto. A non-null `netRate` adds the netto and
-// zł Różnica columns; null keeps it a plain brutto-per-category table.
+// zł Różnica columns; null keeps it a single-amount-per-category table.
 // `row.net` is the brutto sum (financials-layer field name kept; reinterpreted as gross here).
 export function MaterialsBreakdownTable({
   rows,
@@ -23,10 +23,9 @@ export function MaterialsBreakdownTable({
   caption = 'Wydatki inwestycyjne',
 }: {
   rows: MaterialyBreakdownRowT[]
-  // The rate the Netto column strips, as a fraction. On the investor's split this is a *presentation*
-  // figure — the materiały rate when the concession is on, otherwise the investment's VAT — so the
-  // column stands whether or not anything is actually being conceded. null = no netto column at all,
-  // which is how the company-plane („Rozliczone R+M") split renders.
+  // The rate the Netto column strips, as a fraction — the saved materiały rate, and nothing else.
+  // null means materiały settle brutto: the investor is billed the receipt, so a netto column would
+  // print an amount nobody owes. That is also how the company-plane („Rozliczone R+M") split renders.
   netRate: number | null
   // Names the split — the same per-category shape also renders the settled („wliczone w robociznę")
   // spend, which must never read as part of the investor's wydatki.
@@ -50,18 +49,21 @@ export function MaterialsBreakdownTable({
     <div className="flex flex-col gap-1">
       <SummaryTable cols={cols} className="w-fit">
         <SummaryHeaderCell variant="label">{caption}</SummaryHeaderCell>
-        <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota brutto'}</SummaryHeaderCell>
         {/* „Netto" bare, not „bez VAT": whenever a materiały concession is saved this column crosses
-            at that rate, not at VAT. The footnote below names the rate it actually applied. */}
+            at that rate, not at VAT. The footnote below names the rate it actually applied. It leads
+            because it is the figure the investor is billed; brutto is where it was crossed from. */}
         {showNet && <SummaryHeaderCell>Netto</SummaryHeaderCell>}
+        {/* „Kwota", not „Brutto", where materiały settle brutto: with no rate to cross, there is only
+            one plane, and naming it invites the reader to look for a netto twin that isn't there. */}
+        <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota'}</SummaryHeaderCell>
         {showNet && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}
         {shown.map((row) => {
           const pair = pairOf(row)
           return (
             <Fragment key={`${row.origin}-${row.id ?? 'korekta'}`}>
               <SummaryLabelCell>{row.label}</SummaryLabelCell>
-              <SummaryValueCell>{formatNet(pair.gross)}</SummaryValueCell>
               {showNet && <SummaryValueCell>{formatNet(pair.net)}</SummaryValueCell>}
+              <SummaryValueCell>{formatNet(pair.gross)}</SummaryValueCell>
               {showNet && (
                 <SummaryValueCell className="text-muted-foreground">
                   {formatNet(pair.net - pair.gross)}
@@ -71,8 +73,8 @@ export function MaterialsBreakdownTable({
           )
         })}
         <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
-        <SummaryValueCell weight="bold">{formatNet(totalGross)}</SummaryValueCell>
         {showNet && <SummaryValueCell weight="bold">{formatNet(totalNet)}</SummaryValueCell>}
+        <SummaryValueCell weight="bold">{formatNet(totalGross)}</SummaryValueCell>
         {showNet && (
           <SummaryValueCell weight="bold" className="text-muted-foreground">
             {formatNet(totalNet - totalGross)}
