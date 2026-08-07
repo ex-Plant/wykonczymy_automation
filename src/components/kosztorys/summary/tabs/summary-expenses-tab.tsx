@@ -89,7 +89,7 @@ export function SummaryExpensesTab({
         )}
       </div>
       {showTransactions && materialTransactions.length > 0 && (
-        <CollapsibleSection title="Lista wydatków" size="sm">
+        <CollapsibleSection title="Lista wydatków" size="sm" defaultOpen={false}>
           <div className="pt-4">
             <MaterialsTransactionsTable
               investmentId={investmentId}

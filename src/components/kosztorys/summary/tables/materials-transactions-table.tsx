@@ -130,12 +130,12 @@ const moneyColumn = (
   cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
 })
 
-// Netto comes last of the two so the „Razem" cell — which sums `billed` — sits under the column it
-// actually totals.
+// Netto first: it is the figure this dataset actually bills, so it reads before the brutto it was
+// crossed from. „Razem" sums `billed`, so the footer has to skip a column to land under it.
 const NET_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
-  moneyColumn('amount', 'Brutto'),
   moneyColumn('billed', 'Netto'),
+  moneyColumn('amount', 'Brutto'),
 ]
 
 // The brutto sets bill at `amount`, so one column says everything.
@@ -219,12 +219,15 @@ export function MaterialsTransactionsTable({
         getRowHref={preview ? undefined : (row) => wydatkiRowHref(investmentId, row)}
         footer={(colCount) => (
           <tr>
-            <td className="font-bold" colSpan={colCount - 1}>
+            {/* The total is of `billed`, which the netto set renders second-to-last — so the label
+                spans one column less there, and the trailing Brutto column gets an empty cell. */}
+            <td className="font-bold" colSpan={colCount - (activeDataset === 'net' ? 2 : 1)}>
               Razem
             </td>
             <td className="text-right font-bold tabular-nums">
               {formatNet(sumBilled(visibleRows))}
             </td>
+            {activeDataset === 'net' && <td />}
           </tr>
         )}
         className="w-full"
