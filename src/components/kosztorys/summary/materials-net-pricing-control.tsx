@@ -14,8 +14,8 @@ const PRICING_MODE_OPTIONS: SelectOptionT[] = [
 ]
 
 const PRICING_MODE_DESCRIPTIONS: Record<PricingModeT, string> = {
-  gross: 'Wydatki inwestycyjne rozliczane po kwotach z paragonu/faktury (domyślne).',
-  net: 'Wydatki inwestycyjne rozliczane po kwocie netto zamiast po kwocie z paragonu/faktury. \nStawkę ustawiasz poniżej. Od kwoty brutto transakcji zostanie odjęty określony procent. Domyślnie jest to stawka vat inwestycji ale możesz ustawić dowolny.',
+  gross: 'Wydatki inwestycyjne rozliczane po kwotach brutto z faktury (domyślne).',
+  net: 'Wydatki inwestycyjne rozliczane po kwocie netto z faktury. \nStawkę vat ustawiasz poniżej. Kwota brutto zostanie pomniejszona o vat.',
 }
 
 type PropsT = {
@@ -62,7 +62,7 @@ export function MaterialsNetPricingControl({
     >
       {netPricingOn && (
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">Stawka netto wydatków</span>
+          <span className="text-muted-foreground text-xs">Stawka VAT</span>
           <DecimalField
             label=""
             value={materialsNetPercent}

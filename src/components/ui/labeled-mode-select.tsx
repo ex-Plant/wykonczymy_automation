@@ -3,22 +3,25 @@
 import type { ReactNode } from 'react'
 import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
 import { Description } from '@/components/ui/description'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 type PropsT = {
   label: string
   value: string
   onValueChange: (value: string) => void
   options: SelectOptionT[]
-  description: ReactNode
+  // The picked option's explanation. Omitted for an option that needs none — the icon disappears
+  // with it, rather than opening onto empty space.
+  description?: ReactNode
   disabled?: boolean
-  // Rendered below the description — the settlement mode's zero-VAT warning, the netto pricing rate
-  // field. Only shown when the caller has one for the current value.
+  // Rendered below the row — the settlement mode's zero-VAT warning, the netto pricing rate field.
+  // Only shown when the caller has one for the current value.
   children?: ReactNode
 }
 
-// A label + select row with the picked option's explanation underneath — the shape SettlementModeSelect
-// and MaterialsNetPricingControl both need for a set-once decision about the deal, so the two read as
-// one settings form instead of two near-identical implementations.
+// A label + select row for a set-once decision about the deal, with the picked option's explanation
+// behind an (i) rather than printed underneath: the settings popover stacks four of these, and four
+// paragraphs of prose made it a wall to scroll past instead of a form to fill.
 export function LabeledModeSelect({
   label,
   value,
@@ -34,6 +37,7 @@ export function LabeledModeSelect({
         <Description withIcon={false} size="xs">
           {label}
         </Description>
+        {description && <InfoTooltip content={description} label={`Więcej o: ${label}`} />}
         <SimpleSelect
           value={value}
           onValueChange={onValueChange}
@@ -42,9 +46,6 @@ export function LabeledModeSelect({
           variant="toolbarSm"
         />
       </div>
-      <Description className="max-w-lg whitespace-pre-wrap" size="xs" withIcon={false}>
-        {description}
-      </Description>
       {children}
     </div>
   )

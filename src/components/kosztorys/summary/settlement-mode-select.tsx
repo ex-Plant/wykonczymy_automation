@@ -1,26 +1,14 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
 import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
 import { SETTLEMENT_MODE_OPTIONS, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
-const MODE_DESCRIPTIONS: Record<SettlementModeT, ReactNode> = {
-  GROSS: 'Kwota do zapłaty dla inwestora liczona po cenach brutto.',
-  NET: (
-    <>
-      Kwota do zapłaty dla inwestora liczona po cenach netto.{' '}
-      <strong className="font-semibold">Sposób liczenia materiałów ustawiasz poniżej.</strong>
-    </>
-  ),
-  MIXED: (
-    <>
-      Kwota do zapłaty dla inwestora rozbita na brutto i netto. {'\n'}
-      Dodając wydatek inwestycyjny określasz czy ma on trafiać do puli netto czy puli brutto, na tej
-      podstawie liczy się suma do zapłaty poszczególnych kategorii. {'\n'}
-      <strong className="font-semibold">Sposób liczenia materiałów ustawiasz poniżej.</strong>
-    </>
-  ),
+// Only Mieszane earns a hint: „Brutto"/„Netto" say what they do, but Mieszane hands the owner a
+// per-wydatek choice they have to make later, elsewhere.
+const MODE_DESCRIPTIONS: Partial<Record<SettlementModeT, string>> = {
+  MIXED:
+    'Dodając wydatek inwestycyjny określasz czy ma on trafiać do puli netto czy puli brutto, suma liczy się na tej podstawie.',
 }
 
 type PropsT = {
@@ -35,7 +23,7 @@ type PropsT = {
 // because the reader who wonders why figures aren't moving is looking here.
 //
 // Never disabled at VAT 0% (EX-590): being the sole edit surface means a disable strands the
-// investment in whatever mode it was stored as, and the mode is not inert there anyway — Mieszane
+// investment in whatever mode it was stored as,  and the mode is not inert there anyway — Mieszane
 // still splits the panel and doubles the grid's money columns, and the materiały netto rate is
 // VAT-independent. The warning below explains the one thing VAT 0% *does* flatten.
 export function SettlementModeSelect({ value, onChange, vatRate, disabled = false }: PropsT) {
