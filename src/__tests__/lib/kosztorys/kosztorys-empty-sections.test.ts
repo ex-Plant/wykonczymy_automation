@@ -77,6 +77,39 @@ describe('emptySectionIds — a section is pusta when nothing has been executed 
   })
 })
 
+// A kwota rabat that cancels its own row: 3 × 0,10 zł − 0,30 zł is zero in złotych but 5.55e-17 in
+// binary, so a strict `net === 0` read this section as carrying work and left it expanded.
+const cancelledTree: KosztorysTreeT = makeTree({
+  sections: [
+    {
+      id: 40,
+      name: 'Sekcja D',
+      displayOrder: 0,
+      color: null,
+      items: [{ ...item(4, 40), clientPrice: 0.1, discountType: 'amount', discountValue: 0.3 }],
+    },
+  ],
+  stages: [{ id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null }],
+  progress: [{ itemId: 4, stageId: 100, qtyDone: 3 }],
+})
+
+describe('emptySectionIds — a section whose value cancels to a float residue', () => {
+  const subtotals = sectionSubtotalsForView(
+    treeToRows(cancelledTree),
+    cancelledTree.stages,
+    'client',
+  )
+
+  it('sums to a non-zero float, which is what makes the case worth guarding', () => {
+    expect(subtotals[0].net).not.toBe(0)
+    expect(Math.abs(subtotals[0].net)).toBeLessThan(0.005)
+  })
+
+  it('still counts as pusta', () => {
+    expect([...emptySectionIds(subtotals)]).toEqual([40])
+  })
+})
+
 describe('„Zwiń puste sekcje" — the bulk deselect it applies to the selection', () => {
   it('drops the pusta section and leaves the rest ticked', () => {
     expect(deselectEmpty(['10', '20', '30'])).toEqual(['10', '30'])

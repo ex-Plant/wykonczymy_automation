@@ -8,6 +8,7 @@ import {
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import type {
   GlobalDiscountT,
   KosztorysStageT,
@@ -388,7 +389,11 @@ export function sectionSubtotalsForView(
  *
  * "Pusta" is no WORK DONE, not no positions: a section with no items is cascade-deleted, so that
  * state never reaches the grid.
+ *
+ * Rounded before the test, not compared raw: `net` is a summed float, and a section that cancels to
+ * zero (a kwota rabat equal to its own gross) lands on ±1e-15 rather than 0 — which strict equality
+ * reads as "not empty", so the section stays expanded and the menu's count is short by one.
  */
 export function emptySectionIds(subtotals: SectionSubtotalT[]): Set<number> {
-  return new Set(subtotals.filter((s) => s.net === 0).map((s) => s.sectionId))
+  return new Set(subtotals.filter((s) => roundToCents(s.net) === 0).map((s) => s.sectionId))
 }

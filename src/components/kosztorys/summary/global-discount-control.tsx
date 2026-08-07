@@ -6,6 +6,7 @@ import { RabatValueField } from '@/components/kosztorys/summary/rabat-value-fiel
 import { globalDiscountForMode } from '@/lib/kosztorys/calc'
 import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { SelectOptionT } from '@/components/ui/simple-select'
 
 type DiscountModeT = 'off' | 'amount' | 'percent'
@@ -82,7 +83,9 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs">Kwota</span>
           <RabatValueField
-            value={String(globalDiscount.value)}
+            // `String` is not a formatter — it prints all 17 digits of whatever is stored, which is
+            // how a kwota persisted before the write-side rounding still reads „172024,28000000003".
+            value={String(roundToCents(globalDiscount.value))}
             placeholder="zł"
             disabled={disabled}
             isValid={(n) => n >= 0}

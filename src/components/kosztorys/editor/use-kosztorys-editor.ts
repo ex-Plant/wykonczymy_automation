@@ -64,6 +64,7 @@ import {
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
 import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
   addSectionAction,
@@ -399,8 +400,11 @@ export function useKosztorysEditor({
   // „Kwotowy" is picked, so the switch replaces without moving the total (EX-605). Reads 0 while the
   // global discount is already active (rowDiscountForView is 0 under it), which is why the seed is
   // only ever taken on the null→'amount' transition.
+  // Rounded, not raw: each per-item rabat is a percent of a gross, so it has no exact binary form, and
+  // summing hundreds of them surfaces the error around the 11th digit. This figure is typed straight
+  // into the kwota field as text, where „172024,28000000003" is what the owner reads.
   const perItemDiscountTotal = useMemo(
-    () => subtotals.reduce((s, x) => s + x.discount, 0),
+    () => roundToCents(subtotals.reduce((s, x) => s + x.discount, 0)),
     [subtotals],
   )
   // How many items actually carry a rabat — what the percent bulk-overwrite would destroy. Counted off
@@ -1155,11 +1159,15 @@ export function useKosztorysEditor({
   }
 
   function handleGlobalDiscountChange(next: GlobalDiscountT) {
+    // Quantized on the way in, so nothing sub-grosz is ever persisted: the kwota is stored money the
+    // field mirrors back as text, and a seeded Σ rabatów carries float residue from the products it
+    // sums. Rounded BEFORE the no-op check, or a dirty stored value never matches its clean twin.
+    const clean = { ...next, value: roundToCents(next.value) }
     // saveSetting's own guard is identity-based, which never fires on a fresh object — so the
     // no-op check is here, by field. Without it every „Kwotowy" re-pick and every re-commit of an
     // unchanged kwota would put a do-nothing entry on the undo stack.
-    if (globalDiscount.type === next.type && globalDiscount.value === next.value) return
-    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, next)
+    if (globalDiscount.type === clean.type && globalDiscount.value === clean.value) return
+    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, clean)
   }
 
   // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
