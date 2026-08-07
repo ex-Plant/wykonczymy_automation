@@ -101,10 +101,9 @@ export async function InvestmentSummaryPanel({
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}
       materialsNetRate={tree.materialsNetRate}
-      // No writers passed on purpose: these settings are edited in the kosztorys editor only —
-      // the investment page's action row links there instead of persisting them itself. That also
-      // keeps every write off the one route that renders the transfers table, which a route-wide
-      // re-render would rebuild.
+      // No writers passed on purpose: these settings are edited in the kosztorys editor only, so
+      // this panel renders no settings trigger at all. That also keeps every write off the one
+      // route that renders the transfers table, which a route-wide re-render would rebuild.
       views={INVESTMENT_PANEL_VIEWS}
       showTransactionLists={false}
       showPies={false}

@@ -213,8 +213,6 @@ export function SummaryPanelContent({
   // together rather than the panel discounting a figure marża never saw. The rate itself is kept, not
   // cleared: switching back to netto restores the old figures with nothing to re-enter.
   const effectiveNetRate = settlementMode === 'GROSS' ? null : materialsNetRate
-  // Computed here and passed down: the collapsed headline and the Podsumowanie row show the same
-  // „Do zapłaty", so it has one source rather than two calls that must be kept in step.
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNetFromKosztorys,

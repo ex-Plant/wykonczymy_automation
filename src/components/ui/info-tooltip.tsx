@@ -31,9 +31,12 @@ export function InfoTooltip({
       <button
         type="button"
         aria-label={label}
-        // Radix's own pointerdown handler *closes* the tooltip; preventDefault makes its
-        // composeEventHandlers skip that handler, so a click toggles instead of dismissing. Without
-        // it the hint is unreachable on touch, which has no hover to open it with.
+        // Touch has no hover, so without a click-toggle the hint is simply unreachable there. The
+        // mechanism is indirect and worth stating: Radix's Trigger — the element HintTooltip wraps
+        // this button in — closes the tooltip on pointerdown, and its composeEventHandlers skips
+        // that once the event is `defaultPrevented`. So this preventDefault suppresses a handler
+        // that lives on the PARENT, not here. Render the button as the Trigger itself (or drop the
+        // wrapper) and touch access dies silently, with nothing in this file to explain why.
         onPointerDown={(event) => {
           event.preventDefault()
           setOpen((wasOpen) => !wasOpen)
