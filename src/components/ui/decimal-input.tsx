@@ -14,7 +14,7 @@ export function DecimalInput({ className, ...props }: PropsT) {
       type="text"
       inputMode="decimal"
       className={cn(
-        'border-border h-6 w-14 rounded border bg-transparent px-1 text-right text-xs outline-none disabled:cursor-not-allowed',
+        'border-border h-6 w-20 rounded border bg-transparent px-1 text-right text-xs outline-none disabled:cursor-not-allowed',
         className,
       )}
       {...props}
