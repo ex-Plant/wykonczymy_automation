@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react'
 import { formatNet } from '@/lib/kosztorys/format'
-import { billedMaterialsPair } from '@/lib/kosztorys/summary-economics'
+import { breakdownRowPair } from '@/lib/kosztorys/summary-economics'
 import {
   SUMMARY_LABEL_COL,
   SUMMARY_VALUE_COL,
@@ -39,12 +39,9 @@ export function MaterialsBreakdownTable({
   const cols = showNet
     ? `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
     : `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
-  // A netBilled row is ALREADY the netto the investor is billed, so the reduction must not touch it —
-  // cutting it here would deduct the same VAT a second time. Its Netto column equals its Brutto.
-  const netOf = (row: MaterialyBreakdownRowT) =>
-    row.origin === 'netBilled' ? row.net : billedMaterialsPair(row.net, netRate).net
-  const totalGross = shown.reduce((sum, row) => sum + row.net, 0)
-  const totalNet = shown.reduce((sum, row) => sum + netOf(row), 0)
+  const pairOf = (row: MaterialyBreakdownRowT) => breakdownRowPair(row, netRate)
+  const totalGross = shown.reduce((sum, row) => sum + pairOf(row).gross, 0)
+  const totalNet = shown.reduce((sum, row) => sum + pairOf(row).net, 0)
   const netPercent = Math.round((netRate ?? 0) * 100)
 
   return (
@@ -52,31 +49,36 @@ export function MaterialsBreakdownTable({
       <SummaryTable cols={cols} className="w-fit">
         <SummaryHeaderCell variant="label">{caption}</SummaryHeaderCell>
         <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota brutto'}</SummaryHeaderCell>
-        {showNet && <SummaryHeaderCell>Netto ({netPercent}%)</SummaryHeaderCell>}
+        {showNet && <SummaryHeaderCell>Netto (bez VAT {netPercent}%)</SummaryHeaderCell>}
         {showNet && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}
-        {shown.map((row) => (
-          <Fragment key={`${row.origin}-${row.id ?? 'korekta'}`}>
-            <SummaryLabelCell>{row.label}</SummaryLabelCell>
-            <SummaryValueCell>{formatNet(row.net)}</SummaryValueCell>
-            {showNet && <SummaryValueCell>{formatNet(netOf(row))}</SummaryValueCell>}
-            {showNet && (
-              <SummaryValueCell className="text-muted-foreground">
-                −{formatNet(row.net - netOf(row))}
-              </SummaryValueCell>
-            )}
-          </Fragment>
-        ))}
+        {shown.map((row) => {
+          const pair = pairOf(row)
+          return (
+            <Fragment key={`${row.origin}-${row.id ?? 'korekta'}`}>
+              <SummaryLabelCell>{row.label}</SummaryLabelCell>
+              <SummaryValueCell>{formatNet(pair.gross)}</SummaryValueCell>
+              {showNet && <SummaryValueCell>{formatNet(pair.net)}</SummaryValueCell>}
+              {showNet && (
+                <SummaryValueCell className="text-muted-foreground">
+                  {formatNet(pair.net - pair.gross)}
+                </SummaryValueCell>
+              )}
+            </Fragment>
+          )
+        })}
         <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
         <SummaryValueCell weight="bold">{formatNet(totalGross)}</SummaryValueCell>
         {showNet && <SummaryValueCell weight="bold">{formatNet(totalNet)}</SummaryValueCell>}
         {showNet && (
           <SummaryValueCell weight="bold" className="text-muted-foreground">
-            −{formatNet(totalGross - totalNet)}
+            {formatNet(totalNet - totalGross)}
           </SummaryValueCell>
         )}
       </SummaryTable>
       {showNet && (
-        <span className="text-muted-foreground text-xs">Netto = brutto ÷ (1 + {netPercent}%)</span>
+        <span className="text-muted-foreground text-xs">
+          Netto = brutto ÷ (1 + {netPercent}%), wydatek netto → brutto = netto × (1 + {netPercent}%)
+        </span>
       )}
     </div>
   )

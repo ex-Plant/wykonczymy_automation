@@ -26,6 +26,7 @@ export function SummaryBreakdownTable({
   combinedNet,
   combined,
   materialsNetRate,
+  vatRate,
   scopeMarked = false,
 }: {
   cols: string
@@ -43,6 +44,8 @@ export function SummaryBreakdownTable({
   combined: MoneyPairT
   // The investment's saved materiały netto rate (null = billed at the raw brutto receipt).
   materialsNetRate: number | null
+  // Carries the netto-billed bucket to the brutto axis.
+  vatRate: number
   // Materiały comes off the transactions and stays bare.
   scopeMarked?: boolean
 }) {
@@ -72,7 +75,7 @@ export function SummaryBreakdownTable({
       {materials.grossBase + materials.netBilled !== 0 && (
         <SummaryRow
           label="Materiały"
-          line={summaryLineMaterials(materials, combinedNet, materialsNetRate)}
+          line={summaryLineMaterials(materials, combinedNet, materialsNetRate, vatRate)}
           axis={moneyAxis}
         />
       )}

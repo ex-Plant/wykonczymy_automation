@@ -33,7 +33,7 @@ type PropsT = {
 }
 
 const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
-  gross: 'Materiały',
+  gross: 'Materiały brutto',
   net: 'Materiały rozliczane netto',
   settled: 'Materiały wliczone w robociznę',
 }

@@ -78,20 +78,17 @@ export function SummaryInvestmentSettings({
               disabled={isSaving}
             />
           </div>
-          {/* Brutto settlement prices at brutto by design, so the concession has nothing to strip —
-              the saved rate stays stored (switching back restores it) but the control is hidden rather
-              than offered as a switch that changes nothing. */}
-          {settlementMode !== 'GROSS' && (
-            <div className="py-3">
-              <MaterialsNetPricingControl
-                materialsGrossBase={materialsGrossBase}
-                vatRate={vatRate}
-                materialsNetRate={materialsNetRate}
-                onMaterialsNetRateChange={onMaterialsNetRateChange}
-                disabled={isSaving}
-              />
-            </div>
-          )}
+
+          <div className="py-3">
+            <MaterialsNetPricingControl
+              materialsGrossBase={materialsGrossBase}
+              vatRate={vatRate}
+              materialsNetRate={materialsNetRate}
+              onMaterialsNetRateChange={onMaterialsNetRateChange}
+              disabled={isSaving}
+            />
+          </div>
+
           {showSettingsBar && (
             <div className="py-3">
               <VatRateField disabled={isSaving} />

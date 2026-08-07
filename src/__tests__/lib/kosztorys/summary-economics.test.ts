@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  breakdownRowPair,
   bucketDepositsByPlane,
   computeMixedSettlement,
   computeDoZaplatyRM,
@@ -55,7 +56,7 @@ describe('summary-row udział builders', () => {
 
   it('zero Łącznie yields share 0 in every builder (no division by zero)', () => {
     expect(summaryLine(250, 0, 0.23).share).toBe(0)
-    expect(summaryLineMaterials({ grossBase: 123, netBilled: 0 }, 0, 0.23).share).toBe(0)
+    expect(summaryLineMaterials({ grossBase: 123, netBilled: 0 }, 0, 0.23, 0.23).share).toBe(0)
   })
 })
 
@@ -74,6 +75,35 @@ describe('billedMaterialsPair (netto pricing switch)', () => {
     const p = billedMaterialsPair(123, null)
     expect(p.net).toBe(123)
     expect(p.gross).toBe(123)
+  })
+})
+
+// ONE rate spans the bridge in both directions — the row's recorded plane decides which way it
+// crosses, never a second rate. A table whose header names one rate must not compute half its rows
+// with another.
+describe('breakdownRowPair (one „Wydatki inwestycyjne" row on both planes)', () => {
+  it('a brutto row keeps its receipt and divides down to netto', () => {
+    const p = breakdownRowPair({ net: 123, origin: 'gross' }, 0.23)
+    expect(p.gross).toBe(123)
+    expect(p.net).toBeCloseTo(100)
+  })
+
+  it('a netto row keeps its billed amount and multiplies back up — the SAME rate', () => {
+    const p = breakdownRowPair({ net: 100, origin: 'netBilled' }, 0.23)
+    expect(p.net).toBe(100)
+    expect(p.gross).toBeCloseTo(123)
+  })
+
+  it('the two directions invert each other: brutto → netto → brutto returns the receipt', () => {
+    const { net } = breakdownRowPair({ net: 123, origin: 'gross' }, 0.23)
+    expect(breakdownRowPair({ net, origin: 'netBilled' }, 0.23).gross).toBeCloseTo(123)
+  })
+
+  it('no rate = no bridge, in either direction', () => {
+    expect(breakdownRowPair({ net: 100, origin: 'netBilled' }, null)).toEqual({
+      net: 100,
+      gross: 100,
+    })
   })
 })
 
@@ -323,7 +353,7 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
     expect(withNet.combined.net - base.combined.net).toBeCloseTo(NET_BILLED)
   })
 
-  it('both axes: a netto expense raises Do zapłaty .net AND .gross by exactly its netAmount', () => {
+  it('a netto expense raises Do zapłaty .net by its netAmount and .gross by its grossed-up twin', () => {
     const base = computeDoZaplatyRM(1000, 300, justGross(GROSS_BASE), VAT, REDUCTION)
     const withNet = computeDoZaplatyRM(
       1000,
@@ -333,7 +363,7 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
       REDUCTION,
     )
     expect(withNet.net - base.net).toBeCloseTo(NET_BILLED)
-    expect(withNet.gross - base.gross).toBeCloseTo(NET_BILLED)
+    expect(withNet.gross - base.gross).toBeCloseTo(NET_BILLED * (1 + REDUCTION))
   })
 
   it('udziały still sum to 1 — the bucket lands in the denominator, not after the shares', () => {
@@ -347,6 +377,7 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
       { grossBase: GROSS_BASE, netBilled: NET_BILLED },
       p.combined.net,
       REDUCTION,
+      VAT,
     )
     expect(p.laborCosts.share + materialy.share).toBeCloseTo(1)
     expect(p.combined.share).toBe(1)
@@ -354,9 +385,10 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
 
   it('B5: the aggregate row carries the stored netAmount unrounded — list and summary agree', () => {
     const odd = 1234.56
-    const withNet = summaryLineMaterials({ grossBase: 0, netBilled: odd }, 0, REDUCTION)
+    const withNet = summaryLineMaterials({ grossBase: 0, netBilled: odd }, 0, REDUCTION, VAT)
     expect(withNet.net).toBe(odd)
-    expect(withNet.gross).toBe(odd)
+    // Its brutto is the netto crossed to the other plane, never the stored figure repeated.
+    expect(withNet.gross).toBeCloseTo(odd * (1 + REDUCTION))
   })
 
   it('tryb mieszany sees it too — the netto section is not a separate composition', () => {
@@ -423,7 +455,7 @@ describe('sumaPracPreRabat — one „Robocizna", one number', () => {
     const rows =
       sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount) -
       rabatAmount +
-      materialsPair(materials, 0.23).net
+      materialsPair(materials, 0.23, 0.23).net
 
     expect(rows).toBeCloseTo(combined.net)
   })
