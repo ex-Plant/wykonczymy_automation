@@ -57,6 +57,14 @@ export function SummaryInvestmentSettings({
           window scrolls the options instead of clipping them. */}
       <PopoverContent
         align="start"
+        // Radix would autofocus the first tabbable node, which is a hint's (i) button — and a
+        // tooltip trigger opens on focus, so the popover appeared with a hint already up. Park
+        // focus on the content container instead: still inside the popover, so Tab and Escape
+        // behave, but no control is entered.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
+        }}
         className="max-h-(--radix-popover-content-available-height) w-96 overflow-y-auto"
       >
         {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
