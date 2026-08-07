@@ -19,23 +19,23 @@ at rozliczenie netto/mieszany, understated at rozliczenie brutto.
 ## Desired End State
 
 A `netBilled` row shows its amount under Netto and `amount × (1 + rate)` under Brutto in every mode;
-`Razem` brutto becomes a brutto total; Różnica prints one minus. At rozliczenie **brutto** only,
-„Do zapłaty" brutto gains `netBilled × vatRate`. v1 unchanged.
+`Razem` brutto becomes a brutto total; Różnica prints one minus. „Do zapłaty" brutto gains
+`netBilled × rate` in every tryb. v1 unchanged.
 
 ## Key Decisions Made
 
-| Decision                 | Choice                                                                                     | Why                                                                                                                                  | Source           |
-| ------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| Model                    | Every expense is shown on the settlement plane; a rate is only a **bridge** between planes | brutto → netto uses the materiały concession, netto → brutto uses VAT. Only the first bridge exists today — that IS the defect       | Owner 2026-07-29 |
-| Scope                    | **Panel v2 only** — v1 knowingly left divergent                                            | v1 has no money axis at all; fixing one term inside a wrong sum moves bilans by an unexplainable amount                              | Owner 2026-07-29 |
-| Gross-up rate            | `vatRate`, always                                                                          | The netto → brutto bridge is VAT by definition. A netto row's stored `amount` is the RECEIPT brutto (seller's ~23%), the wrong plane | Owner 2026-07-29 |
-| Settlement-mode gate     | **None**                                                                                   | The brutto axis means „on the brutto plane"; mode only decides whether that axis is displayed                                        | Analysis         |
-| Two rates competing?     | No — `netRate` only touches `gross` rows, `vatRate` only `netBilled` ones                  | They run in opposite directions on different row types; „which single rate governs the table" has no answer                          | Owner 2026-07-29 |
-| Where the branch lives   | `breakdownRowPair` in `summary-economics.ts`, not in the component                         | `origin`'s meaning gets decided once; the table becomes plumbing, and the rule is unit-testable                                      | Q                |
-| Row shape                | `MaterialyBreakdownRowT` unchanged — no second amount field                                | The builder is server-side and doesn't know the rates; adding them would drag presentation into `lib/db`                             | Analysis         |
-| Wave-2 Netto fallback    | Untouched                                                                                  | It governs the netto reading of _brutto_ rows — independent of this bridge                                                           | Owner            |
-| `computeMixedSettlement` | No change                                                                                  | It reads the netto axis only, which never moves                                                                                      | Research         |
-| Tests                    | Unit only, in the existing `summary-economics.test.ts`                                     | Pure arithmetic on both planes; no server change, no new interaction                                                                 | Plan             |
+| Decision                 | Choice                                                                                     | Why                                                                                                                                       | Source           |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Model                    | Every expense is shown on the settlement plane; a rate is only a **bridge** between planes | **ONE rate spans the bridge in both directions.** The direction a row crosses is decided by the plane it was recorded on                  | Owner 2026-07-29 |
+| Scope                    | **Panel v2 only** — v1 knowingly left divergent                                            | v1 has no money axis at all; fixing one term inside a wrong sum moves bilans by an unexplainable amount                                   | Owner 2026-07-29 |
+| Gross-up rate            | The materiały rate where one is saved, `vatRate` otherwise                                 | ~~`vatRate`, always~~ — **overruled mid-implementation.** A table whose header names one rate must not compute half its rows with another | Owner 2026-07-29 |
+| Settlement-mode gate     | **None new.** The pre-existing `effectiveNetRate` gate stayed                              | It mirrors the server's hard-zero at `investment-financials.ts:89`; without it the panel would disagree with marża/bilans                 | Analysis         |
+| Two rates competing?     | ~~No — two rates, one per row type~~ → **one rate, both directions**                       | Two rates made „which rate governs the table" unanswerable, which is exactly the question the header has to answer                        | Owner 2026-07-29 |
+| Where the branch lives   | `breakdownRowPair` in `summary-economics.ts`, not in the component                         | `origin`'s meaning gets decided once; the table becomes plumbing, and the rule is unit-testable                                           | Q                |
+| Row shape                | `MaterialyBreakdownRowT` unchanged — no second amount field                                | The builder is server-side and doesn't know the rates; adding them would drag presentation into `lib/db`                                  | Analysis         |
+| Wave-2 Netto fallback    | Untouched                                                                                  | It governs the netto reading of _brutto_ rows — independent of this bridge                                                                | Owner            |
+| `computeMixedSettlement` | No change                                                                                  | It reads the netto axis only, which never moves                                                                                           | Research         |
+| Tests                    | Unit only, in the existing `summary-economics.test.ts`                                     | Pure arithmetic on both planes; no server change, no new interaction                                                                      | Plan             |
 
 ## Scope
 
@@ -51,8 +51,8 @@ the investment page tiles, the Sheets bridge, `/raporty`, `preview-kosztorys.ts`
 
 Two independent phases, either order. All valuation arithmetic in `summary-economics.ts`; the
 settlement-mode decision stays in the panel beside the existing `effectiveNetRate` gate, so the
-economics module stays pure. The new parameter is defaulted, so every existing caller and spec keeps
-today's behaviour until threaded.
+economics module stays pure. The rate parameter is **required**, not defaulted — an omitted rate must
+fail the build rather than silently pick the fallback.
 
 ## Phases at a Glance
 
@@ -84,6 +84,6 @@ today's behaviour until threaded.
 
 - Investment 31: „Materiały budowlane netto" → 100,00 netto / 105,00 brutto / −5,00; „Pozostałe
   koszty netto" → 20,00 / 21,00 / −1,00; `Razem` brutto 190 786,57; Korekta Różnica `14,29`.
-- Investment 42 (tryb brutto): „Do zapłaty" brutto rises by `netBilled × 0,08`, netto unchanged;
-  switching to netto or mieszany restores today's figures.
+- „Do zapłaty" brutto rises by `netBilled × rate` in **every** tryb, netto unchanged. (Originally
+  scoped to tryb brutto only — see the Model row above.)
 - „Materiały wliczone w robociznę" table unchanged; full vitest + typecheck green.

@@ -11,8 +11,16 @@ Two independent planes, in one change:
 1. **Presentation** — the „Wydatki inwestycyjne" table's Brutto column and its `Razem`. Wrong today
    in **every** settlement mode; fixed unconditionally.
 2. **Settlement** — the brutto axis of `materialsPair`, i.e. „Do zapłaty" / the brutto waterfall.
-   Grossed up **only at rozliczenie brutto** (`settlementMode === 'GROSS'`), per the owner's ruling
-   of 2026-07-29.
+   Grossed up **unconditionally**, at the materiały rate where one is saved and at `vatRate`
+   otherwise.
+
+   > **Superseded, 2026-07-29 (mid-implementation).** This section originally gated the gross-up on
+   > `settlementMode === 'GROSS'` and threaded a second rate (`netBilledGrossRate`) beside the
+   > materiały one. The owner overruled both: **one rate spans the bridge in both directions**, and
+   > the direction a row crosses is decided by the plane it was recorded on, never by a second rate.
+   > What shipped is `breakdownRowPair` plus `materialsPair`'s `netRate ?? vatRate` fallback. The
+   > `GROSS` gate survives only where it always lived — `effectiveNetRate` in the panel, mirroring
+   > the server's hard-zero at `investment-financials.ts:89`.
 
 **Deliberately out of scope: the whole v1 plane.** `deriveFinancials`, `totalMaterialCosts`, bilans,
 marża, the investments listing and the investment page keep computing exactly what they compute
@@ -283,14 +291,15 @@ None — two multiplications per render.
 
 #### Phase 1 — Brutto column derives from netto
 
-- [ ] `breakdownRowPair` in `summary-economics.ts` + spec
-- [ ] `materials-breakdown-table.tsx` reads both axes through it
-- [ ] Różnica double-minus fixed
-- [ ] `pnpm typecheck` + full vitest green
+- [x] `breakdownRowPair` in `summary-economics.ts` + spec
+- [x] `materials-breakdown-table.tsx` reads both axes through it
+- [x] Różnica double-minus fixed
+- [x] `pnpm typecheck` + full vitest green
 
 #### Phase 2 — Brutto settlement adds VAT to the netto bucket
 
-- [ ] `netBilledGrossRate` param through `materialsPair` / `summaryLineMaterials` /
-      `computeSummarySplit` / `computeDoZaplatyRM` + specs
-- [ ] `netBilledGrossRate` gate in `summary-panel-content.tsx`, threaded to both overview blocks
-- [ ] `pnpm typecheck` + full vitest green
+- [x] ~~`netBilledGrossRate` param~~ → landed as its **inverse**: no second rate. `materialsPair`
+      grosses the netto bucket by `netRate ?? vatRate`, one rate for both planes + specs
+- [x] ~~`netBilledGrossRate` gate in `summary-panel-content.tsx`~~ → no new gate; the existing
+      `effectiveNetRate` is the only settlement-mode gate, and it stayed
+- [x] `pnpm typecheck` + full vitest green
