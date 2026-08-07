@@ -104,6 +104,37 @@ describe('breakdownRowPair (one „Wydatki inwestycyjne" row on both planes)', (
       net: 100,
       gross: 100,
     })
+    expect(breakdownRowPair({ net: 123, origin: 'gross' }, null)).toEqual({ net: 123, gross: 123 })
+  })
+
+  // „Korekta (bez kategorii)" arrives negative. The bug this replaced flipped or flattened such a
+  // row, so pin both the sign and the ratio: a credit must cross the bridge exactly like a charge.
+  it('a negative row keeps its sign and its ratio', () => {
+    const gross = breakdownRowPair({ net: -123, origin: 'gross' }, 0.23)
+    expect(gross.gross).toBe(-123)
+    expect(gross.net).toBeCloseTo(-100)
+
+    const netBilled = breakdownRowPair({ net: -100, origin: 'netBilled' }, 0.23)
+    expect(netBilled.net).toBe(-100)
+    expect(netBilled.gross).toBeCloseTo(-123)
+  })
+})
+
+// The default state of every investment today: no materiały rate saved. It is the branch's own
+// most-travelled path and the one the „frozen bucket" suite never exercises — every case there
+// passes a non-null rate.
+describe('materialsPair without a saved materiały rate', () => {
+  it('leaves the brutto base whole on netto and grosses the netto-billed bucket by VAT', () => {
+    const pair = materialsPair({ grossBase: 12_300, netBilled: 1000 }, null, 0.23)
+    expect(pair.net).toBeCloseTo(13_300)
+    expect(pair.gross).toBeCloseTo(12_300 + 1230)
+  })
+
+  it('differs from breakdownRowPair on the netto-billed bucket — VAT stands in here, not there', () => {
+    const viaMaterials = materialsPair({ grossBase: 0, netBilled: 1000 }, null, 0.23)
+    const viaRow = breakdownRowPair({ net: 1000, origin: 'netBilled' }, null)
+    expect(viaMaterials.gross).toBeCloseTo(1230)
+    expect(viaRow.gross).toBe(1000)
   })
 })
 
@@ -119,7 +150,7 @@ describe('materialsNetDiscount', () => {
 
 describe('materiały netto pricing off (no saved rate)', () => {
   it('computeSummarySplit: materiały netto === brutto, so Łącznie netto keeps the full brutto', () => {
-    const p = computeSummarySplit(1000, justGross(123), 0.23)
+    const p = computeSummarySplit(1000, justGross(123), 0.23, null)
     // Materiały netto = Łącznie netto − robocizna netto = 123 (not the VAT-stripped 100).
     expect(p.combined.net - p.laborCosts.net).toBeCloseTo(123)
     expect(p.combined.net).toBeCloseTo(1123)
@@ -128,7 +159,7 @@ describe('materiały netto pricing off (no saved rate)', () => {
   })
 
   it('computeDoZaplatyRM: materiały enter netto at full brutto; brutto axis unchanged', () => {
-    const r = computeDoZaplatyRM(1000, 300, justGross(123), 0.23)
+    const r = computeDoZaplatyRM(1000, 300, justGross(123), 0.23, null)
     // netto: robocizna 1000 − wpłaty 300 + materiały 123 (raw brutto, not derived 100).
     expect(r.net).toBeCloseTo(823)
     expect(r.gross).toBeCloseTo(1230 - 300 + 123)

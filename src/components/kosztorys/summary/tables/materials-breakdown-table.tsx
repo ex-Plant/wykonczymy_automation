@@ -42,14 +42,18 @@ export function MaterialsBreakdownTable({
   const pairOf = (row: MaterialyBreakdownRowT) => breakdownRowPair(row, netRate)
   const totalGross = shown.reduce((sum, row) => sum + pairOf(row).gross, 0)
   const totalNet = shown.reduce((sum, row) => sum + pairOf(row).net, 0)
-  const netPercent = Math.round((netRate ?? 0) * 100)
+  // Not rounded: at a saved 7,5% a rounded „8%" would print a formula that stops reproducing the
+  // figures in the column right beside it.
+  const netPercent = ((netRate ?? 0) * 100).toLocaleString('pl-PL', { maximumFractionDigits: 2 })
 
   return (
     <div className="flex flex-col gap-1">
       <SummaryTable cols={cols} className="w-fit">
         <SummaryHeaderCell variant="label">{caption}</SummaryHeaderCell>
         <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota brutto'}</SummaryHeaderCell>
-        {showNet && <SummaryHeaderCell>Netto (bez VAT {netPercent}%)</SummaryHeaderCell>}
+        {/* „Netto" bare, not „bez VAT": whenever a materiały concession is saved this column crosses
+            at that rate, not at VAT. The footnote below names the rate it actually applied. */}
+        {showNet && <SummaryHeaderCell>Netto</SummaryHeaderCell>}
         {showNet && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}
         {shown.map((row) => {
           const pair = pairOf(row)
