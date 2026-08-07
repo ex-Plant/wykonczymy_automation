@@ -74,12 +74,18 @@ export function SummaryInvestmentSettings({
             vatRate={vatRate}
             disabled={isSaving}
           />
-          <MaterialsNetPricingControl
-            vatRate={vatRate}
-            materialsNetRate={materialsNetRate}
-            onMaterialsNetRateChange={onMaterialsNetRateChange}
-            disabled={isSaving}
-          />
+          {/* Hidden at tryb brutto rather than offered as a switch that changes nothing: the server
+              hard-zeroes the concession there (investment-financials.ts), and the panel mirrors that
+              by nulling the rate — so a stawka typed here would persist, print a discount, and move
+              no figure on either side. */}
+          {settlementMode !== 'GROSS' && (
+            <MaterialsNetPricingControl
+              vatRate={vatRate}
+              materialsNetRate={materialsNetRate}
+              onMaterialsNetRateChange={onMaterialsNetRateChange}
+              disabled={isSaving}
+            />
+          )}
           {showSettingsBar && <VatRateField disabled={isSaving} />}
           {showSettingsBar && <GlobalDiscountControl disabled={isSaving} />}
         </div>
