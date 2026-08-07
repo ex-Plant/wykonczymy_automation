@@ -1,6 +1,8 @@
 'use client'
 
-import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
+import { Banknote, Coins, Split, type LucideIcon } from 'lucide-react'
+import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
+import { SimpleSelect } from '@/components/ui/simple-select'
 import { ZeroVatWarning } from '@/components/kosztorys/summary/zero-vat-warning'
 import { SETTLEMENT_MODE_OPTIONS, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
@@ -10,6 +12,19 @@ const MODE_DESCRIPTIONS: Partial<Record<SettlementModeT, string>> = {
   MIXED:
     'Dodając wydatek inwestycyjny określasz czy ma on trafiać do puli netto czy puli brutto, suma liczy się na tej podstawie.',
 }
+
+// Hung here rather than on SETTLEMENT_MODE_OPTIONS itself: that module is reached from the Payload
+// collection config, where a lucide value import would land in `payload generate:types`.
+const MODE_ICONS: Record<SettlementModeT, LucideIcon> = {
+  NET: Coins,
+  GROSS: Banknote,
+  MIXED: Split,
+}
+
+const MODE_OPTIONS = SETTLEMENT_MODE_OPTIONS.map((option) => ({
+  ...option,
+  icon: MODE_ICONS[option.value],
+}))
 
 type PropsT = {
   value: SettlementModeT
@@ -28,15 +43,19 @@ type PropsT = {
 // VAT-independent. The warning below explains the one thing VAT 0% *does* flatten.
 export function SettlementModeSelect({ value, onChange, vatRate, disabled = false }: PropsT) {
   return (
-    <LabeledModeSelect
-      label="Rozliczenie robocizny"
-      value={value}
-      onValueChange={(next) => onChange(next as SettlementModeT)}
-      options={SETTLEMENT_MODE_OPTIONS}
-      description={MODE_DESCRIPTIONS[value]}
-      disabled={disabled}
+    <SettingsSection
+      title="Robocizna"
+      subtitle="Wybierz sposób rozliczenia robocizny"
+      hint={MODE_DESCRIPTIONS[value]}
     >
+      <SimpleSelect
+        value={value}
+        onValueChange={(next) => onChange(next as SettlementModeT)}
+        options={MODE_OPTIONS}
+        disabled={disabled}
+        variant="toolbarSm"
+      />
       {vatRate === 0 && <ZeroVatWarning />}
-    </LabeledModeSelect>
+    </SettingsSection>
   )
 }

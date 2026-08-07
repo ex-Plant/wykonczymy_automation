@@ -13,9 +13,6 @@ type PropsT = {
   vatRate: number
   settlementMode: SettlementModeT
   onSettlementModeChange: (mode: SettlementModeT) => void
-  // Materiały brutto — server sum of the investment's unsettled brutto-billed transactions; the base
-  // the netto pricing concession can reach.
-  materialsGrossBase: number
   // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
   materialsNetRate: number | null
   onMaterialsNetRateChange: (rate: number | null) => void
@@ -39,7 +36,6 @@ export function SummaryInvestmentSettings({
   vatRate,
   settlementMode,
   onSettlementModeChange,
-  materialsGrossBase,
   materialsNetRate,
   onMaterialsNetRateChange,
   isSaving = false,
@@ -65,40 +61,27 @@ export function SummaryInvestmentSettings({
           event.preventDefault()
           if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
         }}
-        className="max-h-(--radix-popover-content-available-height) w-96 overflow-y-auto"
+        // p-0: each section owns its own padding (SettingsSection), so the rule between two of them
+        // runs edge to edge instead of floating inside a gutter.
+        className="max-h-(--radix-popover-content-available-height) w-fit overflow-y-auto p-0"
       >
         {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
             never double up or dangle when the brutto mode or the host drops one. */}
         <div className="divide-border flex flex-col divide-y">
-          <div className="pb-3">
-            <SettlementModeSelect
-              value={settlementMode}
-              onChange={onSettlementModeChange}
-              vatRate={vatRate}
-              disabled={isSaving}
-            />
-          </div>
-
-          <div className="py-3">
-            <MaterialsNetPricingControl
-              materialsGrossBase={materialsGrossBase}
-              vatRate={vatRate}
-              materialsNetRate={materialsNetRate}
-              onMaterialsNetRateChange={onMaterialsNetRateChange}
-              disabled={isSaving}
-            />
-          </div>
-
-          {showSettingsBar && (
-            <div className="py-3">
-              <VatRateField disabled={isSaving} />
-            </div>
-          )}
-          {showSettingsBar && (
-            <div className="pt-3">
-              <GlobalDiscountControl disabled={isSaving} />
-            </div>
-          )}
+          <SettlementModeSelect
+            value={settlementMode}
+            onChange={onSettlementModeChange}
+            vatRate={vatRate}
+            disabled={isSaving}
+          />
+          <MaterialsNetPricingControl
+            vatRate={vatRate}
+            materialsNetRate={materialsNetRate}
+            onMaterialsNetRateChange={onMaterialsNetRateChange}
+            disabled={isSaving}
+          />
+          {showSettingsBar && <VatRateField disabled={isSaving} />}
+          {showSettingsBar && <GlobalDiscountControl disabled={isSaving} />}
         </div>
       </PopoverContent>
     </Popover>

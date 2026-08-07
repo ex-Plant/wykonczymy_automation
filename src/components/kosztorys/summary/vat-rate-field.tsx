@@ -1,5 +1,6 @@
 'use client'
 
+import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
@@ -14,16 +15,18 @@ export function VatRateField({ disabled = false }: { disabled?: boolean }) {
   const { tree, handleVatChange } = useKosztorysEditorContext()
 
   return (
-    // VAT is stored as a fraction but entered as a percent: show ×100, commit ÷100.
-    <DecimalField
-      label="Stawka VAT %"
-      hint={VAT_TIP}
-      value={tree.vatRate * 100}
-      valueClassName="text-foreground"
-      min={0}
-      max={100}
-      disabled={disabled}
-      onCommit={(n) => handleVatChange(n / 100)}
-    />
+    <SettingsSection title="VAT" subtitle="Wybierz stawkę vat" hint={VAT_TIP}>
+      {/* VAT is stored as a fraction but entered as a percent: show ×100, commit ÷100. */}
+      <DecimalField
+        suffix="%"
+        withSave
+        value={tree.vatRate * 100}
+        valueClassName="text-foreground"
+        min={0}
+        max={100}
+        disabled={disabled}
+        onCommit={(n) => handleVatChange(n / 100)}
+      />
+    </SettingsSection>
   )
 }

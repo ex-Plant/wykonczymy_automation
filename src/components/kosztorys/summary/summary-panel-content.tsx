@@ -244,7 +244,6 @@ export function SummaryPanelContent({
             vatRate={vatRate}
             settlementMode={settlementMode}
             onSettlementModeChange={onSettlementModeChange}
-            materialsGrossBase={materialsGrossBase}
             materialsNetRate={materialsNetRate}
             onMaterialsNetRateChange={onMaterialsNetRateChange}
             isSaving={isSavingSettings}
