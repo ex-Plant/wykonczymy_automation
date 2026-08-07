@@ -82,7 +82,10 @@ export function SummaryExpensesTab({
           )}
         </div>
         {showPie && (
-          <SlicePie slices={expensePieSlices(materialyBreakdown)} formatValue={formatNet} />
+          <SlicePie
+            slices={expensePieSlices(materialyBreakdown, displayNetRate)}
+            formatValue={formatNet}
+          />
         )}
       </div>
       {showTransactions && materialTransactions.length > 0 && (
