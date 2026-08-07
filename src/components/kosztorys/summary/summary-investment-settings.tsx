@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
 import { MaterialsNetPricingControl } from '@/components/kosztorys/summary/materials-net-pricing-control'
+import { MATERIALS_GROSS_LOCK_REASON } from '@/components/kosztorys/summary/materials-pricing-options'
 import { VatRateField } from '@/components/kosztorys/summary/vat-rate-field'
 import { GlobalDiscountControl } from '@/components/kosztorys/summary/global-discount-control'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
@@ -66,7 +67,7 @@ export function SummaryInvestmentSettings({
         className="max-h-(--radix-popover-content-available-height) w-fit overflow-y-auto p-0"
       >
         {/* divide-y rather than explicit separators: a hidden section leaves no node, so the rules
-            never double up or dangle when the brutto mode or the host drops one. */}
+            never double up or dangle when the host drops one. */}
         <div className="divide-border flex flex-col divide-y">
           <SettlementModeSelect
             value={settlementMode}
@@ -74,18 +75,15 @@ export function SummaryInvestmentSettings({
             vatRate={vatRate}
             disabled={isSaving}
           />
-          {/* Hidden at tryb brutto rather than offered as a switch that changes nothing: the server
-              hard-zeroes the concession there (investment-financials.ts), and the panel mirrors that
-              by nulling the rate — so a stawka typed here would persist, print a discount, and move
-              no figure on either side. */}
-          {settlementMode !== 'GROSS' && (
-            <MaterialsNetPricingControl
-              vatRate={vatRate}
-              materialsNetRate={materialsNetRate}
-              onMaterialsNetRateChange={onMaterialsNetRateChange}
-              disabled={isSaving}
-            />
-          )}
+          {/* Greyed out at tryb brutto, not hidden: a control that disappears reads as a bug, so it
+              stays and says why. */}
+          <MaterialsNetPricingControl
+            vatRate={vatRate}
+            materialsNetRate={materialsNetRate}
+            onMaterialsNetRateChange={onMaterialsNetRateChange}
+            disabled={isSaving}
+            lockedReason={settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined}
+          />
           {showSettingsBar && <VatRateField disabled={isSaving} />}
           {showSettingsBar && <GlobalDiscountControl disabled={isSaving} />}
         </div>

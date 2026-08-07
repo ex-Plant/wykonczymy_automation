@@ -1,21 +1,14 @@
 'use client'
 
-import { Banknote, Coins } from 'lucide-react'
 import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
-import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
+import {
+  materialsNetRateForMode,
+  pricingModeOf,
+  PRICING_MODE_DESCRIPTIONS,
+  PRICING_MODE_OPTIONS,
+} from '@/components/kosztorys/summary/materials-pricing-options'
+import { SimpleSelect } from '@/components/ui/simple-select'
 import { DecimalField } from '@/components/ui/decimal-field'
-
-type PricingModeT = 'gross' | 'net'
-
-const PRICING_MODE_OPTIONS: SelectOptionT[] = [
-  { value: 'gross', label: 'Brutto', icon: Banknote },
-  { value: 'net', label: 'Netto', icon: Coins },
-]
-
-const PRICING_MODE_DESCRIPTIONS: Record<PricingModeT, string> = {
-  gross: 'Wydatki inwestycyjne rozliczane po kwotach brutto z faktury (domyślne).',
-  net: 'Wydatki inwestycyjne rozliczane po kwocie netto z faktury. \nStawkę vat ustawiasz poniżej. Kwota brutto zostanie pomniejszona o vat.',
-}
 
 type PropsT = {
   // Opening value when the owner switches the concession on: billing materiały netto at the VAT rate
@@ -25,41 +18,41 @@ type PropsT = {
   materialsNetRate: number | null
   onMaterialsNetRateChange: (rate: number | null) => void
   disabled?: boolean
+  // Why this choice cannot be made right now. Present = the control greys out and prints this instead
+  // of the rate field. Shown rather than hidden: a control that vanishes reads as a bug, and the owner
+  // then hunts for a setting that was never lost.
+  lockedReason?: string
 }
 
 // Sits with the settlement mode rather than in the wydatki view: which plane the investment settles on
-// and whether its wydatki are billed netto are one decision about the deal. Brutto settlement adds VAT
-// on top, so there is nothing to strip — the panel hides this control there entirely.
+// and whether its wydatki are billed netto are one decision about the deal.
 export function MaterialsNetPricingControl({
   vatRate,
   materialsNetRate,
   onMaterialsNetRateChange,
   disabled = false,
+  lockedReason,
 }: PropsT) {
-  const netPricingOn = materialsNetRate != null
-  const mode: PricingModeT = netPricingOn ? 'net' : 'gross'
+  const mode = pricingModeOf(materialsNetRate)
   const materialsNetPercent = Math.round((materialsNetRate ?? vatRate) * 100)
-
-  function changeMode(next: string) {
-    // Switching off clears the rate rather than storing 0: „nigdy nie ustawiono" is the state that
-    // leaves marża exactly where it was.
-    onMaterialsNetRateChange(next === 'net' ? vatRate : null)
-  }
 
   return (
     <SettingsSection
       title="Materiały"
-      subtitle="Wybierz sposób rozliczenia materiałów"
+      subtitle="Sposób rozliczenia materiałów"
       hint={PRICING_MODE_DESCRIPTIONS[mode]}
     >
       <SimpleSelect
         value={mode}
-        onValueChange={changeMode}
+        onValueChange={(next) => onMaterialsNetRateChange(materialsNetRateForMode(next, vatRate))}
         options={PRICING_MODE_OPTIONS}
-        disabled={disabled}
+        disabled={disabled || lockedReason !== undefined}
         variant="toolbarSm"
       />
-      {netPricingOn && (
+      {lockedReason !== undefined && (
+        <p className="text-muted-foreground max-w-3xs text-xs">{lockedReason}</p>
+      )}
+      {lockedReason === undefined && mode === 'net' && (
         <DecimalField
           label="Stawka vat na materiały"
           labelAbove

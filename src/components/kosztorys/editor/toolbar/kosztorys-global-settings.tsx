@@ -1,7 +1,7 @@
 'use client'
 
 import { DecimalField } from '@/components/ui/decimal-field'
-import { Description } from '@/components/ui/description'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { MAX_CLIENT_SHARE } from '@/lib/kosztorys/subcontractor-price-guard'
@@ -22,9 +22,12 @@ type PropsT = {
 
 export function KosztorysGlobalSettings({ globalCoeffs, onGlobalCoeffChange }: PropsT) {
   return (
-    <div className="flex flex-col gap-y-2">
-      <div className="flex flex-col gap-1">
-        <p className="text-muted-foreground text-xs font-medium">Mnożnik ceny:</p>
+    <div className="flex flex-col gap-1">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+        Mnożnik ceny:
+        <InfoTooltip content={COEFF_DESCRIPTION} label="Więcej o: mnożnik ceny" />
+      </p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <DecimalField
           label={
             <span className="inline-flex items-center gap-1">
@@ -50,9 +53,6 @@ export function KosztorysGlobalSettings({ globalCoeffs, onGlobalCoeffChange }: P
           onCommit={(n) => onGlobalCoeffChange({ ownToolsCoeff: n })}
         />
       </div>
-      <Description size="xs" className="w-fit whitespace-pre-line">
-        {COEFF_DESCRIPTION}
-      </Description>
     </div>
   )
 }
