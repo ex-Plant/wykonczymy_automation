@@ -185,7 +185,12 @@ export function SummaryPanelContent({
   // mounts no CurrentUserProvider.
   const allowedViews = views.filter((value) => {
     if (value === 'subcontractors') return !preview
-    if (value === 'margin') return !preview && financials !== undefined
+    // TODO(EX-649): „Marża" is hidden until we agree what it measures — the tab sources the
+    // transactions plane while sitting inside the kosztorys panel, which v2 is disconnected from, so
+    // its „Robocizna" row is a different figure from the one edited two tabs over. Un-hiding is
+    // deleting this line; the tab, calculateMargin and the `financials` plumbing are all untouched.
+    // Restore with: return !preview && financials !== undefined
+    if (value === 'margin') return false
     return true
   })
   const viewOptions = SUMMARY_VIEW_OPTIONS.filter((option) => allowedViews.includes(option.value))
