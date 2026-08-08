@@ -44,7 +44,6 @@ async function run() {
       investment: INVESTMENT_ID,
       name: 'Robocizna (test sync)',
       displayOrder: 0,
-      defaultCostVariant: 'w_tools',
     },
     ...ctx,
   })

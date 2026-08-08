@@ -126,6 +126,13 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
           )}
         </form.AppField>
 
+        {/* Directly under the type, same slot the wydatek form gives it — the investment is what the
+            rest of the form is about, not a trailing detail. INVESTOR_DEPOSIT only; COMPANY_FUNDING
+            hides it along with netto/brutto. */}
+        {currentType === 'INVESTOR_DEPOSIT' && (
+          <EntityComboboxField form={form} variant="investment" items={referenceData.investments} />
+        )}
+
         <DescriptionField form={form} placeholder="Opis wpłaty" />
 
         <div className="flex items-start gap-4">
@@ -138,11 +145,6 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
         <PaymentMethodField form={form} />
 
         {currentType === 'INVESTOR_DEPOSIT' && <VatPlaneField form={form} />}
-
-        {/* Investment + netto/brutto belong to INVESTOR_DEPOSIT only; COMPANY_FUNDING hides both. */}
-        {currentType === 'INVESTOR_DEPOSIT' && (
-          <EntityComboboxField form={form} variant="investment" items={referenceData.investments} />
-        )}
       </FieldGroup>
 
       <FormFooter className="mt-6" />

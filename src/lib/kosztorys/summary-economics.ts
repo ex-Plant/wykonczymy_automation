@@ -26,6 +26,17 @@ export function billedMaterialsPair(gross: number, netRate: number | null): Mone
   return netRate == null ? faceValue(gross) : { net: gross / (1 + netRate), gross }
 }
 
+// One „Wydatki inwestycyjne" row on both planes. A rate is a bridge BETWEEN planes and ONE rate
+// spans it in both directions — a brutto row divides down, a netto row multiplies back up. Which
+// direction a row crosses is decided by the plane it was recorded on, never by a second rate.
+export function breakdownRowPair(
+  row: { net: number; origin: 'gross' | 'netBilled' },
+  rate: number | null,
+): MoneyPairT {
+  if (row.origin !== 'netBilled') return billedMaterialsPair(row.net, rate)
+  return rate == null ? faceValue(row.net) : { net: row.net, gross: toGross(row.net, rate) }
+}
+
 // The concession in złotych — brutto receipt minus what the investor is billed. The netto-billed
 // bucket is deliberately out of reach: it carries no VAT toward the investor, so cutting it here
 // would deduct the same VAT twice. `deriveFinancials` calls THIS for the marża/bilans term, so the
@@ -39,69 +50,47 @@ export function materialsNetDiscount(grossBase: number, netRate: number | null):
 /** The two materiały buckets, always passed together. An object rather than two positional
  *  numbers on purpose: the whole point of the split is that a caller can never feed the
  *  toggle a figure that already carries its own netto, and a positional pair invites exactly
- *  that mistake. `grossBase` is toggle-driven; `netBilled` is frozen at face value. */
+ *  that mistake. `grossBase` is toggle-driven; `netBilled` is frozen on the netto axis only —
+ *  it still crosses to brutto through the rate. */
 export type MaterialsT = { grossBase: number; netBilled: number }
 
 /** Materiały as one pair: the brutto base valued through the toggle, plus the netto-billed
- *  bucket added at FACE VALUE on both axes. The netto figure is what the investor is billed
- *  and carries no VAT toward him, so cutting it again — on either axis — would deduct the
- *  same VAT twice. */
+ *  bucket — which enters the netto axis at face value (it IS the netto the investor is billed,
+ *  so cutting it again would deduct the same VAT twice) and crosses to the brutto axis through
+ *  the SAME rate that brought the base down.
+ *
+ *  The materiały rate is the ONLY thing that crosses the netto bucket — with no rate saved there is
+ *  no crossing at all and the bucket is billed at face value on both axes (owner, 2026-08-07). VAT
+ *  is deliberately not a fallback here: it would gross a bucket the investor settles netto, putting
+ *  the aggregate 160 zł above the per-category rows and above the bilans, which both bill face value.
+ *  Built from `breakdownRowPair` so the aggregate is the same arithmetic as the rows it sums. */
 export function materialsPair(materials: MaterialsT, netRate: number | null): MoneyPairT {
   const base = billedMaterialsPair(materials.grossBase, netRate)
-  return { net: base.net + materials.netBilled, gross: base.gross + materials.netBilled }
+  const netBilled = breakdownRowPair({ net: materials.netBilled, origin: 'netBilled' }, netRate)
+  return { net: base.net + netBilled.net, gross: base.gross + netBilled.gross }
 }
 
-export type SummaryLineT = MoneyPairT & {
-  // Fraction of Łącznie netto (0..1); 0 when Łącznie is 0. Null-safe by construction.
-  share: number
+/** What the investor owes for materiały as ONE figure — for the settlement steps, whose table has a
+ *  single money column. The rule is the plane they are actually billed on: the netto price where a
+ *  materiały rate is saved, the raw receipt where none is (owner, 2026-08-07). Both cases are `.net`
+ *  because without a rate nothing crosses and the two axes already carry the same receipt — a branch
+ *  here would only pretend they differ. */
+export function billedMaterials(materials: MaterialsT, netRate: number | null): number {
+  return materialsPair(materials, netRate).net
 }
 
-// A PRACE net figure as a summary row: its netto/brutto pair (VAT-grossed) plus its udział as a
-// fraction of Łącznie. The one home for the udział-base math.
-export function summaryLine(net: number, combinedNet: number, vatRate: number): SummaryLineT {
-  return { ...moneyPair(net, vatRate), share: combinedNet > 0 ? net / combinedNet : 0 }
-}
-
-// The „Materiały" aggregate row: both buckets valued by `materialsPair`, with its udział off the
-// resulting netto.
-export function summaryLineMaterials(
-  materials: MaterialsT,
-  combinedNet: number,
-  netRate: number | null,
-): SummaryLineT {
-  const pair = materialsPair(materials, netRate)
-  return { ...pair, share: combinedNet > 0 ? pair.net / combinedNet : 0 }
-}
-
-export type SummaryT = {
-  laborCosts: SummaryLineT
-  combined: SummaryLineT
-}
-
-// The Podsumowanie split (sheet Podsumowanie r06–08): Robocizna (kosztorys wartość netto) plus
-// Materiały = Łącznie, each carrying its udział % of Łącznie. Materiały enters only via the
-// Łącznie denominator here — the per-category materiały rows are built by the caller, which shares
-// `combined.net` as their udział base. Robocizna reacts to unsaved editor edits; materiały is a
-// server prop, passed as BRUTTO (its netto is derived by removing VAT).
-export function computeSummarySplit(
+/** „Łącznie" — the prace on their own two planes, plus materiały. Materiały enters BOTH axes at the
+ *  same billed figure, because it IS one figure: the panel renders it as a single merged cell across
+ *  both money columns, so shifting the two axes by different złoty would print a total the reader
+ *  cannot reproduce from the cell above it. `laborCostsNetFromKosztorys` is already post-rabat, which
+ *  is what lets the Rabat row sit above this and still reconcile. */
+export function combinedPair(
   laborCostsNetFromKosztorys: number,
-  materials: MaterialsT,
+  materialsBilled: number,
   vatRate: number,
-  materialsNetRate: number | null = null,
-): SummaryT {
-  // Folded in BEFORE combinedNet: that sum is the denominator every udział divides by, so a
-  // netto bucket added after the shares would leave them summing to less than 100%.
-  const materialy = materialsPair(materials, materialsNetRate)
-  const combinedNet = laborCostsNetFromKosztorys + materialy.net
-  const laborCosts = summaryLine(laborCostsNetFromKosztorys, combinedNet, vatRate)
-  // Łącznie = robocizna (netto native, grossed up) + materiały (brutto native, netto derived). Each
-  // side carries VAT in its own direction; combining the two native planes keeps both correct.
-  const combined: SummaryLineT = {
-    net: combinedNet,
-    gross: laborCosts.gross + materialy.gross,
-    share: combinedNet > 0 ? 1 : 0,
-  }
-  return { laborCosts, combined }
+): MoneyPairT {
+  const prace = moneyPair(laborCostsNetFromKosztorys, vatRate)
+  return { net: prace.net + materialsBilled, gross: prace.gross + materialsBilled }
 }
 
 // „Robocizna" is shown PRE-rabat, with the rabat as its own deduction row below it — the same figure
@@ -112,22 +101,24 @@ export function sumaPracPreRabat(laborCostsNetFromKosztorys: number, rabatAmount
   return laborCostsNetFromKosztorys + rabatAmount
 }
 
-// „Aktualnie do zapłaty R + M" (sheet footer r456–464): the headline still-owed figure —
-// robocizna do zapłaty plus materiały, less the investor's wpłaty (Σ INVESTOR_DEPOSIT on the
-// investment). Can go negative when wpłaty exceed R + M — a real overpaid state, not clamped here.
+// „Pozostało do zapłaty" (sheet footer r456–464): the headline still-owed figure — Łącznie less the
+// investor's wpłaty (Σ INVESTOR_DEPOSIT). Wpłaty carry no VAT, so like materiały they come off both
+// axes at the same złoty — which is what lets the panel render them as one merged cell and still have
+// the reader arrive at both columns below. Can go negative when wpłaty exceed Łącznie: a real
+// overpaid state, not clamped here.
 export function computeDoZaplatyRM(
   laborCostsNetFromKosztorys: number,
   wplatyNet: number,
   materials: MaterialsT,
   vatRate: number,
-  materialsNetRate: number | null = null,
+  materialsNetRate: number | null,
 ): MoneyPairT {
-  const materialy = materialsPair(materials, materialsNetRate)
-  // Robocizna is netto native (grossed up); materiały is brutto native (netto derived by removing
-  // VAT); wpłaty carry no VAT (face value). Each figure enters each axis at its own native amount.
-  const net = laborCostsNetFromKosztorys - wplatyNet + materialy.net
-  const gross = toGross(laborCostsNetFromKosztorys, vatRate) - wplatyNet + materialy.gross
-  return { net, gross }
+  const combined = combinedPair(
+    laborCostsNetFromKosztorys,
+    billedMaterials(materials, materialsNetRate),
+    vatRate,
+  )
+  return { net: combined.net - wplatyNet, gross: combined.gross - wplatyNet }
 }
 
 export type MixedSettlementT = {
@@ -138,23 +129,23 @@ export type MixedSettlementT = {
   paidNet: number
   // combinedNet − paidNet: the still-owed netto that goes onto the invoice.
   doRozliczeniaNet: number
-  // Brutto section: the still-owed netto grossed up, then wpłaty brutto → Do zapłaty brutto.
+  // Brutto section: Łącznie brutto less the wpłaty netto, then wpłaty brutto → Do zapłaty brutto.
   resztaGross: number
   paidGross: number
   // resztaGross − paidGross: what the client still owes on the invoice.
   doZaplatyGross: number
-  // The same outstanding amount de-grossed: what closes the settlement if the client pays the rest
-  // off-invoice (gotówka, no VAT) instead of brutto. Not a term of either column — an alternative
-  // reading of doZaplatyGross.
+  // What closes the settlement if the client pays the rest off-invoice (gotówka) instead of brutto:
+  // the still-owed netto less every wpłata already made. Not a term of either column — an alternative
+  // reading of the same debt.
   doZaplatyNet: number
 }
 
 // Tryb mieszany: the client settles part in cash (no invoice → no VAT) and the rest on an invoice
 // WITH VAT. Two stacked sections the reader reconstructs top-down:
 //   NETTO:  Robocizna + Materiały = Łącznie netto → − wpłaty netto → Do rozliczenia netto
-//   BRUTTO: Do rozliczenia netto + VAT = Reszta brutto → − wpłaty brutto → Do zapłaty brutto
-// Only the STILL-OWED netto is grossed (the cash-paid part never touches the invoice), so netto
-// deposits shield their złoty from VAT while brutto deposits pay down the invoiced part directly.
+//   BRUTTO: Łącznie brutto → − wpłaty netto → Reszta brutto → − wpłaty brutto → Do zapłaty brutto
+// VAT is added to the prace and to nothing else, so the brutto section starts from „Łącznie" brutto
+// rather than grossing the still-owed netto — the wpłaty come off at face value on both planes.
 // Robocizna netto is already post-rabat (Suma prac po rabacie), so the rabat's effect flows through
 // both sections without a second deduction — the panel shows it as an informational line only.
 export function computeMixedSettlement(
@@ -163,23 +154,30 @@ export function computeMixedSettlement(
   vatRate: number,
   paidNet: number,
   paidGross: number,
-  materialsNetRate: number | null = null,
+  materialsNetRate: number | null,
 ): MixedSettlementT {
-  const materialy = materialsPair(materials, materialsNetRate)
-  const combinedNet = laborCostsNetFromKosztorys + materialy.net
-  const doRozliczeniaNet = combinedNet - paidNet
-  const resztaGross = toGross(doRozliczeniaNet, vatRate)
+  const materialsBilled = billedMaterials(materials, materialsNetRate)
+  const combined = combinedPair(laborCostsNetFromKosztorys, materialsBilled, vatRate)
+  const doRozliczeniaNet = combined.net - paidNet
+  // VAT rides the prace alone, so the gross-up runs on „Łącznie" — where materiały already sits at
+  // face value on both axes — and the wpłaty come off after it. Grossing `doRozliczeniaNet` instead
+  // put materiały × VAT into this figure, so „Pozostało brutto" and the „Łącznie" brutto printed
+  // directly above it quoted the same debt at two amounts on one screen.
+  const resztaGross = combined.gross - paidNet
   const doZaplatyGross = resztaGross - paidGross
   return {
     robocizna: laborCostsNetFromKosztorys,
-    materialy: materialy.net,
-    combinedNet,
+    materialy: materialsBilled,
+    combinedNet: combined.net,
     paidNet,
     doRozliczeniaNet,
     resztaGross,
     paidGross,
     doZaplatyGross,
-    doZaplatyNet: doZaplatyGross / (1 + vatRate),
+    // Wpłaty brutto enter at FACE VALUE, not de-grossed. A wpłata is cash, and VAT belongs to the
+    // prace alone (context/reference/kosztorys-editor-domain-notes.md, „VAT dotyczy wyłącznie prac") —
+    // dividing it by the VAT rate credited the client less than they actually paid (owner, 2026-08-07).
+    doZaplatyNet: doRozliczeniaNet - paidGross,
   }
 }
 

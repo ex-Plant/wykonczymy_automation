@@ -1,19 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import { Ban, Banknote, Percent } from 'lucide-react'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { RabatValueField } from '@/components/kosztorys/summary/rabat-value-field'
+import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
 import { globalDiscountForMode } from '@/lib/kosztorys/calc'
 import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
-import { LabeledModeSelect } from '@/components/ui/labeled-mode-select'
-import type { SelectOptionT } from '@/components/ui/simple-select'
+import { roundToCents } from '@/lib/utils/round-to-cents'
+import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
 
 type DiscountModeT = 'off' | 'amount' | 'percent'
 
 const DISCOUNT_MODE_OPTIONS: SelectOptionT[] = [
-  { value: 'off', label: 'Wyłączony' },
-  { value: 'amount', label: 'Kwotowy' },
-  { value: 'percent', label: '%' },
+  { value: 'off', label: 'Wyłączony', icon: Ban },
+  { value: 'amount', label: 'Kwotowy', icon: Banknote },
+  { value: 'percent', label: '%', icon: Percent },
 ]
 
 // Rabat is a client concession only (calc.ts netForQtyForView) — it never reaches the subcontractor
@@ -70,63 +72,63 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
   }
 
   return (
-    <LabeledModeSelect
-      label="Rabat globalny"
-      value={mode}
-      onValueChange={changeMode}
-      options={DISCOUNT_MODE_OPTIONS}
-      description={DISCOUNT_MODE_DESCRIPTIONS[mode]}
-      disabled={disabled}
+    <SettingsSection
+      title="Rabat"
+      subtitle="Wybierz rodzaj rabatu"
+      hint={DISCOUNT_MODE_DESCRIPTIONS[mode]}
     >
+      <SimpleSelect
+        value={mode}
+        onValueChange={changeMode}
+        options={DISCOUNT_MODE_OPTIONS}
+        disabled={disabled}
+        variant="toolbarSm"
+      />
       {mode === 'amount' && (
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">Kwota</span>
-          <RabatValueField
-            value={String(globalDiscount.value)}
-            placeholder="zł"
-            disabled={disabled}
-            isValid={(n) => n >= 0}
-            onApply={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
-          />
-          <span className="text-muted-foreground text-xs">zł</span>
-        </div>
+        <RabatValueField
+          suffix="zł"
+          // `String` is not a formatter — it prints all 17 digits of whatever is stored, which is
+          // how a kwota persisted before the write-side rounding still reads „172024,28000000003".
+          value={String(roundToCents(globalDiscount.value))}
+          placeholder="zł"
+          disabled={disabled}
+          isValid={(n) => n >= 0}
+          onApply={(n) => handleGlobalDiscountChange({ type: 'amount', value: n })}
+        />
       )}
       {mode === 'percent' && (
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">Procent</span>
-          <RabatValueField
-            value=""
-            placeholder="%"
-            disabled={disabled}
-            isValid={(percent) => applyPercentRabatSchema.safeParse({ percent }).success}
-            onApply={handleApplyPercentRabat}
-            clearOnApply
-            // Only asks when there is something to lose. With no rabat anywhere the write is not
-            // destructive — it writes the same percent into rows that all read 0 — so a dialog there
-            // would be a warning about nothing, and warnings that fire on nothing stop being read.
-            confirm={
-              itemsWithDiscountCount === 0
-                ? undefined
-                : (percent) => ({
-                    title:
-                      percent === 0
-                        ? `Wyzerować rabat w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)}?`
-                        : `Wpisać ${percent}% w rabat każdej pozycji?`,
-                    // Owner's ruling stands: the overwrite is not undoable and recovery is re-typing.
-                    // The dialog is the guard in undo's place, so it has to say both what is lost and
-                    // where the way back is — the version the action auto-saves before every apply.
-                    description: `${
-                      percent === 0
-                        ? `Rabaty wpisane ręcznie w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)} zostaną wyzerowane.`
-                        : `Rabaty wpisane ręcznie w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)} zostaną nadpisane.`
-                    } Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.`,
-                    confirmLabel: percent === 0 ? 'Wyzeruj rabaty' : 'Nadpisz rabaty',
-                  })
-            }
-          />
-          <span className="text-muted-foreground text-xs">%</span>
-        </div>
+        <RabatValueField
+          suffix="%"
+          value=""
+          placeholder="%"
+          disabled={disabled}
+          isValid={(percent) => applyPercentRabatSchema.safeParse({ percent }).success}
+          onApply={handleApplyPercentRabat}
+          clearOnApply
+          // Only asks when there is something to lose. With no rabat anywhere the write is not
+          // destructive — it writes the same percent into rows that all read 0 — so a dialog there
+          // would be a warning about nothing, and warnings that fire on nothing stop being read.
+          confirm={
+            itemsWithDiscountCount === 0
+              ? undefined
+              : (percent) => ({
+                  title:
+                    percent === 0
+                      ? `Wyzerować rabat w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)}?`
+                      : `Wpisać ${percent}% w rabat każdej pozycji?`,
+                  // Owner's ruling stands: the overwrite is not undoable and recovery is re-typing.
+                  // The dialog is the guard in undo's place, so it has to say both what is lost and
+                  // where the way back is — the version the action auto-saves before every apply.
+                  description: `${
+                    percent === 0
+                      ? `Rabaty wpisane ręcznie w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)} zostaną wyzerowane.`
+                      : `Rabaty wpisane ręcznie w ${itemsWithDiscountCount} ${pozycji(itemsWithDiscountCount)} zostaną nadpisane.`
+                  } Ctrl+Z tego nie cofnie — stan sprzed zmiany zapisuje się automatycznie w wersjach kosztorysu.`,
+                  confirmLabel: percent === 0 ? 'Wyzeruj rabaty' : 'Nadpisz rabaty',
+                })
+          }
+        />
       )}
-    </LabeledModeSelect>
+    </SettingsSection>
   )
 }

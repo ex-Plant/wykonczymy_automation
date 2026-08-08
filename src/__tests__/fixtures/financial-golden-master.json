@@ -1,7 +1,183 @@
 {
   "fingerprint": {
-    "transactionCount": 3216,
-    "checksum": "b58f8e59d44d01928befbb6c88577e74"
+    "transactionCount": 3216
+  },
+  "inputHashes": {
+    "investments": {
+      "6": "184fa3234bf7e99a928aae80494ac42b",
+      "7": "276f1f71f434c651863627c5686278c8",
+      "8": "b977b8feb1bc1c65d0542624a5c20fe0",
+      "9": "8be02ca3161fb68150061434babede5a",
+      "10": "71638833aec05f532192678d50806cfd",
+      "11": "41fd53e3a06499665e4e7706a85b8e6b",
+      "12": "38a97970231bdbcdb565058b962f31e0",
+      "13": "ca2ca9db8193765a767b55e44753615c",
+      "14": "36b6a879d65a12fbd198a89d5c730dff",
+      "15": "16b2827263166fb977f218264e54e688",
+      "16": "8b47f5130c58557aa9bd5069afa4c608",
+      "17": "13216c8be0fa929f80e95c74cb4578ad",
+      "18": "1f03dbf2de69813f573c9c512a91139b",
+      "19": "aea80296de479fce68a42a877f68bda2",
+      "20": "8cfc4335bef198176fe93b75bece9094",
+      "21": "c364e97398dece16efdbd0f11a0c68ce",
+      "22": "d08f99f126cfca76eaa757b8bc921878",
+      "25": "47a876ad2d9dba34348e7f83c0fb26ec",
+      "26": "8fd24aab8dcdff4fbedbd77a3f4db201",
+      "31": "101b34b60bb62aaeb7211a3f92e86552",
+      "32": "0b8e55b3af68f0c7b7c67d35de5303b5",
+      "33": "48aad6644e51daaf75b3dc26a17f0439",
+      "34": "1be24bc79e88a7e07d4996ae13d21921",
+      "35": "8edce8ee56a3a215cda030436afa9c5c",
+      "36": "d7622e0cc84abed2334cd48fa188c491",
+      "37": "25306936da5ff19e70d23c284aa07ac1",
+      "38": "36cc633299da033ad6a2d17df384db70",
+      "39": "98bb4e647c7330d31073a7a8fbc99d9b",
+      "40": "b629bcd219af12e0821c23fc169c5b8e",
+      "41": "dd7579b974d6981f4e6a0aaad8e977af",
+      "42": "a314558b37f7a60e4b1b2c84fc13cce6",
+      "43": "4e33cbc26b4381656224d4d1d3232f89",
+      "45": "916f35275c3758be0e68da6d6aa982f2",
+      "46": "e76fd0b9adec74c559f330f57b4d6dea",
+      "47": "8322267bbe9505280dc2f9453d11768b",
+      "48": "4ae4f22a6a1ac12740a38df5fee22ed9",
+      "49": "64b4fc2c347fba01a85a2c4b2ec6abac",
+      "50": "169bea84d46d89c849a9d88ac5a822fc",
+      "51": "4f58e5829b6b87ba6612c19832b0fae2",
+      "52": "4de09a6eda29fc6d45c26f6b8d077034",
+      "53": "8674734c51b17a41d87846d4ace9aaa1",
+      "54": "c3e63c97bc2daf6ec3d3c5776fadb3f5",
+      "55": "b489727a54391af4c70b5ca4d8f5aa64",
+      "57": "878a91948f169f9de753d12fe0bf803d",
+      "58": "985a9c1010bb05ddbdf298383aa27c6f",
+      "59": "d9815a6ce9e32168035d17962243c629",
+      "60": "99fbee9c01aa86735a9220f214acebf8",
+      "61": "385c2e75412631cb51519a1c20170112",
+      "62": "ad5dd3bc1ba2c4ddc2f0ff6a03de60e3",
+      "63": "91bfde990eb2a3337ac4226291060ec9",
+      "64": "ffc357d2969b584d1484fdf53a66a728",
+      "65": "e6e6030401a410ef0c7e0de6cd509c64",
+      "66": "f918828450ada3120360c81cbcd08407",
+      "67": "44ba6fe10a883c189f304ec2018ed18f",
+      "68": "d72b3c9cdd3cc53f6f51410e608fdc99",
+      "70": "51561b4641b65a8f38946d43ff5b5169",
+      "71": "b4a6d9335851384c50c87b85ca321eae",
+      "72": "6367cd4929e0b11f97139d3e6c8636af",
+      "73": "88423dfb6a37e6d2a544cab772a4d5af",
+      "74": "6eae6b2009cca23504e8ca4cde396625",
+      "75": "8481ae50787ccf10f912e3f03799eca1",
+      "76": "ec1cc2c2d070c7dc4a95893b674c3a52",
+      "77": "935c8afa20e01465036fbc46418806dc",
+      "78": "94bca5fd638e0fe2bec22b4c475af038",
+      "80": "0b83cf1af677482a48636e7e238b7cfe",
+      "81": "b210fd5ec640ac6620c133506ffd1557",
+      "83": "dcb3297f8d2c421613f60165333adb8c",
+      "84": "6447947a94c62148bad883e8f48e2a55",
+      "85": "e3ed909ea5fdf79eb74c8e2c8e245bdf",
+      "86": "ed1fa613420aca9058f6a2ffacc3526b",
+      "87": "8e2369c9b0a021a80346b1b163173534",
+      "88": "3cb342fc58969aec7203ee99930a460f",
+      "90": "641bb986f6d4039dd09898340bccd9e0",
+      "91": "cf29751de2348fd472b18c5264f051ae",
+      "93": "43db4f2cf55c08d34051c976a4505ba4",
+      "94": "c86a2dfd8212bf16d87090e48e63b916",
+      "96": "abf8dbd727908203271c129d4addb225",
+      "97": "a790982db5cf21356b25a2a891f8f6db",
+      "98": "7c34918adca8f0f4c1c9bb2234552681",
+      "99": "e8cf4bb39d20644231b28da819de5fbd",
+      "100": "abd9028e97f1fb17150d79e5742ac656",
+      "101": "1a94a89d0f169a01f5679085aa884e0c",
+      "102": "c8e5d65f96ddfee27537371af8386188",
+      "103": "af0bf3faee09fe94f7ba391dcff11921",
+      "104": "2c9aeb40318ee0211d5ce9e8a523de93",
+      "105": "4be280c8cd600082777ef92df2fd1d62",
+      "106": "6190bb52fea64b4f5905bff99da608ae",
+      "107": "e59e7e1ff6324e2112e30fb0206fd429",
+      "108": "a80117869ca4d72f896e10e7f3920a05",
+      "109": "4b66588d2ea5d4a7a7d2f161e560c8e2",
+      "110": "e3898fe8a81658d8c967675e7af7cbb2",
+      "111": "20728cc4fc47fa12008e0c3e91a4f065",
+      "112": "53b28d714ed9216a6f2c58bcf4d1202e",
+      "113": "04254821cb20e3d4e21e4c6589b7e240",
+      "114": "0a8aec512053ff6c0b89b8a66e574f4c",
+      "115": "1fe7daf5acfbbcfd6f84ba5c583858ae",
+      "116": "332daf08a81788a3b713e49df7489069",
+      "117": "c068ec28175ec80732d2d162ae708dd5",
+      "118": "e894bfa58a94f08a43154d6345be94f3",
+      "119": "b895731ea5419f911339f10e7d4ce45c",
+      "120": "d0a0655b3125d5c896216d920f0cf68a",
+      "121": "88b0a350b2a435582a90b64cfdd6778f",
+      "122": "a2edf170ca52f9283567668bbd3a61d3"
+    },
+    "registers": {
+      "5": "90d67f4f03f9c2d6f68c2a5a660bef61",
+      "7": "1472809653ab570836d1da0f95f2f6f0",
+      "8": "ea4e0fc2889156bfe01a955c7996063f",
+      "9": "206e6ce534743ee48b37a8258b424bfc",
+      "10": "3880590ee76c6205d2108cf893aadeda",
+      "11": "f5dbb13c531e2c594fc2552e8b909a67",
+      "12": "f6fc6dd1f42ce8e8c9cdcb883f0a6185",
+      "13": "d90e6f3ec94330c870e4ec6959f06b67",
+      "14": "89ca86b6ad2e57c05fd8270ddb74c08c",
+      "15": "c9b5a26f608511be19c7d0a82f6cd49e",
+      "16": "5f89b5fd2dbd03b083c374d1631591e9",
+      "17": "0f60d4f9723c4551530f32d966483aac",
+      "18": "1bd00c2017b77d6a2efb5d98252c7fb1",
+      "19": "260999fa80530af442e62844cee931d5",
+      "20": "54fc9a64208a24c2db69ff3cc7c74dd7",
+      "21": "547d96d3c06fb9bfa4ae172e163235e5",
+      "22": "8faca1650aa41ff999ba12b1894ebc27",
+      "23": "2b3b9423982dc21cfe62bc21608cf70b",
+      "24": "9363c868166f04aef9cc98044a6cb988",
+      "25": "b2cc833d4e0df3d24a90e33e7cb09ad3",
+      "26": "81609d9f9eab5f3c02ff337da59ae882",
+      "27": "117a974f94fc5449d35f0ff38884199f",
+      "29": "7b5dc1bff7b02d33542526c9631c012f",
+      "30": "c3833bea3d870b8298f587a7fd054afa",
+      "32": "7d6b0b6145e180ea686de61e7c3c494b",
+      "33": "fce81dc462e9d0f2caae5ecd437513ec",
+      "34": "ae8b01318f11f60a0b6e7bac359c5487",
+      "35": "cc34d4087129b7924e694cb3980a18a4",
+      "36": "997c731f5138bc5c0d6a39f907d2bf73",
+      "37": "9c02dd0ef3c696dd638d17e3da9635e1"
+    },
+    "workers": {
+      "16": "dd2858a981cb67fdd79bb5f2e466ac7b",
+      "17": "9b1bf51242ac507b516c2e91184cc52f",
+      "18": "87706ef3e75a56fc1e1b4e28bd4e4846",
+      "19": "4a18ff4ce6b92dd0b95903f6ec97ac4a",
+      "21": "f5d40b591fdb6c40b664763a5051d4ae",
+      "22": "1527c72070057a30deabb91e735392de",
+      "24": "490d06b08f85c40ba8883f16634d0539",
+      "25": "79639380f2d71a316fada95031dd599b",
+      "27": "a9bfa34c96b373c0b253b059df134193",
+      "28": "5ea01eb25a7ec25917f4cbebfb652aea",
+      "30": "4c2ab038104822a4d39cb497c8af9e2c",
+      "31": "85f5447e6460212407d06406e3e56fff",
+      "32": "3393381ea831af0b1c58a4b0863b4f09",
+      "33": "ab1e26f4abab819bf22f09fc78735d32",
+      "34": "cb11b84ba65fc0958da1c921d0787316",
+      "36": "8124ece3ed73c7089fc9a7c85f43eeeb",
+      "38": "6b745cdec55df4eaa19edb87f0d04d6a",
+      "39": "7a831ac808ea53431a5f2c954225e907",
+      "40": "80f218cc88e7262c8474f00bc29fab58",
+      "41": "b2f3608bb39a2fbe470e6dfba0dc9f4a",
+      "43": "ea0d6a6bc47b69e21cb7bdb9ac74afdd",
+      "45": "df7dcc6ce93047c09e943928442daa8e",
+      "47": "4d0477603f408c3409272a4fc04c0a98",
+      "48": "64803cce175152fb9d2d8a0774c44aae",
+      "49": "9aa3548ea7ca9aa0f782743064b3c9fd",
+      "50": "96c57144e3769c253d10675292c8a009",
+      "51": "b55d0d96c7c2da80f1a2ef51fc547638",
+      "52": "bf22c6ac97c49b64c517fbd264b8aed3",
+      "53": "044126a6c7e352cb379ace604b53f2cc",
+      "54": "423e022cbc64bccc7367117f72c0a106",
+      "55": "b2ba7703fd290667b11d3116f49aa482",
+      "56": "360896f1386ec14c2a42d8ed5a99e0ea",
+      "57": "2a2dd28bf4c8e282d3f0372f893e12d9",
+      "58": "1647ed0ec849df714c01a77cfac47d0b",
+      "59": "3e628ab583da483ad3772f947c35c0fa",
+      "60": "e33f9e045f6f5e9947621f8cb926ed50"
+    }
   },
   "investments": {
     "6": {
@@ -15,8 +191,14 @@
       "balance": -94.57,
       "margin": 39471,
       "categoryCosts": [
-        [1, 24805.57],
-        [2, 418]
+        [
+          1,
+          24805.57
+        ],
+        [
+          2,
+          418
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -30,7 +212,12 @@
       "totalSettled": 0,
       "balance": -0.55,
       "margin": 57362,
-      "categoryCosts": [[1, 20976.55]],
+      "categoryCosts": [
+        [
+          1,
+          20976.55
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "8": {
@@ -44,8 +231,14 @@
       "balance": 0,
       "margin": 50105.11,
       "categoryCosts": [
-        [1, 32353.89],
-        [3, 972]
+        [
+          1,
+          32353.89
+        ],
+        [
+          3,
+          972
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -59,7 +252,12 @@
       "totalSettled": 0,
       "balance": 0.24,
       "margin": 25210,
-      "categoryCosts": [[1, 6277.76]],
+      "categoryCosts": [
+        [
+          1,
+          6277.76
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "10": {
@@ -73,8 +271,14 @@
       "balance": -76.19,
       "margin": 56822.5,
       "categoryCosts": [
-        [1, 15817.39],
-        [2, 68.3]
+        [
+          1,
+          15817.39
+        ],
+        [
+          2,
+          68.3
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -88,7 +292,12 @@
       "totalSettled": 0,
       "balance": -83.47,
       "margin": 51512,
-      "categoryCosts": [[1, 20531.47]],
+      "categoryCosts": [
+        [
+          1,
+          20531.47
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "12": {
@@ -101,7 +310,12 @@
       "totalSettled": 0,
       "balance": -5678.53,
       "margin": 27427,
-      "categoryCosts": [[1, 2764.53]],
+      "categoryCosts": [
+        [
+          1,
+          2764.53
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "13": {
@@ -114,7 +328,12 @@
       "totalSettled": 0,
       "balance": -171.8,
       "margin": -1690,
-      "categoryCosts": [[1, 171.8]],
+      "categoryCosts": [
+        [
+          1,
+          171.8
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "14": {
@@ -128,8 +347,14 @@
       "balance": 0,
       "margin": 47752.81,
       "categoryCosts": [
-        [1, 21280.19],
-        [2, 43363]
+        [
+          1,
+          21280.19
+        ],
+        [
+          2,
+          43363
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -143,7 +368,12 @@
       "totalSettled": 0,
       "balance": 0.98,
       "margin": 23571,
-      "categoryCosts": [[1, 5543.02]],
+      "categoryCosts": [
+        [
+          1,
+          5543.02
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "16": {
@@ -156,7 +386,12 @@
       "totalSettled": 0,
       "balance": -164.47,
       "margin": 73805.3,
-      "categoryCosts": [[1, 67900.02]],
+      "categoryCosts": [
+        [
+          1,
+          67900.02
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "17": {
@@ -183,8 +418,14 @@
       "balance": 0,
       "margin": 2000,
       "categoryCosts": [
-        [1, 1432.87],
-        [3, 600]
+        [
+          1,
+          1432.87
+        ],
+        [
+          3,
+          600
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -198,7 +439,12 @@
       "totalSettled": 0,
       "balance": -877.9,
       "margin": 45611,
-      "categoryCosts": [[1, 9839.37]],
+      "categoryCosts": [
+        [
+          1,
+          9839.37
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "20": {
@@ -211,7 +457,12 @@
       "totalSettled": 0,
       "balance": 0.23,
       "margin": 18021,
-      "categoryCosts": [[1, 7429.77]],
+      "categoryCosts": [
+        [
+          1,
+          7429.77
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "21": {
@@ -225,8 +476,14 @@
       "balance": 0,
       "margin": 41428.82,
       "categoryCosts": [
-        [1, 15571.11],
-        [2, 64542.07]
+        [
+          1,
+          15571.11
+        ],
+        [
+          2,
+          64542.07
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -241,8 +498,14 @@
       "balance": 0,
       "margin": 14930,
       "categoryCosts": [
-        [1, 6473.42],
-        [2, 10621]
+        [
+          1,
+          6473.42
+        ],
+        [
+          2,
+          10621
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -257,8 +520,14 @@
       "balance": 0,
       "margin": 96253,
       "categoryCosts": [
-        [1, 94110.41],
-        [2, 650]
+        [
+          1,
+          94110.41
+        ],
+        [
+          2,
+          650
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -273,9 +542,18 @@
       "balance": -593565.67,
       "margin": -296322.5,
       "categoryCosts": [
-        [1, 171578.38],
-        [2, 148473.16],
-        [3, 273609.09]
+        [
+          1,
+          171578.38
+        ],
+        [
+          2,
+          148473.16
+        ],
+        [
+          3,
+          273609.09
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -303,10 +581,21 @@
       "balance": -114267.43,
       "margin": 32855.15,
       "categoryCosts": [
-        [1, 122015.13],
-        [2, 60023.64]
+        [
+          1,
+          122015.13
+        ],
+        [
+          2,
+          60023.64
+        ]
       ],
-      "settledCategoryCosts": [[2, 4421.85]]
+      "settledCategoryCosts": [
+        [
+          2,
+          4421.85
+        ]
+      ]
     },
     "32": {
       "totalMaterialCosts": 31717.29,
@@ -319,8 +608,14 @@
       "balance": -94.29,
       "margin": 103987,
       "categoryCosts": [
-        [1, 29537.46],
-        [2, 2179.83]
+        [
+          1,
+          29537.46
+        ],
+        [
+          2,
+          2179.83
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -334,7 +629,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 14973.1,
-      "categoryCosts": [[1, 4735.18]],
+      "categoryCosts": [
+        [
+          1,
+          4735.18
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "34": {
@@ -347,7 +647,12 @@
       "totalSettled": 0,
       "balance": -281.02,
       "margin": 25247.47,
-      "categoryCosts": [[1, 11962.45]],
+      "categoryCosts": [
+        [
+          1,
+          11962.45
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "35": {
@@ -360,7 +665,12 @@
       "totalSettled": 0,
       "balance": 100.32,
       "margin": 58399,
-      "categoryCosts": [[1, 34369.68]],
+      "categoryCosts": [
+        [
+          1,
+          34369.68
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "36": {
@@ -374,8 +684,14 @@
       "balance": -227.82,
       "margin": 14069,
       "categoryCosts": [
-        [1, 7387.18],
-        [2, 6605.62]
+        [
+          1,
+          7387.18
+        ],
+        [
+          2,
+          6605.62
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -390,8 +706,14 @@
       "balance": 0.19,
       "margin": 18678,
       "categoryCosts": [
-        [1, 3826.81],
-        [3, 1107]
+        [
+          1,
+          3826.81
+        ],
+        [
+          3,
+          1107
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -406,8 +728,14 @@
       "balance": 60093.57,
       "margin": -3000,
       "categoryCosts": [
-        [1, 1364.03],
-        [3, 1089.58]
+        [
+          1,
+          1364.03
+        ],
+        [
+          3,
+          1089.58
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -421,7 +749,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 1350,
-      "categoryCosts": [[1, 1000]],
+      "categoryCosts": [
+        [
+          1,
+          1000
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "40": {
@@ -435,8 +768,14 @@
       "balance": -75380.15,
       "margin": 3800,
       "categoryCosts": [
-        [1, 61642.15],
-        [3, 738]
+        [
+          1,
+          61642.15
+        ],
+        [
+          3,
+          738
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -450,7 +789,12 @@
       "totalSettled": 0,
       "balance": -9.51,
       "margin": 31991,
-      "categoryCosts": [[1, 10687.24]],
+      "categoryCosts": [
+        [
+          1,
+          10687.24
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "42": {
@@ -464,11 +808,25 @@
       "balance": 443.85,
       "margin": 71796,
       "categoryCosts": [
-        [1, 27548.27],
-        [2, 28646.88],
-        [3, 63]
+        [
+          1,
+          27548.27
+        ],
+        [
+          2,
+          28646.88
+        ],
+        [
+          3,
+          63
+        ]
       ],
-      "settledCategoryCosts": [[3, 400]]
+      "settledCategoryCosts": [
+        [
+          3,
+          400
+        ]
+      ]
     },
     "43": {
       "totalMaterialCosts": 3725.8,
@@ -480,7 +838,12 @@
       "totalSettled": 0,
       "balance": 33.2,
       "margin": 15011,
-      "categoryCosts": [[1, 3725.8]],
+      "categoryCosts": [
+        [
+          1,
+          3725.8
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "45": {
@@ -494,8 +857,14 @@
       "balance": -14922.87,
       "margin": 30537,
       "categoryCosts": [
-        [1, 10973.49],
-        [2, 49700]
+        [
+          1,
+          10973.49
+        ],
+        [
+          2,
+          49700
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -509,7 +878,12 @@
       "totalSettled": 0,
       "balance": 0.24,
       "margin": 9430,
-      "categoryCosts": [[1, 4819.76]],
+      "categoryCosts": [
+        [
+          1,
+          4819.76
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "47": {
@@ -522,7 +896,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 0,
-      "categoryCosts": [[1, 142.65]],
+      "categoryCosts": [
+        [
+          1,
+          142.65
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "48": {
@@ -536,8 +915,14 @@
       "balance": 55786.43,
       "margin": -21580,
       "categoryCosts": [
-        [1, 16433.57],
-        [3, 30]
+        [
+          1,
+          16433.57
+        ],
+        [
+          3,
+          30
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -552,8 +937,14 @@
       "balance": 0.26,
       "margin": 17184,
       "categoryCosts": [
-        [1, 4225.86],
-        [2, 152.88]
+        [
+          1,
+          4225.86
+        ],
+        [
+          2,
+          152.88
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -567,7 +958,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 23172.25,
-      "categoryCosts": [[1, 5463.98]],
+      "categoryCosts": [
+        [
+          1,
+          5463.98
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "51": {
@@ -580,7 +976,12 @@
       "totalSettled": 0,
       "balance": -0.02,
       "margin": 1078,
-      "categoryCosts": [[1, 49.02]],
+      "categoryCosts": [
+        [
+          1,
+          49.02
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "52": {
@@ -593,7 +994,12 @@
       "totalSettled": 0,
       "balance": 184.52,
       "margin": 13209,
-      "categoryCosts": [[1, 4165.48]],
+      "categoryCosts": [
+        [
+          1,
+          4165.48
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "53": {
@@ -606,7 +1012,12 @@
       "totalSettled": 0,
       "balance": 0.43,
       "margin": 3749,
-      "categoryCosts": [[1, 1377.57]],
+      "categoryCosts": [
+        [
+          1,
+          1377.57
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "54": {
@@ -619,7 +1030,12 @@
       "totalSettled": 0,
       "balance": 7809.14,
       "margin": -11007,
-      "categoryCosts": [[1, 130.86]],
+      "categoryCosts": [
+        [
+          1,
+          130.86
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "55": {
@@ -632,7 +1048,12 @@
       "totalSettled": 0,
       "balance": -122,
       "margin": 12066,
-      "categoryCosts": [[1, 6886]],
+      "categoryCosts": [
+        [
+          1,
+          6886
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "57": {
@@ -658,7 +1079,12 @@
       "totalSettled": 0,
       "balance": -6790.62,
       "margin": 14467,
-      "categoryCosts": [[1, 3773.62]],
+      "categoryCosts": [
+        [
+          1,
+          3773.62
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "59": {
@@ -671,7 +1097,12 @@
       "totalSettled": 0,
       "balance": 0.1,
       "margin": 4747,
-      "categoryCosts": [[1, 646.9]],
+      "categoryCosts": [
+        [
+          1,
+          646.9
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "60": {
@@ -684,7 +1115,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 27986.76,
-      "categoryCosts": [[1, 15039.35]],
+      "categoryCosts": [
+        [
+          1,
+          15039.35
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "61": {
@@ -697,7 +1133,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 2286.47,
-      "categoryCosts": [[1, 435.53]],
+      "categoryCosts": [
+        [
+          1,
+          435.53
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "62": {
@@ -710,7 +1151,12 @@
       "totalSettled": 0,
       "balance": -362.84,
       "margin": -362.84,
-      "categoryCosts": [[1, 362.84]],
+      "categoryCosts": [
+        [
+          1,
+          362.84
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "63": {
@@ -723,7 +1169,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 0,
-      "categoryCosts": [[1, 0]],
+      "categoryCosts": [
+        [
+          1,
+          0
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "64": {
@@ -737,10 +1188,21 @@
       "balance": -32903.46,
       "margin": -11881.13,
       "categoryCosts": [
-        [1, 16736.4],
-        [2, 16167.06]
+        [
+          1,
+          16736.4
+        ],
+        [
+          2,
+          16167.06
+        ]
       ],
-      "settledCategoryCosts": [[3, 19.99]]
+      "settledCategoryCosts": [
+        [
+          3,
+          19.99
+        ]
+      ]
     },
     "65": {
       "totalMaterialCosts": 58378.06,
@@ -753,9 +1215,18 @@
       "balance": 17104.54,
       "margin": 29471,
       "categoryCosts": [
-        [1, 34979.94],
-        [2, 21528.12],
-        [3, 1870]
+        [
+          1,
+          34979.94
+        ],
+        [
+          2,
+          21528.12
+        ],
+        [
+          3,
+          1870
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -770,8 +1241,14 @@
       "balance": -15104.84,
       "margin": 76657,
       "categoryCosts": [
-        [1, 43965.64],
-        [2, 619.2]
+        [
+          1,
+          43965.64
+        ],
+        [
+          2,
+          619.2
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -786,8 +1263,14 @@
       "balance": -956.53,
       "margin": 42632,
       "categoryCosts": [
-        [1, 24310.02],
-        [2, 1028.51]
+        [
+          1,
+          24310.02
+        ],
+        [
+          2,
+          1028.51
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -801,7 +1284,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 8099.14,
-      "categoryCosts": [[1, 5230.86]],
+      "categoryCosts": [
+        [
+          1,
+          5230.86
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "70": {
@@ -814,7 +1302,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 4250.69,
-      "categoryCosts": [[1, 349.31]],
+      "categoryCosts": [
+        [
+          1,
+          349.31
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "71": {
@@ -827,7 +1320,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 583.89,
-      "categoryCosts": [[1, 226.11]],
+      "categoryCosts": [
+        [
+          1,
+          226.11
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "72": {
@@ -840,7 +1338,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 11361.79,
-      "categoryCosts": [[1, 5438.21]],
+      "categoryCosts": [
+        [
+          1,
+          5438.21
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "73": {
@@ -853,7 +1356,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 800,
-      "categoryCosts": [[1, 595.9]],
+      "categoryCosts": [
+        [
+          1,
+          595.9
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "74": {
@@ -867,8 +1375,14 @@
       "balance": 276.59,
       "margin": 12301.11,
       "categoryCosts": [
-        [1, 6000.11],
-        [2, 8298.78]
+        [
+          1,
+          6000.11
+        ],
+        [
+          2,
+          8298.78
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -882,7 +1396,12 @@
       "totalSettled": 0,
       "balance": -3.66,
       "margin": 22623,
-      "categoryCosts": [[1, 6780.66]],
+      "categoryCosts": [
+        [
+          1,
+          6780.66
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "76": {
@@ -896,8 +1415,14 @@
       "balance": 40614.85,
       "margin": -26485,
       "categoryCosts": [
-        [1, 24509.15],
-        [3, 4104]
+        [
+          1,
+          24509.15
+        ],
+        [
+          3,
+          4104
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -911,7 +1436,12 @@
       "totalSettled": 0,
       "balance": 0.2,
       "margin": 12875.96,
-      "categoryCosts": [[1, 3731.8]],
+      "categoryCosts": [
+        [
+          1,
+          3731.8
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "78": {
@@ -924,7 +1454,12 @@
       "totalSettled": 0,
       "balance": -4992.67,
       "margin": 19048,
-      "categoryCosts": [[1, 3044.67]],
+      "categoryCosts": [
+        [
+          1,
+          3044.67
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "80": {
@@ -937,7 +1472,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 2000,
-      "categoryCosts": [[1, 417.96]],
+      "categoryCosts": [
+        [
+          1,
+          417.96
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "81": {
@@ -950,7 +1490,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 1048.95,
-      "categoryCosts": [[1, 91.02]],
+      "categoryCosts": [
+        [
+          1,
+          91.02
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "83": {
@@ -963,7 +1508,12 @@
       "totalSettled": 0,
       "balance": -184.27,
       "margin": -3050,
-      "categoryCosts": [[1, 184.27]],
+      "categoryCosts": [
+        [
+          1,
+          184.27
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "84": {
@@ -976,7 +1526,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": -332.7,
-      "categoryCosts": [[1, 332.7]],
+      "categoryCosts": [
+        [
+          1,
+          332.7
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "85": {
@@ -989,7 +1544,12 @@
       "totalSettled": 0,
       "balance": 18185.49,
       "margin": -48392,
-      "categoryCosts": [[1, 56957.51]],
+      "categoryCosts": [
+        [
+          1,
+          56957.51
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "86": {
@@ -1003,8 +1563,14 @@
       "balance": 12659.24,
       "margin": -6550,
       "categoryCosts": [
-        [1, 6893.76],
-        [2, 1447]
+        [
+          1,
+          6893.76
+        ],
+        [
+          2,
+          1447
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -1018,7 +1584,12 @@
       "totalSettled": 0,
       "balance": 31120.94,
       "margin": -21290,
-      "categoryCosts": [[1, 4242.06]],
+      "categoryCosts": [
+        [
+          1,
+          4242.06
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "88": {
@@ -1031,8 +1602,18 @@
       "totalSettled": 900,
       "balance": 33986,
       "margin": -17250,
-      "categoryCosts": [[1, 13014]],
-      "settledCategoryCosts": [[1, 900]]
+      "categoryCosts": [
+        [
+          1,
+          13014
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          1,
+          900
+        ]
+      ]
     },
     "89": {
       "totalMaterialCosts": 0,
@@ -1083,7 +1664,12 @@
       "totalSettled": 0,
       "balance": -21452.75,
       "margin": -9,
-      "categoryCosts": [[1, 4561.75]],
+      "categoryCosts": [
+        [
+          1,
+          4561.75
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "94": {
@@ -1096,7 +1682,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 1500,
-      "categoryCosts": [[1, 1021.64]],
+      "categoryCosts": [
+        [
+          1,
+          1021.64
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "96": {
@@ -1109,7 +1700,12 @@
       "totalSettled": 0,
       "balance": 0,
       "margin": 6358,
-      "categoryCosts": [[1, 2477.5]],
+      "categoryCosts": [
+        [
+          1,
+          2477.5
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "97": {
@@ -1122,7 +1718,12 @@
       "totalSettled": 0,
       "balance": 34544.51,
       "margin": -30600,
-      "categoryCosts": [[1, 10155.49]],
+      "categoryCosts": [
+        [
+          1,
+          10155.49
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "98": {
@@ -1135,7 +1736,12 @@
       "totalSettled": 0,
       "balance": -39,
       "margin": -39,
-      "categoryCosts": [[1, 39]],
+      "categoryCosts": [
+        [
+          1,
+          39
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "99": {
@@ -1148,7 +1754,12 @@
       "totalSettled": 0,
       "balance": -0.34,
       "margin": 300,
-      "categoryCosts": [[1, 173.34]],
+      "categoryCosts": [
+        [
+          1,
+          173.34
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "100": {
@@ -1161,7 +1772,12 @@
       "totalSettled": 0,
       "balance": 29553.95,
       "margin": -2600,
-      "categoryCosts": [[1, 1305.39]],
+      "categoryCosts": [
+        [
+          1,
+          1305.39
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "101": {
@@ -1174,7 +1790,12 @@
       "totalSettled": 0,
       "balance": 10851.07,
       "margin": -20350,
-      "categoryCosts": [[1, 11782.73]],
+      "categoryCosts": [
+        [
+          1,
+          11782.73
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "102": {
@@ -1213,8 +1834,18 @@
       "totalSettled": 900,
       "balance": -26.98,
       "margin": 600,
-      "categoryCosts": [[1, 26.98]],
-      "settledCategoryCosts": [[1, 900]]
+      "categoryCosts": [
+        [
+          1,
+          26.98
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          1,
+          900
+        ]
+      ]
     },
     "105": {
       "totalMaterialCosts": 25970.27,
@@ -1227,8 +1858,14 @@
       "balance": -4970.27,
       "margin": 0,
       "categoryCosts": [
-        [1, 12582.67],
-        [2, 13387.6]
+        [
+          1,
+          12582.67
+        ],
+        [
+          2,
+          13387.6
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -1243,8 +1880,14 @@
       "balance": -1500.48,
       "margin": 11774,
       "categoryCosts": [
-        [1, 4410.19],
-        [2, 151.29]
+        [
+          1,
+          4410.19
+        ],
+        [
+          2,
+          151.29
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -1258,7 +1901,12 @@
       "totalSettled": 0,
       "balance": -0.02,
       "margin": 1200,
-      "categoryCosts": [[1, 321.02]],
+      "categoryCosts": [
+        [
+          1,
+          321.02
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "108": {
@@ -1271,8 +1919,18 @@
       "totalSettled": 238.2,
       "balance": -5952.1,
       "margin": -6388.2,
-      "categoryCosts": [[1, 5952.1]],
-      "settledCategoryCosts": [[1, 238.2]]
+      "categoryCosts": [
+        [
+          1,
+          5952.1
+        ]
+      ],
+      "settledCategoryCosts": [
+        [
+          1,
+          238.2
+        ]
+      ]
     },
     "109": {
       "totalMaterialCosts": 0,
@@ -1310,7 +1968,12 @@
       "totalSettled": 0,
       "balance": -458.48,
       "margin": 0,
-      "categoryCosts": [[1, 458.48]],
+      "categoryCosts": [
+        [
+          1,
+          458.48
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "112": {
@@ -1336,7 +1999,12 @@
       "totalSettled": 0,
       "balance": -3786.24,
       "margin": 0,
-      "categoryCosts": [[1, 3786.24]],
+      "categoryCosts": [
+        [
+          1,
+          3786.24
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "114": {
@@ -1350,8 +2018,14 @@
       "balance": -11074.14,
       "margin": -7350,
       "categoryCosts": [
-        [1, 5736.74],
-        [2, 12297.4]
+        [
+          1,
+          5736.74
+        ],
+        [
+          2,
+          12297.4
+        ]
       ],
       "settledCategoryCosts": []
     },
@@ -1378,7 +2052,12 @@
       "totalSettled": 0,
       "balance": -550,
       "margin": 0,
-      "categoryCosts": [[3, 550]],
+      "categoryCosts": [
+        [
+          3,
+          550
+        ]
+      ],
       "settledCategoryCosts": []
     },
     "247": {

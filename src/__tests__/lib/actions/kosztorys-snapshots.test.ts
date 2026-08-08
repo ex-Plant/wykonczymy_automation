@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // saveSnapshotAction carries its required-label invariant in the action, so run the REAL action and
 // assert PERSISTED state — an empty label must reject with the exact toast and write no row.
@@ -12,7 +13,6 @@ import { getDb } from '@/lib/db/get-db'
 // fabricated id would fail the manual-insert path.
 const authState = vi.hoisted(() => ({ userId: 0 }))
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => ({
     success: true,
@@ -44,21 +44,12 @@ describe.skipIf(!ENV_READY)('saveSnapshotAction — required label (DB)', () => 
     const firstUser = users.docs[0]
     if (!firstUser) throw new Error('no user in the DB to attribute the snapshot to')
     authState.userId = Number(firstUser.id)
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'save-snapshot-test', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'save-snapshot-test')
   })
 
   afterAll(async () => {
     if (investmentId) {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 

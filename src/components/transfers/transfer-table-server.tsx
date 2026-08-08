@@ -4,7 +4,8 @@ import {
   enrichCancellationOriginals,
 } from '@/lib/queries/transfers'
 import { stripCancelledFilters } from '@/lib/queries/transfer-filters'
-import { fetchReferenceData, fetchFilteredByType } from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { buildTransferRows } from '@/lib/queries/fetch-transfer-rows'
 import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import { perfStart } from '@/lib/perf'
@@ -54,11 +55,15 @@ export async function TransferTableServer({ config }: TransferTableServerPropsT)
     ? typeDistribution.reduce((sum, t) => sum + t.total, 0)
     : undefined
 
+  // buildTransferFilters only adds the `cancelled` exclusion when the list hides cancelled rows, so
+  // its absence is exactly the case where the tile is narrower than the rows below it (EX-574).
+  const listsCancelled = !('cancelled' in config.query.where)
+
   return (
     <TransferDataTable
       data={rows}
       paginationMeta={rawTxResult.paginationMeta}
-      config={{ ...config, totalFilteredAmount }}
+      config={{ ...config, totalFilteredAmount, listsCancelled }}
       referenceData={refData}
     />
   )

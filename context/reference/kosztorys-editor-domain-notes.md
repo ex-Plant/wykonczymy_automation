@@ -175,17 +175,16 @@ Czysto na odczyt, per inwestycja. Niezależny od P5 (linkage LABOR_COST).
 | Wykonano (postęp)        | Σ wartości odhaczonych etapów (klient) + % planu            |
 | Zafakturowano            | `LABOR_COST` inwestycji                                     |
 | Wypłacono ekipie         | `PAYOUT` inwestycji                                         |
-| Plan kosztu podwykonawcy | Σ `pomiar × cena_wariantu_kosztu_pozycji`                   |
+| Plan kosztu podwykonawcy | Σ po etapach (ilość etapu × stawka wariantu etapu)          |
 | **Marża planowana**      | plan klient − plan podwykonawcy                             |
 | **Marża rzeczywista**    | wzór aplikacji: `robocizna − wypłaty − rabat − strata`      |
 | Materiały (actuals)      | `INVESTMENT_EXPENSE` — bez planu (materiałów nie planujemy) |
 
-- **Wariant kosztu PER POZYCJA** (z narzędziami | bez) — w jednej inwestycji
-  mogą występować oba (jedna ekipa z narzędziami, druga bez), więc wybór NIE jest
-  per inwestycja. Każda pozycja wskazuje, która cena podwykonawcy jest jej
-  rzeczywistym kosztem. Kaskada jak VAT: **default na sekcji → pozycja dziedziczy
-  → można nadpisać** (zwykle ekipa robi całą sekcję, więc default sekcji łapie
-  większość). Default sekcji → P11.
+- **Wariant kosztu PER ETAP** (z narzędziami | bez) — w jednej inwestycji mogą
+  występować oba (jedna ekipa z narzędziami, druga bez), a ta sama praca może mieć
+  etapy 1–2 zrobione z narzędziami, a 3–4 bez. Wybór siedzi więc na etapie i to on
+  mówi, która cena podwykonawcy jest kosztem danej ilości (EX-565, patrz sekcja
+  „Wariant «z narzędziami / bez narzędzi»").
 
 ## Edytor — zapis i edycja (D)
 
@@ -195,9 +194,9 @@ UX siatki = zwykła tabela (TanStack); sednem nie jest wygląd, tylko zapis.
 
 ```
 inputy: pozycja (opis, jednostka, przedmiar, pomiar, 3 ceny, discount_type+value,
-        cost_variant, note, hidden_in_export, display_order);
-        sekcja (nazwa, display_order, vat_rate, default cost_variant);
-        etap (ordinal, label); stage_progress (item, stage → ilość)
+        note, hidden_in_export, display_order);
+        sekcja (nazwa, display_order, vat_rate);
+        etap (ordinal, label, plane); stage_progress (item, stage → ilość)
 liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
 ```
 
@@ -376,13 +375,31 @@ czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik
   sekcji. **Nie zgłaszaj ponownie „brak cofania" jako buga** — to wybór, a stan da się odzyskać
   z listy wersji.
 
+### Zasięg filtrów na stronie inwestycji (EX-600, 2026-07-28)
+
+Panel podsumowania na `/inwestycje/<id>` pokazuje obok siebie liczby z dwóch źródeł, a filtry z
+adresu (data, typ, kasa, …) sięgają tylko do jednego z nich:
+
+- **Płaszczyzna transakcji** — Materiały, marża i **Wpłaty** — zwęża się razem z filtrem. Wpłaty
+  dołączyły do tej grupy dopiero teraz; wcześniej czytały całą inwestycję niezależnie od filtra,
+  co było regresją względem odczytu v1, gdzie ta sama liczba filtrowi podlegała.
+- **Płaszczyzna kosztorysu** — Robocizna, Rabat, Łącznie, „Do zapłaty" — filtrowi podlegać nie
+  może: pozycja kosztorysu nie ma daty, typu ani kasy, po których dałoby się ciąć. Przy aktywnym
+  filtrze każda taka liczba dostaje `*`, a panel raz drukuje przypis, co ta gwiazdka znaczy.
+- **Werdykty porównujące obie płaszczyzny** — krzyk o rozjeździe robocizny/rabatu z transakcjami
+  oraz ostrzeżenie o trybie mieszanym — przy aktywnym filtrze milkną. Zestawiają całość kosztorysu
+  z zawężoną księgą, więc pod filtrem zgłaszałyby sam filtr jako lukę.
+
+Reguła generalna dla nowych liczb w tym panelu: jeśli liczba pochodzi z kosztorysu, oznacz ją
+gwiazdką; jeśli porównuje kosztorys z transakcjami — wycisz ją pod filtrem.
+
 ## Domyślne
 
 PLN • netto+brutto z `vat_rate` per pozycja • hard-delete • reorder strzałkami
 (bez drag) • etapy zmienne (w szablonie 10) • współistnienie z zakładką „Arkusz" •
 bez `work_catalogue`.
 
-## Wariant „z narzędziami / bez narzędzi" — model się rozjeżdża (OTWARTE, duża zmiana)
+## Wariant „z narzędziami / bez narzędzi" — ROZSTRZYGNIĘTE, wdrożone (EX-565)
 
 **Problem (właściciel, 2026-07-21).** Cena podwykonawcy „z narzędziami" i „bez narzędzi" to **NIE
 dwie równoległe ceny tej samej pracy**. Dana praca jest wykonana **albo** z narzędziami **albo** bez
@@ -391,8 +408,8 @@ dwie równoległe ceny tej samej pracy**. Dana praca jest wykonana **albo** z na
 
 **Eskalacja: wariant zmienia się per etap — POTWIERDZONE realnym przypadkiem (2026-07-21).** Kilka
 ekip na inwestycji, część pracuje z narzędziami, część bez. Ta sama praca: „etapy 1–2 robił ktoś
-z narzędziami, etapy 3–4 bez". Czyli grain wyboru wariantu to **etap**, nie praca. Tu model app się
-**rozwala** — nie ma gdzie tego zapisać (`stage_progress` trzyma tylko `qty_done`).
+z narzędziami, etapy 3–4 bez". Czyli grain wyboru wariantu to **etap**, nie praca. Wtedy model app się
+**rozwalał** — nie było gdzie tego zapisać.
 
 **Kierunek rozwiązania (czysty, zaskakująco mały).** Stawki i tak są **dwie na pracę** (z i bez, obie
 własne — już importowane). Nie trzeba „dowolnej stawki per etap" — trzeba jednej nowej rzeczy:
@@ -400,44 +417,22 @@ własne — już importowane). Nie trzeba „dowolnej stawki per etap" — trzeb
 
 - **Koszt pracy = Σ po etapach (ilość_etapu × stawka wariantu tego etapu).**
 - „Podsumowanie podwykonawców" = **jedna** zsumowana kwota z realnych miksów; globalny przełącznik
-  z/bez **znika**.
+  z/bez miał wtedy **zniknąć** — ostatecznie zostaje jako widełki, patrz „Co wdrożono" niżej.
 - Dane jednorazowe do dogfoodingu → czysty dopis kolumny, bez migracji/backfillu.
 - Przykład (malowanie, stawki 18/15): (e1+e2)×18 + (e3+e4)×15. Ani „całość z" (×18), ani „całość bez"
   (×15) tego nie odda — prawda leży pomiędzy.
 
-**Poziom zapisu wariantu — KASKADA** (2026-07-21, finalny kształt). Etap-global odpada: 300 prac
-w kilkunastu sekcjach, **ekipa idzie za sekcją** („każda sekcja może być inna ekipa"), a ekipa danej
-sekcji **zmienia się między etapami** (etapy 1–2 z narzędziami, 3–4 bez). Właściciel nie jest pewien,
-czy w jednej sekcji+etapie ekipy się nie mieszają — więc **musi być override per praca**, choćby
-rzadko. Stąd kaskada, od ogółu do szczegółu (wygrywa najbardziej szczegółowa ustawiona):
-
-1. **Domyślny wariant sekcji** (`kosztorys_sections.default_cost_variant` — już istnieje).
-2. **(sekcja × etap)** — nowa mała relacja (`section_id × stage_id → variant`), ~kilkanaście sekcji ×
-   etapy. Nadpisuje (1) dla całej sekcji w danym etapie.
-3. **(praca × etap)** — nullable `cost_variant` na `stage_progress` (per komórka postępu). Rzadki
-   ręczny wyjątek. Nadpisuje (2).
-
-Rozwiązanie komórki (praca, etap) = poziom 3 ?? poziom 2 ?? poziom 1. **Koszt = Σ po komórkach
-(ilość × stawka pracy dla rozwiązanego wariantu).** Stawki (z/bez) zostają dwie na pracę (już
-importowane). „Podsumowanie podwykonawców" = jedna zsumowana kwota; globalny `PriceViewT` z/bez
-**znika**.
-
-To **ta sama kaskada** co VAT i współczynniki (global default → override per sekcja → dziedziczenie na
-pozycji) — dokładamy tylko oś **etapu**. Wzorzec „inheritance z override", spójny z resztą modelu.
-Dane jednorazowe do dogfoodingu → czyste dopisy kolumn/relacji, bez migracji/backfillu.
-
-**Widoki — czwarty „mieszany", z/bez zostają jako widełki** (2026-07-21, właściciel). Zamiast usuwać
-globalne z/bez, **dokładamy czwarty widok „mieszany"** = rzeczywistość (każda komórka po rozwiązanym
-wariancie kaskady). Własności:
+**Widoki — czwarty „mieszany", z/bez zostają jako widełki** (2026-07-21, właściciel; **wciąż otwarte**,
+już pod wdrożonym modelem per etap). Zamiast usuwać globalne z/bez, **dokładamy czwarty widok
+„mieszany"** = rzeczywistość (każdy etap po swoim wariancie). Własności:
 
 - Mieszany **zawsze leży między** „całość z" a „całość bez" → z/bez przestają być dwiema równoległymi
   prawdami (odrzucone AND), stają się **widełkami-hipotezą**.
 - Przy **jednorodnej** inwestycji mieszany == widok podstawowy (wszystkie komórki jeden wariant), więc
   nic nie tracimy — mieszany tylko uogólnia. Dlatego z/bez zostają (większość inwestycji jednorodna);
   ich ewentualne wchłonięcie przez mieszany — dopiero „jak się sprawdzi".
-- UI mieszanego = powierzchnia przypisania ekip: komórki **kolorowane wariantem**, klik nagłówka
-  sekcji na kolumnie etapu → wariant całej sekcji w etapie (poziom 2), klik komórki → override per
-  praca (poziom 3). Wiersz pokazuje samą **kwotę** (nie „cenę j.m." — etapy mieszają stawki).
+- UI mieszanego = powierzchnia przypisania ekip: kolumna etapu **kolorowana jego wariantem**, wybór
+  wariantu w nagłówku etapu. Wiersz pokazuje samą **kwotę** (nie „cenę j.m." — etapy mieszają stawki).
 
 **GATE rozliczenia (twarda konsekwencja).** „należne − wypłaty = pozostało do wypłaty" żyje **tylko
 w widoku mieszanym**. To był źródłowy błąd 78 033 vs 56 431: podsumowanie liczyło należne w widoku
@@ -451,31 +446,19 @@ pracownik (patrz notatka „Wypłaty = ręczny rejestr…"), nie z arkusza. Wari
 **sumę kosztu**; przypięcie „kto zrobił który etap" do konkretnej ekipy (dla rozliczenia per pracownik)
 to dalsza, opcjonalna warstwa — nie mieszać jej do tej zmiany.
 
-**Stan modelu app (zweryfikowane w `calc.ts`, 2026-07-21):**
+**Co wdrożono (EX-565).** Wariant siedzi na **etapie** (`kosztorys_stages.plane`) — dokładnie ten
+grain, który właściciel potwierdził. Rozliczenie podwykonawcy liczy się po wariancie etapu, więc
+„koszt = Σ po etapach" jest już policzalne z danych. Etap bez wybranego wariantu nie należy do
+żadnego rachunku podwykonawcy i nie wchodzi do żadnej z dwóch sum.
 
-- `PriceViewT = 'client' | 'w_tools' | 'own_tools'` — **globalny** przełącznik widoku.
-- `subcontractorPrice(row, view)` wybiera `wToolsOverride*` albo `ownToolsOverride*` po **globalnym**
-  `view` i **ignoruje `row.costVariant`**. Pozycja trzyma **obie** ceny naraz (`wToolsOverride*` +
-  `ownToolsOverride*`), a podsumowanie wycenia **całość** po jednym globalnym wariancie.
-- Efekt: app pokazuje „całość z narzędziami" (78 034) **albo** „całość bez" (~65 638), **nigdy
-  realnego miksu**. To także **prawdziwa przyczyna** rozjazdu 78k vs 56k z arkuszem — globalny plan
-  nigdy nie będzie zgodny, bo realny kosztorys miesza warianty per praca.
-- `costVariant` siedzi na `kosztorys_items`; `stage_progress` trzyma tylko `qty_done`. **Wariant per
-  (pozycja × etap) nie istnieje w schemacie.**
+Globalny przełącznik z/bez **zostaje** jako widok wyceny (widełki-hipoteza, patrz wyżej) — nie jest
+już drugim miejscem zapisu wariantu. Wariantu **nie ma** ani na pracy, ani na sekcji — kolumny, które kiedyś miały go tam nieść, były
+martwe od pierwszego dnia i zostały usunięte (EX-575, migracja `20260728_0`). Kaskada
+sekcja → (sekcja × etap) → praca nigdy nie powstała i nie jest planowana.
 
-**Do rozstrzygnięcia biznesowo (zanim plan):**
-
-- ~~**Grain wariantu:** per praca / sekcja / etap?~~ **ROZSTRZYGNIĘTE: per etap** (2026-07-21).
-  Zostaje tylko poziom zapisu: etap vs (praca × etap) — patrz „Otwarte pod-pytanie" wyżej.
-- **Skąd import zna wariant?** Arkusz ma obie zakładki (`zakres pracy z/bez narzędzi`) dla
-  **wszystkich** prac — brak per-pracę/per-etap znacznika. Potrzebna reguła od właściciela.
-- **Los globalnego `PriceViewT` z/bez** — prawdopodobnie do usunięcia na rzecz jednego widoku
-  „podwykonawca", wycenianego per wariant pozycji/etapu.
-
-**Zasięg zmiany (dlaczego „duża"):** `calc.ts` (`viewPrice`/`subcontractorPrice`/`PriceViewT`), oś
-`money-axis`, `KosztorysTotalsPanel` + `SubcontractorSummary`, schemat (`stage_progress` musiałby nieść
-wariant, jeśli grain = etap), oraz seed (dziś wyprowadza **obie** ceny — przy per-etap musiałby nieść
-wariant per komórkę postępu). Powiązane: EX-554 („Podsumowanie podwykonawców").
+Otwarte pod wdrożonym modelem: **skąd import zna wariant** — arkusz ma obie zakładki („zakres pracy
+z/bez narzędzi") dla **wszystkich** prac, bez znacznika per etap; potrzebna reguła od właściciela.
+Powiązane: EX-554 („Podsumowanie podwykonawców").
 
 ## Otwarte / odłożone
 
@@ -596,8 +579,9 @@ this section is the original phrasing/context for those questions.
 
 ### Plan-vs-actual
 
-- **P11.** Domyślny wariant kosztu podwykonawcy (z narzędziami vs bez) — jako
-  default sekcji, od którego dziedziczą pozycje (nadpisywalny per pozycja)?
+- **P11.** ~~Domyślny wariant kosztu podwykonawcy (z narzędziami vs bez) — jako
+  default sekcji, od którego dziedziczą pozycje?~~ **ROZSTRZYGNIĘTE (EX-565):**
+  wariant siedzi na **etapie**; defaultu sekcji ani dziedziczenia na pozycji nie ma.
 
 ### Druk / eksport
 

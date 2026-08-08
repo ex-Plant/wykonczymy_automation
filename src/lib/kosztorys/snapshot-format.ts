@@ -8,6 +8,13 @@ import type {
 // Bump only on a non-additive payload change (a renamed/dropped field). Additive fields need no
 // bump — the restore mapper defaults anything missing, so an old snapshot still restores. See
 // restore-kosztorys.ts for the tolerant deserialization contract.
+//
+// A field DROPPED without ever having been read is exempt: the restore mapper picks keys it knows,
+// so the stale key in an old payload is inert and the snapshot still restores whole (precedent:
+// 20260724_1).
+// The exemption matters because bumping is asymmetric — the list queries (snapshots.ts, presets.ts)
+// don't assert, so every stored version and every global preset would keep being offered in the UI
+// and throw the Polish error only once clicked.
 export const SNAPSHOT_SCHEMA_VERSION = 1 as const
 
 // Gate a stored payload at read time. Because the version bumps ONLY on a non-additive change, any

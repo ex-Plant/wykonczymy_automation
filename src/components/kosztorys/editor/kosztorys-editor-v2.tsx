@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { EmptyKosztorysDialog } from '@/components/kosztorys/editor/dialogs/empty-kosztorys-dialog'
 import { KosztorysEditorBody } from '@/components/kosztorys/editor/kosztorys-editor-body'
 import { KosztorysVersionsDrawer } from '@/components/kosztorys/editor/dialogs/kosztorys-versions-drawer'
 import { useAutoSnapshot } from '@/components/kosztorys/editor/hooks/use-auto-snapshot'
@@ -15,30 +14,15 @@ type PropsT = KosztorysEditorDataT
 // Thin shell around the stateful editor body: owns the auto-snapshot interval, the "Wersje" drawer, and
 // the restore-driven remount. Each of the three lives here so a restore's body remount doesn't disturb
 // them.
-export function KosztorysEditorV2({
-  investmentId,
-  tree,
-  investmentName,
-  materialsGrossBase,
-  materialsNetBilled,
-  materialyBreakdown,
-  settledBreakdown,
-  financials,
-  wplatyNet,
-  laborCostsNetFromTransactions,
-  investmentRabat,
-  payoutsByWorker = [],
-  payoutTransactions = [],
-  depositTransactions = [],
-  materialTransactions,
-}: PropsT) {
+export function KosztorysEditorV2(props: PropsT) {
+  const { investmentId, tree, investmentName } = props
   const router = useRouter()
   // One undo/redo stack per editor mount, passed to the body as a prop. It outlives the body's
   // restore remount (the shell doesn't remount), so a restore must reset() it — the stale commands
   // close over the unmounted body's setRows/refs.
   const undoRedo = useUndoRedo()
   const [versionsOpen, setVersionsOpen] = useState(false)
-  const { remountKey, triggerRestore } = useRestoreRemount(tree)
+  const { remountKey, triggerRestore } = useRestoreRemount(tree.revision)
 
   // Live stack revision for the interval closure (which captures values at setup time, so it can't
   // read the render-fresh `undoRedo.revision`). The eslint rule is too strict for this "latest value"
@@ -60,26 +44,9 @@ export function KosztorysEditorV2({
 
   return (
     <>
-      {tree.sections.length === 0 && (
-        <EmptyKosztorysDialog investmentId={investmentId} onCreated={handleRestored} />
-      )}
       <KosztorysEditorBody
         key={remountKey}
-        investmentId={investmentId}
-        tree={tree}
-        investmentName={investmentName}
-        materialsGrossBase={materialsGrossBase}
-        materialsNetBilled={materialsNetBilled}
-        materialyBreakdown={materialyBreakdown}
-        settledBreakdown={settledBreakdown}
-        financials={financials}
-        wplatyNet={wplatyNet}
-        laborCostsNetFromTransactions={laborCostsNetFromTransactions}
-        investmentRabat={investmentRabat}
-        payoutsByWorker={payoutsByWorker}
-        payoutTransactions={payoutTransactions}
-        depositTransactions={depositTransactions}
-        materialTransactions={materialTransactions}
+        {...props}
         undoRedo={undoRedo}
         onOpenVersions={() => setVersionsOpen(true)}
       />

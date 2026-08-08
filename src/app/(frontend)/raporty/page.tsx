@@ -2,11 +2,8 @@ import { redirect } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { ADMIN_OR_OWNER_ROLES } from '@/lib/auth/roles'
 import { parsePagination } from '@/lib/utils/pagination'
-import {
-  fetchReferenceData,
-  fetchFilteredByType,
-  fetchCategoryBreakdowns,
-} from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'

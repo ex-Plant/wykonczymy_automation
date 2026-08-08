@@ -314,7 +314,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
             {(field) => (
               <field.Select
-                className="mt-2"
                 label="Typ wydatku"
                 description={
                   billsNetAmount(currentType)
@@ -322,7 +321,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
                     : undefined
                 }
                 showError
-                fieldClassName="min-w-0 flex-1 mb-4 "
+                fieldClassName="min-w-0 flex-1"
               >
                 {TRANSACTION_TRANSFER_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>

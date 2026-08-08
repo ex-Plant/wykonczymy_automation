@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 
 // The leads collection's afterChange hook calls revalidateTag, which throws outside a
 // Next request context. Stub it — cache invalidation is not under test here.
-vi.mock('next/cache', () => ({ revalidateTag: () => {}, updateTag: () => {} }))
 
 import { storeLead, type StoreLeadInputT } from '@/lib/leads/store-lead'
 import { captureLead } from '@/lib/leads/capture-lead'

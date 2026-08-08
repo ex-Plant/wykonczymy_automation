@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import {
   Select,
   SelectButtonTrigger,
@@ -11,7 +12,14 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils/cn'
 
-export type SelectOptionT = { value: string; label: ReactNode; className?: string }
+// `icon` renders inside the item's text node, which Radix mirrors into the trigger — so an option
+// that carries one is recognisable both open and collapsed, without a second prop for the trigger.
+export type SelectOptionT = {
+  value: string
+  label: ReactNode
+  icon?: LucideIcon
+  className?: string
+}
 export type SelectVariantT = 'default' | 'soft' | 'pill' | 'toolbar' | 'toolbarSm'
 
 // Complete trigger presets — each variant carries its whole look (height, radius, text, gap, width)
@@ -69,6 +77,7 @@ export function SimpleSelect({
       <SelectContent>
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value} className={option.className}>
+            {option.icon && <option.icon />}
             {option.label}
           </SelectItem>
         ))}

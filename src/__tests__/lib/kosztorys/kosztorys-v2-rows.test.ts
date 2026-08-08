@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows, diffRow } from '@/lib/kosztorys/v2-rows'
 import { filterRows, sortRows } from '@/lib/kosztorys/row-view'
+import { sectionSubtotalsForView } from '@/lib/kosztorys/settlement-aggregates'
 import {
   rowTotalQtyDone,
   rowValueForView,
   rowRemainingForView,
   hasStagesOverPlanned,
-  sectionSubtotalsForView,
-} from '@/lib/kosztorys/settlement'
+} from '@/lib/kosztorys/settlement-rows'
 import { applyRestoreItem, revertField } from '@/lib/kosztorys/row-ops'
 import { planItemRemoval, REMOVE_BLOCK_LAST_ITEM } from '@/lib/kosztorys/delete-policy'
 import { rowDoneFraction } from '@/lib/kosztorys/calc'
@@ -20,50 +20,33 @@ import {
   stageValueNetKey,
 } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysTreeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { baseItem as sharedBaseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 const baseItem = {
+  ...sharedBaseItem,
   id: 1,
-  sectionId: 10,
-  displayOrder: 0,
   description: 'Malowanie',
-  unit: 'm2',
   plannedQty: 5,
-  discountType: null,
-  discountValue: 0,
   clientPrice: 20,
-  // 'amount' override (flat 12/10) — preserves the test values from before the migration.
-  wToolsOverrideType: 'amount' as const,
-  wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount' as const,
-  ownToolsOverrideValue: 10,
-  costVariant: null,
-  hiddenInExport: false,
-  note: null,
 }
 
-const tree: KosztorysTreeT = {
+const tree: KosztorysTreeT = makeTree({
   sections: [
     {
       id: 10,
       name: 'Sekcja A',
       displayOrder: 0,
-      defaultCostVariant: 'w_tools',
       color: null,
       items: [baseItem],
     },
   ],
   stages: [
-    { id: 100, ordinal: 1, label: null, plane: null },
-    { id: 101, ordinal: 2, label: null, plane: null },
+    { id: 100, ordinal: 1, label: null, plane: null, workerId: null },
+    { id: 101, ordinal: 2, label: null, plane: null, workerId: null },
   ],
   progress: [{ itemId: 1, stageId: 100, qtyDone: 2 }],
-  globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
   vatRate: 0.08,
-  settlementMode: 'NET',
-  materialsNetRate: null,
-  globalDiscount: { type: null, value: 0 },
-  revision: '2026-01-01T00:00:00.000Z',
-}
+})
 
 describe('treeToRows', () => {
   it('spłaszcza pozycję z sekcją i etapami', () => {
@@ -202,7 +185,10 @@ describe('rowTotalQtyDone', () => {
   // A stage added after the row was built carries no key on it — without ?? 0 the sum would be NaN.
   it('counts a stage missing its key on the row as zero', () => {
     const [row] = treeToRows(tree)
-    const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null, plane: null }]
+    const withGhost = [
+      ...tree.stages,
+      { id: 999, ordinal: 3, label: null, plane: null, workerId: null },
+    ]
     expect(rowTotalQtyDone(row, withGhost, 'client')).toBe(2)
   })
 })
@@ -214,8 +200,8 @@ describe('wartość wiersza idzie za etapami', () => {
   // the plane filter must not also be moving quantities underneath them. Plane scoping has its own
   // fixture in subcontractor-due-by-plane.test.ts.
   const stages: KosztorysStageT[] = [
-    { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-    { id: 101, ordinal: 2, label: null, plane: 'w_tools' },
+    { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+    { id: 101, ordinal: 2, label: null, plane: 'w_tools', workerId: null },
   ]
   const row = (over: Partial<KosztorysV2RowT>) =>
     ({
@@ -224,7 +210,6 @@ describe('wartość wiersza idzie za etapami', () => {
       sectionId: 10,
       sectionName: 'Sekcja A',
       vatRate: 0.08,
-      sectionDefaultCostVariant: 'w_tools',
       globalWToolsCoeff: 0.65,
       globalOwnToolsCoeff: 0.55,
       clientPrice: 100,
@@ -501,7 +486,7 @@ describe('wartość wiersza idzie za etapami', () => {
 })
 
 describe('planItemRemoval', () => {
-  const stages = [{ id: 100, ordinal: 1, label: null, plane: null }]
+  const stages = [{ id: 100, ordinal: 1, label: null, plane: null, workerId: null }]
   const row = (id: number, sectionId: number, over: Partial<KosztorysV2RowT> = {}) =>
     ({ id, sectionId, [stageKey(100)]: 0, ...over }) as unknown as KosztorysV2RowT
 

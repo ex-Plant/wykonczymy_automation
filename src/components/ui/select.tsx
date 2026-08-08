@@ -56,8 +56,17 @@ function SelectButtonTrigger({
   return (
     <SelectPrimitive.Trigger data-slot="select-trigger" asChild {...props}>
       {/* w-fit, not inherited: a toolbar button hugs its label, but this one is often dropped into a
-          stacked flex column, where the default `stretch` would blow it to the column's width. */}
-      <Button variant="outline" size="sm" className={cn('w-fit', className)}>
+          stacked flex column, where the default `stretch` would blow it to the column's width.
+          The select-value rules match SelectTrigger's: the value span holds an icon beside its text
+          whenever the option carries one, and a bare span stacks them. */}
+      <Button
+        variant="outline"
+        size="sm"
+        className={cn(
+          'w-fit *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2',
+          className,
+        )}
+      >
         {children}
         <SelectPrimitive.Icon asChild>
           <ChevronDownIcon />

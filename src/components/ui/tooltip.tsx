@@ -44,7 +44,7 @@ function TooltipContent({
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
+        <TooltipPrimitive.Arrow className="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-xs" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   )
@@ -54,13 +54,16 @@ function TooltipContent({
 const TOOLTIP_DELAY = 500
 
 type SimpleTooltipPropsT = {
-  content: string
+  content: React.ReactNode
   children: React.ReactNode
   className?: string
   delayDuration?: number // hover ms before open
   // Controlled open state, for a tooltip that has to say something the user didn't hover for — a
   // rejected keystroke explaining itself in place. Omitted = uncontrolled hover, as everywhere else.
   open?: boolean
+  // Only meaningful alongside `open`: lets a controlled trigger keep tracking hover/focus/Escape
+  // instead of having to re-implement them.
+  onOpenChange?: (open: boolean) => void
 }
 
 // Base tooltip. Use directly on INTERACTIVE triggers (buttons, toggles, sortable headers) — the
@@ -71,10 +74,11 @@ function SimpleTooltip({
   className,
   delayDuration = TOOLTIP_DELAY,
   open,
+  onOpenChange,
 }: SimpleTooltipPropsT) {
   return (
     <TooltipProvider delayDuration={delayDuration}>
-      <Tooltip open={open}>
+      <Tooltip open={open} onOpenChange={onOpenChange}>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent className={className}>{content}</TooltipContent>
       </Tooltip>

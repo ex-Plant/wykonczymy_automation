@@ -179,14 +179,52 @@ export function buildTransferFilters(
   return where
 }
 
-/** Strip cancelled-related conditions from a Where object (for stats queries that handle it in SQL). */
+/**
+ * Every user-settable filter key `buildTransferFilters` reads. Pagination (`page`/`limit`) and the
+ * reading toggle (`statsVersion`) are excluded — they change how much is shown, not what is counted.
+ * `showCancelled` is excluded for the same reason: `stripCancelledFilters` drops the condition before
+ * any stats query runs, and a CANCELLATION carries no financial bucket, so it moves no figure.
+ * Keep this list in step with the params read above.
+ */
+const TRANSFER_FILTER_PARAMS = [
+  'type',
+  'from',
+  'to',
+  'sourceRegister',
+  'investment',
+  'createdBy',
+  'paymentMethod',
+  'expenseCategory',
+  'otherCategory',
+  'worker',
+  'amount',
+  'id',
+  'cancelledTransactionAudit',
+] as const
+
+/**
+ * Has the user narrowed the view with any transfer filter?
+ *
+ * Must be answered from the raw searchParams, never from a built `Where`: `buildTransferFilters`
+ * unconditionally emits a `type`/`cancelled` condition, so its output is never empty and would read
+ * as "always filtered".
+ */
+export function hasActiveTransferFilters(searchParams: SearchParamsT): boolean {
+  return TRANSFER_FILTER_PARAMS.some((key) => {
+    const value = searchParams[key]
+    return Array.isArray(value) ? value.length > 0 : Boolean(value)
+  })
+}
+
+/**
+ * Drop the `cancelled` condition for stats queries, which hardcode `cancelled IS NOT TRUE` in SQL.
+ *
+ * The `type` condition must survive: a CANCELLATION row copies its original's amount and carries
+ * `cancelled = false`, so the default `not_in: ['CANCELLATION']` is the only thing keeping it out
+ * of the sum (EX-574).
+ */
 export function stripCancelledFilters(where: Where): Where {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { cancelled, type, ...rest } = where
-  const result: Where = { ...rest }
-  // Keep type filter only if it's a user-selected inclusion filter, not the default not_in exclusion
-  if (type && typeof type === 'object' && 'in' in type) {
-    result.type = type
-  }
-  return result
+  const { cancelled, ...rest } = where
+  return rest
 }

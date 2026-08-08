@@ -46,7 +46,6 @@ async function main() {
         investment: investment.id,
         name,
         displayOrder: index,
-        defaultCostVariant: 'w_tools',
       },
       ...ctx,
     })

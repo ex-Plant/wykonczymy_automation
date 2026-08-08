@@ -8,23 +8,29 @@ export function useSaldo() {
   const requestRef = useRef(0)
 
   async function fetchSaldo(registerId: string) {
-    setSaldo(null)
-    if (!registerId) return
+    if (!registerId) return resetSaldo()
 
     const requestId = ++requestRef.current
+    setSaldo(null)
     setIsSaldoLoading(true)
     try {
       const result = await getRegisterSaldo(Number(registerId))
       if (requestRef.current === requestId) setSaldo(result.saldo)
     } catch {
-      toastMessage('Nie udało się pobrać salda', 'error')
+      // A superseded request stays silent — its failure would toast over a newer successful load.
+      if (requestRef.current === requestId) toastMessage('Nie udało się pobrać salda', 'error')
     } finally {
       if (requestRef.current === requestId) setIsSaldoLoading(false)
     }
   }
 
   function resetSaldo() {
+    // Bump the id so a fetch still in flight is disowned — otherwise its response repopulates the
+    // saldo of the register the user has just cleared. Disowning it also makes that request's own
+    // `finally` a no-op, so the reset has to clear the loading flag itself or it pins forever.
+    requestRef.current++
     setSaldo(null)
+    setIsSaldoLoading(false)
   }
 
   return { saldo, isSaldoLoading, fetchSaldo, resetSaldo }

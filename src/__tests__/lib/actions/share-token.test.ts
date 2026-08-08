@@ -1,16 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The share token is the only credential guarding an unauthenticated page, so its lifecycle runs
 // against the REAL DB and asserts PERSISTED state (does a row with this token exist?) — a returned
 // token proves nothing if the write didn't land, and a rotation that leaves the old row alive would
 // keep a second door open.
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-  updateTag: vi.fn(),
-  unstable_cache: (fn: unknown) => fn,
-}))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
 const authState = vi.hoisted(() => ({ role: 'OWNER' as string, userId: 0 }))
@@ -23,7 +19,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 
 const { generateShareLinkAction, getShareLinkAction, revokeShareLinkAction } =
   await import('@/lib/actions/kosztorys-share')
-const { getClientKosztorysByToken } = await import('@/lib/queries/client-kosztorys')
+const { getPreviewKosztorysByToken } = await import('@/lib/queries/preview-kosztorys')
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -45,16 +41,11 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
 
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'EX-532 share lifecycle spec', status: 'active', settlementMode: 'NET' },
-    })
-    investmentId = investment.id
+    investmentId = await createTestInvestment(payload, 'EX-532 share lifecycle spec')
   })
 
   afterAll(async () => {
-    authState.role = 'OWNER'
-    if (investmentId) await payload.delete({ collection: 'investments', id: investmentId })
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
   })
 
   it('generates a token and persists exactly one share row', async () => {
@@ -63,7 +54,7 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
     expect(await countShares()).toBe(1)
 
     const token = res.success ? res.data : ''
-    expect(await getClientKosztorysByToken(token)).not.toBeNull()
+    expect(await getPreviewKosztorysByToken(token)).not.toBeNull()
   })
 
   it('rotating replaces the token in place — the old one stops resolving', async () => {
@@ -75,8 +66,8 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
     const newToken = rotated.success ? rotated.data : ''
     expect(newToken).not.toBe(oldToken)
     expect(await countShares()).toBe(1)
-    expect(await getClientKosztorysByToken(oldToken!)).toBeNull()
-    expect(await getClientKosztorysByToken(newToken)).not.toBeNull()
+    expect(await getPreviewKosztorysByToken(oldToken!)).toBeNull()
+    expect(await getPreviewKosztorysByToken(newToken)).not.toBeNull()
   })
 
   it('rejects a MANAGER without touching the row', async () => {
@@ -97,6 +88,6 @@ describe.skipIf(!ENV_READY)('kosztorys share token lifecycle (DB)', () => {
 
     expect((await revokeShareLinkAction(investmentId)).success).toBe(true)
     expect(await countShares()).toBe(0)
-    expect(await getClientKosztorysByToken(token!)).toBeNull()
+    expect(await getPreviewKosztorysByToken(token!)).toBeNull()
   })
 })

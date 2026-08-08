@@ -1,4 +1,4 @@
-import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement'
+import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-totals'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 /**

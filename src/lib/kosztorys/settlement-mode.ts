@@ -1,5 +1,5 @@
 import { VAT_PLANES, VAT_PLANE_LABELS, type VatPlaneT } from '@/lib/constants/transfers'
-import type { MoneyAxisT, PanelAxisT } from '@/lib/kosztorys/money-axis'
+import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 
 // How the investment is settled with the client — a decision about the deal, stored on the
 // investment, NOT a per-person reading preference. Every reader projects the same plane from it, so
@@ -40,25 +40,18 @@ export const SETTLEMENT_MODE_ADMIN_OPTIONS = SETTLEMENT_MODES.map((value) => ({
   label: SETTLEMENT_MODE_LABELS[value],
 }))
 
-// Records, not if-chains, for the same reason as the labels above: a mode added to SETTLEMENT_MODES
-// without a projection is a compile error, not a silent fallthrough to netto.
-const PANEL_AXIS_BY_MODE: Record<SettlementModeT, PanelAxisT> = {
-  NET: 'net',
-  GROSS: 'gross',
-  MIXED: 'mixed',
-}
-
+// A Record, not an if-chain, for the same reason as the labels above: a mode added to
+// SETTLEMENT_MODES without a projection is a compile error, not a silent fallthrough to netto.
+//
 // In the grid, „Mieszane" means both money columns: a mixed-settled client is billed on both planes,
 // so showing one would hide half the bill. The panel's 'mixed' has no grid counterpart — the grid
-// renders columns, not a settlement narrative.
+// renders columns, not a settlement narrative. The panel has no such projection: the owner ruled
+// that both money columns stand in every tryb, client-facing preview included (2026-08-07), so the
+// only thing the panel asks of the mode is whether it is „Mieszane".
 const GRID_AXIS_BY_MODE: Record<SettlementModeT, MoneyAxisT> = {
   NET: 'net',
   GROSS: 'gross',
   MIXED: 'both',
-}
-
-export function settlementModeToPanelAxis(mode: SettlementModeT): PanelAxisT {
-  return PANEL_AXIS_BY_MODE[mode]
 }
 
 export function settlementModeToGridAxis(mode: SettlementModeT): MoneyAxisT {

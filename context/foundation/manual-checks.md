@@ -52,7 +52,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] Podsumowanie in **Netto** axis: „Materiały", each category row, Łącznie, and Do zapłaty all show `brutto/(1+VAT)`; in **Brutto** axis they show the raw amount; the two columns differ by the VAT.
 - [ ] The formula hint appears on materiały rows and reads correctly (VAT subtracted).
 - [ ] Robocizna („Suma prac wykonanych") figures are unchanged; udział percentages still sum sensibly.
-- [ ] Client-share view (`clientView`) renders the same derived figures without owner-only links/screams.
+- [ ] Share/preview render (`preview`) renders the same derived figures without owner-only links/screams.
 
 ## kosztorys-tryb-mieszany — cash-settlement view w Podsumowaniu (slice B)
 
@@ -64,7 +64,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] „Mieszana" shows netto-only waterfall + „Suma transzy" netto + the three cash rows.
 - [ ] ~~Typing `C` recomputes Reszta and Razem live~~ — **removed control (see SUPERSEDED note above).**
 - [ ] Netto and Brutto axes unchanged from before.
-- [ ] Client preview (`clientView`) shows the block with a **disabled** input.
+- [ ] Preview render (`preview`) shows the block with a **disabled** input.
 
 ## kosztorys-podsumowanie-tabs — zaliczka-v2 batch: tabbed Podsumowanie, Mieszane via vatPlane, wpłaty base fix (EX-536)
 
@@ -263,7 +263,7 @@ then **removed on the owner's call**. Branch `konradantonik/netto-expenses-own-t
 
 Two plan criteria are here rather than in `plan.md` Progress because this repo has no DOM test
 harness (vitest is node-env, `*.test.ts` only, no RTL/jsdom): the footer-in-both-paths check (2.3) and
-the clientView check (3.4).
+the preview-render check (3.4).
 
 Setup: 5435 test DB (see intro), OWNER, an investment carrying a brutto expense, a korekta, a netto
 expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w robociznę") materiał.
@@ -273,7 +273,7 @@ expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w roboc
 - [ ] **Footer stays pinned (2.3).** With enough rows to scroll the list, „Razem" remains visible at the bottom instead of scrolling away with the rows
 - [ ] The netto tab shows two amount columns, „Brutto" then „Netto", and the „Razem" figure sits under „Netto"; the other tabs show a single „Kwota" column
 - [ ] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row
-- [ ] **clientView (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
+- [ ] **Preview render (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
 - [ ] An investment with neither netto nor settled rows shows no toggle at all
 
 ---
@@ -370,7 +370,8 @@ The migration `20260726_3_add_settlement_mode_to_investments` must be applied to
 - [ ] The client view still fills the viewport with no dead band at the bottom (guards the `h-dvh` fix from `7b70ec2a`, whose header this change edits)
 - [ ] A brutto wpłata on a netto-declared investment raises the owner-only warning in Podsumowanie, naming the mode and the offending amount
 - [ ] The client view of that same investment shows no warning
-- [ ] With VAT 0% the mode select is disabled and the VAT 0% scream still shows
+- [ ] With VAT 0% the mode select is still **editable** (EX-590) and the VAT 0% scream shows beside it
+- [ ] With VAT 0% and the mode „Mieszane", the panel still shows the split netto/brutto sections and the grid still shows both money columns
 
 ## EX-594 — investment-summary-panel
 
@@ -590,3 +591,128 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 - [ ] Ujemna kwota („-50") jest odrzucana tak samo jak przekroczenie sufitu, również w wierszu bez ceny klienta
 - [ ] „Ustawienia": ujemny globalny mnożnik nie przechodzi (pole ma dolną granicę 0)
 - [ ] **Wydajność** — na kosztorysie ~1000 pozycji (`INV=7 node --env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts`) przewijanie i pisanie w widoku wykonawcy są tak samo płynne jak przed zmianą; każda komórka montuje własny tooltip, więc to jest miejsce, gdzie regres byłby widoczny
+
+## EX-615 — drop-empty-kosztorys-scaffold
+
+### Phase 1: Empty-grid hint
+
+- [ ] An investment with zero sekcje opens the editor showing the hint over an empty grid — not a dialog.
+- [ ] **With the totals panel expanded** (its persisted default is `open`), decide whether the hint being occluded is acceptable — the panel is `z-20` + `h-full` + opaque, the hint is an un-z-indexed `absolute inset-0` sibling, so a first-ever visitor sees the panel, not the hint. Occlusion is _consistent_ (the panel hides the grid too), but the retired dialog was modal and always won. Raised at the review gate; see EX-617.
+- [ ] Typing a search term that matches nothing on a _populated_ kosztorys does NOT show the hint.
+- [ ] The share/client view of an empty kosztorys shows the title without the „Dodaj" sentence.
+
+### Phase 2: Delete the client scaffold
+
+- [ ] Restoring a snapshot from the „Wersje" drawer still reseeds the grid (the remount still fires).
+- [ ] „Sekcja z szablonu…" still populates an empty kosztorys from the `Dodaj` menu.
+
+### Phase 3: Delete the server scaffold
+
+- [ ] Creating an investment **without** a preset succeeds and opens an empty kosztorys showing the hint.
+- [ ] Creating an investment **with** a preset still seeds the full rozpiska and shows no warning toast.
+
+## EX-618 — scalable-preset-section-picker
+
+### Phase 1: Extract the derivation, fold the search
+
+- [ ] Typing `lazienka` into an existing table's search box (e.g. investments) matches a „Łazienka" row.
+
+### Phase 2: Two-pane picker (desktop)
+
+- [ ] Both panes render side by side; clicking a szablon on the left fills the right pane with its sekcje.
+- [ ] Ticking sekcje in szablon A, switching to szablon B, ticking more, then „Dodaj (N)" appends all of them — the counter reflects the cross-szablon total throughout.
+- [ ] „Zaznacz wszystkie" ticks the whole active szablon; clicking it again unticks it; the left row's `N/N` figure tracks it.
+- [ ] Filtering the left pane to hide a szablon that has ticks does not change „Dodaj (N)", and clearing the filter shows those ticks still set.
+- [ ] Searching a name with Polish characters matches from an ASCII query.
+- [ ] Closing and reopening resets both the selection and the search box.
+
+### Phase 3: Narrow-screen drill-in
+
+- [ ] At 390px width the dialog shows only the szablon list; tapping one shows only its sekcje; back returns to the list with the szablon still highlighted.
+- [ ] Ticks made before going back are still set after returning and drilling into another szablon; „Dodaj (N)" totals both.
+- [ ] Resizing across 768px (this repo's `sm`) mid-selection does not lose ticks or strand the user on a hidden pane; at 800px both panes are visible.
+- [ ] The dialog at 390px does not scroll horizontally, and the footer stays reachable.
+
+## EX-574 — cancellation-sum-overcount
+
+Repro with live figures + copy-pasteable SQL: `context/archive/2026-07-28-cancellation-sum-overcount/repro.md`.
+Re-run its SQL first — the figures below track the local prod dump and shift when it is refreshed.
+
+### Phase 1: The tile stops counting anulowania
+
+- [ ] `/raporty?from=2026-03-01&to=2026-03-31` — the tile reads 4 202 513,34 zł, not 7 192 866,38 zł.
+- [ ] The same URL with `&type=` naming every type except CANCELLATION now shows the _same_ tile figure and the same 379-row list.
+- [ ] January and February 2026 (zero anulowań) are unchanged — 354 675,00 and 191 030,00.
+- [ ] Pulpit as a MANAGER, `/?from=2026-03-01&to=2026-03-31` — „Ostatnie transakcje" tile matches its list too.
+- [ ] `?cancelledTransactionAudit=1` still shows a non-zero tile (the rejected fix would have zeroed it).
+
+### Phase 2: The amount filter's ceiling reaches the tile
+
+- [ ] `/raporty?amount=500,00` — 20 rows totalling 10 000,00 zł, and the tile reads 10 000,00 zł.
+- [ ] `/raporty?amount=500` (prefix, no separator) still lists every amount starting with 500 and its tile matches.
+
+### Phase 3: The tile says what it counts
+
+- [ ] `/raporty?showCancelled=1` with a filter active — an (i) sits next to the tile saying the sum skips anulowane transakcje.
+- [ ] Without `showCancelled`, no such (i) appears.
+
+## EX-575 — drop-cost-variant-columns
+
+Both dead columns are gone (migration `20260728_0`), applied locally on 5433 and 5435.
+Prod migration is owed at ship time, by a human.
+
+### Phase 4: The editor still works against the narrowed schema
+
+- [ ] Seeded kosztorys editor (`INV=6`) opens: siatka renderuje się, autozapis komórki utrwala się po odświeżeniu.
+- [ ] „Dodaj sekcję" i „Dodaj pozycję" działają — nowa sekcja przychodzi z pierwszą pozycją.
+- [ ] „Dodaj sekcję z szablonu" listuje szablony i dokłada wybrane sekcje.
+
+### Phase 5: Pre-migration payloads still load
+
+- [ ] Wersja kosztorysu zapisana **przed** migracją wczytuje się bez błędu, a drzewo jest kompletne.
+- [ ] Globalny szablon zapisany przed migracją nakłada się tak samo.
+
+### Phase 6: The domain note reads as closed
+
+- [ ] `context/reference/kosztorys-editor-domain-notes.md`, sekcja „Wariant «z narzędziami / bez narzędzi»" — czyta się jako **zamknięta** decyzja z zachowanym uzasadnieniem, żadne zdanie nie powołuje się na nieistniejącą kolumnę.
+- [ ] Żadne zdanie nie miesza rejestrów (słownictwo arkusza vs identyfikatory kodu).
+
+## EX-600 — investment-panel-filter-scope
+
+Browser coverage of the same behaviour is filed as **EX-634** (`e2e-backlog`); these stay manual until it lands.
+
+### Phase 2: Wpłaty follow the filters
+
+- [ ] `/inwestycje/<id>` bez filtrów w v2 — „Wpłaty" i „Do zapłaty" czytają się tak samo jak przed zmianą.
+- [ ] `?from`/`?to` na zakres obejmujący część wpłat — „Wpłaty" zwęża się do wpłat z tego zakresu i zgadza się z tabelą transakcji poniżej.
+- [ ] `?type=PAYOUT` — „Wpłaty" czyta 0 zł (żadna wpłata nie mieści się w filtrze).
+- [ ] Przełączenie na odczyt v1 („Finanse") — bez zmian względem stanu sprzed zmiany.
+- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta (share) — pełne sumy wpłat, filtry ich nie dotyczą.
+
+### Phase 3: Scope marking
+
+- [ ] Z aktywnym filtrem: Robocizna, Rabat, Łącznie i „Do zapłaty" mają czerwoną `*`, a Materiały i Wpłaty jej nie mają.
+- [ ] Przypis „Pola oznaczone gwiazdką nie reagują na filtry transakcji" pojawia się raz, na dole panelu (pod tabelami), czerwonym tekstem, z czerwoną ikoną ostrzeżenia w jednej linii z tekstem.
+- [ ] Bez filtra: żadnej gwiazdki i żadnego przypisu.
+- [ ] Z aktywnym filtrem znikają oba werdykty międzypłaszczyznowe — krzyk o rozjeździe robocizny/rabatu i ostrzeżenie o trybie mieszanym; bez filtra pojawiają się jak dotąd.
+- [ ] Tryb rozliczenia „Mieszane" — te same gwiazdki na wierszach wynikających z Łącznie, Wpłaty netto i Wpłaty brutto bez gwiazdki.
+- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta — brak gwiazdek i przypisu.
+
+### Po bramce przeglądu (nowe zachowania, jeszcze niesprawdzone)
+
+- [ ] Inwestycja **bez kosztorysu** z aktywnym filtrem — żadnej gwiazdki, żadnego przypisu, oba werdykty jak dotąd (wszystkie liczby idą wtedy z transakcji i filtr ich dotyczy).
+- [ ] Zakładka „Wydatki" z aktywnym filtrem — przypis się nie pojawia (gwiazdki są tylko w „Podsumowaniu"). Zakładka „Marża" jest ukryta od 2026-08-07 (`TODO(EX-649)`), więc wypada z tego sprawdzenia aż do odsłonięcia.
+- [ ] Sam przełącznik „pokaż anulowane" — brak gwiazdek i przypisu, werdykty widoczne (ten przełącznik nie zmienia żadnej kwoty w panelu).
+
+## EX-430 — harden bulk-insert restore
+
+**In review** — all automated checks green (tsc 0, eslint 0 errors, kosztorys slice 366/366).
+Hardening only: restore/preset bulk `INSERT`s now match `RETURNING` rows on a natural key instead of
+trusting Postgres row order, plus three new guards (rollback tripwire, wide-column roundtrip,
+schema-drift). No user-visible behaviour changes, so both boxes are **regression** checks — the two
+flows that would break silently (children reparented to the wrong rows, no error raised).
+
+Setup: run against the **5435 test DB** (see intro), seeded with `seed-kosztorys.ts` (`INV=6`).
+
+- [ ] **Cofnięcie do wersji odtwarza drzewo bez zmian.** Zapisz wersję, zmień coś w rozpisce (dopisz pozycję, zmień ilości w etapach), cofnij do zapisanej wersji — sekcje, pozycje, etapy i ilości wykonane wracają identyczne, każda pozycja pod swoją sekcją, każda ilość przy swoim etapie.
+- [ ] **Nałożenie szablonu na pustą inwestycję.** Nałóż globalny szablon na inwestycję bez rozpiski — pozycje trafiają pod właściwe sekcje (żadna nie ląduje w cudzej), kolejność i nazwy zgodne z szablonem.

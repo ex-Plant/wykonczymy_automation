@@ -8,21 +8,12 @@ import {
 } from '@/lib/kosztorys/chart-slices'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
-import { Description } from '@/components/ui/description'
 import { formatNet } from '@/lib/kosztorys/format'
 
 const BASES: OptionT<SectionPieBaseT>[] = [
   { value: 'przedmiar', label: 'Przedmiar' },
   { value: 'wykonane', label: 'Wykonane' },
 ]
-
-// One per base rather than a single paragraph covering both: the formula differs, and so does what a
-// missing wycinek means — no przedmiar on one base, no executed work on the other.
-const BASE_DESCRIPTIONS: Record<SectionPieBaseT, string> = {
-  przedmiar: 'Udział liczony z wartości oferty w cenach klienta: \nPrzedmiar × cena j.m. − rabat.',
-  wykonane:
-    'Udział liczony z wartości prac wykonanych w cenach klienta: \nSuma etapów × cena j.m. − rabat.',
-}
 
 // Sekcje as a share-of-whole pie, with a live Przedmiar ↔ Wykonane base toggle. Fed the client-priced,
 // view-invariant subtotals so switching base is a source-selection, never a re-calculation.
@@ -42,11 +33,6 @@ export function SectionSharePie({ subtotals }: { subtotals: SectionSliceInputT[]
       }
       slices={sectionPieSlices(subtotals, base)}
       formatValue={formatNet}
-      description={
-        <Description size="xs" className="max-w-lg whitespace-pre-wrap">
-          {BASE_DESCRIPTIONS[base]}
-        </Description>
-      }
     />
   )
 }

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getClientKosztorysByToken } from '@/lib/queries/client-kosztorys'
+import { getPreviewKosztorysByToken } from '@/lib/queries/preview-kosztorys'
 import { KosztorysEditorBody } from '@/components/kosztorys/editor/kosztorys-editor-body'
 
 // The public entrance. A revoked token and a token that never existed both land on the same 404, so
@@ -10,8 +10,8 @@ export default async function SharedKosztorysPage({
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
-  const data = await getClientKosztorysByToken(token)
+  const data = await getPreviewKosztorysByToken(token)
   if (!data) notFound()
 
-  return <KosztorysEditorBody clientView {...data} />
+  return <KosztorysEditorBody preview {...data} />
 }

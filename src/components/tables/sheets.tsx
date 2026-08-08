@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { OptionalLink } from '@/components/ui/optional-link'
 import { LinkSheetToInvestmentDialog } from '@/components/dialogs/link-sheet-to-investment-dialog'
 import { LinkedSheetActions } from '@/components/sheets/linked-sheet-actions'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
@@ -50,13 +51,15 @@ export function getKosztorysColumns({
       meta: { canHide: false },
       cell: (info) => {
         const row = info.row.original
-        if (row.investmentId !== undefined)
-          return (
-            <Link href={`/inwestycje/${row.investmentId}`} className="font-medium hover:underline">
+        return (
+          <span className="font-medium">
+            <OptionalLink
+              href={row.investmentId !== undefined ? `/inwestycje/${row.investmentId}` : undefined}
+            >
               {info.getValue()}
-            </Link>
-          )
-        return <span className="font-medium">{info.getValue()}</span>
+            </OptionalLink>
+          </span>
+        )
       },
     }),
 

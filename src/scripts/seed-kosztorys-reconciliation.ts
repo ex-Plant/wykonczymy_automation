@@ -46,7 +46,6 @@ async function seedKosztorys(
       investment: investment.id,
       name: 'Sekcja 1',
       displayOrder: 0,
-      defaultCostVariant: 'w_tools',
     },
     ...ctx,
   })

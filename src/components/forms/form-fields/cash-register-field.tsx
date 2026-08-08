@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { ActiveFilterLabel } from './active-filter-label'
+import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
+import { isActiveRef } from '@/lib/utils/is-active-ref'
 import type { ReferenceItemT } from '@/types/reference-data'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
@@ -26,7 +27,7 @@ export function CashRegisterField({
   const [activeOnly, setActiveOnly] = useState(true)
 
   const filteredRegisters = useMemo(
-    () => cashRegisters.filter((cr) => !activeOnly || cr.active !== false),
+    () => cashRegisters.filter((register) => !activeOnly || isActiveRef(register)),
     [cashRegisters, activeOnly],
   )
 

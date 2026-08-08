@@ -7,6 +7,7 @@ import { serializeKosztorysAsPreset } from '@/lib/kosztorys/serialize-preset'
 import { insertPreset } from '@/lib/db/presets'
 import { appendPresetSectionsAction } from '@/lib/actions/kosztorys-presets'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // Same discipline as serialize-apply-preset: exercise against the REAL DB and assert PERSISTED state
 // by re-reading. next/cache is stubbed so the action's revalidateCollections (updateTag) doesn't throw
@@ -15,11 +16,6 @@ import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 // bare helper (which never sees an unknown section id).
 // unstable_cache is a passthrough here: the action's graph pulls in getPresetSections, and an
 // uncached read is exactly what the test wants (it re-reads the DB directly for its assertions).
-vi.mock('next/cache', () => ({
-  revalidateTag: vi.fn(),
-  updateTag: vi.fn(),
-  unstable_cache: (fn: unknown) => fn,
-}))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(async () => ({ success: true, user: { id: 1, role: 'OWNER' } })),
 }))
@@ -33,12 +29,7 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
   const investmentIds: number[] = []
 
   async function createInvestment(name: string) {
-    const inv = await payload.create({
-      collection: 'investments',
-      data: { name, status: 'active', settlementMode: 'NET', wToolsCoeff: 0.7, ownToolsCoeff: 0.5 },
-      context: { skipRevalidation: true },
-    })
-    const id = Number(inv.id)
+    const id = await createTestInvestment(payload, name, { wToolsCoeff: 0.7, ownToolsCoeff: 0.5 })
     investmentIds.push(id)
     return id
   }
@@ -58,7 +49,6 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
         investment: investmentId,
         name,
         displayOrder,
-        defaultCostVariant: 'w_tools',
         color,
       },
       context: { skipRevalidation: true },
@@ -112,7 +102,7 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
 
   afterAll(async () => {
     for (const id of investmentIds) {
-      await payload.delete({ collection: 'investments', id, context: { skipRevalidation: true } })
+      await deleteTestInvestment(payload, id)
     }
     await db.execute(sql`DELETE FROM kosztorys_presets WHERE name LIKE ${PRESET_PREFIX + '%'}`)
   })

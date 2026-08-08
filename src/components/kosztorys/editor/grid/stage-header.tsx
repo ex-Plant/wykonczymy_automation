@@ -13,31 +13,68 @@ import {
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
-import { PlaneUnconfirmedBadge } from '@/components/ui/plane-unconfirmed-badge'
+import { LabelHintIcon } from '@/components/ui/label-hint-icon'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-rename'
+import { StageWorkerSection } from './stage-worker-section'
+import { ReassignWorkerConfirmDialog } from './reassign-worker-confirm-dialog'
 import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
+import { STAGE_HEADER_COPY as COPY } from './stage-header-copy'
 import { cn } from '@/lib/utils/cn'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { WorkerRefT } from '@/types/reference-data'
 
 type PropsT = {
   stage: KosztorysStageT
   onRename?: (stageId: number, label: string) => void
   onRemove?: (stageId: number) => void
   onSetPlane?: (stageId: number, plane: ToolPlaneT) => void
+  workers?: WorkerRefT[]
+  onSetWorker?: (stageId: number, workerId: number | null) => void
+  // The etap's executed value at its own plane — quoted in the reassignment confirm so the dialog and
+  // the panel can't cite different amounts. 0 (or absent) means nothing has been executed here yet.
+  executedValue?: number
 }
 
 // An emptied label persists as null and falls back to the „Etap N" placeholder.
-export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
+export function StageHeader({
+  stage,
+  onRename,
+  onRemove,
+  onSetPlane,
+  workers,
+  onSetWorker,
+  executedValue = 0,
+}: PropsT) {
   const label = stage.label ?? `Etap ${stage.ordinal}`
   const { editing, start, inputProps } = useInlineRename((name) =>
     onRename?.(stage.id, name.trim()),
   )
   const [confirmOpen, setConfirmOpen] = useState(false)
+  // The worker a pending reassignment would move the etap to. `undefined` means no dialog is open —
+  // `null` can't carry that, it is the legitimate „Bez przypisania" target.
+  const [pendingWorkerId, setPendingWorkerId] = useState<number | null | undefined>(undefined)
 
-  // No handlers = a read-only mount (clientView): render the bare label, no menu/rename/delete AND no
+  // The reference query is unfiltered; the roster section below is what narrows it to active workers,
+  // and it says so on screen with a toggle rather than silently dropping names.
+  const allWorkers = workers ?? []
+  const assignedWorker = allWorkers.find((worker) => worker.id === stage.workerId)
+
+  // Moving executed work off someone is the one destructive-feeling edit here: it drops their
+  // „pozostało" by the amount and raises the new person's. Confirm only in that case — assigning an
+  // empty etap, or filling in a blank assignment, needs no ceremony.
+  function pickWorker(workerId: number | null) {
+    if (workerId === stage.workerId) return
+    if (executedValue > 0 && stage.workerId != null) {
+      setPendingWorkerId(workerId)
+      return
+    }
+    onSetWorker?.(stage.id, workerId)
+  }
+
+  // No handlers = a read-only mount (preview): render the bare label, no menu/rename/delete AND no
   // plane icon or warning — the rozliczenie is internal subcontractor information, never client-facing.
-  if (!onRename && !onRemove && !onSetPlane) {
+  if (!onRename && !onRemove && !onSetPlane && !onSetWorker) {
     return (
       <HeaderLabel className={cn('px-1', stage.label == null && 'text-muted-foreground')}>
         {label}
@@ -60,30 +97,42 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
     <>
       <HeaderMenu
         label={
-          <span
-            className={cn(
-              'inline-flex items-center gap-2',
-              stage.plane == null && 'text-destructive',
-            )}
-          >
-            {/* A wrench here would claim a crew nobody picked. */}
-            {stage.plane != null && planeIcon(stage.plane)}
-            <HeaderLabel
-              className={cn(stage.plane != null && stage.label == null && 'text-muted-foreground')}
+          <span className="flex min-w-0 flex-col">
+            <span
+              className={cn(
+                'inline-flex items-center gap-2',
+                stage.plane == null && 'text-destructive',
+              )}
             >
-              {label}
-            </HeaderLabel>
-            {stage.plane == null && (
-              <PlaneUnconfirmedBadge content="Wybierz jak rozliczać etap — do tego czasu ilości w tej kolumnie są zablokowane, bo nie weszłyby do rachunku żadnej ekipy." />
+              {/* A wrench here would claim a crew nobody picked. */}
+              {stage.plane != null && planeIcon(stage.plane)}
+              <HeaderLabel
+                className={cn(
+                  stage.plane != null && stage.label == null && 'text-muted-foreground',
+                )}
+              >
+                {label}
+              </HeaderLabel>
+              {stage.plane == null && (
+                <LabelHintIcon
+                  variant="planeUnconfirmed"
+                  content={COPY.planeUnconfirmed}
+                  size="lg"
+                />
+              )}
+              <ChevronDown className="opacity-50" />
+            </span>
+            {assignedWorker && (
+              <span className="text-muted-foreground text-2xs truncate">{assignedWorker.name}</span>
             )}
           </span>
         }
-        icon={<ChevronDown className="opacity-50" />}
+        icon={null}
         triggerTitle="Opcje etapu"
       >
         {onSetPlane && (
           <>
-            <DropdownMenuLabel>Rozliczenie</DropdownMenuLabel>
+            <DropdownMenuLabel>{COPY.planeSectionLabel}</DropdownMenuLabel>
             {/* Single-select skinned as checkboxes. onCheckedChange ignores its arg — re-picking the
                 active plane can't unset it. */}
             {TOOL_PLANES.map((plane) => (
@@ -98,31 +147,63 @@ export function StageHeader({ stage, onRename, onRemove, onSetPlane }: PropsT) {
             <DropdownMenuSeparator />
           </>
         )}
+        {/* Both actions sit ABOVE the roster: the roster is the one section that can run long, so
+            anything under it would be a scroll away. */}
         <DropdownMenuItem onSelect={() => start(stage.label ?? '')}>
           <Pencil />
-          Zmień nazwę
+          {COPY.renameAction}
         </DropdownMenuItem>
         {onRemove && (
+          <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
+            <Trash2 />
+            {COPY.removeAction}
+          </DropdownMenuItem>
+        )}
+        {onSetWorker && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
-              <Trash2 />
-              Usuń etap
-            </DropdownMenuItem>
+            {stage.plane == null ? (
+              // Disabled until a rozliczenie exists: the settlement pass skips a plane-less etap
+              // before it computes any value, so an assignment made here would show a name against a
+              // silent 0 zł należne.
+              <>
+                <DropdownMenuLabel>{COPY.workerSectionLabel}</DropdownMenuLabel>
+                <p className="text-muted-foreground px-2 py-1.5 text-xs">{COPY.workerNeedsPlane}</p>
+              </>
+            ) : (
+              <StageWorkerSection
+                workers={allWorkers}
+                selectedId={stage.workerId}
+                onPick={pickWorker}
+              />
+            )}
           </>
         )}
       </HeaderMenu>
 
       <ConfirmDialog
         open={confirmOpen}
-        title={`Usunąć „${label}"?`}
-        description="Kolumna etapu i wszystkie wpisane w niej ilości zostaną usunięte."
-        confirmLabel="Usuń"
+        title={COPY.removeConfirm.title(label)}
+        description={COPY.removeConfirm.description}
+        confirmLabel={COPY.removeConfirm.confirmLabel}
         onConfirm={() => {
           onRemove?.(stage.id)
           setConfirmOpen(false)
         }}
         onCancel={() => setConfirmOpen(false)}
+      />
+
+      <ReassignWorkerConfirmDialog
+        targetWorkerId={pendingWorkerId}
+        stageLabel={label}
+        executedValue={executedValue}
+        currentWorkerName={assignedWorker?.name}
+        workers={allWorkers}
+        onConfirm={(workerId) => {
+          onSetWorker?.(stage.id, workerId)
+          setPendingWorkerId(undefined)
+        }}
+        onCancel={() => setPendingWorkerId(undefined)}
       />
     </>
   )

@@ -6,7 +6,7 @@ vi.mock('server-only', () => ({}))
 import { shapeCashRegisters } from '@/lib/queries/cash-registers'
 import { shapeInvestments } from '@/lib/queries/investments'
 import type { CashRegisterRefT, WorkerRefT, InvestmentRefT } from '@/types/reference-data'
-import type { InvestmentFinancialsMapT } from '@/lib/queries/reference-data'
+import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
 
 const workers: WorkerRefT[] = [{ id: 1, name: 'Adrian', role: 'MANAGER', email: 'a@x.pl' }]
 

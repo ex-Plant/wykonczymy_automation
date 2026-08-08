@@ -60,7 +60,8 @@ export function columnLabelForView(id: string, view: PriceViewT): string {
 }
 
 /**
- * Columns anchored to the przedmiar — visible in the client view only. The przedmiar has no plane: it
+ * Columns anchored to the przedmiar — visible on the client PRICE PLANE only (`view === 'client'`,
+ * not the `preview` render mode). The przedmiar has no plane: it
  * is typed once per row for the WHOLE offered scope, so beside a plane-filtered pomiar it invites a
  * comparison that means nothing (one crew's numerator over everyone's denominator).
  *
@@ -147,12 +148,12 @@ export const AXIS_EXEMPT_COLUMNS: ReadonlySet<string> = new Set(['price'])
 // Allowlist, not a denylist: a column added later is invisible to clients until someone puts it here,
 // so the disclosure decision is forced at definition time rather than discovered as a leak.
 //
-// Its reach is column IDENTITY, not price plane. `price`/`net`/`gross` are allowlisted and compute at
-// whatever `view` is active, so this set drops the subcontractor-only columns (`priceMode`,
-// `priceCoeff`) but does NOT by itself keep a subcontractor figure off the page. The lock that does:
-// `useKosztorysEditor` pins `view = 'client'` whenever `clientView` is set, so the allowlisted money
-// columns can only ever compute at the client price plane on the share/preview render.
-export const CLIENT_VISIBLE_COLUMNS: ReadonlySet<string> = new Set([
+// Its reach is column IDENTITY, not price plane: `price`/`net`/`gross` are allowlisted and compute at
+// whatever `view` is active, so this set does NOT by itself keep a subcontractor figure off the page.
+// It is half a lock — the other half pins the plane, see `assertDisclosurePair`. (The subcontractor-
+// only `priceMode`/`priceCoeff` are absent here too, but that is defence in depth; they are never
+// assembled at the client plane in the first place.)
+export const PREVIEW_VISIBLE_COLUMNS: ReadonlySet<string> = new Set([
   'sectionName',
   'description',
   'plannedQty',

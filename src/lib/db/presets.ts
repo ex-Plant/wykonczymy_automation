@@ -89,37 +89,45 @@ export async function getPreset(
   return { payload: row.payload as SnapshotPayloadT }
 }
 
-// Flatten every preset's sections into pickable metas — read the payloads server-side and map in TS
-// (few presets, each ≤ a few hundred KB jsonb). The jsonb payload never crosses the wire: the "no
-// full tree to the client" rule is about the picker's HTTP response, not this server-side read.
+// Flatten every preset's sections into pickable metas. Counted in SQL on purpose (EX-622): the
+// payloads are the only large thing here and this needs nothing from them but a tally, so shipping
+// them to Node would be an O(payload bytes) read for an O(sections) result — megabytes decoded to
+// emit a few hundred small metas, re-paid on every `presets` cache miss.
+//
+// The `counts` CTE expands `items` ONCE per preset and hashes the result. Counting inside the
+// section-row lateral instead would re-expand the whole items array per section (O(sections×items)) —
+// measured 50× slower on a 2-preset/320-item library, and it widens from there.
+//
 // Order matches listPresets (preset created_at DESC, id DESC) then displayOrder within each preset.
+// `WITH ORDINALITY` is load-bearing, not decoration: Postgres' sort is unstable where JS's `.sort`
+// was, and the picker's grouping requires one preset's metas to arrive CONSECUTIVELY, so the payload
+// array position has to break displayOrder ties.
 export async function listPresetSections(db: DbExecutorT): Promise<PresetSectionMetaT[]> {
   const res = await db.execute(sql`
-    SELECT id, name, payload
-    FROM kosztorys_presets
-    ORDER BY created_at DESC, id DESC
+    WITH counts AS (
+      SELECT p.id AS preset_id, i.value->>'sectionId' AS section_id, COUNT(*) AS item_count
+      FROM kosztorys_presets p
+      CROSS JOIN LATERAL jsonb_array_elements(p.payload->'items') i
+      GROUP BY 1, 2
+    )
+    SELECT
+      p.id                      AS preset_id,
+      p.name                    AS preset_name,
+      (s.value->>'id')::int     AS section_id,
+      s.value->>'name'          AS section_name,
+      COALESCE(c.item_count, 0) AS item_count
+    FROM kosztorys_presets p
+    CROSS JOIN LATERAL jsonb_array_elements(p.payload->'sections') WITH ORDINALITY AS s(value, ord)
+    LEFT JOIN counts c ON c.preset_id = p.id AND c.section_id = s.value->>'id'
+    ORDER BY p.created_at DESC, p.id DESC, (s.value->>'displayOrder')::numeric, s.ord
   `)
-  const metas: PresetSectionMetaT[] = []
-  for (const row of res.rows) {
-    const presetId = Number(row.id)
-    const presetName = String(row.name)
-    const payload = row.payload as SnapshotPayloadT
-    const itemCountBySection = new Map<number, number>()
-    for (const item of payload.items ?? []) {
-      itemCountBySection.set(item.sectionId, (itemCountBySection.get(item.sectionId) ?? 0) + 1)
-    }
-    const sections = [...(payload.sections ?? [])].sort((a, b) => a.displayOrder - b.displayOrder)
-    for (const section of sections) {
-      metas.push({
-        presetId,
-        presetName,
-        sectionId: section.id,
-        sectionName: section.name,
-        itemCount: itemCountBySection.get(section.id) ?? 0,
-      })
-    }
-  }
-  return metas
+  return res.rows.map((row) => ({
+    presetId: Number(row.preset_id),
+    presetName: String(row.preset_name),
+    sectionId: Number(row.section_id),
+    sectionName: String(row.section_name),
+    itemCount: Number(row.item_count),
+  }))
 }
 
 export async function listPresets(db: DbExecutorT): Promise<PresetMetaT[]> {

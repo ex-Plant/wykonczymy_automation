@@ -15,7 +15,7 @@ import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import { settlementModeToGridAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -37,6 +37,7 @@ import {
   sectionNeighbor,
   swapItemInSection,
   swapSectionBlock,
+  type BlankRowInputT,
 } from '@/lib/kosztorys/row-ops'
 import {
   planItemRemoval,
@@ -46,16 +47,15 @@ import {
 } from '@/lib/kosztorys/delete-policy'
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import {
-  clientTotalsFromSubtotals,
   emptySectionIds,
-  rowRemainingForView,
   sectionSubtotalsForView,
   stageAxisForView,
-  subcontractorDueByPlane,
-} from '@/lib/kosztorys/settlement'
+} from '@/lib/kosztorys/settlement-aggregates'
+import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
+import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
-import { NEW_SECTION_DEFAULTS } from '@/lib/kosztorys/constants'
+import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
   stageKey,
@@ -63,7 +63,8 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { isGlobalDiscountActive, toGross } from '@/lib/kosztorys/calc'
+import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
   addSectionAction,
@@ -94,12 +95,20 @@ import type {
   KosztorysV2RowT,
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
+import type { WorkerRefT } from '@/types/reference-data'
 
 type ArgsT = {
   investmentId: number
   tree: KosztorysTreeT
-  clientView?: boolean
+  // The read-only client-facing render — BOTH the public share link and the owner's „Podgląd dla
+  // klienta", which are deliberately the same render. Distinct from `view === 'client'`, which is a
+  // PRICE PLANE (client prices vs a subcontractor's); the render mode is what pins that plane, so the
+  // two must not share the word (owner ruling 2026-07-28).
+  preview?: boolean
   undoRedo: UndoRedoApiT
+  // Roster for the etap header's worker picker. Absent on the client share path, which never renders
+  // a menu at all.
+  workers?: WorkerRefT[]
 }
 
 // A reorder command records the two rows' ids and pre-swap orders. FieldChangeT/StageChangeT (the
@@ -117,7 +126,13 @@ const TOTALS_REFRESH_DEBOUNCE_MS = 700
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
 // inside a setRows updater — that would move the Router during render.
-export function useKosztorysEditor({ investmentId, tree, clientView = false, undoRedo }: ArgsT) {
+export function useKosztorysEditor({
+  investmentId,
+  tree,
+  preview = false,
+  undoRedo,
+  workers,
+}: ArgsT) {
   const router = useRouter()
   const { save, runNow } = useDebouncedSave(500)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
@@ -145,11 +160,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // meanwhile, so the click stops reading as inert.
   const [isSavingSettings, startSettingsSave] = useTransition()
   const [persistedView, setView] = usePriceView(investmentId)
-  // clientView pins the price plane to 'client'. The public page ships the full tree (coefficients
-  // included), so an un-pinned view would let a client set localStorage['kosztorys-view:<id>'] to a
-  // subcontractor view and make the allowlisted price/net/gross columns render the contractor's cost
-  // basis. This is the render-side half of the disclosure lock the deleted toClientView used to hold.
-  const view = clientView ? 'client' : persistedView
+  // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
+  // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
+  // it HERE is also what closes the attack where a client sets localStorage['kosztorys-view:<id>'] to
+  // a subcontractor view: the public page ships the full tree, coefficients included, so an unpinned
+  // plane would simply render it.
+  const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
@@ -168,17 +184,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. clientView ignores the persisted axis entirely: the client reads the plane the
-  // investment is settled on, so its grid can't disagree with the Podsumowanie panel beside it. That
-  // guarantee is client-side only — the owner's „Kwoty" pick deliberately stays a per-person column
-  // preference, so an owner can read netto in the grid while the panel shows brutto.
-  const effectiveMoneyAxis: MoneyAxisT = clientView
-    ? settlementModeToGridAxis(tree.settlementMode)
-    : view !== 'client'
-      ? 'net'
-      : moneyAxis === 'none'
-        ? 'both'
-        : moneyAxis
+  // Kwoty control. Nothing here is pinned for a preview: selectV2Columns drops every gate but the
+  // allowlist under `previewVisible`, so the axis — like the layer, the progress display and the
+  // picker below — never reaches the client's grid in the first place.
+  const effectiveMoneyAxis: MoneyAxisT =
+    view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
   const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
   const [guideX, setGuideX] = useState<number | null>(null)
@@ -298,20 +308,31 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
 
   // onRemoveItem/onReorderItem read prevById.current / rowsRef.current — stable refs —
   // only from a cell's onClick, never during render, so passing them here is safe.
-  // In clientView the grid is read-only (buildV2Grid disables every cell + drops the action column)
+  // In preview the grid is read-only (buildV2Grid disables every cell + drops the action column)
   // and column-filtered to the client-visible set, so every DATA-MUTATION callback is dropped — there
   // is no control left that could fire them. Column resize (onGuide/onCommitColumn) is the exception:
   // it only moves a localStorage width, never touches the server, so a client keeps it for readability.
   // Sort is dropped (headers render as plain labels) — the client sees a fixed, non-interactive order.
   // Wired only in the interactive editor render, dropped in the read-only client view. The gate is
   // the render mode, NOT a role — OWNER/MANAGER/ADMIN all edit; the client (no login) does not.
-  const editorOnly = <T>(handler: T): T | undefined => (clientView ? undefined : handler)
+  const editorOnly = <T>(handler: T): T | undefined => (preview ? undefined : handler)
+
+  // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
+  // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
+  // no `view` dependency (the settlement is the same in both subcontractor views, honest on mixed).
+  // Computed above the columns because the stage header's reassignment confirm quotes `byStage`,
+  // so the panel and the dialog can never cite different amounts for the same etap.
+  const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
+
   const columnOpts = {
     view,
     stages,
     onRemoveStage: editorOnly(handleRemoveStage),
     onRenameStage: editorOnly(handleRenameStage),
     onSetStagePlane: editorOnly(handleSetStagePlane),
+    onSetStageWorker: editorOnly(handleSetStageWorker),
+    workers,
+    executedValueByStage: subcontractorDue.byStage,
     sort,
     onSetSort: editorOnly(setSortField),
     isHidden,
@@ -332,8 +353,8 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    readOnly: clientView || undefined,
-    clientVisible: clientView || undefined,
+    readOnly: preview,
+    previewVisible: preview,
   }
   const { columns, columnToggleItems } = buildV2Grid(columnOpts)
   // A column sort must not outlive its column. A money-axis or view toggle can drop the sorted
@@ -379,8 +400,11 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // „Kwotowy" is picked, so the switch replaces without moving the total (EX-605). Reads 0 while the
   // global discount is already active (rowDiscountForView is 0 under it), which is why the seed is
   // only ever taken on the null→'amount' transition.
+  // Rounded, not raw: each per-item rabat is a percent of a gross, so it has no exact binary form, and
+  // summing hundreds of them surfaces the error around the 11th digit. This figure is typed straight
+  // into the kwota field as text, where „172024,28000000003" is what the owner reads.
   const perItemDiscountTotal = useMemo(
-    () => subtotals.reduce((s, x) => s + x.discount, 0),
+    () => roundToCents(subtotals.reduce((s, x) => s + x.discount, 0)),
     [subtotals],
   )
   // How many items actually carry a rabat — what the percent bulk-overwrite would destroy. Counted off
@@ -434,11 +458,6 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   // (computeDoZaplatyRM). This is robocizna alone, after rabat. Both total surfaces (the Sekcje Suma
   // block and the totals bar) read this one prop, so they can never disagree.
   const laborCostsNetFromKosztorys = doneNet - globalRabatNet
-
-  // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
-  // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
-  // no `view` dependency (the settlement is the same in both subcontractor views, honest on mixed).
-  const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
   // revert-on-error: roll an optimistic field edit back to its pre-save value
   // (rows + diff snapshot) when the server rejects it. The "current === attempted" guard lives
@@ -540,24 +559,34 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     )
   }
 
+  // The tree-level half of a blank row (VAT, global coefficients, the stage axis) is identical at
+  // every insert point, so the three callers spell out only what differs: which row, in which section.
+  type BlankRowIdentityT = Pick<
+    BlankRowInputT,
+    'id' | 'displayOrder' | 'sectionId' | 'sectionName' | 'sectionColor'
+  >
+  function makeBlankRow(identity: BlankRowIdentityT) {
+    return buildBlankRow({
+      ...identity,
+      vatRate: tree.vatRate,
+      globalDiscountActive,
+      globalWToolsCoeff: tree.globalCoeffs.wTools,
+      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
+      stages,
+    })
+  }
+
   async function handleAddItem(sectionId: number) {
     const res = await addItemAction(sectionId)
     if (!res.success) return
     // Take the denormalized section fields from any existing row of that section.
     const sample = [...prevById.current.values()].find((r) => r.sectionId === sectionId)
-    const row = buildBlankRow({
+    const row = makeBlankRow({
       id: res.data.id,
       displayOrder: res.data.displayOrder,
       sectionId,
-      sectionName: sample?.sectionName ?? NEW_SECTION_DEFAULTS.name,
+      sectionName: sample?.sectionName ?? DEFAULT_SECTION_NAME,
       sectionColor: sample?.sectionColor ?? null,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      sectionDefaultCostVariant:
-        sample?.sectionDefaultCostVariant ?? NEW_SECTION_DEFAULTS.defaultCostVariant,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
     })
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
@@ -581,18 +610,12 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     if (!res.success) return
     const sample =
       [...prevById.current.values()].find((r) => r.sectionId === anchorRow.sectionId) ?? anchorRow
-    const row = buildBlankRow({
+    const row = makeBlankRow({
       id: res.data.id,
       displayOrder: res.data.displayOrder,
       sectionId: anchorRow.sectionId,
       sectionName: sample.sectionName,
       sectionColor: sample.sectionColor,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      sectionDefaultCostVariant: sample.sectionDefaultCostVariant,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
     })
     // Mirror the section-tail display_order bump in prevById so a later insert/▲▼ diffs correctly.
     for (const [id, r] of prevById.current) {
@@ -714,20 +737,14 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   // The first row of a brand-new section: the section's own fields are still the defaults the action
-  // just wrote, so they come from NEW_SECTION_DEFAULTS rather than a round trip.
+  // just wrote, so they come from DEFAULT_SECTION_NAME rather than a round trip.
   function buildNewSectionRow(sectionId: number, item: { id: number; displayOrder: number }) {
-    return buildBlankRow({
+    return makeBlankRow({
       id: item.id,
       displayOrder: item.displayOrder,
       sectionId,
-      sectionName: NEW_SECTION_DEFAULTS.name,
+      sectionName: DEFAULT_SECTION_NAME,
       sectionColor: null,
-      vatRate: tree.vatRate,
-      globalDiscountActive,
-      sectionDefaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
-      globalWToolsCoeff: tree.globalCoeffs.wTools,
-      globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
-      stages,
     })
   }
 
@@ -739,30 +756,25 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const anchorOrder = sectionOrderRef.current.get(anchorSectionId)
     if (anchorOrder == null) return
     const at = dir === 'above' ? anchorOrder : anchorOrder + 1
-    const sec = await insertSectionAction(investmentId, at)
-    if (!sec.success) return
-    // The tail shift has COMMITTED, so mirror it before anything else can bail — unlike an item
-    // insert (where order is relative within a section), the client caches these absolute numbers
-    // and a missed shift makes every later section move exchange the wrong ones.
+    const res = await insertSectionAction(investmentId, at)
+    if (!res.success) return
+    // Mirror the committed tail shift — unlike an item insert (where order is relative within a
+    // section), the client caches these absolute numbers and a missed shift makes every later
+    // section move exchange the wrong ones.
     for (const [id, order] of sectionOrderRef.current) {
       if (order >= at) sectionOrderRef.current.set(id, order + 1)
     }
-    sectionOrderRef.current.set(sec.data.id, at)
-    const item = await addItemAction(sec.data.id)
-    if (!item.success) return
-    const row = buildNewSectionRow(sec.data.id, item.data)
+    sectionOrderRef.current.set(res.data.section.id, at)
+    const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
   }
 
   async function handleAddSection() {
-    const sec = await addSectionAction(investmentId)
-    if (!sec.success) return
-    // A new section immediately gets a blank item (an empty section = 0 rows = invisible).
-    const item = await addItemAction(sec.data.id)
-    if (!item.success) return
-    const row = buildNewSectionRow(sec.data.id, item.data)
-    sectionOrderRef.current.set(sec.data.id, sec.data.displayOrder)
+    const res = await addSectionAction(investmentId)
+    if (!res.success) return
+    const row = buildNewSectionRow(res.data.section.id, res.data.item)
+    sectionOrderRef.current.set(res.data.section.id, res.data.section.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
   }
@@ -798,7 +810,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     const res = await addStageAction(investmentId, plane)
     if (!res.success) return
     const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null, plane }])
+    setStages((s) => [...s, { id, ordinal, label: null, plane, workerId: null }])
     patchRows(
       () => true,
       (r) => ({ ...r, [stageKey(id)]: 0 }),
@@ -873,6 +885,26 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     )
   }
 
+  // Optimistic worker pick, mirroring handleSetStagePlane. Diverges in one place: `null` is a legal
+  // target („Bez przypisania"). No undo push — matching plane, and reassigning back is the exact
+  // inverse.
+  function handleSetStageWorker(stageId: number, workerId: number | null) {
+    const current = stagesRef.current.find((st) => st.id === stageId)
+    if (current && current.workerId === workerId) return
+    const prevWorkerId = current?.workerId ?? null
+    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, workerId } : st)))
+    save(
+      `stage-worker:${stageId}`,
+      () => updateStageAction(stageId, { workerId }),
+      () =>
+        setStages((s) =>
+          s.map((st) =>
+            st.id === stageId && st.workerId === workerId ? { ...st, workerId: prevWorkerId } : st,
+          ),
+        ),
+    )
+  }
+
   async function handleRemoveSection(sectionId: number) {
     // The summary confirms before calling here (EX-477); a populated section cascade-deletes its
     // items + stage_progress server-side, guarded only by the confirm dialog, not a block.
@@ -898,23 +930,31 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   // A section field is denormalized on every row of the section, so setting one patches them all
-  // (rows + prevById) and persists once. The two fields differ only in which row key mirrors which
-  // column, so they share one pathway rather than growing a third copy for defaultCostVariant.
+  // (rows + prevById) and persists once.
   const SECTION_ROW_FIELDS = { sectionName: 'name', sectionColor: 'color' } as const
   type SectionRowFieldT = keyof typeof SECTION_ROW_FIELDS
 
-  // Extracted from the handler so undo/redo can re-run it with the before/after value: unlike a grid
-  // cell, a section field fires the action directly, not via the debounced saver — nothing to cancel.
+  // Extracted from the handler so undo/redo can re-run it with the before/after value. The forward
+  // write debounces on the field's own lane: the colour picker is built for repeated picking (plain
+  // buttons, so the menu stays open while you compare tints), so browsing the palette is a burst and
+  // each pick would otherwise cost an auth round trip plus an UPDATE. `immediate` is what undo/redo
+  // pass — the inverse write pre-empts a still-pending forward save instead of racing it (EX-526 #1).
   function applySectionField<K extends SectionRowFieldT>(
     sectionId: number,
     rowKey: K,
     value: KosztorysV2RowT[K],
+    { immediate = false }: { immediate?: boolean } = {},
   ) {
     patchRows(
       (r) => r.sectionId === sectionId,
       (r) => ({ ...r, [rowKey]: value }),
     )
-    void updateSectionFieldAction(sectionId, { [SECTION_ROW_FIELDS[rowKey]]: value })
+    // No revert-on-error, unlike the cell savers: a section's colour and name are cosmetic, so the
+    // lane's toast is enough — yanking the swatch back mid-browse costs more than the stale tint.
+    const persist = immediate ? runNow : save
+    persist(`section-field:${sectionId}:${rowKey}`, () =>
+      updateSectionFieldAction(sectionId, { [SECTION_ROW_FIELDS[rowKey]]: value }),
+    )
   }
 
   // Bails on a no-op write: the Sekcja cell's onBlur fires on every focus-out and the colour picker
@@ -930,7 +970,7 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
     applySectionField(sectionId, rowKey, value)
     pushReversible(
       undoLabel,
-      (v: KosztorysV2RowT[K]) => applySectionField(sectionId, rowKey, v),
+      (v: KosztorysV2RowT[K]) => applySectionField(sectionId, rowKey, v, { immediate: true }),
       before,
       value,
     )
@@ -1119,11 +1159,15 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   function handleGlobalDiscountChange(next: GlobalDiscountT) {
+    // Quantized on the way in, so nothing sub-grosz is ever persisted: the kwota is stored money the
+    // field mirrors back as text, and a seeded Σ rabatów carries float residue from the products it
+    // sums. Rounded BEFORE the no-op check, or a dirty stored value never matches its clean twin.
+    const clean = { ...next, value: roundToCents(next.value) }
     // saveSetting's own guard is identity-based, which never fires on a fresh object — so the
     // no-op check is here, by field. Without it every „Kwotowy" re-pick and every re-commit of an
     // unchanged kwota would put a do-nothing entry on the undo stack.
-    if (globalDiscount.type === next.type && globalDiscount.value === next.value) return
-    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, next)
+    if (globalDiscount.type === clean.type && globalDiscount.value === clean.value) return
+    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, clean)
   }
 
   // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
@@ -1155,9 +1199,9 @@ export function useKosztorysEditor({ investmentId, tree, clientView = false, und
   }
 
   function onChange(next: KosztorysV2RowT[]) {
-    // The load-bearing persistence kill-switch: a clientView grid is read-only, but this guards the
+    // The load-bearing persistence kill-switch: a preview grid is read-only, but this guards the
     // one path that could still POST — so no save, undo capture, or refresh ever fires on the public page.
-    if (clientView) return
+    if (preview) return
     const changedById = new Map<number, KosztorysV2RowT>()
     // One onChange batch (incl. a multi-cell paste) = one composite undo entry; accumulate every
     // field/stage change here and buffer a single coalesced command after the loop.

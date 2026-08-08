@@ -18,6 +18,15 @@ export const PLANE_LABELS: Record<ToolPlaneT, string> = {
   own_tools: 'Bez narzędzi',
 }
 
+// The three figures of the subcontractor settlement, named once. The headline block reads them as row
+// labels and the per-worker table as column headers — the same three amounts, so a reader must never
+// have to work out that „Należne" and „Suma wykonanej pracy" were the same thing.
+export const SUBCONTRACTOR_FIGURE_LABELS = {
+  due: 'Suma wykonanej pracy',
+  payouts: 'Zaliczki (wypłaty)',
+  remaining: 'Pozostało do wypłaty',
+} as const
+
 // Default subcontractor markup coefficients for an investment — the single source for both the
 // Payload column `defaultValue` (src/collections/investments.ts) and the query fallback
 // (src/lib/queries/kosztorys.ts). A section or item may override them.
@@ -34,15 +43,12 @@ export const UNIT_SUGGESTIONS = ['m²', 'szt', 'mb', 'kpl', 'pkt'] as const
 export const DEFAULT_UNIT = 'szt'
 
 // Placeholder description pre-filled on every new position so a fresh row reads as an item to rename
-// rather than a blank line. Persisted server-side (add/insert actions) and mirrored optimistically.
+// rather than a blank line. Persisted server-side by createBlankItem and mirrored optimistically.
 export const DEFAULT_ITEM_DESCRIPTION = 'Nowa praca'
 
-// Default values for a new section — the single source. addSectionAction and the empty-editor seed
-// import these for the server-side create; the optimistic row is built from them client-side.
-export const NEW_SECTION_DEFAULTS = {
-  name: 'Nowa sekcja',
-  defaultCostVariant: 'w_tools',
-} as const satisfies { name: string; defaultCostVariant: ToolPlaneT }
+// Placeholder name pre-filled on every new section — the single source. createSectionWithFirstItem
+// writes it server-side; the optimistic row mirrors it client-side.
+export const DEFAULT_SECTION_NAME = 'Nowa sekcja'
 
 // The grid's identity column. Every synthetic row (the „Razem" band and both section bands) puts its
 // caption here instead of a figure, so the three cells must agree on which column that is.

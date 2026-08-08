@@ -11,7 +11,7 @@ import type {
   DepositTransactionRowT,
   PayoutByWorkerT,
   PayoutTransactionRowT,
-} from '@/types/reference-data'
+} from '@/types/transfers'
 import { buildSqlConditions, isNoResultsSentinel } from '@/lib/db/where-to-sql'
 import { getDb } from '@/lib/db/get-db'
 import { DEPOSIT_TYPES, type VatPlaneT } from '@/lib/constants/transfers'
@@ -285,7 +285,7 @@ export const sumCategoryByTypeSettled = async (
 }
 
 /**
- * The individual INVESTOR_DEPOSIT rows for an investment — the un-summed twin of `totalIncome`, so
+ * The individual INVESTOR_DEPOSIT rows matching `where` — the un-summed twin of `totalIncome`, so
  * the client Podsumowanie can list each wpłata (data · kwota · netto/brutto), sortable, mirroring the
  * subcontractor block's wypłaty list. Cancelled excluded, date-desc. `vat_plane` is null for the
  * „nie określono" state.
@@ -298,21 +298,28 @@ export const sumCategoryByTypeSettled = async (
  * admin panel — at the read boundary, where the exclusion is guaranteed regardless of how a row was
  * written. It also carries the netto/brutto plane, which exists for INVESTOR_DEPOSIT only.
  */
-export const getDepositTransactionsForInvestment = async (
+export const getDepositTransactions = async (
   payload: Payload,
-  investmentId: number,
+  where: Where,
 ): Promise<DepositTransactionRowT[]> => {
+  if (isNoResultsSentinel(where)) return []
+
   const elapsed = perfStart()
   const db = await getDb(payload)
+  const conditions = buildSqlConditions(where)
 
-  const result = await db.execute(sql`
+  // The `type = 'INVESTOR_DEPOSIT'` guard is fixed, so a caller's own `type` filter can only narrow
+  // further — `?type=PAYOUT` correctly yields zero wpłaty rather than widening the surface.
+  const result = await db.execute(
+    sql.raw(`
     SELECT id, date, amount, vat_plane
     FROM transactions
-    WHERE investment_id = ${investmentId}
-      AND cancelled IS NOT TRUE
+    WHERE cancelled IS NOT TRUE
       AND type = 'INVESTOR_DEPOSIT'
+      ${conditions}
     ORDER BY date DESC, id DESC
-  `)
+  `),
+  )
 
   const rows = result.rows.map((row) => ({
     id: Number(row.id),
@@ -322,11 +329,15 @@ export const getDepositTransactionsForInvestment = async (
     amount: Number(row.amount),
     vatPlane: row.vat_plane == null ? null : (row.vat_plane as VatPlaneT),
   }))
-  console.log(
-    `[PERF] query.getDepositTransactionsForInvestment ${elapsed()}ms (${rows.length} rows)`,
-  )
+  console.log(`[PERF] query.getDepositTransactions ${elapsed()}ms (${rows.length} rows)`)
   return rows
 }
+
+export const getDepositTransactionsForInvestment = async (
+  payload: Payload,
+  investmentId: number,
+): Promise<DepositTransactionRowT[]> =>
+  getDepositTransactions(payload, { investment: { equals: investmentId } })
 
 /**
  * SUM realized PAYOUT amounts for ONE investment, grouped by worker. Mirrors sumAllWorkerBalances

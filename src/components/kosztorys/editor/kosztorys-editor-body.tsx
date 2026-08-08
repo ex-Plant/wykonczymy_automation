@@ -9,6 +9,8 @@ import { DynamicDataSheetGrid } from 'react-datasheet-grid'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
@@ -35,9 +37,9 @@ const ITEM_ROW_HEIGHT = 32
 const SECTION_BAND_ROW_HEIGHT = 52
 
 type PropsT = KosztorysEditorDataT & {
-  // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim axis
-  // header, kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
-  clientView?: boolean
+  // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim header,
+  // kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
+  preview?: boolean
   // Optional because the read-only client body omits it and falls back to NOOP_UNDO_REDO.
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
@@ -50,23 +52,17 @@ export function KosztorysEditorBody({
   investmentId,
   tree,
   investmentName,
-  materialsGrossBase,
-  materialsNetBilled,
-  materialyBreakdown,
-  settledBreakdown,
-  financials,
-  wplatyNet,
   laborCostsNetFromTransactions,
   investmentRabat,
-  payoutsByWorker = [],
-  payoutTransactions = [],
+  // Defaulted here rather than relayed: the panel requires it, `KosztorysEditorDataT` doesn't.
   depositTransactions = [],
-  materialTransactions,
-  clientView = false,
+  preview = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
+  workers,
+  ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, clientView, undoRedo })
+  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
   const {
     gridRef,
     gridHeight,
@@ -86,6 +82,7 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
+    setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
     onRenameSection,
@@ -155,10 +152,10 @@ export function KosztorysEditorBody({
       <div
         className={cn(
           'flex w-full flex-col overflow-hidden',
-          clientView ? 'h-dvh' : 'h-[calc(100dvh-7rem)] lg:h-[calc(100dvh-3.5rem)]',
+          preview ? 'h-dvh' : 'h-[calc(100dvh-7rem)] lg:h-[calc(100dvh-3.5rem)]',
         )}
       >
-        {clientView ? (
+        {preview ? (
           <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
             <h1 className="truncate text-base font-medium">{investmentName}</h1>
             <div className="flex shrink-0 items-center gap-2">
@@ -203,27 +200,51 @@ export function KosztorysEditorBody({
               }
             />
           </div>
+          {/* Emptiness is judged on `subtotals` (full-dataset) rather than the rendered rows:
+              `gridRows` always carries the spacer + „Razem" rows, and a no-hit search empties
+              `viewRows` over a kosztorys that is not in fact empty. */}
+          {subtotals.length === 0 && (
+            <EmptyState
+              className="pointer-events-none absolute inset-0"
+              title="Kosztorys jest pusty"
+              // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
+              description={preview ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
+            />
+          )}
+          {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
+              rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
+              who never typed anything. Unreachable in the client view, which renders no search field. */}
+          {viewRows.length === 0 && search.trim() !== '' && (
+            <EmptyState
+              className="pointer-events-none absolute inset-0"
+              title="Brak wyników"
+              description={`Żadna pozycja nie pasuje do „${search.trim()}".`}
+            >
+              {/* The overlay is click-through so the grid stays usable; the button opts back in. */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto"
+                onClick={() => setSearch('')}
+              >
+                Wyczyść wyszukiwanie
+              </Button>
+            </EmptyState>
+          )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel
+            {...panelData}
             investmentId={investmentId}
             investmentName={investmentName}
+            depositTransactions={depositTransactions}
             stages={stages}
             stageTotals={stageTotals}
-            payoutsByWorker={payoutsByWorker}
-            payoutTransactions={payoutTransactions}
-            depositTransactions={depositTransactions}
-            materialTransactions={materialTransactions}
+            workers={workers}
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materialsGrossBase={materialsGrossBase}
-            materialsNetBilled={materialsNetBilled}
-            materialyBreakdown={materialyBreakdown}
-            settledBreakdown={settledBreakdown}
-            financials={financials}
             sectionSubtotals={progressSubtotals}
-            wplatyNet={wplatyNet}
             rabatAmount={rabatClientNet}
             reconciliation={reconciliation}
             vatRate={tree.vatRate}
@@ -233,7 +254,7 @@ export function KosztorysEditorBody({
             onMaterialsNetRateChange={editor.handleMaterialsNetRateChange}
             isSavingSettings={editor.isSavingSettings}
             showSettingsBar
-            clientView={clientView}
+            preview={preview}
           />
         </div>
         {/* Vertical guide while dragging a column edge (left = cursor viewport X). Portaled to body:

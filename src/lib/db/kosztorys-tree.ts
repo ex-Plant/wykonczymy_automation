@@ -61,7 +61,7 @@ export async function selectKosztorysTreeData(
       (
         SELECT coalesce(json_agg(s ORDER BY s.display_order, s.id), '[]'::json)
         FROM (
-          SELECT id, name, display_order, color, default_cost_variant
+          SELECT id, name, display_order, color
           FROM kosztorys_sections WHERE investment_id = ${investmentId}
         ) s
       ) AS sections,
@@ -72,14 +72,14 @@ export async function selectKosztorysTreeData(
                  discount_type, discount_value, client_price,
                  w_tools_override_type, w_tools_override_value,
                  own_tools_override_type, own_tools_override_value,
-                 cost_variant, hidden_in_export, note
+                 hidden_in_export, note
           FROM kosztorys_items WHERE investment_id = ${investmentId}
         ) i
       ) AS items,
       (
         SELECT coalesce(json_agg(st ORDER BY st.ordinal, st.id), '[]'::json)
         FROM (
-          SELECT id, ordinal, label, plane
+          SELECT id, ordinal, label, plane, worker_id
           FROM kosztorys_stages WHERE investment_id = ${investmentId}
         ) st
       ) AS stages,
@@ -129,7 +129,6 @@ const mapSection = (row: RowT): KosztorysSectionT => ({
   // Validated on read, not trusted: a key retired from the palette reads as unpinned rather than
   // painting with a CSS var that no longer exists.
   color: isSectionColorKey(row.color) ? row.color : null,
-  defaultCostVariant: (str(row.default_cost_variant) as ToolPlaneT | null) ?? 'w_tools',
 })
 
 const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
@@ -146,7 +145,6 @@ const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
   wToolsOverrideValue: num(row.w_tools_override_value),
   ownToolsOverrideType: str(row.own_tools_override_type) as SubcontractorOverrideTypeT | null,
   ownToolsOverrideValue: num(row.own_tools_override_value),
-  costVariant: str(row.cost_variant) as ToolPlaneT | null,
   hiddenInExport: Boolean(row.hidden_in_export),
   note: str(row.note),
 })
@@ -156,6 +154,7 @@ const mapStage = (row: RowT): KosztorysStageT => ({
   ordinal: num(row.ordinal),
   label: str(row.label),
   plane: str(row.plane) as ToolPlaneT | null,
+  workerId: numOrNull(row.worker_id),
 })
 
 const mapProgress = (row: RowT): StageProgressT => ({

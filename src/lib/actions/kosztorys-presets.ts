@@ -12,7 +12,6 @@ import {
   type PresetSectionMetaT,
 } from '@/lib/db/presets'
 import { getPresets, getPresetSections } from '@/lib/queries/presets'
-import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import {
   appendPresetSections,
   type AppendedSliceT,
@@ -62,26 +61,6 @@ export async function savePresetAction(
       return { success: true }
     },
     ['presets'],
-  )
-}
-
-// Populate an EMPTY investment's kosztorys from a preset (empty-editor "Wypełnij z szablonu"). The
-// seed orchestration + empty-guard live in seedInvestmentFromPreset; this action owns auth and the
-// revalidation. Four tree tags only — NOT `investments`: settings (VAT/coeffs) are untouched, a
-// preset never carries one job's pricing config onto another.
-export async function seedFromPresetAction(
-  investmentId: number,
-  presetId: number,
-): Promise<ActionResultT> {
-  return protectedAction(
-    'seedFromPresetAction',
-    async ({ payload }) => {
-      const result = await seedInvestmentFromPreset(payload, investmentId, presetId)
-      if (result === 'not-found') return { success: false, error: 'Nie znaleziono szablonu' }
-      if (result === 'not-empty') return { success: false, error: 'Kosztorys nie jest pusty' }
-      return { success: true }
-    },
-    ['kosztorysSections', 'kosztorysItems', 'kosztorysStages', 'stageProgress'],
   )
 }
 

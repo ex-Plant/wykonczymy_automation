@@ -7,6 +7,12 @@ import { DecimalInput } from '@/components/ui/decimal-input'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 type PropsT = {
+  // Omitted where an enclosing block already names the figure — the suffix („zł"/„%") is the only
+  // thing that still distinguishes the two rabat modes at the input.
+  label?: ReactNode
+  // Unit printed after the input, BEFORE „Zapisz" — same order as DecimalField, so the two kinds of
+  // number field in the settings popover read as one control rather than two near-misses.
+  suffix?: ReactNode
   // The stored figure to show. '' for the percent tool, which stamps into the items and stores nothing.
   value: string
   placeholder?: string
@@ -24,7 +30,13 @@ type PropsT = {
 // Both rabat-globalny modes commit the same way: type, then press „Zapisz" (or Enter). Nothing is
 // written on blur — a rabat is a deal-level concession, so leaving the field must never be enough to
 // change it, and the two modes must not disagree about what counts as confirming a value.
+//
+// Not DecimalField despite the matching look: the percent mode needs a confirm dialog over a write it
+// cannot undo, and an input that empties once the write lands. Neither belongs in the field every
+// plain number in the app uses.
 export function RabatValueField({
+  label,
+  suffix,
   value,
   placeholder,
   disabled = false,
@@ -68,7 +80,8 @@ export function RabatValueField({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <label className="text-muted-foreground flex items-center gap-1 text-xs">
+      {label}
       <DecimalInput
         value={raw}
         placeholder={placeholder}
@@ -77,9 +90,12 @@ export function RabatValueField({
         onKeyDown={(e) => {
           if (e.key === 'Enter') requestApply()
         }}
-        className="text-chart-green"
+        // Borrows the „Zapisz" radius beside it — the pair reads as one control, not a field and a button.
+        className="text-chart-green rounded-md"
       />
+      {suffix}
       <Button
+        type="button"
         variant="outline"
         size="sm"
         className="h-7 px-2"
@@ -98,6 +114,6 @@ export function RabatValueField({
           onCancel={() => setConfirming(null)}
         />
       )}
-    </div>
+    </label>
   )
 }

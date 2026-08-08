@@ -1,14 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { sumPayoutsByWorkerForInvestment } from '@/lib/db/sum-transfers'
+import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // sumPayoutsByWorkerForInvestment is raw SQL (GROUP BY worker_id, null bucket kept, investment-scoped,
 // cancelled + non-PAYOUT excluded), so its grouping is only real against the DB. Insert rows directly
 // to bypass the balance-recalc hooks and required-field validation — we assert the aggregate, not a
 // return value from a create.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -41,19 +42,10 @@ describe.skipIf(!ENV_READY)('sumPayoutsByWorkerForInvestment (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
     db = await getDb(payload)
+    await purgeFixtureUsers(db)
 
-    const inv = await payload.create({
-      collection: 'investments',
-      data: { name: 'payouts-by-worker-test', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(inv.id)
-    const other = await payload.create({
-      collection: 'investments',
-      data: { name: 'payouts-by-worker-other', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    otherInvestmentId = Number(other.id)
+    investmentId = await createTestInvestment(payload, 'payouts-by-worker-test')
+    otherInvestmentId = await createTestInvestment(payload, 'payouts-by-worker-other')
 
     const a = await payload.create({
       collection: 'users',
@@ -110,12 +102,7 @@ describe.skipIf(!ENV_READY)('sumPayoutsByWorkerForInvestment (DB)', () => {
       if (id) await payload.delete({ collection: 'users', id, context: { skipRevalidation: true } })
     }
     for (const id of [investmentId, otherInvestmentId]) {
-      if (id)
-        await payload.delete({
-          collection: 'investments',
-          id,
-          context: { skipRevalidation: true },
-        })
+      if (id) await deleteTestInvestment(payload, id)
     }
   })
 

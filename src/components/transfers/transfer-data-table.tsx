@@ -28,7 +28,14 @@ export function TransferDataTable({
   referenceData,
 }: TransferDataTablePropsT) {
   const { id: currentUserId, role: currentUserRole } = useCurrentUser()
-  const { baseUrl, excludeColumns = [], filters, headerFields, totalFilteredAmount } = config
+  const {
+    baseUrl,
+    excludeColumns = [],
+    filters,
+    headerFields,
+    totalFilteredAmount,
+    listsCancelled,
+  } = config
 
   const columns = getTransferColumns(excludeColumns, {
     referenceData,
@@ -39,7 +46,12 @@ export function TransferDataTable({
   return (
     <div className="mt-4 space-y-4">
       {filters && (
-        <TransferFilters {...filters} baseUrl={baseUrl} totalFilteredAmount={totalFilteredAmount} />
+        <TransferFilters
+          {...filters}
+          baseUrl={baseUrl}
+          totalFilteredAmount={totalFilteredAmount}
+          listsCancelled={listsCancelled}
+        />
       )}
       <DataTable
         data={data}

@@ -3,17 +3,18 @@ import { redirect, notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES, isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { parsePagination } from '@/lib/utils/pagination'
-import {
-  fetchReferenceData,
-  fetchFilteredByType,
-  fetchCategoryBreakdowns,
-} from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { InvestmentSummaryPanel } from '@/components/investments/investment-summary-panel'
 import { StatsVersionToggle } from '@/components/investments/stats-version-toggle'
 import { parseStatsVersion, STATS_VERSION_PARAM } from '@/lib/constants/stats-version'
-import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
+import {
+  buildTransferFilters,
+  hasActiveTransferFilters,
+  stripCancelledFilters,
+} from '@/lib/queries/transfer-filters'
 import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-costs'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
@@ -26,7 +27,6 @@ import { STATUS_LABELS } from '@/components/investments/investment-status-badge'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
-import { InvestmentSettingsLink } from '@/components/kosztorys/investment-settings-link'
 import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
@@ -47,6 +47,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
 
   // Stats ignore cancelled toggle — SQL already excludes cancelled via hardcoded WHERE clause
   const statsWhere = stripCancelledFilters(transferWhere)
+  const filtersActive = hasActiveTransferFilters(sp)
 
   const version = parseStatsVersion(sp[STATS_VERSION_PARAM])
 
@@ -94,7 +95,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
         <EditInvestmentDialog investment={investment} />
         <SheetButton investmentId={investmentId} hasSheet={investment.hasSheet} />
         <OpenKosztorysV2Button investmentId={investmentId} />
-        <InvestmentSettingsLink investmentId={investmentId} />
       </div>
       <InfoList items={infoFields.filter((f) => f.value)} />
 
@@ -119,6 +119,8 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           <InvestmentSummaryPanel
             investmentId={investmentId}
             investmentName={investment.name}
+            statsWhere={statsWhere}
+            filtersActive={filtersActive}
             financials={financials}
             canSeeMargin={isAdminOrOwnerRole(user.role)}
             expenseCategories={refData.expenseCategories}

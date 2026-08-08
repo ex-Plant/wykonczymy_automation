@@ -51,8 +51,12 @@ type InvestmentSnapshotT = {
 
 /** What gets written to disk. Investment NAMES are real client names — they stay out of
  *  the committed fixture and are re-read from the DB only to label a failure. */
+type HashMapT = Record<string, string>
+
 type SnapshotT = {
-  fingerprint: { transactionCount: number; checksum: string }
+  fingerprint: { transactionCount: number }
+  /** Per-entity hash of the transaction rows that feed that entity's figures — see readInputHashes. */
+  inputHashes: { investments: HashMapT; registers: HashMapT; workers: HashMapT }
   investments: Record<string, InvestmentSnapshotT>
   registers: Record<string, number>
   workers: Record<string, number>
@@ -77,42 +81,67 @@ const toPairs = (costs: { categoryId: number; total: number }[]): CategoryPairT[
   costs.map((c): CategoryPairT => [c.categoryId, round2(c.total)]).sort((a, b) => a[0] - b[0])
 
 /**
- * A hash over every transaction column that feeds any figure below. The fixture is only
- * valid for the dataset it was taken from — without this, a `pnpm db:import:test` would
- * move all 100 rows at once and read as "the refactor broke everything", which is how a
- * golden master earns a reputation for noise and gets deleted. With it, a dataset change
- * is reported as "regenerate", and only a figure moving under an UNCHANGED dataset is
- * ever reported as drift.
+ * A hash over every transaction column that feeds any figure below, taken PER ENTITY: one
+ * per investment, per register, per worker.
+ *
+ * A whole-dataset checksum was the obvious shape and the wrong one. The pre-push hook
+ * refreshes `dumps/dump-latest.sql` from prod on every push, so a single new transaction
+ * anywhere invalidated the fixture for all 100 investments at once and the suite could
+ * only say "regenerate" — a guard that fails on the ordinary path is a guard people learn
+ * to regenerate past without reading the diff, which is exactly the moment a real drift
+ * gets waved through.
+ *
+ * Scoped per entity, prod growth silences only the rows it actually touched: an investment
+ * whose transactions are byte-identical still has to produce the same figures, and a
+ * refactor that moves one is still caught on every untouched row. A register is hashed
+ * over the transactions on EITHER side of it, since both move its balance.
  */
-async function readFingerprint(payload: Payload) {
+async function readInputHashes(payload: Payload) {
   const db = await getDb(payload)
   const result = await db.execute(sql`
-    SELECT
-      count(*)::int AS row_count,
-      COALESCE(md5(string_agg(
+    WITH signed AS (
+      SELECT
+        id, investment_id, source_register_id, target_register_id, worker_id,
         id || '|' || type || '|' || amount
+          || '|' || COALESCE(net_amount::text, '')
           || '|' || COALESCE(settled::text, '')
           || '|' || COALESCE(investment_id::text, '')
           || '|' || COALESCE(source_register_id::text, '')
           || '|' || COALESCE(target_register_id::text, '')
           || '|' || COALESCE(expense_category_id::text, '')
           || '|' || COALESCE(worker_id::text, '')
-          || '|' || COALESCE(cancelled::text, ''),
-        ',' ORDER BY id
-      )), '') AS checksum
-    FROM transactions
+          || '|' || COALESCE(cancelled::text, '') AS sig
+      FROM transactions
+    ),
+    scoped AS (
+      SELECT 'investments' AS scope, investment_id AS key, id, sig FROM signed WHERE investment_id IS NOT NULL
+      UNION ALL
+      SELECT 'registers', source_register_id, id, sig FROM signed WHERE source_register_id IS NOT NULL
+      UNION ALL
+      SELECT 'registers', target_register_id, id, sig FROM signed WHERE target_register_id IS NOT NULL
+      UNION ALL
+      SELECT 'workers', worker_id, id, sig FROM signed WHERE worker_id IS NOT NULL
+    )
+    SELECT scope, key, md5(string_agg(sig, ',' ORDER BY id)) AS hash
+    FROM scoped GROUP BY scope, key
   `)
-  const row = result.rows[0]
-  return { transactionCount: Number(row.row_count), checksum: String(row.checksum) }
+
+  const hashes: SnapshotT['inputHashes'] = { investments: {}, registers: {}, workers: {} }
+  for (const row of result.rows) {
+    hashes[String(row.scope) as keyof SnapshotT['inputHashes']][String(row.key)] = String(row.hash)
+  }
+
+  const counted = await db.execute(sql`SELECT count(*)::int AS row_count FROM transactions`)
+  return { hashes, transactionCount: Number(counted.rows[0].row_count) }
 }
 
 async function buildSnapshot(payload: Payload): Promise<{
   snapshot: SnapshotT
   names: Map<string, string>
 }> {
-  const [fingerprint, investmentsPage, financialsMap, registerBalances, workerBalances] =
+  const [inputs, investmentsPage, financialsMap, registerBalances, workerBalances] =
     await Promise.all([
-      readFingerprint(payload),
+      readInputHashes(payload),
       payload.find({
         collection: 'investments',
         limit: 0,
@@ -153,7 +182,8 @@ async function buildSnapshot(payload: Payload): Promise<{
 
   return {
     snapshot: {
-      fingerprint,
+      fingerprint: { transactionCount: inputs.transactionCount },
+      inputHashes: inputs.hashes,
       investments,
       registers: mapToRecord(registerBalances),
       workers: mapToRecord(workerBalances),
@@ -224,35 +254,45 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
     }
 
     const expected: SnapshotT = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8'))
+    const actual = snapshot
 
-    // Fingerprint FIRST. A dataset change is not a drift, and must never be reported as one.
-    if (
-      expected.fingerprint.checksum !== snapshot.fingerprint.checksum ||
-      expected.fingerprint.transactionCount !== snapshot.fingerprint.transactionCount
-    ) {
+    // Without this the missing key reads as "every hash is empty", every entity gets skipped,
+    // and the staleness floor below fires with a message blaming prod drift for what is
+    // really a fixture predating per-entity hashing. Name the real cause here instead.
+    if (!expected.inputHashes) {
       throw new Error(
-        `dataset changed — the fixture is stale, not the code.\n` +
-          `  fixture: ${expected.fingerprint.transactionCount} transactions (${expected.fingerprint.checksum})\n` +
-          `  db-test: ${snapshot.fingerprint.transactionCount} transactions (${snapshot.fingerprint.checksum})\n` +
-          `Regenerate with \`pnpm test:golden:update\` and review the resulting diff.`,
+        `fixture at ${FIXTURE_PATH} predates per-entity input hashing — ` +
+          `regenerate it with \`pnpm test:golden:update\``,
       )
     }
 
     const drift: string[] = []
+    const dataMoved: string[] = []
+    let investmentsSkipped = 0
     const label = (id: string) => `#${id} ${names.get(id) ?? '(unknown)'}`
 
-    const expectedIds = Object.keys(expected.investments)
-    const actualIds = Object.keys(snapshot.investments)
-    for (const id of expectedIds.filter((i) => !actualIds.includes(i))) {
-      drift.push(`${label(id)} · disappeared from the snapshot`)
-    }
-    for (const id of actualIds.filter((i) => !expectedIds.includes(i))) {
-      drift.push(`${label(id)} · new, not in the fixture`)
-    }
+    /** An entity is comparable only while its transaction rows are byte-identical to the
+     *  fixture's. Once prod adds a row it is the DATA that moved, not the code — the only
+     *  honest thing the fixture can say about that entity is nothing. */
+    const inputsUnchanged = (scope: keyof SnapshotT['inputHashes'], id: string) =>
+      (expected.inputHashes[scope][id] ?? '') === (actual.inputHashes[scope][id] ?? '')
 
-    for (const id of expectedIds.filter((i) => actualIds.includes(i))) {
+    for (const id of Object.keys(expected.investments)) {
+      const now = actual.investments[id]
+      // A row the fixture knows and the DB no longer returns: prod deleted it. Same class as
+      // an edit — the fixture has nothing to say, and saying "disappeared" would fail a push
+      // over someone else's cleanup.
+      if (!now) {
+        dataMoved.push(`${label(id)} (gone)`)
+        investmentsSkipped++
+        continue
+      }
+      if (!inputsUnchanged('investments', id)) {
+        dataMoved.push(label(id))
+        investmentsSkipped++
+        continue
+      }
       const was = expected.investments[id]
-      const now = snapshot.investments[id]
       for (const key of Object.keys(was) as (keyof InvestmentSnapshotT)[]) {
         const a = JSON.stringify(was[key])
         const b = JSON.stringify(now[key])
@@ -261,14 +301,49 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
     }
 
     for (const [scope, wasMap, nowMap] of [
-      ['register', expected.registers, snapshot.registers],
-      ['worker', expected.workers, snapshot.workers],
+      ['registers', expected.registers, actual.registers],
+      ['workers', expected.workers, actual.workers],
     ] as const) {
-      for (const key of new Set([...Object.keys(wasMap), ...Object.keys(nowMap)])) {
+      const singular = scope.slice(0, -1)
+      for (const key of Object.keys(wasMap)) {
+        // Same two escapes as the investment loop above: deleted in prod, or its transactions
+        // edited. Either way the fixture has nothing honest left to say about this entity.
+        if (!(key in nowMap)) {
+          dataMoved.push(`${singular} #${key} (gone)`)
+          continue
+        }
+        if (!inputsUnchanged(scope, key)) {
+          dataMoved.push(`${singular} #${key}`)
+          continue
+        }
         if (wasMap[key] !== nowMap[key]) {
-          drift.push(`${scope} #${key} · balance: expected ${wasMap[key]} got ${nowMap[key]}`)
+          drift.push(`${singular} #${key} · balance: expected ${wasMap[key]} got ${nowMap[key]}`)
         }
       }
+    }
+
+    // Never a failure — but silence about it would let the fixture rot to nothing while the
+    // suite stayed green. The count is the signal to regenerate at your leisure.
+    if (dataMoved.length > 0) {
+      console.warn(
+        `[golden master] ${dataMoved.length} ${dataMoved.length === 1 ? 'entity' : 'entities'} skipped — their transactions changed in prod ` +
+          `since the fixture was taken. Refresh at some point with \`pnpm test:golden:update\`.\n  ` +
+          dataMoved.slice(0, 10).join('\n  ') +
+          (dataMoved.length > 10 ? `\n  …and ${dataMoved.length - 10} more` : ''),
+      )
+    }
+
+    // The skip rule above is what stops prod growth from failing a push, and it is also the
+    // way this guard could quietly become a no-op: let the fixture rot long enough and every
+    // entity is skipped, leaving a green test that compares nothing. So the net has a floor.
+    const total = Object.keys(expected.investments).length
+    const comparable = total - investmentsSkipped
+    if (comparable < total / 2) {
+      throw new Error(
+        `only ${comparable} of ${total} fixture investments still ` +
+          `match their transactions — the fixture is too stale to guard anything. ` +
+          `Regenerate with \`pnpm test:golden:update\` and review the diff.`,
+      )
     }
 
     expect(drift).toEqual([])

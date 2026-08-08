@@ -20,7 +20,7 @@ import {
   type WydatkiDatasetT,
 } from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
-import type { MaterialTransactionRowT } from '@/types/reference-data'
+import type { MaterialTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
   investmentId: number
@@ -29,11 +29,11 @@ type PropsT = {
   // Every expense type and both settled states — the tabs split them.
   rows: MaterialTransactionRowT[]
   // Read-only public/preview render: no row links (they point into the app, which a client can't reach).
-  clientView?: boolean
+  preview?: boolean
 }
 
 const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
-  gross: 'Materiały',
+  gross: 'Materiały brutto',
   net: 'Materiały rozliczane netto',
   settled: 'Materiały wliczone w robociznę',
 }
@@ -48,18 +48,22 @@ const ROW_HEIGHT = 44
 const HEADER_HEIGHT = 41
 const FOOTER_HEIGHT = 41
 
+// Every column carries an explicit size: the virtualized table lays out fixed, so an unsized column
+// would fall back to TanStack's uniform 150 and hand „Data" as much room as „Opis".
 const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'date',
     header: 'Data',
+    size: 96,
     cell: ({ getValue }) => (
       <span className="tabular-nums">{formatPLDate(getValue<string>())}</span>
     ),
   },
-  { accessorKey: 'label', header: 'Kategoria' },
+  { accessorKey: 'label', header: 'Kategoria', size: 160 },
   {
     accessorKey: 'description',
     header: 'Opis',
+    size: 260,
     enableSorting: false,
     cell: ({ getValue }) => (
       <span className="text-muted-foreground">{getValue<string | null>() || '—'}</span>
@@ -68,6 +72,7 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'invoiceNote',
     header: 'Notatka',
+    size: 160,
     enableSorting: false,
     cell: ({ getValue }) => {
       const note = getValue<string | null>()
@@ -92,6 +97,7 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   {
     accessorKey: 'invoiceUrl',
     header: 'Faktura',
+    size: 88,
     enableSorting: false,
     meta: { align: 'center' },
     // Sits before the money columns, not last, so the „Razem" footer's total stays under the column
@@ -119,16 +125,17 @@ const moneyColumn = (
 ): ColumnDef<MaterialTransactionRowT> => ({
   accessorKey,
   header,
+  size: 120,
   meta: { align: 'right' },
   cell: ({ getValue }) => <span className="tabular-nums">{formatNet(getValue<number>())}</span>,
 })
 
-// Netto comes last of the two so the „Razem" cell — which sums `billed` — sits under the column it
-// actually totals.
+// Netto first: it is the figure this dataset actually bills, so it reads before the brutto it was
+// crossed from. „Razem" sums `billed`, so the footer has to skip a column to land under it.
 const NET_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
   ...SHARED_COLUMNS,
-  moneyColumn('amount', 'Brutto'),
   moneyColumn('billed', 'Netto'),
+  moneyColumn('amount', 'Brutto'),
 ]
 
 // The brutto sets bill at `amount`, so one column says everything.
@@ -143,7 +150,7 @@ export function MaterialsTransactionsTable({
   investmentId,
   investmentName,
   rows,
-  clientView = false,
+  preview = false,
 }: PropsT) {
   const partition = partitionWydatkiRows(rows)
   const available = availableWydatkiDatasets(partition)
@@ -175,10 +182,8 @@ export function MaterialsTransactionsTable({
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-y-2">
-      {/* Shares the table's max width so the right-aligned download button lands flush with the
-          table's right edge rather than the panel's. */}
-      <div className="flex w-full max-w-5xl items-center gap-2">
+    <div className="flex flex-col gap-y-2">
+      <div className="flex w-full items-center gap-2">
         {options.length > 1 && (
           <ToggleGroup
             options={options}
@@ -211,18 +216,21 @@ export function MaterialsTransactionsTable({
           TABLE_HEIGHT,
         )}
         initialSorting={[{ id: 'date', desc: true }]}
-        getRowHref={clientView ? undefined : (row) => wydatkiRowHref(investmentId, row)}
+        getRowHref={preview ? undefined : (row) => wydatkiRowHref(investmentId, row)}
         footer={(colCount) => (
           <tr>
-            <td className="font-bold" colSpan={colCount - 1}>
+            {/* The total is of `billed`, which the netto set renders second-to-last — so the label
+                spans one column less there, and the trailing Brutto column gets an empty cell. */}
+            <td className="font-bold" colSpan={colCount - (activeDataset === 'net' ? 2 : 1)}>
               Razem
             </td>
             <td className="text-right font-bold tabular-nums">
               {formatNet(sumBilled(visibleRows))}
             </td>
+            {activeDataset === 'net' && <td />}
           </tr>
         )}
-        className="w-full max-w-5xl"
+        className="w-full"
       />
     </div>
   )

@@ -173,6 +173,8 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   It started as financial calculations only and is now much wider (`get-db`, `where-to-sql`,
   `with-payload-transaction`, `snapshots`, `presets`, `notifications`, `kosztorys-tree`) — read the rule,
   not the original theme, when deciding whether a new file lands here.
+  A **read** a client component invokes on demand is a `'use server'` function in `src/lib/queries`
+  (`register-saldo.ts`, `subcontractor-roster.ts`) — never in `src/lib/actions`, which is mutations only.
 - `src/lib/cache` — cache tags + revalidation helpers
 - Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only)
 
@@ -223,8 +225,14 @@ Two test homes by layer: **unit** → Vitest specs under `src/__tests__` (aliase
 **Vitest specs live under `src/__tests__`, never colocated next to their source** — this is the
 one place the feature-first rule is deliberately overridden, because `scripts/test-integration.sh`
 discovers the DB-backed specs by grepping that tree. A colocated spec is simply never run by the
-pre-push gate. Inside it, mirror the source path (`src/lib/db/x.ts` → `src/__tests__/lib/db/x.test.ts`);
-the top level holds older specs that predate the mirroring and cross-cutting ones. A spec that
+pre-push gate. Inside it, mirror the source path **in full, every intermediate directory included** —
+`src/lib/db/x.ts` → `src/__tests__/lib/db/x.test.ts`, and a deep component path keeps its depth:
+`src/components/kosztorys/editor/dialogs/preset-picker-groups.ts` →
+`src/__tests__/components/kosztorys/editor/dialogs/preset-picker-groups.test.ts`. Never file a spec
+under the mirror of a directory that isn't its source — a spec for a `components/**` module goes under
+`__tests__/components/**` even when its subject is kosztorys logic. Several specs may share one source
+file; they differ by filename, not by folder. The top level holds older specs that predate the
+mirroring and cross-cutting ones. A spec that
 asserts the whole dataset against a committed fixture (the golden master) is excluded from that
 discovery on purpose and runs via `pnpm test:parity` instead — its neighbours create rows in the
 same shared DB.
@@ -245,6 +253,7 @@ Non-blocking refactor/cleanup findings live in Linear (project "Wykonczymy v2").
 ## Stack Notes
 
 - React Compiler is enabled — don't hand-write `useMemo` / `useCallback` for things it handles
+- **The breakpoint scale is overridden** in `src/styles/globals.css` — `sm`=768px, `md`=1024px, `lg`=1280px, where Tailwind ships 640/768/1024. `sm:` is this app's single mobile→desktop break; `md:` is a second, tablet-large step used almost only by the marketing pages. Any snippet pasted from shadcn/upstream docs assumes the stock scale and fires one step too late. **Re-map it onto this scale by intent, not by tier name (EX-624):** an upstream `sm:` and an upstream `md:` are both mobile→desktop splits here, so both become `sm:`. Never add a 640 breakpoint to reproduce upstream's — this app has one mobile→desktop line and it is 768.
 - `src/app/(payload)/layout.tsx` must include `importMap`, `serverFunction`, and `handleServerFunctions`
 - A `console.error` that must become a Sentry capture once Sentry is wired gets a `// TODO(EX-449) SENTRY-REQUIRED:` marker (greppable + shows in the IDE TODO panel) — never a bare comment
 

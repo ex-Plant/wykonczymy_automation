@@ -1,20 +1,26 @@
 'use client'
 
-import type { MoneyAxisT, PanelAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
-  materialsPair,
+  billedMaterials,
+  computeMixedSettlement,
   sumaPracPreRabat,
   type MaterialsT,
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
-import { MixedSummary } from '@/components/kosztorys/summary/blocks/mixed-summary'
-import { BruttoNettoSummary } from '@/components/kosztorys/summary/blocks/brutto-netto-summary'
+import { SettlementSummary } from '@/components/kosztorys/summary/blocks/settlement-summary'
+import { InlineModeSelect } from '@/components/ui/inline-mode-select'
+import {
+  SETTLEMENT_MODE_DESCRIPTIONS,
+  SETTLEMENT_MODE_SELECT_OPTIONS,
+} from '@/components/kosztorys/summary/settlement-mode-options'
+import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement-groups'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
-import type { DepositTransactionRowT } from '@/types/reference-data'
+import type { DepositTransactionRowT } from '@/types/transfers'
 import type {
   KosztorysReconciliationT,
   SettlementPlaneVerdictT,
@@ -24,9 +30,12 @@ import { formatNet } from '@/lib/kosztorys/format'
 
 type PropsT = {
   investmentId: number
-  // netto/brutto/Mieszane axis — the control lives in the panel top bar (it governs every summary
-  // tab); this tab only reads the value to pick Mixed vs Brutto/Netto.
-  moneyAxis: PanelAxisT
+  // Picks Mixed vs Brutto/Netto here, and is the value the inline control writes. Supplying the
+  // writer is what turns that control on — same gate as the popover's: a read-only host passes the
+  // value and no writer.
+  settlementMode: SettlementModeT
+  onSettlementModeChange?: (mode: SettlementModeT) => void
+  isSavingSettings?: boolean
   laborCostsNetFromKosztorys: number
   doZaplaty: MoneyPairT
   materials: MaterialsT
@@ -47,15 +56,19 @@ type PropsT = {
   // Off on a host whose own transfers table already lists every wpłata (the investment page), where a
   // second copy of the same list is noise rather than detail.
   showDeposits?: boolean
-  clientView?: boolean
+  preview?: boolean
   showPie?: boolean
+  // Withholds the plane warning for the same reason the mismatch scream goes quiet: it compares the
+  // whole kosztorys against a filtered ledger, so under a filter it would report the filter as a gap.
+  filtersActive?: boolean
 }
 
-// The „Podsumowanie" view: its own axis control on top, then the settlement below. Mieszane swaps the
-// two-column BruttoNettoSummary for the vertical netto→brutto MixedSummary; Netto/Brutto keep the table.
+// The „Podsumowanie" view: the settlement block, then the folded wpłaty list.
 export function SummaryOverviewTab({
   investmentId,
-  moneyAxis,
+  settlementMode,
+  onSettlementModeChange,
+  isSavingSettings = false,
   laborCostsNetFromKosztorys,
   doZaplaty,
   materials,
@@ -70,70 +83,90 @@ export function SummaryOverviewTab({
   paidGross,
   depositRows,
   showDeposits = true,
-  clientView = false,
+  preview = false,
   showPie = true,
+  filtersActive = false,
 }: PropsT) {
-  const mixedMode = moneyAxis === 'mixed'
-  const displayAxis: MoneyAxisT = mixedMode ? 'both' : moneyAxis
-  // The „Struktura kosztów" pie is a netto robocizna/materiały split, identical in every mode — so it
-  // sits here beside the settlement rather than inside any one mode's block. Robocizna enters PRZED
-  // rabatem: a rabat is a concession on the price, not a change in what the job is made of, and a
-  // rabat exceeding the executed work would otherwise feed the pie a negative slice.
-  const materialsNet = materialsPair(materials, materialsNetRate).net
+  // Tryb mieszany settles part in cash (no invoice → no VAT) and invoices only the rest, so its
+  // „Do zapłaty" can't come from the plain Łącznie − wpłaty the other tryby use. Both readings of the
+  // remaining debt already exist on the settlement, so the pair is a re-labelling, not new arithmetic.
+  const mixed =
+    settlementMode === 'MIXED'
+      ? computeMixedSettlement(
+          laborCostsNetFromKosztorys,
+          materials,
+          vatRate,
+          paidNet,
+          paidGross,
+          materialsNetRate,
+        )
+      : null
+  const settlementGroups = buildSettlementGroups({
+    mixed,
+    doZaplaty,
+    wplatyNet,
+    vatRate,
+    filtersActive,
+  })
+  // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the
+  // „Struktura kosztów" pie so the two can never disagree. The pie is a netto robocizna/materiały
+  // split, identical in every mode, so it sits here beside the settlement rather than inside any one
+  // mode's block. Robocizna enters the pie PRZED rabatem: a rabat is a concession on the price, not a
+  // change in what the job is made of, and a rabat exceeding the executed work would otherwise feed
+  // the pie a negative slice.
+  const materialsBilled = billedMaterials(materials, materialsNetRate)
 
   return (
     <div className="flex w-full flex-col gap-y-4">
-      {!clientView && settlementVerdict.mismatch && (
+      {!preview && !filtersActive && settlementVerdict.mismatch && (
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
+      )}
+      {/* Above the row, not inside its left column: nested there it pushed the settlement table down
+          while the pie stayed put, and the tab lost its top edge. */}
+      {onSettlementModeChange && (
+        <InlineModeSelect
+          label="Rozliczenie robocizny"
+          value={settlementMode}
+          onValueChange={(next) => onSettlementModeChange(next as SettlementModeT)}
+          options={SETTLEMENT_MODE_SELECT_OPTIONS}
+          description={SETTLEMENT_MODE_DESCRIPTIONS[settlementMode]}
+          disabled={isSavingSettings}
+        />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="flex flex-col gap-y-4">
-          {mixedMode ? (
-            <MixedSummary
-              laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-              materials={materials}
-              vatRate={vatRate}
-              materialsNetRate={materialsNetRate}
-              paidNet={paidNet}
-              paidGross={paidGross}
-              rabatAmount={rabatAmount}
-            />
-          ) : (
-            <BruttoNettoSummary
-              investmentId={investmentId}
-              laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-              doZaplaty={doZaplaty}
-              materials={materials}
-              wplatyNet={wplatyNet}
-              rabatAmount={rabatAmount}
-              reconciliation={reconciliation}
-              priceView={priceView}
-              vatRate={vatRate}
-              moneyAxis={displayAxis}
-              materialsNetRate={materialsNetRate}
-              clientView={clientView}
-            />
-          )}
+          <SettlementSummary
+            investmentId={investmentId}
+            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+            materialsBilled={materialsBilled}
+            settlementGroups={settlementGroups}
+            rabatAmount={rabatAmount}
+            reconciliation={reconciliation}
+            priceView={priceView}
+            vatRate={vatRate}
+            preview={preview}
+            filtersActive={filtersActive}
+          />
         </div>
         {showPie && (
           <SlicePie
             slices={costTotalsPieSlices(
               sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
-              materialsNet,
+              materialsBilled,
             )}
             formatValue={formatNet}
           />
         )}
       </div>
       {showDeposits && (
-        <CollapsibleSection title="Lista wpłat" size="sm" className="w-fit">
+        <CollapsibleSection title="Lista wpłat" size="sm" defaultOpen={false}>
           <div className="pt-4">
             <SummaryDepositsTab
               investmentId={investmentId}
               rows={depositRows}
               paidNet={paidNet}
               paidGross={paidGross}
-              clientView={clientView}
+              preview={preview}
               showPie={showPie}
             />
           </div>

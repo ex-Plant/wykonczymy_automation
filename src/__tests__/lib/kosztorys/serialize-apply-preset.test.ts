@@ -2,12 +2,14 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { serializeKosztorysAsPreset } from '@/lib/kosztorys/serialize-preset'
 import { applyPreset } from '@/lib/kosztorys/apply-preset'
 import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import { getPreset, insertPreset, upsertPresetByName } from '@/lib/db/presets'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // Presets reuse the snapshot serialize/apply core, so we exercise it against the REAL DB and assert
 // PERSISTED state (re-serialize after apply), the same discipline as serialize-restore-roundtrip.
@@ -16,7 +18,6 @@ import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 //
 // Cache revalidation touches next/cache outside a request context; stub it so any collection hooks
 // fired during apply don't throw in node.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 // serializeKosztorys reads through getKosztorysTree, whose DAL guard self-authorizes via requireAuth →
 // cookies(), which has no request scope in node. Stub it success like the sibling DB specs.
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -81,13 +82,11 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
 
   // A throwaway investment with the given settings; tracked for cascade cleanup in afterAll.
   async function createInvestment(name: string, vat: number, wCoeff: number, oCoeff: number) {
-    const inv = await payload.create({
-      collection: 'investments',
-      data: { name, status: 'active', settlementMode: 'NET', wToolsCoeff: wCoeff, ownToolsCoeff: oCoeff },
-      context: { skipRevalidation: true },
+    const id = await createTestInvestment(payload, name, {
+      vatRate: vat,
+      wToolsCoeff: wCoeff,
+      ownToolsCoeff: oCoeff,
     })
-    const id = Number(inv.id)
-    await db.execute(sql`UPDATE investments SET vat_rate = ${vat} WHERE id = ${id}`)
     investmentIds.push(id)
     return id
   }
@@ -101,7 +100,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: investmentId,
         name: 'Sekcja A',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -111,7 +109,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: investmentId,
         name: 'Sekcja B',
         displayOrder: 1,
-        defaultCostVariant: 'own_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -183,20 +180,11 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
   }
 
   async function applyPresetTx(investmentId: number, preset: SnapshotPayloadT) {
-    const transactionId = await payload.db.beginTransaction()
-    if (!transactionId) throw new Error('Failed to start transaction')
-    try {
-      await applyPreset(
-        payload,
-        { transactionID: transactionId, context: { skipRevalidation: true } } as never,
-        investmentId,
-        preset,
-      )
-      await payload.db.commitTransaction(transactionId)
-    } catch (err) {
-      await payload.db.rollbackTransaction(transactionId)
-      throw err
-    }
+    await withPayloadTransaction(
+      payload,
+      (req) => applyPreset(payload, req, investmentId, preset),
+      { skipRevalidation: true },
+    )
   }
 
   beforeAll(async () => {
@@ -208,7 +196,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
 
   afterAll(async () => {
     for (const id of investmentIds) {
-      await payload.delete({ collection: 'investments', id, context: { skipRevalidation: true } })
+      await deleteTestInvestment(payload, id)
     }
     await db.execute(sql`DELETE FROM kosztorys_presets WHERE name LIKE ${PRESET_PREFIX + '%'}`)
   })
@@ -279,8 +267,8 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
       payload: preset,
     })
 
-    // The live shape behind the original bug: an empty tree (no sections → the „Wypełnij z szablonu"
-    // CTA) that nonetheless already carries etapy, because „Dodaj etap" works on an empty kosztorys.
+    // The live shape behind the original bug: an empty tree (no sections) that nonetheless already
+    // carries etapy, because „Dodaj etap" works on an empty kosztorys.
     // The seed used to install a starting etap here and collided with UNIQUE(investment_id, ordinal).
     const targetId = await createInvestment(`${PRESET_PREFIX}target-hasetapy`, 0.23, 0.7, 0.5)
     await payload.create({
@@ -310,7 +298,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: occupiedId,
         name: 'Istniejąca',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -341,7 +328,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: invB,
         name: 'Tylko B',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -384,7 +370,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
         investment: invB,
         name: 'Nowa treść',
         displayOrder: 0,
-        defaultCostVariant: 'own_tools',
       },
       context: { skipRevalidation: true },
     })

@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { selectKosztorysTreeData } from '@/lib/db/kosztorys-tree'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // selectKosztorysTreeData is one hand-written SQL statement, so its invariants only exist against a
 // real Postgres — a mocked executor would just replay whatever shape the test author imagined. The
 // sibling spec (kosztorys-tree-sql-drift) guards the column list at source level; this one guards the
 // four behaviours that a correct column list still doesn't give you.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -25,15 +25,12 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
   async function seed(investmentId: number, qtyDone: number) {
     // Insert out of display order deliberately: ORDER BY moved from Payload's `sort` into the
     // json_agg, and insertion order is what would leak through if it were dropped.
-    // defaultCostVariant is required-with-defaultValue: Payload fills it at runtime, but the
-    // generated create-data type still demands it, so spell it out.
     const second = await payload.create({
       collection: 'kosztorys-sections',
       data: {
         investment: investmentId,
         name: 'B-second',
         displayOrder: 2,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -43,7 +40,6 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
         investment: investmentId,
         name: 'A-first',
         displayOrder: 1,
-        defaultCostVariant: 'w_tools',
       },
       context: { skipRevalidation: true },
     })
@@ -88,12 +84,7 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
     db = await getDb(payload)
 
     for (const key of ['alpha', 'beta', 'bare'] as const) {
-      const investment = await payload.create({
-        collection: 'investments',
-        data: { name: `tree-${key}-${Date.now()}`, status: 'active', settlementMode: 'NET' },
-        context: { skipRevalidation: true },
-      })
-      created[key] = Number(investment.id)
+      created[key] = await createTestInvestment(payload, `tree-${key}-${Date.now()}`)
     }
 
     // Distinct qtyDone per investment is what makes a broken join visible rather than merely wrong.
@@ -106,10 +97,7 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
       await payload.delete({ collection, id, context: { skipRevalidation: true } }).catch(() => {})
     }
     for (const id of Object.values(created)) {
-      if (id)
-        await payload
-          .delete({ collection: 'investments', id, context: { skipRevalidation: true } })
-          .catch(() => {})
+      if (id) await deleteTestInvestment(payload, id).catch(() => {})
     }
   })
 

@@ -220,7 +220,7 @@ Let `doneNet` = Σ section `net` (post-rabat), `itemRabatNet` = Σ section `disc
   Needs an owner ruling: one concept on two planes (→ suffix) or two distinct concepts (→ stay bare).
 - **T4 — `wplatyNet` already holds two different values.**
   `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx:81` = Σ `INVESTOR_DEPOSIT` rows only (the
-  comment at `:78-80` says so), while `src/lib/queries/client-kosztorys.ts:66` =
+  comment at `:78-80` says so), while `src/lib/queries/preview-kosztorys.ts:66` =
   `financials.totalIncome` = `sumBucket(rows, 'income')`, which includes `COMPANY_FUNDING` /
   `OTHER_DEPOSIT`. The owner editor and the client share link therefore compute „Wpłaty" and
   „Do zapłaty" from different bases. **This is a bug, not a naming problem** — it wants its own Linear
@@ -382,7 +382,7 @@ already recovered onto `staging` by `d72d91b4`). The issue has been `In Progress
 - `src/lib/kosztorys/kosztorys-driven-financials.ts:19` — T1, kosztorys values in transactions-named fields
 - `src/lib/db/calculate-margin.ts:14`, `src/lib/db/calculate-balance.ts:7-8` — the plane-blind consumers
 - `src/lib/kosztorys/subcontractor-summary.ts:35` — T3, the unguarded third seam
-- `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx:78-81` vs `src/lib/queries/client-kosztorys.ts:66` — T4, `wplatyNet`'s two definitions
+- `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx:78-81` vs `src/lib/queries/preview-kosztorys.ts:66` — T4, `wplatyNet`'s two definitions
 - `src/lib/kosztorys/chart-slices.ts:46,73,75-76` and `src/components/kosztorys/summary/hooks/use-summary-view.ts:9` — Polish string-literal unions the guard cannot see
 - `src/lib/kosztorys/wydatki-datasets.ts:4,6,16,39,51` — the unstemmed `Wydatki*` family
 - `src/lib/constants/transfers.ts:147,158,315,317-330` — frozen sheet strings and column order

@@ -6,6 +6,7 @@ import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
 import type { SortDirT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { WorkerRefT } from '@/types/reference-data'
 
 export type V2SortStateT = { field: string; dir: SortDirT } | null
 
@@ -17,6 +18,10 @@ export type BuildV2ColumnsOptsT = {
   onRemoveStage?: (stageId: number) => void
   onRenameStage?: (stageId: number, label: string) => void
   onSetStagePlane?: (stageId: number, plane: ToolPlaneT) => void
+  workers?: WorkerRefT[]
+  onSetStageWorker?: (stageId: number, workerId: number | null) => void
+  // Only so the reassignment confirm can quote the amount being moved.
+  executedValueByStage?: Map<number, number>
   sort?: V2SortStateT
   onSetSort?: (field: string, dir: SortDirT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by
@@ -68,7 +73,12 @@ export type BuildV2ColumnsOptsT = {
   // Omitting the mutation callbacks is NOT enough — a cell with no callback still takes focus and
   // enters edit mode, so a client-facing grid would look editable and swallow keystrokes.
   readOnly?: boolean
-  // Narrow to the columns a client may see (CLIENT_VISIBLE_COLUMNS). Orthogonal to `readOnly`:
-  // read-only is about interaction, this is about disclosure.
-  clientVisible?: boolean
+  // The client's document: exactly PREVIEW_VISIBLE_COLUMNS, and it OVERRIDES every option above that
+  // describes one owner's reading preferences (isHidden / moneyAxis / progressDisplay / layer), since
+  // none of those may shape what a client is served. `globalDiscountActive` still applies — it is the
+  // investment's own state, not a preference; selectV2Columns spells the split out.
+  // Orthogonal to `readOnly`: read-only is about interaction, this is about disclosure. NOT orthogonal
+  // to `view`, which must be 'client' whenever this is set — selectV2Columns throws on the mismatch,
+  // and `assertDisclosurePair` says why.
+  previewVisible?: boolean
 }

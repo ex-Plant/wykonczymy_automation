@@ -42,5 +42,15 @@ export const KosztorysStages: CollectionConfig = {
         { value: 'own_tools', label: { en: 'Without tools', pl: 'Bez narzędzi' } },
       ],
     },
+    // Who is to do this etap (EX-613). Unlike `plane`, null is a legitimate resting state, not an
+    // unconfirmed default: an unassigned etap gets its own residual row in the subcontractor
+    // summary and its quantity entry stays open.
+    {
+      name: 'worker',
+      type: 'relationship',
+      relationTo: 'users',
+      required: false,
+      label: { en: 'Worker', pl: 'Pracownik' },
+    },
   ],
 }

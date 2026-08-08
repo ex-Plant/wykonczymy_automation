@@ -6,17 +6,21 @@ import { protectedAction, validateAction } from '@/lib/actions/run-action'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
-import { nextSectionDisplayOrder } from '@/lib/kosztorys/insert-rows'
-import { seedBlankKosztorys } from '@/lib/kosztorys/seed-blank'
+import {
+  createSectionWithFirstItem,
+  type CreatedSectionWithItemT,
+} from '@/lib/kosztorys/create-section'
+import { createBlankItem, sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
+import {
+  nextSectionDisplayOrder,
+  shiftDisplayOrderFrom,
+  swapDisplayOrder,
+  swapDisplayOrderSchema,
+} from '@/lib/kosztorys/display-order'
 import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { SETTLEMENT_MODES, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
-import {
-  DEFAULT_ITEM_DESCRIPTION,
-  DEFAULT_UNIT,
-  NEW_SECTION_DEFAULTS,
-  TOOL_PLANES,
-} from '@/lib/kosztorys/constants'
+import { TOOL_PLANES } from '@/lib/kosztorys/constants'
 import type { ActionResultT } from '@/types/action'
 import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
 
@@ -24,6 +28,8 @@ import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
 // be silently rejected by validation.
 const stagePlaneSchema = z.enum(TOOL_PLANES)
 const overrideTypeSchema = z.enum(['coeff', 'amount'])
+
+const SECTION_MISSING = 'Sekcja nie istnieje.'
 
 // --- Patch schemas (all fields optional — autosave sends one field at a time) ---
 // itemPatchSchema is shaped to match ItemPatchT (a single source of the type in lib/kosztorys/types.ts).
@@ -40,7 +46,6 @@ const itemPatchSchema = z
     wToolsOverrideValue: z.coerce.number(),
     ownToolsOverrideType: overrideTypeSchema.nullable(),
     ownToolsOverrideValue: z.coerce.number(),
-    costVariant: stagePlaneSchema.nullable(),
     hiddenInExport: z.boolean(),
     note: z.string().nullable(),
   })
@@ -49,8 +54,7 @@ const itemPatchSchema = z
 const sectionPatchSchema = z
   .object({
     name: z.string(),
-    defaultCostVariant: stagePlaneSchema,
-    displayOrder: z.coerce.number(),
+    displayOrder: z.coerce.number().int().min(0),
     // null clears the pin (back to the pie's positional palette).
     color: z.custom<SectionColorKeyT>(isSectionColorKey).nullable(),
   })
@@ -98,7 +102,7 @@ export type InvestmentGlobalDiscountPatchT = z.infer<typeof investmentGlobalDisc
 // once at mount and derives every panel figure from it, so the route re-render `updateTag` triggers
 // reseeds nothing the editor reads — the grid keeps its own state and the panel has already
 // recomputed optimistically. The only cached reader of these tags is the client share link
-// (lib/queries/client-kosztorys.ts), a different route, and `revalidateTag` still expires it for its
+// (lib/queries/preview-kosztorys.ts), a different route, and `revalidateTag` still expires it for its
 // next request. Measured on preview: the discarded re-render cost 90-193ms per debounced save,
 // dominated by the uncached kosztorys tree (EX-597).
 export async function updateItemFieldAction(itemId: number, patch: ItemPatchT) {
@@ -250,48 +254,22 @@ export async function applyPercentRabatToAllItemsAction(
 
 // --- Structure: sections / items ---
 
+// Appends a section at the end, WITH its first blank item — see createSectionWithFirstItem for why
+// the pair is one call (and one round trip for the client) rather than two actions.
 export async function addSectionAction(
   investmentId: number,
-): Promise<ActionResultT<{ id: number; displayOrder: number }>> {
+): Promise<ActionResultT<CreatedSectionWithItemT>> {
   return protectedAction(
     'addSectionAction',
     async ({ payload }) => {
       const db = await getDb(payload)
       const displayOrder = await nextSectionDisplayOrder(db, investmentId)
-      const created = await payload.create({
-        collection: 'kosztorys-sections',
-        data: {
-          investment: investmentId,
-          name: NEW_SECTION_DEFAULTS.name,
-          displayOrder,
-          defaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
-        },
-      })
-      return { success: true, data: { id: created.id, displayOrder } }
-    },
-    ['kosztorysSections'],
-  )
-}
-
-// Cold-start unblock for an empty kosztorys: create one named section + one blank item (a 0-item
-// section renders as 0 rows). Shares seedBlankKosztorys with the EX-463 new-investment auto-seed.
-export async function seedBlankSectionAction(
-  investmentId: number,
-  name?: string,
-): Promise<ActionResultT<Record<string, never>>> {
-  return protectedAction(
-    'seedBlankSectionAction',
-    async ({ payload }) => {
-      // Idempotency guard: the client only opens the seeding dialog on an empty kosztorys, but a
-      // double-submit / stale tab could reach here after a section exists — seeding again would add
-      // a duplicate section at display_order 0. Bail as a no-op.
-      const existing = await payload.count({
-        collection: 'kosztorys-sections',
-        where: { investment: { equals: investmentId } },
-      })
-      if (existing.totalDocs > 0) return { success: true, data: {} }
-      await seedBlankKosztorys(payload, investmentId, name?.trim() || undefined)
-      return { success: true, data: {} }
+      const created = await withPayloadTransaction(
+        payload,
+        (req) => createSectionWithFirstItem(payload, { investmentId, displayOrder, req }),
+        { skipRevalidation: true },
+      )
+      return { success: true, data: created }
     },
     ['kosztorysSections', 'kosztorysItems'],
   )
@@ -322,13 +300,12 @@ const insertSectionSchema = z.object({
   atDisplayOrder: z.coerce.number().int().min(0),
 })
 
-// Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej). The caller adds the section's first item (a 0-item section renders as 0 rows), exactly as the append
-// path does. Shift + create are atomic, so a double-fired insert can't land two sections on one
-// display_order.
+// Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej): opens the slot, then
+// creates the section and its first item there — all three inside one transaction.
 export async function insertSectionAction(
   investmentId: number,
   atDisplayOrder: number,
-): Promise<ActionResultT<{ id: number; displayOrder: number }>> {
+): Promise<ActionResultT<CreatedSectionWithItemT>> {
   return protectedAction(
     'insertSectionAction',
     async ({ payload }) => {
@@ -339,35 +316,22 @@ export async function insertSectionAction(
         payload,
         async (req) => {
           const txDb = await getDb(payload, req)
-          await txDb.execute(sql`
-            UPDATE kosztorys_sections SET display_order = display_order + 1
-            WHERE investment_id = ${parsed.data.investmentId} AND display_order >= ${at}
-          `)
-          return payload.create({
-            collection: 'kosztorys-sections',
+          await shiftDisplayOrderFrom(txDb, 'kosztorys-sections', parsed.data.investmentId, at)
+          return createSectionWithFirstItem(payload, {
+            investmentId: parsed.data.investmentId,
+            displayOrder: at,
             req,
-            data: {
-              investment: parsed.data.investmentId,
-              name: NEW_SECTION_DEFAULTS.name,
-              displayOrder: at,
-              defaultCostVariant: NEW_SECTION_DEFAULTS.defaultCostVariant,
-            },
           })
         },
         { skipRevalidation: true },
       )
-      return { success: true, data: { id: created.id, displayOrder: at } }
+      return { success: true, data: created }
     },
-    ['kosztorysSections'],
+    ['kosztorysSections', 'kosztorysItems'],
   )
 }
 
-const sectionOrderSchema = z.object({ id: z.number(), displayOrder: z.number() })
-const swapSectionOrderSchema = z.object({ first: sectionOrderSchema, second: sectionOrderSchema })
-
-// Section-level twin of swapItemOrderAction (⋯ → Przesuń sekcję w górę/dół): exchanges the
-// display_order of two adjacent sections, so a move is 2 updates regardless of how many items the
-// sections hold. Each argument carries the NEW display_order its section should take on.
+// ⋯ → Przesuń sekcję w górę/dół.
 export async function swapSectionOrderAction(
   first: { id: number; displayOrder: number },
   second: { id: number; displayOrder: number },
@@ -375,24 +339,9 @@ export async function swapSectionOrderAction(
   return protectedAction(
     'swapSectionOrderAction',
     async ({ payload }) => {
-      const parsed = validateAction(swapSectionOrderSchema, { first, second })
+      const parsed = validateAction(swapDisplayOrderSchema, { first, second })
       if (!parsed.success) return parsed
-      // Atomic: a half-applied swap leaves the two sections on the SAME display_order (there is no
-      // unique constraint), which makes the reloaded section order non-deterministic.
-      await withPayloadTransaction(
-        payload,
-        async (req) => {
-          for (const target of [parsed.data.first, parsed.data.second]) {
-            await payload.update({
-              collection: 'kosztorys-sections',
-              id: target.id,
-              req,
-              data: { displayOrder: target.displayOrder },
-            })
-          }
-        },
-        { skipRevalidation: true },
-      )
+      await swapDisplayOrder(payload, 'kosztorys-sections', parsed.data.first, parsed.data.second)
       return { success: true }
     },
     ['kosztorysSections'],
@@ -406,35 +355,14 @@ export async function addItemAction(
     'addItemAction',
     async ({ payload }) => {
       const db = await getDb(payload)
-      // Append slot = MAX(display_order)+1, not count: removeItemAction leaves gaps, so a
-      // count-based order collides with a surviving row after any middle delete. The section is the
-      // single source of investment ownership — derive it here rather than trust a caller-passed id,
-      // so the item's investment and section FKs can never disagree.
-      const res = await db.execute(sql`
-        SELECT s.investment_id AS investment, COALESCE(MAX(i.display_order) + 1, 0) AS next
-        FROM kosztorys_sections s
-        LEFT JOIN kosztorys_items i ON i.section_id = s.id
-        WHERE s.id = ${sectionId}
-        GROUP BY s.investment_id
-      `)
-      const section = res.rows[0]
-      if (!section) return { success: false, error: 'Sekcja nie istnieje.' }
-      const displayOrder = Number(section.next ?? 0)
-      const created = await payload.create({
-        collection: 'kosztorys-items',
-        data: {
-          investment: Number(section.investment),
-          section: sectionId,
-          displayOrder,
-          description: DEFAULT_ITEM_DESCRIPTION,
-          unit: DEFAULT_UNIT,
-          plannedQty: 0,
-          discountValue: 0,
-          clientPrice: 0,
-          hiddenInExport: false,
-        },
+      const owner = await sectionOwnerAndNextItemOrder(db, sectionId)
+      if (!owner) return { success: false, error: SECTION_MISSING }
+      const created = await createBlankItem(payload, {
+        investmentId: owner.investmentId,
+        sectionId,
+        displayOrder: owner.nextDisplayOrder,
       })
-      return { success: true, data: { id: created.id, displayOrder } }
+      return { success: true, data: created }
     },
     ['kosztorysItems'],
   )
@@ -446,10 +374,7 @@ const insertItemSchema = z.object({
 })
 
 // Insert a blank item at a specific display_order within a section (right-click → Wstaw pozycję
-// powyżej/poniżej). Shifts the section's tail down by one to open the slot, then creates the row
-// there. The shift is bounded by SECTION size — the whole-sheet concern that made ▲▼ reorder a
-// neighbor-swap (1000+ rows) doesn't apply to one section. A create failure after the shift only
-// leaves a harmless gap in display_order (order is relative); addItemAction (append) is unchanged.
+// powyżej/poniżej).
 export async function insertItemAction(
   sectionId: number,
   atDisplayOrder: number,
@@ -460,42 +385,28 @@ export async function insertItemAction(
       const parsed = validateAction(insertItemSchema, { sectionId, atDisplayOrder })
       if (!parsed.success) return parsed
       const db = await getDb(payload)
-      // Derive investment from the section (single source of ownership), so the item's investment
-      // and section FKs can never disagree — see addItemAction.
-      const owner = await db.execute(sql`
-        SELECT investment_id FROM kosztorys_sections WHERE id = ${parsed.data.sectionId}
-      `)
-      const investmentId = owner.rows[0]?.investment_id
-      if (investmentId == null) return { success: false, error: 'Sekcja nie istnieje.' }
-      // Shift + create must be atomic: a double-fired insert at the same index could otherwise
-      // interleave and land two rows on one display_order (EX-464).
+      const owner = await sectionOwnerAndNextItemOrder(db, parsed.data.sectionId)
+      if (!owner) return { success: false, error: SECTION_MISSING }
       const created = await withPayloadTransaction(
         payload,
         async (req) => {
           const txDb = await getDb(payload, req)
-          await txDb.execute(sql`
-          UPDATE kosztorys_items SET display_order = display_order + 1
-          WHERE section_id = ${parsed.data.sectionId} AND display_order >= ${parsed.data.atDisplayOrder}
-        `)
-          return payload.create({
-            collection: 'kosztorys-items',
+          await shiftDisplayOrderFrom(
+            txDb,
+            'kosztorys-items',
+            parsed.data.sectionId,
+            parsed.data.atDisplayOrder,
+          )
+          return createBlankItem(payload, {
+            investmentId: owner.investmentId,
+            sectionId: parsed.data.sectionId,
+            displayOrder: parsed.data.atDisplayOrder,
             req,
-            data: {
-              investment: Number(investmentId),
-              section: parsed.data.sectionId,
-              displayOrder: parsed.data.atDisplayOrder,
-              description: DEFAULT_ITEM_DESCRIPTION,
-              unit: DEFAULT_UNIT,
-              plannedQty: 0,
-              discountValue: 0,
-              clientPrice: 0,
-              hiddenInExport: false,
-            },
           })
         },
         { skipRevalidation: true },
       )
-      return { success: true, data: { id: created.id, displayOrder: parsed.data.atDisplayOrder } }
+      return { success: true, data: created }
     },
     ['kosztorysItems'],
   )
@@ -521,12 +432,7 @@ export async function removeItemAction(itemId: number) {
   )
 }
 
-const itemOrderSchema = z.object({ id: z.number(), displayOrder: z.number() })
-const swapItemOrderSchema = z.object({ first: itemOrderSchema, second: itemOrderSchema })
-
-// Swaps the display_order of two (adjacent) items — 2 updates regardless of section size.
-// For the ▲▼ move (always a swap of neighbors) this suffices instead of renumbering the whole section.
-// Each argument carries the NEW display_order that the item should take on.
+// ▲▼ move within a section.
 export async function swapItemOrderAction(
   first: { id: number; displayOrder: number },
   second: { id: number; displayOrder: number },
@@ -534,20 +440,9 @@ export async function swapItemOrderAction(
   return protectedAction(
     'swapItemOrderAction',
     async ({ payload }) => {
-      const parsed = validateAction(swapItemOrderSchema, { first, second })
+      const parsed = validateAction(swapDisplayOrderSchema, { first, second })
       if (!parsed.success) return parsed
-      await Promise.all([
-        payload.update({
-          collection: 'kosztorys-items',
-          id: parsed.data.first.id,
-          data: { displayOrder: parsed.data.first.displayOrder },
-        }),
-        payload.update({
-          collection: 'kosztorys-items',
-          id: parsed.data.second.id,
-          data: { displayOrder: parsed.data.second.displayOrder },
-        }),
-      ])
+      await swapDisplayOrder(payload, 'kosztorys-items', parsed.data.first, parsed.data.second)
       return { success: true }
     },
     ['kosztorysItems'],
@@ -591,10 +486,10 @@ const stagePatchSchema = z
   .object({
     label: z.string().nullable(),
     plane: stagePlaneSchema,
+    workerId: z.number().int().positive().nullable(),
   })
   .partial()
 
-// Stage autosave: the header patches one field at a time (rename → label, plane picker → plane).
 // A plane patch only ever writes a concrete value — an explicit pick confirms the plane and clears
 // the unconfirmed (null) warning; there is no "un-confirm" path.
 export async function updateStageAction(
@@ -606,7 +501,11 @@ export async function updateStageAction(
     async ({ payload }) => {
       const parsed = validateAction(stagePatchSchema, patch)
       if (!parsed.success) return parsed
-      await payload.update({ collection: 'kosztorys-stages', id: stageId, data: parsed.data })
+      // The patch key is workerId (the tree carries flat *_id values); the collection field is the
+      // `worker` relationship — translate at this boundary, nowhere else.
+      const { workerId, ...rest } = parsed.data
+      const data = 'workerId' in parsed.data ? { ...rest, worker: workerId } : rest
+      await payload.update({ collection: 'kosztorys-stages', id: stageId, data })
       return { success: true }
     },
     ['kosztorysStages'],

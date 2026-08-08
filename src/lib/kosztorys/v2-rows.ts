@@ -14,7 +14,6 @@ const ITEM_FIELDS = [
   'wToolsOverrideValue',
   'ownToolsOverrideType',
   'ownToolsOverrideValue',
-  'costVariant',
   'hiddenInExport',
   'note',
 ] as const satisfies readonly (keyof ItemPatchT)[]
@@ -41,7 +40,6 @@ export function treeToRows(tree: KosztorysTreeT): KosztorysV2RowT[] {
         sectionColor: section.color,
         vatRate: tree.vatRate,
         globalDiscountActive,
-        sectionDefaultCostVariant: section.defaultCostVariant,
         globalWToolsCoeff: tree.globalCoeffs.wTools,
         globalOwnToolsCoeff: tree.globalCoeffs.ownTools,
         ...stageFields,

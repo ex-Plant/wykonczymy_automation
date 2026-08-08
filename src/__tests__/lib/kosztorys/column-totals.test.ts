@@ -4,30 +4,16 @@ import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
-
-const baseItem = {
-  displayOrder: 0,
-  unit: 'm2',
-  discountType: null,
-  discountValue: 0,
-  wToolsOverrideType: 'amount' as const,
-  wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount' as const,
-  ownToolsOverrideValue: 10,
-  costVariant: null,
-  hiddenInExport: false,
-  note: null,
-}
+import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 // Two sections so the Σ-of-footers claim is non-trivial, one row with NO przedmiar (id 3) so
 // „Pozostało" has something to skip, and a row-level rabat so the discount columns are non-zero.
-const tree: KosztorysTreeT = {
+const tree: KosztorysTreeT = makeTree({
   sections: [
     {
       id: 10,
       name: 'Sekcja A',
       displayOrder: 0,
-      defaultCostVariant: 'w_tools',
       color: null,
       items: [
         { ...baseItem, sectionId: 10, id: 1, description: 'A', plannedQty: 5, clientPrice: 20 },
@@ -47,7 +33,6 @@ const tree: KosztorysTreeT = {
       id: 20,
       name: 'Sekcja B',
       displayOrder: 1,
-      defaultCostVariant: 'w_tools',
       color: null,
       items: [
         { ...baseItem, sectionId: 20, id: 3, description: 'C', plannedQty: 0, clientPrice: 30 },
@@ -56,8 +41,8 @@ const tree: KosztorysTreeT = {
     },
   ],
   stages: [
-    { id: 100, ordinal: 1, label: null, plane: 'w_tools' },
-    { id: 101, ordinal: 2, label: null, plane: 'own_tools' },
+    { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+    { id: 101, ordinal: 2, label: null, plane: 'own_tools', workerId: null },
   ],
   progress: [
     { itemId: 1, stageId: 100, qtyDone: 2 },
@@ -66,13 +51,8 @@ const tree: KosztorysTreeT = {
     { itemId: 3, stageId: 100, qtyDone: 1 },
     { itemId: 4, stageId: 101, qtyDone: 2 },
   ],
-  globalCoeffs: { wTools: 0.65, ownTools: 0.55 },
   vatRate: 0.08,
-  settlementMode: 'NET',
-  materialsNetRate: null,
-  globalDiscount: { type: null, value: 0 },
-  revision: '2026-01-01T00:00:00.000Z',
-}
+})
 
 const rows = treeToRows(tree)
 const rowsOf = (sectionId: number) => rows.filter((row) => row.sectionId === sectionId)

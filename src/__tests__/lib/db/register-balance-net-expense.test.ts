@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { sumRegisterBalance } from '@/lib/db/sum-transfers'
+import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // GUARD B2 — the kasa stays brutto. INVESTMENT_EXPENSE_NET is the one type whose billed
 // figure (`net_amount`) differs from the cash that left the register (`amount`), so the
@@ -11,7 +13,6 @@ import { sumRegisterBalance } from '@/lib/db/sum-transfers'
 // This has to be a DB test, not a unit: the risk lives inside raw SQL. Asserting that the
 // type is absent from DEPOSIT_TYPES proves nothing about which column the CASE arm reads,
 // and only a query actually executed can prove it never switched to net_amount.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -30,6 +31,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
     db = await getDb(payload)
+    await purgeFixtureUsers(db)
 
     const owner = await payload.create({
       collection: 'users',
@@ -50,12 +52,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
     })
     registerId = Number(register.id)
 
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'net-expense-investment', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'net-expense-investment')
 
     // Raw insert to bypass the balance-recalc hooks — the aggregate under test is the
     // query, not the cached `balance` column those hooks write.
@@ -69,21 +66,21 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
   })
 
   afterAll(async () => {
-    if (registerId) await db.execute(sql`DELETE FROM transactions WHERE source_register_id = ${registerId}`)
+    if (registerId)
+      await db.execute(sql`DELETE FROM transactions WHERE source_register_id = ${registerId}`)
     if (registerId)
       await payload.delete({
         collection: 'cash-registers',
         id: registerId,
         context: { skipRevalidation: true },
       })
-    if (investmentId)
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
+    if (ownerId)
       await payload.delete({
-        collection: 'investments',
-        id: investmentId,
+        collection: 'users',
+        id: ownerId,
         context: { skipRevalidation: true },
       })
-    if (ownerId)
-      await payload.delete({ collection: 'users', id: ownerId, context: { skipRevalidation: true } })
   })
 
   it('subtracts the brutto amount, not the netto one', async () => {

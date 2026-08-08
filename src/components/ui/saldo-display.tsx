@@ -1,15 +1,13 @@
-import { formatPLN, normalize } from '@/lib/utils/format-currency'
+import { formatPLN } from '@/lib/utils/format-currency'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import { cn } from '@/lib/utils/cn'
 import { Description } from '@/components/ui/description'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 export const saldoColor = (amount: number) => {
-  const normalizedAmount = normalize(amount)
-  return normalizedAmount > 0
-    ? 'text-chart-green'
-    : normalizedAmount < 0
-      ? 'text-destructive'
-      : 'text-foreground'
+  // Rounded before the sign test, or a saldo that renders „0,00" gets painted red by a −1e-13 residue.
+  const rounded = roundToCents(amount)
+  return rounded > 0 ? 'text-chart-green' : rounded < 0 ? 'text-destructive' : 'text-foreground'
 }
 
 type SaldoDisplayPropsT = {

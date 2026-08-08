@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { getPayoutTransactionsForInvestment } from '@/lib/db/sum-transfers'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The client DataTable re-sorts these rows lexically on the emitted `date` string, so that string MUST
 // be lexically == chronologically ordered or the „Wg daty" sort scrambles. The driver returns timestamptz
 // as a year-first string ("2026-07-18 09:00:00+00"), which satisfies this — the regression this guards is
 // a future remap to a non-sortable form (a dd.mm.yyyy reformat, or a JS-Date `.toString()` = "Thu Jul 16
 // …"). Insert rows directly to bypass the balance-recalc hooks; we assert the query's mapped output.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -36,12 +36,7 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
     payload = await getPayload({ config })
     db = await getDb(payload)
 
-    const inv = await payload.create({
-      collection: 'investments',
-      data: { name: 'get-payout-transactions-test', status: 'active', settlementMode: 'NET' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(inv.id)
+    investmentId = await createTestInvestment(payload, 'get-payout-transactions-test')
 
     for (const date of DATES) await insertPayout(date)
   })
@@ -49,11 +44,7 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
   afterAll(async () => {
     if (investmentId) {
       await db.execute(sql`DELETE FROM transactions WHERE investment_id = ${investmentId}`)
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 

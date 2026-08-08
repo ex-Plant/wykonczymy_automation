@@ -1,7 +1,7 @@
 import { DEFAULT_ITEM_DESCRIPTION, DEFAULT_UNIT } from '@/lib/kosztorys/constants'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
-import type { ToolPlaneT, KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Revert a row field to its pre-edit value (revert-on-error autosave), but ONLY
 // if nothing newer was typed since the failed save (current === attempted) —
@@ -27,13 +27,12 @@ export type BlankRowInputT = {
   sectionColor: SectionColorKeyT | null
   vatRate: number
   globalDiscountActive: boolean
-  sectionDefaultCostVariant: ToolPlaneT
   globalWToolsCoeff: number
   globalOwnToolsCoeff: number
   stages: KosztorysStageT[]
 }
 
-// Blank item row = addItemAction's server defaults + denormalized section fields
+// Blank item row = createBlankItem's server defaults + denormalized section fields
 // + stage_*=0. Built optimistically from the known id/displayOrder returned by the action.
 export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
   const stageFields: Record<string, number> = {}
@@ -52,14 +51,12 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    costVariant: null,
     hiddenInExport: false,
     note: null,
     sectionName: input.sectionName,
     sectionColor: input.sectionColor,
     vatRate: input.vatRate,
     globalDiscountActive: input.globalDiscountActive,
-    sectionDefaultCostVariant: input.sectionDefaultCostVariant,
     globalWToolsCoeff: input.globalWToolsCoeff,
     globalOwnToolsCoeff: input.globalOwnToolsCoeff,
     ...stageFields,

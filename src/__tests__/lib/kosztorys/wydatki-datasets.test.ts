@@ -4,7 +4,7 @@ import {
   partitionWydatkiRows,
   wydatkiRowHref,
 } from '@/lib/kosztorys/wydatki-datasets'
-import type { MaterialTransactionRowT } from '@/types/reference-data'
+import type { MaterialTransactionRowT } from '@/types/transfers'
 
 // The tab split in isolation. The one assertion that couples it to `deriveFinancials` — Σ over the
 // two expense tabs === totalMaterialCosts — stays in derive-financials-bucketing.test.ts, where the

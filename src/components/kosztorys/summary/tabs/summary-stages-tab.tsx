@@ -21,8 +21,11 @@ type PropsT = {
   // Client-priced, view-invariant per-section subtotals — the „Udział sekcji" pie's structure source.
   sectionSubtotals: SectionSliceInputT[]
   vatRate: number
-  moneyAxis: MoneyAxisT
 }
+
+// Both money columns regardless of the settlement mode: the pair is always computed, and reading
+// robocizna means comparing what the subcontractor settles against what the client is invoiced.
+const STAGES_AXIS: MoneyAxisT = 'both'
 
 // Suma transzy per etap + the „R netto / R brutto — suma prac wykonanych" Razem readout (sheet
 // r396/r397), beside the „Udział sekcji" section-share pie. Vertical like the Podsumowanie block —
@@ -33,35 +36,36 @@ export function SummaryStagesTab({
   wykonaneNet,
   sectionSubtotals,
   vatRate,
-  moneyAxis,
 }: PropsT) {
   const { doneNet, plannedNet } = useKosztorysEditorContext()
   if (stages.length === 0) return null
-  const cols = summaryMoneyCols(moneyAxis)
+  const cols = summaryMoneyCols(STAGES_AXIS)
 
   return (
     <div className="flex w-full flex-col gap-4">
+      {/* Above the table, like the rozliczenie selects on the other tabs — it reads the same figures
+          the table lists, so it belongs at the head of the block rather than as its footnote. */}
+      <KosztorysProgressCounter doneNet={doneNet} plannedNet={plannedNet} />
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div>
           <SummaryTable cols={cols} className="w-fit">
             <SummaryHeaderCell variant="label">Robocizna</SummaryHeaderCell>
-            <SummaryMoneyHeaders axis={moneyAxis} />
+            <SummaryMoneyHeaders axis={STAGES_AXIS} />
             {stages.map((st) => (
               <SummaryRow
                 key={st.id}
                 label={st.label ?? `Etap ${st.ordinal}`}
                 line={moneyPair(stageTotals.get(st.id) ?? 0, vatRate)}
-                axis={moneyAxis}
+                axis={STAGES_AXIS}
               />
             ))}
             <SummaryRow
               label="Razem"
               line={moneyPair(wykonaneNet, vatRate)}
-              axis={moneyAxis}
+              axis={STAGES_AXIS}
               bold
             />
           </SummaryTable>
-          <KosztorysProgressCounter doneNet={doneNet} plannedNet={plannedNet} />
         </div>
         <SectionSharePie subtotals={sectionSubtotals} />
       </div>

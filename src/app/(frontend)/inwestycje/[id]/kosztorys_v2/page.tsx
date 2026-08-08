@@ -1,17 +1,16 @@
 import { parseInvestmentId, requireInvestmentOr404 } from '@/lib/queries/investments'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
 import {
-  fetchCategoryBreakdowns,
-  fetchFilteredByType,
   fetchPayoutsByWorkerForInvestment,
   fetchPayoutTransactionsForInvestment,
   fetchDepositTransactionsForInvestment,
   fetchMaterialTransactionsForInvestment,
-  fetchReferenceData,
-} from '@/lib/queries/reference-data'
+} from '@/lib/queries/investment-transactions'
+import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
-import { resolvePayoutWorkerNames } from '@/lib/kosztorys/subcontractor-summary'
+import { resolvePayoutWorkerNames } from '@/lib/kosztorys/payout-worker-names'
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 import { perfStart } from '@/lib/perf'
@@ -117,6 +116,7 @@ export default async function InvestmentKosztorysV2Page({
       payoutTransactions={payoutTransactions}
       depositTransactions={depositTransactions}
       materialTransactions={materialTransactions}
+      workers={refData.workers}
     />
   )
 }

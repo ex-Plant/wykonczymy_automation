@@ -14,7 +14,7 @@ import {
   SummaryTable,
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
-import type { DepositTransactionRowT } from '@/types/reference-data'
+import type { DepositTransactionRowT } from '@/types/transfers'
 
 // The wpłaty list — same CSS-grid table as the Podsumowanie block above it (SummaryTable +
 // SummaryLabelCell/SummaryValueCell). Deposits are rare, so no virtualization: one row each,
@@ -29,15 +29,15 @@ const planeLabel = (plane: DepositTransactionRowT['vatPlane']) =>
 export function DepositsTable({
   investmentId,
   rows,
-  clientView,
+  preview,
 }: {
   investmentId: number
   rows: DepositTransactionRowT[]
-  clientView: boolean
+  preview: boolean
 }) {
   const dateCell = (row: DepositTransactionRowT) => (
     <SummaryLabelCell className="tabular-nums">
-      {clientView ? (
+      {preview ? (
         formatPLDate(row.date)
       ) : (
         <Link
@@ -72,7 +72,7 @@ export function DepositsTable({
         {rows.map((row) => (
           <Fragment key={row.id}>
             {dateCell(row)}
-            <SummaryValueCell className="text-chart-green">{formatNet(row.amount)}</SummaryValueCell>
+            <SummaryValueCell tone="success">{formatNet(row.amount)}</SummaryValueCell>
             <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>
           </Fragment>
         ))}
@@ -81,10 +81,10 @@ export function DepositsTable({
       <SummaryTable cols={totalCols} className="-mt-px w-fit">
         {perPlane.map((bucket) => (
           <Fragment key={bucket.plane ?? 'null'}>
-            <SummaryLabelCell className="font-bold">
+            <SummaryLabelCell weight="bold">
               Razem {planeLabel(bucket.plane).toLowerCase()}
             </SummaryLabelCell>
-            <SummaryValueCell className="text-chart-green font-bold">
+            <SummaryValueCell tone="success" weight="bold">
               {formatNet(bucket.total)}
             </SummaryValueCell>
           </Fragment>

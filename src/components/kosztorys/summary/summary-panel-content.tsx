@@ -1,26 +1,24 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import {
-  settlementModeToGridAxis,
-  settlementModeToPanelAxis,
-  type SettlementModeT,
-} from '@/lib/kosztorys/settlement-mode'
+import { useState, type ReactNode } from 'react'
+import { TriangleAlert } from 'lucide-react'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
   computeDoZaplatyRM,
   type MaterialsT,
 } from '@/lib/kosztorys/summary-economics'
-import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
+import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
+import { SCOPE_MARKER_FOOTNOTE } from '@/components/kosztorys/summary/scope-marker'
 import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
+import { MATERIALS_GROSS_LOCK_REASON } from '@/components/kosztorys/summary/materials-pricing-options'
 import {
   useSummaryView,
   type SummaryViewT,
@@ -32,18 +30,19 @@ import {
 } from '@/lib/kosztorys/reconciliation'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
+import type { WorkerRefT } from '@/types/reference-data'
 import type {
   SubcontractorPayoutRowT,
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
-} from '@/types/reference-data'
+} from '@/types/transfers'
 
 const SUMMARY_VIEW_OPTIONS: OptionT<SummaryViewT>[] = [
   { value: 'summary', label: 'Podsumowanie' },
-  { value: 'wydatki', label: 'Wydatki' },
-  { value: 'etapy', label: 'Robocizna' },
-  { value: 'podwykonawcy', label: 'Podwykonawcy' },
+  { value: 'expenses', label: 'Materiały' },
+  { value: 'stages', label: 'Robocizna' },
+  { value: 'subcontractors', label: 'Podwykonawcy' },
   { value: 'margin', label: 'Marża' },
 ]
 
@@ -72,7 +71,7 @@ type PropsT = {
   wplatyNet: number
   rabatAmount: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
-  // (every host computes it unconditionally); clientView suppresses the scream downstream, not by
+  // (every host computes it unconditionally); preview suppresses the scream downstream, not by
   // withholding the verdict.
   reconciliation: KosztorysReconciliationT
   vatRate: number
@@ -95,8 +94,6 @@ type PropsT = {
   // VAT + rabat globalny editing. Reads the editor context, so only a host inside
   // KosztorysEditorProvider may turn it on.
   showSettingsBar?: boolean
-  // Expanded on arrival when the investment page's settings link was followed here.
-  settingsDefaultOpen?: boolean
   // Off on a host that already lists every transaction next to the panel (the investment page's
   // transfers table): wydatki drops its materiały list, wpłaty keeps only the Razem buckets.
   showTransactionLists?: boolean
@@ -104,11 +101,17 @@ type PropsT = {
   // investment page): the share pies are the first thing worth dropping when vertical space is tight.
   showPies?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
-  clientView?: boolean
+  preview?: boolean
+  // Silences both cross-plane verdicts on top of marking the rows: each compares the whole kosztorys
+  // against a filtered ledger, so under a filter it would report the filter itself as a gap.
+  filtersActive?: boolean
   stages?: KosztorysStageT[]
   stageTotals?: Map<number, number>
   // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
   payoutsByWorker?: SubcontractorPayoutRowT[]
+  // Name lookup for a worker who holds etapy but has no wypłata yet (EX-613) — such a worker exists
+  // only in the settlement's `byWorker`, which carries ids and no names.
+  workers?: WorkerRefT[]
   // Individual realized PAYOUT rows — feed the subcontractor block's sortable wypłaty list.
   payoutTransactions?: PayoutTransactionRowT[]
   // Individual materiały rows — feed the wydatki tab's transaction list (data · typ · kwota).
@@ -148,13 +151,14 @@ export function SummaryPanelContent({
   views = ALL_SUMMARY_VIEWS,
   topBarSlot,
   showSettingsBar = false,
-  settingsDefaultOpen = false,
   showTransactionLists = true,
   showPies = true,
-  clientView = false,
+  preview = false,
+  filtersActive = false,
   stages,
   stageTotals,
   payoutsByWorker,
+  workers,
   payoutTransactions,
   materialTransactions,
   subcontractorDue,
@@ -162,27 +166,38 @@ export function SummaryPanelContent({
   sectionSubtotals,
   financials,
 }: PropsT) {
-  const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only, so it drops out
   // of the client read-only toggle on top of whatever the host allowed. The persisted pick is shared
   // across hosts, so it can name a view this host doesn't offer — fall back to the first one it does,
   // rather than stranding the reader on a hidden view.
-  const [summaryView, setSummaryView] = useSummaryView()
+  const [persistedView, setPersistedView] = useSummaryView()
+  // A preview reads the same `table-columns:` localStorage family EX-591 keeps out of the client's
+  // grid, so it gets session-local state instead of the persisted pick: the owner's last tab can't
+  // decide which panel the client's document opens on. Still state, not a pin — the client switches
+  // tabs freely, the choice just dies with the tab.
+  const [sessionView, setSessionView] = useState<SummaryViewT>('summary')
+  const summaryView = preview ? sessionView : persistedView
+  const setSummaryView = preview ? setSessionView : setPersistedView
   // „Marża" rides entirely on `financials` being present, and the hosts only build it for ADMIN/OWNER
   // — so the figures never reach a non-owner's RSC payload, which a client-side role check could not
   // have achieved. This component reads no session on purpose: it also renders under (share), which
   // mounts no CurrentUserProvider.
   const allowedViews = views.filter((value) => {
-    if (value === 'podwykonawcy') return !clientView
-    if (value === 'margin') return !clientView && financials !== undefined
+    if (value === 'subcontractors') return !preview
+    // TODO(EX-649): „Marża" is hidden until we agree what it measures — the tab sources the
+    // transactions plane while sitting inside the kosztorys panel, which v2 is disconnected from, so
+    // its „Robocizna" row is a different figure from the one edited two tabs over. Un-hiding is
+    // deleting this line; the tab, calculateMargin and the `financials` plumbing are all untouched.
+    // Restore with: return !preview && financials !== undefined
+    if (value === 'margin') return false
     return true
   })
   const viewOptions = SUMMARY_VIEW_OPTIONS.filter((option) => allowedViews.includes(option.value))
   const view: SummaryViewT = allowedViews.includes(summaryView)
     ? summaryView
     : (allowedViews[0] ?? 'summary')
-  const isSubcontractorView = view === 'podwykonawcy'
+  const isSubcontractorView = view === 'subcontractors'
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
@@ -193,18 +208,14 @@ export function SummaryPanelContent({
     taggedNet,
     taggedGross,
   })
-  // The tables show one money column — the settled one. Mieszane is the exception: it's a mixed
-  // netto+brutto settlement, so it shows both columns alongside the gotówka block. Same projection
-  // the grid uses, so a table and a column can't disagree about what „Mieszane" means.
-  const displayAxis: MoneyAxisT = settlementModeToGridAxis(settlementMode)
-  const nettoShown = moneyAxis !== 'gross'
   // A brutto-settled investment adds VAT on top, so there is nothing to strip and the saved rate goes
   // inert — the same gate the server applies to `materialsNetDiscount`. Both sides fall silent
   // together rather than the panel discounting a figure marża never saw. The rate itself is kept, not
   // cleared: switching back to netto restores the old figures with nothing to re-enter.
   const effectiveNetRate = settlementMode === 'GROSS' ? null : materialsNetRate
-  // Computed here and passed down: the collapsed headline and the Podsumowanie row show the same
-  // „Do zapłaty", so it has one source rather than two calls that must be kept in step.
+  // Derived once for both surfaces that offer the choice: the popover and the Materiały tab print
+  // this same lock, so they can never disagree about whether the choice is available.
+  const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNetFromKosztorys,
@@ -215,10 +226,10 @@ export function SummaryPanelContent({
   )
   return (
     <>
-      {/* Pinned top bar — only the view toggle, so its height never moves. "Opcje rozliczenia" scrolls
-          with the rest of the content instead of sharing this bar: it used to live here, and growing
-          it squeezed SummaryScrollRegion into a sliver — two containers fighting over one fixed
-          height. One scrolling container below a fixed-height bar has nothing left to fight over. */}
+      {/* Pinned top bar — the view toggle plus the settings trigger, so its height never moves. The
+          settings block sat here once as an inline section and had to be evicted: growing it squeezed
+          SummaryScrollRegion into a sliver, two containers fighting over one fixed height. It is back
+          as a popover, whose content is portalled out of flow and so adds no height to this bar. */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4">
         <ToggleGroup
           options={viewOptions}
@@ -226,36 +237,36 @@ export function SummaryPanelContent({
           onChange={setSummaryView}
           aria-label="Widok podsumowania"
         />
+        {/* A client reads the mode, never writes it — the same `preview` gate every other
+            owner-only affordance in this panel uses. Supplying the two writers is what makes a host
+            an editor of these settings; a read-only host (no writers) renders no trigger at all. */}
+        {!preview && onSettlementModeChange && onMaterialsNetRateChange && (
+          <SummaryInvestmentSettings
+            vatRate={vatRate}
+            settlementMode={settlementMode}
+            onSettlementModeChange={onSettlementModeChange}
+            // The EFFECTIVE rate, not the stored one: at tryb brutto the saved rate is inert, and the
+            // popover printing „Netto" while the Materiały tab beside it printed „Brutto" made one
+            // setting answer its own question two ways on one screen. Nothing is lost — the rate is
+            // kept, so switching back to netto brings it and its figures back.
+            materialsNetRate={effectiveNetRate}
+            onMaterialsNetRateChange={onMaterialsNetRateChange}
+            pricingLockedReason={pricingLockedReason}
+            isSaving={isSavingSettings}
+            showSettingsBar={showSettingsBar}
+          />
+        )}
         {topBarSlot}
       </div>
       <SummaryScrollRegion>
-        {/* A client reads the mode, never writes it — the same `clientView` gate every other
-            owner-only affordance in this panel uses. Collapsed by default: these are set-once
-            decisions about the deal, not something the reader needs on every visit.
-            Supplying the two writers is what makes a host an editor of these settings; a
-            read-only host (no writers) renders no settings block at all — the investment page
-            links to the editor from its own action row instead. */}
-        {!clientView && onSettlementModeChange && onMaterialsNetRateChange && (
-          <div className="max-w-lg px-4 pt-4">
-            <SummaryInvestmentSettings
-              vatRate={vatRate}
-              settlementMode={settlementMode}
-              onSettlementModeChange={onSettlementModeChange}
-              materialsGrossBase={materialsGrossBase}
-              materialsNetRate={materialsNetRate}
-              onMaterialsNetRateChange={onMaterialsNetRateChange}
-              isSaving={isSavingSettings}
-              showSettingsBar={showSettingsBar}
-              defaultOpen={settingsDefaultOpen}
-            />
-          </div>
-        )}
         {isSubcontractorView && subcontractorDue ? (
           <SubcontractorSummary
             investmentId={investmentId}
             subcontractorDue={subcontractorDue}
             payouts={payoutsByWorker ?? []}
             payoutTransactions={payoutTransactions ?? []}
+            stages={stages}
+            workers={workers}
             showGlobalSettings={showSettingsBar}
             showTransactions={showTransactionLists}
             // Same signal, not a second one: the host that drops the lists is the compact host, and
@@ -267,7 +278,11 @@ export function SummaryPanelContent({
             {view === 'summary' && (
               <SummaryOverviewTab
                 investmentId={investmentId}
-                moneyAxis={moneyAxis}
+                settlementMode={settlementMode}
+                // Same gate as the settings trigger above: a client reads the mode, and only a host
+                // that supplied the writer may edit it from inside the tab.
+                onSettlementModeChange={preview ? undefined : onSettlementModeChange}
+                isSavingSettings={isSavingSettings}
                 laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
                 doZaplaty={doZaplaty}
                 materials={materials}
@@ -282,11 +297,12 @@ export function SummaryPanelContent({
                 paidGross={paidGross}
                 depositRows={depositTransactions}
                 showDeposits={showTransactionLists}
-                clientView={clientView}
+                preview={preview}
                 showPie={showPies}
+                filtersActive={filtersActive}
               />
             )}
-            {view === 'wydatki' && (
+            {view === 'expenses' && (
               <SummaryExpensesTab
                 investmentId={investmentId}
                 investmentName={investmentName}
@@ -294,28 +310,39 @@ export function SummaryPanelContent({
                 materialyBreakdown={materialyBreakdown}
                 // Owner plane — dropped here too, not only by the client share omitting it upstream:
                 // marża-side spend must fail closed on every path into a client render.
-                settledBreakdown={clientView ? undefined : settledBreakdown}
+                settledBreakdown={preview ? undefined : settledBreakdown}
                 materialTransactions={materialTransactions ?? []}
-                nettoShown={nettoShown}
-                materialsNetRate={materialsNetRate}
-                clientView={clientView}
+                materialsNetRate={effectiveNetRate}
+                vatRate={vatRate}
+                onMaterialsNetRateChange={preview ? undefined : onMaterialsNetRateChange}
+                isSavingSettings={isSavingSettings}
+                pricingLockedReason={pricingLockedReason}
+                preview={preview}
                 showTransactions={showTransactionLists}
                 showPie={showPies}
               />
             )}
 
-            {view === 'etapy' && stages && stageTotals && (
+            {view === 'stages' && stages && stageTotals && (
               <SummaryStagesTab
                 stages={stages}
                 stageTotals={stageTotals}
                 wykonaneNet={totalNet ?? 0}
                 sectionSubtotals={sectionSubtotals ?? []}
                 vatRate={vatRate}
-                moneyAxis={displayAxis}
               />
             )}
             {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
           </div>
+        )}
+        {/* One footnote for every `*` in the panel — only Podsumowanie carries any, so the other tabs
+            would show a caveat with nothing to qualify. Red and icon-marked to read as loud as the
+            star it explains, but not a `WarningBanner`: a footnote earns a line, not a bordered box. */}
+        {filtersActive && view === 'summary' && (
+          <p className="text-destructive flex items-center gap-2 px-4 pb-4 text-xs">
+            <TriangleAlert className="size-4 shrink-0" aria-hidden />
+            <span>{SCOPE_MARKER_FOOTNOTE}</span>
+          </p>
         )}
       </SummaryScrollRegion>
     </>

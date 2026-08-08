@@ -1,5 +1,7 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils/cn'
+import { Description } from '@/components/ui/description'
+import { LabelHintIcon, type LabelHintT } from '@/components/ui/label-hint-icon'
 
 // Shared column widths for the stacked summary grids. Both render as CSS grids and pin their first
 // (label) column to the SAME width so the grids line up down the panel instead of each auto-sizing
@@ -32,34 +34,121 @@ export function SummaryTable({
   )
 }
 
+// The only three colours a summary cell may take — a bare grep for `text-chart-green` /
+// `text-destructive` anywhere under summary/ means someone bypassed this and repaint drifts.
+const CELL_TONE = {
+  default: '',
+  success: 'text-chart-green',
+  error: 'text-destructive',
+} as const
+
+// The only two weights a summary cell may take, beyond the unstyled default.
+const CELL_WEIGHT = {
+  default: '',
+  medium: 'font-medium',
+  bold: 'font-bold',
+} as const
+
+export type SummaryCellToneT = keyof typeof CELL_TONE
+export type SummaryCellWeightT = keyof typeof CELL_WEIGHT
+
+// A one-line note tucked under a cell's value — an inline explanation (why it's negative, why it's
+// unassigned) instead of a fourth unrelated row. Callers opt in with `note`; there is no second way
+// to attach one, so every cell's note reads and lays out the same.
+type SummaryCellNoteT = {
+  text: string
+  tone?: 'muted' | 'error'
+}
+
 type SummaryCellPropsT = {
   // Grey this cell (the inactive money column while both netto and brutto show). `opacity`, not a
-  // muted text colour, so it also dims coloured amounts — discount green, danger red.
+  // muted text colour, so it also dims coloured amounts — success green, error red.
   muted?: boolean
+  tone?: SummaryCellToneT
+  weight?: SummaryCellWeightT
   className?: string
   children: ReactNode
+  note?: SummaryCellNoteT | null
+  // Hover-only explanation icons trailing the cell's content — the label-side counterpart to `note`.
+  // Passed as variants rather than composed as children so every cell's hints render identically.
+  hints?: LabelHintT[]
+}
+
+function CellNote({ note }: { note: SummaryCellNoteT }) {
+  return (
+    // No icon: a note here always sits directly under the figure it explains, so the leading glyph
+    // carries nothing the position doesn't already say — and it steals width from a right-aligned
+    // caption, pushing it onto a second line.
+    <Description size="2xs" tone={note.tone ?? 'muted'} withIcon={false} className="font-normal">
+      {note.text}
+    </Description>
+  )
+}
+
+// Keeps the hint icons on the content's own line (the note stacks below it), and stays out of the
+// way entirely when a cell has no hints — most don't, and an extra wrapper would break `text-right`.
+function CellContent({ children, hints }: { children: ReactNode; hints?: LabelHintT[] }) {
+  if (!hints?.length) return children
+  return (
+    <span className="inline-flex items-center gap-1">
+      {children}
+      {hints.map((hint) => (
+        <LabelHintIcon key={hint.variant} {...hint} />
+      ))}
+    </span>
+  )
 }
 
 // A label-track cell — one of the direct grid children the separators run between.
-export function SummaryLabelCell({ muted, className, children }: SummaryCellPropsT) {
+export function SummaryLabelCell({
+  muted,
+  tone,
+  weight,
+  className,
+  children,
+  note,
+  hints,
+}: SummaryCellPropsT) {
   return (
-    <span className={cn('bg-background px-3 py-1', muted && 'opacity-40', className)}>
-      {children}
+    <span
+      className={cn(
+        'bg-background px-3 py-1',
+        CELL_TONE[tone ?? 'default'],
+        CELL_WEIGHT[weight ?? 'default'],
+        muted && 'opacity-40',
+        note && 'flex flex-col items-start',
+        className,
+      )}
+    >
+      <CellContent hints={hints}>{children}</CellContent>
+      {note && <CellNote note={note} />}
     </span>
   )
 }
 
 // A value-track cell — right-aligned, tabular figures.
-export function SummaryValueCell({ muted, className, children }: SummaryCellPropsT) {
+export function SummaryValueCell({
+  muted,
+  tone,
+  weight,
+  className,
+  children,
+  note,
+  hints,
+}: SummaryCellPropsT) {
   return (
     <span
       className={cn(
         'bg-background px-3 py-1 text-right tabular-nums',
+        CELL_TONE[tone ?? 'default'],
+        CELL_WEIGHT[weight ?? 'default'],
         muted && 'opacity-40',
+        note && 'flex flex-col items-end',
         className,
       )}
     >
-      {children}
+      <CellContent hints={hints}>{children}</CellContent>
+      {note && <CellNote note={note} />}
     </span>
   )
 }

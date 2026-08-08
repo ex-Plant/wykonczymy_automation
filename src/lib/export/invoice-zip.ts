@@ -1,3 +1,5 @@
+import { pluralize } from '@/lib/utils/polish-plural'
+
 export function buildUniqueFilename(
   date: string,
   description: string,
@@ -76,10 +78,7 @@ export function buildInvoiceArchiveName(parts: string[], date: string): string {
   return ['faktury', ...safeParts, date].join('-') + '.zip'
 }
 
+// Singular is accusative here — the noun only ever appears as the object of „Pobrano".
 export function pluralizeInvoice(count: number): string {
-  if (count === 1) return 'fakturę'
-  const lastTwo = count % 100
-  const lastOne = count % 10
-  if (lastOne >= 2 && lastOne <= 4 && (lastTwo < 12 || lastTwo > 14)) return 'faktury'
-  return 'faktur'
+  return pluralize(count, ['fakturę', 'faktury', 'faktur'])
 }

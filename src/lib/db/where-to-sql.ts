@@ -7,6 +7,7 @@ export const isNoResultsSentinel = (where: Where): boolean => {
 }
 
 const FIELD_TO_COLUMN: Record<string, string> = {
+  id: 'id',
   type: 'type',
   sourceRegister: 'source_register_id',
   targetRegister: 'target_register_id',
@@ -23,81 +24,82 @@ const FIELD_TO_COLUMN: Record<string, string> = {
 
 /**
  * Translates a flat Payload Where object to SQL AND clauses.
- * Only handles the operators used by buildTransferFilters():
- *   { field: { equals: value } }
- *   { field: { not_equals: value } }
- *   { field: { in: values[] } }
- *   { field: { not_in: values[] } }
- *   { field: { greater_than_equal: value } }
- *   { field: { less_than_equal: value } }
+ *
+ * Anything this module hasn't been taught — field, operator or value type — throws rather than
+ * being skipped (EX-574): every Where reaching here is built in-repo, so the sets are closed and a
+ * throw can only mean a caller grew something new. A silent skip turns that into a filter that
+ * quietly stops narrowing, which is how the sum tile came to disagree with the list below it.
  *
  * All values come from buildTransferFilters() which validates against known enums
  * and parses numeric IDs. escapeValue provides SQL injection protection as a second layer.
  */
 export function buildSqlConditions(where: Where): string {
-  const clauses: string[] = []
-
-  for (const [field, condition] of Object.entries(where)) {
-    if (field === 'id') continue // skip impossible-condition sentinel
-
-    // Handle OR conditions (e.g. sourceRegister OR targetRegister)
-    if (field === 'or' && Array.isArray(condition)) {
-      const orParts = condition.map((sub: Where) => buildFieldCondition(sub)).filter(Boolean)
-      if (orParts.length > 0) {
-        clauses.push(`AND (${orParts.join(' OR ')})`)
-      }
-      continue
-    }
-
-    const part = buildFieldCondition({ [field]: condition })
-    if (part) clauses.push(`AND ${part}`)
-  }
-
-  return clauses.join('\n      ')
+  return Object.entries(where)
+    .map(([field, condition]) => `AND ${renderField(field, condition)}`)
+    .join('\n      ')
 }
 
-/** Builds a single-field condition string (without AND prefix). Only handles the first matched field. */
-function buildFieldCondition(where: Where): string | null {
-  for (const [field, condition] of Object.entries(where)) {
-    const column = FIELD_TO_COLUMN[field]
-    if (!column || typeof condition !== 'object' || condition === null) continue
+const OPERATORS: Record<string, (column: string, value: unknown) => string> = {
+  equals: (column, value) => `${column} = ${escapeValue(value)}`,
+  not_equals: (column, value) => `${column} != ${escapeValue(value)}`,
+  in: (column, value) => `${column} IN (${renderList('in', value)})`,
+  not_in: (column, value) => `${column} NOT IN (${renderList('not_in', value)})`,
+  greater_than: (column, value) => `${column} > ${escapeValue(value)}`,
+  greater_than_equal: (column, value) => `${column} >= ${escapeValue(value)}`,
+  less_than: (column, value) => `${column} < ${escapeValue(value)}`,
+  less_than_equal: (column, value) => `${column} <= ${escapeValue(value)}`,
+  // Prefix match on numeric columns (e.g. amount): cast to text, then LIKE '15%'
+  // Callers must pre-validate values — this path uses sql.raw(), not parameterized queries
+  like: (column, value) => `${column}::text LIKE ${escapeValue(value)} || '%'`,
+}
 
-    const cond = condition as Record<string, unknown>
-    const parts: string[] = []
-
-    if ('equals' in cond) {
-      parts.push(`${column} = ${escapeValue(cond.equals)}`)
+/** One field's operators, rendered as a single self-contained condition (no `AND` prefix). */
+function renderField(field: string, condition: unknown): string {
+  if (field === 'or') {
+    if (!Array.isArray(condition) || condition.length === 0) {
+      throw new Error('where-to-sql: "or" expects a non-empty array')
     }
-    if ('not_equals' in cond) {
-      parts.push(`${column} != ${escapeValue(cond.not_equals)}`)
-    }
-    if ('in' in cond && Array.isArray(cond.in)) {
-      const vals = cond.in.map(escapeValue).join(', ')
-      parts.push(`${column} IN (${vals})`)
-    }
-    if ('not_in' in cond && Array.isArray(cond.not_in)) {
-      const vals = cond.not_in.map(escapeValue).join(', ')
-      parts.push(`${column} NOT IN (${vals})`)
-    }
-    if ('greater_than_equal' in cond) {
-      parts.push(`${column} >= ${escapeValue(cond.greater_than_equal)}`)
-    }
-    if ('less_than_equal' in cond) {
-      parts.push(`${column} <= ${escapeValue(cond.less_than_equal)}`)
-    }
-    // Prefix match on numeric columns (e.g. amount): cast to text, then LIKE '15%'
-    // Callers must pre-validate values — this path uses sql.raw(), not parameterized queries
-    if ('like' in cond) {
-      parts.push(`${column}::text LIKE ${escapeValue(cond.like)} || '%'`)
-    }
-
-    if (parts.length > 0) return parts.join(' AND ')
+    const branches = (condition as Where[]).map((sub) =>
+      Object.entries(sub)
+        .map(([subField, subCondition]) => renderField(subField, subCondition))
+        .join(' AND '),
+    )
+    return `(${branches.join(' OR ')})`
   }
-  return null
+
+  const column = FIELD_TO_COLUMN[field]
+  if (!column) throw new Error(`where-to-sql: unmapped field "${field}"`)
+  if (typeof condition !== 'object' || condition === null) {
+    throw new Error(`where-to-sql: "${field}" expects an operator object`)
+  }
+
+  const parts = Object.entries(condition as Record<string, unknown>).map(([operator, value]) => {
+    // hasOwn, not a bare lookup: `{ amount: { isPrototypeOf: 5 } }` would otherwise resolve up
+    // the prototype chain to a callable and render `AND false` instead of throwing.
+    if (!Object.hasOwn(OPERATORS, operator)) {
+      throw new Error(`where-to-sql: unsupported operator "${operator}" on "${field}"`)
+    }
+    return OPERATORS[operator](column, value)
+  })
+
+  if (parts.length === 0) throw new Error(`where-to-sql: "${field}" carries no operator`)
+  // Parenthesised so a multi-operator field (an amount range) keeps its meaning when spliced
+  // into an OR list, rather than relying on AND binding tighter.
+  return parts.length === 1 ? parts[0] : `(${parts.join(' AND ')})`
+}
+
+function renderList(operator: string, value: unknown): string {
+  if (!Array.isArray(value)) {
+    throw new Error(`where-to-sql: "${operator}" expects an array, got ${typeof value}`)
+  }
+  return value.map(escapeValue).join(', ')
 }
 
 function escapeValue(val: unknown): string {
   if (typeof val === 'number') return String(val)
   if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`
-  return 'NULL'
+  if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE'
+  // Never degrade to the NULL keyword: `col != NULL` is NULL for every row, so the filter would
+  // silently match nothing instead of failing (EX-574).
+  throw new Error(`where-to-sql: unsupported value type "${typeof val}"`)
 }
