@@ -1,13 +1,17 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { perfStart } from '@/lib/perf'
-import { fetchDepositTransactionsForInvestment } from '@/lib/queries/investment-transactions'
-import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
+import {
+  fetchDepositTransactionsForInvestment,
+  sumDepositAmounts,
+} from '@/lib/queries/investment-transactions'
+import {
+  deriveWholeInvestmentFinancials,
+  fetchWholeInvestmentFinancials,
+} from '@/lib/queries/whole-investment-financials'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
-import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
@@ -40,21 +44,17 @@ export async function InvestmentSummaryPanel({
   expenseCategories,
 }: PropsT) {
   const elapsed = perfStart()
-  const investmentWhere = { investment: { equals: investmentId } }
-  const [tree, depositTransactions, typeDistribution, breakdowns] = await Promise.all([
+  const [tree, depositTransactions, financialsSource] = await Promise.all([
     getKosztorysTree(investmentId),
     fetchDepositTransactionsForInvestment(investmentId),
-    fetchFilteredByType(investmentWhere),
-    fetchCategoryBreakdowns(investmentWhere),
+    fetchWholeInvestmentFinancials(investmentId),
   ])
   const fetchMs = elapsed()
 
-  const financials = deriveFinancials(
-    typeDistribution,
-    breakdowns.categoryCosts,
-    breakdowns.settledCategoryCosts,
-    tree.materialsNetRate,
-    tree.settlementMode,
+  const { financials, materialyBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
+    financialsSource,
+    tree,
+    expenseCategories,
   )
 
   const rows = treeToRows(tree)
@@ -65,9 +65,7 @@ export async function InvestmentSummaryPanel({
     ? readingFromKosztorys(clientTotals)
     : readingFromTransactions(financials)
 
-  // „Wpłaty" = only INVESTOR_DEPOSIT rows, mirroring the kosztorys page — the same base the panel's
-  // plane buckets and „Do zapłaty" draw from.
-  const wplatyNet = depositTransactions.reduce((sum, deposit) => sum + deposit.amount, 0)
+  const wplatyNet = sumDepositAmounts(depositTransactions)
   // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
   // next to the row count it consumed, because that ratio is the argument for aggregating in SQL.
   const deriveMs = elapsed()
@@ -83,12 +81,8 @@ export async function InvestmentSummaryPanel({
       depositTransactions={depositTransactions}
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
-      materialyBreakdown={buildMaterialyBreakdown(
-        financials,
-        expenseCategories,
-        breakdowns.netCategoryCosts,
-      )}
-      settledBreakdown={buildSettledBreakdown(financials.settledCategoryCosts, expenseCategories)}
+      materialyBreakdown={materialyBreakdown}
+      settledBreakdown={settledBreakdown}
       wplatyNet={wplatyNet}
       financials={canSeeMargin ? financials : undefined}
       {...reading}
