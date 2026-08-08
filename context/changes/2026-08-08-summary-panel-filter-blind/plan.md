@@ -323,5 +323,5 @@ Run once, after Phase 3.
 
 #### Automated
 
-- [x] 3.1 `rg 'hasActiveTransferFilters|TRANSFER_FILTER_PARAMS' src` returns nothing
-- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts` passes
+- [x] 3.1 `rg 'hasActiveTransferFilters|TRANSFER_FILTER_PARAMS' src` returns nothing — cbdabcbe
+- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts` passes — cbdabcbe

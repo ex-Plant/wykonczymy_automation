@@ -716,3 +716,30 @@ Setup: run against the **5435 test DB** (see intro), seeded with `seed-kosztorys
 
 - [ ] **Cofnięcie do wersji odtwarza drzewo bez zmian.** Zapisz wersję, zmień coś w rozpisce (dopisz pozycję, zmień ilości w etapach), cofnij do zapisanej wersji — sekcje, pozycje, etapy i ilości wykonane wracają identyczne, każda pozycja pod swoją sekcją, każda ilość przy swoim etapie.
 - [ ] **Nałożenie szablonu na pustą inwestycję.** Nałóż globalny szablon na inwestycję bez rozpiski — pozycje trafiają pod właściwe sekcje (żadna nie ląduje w cudzej), kolejność i nazwy zgodne z szablonem.
+
+## summary-panel-filter-blind — panel wholly filter-blind, scope-marker apparatus deleted
+
+Reverses **EX-600** below: the panel no longer half-reacts to filtry transakcji, so the asterisks and
+the przypis it introduced are gone. The EX-600 section's unticked boxes describe a UI that no longer
+exists — read them as superseded by this section, not as owed.
+
+### Phase 1: Panel goes filter-blind
+
+- [ ] Na inwestycji z kosztorysem liczby w „Podsumowaniu" są identyczne przed i po nałożeniu filtra transakcji.
+- [ ] Sumy w zakładce „Materiały/Wydatki" są identyczne przed i po nałożeniu filtra.
+- [ ] Liczby w zakładce „Marża" są identyczne przed i po nałożeniu filtra, i nadal ukryte dla MANAGERA.
+- [ ] „Wpłaty" na stronie inwestycji zgadzają się z „Wpłatami" na `kosztorys_v2` tej samej inwestycji.
+- [ ] Inwestycja **bez** pozycji kosztorysu nadal renderuje odczyt z planu transakcji, bez błędu.
+
+### Phase 2: Strip the scope-marker apparatus
+
+- [ ] Żadnej gwiazdki przy wierszach „Podsumowania" w każdej osi kwot (netto / brutto / mieszany).
+- [ ] Czerwony przypis „Pola oznaczone gwiazdką…" zniknął.
+- [ ] Na inwestycji, gdzie robocizna z kosztorysu rozjeżdża się z transakcjami LABOR_COST, ostrzeżenie o rozbieżności pokazuje się **także** przy aktywnym filtrze.
+- [ ] `SettlementPlaneWarning` pokazuje się na rozjeżdżającej się inwestycji przy aktywnym filtrze.
+- [ ] Podgląd klienta (`preview`) nadal wycisza oba werdykty.
+
+### Phase 3: Delete the dead filter plumbing
+
+- [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
+- [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.
