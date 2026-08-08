@@ -227,3 +227,64 @@ The method lesson, stated once so it survives the archive: **separate warm from 
 a per-request number, and prefer one request that exposes the mechanism to a dozen that produce a
 median.** The 45 ms sample that settled the whole tree question did so because it showed the five
 reads overlapping — not because it was faster than the others.
+
+---
+
+## Kept from `research.md` (deleted 2026-08-08)
+
+The spike log's chronology is superseded by the synthesis above; the two framework/method findings
+went to `context/foundation/lessons.md` (the "server action forces a route render" mechanism and the
+Neon warm/cold measurement rule). What remains below is the rationale that lives nowhere else.
+**True on 2026-07-27 — verify against code before acting.**
+
+### Rejected: request-scoped `cache()` on `getKosztorysTree`
+
+Ranked #2 and approved, then dropped on inspection. `applyPercentRabatToAllItemsAction` reads the
+tree, mutates rows, and the ensuing render reads it again — a request-scoped memo would hand that
+render the **pre-mutation** tree and the grid would show stale prices. Silent wrong data, not a
+latency trade. It only becomes available if that read moves after the write. (`fetchReferenceData`
+got the same treatment safely only because no server action reads it at all — finding 3 above.)
+
+### The investment page pays four unbounded queries for two scalars
+
+`InvestmentSummaryPanel` reduces the whole kosztorys tree to exactly **two** numbers —
+`sumaPracNet` + `rabatClientNet`. The other tree values it forwards (`vatRate`, `settlementMode`,
+`materialsNetRate`) come off the investment row. So sections (`limit 1000`), items (`limit 5000`),
+stages (`limit 1000`) and stage-progress (`limit 100000`) are read entirely for those two scalars.
+
+**"Move it to SQL" is the wrong first instinct.** `kosztorysClientTotals` is not a `SUM` — it applies
+the global discount, per-section coefficients and VAT, and the editor runs that same logic on the same
+rows client-side. A SQL port forks that business logic into two implementations that must agree
+forever, the exact seam the "one concept, one name" rule exists to prevent. The cheaper framing is to
+stop making the investment page pay for the _editor's_ tree: a narrower query shaped to this consumer,
+or caching the two scalars under the `kosztoryses` tag. Decide the shape before the ticket.
+Worst case is still **unmeasured** — no kosztorys in this DB approaches the 100 000 progress-row cap.
+
+### `?ustawienia=1` is URL state deliberately — a localStorage write was rejected
+
+The linking page could have opened the panel by writing its persisted state directly. Rejected: the
+panel's open state is a **preference** (`usePersistedEnum`, key `table-columns:kosztorys-totals-open`),
+so writing it would flip the reader's default for every future visit off one click — and it covers
+only half the target anyway, since the settings block itself is `CollapsibleSection`'s
+`useState(defaultOpen)`, not persisted. A one-shot **arrival intent** belongs in the URL; the flag is
+seeded into `useState` once rather than read every render, so closing the panel hands control back to
+the preference.
+
+### Why `fetchAllMedia` invalidates from a Payload collection hook, against the "side effects go in the server action" rule
+
+Four write paths cross the media collection, not the two first assumed: `POST /api/upload-file` (three
+UI entry points funnel here — the expense form uploads 10–20 receipts per submit); `setTransferInvoice`,
+which deletes the replaced media **fire-and-forget** (unawaited, so it can land _after_ the action
+returns and after any action-level revalidation — an action-side bump races it and sometimes loses);
+and Payload admin create/update/delete. The collection is the one seam all four cross. `afterDelete`
+also bumps `transfers`, because `transactions_invoice_id_media_id_fk` is `ON DELETE SET NULL` — removing
+a media row silently nulls every transfer pointing at it, staleness nothing invalidated before.
+
+Caching the **whole table** rather than the id set is the same inversion: the id-filtered read ran on
+every render, the whole-table read runs only after a media write, and the full sweep is cheaper outright
+(0.26 ms vs 1.6 ms — 988 rows read sequentially beats one index probe per id). Raw SQL over
+`payload.find` because the cold populate measured **375 ms for 949 docs** against a 0.26 ms select —
+that is ORM hydration, re-paid on the first render after every media write. Safe because `url` is a
+**stored** column holding the finished serving path, so the string is byte-identical to what
+`payload.find` returns. Result 375 ms → 100–124 ms; the residual is the round trip plus ~100 kB on the
+wire, and the floor doesn't move without shipping fewer columns.

@@ -29,8 +29,9 @@ Owner constraints captured this session:
   one `totalRabat` term.
 - wypłaty / strata / materiały stay transactions — they are real cash with a source register.
 
-See `research.md` → "Decided model" for the mechanism, blast radius, and remaining open questions
-(chiefly listing-page perf and the fate of existing `LABOR_COST`/`RABAT` rows on live investments).
+The remaining open questions for the not-yet-built read switch (listing-page perf, where the read runs,
+the fate of existing `LABOR_COST`/`RABAT` rows on live investments, the frozen Sheets summary slots)
+live in `context/foundation/roadmap.md` § S-12.
 
 ## Transition plan (owner, 2026-07-19)
 

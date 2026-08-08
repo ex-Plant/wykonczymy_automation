@@ -53,3 +53,21 @@ Context: this is the tail of EX-615 (`context/archive/2026-07-28-drop-empty-kosz
 which retired the empty-editor dialog and its „Wypełnij z szablonu" CTA. `7ff77041` restored the
 one-click whole-szablon load that retirement cost; this change is about the picker holding up as the
 szablon library grows.
+
+## Kept from the plan (deleted 2026-08-08)
+
+- **cmdk was dropped, not worked around.** It earned its place on one flat list; with a name-only
+  search and no right-pane search, its mounted-items-only filtering is pure constraint. That also
+  retires the "hide, don't unmount" rule noted above — it existed only to keep cmdk's search working.
+- **Left-pane order stays `created_at DESC`** — the just-saved szablon stays on top, and reordering
+  solves nothing a name search doesn't.
+- **Both panes always render; below the breakpoint Tailwind classes gated on a `pane` state hide one.**
+  Chosen over a `useMediaQuery` hook to match the repo's pure-Tailwind responsive style, and so the
+  narrow-screen phase adds classes rather than restructuring the desktop markup.
+- **The assumption the sekcja search was cut on** — that users know which szablon holds the sekcja they
+  want (owner: „these sections would almost never change", „the names would be repeated"). **If it
+  turns out wrong, the cheap fix is a szablon row that lights up when one of its sekcje matches the
+  name query** — right pane unchanged, no second search mode. Don't rebuild a cross-szablon flat
+  results view.
+- Diacritic folding landed in the shared `useSearchFilter`, which six tables use — the fold must only
+  ever widen what matches.

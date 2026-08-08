@@ -144,13 +144,20 @@ będzie do przepisania; zbudowany razem — przy złej kwocie nie da się powied
 ją zepsuł. Precedens i wniosek: `context/changes/kosztorys-stage-values/frame.md:114` („Sequence,
 don't bundle" — bundling uczynił tam argument o szerokości siatki niefalsyfikowalnym).
 
-### Do rozstrzygnięcia w framingu
+### Rozstrzygnięte w framingu (właściciel, 2026-07-16)
 
-- Gdzie rabat siedzi w modelu: pole na `kosztoryses`, i czy dwutrybowy (`percent`/`amount`) jak
-  per-pozycja (`domain-notes:270`) — czy „rabat za całość" jest z natury kwotowy.
-- Co widzi użytkownik, gdy globalny rabat wyłącza rabaty per pozycja: kolumny `Rabat` /
-  `Rabat wart.` znikają, szarzeją, czy pokazują nadpisaną wartość? Dane per pozycja **zostają
-  w bazie** (override ≠ kasowanie) — więc co po wyłączeniu globalnego rabatu wraca.
-- Czy globalny rabat rozkłada się na etapy/sekcje (żeby `Netto` sekcji i wartości etapów nadal się
-  domykały — patrz mechanizm udziału w `kosztorys-stages-source-of-truth`), czy jest jedną pozycją
-  odjętą pod sumą całości.
+- **Model → dwutrybowy** (`percent`/`amount`), jak per-pozycja: _„Dodajmy analogicznie, czyli to może
+  być kwota, to może być procent."_
+- **UX override → wszystkie kolumny rabatowe chowają się i wyłączają** automatycznie po włączeniu
+  globalnego: _„Kolumna rabat wtedy się automatycznie chowa i wyłącza… wszystkie kolumny rabatowe."_
+  Dane per pozycja zostają w bazie i wracają po wyłączeniu globalnego.
+- **Baza rabatu → wartość netto wykonanych prac**, nie przedmiar, jednakowo dla obu trybów. Klient
+  płaci za prace wykonane; przedmiar to tylko podgląd. Bez rozbicia na percent vs amount — właściciel
+  liczy jedną wiążącą kwotę „do zapłaty".
+- **Rozkład → żaden.** _„Nic się nie rozkłada; to jest po prostu globalny rabat, odejmujemy to od
+  totalu i tyle."_ Nie schodzi na sekcje ani etapy.
+- **Pułapka marży → poza zakresem TEJ zmiany.** Ruling: _„wszystkie prace z kosztorysu to jest
+  właśnie robocizna"_ → rabat obniża robociznę, więc siłą rzeczy marżę. Że marża na karcie inwestycji
+  nie drgnie od razu, wynika **wyłącznie** z tego, że kosztorys v2 nie jest dziś podpięty do apki
+  (_„to połączenie tymczasowe… tego łączenia jeszcze nie ma"_). Zszycie kosztorys↔apka to osobna,
+  zaparkowana robota (P5).

@@ -72,3 +72,13 @@ Owner rulings at the gate (2026-07-28):
 
 Review gate: `review-gate.md` (all findings closed; E2E owed as EX-614). Slice is **in review** —
 the manual checks are still unticked.
+
+## Kept from the plan (deleted 2026-08-08)
+
+- **The red state lives on „Cena" only, never on „Mnożnik".** The rule is about the price; a red
+  multiplier points at the wrong cell when the client price is what moved.
+- **Rejection feedback is a cell tooltip, not a toast** — a toast fires mid-typing with the message in
+  the opposite corner from where the user is looking. Same channel as the existing blocked-action
+  tooltip in `kosztorys-row-actions-menu.tsx`.
+- **The threshold is a code constant, not a per-investment column.** 80% is a business rule rather than
+  a negotiated parameter, and a DB column everyone leaves at default is forever.

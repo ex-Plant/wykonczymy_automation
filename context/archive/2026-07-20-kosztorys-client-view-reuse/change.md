@@ -26,3 +26,20 @@ Tear out: `ClientKosztorysView`, `ClientKosztorysFooter`, `toClientView`/`toGrid
 `section-pie` is its **own separate slice** — remove it from the client view here, but do NOT delete/forget the component; it may be reintroduced on its own. Treat its removal as "not part of this reuse", not "gone for good".
 
 Supersedes the S-13 / EX-532 bespoke build.
+
+## Owner-visible deviations, ratified at the review gate (2026-07-20)
+
+The plan promised "owner editor unchanged"; it isn't, and the owner ratified each change as
+intended. Exhaustive list, so nobody later "fixes" one back:
+
+- The verbose column labels („Pomiar (razem etapy)", „Razem Netto", „…względem
+  przedmiaru/pomiaru"), the taller wrapping header row and the rewritten header tips are ungated —
+  they apply to the owner grid too. Kept because they disambiguate „względem przedmiaru" vs
+  „względem pomiaru".
+- Post-merge (`baee9b68`): the money-axis toggle label „Oba" → „Pokaż wszystko" (the toggle renders
+  in both the client slim header and the owner toolbar), and „Wyłącz link" now opens a
+  `ConfirmDialog` — revoking a client's live link was previously a one-click destructive delete.
+- The owner preview moved to `/podglad-klienta/[id]` under the `(share)` group so it renders under
+  the same bare shell as the public link (byte-identical preview). It is **not** an IDOR: auth is an
+  in-page `requireInvestmentOr404` plus a query-level `requireAuth` re-check — route-group
+  membership was never the auth boundary here.
