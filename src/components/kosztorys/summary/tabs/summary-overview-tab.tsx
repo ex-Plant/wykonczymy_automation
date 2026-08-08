@@ -1,15 +1,20 @@
 'use client'
 
-import type { PanelAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
+  billedMaterials,
   computeMixedSettlement,
-  materialsPair,
   sumaPracPreRabat,
   type MaterialsT,
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
 import { SettlementSummary } from '@/components/kosztorys/summary/blocks/settlement-summary'
+import { InlineModeSelect } from '@/components/ui/inline-mode-select'
+import {
+  SETTLEMENT_MODE_DESCRIPTIONS,
+  SETTLEMENT_MODE_SELECT_OPTIONS,
+} from '@/components/kosztorys/summary/settlement-mode-options'
 import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement-groups'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
@@ -25,9 +30,12 @@ import { formatNet } from '@/lib/kosztorys/format'
 
 type PropsT = {
   investmentId: number
-  // netto/brutto/Mieszane axis — the control lives in the panel top bar (it governs every summary
-  // tab); this tab only reads the value to pick Mixed vs Brutto/Netto.
-  moneyAxis: PanelAxisT
+  // Picks Mixed vs Brutto/Netto here, and is the value the inline control writes. Supplying the
+  // writer is what turns that control on — same gate as the popover's: a read-only host passes the
+  // value and no writer.
+  settlementMode: SettlementModeT
+  onSettlementModeChange?: (mode: SettlementModeT) => void
+  isSavingSettings?: boolean
   laborCostsNetFromKosztorys: number
   doZaplaty: MoneyPairT
   materials: MaterialsT
@@ -58,7 +66,9 @@ type PropsT = {
 // The „Podsumowanie" view: the settlement block, then the folded wpłaty list.
 export function SummaryOverviewTab({
   investmentId,
-  moneyAxis,
+  settlementMode,
+  onSettlementModeChange,
+  isSavingSettings = false,
   laborCostsNetFromKosztorys,
   doZaplaty,
   materials,
@@ -81,7 +91,7 @@ export function SummaryOverviewTab({
   // „Do zapłaty" can't come from the plain Łącznie − wpłaty the other tryby use. Both readings of the
   // remaining debt already exist on the settlement, so the pair is a re-labelling, not new arithmetic.
   const mixed =
-    moneyAxis === 'mixed'
+    settlementMode === 'MIXED'
       ? computeMixedSettlement(
           laborCostsNetFromKosztorys,
           materials,
@@ -98,29 +108,42 @@ export function SummaryOverviewTab({
     vatRate,
     filtersActive,
   })
-  // The „Struktura kosztów" pie is a netto robocizna/materiały split, identical in every mode — so it
-  // sits here beside the settlement rather than inside any one mode's block. Robocizna enters PRZED
-  // rabatem: a rabat is a concession on the price, not a change in what the job is made of, and a
-  // rabat exceeding the executed work would otherwise feed the pie a negative slice.
-  const materialsNet = materialsPair(materials, materialsNetRate, vatRate).net
+  // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the
+  // „Struktura kosztów" pie so the two can never disagree. The pie is a netto robocizna/materiały
+  // split, identical in every mode, so it sits here beside the settlement rather than inside any one
+  // mode's block. Robocizna enters the pie PRZED rabatem: a rabat is a concession on the price, not a
+  // change in what the job is made of, and a rabat exceeding the executed work would otherwise feed
+  // the pie a negative slice.
+  const materialsBilled = billedMaterials(materials, materialsNetRate)
 
   return (
     <div className="flex w-full flex-col gap-y-4">
       {!preview && !filtersActive && settlementVerdict.mismatch && (
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
+      {/* Above the row, not inside its left column: nested there it pushed the settlement table down
+          while the pie stayed put, and the tab lost its top edge. */}
+      {onSettlementModeChange && (
+        <InlineModeSelect
+          label="Rozliczenie robocizny"
+          value={settlementMode}
+          onValueChange={(next) => onSettlementModeChange(next as SettlementModeT)}
+          options={SETTLEMENT_MODE_SELECT_OPTIONS}
+          description={SETTLEMENT_MODE_DESCRIPTIONS[settlementMode]}
+          disabled={isSavingSettings}
+        />
+      )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="flex flex-col gap-y-4">
           <SettlementSummary
             investmentId={investmentId}
             laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
-            materials={materials}
+            materialsBilled={materialsBilled}
             settlementGroups={settlementGroups}
             rabatAmount={rabatAmount}
             reconciliation={reconciliation}
             priceView={priceView}
             vatRate={vatRate}
-            materialsNetRate={materialsNetRate}
             preview={preview}
             filtersActive={filtersActive}
           />
@@ -129,7 +152,7 @@ export function SummaryOverviewTab({
           <SlicePie
             slices={costTotalsPieSlices(
               sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
-              materialsNet,
+              materialsBilled,
             )}
             formatValue={formatNet}
           />
