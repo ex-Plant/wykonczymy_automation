@@ -102,10 +102,12 @@ export function useReceiptGeneration({
         setGenerationProgress({ done, total: eligible.length })
       }
     })
+      // Cleared here rather than after the await: the pill is portalled to document.body, so an
+      // unexpected rejection would leave it sitting over every page, not just this form.
+      .finally(() => usePendingStore.getState().stop(SCAN_PENDING_KEY))
 
     setFailedIds(failed)
     setIsGenerating(false)
-    usePendingStore.getState().stop(SCAN_PENDING_KEY)
     setGenerationProgress(null)
 
     const ok = eligible.length - failed.size - unreadable
