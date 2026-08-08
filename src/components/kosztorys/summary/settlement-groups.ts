@@ -1,9 +1,16 @@
-import type { MixedSettlementT, MoneyPairT } from '@/lib/kosztorys/summary-economics'
+import {
+  faceValue,
+  type MixedSettlementT,
+  type MoneyPairT,
+} from '@/lib/kosztorys/summary-economics'
+import { ratePercentText } from '@/lib/kosztorys/format'
+import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { SettlementRowT } from '@/components/kosztorys/summary/tables/summary-totals-table'
 
-// A settlement tor rendered as one table (see `SettlementRowT` for why a tor is single-plane).
-// Mieszany has two: the cash side and the invoice side.
-export type SettlementGroupT = { caption?: string; rows: SettlementRowT[] }
+// A settlement tor rendered as one table. `axis` is the table's own — the steps run on one plane
+// („Kwota"), while the closing „Do zapłaty" runs on both, because the same debt genuinely reads two
+// ways and the reader is meant to compare them side by side rather than down a column.
+export type SettlementGroupT = { caption?: string; axis: MoneyAxisT; rows: SettlementRowT[] }
 
 type ArgsT = {
   mixed: MixedSettlementT | null
@@ -17,8 +24,9 @@ type ArgsT = {
 // rozliczenia, which is why this is a view-model rather than table props: mieszany resolves through a
 // reszta the other tryby don't have, so the two shapes share no row.
 //
-// Wpłaty render negative — they are the deduction steps down to „Do zapłaty", and a positive figure in
-// a subtracted row reads as if it were being added.
+// Both tory open with their wpłaty, so the two read the same way down the page rather than mirroring
+// each other. Wpłaty render negative — they are the deduction steps down to „Do zapłaty", and a
+// positive figure in a subtracted row reads as if it were being added.
 export function buildSettlementGroups({
   mixed,
   doZaplaty,
@@ -26,24 +34,29 @@ export function buildSettlementGroups({
   vatRate,
   filtersActive,
 }: ArgsT): SettlementGroupT[] {
-  // One pool of wpłaty, one debt, shown on both planes.
+  // One pool of wpłaty, one debt — one table. Wpłaty span both money tracks as a single centred cell
+  // (they carry no VAT, so they come off both axes at the same złoty) and „Pozostało do zapłaty"
+  // resolves underneath on each plane. Stacked as two labelled rows in one column, the same debt read
+  // twice used to look like two separate debts.
   if (!mixed) {
     return [
       {
+        axis: 'both',
         rows: [
-          { label: 'Wpłaty', amount: -wplatyNet, discount: true, linkToDeposits: true },
           {
-            label: 'Do zapłaty netto',
-            amount: doZaplaty.net,
-            bold: true,
-            danger: doZaplaty.net > 0,
-            scopeMarked: filtersActive,
+            label: 'Wpłaty',
+            line: faceValue(-wplatyNet),
+            discount: true,
+            linkToDeposits: true,
+            span: true,
           },
           {
-            label: 'Do zapłaty brutto',
-            amount: doZaplaty.gross,
+            label: 'Pozostało do zapłaty',
+            line: doZaplaty,
             bold: true,
-            danger: doZaplaty.gross > 0,
+            // Per cell: netto and brutto cross zero independently, so a slightly overpaid netto can
+            // sit beside a real outstanding brutto.
+            danger: { net: doZaplaty.net > 0, gross: doZaplaty.gross > 0 },
             scopeMarked: filtersActive,
           },
         ],
@@ -53,42 +66,59 @@ export function buildSettlementGroups({
 
   // Mieszany resolves through a reszta: the cash part closes on the netto plane, only what is left
   // crosses onto the invoice, and „Do zapłaty netto" is that same debt read back without a faktura.
-  const vatPercent = Math.round(vatRate * 100)
+  // Each tor closes on ONE plane here, so neither gets the two-column treatment — a second column
+  // would print a figure that tor never settles.
+  const vatPercent = ratePercentText(vatRate)
   return [
     {
       caption: 'Rozliczenie netto',
+      axis: 'net',
       rows: [
-        { label: 'Wpłaty netto', amount: -mixed.paidNet, discount: true, linkToDeposits: true },
+        {
+          label: 'Wpłaty netto',
+          line: faceValue(-mixed.paidNet),
+          discount: true,
+          linkToDeposits: true,
+        },
         {
           label: 'Pozostało netto',
-          hint: 'Łącznie netto − wpłaty netto',
-          amount: mixed.doRozliczeniaNet,
+          hint: '*Łącznie netto minus wpłaty netto',
+          line: faceValue(mixed.doRozliczeniaNet),
           scopeMarked: filtersActive,
         },
         {
           label: 'Do zapłaty netto',
-          hint: 'Pozostało netto − wpłaty brutto bez VAT — kwota zamykająca rozliczenie bez faktury',
-          amount: mixed.doZaplatyNet,
+          hint: '*Pozostało netto minus wpłaty brutto — tyle zostaje do zapłaty w przypadku rozliczenia reszty netto',
+          line: faceValue(mixed.doZaplatyNet),
           bold: true,
-          danger: mixed.doZaplatyNet > 0,
+          // Deliberately not `danger`, unlike its brutto twin (owner, 2026-08-07): this is the same
+          // debt read back without a faktura, not a second one owed on top. Two red closing figures
+          // one under the other read as two debts — and this one deducts the OTHER tor's wpłaty, so
+          // it can't be reconciled against the rows above it either.
           scopeMarked: filtersActive,
         },
       ],
     },
     {
       caption: 'Rozliczenie fakturą',
+      axis: 'net',
       rows: [
         {
+          label: 'Wpłaty brutto',
+          line: faceValue(-mixed.paidGross),
+          discount: true,
+          linkToDeposits: true,
+        },
+        {
           label: 'Pozostało brutto',
-          hint: `Pozostało netto + VAT ${vatPercent}%`,
-          amount: mixed.resztaGross,
+          hint: `*Łącznie brutto (VAT ${vatPercent}% na robociznę) minus wpłaty netto`,
+          line: faceValue(mixed.resztaGross),
           scopeMarked: filtersActive,
         },
-        { label: 'Wpłaty brutto', amount: -mixed.paidGross, discount: true, linkToDeposits: true },
         {
           label: 'Do zapłaty brutto',
-          hint: 'Pozostało brutto − wpłaty brutto',
-          amount: mixed.doZaplatyGross,
+          hint: '*Pozostało brutto minus wpłaty brutto — tyle zostaje do zapłaty w przypadku rozliczenia reszty brutto',
+          line: faceValue(mixed.doZaplatyGross),
           bold: true,
           danger: mixed.doZaplatyGross > 0,
           scopeMarked: filtersActive,
