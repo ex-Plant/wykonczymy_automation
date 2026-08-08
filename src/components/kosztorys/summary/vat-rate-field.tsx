@@ -2,6 +2,7 @@
 
 import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
 import { DecimalField } from '@/components/ui/decimal-field'
+import { ratePercent } from '@/lib/kosztorys/format'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 const VAT_TIP = [
@@ -20,7 +21,7 @@ export function VatRateField({ disabled = false }: { disabled?: boolean }) {
       <DecimalField
         suffix="%"
         withSave
-        value={tree.vatRate * 100}
+        value={ratePercent(tree.vatRate)}
         valueClassName="text-foreground"
         min={0}
         max={100}

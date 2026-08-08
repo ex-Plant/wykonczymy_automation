@@ -2,13 +2,13 @@
 
 import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
 import {
-  materialsNetRateForMode,
-  pricingModeOf,
   PRICING_MODE_DESCRIPTIONS,
   PRICING_MODE_OPTIONS,
 } from '@/components/kosztorys/summary/materials-pricing-options'
+import { materialsNetRateForMode, pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
 import { SimpleSelect } from '@/components/ui/simple-select'
 import { DecimalField } from '@/components/ui/decimal-field'
+import { ratePercent } from '@/lib/kosztorys/format'
 
 type PropsT = {
   // Opening value when the owner switches the concession on: billing materiały netto at the VAT rate
@@ -34,7 +34,7 @@ export function MaterialsNetPricingControl({
   lockedReason,
 }: PropsT) {
   const mode = pricingModeOf(materialsNetRate)
-  const materialsNetPercent = Math.round((materialsNetRate ?? vatRate) * 100)
+  const materialsNetPercent = ratePercent(materialsNetRate ?? vatRate)
 
   return (
     <SettingsSection

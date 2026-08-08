@@ -19,3 +19,15 @@ const percentFormat = (fraction: number | null, fractionDigits: number) =>
 export const formatPercent = (fraction: number | null) => percentFormat(fraction, 0)
 
 export const formatPercentPrecise = (fraction: number | null) => percentFormat(fraction, 1)
+
+// A stored VAT/materiały rate (0,075) as the percent a rate FIELD shows and re-commits. Distinct from
+// `formatPercent` above, which renders a progress fraction as display text — this one has to survive
+// a round trip through the input, so it stays a number and rounds to two decimals rather than to a
+// whole one. `Math.round(rate * 100)` showed a saved 7,5% as 8% and then PERSISTED the 8 on the next
+// „Zapisz"; the same rounding is what keeps 0,29 from surfacing as 28.999999999999996, a value the
+// field could never match against the 29 it had just committed — leaving „Zapisz" armed forever.
+export const ratePercent = (rate: number) => Math.round(rate * 10000) / 100
+
+// The same figure as pl-PL prose without a „%" — the callers print their own, some inside a formula.
+export const ratePercentText = (rate: number | null) =>
+  ratePercent(rate ?? 0).toLocaleString('pl-PL')
