@@ -1,9 +1,10 @@
 ---
 change_id: summary-panel-filter-blind
 title: Make the v2 investment summary panel wholly filter-blind and delete the scope-marker apparatus
-status: implemented
+status: archived
 created: 2026-08-08
 updated: 2026-08-08
+archived_at: 2026-08-08T14:47:35Z
 branch: summary-panel-filter-blind
 ---
 

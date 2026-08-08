@@ -8,9 +8,6 @@ No `verify-manual-checks` skill installed → Step 0.5 skipped.
 
 ## Findings
 
-- [x] 🟡 WARNING · fixed · `impl-review` + `code-review` + `feature-first` · `src/lib/queries/investment-transactions.ts:74` · `fetchFilteredDepositTransactions` lost its only caller in Phase 1 and survived — an exported unbounded-`Where` deposit read with zero call sites, plus a doc comment on its sibling still routing readers to it. Deleted the function, rewrote the comment, dropped the now-unused `Where` / `getDepositTransactions` imports. Phase 3's own rationale covered it; the plan just never named it, and typecheck can't flag an unused export.
-      test: no automated test · n/a — dead-code removal, gated on `tsc` per the repo's dead-code rule (grep confirmed zero callers first, typecheck confirmed the deletion).
-
 - [x] 🟡 WARNING · skipped · `code-review` · `src/app/(frontend)/inwestycje/[id]/page.tsx:50` + `src/components/investments/investment-summary-panel.tsx:44` · Four aggregate round trips where two used to suffice — the page still fetches on `statsWhere`, the panel now fetches on `investmentWhere`, and the two can **never** share an `unstable_cache` entry even with zero URL filters (`buildTransferFilters` unconditionally emits `type: { not_in: ['CANCELLATION'] }`, so the key strings differ always). This is the cost the change deliberately bought: the page's `financials` still feeds `headerFields` and `TransfersSection.totalPayouts`, so neither fetch can be dropped. Fixing it means canonicalizing the `Where` before stringifying the cache key — a change to a shared cache primitive, out of this slice's scope.
       test: no automated test · n/a — a cost, not a defect; no behavior to guard.
 
@@ -24,18 +21,6 @@ No `verify-manual-checks` skill installed → Step 0.5 skipped.
       test: no automated test · n/a — same column, no divergence possible.
 
 - [x] filed EX-652 · `reuse-scan` + `feature-first` + `structure-scatter` · `src/components/investments/investment-summary-panel.tsx:43-58,86-90` · The `investmentWhere` + two fetches + `deriveFinancials` + `buildMaterialyBreakdown` block is now hand-assembled at three whole-investment sites (panel, `kosztorys_v2/page.tsx`, `preview-kosztorys.ts`), which already disagree — preview calls `deriveFinancials` with two args, so its client-share reading computes `materialsNetDiscount = 0`. **Not fixed here** because the obvious extraction serializes: the panel sources `materialsNetRate` / `settlementMode` from `getKosztorysTree`, which sits in the _same_ `Promise.all` as the two aggregates, so a fetch-and-derive helper can only run after the tree resolves — turning one parallel round of four queries into two serial rounds behind the page's long-pole query. Perf-changing + design-uncertain → its own review.
-
-- [x] fixed · `comment-noise` · `src/components/kosztorys/summary/grid/summary-row.tsx:46` · Comment described a hover-only tooltip icon the JSX no longer has — vanished-state left behind by two successive refactors (the hint rework, then this change's `<sup>*</sup>` removal from the same block). Deleted; the remainder was narration of the two lines under it.
-
-- [x] fixed · `comment-noise` · `src/components/kosztorys/summary/grid/summary-row.tsx:39` · `emphasize keeps the summary rows bold now that the shared gridlines…` — vanished-state "now that", and `emphasize → 'medium'` sits one line below. Trimmed to the `share` sentence, which does earn its place (explains an unrendered field).
-
-- [x] fixed · `comment-noise` · `src/components/kosztorys/summary/tables/summary-totals-table.tsx:11` · `, now that Rabat sits with the Robocizna it reduces` — history tail. Rewritten to state the current invariant without the "used to be".
-
-- [x] fixed · `comment-noise` · `src/components/kosztorys/summary/summary-panel-content.tsx:221` · `it used to live here, and growing it squeezed…` — vanished-state. Trimmed to the constraint that still binds.
-
-- [x] fixed · `comment-noise` · `src/components/kosztorys/summary/summary-panel-content.tsx:235` · Last two sentences were a verbatim duplicate of the prop doc at `:76`. Cut; the `preview`-gate + collapsed-by-default rationale kept.
-
-- [x] fixed · `comment-noise` + `impl-review` · `src/components/investments/investment-summary-panel.tsx:34` · Said "both fetches" when the change made it four, and its tail duplicated `page.tsx:113`. Rewritten.
 
 - [x] dropped · `comment-noise` · `src/lib/queries/transfer-filters.ts:83,91,101,111,125,135,149,170` · Nine label comments that restate the block under them (`// Date range`, `// Other category filter`, …). Real STRIP-TEST violations, but all pre-existing and outside every changed hunk — the diff only deleted `hasActiveTransferFilters`. Fixing them would balloon a filter-blindness diff with unrelated churn for zero behavior.
 
