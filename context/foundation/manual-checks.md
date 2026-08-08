@@ -701,7 +701,7 @@ Browser coverage of the same behaviour is filed as **EX-634** (`e2e-backlog`); t
 ### Po bramce przeglądu (nowe zachowania, jeszcze niesprawdzone)
 
 - [ ] Inwestycja **bez kosztorysu** z aktywnym filtrem — żadnej gwiazdki, żadnego przypisu, oba werdykty jak dotąd (wszystkie liczby idą wtedy z transakcji i filtr ich dotyczy).
-- [ ] Zakładki „Wydatki" i „Marża" z aktywnym filtrem — przypis się nie pojawia (gwiazdki są tylko w „Podsumowaniu").
+- [ ] Zakładka „Wydatki" z aktywnym filtrem — przypis się nie pojawia (gwiazdki są tylko w „Podsumowaniu"). Zakładka „Marża" jest ukryta od 2026-08-07 (`TODO(EX-649)`), więc wypada z tego sprawdzenia aż do odsłonięcia.
 - [ ] Sam przełącznik „pokaż anulowane" — brak gwiazdek i przypisu, werdykty widoczne (ten przełącznik nie zmienia żadnej kwoty w panelu).
 
 ## EX-430 — harden bulk-insert restore

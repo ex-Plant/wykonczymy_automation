@@ -63,5 +63,9 @@ Kontekst poprzedzający (już wdrożone w tej samej zakładce, poza tym changem)
   dwie zakładki obok. Dotyczy też panelu na stronie inwestycji, nie tylko edytora.
 - **Rozliczenie: obie kolumny kwotowe stoją w każdym trybie** — tryb decyduje o arytmetyce „Do
   zapłaty", nie o tym, które kolumny istnieją. Dotyczy również widoku klienckiego (`preview`).
-- **Kontrolka stawki materiałów jest ukryta w trybie brutto** — serwer zeruje tam koncesję na twardo
-  (`investment-financials.ts:89`), więc wpisana stawka zapisałaby się i nie ruszyła żadnej liczby.
+- **Kontrolka stawki materiałów jest ~~ukryta~~ wyszarzona w trybie brutto** (odwrócone 3975ffc3) —
+  serwer zeruje tam koncesję na twardo (`investment-financials.ts:89`), więc wpisana stawka zapisałaby
+  się i nie ruszyła żadnej liczby. Ukrycie zostało cofnięte: znikająca kontrolka czyta się jak błąd,
+  więc stoi na miejscu i mówi dlaczego (`MATERIALS_GROSS_LOCK_REASON`). Obie powierzchnie, która ją
+  oferują — popover „Opcje rozliczenia" i zakładka „Wydatki" — dostają tę samą blokadę i tę samą
+  **obowiązującą** stawkę, więc nie mogą pokazać dwóch różnych odpowiedzi na jedno ustawienie.
