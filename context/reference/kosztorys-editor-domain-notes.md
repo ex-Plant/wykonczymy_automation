@@ -455,6 +455,20 @@ pracownik (patrz notatka „Wypłaty = ręczny rejestr…"), nie z arkusza. Wari
 **sumę kosztu**; przypięcie „kto zrobił który etap" do konkretnej ekipy (dla rozliczenia per pracownik)
 to dalsza, opcjonalna warstwa — nie mieszać jej do tej zmiany.
 
+**Ta warstwa jest już wdrożona (EX-613).** Przypisanie siedzi na **etapie** (nullowalne, obok
+`plane`), nie na transakcji — bo most transakcja→etap raz już istniał i został wyrwany (EX-536,
+migracja `20260721_0`), a domknięcie go kosztowało dwie poprawki na spójność tagów, gdy wiersz
+nadrzędny się przesuwał. Przypisanie na etapie tego problemu nie ma.
+
+Dwie konsekwencje, które łatwo przeoczyć:
+
+- **Warstwa rozliczenia jest świadoma etapów, warstwa wyceny nie** (granica z EX-489). Figura per
+  pracownik to sprawa rozliczenia — nic z niej nie schodzi do wyceny pozycji.
+- **Dwie nullowalne osie na jednym etapie = dwa niezależne braki**, które potrafią wystąpić naraz.
+  Dominuje `plane`: etap bez wariantu nikomu nic nie zarabia, więc „brak osoby" jest na nim
+  twierdzeniem o zerze — i dlatego etap bez wariantu nie przyjmuje przypisania. Odwrotnie niż przy
+  `plane`, brak osoby **nigdy** nie blokuje wpisywania ilości.
+
 **Co wdrożono (EX-565).** Wariant siedzi na **etapie** (`kosztorys_stages.plane`) — dokładnie ten
 grain, który właściciel potwierdził. Rozliczenie podwykonawcy liczy się po wariancie etapu, więc
 „koszt = Σ po etapach" jest już policzalne z danych. Etap bez wybranego wariantu nie należy do

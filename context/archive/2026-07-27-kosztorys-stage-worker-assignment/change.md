@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-stage-worker-assignment
 title: Assign one worker per etap so należne is attributed per person
-status: implemented
+status: archived
 created: 2026-07-27
-updated: 2026-07-29
-archived_at: null
+updated: 2026-08-08
+archived_at: 2026-08-08T14:47:35Z
 branch: staging
 worktree: null
 ---
