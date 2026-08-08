@@ -31,9 +31,8 @@ type PropsT = {
   expenseCategories: ExpenseCategoryRefT[]
 }
 
-// Everything the v2 reading needs — both fetches and every derivation — is owned here rather than by
-// the page, so the v1 reading runs the exact query set and computations it ran before this panel
-// existed. Rendered behind <Suspense>; the tree is the page's long-pole query.
+// Every fetch and derivation the v2 reading needs is owned here rather than by the page, so the v1
+// reading keeps the exact query set and computations it ran before this panel existed.
 export async function InvestmentSummaryPanel({
   investmentId,
   investmentName,

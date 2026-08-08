@@ -36,20 +36,15 @@ type SummaryRowPropsT = SummaryRowOptsT & {
  * child of ONE grid container (that is what makes `gap-px` paint the shared separators). Wrapping
  * the row in an element of its own would break the gridlines, so this cannot be a normal box.
  *
- * `emphasize` keeps the summary rows bold now that the shared gridlines already draw every row
- * separator. A line's `share` is not rendered here — it feeds the charts.
+ * A line's `share` is not rendered here — it feeds the charts.
  */
 export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
   const { net: showNet, gross: showGross } = axisShows(axis)
   const weight = opts.bold ? 'bold' : opts.emphasize ? 'medium' : 'default'
   const tone = opts.discount ? 'success' : opts.danger ? 'error' : 'default'
-  // `hint` used to hide behind a hover-only tooltip icon; it now rides the net cell (or gross, on a
-  // netto-less row) as an always-visible caption, the same primitive the negative-remaining and
-  // worker-qualifier notes use.
   const note = opts.hint ? { text: opts.hint, tone: 'muted' as const } : undefined
-  // The row states WHICH hints it wants; the cell owns how every one of them renders. `noVat` flags
-  // the brutto cell repeating its netto figure, so the repetition reads as „ta pozycja nie ma VAT-u"
-  // rather than as a rendering slip.
+  // `noVat` flags the brutto cell repeating its netto figure, so the repetition reads as „ta pozycja
+  // nie ma VAT-u" rather than as a rendering slip.
   const hints: LabelHintT[] = [
     ...(opts.mismatch ? [{ variant: 'mismatch' as const, content: opts.mismatch }] : []),
     ...(opts.noBrutto && showGross ? [{ variant: 'noVat' as const }] : []),

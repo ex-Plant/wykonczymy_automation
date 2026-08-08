@@ -8,9 +8,9 @@ import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 
-// Łącznie (from the breakdown grid above) minus Wpłaty = „Do zapłaty" — the only deduction step
-// left, now that Rabat sits with the Robocizna it reduces. Shares the money tracks with that grid so
-// both tables' columns align.
+// Łącznie (from the breakdown grid above) minus Wpłaty = „Do zapłaty" — the only deduction step at
+// this level, Rabat having already been taken off the Robocizna it reduces. Shares the money tracks
+// with that grid so both tables' columns align.
 export function SummaryTotalsTable({
   cols,
   moneyAxis,

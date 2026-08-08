@@ -219,9 +219,8 @@ export function SummaryPanelContent({
   return (
     <>
       {/* Pinned top bar — only the view toggle, so its height never moves. "Opcje rozliczenia" scrolls
-          with the rest of the content instead of sharing this bar: it used to live here, and growing
-          it squeezed SummaryScrollRegion into a sliver — two containers fighting over one fixed
-          height. One scrolling container below a fixed-height bar has nothing left to fight over. */}
+          with the rest of the content instead of sharing this bar — two containers fighting over one
+          fixed height leaves the scroll region a sliver. */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4">
         <ToggleGroup
           options={viewOptions}
@@ -234,10 +233,7 @@ export function SummaryPanelContent({
       <SummaryScrollRegion>
         {/* A client reads the mode, never writes it — the same `preview` gate every other
             owner-only affordance in this panel uses. Collapsed by default: these are set-once
-            decisions about the deal, not something the reader needs on every visit.
-            Supplying the two writers is what makes a host an editor of these settings; a
-            read-only host (no writers) renders no settings block at all — the investment page
-            links to the editor from its own action row instead. */}
+            decisions about the deal, not something the reader needs on every visit. */}
         {!preview && onSettlementModeChange && onMaterialsNetRateChange && (
           <div className="max-w-lg px-4 pt-4">
             <SummaryInvestmentSettings
