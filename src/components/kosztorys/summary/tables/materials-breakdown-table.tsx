@@ -41,51 +41,41 @@ export function MaterialsBreakdownTable({
   const pairOf = (row: MaterialyBreakdownRowT) => breakdownRowPair(row, netRate)
   const totalGross = shown.reduce((sum, row) => sum + pairOf(row).gross, 0)
   const totalNet = shown.reduce((sum, row) => sum + pairOf(row).net, 0)
-  // Not rounded: at a saved 7,5% a rounded „8%" would print a formula that stops reproducing the
-  // figures in the column right beside it.
-  const netPercent = ((netRate ?? 0) * 100).toLocaleString('pl-PL', { maximumFractionDigits: 2 })
 
   return (
-    <div className="flex flex-col gap-1">
-      <SummaryTable cols={cols} className="w-fit">
-        <SummaryHeaderCell variant="label">{caption}</SummaryHeaderCell>
-        {/* „Netto" bare, not „bez VAT": whenever a materiały concession is saved this column crosses
-            at that rate, not at VAT. The footnote below names the rate it actually applied. It leads
-            because it is the figure the investor is billed; brutto is where it was crossed from. */}
-        {showNet && <SummaryHeaderCell>Netto</SummaryHeaderCell>}
-        {/* „Kwota", not „Brutto", where materiały settle brutto: with no rate to cross, there is only
+    <SummaryTable cols={cols} className="w-fit">
+      <SummaryHeaderCell variant="label">{caption}</SummaryHeaderCell>
+      {/* „Netto" bare, not „bez VAT": whenever a materiały concession is saved this column crosses
+            at that rate, not at VAT. It leads because it is the figure the investor is billed;
+            brutto is where it was crossed from. */}
+      {showNet && <SummaryHeaderCell>Netto</SummaryHeaderCell>}
+      {/* „Kwota", not „Brutto", where materiały settle brutto: with no rate to cross, there is only
             one plane, and naming it invites the reader to look for a netto twin that isn't there. */}
-        <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota'}</SummaryHeaderCell>
-        {showNet && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}
-        {shown.map((row) => {
-          const pair = pairOf(row)
-          return (
-            <Fragment key={`${row.origin}-${row.id ?? 'korekta'}`}>
-              <SummaryLabelCell>{row.label}</SummaryLabelCell>
-              {showNet && <SummaryValueCell>{formatNet(pair.net)}</SummaryValueCell>}
-              <SummaryValueCell>{formatNet(pair.gross)}</SummaryValueCell>
-              {showNet && (
-                <SummaryValueCell className="text-muted-foreground">
-                  {formatNet(pair.net - pair.gross)}
-                </SummaryValueCell>
-              )}
-            </Fragment>
-          )
-        })}
-        <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
-        {showNet && <SummaryValueCell weight="bold">{formatNet(totalNet)}</SummaryValueCell>}
-        <SummaryValueCell weight="bold">{formatNet(totalGross)}</SummaryValueCell>
-        {showNet && (
-          <SummaryValueCell weight="bold" className="text-muted-foreground">
-            {formatNet(totalNet - totalGross)}
-          </SummaryValueCell>
-        )}
-      </SummaryTable>
+      <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota'}</SummaryHeaderCell>
+      {showNet && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}
+      {shown.map((row) => {
+        const pair = pairOf(row)
+        return (
+          <Fragment key={`${row.origin}-${row.id ?? 'korekta'}`}>
+            <SummaryLabelCell>{row.label}</SummaryLabelCell>
+            {showNet && <SummaryValueCell>{formatNet(pair.net)}</SummaryValueCell>}
+            <SummaryValueCell>{formatNet(pair.gross)}</SummaryValueCell>
+            {showNet && (
+              <SummaryValueCell className="text-muted-foreground">
+                {formatNet(pair.net - pair.gross)}
+              </SummaryValueCell>
+            )}
+          </Fragment>
+        )
+      })}
+      <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
+      {showNet && <SummaryValueCell weight="bold">{formatNet(totalNet)}</SummaryValueCell>}
+      <SummaryValueCell weight="bold">{formatNet(totalGross)}</SummaryValueCell>
       {showNet && (
-        <span className="text-muted-foreground text-xs">
-          Netto = brutto ÷ (1 + {netPercent}%), wydatek netto → brutto = netto × (1 + {netPercent}%)
-        </span>
+        <SummaryValueCell weight="bold" className="text-muted-foreground">
+          {formatNet(totalNet - totalGross)}
+        </SummaryValueCell>
       )}
-    </div>
+    </SummaryTable>
   )
 }

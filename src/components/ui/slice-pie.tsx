@@ -8,23 +8,18 @@ import { PieSliceLegend, type PieSliceT } from '@/components/ui/pie-legend'
 
 // Shared skeleton for the footer pies: recharts donut + legend. `caption` is optional — the legend
 // names every slice and the surrounding tab supplies the context, so a pie only titles itself when it
-// carries an `action` the title has to explain. `description` is an optional note for a pie whose
-// figures need their derivation spelled out; both it and `action` sit above the chart, so the base is
-// picked and the derivation read before the numbers, not offered as a footnote after them.
-// `formatValue` renders slice figures in the tooltip and legend — the caller owns units/locale, so
-// this stays domain-free.
+// carries an `action` the title has to explain. `formatValue` renders slice figures in the tooltip
+// and legend — the caller owns units/locale, so this stays domain-free.
 export function SlicePie({
   caption,
   action,
   slices,
   formatValue,
-  description,
 }: {
   caption?: string
   action?: ReactNode
   slices: PieSliceT[]
   formatValue: (value: number) => string
-  description?: ReactNode
 }) {
   // recharts derives each wedge's angle from value / totalSum. A negative total (one slice far
   // outweighing the rest, e.g. a mistyped section figure) makes that math degenerate and the pie
@@ -41,7 +36,6 @@ export function SlicePie({
           {action}
         </figcaption>
       )}
-      {description}
       {isInvalidTotal ? (
         <div className="text-destructive mx-auto flex h-40 w-40 flex-col items-center justify-center gap-2 text-center text-xs">
           <AlertIcon className="size-5" />

@@ -1,20 +1,17 @@
 'use client'
 
-import {
-  summaryLineMaterials,
-  type MaterialsT,
-  type MoneyPairT,
-  type SummaryLineT,
-} from '@/lib/kosztorys/summary-economics'
+import { faceValue, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryMoneyHeaders } from '@/components/kosztorys/summary/grid/summary-money-headers'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 
-// The sheet's Podsumowanie split: „Robocizna" is pre-rabat, „Rabat" takes it down to the executed
-// value, and „Materiały" is one aggregate line (the per-category split lives in the Wydatki view).
-// Every row here is a real term of „Łącznie" — the reader can add the column down. Wpłaty are the
-// only thing deducted below.
+// The sheet's Podsumowanie split: „Robocizna" pre-rabat, „Rabat" taking it down to the executed
+// value, „Materiały" as the single figure the investor is billed, then „Łącznie". Every row is a term
+// of Łącznie, so the reader can add the columns down.
+//
+// Materiały spans both money tracks as ONE centred cell: it is a single amount that enters both axes
+// unchanged, and printing it twice would read as a netto/brutto pair that happens to match.
 export function SummaryBreakdownTable({
   cols,
   moneyAxis,
@@ -22,31 +19,22 @@ export function SummaryBreakdownTable({
   sumaPracMismatch,
   rabat,
   rabatMismatch,
-  materials,
-  combinedNet,
+  materialsBilled,
   combined,
-  materialsNetRate,
-  vatRate,
   scopeMarked = false,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
-  sumaPrac: SummaryLineT
+  sumaPrac: MoneyPairT
   sumaPracMismatch?: string
   // Already negative, built by the caller (it owns the VAT rate). Undefined hides the row. Sits
-  // directly under Robocizna because that is the figure it reduces — „Robocizna przed rabatem"
-  // minus this IS the executed robocizna folded into Łącznie.
+  // directly under Robocizna because that is the figure it reduces.
   rabat?: MoneyPairT
   rabatMismatch?: string
-  // Materiały in two buckets; Σ === the per-category Wydatki rows.
-  materials: MaterialsT
-  combinedNet: number
+  // What the investor is billed for materiały — one figure, on the plane they settle. 0 hides the row.
+  materialsBilled: number
+  // Robocizna po rabacie + materiały, on both axes.
   combined: MoneyPairT
-  // The investment's saved materiały netto rate (null = billed at the raw brutto receipt).
-  materialsNetRate: number | null
-  // Carries the netto-billed bucket to the brutto axis.
-  vatRate: number
-  // Materiały comes off the transactions and stays bare.
   scopeMarked?: boolean
 }) {
   return (
@@ -72,12 +60,8 @@ export function SummaryBreakdownTable({
           scopeMarked={scopeMarked}
         />
       )}
-      {materials.grossBase + materials.netBilled !== 0 && (
-        <SummaryRow
-          label="Materiały"
-          line={summaryLineMaterials(materials, combinedNet, materialsNetRate, vatRate)}
-          axis={moneyAxis}
-        />
+      {materialsBilled !== 0 && (
+        <SummaryRow label="Materiały" line={faceValue(materialsBilled)} axis={moneyAxis} span />
       )}
       <SummaryRow
         label="Łącznie"
