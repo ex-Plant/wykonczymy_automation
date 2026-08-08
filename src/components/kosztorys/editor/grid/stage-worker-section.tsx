@@ -6,7 +6,7 @@ import { DropdownMenuCheckboxRow, DropdownMenuLabel } from '@/components/ui/drop
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { Input } from '@/components/ui/input'
 import { STAGE_HEADER_COPY as COPY } from './stage-header-copy'
-import { isActiveRef } from '@/lib/utils/is-active-ref'
+import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { WorkerRefT } from '@/types/reference-data'
 
 type PropsT = {
@@ -27,12 +27,8 @@ export function StageWorkerSection({ workers, selectedId, onPick }: PropsT) {
   const [activeOnly, setActiveOnly] = useState(true)
 
   const needle = query.trim().toLowerCase()
-  const listed = workers.filter(
-    (worker) =>
-      // The current assignee survives the active filter regardless: hiding them would read as
-      // „bez przypisania" here while the panel still credits them by name.
-      (!activeOnly || isActiveRef(worker) || worker.id === selectedId) &&
-      worker.name.toLowerCase().includes(needle),
+  const listed = activeOrSelected(workers, activeOnly, selectedId).filter((worker) =>
+    worker.name.toLowerCase().includes(needle),
   )
 
   return (
