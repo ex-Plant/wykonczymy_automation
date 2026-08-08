@@ -16,7 +16,8 @@ four segmented toggles + a Kolumny picker — the owner reports it as unreadable
 przełączników"). Collapse it into **one `Widok` popover**, keeping only the `Widok cen`
 toggle out on the toolbar (most-flipped lens).
 
-Design brief: `design.md` in this folder.
+The original design brief (min-1 guard, Etapy as a radio) was superseded by the dogfooding
+follow-up below and has been deleted; `git log --follow` on this folder still reaches it.
 
 ## Epilogue
 

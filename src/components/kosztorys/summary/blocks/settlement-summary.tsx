@@ -56,9 +56,6 @@ type PropsT = {
   // always 'client', which is exactly when the scream would fire), and the internal drill-down links
   // point at owner-only pages — so gate the scream off and render those labels as plain text.
   preview?: boolean
-  // Also withholds the mismatch scream: that verdict compares the whole kosztorys against a filtered
-  // ledger, so under a filter it would report the filter itself as a gap.
-  filtersActive?: boolean
 }
 
 // The bottom summary block, in two tables that answer two different questions. The first builds the
@@ -74,11 +71,10 @@ export function SettlementSummary({
   priceView,
   vatRate,
   preview = false,
-  filtersActive = false,
 }: PropsT) {
   // The scream compares client-view nets; a subcontractor view reprices the displayed figure, so the
   // scream would sit next to a number it isn't comparing. Show it only in the client view.
-  const reconVisible = !preview && !filtersActive && priceView === 'client'
+  const reconVisible = !preview && priceView === 'client'
   // Force-show the „Rabat" row even at kosztorys-rabat 0, so a RABAT transfer with no kosztorys rabat
   // can't hide the mismatch — otherwise the one gap population most needs to catch stays invisible.
   // Only while the scream is visible; otherwise the row follows the normal „rabat > 0" rule.
@@ -114,7 +110,6 @@ export function SettlementSummary({
               ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
               : undefined
           }
-          scopeMarked={filtersActive}
         />
         {settlementGroups.map((group, index) => (
           <SummaryTotalsTable

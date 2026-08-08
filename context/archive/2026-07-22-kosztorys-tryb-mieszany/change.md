@@ -32,3 +32,14 @@ Mixed view is netto-only.
 3. D — anchored on „Łącznie" netto (`combinedNet`), with wpłaty subtracted AFTER grossing (never
    grossed), so C = 0 lands on the Brutto-axis „Do zapłaty".
 4. No clamp on C — over-typing past the base drives the remainder negative on purpose.
+
+**Why materiały need no special case in the cash math.** The shaping form was
+`((D − C) − Mn) × (1+VAT) + Mb` — gross the remainder but carry materiały at their purchase brutto.
+Under a single VAT rate `Mb = Mn × (1+VAT)`, so the two materiały terms cancel and it collapses to a
+uniform `(D − C) × (1+VAT)`. The app already bills materiały netto on the netto axis, so `D` carries
+them netto and the simple form is exact, not an approximation. It stops being exact the day
+materiały carry their own VAT rate.
+
+The plan and `shape.md` (both deleted; `git log --follow` reaches them) described a `D`-anchored
+3-field helper and a **typed** cash amount. Neither shipped — the four blockers above are the
+as-built model. Read `summary-economics.ts` as truth.

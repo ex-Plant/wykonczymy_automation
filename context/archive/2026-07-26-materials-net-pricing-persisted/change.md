@@ -143,3 +143,20 @@ time.
 
 Owes a hand-written migration (per `AGENTS.md` › Migrations) for the new investment column.
 Naming follows the glossary: English identifiers, `discount` not `rabat`.
+
+## Kept from the plan (`plan.md` / `plan-brief.md` deleted 2026-08-08)
+
+- **Settlement mode stops being inert.** Switching an investment netto ↔ brutto now moves Marża and
+  Bilans with no change in transactions. Accepted deliberately — the two modes are different
+  commercial arrangements — and the brutto-mode notice by the control is what keeps it from being
+  silent (the saved rate is kept, not cleared, so returning to netto restores the figures).
+- **`/raporty` is knowingly wrong and says so.** Its blended cross-investment aggregate can't take a
+  per-investment rate without a new query, so the page carries a loud banner instead of a quiet wrong
+  number. The real fix is **EX-598**, whose definition of done is removing that banner
+  (`raporty/page.tsx` names it in a comment). The named risk is the banner outliving its issue and
+  becoming furniture.
+- **The label is „Obniżka materiałów"** — deliberately not „Rabat" (that word names a transfer type
+  here) and not „Różnica" (which reads as a reconciliation error beside the Wpłaty/Rabat rows).
+- **The double-strip guard is its own test case, not a clause**: feed both buckets (123 brutto +
+  100 netto-billed) and assert the discount is exactly 23. Computing off `totalMaterialCosts` is the
+  one edit that reintroduces the double cut, and it must turn that case red.

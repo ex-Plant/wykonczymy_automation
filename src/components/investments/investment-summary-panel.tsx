@@ -1,6 +1,8 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { perfStart } from '@/lib/perf'
-import { fetchFilteredDepositTransactions } from '@/lib/queries/investment-transactions'
+import { fetchDepositTransactionsForInvestment } from '@/lib/queries/investment-transactions'
+import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
+import { deriveFinancials } from '@/lib/db/sum-transfers'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
@@ -8,56 +10,52 @@ import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/s
 import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
-import type { Where } from 'payload'
-import type { InvestmentFinancialsT } from '@/types/investment-financials'
-import type { CategoryCostT } from '@/types/investment-financials'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
 
 // Robocizna (etapy) stays editor-only — it needs the stage grid to make sense. Podwykonawcy is
 // dropped for the opposite reason: the transfers table below this panel already lists every wypłata
 // — as it does every wpłata, which is why `showTransactionLists={false}` also folds the wpłaty block
-// out of Podsumowanie here. Marża renders only when the page hands the panel `financials`, which it
-// does for ADMIN/OWNER only.
+// out of Podsumowanie here. Marża renders for ADMIN/OWNER only.
 //
-// Scope rule on this host (EX-600): every transaction-plane figure — materiały, marża and wpłaty —
-// reads the page's `transferWhere`, so it follows the URL filters, while the kosztorys plane stays
-// whole. `filtersActive` is what tells the content to mark that seam.
+// Scope rule on this host: every figure reports the WHOLE investment, so the panel scopes its own
+// transaction-plane fetches to `{ investment }` and never sees the page's URL filters. The transfers
+// table's own „Suma wybranych transakcji" is the one surface answering the filtered question.
 const INVESTMENT_PANEL_VIEWS: SummaryViewT[] = ['summary', 'expenses', 'margin']
 
 type PropsT = {
   investmentId: number
   investmentName: string
-  // The page's stats scope (URL filters + this investment) — the same `Where` behind `financials`,
-  // so wpłaty narrow with the rest of the transaction plane instead of reading the whole investment.
-  statsWhere: Where
-  filtersActive: boolean
-  financials: InvestmentFinancialsT
   // ADMIN/OWNER only. Gates whether `financials` crosses into the client component at all — the
   // „Marża" tab's figures must stay out of a MANAGER's RSC payload, not merely off their screen.
   canSeeMargin: boolean
   expenseCategories: ExpenseCategoryRefT[]
-  netCategoryCosts: CategoryCostT[]
 }
 
-// Everything the v2 reading needs — both fetches and every derivation — is owned here rather than by
-// the page, so the v1 reading runs the exact query set and computations it ran before this panel
-// existed. Rendered behind <Suspense>; the tree is the page's long-pole query.
+// Every fetch and derivation the v2 reading needs is owned here rather than by the page, so the v1
+// reading keeps the exact query set and computations it ran before this panel existed.
 export async function InvestmentSummaryPanel({
   investmentId,
   investmentName,
-  statsWhere,
-  filtersActive,
-  financials,
   canSeeMargin,
   expenseCategories,
-  netCategoryCosts,
 }: PropsT) {
   const elapsed = perfStart()
-  const [tree, depositTransactions] = await Promise.all([
+  const investmentWhere = { investment: { equals: investmentId } }
+  const [tree, depositTransactions, typeDistribution, breakdowns] = await Promise.all([
     getKosztorysTree(investmentId),
-    fetchFilteredDepositTransactions(statsWhere),
+    fetchDepositTransactionsForInvestment(investmentId),
+    fetchFilteredByType(investmentWhere),
+    fetchCategoryBreakdowns(investmentWhere),
   ])
   const fetchMs = elapsed()
+
+  const financials = deriveFinancials(
+    typeDistribution,
+    breakdowns.categoryCosts,
+    breakdowns.settledCategoryCosts,
+    tree.materialsNetRate,
+    tree.settlementMode,
+  )
 
   const rows = treeToRows(tree)
   // No kosztorys rows ⇒ the transaction reading: there is no kosztorys to read from.
@@ -85,7 +83,11 @@ export async function InvestmentSummaryPanel({
       depositTransactions={depositTransactions}
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
-      materialyBreakdown={buildMaterialyBreakdown(financials, expenseCategories, netCategoryCosts)}
+      materialyBreakdown={buildMaterialyBreakdown(
+        financials,
+        expenseCategories,
+        breakdowns.netCategoryCosts,
+      )}
       settledBreakdown={buildSettledBreakdown(financials.settledCategoryCosts, expenseCategories)}
       wplatyNet={wplatyNet}
       financials={canSeeMargin ? financials : undefined}
@@ -107,9 +109,6 @@ export async function InvestmentSummaryPanel({
       views={INVESTMENT_PANEL_VIEWS}
       showTransactionLists={false}
       showPies={false}
-      // Without a kosztorys the reading falls back to the transaction plane, where every figure DOES
-      // follow the filters — marking them would assert the opposite of the truth.
-      filtersActive={filtersActive && clientTotals !== null}
     />
   )
 }

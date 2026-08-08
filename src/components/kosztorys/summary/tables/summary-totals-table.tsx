@@ -27,7 +27,6 @@ export type SettlementRowT = {
   span?: boolean
   // Links the label to the investment's filtered wpłaty list — the deposit rows only.
   linkToDeposits?: boolean
-  scopeMarked?: boolean
 }
 
 export function SummaryTotalsTable({
@@ -84,7 +83,6 @@ export function SummaryTotalsTable({
           bold={row.bold}
           danger={row.danger}
           span={row.span}
-          scopeMarked={row.scopeMarked}
         />
       ))}
     </SummaryTable>

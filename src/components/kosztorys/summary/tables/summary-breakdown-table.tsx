@@ -21,7 +21,6 @@ export function SummaryBreakdownTable({
   rabatMismatch,
   materialsBilled,
   combined,
-  scopeMarked = false,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
@@ -35,7 +34,6 @@ export function SummaryBreakdownTable({
   materialsBilled: number
   // Robocizna po rabacie + materiały, on both axes.
   combined: MoneyPairT
-  scopeMarked?: boolean
 }) {
   return (
     <SummaryTable cols={cols}>
@@ -48,7 +46,6 @@ export function SummaryBreakdownTable({
         line={sumaPrac}
         axis={moneyAxis}
         mismatch={sumaPracMismatch}
-        scopeMarked={scopeMarked}
       />
       {rabat && (
         <SummaryRow
@@ -57,19 +54,12 @@ export function SummaryBreakdownTable({
           axis={moneyAxis}
           mismatch={rabatMismatch}
           discount
-          scopeMarked={scopeMarked}
         />
       )}
       {materialsBilled !== 0 && (
         <SummaryRow label="Materiały" line={faceValue(materialsBilled)} axis={moneyAxis} span />
       )}
-      <SummaryRow
-        label="Łącznie"
-        line={combined}
-        axis={moneyAxis}
-        emphasize
-        scopeMarked={scopeMarked}
-      />
+      <SummaryRow label="Łącznie" line={combined} axis={moneyAxis} emphasize />
     </SummaryTable>
   )
 }

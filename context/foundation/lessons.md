@@ -116,6 +116,14 @@
 - **Rule**: Match the write count to the real change, not the collection size. Swapping neighbors (▲▼) = exchanging 2 `display_order` values = 2 updates, regardless of section size. For an arbitrary _move_ at scale use **sparse/fractional** ordering keys (a value between the new neighbors = 1 write + an occasional rebalance; the LexoRank / Trello / Linear pattern), not range renumbering. When you must renumber many rows, do one bulk `UPDATE … CASE`, not N ORM calls. Principle: push the cost into the **data model**, not the operation — whether a reorder is O(1) or O(n) writes is decided by the schema, not the UI (▲▼ vs DnD are just different calls to the same operation).
 - **Applies to**: plan, implement, impl-review
 
+- **Corollary — drag-and-drop reorder forces a `display_order` migration.** Arrow ▲▼ reorder is a _swap
+  of two neighbours_, so exchanging their two `display_order` values is 2 writes at any list size. DnD
+  has _move/insert_ semantics: dragging an item across half a section shifts the whole range between
+  source and target, so a contiguous-integer `display_order` needs N writes per drop — the same
+  bottleneck, reintroduced. The moment DnD lands is the moment to move `display_order` to **sparse /
+  fractional** keys (LexoRank, or the midpoint between neighbours → 1 write per drop plus an occasional
+  rebalance). Don't build that ahead of need, but don't let DnD ship on contiguous ints either.
+
 ## `react-datasheet-grid` ALIASES its exports — the public `DataSheetGrid` IS `StaticDataSheetGrid` (frozen columns). Import `DynamicDataSheetGrid`
 
 - **Superseded (2026-07-15)**: this entry previously read _"the library freezes `columns` at mount and ignores ALL runtime column-definition changes — remount it with a `key`"_. **The blame was wrong, and that wrong generalisation cost a full debug session** (EX-422). One export freezes; the other does not. Nothing below requires a remount `key`.
@@ -141,6 +149,11 @@
 - **Why the library's own columns don't hit this**: `keyColumn`/`textColumn`/etc. point `component` at a **module-level** `KeyComponent` and pass per-column data through `columnData` (a prop). Prop changes → re-render, not remount. That indirection is the fix, not an implementation detail.
 - **Rule**: a `Column.component` handed to dsg must be defined once at module scope. Anything that varies per column (a baked total, the wrapped base cell, a field name) rides on `columnData`, never captured in a per-call closure. When wrapping, merge over the column's own `columnData` (`{ ...column.columnData, … }`) so a delegated base cell — e.g. `keyColumn`'s `KeyComponent`, which reads `columnData.key`/`.original` — still finds what it needs.
 - **Applies to**: implement, impl-review, verify, frontend grid/table work
+
+- **Corollary (frozen columns)**: because the column array is captured at mount, a cell component that
+  needs live state — e.g. "is this the last row in its section?", to disable a delete button — cannot read
+  it from a ref or a closure; it would render the mount-time answer. Carry the flag **on the grid's
+  `value`** (the row objects, which are reactive) and read it from `rowData`.
 
 ## Never fire a server action / cache revalidation inside a `setState` updater
 
@@ -227,3 +240,647 @@
 - **Problem**: Two separate wedges, both from the same reset. (1) `db:import:test` restored a **prod-schema** dump and stopped, so every migration since that dump was missing — the next run died on `column "net_amount" does not exist`, which reads as a code bug. (2) That broken run crashed two DB specs **after** their `beforeAll` had created fixture users and **before** `afterAll` could delete them. `users.email` is unique, so every later run then failed in setup with Payload's `ValidationError: The following field is invalid: email` — a message naming neither the duplicate nor the collision. The DB stayed wedged until the rows were deleted by hand, and `cash_registers.owner_id` being NOT NULL made even that delete fail on the first try.
 - **Rule**: A dump restore is never finished until migrations run — chain `payload migrate` into the import script itself (`db:import:test` now ends with `&& pnpm db:migrate:test`), because the two are one operation and an agent reaching for the restore will not remember the second half. And in a spec that writes to a **shared** database, cleanup belongs in `beforeAll`, not only in `afterAll`: the run that crashed is exactly the run whose `afterAll` never fired, so exit-cleanup is guaranteed absent precisely when it is needed. `purgeFixtureUsers()` (`src/__tests__/helpers/`) clears the whole `%@test.local` namespace on entry — dependent registers first, since Postgres cannot null a NOT NULL owner. Meta-rule for the agent: when a DB-backed guard fails, **read its verdict before resetting anything** — this one printed "the fixture is stale, not the code", and the reset that ignored it caused both wedges above.
 - **Applies to**: implement, test-plan, debugging
+
+## A DB-level `ON DELETE CASCADE` deletes rows Payload never sees — the child cache tags are yours to invalidate by hand
+
+- **Context**: The kosztorys tree (2026-07-10, S-06). `kosztorys_sections` → `kosztorys_items` → `stage_progress` cascade at the FK level (`migrations/20260708_2_add_kosztorys_sections_items.ts`, `20260709_0_add_kosztorys_stages.ts`), and every read of them is cached under its own tag (`lib/cache/tags.ts`).
+- **Problem**: Payload's `afterDelete` hook fires for the row **it** deleted, not for the rows Postgres removed underneath it. So `payload.delete(section)` invalidates `kosztorysSections` and leaves `kosztorysItems` / `stageProgress` serving rows that no longer exist. Nothing errors — the stale read just looks like a caching flake, and it reproduces only after a delete.
+- **Rule**: Wherever a cascade FK deletes cached children, the server action must list the **child** tags alongside the parent's (`removeSectionAction` / `removeStageAction` in `lib/actions/kosztorys.ts` do exactly this). Generalize: a hook-based invalidation scheme only covers what the ORM performed. Any deletion the database does on its own — cascade, trigger, `ON DELETE SET NULL` — is outside the hook's field of view, so adding a cascade FK to a cached table is also a cache-invalidation change.
+- **Applies to**: implement, plan, code-review
+
+## Wipe-and-reinsert is safe for the kosztorys tree because nothing outside it stores an item/section/stage id
+
+- **Context**: Snapshot restore (S-06) reverts a kosztorys by deleting the whole tree and re-inserting from a `jsonb` payload, minting fresh primary keys rather than preserving them.
+- **Problem**: That is only safe if no other table references those ids as a business FK — otherwise restore silently orphans the referrers. Verified at design time: transfers, expenses and the sheet sync all key on transfer id + category, never on a kosztorys row id; the only external references are Payload's internal `payload_locked_documents_rels`, which cascade harmlessly.
+- **Rule**: The invariant is load-bearing, not incidental — the day something starts keying on a kosztorys item id (a per-item photo, a per-item transfer link), restore-by-reinsert stops being correct and must preserve ids or remap the referrer. Check this before adding an FK **to** `kosztorys_items` / `kosztorys_sections` / `kosztorys_stages`.
+- **Applies to**: plan, implement, code-review
+
+## A restored dump has invoice METADATA but not the bytes — media lives in Vercel Blob, and most of it is PDF
+
+- **Context**: Building a ground-truth eval for receipt extraction (2026-07-11) from real `INVESTMENT_EXPENSE` rows in the restored local DB.
+- **Problem**: `pg_dump` captures Postgres rows only. The `media` row holds an absolute Vercel Blob `url`, filename and mime type — the image itself is in an external object store, so a restored dump gives you every field except the one thing an extraction test needs. Any local fixture must `fetch()` the blob URL over the network, which also means it breaks the day a blob is rotated or deleted. Second surprise from the same corpus: **PDFs outnumber images** (479 vs 470 in the restored dev DB), so a "receipt scanner" that assumes photos is wrong for the majority of real attachments — which is why the OpenRouter `file-parser` plugin path exists alongside the plain vision call.
+- **Rule**: For anything that reads attachment _content_ in a test, snapshot a fixed set of blobs into a local fixtures dir once rather than fetching live — a network-dependent fixture is a flaky test with an expiry date. And check the real mime distribution before designing around one format.
+- **Applies to**: test-plan, implement, debugging
+
+## Resolve an LLM-supplied name to an id by EXACT match or blank — never fuzzy
+
+- **Context**: Receipt extraction maps a model-returned category name onto `expense_categories.id`.
+- **Problem**: A near-match resolver looks helpful and is the worst outcome available: a hallucinated or mis-read category silently resolves to a real, wrong category and the row saves clean. Nobody reviews a field that came back filled in.
+- **Rule**: Exact match (case/trim-normalized) or blank. Blank collides with the required-field validation and forces a human to pick — which is the point. This generalizes to any model output feeding a foreign key: make the failure mode "empty and blocking", never "plausible and silent".
+- **Applies to**: implement, plan, code-review
+
+## `transform-gpu` on the app shell breaks every `position: fixed` child — portal to `document.body`
+
+- **Context**: The frontend shell's `<main>` (`(frontend)/layout.tsx`) carries `transform-gpu`. Two separate features shipped with the same bug: the row menu opened centre-screen instead of at the cursor, and the column-resize guide stripe sat offset by the sidebar width.
+- **Problem**: A `transform` ancestor becomes the containing block for `position: fixed` descendants, so `fixed` + `{left, top}` measured from viewport coordinates resolve against `<main>` instead — offset by the sidebar and the scroll position. Nothing about the CSS looks wrong; the element is simply somewhere else. The first instinct was to delete the resize guide as non-essential, which was reversed once the drag felt worse without it (owner: "now that it is lacking, I see that it was helpful").
+- **Rule**: Anything positioned from cursor/viewport coordinates in this app must render through `createPortal(…, document.body)` — body is outside the transform. And don't delete a visual aid to dodge a positioning bug; fix the position.
+- **Applies to**: implement, code-review, debugging
+
+## dsg keys header cells by column INDEX — an uncontrolled header input renames the wrong entity after a delete
+
+- **Context**: `stage-header.tsx` renders `<input defaultValue={stage.label}>` (uncontrolled) for each stage column.
+- **Problem**: dsg's column virtualizer keys header cells by index (`Grid.js:98`), with no stable identity. Delete a stage and every later stage slides one index left **onto a DOM node still holding the previous stage's text**; the next blur then fires `onRename(nextStage.id, previousStageLabel)` — a silent rename of the wrong stage. This was invisible for months because the whole-grid remount `key` reinitialized every header input; removing that remount (the export-aliasing fix above) exposed it.
+- **Rule**: Give any uncontrolled input inside a dsg header an explicit `key` tied to the entity (`key={stage.id}`), not to its position. Generalize: removing a remount is also a correctness change — a remount masks every stale-uncontrolled-state bug underneath it, so audit uncontrolled inputs before deleting one.
+- **Applies to**: implement, code-review, debugging
+
+## Reproduce first, explain second — and a repro that shows ZERO events is a broken repro, not evidence
+
+- **Context**: The EX-422 grid-flicker session (2026-07-13), where three detailed causal theories were built before anything was reproduced.
+- **Problem**: Four separate workarounds had accreted on top of one wrong import, each explaining the previous one's symptom. One screenshot from the owner did more diagnostic work than four files of library source read line by line. Worse, a synthetic repro that recorded no events at all was briefly read as _confirming_ a theory — the actual cause was a Radix overlay swallowing `pointerdown`.
+- **Rule**: Build the reproduction before the explanation, and treat an empty observation as a broken instrument rather than a negative result. When a symptom resists synthetic input, instrument the live app on a real failure instead of running more synthetic variants.
+- **Applies to**: debugging, implement, code-review
+
+## The owner picks a formula on what the number MEANS, not on which formula makes two columns compare cleanly
+
+- **Context**: `Wartość przedmiaru netto` (2026-07-15). The agent shipped it with rabat applied, mirroring `rowNetForView`, so the two columns would differ by quantity alone — a clean comparison.
+- **Problem**: The owner overrode it on domain grounds: przedmiar is the **pre-negotiation valuation**, and rabat is a settlement-time concession that has no business touching the offer figure. So the gap `Netto − Wartość przedmiaru` deliberately carries both the quantity revision and the rabat — that is the honest picture of what happened to the position, not a defect. The agent's rationale was UI symmetry and never asked what przedmiar represents. Same failure in the other direction on EX-479: "z pomiaru z natury" was read as a quantity base and filed as a data-model change, when price is constant within a row so the value ratio already IS the pomiar ratio.
+- **Rule**: When a formula is a decision rather than a reading of the sheet, argue it from what the figure means to the business. Symmetry with a neighbouring column is not evidence. And an owner's phrasing describes what they want to **see**, not the computation — don't escalate a slice off one word without checking whether the existing figures already express it.
+- **Applies to**: plan, implement, code-review
+
+## react-datasheet-grid's own row menu can't be reused under `lockRows` — and its inserted row has no server identity
+
+- **Context**: The kosztorys editor's insert/delete row affordances (2026-07-11, now the ⋯ row menu in `components/kosztorys/editor/grid/menus`).
+- **Problem**: dsg ships a context menu (`INSERT_ROW_BELLOW` / `DELETE_ROW` / `DUPLICATE_ROW`), so reaching for it looks like the cheap option. Two things stop it: `lockRows` — which we need, since rows are server entities — disables it outright, and `createContextMenuComponent` only **relabels** the built-in entries, it cannot add custom ones. Even without `lockRows`, dsg's row-create produces a client-only row with no `id`, no `sectionId` and no `displayOrder`, which our model can't use — an item must come back from a server action first.
+- **Rule**: Any row insert/delete affordance in this grid is ours end-to-end: our menu component, our action, our optimistic splice. Don't re-litigate dsg's built-in menu. Related: `insertItemAction` shifts `display_order` for a **range** of rows, which is only acceptable because the shift is bounded by one section — the 1000-row scale that forced reordering to be a neighbour-swap is a whole-sheet concern, and a section is far smaller.
+- **Applies to**: plan, implement, code-review
+
+## The owner's sheet is the authority on what a figure MEANS — it is not a spec for what to build
+
+- **Context**: Globalny rabat (2026-07-15). A read-only probe of the live V1 sheet found **no
+  „rabat za całość" row anywhere** — `Podsumowanie` is `Robocizna + Materiały = Łącznie`, and the only
+  working discount is the per-row percent in column `R`.
+- **Problem**: `AGENTS.md` says the sheet is the domain authority, which invites the inverse reading:
+  "no sheet parity ⇒ don't build it" (or worse, "invent parity"). Both are wrong. The sheet answers
+  _what does this number mean to the business_; it does not enumerate what the business needs next.
+  The same probe found the opposite trap too — `transfery!K3 = SUMIF(C:C;"Rabat";E:E)` exists in the
+  sheet and **no formula reads it**, so a cell's presence is not evidence of use either.
+- **Rule**: Probe the sheet to learn a figure's meaning and to find where a new figure would attach.
+  When the owner asks for something the sheet lacks, that's **new work without parity** — say so
+  explicitly in the change doc so nobody later "restores parity" by deleting it. Check whether a
+  sheet cell is _read_ by a formula before calling it a live figure.
+- **Applies to**: frame, research, plan, domain conversation
+
+## Sequence changes that redefine the same total — bundling makes the wrong number unattributable
+
+- **Context**: Globalny rabat was deliberately built _after_ `kosztorys-stages-source-of-truth`, not
+  alongside it, because that change was in the middle of moving what "total" means (sum of etapy, not
+  pomiar). Same call was made earlier in `kosztorys-stage-values`.
+- **Problem**: Two changes that both move one definition are cheap to bundle and expensive to debug —
+  when the total comes out wrong you cannot say which of the two moves broke it, and whichever one
+  was written against the old definition has to be rewritten anyway.
+- **Rule**: When change B sits on a definition change A is currently rewriting, sequence them. The
+  cost of waiting is one merge; the cost of bundling is a non-falsifiable bug.
+- **Corollary — price a coupling premise in lines before accepting it.** `kosztorys-stage-values`
+  was proposed as one change because "both pieces share a netto/brutto axis, so building them apart
+  means tagging the columns twice." Read in the code, the intersection was **two string constants**
+  and the double-tagging cost ~0 lines — a one-way dependency, not a shared axis. Worse, the bundle
+  made its own justification circular: piece 1 argued brutto stage columns were fine because piece 2
+  would hide them, while piece 2's value rested on hiding piece 1's new columns. Split, each claim
+  became testable.
+- **Applies to**: frame, plan, roadmap sequencing
+
+## A test that guards the OLD definition goes tautological when the definition changes — it stays green and stops testing anything
+
+- **Context**: `kosztorys-stages-source-of-truth` moved „Pomiar z natury" from a typed field to
+  `Σ etapów`. One test block existed _specifically_ to stop the licznik regressing to 150% (EX-489).
+  After the change its numerator and denominator both read the stage sum, so it computed `1/1` for
+  every input — green, permanently, and blind.
+- **Problem**: A definition change doesn't break the tests that encode the old definition; it
+  **silences** them. Six assertions saw the rule, all in one file, and a full green suite would have
+  been read as "no regression". Adding new assertions beside the old block is the trap: the tautology
+  survives, still looking like coverage.
+- **Rule**: Before changing what a figure means, find every assertion that reads it and ask what each
+  one computes _after_ the change. Any that degenerates gets **rewritten, not supplemented** — and
+  written **red first**, so the suite proves the new rule instead of tolerating it. A suite that goes
+  green without a single test having gone red first has told you nothing.
+- **Applies to**: plan, implement, any change to a shared figure's definition
+
+## React Compiler bails SILENTLY — no error, no warning — and "restore memoization" is not automatically a win
+
+- **Context**: EX-496. `use-kosztorys-editor.ts` emitted **zero** `_c` cache slots. `panicThreshold`
+  defaults to skip-and-continue, so the file left the pipeline untransformed with no build error, no
+  lint warning, no console message. Every compiled downstream consumer keyed on its handlers/`columns`
+  therefore missed on every keystroke, invisibly.
+- **Problem**: Two traps, in sequence.
+  1. **You cannot tell by reading the source.** The three constructs that bailed here were mundane:
+     a computed object key whose value is a **call expression** (`{ ...r, [stageKey(id)]: 0 }`), a
+     **forward reference** between function declarations (legal at runtime via hoisting), and a
+     **ref read during render**. Bails surface one at a time — fixing the first reveals the second.
+     The only honest check is to compile the file and look for `_c(` in the output.
+  2. **Chasing the memoization made things worse.** Clearing the bails required deleting the ref
+     mirrors and routing cell handlers through context — and a context **value** whose identity churns
+     re-renders every consumer, which `React.memo` and datasheet-grid's per-row memoization do not
+     stop. The un-memoized hook had been smooth its whole life. Reverted.
+- **Rule**: If a hot component's identity-stability matters, **verify compilation empirically** —
+  compile the file through `babel-plugin-react-compiler` and assert `_c(` appears inside the function
+  (assert positively; "no bail logged" is weaker, an unrelated `_c` elsewhere can mask a new bail).
+  Then, before fixing a bail, ask what the fix costs: a memoization win is worth nothing if the wiring
+  that buys it introduces a per-keystroke re-render. Measure the actual complaint, not the metric.
+- **Applies to**: perf work, React Compiler, any "make this memoize" task
+
+## This repo has no hook renderer — logic that must be tested has to live OUTSIDE the hook
+
+- **Context**: EX-448 gave expense line-item rows a stable client `id` and rekeyed the file map /
+  generation markers by it. The alignment logic ended up **inside** `useInvoiceFiles`, and the two
+  existing unit tests had covered the pure exports (`reindexAfterRemoval`, `setFilesAt`) the refactor
+  deleted. There is no `@testing-library/react` and no jsdom in `@package.json`, and adding one is not
+  free here — a `pnpm install` on this arm64 machine can swap the native `lightningcss` binary and
+  break the Tailwind build (see the dependency rule in `AGENTS.md`).
+- **Problem**: A refactor that pulls logic _into_ a hook silently converts testable code into
+  untestable code, and the deleted tests make the loss look like tidying. Nothing fails; coverage just
+  evaporates.
+- **Rule**: When a hook carries logic worth guarding, extract it as a **pure function beside the
+  hook** and test that — `positionalFiles` / `filesByRowId` in `src/lib/utils/upload-file-client.ts`
+  are the shape: id-space↔position-space projections the hook merely calls. Anything genuinely
+  hook-internal (effects, subscriptions, render timing) is a **browser-level** risk in this repo — it
+  goes to `/10x-e2e` or the `e2e-backlog`, not to a hook-renderer dependency.
+- **Applies to**: implement, test-plan, any React hook refactor
+
+## Positional identity is two roles fused — split them, don't replace them
+
+- **Context**: EX-448. A line-item row's array index served as both (a) its **editor-lifecycle
+  identity** (which file, which spinner, which "nie odczytano" marker belongs to this row) and (b) the
+  **wire order** the submit contract uses — the server matches uploaded mediaIds to rows by position.
+  Role (a) is the bug: an index shifts on every insert/remove, so the code grew a reindex/remount
+  apparatus just to keep out-of-form state chasing moving rows.
+- **Problem**: "Index as key is a bug" invites replacing the index everywhere — which would have meant
+  changing `resolveInvoiceMediaIds` and the server contract for a purely client-side defect.
+- **Rule**: Separate the two roles instead of picking one. Stable ids own identity for the whole
+  editing lifecycle; position stays the wire format; and the conversion happens at **exactly one
+  boundary each way** (`positionalFiles` at submit, `filesByRowId` on recovery). The reindexing
+  machinery then deletes itself — it existed only to paper over the fusion.
+- **Applies to**: plan, implement, any list-editing UI with an out-of-form side map
+
+## In the editor, a figure's SOURCE follows whether it can change mid-session — not whether it's "kosztorys data"
+
+- **Context**: The read-only bridge put Robocizna and Materiały side by side in one Podsumowanie block,
+  from two different places: robocizna from the **client-side** editor calc, materiały (and the per-etap
+  zaliczki) as **server props** off `deriveFinancials`. That looks like an inconsistency worth
+  "fixing" — one block, two sources.
+- **Problem**: Unifying it either way is wrong. Move robocizna server-side and it stops reacting to
+  unsaved grid edits, which is the whole point of showing it live. Move materiały client-side and you
+  are re-deriving the transactions plane inside the editor — duplicating `deriveFinancials` and
+  reopening the FR-015 firewall you deliberately kept shut.
+- **Rule**: Pick the source per figure by asking **can this change during an editing session?** Only
+  what the grid edits does — those are client-calc. Everything from the transactions plane is a server
+  prop, cached under `CACHE_TAGS.transfers` so a transfer mutation already revalidates it, no sync
+  machinery. Two sources in one block is the correct shape, not a smell.
+- **Applies to**: plan, implement, any kosztorys↔financial-plane surface
+
+## A stale branch whose integration surface was refactored gets PORTED, not rebased
+
+- **Context**: S-07 undo/redo was fully built on `feat/kosztorys-undo` — engine, commands, 30 unit
+  tests — off a base ~200 commits behind `staging`. In between, EX-515 split
+  `use-kosztorys-editor.ts` (+366/−139): exactly the file the integration hooks into.
+- **Problem**: `merge`/`rebase` treats that as a text conflict and asks you to reconcile hunks
+  line by line against a file that no longer has the same shape. That's not a merge, it's a
+  re-implementation performed under the worst possible interface — three-way diff markers, with the
+  refactor's intent invisible.
+- **Rule**: Split the branch by coupling before you touch git. **Self-contained files** (a pure engine,
+  its tests, a pure reducer) **copy verbatim** — zero conflict by construction; typecheck confirms.
+  The **integration** (the ~250 lines that reach into refactored handlers) gets **re-written against
+  the current code**, using the branch as a specification, not as a patch. Verify up front that each
+  seam still exists _by name_; if the names survived, every capture has a definite home and the
+  re-write is mechanical.
+- **Applies to**: implement, any long-lived branch reintegration
+
+## A Suspense fallback for a warning surface must be NEUTRAL — never render the reassuring state
+
+- **Context**: EX-542 streamed the investment page's „z kosztorysu" recon block behind `<Suspense>`.
+  That block's whole job is to scream when the kosztorys and the transactions plane disagree.
+- **Problem**: The obvious skeleton — the block's own layout with its usual „zgodne" cue — flashes
+  _"everything reconciles"_ for as long as the slow query runs, then flips to a mismatch. A fallback
+  that shows the good state is a lie with a timer on it, and the user's eye has already moved on.
+- **Rule**: Deferring a check does not license showing its optimistic outcome. The fallback keeps the
+  heading and the shape (no layout shift) and shows placeholders — never the green/OK cue, never a
+  value. Same logic applies to any badge, health dot, or „brak różnic" line rendered from data that
+  hasn't loaded.
+- **Applies to**: implement, any Suspense boundary over a reconciliation / validation surface
+
+## A price-view flag is not an audience flag — an owner-internal warning must be gated on WHO is looking
+
+- **Context**: EX-535 added a reconciliation scream (red `!` + „Niezgodność z transakcjami") to the
+  kosztorys footer, and EX-541 gated it on `priceView === 'client'`. That gate reads like an
+  audience check but isn't one: the client-facing view _pins_ the price view to `'client'`, so the
+  gate leaves the scream **on** for exactly the reader who must never see it.
+- **Problem**: the two flags answer different questions — `priceView` says _which price column is
+  being rendered_, the audience says _who is on the other side of the screen_. They coincide on the
+  owner's screen and diverge on the shared one, which is why the bug is invisible in dev.
+- **Rule**: an owner-internal surface (a reconciliation warning, a margin figure, a debug badge)
+  gets its **own** audience flag, threaded from the route that decided the audience. The live gate
+  is `!preview && priceView === 'client'` (`brutto-netto-summary.tsx:92`) — two flags, because they
+  are two facts. Verify the guarantee on the **payload**, not the DOM.
+- **Applies to**: any flag whose name describes a _rendering mode_ being reused as a _permission_.
+
+## `describe.skipIf(!ENV_READY)` makes a green run indistinguishable from a run that did nothing
+
+- **Context**: every DB-backed spec here opens with
+  `const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)` and
+  `describe.skipIf(!ENV_READY)`. Without those vars the suite exits 0 having asserted nothing.
+- **Problem**: "the test passes" is the sentence you say at a review gate, and it is false here in
+  the one case that matters — a fresh shell, CI without secrets, an agent that forgot
+  `node --env-file=.env`. The skip is silent by design; the exit code cannot tell you.
+- **Rule**: when a success criterion names one of these specs, **confirm the reported test count is
+  non-zero** before checking the box. A skipped spec is an unmet criterion, not a met one.
+- **Applies to**: `src/__tests__/**` DB specs (`financial-golden-master-db`, `share-token`,
+  `kosztorys-restore`, `preview-kosztorys-token`, the `leads/*.db` specs, …) and any future
+  `skipIf`-guarded suite.
+
+## Moving a disclosure guarantee from the DATA side to the RENDER side inherits every persisted client preference as an attack surface
+
+- **Context**: the client kosztorys view originally stripped subcontractor fields out of the payload
+  (`toClientView`). The owner retired that: the full tree ships, and the render alone decides what
+  is shown by pinning the price plane to `'client'`.
+- **Problem**: the review found the plane was still read from **per-investment localStorage**. On a
+  public page that is client-controlled state — flip the stored value and the contractor's cost
+  basis renders. A data-side projection can't be defeated that way; a render-side one can, by every
+  input it reads that the client can write.
+- **Rule**: when the guarantee lives in the render, enumerate the render's inputs and pin the
+  load-bearing ones server-side. In this repo that's `use-kosztorys-editor.ts:162-167`
+  (`const view = preview ? 'client' : persistedView`) plus the column allowlist — two halves of one
+  lock; neither is sufficient alone. Persistence gets its own kill-switch (`:1194`), because
+  read-only cells are a UI fact, not a write guarantee.
+- **Applies to**: any public/shared surface that reuses an authenticated component tree — localStorage,
+  cookies, URL params and stored user preferences are all attacker-writable there.
+
+## When a scope cut would distort the model to simplify the view, sequence instead — "model ma odwzorować rzeczywistość, nie odwrotnie"
+
+- **Context**: EX-536 (materiały netto/brutto). The proposed simplification was to make the view's
+  materiały figure agree with the ledger by flattening a distinction that exists in reality —
+  invoices are not always with VAT.
+- **Problem**: the tempting cut is always the one that makes two numbers on screen agree. It buys a
+  clean screenshot by writing a false rule into the model, and the false rule then has to be
+  unwound by every slice built on top of it.
+- **Rule**: cut by **sequencing**, not by distortion — ship the faithful piece now, name the
+  divergence it creates, and record it as _accepted and intended_ rather than as a bug to chase.
+  Slice A shipped with the Podsumowanie deliberately not reconciling against the investment page;
+  the persistence slice closed it. A stated divergence is cheap; a wrong rule in the model is not.
+- **Applies to**: any "can we just treat X as Y for now" that changes what a figure _means_ rather
+  than how much of it we build.
+
+## Adding a field to a kosztorys tree entity is not done until the raw restore INSERT knows about it
+
+- **Context**: EX-556 added a nullable `plane` column to `kosztorys_stages`. The Payload collection
+  field, the `KosztorysStageT` type and the read path were all updated — and snapshot restore still
+  silently dropped the value.
+- **Problem**: The snapshot restore path does not go through Payload. `src/lib/kosztorys/insert-kosztorys-tree.ts`
+  builds a raw `INSERT INTO kosztorys_stages` from a hand-written column list (`STAGE_INSERT_COLUMNS`).
+  A column missing from that array is not an error anywhere — the insert succeeds, the field comes back
+  `null`, and the loss only shows up as "everything re-warns after a restore".
+- **Rule**: When you add a field to a kosztorys tree entity, update the raw insert column list in the
+  same edit as the collection field. Treat the two as one change; a Payload field alone is half of it.
+- **Applies to**: `src/lib/kosztorys/insert-kosztorys-tree.ts`, snapshots, presets — any path that
+  writes the tree with raw SQL rather than the ORM.
+
+## In a git worktree with symlinked node_modules, `next build` must be run with `--webpack`
+
+- **Context**: Verifying a slice inside `.claude/worktrees/<name>` (the 10x worktree pattern).
+- **Problem**: Next 16's default Turbopack builder is incompatible with the symlinked `node_modules`
+  a worktree gets, so `pnpm build` fails for reasons that have nothing to do with the diff — easy to
+  misread as a real breakage and chase.
+- **Rule**: In a worktree, run `next build --webpack`. It is the equivalent build signal; don't "fix"
+  the Turbopack failure and don't treat it as a slice regression.
+- **Applies to**: any review-gate suite run executed from a worktree rather than the main checkout.
+
+## A TypeScript spec table cannot govern a choice made inside SQL — carry both sums and pick above the query
+
+- **Context**: EX-536's netto expense type added a `billedAmount: 'amount' | 'netAmount'` column to
+  `TRANSFER_TYPE_SPECS`, saying which stored column bills the investor.
+- **Problem**: By the time `deriveFinancials` runs, the aggregation has already happened — the natural
+  place to honour the column looks like the query (`SUM(CASE WHEN type = 'INVESTMENT_EXPENSE_NET' …)`).
+  That puts the type name back into SQL, where the spec table cannot reach it: the table stops being the
+  single answer, and the _next_ netto-billed type silently misses the `CASE` with no build error.
+- **Rule**: When a spec-table column decides which of several sums a row contributes, have the query
+  return **all** the sums (`SUM(amount)` _and_ `SUM(net_amount)`) and let the TypeScript layer pick by
+  the column. The query stays type-agnostic; the table stays the only authority.
+- **Applies to**: `src/lib/db/sum-transfers.ts` ↔ `src/lib/db/investment-financials.ts`
+  (`billedAmountFor`), and any future spec-table column with a SQL-side twin.
+
+## A server action that accepts a caller-supplied `Where` can never be relaxed for a public surface
+
+- **Context**: EX-569 put a bulk invoice download on the unauthenticated kosztorys share path. The
+  obvious move was to reuse the transfers table's export action, `fetchFilteredTransfers`.
+- **Problem**: That action takes a `Where` from the caller with no investment scoping — its only
+  scope check is `requireAuth`. Dropping the auth to serve a public page would hand anyone the entire
+  transfers table, not just the invoices of one investment.
+- **Rule**: When a public surface needs data an authenticated action already returns, ask what bounds
+  the query. If the _caller_ supplies the filter, the auth check is the only bound and the action is
+  not reusable — route around it (server-render the rows into props, or write a scoped read that takes
+  an id, not a `Where`).
+- **Applies to**: `src/lib/actions/export.ts`, and any `'use server'` read whose parameter is a query
+  rather than an identifier.
+
+## An exhaustiveness assertion only protects while both sides are authored independently
+
+- **Context**: `TransferTypeT` is a literal union built from a hand-written `TRANSFER_TYPES`
+  tuple, and `src/collections/transfers.ts:38-44` asserts the Payload `options` list covers it
+  (`_AllTransferTypesCovered`). Collapsing the type list into one derived source looks like
+  obvious dedup.
+- **Problem**: deriving `TRANSFER_TYPES` from `Object.keys(TABLE)` widens `TransferTypeT` to
+  `string` — `z.enum` and every `Record<TransferTypeT, …>` exhaustiveness check silently stop
+  checking anything. Deriving the Payload options by `.map()` over the same tuple makes the
+  drift assertion **vacuously true**: it compares a list against itself. Neither failure is a
+  build error; both are a _loss of protection_ that looks like a successful refactor.
+- **Rule**: a drift assertion is only worth its bytes while its two sides are written by hand
+  from different places. Before deduping one into the other, ask what the assertion would still
+  catch — if the answer is "nothing", the dedup deleted the check, not the duplication.
+- **Applies to**: `satisfies Record<Union, …>` tables, Payload `options` vs a TS union, zod
+  enums mirrored from a constant, any "single source of truth" collapse of two lists.
+
+## A golden master frozen over a borrowed dataset needs a dataset fingerprint
+
+- **Context**: the per-investment golden master (`src/__tests__/financial-golden-master-db.test.ts`)
+  freezes every financial figure over the shared 5435 `db-test` restore — a dataset the test does
+  not own and that `pnpm db:import:test` replaces wholesale.
+- **Problem**: after a refresh, every figure differs, so the suite reports a full-width drift that
+  reads as "the refactor broke everything". The rational response to a test that cries wolf at
+  that scale is to delete it. The snapshot is also **preservation, not correctness** — it faithfully
+  freezes existing bugs (EX-574 was deliberately left inside it), so a green run means "unchanged",
+  never "right".
+- **Rule**: fingerprint the dataset (row counts / a floor like `DATASET_FLOOR`) and check it
+  **first**, so a refreshed DB fails as "regenerate the snapshot" rather than as drift. Assert the
+  floor both as a test and as a precondition on the regenerate path, or an empty DB silently
+  freezes a snapshot of nothing.
+- **Applies to**: any characterization/golden-master spec over a restored or shared DB.
+
+## A per-browser preference stops being a preference the moment a second audience reads the same surface
+
+- **Context**: the Podsumowanie panel's netto / brutto / mieszane pick lived in the reader's
+  `localStorage` (`useSummaryAxis`). Then the same panel got a client-facing view.
+- **Problem**: the client had no control, so it silently rendered whatever the **owner's browser**
+  last remembered — and the same investment read netto for one person and brutto for another.
+  Hiding the control (the first stopgap) removes the affordance but not the effect: the value is
+  still being read, just by someone who can no longer see or set it.
+- **Rule**: ask who else renders from this state. A choice only one person makes and only that
+  person sees is a preference; a choice that decides what a _second_ audience is shown is a fact
+  about the entity — store it on the entity and delete the browser layer rather than layering the
+  stored value on top of it. Two sources of truth for one plane is the ambiguity you set out to fix.
+- **Applies to**: `usePersistedEnum` / `localStorage` column and axis preferences on any surface
+  that also has a share, preview, print or client mode.
+
+## An A/B comparison affordance belongs in the URL, not in client state — the old reading must skip the new one's fetches
+
+- **Context**: `investment-summary-panel` (2026-07-26) kept a v1 (transactions) / v2 (kosztorys)
+  reading of the investment page so the owner could check the totals agree. The plan built it as a
+  `useState` toggle swapping two numbers inside one panel.
+- **Problem**: that made v1 a _new rendering of old figures_, not the old page — it still paid for
+  every v2 server fetch, and a shared query grew columns only v2 needed. The whole point of a
+  comparison axis is that one side is untouched; a client toggle cannot skip a server fetch, so it
+  can't give you that side.
+- **Rule**: make the reading a search param (`?widok=v1|v2`) and branch on the **server**, so the old
+  reading runs its original queries and nothing else, the new reading owns all of its own fetching,
+  and each side is a link two browser tabs can hold open at once. Write down the deletion condition
+  with it — a comparison axis is temporary by construction.
+- **Applies to**: any "keep the old surface next to the new one" migration, v1/v2 readings, and
+  before/after refactor comparisons.
+
+## A server action that invalidates any tag forces a full route render — cache tags cannot decouple two panels
+
+- **Context**: EX-597 tried to stop a kosztorys-settings write on the investment page from
+  re-rendering the (unrelated, expensive) transfers table. The instinct was tag precision: invalidate
+  only what the panel reads, and the table stays put. Traced through Next 16's own source instead of
+  reasoning from the docs.
+- **Problem**: `addRevalidationHeader` sets `x-action-revalidated` on `pendingRevalidatedTags.length`
+  alone, and **both** `revalidateTag` and `updateTag` push into that array. The cache _profile_ gates
+  only `pathWasRevalidated`, which decides whether the render rides on the POST — with a profile the
+  POST skips the render, the client sees a non-zero `revalidationKind` with `flightData === undefined`,
+  and falls through to a plain `navigate(…, RefreshAll)`: a fresh GET of the current route. So a
+  profile-revalidation does not remove the re-render, it **relocates** it and adds a round-trip. The
+  only branch that renders nothing is `ActionDidNotRevalidate && flightData === undefined` — i.e. an
+  action that invalidates _nothing_.
+- **Rule**: if a write must not re-render the route, it has to leave the server-action path entirely
+  (a route handler, which sets no `x-action-revalidated`) — and that only ships if the client already
+  owns every figure the removed render would have refreshed, or the siblings go stale until the next
+  navigation. Decoupling and client-side ownership are one refactor, not two. No amount of tag
+  precision is a substitute.
+- **Applies to**: any "this write shouldn't re-render that" instinct on a server action; `updateTag`
+  vs `revalidateTag` reasoning about render cost.
+
+## Neon latency is bimodal — separate warm from cold before believing any per-request number
+
+- **Context**: a performance spike on the investment page produced three wrong structural theories in
+  a row: `sumAllRegisterBalances` "costs 1015 ms" (it is 2.4 ms by `EXPLAIN ANALYZE`, both legs
+  index-scanned), "the tree's five ORM reads cost per round trip" (they were already fully parallel —
+  total equals the _slowest_ read, not the sum), and "the 83–119 ms 1-row read proves pool contention"
+  (warm it is 21 ms).
+- **Problem**: every one of those was a handful of **cold** samples. Neon compute wake + TLS + pool
+  establishment is billed entirely to whichever query touches the DB first in a cold lambda, so the
+  first query in the fan-out always looks structurally expensive, and a 2–4 sample median is dominated
+  by whichever mode it happened to land in. The surface is ~20–60 ms warm and ~160–200 ms cold; a local
+  bench cannot see any of it (no network, no pool), which is why local measurement agreed with the
+  wrong answer twice.
+- **Rule**: never accept a per-request timing without separating warm from cold, and prefer **one
+  request that exposes the mechanism** to a dozen that produce a median — the sample that settled the
+  tree question did so by showing the five reads' timings overlapping, not by being faster. Also read
+  where `perfStart()` fires: if it wraps the first `db.execute` of a request, it is measuring the
+  connection, not the query.
+- **Applies to**: any DB/latency measurement taken against a preview or prod deployment; deciding
+  whether an index, a denormalized column, or a query rewrite is justified.
+
+## A hand-written `Where` → SQL translator fails OPEN — an operator it doesn't know silently widens the result set
+
+- **Context**: `buildTransferFilters` emits a half-open amount range
+  (`{ greater_than_equal: low, less_than: high }`), but `where-to-sql.ts`'s `buildFieldCondition` is a
+  flat chain of `if ('op' in cond)` and had no `less_than` branch.
+- **Problem**: an unmatched operator is not an error — it falls through. The ceiling vanished and the
+  stats query ran `amount >= low` unbounded, so searching „500,00" listed 20 rows totalling 10 000 zł
+  under a tile reading 22 560 189,17 zł. Nothing typed, logged or threw; the list plane (Payload
+  `find`) and the stats plane (raw SQL) simply disagreed. The same file's other trap is upstream:
+  `stripCancelledFilters` discarded the default `type not_in ['CANCELLATION']` while the SQL re-added
+  only `cancelled IS NOT TRUE` — a comment saying "SQL already excludes cancelled" is exactly what hid
+  the gap, because `cancelled = true` and `type = 'CANCELLATION'` are two different concepts.
+- **Rule**: any operator the filter builder can emit needs a branch in the translator, and the
+  translator should be exhaustive (or throw on an unknown operator) rather than fall through — widening
+  is the dangerous direction. Test the **bridge**: run the real builder through the real strip into the
+  real translator and assert the **emitted SQL**, not the intermediate `Where` object. Asserting the
+  `Where` still holds `not_in` stays green even if the translator drops the operator entirely.
+- **Applies to**: `src/lib/db/where-to-sql.ts` and every `src/lib/queries/*-filters.ts` that feeds it;
+  any two-plane visibility rule enforced once in the ORM and once in hand-written SQL.
+
+## Unifying a type across carriers launders the dead ones — check every carrier is live before the merge
+
+- **Context**: `CostVariantT` and `StagePlaneT` were merged into one `ToolPlaneT` (EX-548, "one
+  concept, one name"). Three fields then carried that type: `KosztorysStageT.plane` (live, the sole
+  settlement input), `KosztorysItemT.costVariant` and `KosztorysSectionT.defaultCostVariant` — both
+  inert since 39 minutes after they were born, when their only consumer (`effectiveCostVariant`) was
+  removed in a `calc.ts` dead-code sweep that never looked at the schema.
+- **Problem**: the merge was correct on its own terms and had an unintended cost — giving three
+  carriers one type name erased the visual cue that two of them were vestigial, so they _read_ as
+  load-bearing. Worse, both were admin-visible free-text Payload fields with no option list: an owner
+  could type anything into „Domyślny wariant kosztu" and it validated, persisted, and did nothing.
+  Dead **and** misleading beats merely dead.
+- **Rule**: before unifying a type across carriers, confirm each carrier actually has a reader — a
+  merge is a good moment to delete, not to inherit. And when you delete a _function_ for having 0 refs,
+  check whether it was the only reader of a column; a dead-code sweep of one file leaves schema behind.
+- **Applies to**: any `satisfies`/type-consolidation refactor; any "0 refs, deleting" sweep that
+  touches a resolver over persisted fields.
+
+## A stale doc section marked OTWARTE is read as a foundation for planned work
+
+- **Context**: dropping the dead cost-variant columns, the real risk was never the data — it was
+  `context/reference/kosztorys-editor-domain-notes.md`, which carried a 94-line section titled
+  „…model się rozjeżdża (**OTWARTE**, duża zmiana)" naming `default_cost_variant` as level 1 of a
+  cascade, „już istnieje". The design had been superseded and shipped elsewhere (on `stage.plane`)
+  months earlier; the doc never learned.
+- **Problem**: an agent reading that without git history concludes the columns are the foundation of
+  planned work and preserves them. The same happens with code comments: `kosztorys-items.ts` asserted
+  a section→item cascade with zero implementing code, because the resolver died and the comment didn't.
+- **Rule**: when a change makes a doc section or a comment factually wrong, fix it **in the same
+  change** — the doc-lifecycle rule covers code comments too. An **OTWARTE** / open-question marker
+  is a stronger claim than plain prose, so it needs closing out explicitly when the question is
+  answered somewhere else.
+- **Applies to**: `context/reference/**` and `context/domain/**` living docs; any comment that
+  describes a cascade, fallback or resolution order.
+
+## Don't bump `SNAPSHOT_SCHEMA_VERSION` for a dropped field nobody read — and know what a bump actually breaks
+
+- **Context**: `snapshot-format.ts` says "bump only on a non-additive payload change (a renamed/dropped
+  field)", so the letter said bump when the cost-variant columns went. The precedent said otherwise:
+  `20260724_1_drop_kosztorys_section_coeff.ts` dropped two sibling columns from the same table and did
+  not bump.
+- **Problem**: the version rule's own **rationale** is "reject because the tolerant mapper would seed
+  wrong/missing columns" — a failure mode that doesn't exist when the mapper stops reading the field
+  and the column stops existing; an old payload seeds exactly the rows it would today. Meanwhile a bump
+  makes `assertReadableSchemaVersion` throw on **every** stored row — including the **global,
+  hand-curated `kosztorys_presets` library**, which is not covered by the kosztorys throwaway-data
+  carve-out. And it fails asymmetrically: the three list queries don't assert, so the versions list and
+  the „dodaj sekcję z szablonu" picker keep offering entries that error the moment you use one.
+- **Rule**: bump on the rationale, not the letter — only when a stored payload would restore into
+  _wrong_ rows. Before bumping, check which stored artifacts are global and curated rather than
+  throwaway, and whether the listing path asserts the version at all.
+- **Applies to**: `src/lib/kosztorys/snapshot-format.ts`, `snapshots.ts`, `presets.ts`; any column drop
+  that appears in a serialized payload.
+
+## Migration filenames sort lexically — the unpadded counter breaks at 10
+
+- **Context**: migrations are `YYYYMMDD_<seq>_<snake_case>.ts` with a single-digit unpadded counter
+  restarting at 0 each date. Payload's `readMigrationFiles` does `readdirSync().sort()` and filters
+  `index.ts` — **the filename's lexical order is the run order**, and `payload.config.ts` passes only
+  `migrationDir`.
+- **Problem**: at ten migrations in one day `_10_` sorts before `_2_` and the day's migrations run out
+  of order. Max so far is 4, so it hasn't bitten.
+- **Rule**: if a date is heading past `_9_`, pad the counter (`_09_`, `_10_`) for that whole date —
+  never mix padded and unpadded within one day. Related: `down` is written faithfully by every
+  migration but is **never run** (no `migrate:down`/`refresh`/`reset` script exists) — it must restore
+  the original DDL exactly, but it need not preserve data.
+- **Applies to**: every file added under `src/migrations/`.
+
+## A commented-out guard is a candidate finding, not a dropped invariant — confirm intent in git first
+
+- **Context**: a DDD distillation pass ranked "an AUXILIARY register must not go negative" as the
+  #1 invariant to restore: core to the cash ledger, enforced by **zero** layers, surviving only as a
+  commented-out block in `transfers.ts` plus a `// TODO re-add` stub. A whole guardian-aggregate plan
+  was written on it and EX-410 was opened.
+- **Problem**: the premise was false. `git log` on the commented block showed it dropped in `76dd757`
+  and flip-flopped **four times** — registers are _allowed_ to go negative, by a deliberate client
+  decision. The plan was canceled unimplemented. Commented-out code and a TODO look identical whether
+  they mark an accident or a decision; a static read cannot tell them apart, and the more emphatic the
+  code looks ("this used to be enforced!"), the more confident the wrong conclusion.
+- **Rule**: before ranking a commented-out or deleted guard as debt, run `git log -S` on it and read
+  the commit that removed it. A guard that was removed _once_ is a candidate; one that flip-flopped is
+  a decision someone kept re-litigating, and re-adding it restarts the argument. Record the verdict in
+  a living doc so the next audit doesn't rediscover the same "hole" — this one lives in
+  `context/domain/01-domain-distillation.md` under intentional non-targets.
+- **Applies to**: any audit, distillation or "what invariants aren't enforced" sweep; commented-out
+  validation, disabled lint rules, and `TODO re-add` stubs.
+
+## Verify an HMAC over the RAW request bytes — `request.json()` destroys the signature
+
+- **Context**: the Facebook Lead Ads webhook must reject forged POSTs by HMAC-SHA256 over the body,
+  compared against Meta's `X-Hub-Signature-256: sha256=…` header.
+- **Problem**: the obvious handler shape — `const body = await request.json()` — makes verification
+  impossible. The signature covers the exact bytes Meta sent; re-serializing the parsed object changes
+  key order, whitespace and number formatting, so the recomputed digest never matches. Worse, a body
+  can only be read once, so the mistake isn't recoverable later in the handler. The same trap applies
+  to every signed webhook (Stripe, GitHub, Slack).
+- **Rule**: read the body **once** as text (`const raw = await request.text()`), verify the HMAC against
+  `raw`, then `JSON.parse(raw)` from that same string. Compare digests with `crypto.timingSafeEqual`,
+  not `===`.
+- **Applies to**: any Route Handler receiving a signed webhook.
+
+## Payload `unique: true` is single-column only — a compound uniqueness key is raw SQL in the migration
+
+- **Context**: `leads` needed idempotency on `(source, externalId)` so a re-fired webhook can't create
+  a duplicate row.
+- **Problem**: there is no field-level way to express it — Payload's `unique: true` covers one column,
+  and no collection-level compound-unique option exists. The constraint has to be created by hand in the
+  hand-written migration (`CREATE UNIQUE INDEX … ON leads (source, external_id)`), which means it lives
+  in a different file from the collection config that depends on it and is easy to lose in a rewrite.
+  Copy `src/migrations/20260527_add_unique_google_sheet_id.ts`.
+- **Rule**: express compound uniqueness in the migration as a raw unique index, and note it in the
+  collection config so the two stay linked. Postgres treats NULLs as distinct under a unique index, so a
+  nullable member column (here `external_id`) never collides — that's a feature for optional external
+  ids, and a hole if you meant the pair to be strictly unique.
+- **Applies to**: any Payload collection needing multi-column uniqueness or idempotency on an external id.
+
+## An editable grid that mounts an `<input>` in every cell can't become sheet-like — the two-mode cell is the fork
+
+- **Context**: the kosztorys editor v1 was TanStack Table + shadcn `DataTable`, with
+  `editable-cell.tsx` rendering every cell as an always-mounted `<input>`/`<select>`. New requirements
+  arrived — arrow/Tab/Enter navigation, typing enters edit, column resize, variable row height,
+  copy/paste with Excel.
+- **Problem**: those aren't features you bolt on; they all depend on a **two-mode cell model** (a cell is
+  either _selected_ — plain text, one global `{row,col}` cursor — or _editing_, and only then an input).
+  With an input in every cell an arrow key moves the text caret instead of the selection, Tab gets lost
+  in virtualized rows, ~1000 rows × ~15 columns means hundreds of controlled inputs, and a single-line
+  `<input>` fights variable row height. One architectural change unblocks all three, and on a headless
+  table you write that model yourself.
+- **Rule**: when a grid needs to _feel_ like a spreadsheet, treat "two-mode cell + global selection" as
+  the deciding requirement and pick a library that ships it (here `react-datasheet-grid`, built for
+  sheet-feel: keyboard nav, resize, Excel copy/paste, virtualization). Rejected alternatives and why:
+  **react-data-grid** — a general grid that _can_ edit, not one aimed at sheet-feel; **Glide Data Grid /
+  any `<canvas>` grid** — Playwright and RTL see one bitmap, so nothing is testable, and canvas's perf
+  edge doesn't show at thousands (not tens of thousands) of rows; **AG Grid** — range editing is paid
+  Enterprise, heavy bundle, foreign look. Decide it with a **bake-off on a sibling route** where the only
+  difference is the grid layer (same query, same actions, same pure calc), so the verdict can't be
+  confounded — and gate it on a compatibility smoke-render first, because a sheet library is usually the
+  least actively maintained thing in a bleeding-edge stack.
+- **Applies to**: any editable data grid; more generally, any "make it feel like <native app>" requirement
+  where the interaction model, not the feature list, is what forks the implementation.
+
+## Hierarchical visibility is ONE set of leaf exclusions — a parent toggle is a bulk op, not a second set
+
+- **Context**: the export picker had to answer "the whole kosztorys except the Klimatyzacja section, but
+  keep this one item from it" — visibility controllable per section _and_ per item.
+- **Problem**: the obvious model is two pieces of state (hidden sections + hidden items), and it
+  immediately needs reconciliation rules: does an explicitly-shown item beat its hidden section? What
+  happens when you then hide the section again? Every combination is a special case, and the two sets
+  drift out of agreement with what the file actually contains.
+- **Rule**: keep exactly one set — `excludedItems: Set<itemId>` — and make the parent control a **bulk
+  operation** over it (hide section = add all its item ids; show = remove them). The parent's own
+  rendered state is then **derived**, three-valued: all excluded → hidden, some → indeterminate, none →
+  visible. Un-hiding one item inside a hidden section needs no logic at all, because there is nothing to
+  reconcile. Compute the exported/previewed set and its subtotals from that same filtered collection, so
+  the document always sums to what is shown.
+- **Applies to**: export/print pickers, permission and column toggles, tree checkboxes — any UI where a
+  container and its children can both be switched.
+
+## Implementation that drifted from a settled decision gets the schema cleaned, not the dead columns parked
+
+- **Context**: The kosztorys POC (2026-06-20). `change.md` recorded a `[PEWNE]` owner decision —
+  ONE VAT rate per investment, the section→item cascade explicitly rejected — but the code shipped
+  the cascade (`kosztorys_sections.vat_rate` + `kosztorys_items.vat_rate`, `effectiveVat = item ?? section`)
+  and `investments` had no VAT column at all. The rejected variant was the only one that existed.
+- **Problem**: The tempting cheap fix is to leave the columns in place and just point `calc` at the
+  investment — nobody edits them, they default to `0.08`, they're harmless. The owner rejected that:
+  a dead field carrying a rejected model "comes back 100%", and the next reader takes the schema as
+  evidence of intent. That doc↔code divergence is what produced the drift in the first place.
+- **Rule**: When you find code implementing an explicitly rejected variant, correct it **down to the
+  schema** — drop the columns in the same change, and in the same pass sweep the prose that still
+  describes the rejected model (design notes, comments, `change.md` status). Retiring a model means
+  removing the places it could be re-inferred from, not just the place it is read.
+- **Applies to**: any correction of an implementation that drifted from a recorded decision — dead
+  columns, dead enum members, dead config knobs. Related: the stale-`OTWARTE`-section entry above.
+
+## Folding one slice's scope into another makes roadmap bookkeeping a deliverable, not a formality
+
+- **Context**: `2026-07-09-kosztorys-price-models` absorbed the scope of two later slices. Its archive
+  step included "mark them absorbed in `roadmap.md`" — that step was never run.
+- **Problem**: The roadmap kept listing both as work still to do, so a later session opened a full
+  research pass on scope that had already shipped. The waste isn't the stale line, it's the research
+  the stale line commissions.
+- **Rule**: When a change swallows scope that another roadmap entry owns, updating that entry is part
+  of the change — do it in the same pass that closes the slice, not as an archive-time chore. Absorbed
+  scope needs the pointer ("shipped in X"), not just a status flip, so the next reader can verify.
+- **Applies to**: roadmap slices, Linear issues that duplicate each other, plan documents that fold in
+  a follow-up's scope.

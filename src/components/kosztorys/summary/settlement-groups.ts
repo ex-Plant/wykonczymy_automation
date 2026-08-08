@@ -17,7 +17,6 @@ type ArgsT = {
   doZaplaty: MoneyPairT
   wplatyNet: number
   vatRate: number
-  filtersActive: boolean
 }
 
 // The settlement steps under the breakdown, as one group per tor. Their sequence IS the tryb
@@ -32,7 +31,6 @@ export function buildSettlementGroups({
   doZaplaty,
   wplatyNet,
   vatRate,
-  filtersActive,
 }: ArgsT): SettlementGroupT[] {
   // One pool of wpłaty, one debt — one table. Wpłaty span both money tracks as a single centred cell
   // (they carry no VAT, so they come off both axes at the same złoty) and „Pozostało do zapłaty"
@@ -57,7 +55,6 @@ export function buildSettlementGroups({
             // Per cell: netto and brutto cross zero independently, so a slightly overpaid netto can
             // sit beside a real outstanding brutto.
             danger: { net: doZaplaty.net > 0, gross: doZaplaty.gross > 0 },
-            scopeMarked: filtersActive,
           },
         ],
       },
@@ -84,7 +81,6 @@ export function buildSettlementGroups({
           label: 'Pozostało netto',
           hint: '*Łącznie netto minus wpłaty netto',
           line: faceValue(mixed.doRozliczeniaNet),
-          scopeMarked: filtersActive,
         },
         {
           label: 'Do zapłaty netto',
@@ -95,7 +91,6 @@ export function buildSettlementGroups({
           // debt read back without a faktura, not a second one owed on top. Two red closing figures
           // one under the other read as two debts — and this one deducts the OTHER tor's wpłaty, so
           // it can't be reconciled against the rows above it either.
-          scopeMarked: filtersActive,
         },
       ],
     },
@@ -113,7 +108,6 @@ export function buildSettlementGroups({
           label: 'Pozostało brutto',
           hint: `*Łącznie brutto (VAT ${vatPercent}% na robociznę) minus wpłaty netto`,
           line: faceValue(mixed.resztaGross),
-          scopeMarked: filtersActive,
         },
         {
           label: 'Do zapłaty brutto',
@@ -121,7 +115,6 @@ export function buildSettlementGroups({
           line: faceValue(mixed.doZaplatyGross),
           bold: true,
           danger: mixed.doZaplatyGross > 0,
-          scopeMarked: filtersActive,
         },
       ],
     },

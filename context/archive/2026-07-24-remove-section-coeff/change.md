@@ -19,3 +19,8 @@ Blast radius already scoped (2026-07-24):
 - REMOVE (section tier): collection fields + drop-column migration (hand-written; kosztorys data throwaway pre-dogfooding → no backfill), types.ts (KosztorysSectionT + KosztorysV2RowT section fields, 2 sites), queries/kosztorys.ts mapping, v2-rows.ts denorm + SectionCoeffPatchT + inverseSectionCoeffPatch, calc.ts effectiveCoeff → global-only, insert-rows.ts / append-preset-sections.ts / serialize-preset.ts, actions/kosztorys.ts applySectionCoeff, use-kosztorys-editor.ts (sectionCoeffs / applySectionCoeff / handleSectionCoeffChange / undo wiring), kosztorys-section-summary.tsx popover, kosztorys-editor-body.tsx prop chain, use-undo-redo.ts.
 - Tests to update/remove (~9): inverse-coeff-patch, serialize-restore-roundtrip, serialize-apply-preset, append-preset-sections, reconciliation, settlement, v2-rows, sort-value, snapshots + fixture kosztorys-bialostocka.json.
 - Migration means a prod-migrate step is owed at ship time.
+
+**Why the tier went.** The section coeff was a knob the business never used: it cost a popover, a
+patch/inverse pair, a row denorm and two DB columns to keep alive, while global + per-item override
+already covered every real case. Removing a tier nobody sets is cheaper than carrying it — the
+per-item override remains the escape hatch if one section ever needs its own price.

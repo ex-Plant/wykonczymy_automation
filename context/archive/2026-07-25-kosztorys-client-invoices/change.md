@@ -45,3 +45,16 @@ and the settled tab („Materiały wliczone w robociznę") is a margin figure by
 already accepted „full tree, no projection" for the kosztorys itself (`client-kosztorys.ts:18`) and
 has now ruled that the settled tab shows in every view, so the direction is consistent — but
 invoices go further than numbers. Confirm before shipping.
+
+### Resolved before shipping (owner)
+
+Invoices in the client's hands is the point of the feature, so the margin exposure is accepted and
+intended, not an oversight. One caveat recorded with it: **Blob URLs are public, unguessable and
+permanent** — whoever obtains one keeps access even after the share token is revoked. Consistent with
+the existing `read: () => true` media rule; closing it would mean a proxy or signed URLs, a separate
+decision.
+
+`plan.md` / `plan-brief.md` deleted at the archive audit (2026-08-08); `git log --follow` reaches
+them. One claim in them has since gone stale: the „media has no cache tag / no revalidation hook"
+gap is closed — `CACHE_TAGS.media` exists and `collections/media.ts` runs
+`makeRevalidateAfterChange('media')`.

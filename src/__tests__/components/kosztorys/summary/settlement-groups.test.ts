@@ -12,7 +12,6 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
       doZaplaty: { net: 1000, gross: 1230 },
       wplatyNet: 300,
       vatRate: 0.23,
-      filtersActive: false,
     })
     expect(groups.map((group) => group.axis)).toEqual(['both'])
     expect(groups[0]?.caption).toBeUndefined()
@@ -34,7 +33,6 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
       doZaplaty: { net: -100, gross: 130 },
       wplatyNet: 1100,
       vatRate: 0.23,
-      filtersActive: false,
     })
     expect(rowNamed(groups, 'Pozostało do zapłaty')?.danger).toEqual({ net: false, gross: true })
   })
@@ -47,7 +45,6 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
       doZaplaty: { net: 1000, gross: 1230 },
       wplatyNet: 300,
       vatRate: 0.23,
-      filtersActive: false,
     })
     expect(rowNamed(groups, 'Materiały')).toBeUndefined()
   })
@@ -61,7 +58,6 @@ describe('buildSettlementGroups — tryb mieszany', () => {
       doZaplaty: { net: 0, gross: 0 },
       wplatyNet: 0,
       vatRate: 0.23,
-      filtersActive: false,
     })
     expect(groups.map((group) => group.caption)).toEqual([
       'Rozliczenie netto',
@@ -93,7 +89,6 @@ describe('buildSettlementGroups — tryb mieszany', () => {
       doZaplaty: { net: 0, gross: 0 },
       wplatyNet: 0,
       vatRate: 0.23,
-      filtersActive: false,
     })
     expect(mixed.doZaplatyNet).toBeGreaterThan(0)
     expect(rowNamed(groups, 'Do zapłaty netto')?.danger).toBeUndefined()
@@ -116,7 +111,6 @@ describe('buildSettlementGroups — tryb mieszany', () => {
       doZaplaty: { net: 0, gross: 0 },
       wplatyNet: 0,
       vatRate: 0.23,
-      filtersActive: false,
     })
     expect(rowNamed(groups, 'Materiały')).toBeUndefined()
   })

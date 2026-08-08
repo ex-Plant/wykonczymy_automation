@@ -30,3 +30,16 @@ those mechanics — B4 carries a note; read `plan.md` for what to actually build
 2 dropped, 1 skipped, 1 filed as EX-576 for the owed E2E). Three 🔴 client-facing money errors were
 caught and fixed (the „Wydatki inwestycyjne" list, the owner's sheet sync, and the settled-netto
 category divergence) — two of them plan gaps `plan.md` never named. Unit suite 1643 green, parity green.
+
+**The rejected model: a VAT rate instead of a second stored amount.** The first design derived netto
+from brutto via a rate, which put a rounding seam between the transaction-list row (JS `Math.round`)
+and the aggregate (Postgres `ROUND`) — the two could disagree by a grosz on the same expense. Storing
+`netAmount` as a typed figure deletes the hazard rather than managing it: the row and the aggregate
+read the identical stored value, so "list == summary" holds by construction, not by a shared rounding
+helper. The price is that the owner types two numbers off the invoice instead of one.
+
+`design.md`, `plan.md` and `plan-brief.md` were deleted at the archive audit (2026-08-08) — their
+invariants now live in code comments (`src/types/investment-financials.ts:8-26` for the two buckets,
+`src/lib/constants/transfers.ts:42-83` for `settleable`/`financialBucket`/`billedAmount`,
+`summary-economics.ts:42-51,92` for the face-value + before-`combinedNet` folding rules).
+`git log --follow` on this folder still reaches the originals.

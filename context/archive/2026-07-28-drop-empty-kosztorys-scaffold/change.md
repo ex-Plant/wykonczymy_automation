@@ -53,3 +53,20 @@ unconditional. Only „Praca" is section-gated, and it is already correctly `dis
   `EmptyKosztorysDialog`; update it.
 - `context/archive/2026-07-11-kosztorys-editor-ux/` documents the stopgap — leave the archive alone,
   but check whether a living doc repeats the stale premise.
+
+## Kept from the plan (deleted 2026-08-08)
+
+- **The emptiness signal is `subtotals.length === 0`, and the choice is load-bearing.** Never
+  `gridRows` (always ≥ 2 synthetic rows, so it is never empty) and never `viewRows` / `bodyRows` — a
+  no-hit search empties those, which would put „Kosztorys jest pusty" over a populated kosztorys.
+  `subtotals` is full-dataset by construction.
+- **The gate reads live editor state, not the `tree` prop.** The first sekcja arrives through the
+  optimistic path with no new `tree`, so a `tree`-derived gate leaves the hint stuck over a grid that
+  already has a row.
+- **The share layout (`clientView`) gets the title only, no description** — it renders no toolbar and
+  no `Dodaj` menu, so it must not be told to use one.
+- **The empty state is inert text, not buttons**: smallest surface, nothing to keep in sync with the
+  `Dodaj` menu, and it teaches the affordance the user will keep using. Accepted cost — the copy names
+  the `Dodaj` menu by label, so renaming that menu silently stales the sentence.
+- **No new automated tests**: subtractive change whose only real risk is a dangling reference, which
+  `pnpm typecheck` catches deterministically.

@@ -53,3 +53,8 @@ list is the one place the FV data is invisible.
   in text — but the attached PDF _is_ the supplier invoice, so the ZIP and the preview already leak
   strictly more. EX-569 records the owner's ruling that client invoice access is the point of the
   feature. The note only makes searchable what the attachment already shows.
+- **Hover-only overlay, accepted** (owner, 2026-07-26). A popover was offered and declined, so the
+  pozycje under line 1 are unreachable on a phone — and the client share view is the surface most
+  likely to be opened on one. `HintTooltip` matches every other hint in the app and needed no new
+  wiring; the numer faktury alone is what a client matches against paper. Recorded so the touch gap
+  is not rediscovered as a bug.

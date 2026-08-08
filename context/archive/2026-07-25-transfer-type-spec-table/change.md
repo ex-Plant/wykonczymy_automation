@@ -78,3 +78,66 @@ worktree inherits that branch's unmerged work (the kosztorys view-scoping refact
 `vatPlane` rename, `527ec1a0`/`a7116585`, which already touched `DEPOSIT_UI_TYPES`). **Merge
 order matters:** `subcontractor-view-settlement-only` must land before this branch, or the
 constants file conflicts.
+
+## Findings kept from `research.md` (deleted 2026-08-08)
+
+`plan.md` / `plan-brief.md` / `research.md` are gone; `git log --follow` on this folder still
+reaches them. What survives is the audit, not the choreography. **All of it was true on
+2026-07-25 — verify before acting.**
+
+### Cancellation is two concepts, not one
+
+|                   | `type = 'CANCELLATION'`                        | `cancelled = true`                                                          |
+| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| what              | a new stub row — an audit receipt              | a state change on the original                                              |
+| money meaning     | **none** — not a reversal, not a counter-entry | **everything** — the sole mechanism removing the original from every figure |
+| relational fields | all NULL (0/256 rows in the DB)                | unchanged                                                                   |
+
+The reversal works by **excluding the original**, never by a compensating entry
+(`src/lib/queries/transfers.ts` states the invariant). `cancelTransferAction` does two writes
+with **no transaction wrapper** — flip the flag, then create the stub with `amount` copied
+verbatim, sign preserved. `ON DELETE SET NULL` on `cancelled_transaction_id` means hard-deleting
+an original **orphans** its CANCELLATION. Sheet sync only ever _removes_: `SHEET_SYNCED_TYPES`
+excludes CANCELLATION, so the stub's own `afterChange` never fires;
+`syncSingleTransferToSheet` still carries a redundant second cancellation path, unreachable from
+the hook and exercised only by tests.
+
+### The predicates the table does not reach
+
+~30 raw string literals bypass the spec table. The dangerous cluster is **SQL** — seven
+literals in `sum-transfers.ts`, invisible to any TS predicate, where the sign rule is implicit
+(`CASE WHEN type IN (deposits) THEN amount ELSE -amount END`). Giving `RABAT` or `LOSS` a source
+register would start debiting cash registers **with no edit to that file**. Also: five literals
+inside `deriveFinancials` itself, Payload `condition` callbacks duplicating `needsWorker` /
+`isCancellationType`, `roles.ts` duplicating `isLaborCost`, and `validation.ts`'s raw
+`type === 'CORRECTION'` reached from five call sites.
+
+### Latent disagreements — dormant, zero bad rows found
+
+A data audit over the prod restore found **no** offending row for any of these, which is why
+none blocked the refactor. `needsSourceRegister('CANCELLATION')` and the exempt-row problem were
+fixed here (see the comment on the `CANCELLATION` row in `constants/transfers.ts`). Still open:
+
+- **CORRECTION sign**: `utils/validation.ts` _rejects_ `amount >= 0`, while `collections/transfers.ts`,
+  `hooks/transfers/validate.ts` and **AGENTS.md** all say "may be negative". Code wins; the prose
+  is what needs correcting.
+- **`otherCategory` has three readings** — shown (OTHER / INVESTMENT_EXPENSE / PAYOUT), required
+  (OTHER), and always (the edit form gates it not at all). Nothing clears it, so an edit can weld
+  one onto a `LABOR_COST`.
+- **`vatPlane` has no predicate** — raw `=== 'INVESTOR_DEPOSIT'` in the collection and the deposit
+  form, sent unconditionally by `toData`, cleared by no server rule.
+- **`expenseCategory` is required but never cleared** — dropping a correction's investment orphans it.
+- **`needsOtherCategory` is server-only**, absent from `transferFieldRules`, so it surfaces as a
+  thrown hook error instead of an inline field error.
+- **`editExpenseFormSchema` validates amounts type-blind** — a CORRECTION edit runs the
+  "must be > 0" branch; masked only because `updateTransferAction` discards the amount for
+  anything but `LABOR_COST`.
+- `getSecondRowCategory` drops its `hasInvestment` argument; `internalTransferFormSchema`
+  re-implements three shared rules with different Polish messages, and `createInternalTransferSchema`
+  is dead but for its own test.
+
+### Why `TRANSFERS_SUMMARY_TYPES` stayed literal
+
+It is Google Sheet columns I–N, rewritten verbatim on reset/relink. Deriving it from the table
+would reorder live client spreadsheets and break their formulas — the array's _order_ is an
+external contract, not a membership question.

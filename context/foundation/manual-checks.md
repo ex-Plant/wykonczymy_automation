@@ -635,7 +635,7 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 
 ## EX-574 — cancellation-sum-overcount
 
-Repro with live figures + copy-pasteable SQL: `context/archive/2026-07-28-cancellation-sum-overcount/repro.md`.
+Repro shape + live figures: `context/archive/2026-07-28-cancellation-sum-overcount/change.md` (the standalone `repro.md` was folded in and deleted 2026-08-08).
 Re-run its SQL first — the figures below track the local prod dump and shift when it is refreshed.
 
 ### Phase 1: The tile stops counting anulowania
@@ -677,32 +677,14 @@ Prod migration is owed at ship time, by a human.
 - [ ] `context/reference/kosztorys-editor-domain-notes.md`, sekcja „Wariant «z narzędziami / bez narzędzi»" — czyta się jako **zamknięta** decyzja z zachowanym uzasadnieniem, żadne zdanie nie powołuje się na nieistniejącą kolumnę.
 - [ ] Żadne zdanie nie miesza rejestrów (słownictwo arkusza vs identyfikatory kodu).
 
-## EX-600 — investment-panel-filter-scope
+## EX-600 — investment-panel-filter-scope — ZDEZAKTUALIZOWANE
 
-Browser coverage of the same behaviour is filed as **EX-634** (`e2e-backlog`); these stay manual until it lands.
-
-### Phase 2: Wpłaty follow the filters
-
-- [ ] `/inwestycje/<id>` bez filtrów w v2 — „Wpłaty" i „Do zapłaty" czytają się tak samo jak przed zmianą.
-- [ ] `?from`/`?to` na zakres obejmujący część wpłat — „Wpłaty" zwęża się do wpłat z tego zakresu i zgadza się z tabelą transakcji poniżej.
-- [ ] `?type=PAYOUT` — „Wpłaty" czyta 0 zł (żadna wpłata nie mieści się w filtrze).
-- [ ] Przełączenie na odczyt v1 („Finanse") — bez zmian względem stanu sprzed zmiany.
-- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta (share) — pełne sumy wpłat, filtry ich nie dotyczą.
-
-### Phase 3: Scope marking
-
-- [ ] Z aktywnym filtrem: Robocizna, Rabat, Łącznie i „Do zapłaty" mają czerwoną `*`, a Materiały i Wpłaty jej nie mają.
-- [ ] Przypis „Pola oznaczone gwiazdką nie reagują na filtry transakcji" pojawia się raz, na dole panelu (pod tabelami), czerwonym tekstem, z czerwoną ikoną ostrzeżenia w jednej linii z tekstem.
-- [ ] Bez filtra: żadnej gwiazdki i żadnego przypisu.
-- [ ] Z aktywnym filtrem znikają oba werdykty międzypłaszczyznowe — krzyk o rozjeździe robocizny/rabatu i ostrzeżenie o trybie mieszanym; bez filtra pojawiają się jak dotąd.
-- [ ] Tryb rozliczenia „Mieszane" — te same gwiazdki na wierszach wynikających z Łącznie, Wpłaty netto i Wpłaty brutto bez gwiazdki.
-- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta — brak gwiazdek i przypisu.
-
-### Po bramce przeglądu (nowe zachowania, jeszcze niesprawdzone)
-
-- [ ] Inwestycja **bez kosztorysu** z aktywnym filtrem — żadnej gwiazdki, żadnego przypisu, oba werdykty jak dotąd (wszystkie liczby idą wtedy z transakcji i filtr ich dotyczy).
-- [ ] Zakładka „Wydatki" z aktywnym filtrem — przypis się nie pojawia (gwiazdki są tylko w „Podsumowaniu"). Zakładka „Marża" jest ukryta od 2026-08-07 (`TODO(EX-649)`), więc wypada z tego sprawdzenia aż do odsłonięcia.
-- [ ] Sam przełącznik „pokaż anulowane" — brak gwiazdek i przypisu, werdykty widoczne (ten przełącznik nie zmienia żadnej kwoty w panelu).
+**Nie do sprawdzenia.** `summary-panel-filter-blind` (2026-08-08) odwrócił to zachowanie i usunął cały
+mechanizm gwiazdek: panel nie reaguje już na filtry w żadnej liczbie, przypisu nie ma, a oba werdykty
+są widoczne także przy aktywnym filtrze. Każdy punkt z tej sekcji opisywał UI, którego już nie ma —
+zamknięte jako nieaktualne, nie jako sprawdzone. Obowiązująca lista: sekcja
+`summary-panel-filter-blind` niżej. Browser coverage: **EX-634** (`e2e-backlog`), przepisany pod nowe
+zachowanie.
 
 ## EX-430 — harden bulk-insert restore
 
@@ -716,3 +698,30 @@ Setup: run against the **5435 test DB** (see intro), seeded with `seed-kosztorys
 
 - [ ] **Cofnięcie do wersji odtwarza drzewo bez zmian.** Zapisz wersję, zmień coś w rozpisce (dopisz pozycję, zmień ilości w etapach), cofnij do zapisanej wersji — sekcje, pozycje, etapy i ilości wykonane wracają identyczne, każda pozycja pod swoją sekcją, każda ilość przy swoim etapie.
 - [ ] **Nałożenie szablonu na pustą inwestycję.** Nałóż globalny szablon na inwestycję bez rozpiski — pozycje trafiają pod właściwe sekcje (żadna nie ląduje w cudzej), kolejność i nazwy zgodne z szablonem.
+
+## summary-panel-filter-blind — panel wholly filter-blind, scope-marker apparatus deleted
+
+Reverses **EX-600** below: the panel no longer half-reacts to filtry transakcji, so the asterisks and
+the przypis it introduced are gone. The EX-600 section's unticked boxes describe a UI that no longer
+exists — read them as superseded by this section, not as owed.
+
+### Phase 1: Panel goes filter-blind
+
+- [ ] Na inwestycji z kosztorysem liczby w „Podsumowaniu" są identyczne przed i po nałożeniu filtra transakcji.
+- [ ] Sumy w zakładce „Materiały/Wydatki" są identyczne przed i po nałożeniu filtra.
+- [ ] Liczby w zakładce „Marża" są identyczne przed i po nałożeniu filtra, i nadal ukryte dla MANAGERA.
+- [ ] „Wpłaty" na stronie inwestycji zgadzają się z „Wpłatami" na `kosztorys_v2` tej samej inwestycji.
+- [ ] Inwestycja **bez** pozycji kosztorysu nadal renderuje odczyt z planu transakcji, bez błędu.
+
+### Phase 2: Strip the scope-marker apparatus
+
+- [ ] Żadnej gwiazdki przy wierszach „Podsumowania" w każdej osi kwot (netto / brutto / mieszany).
+- [ ] Czerwony przypis „Pola oznaczone gwiazdką…" zniknął.
+- [ ] Na inwestycji, gdzie robocizna z kosztorysu rozjeżdża się z transakcjami LABOR_COST, ostrzeżenie o rozbieżności pokazuje się **także** przy aktywnym filtrze.
+- [ ] `SettlementPlaneWarning` pokazuje się na rozjeżdżającej się inwestycji przy aktywnym filtrze.
+- [ ] Podgląd klienta (`preview`) nadal wycisza oba werdykty.
+
+### Phase 3: Delete the dead filter plumbing
+
+- [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
+- [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.

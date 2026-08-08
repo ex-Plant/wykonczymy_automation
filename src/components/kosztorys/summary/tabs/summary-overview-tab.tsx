@@ -58,9 +58,6 @@ type PropsT = {
   showDeposits?: boolean
   preview?: boolean
   showPie?: boolean
-  // Withholds the plane warning for the same reason the mismatch scream goes quiet: it compares the
-  // whole kosztorys against a filtered ledger, so under a filter it would report the filter as a gap.
-  filtersActive?: boolean
 }
 
 // The „Podsumowanie" view: the settlement block, then the folded wpłaty list.
@@ -85,7 +82,6 @@ export function SummaryOverviewTab({
   showDeposits = true,
   preview = false,
   showPie = true,
-  filtersActive = false,
 }: PropsT) {
   // Tryb mieszany settles part in cash (no invoice → no VAT) and invoices only the rest, so its
   // „Do zapłaty" can't come from the plain Łącznie − wpłaty the other tryby use. Both readings of the
@@ -106,7 +102,6 @@ export function SummaryOverviewTab({
     doZaplaty,
     wplatyNet,
     vatRate,
-    filtersActive,
   })
   // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the
   // „Struktura kosztów" pie so the two can never disagree. The pie is a netto robocizna/materiały
@@ -118,7 +113,7 @@ export function SummaryOverviewTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4">
-      {!preview && !filtersActive && settlementVerdict.mismatch && (
+      {!preview && settlementVerdict.mismatch && (
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       {/* Above the row, not inside its left column: nested there it pushed the settlement table down
@@ -145,7 +140,6 @@ export function SummaryOverviewTab({
             priceView={priceView}
             vatRate={vatRate}
             preview={preview}
-            filtersActive={filtersActive}
           />
         </div>
         {showPie && (
