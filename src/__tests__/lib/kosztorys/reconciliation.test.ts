@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
-import { kosztorysClientTotals } from '@/lib/kosztorys/settlement'
+import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
 import {
   buildKosztorysReconciliation,
   buildSettlementPlaneVerdict,

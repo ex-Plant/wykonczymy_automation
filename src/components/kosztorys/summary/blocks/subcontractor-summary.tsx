@@ -6,7 +6,7 @@ import { SubcontractorWorkerTotals } from '@/components/kosztorys/summary/blocks
 import { SubcontractorPayoutsTable } from '@/components/kosztorys/summary/tables/subcontractor-payouts-table'
 import { EditorGlobalSettings } from '@/components/kosztorys/editor/toolbar/editor-global-settings'
 import { computeSubcontractorSummary } from '@/lib/kosztorys/subcontractor-summary'
-import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
+import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/transfers'

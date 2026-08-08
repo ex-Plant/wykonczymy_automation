@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
-import {
-  executedWorkNetPreRabat,
-  hasStagesOverPlanned,
-  rowTotalQtyDone,
-  sectionSubtotalsForView,
-  subcontractorDueByPlane,
-} from '@/lib/kosztorys/settlement'
+import { sectionSubtotalsForView } from '@/lib/kosztorys/settlement-aggregates'
+import { executedWorkNetPreRabat } from '@/lib/kosztorys/settlement-client-totals'
+import { hasStagesOverPlanned, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
+import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import type { KosztorysStageT, KosztorysTreeT } from '@/lib/kosztorys/types'
 import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 

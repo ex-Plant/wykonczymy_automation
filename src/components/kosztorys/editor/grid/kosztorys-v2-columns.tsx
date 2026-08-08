@@ -58,8 +58,8 @@ import {
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
-  stagesForView,
-} from '@/lib/kosztorys/settlement'
+} from '@/lib/kosztorys/settlement-rows'
+import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // floatColumn right-aligns by default; the grid reads cleaner with every cell left-aligned under

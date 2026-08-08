@@ -5,12 +5,9 @@ import {
   toGross,
 } from '@/lib/kosztorys/calc'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import {
-  rowRemainingForView,
-  rowTotalQtyDone,
-  stageAxisForView,
-  stagesForView,
-} from '@/lib/kosztorys/settlement'
+import { stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
+import { rowRemainingForView, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
+import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 

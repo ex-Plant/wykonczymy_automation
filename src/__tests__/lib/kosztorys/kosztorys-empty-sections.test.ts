@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sectionSubtotalsForView, emptySectionIds } from '@/lib/kosztorys/settlement'
+import { sectionSubtotalsForView, emptySectionIds } from '@/lib/kosztorys/settlement-aggregates'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysItemT, KosztorysTreeT } from '@/lib/kosztorys/types'
 import { makeTree } from '@/__tests__/helpers/kosztorys-tree'

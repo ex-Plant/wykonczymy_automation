@@ -11,7 +11,7 @@ import {
 import { formatNet } from '@/lib/kosztorys/format'
 import { PLANE_LABELS, SUBCONTRACTOR_FIGURE_LABELS } from '@/lib/kosztorys/constants'
 import type { SubcontractorSummaryT } from '@/lib/kosztorys/subcontractor-summary'
-import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
+import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 
 // Explains the badge: an etap with no rozliczenie belongs to neither crew, so it lands in neither
 // amount — „Suma wykonanej pracy" UNDERstates the executed work until every etap is assigned.

@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
+import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import {
   executedWorkNetPreRabat,
-  rowValueForView,
   kosztorysClientTotals,
-  sectionSubtotalsForView,
-  stageAxisForView,
-} from '@/lib/kosztorys/settlement'
+} from '@/lib/kosztorys/settlement-client-totals'
+import { rowValueForView } from '@/lib/kosztorys/settlement-rows'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
 import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 

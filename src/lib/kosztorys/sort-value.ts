@@ -6,7 +6,11 @@ import {
   viewPrice,
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
-import { rowRemainingForView, rowTotalQtyDone, rowValueForView } from '@/lib/kosztorys/settlement'
+import {
+  rowRemainingForView,
+  rowTotalQtyDone,
+  rowValueForView,
+} from '@/lib/kosztorys/settlement-rows'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // The sort key for a grid column. Most columns in kosztorys-v2-columns.tsx are COMPUTED — their

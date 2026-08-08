@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows, diffRow } from '@/lib/kosztorys/v2-rows'
 import { filterRows, sortRows } from '@/lib/kosztorys/row-view'
+import { sectionSubtotalsForView } from '@/lib/kosztorys/settlement-aggregates'
 import {
   rowTotalQtyDone,
   rowValueForView,
   rowRemainingForView,
   hasStagesOverPlanned,
-  sectionSubtotalsForView,
-} from '@/lib/kosztorys/settlement'
+} from '@/lib/kosztorys/settlement-rows'
 import { applyRestoreItem, revertField } from '@/lib/kosztorys/row-ops'
 import { planItemRemoval, REMOVE_BLOCK_LAST_ITEM } from '@/lib/kosztorys/delete-policy'
 import { rowDoneFraction } from '@/lib/kosztorys/calc'
@@ -185,7 +185,10 @@ describe('rowTotalQtyDone', () => {
   // A stage added after the row was built carries no key on it — without ?? 0 the sum would be NaN.
   it('counts a stage missing its key on the row as zero', () => {
     const [row] = treeToRows(tree)
-    const withGhost = [...tree.stages, { id: 999, ordinal: 3, label: null, plane: null, workerId: null }]
+    const withGhost = [
+      ...tree.stages,
+      { id: 999, ordinal: 3, label: null, plane: null, workerId: null },
+    ]
     expect(rowTotalQtyDone(row, withGhost, 'client')).toBe(2)
   })
 })

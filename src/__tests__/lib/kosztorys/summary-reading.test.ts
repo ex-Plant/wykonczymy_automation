@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
-import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement'
+import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-totals'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 // Only the four fields the two readings touch matter here; the rest of the shape is cash-movement

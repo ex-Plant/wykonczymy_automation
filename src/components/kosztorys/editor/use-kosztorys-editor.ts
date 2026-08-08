@@ -47,12 +47,12 @@ import {
 } from '@/lib/kosztorys/delete-policy'
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import {
-  clientTotalsFromSubtotals,
   emptySectionIds,
   sectionSubtotalsForView,
   stageAxisForView,
-  subcontractorDueByPlane,
-} from '@/lib/kosztorys/settlement'
+} from '@/lib/kosztorys/settlement-aggregates'
+import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
+import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
