@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { SettlementModeSelect } from '@/components/kosztorys/summary/settlement-mode-select'
 import { MaterialsNetPricingControl } from '@/components/kosztorys/summary/materials-net-pricing-control'
-import { MATERIALS_GROSS_LOCK_REASON } from '@/components/kosztorys/summary/materials-pricing-options'
 import { VatRateField } from '@/components/kosztorys/summary/vat-rate-field'
 import { GlobalDiscountControl } from '@/components/kosztorys/summary/global-discount-control'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
@@ -14,9 +13,12 @@ type PropsT = {
   vatRate: number
   settlementMode: SettlementModeT
   onSettlementModeChange: (mode: SettlementModeT) => void
-  // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
+  // The materiały netto rate in EFFECT as a fraction; null = the investor is billed the receipt.
   materialsNetRate: number | null
   onMaterialsNetRateChange: (rate: number | null) => void
+  // Why the choice cannot be made right now, or undefined when it can. Passed in rather than derived
+  // from the mode here, so this and the Materiały tab's copy of the control lock in step.
+  pricingLockedReason?: string
   // One flag for all four: they are set-once decisions nobody edits two at a time, and none of them
   // is optimistic — the figures they move are recomputed on the server.
   isSaving?: boolean
@@ -39,6 +41,7 @@ export function SummaryInvestmentSettings({
   onSettlementModeChange,
   materialsNetRate,
   onMaterialsNetRateChange,
+  pricingLockedReason,
   isSaving = false,
   showSettingsBar = false,
 }: PropsT) {
@@ -82,7 +85,7 @@ export function SummaryInvestmentSettings({
             materialsNetRate={materialsNetRate}
             onMaterialsNetRateChange={onMaterialsNetRateChange}
             disabled={isSaving}
-            lockedReason={settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined}
+            lockedReason={pricingLockedReason}
           />
           {showSettingsBar && <VatRateField disabled={isSaving} />}
           {showSettingsBar && <GlobalDiscountControl disabled={isSaving} />}

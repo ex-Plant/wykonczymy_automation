@@ -2,14 +2,14 @@
 
 import { useState, type ReactNode } from 'react'
 import { TriangleAlert } from 'lucide-react'
-import { settlementModeToPanelAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
   computeDoZaplatyRM,
   type MaterialsT,
 } from '@/lib/kosztorys/summary-economics'
-import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/settlement'
+import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
@@ -18,6 +18,7 @@ import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-ma
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { SCOPE_MARKER_FOOTNOTE } from '@/components/kosztorys/summary/scope-marker'
 import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
+import { MATERIALS_GROSS_LOCK_REASON } from '@/components/kosztorys/summary/materials-pricing-options'
 import {
   useSummaryView,
   type SummaryViewT,
@@ -165,7 +166,6 @@ export function SummaryPanelContent({
   sectionSubtotals,
   financials,
 }: PropsT) {
-  const moneyAxis = settlementModeToPanelAxis(settlementMode)
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
   // price view (that only governs the grid columns now). „Podwykonawcy" is owner-only, so it drops out
   // of the client read-only toggle on top of whatever the host allowed. The persisted pick is shared
@@ -213,6 +213,9 @@ export function SummaryPanelContent({
   // together rather than the panel discounting a figure marża never saw. The rate itself is kept, not
   // cleared: switching back to netto restores the old figures with nothing to re-enter.
   const effectiveNetRate = settlementMode === 'GROSS' ? null : materialsNetRate
+  // Derived once for both surfaces that offer the choice: the popover and the Materiały tab print
+  // this same lock, so they can never disagree about whether the choice is available.
+  const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNetFromKosztorys,
@@ -242,8 +245,13 @@ export function SummaryPanelContent({
             vatRate={vatRate}
             settlementMode={settlementMode}
             onSettlementModeChange={onSettlementModeChange}
-            materialsNetRate={materialsNetRate}
+            // The EFFECTIVE rate, not the stored one: at tryb brutto the saved rate is inert, and the
+            // popover printing „Netto" while the Materiały tab beside it printed „Brutto" made one
+            // setting answer its own question two ways on one screen. Nothing is lost — the rate is
+            // kept, so switching back to netto brings it and its figures back.
+            materialsNetRate={effectiveNetRate}
             onMaterialsNetRateChange={onMaterialsNetRateChange}
+            pricingLockedReason={pricingLockedReason}
             isSaving={isSavingSettings}
             showSettingsBar={showSettingsBar}
           />
@@ -270,7 +278,11 @@ export function SummaryPanelContent({
             {view === 'summary' && (
               <SummaryOverviewTab
                 investmentId={investmentId}
-                moneyAxis={moneyAxis}
+                settlementMode={settlementMode}
+                // Same gate as the settings trigger above: a client reads the mode, and only a host
+                // that supplied the writer may edit it from inside the tab.
+                onSettlementModeChange={preview ? undefined : onSettlementModeChange}
+                isSavingSettings={isSavingSettings}
                 laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
                 doZaplaty={doZaplaty}
                 materials={materials}
@@ -302,6 +314,9 @@ export function SummaryPanelContent({
                 materialTransactions={materialTransactions ?? []}
                 materialsNetRate={effectiveNetRate}
                 vatRate={vatRate}
+                onMaterialsNetRateChange={preview ? undefined : onMaterialsNetRateChange}
+                isSavingSettings={isSavingSettings}
+                pricingLockedReason={pricingLockedReason}
                 preview={preview}
                 showTransactions={showTransactionLists}
                 showPie={showPies}
