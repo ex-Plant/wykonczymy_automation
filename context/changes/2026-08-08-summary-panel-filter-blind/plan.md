@@ -316,12 +316,12 @@ Run once, after Phase 3.
 
 #### Automated
 
-- [x] 2.1 `rg 'scopeMarked|filtersActive|SCOPE_MARKER' src` returns nothing
-- [x] 2.2 `scope-marker.ts` no longer exists
+- [x] 2.1 `rg 'scopeMarked|filtersActive|SCOPE_MARKER' src` returns nothing — 5bc89a25
+- [x] 2.2 `scope-marker.ts` no longer exists — 5bc89a25
 
 ### Phase 3: Delete the dead filter plumbing
 
 #### Automated
 
-- [ ] 3.1 `rg 'hasActiveTransferFilters|TRANSFER_FILTER_PARAMS' src` returns nothing
-- [ ] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts` passes
+- [x] 3.1 `rg 'hasActiveTransferFilters|TRANSFER_FILTER_PARAMS' src` returns nothing
+- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/transfer-filters.test.ts` passes
