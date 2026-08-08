@@ -677,32 +677,14 @@ Prod migration is owed at ship time, by a human.
 - [ ] `context/reference/kosztorys-editor-domain-notes.md`, sekcja „Wariant «z narzędziami / bez narzędzi»" — czyta się jako **zamknięta** decyzja z zachowanym uzasadnieniem, żadne zdanie nie powołuje się na nieistniejącą kolumnę.
 - [ ] Żadne zdanie nie miesza rejestrów (słownictwo arkusza vs identyfikatory kodu).
 
-## EX-600 — investment-panel-filter-scope
+## EX-600 — investment-panel-filter-scope — ZDEZAKTUALIZOWANE
 
-Browser coverage of the same behaviour is filed as **EX-634** (`e2e-backlog`); these stay manual until it lands.
-
-### Phase 2: Wpłaty follow the filters
-
-- [ ] `/inwestycje/<id>` bez filtrów w v2 — „Wpłaty" i „Do zapłaty" czytają się tak samo jak przed zmianą.
-- [ ] `?from`/`?to` na zakres obejmujący część wpłat — „Wpłaty" zwęża się do wpłat z tego zakresu i zgadza się z tabelą transakcji poniżej.
-- [ ] `?type=PAYOUT` — „Wpłaty" czyta 0 zł (żadna wpłata nie mieści się w filtrze).
-- [ ] Przełączenie na odczyt v1 („Finanse") — bez zmian względem stanu sprzed zmiany.
-- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta (share) — pełne sumy wpłat, filtry ich nie dotyczą.
-
-### Phase 3: Scope marking
-
-- [ ] Z aktywnym filtrem: Robocizna, Rabat, Łącznie i „Do zapłaty" mają czerwoną `*`, a Materiały i Wpłaty jej nie mają.
-- [ ] Przypis „Pola oznaczone gwiazdką nie reagują na filtry transakcji" pojawia się raz, na dole panelu (pod tabelami), czerwonym tekstem, z czerwoną ikoną ostrzeżenia w jednej linii z tekstem.
-- [ ] Bez filtra: żadnej gwiazdki i żadnego przypisu.
-- [ ] Z aktywnym filtrem znikają oba werdykty międzypłaszczyznowe — krzyk o rozjeździe robocizny/rabatu i ostrzeżenie o trybie mieszanym; bez filtra pojawiają się jak dotąd.
-- [ ] Tryb rozliczenia „Mieszane" — te same gwiazdki na wierszach wynikających z Łącznie, Wpłaty netto i Wpłaty brutto bez gwiazdki.
-- [ ] `/inwestycje/<id>/kosztorys_v2` oraz link klienta — brak gwiazdek i przypisu.
-
-### Po bramce przeglądu (nowe zachowania, jeszcze niesprawdzone)
-
-- [ ] Inwestycja **bez kosztorysu** z aktywnym filtrem — żadnej gwiazdki, żadnego przypisu, oba werdykty jak dotąd (wszystkie liczby idą wtedy z transakcji i filtr ich dotyczy).
-- [ ] Zakładki „Wydatki" i „Marża" z aktywnym filtrem — przypis się nie pojawia (gwiazdki są tylko w „Podsumowaniu").
-- [ ] Sam przełącznik „pokaż anulowane" — brak gwiazdek i przypisu, werdykty widoczne (ten przełącznik nie zmienia żadnej kwoty w panelu).
+**Nie do sprawdzenia.** `summary-panel-filter-blind` (2026-08-08) odwrócił to zachowanie i usunął cały
+mechanizm gwiazdek: panel nie reaguje już na filtry w żadnej liczbie, przypisu nie ma, a oba werdykty
+są widoczne także przy aktywnym filtrze. Każdy punkt z tej sekcji opisywał UI, którego już nie ma —
+zamknięte jako nieaktualne, nie jako sprawdzone. Obowiązująca lista: sekcja
+`summary-panel-filter-blind` niżej. Browser coverage: **EX-634** (`e2e-backlog`), przepisany pod nowe
+zachowanie.
 
 ## EX-430 — harden bulk-insert restore
 
