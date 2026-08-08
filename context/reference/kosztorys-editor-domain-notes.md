@@ -111,6 +111,12 @@ Wyburzenia i demontaże     6 900 zł   45,1%
 odczytu)'!H3 → =SUM(E:E)`. Czyli klient w V1 **już** widzi wydatki z apki, a v2 nie odtwarza
   połączenia od zera, tylko przenosi je do bazy. Lustro ma gotowy rozbiór `Materiały budowlane` /
   `Pozostałe koszty` — kandydat na kształt figury w v2.
+- **`rozliczone R+M` NIE wchodzi do `Materiały` w `Podsumowaniu`** (sprawdzone 2026-07-18): lustro
+  `rozliczone R+M` ma identyczne kolumny `H/I/J/K` (`SUM` + trzy `SUMIF` po kategorii) co
+  `wydatki inwestycyjne`, ale `B7` ciągnie **wyłącznie** z tego drugiego. Ta sama granica stoi po
+  stronie appki — `totalSettled` jest wycięte z `totalMaterialCosts` i z bilansu, wchodzi tylko do
+  marży. Czyli **materiały rozliczone to figura marżowa, nigdy klientowa** — na obu płaszczyznach
+  osobna powierzchnia, nigdy dodana do materiałów w ofercie.
 - **`transfery!K3 = SUMIF(C:C; "Rabat"; E:E)` istnieje i nikt go nie czyta** — żadna formuła nie
   sięga po tę sumę. Miejsce na podpięcie rabatu stoi gotowe i puste.
 - **Rabatu za całość w V1 nie ma** (sprawdzone na wzorcu i na żywym arkuszu): `Podsumowanie` to
@@ -374,6 +380,9 @@ czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik
   robi automatyczny zapis wersji kosztorysu przed każdym nadpisaniem, tak samo jak usunięcie
   sekcji. **Nie zgłaszaj ponownie „brak cofania" jako buga** — to wybór, a stan da się odzyskać
   z listy wersji.
+- **Migawki (wersje) nie niosą ustawień rabatu globalnego** — rabat to ustalenie per inwestycja i
+  nigdy nie podróżuje przez przywrócenie wersji ani przez preset. Przywrócenie starej wersji zostawia
+  bieżący rabat kwotowy nietknięty (wiersze migawki mają swoje własne rabaty per pozycja).
 
 ### Zasięg filtrów na stronie inwestycji (EX-600, 2026-07-28)
 
@@ -459,6 +468,45 @@ sekcja → (sekcja × etap) → praca nigdy nie powstała i nie jest planowana.
 Otwarte pod wdrożonym modelem: **skąd import zna wariant** — arkusz ma obie zakładki („zakres pracy
 z/bez narzędzi") dla **wszystkich** prac, bez znacznika per etap; potrzebna reguła od właściciela.
 Powiązane: EX-554 („Podsumowanie podwykonawców").
+
+**Widok podwykonawcy to rachunek jednej ekipy, nie ta sama rozpiska po innej cenie (EX-570, 2026-07-25).**
+W „Z narzędziami" / „Bez narzędzi" **„Pomiar z natury" liczy tylko etapy tego wariantu** — a że pomiar
+JEST sumą etapów (EX-494), poprawia się od razu wszystko, co z niego wynika: wartość wiersza, sumy
+sekcji, stopki per etap, „Razem". Kolumny drugiego wariantu **znikają**, nie są wygaszane: wersję
+„nie dotyczy" zbudowano i odrzucono — ściana martwych komórek, w której kolumny ilości dalej pokazywały
+liczby, jakby się liczyły.
+
+**Przedmiar nie ma wariantu**, bo jest wpisywany raz na wiersz na cały oferowany zakres. Dlatego
+w widokach podwykonawcy nie ma go w żadnej postaci — ani ilości, ani wartości, ani „% wykonania", ani
+„Pozostało": porównanie przefiltrowanego pomiaru z całym przedmiarem nic nie znaczy. Ilości wprowadza
+się w widoku klienta, który pokazuje wszystkie etapy, więc zwężenie kolumn niczego nie odbiera.
+
+**Konsekwencja przyjęta świadomie:** dopóki jakiś etap nie ma wybranego wariantu, dwa rachunki **nie
+sumują się** do całości pracy wykonanej — brakującą kwotę zgłasza tylko plakietka ostrzeżenia. Lepsza
+brakująca kwota niż kwota dopisana ekipie, której nikt nie wskazał.
+
+### Należne podwykonawcy jest PRZED rabatem (EX-554, 2026-07-21)
+
+Rabat to ustępstwo handlowe wobec klienta, wchłaniane przez marżę firmy — **ekipie należy się jej
+cena niezależnie od tego, ile właściciel odpuścił klientowi**. Stąd „Suma wykonanej pracy" w
+„Podsumowaniu podwykonawców" liczy się przed rabatem, i to jest łatwe do pomylenia, bo dwie
+sąsiednie figury już rabat **mają w środku**:
+
+- **nie** suma wartości netto (rabat per pozycja jest w niej zaszyty — `netForQtyForView`
+  przepuszcza wartość przez `applyDiscount`),
+- **nie** robocizna z kosztorysu (odejmuje na wierzchu jeszcze rabat globalny),
+- **tak**: `Σ(net + discount)` po podsumowaniach sekcji **aktywnego widoku** — ta sama konstrukcja
+  „dodaj rabat z powrotem", której używa „Suma prac" po stronie klienta. Przy rabacie globalnym
+  `net` jest już pełną kwotą, a `discount` = 0, więc tożsamość dalej się trzyma.
+
+Baza to zawsze prace **wykonane** (pomiar / odhaczone etapy), nie przedmiar, i zawsze cena
+podwykonawcy **aktywnego** widoku (z narzędziami / bez) — nie cena klienta.
+
+**Cała płaszczyzna podwykonawcy jest wolna od rabatu, nie tylko suma** (2026-07-24). Reguła siedzi
+w jednym punkcie wyceny — `netForQtyForView` odejmuje rabat wyłącznie przy `view === 'client'` — a
+że przez ten punkt przechodzą wszystkie figury podwykonawcy (wartości komórek, wartości etapów,
+podsumowania sekcji), zeruje je jednym ruchem. Cztery kolumny rabatowe w ogóle się nie składają w
+widokach Z/Bez narzędzi, bo pokazywałyby zera.
 
 ## Otwarte / odłożone
 

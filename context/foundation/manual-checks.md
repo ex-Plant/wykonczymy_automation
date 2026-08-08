@@ -635,7 +635,7 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 
 ## EX-574 — cancellation-sum-overcount
 
-Repro with live figures + copy-pasteable SQL: `context/archive/2026-07-28-cancellation-sum-overcount/repro.md`.
+Repro shape + live figures: `context/archive/2026-07-28-cancellation-sum-overcount/change.md` (the standalone `repro.md` was folded in and deleted 2026-08-08).
 Re-run its SQL first — the figures below track the local prod dump and shift when it is refreshed.
 
 ### Phase 1: The tile stops counting anulowania
