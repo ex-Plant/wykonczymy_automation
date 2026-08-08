@@ -1,10 +1,10 @@
 ---
 change_id: netto-expense-grossup
 title: Wydatek netto — odwrócenie wyliczenia, brutto liczone ze stawki materiałów
-status: planned
+status: archived
 created: 2026-07-29
-updated: 2026-08-07
-archived_at: null
+updated: 2026-08-08
+archived_at: 2026-08-08T14:47:35Z
 branch: null
 worktree: null
 ---
@@ -41,7 +41,11 @@ Rozstrzygnięte na etapie planowania (2026-07-29):
   wdrożenia (właściciel, 2026-07-29)**: gross-up działa zawsze, jedną stawką. Ta sama stawka
   przechodzi most w obie strony; kierunek wynika z tego, na której płaszczyźnie wydatek zapisano.
   Gdy nie ma zapisanej stawki materiałów, wchodzi `vatRate`.
-- `computeMixedSettlement` nie wymaga zmian — grosuje wyłącznie kwotę jeszcze nierozliczoną.
+- ~~`computeMixedSettlement` nie wymaga zmian — grosuje wyłącznie kwotę jeszcze nierozliczoną.~~
+  **Nieprawda, obalone przy przeglądzie całej gałęzi (2026-08-07).** Grosowanie kwoty nierozliczonej
+  obejmowało też materiały, które na obu osiach stoją po face value — ta sama należność drukowała się
+  dwa razy, różniąc się dokładnie o VAT od paragonów. Pełny opis zmiany arytmetyki: `## Close-out`
+  w `review-gate-branch.md`.
 - `buildMaterialyBreakdown` i `netCategoryCosts` bez zmian — niezmienniki Σ są asertowane na
   `row.net`, którego nie ruszamy.
 
