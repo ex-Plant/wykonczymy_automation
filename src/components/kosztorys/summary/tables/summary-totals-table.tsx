@@ -18,7 +18,6 @@ export function SummaryTotalsTable({
   doZaplaty,
   investmentId,
   preview,
-  scopeMarked = false,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
@@ -26,8 +25,6 @@ export function SummaryTotalsTable({
   doZaplaty: MoneyPairT
   investmentId: number
   preview: boolean
-  // „Do zapłaty" only — Wpłaty are transaction rows and follow the host's filters like the rest.
-  scopeMarked?: boolean
 }) {
   return (
     <SummaryTable cols={cols} className="w-fit">
@@ -55,7 +52,6 @@ export function SummaryTotalsTable({
         axis={moneyAxis}
         bold
         danger={doZaplaty.net > 0}
-        scopeMarked={scopeMarked}
       />
     </SummaryTable>
   )

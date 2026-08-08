@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { TriangleAlert } from 'lucide-react'
 import { settlementModeToPanelAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
@@ -16,7 +15,6 @@ import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
-import { SCOPE_MARKER_FOOTNOTE } from '@/components/kosztorys/summary/scope-marker'
 import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
 import {
   useSummaryView,
@@ -103,9 +101,6 @@ type PropsT = {
   showPies?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   preview?: boolean
-  // Silences both cross-plane verdicts on top of marking the rows: each compares the whole kosztorys
-  // against a filtered ledger, so under a filter it would report the filter itself as a gap.
-  filtersActive?: boolean
   stages?: KosztorysStageT[]
   stageTotals?: Map<number, number>
   // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
@@ -156,7 +151,6 @@ export function SummaryPanelContent({
   showTransactionLists = true,
   showPies = true,
   preview = false,
-  filtersActive = false,
   stages,
   stageTotals,
   payoutsByWorker,
@@ -295,7 +289,6 @@ export function SummaryPanelContent({
                 showDeposits={showTransactionLists}
                 preview={preview}
                 showPie={showPies}
-                filtersActive={filtersActive}
               />
             )}
             {view === 'expenses' && (
@@ -327,15 +320,6 @@ export function SummaryPanelContent({
             )}
             {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
           </div>
-        )}
-        {/* One footnote for every `*` in the panel — only Podsumowanie carries any, so the other tabs
-            would show a caveat with nothing to qualify. Red and icon-marked to read as loud as the
-            star it explains, but not a `WarningBanner`: a footnote earns a line, not a bordered box. */}
-        {filtersActive && view === 'summary' && (
-          <p className="text-destructive flex items-center gap-2 px-4 pb-4 text-xs">
-            <TriangleAlert className="size-4 shrink-0" aria-hidden />
-            <span>{SCOPE_MARKER_FOOTNOTE}</span>
-          </p>
         )}
       </SummaryScrollRegion>
     </>

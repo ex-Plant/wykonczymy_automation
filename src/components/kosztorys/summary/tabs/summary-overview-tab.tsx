@@ -49,9 +49,6 @@ type PropsT = {
   showDeposits?: boolean
   preview?: boolean
   showPie?: boolean
-  // Withholds the plane warning for the same reason the mismatch scream goes quiet: it compares the
-  // whole kosztorys against a filtered ledger, so under a filter it would report the filter as a gap.
-  filtersActive?: boolean
 }
 
 // The „Podsumowanie" view: its own axis control on top, then the settlement below. Mieszane swaps the
@@ -75,7 +72,6 @@ export function SummaryOverviewTab({
   showDeposits = true,
   preview = false,
   showPie = true,
-  filtersActive = false,
 }: PropsT) {
   const mixedMode = moneyAxis === 'mixed'
   const displayAxis: MoneyAxisT = mixedMode ? 'both' : moneyAxis
@@ -87,7 +83,7 @@ export function SummaryOverviewTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4">
-      {!preview && !filtersActive && settlementVerdict.mismatch && (
+      {!preview && settlementVerdict.mismatch && (
         <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
       )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
@@ -101,7 +97,6 @@ export function SummaryOverviewTab({
               paidNet={paidNet}
               paidGross={paidGross}
               rabatAmount={rabatAmount}
-              filtersActive={filtersActive}
             />
           ) : (
             <BruttoNettoSummary
@@ -117,7 +112,6 @@ export function SummaryOverviewTab({
               moneyAxis={displayAxis}
               materialsNetRate={materialsNetRate}
               preview={preview}
-              filtersActive={filtersActive}
             />
           )}
         </div>

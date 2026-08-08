@@ -309,15 +309,15 @@ Run once, after Phase 3.
 
 #### Automated
 
-- [x] 1.1 No `statsWhere` / `filtersActive` reference survives in the panel or at its call site
-- [x] 1.2 The panel no longer imports `fetchFilteredDepositTransactions`
+- [x] 1.1 No `statsWhere` / `filtersActive` reference survives in the panel or at its call site — 956f09d6
+- [x] 1.2 The panel no longer imports `fetchFilteredDepositTransactions` — 956f09d6
 
 ### Phase 2: Strip the scope-marker apparatus
 
 #### Automated
 
-- [ ] 2.1 `rg 'scopeMarked|filtersActive|SCOPE_MARKER' src` returns nothing
-- [ ] 2.2 `scope-marker.ts` no longer exists
+- [x] 2.1 `rg 'scopeMarked|filtersActive|SCOPE_MARKER' src` returns nothing
+- [x] 2.2 `scope-marker.ts` no longer exists
 
 ### Phase 3: Delete the dead filter plumbing
 

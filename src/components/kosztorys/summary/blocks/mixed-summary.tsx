@@ -20,9 +20,6 @@ type PropsT = {
   // Rabat taken off the executed robocizna (net zł). Already inside `settlement.robocizna`, so the
   // Robocizna row adds it back and the Rabat row deducts it — Łącznie never moves.
   rabatAmount: number
-  // Every remainder row descends from the kosztorys-plane Łącznie, so the star travels with it down
-  // both tors; Materiały and the two Wpłaty rows are pure transaction figures and stay bare.
-  filtersActive?: boolean
 }
 
 // Tryb mieszany: one vertical netto→brutto tor (no netto/brutto columns). The netto section resolves
@@ -38,7 +35,6 @@ export function MixedSummary({
   paidNet,
   paidGross,
   rabatAmount,
-  filtersActive = false,
 }: PropsT) {
   const settlement = computeMixedSettlement(
     laborCostsNetFromKosztorys,
@@ -61,25 +57,12 @@ export function MixedSummary({
           label="Robocizna"
           line={faceValue(sumaPracPreRabat(settlement.robocizna, rabatAmount))}
           axis="net"
-          scopeMarked={filtersActive}
         />
         {rabatAmount > 0 && (
-          <SummaryRow
-            label="Rabat"
-            line={faceValue(-rabatAmount)}
-            axis="net"
-            discount
-            scopeMarked={filtersActive}
-          />
+          <SummaryRow label="Rabat" line={faceValue(-rabatAmount)} axis="net" discount />
         )}
         <SummaryRow label="Materiały" line={faceValue(settlement.materialy)} axis="net" />
-        <SummaryRow
-          label="Łącznie"
-          line={faceValue(settlement.combinedNet)}
-          axis="net"
-          emphasize
-          scopeMarked={filtersActive}
-        />
+        <SummaryRow label="Łącznie" line={faceValue(settlement.combinedNet)} axis="net" emphasize />
         {/* Negative: the one deduction step left down to „Do zapłaty netto". */}
         <SummaryRow
           label="Wpłaty netto"
@@ -93,7 +76,6 @@ export function MixedSummary({
           line={faceValue(settlement.doRozliczeniaNet)}
           axis="net"
           bold
-          scopeMarked={filtersActive}
         />
       </SummaryTable>
 
@@ -106,7 +88,6 @@ export function MixedSummary({
           hint={`Do rozliczenia netto + VAT ${vatPercent}%`}
           line={faceValue(settlement.resztaGross)}
           axis="net"
-          scopeMarked={filtersActive}
         />
         <SummaryRow
           label="Wpłaty brutto"
@@ -121,7 +102,6 @@ export function MixedSummary({
           axis="net"
           bold
           danger={settlement.doZaplatyGross > 0}
-          scopeMarked={filtersActive}
         />
         {/* The same debt read on the other plane, so the owner can quote both closing kwoty without
             doing the VAT arithmetic in their head. */}
@@ -130,7 +110,6 @@ export function MixedSummary({
           hint={`Do zapłaty brutto ÷ (1 + VAT ${vatPercent}%) — kwota zamykająca rozliczenie bez faktury`}
           line={faceValue(settlement.doZaplatyNet)}
           axis="net"
-          scopeMarked={filtersActive}
         />
       </SummaryTable>
     </div>

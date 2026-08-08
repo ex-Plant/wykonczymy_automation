@@ -1,7 +1,6 @@
 import { Fragment, type ReactNode } from 'react'
 import { SummaryLabelCell, SummaryValueCell } from '@/components/ui/summary-grid'
 import type { LabelHintT } from '@/components/ui/label-hint-icon'
-import { SCOPE_MARKER_HINT } from '@/components/kosztorys/summary/scope-marker'
 import { formatNet } from '@/lib/kosztorys/format'
 import { axisShows, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { MoneyPairT, SummaryLineT } from '@/lib/kosztorys/summary-economics'
@@ -24,9 +23,6 @@ export type SummaryRowOptsT = {
   // — the EX-535 reconciliation check against the transaction ledger. The client footer never passes
   // it, which is what lets both surfaces share this row instead of keeping two copies.
   mismatch?: string
-  // Marks the figure as (partly) kosztorys-sourced, so it doesn't follow the host's transaction
-  // filters — see `SCOPE_MARKER_HINT` (EX-600).
-  scopeMarked?: boolean
 }
 
 type SummaryRowPropsT = SummaryRowOptsT & {
@@ -63,11 +59,6 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
     <Fragment>
       <SummaryLabelCell weight={weight} hints={hints}>
         {label}
-        {opts.scopeMarked && (
-          <sup className="text-destructive" title={SCOPE_MARKER_HINT}>
-            *
-          </sup>
-        )}
       </SummaryLabelCell>
       {showNet && (
         <SummaryValueCell key="net" weight={weight} tone={tone} note={note}>
