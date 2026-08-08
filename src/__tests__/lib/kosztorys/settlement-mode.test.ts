@@ -1,20 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import {
-  SETTLEMENT_MODES,
-  settlementModeToGridAxis,
-  settlementModeToPanelAxis,
-} from '@/lib/kosztorys/settlement-mode'
+import { SETTLEMENT_MODES, settlementModeToGridAxis } from '@/lib/kosztorys/settlement-mode'
 import { computeDoZaplatyRM } from '@/lib/kosztorys/summary-economics'
 
-// The stored mode is the only source of the money plane, so these two projections are what keep the
-// panel and the grid from disagreeing.
+// The stored mode is the only source of the grid's money plane. The panel has no such projection —
+// both columns stand there in every tryb, so it only ever asks whether the mode is MIXED.
 describe('settlement mode projections', () => {
-  it('projects the panel axis from the stored mode', () => {
-    expect(settlementModeToPanelAxis('NET')).toBe('net')
-    expect(settlementModeToPanelAxis('GROSS')).toBe('gross')
-    expect(settlementModeToPanelAxis('MIXED')).toBe('mixed')
-  })
-
   it('projects MIXED to both money columns in the grid', () => {
     expect(settlementModeToGridAxis('MIXED')).toBe('both')
   })
@@ -35,9 +25,8 @@ describe('settlement mode projections', () => {
 describe('the stored mode still changes the reading at VAT 0%', () => {
   const VAT_ZERO = 0
 
-  it('keeps Mieszane a different panel and grid projection from the single-plane modes', () => {
-    // Neither projection takes a VAT rate at all, so a 0% investment cannot flatten them.
-    expect(settlementModeToPanelAxis('MIXED')).not.toBe(settlementModeToPanelAxis('NET'))
+  it('keeps Mieszane a different grid projection from the single-plane modes', () => {
+    // The projection takes no VAT rate at all, so a 0% investment cannot flatten it.
     expect(settlementModeToGridAxis('MIXED')).not.toBe(settlementModeToGridAxis('NET'))
   })
 
@@ -49,8 +38,9 @@ describe('the stored mode still changes the reading at VAT 0%', () => {
     const underGross = computeDoZaplatyRM(1000, 0, materials, VAT_ZERO, null)
 
     expect(underNet.net).not.toBe(underGross.net)
-    // The brutto column IS flat here — it is the receipt either way, with no VAT to add on top. That
-    // is the whole of what VAT 0% neutralises, and it is not enough to freeze the control.
-    expect(underNet.gross).toBe(underGross.gross)
+    // Both columns move: materiały are billed ONCE and enter both planes at that same figure, so the
+    // rate reaches the brutto column too. VAT 0% only removes the VAT on prace — nothing here.
+    expect(underNet.gross).not.toBe(underGross.gross)
+    expect(underGross.gross - underNet.gross).toBeCloseTo(230)
   })
 })

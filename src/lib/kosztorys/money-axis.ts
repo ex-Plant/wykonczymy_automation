@@ -9,11 +9,6 @@ export type MoneyAxisT = 'net' | 'gross' | 'both' | 'none'
 
 export const MONEY_AXIS_DEFAULT: MoneyAxisT = 'both'
 
-// The totals panel's axis. Extends MoneyAxisT with a panel-only 'mixed': 'both' keeps its original
-// meaning (netto + brutto columns side by side), 'mixed' is the „Mieszane" settlement view
-// (netto figures + the gotówka block).
-export type PanelAxisT = MoneyAxisT | 'mixed'
-
 // Netto/brutto visibility flags for a footer/readout at this axis. Shared so every summary block
 // derives them one way.
 export function axisShows(axis: MoneyAxisT): { net: boolean; gross: boolean } {
