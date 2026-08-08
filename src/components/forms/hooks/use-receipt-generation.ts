@@ -8,8 +8,10 @@ import { logError } from '@/lib/utils/log-error'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
 import type { OtherCategoryRefT } from '@/types/reference-data'
 import type { BulkExpenseFormApiT } from '@/components/forms/expense-form/bulk-expense-form'
+import { usePendingStore } from '@/stores/pending-store'
 
 const GENERATION_CONCURRENCY = 4
+const SCAN_PENDING_KEY = 'receipt-generation'
 
 type ReceiptGenerationDepsT = {
   form: BulkExpenseFormApiT
@@ -47,6 +49,7 @@ export function useReceiptGeneration({
     if (eligible.length === 0) return
 
     setIsGenerating(true)
+    usePendingStore.getState().start(SCAN_PENDING_KEY, 'Odczytywanie paragonów…')
     setFailedIds(new Set())
     setGenerationProgress({ done: 0, total: eligible.length })
     const otherCategoryNames = otherCategories.map((c) => c.name)
@@ -102,6 +105,7 @@ export function useReceiptGeneration({
 
     setFailedIds(failed)
     setIsGenerating(false)
+    usePendingStore.getState().stop(SCAN_PENDING_KEY)
     setGenerationProgress(null)
 
     const ok = eligible.length - failed.size - unreadable

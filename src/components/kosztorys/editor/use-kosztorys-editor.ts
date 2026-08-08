@@ -97,6 +97,7 @@ import type {
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
+import { usePendingStore } from '@/stores/pending-store'
 
 type ArgsT = {
   investmentId: number
@@ -123,6 +124,7 @@ const UNDO_COALESCE_MS = 700
 // Separate knob from UNDO_COALESCE_MS despite the matching value — one decides when a burst becomes
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
+const SETTINGS_PENDING_KEY = 'kosztorys-settings'
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -153,7 +155,7 @@ export function useKosztorysEditor({
   // `globalDiscount` is already stale — so its failure rollback reads the live value from here.
   // Same latest-value ref pattern as `rowsRef` below, for the same reason.
   const globalDiscountRef = useRef(globalDiscount)
-  // eslint-disable-next-line react-hooks/refs
+
   globalDiscountRef.current = globalDiscount
   // „Opcje rozliczenia" writes nothing optimistically — every figure the four settings move is
   // recomputed on the server, so the panel can only change once the write lands. One shared flag for
@@ -205,7 +207,7 @@ export function useKosztorysEditor({
   // its closures are rebuilt each render. Kept deliberately as the rollback path; whether they are
   // still load-bearing is EX-422's own follow-up, not a freebie to delete alongside it.
   const rowsRef = useRef(rows)
-  // eslint-disable-next-line react-hooks/refs
+
   rowsRef.current = rows
   // Persisted display_order per section, seeded at mount like `rows` and kept current on
   // add/append/move. The grid rows carry no section order (the array's block sequence IS the order),
@@ -213,7 +215,7 @@ export function useKosztorysEditor({
   const sectionOrderRef = useRef(new Map(tree.sections.map((s) => [s.id, s.displayOrder])))
   // Same, for the stage-rename handler's no-op guard (compares against the fresh label).
   const stagesRef = useRef(stages)
-  // eslint-disable-next-line react-hooks/refs
+
   stagesRef.current = stages
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
@@ -1075,8 +1077,15 @@ export function useKosztorysEditor({
   // the other two off `tree` — so that stays the caller's job.
   function saveSetting<T>(label: string, apply: (value: T) => Promise<void>, before: T, next: T) {
     startSettingsSave(async () => {
-      await apply(next)
-      if (before !== next) pushReversible(label, apply, before, next)
+      // The popover can close mid-save, so the progress signal has to live outside this subtree —
+      // hence the global store rather than a pill rendered by „Opcje rozliczenia" itself.
+      usePendingStore.getState().start(SETTINGS_PENDING_KEY, 'Zapisywanie…')
+      try {
+        await apply(next)
+        if (before !== next) pushReversible(label, apply, before, next)
+      } finally {
+        usePendingStore.getState().stop(SETTINGS_PENDING_KEY)
+      }
     })
   }
 
