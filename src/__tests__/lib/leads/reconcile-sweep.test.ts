@@ -31,6 +31,15 @@ const payload = { update } as unknown as Payload
 
 const clean = { failedForms: [], saturatedForms: [] }
 
+// Most cases care only about how many leads came back, not who they are — the contact
+// details themselves get their own case below.
+const counts = (result: Awaited<ReturnType<typeof runLeadReconcileSweep>>) => ({
+  added: result.recovered.length,
+  scanned: result.scanned,
+  failedForms: result.failedForms,
+  saturatedForms: result.saturatedForms,
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(fetchFormQuestions).mockResolvedValue([])
@@ -45,7 +54,7 @@ describe('runLeadReconcileSweep', () => {
 
     const result = await runLeadReconcileSweep(payload)
 
-    expect(result).toEqual({ added: 1, scanned: 1, ...clean })
+    expect(counts(result)).toEqual({ added: 1, scanned: 1, ...clean })
     expect(storeLead).toHaveBeenCalledWith(
       payload,
       expect.objectContaining({
@@ -69,6 +78,37 @@ describe('runLeadReconcileSweep', () => {
     })
   })
 
+  // A recovered lead is stamped `skipped`, so sales never gets notifyNewLead for it and
+  // the recovery alert is the only place it ever surfaces. Returning a bare count would
+  // make it unactionable — the caller needs the contact details to build a call list.
+  it('returns each recovered lead with the details needed to contact them', async () => {
+    const stored = {
+      id: 11,
+      name: 'Jan Testowy',
+      email: '1@example.com',
+      phone: '+48100000000',
+      formName: 'form-A',
+      submittedAt: '2026-07-08T07:09:14.000Z',
+      rawData: {},
+    }
+    vi.mocked(listLeadForms).mockResolvedValue([form('A', 1)])
+    vi.mocked(fetchRecentLeads).mockResolvedValue([rawLead('1')])
+    vi.mocked(storeLead).mockResolvedValue({ lead: stored, created: true } as never)
+
+    const result = await runLeadReconcileSweep(payload)
+
+    expect(result.recovered).toEqual([
+      {
+        id: 11,
+        name: 'Jan Testowy',
+        email: '1@example.com',
+        phone: '+48100000000',
+        formName: 'form-A',
+        submittedAt: '2026-07-08T07:09:14.000Z',
+      },
+    ])
+  })
+
   it('leaves an already-stored lead untouched and out of the added count', async () => {
     vi.mocked(listLeadForms).mockResolvedValue([form('A', 1)])
     vi.mocked(fetchRecentLeads).mockResolvedValue([rawLead('1')])
@@ -76,7 +116,7 @@ describe('runLeadReconcileSweep', () => {
 
     const result = await runLeadReconcileSweep(payload)
 
-    expect(result).toEqual({ added: 0, scanned: 1, ...clean })
+    expect(counts(result)).toEqual({ added: 0, scanned: 1, ...clean })
     expect(update).not.toHaveBeenCalled()
   })
 
@@ -89,7 +129,7 @@ describe('runLeadReconcileSweep', () => {
 
     const result = await runLeadReconcileSweep(payload)
 
-    expect(result).toEqual({ added: 3, scanned: 3, ...clean })
+    expect(counts(result)).toEqual({ added: 3, scanned: 3, ...clean })
     expect(fetchRecentLeads).toHaveBeenCalledTimes(2)
     expect(fetchRecentLeads).toHaveBeenCalledWith('A', 30)
     expect(fetchRecentLeads).toHaveBeenCalledWith('C', 30)
@@ -102,7 +142,7 @@ describe('runLeadReconcileSweep', () => {
 
     const result = await runLeadReconcileSweep(payload)
 
-    expect(result).toEqual({ added: 0, scanned: 0, ...clean })
+    expect(counts(result)).toEqual({ added: 0, scanned: 0, ...clean })
     expect(storeLead).not.toHaveBeenCalled()
   })
 
@@ -135,7 +175,7 @@ describe('runLeadReconcileSweep', () => {
 
       const result = await runLeadReconcileSweep(payload)
 
-      expect(result).toEqual({
+      expect(counts(result)).toEqual({
         added: 2,
         scanned: 2,
         failedForms: ['B'],
@@ -151,7 +191,12 @@ describe('runLeadReconcileSweep', () => {
 
       const result = await runLeadReconcileSweep(payload)
 
-      expect(result).toEqual({ added: 0, scanned: 0, failedForms: ['A'], saturatedForms: [] })
+      expect(counts(result)).toEqual({
+        added: 0,
+        scanned: 0,
+        failedForms: ['A'],
+        saturatedForms: [],
+      })
       expect(storeLead).not.toHaveBeenCalled()
     })
   })
@@ -166,7 +211,12 @@ describe('runLeadReconcileSweep', () => {
 
     const result = await runLeadReconcileSweep(payload)
 
-    expect(result).toEqual({ added: 30, scanned: 30, failedForms: [], saturatedForms: ['A'] })
+    expect(counts(result)).toEqual({
+      added: 30,
+      scanned: 30,
+      failedForms: [],
+      saturatedForms: ['A'],
+    })
   })
 
   it('does not flag a form whose page came back short of the limit', async () => {

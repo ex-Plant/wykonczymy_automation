@@ -20,8 +20,17 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
 import { notifyReconcileRecovery, notifyReconcileFailure } from '@/lib/leads/notify'
 
+const recoveredLead = (id: number) => ({
+  id,
+  name: `Lead ${id}`,
+  email: `lead${id}@example.com`,
+  phone: '+48100000000',
+  formName: 'Formularz',
+  submittedAt: '2026-08-10T02:00:00.000Z',
+})
+
 const sweepResult = (over: Partial<Awaited<ReturnType<typeof runLeadReconcileSweep>>> = {}) => ({
-  added: 0,
+  recovered: [],
   scanned: 30,
   failedForms: [],
   saturatedForms: [],
@@ -59,7 +68,8 @@ describe('cron leads-reconcile route', () => {
   })
 
   it('alerts once and flushes the leads cache when the sweep recovered leads', async () => {
-    vi.mocked(runLeadReconcileSweep).mockResolvedValue(sweepResult({ added: 2 }))
+    const recovered = [recoveredLead(1), recoveredLead(2)]
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(sweepResult({ recovered }))
 
     const res = await GET(authorized())
 
@@ -73,8 +83,10 @@ describe('cron leads-reconcile route', () => {
     // Without this the dashboard serves a stale list — leads recovered, nothing visible.
     expect(revalidateTag).toHaveBeenCalledWith(CACHE_TAGS.leads, 'default')
     expect(notifyReconcileRecovery).toHaveBeenCalledTimes(1)
+    // The leads themselves, not just a count — a recovered lead is stamped `skipped`,
+    // so this mail is the only place sales ever sees it (EX-660).
     expect(notifyReconcileRecovery).toHaveBeenCalledWith(expect.anything(), {
-      added: 2,
+      recovered,
       scanned: 30,
       saturatedForms: [],
     })
@@ -93,7 +105,7 @@ describe('cron leads-reconcile route', () => {
 
   it('passes the saturation flag into the recovery alert', async () => {
     vi.mocked(runLeadReconcileSweep).mockResolvedValue(
-      sweepResult({ added: 30, saturatedForms: ['A'] }),
+      sweepResult({ recovered: [recoveredLead(1)], saturatedForms: ['A'] }),
     )
 
     await GET(authorized())
@@ -121,7 +133,7 @@ describe('cron leads-reconcile route', () => {
 
   it('alerts and fails the run when only some forms could be swept', async () => {
     vi.mocked(runLeadReconcileSweep).mockResolvedValue(
-      sweepResult({ added: 1, failedForms: ['B'] }),
+      sweepResult({ recovered: [recoveredLead(1)], failedForms: ['B'] }),
     )
 
     const res = await GET(authorized())
@@ -144,7 +156,9 @@ describe('cron leads-reconcile route', () => {
   })
 
   it('still reports the recovery when the alert email fails to send', async () => {
-    vi.mocked(runLeadReconcileSweep).mockResolvedValue(sweepResult({ added: 1 }))
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(
+      sweepResult({ recovered: [recoveredLead(1)] }),
+    )
     vi.mocked(notifyReconcileRecovery).mockRejectedValue(new Error('SMTP down'))
 
     const res = await GET(authorized())

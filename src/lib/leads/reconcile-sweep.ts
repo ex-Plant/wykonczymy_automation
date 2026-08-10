@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import type { Lead } from '@/payload-types'
 import { listLeadForms, fetchRecentLeads } from './fetch-recent-leads'
 import { fetchFormQuestions } from './fetch-form-questions'
 import { leadSchema } from './lead-schema'
@@ -8,8 +9,15 @@ import { storeLead } from './store-lead'
 // 30 is enough to close a delivery gap without re-scanning a form's entire history.
 const PER_FORM_LIMIT = 30
 
+/** Enough to act on a recovered lead straight from the alert, without opening the dashboard. */
+export type RecoveredLeadT = Pick<
+  Lead,
+  'id' | 'name' | 'email' | 'phone' | 'formName' | 'submittedAt'
+>
+
 export type ReconcileSweepResultT = {
-  added: number
+  /** The leads this run actually inserted. Its length is the `added` count. */
+  recovered: RecoveredLeadT[]
   scanned: number
   /** Forms whose Graph calls threw; the rest of the sweep still ran. */
   failedForms: string[]
@@ -40,7 +48,7 @@ export type ReconcileSweepResultT = {
 export async function runLeadReconcileSweep(payload: Payload): Promise<ReconcileSweepResultT> {
   const forms = await listLeadForms()
 
-  let added = 0
+  const recovered: RecoveredLeadT[] = []
   let scanned = 0
   const failedForms: string[] = []
   const saturatedForms: string[] = []
@@ -94,7 +102,14 @@ export async function runLeadReconcileSweep(payload: Payload): Promise<Reconcile
           overrideAccess: true,
           context: { skipRevalidation: true },
         })
-        added += 1
+        recovered.push({
+          id: lead.id,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          formName: lead.formName,
+          submittedAt: lead.submittedAt,
+        })
       }
     } catch (err) {
       // TODO(EX-449) SENTRY-REQUIRED: a form the sweep can never read is a permanent hole.
@@ -103,5 +118,5 @@ export async function runLeadReconcileSweep(payload: Payload): Promise<Reconcile
     }
   }
 
-  return { added, scanned, failedForms, saturatedForms }
+  return { recovered, scanned, failedForms, saturatedForms }
 }

@@ -6,6 +6,7 @@ import { renderBrandedEmail } from './email-template'
 import { buildLeadAnswers } from './lead-answers'
 import { leadRawDataSchema, leadFormQuestionsSchema } from './lead-schema'
 import { escapeHtml } from './escape-html'
+import type { RecoveredLeadT } from './reconcile-sweep'
 
 // Absolute URL — email clients can't resolve relative paths. Served from public/.
 const LOGO_URL = `${FRONTEND_URL}/wykonczymy-app-icon.png`
@@ -80,11 +81,29 @@ export async function notifyShapeAlert(
  * mail the cron would patch a dead delivery path forever and nobody would know.
  * Silent on a clean run. Best-effort: the leads are already persisted, so a send
  * failure must not fail the cron.
+ *
+ * Lists the leads themselves, not just a count (EX-660): a recovered lead is stamped
+ * `skipped`, so sales never gets `notifyNewLead` for it and this mail is the only
+ * place it surfaces. A bare "Odzyskane: 12" is a number nobody can act on — the
+ * contact details make it a call list.
  */
 export async function notifyReconcileRecovery(
   payload: Payload,
-  context: { added: number; scanned: number; saturatedForms?: string[] },
+  context: { recovered: RecoveredLeadT[]; scanned: number; saturatedForms?: string[] },
 ): Promise<void> {
+  const added = context.recovered.length
+  const recoveredHtml = context.recovered
+    .map(
+      (lead) => `<table>
+      ${row('Imię i nazwisko', lead.name)}
+      ${row('Email', lead.email)}
+      ${row('Telefon', lead.phone)}
+      ${row('Formularz', lead.formName)}
+      ${row('Data', lead.submittedAt)}
+    </table>`,
+    )
+    .join('\n    ')
+
   // A saturated form is the dangerous case: the sweep hit its per-form page limit,
   // so anything older fell outside the window and tomorrow's page is a newer set.
   // Without this the mail reads like a clean full recovery while leads are lost.
@@ -96,7 +115,11 @@ export async function notifyReconcileRecovery(
 
   const html = `
     <h2>⚠️ Cron odzyskał zgłoszenia pominięte przez webhook</h2>
-    <p>Odzyskane: <strong>${context.added}</strong> z ${context.scanned} sprawdzonych.</p>
+    <p>Odzyskane: <strong>${added}</strong> z ${context.scanned} sprawdzonych.</p>
+    <p><strong>Te zgłoszenia nie trafiły do sprzedaży i nie dostały automatycznej
+    odpowiedzi — skontaktuj się z nimi ręcznie.</strong></p>
+    ${recoveredHtml}
+    <p><a href="${FRONTEND_URL}/zgloszenia">Otwórz zgłoszenia</a></p>
     <p>Webhook Meta nie dostarczył tych zgłoszeń. Sprawdź <code>callback_url</code>
     aplikacji, subskrypcję strony i ważność tokena.</p>
     ${saturationHtml}
@@ -104,7 +127,7 @@ export async function notifyReconcileRecovery(
 
   await payload.sendEmail({
     to: serverEnv.LEADS_ALERT_EMAIL,
-    subject: `⚠️ Cron odzyskał ${context.added} zgłoszeń — webhook nie dowozi — Wykończymy`,
+    subject: `⚠️ Cron odzyskał ${added} zgłoszeń — webhook nie dowozi — Wykończymy`,
     html,
   })
 }

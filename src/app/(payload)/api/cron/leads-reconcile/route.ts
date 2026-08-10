@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const payload = await getPayload({ config })
-    const { added, scanned, failedForms, saturatedForms } = await runLeadReconcileSweep(payload)
+    const { recovered, scanned, failedForms, saturatedForms } = await runLeadReconcileSweep(payload)
+    const added = recovered.length
 
     // Ordered before the failure branch: leads recovered from the forms that DID
     // work are already persisted, so they owe a cache flush and an alert whether or
@@ -25,10 +26,12 @@ export async function GET(request: NextRequest) {
     if (added > 0) {
       // Route Handler context — `updateTag` throws here, unlike in the server action.
       revalidateTag(CACHE_TAGS.leads, 'default')
-      await notifyReconcileRecovery(payload, { added, scanned, saturatedForms }).catch((err) => {
-        // TODO(EX-449) SENTRY-REQUIRED: the recovery is silent if this mail is lost.
-        console.error('[cron/leads-reconcile] Recovery alert failed', err)
-      })
+      await notifyReconcileRecovery(payload, { recovered, scanned, saturatedForms }).catch(
+        (err) => {
+          // TODO(EX-449) SENTRY-REQUIRED: the recovery is silent if this mail is lost.
+          console.error('[cron/leads-reconcile] Recovery alert failed', err)
+        },
+      )
     }
 
     if (failedForms.length > 0) {

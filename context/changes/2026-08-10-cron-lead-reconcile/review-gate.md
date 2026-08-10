@@ -24,6 +24,9 @@ audits, i.e. bugs the plan never specified.
       N hours), which is a product decision about how late is "too late to auto-reply" — behavior
       changing and genuinely uncertain, so not auto-applied. Filed as **EX-660** (project Wykonczymy).
       test: TDD · unit — a lead inside the freshness window is not stamped `skipped`; recorded in EX-660
+      **Mitigation shipped after the gate:** the recovery alert now lists each recovered lead's
+      name/email/phone/form instead of a bare count, so a silenced lead is a call list rather than a
+      number. The defect stands — EX-660 stays open for the freshness window.
 - [x] 🟡 WARNING · fixed · `code-review` · `src/app/(payload)/api/cron/leads-reconcile/route.ts:33` ·
       a permanently failing cron was as silent as the broken webhook it exists to detect — a thrown
       sweep logged to `console.error` and 500'd with no mail. When the Page token dies (a dated risk:

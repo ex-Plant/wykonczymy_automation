@@ -25,7 +25,7 @@ export async function reconcileLeads(): Promise<ReconcileLeadsResultT> {
     const payload = await getPayload({ config })
     const result = await runLeadReconcileSweep(payload)
 
-    if (result.added > 0) revalidateCollection('leads')
+    if (result.recovered.length > 0) revalidateCollection('leads')
     return { success: true, data: result }
   } catch (err) {
     return { success: false, error: getErrorMessage(err) }

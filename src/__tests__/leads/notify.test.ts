@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import type { Payload } from 'payload'
 import type { Lead } from '@/payload-types'
-import { notifyNewLead, notifyShapeAlert, sendAutoReply } from '@/lib/leads/notify'
+import {
+  notifyNewLead,
+  notifyShapeAlert,
+  notifyReconcileRecovery,
+  sendAutoReply,
+} from '@/lib/leads/notify'
 
 beforeAll(() => {
   process.env.LEADS_NOTIFY_EMAIL = 'inbox@example.com'
@@ -116,5 +121,55 @@ describe('notifyShapeAlert', () => {
     expect(arg.to).toBe('ops@example.com')
     expect(arg.html).toContain('1000000000000001')
     expect(arg.html).toContain('No email could be extracted')
+  })
+})
+
+describe('notifyReconcileRecovery', () => {
+  const recovered = [
+    {
+      id: 11,
+      name: 'Anna Nowak',
+      email: 'anna.nowak@example.com',
+      phone: '+48500600700',
+      formName: 'komercyjnie - wwa',
+      submittedAt: '2026-07-05T18:48:40.000Z',
+    },
+  ]
+
+  // The recovered lead is stamped `skipped`, so notifyNewLead never fires for it and
+  // this mail is the only place it surfaces. A bare count is unactionable — sales
+  // needs the contact details to call these people back (EX-660).
+  it('lists each recovered lead, not just how many there were', async () => {
+    const sendEmail = vi.fn().mockResolvedValue({})
+    await notifyReconcileRecovery(fakePayload(sendEmail), { recovered, scanned: 30 })
+
+    const arg = sendEmail.mock.calls[0][0]
+    expect(arg.to).toBe('ops@example.com')
+    expect(arg.html).toContain('Anna Nowak')
+    expect(arg.html).toContain('anna.nowak@example.com')
+    expect(arg.html).toContain('+48500600700')
+    expect(arg.html).toContain('komercyjnie - wwa')
+  })
+
+  it('escapes HTML in recovered lead values', async () => {
+    const sendEmail = vi.fn().mockResolvedValue({})
+    await notifyReconcileRecovery(fakePayload(sendEmail), {
+      recovered: [{ ...recovered[0], name: 'A<b>&"x' }],
+      scanned: 30,
+    })
+
+    const html = sendEmail.mock.calls[0][0].html as string
+    expect(html).toContain('A&lt;b&gt;&amp;')
+    expect(html).not.toContain('A<b>')
+  })
+
+  it('derives the count from the list so the two can never disagree', async () => {
+    const sendEmail = vi.fn().mockResolvedValue({})
+    await notifyReconcileRecovery(fakePayload(sendEmail), {
+      recovered: [recovered[0], { ...recovered[0], id: 12 }],
+      scanned: 30,
+    })
+
+    expect(sendEmail.mock.calls[0][0].subject).toContain('2')
   })
 })

@@ -21,7 +21,8 @@ export function ReconcileLeadsButton() {
       return
     }
 
-    const { added, failedForms } = result.data
+    const { recovered, failedForms } = result.data
+    const added = recovered.length
     // A form the sweep couldn't read is a hole in the result, not a clean „brak nowych".
     if (failedForms.length > 0) {
       toastMessage(

@@ -14,8 +14,17 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { revalidateCollection } from '@/lib/cache/revalidate'
 import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
 
+const recoveredLead = (id: number) => ({
+  id,
+  name: `Lead ${id}`,
+  email: `lead${id}@example.com`,
+  phone: '+48100000000',
+  formName: 'Formularz',
+  submittedAt: '2026-08-10T02:00:00.000Z',
+})
+
 const sweepResult = (added: number) => ({
-  added,
+  recovered: Array.from({ length: added }, (_, index) => recoveredLead(index + 1)),
   scanned: 3,
   failedForms: [],
   saturatedForms: [],
@@ -66,19 +75,17 @@ describe('reconcileLeads', () => {
   // Partial failure still carries real counts, so the action must not turn it into
   // a plain success — the button reads failedForms to warn the user.
   it('passes a partial failure through to the caller', async () => {
-    vi.mocked(runLeadReconcileSweep).mockResolvedValue({
-      added: 1,
+    const partial = {
+      recovered: [recoveredLead(1)],
       scanned: 4,
       failedForms: ['B'],
       saturatedForms: [],
-    })
+    }
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(partial)
 
     const result = await reconcileLeads()
 
-    expect(result).toEqual({
-      success: true,
-      data: { added: 1, scanned: 4, failedForms: ['B'], saturatedForms: [] },
-    })
+    expect(result).toEqual({ success: true, data: partial })
     expect(revalidateCollection).toHaveBeenCalledWith('leads')
   })
 })
