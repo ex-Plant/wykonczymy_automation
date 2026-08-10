@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { SelectItem } from '@/components/ui/select'
-import { FieldGroup } from '@/components/ui/field'
+import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useInvoiceIngest } from '@/components/forms/expense-form/use-invoice-ingest'
 import { useReceiptGeneration } from '@/components/forms/expense-form/use-receipt-generation'
@@ -226,28 +226,30 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   return (
     <FormShell form={form} onReset={handleReset}>
       <FieldGroup>
-        <div className="flex items-start gap-4">
-          <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
-            {(field) => (
-              <field.Select
-                label="Typ wydatku"
-                description={
-                  billsNetAmount(currentType)
-                    ? 'Z kasy schodzi kwota brutto, a klienta obciąża kwota netto — dlatego przy każdej pozycji podajesz obie.'
-                    : undefined
-                }
-                showError
-                fieldClassName="min-w-0 flex-1"
-              >
-                {TRANSACTION_TRANSFER_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {TRANSFER_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </field.Select>
-            )}
-          </form.AppField>
-          <DateField form={form} fieldClassName="w-40" />
+        {/* The netto hint sits UNDER the row, not on the Select as a `description` — FormBase
+          renders a description between the label and the control, which would push the type
+          Select down while „Data" beside it stayed put, breaking the row's alignment. */}
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-4">
+            <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
+              {(field) => (
+                <field.Select label="Typ wydatku" showError fieldClassName="min-w-0 flex-1">
+                  {TRANSACTION_TRANSFER_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TRANSFER_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </field.Select>
+              )}
+            </form.AppField>
+            <DateField form={form} fieldClassName="w-40" />
+          </div>
+          {billsNetAmount(currentType) && (
+            <FieldDescription>
+              Z kasy schodzi kwota brutto, a klienta obciąża kwota netto — dlatego przy każdej
+              pozycji podajesz obie.
+            </FieldDescription>
+          )}
         </div>
 
         {showsInvestment(currentType) && (

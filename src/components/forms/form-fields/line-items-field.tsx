@@ -218,7 +218,10 @@ export function LineItemsField({
                     <form.AppField name={`lineItems[${index}].amount`}>
                       {(field: AppFieldComponentsT) => (
                         <field.Input
-                          label="Kwota"
+                          // Named outright once a Netto column sits next to it — an unqualified
+                          // „Kwota" beside „Netto" reads as the amount that bills the client,
+                          // which is exactly backwards on this type.
+                          label={showsNetAmount ? 'Kwota brutto' : 'Kwota'}
                           placeholder="0.00 PLN"
                           type="number"
                           showError
