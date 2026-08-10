@@ -39,8 +39,9 @@ fixture and is out of scope.
 - **`stage_progress` has a Payload collection** (`stage-progress`), used by `kosztorys-tree.db.test`.
   The other three specs write it with raw `INSERT INTO stage_progress` and therefore have to take a
   `db` handle. Going through the collection everywhere drops `db` from the builder's signature.
-- `restore-deleted-worker.test.ts` matches the pattern but is **untracked work in the shared tree
-  belonging to another session** — excluded, see What We're NOT Doing.
+- `restore-deleted-worker.test.ts` matches the pattern but landed on another session's branch mid-change,
+  so it was migrated as a follow-up once that branch merged in (1 section / 1 item / 2 stages, the
+  second carrying the assignee that must survive the restore).
 
 ## Desired End State
 
@@ -60,9 +61,6 @@ Every migrated spec keeps the exact rows it creates today, and the six files sta
 
 ## What We're NOT Doing
 
-- **Not touching `restore-deleted-worker.test.ts`.** It is untracked in the shared working tree — a
-  parallel session's in-flight file. Rewriting its `beforeAll` would collide with whoever is writing
-  it. It gets migrated in a follow-up once it lands.
 - Not touching `display-order.test.ts` — its tree comes from the actions under test, not from a
   fixture.
 - Not merging with `helpers/kosztorys-tree.ts` (`makeTree`). One builds DB rows, the other builds an
@@ -204,3 +202,6 @@ None — no schema, data, or persisted-shape change.
 
 Net: 444 fixture lines deleted, 207 written back, +134 for the builder — the six specs shed ~237
 lines of `payload.create` boilerplate.
+
+- [x] 1.6 Follow-up: `restore-deleted-worker.test.ts` migrated once its branch merged in — seven specs
+      green (7 files / 23 tests @ 5435), typecheck clean, lint 0 errors
