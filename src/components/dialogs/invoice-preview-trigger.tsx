@@ -1,5 +1,6 @@
 import { FileText, Search } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
+import { isImageMime } from '@/lib/invoices/mime'
 import { cn } from '@/lib/utils/cn'
 import type { InvoiceFileT } from '@/types/transfers'
 
@@ -24,7 +25,7 @@ export function InvoicePreviewTrigger({
   const pageCount = invoices.length
   // A mixed set has no single icon that tells the truth, so it falls back to the document icon.
   const mimeTypes = new Set(invoices.map((invoice) => invoice.mimeType))
-  const isImage = mimeTypes.size === 1 && [...mimeTypes][0]?.startsWith('image/')
+  const isImage = mimeTypes.size === 1 && isImageMime([...mimeTypes][0])
 
   return (
     <button
@@ -46,9 +47,9 @@ export function InvoicePreviewTrigger({
       {isImage ? <Search /> : <FileText />}
       {!isCompact && <span className="truncate text-sm">{label}</span>}
       {pageCount > 1 && (
-        // The icon alone can't say how many pages sit behind it. Absolutely positioned so the badge
-        // never grows the box — the virtualized wydatki rows are laid out at a fixed height.
-        <span className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full text-[0.625rem] leading-none font-medium tabular-nums">
+        // Absolutely positioned so the badge never grows the box — the virtualized wydatki rows
+        // are laid out at a fixed height.
+        <span className="bg-primary text-primary-foreground text-2xs absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full leading-none font-medium tabular-nums">
           {pageCount}
         </span>
       )}

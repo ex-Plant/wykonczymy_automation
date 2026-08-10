@@ -14,7 +14,9 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { editExpenseFormSchema } from '@/components/forms/expense-form/expense-schema'
-import { uploadFileClient } from '@/lib/utils/upload-file-client'
+import { InvoiceUploadError, resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
+import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
+import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
 import type { z } from 'zod'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
@@ -91,13 +93,20 @@ export function EditTransferForm({
           let invoiceMediaIds: number[] | undefined
           if (files.length > 0) {
             try {
-              invoiceMediaIds = await Promise.all(files.map(uploadFileClient))
+              // One row, so every picked file is a page of the same invoice: index 0 of a
+              // one-row positional batch.
+              const [pages] = await resolveInvoiceMediaIds(1, new Map([[0, files]]))
+              invoiceMediaIds = pages
             } catch (err) {
+              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
               const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'
               return { success: false, error: message }
             }
           }
-          return updateTransferAction(row.id, data, invoiceMediaIds)
+          const result = await updateTransferAction(row.id, data, invoiceMediaIds)
+          // The pages are in Blob but the update that would have attached them never happened.
+          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds)
+          return result
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
@@ -121,6 +130,10 @@ export function EditTransferForm({
   function handleFileChange() {
     setHasPickedFiles((fileRef.current?.files?.length ?? 0) > 0)
   }
+
+  // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
+  // the file input below only ever ADDS pages, so there is no other way to drop one here.
+  const { visibleInvoices, handleRemove, handleRemoveAll } = useInvoiceRemoval(row.id, row.invoices)
 
   return (
     <form.AppForm>
@@ -171,8 +184,12 @@ export function EditTransferForm({
           </form.AppField>
 
           <div className="space-y-2">
-            {row.invoices.length > 0 && !hasPickedFiles && (
-              <InvoicePreviewButton invoices={row.invoices} />
+            {visibleInvoices.length > 0 && !hasPickedFiles && (
+              <InvoicePreviewButton
+                invoices={visibleInvoices}
+                onRemove={handleRemove}
+                onRemoveAll={visibleInvoices.length > 1 ? handleRemoveAll : undefined}
+              />
             )}
             <FileInput
               key={fileInputKey}

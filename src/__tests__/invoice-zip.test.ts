@@ -5,7 +5,6 @@ import {
   buildUniqueFilename,
   flattenInvoiceRows,
   sanitizeForFilename,
-  getExtension,
   pluralizeInvoice,
 } from '@/lib/export/invoice-zip'
 
@@ -34,30 +33,6 @@ describe('sanitizeForFilename', () => {
 
   it('removes all dangerous characters', () => {
     expect(sanitizeForFilename('file<>:"/\\|?*name')).toBe('filename')
-  })
-})
-
-// ── getExtension ────────────────────────────────────────────────────────
-
-describe('getExtension', () => {
-  it('returns .pdf for PDF files', () => {
-    expect(getExtension('faktura.pdf')).toBe('.pdf')
-  })
-
-  it('returns .jpg for image files', () => {
-    expect(getExtension('photo.jpg')).toBe('.jpg')
-  })
-
-  it('returns last extension for double-dotted files', () => {
-    expect(getExtension('archive.tar.gz')).toBe('.gz')
-  })
-
-  it('returns empty string for null', () => {
-    expect(getExtension(null)).toBe('')
-  })
-
-  it('returns empty string for file without extension', () => {
-    expect(getExtension('Makefile')).toBe('')
   })
 })
 

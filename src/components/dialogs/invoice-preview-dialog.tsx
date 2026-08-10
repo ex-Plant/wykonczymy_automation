@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/loader/spinner'
 import { useInvoiceZip } from '@/hooks/use-invoice-zip'
 import { buildInvoiceArchiveName, dedupeFilename } from '@/lib/export/invoice-zip'
+import { isImageMime, isPdfMime, isPreviewableMime } from '@/lib/invoices/mime'
+import { splitExtension } from '@/lib/utils/append-short-id'
+import { today } from '@/lib/utils/date'
 import { ChevronLeft, ChevronRight, Download, Plus, Printer, Trash2 } from 'lucide-react'
 import type { InvoiceFileT } from '@/types/transfers'
 
@@ -39,8 +42,8 @@ export function InvoicePreviewDialog({
   const activeIndex = Math.min(pageIndex, Math.max(invoices.length - 1, 0))
   const active = invoices[activeIndex]
   const isMultiPage = invoices.length > 1
-  const isImage = active?.mimeType?.startsWith('image/')
-  const isPdf = active?.mimeType === 'application/pdf'
+  const isImage = isImageMime(active?.mimeType)
+  const isPdf = isPdfMime(active?.mimeType)
   const displayName = active?.filename ?? 'Faktura'
   const title = isMultiPage ? `${displayName} (${activeIndex + 1}/${invoices.length})` : displayName
 
@@ -54,9 +57,7 @@ export function InvoicePreviewDialog({
     // document with DOM APIs. Loading the window from a blob:/data: URL instead gives it an
     // opaque origin where the page URL — a relative Payload path OR a not-yet-uploaded blob:
     // preview — no longer resolves, so the media never loads and print never fires.
-    const printable = invoices.filter(
-      (invoice) => invoice.mimeType?.startsWith('image/') || invoice.mimeType === 'application/pdf',
-    )
+    const printable = invoices.filter((invoice) => isPreviewableMime(invoice.mimeType))
     if (printable.length === 0) return
 
     const printWindow = window.open('', '_blank')
@@ -78,7 +79,7 @@ export function InvoicePreviewDialog({
 
     for (const invoice of printable) {
       let media: HTMLImageElement | HTMLIFrameElement
-      if (invoice.mimeType?.startsWith('image/')) {
+      if (isImageMime(invoice.mimeType)) {
         const img = doc.createElement('img')
         img.src = invoice.url
         img.alt = invoice.filename ?? displayName
@@ -107,7 +108,7 @@ export function InvoicePreviewDialog({
         url: invoice.url,
         name: dedupeFilename(invoice.filename ?? `strona-${index + 1}`, usedNames),
       })),
-      buildInvoiceArchiveName([displayName], new Date().toISOString().slice(0, 10)),
+      buildInvoiceArchiveName([splitExtension(displayName).base], today()),
     )
   }
 

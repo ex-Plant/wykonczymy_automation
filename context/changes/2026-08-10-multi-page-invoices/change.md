@@ -1,7 +1,7 @@
 ---
 change_id: multi-page-invoices
 title: An expense carries multiple invoice pages (EX-659)
-status: implementing
+status: implemented
 created: 2026-08-10
 updated: 2026-08-10
 archived_at: null

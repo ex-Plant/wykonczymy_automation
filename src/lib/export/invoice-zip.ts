@@ -1,4 +1,5 @@
 import { pluralize } from '@/lib/utils/polish-plural'
+import { splitExtension } from '@/lib/utils/append-short-id'
 import type { InvoiceFileT } from '@/types/transfers'
 
 /**
@@ -42,14 +43,13 @@ export function buildUniqueFilename(
 ): string {
   const dateStr = date.slice(0, 10).replace(/-/g, '')
   const safeDesc = sanitizeForFilename(description).slice(0, 40)
-  const ext = getExtension(originalFilename)
+  const { ext } = splitExtension(originalFilename ?? '')
   return dedupeFilename(`${dateStr}_${safeDesc}${ext}`, usedNames)
 }
 
 /** Suffixes `_1`, `_2`, … before the extension until the name is free, then reserves it. */
 export function dedupeFilename(candidate: string, usedNames: Set<string>): string {
-  const ext = getExtension(candidate)
-  const base = ext ? candidate.slice(0, -ext.length) : candidate
+  const { base, ext } = splitExtension(candidate)
 
   let name = candidate
   let counter = 1
@@ -70,14 +70,8 @@ export function sanitizeForFilename(str: string): string {
     .replace(/^_|_$/g, '')
 }
 
-export function getExtension(filename: string | null): string {
-  if (!filename) return ''
-  const dotIndex = filename.lastIndexOf('.')
-  return dotIndex >= 0 ? filename.slice(dotIndex) : ''
-}
-
-// Rows and files are counted separately because one row now yields several pages — conflating them
-// is what made the old tally able to print „Pobrano 9 z 5".
+// Rows and files are counted separately because one row yields several pages — conflating them
+// lets the tally print „Pobrano 9 z 5".
 export type InvoiceZipTallyT = {
   // Rows the user asked for — the whole visible set, invoice or not.
   rows: number
@@ -119,7 +113,9 @@ export function buildInvoiceZipMessage({
 /**
  * `faktury-<part>-<part>-<date>.zip`. Parts are caller-supplied context (investment name, dataset
  * label) and go through `sanitizeForFilename` because an investment name may carry `/` or `:`. No
- * parts yields the generic `faktury-<date>.zip` the transfers export has always produced.
+ * parts yields the generic `faktury-<date>.zip` the transfers export has always produced. A part is
+ * taken verbatim — a caller passing a *filename* strips the extension itself, because doing it here
+ * would eat the tail of an investment name like „Dom ul. Polna 3".
  */
 export function buildInvoiceArchiveName(parts: string[], date: string): string {
   const safeParts = parts.map(sanitizeForFilename).filter(Boolean)

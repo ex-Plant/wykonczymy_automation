@@ -735,3 +735,34 @@ exists — read them as superseded by this section, not as owed.
 - [ ] Skan na typie brutto, potem zmiana typu na „Wydatek inwestycyjny netto" → kolumna Netto jest już wypełniona.
 - [ ] Skan na typie brutto i zapis → zapisany transfer nie niesie `netAmount`.
 - [ ] Nieczytelny obraz nadal zwraca marker „NIE UDAŁO SIĘ ODCZYTAĆ" i puste Netto.
+
+## Multi-page invoices (EX-659)
+
+### Phase 1-2: Read path, podgląd, eksport
+
+- [ ] Wydatek z jedną fakturą wygląda i zachowuje się jak dotąd — ikona, podgląd, „Pobierz", „Drukuj".
+- [ ] Wydatek z 3 stronami pokazuje licznik `3` przy ikonie, a podgląd przewija strony strzałkami z licznikiem „2/3".
+- [ ] „Pobierz wszystkie" z podglądu wielostronicowego daje ZIP z 3 plikami o różnych nazwach.
+- [ ] „Drukuj" w podglądzie wielostronicowym drukuje wszystkie strony w jednym zadaniu, nie tylko pierwszą.
+- [ ] Masowe pobieranie faktur z tabeli wydatków liczy strony, nie wiersze — toast pokazuje liczbę plików w ZIP-ie.
+- [ ] Eksport CSV i druk tabeli działają bez zmian.
+
+### Phase 3: Edycja zapisanej faktury
+
+- [ ] W edycji wydatku „Dodaj stronę" dokłada plik do istniejącej faktury (nie podmienia).
+- [ ] „Usuń stronę" kasuje tylko oglądaną stronę; pozostałe zostają, licznik się zmniejsza.
+- [ ] „Usuń całą fakturę" znika wtedy, gdy została jedna strona.
+- [ ] Usunięcie strony i ponowny wybór tego samego pliku działa (input czyści wartość).
+- [ ] MANAGER nie może odpiąć faktury z anulowanego transferu.
+
+### Phase 4-5: Dodawanie i skan AI
+
+- [ ] W formularzu wydatku można dołączyć kilka plików do jednego wiersza; miniatury i licznik zgadzają się z wyborem.
+- [ ] Skan AI z 3 stron jednej faktury wypełnia formularz raz (jedna pozycja), nie trzy.
+- [ ] Skan z 9 stron zwraca czytelny błąd o limicie stron, nie 500.
+- [ ] Plik innego typu niż obraz/PDF jest odrzucany komunikatem, nie cichym błędem.
+
+### Phase 6: Sprzątanie plików
+
+- [ ] Nieudany zapis formularza z 3 stronami nie zostawia osieroconych plików w Blob.
+- [ ] Usunięcie wydatku kasuje jego pliki, ale nie kasuje pliku, który wskazuje jeszcze inny wydatek.

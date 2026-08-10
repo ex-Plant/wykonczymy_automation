@@ -1,22 +1,17 @@
 import type { CollectionAfterDeleteHook } from 'payload'
-import { invoiceIds } from '@/lib/queries/transfer-mapping'
-import { logError } from '@/lib/utils/log-error'
+import { invoiceIds } from '@/lib/invoices/invoice-field'
+import { deleteUnreferencedMedia } from '@/lib/invoices/delete-unreferenced-media'
 
 /**
- * Deleting an expense unreachable-izes its invoice pages: a media row is only ever linked from the
- * transfer that uploaded it, so once that transfer is gone nothing can reach the file again — it
+ * Deleting an expense unreachable-izes its invoice pages — nothing can open the file again and it
  * just keeps costing Blob storage. A hook rather than a server action because expense deletion has
  * no action path: it happens in the Payload admin panel, which reaches the collection directly.
  *
- * Best-effort and logged, mirroring the orphan cleanup in `setTransferInvoices`: a failed media
- * delete must not fail the expense delete that already committed.
+ * `req` is deliberately NOT passed down: enlisting a best-effort delete in the expense-delete
+ * transaction means one Postgres-level failure aborts that transaction, and no `.catch` can undo
+ * that — the delete this hook is meant to be harmless to would roll back with an unrelated error.
  */
 export const deleteInvoiceMediaAfterDelete: CollectionAfterDeleteHook = async ({ doc, req }) => {
-  for (const mediaId of invoiceIds(doc.invoice)) {
-    await req.payload
-      .delete({ collection: 'media', id: mediaId, req })
-      .catch((err) => logError('[transfers] delete invoice media after expense delete failed', err))
-  }
-
+  await deleteUnreferencedMedia(req.payload, invoiceIds(doc.invoice))
   return doc
 }

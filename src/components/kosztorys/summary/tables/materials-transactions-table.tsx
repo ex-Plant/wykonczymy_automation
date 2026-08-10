@@ -20,6 +20,7 @@ import {
   type WydatkiDatasetT,
 } from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
+import { today } from '@/lib/utils/date'
 import type { MaterialTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
@@ -172,7 +173,7 @@ export function MaterialsTransactionsTable({
   if (rows.length === 0) return null
 
   function handleDownload() {
-    const date = new Date().toISOString().slice(0, 10)
+    const date = today()
     download(
       visibleRows,
       buildInvoiceArchiveName([investmentName, DATASET_LABELS[activeDataset]], date),

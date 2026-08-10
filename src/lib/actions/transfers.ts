@@ -26,7 +26,9 @@ import { validateAction, protectedAction } from './run-action'
 import { validateSourceRegister } from './validate-source-register'
 import { logError } from '@/lib/utils/log-error'
 import { resolveId } from '@/lib/utils/resolve-id'
-import { invoiceIds } from '@/lib/queries/transfer-mapping'
+import { invoiceIds } from '@/lib/invoices/invoice-field'
+import { deleteUnreferencedMedia } from '@/lib/invoices/delete-unreferenced-media'
+import type { ActionResultT } from '@/types/action'
 
 export async function createTransferAction(data: CreateTransferFormT, invoiceMediaIds?: number[]) {
   return protectedAction(
@@ -288,22 +290,22 @@ export async function updateTransferAction(
 
 /**
  * Rewrite a transfer's invoice pages to whatever `nextIds` derives from the current list, then
- * best-effort delete the media the new list dropped — a page nothing references is unreachable,
- * since media rows are only ever linked from the transfer that uploaded them.
+ * delete the media the new list dropped once nothing else references it.
+ *
+ * Goes through `fetchAndAuthorize` like every other mutator: detaching a page is an edit, and
+ * `removeAllTransferInvoicesAction` destroys a whole multi-page document in one call.
  */
 async function setTransferInvoices(
   payload: Payload,
+  user: SessionUserT,
   transferId: number,
   nextIds: (currentIds: number[]) => number[],
-): Promise<{ success: true }> {
+): Promise<ActionResultT> {
   const step = perfStart()
 
-  const transfer = await payload.findByID({
-    collection: 'transactions',
-    id: transferId,
-    depth: 0,
-  })
-  const currentIds = invoiceIds(transfer.invoice)
+  const authorized = await fetchAndAuthorize(payload, user, transferId, 'edycji')
+  if ('error' in authorized) return { success: false, error: authorized.error }
+  const currentIds = invoiceIds(authorized.original.invoice)
   const next = nextIds(currentIds)
   console.log(`[PERF]   findByID(${transferId}) ${step()}ms`)
 
@@ -314,11 +316,12 @@ async function setTransferInvoices(
   })
   console.log(`[PERF]   payload.update(${transferId}) ${step()}ms`)
 
-  for (const orphanId of currentIds.filter((id) => !next.includes(id))) {
-    payload
-      .delete({ collection: 'media', id: orphanId })
-      .catch((err) => logError('[transfers] delete orphaned invoice media failed', err))
-  }
+  // Awaited, not fire-and-forget: the serverless invocation can be frozen the moment the response
+  // is written, which would drop the deletes and leak exactly the files this is here to reclaim.
+  await deleteUnreferencedMedia(
+    payload,
+    currentIds.filter((id) => !next.includes(id)),
+  )
 
   return { success: true }
 }
@@ -327,8 +330,8 @@ async function setTransferInvoices(
 export async function updateTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'updateTransferInvoiceAction',
-    ({ payload }) =>
-      setTransferInvoices(payload, transferId, (current) =>
+    ({ payload, user }) =>
+      setTransferInvoices(payload, user, transferId, (current) =>
         current.includes(invoiceMediaId) ? current : [...current, invoiceMediaId],
       ),
     ['transfers'],
@@ -339,8 +342,8 @@ export async function updateTransferInvoiceAction(transferId: number, invoiceMed
 export async function removeTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'removeTransferInvoiceAction',
-    ({ payload }) =>
-      setTransferInvoices(payload, transferId, (current) =>
+    ({ payload, user }) =>
+      setTransferInvoices(payload, user, transferId, (current) =>
         current.filter((id) => id !== invoiceMediaId),
       ),
     ['transfers'],
@@ -351,7 +354,7 @@ export async function removeTransferInvoiceAction(transferId: number, invoiceMed
 export async function removeAllTransferInvoicesAction(transferId: number) {
   return protectedAction(
     'removeAllTransferInvoicesAction',
-    ({ payload }) => setTransferInvoices(payload, transferId, () => []),
+    ({ payload, user }) => setTransferInvoices(payload, user, transferId, () => []),
     ['transfers'],
   )
 }

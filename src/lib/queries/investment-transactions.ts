@@ -10,7 +10,7 @@ import {
 import { findTransfersRaw } from '@/lib/queries/transfers'
 import { fetchMediaByIds } from '@/lib/queries/media'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
-import { extractInvoiceIds, resolveInvoiceFiles } from '@/lib/queries/transfer-mapping'
+import { extractInvoiceIds, resolveInvoiceFiles } from '@/lib/invoices/invoice-field'
 import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
   PayoutByWorkerT,

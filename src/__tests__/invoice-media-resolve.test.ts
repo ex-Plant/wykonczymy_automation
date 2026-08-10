@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 // calls it (upload is injected here), so stub the module to keep the import Node-safe.
 vi.mock('@/lib/utils/compress-image', () => ({ compressImage: async (f: File) => f }))
 
-import { resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
+import { InvoiceUploadError, resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
 
 const file = (name: string) => ({ name }) as File
 
@@ -55,5 +55,23 @@ describe('resolveInvoiceMediaIds', () => {
     const result = await resolveInvoiceMediaIds(2, files, upload)
 
     expect(result).toEqual([[1, 2, 3], [4]])
+  })
+
+  // The pages that DID upload are already in Blob with nothing pointing at them, so the failure has
+  // to hand them back — a bare throw leaks them.
+  it('reports the already-uploaded ids when a page fails', async () => {
+    const upload = vi.fn(async (f: File) => {
+      if (f.name === 'p2.jpg') throw new Error('413')
+      return Number(f.name.replace(/\D/g, ''))
+    })
+    const files = new Map<number, File[]>([[0, [file('p1.jpg'), file('p2.jpg')]]])
+
+    await expect(resolveInvoiceMediaIds(1, files, upload)).rejects.toMatchObject({
+      message: '413',
+      uploadedIds: [1],
+    })
+    await expect(resolveInvoiceMediaIds(1, files, upload)).rejects.toBeInstanceOf(
+      InvoiceUploadError,
+    )
   })
 })

@@ -30,11 +30,17 @@ export const FALLBACK_MODEL = 'google/gemini-2.5-flash'
 // failure. Built from AbortController + setTimeout (not AbortSignal.timeout) so it's fakeable.
 export const RECEIPT_TIMEOUT_MS = 30_000
 
-// Each extra page is more bytes to upload and more document for the model to read, so a document
-// with no page cap needs a budget that grows with it — a fixed 30 s would fail a long invoice for
-// the wrong reason. A timeout still fails the whole row, which is correct: half a document yields
-// a wrong total.
+// Each extra page is more bytes to upload and more document for the model to read, so a longer
+// document needs a budget that grows with it — a fixed 30 s would fail a long invoice for the wrong
+// reason. A timeout still fails the whole row, which is correct: half a document yields a wrong total.
 export const RECEIPT_TIMEOUT_PER_PAGE_MS = 15_000
+
+// The product deliberately puts no cap on how many pages an invoice HAS; this caps how many go into
+// one scan, and exists purely so the budget above stays inside the function's wall-clock limit:
+// (30s + 15s × 7) × 2 attempts = 270s, under the 300s ceiling the route declares. Without it a
+// caller could hand over 200 files and the platform would kill the invocation mid-flight, which
+// reaches the user as an unparseable HTML 504 instead of the per-row failure path.
+export const MAX_RECEIPT_PAGES = 8
 
 export type ReceiptPageT = { bytes: Uint8Array; mediaType: string; filename: string }
 

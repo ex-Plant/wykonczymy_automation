@@ -52,6 +52,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
     ALTER TABLE "transactions" ADD COLUMN IF NOT EXISTS "invoice_id" integer;
+    ALTER TABLE "transactions" DROP CONSTRAINT IF EXISTS "transactions_invoice_id_media_id_fk";
     ALTER TABLE "transactions" ADD CONSTRAINT "transactions_invoice_id_media_id_fk"
       FOREIGN KEY ("invoice_id") REFERENCES "public"."media"("id") ON DELETE set null ON UPDATE no action;
     CREATE INDEX IF NOT EXISTS "transactions_invoice_idx" ON "transactions" ("invoice_id");

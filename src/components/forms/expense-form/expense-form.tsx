@@ -23,13 +23,17 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { createBulkTransferAction } from '@/lib/actions/transfers'
-import { deleteOrphanedMediaAction } from '@/lib/actions/media'
+import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import {
   makeLineItem,
   type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
-import { positionalFiles, resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
+import {
+  InvoiceUploadError,
+  positionalFiles,
+  resolveInvoiceMediaIds,
+} from '@/lib/utils/upload-file-client'
 import { toastMessage } from '@/lib/utils/toast'
 import {
   bulkExpenseFormSchema,
@@ -166,6 +170,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
               // every attached file is uploaded once here.
               invoiceMediaIds = await resolveInvoiceMediaIds(value.lineItems.length, files)
             } catch (err) {
+              // A partly-failed batch still landed pages in Blob; those belong to no expense.
+              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
               const message = err instanceof Error ? err.message : 'Nie udało się przesłać plików'
               return { success: false, error: message }
             }
@@ -174,10 +180,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           // The files are already in Blob at this point and the expense that would have referenced
           // them was never created, so nothing can reach them again — clean up rather than leak.
           // The user keeps their form (files included) and can resubmit, which re-uploads.
-          if (!result.success && invoiceMediaIds) {
-            const uploaded = invoiceMediaIds.flat()
-            if (uploaded.length > 0) void deleteOrphanedMediaAction(uploaded)
-          }
+          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds.flat())
           return result
         },
         successMessage: 'Transakcje dodane',

@@ -14,11 +14,17 @@ const NO_FILES: File[] = []
 function useObjectUrls(files: File[]): string[] {
   const [urls, setUrls] = useState<string[]>([])
   useEffect(() => {
-    if (files.length === 0) return
+    if (files.length === 0) {
+      // Drop the previous run's URLs — the cleanup already revoked them, and leaving them in state
+      // would let the pairing guard below match new files against dead handles.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUrls((previous) => (previous.length === 0 ? previous : []))
+      return
+    }
     const objectUrls = files.map((file) => URL.createObjectURL(file))
     // Surfacing the external blob handles into state is the sanctioned effect use — creation
     // must live in the effect so their revoke and these URLs share one lifecycle (StrictMode-safe).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setUrls(objectUrls)
     return () => objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl))
   }, [files])

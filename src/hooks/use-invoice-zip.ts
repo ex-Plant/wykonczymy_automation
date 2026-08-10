@@ -11,8 +11,6 @@ import {
 } from '@/lib/export/invoice-zip'
 import { toastMessage } from '@/lib/utils/toast'
 
-export type { InvoiceZipRowT }
-
 // Browsers cap concurrent connections per origin; larger batches just queue and stall the progress toast.
 const BATCH_SIZE = 6
 
@@ -82,7 +80,6 @@ export function useInvoiceZip() {
     })
   }
 
-  /** Fetches the pages in bounded batches, zips what arrived, and hands it to the browser. */
   async function packAndDeliver(files: InvoiceZipFileT[], archiveName: string): Promise<number> {
     updateToast(toastIdRef.current, `Pobieranie 0/${files.length} plików...`, 'info', false)
 

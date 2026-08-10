@@ -27,6 +27,7 @@ const mockCreate = vi.fn()
 const mockUpdate = vi.fn()
 const mockFindByID = vi.fn()
 const mockDelete = vi.fn()
+const mockCount = vi.fn()
 const mockBeginTransaction = vi.fn()
 const mockCommitTransaction = vi.fn()
 const mockRollbackTransaction = vi.fn()
@@ -36,6 +37,7 @@ const mockPayload = {
   update: mockUpdate,
   findByID: mockFindByID,
   delete: mockDelete,
+  count: mockCount,
   db: {
     beginTransaction: mockBeginTransaction,
     commitTransaction: mockCommitTransaction,
@@ -164,6 +166,8 @@ beforeEach(() => {
   mockUpdate.mockReset().mockResolvedValue({ id: 1 })
   mockFindByID.mockReset()
   mockDelete.mockReset().mockResolvedValue(undefined)
+  // Default: nothing else points at the media, so the guarded delete goes through.
+  mockCount.mockReset().mockResolvedValue({ totalDocs: 0 })
   mockBeginTransaction.mockReset().mockResolvedValue(TX_ID)
   mockCommitTransaction.mockReset().mockResolvedValue(undefined)
   mockRollbackTransaction.mockReset().mockResolvedValue(undefined)
@@ -947,7 +951,9 @@ describe('removeTransferInvoiceAction', () => {
 
     await removeTransferInvoiceAction(10, 56)
 
-    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ collection: 'media', id: 56 }))
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'media', id: 56 }),
+    )
     expect(mockDelete).toHaveBeenCalledTimes(1)
   })
 
@@ -969,8 +975,12 @@ describe('removeAllTransferInvoicesAction', () => {
 
     expect(result.success).toBe(true)
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [] } }))
-    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ collection: 'media', id: 55 }))
-    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ collection: 'media', id: 56 }))
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'media', id: 55 }),
+    )
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'media', id: 56 }),
+    )
   })
 
   it('a transfer with no invoice → clears to an empty list, deletes nothing', async () => {
@@ -986,13 +996,24 @@ describe('removeAllTransferInvoicesAction', () => {
 describe('deleteOrphanedMediaAction', () => {
   // The add form uploads every page before it creates the expense, so a failed create leaves files
   // in Blob with nothing pointing at them — unreachable, but still billed for.
-  it('deletes every id it is handed', async () => {
+  it('deletes ids nothing references', async () => {
     const result = await deleteOrphanedMediaAction([101, 102, 103])
 
     expect(result.success).toBe(true)
     expect(mockDelete).toHaveBeenCalledTimes(3)
     expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 101 })
     expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 103 })
+  })
+
+  // The ids come straight from the browser and the join-table FK cascades, so an unguarded delete
+  // would let any caller strip pages off other people's expenses.
+  it('refuses an id a transfer still references', async () => {
+    mockCount.mockResolvedValueOnce({ totalDocs: 1 })
+
+    await deleteOrphanedMediaAction([101, 102])
+
+    expect(mockDelete).toHaveBeenCalledTimes(1)
+    expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 102 })
   })
 
   it('a failing delete does not stop the rest', async () => {

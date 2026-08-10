@@ -5,7 +5,7 @@ import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialo
 import {
   InvoicePreviewTrigger,
   type InvoicePreviewTriggerPropsT,
-} from '@/components/ui/invoice-preview-trigger'
+} from '@/components/dialogs/invoice-preview-trigger'
 import type { InvoiceFileT } from '@/types/transfers'
 
 type InvoicePreviewButtonPropsT = {

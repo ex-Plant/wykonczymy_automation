@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 
 import { mapWithConcurrency } from '@/lib/utils/map-with-concurrency'
 import { BlockedFileError, processUploadFile } from '@/lib/utils/process-upload-file'
+import { splitExtension } from '@/lib/utils/append-short-id'
 
 // Cap parallel ingest processing to match the scan (GENERATION_CONCURRENCY) and upload
 // (UPLOAD_CONCURRENCY) paths: a batch pick (10-20+ files) each runs main-thread CompressorJS
@@ -49,6 +50,10 @@ export function useInvoiceFiles(initialFiles?: Map<string, File[]>) {
     e: React.ChangeEvent<HTMLInputElement>,
   ): Promise<IngestResultT> {
     const picked = [...(e.target.files ?? [])]
+    // Clear the control now that the files are captured: this input is also the „dodaj stronę"
+    // control, and removing a page then picking the same file again is an ordinary move — with the
+    // value still set the browser fires no change event and the pick is silently lost.
+    e.target.value = ''
     if (picked.length === 0) return { blocked: [] }
     return registerFilesAt([id], picked, 'single-row')
   }
@@ -142,6 +147,6 @@ export function useInvoiceFiles(initialFiles?: Map<string, File[]>) {
 
 function pageFilename(name: string, index: number): string {
   if (index === 0) return name
-  const dot = name.lastIndexOf('.')
-  return dot > 0 ? `${name.slice(0, dot)}-${index + 1}${name.slice(dot)}` : `${name}-${index + 1}`
+  const { base, ext } = splitExtension(name)
+  return `${base}-${index + 1}${ext}`
 }
