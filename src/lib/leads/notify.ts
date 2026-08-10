@@ -83,18 +83,57 @@ export async function notifyShapeAlert(
  */
 export async function notifyReconcileRecovery(
   payload: Payload,
-  context: { added: number; scanned: number },
+  context: { added: number; scanned: number; saturatedForms?: string[] },
 ): Promise<void> {
+  // A saturated form is the dangerous case: the sweep hit its per-form page limit,
+  // so anything older fell outside the window and tomorrow's page is a newer set.
+  // Without this the mail reads like a clean full recovery while leads are lost.
+  const saturationHtml = context.saturatedForms?.length
+    ? `<p><strong>Uwaga:</strong> formularze ${escapeHtml(context.saturatedForms.join(', '))}
+      zwróciły pełną stronę wyników — starsze zgłoszenia mogą być poza zasięgiem sweepa.
+      Pobierz je ręcznie z panelu Meta.</p>`
+    : ''
+
   const html = `
     <h2>⚠️ Cron odzyskał zgłoszenia pominięte przez webhook</h2>
     <p>Odzyskane: <strong>${context.added}</strong> z ${context.scanned} sprawdzonych.</p>
     <p>Webhook Meta nie dostarczył tych zgłoszeń. Sprawdź <code>callback_url</code>
     aplikacji, subskrypcję strony i ważność tokena.</p>
+    ${saturationHtml}
   `
 
   await payload.sendEmail({
     to: serverEnv.LEADS_ALERT_EMAIL,
     subject: `⚠️ Cron odzyskał ${context.added} zgłoszeń — webhook nie dowozi — Wykończymy`,
+    html,
+  })
+}
+
+/**
+ * The reconcile sweep itself failed. Without this mail the backstop is exactly as
+ * silent as the webhook it guards: one expired token kills both, and nothing but a
+ * Vercel log line records that leads have been dropping for weeks. Best-effort, for
+ * the same reason as the recovery alert.
+ */
+export async function notifyReconcileFailure(
+  payload: Payload,
+  context: { reason: string; failedForms?: string[] },
+): Promise<void> {
+  const formsHtml = context.failedForms?.length
+    ? `<p><strong>Formularze:</strong> ${escapeHtml(context.failedForms.join(', '))}</p>`
+    : ''
+
+  const html = `
+    <h2>🚨 Cron odzyskiwania zgłoszeń nie zadziałał</h2>
+    <p><strong>Powód:</strong> ${escapeHtml(context.reason)}</p>
+    ${formsHtml}
+    <p>Backstop nie działa — jeśli webhook też nie dowozi, zgłoszenia przepadają.
+    Sprawdź ważność tokena Meta i status Graph API.</p>
+  `
+
+  await payload.sendEmail({
+    to: serverEnv.LEADS_ALERT_EMAIL,
+    subject: '🚨 Cron odzyskiwania zgłoszeń nie zadziałał — Wykończymy',
     html,
   })
 }

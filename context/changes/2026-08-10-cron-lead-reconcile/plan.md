@@ -23,7 +23,7 @@ Two facts shape the work:
 1. **`reconcileLeads()` cannot be called from a cron.** It is `'use server'` and opens with
    `requireAuth(MANAGEMENT_ROLES)`; a Vercel cron carries `Authorization: Bearer $CRON_SECRET`, not a
    session, so the guard rejects it.
-2. **The revalidation call is context-bound.** `revalidateCollections(['leads'])` defaults to
+2. **The revalidation call is context-bound.** `revalidateCollection('leads')` defaults to
    `updateTag()`, which throws in a Route Handler (`AGENTS.md`, and the warning on
    `src/lib/cache/revalidate.ts:4`). A cron route must use `revalidateTag(CACHE_TAGS.leads, 'default')`.
 
@@ -79,7 +79,7 @@ duplicates sweep logic, so the button and the cron can never drift.
 
 **The revalidation call must not move into the extracted core.** `updateTag()` throws in Route
 Handler context, so the core stays revalidation-free and each caller revalidates in its own idiom —
-`revalidateCollections(['leads'])` in the action, `revalidateTag(CACHE_TAGS.leads, 'default')` in the
+`revalidateCollection('leads')` in the action, `revalidateTag(CACHE_TAGS.leads, 'default')` in the
 route. Putting either inside the core breaks the other caller at runtime, not at compile time.
 
 ---
@@ -110,7 +110,7 @@ module constant here.
 **File**: `src/lib/actions/reconcile-leads.ts`
 
 **Intent**: Reduce to its action-only concerns — `requireAuth(MANAGEMENT_ROLES)`, `getPayload`, call
-the core, `revalidateCollections(['leads'])` when `added > 0`, and map a thrown error to
+the core, `revalidateCollection('leads')` when `added > 0`, and map a thrown error to
 `{ success: false }` via `getErrorMessage`.
 
 **Contract**: `reconcileLeads(): Promise<ReconcileLeadsResultT>` — unchanged signature and unchanged

@@ -5,11 +5,17 @@ import { leadSchema } from './lead-schema'
 import { normalizeLead } from './normalize-lead'
 import { storeLead } from './store-lead'
 
-// How many recent leads to pull per form. Enough to close a delivery gap without
-// re-scanning a form's entire history on every run.
+// 30 is enough to close a delivery gap without re-scanning a form's entire history.
 const PER_FORM_LIMIT = 30
 
-export type ReconcileSweepResultT = { added: number; scanned: number }
+export type ReconcileSweepResultT = {
+  added: number
+  scanned: number
+  /** Forms whose Graph calls threw; the rest of the sweep still ran. */
+  failedForms: string[]
+  /** Forms that filled a whole `PER_FORM_LIMIT` page — older leads may lie past it. */
+  saturatedForms: string[]
+}
 
 /**
  * Pull the most recent leads from every form and insert any the DB is missing.
@@ -25,60 +31,77 @@ export type ReconcileSweepResultT = { added: number; scanned: number }
  * Deliberately free of auth and cache revalidation: the server action and the cron
  * route each supply their own. `updateTag` throws in a Route Handler, so a
  * revalidation baked in here would break one of the two callers at runtime.
- * Throws on a Graph failure — the caller decides what a failure looks like.
+ *
+ * Partial failure is reported, not thrown: one form's rate-limit must not discard
+ * the leads already recovered from earlier forms, nor skip the forms after it —
+ * form order is stable, so a throw here would mean the tail is never swept on any
+ * day. Only a failure to list the forms at all throws.
  */
 export async function runLeadReconcileSweep(payload: Payload): Promise<ReconcileSweepResultT> {
   const forms = await listLeadForms()
 
   let added = 0
   let scanned = 0
+  const failedForms: string[] = []
+  const saturatedForms: string[] = []
 
   for (const form of forms) {
     if (form.leadsCount === 0) continue
 
-    const rawLeads = await fetchRecentLeads(form.id, PER_FORM_LIMIT)
-    if (rawLeads.length === 0) continue
+    try {
+      const rawLeads = await fetchRecentLeads(form.id, PER_FORM_LIMIT)
+      if (rawLeads.length === 0) continue
 
-    // One questions fetch per form — carries Meta's field types for normalizeLead.
-    const questions = await fetchFormQuestions(form.id)
+      // A full page means the window, not the backlog, decided where we stopped —
+      // the leads past it are unreachable and tomorrow's page is a newer set, so
+      // they would be lost silently. The caller surfaces this in the alert.
+      if (rawLeads.length >= PER_FORM_LIMIT) saturatedForms.push(form.id)
 
-    for (const raw of rawLeads) {
-      const parsed = leadSchema.safeParse(raw)
-      if (!parsed.success) continue
-      scanned += 1
+      // One questions fetch per form — carries Meta's field types for normalizeLead.
+      const questions = await fetchFormQuestions(form.id)
 
-      const normalized = normalizeLead(parsed.data.field_data, questions)
-      const { lead, created } = await storeLead(
-        payload,
-        {
-          source: 'facebook_lead_ads',
-          externalId: parsed.data.id,
-          email: normalized.email,
-          name: normalized.name,
-          phone: normalized.phone,
-          rawData: normalized.rawData,
-          formQuestions: questions,
-          formId: form.id,
-          formName: form.name,
-          submittedAt: parsed.data.created_time,
-        },
-        // The afterChange hook's revalidateTag is redundant here — the caller does
-        // one revalidation after the whole sweep instead.
-        { skipRevalidation: true },
-      )
+      for (const raw of rawLeads) {
+        const parsed = leadSchema.safeParse(raw)
+        if (!parsed.success) continue
+        scanned += 1
 
-      if (!created) continue
+        const normalized = normalizeLead(parsed.data.field_data, questions)
+        const { lead, created } = await storeLead(
+          payload,
+          {
+            source: 'facebook_lead_ads',
+            externalId: parsed.data.id,
+            email: normalized.email,
+            name: normalized.name,
+            phone: normalized.phone,
+            rawData: normalized.rawData,
+            formQuestions: questions,
+            formId: form.id,
+            formName: form.name,
+            submittedAt: parsed.data.created_time,
+          },
+          // The afterChange hook's revalidateTag is redundant here — the caller does
+          // one revalidation after the whole sweep instead.
+          { skipRevalidation: true },
+        )
 
-      await payload.update({
-        collection: 'leads',
-        id: lead.id,
-        data: { notifyStatus: 'skipped', autoReplyStatus: 'skipped' },
-        overrideAccess: true,
-        context: { skipRevalidation: true },
-      })
-      added += 1
+        if (!created) continue
+
+        await payload.update({
+          collection: 'leads',
+          id: lead.id,
+          data: { notifyStatus: 'skipped', autoReplyStatus: 'skipped' },
+          overrideAccess: true,
+          context: { skipRevalidation: true },
+        })
+        added += 1
+      }
+    } catch (err) {
+      // TODO(EX-449) SENTRY-REQUIRED: a form the sweep can never read is a permanent hole.
+      console.error(`[reconcile-sweep] Form ${form.id} failed`, err)
+      failedForms.push(form.id)
     }
   }
 
-  return { added, scanned }
+  return { added, scanned, failedForms, saturatedForms }
 }

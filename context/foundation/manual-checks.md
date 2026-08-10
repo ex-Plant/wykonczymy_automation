@@ -254,3 +254,7 @@ run it against the dev DB, not prod.
 - [ ] Hitting `/api/cron/leads-reconcile` locally without a bearer returns 401
 - [ ] Hitting it with the correct `CRON_SECRET` returns counts, and a run that recovers a lead delivers the alert mail to `LEADS_ALERT_EMAIL`
 - [ ] The Vercel dashboard lists the new cron after deploy, and its first run logs a 200
+
+### Review gate (added 2026-08-10)
+
+- [ ] Break the Meta token in `.env`, hit the route with the correct secret → **500** _and_ a „🚨 Cron odzyskiwania zgłoszeń nie zadziałał" mail lands in `LEADS_ALERT_EMAIL`. This is the failure the whole change exists to prevent, and the only leg no unit test can prove end-to-end (real Graph rejection → real SMTP send).

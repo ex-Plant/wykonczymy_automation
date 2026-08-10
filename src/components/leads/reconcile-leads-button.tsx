@@ -21,8 +21,19 @@ export function ReconcileLeadsButton() {
       return
     }
 
-    const { added } = result.data
-    toastMessage(added > 0 ? `Dodano ${added} nowych zgłoszeń` : 'Brak nowych zgłoszeń', 'success')
+    const { added, failedForms } = result.data
+    // A form the sweep couldn't read is a hole in the result, not a clean „brak nowych".
+    if (failedForms.length > 0) {
+      toastMessage(
+        `Pobrano ${added}, ale ${failedForms.length} formularzy nie odpowiedziało`,
+        'error',
+      )
+    } else {
+      toastMessage(
+        added > 0 ? `Dodano ${added} nowych zgłoszeń` : 'Brak nowych zgłoszeń',
+        'success',
+      )
+    }
     if (added > 0) router.refresh()
   }
 

@@ -1,31 +1,47 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
-// The sweep itself is covered in lib/leads/reconcile-sweep.test.ts; this asserts only
-// what the route adds — the fail-closed auth gate and the rule that a recovery (and
-// only a recovery) alerts, because a silent cron patching a dead webhook forever is
-// the failure this route exists to prevent.
+// The sweep itself is covered in lib/leads/reconcile-sweep.test.ts and the auth rule in
+// lib/cron/verify-cron-request.test.ts; this asserts what the route adds — the cache
+// flush, and the rule that both a recovery AND a failed sweep alert. A silent cron
+// patching a dead webhook forever is the failure this route exists to prevent.
 vi.mock('@payload-config', () => ({ default: {} }))
 vi.mock('payload', () => ({ getPayload: vi.fn(async () => ({})) }))
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn() }))
 vi.mock('@/lib/leads/reconcile-sweep', () => ({ runLeadReconcileSweep: vi.fn() }))
-vi.mock('@/lib/leads/notify', () => ({ notifyReconcileRecovery: vi.fn() }))
+vi.mock('@/lib/leads/notify', () => ({
+  notifyReconcileRecovery: vi.fn(),
+  notifyReconcileFailure: vi.fn(),
+}))
 
 import { GET } from '@/app/(payload)/api/cron/leads-reconcile/route'
-import { getPayload } from 'payload'
+import { revalidateTag } from 'next/cache'
+import { CACHE_TAGS } from '@/lib/cache/tags'
 import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
-import { notifyReconcileRecovery } from '@/lib/leads/notify'
+import { notifyReconcileRecovery, notifyReconcileFailure } from '@/lib/leads/notify'
+
+const sweepResult = (over: Partial<Awaited<ReturnType<typeof runLeadReconcileSweep>>> = {}) => ({
+  added: 0,
+  scanned: 30,
+  failedForms: [],
+  saturatedForms: [],
+  ...over,
+})
 
 describe('cron leads-reconcile route', () => {
   const previous = process.env.CRON_SECRET
+  let consoleError: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     process.env.CRON_SECRET = 'test-secret'
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(notifyReconcileRecovery).mockResolvedValue(undefined)
+    vi.mocked(notifyReconcileFailure).mockResolvedValue(undefined)
   })
 
   afterEach(() => {
     process.env.CRON_SECRET = previous
+    consoleError.mockRestore()
     vi.clearAllMocks()
   })
 
@@ -35,69 +51,104 @@ describe('cron leads-reconcile route', () => {
 
   const authorized = () => request({ authorization: 'Bearer test-secret' })
 
-  it('rejects a request with no Authorization header', async () => {
+  it('rejects an unauthorized request without touching the sweep', async () => {
     const res = await GET(request())
-    expect(res.status).toBe(401)
-    expect(getPayload).not.toHaveBeenCalled()
-    expect(runLeadReconcileSweep).not.toHaveBeenCalled()
-  })
 
-  it('rejects a request with the wrong secret', async () => {
-    const res = await GET(request({ authorization: 'Bearer wrong' }))
     expect(res.status).toBe(401)
     expect(runLeadReconcileSweep).not.toHaveBeenCalled()
   })
 
-  it('fails closed when CRON_SECRET is unset', async () => {
-    delete process.env.CRON_SECRET
-    const res = await GET(authorized())
-    expect(res.status).toBe(401)
-    expect(runLeadReconcileSweep).not.toHaveBeenCalled()
-  })
-
-  it('alerts once when the sweep recovered leads', async () => {
-    vi.mocked(runLeadReconcileSweep).mockResolvedValue({ added: 2, scanned: 30 })
+  it('alerts once and flushes the leads cache when the sweep recovered leads', async () => {
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(sweepResult({ added: 2 }))
 
     const res = await GET(authorized())
 
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual({ ok: true, added: 2, scanned: 30 })
+    await expect(res.json()).resolves.toEqual({
+      ok: true,
+      added: 2,
+      scanned: 30,
+      saturatedForms: [],
+    })
+    // Without this the dashboard serves a stale list — leads recovered, nothing visible.
+    expect(revalidateTag).toHaveBeenCalledWith(CACHE_TAGS.leads, 'default')
     expect(notifyReconcileRecovery).toHaveBeenCalledTimes(1)
     expect(notifyReconcileRecovery).toHaveBeenCalledWith(expect.anything(), {
       added: 2,
       scanned: 30,
+      saturatedForms: [],
     })
   })
 
-  it('stays silent on a clean run', async () => {
-    vi.mocked(runLeadReconcileSweep).mockResolvedValue({ added: 0, scanned: 30 })
+  it('stays silent and leaves the cache alone on a clean run', async () => {
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(sweepResult())
 
     const res = await GET(authorized())
 
     expect(res.status).toBe(200)
-    await expect(res.json()).resolves.toEqual({ ok: true, added: 0, scanned: 30 })
+    expect(revalidateTag).not.toHaveBeenCalled()
     expect(notifyReconcileRecovery).not.toHaveBeenCalled()
+    expect(notifyReconcileFailure).not.toHaveBeenCalled()
   })
 
-  it('reports a Graph failure as a 500 instead of a healthy-looking run', async () => {
+  it('passes the saturation flag into the recovery alert', async () => {
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(
+      sweepResult({ added: 30, saturatedForms: ['A'] }),
+    )
+
+    await GET(authorized())
+
+    expect(notifyReconcileRecovery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ saturatedForms: ['A'] }),
+    )
+  })
+
+  // A backstop that dies the same day the webhook does must not fail silently — the
+  // 500 only reaches a Vercel log nobody reads until they already suspect a problem.
+  it('alerts when the sweep throws, and still reports a failed run', async () => {
     vi.mocked(runLeadReconcileSweep).mockRejectedValue(new Error('Graph request failed'))
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const res = await GET(authorized())
 
     expect(res.status).toBe(500)
+    expect(notifyReconcileFailure).toHaveBeenCalledTimes(1)
+    expect(notifyReconcileFailure).toHaveBeenCalledWith(expect.anything(), {
+      reason: 'Graph request failed',
+    })
     expect(notifyReconcileRecovery).not.toHaveBeenCalled()
-    consoleError.mockRestore()
   })
 
-  it('still reports success when the alert email fails to send', async () => {
-    vi.mocked(runLeadReconcileSweep).mockResolvedValue({ added: 1, scanned: 5 })
+  it('alerts and fails the run when only some forms could be swept', async () => {
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(
+      sweepResult({ added: 1, failedForms: ['B'] }),
+    )
+
+    const res = await GET(authorized())
+
+    expect(res.status).toBe(500)
+    await expect(res.json()).resolves.toEqual({
+      ok: false,
+      added: 1,
+      scanned: 30,
+      failedForms: ['B'],
+      saturatedForms: [],
+    })
+    // The leads that DID come back are already persisted, so they still owe both.
+    expect(revalidateTag).toHaveBeenCalledWith(CACHE_TAGS.leads, 'default')
+    expect(notifyReconcileRecovery).toHaveBeenCalledTimes(1)
+    expect(notifyReconcileFailure).toHaveBeenCalledWith(expect.anything(), {
+      reason: expect.any(String),
+      failedForms: ['B'],
+    })
+  })
+
+  it('still reports the recovery when the alert email fails to send', async () => {
+    vi.mocked(runLeadReconcileSweep).mockResolvedValue(sweepResult({ added: 1 }))
     vi.mocked(notifyReconcileRecovery).mockRejectedValue(new Error('SMTP down'))
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const res = await GET(authorized())
 
     expect(res.status).toBe(200)
-    consoleError.mockRestore()
   })
 })

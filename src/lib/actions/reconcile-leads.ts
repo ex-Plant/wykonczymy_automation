@@ -5,11 +5,11 @@ import config from '@payload-config'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { revalidateCollection } from '@/lib/cache/revalidate'
-import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
+import { runLeadReconcileSweep, type ReconcileSweepResultT } from '@/lib/leads/reconcile-sweep'
 import type { ActionResultT } from '@/types/action'
 import { getErrorMessage } from './run-action'
 
-export type ReconcileLeadsResultT = ActionResultT<{ added: number; scanned: number }>
+export type ReconcileLeadsResultT = ActionResultT<ReconcileSweepResultT>
 
 /**
  * Manual backstop for the webhook, behind the „Pobierz zgłoszenia" button. The
@@ -23,10 +23,10 @@ export async function reconcileLeads(): Promise<ReconcileLeadsResultT> {
 
   try {
     const payload = await getPayload({ config })
-    const { added, scanned } = await runLeadReconcileSweep(payload)
+    const result = await runLeadReconcileSweep(payload)
 
-    if (added > 0) revalidateCollection('leads')
-    return { success: true, data: { added, scanned } }
+    if (result.added > 0) revalidateCollection('leads')
+    return { success: true, data: result }
   } catch (err) {
     return { success: false, error: getErrorMessage(err) }
   }
