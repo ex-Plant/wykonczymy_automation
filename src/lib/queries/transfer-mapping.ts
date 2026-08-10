@@ -2,7 +2,7 @@ import { getRelationName } from '@/lib/utils/get-relation-name'
 import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 import type { MediaInfoT } from '@/lib/queries/media'
-import type { TransferRowT } from '@/types/transfers'
+import type { InvoiceFileT, TransferRowT } from '@/types/transfers'
 
 type NameMapT = Map<number, string>
 
@@ -40,6 +40,12 @@ export function buildTransferLookups(
 // and isn't part of the collection schema.
 type RelationIdT = number | null | undefined
 
+// `invoice` is hasMany: a depth:0 read gives ids, a populated read gives media docs. The scalar
+// forms stay accepted because a doc can reach here from either shape and a silent `typeof x ===
+// 'number'` guard on the wrong one is exactly the bug this field's migration introduced.
+type InvoiceRefT = number | { id: number }
+type InvoiceFieldT = InvoiceRefT | InvoiceRefT[] | null | undefined
+
 export type TransferDocT = {
   id: number
   description?: string | null
@@ -56,7 +62,7 @@ export type TransferDocT = {
   worker?: RelationIdT
   createdBy?: RelationIdT
   createdAt: string
-  invoice?: RelationIdT
+  invoice?: InvoiceFieldT
   invoiceNote?: string | null
   cancelled?: boolean | null
   settled?: boolean | null
@@ -66,9 +72,6 @@ export type TransferDocT = {
 
 /** Maps a depth:0 transfer document to a flat TransferRowT, resolving IDs via lookup maps. */
 export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): TransferRowT {
-  const mediaId = typeof doc.invoice === 'number' ? doc.invoice : null
-  const media = mediaId ? lookups.media.get(mediaId) : undefined
-
   return {
     id: doc.id,
     description: doc.description ?? '',
@@ -97,20 +100,34 @@ export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): Tr
     otherCategoryName: lookupName(lookups.otherCategories, doc.otherCategory),
     workerName: lookupName(lookups.users, doc.worker),
     createdByName: lookupName(lookups.users, doc.createdBy),
-    invoiceUrl: media?.url ?? null,
-    invoiceFilename: media?.filename ?? null,
-    invoiceMimeType: media?.mimeType ?? null,
+    invoices: resolveInvoiceFiles(doc.invoice, lookups.media),
   }
+}
+
+/** Every page id of one doc's `invoice` field, in attachment order. */
+function invoiceIds(invoice: InvoiceFieldT): number[] {
+  const refs = Array.isArray(invoice) ? invoice : [invoice]
+  return refs.map(toNullableId).filter((id): id is number => id !== null)
+}
+
+/** Resolves a doc's `invoice` field into its openable pages, in attachment order. */
+export function resolveInvoiceFiles(
+  invoice: InvoiceFieldT,
+  media: Map<number, MediaInfoT>,
+): InvoiceFileT[] {
+  return invoiceIds(invoice)
+    .map((id) => media.get(id))
+    .filter((info): info is MediaInfoT & { url: string } => Boolean(info?.url))
+    .map(({ url, filename, mimeType }) => ({ url, filename, mimeType }))
 }
 
 /**
  * Extracts unique invoice IDs from raw (depth: 0) transfer docs.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractInvoiceIds(docs: any[]): number[] {
+export function extractInvoiceIds(docs: { invoice?: InvoiceFieldT }[]): number[] {
   const ids = new Set<number>()
   for (const doc of docs) {
-    if (typeof doc.invoice === 'number') ids.add(doc.invoice)
+    for (const id of invoiceIds(doc.invoice)) ids.add(id)
   }
   return [...ids]
 }

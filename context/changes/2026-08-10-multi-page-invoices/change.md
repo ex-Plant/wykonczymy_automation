@@ -1,11 +1,11 @@
 ---
 change_id: multi-page-invoices
 title: An expense carries multiple invoice pages (EX-659)
-status: new
+status: implementing
 created: 2026-08-10
 updated: 2026-08-10
 archived_at: null
-branch: null
+branch: konradantonik/ex-577-ai-receipt-scan-also-extract-the-netto-amount
 worktree: null
 ---
 

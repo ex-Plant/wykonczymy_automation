@@ -223,6 +223,8 @@ export const Transfers: CollectionConfig = {
       name: 'invoice',
       type: 'upload',
       relationTo: 'media',
+      // One invoice, many pages: a long invoice needs several photos to be readable (EX-659).
+      hasMany: true,
       label: { en: 'Invoice', pl: 'Faktura' },
     },
     {
