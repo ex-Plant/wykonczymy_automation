@@ -12,6 +12,7 @@ import {
 import { validateTransfer } from '@/hooks/transfers/validate'
 import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transfers/recalculate-balances'
 import { syncSheetAfterChange, syncSheetAfterDelete } from '@/hooks/transfers/sync-sheet'
+import { deleteInvoiceMediaAfterDelete } from '@/hooks/transfers/delete-invoice-media'
 
 const TRANSFER_TYPES = [
   { label: { en: 'Investor Deposit', pl: 'Wpłata od inwestora' }, value: 'INVESTOR_DEPOSIT' },
@@ -73,7 +74,7 @@ export const Transfers: CollectionConfig = {
   hooks: {
     beforeValidate: [validateTransfer],
     afterChange: [recalcAfterChange, syncSheetAfterChange],
-    afterDelete: [recalcAfterDelete, syncSheetAfterDelete],
+    afterDelete: [recalcAfterDelete, syncSheetAfterDelete, deleteInvoiceMediaAfterDelete],
   },
   fields: [
     {

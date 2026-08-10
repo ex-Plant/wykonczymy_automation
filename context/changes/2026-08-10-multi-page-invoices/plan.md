@@ -521,6 +521,7 @@ and no invoice E2E exists.
 
 **Contract**: A Linear issue in project "Wykonczymy" labelled `e2e-backlog`, covering: multi-photo
 scan → one expense, per-page removal, and the client-share invoice column. Record its id here.
+**Filed: EX-661.**
 
 ### Success Criteria:
 
@@ -646,11 +647,12 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 5.1 Fallback and PDF-plugin specs pass with a multi-part request
-- [x] 5.2 The persists-nothing guard still passes
+- [x] 5.1 Fallback and PDF-plugin specs pass with a multi-part request — `a2aaa7bc`
+- [x] 5.2 The persists-nothing guard still passes — `a2aaa7bc`
 
 ### Phase 6: Blob cleanup and documentation
 
 #### Automated
 
-- [ ] 6.1 Cleanup specs cover replace, delete and failed-submit paths
+- [x] 6.1 Cleanup specs cover replace, delete and failed-submit paths
+- [x] 6.2 E2E backlog issue filed — EX-661

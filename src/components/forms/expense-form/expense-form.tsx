@@ -23,6 +23,7 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { createBulkTransferAction } from '@/lib/actions/transfers'
+import { deleteOrphanedMediaAction } from '@/lib/actions/media'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import {
   makeLineItem,
@@ -169,7 +170,15 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
               return { success: false, error: message }
             }
           }
-          return createBulkTransferAction(data, invoiceMediaIds)
+          const result = await createBulkTransferAction(data, invoiceMediaIds)
+          // The files are already in Blob at this point and the expense that would have referenced
+          // them was never created, so nothing can reach them again — clean up rather than leak.
+          // The user keeps their form (files included) and can resubmit, which re-uploads.
+          if (!result.success && invoiceMediaIds) {
+            const uploaded = invoiceMediaIds.flat()
+            if (uploaded.length > 0) void deleteOrphanedMediaAction(uploaded)
+          }
+          return result
         },
         successMessage: 'Transakcje dodane',
         files,

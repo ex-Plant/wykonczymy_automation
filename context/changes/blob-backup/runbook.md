@@ -16,7 +16,7 @@ So recovery = **restore DB dump** (already backed up hourly to FTP) **+ re-uploa
 backup by filename**. No URL rewriting is needed (see §2).
 
 ```
-1. Restore the DB dump (Neon → FTP, hourly)          → gives media rows + invoice_id FKs
+1. Restore the DB dump (Neon → FTP, hourly)          → gives media rows + transactions_rels links
 2. Re-upload every backup file into the target store  → put(filename, bytes, addRandomSuffix:false)
 3. Open a transaction, confirm its invoice renders    → done
 ```
@@ -31,9 +31,12 @@ The link between a transaction and its receipt is a **foreign key in Postgres**,
 stored in Blob:
 
 ```
-transactions.invoice_id  →  media.id  →  media.filename  ==  blob pathname  ==  backup file
-     (DB dump)               (DB dump)     (DB dump)            (Blob)            (snapshot)
+transactions.id  →  transactions_rels.media_id  →  media.id  →  media.filename  ==  blob pathname  ==  backup file
+   (DB dump)          (DB dump, path='invoice')     (DB dump)     (DB dump)            (Blob)            (snapshot)
 ```
+
+One invoice can span several pages (EX-659), so the link is a **join table row per page**, ordered
+by `transactions_rels.order` — not a column on the transaction.
 
 - Everything left of "Blob" is a **column in the DB dump** you already back up hourly.
 - The Blob only supplies the **bytes**, keyed by `filename`.
@@ -42,7 +45,7 @@ transactions.invoice_id  →  media.id  →  media.filename  ==  blob pathname  
 
 | Backup                                | Holds                                | Answers                                        |
 | ------------------------------------- | ------------------------------------ | ---------------------------------------------- |
-| **DB dump** (exists, hourly Neon→FTP) | `invoice_id`, `media.id`, `filename` | _which_ receipt belongs to _which_ transaction |
+| **DB dump** (exists, hourly Neon→FTP) | `transactions_rels`, `media.id`, `filename` | _which_ receipt pages belong to _which_ transaction, in order |
 | **Blob snapshot** (this task)         | the bytes, keyed by `filename`       | _what the receipt actually is_                 |
 
 **Both are required; neither alone recovers a usable system.**
@@ -62,9 +65,12 @@ All verified against code + the local dump DB (5433). Re-verify before trusting 
 
 ### `media` table (source of truth for the mapping)
 
-- **940 rows, 940 distinct `filename`, 0 duplicates, 0 null** → mapping is 1:1.
-- FK into it: **`transactions.invoice_id → media.id`** (note: DB table is `transactions`,
-  not `transfers` — the collection slug differs from the table name).
+- **940 rows, 940 distinct `filename`, 0 duplicates, 0 null** → one blob file per media row.
+  A transaction, however, maps to **1:N** media rows since EX-659 — one per invoice page.
+- Link into it: **`transactions_rels (parent_id, path='invoice', media_id, order)`** — the join
+  table Payload creates for a `hasMany` upload field. Both FKs are `ON DELETE cascade`, so deleting
+  either side removes the link row rather than leaving a dangling one. (Note: DB table is
+  `transactions`, not `transfers` — the collection slug differs from the table name.)
 - **`media.url` is RELATIVE:** `/api/media/file/<filename>` — **not** an absolute blob URL.
   Payload resolves bytes at request time via the _current_ store token. **The store host
   appears nowhere in the DB.** → **No URL rewrite is ever needed on restore**, same store or new.
@@ -201,7 +207,8 @@ ideally time-aligned.
      identical bytes — safe. Never `del()`.
 
 4. **No DB URL rewrite** — `media.url` is relative and filename-resolved (§2). Do not touch it.
-5. **Verify:** open a transaction whose `invoice_id` is set → invoice renders. Spot-check a
+5. **Verify:** open a transaction with a `transactions_rels` row at `path='invoice'` → invoice
+   renders, and a multi-page one pages through all of them. Spot-check a
    thumbnail (`sizes_thumbnail_filename`) too. Optionally reconcile: every
    `media.filename` now resolves (200) against the store.
 

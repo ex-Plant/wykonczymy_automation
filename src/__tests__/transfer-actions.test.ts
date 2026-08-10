@@ -91,6 +91,8 @@ const {
   removeAllTransferInvoicesAction,
 } = await import('@/lib/actions/transfers')
 
+const { deleteOrphanedMediaAction } = await import('@/lib/actions/media')
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const TX_ID = 'test-tx-id'
@@ -978,5 +980,27 @@ describe('removeAllTransferInvoicesAction', () => {
 
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [] } }))
     expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
+  })
+})
+
+describe('deleteOrphanedMediaAction', () => {
+  // The add form uploads every page before it creates the expense, so a failed create leaves files
+  // in Blob with nothing pointing at them — unreachable, but still billed for.
+  it('deletes every id it is handed', async () => {
+    const result = await deleteOrphanedMediaAction([101, 102, 103])
+
+    expect(result.success).toBe(true)
+    expect(mockDelete).toHaveBeenCalledTimes(3)
+    expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 101 })
+    expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 103 })
+  })
+
+  it('a failing delete does not stop the rest', async () => {
+    mockDelete.mockRejectedValueOnce(new Error('blob gone'))
+
+    const result = await deleteOrphanedMediaAction([101, 102])
+
+    expect(result.success).toBe(true)
+    expect(mockDelete).toHaveBeenCalledTimes(2)
   })
 })
