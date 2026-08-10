@@ -885,6 +885,42 @@
 - **Applies to**: roadmap slices, Linear issues that duplicate each other, plan documents that fold in
   a follow-up's scope.
 
+## Spreading a datasheet-grid column inherits the column, not the component you replaced
+
+- **Context**: EX-538 (`2026-07-19-kosztorys-note-cell-overlay`) swapped `textColumn`'s single-line
+  `<input>` for an overlay `<textarea>` via the repo's usual `{ ...textColumn, component }` idiom.
+- **Problem**: The spread carries the column's _data_ hooks — `copyValue` / `pasteValue` /
+  `deleteValue` / `isCellEmpty` — but **not** `parseUserInput` (`textColumn.js:127`,
+  `value.trim() || null`), because only the component being replaced ever called it. An emptied cell
+  then persisted `''` while the same column's `deleteValue` and `isCellEmpty` still spoke `null`.
+  Two more traps sit in the same seam: `stopEditing`'s own default is `{ nextRow: true }`
+  (`DataSheetGrid.js:415`), so a bare call on a _cancel_ path silently walks the selection down a row;
+  and `disableKeys` makes the grid return out of its Tab branch **without** `preventDefault`
+  (`DataSheetGrid.js:979`) — stock cells survive on `tabIndex: -1`, a natively-tabbable `<textarea>`
+  does not, so Tab tore DOM focus out of a grid that still believed it was editing.
+- **Rule**: When you replace a stock column's component, enumerate what that _component_ did — value
+  normalization, tab-trapping, key handling — and re-own each one explicitly. Read the library source
+  for the default of every callback you invoke; `stopEditing()` and `stopEditing({ nextRow: false })`
+  are different commands, and only one of them means "cancel".
+- **Applies to**: any custom `react-datasheet-grid` cell here; more generally, any library where
+  swapping one slot of a config object silently drops behaviour that lived in the slot's default.
+
+## `stopPropagation` does not stop a listener co-located on the same node
+
+- **Context**: Same slice. The overlay had to keep Escape / Enter / Shift+Enter / mousedown away from
+  `react-datasheet-grid`, which registers its handlers on `document`.
+- **Problem**: Next's App Router hydrates on `document`, so React's delegated listeners and the grid's
+  own listeners hang off the **same node**. Propagation has already finished arriving there — only
+  `stopImmediatePropagation` stops a sibling listener on that node, and it only works because React
+  registered first (at hydration, before the grid's effect ran). `stopPropagation` alone looked
+  correct and did nothing.
+- **Rule**: Reach for `event.nativeEvent.stopImmediatePropagation()` whenever the listener you're
+  trying to outrun is on `document` or `window` — the same node React uses. Registration order is then
+  load-bearing, so verify it rather than assume it. `src/lib/utils/enter-escape-keydown.ts` still uses
+  bare `stopPropagation` and carries this latent leak (harmless today; tracked on EX-657).
+- **Applies to**: any third-party widget with document-level key/mouse handlers layered under a React
+  editor — grids, drag libraries, hotkey managers.
+
 ## A store that owns recovery state does not have to be the thing that renders the signal
 
 - **Context**: `optimistic-form-store` closes a dialog and saves in the background, so it already

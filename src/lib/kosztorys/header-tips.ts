@@ -13,6 +13,9 @@ const RABAT_IS_CLIENT_ONLY =
 // drives it, so mismatches between intent and calc are visible.
 export const HEADER_TIPS: Record<string, string> = {
   plannedQty: 'Przedmiar — ilość planowana',
+  // The only column whose editor doesn't look like its cell: the overlay is invisible until you open
+  // it, and Shift+Enter is unguessable — nothing on screen says the newline isn't Enter.
+  note: 'Naciśnij enter lub kliknij dwukrotnie aby otworzyć.\n\nShift+Enter — nowa linia\nEnter — zapisz i przejdź niżej\nEscape — cofnij zmiany\nTab — zakończ edycję',
   stageQtySum:
     'Pomiar — ilość faktycznie wykonana.\nSuma ilości z etapów widocznych w tym widoku: w „Kliencie" ze wszystkich, w widoku ekipy tylko z etapów rozliczanych z tą ekipą.',
   priceCoeff:
