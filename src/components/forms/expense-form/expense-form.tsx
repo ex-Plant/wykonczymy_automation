@@ -5,7 +5,7 @@ import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useInvoiceIngest } from '@/components/forms/expense-form/use-invoice-ingest'
-import { useReceiptGeneration } from '@/components/forms/hooks/use-receipt-generation'
+import { useReceiptGeneration } from '@/components/forms/expense-form/use-receipt-generation'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
 import { useSaldo } from '@/components/forms/hooks/use-saldo'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
@@ -76,8 +76,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     isIngesting,
     registerFiles,
     attachFile,
-    // Drops the row's out-of-form file by id; the id keying means surviving rows' markers/files
-    // need no shift, and the reactive store re-renders the removed row on its own.
+    // Keyed by id, so surviving rows' markers/files need no shift and the reactive store
+    // re-renders the removed row on its own.
     handleRemoveLineItem,
     getFile,
     getFiles,

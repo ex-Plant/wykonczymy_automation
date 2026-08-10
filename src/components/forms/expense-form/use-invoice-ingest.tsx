@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useInvoiceFiles, type IngestResultT } from '@/components/forms/hooks/use-invoice-files'
+import {
+  useInvoiceFiles,
+  type IngestResultT,
+} from '@/components/forms/expense-form/use-invoice-files'
 import { filesByRowId } from '@/lib/utils/upload-file-client'
 import { MAX_UPLOAD_BYTES, type BlockedFileError } from '@/lib/utils/process-upload-file'
 import { toastMessage } from '@/lib/utils/toast'
@@ -35,9 +38,9 @@ type ArgsT = {
 
 /**
  * The receipt-ingest half of the wydatek form: file custody (via useInvoiceFiles) plus the busy
- * state and user-facing messaging that ingest needs to be usable. Split out of expense-form.tsx
- * (EX-645) — the form component owns the form, this owns the pipeline a picked file travels
- * through before it is allowed to become a line item's invoice.
+ * state and user-facing messaging that ingest needs to be usable. The form component owns the form;
+ * this owns the pipeline a picked file travels through before it is allowed to become a line item's
+ * invoice.
  *
  * `ingestingIds` is what the form does NOT get to ignore: a row still converting has no stored File
  * yet, so submitting mid-ingest would save the line item without its receipt. The form disables
@@ -73,11 +76,10 @@ export function useInvoiceIngest({ recoveredFiles, storedLineItems }: ArgsT) {
     toastMessage(blockedFilesMessage(blocked), 'error', 8000)
   }
 
-  // Run one ingest batch: mark the rows busy, report any blocked files, and — crucially — always
-  // clear the spinner in `finally`. The finally is load-bearing: an unexpected ingest rejection
-  // (e.g. a chunk-load failure on the lazy import) must still release the rows, or they stay busy
-  // forever and wedge the whole form. Blocked files enter no map; the row stays empty. The reactive
-  // file store re-renders attached rows (input → thumbnail) on its own — no remount key.
+  // The `finally` is load-bearing: an unexpected ingest rejection (e.g. a chunk-load failure on the
+  // lazy import) must still release the rows, or they stay busy forever and wedge the whole form.
+  // Blocked files enter no map; the row stays empty. The reactive file store re-renders attached
+  // rows (input → thumbnail) on its own — no remount key.
   async function runIngest(ids: string[], ingest: () => Promise<IngestResultT>) {
     markIngesting(ids, true)
     try {
