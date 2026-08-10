@@ -5,6 +5,23 @@ import { notifyNewLead, sendAutoReply } from './notify'
 
 const NOTIFY_ATTEMPTS = 3
 
+export type CaptureLeadOptionsT = {
+  /**
+   * `'skip'` settles the customer-facing channel as `skipped` without sending — for a
+   * backfill, where a days-late „Dziękujemy za kontakt" is worse than none at all.
+   *
+   * There is deliberately no matching option for the sales notify. The asymmetry is the
+   * point: a late heads-up to sales is still useful (a week-old lead is still a lead),
+   * while a late auto-reply to a customer is embarrassing. Only the auto-reply is a
+   * decision a caller can legitimately make; letting a caller suppress `notify` would
+   * re-open EX-660, where the sweep wrote a terminal state it had no authority to write.
+   */
+  autoReply?: 'send' | 'skip'
+  /** Bypasses the collection's afterChange revalidateTag hook — for callers that batch
+   *  their own revalidation, or run outside a Next request where the hook throws. */
+  skipRevalidation?: boolean
+}
+
 /** Retry an email send a few times; a transient SMTP blip shouldn't cost the message. */
 async function sendWithRetry(send: () => Promise<void>, label: string): Promise<boolean> {
   for (let attempt = 1; attempt <= NOTIFY_ATTEMPTS; attempt += 1) {
@@ -32,12 +49,17 @@ async function sendWithRetry(send: () => Promise<void>, label: string): Promise<
  *
  * Each send is retried up to NOTIFY_ATTEMPTS times before giving up — a transient
  * SMTP blip shouldn't cost the message. Only the final failure flips to `failed`.
+ *
+ * Every path into `leads` goes through here, backfills included, so the status writes
+ * have a single owner. See `CaptureLeadOptionsT` for what a caller may vary.
  */
 export async function captureLead(
   payload: Payload,
   input: StoreLeadInputT,
+  options: CaptureLeadOptionsT = {},
 ): Promise<{ lead: Lead; created: boolean }> {
-  const { lead, created } = await storeLead(payload, input)
+  const { autoReply = 'send', skipRevalidation = false } = options
+  const { lead, created } = await storeLead(payload, input, { skipRevalidation })
 
   const runNotify = created || lead.notifyStatus === 'pending'
   const runAutoReply = created || lead.autoReplyStatus === 'pending'
@@ -50,8 +72,9 @@ export async function captureLead(
       : 'failed'
     : lead.notifyStatus
 
-  // Customer-facing confirmation. Skipped (no send) for phone-only leads.
-  const canAutoReply = Boolean(lead.email)
+  // Customer-facing confirmation. Two unrelated reasons land on the same `skipped`
+  // status — no address to reach them at, or a caller that says it's too late to reply.
+  const canAutoReply = autoReply === 'send' && Boolean(lead.email)
   const autoReplyStatus: Lead['autoReplyStatus'] = runAutoReply
     ? !canAutoReply
       ? 'skipped'
@@ -65,6 +88,7 @@ export async function captureLead(
     id: lead.id,
     data: { notifyStatus, autoReplyStatus },
     overrideAccess: true,
+    context: { skipRevalidation },
   })
 
   return { lead, created }
