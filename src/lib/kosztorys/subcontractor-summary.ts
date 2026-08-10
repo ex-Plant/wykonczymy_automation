@@ -60,11 +60,11 @@ function settlementState(
   remaining: number,
   hasStages: boolean,
 ): WorkerSettlementStateT {
+  // The residual bucket is not a person, so the two assignment-shaped explanations below would be
+  // nonsense against it — „nikt nie przypisał mu etapów" IS the definition of the bucket.
   if (workerId === null) return 'unattributed'
   if (remaining >= 0) return 'settled'
-  // The residual bucket is not a person, so the two assignment-shaped explanations would be nonsense
-  // against it — „nikt nie przypisał mu etapów" IS the definition of the bucket.
-  if (workerId === null || due > 0) return 'overpaid'
+  if (due > 0) return 'overpaid'
   return hasStages ? 'no_executed_work' : 'no_stages'
 }
 

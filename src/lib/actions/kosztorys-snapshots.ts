@@ -48,6 +48,8 @@ export async function saveSnapshotAction(
 
 const restoreSchema = z.object({ snapshotId: z.number(), investmentId: z.number() })
 
+export type RestoreResultT = { droppedWorkerAssignments: number }
+
 // Restore a snapshot into the CURRENT investment: `investmentId` is the editor's open context and the
 // snapshot must belong to it — a snapshot from another investment is refused as "not found" (a bare
 // snapshotId with no such check would wipe-and-reinsert whatever investment the row happens to point
@@ -59,7 +61,7 @@ const restoreSchema = z.object({ snapshotId: z.number(), investmentId: z.number(
 export async function restoreSnapshotAction(
   snapshotId: number,
   investmentId: number,
-): Promise<ActionResultT> {
+): Promise<ActionResultT<RestoreResultT>> {
   return protectedAction(
     'restoreSnapshotAction',
     async ({ payload, user }) => {
@@ -72,16 +74,18 @@ export async function restoreSnapshotAction(
         return { success: false, error: 'Nie znaleziono wersji' }
       }
 
-      await withPayloadTransaction(
+      const restored = await withPayloadTransaction(
         payload,
         async (req) => {
           const txDb = await getDb(payload, req)
           await captureAutoSnapshot(txDb, snapshot.investmentId, user.id)
-          await restoreKosztorys(payload, req, snapshot.investmentId, snapshot.payload)
+          return restoreKosztorys(payload, req, snapshot.investmentId, snapshot.payload)
         },
         { skipRevalidation: true },
       )
-      return { success: true }
+      // The count travels to the client because the restore silently moved money: należne that the
+      // snapshot attributed to a since-deleted person lands in the residual bucket instead.
+      return { success: true, data: restored }
     },
     // Settings (VAT/coeffs) change too, so bump investments alongside the four tree tags.
     ['kosztorysSections', 'kosztorysItems', 'kosztorysStages', 'stageProgress', 'investments'],

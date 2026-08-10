@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
-import { isActiveRef } from '@/lib/utils/is-active-ref'
+import { useStore } from '@/components/forms/hooks/form-hooks'
+import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { ReferenceItemT } from '@/types/reference-data'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
@@ -26,9 +27,16 @@ export function CashRegisterField({
 }: CashRegisterFieldPropsT) {
   const [activeOnly, setActiveOnly] = useState(true)
 
+  // Read from the form store rather than the field render-prop: the option list has to be built
+  // before `form.AppField` renders, since an empty list swaps the whole control for EmptyFieldMessage.
+  const selectedId = useStore(
+    form.store,
+    (state: unknown) => (state as { values: Record<string, string> }).values[name],
+  )
+
   const filteredRegisters = useMemo(
-    () => cashRegisters.filter((register) => !activeOnly || isActiveRef(register)),
-    [cashRegisters, activeOnly],
+    () => activeOrSelected(cashRegisters, activeOnly, selectedId),
+    [cashRegisters, activeOnly, selectedId],
   )
 
   const emptyMessage = cashRegisters.length === 0 ? 'Brak kas' : 'Brak aktywnych kas'
