@@ -4,6 +4,7 @@ import { type ReactNode, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Description } from '@/components/ui/description'
 import { Dialog, DialogContent, DialogHeader, DialogTrigger } from '@/components/ui/dialog'
 import { toastMessage } from '@/lib/utils/toast'
 import { getServiceAccountEmailAction, linkSheetAction } from '@/lib/actions/investments'
@@ -62,10 +63,10 @@ export function SheetSetupDialog({ investmentId, trigger }: PropsT) {
             <p>
               <ExternalLink href={ALL_SHEETS_URL}>Otwórz arkusze google ↗</ExternalLink>
             </p>
-            <p className="text-muted-foreground text-xs">
+            <Description size="xs">
               Najpierw udostępnij arkusz <strong>jako Edytujący</strong> dla konta usługi, a
               następnie wklej jego link poniżej.
-            </p>
+            </Description>
             {saEmail && (
               <p className="text-muted-foreground text-xs">
                 Konto usługi:{' '}

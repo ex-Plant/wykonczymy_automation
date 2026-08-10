@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { Upload } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { Description } from '@/components/ui/description'
 import { FieldLabel } from '@/components/ui/field'
 
 type FileInputPropsT = React.ComponentProps<'input'> & {
@@ -124,9 +125,9 @@ function FileInput({
         />
       </div>
       {error && (
-        <div role="alert" className="text-destructive mt-1 text-xs">
+        <Description role="alert" tone="error" size="xs" className="mt-1">
           {error}
-        </div>
+        </Description>
       )}
     </div>
   )

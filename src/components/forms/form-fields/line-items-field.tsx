@@ -3,6 +3,7 @@
 import { Fragment, useRef, useState } from 'react'
 import { Trash2, WandSparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Description } from '@/components/ui/description'
 import { Separator } from '@/components/ui/separator'
 import { GradientSpinner } from '@/components/ui/gradient-spinner'
 import { RemoveButton } from '@/components/ui/remove-button'
@@ -257,9 +258,13 @@ export function LineItemsField({
                       />
                     )}
                     {failedIds?.has(item.id) && (
-                      <span className="text-destructive mt-8 shrink-0 text-xs whitespace-nowrap">
+                      <Description
+                        tone="error"
+                        size="xs"
+                        className="mt-8 shrink-0 whitespace-nowrap"
+                      >
                         nie odczytano
-                      </span>
+                      </Description>
                     )}
                     {/* Delete lives in row 1, its height matching the inputs; the row being read
                       shows the loader in its slot and queued rows keep it disabled — removing a
