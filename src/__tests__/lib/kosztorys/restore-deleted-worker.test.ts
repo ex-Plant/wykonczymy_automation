@@ -7,6 +7,7 @@ import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // A snapshot records `worker_id` per etap, so it outlives the person it names. `ON DELETE SET NULL`
 // on the column protects the LIVE row when that person is deleted — it says nothing about a restore
@@ -62,37 +63,19 @@ describe.skipIf(!ENV_READY)('restore with a since-deleted etap assignee (DB)', (
     })
     keptWorkerId = Number(kept.id)
 
-    const section = await payload.create({
-      collection: 'kosztorys-sections',
-      data: { investment: investmentId, name: 'Sekcja A', displayOrder: 0 },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: section.id,
-        displayOrder: 0,
-        description: 'Malowanie',
-        unit: 'm2',
-        plannedQty: 10,
-        clientPrice: 100,
-        discountValue: 0,
-        hiddenInExport: false,
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 1, label: 'Etap 1', worker: doomedWorkerId },
-      context: { skipRevalidation: true },
-    })
-    // The second etap's assignee outlives the restore. Without it, an implementation that simply
-    // blanket-nulled `worker_id` on every restore would pass — losing every assignment silently.
-    await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 2, label: 'Etap 2', worker: keptWorkerId },
-      context: { skipRevalidation: true },
+    await createKosztorysTree(payload, investmentId, {
+      sections: [
+        {
+          name: 'Sekcja A',
+          items: [{ description: 'Malowanie', unit: 'm2', plannedQty: 10, clientPrice: 100 }],
+        },
+      ],
+      stages: [
+        { label: 'Etap 1', worker: doomedWorkerId },
+        // The second etap's assignee outlives the restore. Without it, an implementation that simply
+        // blanket-nulled `worker_id` on every restore would pass — losing every assignment silently.
+        { label: 'Etap 2', worker: keptWorkerId },
+      ],
     })
   })
 
