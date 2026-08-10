@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-note-cell-overlay
 title: Read and edit long Komentarz notes via an in-cell overlay textarea
-status: impl_reviewed
+status: archived
 created: 2026-07-19
 updated: 2026-08-10
-archived_at: null
+archived_at: 2026-08-10T10:44:29Z
 branch: konradantonik/ex-538-kosztorys-long-text-cell-overlay
 worktree: null
 ---
