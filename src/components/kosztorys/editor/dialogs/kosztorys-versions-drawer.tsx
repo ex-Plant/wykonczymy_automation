@@ -53,7 +53,9 @@ export function KosztorysVersionsDrawer({
     const dropped = res.data?.droppedWorkerAssignments ?? 0
     if (dropped > 0) {
       toastMessage(
-        `Przywrócono wersję. ${dropped} ${pluralize(dropped, ['etap', 'etapy', 'etapów'])} bez przypisania — pracownik został usunięty z systemu.`,
+        // The count is per etap, not per person — n etapy may have named one deleted worker or n of
+        // them — so the cause clause stays number-free rather than asserting a headcount it doesn't know.
+        `Przywrócono wersję. ${dropped} ${pluralize(dropped, ['etap', 'etapy', 'etapów'])} bez przypisania — nie odtworzono przypisań do usuniętych pracowników.`,
         'warning',
         8000,
       )

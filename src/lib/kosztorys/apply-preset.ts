@@ -18,5 +18,9 @@ export async function applyPreset(
   preset: SnapshotPayloadT,
 ): Promise<void> {
   const db = await getDb(payload, req)
+  // `droppedWorkerAssignments` is discarded, not forgotten: a preset carries no stages
+  // (`serialize-preset.ts` hard-codes `stages: []`), so the count is structurally always 0 here.
+  // A preset that ever starts carrying stages owes the caller this warning — the restore path
+  // surfaces it as a toast.
   await insertKosztorysTree(db, investmentId, preset)
 }
