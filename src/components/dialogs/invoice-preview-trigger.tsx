@@ -1,11 +1,8 @@
-import { FileText, Search } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import { isImageMime } from '@/lib/invoices/mime'
 import { cn } from '@/lib/utils/cn'
-import type { InvoiceFileT } from '@/types/transfers'
 
 export type InvoicePreviewTriggerPropsT = {
-  invoices: InvoiceFileT[]
   label: string
   onClick: () => void
   // `compact` defaults to the ghost icon-button's 36px box but lets `className` override it — the
@@ -15,16 +12,12 @@ export type InvoicePreviewTriggerPropsT = {
 }
 
 export function InvoicePreviewTrigger({
-  invoices,
   label,
   onClick,
   variant = 'field',
   className,
 }: InvoicePreviewTriggerPropsT) {
   const isCompact = variant === 'compact'
-  // A mixed set has no single icon that tells the truth, so it falls back to the document icon.
-  const mimeTypes = new Set(invoices.map((invoice) => invoice.mimeType))
-  const isImage = mimeTypes.size === 1 && isImageMime([...mimeTypes][0])
 
   return (
     <button
@@ -39,7 +32,7 @@ export function InvoicePreviewTrigger({
         className,
       )}
     >
-      {isImage ? <Search /> : <FileText />}
+      <FileText />
       {!isCompact && <span className="truncate text-sm">{label}</span>}
     </button>
   )

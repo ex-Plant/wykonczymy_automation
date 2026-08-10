@@ -32,7 +32,6 @@ export function InvoicePreviewButton({
   return (
     <>
       <InvoicePreviewTrigger
-        invoices={invoices}
         label={invoices[0]?.filename ?? 'Faktura'}
         onClick={() => setPreviewOpen(true)}
         variant={variant}
