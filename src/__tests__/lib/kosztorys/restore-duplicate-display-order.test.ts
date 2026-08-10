@@ -4,6 +4,7 @@ import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // `display_order` carries NO unique constraint (only `kosztorys_stages(investment_id, ordinal)` does),
 // and the repo treats a tie as tolerated, not corrupt — append-preset-sections.ts accepts the
@@ -34,39 +35,26 @@ describe.skipIf(!ENV_READY)('restore with tied display_order (DB)', () => {
     })
 
     // Both sections on display_order 0, and both of section A's items on display_order 0 — the two
-    // ties that exist in the wild.
-    const sectionA = await payload.create({
-      collection: 'kosztorys-sections',
-      data: { investment: investmentId, name: 'Sekcja A', displayOrder: 0 },
-      context: { skipRevalidation: true },
-    })
-    const sectionB = await payload.create({
-      collection: 'kosztorys-sections',
-      data: { investment: investmentId, name: 'Sekcja B', displayOrder: 0 },
-      context: { skipRevalidation: true },
-    })
-
-    for (const [section, description] of [
-      [sectionA.id, 'A — pozycja pierwsza'],
-      [sectionA.id, 'A — pozycja druga'],
-      [sectionB.id, 'B — pozycja jedyna'],
-    ] as const) {
-      await payload.create({
-        collection: 'kosztorys-items',
-        data: {
-          investment: investmentId,
-          section,
+    // ties that exist in the wild. Every `displayOrder: 0` here is deliberate, overriding the
+    // builder's index default; that tie IS the fixture.
+    const item = { displayOrder: 0, unit: 'm2', plannedQty: 1, clientPrice: 100 }
+    await createKosztorysTree(payload, investmentId, {
+      sections: [
+        {
+          name: 'Sekcja A',
           displayOrder: 0,
-          description,
-          unit: 'm2',
-          plannedQty: 1,
-          clientPrice: 100,
-          discountValue: 0,
-          hiddenInExport: false,
+          items: [
+            { ...item, description: 'A — pozycja pierwsza' },
+            { ...item, description: 'A — pozycja druga' },
+          ],
         },
-        context: { skipRevalidation: true },
-      })
-    }
+        {
+          name: 'Sekcja B',
+          displayOrder: 0,
+          items: [{ ...item, description: 'B — pozycja jedyna' }],
+        },
+      ],
+    })
   })
 
   afterAll(async () => {

@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { selectKosztorysTreeData } from '@/lib/db/kosztorys-tree'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // selectKosztorysTreeData is one hand-written SQL statement, so its invariants only exist against a
 // real Postgres — a mocked executor would just replay whatever shape the test author imagined. The
@@ -17,64 +18,23 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
 
   // Two populated investments prove isolation; one bare investment proves the empty case.
   const created = { alpha: 0, beta: 0, bare: 0 }
-  const cleanup: {
-    collection: 'kosztorys-items' | 'kosztorys-sections' | 'kosztorys-stages' | 'stage-progress'
-    id: number
-  }[] = []
 
   async function seed(investmentId: number, qtyDone: number) {
-    // Insert out of display order deliberately: ORDER BY moved from Payload's `sort` into the
-    // json_agg, and insertion order is what would leak through if it were dropped.
-    const second = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'B-second',
-        displayOrder: 2,
-      },
-      context: { skipRevalidation: true },
+    // B-second is declared FIRST and so is inserted first, out of display order, deliberately:
+    // ORDER BY moved from Payload's `sort` into the json_agg, and insertion order is what would leak
+    // through if it were dropped.
+    await createKosztorysTree(payload, investmentId, {
+      sections: [
+        { name: 'B-second', displayOrder: 2 },
+        {
+          name: 'A-first',
+          displayOrder: 1,
+          items: [{ displayOrder: 1, description: 'pozycja', plannedQty: 3, clientPrice: 100 }],
+        },
+      ],
+      stages: [{ label: 'etap-1' }],
+      progress: [{ item: 0, stage: 0, qtyDone }],
     })
-    const first = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'A-first',
-        displayOrder: 1,
-      },
-      context: { skipRevalidation: true },
-    })
-    cleanup.push({ collection: 'kosztorys-sections', id: Number(second.id) })
-    cleanup.push({ collection: 'kosztorys-sections', id: Number(first.id) })
-
-    const stage = await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 1, label: 'etap-1' },
-      context: { skipRevalidation: true },
-    })
-    cleanup.push({ collection: 'kosztorys-stages', id: Number(stage.id) })
-
-    const item = await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: Number(first.id),
-        displayOrder: 1,
-        description: 'pozycja',
-        plannedQty: 3,
-        discountValue: 0,
-        clientPrice: 100,
-        hiddenInExport: false,
-      },
-      context: { skipRevalidation: true },
-    })
-    cleanup.push({ collection: 'kosztorys-items', id: Number(item.id) })
-
-    const progress = await payload.create({
-      collection: 'stage-progress',
-      data: { item: Number(item.id), stage: Number(stage.id), qtyDone },
-      context: { skipRevalidation: true },
-    })
-    cleanup.push({ collection: 'stage-progress', id: Number(progress.id) })
   }
 
   beforeAll(async () => {
@@ -93,9 +53,7 @@ describe.skipIf(!ENV_READY)('selectKosztorysTreeData (DB)', () => {
   })
 
   afterAll(async () => {
-    for (const { collection, id } of [...cleanup].reverse()) {
-      await payload.delete({ collection, id, context: { skipRevalidation: true } }).catch(() => {})
-    }
+    // Sections, items, stages and progress all cascade off the investment — no per-row teardown.
     for (const id of Object.values(created)) {
       if (id) await deleteTestInvestment(payload, id).catch(() => {})
     }

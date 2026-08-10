@@ -10,6 +10,7 @@ import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import { getPreset, insertPreset, upsertPresetByName } from '@/lib/db/presets'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // Presets reuse the snapshot serialize/apply core, so we exercise it against the REAL DB and assert
 // PERSISTED state (re-serialize after apply), the same discipline as serialize-restore-roundtrip.
@@ -94,89 +95,40 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
   // A source tree with JOB fields populated (qty, discount, note, progress) so serialize-as-preset
   // has something real to zero out.
   async function buildSourceTree(investmentId: number) {
-    const sectionA = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'Sekcja A',
-        displayOrder: 0,
-      },
-      context: { skipRevalidation: true },
+    await createKosztorysTree(payload, investmentId, {
+      sections: [
+        {
+          name: 'Sekcja A',
+          items: [
+            {
+              description: 'Malowanie',
+              unit: 'm2',
+              plannedQty: 10,
+              clientPrice: 100,
+              note: 'uwaga do pozycji',
+            },
+            {
+              description: 'Gruntowanie',
+              unit: 'm2',
+              plannedQty: 5,
+              clientPrice: 40,
+              discountType: 'percent',
+              discountValue: 10,
+              hiddenInExport: true,
+            },
+          ],
+        },
+        {
+          name: 'Sekcja B',
+          items: [{ description: 'Płytki', unit: 'm2', plannedQty: 20, clientPrice: 250 }],
+        },
+      ],
+      stages: [{ label: 'Etap 1' }, { label: null }],
+      progress: [
+        { item: 0, stage: 0, qtyDone: 4 },
+        { item: 0, stage: 1, qtyDone: 2 },
+      ],
     })
-    const sectionB = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'Sekcja B',
-        displayOrder: 1,
-      },
-      context: { skipRevalidation: true },
-    })
-
-    const item1 = await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionA.id,
-        displayOrder: 0,
-        description: 'Malowanie',
-        unit: 'm2',
-        plannedQty: 10,
-        clientPrice: 100,
-        discountValue: 0,
-        hiddenInExport: false,
-        note: 'uwaga do pozycji',
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionA.id,
-        displayOrder: 1,
-        description: 'Gruntowanie',
-        unit: 'm2',
-        plannedQty: 5,
-        clientPrice: 40,
-        discountType: 'percent',
-        discountValue: 10,
-        hiddenInExport: true,
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionB.id,
-        displayOrder: 0,
-        description: 'Płytki',
-        unit: 'm2',
-        plannedQty: 20,
-        clientPrice: 250,
-        discountValue: 0,
-        hiddenInExport: false,
-      },
-      context: { skipRevalidation: true },
-    })
-
-    const stage1 = await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 1, label: 'Etap 1' },
-      context: { skipRevalidation: true },
-    })
-    const stage2 = await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 2, label: null },
-      context: { skipRevalidation: true },
-    })
-
-    await db.execute(sql`
-      INSERT INTO stage_progress (item_id, stage_id, qty_done, created_at, updated_at) VALUES
-        (${item1.id}, ${stage1.id}, 4, now(), now()),
-        (${item1.id}, ${stage2.id}, 2, now(), now())
-    `)
   }
 
   async function applyPresetTx(investmentId: number, preset: SnapshotPayloadT) {
@@ -271,10 +223,9 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     // carries etapy, because „Dodaj etap" works on an empty kosztorys.
     // The seed used to install a starting etap here and collided with UNIQUE(investment_id, ordinal).
     const targetId = await createInvestment(`${PRESET_PREFIX}target-hasetapy`, 0.23, 0.7, 0.5)
-    await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: targetId, ordinal: 1, label: null, plane: 'w_tools' },
-      context: { skipRevalidation: true },
+    await createKosztorysTree(payload, targetId, {
+      sections: [],
+      stages: [{ label: null, plane: 'w_tools' }],
     })
 
     expect(await seedInvestmentFromPreset(payload, targetId, presetId!)).toBe('ok')
@@ -292,15 +243,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
 
     // A second investment that ALREADY has a tree — seeding it must be refused.
     const occupiedId = await createInvestment(`${PRESET_PREFIX}target-guard`, 0.23, 0.7, 0.5)
-    await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: occupiedId,
-        name: 'Istniejąca',
-        displayOrder: 0,
-      },
-      context: { skipRevalidation: true },
-    })
+    await createKosztorysTree(payload, occupiedId, { sections: [{ name: 'Istniejąca' }] })
     const presetId = await insertPreset(db, {
       name: `${PRESET_PREFIX}guard`,
       createdBy: null,
@@ -322,15 +265,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     const presetA = await serializeKosztorysAsPreset(invA)
 
     const invB = await createInvestment(`${PRESET_PREFIX}source-unique-b`, 0.23, 0.7, 0.5)
-    await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: invB,
-        name: 'Tylko B',
-        displayOrder: 0,
-      },
-      context: { skipRevalidation: true },
-    })
+    await createKosztorysTree(payload, invB, { sections: [{ name: 'Tylko B' }] })
     const presetB = await serializeKosztorysAsPreset(invB)
 
     const name = `${PRESET_PREFIX}unique`
@@ -364,15 +299,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
 
     // Overwrite the preset with a DIFFERENT tree.
     const invB = await createInvestment(`${PRESET_PREFIX}source-frozen-b`, 0.23, 0.7, 0.5)
-    await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: invB,
-        name: 'Nowa treść',
-        displayOrder: 0,
-      },
-      context: { skipRevalidation: true },
-    })
+    await createKosztorysTree(payload, invB, { sections: [{ name: 'Nowa treść' }] })
     const presetB = await serializeKosztorysAsPreset(invB)
     await upsertPresetByName(db, { name, createdBy: null, payload: presetB })
 

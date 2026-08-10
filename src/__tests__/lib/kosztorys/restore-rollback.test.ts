@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
-import { sql } from '@payloadcms/db-vercel-postgres'
-import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // restore WIPES before it reinserts, so for the length of the call the investment's live kosztorys
 // does not exist. The only thing that makes that safe is the whole call running in one transaction —
@@ -26,14 +25,12 @@ const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SEC
 
 describe.skipIf(!ENV_READY)('restore rollback on error (DB)', () => {
   let payload: Payload
-  let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
 
   beforeAll(async () => {
     const { getPayload } = await import('payload')
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
-    db = await getDb(payload)
 
     investmentId = await createTestInvestment(payload, 'restore-rollback-test', {
       vatRate: 0.23,
@@ -41,41 +38,18 @@ describe.skipIf(!ENV_READY)('restore rollback on error (DB)', () => {
       ownToolsCoeff: 0.5,
     })
 
-    const section = await payload.create({
-      collection: 'kosztorys-sections',
-      data: { investment: investmentId, name: 'Sekcja A', displayOrder: 0 },
-      context: { skipRevalidation: true },
+    // Two stages, because the poisoned snapshot below duplicates an ordinal across them — one stage
+    // could not collide with itself.
+    await createKosztorysTree(payload, investmentId, {
+      sections: [
+        {
+          name: 'Sekcja A',
+          items: [{ description: 'Malowanie', unit: 'm2', plannedQty: 10, clientPrice: 100 }],
+        },
+      ],
+      stages: [{ label: 'Etap 1' }, { label: 'Etap 2' }],
+      progress: [{ item: 0, stage: 0, qtyDone: 4 }],
     })
-    const item = await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: section.id,
-        displayOrder: 0,
-        description: 'Malowanie',
-        unit: 'm2',
-        plannedQty: 10,
-        clientPrice: 100,
-        discountValue: 0,
-        hiddenInExport: false,
-      },
-      context: { skipRevalidation: true },
-    })
-    const stage1 = await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 1, label: 'Etap 1' },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 2, label: 'Etap 2' },
-      context: { skipRevalidation: true },
-    })
-
-    await db.execute(sql`
-      INSERT INTO stage_progress (item_id, stage_id, qty_done, created_at, updated_at)
-      VALUES (${item.id}, ${stage1.id}, 4, now(), now())
-    `)
   })
 
   afterAll(async () => {
