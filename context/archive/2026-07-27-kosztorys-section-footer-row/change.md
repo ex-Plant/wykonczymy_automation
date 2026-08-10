@@ -1,9 +1,10 @@
 ---
 change_id: kosztorys-section-footer-row
 title: Move the section's totals out of its header into a footer row under their own columns
-status: implemented
+status: archived
 created: 2026-07-27
-updated: 2026-07-27
+updated: 2026-08-10
+archived_at: 2026-08-10T08:21:59Z
 branch: ex-607-kosztorys-section-footer-row
 ---
 
