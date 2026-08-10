@@ -5,6 +5,7 @@ import { Trash2, WandSparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Description } from '@/components/ui/description'
 import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { GradientSpinner } from '@/components/ui/gradient-spinner'
 import { RemoveButton } from '@/components/ui/remove-button'
 import { LineItemInvoiceField } from '@/components/forms/form-fields/line-item-invoice-field'
@@ -48,6 +49,16 @@ const isReceiptFile = (file: File) =>
 // What the picked photos mean: N separate expenses, or N pages of one expense's invoice.
 type ScanModeT = 'one-per-photo' | 'one-invoice'
 
+const SCAN_MODE_OPTIONS: OptionT<ScanModeT>[] = [
+  { value: 'one-per-photo', label: 'Kilka wydatków' },
+  { value: 'one-invoice', label: 'Jeden wydatek' },
+]
+
+const SCAN_MODE_HINT: Record<ScanModeT, string> = {
+  'one-per-photo': 'Każde zdjęcie to osobny paragon — powstanie z niego własna pozycja.',
+  'one-invoice': 'Wszystkie zdjęcia to jedna faktura — powstanie jedna pozycja z kilkoma stronami.',
+}
+
 type LineItemsFieldPropsT = {
   form: BulkExpenseFormApiT
   transferType: string
@@ -61,11 +72,7 @@ type LineItemsFieldPropsT = {
   // Batch-attach N receipt images: 'per-row' registers `files[i]` against row `ids[i]`,
   // 'single-row' hangs all of them on `ids[0]` as one multi-page invoice (see use-invoice-files).
   // Async (ingest processing) — awaited before generation so the files map is populated first.
-  onRegisterFiles: (
-    ids: string[],
-    files: File[],
-    mode?: 'per-row' | 'single-row',
-  ) => Promise<void>
+  onRegisterFiles: (ids: string[], files: File[], mode?: 'per-row' | 'single-row') => Promise<void>
   // Read a row's attached pages so it can render a preview (empty → file input).
   getRowFiles: (id: string) => File[] | undefined
   // Receipt generation: scan every eligible row's image and populate its fields (see use-receipt-generation).
@@ -164,10 +171,10 @@ export function LineItemsField({
   // Fresh per call — each pushed row needs its own `id` (a shared object would collide ids).
   const newItem = () =>
     makeLineItem(defaultExpenseCategory ? { expenseCategory: defaultExpenseCategory } : undefined)
-  const onePerRowInputRef = useRef<HTMLInputElement>(null)
-  const oneInvoiceInputRef = useRef<HTMLInputElement>(null)
+  const scanInputRef = useRef<HTMLInputElement>(null)
   const isIngesting = (ingestingIds?.size ?? 0) > 0
   const [dragOverMode, setDragOverMode] = useState<ScanModeT | null>(null)
+  const [scanMode, setScanMode] = useState<ScanModeT>('one-per-photo')
 
   // Scan flow: add each picked receipt as a row (image attached) FIRST, then run the AI generation.
   // Order matters — rows persist even if extraction fails, so a failed scan still yields line
@@ -376,52 +383,35 @@ export function LineItemsField({
               Dodaj pozycję
             </Button>
             <input
-              ref={onePerRowInputRef}
+              ref={scanInputRef}
               type="file"
               accept="image/*,application/pdf"
               multiple
               className="sr-only"
-              onChange={(e) => handleScanReceipts(e, lineItemsField, 'one-per-photo')}
-            />
-            <input
-              ref={oneInvoiceInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              multiple
-              className="sr-only"
-              onChange={(e) => handleScanReceipts(e, lineItemsField, 'one-invoice')}
+              onChange={(e) => handleScanReceipts(e, lineItemsField, scanMode)}
             />
             {onGenerate && (
               <>
+                <ToggleGroup
+                  options={SCAN_MODE_OPTIONS}
+                  value={scanMode}
+                  onChange={setScanMode}
+                  aria-label="Co oznaczają wybrane zdjęcia"
+                />
                 <Button
                   type="button"
                   variant="ai"
                   size="sm"
-                  onClick={() => onePerRowInputRef.current?.click()}
+                  onClick={() => scanInputRef.current?.click()}
                   disabled={isGenerating || isIngesting}
-                  {...dropZoneProps(lineItemsField, 'one-per-photo')}
+                  {...dropZoneProps(lineItemsField, scanMode)}
                 >
                   {isGenerating || isIngesting ? (
                     <GradientSpinner />
                   ) : (
                     <WandSparkles className="text-neon-cyan" />
                   )}
-                  <span className="text-neon-cyan font-semibold">Dodaj paragony</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ai"
-                  size="sm"
-                  onClick={() => oneInvoiceInputRef.current?.click()}
-                  disabled={isGenerating || isIngesting}
-                  {...dropZoneProps(lineItemsField, 'one-invoice')}
-                >
-                  {isGenerating || isIngesting ? (
-                    <GradientSpinner />
-                  ) : (
-                    <WandSparkles className="text-neon-cyan" />
-                  )}
-                  <span className="text-neon-cyan font-semibold">Jedna faktura, kilka stron</span>
+                  <span className="text-neon-cyan font-semibold">Wygeneruj z paragonów</span>
                 </Button>
               </>
             )}
@@ -431,6 +421,7 @@ export function LineItemsField({
               </span>
             )}
           </div>
+          {onGenerate && <Description size="xs">{SCAN_MODE_HINT[scanMode]}</Description>}
           <Label>Suma: {formatPLN(total)}</Label>
         </div>
       )}
