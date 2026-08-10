@@ -87,6 +87,8 @@ const {
   cancelTransferAction,
   updateTransferAction,
   updateTransferInvoiceAction,
+  removeTransferInvoiceAction,
+  removeAllTransferInvoicesAction,
 } = await import('@/lib/actions/transfers')
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -276,12 +278,12 @@ describe('createTransferAction', () => {
     expect(result.success).toBe(false)
   })
 
-  it('invoice mediaId → passes mediaId to payload.create', async () => {
+  it('invoice mediaId → passes it as a one-page list to payload.create', async () => {
     await createTransferAction(makeSingleTransferData(), 42)
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ invoice: 42 }),
+        data: expect.objectContaining({ invoice: [42] }),
       }),
     )
   })
@@ -451,9 +453,9 @@ describe('createBulkTransferAction', () => {
 
     await createBulkTransferAction(makeBulkTransferData(3), mediaIds)
 
-    expect(mockCreate.mock.calls[0][0].data.invoice).toBe(101)
+    expect(mockCreate.mock.calls[0][0].data.invoice).toEqual([101])
     expect(mockCreate.mock.calls[1][0].data.invoice).toBeUndefined()
-    expect(mockCreate.mock.calls[2][0].data.invoice).toBe(103)
+    expect(mockCreate.mock.calls[2][0].data.invoice).toEqual([103])
   })
 
   it('OTHER type → each create gets its own category from line item', async () => {
@@ -822,6 +824,30 @@ describe('updateTransferAction', () => {
     )
   })
 
+  it('newly uploaded pages append to the ones already attached', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ createdBy: adminUser.id, invoice: [55, 56] }),
+    )
+
+    await updateTransferAction(10, makeUpdateData(), [88, 89])
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ invoice: [55, 56, 88, 89] }),
+      }),
+    )
+  })
+
+  it('no uploaded pages → leaves the invoice field untouched', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ createdBy: adminUser.id, invoice: [55] }),
+    )
+
+    await updateTransferAction(10, makeUpdateData())
+
+    expect(mockUpdate.mock.calls[0][0].data).not.toHaveProperty('invoice')
+  })
+
   // Sheet sync moved to the transactions collection afterChange hook (review T2.2),
   // so updateTransferAction no longer calls it directly. The edit / investment-move /
   // non-expense-skip behavior is covered in hooks/sync-kosztorys-sheet.test.ts.
@@ -838,15 +864,13 @@ describe('updateTransferAction', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════
-// updateTransferInvoiceAction
+// Invoice page actions
 // ═════════════════════════════════════════════════════════════════════════
 
 describe('updateTransferInvoiceAction', () => {
-  beforeEach(() => {
-    mockFindByID.mockResolvedValue({ invoice: 42 })
-  })
+  it('appends the new page to the pages already attached', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
 
-  it('success → updates invoice reference with mediaId', async () => {
     const result = await updateTransferInvoiceAction(10, 88)
 
     expect(result.success).toBe(true)
@@ -854,47 +878,105 @@ describe('updateTransferInvoiceAction', () => {
       expect.objectContaining({
         collection: 'transactions',
         id: 10,
-        data: { invoice: 88 },
+        data: { invoice: [55, 56, 88] },
       }),
     )
   })
 
-  it('deletes old media when replacing invoice', async () => {
-    mockFindByID.mockResolvedValueOnce({ invoice: 55 })
-
-    await updateTransferInvoiceAction(10, 88)
-
-    expect(mockDelete).toHaveBeenCalledWith(
-      expect.objectContaining({ collection: 'media', id: 55 }),
-    )
-  })
-
-  it('skips old media deletion when no previous invoice', async () => {
-    mockFindByID.mockResolvedValueOnce({ invoice: null })
+  it('appending keeps every existing page — nothing is deleted', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55] })
 
     await updateTransferInvoiceAction(10, 88)
 
     expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
   })
 
-  it('called with correct collection and mediaId', async () => {
-    await updateTransferInvoiceAction(77, 200)
+  it('reads ids out of populated media docs, not just raw ids', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [{ id: 55, filename: 'p1.jpg' }] })
+
+    await updateTransferInvoiceAction(10, 88)
 
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: 'transactions',
-        id: 77,
-        data: { invoice: 200 },
-      }),
+      expect.objectContaining({ data: { invoice: [55, 88] } }),
     )
   })
 
+  it('re-adding an attached page is a no-op rather than a duplicate', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [88] })
+
+    await updateTransferInvoiceAction(10, 88)
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [88] } }))
+  })
+
+  it('first page on an invoice-less transfer → one-page list', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: null })
+
+    await updateTransferInvoiceAction(10, 88)
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [88] } }))
+  })
+
   it('payload.update failure → returns error', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [] })
     mockUpdate.mockRejectedValueOnce(new Error('Invoice update failed'))
 
     const result = await updateTransferInvoiceAction(10, 88)
 
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('Invoice update failed')
+  })
+})
+
+describe('removeTransferInvoiceAction', () => {
+  it('drops one page and leaves the rest in order', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56, 57] })
+
+    const result = await removeTransferInvoiceAction(10, 56)
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [55, 57] } }),
+    )
+  })
+
+  it('deletes only the media the new list dropped', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56, 57] })
+
+    await removeTransferInvoiceAction(10, 56)
+
+    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ collection: 'media', id: 56 }))
+    expect(mockDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('removing a page that is not attached changes nothing', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55] })
+
+    await removeTransferInvoiceAction(10, 99)
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [55] } }))
+    expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
+  })
+})
+
+describe('removeAllTransferInvoicesAction', () => {
+  it('clears the list and deletes every page', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
+
+    const result = await removeAllTransferInvoicesAction(10)
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [] } }))
+    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ collection: 'media', id: 55 }))
+    expect(mockDelete).toHaveBeenCalledWith(expect.objectContaining({ collection: 'media', id: 56 }))
+  })
+
+  it('a transfer with no invoice → clears to an empty list, deletes nothing', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: null })
+
+    await removeAllTransferInvoicesAction(10)
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [] } }))
+    expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
   })
 })

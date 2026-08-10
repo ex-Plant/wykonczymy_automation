@@ -15,12 +15,14 @@ type InvoicePreviewButtonPropsT = {
   // behind a `confirm()`, after a failed delete, or while the previewed file swaps in place.
   onAdd?: (closePreview: () => void) => void
   onRemove?: (invoice: InvoiceFileT, closePreview: () => void) => void
+  onRemoveAll?: (closePreview: () => void) => void
 } & Pick<InvoicePreviewTriggerPropsT, 'variant' | 'className'>
 
 export function InvoicePreviewButton({
   invoices,
   onAdd,
   onRemove,
+  onRemoveAll,
   variant,
   className,
 }: InvoicePreviewButtonPropsT) {
@@ -44,6 +46,7 @@ export function InvoicePreviewButton({
           onOpenChange={setPreviewOpen}
           onAdd={onAdd && (() => onAdd(closePreview))}
           onRemove={onRemove && ((invoice) => onRemove(invoice, closePreview))}
+          onRemoveAll={onRemoveAll && (() => onRemoveAll(closePreview))}
           // Stored file is already ingest-compressed (≤1920px, q0.6) — skip the Next optimizer
           // and its cold-start round-trip; serve straight from the Blob CDN.
           unoptimized

@@ -26,6 +26,7 @@ import { validateAction, protectedAction } from './run-action'
 import { validateSourceRegister } from './validate-source-register'
 import { logError } from '@/lib/utils/log-error'
 import { resolveId } from '@/lib/utils/resolve-id'
+import { invoiceIds } from '@/lib/queries/transfer-mapping'
 
 export async function createTransferAction(data: CreateTransferFormT, invoiceMediaId?: number) {
   return protectedAction(
@@ -49,7 +50,7 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
         data: {
           ...data,
           description: data.description || '',
-          invoice: invoiceMediaId,
+          invoice: invoiceMediaId ? [invoiceMediaId] : undefined,
           createdBy: user.id,
         },
       })
@@ -92,6 +93,7 @@ export async function createBulkTransferAction(
           const ids: number[] = []
           for (let i = 0; i < parsed.data.lineItems.length; i++) {
             const item = parsed.data.lineItems[i]
+            const invoiceMediaId = invoiceMediaIds?.[i]
             const created = await payload.create({
               collection: 'transactions',
               req,
@@ -108,7 +110,7 @@ export async function createBulkTransferAction(
                 worker: parsed.data.worker,
                 expenseCategory: item.expenseCategory,
                 otherCategory: item.category,
-                invoice: invoiceMediaIds?.[i],
+                invoice: invoiceMediaId ? [invoiceMediaId] : undefined,
                 invoiceNote: item.invoiceNote,
                 settled: canBeSettled(parsed.data.type) && parsed.data.settled === true,
                 createdBy: user.id,
@@ -220,7 +222,7 @@ export async function cancelTransferAction(transferId: number, data: CancelTrans
 export async function updateTransferAction(
   transferId: number,
   data: UpdateTransferFormT,
-  invoiceMediaId?: number,
+  invoiceMediaIds?: number[],
 ) {
   return protectedAction(
     'updateTransferAction',
@@ -251,7 +253,11 @@ export async function updateTransferAction(
         data: {
           ...fields,
           ...(newAmount !== undefined && { amount: newAmount }),
-          ...(invoiceMediaId !== undefined && { invoice: invoiceMediaId }),
+          // Newly picked files are extra pages of the same invoice, so they append — an edit that
+          // replaced the list would strand the pages the user never touched.
+          ...(invoiceMediaIds?.length && {
+            invoice: [...invoiceIds(original.invoice), ...invoiceMediaIds],
+          }),
           updatedBy: user.id,
         },
       })
@@ -281,13 +287,14 @@ export async function updateTransferAction(
 }
 
 /**
- * Point a transfer's invoice at `invoiceMediaId` (or clear it with `null`), then
- * best-effort delete the media it replaced so orphaned uploads don't accumulate.
+ * Rewrite a transfer's invoice pages to whatever `nextIds` derives from the current list, then
+ * best-effort delete the media the new list dropped — a page nothing references is unreachable,
+ * since media rows are only ever linked from the transfer that uploaded them.
  */
-async function setTransferInvoice(
+async function setTransferInvoices(
   payload: Payload,
   transferId: number,
-  invoiceMediaId: number | null,
+  nextIds: (currentIds: number[]) => number[],
 ): Promise<{ success: true }> {
   const step = perfStart()
 
@@ -296,37 +303,55 @@ async function setTransferInvoice(
     id: transferId,
     depth: 0,
   })
-  const oldMediaId = typeof transfer.invoice === 'number' ? transfer.invoice : null
+  const currentIds = invoiceIds(transfer.invoice)
+  const next = nextIds(currentIds)
   console.log(`[PERF]   findByID(${transferId}) ${step()}ms`)
 
   await payload.update({
     collection: 'transactions',
     id: transferId,
-    data: { invoice: invoiceMediaId },
+    data: { invoice: next },
   })
   console.log(`[PERF]   payload.update(${transferId}) ${step()}ms`)
 
-  if (oldMediaId && oldMediaId !== invoiceMediaId) {
+  for (const orphanId of currentIds.filter((id) => !next.includes(id))) {
     payload
-      .delete({ collection: 'media', id: oldMediaId })
-      .catch((err) => logError('[transfers] delete old invoice media failed', err))
+      .delete({ collection: 'media', id: orphanId })
+      .catch((err) => logError('[transfers] delete orphaned invoice media failed', err))
   }
 
   return { success: true }
 }
 
+/** Appends a page. Re-adding an id already attached is a no-op rather than a duplicate page. */
 export async function updateTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'updateTransferInvoiceAction',
-    ({ payload }) => setTransferInvoice(payload, transferId, invoiceMediaId),
+    ({ payload }) =>
+      setTransferInvoices(payload, transferId, (current) =>
+        current.includes(invoiceMediaId) ? current : [...current, invoiceMediaId],
+      ),
     ['transfers'],
   )
 }
 
-export async function removeTransferInvoiceAction(transferId: number) {
+/** Removes one page, leaving the rest in order. */
+export async function removeTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'removeTransferInvoiceAction',
-    ({ payload }) => setTransferInvoice(payload, transferId, null),
+    ({ payload }) =>
+      setTransferInvoices(payload, transferId, (current) =>
+        current.filter((id) => id !== invoiceMediaId),
+      ),
+    ['transfers'],
+  )
+}
+
+/** Removes every page — the whole invoice, not one of its photos. */
+export async function removeAllTransferInvoicesAction(transferId: number) {
+  return protectedAction(
+    'removeAllTransferInvoicesAction',
+    ({ payload }) => setTransferInvoices(payload, transferId, () => []),
     ['transfers'],
   )
 }

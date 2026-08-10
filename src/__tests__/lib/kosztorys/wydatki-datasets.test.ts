@@ -4,7 +4,7 @@ import {
   partitionWydatkiRows,
   wydatkiRowHref,
 } from '@/lib/kosztorys/wydatki-datasets'
-import type { MaterialTransactionRowT } from '@/types/transfers'
+import type { InvoiceFileT, MaterialTransactionRowT } from '@/types/transfers'
 
 // The tab split in isolation. The one assertion that couples it to `deriveFinancials` — Σ over the
 // two expense tabs === totalMaterialCosts — stays in derive-financials-bucketing.test.ts, where the
@@ -16,7 +16,7 @@ const ROW_BASE = {
   date: '2026-07-26',
   label: 'Materiały',
   description: null,
-  invoices: [],
+  invoices: [] as InvoiceFileT[],
   invoiceNote: null,
 } as const
 

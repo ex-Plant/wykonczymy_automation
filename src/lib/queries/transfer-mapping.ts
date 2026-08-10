@@ -105,7 +105,7 @@ export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): Tr
 }
 
 /** Every page id of one doc's `invoice` field, in attachment order. */
-function invoiceIds(invoice: InvoiceFieldT): number[] {
+export function invoiceIds(invoice: InvoiceFieldT): number[] {
   const refs = Array.isArray(invoice) ? invoice : [invoice]
   return refs.map(toNullableId).filter((id): id is number => id !== null)
 }

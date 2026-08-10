@@ -3,7 +3,7 @@ import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-
 import { billedAmountFor, TRANSFER_TYPES, type TransferTypeT } from '@/lib/constants/transfers'
 import { partitionWydatkiRows, sumBilled } from '@/lib/kosztorys/wydatki-datasets'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
-import type { MaterialTransactionRowT } from '@/types/transfers'
+import type { InvoiceFileT, MaterialTransactionRowT } from '@/types/transfers'
 
 // CHARACTERIZATION SUITE (EX-573 phase 0) — the bucketing rule, pinned before phase 2
 // rewrites deriveFinancials to read the spec table.
@@ -21,7 +21,7 @@ const ROW_BASE = {
   date: '2026-07-26',
   label: 'Materiały',
   description: null,
-  invoices: [],
+  invoices: [] as InvoiceFileT[],
   invoiceNote: null,
 } as const
 

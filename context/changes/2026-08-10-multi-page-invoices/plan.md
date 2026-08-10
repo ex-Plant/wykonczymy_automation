@@ -626,14 +626,14 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 2.1 ZIP tally specs pass, including a row yielding 3 files
-- [x] 2.2 Print/export specs pass
+- [x] 2.1 ZIP tally specs pass, including a row yielding 3 files — abfc6c0d
+- [x] 2.2 Print/export specs pass — abfc6c0d
 
 ### Phase 3: Editing a saved invoice
 
 #### Automated
 
-- [ ] 3.1 Action specs cover append, remove-one, remove-all and the cleanup diff
+- [x] 3.1 Action specs cover append, remove-one, remove-all and the cleanup diff
 
 ### Phase 4: Add form — multiple files per row
 

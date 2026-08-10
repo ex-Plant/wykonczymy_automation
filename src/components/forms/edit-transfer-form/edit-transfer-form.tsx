@@ -51,7 +51,7 @@ export function EditTransferForm({
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [selectedFileName, setSelectedFileName] = useState<string | undefined>()
+  const [hasPickedFiles, setHasPickedFiles] = useState(false)
   // Bumped on reset to remount the (uncontrolled) file input, clearing its
   // native file and internal filename state — form.reset() can't reach them.
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -82,27 +82,27 @@ export function EditTransferForm({
         invoiceNote: value.invoiceNote || undefined,
       }
 
-      // Capture file before dialog closes — the ref won't be available after unmount
-      const file = fileRef.current?.files?.[0]
+      // Capture files before dialog closes — the ref won't be available after unmount
+      const files = [...(fileRef.current?.files ?? [])]
 
       await submit(!!keepOpen, {
         form,
         action: async () => {
-          let invoiceMediaId: number | undefined
-          if (file) {
+          let invoiceMediaIds: number[] | undefined
+          if (files.length > 0) {
             try {
-              invoiceMediaId = await uploadFileClient(file)
+              invoiceMediaIds = await Promise.all(files.map(uploadFileClient))
             } catch (err) {
               const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'
               return { success: false, error: message }
             }
           }
-          return updateTransferAction(row.id, data, invoiceMediaId)
+          return updateTransferAction(row.id, data, invoiceMediaIds)
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
         onReset: () => {
-          setSelectedFileName(undefined)
+          setHasPickedFiles(false)
           setFileInputKey((k) => k + 1)
         },
       })
@@ -119,8 +119,7 @@ export function EditTransferForm({
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
 
   function handleFileChange() {
-    const file = fileRef.current?.files?.[0]
-    setSelectedFileName(file?.name)
+    setHasPickedFiles((fileRef.current?.files?.length ?? 0) > 0)
   }
 
   return (
@@ -172,15 +171,15 @@ export function EditTransferForm({
           </form.AppField>
 
           <div className="space-y-2">
-            {row.invoices.length > 0 && !selectedFileName && (
+            {row.invoices.length > 0 && !hasPickedFiles && (
               <InvoicePreviewButton invoices={row.invoices} />
             )}
             <FileInput
               key={fileInputKey}
               ref={fileRef}
-              label={row.invoices.length > 0 ? 'Dodaj stronę' : 'Dodaj fakturę'}
+              label="Dodaj faktury"
               accept="image/*,application/pdf"
-              placeholder={selectedFileName ?? 'Przeciągnij lub kliknij'}
+              multiple
               onChange={handleFileChange}
             />
           </div>

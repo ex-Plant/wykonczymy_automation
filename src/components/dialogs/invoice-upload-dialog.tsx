@@ -13,14 +13,12 @@ type InvoiceUploadDialogPropsT = {
   transactionId: number
   open: boolean
   onOpenChange: (open: boolean) => void
-  isReplace?: boolean
 }
 
 export function InvoiceUploadDialog({
   transactionId,
   open,
   onOpenChange,
-  isReplace = false,
 }: InvoiceUploadDialogPropsT) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,7 +36,7 @@ export function InvoiceUploadDialog({
       const result = await updateTransferInvoiceAction(transactionId, mediaId)
 
       if (result.success) {
-        toastMessage(isReplace ? 'Faktura zamieniona' : 'Faktura dodana', 'success')
+        toastMessage('Faktura dodana', 'success')
         onOpenChange(false)
       } else {
         toastMessage(result.error, 'error')
@@ -63,7 +61,7 @@ export function InvoiceUploadDialog({
         className="h-fit sm:top-1/2 sm:bottom-auto sm:max-w-md sm:-translate-y-1/2"
         aria-describedby={undefined}
       >
-        <DialogHeader title={isReplace ? 'Zamień fakturę' : 'Dodaj fakturę'} />
+        <DialogHeader title="Dodaj fakturę" />
 
         <FileInput ref={fileRef} accept="image/*,application/pdf" />
 

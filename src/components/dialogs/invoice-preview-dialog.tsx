@@ -17,6 +17,7 @@ type InvoicePreviewDialogPropsT = {
   onAdd?: () => void
   // Receives the page on screen — with a list, „usuń" has to say which one it means.
   onRemove?: (invoice: InvoiceFileT) => void
+  onRemoveAll?: () => void
   // next/image can't run the optimizer on a local blob: URL (not-yet-uploaded file) — serve it raw.
   unoptimized?: boolean
 }
@@ -27,6 +28,7 @@ export function InvoicePreviewDialog({
   onOpenChange,
   onAdd,
   onRemove,
+  onRemoveAll,
   unoptimized,
 }: InvoicePreviewDialogPropsT) {
   // Clamped rather than reset: removing the last page must not leave the pager pointing past the end.
@@ -184,6 +186,12 @@ export function InvoicePreviewDialog({
             <Button variant="destructive" onClick={() => onRemove(active)}>
               <Trash2 />
               {isMultiPage ? 'Usuń stronę' : 'Usuń'}
+            </Button>
+          )}
+          {onRemoveAll && (
+            <Button variant="destructive" onClick={onRemoveAll}>
+              <Trash2 />
+              Usuń całą fakturę
             </Button>
           )}
           {onAdd && (

@@ -24,6 +24,7 @@ function FileInput({
   onChange,
   accept = 'image/*,application/pdf',
   initialFileName,
+  multiple,
   ref,
   ...props
 }: FileInputPropsT) {
@@ -50,10 +51,10 @@ function FileInput({
     setIsDragOver(false)
   }
 
-  function setFileOnInput(file: File) {
+  function setFilesOnInput(files: File[]) {
     if (!inputRef.current) return
     const dt = new DataTransfer()
-    dt.items.add(file)
+    for (const file of files) dt.items.add(file)
     inputRef.current.files = dt.files
   }
 
@@ -62,18 +63,18 @@ function FileInput({
     e.stopPropagation()
     setIsDragOver(false)
 
-    const file = e.dataTransfer.files[0]
-    if (!file) return
+    const dropped = [...e.dataTransfer.files].slice(0, multiple ? undefined : 1)
+    if (dropped.length === 0) return
 
-    if (accept && !matchesAccept(file, accept)) {
+    if (accept && dropped.some((file) => !matchesAccept(file, accept))) {
       setError(`Nieobsługiwany format pliku. Dozwolone: ${humanizeAccept(accept)}`)
       return
     }
     setError(undefined)
 
-    // Sync file to the hidden input (so form reads and ref.files work)
-    setFileOnInput(file)
-    setFileName(file.name ?? '')
+    // Sync files to the hidden input (so form reads and ref.files work)
+    setFilesOnInput(dropped)
+    setFileName(joinFileNames(dropped))
 
     // Fire onChange directly — native dispatchEvent doesn't reliably trigger React's synthetic handler
     if (onChange && inputRef.current) {
@@ -86,8 +87,7 @@ function FileInput({
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    setFileName(file?.name ?? '')
+    setFileName(joinFileNames([...(e.target.files ?? [])]))
     setError(undefined)
     onChange?.(e)
   }
@@ -119,6 +119,7 @@ function FileInput({
           ref={setRefs}
           type="file"
           accept={accept}
+          multiple={multiple}
           onChange={handleChange}
           className="sr-only"
           {...props}
@@ -131,6 +132,10 @@ function FileInput({
       )}
     </div>
   )
+}
+
+function joinFileNames(files: File[]): string {
+  return files.map((file) => file.name).join(', ')
 }
 
 const MIME_LABELS: Record<string, string> = {
