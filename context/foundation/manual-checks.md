@@ -741,7 +741,7 @@ exists — read them as superseded by this section, not as owed.
 ### Phase 1-2: Read path, podgląd, eksport
 
 - [ ] Wydatek z jedną fakturą wygląda i zachowuje się jak dotąd — ikona, podgląd, „Pobierz", „Drukuj".
-- [ ] Wydatek z 3 stronami pokazuje licznik `3` przy ikonie, a podgląd przewija strony strzałkami z licznikiem „2/3".
+- [ ] Wydatek z 3 stronami otwiera podgląd, który przewija strony strzałkami z licznikiem „2/3".
 - [ ] „Pobierz wszystkie" z podglądu wielostronicowego daje ZIP z 3 plikami o różnych nazwach.
 - [ ] „Drukuj" w podglądzie wielostronicowym drukuje wszystkie strony w jednym zadaniu, nie tylko pierwszą.
 - [ ] Masowe pobieranie faktur z tabeli wydatków liczy strony, nie wiersze — toast pokazuje liczbę plików w ZIP-ie.
