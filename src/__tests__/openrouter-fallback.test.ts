@@ -17,6 +17,7 @@ import {
   RECEIPT_MODEL,
   FALLBACK_MODEL,
   RECEIPT_TIMEOUT_MS,
+  RECEIPT_TIMEOUT_PER_PAGE_MS,
 } from '@/lib/ai/openrouter'
 
 const OK = {
@@ -25,7 +26,7 @@ const OK = {
   invoiceNote: '',
   otherCategoryName: '',
 }
-const BYTES = new Uint8Array([1, 2, 3])
+const PAGES = [{ bytes: new Uint8Array([1, 2, 3]), mediaType: 'image/png', filename: 'r.png' }]
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -36,7 +37,7 @@ describe('extractReceipt runtime fallback', () => {
       return { object: OK }
     })
 
-    const result = await extractReceipt(BYTES, 'image/png', 'r.png', [])
+    const result = await extractReceipt(PAGES, [])
 
     expect(result).toEqual(OK)
     expect(generateObject).toHaveBeenCalledTimes(2)
@@ -47,7 +48,7 @@ describe('extractReceipt runtime fallback', () => {
   it('does not call the fallback when the primary succeeds', async () => {
     generateObject.mockResolvedValue({ object: OK })
 
-    const result = await extractReceipt(BYTES, 'image/png', 'r.png', [])
+    const result = await extractReceipt(PAGES, [])
 
     expect(result).toEqual(OK)
     expect(generateObject).toHaveBeenCalledTimes(1)
@@ -56,7 +57,7 @@ describe('extractReceipt runtime fallback', () => {
   it('throws when both the primary and the fallback fail', async () => {
     generateObject.mockRejectedValue(new Error('provider down'))
 
-    await expect(extractReceipt(BYTES, 'image/png', 'r.png', [])).rejects.toThrow()
+    await expect(extractReceipt(PAGES, [])).rejects.toThrow()
     expect(generateObject).toHaveBeenCalledTimes(2)
   })
 
@@ -76,7 +77,7 @@ describe('extractReceipt runtime fallback', () => {
       )
 
       let settled = false
-      const p = extractReceipt(BYTES, 'image/png', 'r.png', [])
+      const p = extractReceipt(PAGES, [])
       p.catch(() => {}).finally(() => (settled = true)) // silence unhandled-rejection; track settlement
 
       await vi.advanceTimersByTimeAsync(RECEIPT_TIMEOUT_MS - 1)
@@ -88,6 +89,38 @@ describe('extractReceipt runtime fallback', () => {
 
       await expect(p).rejects.toThrow()
       expect(generateObject).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // A multi-page invoice is more bytes to upload and more document to read, so the single-page
+  // budget would abort a long-but-healthy scan for the wrong reason.
+  it('grows the timeout budget with each extra page', async () => {
+    vi.useFakeTimers()
+    try {
+      generateObject.mockImplementation(
+        ({ abortSignal }: { abortSignal: AbortSignal }) =>
+          new Promise((_, reject) => {
+            abortSignal.addEventListener('abort', () =>
+              reject(abortSignal.reason ?? new Error('aborted')),
+            )
+          }),
+      )
+
+      const p = extractReceipt([...PAGES, ...PAGES, ...PAGES], [])
+      p.catch(() => {})
+
+      await vi.advanceTimersByTimeAsync(RECEIPT_TIMEOUT_MS + 1)
+      expect(generateObject).toHaveBeenCalledTimes(1) // still on the primary — no fallback yet
+
+      await vi.advanceTimersByTimeAsync(RECEIPT_TIMEOUT_PER_PAGE_MS * 2)
+      expect(generateObject).toHaveBeenCalledTimes(2)
+
+      await vi.advanceTimersByTimeAsync(
+        RECEIPT_TIMEOUT_MS + RECEIPT_TIMEOUT_PER_PAGE_MS * 2 + 1,
+      )
+      await expect(p).rejects.toThrow()
     } finally {
       vi.useRealTimers()
     }

@@ -30,6 +30,14 @@ export const FALLBACK_MODEL = 'google/gemini-2.5-flash'
 // failure. Built from AbortController + setTimeout (not AbortSignal.timeout) so it's fakeable.
 export const RECEIPT_TIMEOUT_MS = 30_000
 
+// Each extra page is more bytes to upload and more document for the model to read, so a document
+// with no page cap needs a budget that grows with it — a fixed 30 s would fail a long invoice for
+// the wrong reason. A timeout still fails the whole row, which is correct: half a document yields
+// a wrong total.
+export const RECEIPT_TIMEOUT_PER_PAGE_MS = 15_000
+
+export type ReceiptPageT = { bytes: Uint8Array; mediaType: string; filename: string }
+
 function timeoutSignal(ms: number): AbortSignal {
   const controller = new AbortController()
   const timer = setTimeout(
@@ -55,16 +63,20 @@ const openrouter = createOpenRouter({
 // private/non-passthrough blob URL the provider can't fetch — the AI SDK then mis-encodes
 // the URL string as base64 and OpenAI rejects it (invalid_base64 / invalid_image_format).
 // Bytes work everywhere. Caller resolves + fetches the bytes (it has the request origin).
+//
+// `pages` are the pages of ONE document, in reading order — one model call sees all of them, so a
+// total printed on the last page is found just as well as one on the first.
 export async function extractReceipt(
-  imageBytes: Uint8Array,
-  mediaType: string,
-  filename: string,
+  pages: ReceiptPageT[],
   otherCategoryNames: string[],
 ): Promise<ReceiptExtractionT> {
+  if (pages.length === 0) throw new Error('Brak pliku do odczytania')
   const otherCategoryList = otherCategoryNames.length > 0 ? otherCategoryNames.join('\n') : '(none)'
 
   const promptText = [
     'Read this receipt or invoice (the document is in Polish) and fill in the fields.',
+    'The document may span several files below, in page order — read them as ONE document and',
+    'report each total once for the whole of it, wherever on the pages it is printed.',
     'If the image is not a legible receipt or invoice (blank, noise, a photo of',
     `something else), set description to exactly "${UNREADABLE_RECEIPT}", amount and`,
     'netAmount to null, and the other text fields to "" — do NOT guess or echo these',
@@ -96,8 +108,12 @@ export async function extractReceipt(
       // The file-parser plugin routes PDFs to the `native` engine (the model reads PDFs
       // natively); images carry no plugin. Without an explicit engine OpenRouter would default
       // PDFs to the paid mistral-ocr — see receipt-pdf-plugins.ts.
-      model: openrouter(model, { plugins: receiptPdfPlugins(mediaType) }),
-      abortSignal: timeoutSignal(RECEIPT_TIMEOUT_MS),
+      model: openrouter(model, {
+        plugins: receiptPdfPlugins(pages.map((page) => page.mediaType)),
+      }),
+      abortSignal: timeoutSignal(
+        RECEIPT_TIMEOUT_MS + RECEIPT_TIMEOUT_PER_PAGE_MS * (pages.length - 1),
+      ),
       schema: receiptExtractionSchema,
       messages: [
         {
@@ -107,7 +123,12 @@ export async function extractReceipt(
             // `filename` is REQUIRED for PDFs: OpenRouter routes the file by its extension, and
             // the provider sends filename:"" when it's absent — the PDF then reaches the model
             // unrouted and comes back unreadable.
-            { type: 'file', data: imageBytes, mediaType, filename },
+            ...pages.map(({ bytes, mediaType, filename }) => ({
+              type: 'file' as const,
+              data: bytes,
+              mediaType,
+              filename,
+            })),
           ],
         },
       ],
@@ -132,8 +153,10 @@ export async function extractReceipt(
     // captured as a Sentry error once Sentry is wired (mediaType included so PDF-specific
     // parse failures are separable from genuinely illegible images).
     if (object.description === UNREADABLE_RECEIPT) {
+      const mediaTypes = pages.map((page) => page.mediaType).join(',')
+      const bytes = pages.reduce((total, page) => total + page.bytes.byteLength, 0)
       logError(
-        `[receipt] unreadable extraction (mediaType=${mediaType}, filename=${filename}, bytes=${imageBytes.byteLength})`,
+        `[receipt] unreadable extraction (pages=${pages.length}, mediaTypes=${mediaTypes}, filename=${pages[0].filename}, bytes=${bytes})`,
       )
     }
 

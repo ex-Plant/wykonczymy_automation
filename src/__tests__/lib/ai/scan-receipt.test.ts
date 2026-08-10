@@ -1,32 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// The receipt scan is byte-in / persist-nothing: extractReceiptAction takes the picked File,
-// hands the model its BYTES, and creates NO media record — media is persisted only at submit.
-// This pins that contract; the orphaned-media bug came from persisting a file during the scan
-// that was then never linked to an expense (row removed, receipt swapped, form abandoned).
+// The receipt scan is byte-in / persist-nothing: scanReceipt takes the picked Files, hands the
+// model their BYTES, and creates NO media record — media is persisted only at submit. This pins
+// that contract; the orphaned-media bug came from persisting a file during the scan that was then
+// never linked to an expense (row removed, receipt swapped, form abandoned).
 
-const { extractReceiptSpy, payloadSpy } = vi.hoisted(() => ({
+const { extractReceiptSpy, getPayloadSpy } = vi.hoisted(() => ({
   extractReceiptSpy: vi.fn(),
-  payloadSpy: { create: vi.fn(), update: vi.fn(), findByID: vi.fn() },
+  getPayloadSpy: vi.fn(),
 }))
 
-// Bypass auth/payload wiring: run the handler directly with a spied payload so we can assert
-// the scan never touches persistence.
-vi.mock('@/lib/actions/run-action', () => ({
-  protectedAction: (_label: string, handler: (ctx: { payload: unknown }) => unknown) =>
-    handler({ payload: payloadSpy }),
-}))
+// Persistence in this app runs exclusively through a Payload instance, so a spy that never fires
+// is the whole storage surface staying untouched.
+vi.mock('payload', () => ({ getPayload: getPayloadSpy }))
 
 vi.mock('@/lib/ai/openrouter', () => ({
   extractReceipt: extractReceiptSpy,
 }))
 
-import { extractReceiptAction } from '@/lib/actions/extract-receipt'
+import { scanReceipt } from '@/lib/ai/scan-receipt'
 
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
 
-function receiptFile() {
-  return new File([PNG_BYTES], 'receipt-x.png', { type: 'image/png' })
+function receiptFile(name = 'receipt-x.png') {
+  return new File([PNG_BYTES], name, { type: 'image/png' })
 }
 
 beforeEach(() => {
@@ -49,36 +46,47 @@ async function scanWith(overrides: Record<string, unknown>) {
     otherCategoryName: '',
     ...overrides,
   })
-  const result = await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
-  return result.success ? result.data.netAmount : undefined
+  const result = await scanReceipt([receiptFile()], [])
+  return result.netAmount
 }
 
-describe('extractReceiptAction', () => {
+describe('scanReceipt', () => {
   it('passes the File BYTES (not a URL) to the model', async () => {
-    const result = await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
+    await scanReceipt([receiptFile()], [])
 
-    expect(result.success).toBe(true)
-    const [bytes, mimeType, filename] = extractReceiptSpy.mock.calls[0] ?? []
-    expect(bytes).toBeInstanceOf(Uint8Array)
-    expect(Array.from(bytes as Uint8Array)).toEqual(Array.from(PNG_BYTES))
-    expect(mimeType).toBe('image/png')
-    expect(filename).toBe('receipt-x.png')
+    const [pages] = extractReceiptSpy.mock.calls[0] ?? []
+    expect(pages).toHaveLength(1)
+    expect(pages[0].bytes).toBeInstanceOf(Uint8Array)
+    expect(Array.from(pages[0].bytes as Uint8Array)).toEqual(Array.from(PNG_BYTES))
+    expect(pages[0].mediaType).toBe('image/png')
+    expect(pages[0].filename).toBe('receipt-x.png')
+  })
+
+  // One invoice photographed across several pages is ONE model call — a total printed on the last
+  // page has to be found, and page order is the document's reading order.
+  it('hands every page of one invoice to a single call, in order', async () => {
+    await scanReceipt([receiptFile('page-1.png'), receiptFile('page-2.png')], [])
+
+    expect(extractReceiptSpy).toHaveBeenCalledTimes(1)
+    const [pages] = extractReceiptSpy.mock.calls[0] ?? []
+    expect(pages.map((page: { filename: string }) => page.filename)).toEqual([
+      'page-1.png',
+      'page-2.png',
+    ])
   })
 
   it('writes nothing to storage during a scan', async () => {
-    await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
+    await scanReceipt([receiptFile(), receiptFile('page-2.png')], [])
 
-    expect(payloadSpy.create).not.toHaveBeenCalled()
-    expect(payloadSpy.update).not.toHaveBeenCalled()
-    expect(payloadSpy.findByID).not.toHaveBeenCalled()
+    expect(getPayloadSpy).not.toHaveBeenCalled()
   })
 
   it('returns an Opis-based filename for the client to apply at submit', async () => {
-    const result = await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
+    const result = await scanReceipt([receiptFile()], [])
 
-    expect(result.success && result.data.filename).toBeTruthy()
+    expect(result.filename).toBeTruthy()
     // Derived from the extracted Opis, not the original upload name.
-    expect(result.success && result.data.filename).not.toBe('receipt-x.png')
+    expect(result.filename).not.toBe('receipt-x.png')
   })
 
   it('keeps the original name (no rename) when the receipt is unreadable', async () => {
@@ -91,9 +99,9 @@ describe('extractReceiptAction', () => {
       otherCategoryName: '',
     })
 
-    const result = await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
+    const result = await scanReceipt([receiptFile()], [])
 
-    expect(result.success && result.data.filename).toBeUndefined()
+    expect(result.filename).toBeUndefined()
   })
 
   // The netto sanity guard mirrors getNetAmountError's range rule: a netto the form would reject

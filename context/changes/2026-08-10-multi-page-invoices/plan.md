@@ -639,15 +639,15 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 4.1 Upload-resolution specs pin the nested shape and sparse positions — `23c2235e`
-- [x] 4.2 Optimistic-store and bulk-create specs pass — `23c2235e`
+- [x] 4.1 Upload-resolution specs pin the nested shape and sparse positions — `e71abbcb`
+- [x] 4.2 Optimistic-store and bulk-create specs pass — `e71abbcb`
 
 ### Phase 5: Multi-page AI scan
 
 #### Automated
 
-- [ ] 5.1 Fallback and PDF-plugin specs pass with a multi-part request
-- [ ] 5.2 The persists-nothing guard still passes
+- [x] 5.1 Fallback and PDF-plugin specs pass with a multi-part request
+- [x] 5.2 The persists-nothing guard still passes
 
 ### Phase 6: Blob cleanup and documentation
 

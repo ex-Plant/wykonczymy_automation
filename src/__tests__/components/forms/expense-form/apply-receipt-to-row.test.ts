@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { applyReceiptToRow } from '@/components/forms/expense-form/apply-receipt-to-row'
-import type { ReceiptFillResultT } from '@/lib/actions/extract-receipt'
+import type { ReceiptFillResultT } from '@/lib/ai/scan-receipt'
 
 function fill(overrides: Partial<ReceiptFillResultT> = {}): ReceiptFillResultT {
   return {

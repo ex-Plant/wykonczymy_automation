@@ -1,4 +1,4 @@
-import type { ReceiptFillResultT } from '@/lib/actions/extract-receipt'
+import type { ReceiptFillResultT } from '@/lib/ai/scan-receipt'
 import type { BulkExpenseFormApiT } from '@/components/forms/expense-form/bulk-expense-form'
 
 // Only the setter is taken, not the whole form API — it keeps the write path a pure, directly

@@ -7,9 +7,11 @@ export const RECEIPT_PDF_ENGINE = 'native'
 type FileParserPluginT = { id: 'file-parser'; pdf: { engine: string } }
 
 // A vision model can't read PDF bytes directly, so PDFs need OpenRouter's file-parser plugin to
-// extract text server-side; image receipts are sent as-is with no plugin.
-export function receiptPdfPlugins(mediaType: string): FileParserPluginT[] | undefined {
-  if (mediaType === 'application/pdf')
+// extract text server-side; image receipts are sent as-is with no plugin. The plugin is declared
+// per CALL, not per part, so one PDF among the pages of a document turns it on for all of them —
+// a mixed photo + PDF set is a normal multi-page invoice.
+export function receiptPdfPlugins(mediaTypes: string[]): FileParserPluginT[] | undefined {
+  if (mediaTypes.includes('application/pdf'))
     return [{ id: 'file-parser', pdf: { engine: RECEIPT_PDF_ENGINE } }]
   return undefined
 }

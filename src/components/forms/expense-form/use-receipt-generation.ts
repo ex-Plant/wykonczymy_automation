@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { extractReceiptAction } from '@/lib/actions/extract-receipt'
+import { scanReceiptClient } from '@/lib/utils/scan-receipt-client'
 import { mapWithConcurrency } from '@/lib/utils/map-with-concurrency'
 import { toastMessage } from '@/lib/utils/toast'
 import { logError } from '@/lib/utils/log-error'
@@ -72,15 +72,9 @@ export function useReceiptGeneration({
         const id = row.id
         setGeneratingIds((prev) => new Set(prev).add(id))
         try {
-          // The map already holds the file processed at ingest (compressed / HEIC-converted), so the
-          // scan payload is under the serverAction body limit without re-compressing here.
-          const result = await extractReceiptAction({
-            file: files.get(id)![0],
-            otherCategoryNames,
-          })
-          if (!result.success) throw new Error(result.error)
-
-          const data = result.data
+          // The map already holds the files processed at ingest (compressed / HEIC-converted), and
+          // every page of this row goes into ONE scan — the total may sit on any of them.
+          const data = await scanReceiptClient(files.get(id)!, otherCategoryNames)
           if (data.description === UNREADABLE_RECEIPT) unreadable += 1
           applyReceiptToRow(form.setFieldValue, index, data)
           // Apply the Opis-based name to the file now so it uploads under that name at submit; the
