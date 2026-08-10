@@ -34,10 +34,24 @@ beforeEach(() => {
   extractReceiptSpy.mockResolvedValue({
     description: 'Castorama',
     amount: 12.5,
+    netAmount: 10.16,
     invoiceNote: '',
     otherCategoryName: '',
   })
 })
+
+async function scanWith(overrides: Record<string, unknown>) {
+  extractReceiptSpy.mockResolvedValue({
+    description: 'Castorama',
+    amount: 12.5,
+    netAmount: null,
+    invoiceNote: '',
+    otherCategoryName: '',
+    ...overrides,
+  })
+  const result = await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
+  return result.success ? result.data.netAmount : undefined
+}
 
 describe('extractReceiptAction', () => {
   it('passes the File BYTES (not a URL) to the model', async () => {
@@ -72,6 +86,7 @@ describe('extractReceiptAction', () => {
     extractReceiptSpy.mockResolvedValue({
       description: UNREADABLE_RECEIPT,
       amount: null,
+      netAmount: null,
       invoiceNote: '',
       otherCategoryName: '',
     })
@@ -79,5 +94,36 @@ describe('extractReceiptAction', () => {
     const result = await extractReceiptAction({ file: receiptFile(), otherCategoryNames: [] })
 
     expect(result.success && result.data.filename).toBeUndefined()
+  })
+
+  // The netto sanity guard mirrors getNetAmountError's range rule: a netto the form would reject
+  // becomes a blank field rather than a red error on a number the user never typed.
+  describe('netto sanity guard', () => {
+    it('passes a plausible netto through untouched', async () => {
+      expect(await scanWith({ amount: 12.5, netAmount: 10.16 })).toBe(10.16)
+    })
+
+    it('nulls a netto above the brutto', async () => {
+      expect(await scanWith({ amount: 12.5, netAmount: 15 })).toBeNull()
+    })
+
+    it('nulls a non-positive netto', async () => {
+      expect(await scanWith({ amount: 12.5, netAmount: 0 })).toBeNull()
+    })
+
+    // VAT-exempt / reverse-charge invoices genuinely print netto == brutto, and
+    // getNetAmountError permits it — discarding it as a suspected echo would contradict the form.
+    it('keeps a netto equal to the brutto', async () => {
+      expect(await scanWith({ amount: 12.5, netAmount: 12.5 })).toBe(12.5)
+    })
+
+    // No brutto to compare against; the user types that one, so the netto is not second-guessed.
+    it('keeps a netto when the brutto is null', async () => {
+      expect(await scanWith({ amount: null, netAmount: 10.16 })).toBe(10.16)
+    })
+
+    it('leaves a null netto null', async () => {
+      expect(await scanWith({ amount: 12.5, netAmount: null })).toBeNull()
+    })
   })
 })

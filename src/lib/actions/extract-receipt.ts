@@ -41,6 +41,16 @@ export async function extractReceiptAction(
         ? buildReceiptFileName(data.description, parserFilename)
         : undefined
 
-    return { success: true, data: { ...data, filename } }
+    // Drop a netto the form would reject anyway, so the user gets a blank field instead of a red
+    // error on a number they never typed. Mirrors getNetAmountError's range rule by hand — that
+    // helper is transfer-type-aware and the scan has no type. Equality survives (VAT-exempt
+    // invoices print it), as does a netto with no brutto to compare against.
+    const netAmount =
+      data.netAmount !== null &&
+      (data.netAmount <= 0 || (data.amount !== null && data.netAmount > data.amount))
+        ? null
+        : data.netAmount
+
+    return { success: true, data: { ...data, netAmount, filename } }
   })
 }

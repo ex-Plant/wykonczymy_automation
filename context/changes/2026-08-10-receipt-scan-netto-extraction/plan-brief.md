@@ -65,9 +65,8 @@ already lives, in `mapLineItem`.
 | ------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Netto extraction, end to end | Schema field, prompt bullet, server guard, the form write + three specs | The model derives a netto from a VAT rate instead of copying a printed one — a confident wrong number that mis-bills the client. Secondary: the unconditional write reads as a missing `billsNetAmount` check to a later reader, so the comment has to carry the reasoning |
 
-**Prerequisites:** a clean branch — the working tree currently carries the kosztorys note-cell-overlay
-change, which must land or be stashed first. Manual verification needs a real netto invoice PDF and a
-brutto-only paragon.
+**Prerequisites:** none in the tree — branched off `staging` at `34502ecc`. Manual verification needs
+a real netto invoice PDF and a brutto-only paragon.
 **Estimated effort:** one session, ~40 lines plus three specs — one phase, one commit.
 
 ## Open Risks & Assumptions

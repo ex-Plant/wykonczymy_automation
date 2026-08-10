@@ -1,0 +1,28 @@
+import type { ReceiptFillResultT } from '@/lib/actions/extract-receipt'
+import type { BulkExpenseFormApiT } from '@/components/forms/expense-form/bulk-expense-form'
+
+// Only the setter is taken, not the whole form API — it keeps the write path a pure, directly
+// testable function instead of something reachable only through a rendered hook.
+type SetFieldValueT = BulkExpenseFormApiT['setFieldValue']
+
+// Category is left blank for the user to pick — the model's category inference wasn't reliable
+// enough (frequent mismatches).
+//
+// `netAmount` is written REGARDLESS of the transfer type, which is deliberate and looks like a
+// missing `billsNetAmount` gate if you read it quickly: the type is a form-level field the user
+// often picks AFTER scanning, and a filled row is permanently ineligible for re-scan, so gating
+// here would leave an unrecoverable blank Netto column. `mapLineItem` already drops the value at
+// submit on any type that doesn't bill netto.
+export function applyReceiptToRow(
+  setFieldValue: SetFieldValueT,
+  index: number,
+  data: ReceiptFillResultT,
+) {
+  setFieldValue(`lineItems[${index}].description`, data.description)
+  setFieldValue(`lineItems[${index}].amount`, data.amount === null ? '' : String(data.amount))
+  setFieldValue(
+    `lineItems[${index}].netAmount`,
+    data.netAmount === null ? '' : String(data.netAmount),
+  )
+  setFieldValue(`lineItems[${index}].invoiceNote`, data.invoiceNote)
+}

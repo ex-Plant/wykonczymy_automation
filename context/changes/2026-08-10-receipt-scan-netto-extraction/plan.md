@@ -145,7 +145,7 @@ transfer type). The returned `ReceiptFillResultT` shape is unchanged apart from 
 
 #### 4. Receipt generation hook
 
-**File**: `src/components/forms/hooks/use-receipt-generation.ts`
+**File**: `src/components/forms/expense-form/use-receipt-generation.ts`
 
 **Intent**: Write the extracted netto into the row so it is there whichever type the user has picked
 — or picks later.
@@ -157,6 +157,18 @@ comment must record why, because the omission looks like a bug to a later reader
 form-level field picked independently of the scan, a filled row can never be re-scanned
 (`use-receipt-generation.ts:47`), and `mapLineItem` already prevents a brutto-typed row from
 persisting the value.
+
+### Deviation from plan (recorded during implementation):
+
+The hook lives at `src/components/forms/expense-form/use-receipt-generation.ts`, not under
+`forms/hooks/`. More importantly, the repo has **no React hook-testing infrastructure** (no
+`@testing-library/react`, no jsdom), and installing it was out of bounds — on this machine a
+`pnpm install` also risks the lightningcss/arm64 breakage. So instead of a `renderHook` spec, the
+four `setFieldValue` writes were extracted into a pure `applyReceiptToRow(setFieldValue, index, data)`
+(`src/components/forms/expense-form/apply-receipt-to-row.ts`) and specced directly with a stub
+setter. Same behaviour under test — the unconditional netto write — with the existing runner, and
+the "why no `billsNetAmount` gate" comment now sits on the function itself where a later reader
+meets it.
 
 ### Success Criteria:
 
@@ -229,7 +241,7 @@ Run once, after the phase lands.
 
 #### Automated
 
-- [ ] 1.1 Schema spec covers the new field (populated / null / absent / string)
-- [ ] 1.2 Action spec covers the guard (over-brutto, non-positive, equality, null-brutto, null-netto)
-- [ ] 1.3 New use-receipt-generation spec asserts the netAmount write, incl. unconditional-on-type
-- [ ] 1.4 Existing model-fallback + map-line-item specs still pass
+- [x] 1.1 Schema spec covers the new field (populated / null / absent / string)
+- [x] 1.2 Action spec covers the guard (over-brutto, non-positive, equality, null-brutto, null-netto)
+- [x] 1.3 New use-receipt-generation spec asserts the netAmount write, incl. unconditional-on-type
+- [x] 1.4 Existing model-fallback + map-line-item specs still pass

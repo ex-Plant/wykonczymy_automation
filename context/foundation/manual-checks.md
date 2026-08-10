@@ -725,3 +725,13 @@ exists — read them as superseded by this section, not as owed.
 
 - [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
 - [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.
+
+## AI receipt scan: extract the netto amount (EX-577)
+
+### Phase 1: Netto extraction, end to end
+
+- [ ] Skan prawdziwej faktury netto (PDF) na typie „Wydatek inwestycyjny netto" wypełnia Kwotę i Netto, a formularz zapisuje się bez błędu walidacji.
+- [ ] Skan paragonu z samym brutto i pieczątką „w tym VAT 23%" zostawia Netto puste — model nie wylicza go z VAT-u.
+- [ ] Skan na typie brutto, potem zmiana typu na „Wydatek inwestycyjny netto" → kolumna Netto jest już wypełniona.
+- [ ] Skan na typie brutto i zapis → zapisany transfer nie niesie `netAmount`.
+- [ ] Nieczytelny obraz nadal zwraca marker „NIE UDAŁO SIĘ ODCZYTAĆ" i puste Netto.
