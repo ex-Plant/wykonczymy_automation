@@ -144,7 +144,9 @@ describe('notifyReconcileRecovery', () => {
     await notifyReconcileRecovery(fakePayload(sendEmail), { recovered, scanned: 30 })
 
     const arg = sendEmail.mock.calls[0][0]
-    expect(arg.to).toBe('ops@example.com')
+    // Sales too, not just ops: a recovered lead never reaches LEADS_NOTIFY_EMAIL
+    // through notifyNewLead, so this is the only mail that carries it to them.
+    expect(arg.to).toEqual(['ops@example.com', 'inbox@example.com'])
     expect(arg.html).toContain('Anna Nowak')
     expect(arg.html).toContain('anna.nowak@example.com')
     expect(arg.html).toContain('+48500600700')

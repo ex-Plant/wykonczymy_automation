@@ -116,8 +116,9 @@ export async function notifyReconcileRecovery(
   const html = `
     <h2>⚠️ Cron odzyskał zgłoszenia pominięte przez webhook</h2>
     <p>Odzyskane: <strong>${added}</strong> z ${context.scanned} sprawdzonych.</p>
-    <p><strong>Te zgłoszenia nie trafiły do sprzedaży i nie dostały automatycznej
-    odpowiedzi — skontaktuj się z nimi ręcznie.</strong></p>
+    <p><strong>Te zgłoszenia ominęły normalną ścieżkę: nie poszło standardowe
+    powiadomienie „Nowe zgłoszenie”, a klienci nie dostali automatycznej odpowiedzi.
+    Ten mail to jedyny ślad — odezwij się do nich ręcznie.</strong></p>
     ${recoveredHtml}
     <p><a href="${FRONTEND_URL}/zgloszenia">Otwórz zgłoszenia</a></p>
     <p>Webhook Meta nie dostarczył tych zgłoszeń. Sprawdź <code>callback_url</code>
@@ -125,8 +126,11 @@ export async function notifyReconcileRecovery(
     ${saturationHtml}
   `
 
+  // Both inboxes, because the mail carries two different messages: ops needs the signal
+  // that the webhook is dead, sales needs the leads — and these recoveries never reach
+  // `LEADS_NOTIFY_EMAIL` through the normal `notifyNewLead` path.
   await payload.sendEmail({
-    to: serverEnv.LEADS_ALERT_EMAIL,
+    to: [serverEnv.LEADS_ALERT_EMAIL, serverEnv.LEADS_NOTIFY_EMAIL],
     subject: `⚠️ Cron odzyskał ${added} zgłoszeń — webhook nie dowozi — Wykończymy`,
     html,
   })
