@@ -347,5 +347,12 @@ Run once, after Phase 3.
 
 #### Automated
 
-- [x] 3.1 notify spec passes
-- [x] 3.2 Mutation check: restoring the second recipient turns a spec red
+- [x] 3.1 notify spec passes — 7b4c2c3b
+- [x] 3.2 Mutation check: restoring the second recipient turns a spec red — 7b4c2c3b
+
+### Whole-tree Gate
+
+- [x] `pnpm typecheck` — clean
+- [x] `pnpm lint` — 0 errors (87 pre-existing warnings)
+- [x] `pnpm test` — 876 passed, 29 skipped
+- [x] `pnpm build` — clean

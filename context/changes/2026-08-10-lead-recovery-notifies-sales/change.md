@@ -1,7 +1,7 @@
 ---
 change_id: lead-recovery-notifies-sales
 title: Recovered leads reach sales — stop stamping notifyStatus skipped
-status: implementing
+status: implemented
 created: 2026-08-10
 updated: 2026-08-10
 archived_at: null

@@ -258,3 +258,16 @@ run it against the dev DB, not prod.
 ### Review gate (added 2026-08-10)
 
 - [ ] Break the Meta token in `.env`, hit the route with the correct secret → **500** _and_ a „🚨 Cron odzyskiwania zgłoszeń nie zadziałał" mail lands in `LEADS_ALERT_EMAIL`. This is the failure the whole change exists to prevent, and the only leg no unit test can prove end-to-end (real Graph rejection → real SMTP send).
+
+## lead-recovery-notifies-sales (EX-660)
+
+Same setup as `cron-lead-reconcile` above (local app, dev DB on 5433, `CRON_SECRET` from `.env`).
+**Caution:** these checks read live Meta data and send real mail to `LEADS_NOTIFY_EMAIL`,
+`LEADS_ALERT_EMAIL`, and — if anything regresses — to a real customer address.
+
+Precondition: a lead that exists in Meta's recent window but not in the local DB (delete it locally).
+
+- [ ] Click „Pobierz zgłoszenia" → the sales inbox receives one ordinary „Nowe zgłoszenie" for that lead, indistinguishable from a webhook-delivered one
+- [ ] The customer address receives **nothing** — no late „Dziękujemy za kontakt". This is the leg the whole `autoReply: 'skip'` option exists for
+- [ ] The recovered row in the admin panel shows `notifyStatus: sent`, `autoReplyStatus: skipped` — never `skipped`/`skipped`
+- [ ] Exactly one summary mail arrives, to `LEADS_ALERT_EMAIL` only (not the sales inbox), with no contact details and no "call them yourself" instruction
