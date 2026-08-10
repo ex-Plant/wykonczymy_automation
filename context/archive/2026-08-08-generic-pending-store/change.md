@@ -38,5 +38,5 @@ bit of its recovery behaviour (form id, file snapshot, reopen-on-failure); it si
 being a render source. Keying on `formId` fixed what the boolean hid: a second dialog's save could
 clear the first one's pill. Guards in `src/__tests__/optimistic-form-store.test.ts`.
 
-Review record: `.review-gate/consolidated-gate.md` (branch-scoped gate, not a per-change
-`reviews/impl-review*.md`).
+Review record: `context/archive/reviews/2026-08-10-consolidated-gate.md` (branch-scoped gate, not
+a per-change `reviews/impl-review*.md`).

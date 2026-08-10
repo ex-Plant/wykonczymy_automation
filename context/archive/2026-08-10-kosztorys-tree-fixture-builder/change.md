@@ -33,7 +33,7 @@ Two facts the issue predates:
 - `buildKosztorysTree` is a **production** function name (`src/lib/kosztorys`, it shows up in the
   specs' own PERF logs), so the builder can't take it either.
 
-Review record: `.review-gate/consolidated-gate.md` (branch-scoped gate, not a per-change
-`reviews/impl-review*.md`). `plan.md` dropped at archive — every piece of its rationale (the name
+Review record: `context/archive/reviews/2026-08-10-consolidated-gate.md` (branch-scoped gate, not
+a per-change `reviews/impl-review*.md`). `plan.md` dropped at archive — every piece of its rationale (the name
 collision, positional addressing, `??`-not-`||` so a deliberate `0`/`null` survives, why
 `skipRevalidation`) lives as comments in `src/__tests__/helpers/kosztorys-db-tree.ts`.
