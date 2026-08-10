@@ -15,7 +15,7 @@ import { AppFooter } from '@/components/nav/app-footer'
 import { CurrentUserProvider } from '@/hooks/use-current-user'
 import { Loader } from '@/components/ui/loader/loader'
 import { EnvBadge } from '@/components/ui/env-badge'
-import { PendingSubmitIndicator } from '@/components/forms/pending-submit-indicator'
+import { PendingSubmitIndicator } from '@/components/ui/pending-submit-indicator'
 
 type FrontendLayoutPropsT = {
   children: React.ReactNode
