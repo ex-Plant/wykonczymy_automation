@@ -241,7 +241,7 @@ Run once, after the phase lands.
 
 #### Automated
 
-- [x] 1.1 Schema spec covers the new field (populated / null / absent / string)
-- [x] 1.2 Action spec covers the guard (over-brutto, non-positive, equality, null-brutto, null-netto)
-- [x] 1.3 New use-receipt-generation spec asserts the netAmount write, incl. unconditional-on-type
-- [x] 1.4 Existing model-fallback + map-line-item specs still pass
+- [x] 1.1 Schema spec covers the new field (populated / null / absent / string) — e15c111f
+- [x] 1.2 Action spec covers the guard (over-brutto, non-positive, equality, null-brutto, null-netto) — e15c111f
+- [x] 1.3 New use-receipt-generation spec asserts the netAmount write, incl. unconditional-on-type — e15c111f
+- [x] 1.4 Existing model-fallback + map-line-item specs still pass — e15c111f
