@@ -221,7 +221,7 @@ export function LineItemsField({
                           // Named outright once a Netto column sits next to it — an unqualified
                           // „Kwota" beside „Netto" reads as the amount that bills the client,
                           // which is exactly backwards on this type.
-                          label={showsNetAmount ? 'Kwota brutto' : 'Kwota'}
+                          label={showsNetAmount ? 'Brutto' : 'Kwota'}
                           placeholder="0.00 PLN"
                           type="number"
                           showError
