@@ -238,3 +238,19 @@ Setup: run the app against the **5435 test DB** (see intro), log in as OWNER/MAN
 
 - [x] **Media labels polluted with a ~30-char blob token** (e.g. `praga-17-06-2026-ed13f6-5b4d4f-3fyR3xjeRHZWrztkEQ4KkRZpKaMhxh.jpg`). Root cause: `addRandomSuffix: true` (commit `1da49ed`) made `@payloadcms/storage-vercel-blob` rewrite the `filename` field with the suffixed blob key; a _separate_ pre-existing double `appendShortId` (extraction + upload) added the second hex. **Fixed** 2026-07-12: reverted `addRandomSuffix`, deduped the short id to the upload boundary. Documented on **EX-394** (corrects its "overwrite risk closed by addRandomSuffix" claim). `test: TDD · unit` — `src/__tests__/receipt-filename.test.ts` guards the dedupe; the `addRandomSuffix` label-rewrite is plugin-level (config revert), **observable only end-to-end** → still owes the upload-a-receipt-and-check-stored-filename verification below.
 - [x] **Re-verify clean label after fix.** Upload a fresh receipt (scan path) → stored `filename` / opened-image label is `<opis>-<one-6hex>.<ext>` with **no** 30-char token and **no** double hex. — 2026-07-12, confirmed on **staging**: `large.heic` stored as `large-9f7604.jpg` — one 6-hex id, **no** 30-char blob token. This exercises a _direct_ upload (not the scan path), which validates the harder-to-test half end-to-end: the `addRandomSuffix` revert (the plugin-level rewrite no unit test can reach). The scan-path double-hex dedupe is deterministic and covered by `src/__tests__/receipt-filename.test.ts` — `buildReceiptFileName` adds no id, so a scan gets exactly the one id from `uniqueFileName`.
+
+## cron-lead-reconcile (EX-416)
+
+Setup: run the app locally (`.env` → 5433 dev DB) and read `CRON_SECRET` from `.env`. The Graph calls
+hit **live Meta data** with the never-expiring Page token, so a sweep here really does insert leads —
+run it against the dev DB, not prod.
+
+### Phase 1: Extract the sweep core
+
+- [ ] „Pobierz zgłoszenia" in the app still reports the same added/scanned counts as before the split
+
+### Phase 2: Cron route, schedule, and recovery alert
+
+- [ ] Hitting `/api/cron/leads-reconcile` locally without a bearer returns 401
+- [ ] Hitting it with the correct `CRON_SECRET` returns counts, and a run that recovers a lead delivers the alert mail to `LEADS_ALERT_EMAIL`
+- [ ] The Vercel dashboard lists the new cron after deploy, and its first run logs a 200

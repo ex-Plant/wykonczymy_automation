@@ -1,7 +1,7 @@
 ---
 change_id: cron-lead-reconcile
 title: Promote the manual lead reconcile sweep to a scheduled cron backstop
-status: implementing
+status: implemented
 created: 2026-08-10
 updated: 2026-08-10
 archived_at: null
