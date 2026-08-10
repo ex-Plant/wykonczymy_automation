@@ -1,11 +1,11 @@
 ---
 change_id: receipt-scan-netto-extraction
 title: AI receipt scan also extracts the netto amount (EX-577)
-status: implemented
+status: archived
 created: 2026-08-10
 updated: 2026-08-10
-archived_at: null
-branch: null
+archived_at: 2026-08-10
+branch: konradantonik/ex-577-ai-receipt-scan-also-extract-the-netto-amount
 worktree: null
 ---
 

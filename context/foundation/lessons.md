@@ -903,3 +903,23 @@
   correct for free.
 - **Applies to**: any global indicator fed by more than one store; more broadly, any place a `??`
   chain between two sources is standing in for "these should have been one".
+
+## No hook-test infrastructure is a design signal, not a blocker — extract the logic, don't install a runner
+
+- **Context**: EX-577's plan called for a `renderHook` spec on `useReceiptGeneration` to prove the
+  scan writes `netAmount` onto the row regardless of transfer type — the decision most likely to be
+  "corrected" by a later reader. The repo has no `@testing-library/react` and no jsdom, and on this
+  arm64 machine any `pnpm install` risks the lightningcss swap.
+- **Problem**: The two obvious moves are both bad. Installing a React test stack to assert four
+  `setFieldValue` calls buys a whole dependency and a jsdom environment for one test. Skipping the
+  spec leaves the load-bearing decision — the deliberately absent `billsNetAmount` gate — with
+  nothing but a comment defending it.
+- **Rule**: When a behaviour is only reachable through a rendered hook, that is usually the hook
+  hoarding logic that isn't stateful. Lift the pure part out (`applyReceiptToRow(setFieldValue,
+index, data)`) and spec it with a stub. The hook keeps the `useState`/concurrency/toast work that
+  genuinely needs React; the decision worth defending moves to a function whose name a future reader
+  meets before the comment. Reach for new test infrastructure only when the thing under test is
+  actually React behaviour — rendering, effects, re-render timing.
+- **Applies to**: any hook in `src/components/**` whose interesting logic is a mapping or a decision;
+  more broadly, any "I need a heavier harness to test this" moment — check first whether the harness
+  is standing in for a missing seam.
