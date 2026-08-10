@@ -27,13 +27,13 @@ Diff under review: `8d82c0d9..HEAD` (commits `256bb423`, `e86859ea`, `abfc6c0d`,
       attached twice. Same guarded helper as F1 turns the assertion into a check.
       test: test-driven-debugging · unit — `delete-invoice-media.test.ts` „keeps a page another
       expense still references"
-- [x] 🟡 WARNING · fixed · impl-review F6 · `src/lib/actions/transfers.ts:325,338,349` · the three
-      invoice actions went through `protectedAction` only, so any MANAGER could detach — and thereby
-      permanently delete — the invoice of any transfer, cancelled ones included. All three now run
-      `fetchAndAuthorize(payload, user, transferId, 'edycji')` like the other mutators.
-      test: no automated test — `fetchAndAuthorize` and `canMutateTransfer` already carry their own
-      specs; this finding is the missing call, verified by the existing action specs still passing
-      through it
+- [x] 🟡 WARNING · dismissed · impl-review F6 · `src/lib/actions/transfers.ts:325,338,349` · the three
+      invoice actions go through `protectedAction` only, so any management session can attach or
+      detach the invoice of any transfer. **Not a defect — the owner ruled this is the desired
+      behaviour** (2026-08-10) and it predates this slice. I had wired `fetchAndAuthorize` into all
+      three; that was an unplanned access-control change smuggled into a data-model slice, and it
+      was reverted. `setTransferInvoices` now carries a comment saying the omission is deliberate,
+      so the next reviewer doesn't re-file it.
 - [x] 🟡 WARNING · fixed · impl-review F5 + F7 · `src/app/(frontend)/api/extract-receipt/route.ts` ·
       the scan route validated less than the upload route it was copied from (no mime allowlist, no
       empty-file check, no page bound, `JSON.parse` unguarded → a client typo became a 500 that fired

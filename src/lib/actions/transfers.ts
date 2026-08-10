@@ -292,20 +292,19 @@ export async function updateTransferAction(
  * Rewrite a transfer's invoice pages to whatever `nextIds` derives from the current list, then
  * delete the media the new list dropped once nothing else references it.
  *
- * Goes through `fetchAndAuthorize` like every other mutator: detaching a page is an edit, and
- * `removeAllTransferInvoicesAction` destroys a whole multi-page document in one call.
+ * Deliberately does NOT go through `fetchAndAuthorize` (owner, 2026-08-10): attaching and
+ * detaching invoice pages is open to every management session regardless of who created the
+ * transfer, exactly as it was before the pages became a list.
  */
 async function setTransferInvoices(
   payload: Payload,
-  user: SessionUserT,
   transferId: number,
   nextIds: (currentIds: number[]) => number[],
 ): Promise<ActionResultT> {
   const step = perfStart()
 
-  const authorized = await fetchAndAuthorize(payload, user, transferId, 'edycji')
-  if ('error' in authorized) return { success: false, error: authorized.error }
-  const currentIds = invoiceIds(authorized.original.invoice)
+  const transfer = await payload.findByID({ collection: 'transactions', id: transferId, depth: 0 })
+  const currentIds = invoiceIds(transfer.invoice)
   const next = nextIds(currentIds)
   console.log(`[PERF]   findByID(${transferId}) ${step()}ms`)
 
@@ -330,8 +329,8 @@ async function setTransferInvoices(
 export async function updateTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'updateTransferInvoiceAction',
-    ({ payload, user }) =>
-      setTransferInvoices(payload, user, transferId, (current) =>
+    ({ payload }) =>
+      setTransferInvoices(payload, transferId, (current) =>
         current.includes(invoiceMediaId) ? current : [...current, invoiceMediaId],
       ),
     ['transfers'],
@@ -342,8 +341,8 @@ export async function updateTransferInvoiceAction(transferId: number, invoiceMed
 export async function removeTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'removeTransferInvoiceAction',
-    ({ payload, user }) =>
-      setTransferInvoices(payload, user, transferId, (current) =>
+    ({ payload }) =>
+      setTransferInvoices(payload, transferId, (current) =>
         current.filter((id) => id !== invoiceMediaId),
       ),
     ['transfers'],
@@ -354,7 +353,7 @@ export async function removeTransferInvoiceAction(transferId: number, invoiceMed
 export async function removeAllTransferInvoicesAction(transferId: number) {
   return protectedAction(
     'removeAllTransferInvoicesAction',
-    ({ payload, user }) => setTransferInvoices(payload, user, transferId, () => []),
+    ({ payload }) => setTransferInvoices(payload, transferId, () => []),
     ['transfers'],
   )
 }

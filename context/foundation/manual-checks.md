@@ -753,7 +753,7 @@ exists — read them as superseded by this section, not as owed.
 - [ ] „Usuń stronę" kasuje tylko oglądaną stronę; pozostałe zostają, licznik się zmniejsza.
 - [ ] „Usuń całą fakturę" znika wtedy, gdy została jedna strona.
 - [ ] Usunięcie strony i ponowny wybór tego samego pliku działa (input czyści wartość).
-- [ ] MANAGER nie może odpiąć faktury z anulowanego transferu.
+- [ ] Faktury można dodać/usunąć także na cudzej transakcji — bez komunikatu o uprawnieniach.
 
 ### Phase 4-5: Dodawanie i skan AI
 
