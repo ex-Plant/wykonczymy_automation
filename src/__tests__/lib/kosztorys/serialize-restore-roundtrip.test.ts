@@ -177,7 +177,7 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       ],
       stages: [
         { label: 'Etap 1', plane: 'w_tools', worker: workerId },
-        // label null AND plane null AND worker null — the all-nullable extreme on the stages row.
+        // The all-nullable extreme on a stages row: the omitted plane and worker default null too.
         { label: null },
         { label: 'Etap 3', plane: 'own_tools' },
       ],

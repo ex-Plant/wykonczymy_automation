@@ -920,3 +920,22 @@
   bare `stopPropagation` and carries this latent leak (harmless today; tracked on EX-657).
 - **Applies to**: any third-party widget with document-level key/mouse handlers layered under a React
   editor — grids, drag libraries, hotkey managers.
+
+## A store that owns recovery state does not have to be the thing that renders the signal
+
+- **Context**: `optimistic-form-store` closes a dialog and saves in the background, so it already
+  carries what a failed save needs to recover — the form id, the picked-file snapshot, reopen-on-
+  failure. `PendingSubmitIndicator` therefore read _it_ for "is a save in flight". EX-648 added a
+  generic keyed `pending-store` for transition-based saves that can't satisfy that contract, and left
+  the dialog path on the old source — so one pill had two sources and a `label ?? 'Zapisywanie…'`
+  fallback to paper over the one that carries no label.
+- **Problem**: The two sources weren't two states, they were one state read twice. The dialog source
+  was also a bare boolean, so two saves overlapping meant the first to settle cleared the second's
+  pill. The fallback existed only to hide that one source was shaped wrong for the job.
+- **Rule**: Separate _owning_ state from _broadcasting_ it. A store that legitimately owns rich
+  recovery state can call into the generic signal store like any other caller — one `start` on entry,
+  one `stop` in a `finally` — instead of being subscribed to as a second source. The renderer then has
+  one selector and no fallback branch, and the signal store's keying (not a boolean) makes concurrency
+  correct for free.
+- **Applies to**: any global indicator fed by more than one store; more broadly, any place a `??`
+  chain between two sources is standing in for "these should have been one".

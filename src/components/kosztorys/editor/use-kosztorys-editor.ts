@@ -844,10 +844,9 @@ export function useKosztorysEditor({
     )
   }
 
-  // The one optimistic single-field stage write, shared by all three header edits: skip a no-op,
-  // apply locally, save through the debounced saver for the same revert-on-error discipline as cell
-  // edits. The revert restores the prior value only if nothing newer landed on the field meanwhile
-  // (it still reads `value`) — which is what makes a slow rejected write safe to roll back.
+  // Shared by all three header edits so they inherit the cell edits' revert-on-error discipline.
+  // The revert restores the prior value only if nothing newer landed on the field meanwhile (it
+  // still reads `value`) — which is what makes a slow rejected write safe to roll back.
   //
   // `saveKey` is passed rather than derived from `field`: it is the debounce identity, so renaming a
   // field must not silently re-bucket in-flight saves.
@@ -1076,15 +1075,20 @@ export function useKosztorysEditor({
   // share this shape differ only in where their `before` is read from — VAT off the denormalized rows,
   // the other two off `tree` — so that stays the caller's job.
   function saveSetting<T>(label: string, apply: (value: T) => Promise<void>, before: T, next: T) {
+    // Keyed per setting, not per subsystem: nothing serialises these transitions, so changing VAT
+    // and then tryb before the first lands would otherwise have the first `finally` clear the one
+    // shared key while the second write is still on the wire — the pill vanishing mid-save is the
+    // exact failure the store is keyed rather than boolean to prevent.
+    const pendingKey = `${SETTINGS_PENDING_KEY}:${label}`
     startSettingsSave(async () => {
       // The popover can close mid-save, so the progress signal has to live outside this subtree —
       // hence the global store rather than a pill rendered by „Opcje rozliczenia" itself.
-      usePendingStore.getState().start(SETTINGS_PENDING_KEY, 'Zapisywanie…')
+      usePendingStore.getState().start(pendingKey, 'Zapisywanie…')
       try {
         await apply(next)
         if (before !== next) pushReversible(label, apply, before, next)
       } finally {
-        usePendingStore.getState().stop(SETTINGS_PENDING_KEY)
+        usePendingStore.getState().stop(pendingKey)
       }
     })
   }

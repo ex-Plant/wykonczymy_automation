@@ -1,9 +1,9 @@
 import type { Payload } from 'payload'
 import type { KosztorysItem, KosztorysSection, KosztorysStage } from '@/payload-types'
 
-// The DB-gated specs each used to hand-build their tree with a run of payload.create calls, so a new
-// spec cost ~60 lines of fixture before it asserted anything and every spec's column coverage drifted
-// on its own (EX-635). The declarative form here keeps the whole tree readable as one literal.
+// One declarative literal per tree, so a DB-gated spec states its fixture instead of assembling it —
+// hand-built payload.create runs cost ~60 lines before a spec asserted anything and let each spec's
+// column coverage drift on its own (EX-635).
 //
 // Sibling with a confusingly close name: helpers/kosztorys-tree.ts builds an in-memory KosztorysTreeT
 // for the pure-calculation specs. This one writes rows. They share nothing but the domain noun.

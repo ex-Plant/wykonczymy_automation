@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
-import { useStore } from '@/components/forms/hooks/form-hooks'
+import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
@@ -60,12 +60,7 @@ export function EntityComboboxField({
   const [activeOnly, setActiveOnly] = useState(true)
   const config = VARIANT_CONFIG[variant]
 
-  // Read from the form store rather than the field render-prop: the option list has to be built
-  // before `form.AppField` renders, since an empty list swaps the whole control for EmptyFieldMessage.
-  const selectedId = useStore(
-    form.store,
-    (state: unknown) => (state as { values: Record<string, string> }).values[config.name],
-  )
+  const selectedId = useFieldValue(form, config.name)
 
   const filtered = activeOrSelected(items, activeOnly, selectedId).map((item) => ({
     value: String(item.id),

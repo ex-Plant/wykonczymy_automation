@@ -67,13 +67,14 @@ export function SheetSetupDialog({ investmentId, trigger }: PropsT) {
               Najpierw udostępnij arkusz <strong>jako Edytujący</strong> dla konta usługi, a
               następnie wklej jego link poniżej.
             </Description>
+            {/* No icon: this is the continuation of the note above it, not a second one. */}
             {saEmail && (
-              <p className="text-muted-foreground text-xs">
+              <Description size="xs" withIcon={false}>
                 Konto usługi:{' '}
                 <code className="bg-muted rounded px-1 py-0.5 text-xs break-all select-all">
                   {saEmail}
                 </code>
-              </p>
+              </Description>
             )}
             <Input
               value={link}

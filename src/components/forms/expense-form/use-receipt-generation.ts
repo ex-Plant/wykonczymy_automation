@@ -61,54 +61,67 @@ export function useReceiptGeneration({
     // per-row marker. The server-side SENTRY-REQUIRED log carries the detail.
     let unreadable = 0
 
-    await mapWithConcurrency(eligible, GENERATION_CONCURRENCY, async ({ row, index }) => {
-      const id = row.id
-      setGeneratingIds((prev) => new Set(prev).add(id))
-      try {
-        // The map already holds the file processed at ingest (compressed / HEIC-converted), so the
-        // scan payload is under the serverAction body limit without re-compressing here.
-        const result = await extractReceiptAction({
-          file: files.get(id)!,
-          otherCategoryNames,
-        })
-        if (!result.success) throw new Error(result.error)
+    // Every teardown belongs in the one `finally`, not after the await: `mapWithConcurrency`
+    // propagates a rejecting `fn`, and anything left outside would be skipped on that path —
+    // stranding `isGenerating` true, which disables the scan button and every row's remove
+    // control until unmount. The pill matters most (it is portalled to document.body, so it
+    // would sit over every page, not just this form), but it is not the only thing to clear.
+    try {
+      await mapWithConcurrency(eligible, GENERATION_CONCURRENCY, async ({ row, index }) => {
+        const id = row.id
+        setGeneratingIds((prev) => new Set(prev).add(id))
+        try {
+          // The map already holds the file processed at ingest (compressed / HEIC-converted), so the
+          // scan payload is under the serverAction body limit without re-compressing here.
+          const result = await extractReceiptAction({
+            file: files.get(id)!,
+            otherCategoryNames,
+          })
+          if (!result.success) throw new Error(result.error)
 
-        const data = result.data
-        if (data.description === UNREADABLE_RECEIPT) unreadable += 1
-        form.setFieldValue(`lineItems[${index}].description`, data.description)
-        form.setFieldValue(
-          `lineItems[${index}].amount`,
-          data.amount === null ? '' : String(data.amount),
-        )
-        form.setFieldValue(`lineItems[${index}].invoiceNote`, data.invoiceNote)
-        // Category is left blank for the user to pick — the model's category inference wasn't
-        // reliable enough (frequent mismatches).
-        // Apply the Opis-based name to the file now so it uploads under that name at submit; the
-        // reactive file store re-renders the FV label to match.
-        if (data.filename) renameFile(id, data.filename)
-      } catch (error) {
-        // TODO(EX-449) SENTRY-REQUIRED: per-receipt AI extraction failures must be captured once
-        // Sentry is wired — a failed row otherwise dies in a generic toast.
-        logError(`[receipt-generation] row ${id} failed`, error)
-        failed.add(id)
-        failedMessages.add(error instanceof Error ? error.message : String(error))
-      } finally {
-        setGeneratingIds((prev) => {
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
-        done += 1
-        setGenerationProgress({ done, total: eligible.length })
-      }
-    })
-      // Cleared here rather than after the await: the pill is portalled to document.body, so an
-      // unexpected rejection would leave it sitting over every page, not just this form.
-      .finally(() => usePendingStore.getState().stop(SCAN_PENDING_KEY))
-
-    setFailedIds(failed)
-    setIsGenerating(false)
-    setGenerationProgress(null)
+          const data = result.data
+          if (data.description === UNREADABLE_RECEIPT) unreadable += 1
+          form.setFieldValue(`lineItems[${index}].description`, data.description)
+          form.setFieldValue(
+            `lineItems[${index}].amount`,
+            data.amount === null ? '' : String(data.amount),
+          )
+          form.setFieldValue(`lineItems[${index}].invoiceNote`, data.invoiceNote)
+          // Category is left blank for the user to pick — the model's category inference wasn't
+          // reliable enough (frequent mismatches).
+          // Apply the Opis-based name to the file now so it uploads under that name at submit; the
+          // reactive file store re-renders the FV label to match.
+          if (data.filename) renameFile(id, data.filename)
+        } catch (error) {
+          // TODO(EX-449) SENTRY-REQUIRED: per-receipt AI extraction failures must be captured once
+          // Sentry is wired — a failed row otherwise dies in a generic toast.
+          logError(`[receipt-generation] row ${id} failed`, error)
+          failed.add(id)
+          failedMessages.add(error instanceof Error ? error.message : String(error))
+        } finally {
+          setGeneratingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+          done += 1
+          setGenerationProgress({ done, total: eligible.length })
+        }
+      })
+    } catch (error) {
+      // The caller's prop is `() => void` (line-items-field's onGenerate), so it is invoked
+      // fire-and-forget and has nowhere to put a rejection. Reporting it here is what keeps an
+      // escaped error a visible failure rather than an unhandled rejection in the console.
+      // TODO(EX-449) SENTRY-REQUIRED.
+      logError('[receipt-generation] scan aborted', error)
+      toastMessage('Skanowanie paragonów zostało przerwane', 'error')
+      return
+    } finally {
+      usePendingStore.getState().stop(SCAN_PENDING_KEY)
+      setFailedIds(failed)
+      setIsGenerating(false)
+      setGenerationProgress(null)
+    }
 
     const ok = eligible.length - failed.size - unreadable
     if (failed.size === 0) {

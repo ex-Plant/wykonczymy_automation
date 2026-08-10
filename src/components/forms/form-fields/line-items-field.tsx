@@ -257,10 +257,14 @@ export function LineItemsField({
                         fieldClassName="min-w-0 flex-1"
                       />
                     )}
+                    {/* No icon: this row is already Kwota + Netto + Opis + kategoria + the delete
+                      slot, and a `shrink-0` glyph would take its ~1rem straight off the flex-1
+                      inputs. `tone="error"` alone carries the alarm here. */}
                     {failedIds?.has(item.id) && (
                       <Description
                         tone="error"
                         size="xs"
+                        withIcon={false}
                         className="mt-8 shrink-0 whitespace-nowrap"
                       >
                         nie odczytano

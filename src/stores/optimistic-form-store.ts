@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { usePendingStore } from '@/stores/pending-store'
 import { toastMessage } from '@/lib/utils/toast'
 import { logError } from '@/lib/utils/log-error'
 import type { ActionResultT } from '@/types/action'
@@ -62,6 +63,11 @@ export const useOptimisticFormStore = create<OptimisticFormStoreT>()((set) => ({
       submission: { formId, invoiceFiles, status: 'pending', error: null },
     })
 
+    // This store owns recovery state (which dialog to reopen, which files to restore); the pill is
+    // raised through the generic pending store so the indicator has one source instead of two.
+    // Keyed on formId, so two dialogs saving at once can't clear each other's pill.
+    usePendingStore.getState().start(formId, 'Zapisywanie…')
+
     // Fire-and-forget — runs after dialog unmounts
     action()
       .then((result) => {
@@ -92,6 +98,9 @@ export const useOptimisticFormStore = create<OptimisticFormStoreT>()((set) => ({
         }))
         toastMessage(errorMessage, 'error', 5000)
       })
+      // finally, not a stop() per branch: a throw inside a handler (toast, onSuccess) would
+      // otherwise leave the pill up forever with no dialog on screen to explain it.
+      .finally(() => usePendingStore.getState().stop(formId))
   },
 
   clearSubmission: () => set({ submission: null }),

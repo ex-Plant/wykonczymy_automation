@@ -34,9 +34,8 @@ describe.skipIf(!ENV_READY)('restore with tied display_order (DB)', () => {
       vatRate: 0.23,
     })
 
-    // Both sections on display_order 0, and both of section A's items on display_order 0 — the two
-    // ties that exist in the wild. Every `displayOrder: 0` here is deliberate, overriding the
-    // builder's index default; that tie IS the fixture.
+    // Every `displayOrder: 0` below is deliberate, overriding the builder's index default — the tie
+    // IS the fixture, and these are the two ties that occur in the wild.
     const item = { displayOrder: 0, unit: 'm2', plannedQty: 1, clientPrice: 100 }
     await createKosztorysTree(payload, investmentId, {
       sections: [

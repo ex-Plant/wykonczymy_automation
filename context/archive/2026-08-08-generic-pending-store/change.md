@@ -1,10 +1,10 @@
 ---
 change_id: generic-pending-store
 title: Generic pending store so transition-based saves reuse the global indicator
-status: implemented
+status: archived
 created: 2026-08-08
-updated: 2026-08-08
-archived_at: null
+updated: 2026-08-10
+archived_at: 2026-08-10T10:12:43Z
 branch: konradantonik/ex-648-generic-pending-store
 worktree: null
 linear: EX-648
@@ -28,3 +28,15 @@ the store's hardcoded „Zapisywanie…" can't express). Leave `submitOptimistic
 Test disposition from the issue: `test: TDD · unit` — the store is a pure Zustand reducer, spec under
 `src/__tests__/stores/pending-store.test.ts`. The indicator's two-source read is a thin render
 concern and gets no spec.
+
+## Reversed after review (2026-08-10, `154ebe8a`)
+
+"Leave `submitOptimistically` alone" did not survive the branch review gate. The dialog path now
+raises a pending key of its own and releases it in a `finally`, so the indicator reads **one** source,
+not two — the `label ?? 'Zapisywanie…'` fallback is gone with it. `submitOptimistically` keeps every
+bit of its recovery behaviour (form id, file snapshot, reopen-on-failure); it simply stopped also
+being a render source. Keying on `formId` fixed what the boolean hid: a second dialog's save could
+clear the first one's pill. Guards in `src/__tests__/optimistic-form-store.test.ts`.
+
+Review record: `context/archive/reviews/2026-08-10-consolidated-gate.md` (branch-scoped gate, not
+a per-change `reviews/impl-review*.md`).

@@ -29,12 +29,17 @@ export type InsertKosztorysTreeResultT = {
 // legitimate resting state (the summary has a residual row for it), not a corrupted one.
 async function liveWorkerIds(db: DbExecutorT, ids: number[]): Promise<Set<number>> {
   if (ids.length === 0) return new Set()
+  // FOR SHARE, not a bare SELECT: under READ COMMITTED a plain read takes no lock, so a user
+  // hard-deleted between this check and the stage INSERT would still meet the FK and take the whole
+  // restore down — the very failure above, merely rarer. The lock holds the rows for the caller's
+  // transaction; the id set is bounded by etap count, so it costs nothing worth measuring.
   const res = await db.execute(sql`
     SELECT id FROM users
     WHERE id IN (${sql.join(
       ids.map((id) => sql`${id}`),
       sql.raw(', '),
     )})
+    FOR SHARE
   `)
   return new Set(res.rows.map((row) => Number(row.id)))
 }
