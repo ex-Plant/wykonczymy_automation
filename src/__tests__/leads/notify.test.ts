@@ -129,27 +129,21 @@ describe('notifyReconcileRecovery', () => {
     {
       id: 11,
       name: 'Anna Nowak',
-      email: 'anna.nowak@example.com',
-      phone: '+48500600700',
       formName: 'komercyjnie - wwa',
       submittedAt: '2026-07-05T18:48:40.000Z',
     },
   ]
 
-  // The recovered lead is stamped `skipped`, so notifyNewLead never fires for it and
-  // this mail is the only place it surfaces. A bare count is unactionable — sales
-  // needs the contact details to call these people back (EX-660).
-  it('lists each recovered lead, not just how many there were', async () => {
+  // Since EX-660 each recovered lead reaches sales through the ordinary notifyNewLead,
+  // so this mail is an ops signal about the dead webhook — not a second copy of the
+  // lead. Sending it to the sales inbox would just duplicate what they already have.
+  it('goes to ops alone and lists the recovered leads as an audit trail', async () => {
     const sendEmail = vi.fn().mockResolvedValue({})
     await notifyReconcileRecovery(fakePayload(sendEmail), { recovered, scanned: 30 })
 
     const arg = sendEmail.mock.calls[0][0]
-    // Sales too, not just ops: a recovered lead never reaches LEADS_NOTIFY_EMAIL
-    // through notifyNewLead, so this is the only mail that carries it to them.
-    expect(arg.to).toEqual(['ops@example.com', 'inbox@example.com'])
+    expect(arg.to).toBe('ops@example.com')
     expect(arg.html).toContain('Anna Nowak')
-    expect(arg.html).toContain('anna.nowak@example.com')
-    expect(arg.html).toContain('+48500600700')
     expect(arg.html).toContain('komercyjnie - wwa')
   })
 

@@ -82,10 +82,10 @@ export async function notifyShapeAlert(
  * Silent on a clean run. Best-effort: the leads are already persisted, so a send
  * failure must not fail the cron.
  *
- * Lists the leads themselves, not just a count (EX-660): a recovered lead is stamped
- * `skipped`, so sales never gets `notifyNewLead` for it and this mail is the only
- * place it surfaces. A bare "Odzyskane: 12" is a number nobody can act on — the
- * contact details make it a call list.
+ * Goes to ops alone, and lists the recovered leads as an audit trail rather than a
+ * call list: since EX-660 each one reaches sales through the ordinary `notifyNewLead`,
+ * so repeating their contact details here would only duplicate a mail sales already
+ * has. The one thing this mail is for is the broken webhook.
  */
 export async function notifyReconcileRecovery(
   payload: Payload,
@@ -96,8 +96,6 @@ export async function notifyReconcileRecovery(
     .map(
       (lead) => `<table>
       ${row('Imię i nazwisko', lead.name)}
-      ${row('Email', lead.email)}
-      ${row('Telefon', lead.phone)}
       ${row('Formularz', lead.formName)}
       ${row('Data', lead.submittedAt)}
     </table>`,
@@ -116,9 +114,10 @@ export async function notifyReconcileRecovery(
   const html = `
     <h2>⚠️ Cron odzyskał zgłoszenia pominięte przez webhook</h2>
     <p>Odzyskane: <strong>${added}</strong> z ${context.scanned} sprawdzonych.</p>
-    <p><strong>Te zgłoszenia ominęły normalną ścieżkę: nie poszło standardowe
-    powiadomienie „Nowe zgłoszenie”, a klienci nie dostali automatycznej odpowiedzi.
-    Ten mail to jedyny ślad — odezwij się do nich ręcznie.</strong></p>
+    <p>Handlowcy dostali za każde z nich zwykłe powiadomienie „Nowe zgłoszenie” —
+    poniższa lista jest tylko śladem audytowym. Klienci nie dostali automatycznej
+    odpowiedzi: po kilku dniach byłaby gorsza niż jej brak.</p>
+    <p><strong>Do zrobienia jest webhook, nie te zgłoszenia.</strong></p>
     ${recoveredHtml}
     <p><a href="${FRONTEND_URL}/zgloszenia">Otwórz zgłoszenia</a></p>
     <p>Webhook Meta nie dostarczył tych zgłoszeń. Sprawdź <code>callback_url</code>
@@ -126,11 +125,8 @@ export async function notifyReconcileRecovery(
     ${saturationHtml}
   `
 
-  // Both inboxes, because the mail carries two different messages: ops needs the signal
-  // that the webhook is dead, sales needs the leads — and these recoveries never reach
-  // `LEADS_NOTIFY_EMAIL` through the normal `notifyNewLead` path.
   await payload.sendEmail({
-    to: [serverEnv.LEADS_ALERT_EMAIL, serverEnv.LEADS_NOTIFY_EMAIL],
+    to: serverEnv.LEADS_ALERT_EMAIL,
     subject: `⚠️ Cron odzyskał ${added} zgłoszeń — webhook nie dowozi — Wykończymy`,
     html,
   })

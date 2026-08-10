@@ -338,14 +338,14 @@ Run once, after Phase 3.
 
 #### Automated
 
-- [x] 2.1 reconcile-sweep spec passes
-- [x] 2.2 reconcile-leads spec passes
-- [x] 2.3 cron route spec passes
-- [x] 2.4 Mutation check: reverting `autoReply: 'skip'` turns a spec red
+- [x] 2.1 reconcile-sweep spec passes — 8da9ca7e
+- [x] 2.2 reconcile-leads spec passes — 8da9ca7e
+- [x] 2.3 cron route spec passes — 8da9ca7e
+- [x] 2.4 Mutation check: reverting `autoReply: 'skip'` turns a spec red — 8da9ca7e
 
 ### Phase 3: The summary mail reverts to an ops signal
 
 #### Automated
 
-- [ ] 3.1 notify spec passes
-- [ ] 3.2 Mutation check: restoring the second recipient turns a spec red
+- [x] 3.1 notify spec passes
+- [x] 3.2 Mutation check: restoring the second recipient turns a spec red
