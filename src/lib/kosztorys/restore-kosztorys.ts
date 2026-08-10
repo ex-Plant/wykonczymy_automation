@@ -1,7 +1,7 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
-import { insertKosztorysTree } from './insert-kosztorys-tree'
+import { insertKosztorysTree, type InsertKosztorysTreeResultT } from './insert-kosztorys-tree'
 import type { SnapshotPayloadT } from './snapshot-format'
 
 // Atomically revert an investment's whole kosztorys to a serialized snapshot: wipe the live tree,
@@ -14,7 +14,7 @@ export async function restoreKosztorys(
   req: PayloadRequest,
   investmentId: number,
   snapshot: SnapshotPayloadT,
-): Promise<void> {
+): Promise<InsertKosztorysTreeResultT> {
   const db = await getDb(payload, req) // transaction-scoped Drizzle handle (req carries transactionID)
   const where = { investment: { equals: investmentId } }
 
@@ -23,7 +23,7 @@ export async function restoreKosztorys(
   await payload.delete({ collection: 'kosztorys-sections', where, req })
   await payload.delete({ collection: 'kosztorys-stages', where, req })
 
-  await insertKosztorysTree(db, investmentId, snapshot)
+  const inserted = await insertKosztorysTree(db, investmentId, snapshot)
 
   await payload.update({
     collection: 'investments',
@@ -36,4 +36,6 @@ export async function restoreKosztorys(
       // Global discount is intentionally not restored — the live amount discount stays as-is.
     },
   })
+
+  return inserted
 }
