@@ -17,7 +17,7 @@ const SCAN_PENDING_KEY = 'receipt-generation'
 type ReceiptGenerationDepsT = {
   form: BulkExpenseFormApiT
   otherCategories: OtherCategoryRefT[]
-  getFiles: () => Map<string, File>
+  getFiles: () => Map<string, File[]>
   renameFile: (id: string, newName: string) => void
 }
 
@@ -75,7 +75,7 @@ export function useReceiptGeneration({
           // The map already holds the file processed at ingest (compressed / HEIC-converted), so the
           // scan payload is under the serverAction body limit without re-compressing here.
           const result = await extractReceiptAction({
-            file: files.get(id)!,
+            file: files.get(id)![0],
             otherCategoryNames,
           })
           if (!result.success) throw new Error(result.error)

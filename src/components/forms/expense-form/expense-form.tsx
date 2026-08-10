@@ -79,7 +79,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     // Keyed by id, so surviving rows' markers/files need no shift and the reactive store
     // re-renders the removed row on its own.
     handleRemoveLineItem,
-    getFile,
+    removeFileAt,
+    getRowFiles,
     getFiles,
     renameFile,
     reset: resetInvoiceFiles,
@@ -157,7 +158,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       await submit(!!keepOpen, {
         form,
         action: async () => {
-          let invoiceMediaIds: (number | undefined)[] | undefined
+          let invoiceMediaIds: number[][] | undefined
           if (files.size > 0) {
             try {
               // Submit is the only upload site: the AI scan sends raw bytes and persists nothing, so
@@ -297,8 +298,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
             hasInvestment={!!currentInvestment}
             onRemoveItem={handleRemoveLineItem}
             onFileChange={attachFile}
+            onRemoveFile={removeFileAt}
             onRegisterFiles={registerFiles}
-            getFile={getFile}
+            getRowFiles={getRowFiles}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             generatingIds={generatingIds}

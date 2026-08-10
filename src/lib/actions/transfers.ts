@@ -28,7 +28,7 @@ import { logError } from '@/lib/utils/log-error'
 import { resolveId } from '@/lib/utils/resolve-id'
 import { invoiceIds } from '@/lib/queries/transfer-mapping'
 
-export async function createTransferAction(data: CreateTransferFormT, invoiceMediaId?: number) {
+export async function createTransferAction(data: CreateTransferFormT, invoiceMediaIds?: number[]) {
   return protectedAction(
     `createTransferAction type=${data.type}`,
     async ({ payload, user }) => {
@@ -50,7 +50,7 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
         data: {
           ...data,
           description: data.description || '',
-          invoice: invoiceMediaId ? [invoiceMediaId] : undefined,
+          invoice: invoiceMediaIds?.length ? invoiceMediaIds : undefined,
           createdBy: user.id,
         },
       })
@@ -64,7 +64,7 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
 
 export async function createBulkTransferAction(
   data: CreateBulkExpenseFormT,
-  invoiceMediaIds?: (number | undefined)[],
+  invoiceMediaIds?: number[][],
 ) {
   const lineCount = data.lineItems.length
 
@@ -93,7 +93,7 @@ export async function createBulkTransferAction(
           const ids: number[] = []
           for (let i = 0; i < parsed.data.lineItems.length; i++) {
             const item = parsed.data.lineItems[i]
-            const invoiceMediaId = invoiceMediaIds?.[i]
+            const invoicePages = invoiceMediaIds?.[i]
             const created = await payload.create({
               collection: 'transactions',
               req,
@@ -110,7 +110,7 @@ export async function createBulkTransferAction(
                 worker: parsed.data.worker,
                 expenseCategory: item.expenseCategory,
                 otherCategory: item.category,
-                invoice: invoiceMediaId ? [invoiceMediaId] : undefined,
+                invoice: invoicePages?.length ? invoicePages : undefined,
                 invoiceNote: item.invoiceNote,
                 settled: canBeSettled(parsed.data.type) && parsed.data.settled === true,
                 createdBy: user.id,

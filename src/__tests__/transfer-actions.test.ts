@@ -278,12 +278,12 @@ describe('createTransferAction', () => {
     expect(result.success).toBe(false)
   })
 
-  it('invoice mediaId → passes it as a one-page list to payload.create', async () => {
-    await createTransferAction(makeSingleTransferData(), 42)
+  it('invoice page list → passes it straight to payload.create', async () => {
+    await createTransferAction(makeSingleTransferData(), [42, 43])
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ invoice: [42] }),
+        data: expect.objectContaining({ invoice: [42, 43] }),
       }),
     )
   })
@@ -448,12 +448,12 @@ describe('createBulkTransferAction', () => {
     }
   })
 
-  it('each create gets correct invoice mediaId from array', async () => {
-    const mediaIds = [101, undefined, 103]
+  it('each create gets its own row’s invoice pages, and a page-less row gets none', async () => {
+    const mediaIds = [[101, 102], [], [103]]
 
     await createBulkTransferAction(makeBulkTransferData(3), mediaIds)
 
-    expect(mockCreate.mock.calls[0][0].data.invoice).toEqual([101])
+    expect(mockCreate.mock.calls[0][0].data.invoice).toEqual([101, 102])
     expect(mockCreate.mock.calls[1][0].data.invoice).toBeUndefined()
     expect(mockCreate.mock.calls[2][0].data.invoice).toEqual([103])
   })

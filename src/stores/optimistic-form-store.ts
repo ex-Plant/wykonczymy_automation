@@ -6,7 +6,7 @@ import type { ActionResultT } from '@/types/action'
 
 type PendingSubmissionT = {
   formId: string
-  invoiceFiles: Map<number, File>
+  invoiceFiles: Map<number, File[]>
   status: 'pending' | 'failed'
   error: string | null
 }
@@ -27,7 +27,7 @@ type OptimisticFormStoreT = {
   submission: PendingSubmissionT | null
   submitOptimistically: (
     formId: string,
-    invoiceFiles: Map<number, File>,
+    invoiceFiles: Map<number, File[]>,
     action: () => Promise<ActionResultT>,
     successMessage: string,
     onSuccess: () => void,

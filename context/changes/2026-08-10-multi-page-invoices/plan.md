@@ -633,14 +633,14 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 3.1 Action specs cover append, remove-one, remove-all and the cleanup diff
+- [x] 3.1 Action specs cover append, remove-one, remove-all and the cleanup diff — `4cd98d0c`
 
 ### Phase 4: Add form — multiple files per row
 
 #### Automated
 
-- [ ] 4.1 Upload-resolution specs pin the nested shape and sparse positions
-- [ ] 4.2 Optimistic-store and bulk-create specs pass
+- [x] 4.1 Upload-resolution specs pin the nested shape and sparse positions — `23c2235e`
+- [x] 4.2 Optimistic-store and bulk-create specs pass — `23c2235e`
 
 ### Phase 5: Multi-page AI scan
 

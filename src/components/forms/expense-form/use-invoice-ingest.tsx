@@ -30,8 +30,8 @@ function blockedFilesMessage(blocked: BlockedFileError[]) {
 }
 
 type ArgsT = {
-  // The previous submit's positional Map<number,File> (wire order), if this mount is a recovery.
-  recoveredFiles?: Map<number, File>
+  // The previous submit's positional Map<number,File[]> (wire order), if this mount is a recovery.
+  recoveredFiles?: Map<number, File[]>
   // The recovered rows, in the same order — the id-space the positional files re-key onto.
   storedLineItems?: { id: string }[]
 }
@@ -97,8 +97,8 @@ export function useInvoiceIngest({ recoveredFiles, storedLineItems }: ArgsT) {
     ...files,
     ingestingIds,
     isIngesting: ingestingIds.size > 0,
-    registerFiles: (ids: string[], picked: File[]) =>
-      runIngest(ids, () => registerFilesAt(ids, picked)),
+    registerFiles: (ids: string[], picked: File[], mode?: 'per-row' | 'single-row') =>
+      runIngest(ids, () => registerFilesAt(ids, picked, mode)),
     attachFile: (id: string, e: React.ChangeEvent<HTMLInputElement>) =>
       runIngest([id], () => handleFileChange(id, e)),
   }
