@@ -10,6 +10,9 @@ import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/t
 // dropped upstream rather than carried as a hole — every consumer (preview, ZIP, CSV, print) needs
 // the URL, so a page without one is not a page.
 export type InvoiceFileT = {
+  // The media id, so a single page can be detached. Absent on a locally picked file that hasn't
+  // been uploaded yet — there is nothing to detach from.
+  id?: number
   url: string
   filename: string | null
   mimeType: string | null

@@ -1,4 +1,38 @@
 import { pluralize } from '@/lib/utils/polish-plural'
+import type { InvoiceFileT } from '@/types/transfers'
+
+/**
+ * The widest row shape the zip loop needs — satisfied by both `TransferRowT` and
+ * `MaterialTransactionRowT`. `description` is nullable because the materiały rows allow it; it only
+ * ever feeds the generated filename, so an empty one degrades to a date-only name.
+ */
+export type InvoiceZipRowT = {
+  date: string
+  description: string | null
+  invoices: InvoiceFileT[]
+}
+
+export type InvoiceZipFileT = {
+  url: string
+  // Already deduped against every other file in the archive.
+  name: string
+}
+
+/**
+ * Rows → the flat file list the archive actually fetches. Flattening up front is what keeps the
+ * batch size bounding concurrent *fetches*: six rows of three pages each would otherwise fire
+ * eighteen requests at once. Names dedupe across the whole list, so a three-page row lands as
+ * `date_Opis.jpg`, `…_1.jpg`, `…_2.jpg`.
+ */
+export function flattenInvoiceRows(rows: InvoiceZipRowT[]): InvoiceZipFileT[] {
+  const usedNames = new Set<string>()
+  return rows.flatMap((row) =>
+    row.invoices.map((invoice) => ({
+      url: invoice.url,
+      name: buildUniqueFilename(row.date, row.description ?? '', invoice.filename, usedNames),
+    })),
+  )
+}
 
 export function buildUniqueFilename(
   date: string,
@@ -9,9 +43,15 @@ export function buildUniqueFilename(
   const dateStr = date.slice(0, 10).replace(/-/g, '')
   const safeDesc = sanitizeForFilename(description).slice(0, 40)
   const ext = getExtension(originalFilename)
-  const base = `${dateStr}_${safeDesc}`
+  return dedupeFilename(`${dateStr}_${safeDesc}${ext}`, usedNames)
+}
 
-  let name = `${base}${ext}`
+/** Suffixes `_1`, `_2`, … before the extension until the name is free, then reserves it. */
+export function dedupeFilename(candidate: string, usedNames: Set<string>): string {
+  const ext = getExtension(candidate)
+  const base = ext ? candidate.slice(0, -ext.length) : candidate
+
+  let name = candidate
   let counter = 1
   while (usedNames.has(name)) {
     name = `${base}_${counter}${ext}`
@@ -36,36 +76,44 @@ export function getExtension(filename: string | null): string {
   return dotIndex >= 0 ? filename.slice(dotIndex) : ''
 }
 
+// Rows and files are counted separately because one row now yields several pages — conflating them
+// is what made the old tally able to print „Pobrano 9 z 5".
 export type InvoiceZipTallyT = {
   // Rows the user asked for — the whole visible set, invoice or not.
-  total: number
-  // Of those, the ones carrying a URL to try.
-  withInvoice: number
-  // Of those, the ones whose blob actually made it into the archive.
-  downloaded: number
+  rows: number
+  // Of those, the ones carrying at least one page.
+  rowsWithInvoice: number
+  // Pages the archive set out to fetch.
+  expectedFiles: number
+  // Pages whose blob actually made it into the archive.
+  downloadedFiles: number
 }
 
 /**
  * The closing toast. A bare success count reads as a complete set, so a partial result has to say
- * which of the two shortfalls it hit: rows that never had an invoice attached, and files that failed
+ * which of the two shortfalls it hit: rows that never had an invoice attached, and pages that failed
  * to fetch. Pure, so the wording is testable without a browser.
  */
 export function buildInvoiceZipMessage({
-  total,
-  withInvoice,
-  downloaded,
+  rows,
+  rowsWithInvoice,
+  expectedFiles,
+  downloadedFiles,
 }: InvoiceZipTallyT): string {
-  if (withInvoice === 0) return 'Brak faktur do pobrania'
-  if (downloaded === 0) return 'Nie udało się pobrać żadnej faktury'
-  if (downloaded === total) return `Pobrano ${downloaded} ${pluralizeInvoice(downloaded)}`
+  if (rowsWithInvoice === 0) return 'Brak faktur do pobrania'
+  if (downloadedFiles === 0) return 'Nie udało się pobrać żadnej faktury'
+
+  const missingRows = rows - rowsWithInvoice
+  const failedFiles = expectedFiles - downloadedFiles
+  if (missingRows === 0 && failedFiles === 0) {
+    return `Pobrano ${downloadedFiles} ${pluralizeInvoice(downloadedFiles)}`
+  }
 
   const reasons: string[] = []
-  const missing = total - withInvoice
-  const failed = withInvoice - downloaded
-  if (missing > 0) reasons.push(`${missing} bez faktury`)
-  if (failed > 0) reasons.push(`${failed} nie do pobrania`)
+  if (missingRows > 0) reasons.push(`${missingRows} ${pluralizeRow(missingRows)} bez faktury`)
+  if (failedFiles > 0) reasons.push(`${failedFiles} nie do pobrania`)
 
-  return `Pobrano ${downloaded} z ${total} — ${reasons.join(', ')}`
+  return `Pobrano ${downloadedFiles} z ${expectedFiles} — ${reasons.join(', ')}`
 }
 
 /**
@@ -81,4 +129,9 @@ export function buildInvoiceArchiveName(parts: string[], date: string): string {
 // Singular is accusative here — the noun only ever appears as the object of „Pobrano".
 export function pluralizeInvoice(count: number): string {
   return pluralize(count, ['fakturę', 'faktury', 'faktur'])
+}
+
+// „pozycja" = a row of the list, as distinct from the pages it carries.
+function pluralizeRow(count: number): string {
+  return pluralize(count, ['pozycja', 'pozycje', 'pozycji'])
 }

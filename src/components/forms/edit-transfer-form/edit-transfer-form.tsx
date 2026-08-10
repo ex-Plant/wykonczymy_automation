@@ -172,17 +172,13 @@ export function EditTransferForm({
           </form.AppField>
 
           <div className="space-y-2">
-            {row.invoiceUrl && !selectedFileName && (
-              <InvoicePreviewButton
-                url={row.invoiceUrl}
-                filename={row.invoiceFilename}
-                mimeType={row.invoiceMimeType}
-              />
+            {row.invoices.length > 0 && !selectedFileName && (
+              <InvoicePreviewButton invoices={row.invoices} />
             )}
             <FileInput
               key={fileInputKey}
               ref={fileRef}
-              label={row.invoiceUrl ? 'Zamień fakturę' : 'Dodaj fakturę'}
+              label={row.invoices.length > 0 ? 'Dodaj stronę' : 'Dodaj fakturę'}
               accept="image/*,application/pdf"
               placeholder={selectedFileName ?? 'Przeciągnij lub kliknij'}
               onChange={handleFileChange}

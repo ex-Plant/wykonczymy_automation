@@ -618,16 +618,16 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 1.1 New mapper specs pass
-- [x] 1.2 Migration applies against the local DB
-- [x] 1.3 Backfilled row count equals the source count
+- [x] 1.1 New mapper specs pass — e86859ea
+- [x] 1.2 Migration applies against the local DB — e86859ea
+- [x] 1.3 Backfilled row count equals the source count — e86859ea
 
 ### Phase 2: Rendering and export
 
 #### Automated
 
-- [ ] 2.1 ZIP tally specs pass, including a row yielding 3 files
-- [ ] 2.2 Print/export specs pass
+- [x] 2.1 ZIP tally specs pass, including a row yielding 3 files
+- [x] 2.2 Print/export specs pass
 
 ### Phase 3: Editing a saved invoice
 

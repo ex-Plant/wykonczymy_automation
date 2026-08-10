@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { removeTransferInvoiceAction } from '@/lib/actions/transfers'
 import { toastMessage } from '@/lib/utils/toast'
+import type { InvoiceFileT } from '@/types/transfers'
 
 const InvoiceUploadDialog = dynamic(() =>
   import('@/components/dialogs/invoice-upload-dialog').then((m) => ({
@@ -16,18 +17,16 @@ const InvoiceUploadDialog = dynamic(() =>
 
 type InvoiceCellPropsT = {
   transactionId: number
-  url: string | null
-  filename: string | null
-  mimeType: string | null
+  invoices: InvoiceFileT[]
 }
 
-export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceCellPropsT) {
+export function InvoiceCell({ transactionId, invoices }: InvoiceCellPropsT) {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [removed, setRemoved] = useState(false)
 
-  const hasInvoice = !!url && !removed
+  const hasInvoice = invoices.length > 0 && !removed
 
-  async function handleRemove(closePreview: () => void) {
+  async function handleRemove(_invoice: InvoiceFileT, closePreview: () => void) {
     if (!confirm('Czy na pewno chcesz usunąć fakturę?')) return
     const result = await removeTransferInvoiceAction(transactionId)
     if (!result.success) {
@@ -42,11 +41,9 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
     <>
       {hasInvoice ? (
         <InvoicePreviewButton
-          url={url}
-          filename={filename}
-          mimeType={mimeType}
+          invoices={invoices}
           variant="compact"
-          onReplace={(closePreview) => {
+          onAdd={(closePreview) => {
             closePreview()
             setUploadOpen(true)
           }}

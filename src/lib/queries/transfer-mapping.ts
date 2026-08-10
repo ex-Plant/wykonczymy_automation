@@ -116,9 +116,11 @@ export function resolveInvoiceFiles(
   media: Map<number, MediaInfoT>,
 ): InvoiceFileT[] {
   return invoiceIds(invoice)
-    .map((id) => media.get(id))
-    .filter((info): info is MediaInfoT & { url: string } => Boolean(info?.url))
-    .map(({ url, filename, mimeType }) => ({ url, filename, mimeType }))
+    .map((id) => ({ id, info: media.get(id) }))
+    .filter((page): page is { id: number; info: MediaInfoT & { url: string } } =>
+      Boolean(page.info?.url),
+    )
+    .map(({ id, info }) => ({ id, url: info.url, filename: info.filename, mimeType: info.mimeType }))
 }
 
 /**

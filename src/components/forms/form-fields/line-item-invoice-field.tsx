@@ -55,11 +55,9 @@ export function LineItemInvoiceField({
     <div className={cn('flex w-full flex-col gap-1', fieldClassName)}>
       <FieldLabel>FV</FieldLabel>
       <InvoicePreviewButton
-        url={url}
-        filename={file.name}
-        mimeType={file.type}
+        invoices={[{ url, filename: file.name, mimeType: file.type }]}
         // No `closePreview` — the picked file swaps in place, so the preview keeps showing it.
-        onReplace={() => replaceInputRef.current?.click()}
+        onAdd={() => replaceInputRef.current?.click()}
       />
 
       {/* Swap the receipt from inside the preview modal (Zamień). */}

@@ -16,9 +16,7 @@ const ROW_BASE = {
   date: '2026-07-26',
   label: 'Materiały',
   description: null,
-  invoiceUrl: null,
-  invoiceFilename: null,
-  invoiceMimeType: null,
+  invoices: [],
   invoiceNote: null,
 } as const
 

@@ -59,8 +59,8 @@ describe('extractInvoiceIds', () => {
 describe('resolveInvoiceFiles', () => {
   it('returns one file per page, in document order', () => {
     expect(resolveInvoiceFiles([33, 11], mediaMap)).toEqual([
-      { url: '/api/media/file/p33.jpg', filename: 'p33.jpg', mimeType: 'image/jpeg' },
-      { url: '/api/media/file/p11.jpg', filename: 'p11.jpg', mimeType: 'image/jpeg' },
+      { id: 33, url: '/api/media/file/p33.jpg', filename: 'p33.jpg', mimeType: 'image/jpeg' },
+      { id: 11, url: '/api/media/file/p11.jpg', filename: 'p11.jpg', mimeType: 'image/jpeg' },
     ])
   })
 
@@ -78,7 +78,7 @@ describe('resolveInvoiceFiles', () => {
     ])
 
     expect(resolveInvoiceFiles([11, 99, 404], withNullUrl)).toEqual([
-      { url: '/api/media/file/p11.jpg', filename: 'p11.jpg', mimeType: 'image/jpeg' },
+      { id: 11, url: '/api/media/file/p11.jpg', filename: 'p11.jpg', mimeType: 'image/jpeg' },
     ])
   })
 })
@@ -88,8 +88,8 @@ describe('mapTransferRow', () => {
     const row = mapTransferRow(doc([11, 22]), emptyLookups())
 
     expect(row.invoices).toEqual([
-      { url: '/api/media/file/p11.jpg', filename: 'p11.jpg', mimeType: 'image/jpeg' },
-      { url: '/api/media/file/p22.jpg', filename: 'p22.jpg', mimeType: 'image/jpeg' },
+      { id: 11, url: '/api/media/file/p11.jpg', filename: 'p11.jpg', mimeType: 'image/jpeg' },
+      { id: 22, url: '/api/media/file/p22.jpg', filename: 'p22.jpg', mimeType: 'image/jpeg' },
     ])
   })
 

@@ -38,7 +38,8 @@ export const TRANSFER_EXPORT_COLUMNS: Record<string, ColumnDefT> = {
   },
   description: { label: 'Opis', getValue: (r) => r.description },
   otherCategory: { label: 'Kategoria (inne wydatki)', getValue: (r) => r.otherCategoryName },
-  invoice: { label: 'Faktura', getValue: (r) => r.invoiceUrl ?? '' },
+  // Every page, newline-separated — one of three links would read as the complete document.
+  invoice: { label: 'Faktura', getValue: (r) => r.invoices.map((i) => i.url).join('\n') },
   invoiceNote: { label: 'Notatka', getValue: (r) => r.invoiceNote ?? '' },
   sourceRegister: { label: 'Kasa źródłowa', getValue: (r) => r.sourceRegisterName },
   targetRegister: { label: 'Kasa docelowa', getValue: (r) => r.targetRegisterName },
