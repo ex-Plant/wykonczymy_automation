@@ -17,8 +17,6 @@ import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
 const recoveredLead = (id: number) => ({
   id,
   name: `Lead ${id}`,
-  email: `lead${id}@example.com`,
-  phone: '+48100000000',
   formName: 'Formularz',
   submittedAt: '2026-08-10T02:00:00.000Z',
 })

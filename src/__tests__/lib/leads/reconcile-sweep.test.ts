@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Unit test for the sweep core shared by the „Pobierz zgłoszenia" action and the daily
-// cron. The Graph fetch and store seams are mocked; lead-schema + normalize-lead stay
+// cron. The Graph fetch and capture seams are mocked; lead-schema + normalize-lead stay
 // real so the parse/normalize path is exercised.
 const { update } = vi.hoisted(() => ({ update: vi.fn() }))
 
@@ -10,12 +10,12 @@ vi.mock('@/lib/leads/fetch-recent-leads', () => ({
   fetchRecentLeads: vi.fn(),
 }))
 vi.mock('@/lib/leads/fetch-form-questions', () => ({ fetchFormQuestions: vi.fn() }))
-vi.mock('@/lib/leads/store-lead', () => ({ storeLead: vi.fn() }))
+vi.mock('@/lib/leads/capture-lead', () => ({ captureLead: vi.fn() }))
 
 import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
 import { listLeadForms, fetchRecentLeads } from '@/lib/leads/fetch-recent-leads'
 import { fetchFormQuestions } from '@/lib/leads/fetch-form-questions'
-import { storeLead } from '@/lib/leads/store-lead'
+import { captureLead } from '@/lib/leads/capture-lead'
 import type { Payload } from 'payload'
 
 // Fabricated, PII-free. 'adres_e-mail' key → email via normalizeLead's heuristic.
@@ -31,8 +31,8 @@ const payload = { update } as unknown as Payload
 
 const clean = { failedForms: [], saturatedForms: [] }
 
-// Most cases care only about how many leads came back, not who they are — the contact
-// details themselves get their own case below.
+// Most cases care only about how many leads came back — the shape of a recovered row
+// gets its own case below.
 const counts = (result: Awaited<ReturnType<typeof runLeadReconcileSweep>>) => ({
   added: result.recovered.length,
   scanned: result.scanned,
@@ -47,15 +47,18 @@ beforeEach(() => {
 })
 
 describe('runLeadReconcileSweep', () => {
-  it('stores a missing lead and stamps both statuses skipped', async () => {
+  // The whole point of EX-660: a recovered lead goes through the normal capture path, so
+  // sales is notified like any other lead. Only the customer-facing reply is suppressed —
+  // and the sweep writes no statuses of its own, because it cannot know what was sent.
+  it('captures a missing lead with the auto-reply suppressed and stamps nothing itself', async () => {
     vi.mocked(listLeadForms).mockResolvedValue([form('A', 1)])
     vi.mocked(fetchRecentLeads).mockResolvedValue([rawLead('1')])
-    vi.mocked(storeLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
+    vi.mocked(captureLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
 
     const result = await runLeadReconcileSweep(payload)
 
     expect(counts(result)).toEqual({ added: 1, scanned: 1, ...clean })
-    expect(storeLead).toHaveBeenCalledWith(
+    expect(captureLead).toHaveBeenCalledWith(
       payload,
       expect.objectContaining({
         source: 'facebook_lead_ads',
@@ -64,24 +67,14 @@ describe('runLeadReconcileSweep', () => {
         formId: 'A',
         formName: 'form-A',
       }),
-      { skipRevalidation: true },
+      { autoReply: 'skip', skipRevalidation: true },
     )
-    // `overrideAccess` is load-bearing: the cron has no req.user, so without it the
-    // leads collection's update rule rejects the stamp, the row stays `pending`, and a
-    // later webhook redelivery mails the customer a days-late „Dziękujemy za kontakt".
-    expect(update).toHaveBeenCalledWith({
-      collection: 'leads',
-      id: 11,
-      data: { notifyStatus: 'skipped', autoReplyStatus: 'skipped' },
-      overrideAccess: true,
-      context: { skipRevalidation: true },
-    })
+    expect(update).not.toHaveBeenCalled()
   })
 
-  // A recovered lead is stamped `skipped`, so sales never gets notifyNewLead for it and
-  // the recovery alert is the only place it ever surfaces. Returning a bare count would
-  // make it unactionable — the caller needs the contact details to build a call list.
-  it('returns each recovered lead with the details needed to contact them', async () => {
+  // Sales already got a per-lead notification, so this list is an audit trail for the ops
+  // alert — contact details would only duplicate what the notify mail already carried.
+  it('returns each recovered lead as an audit row without contact details', async () => {
     const stored = {
       id: 11,
       name: 'Jan Testowy',
@@ -93,7 +86,7 @@ describe('runLeadReconcileSweep', () => {
     }
     vi.mocked(listLeadForms).mockResolvedValue([form('A', 1)])
     vi.mocked(fetchRecentLeads).mockResolvedValue([rawLead('1')])
-    vi.mocked(storeLead).mockResolvedValue({ lead: stored, created: true } as never)
+    vi.mocked(captureLead).mockResolvedValue({ lead: stored, created: true } as never)
 
     const result = await runLeadReconcileSweep(payload)
 
@@ -101,18 +94,16 @@ describe('runLeadReconcileSweep', () => {
       {
         id: 11,
         name: 'Jan Testowy',
-        email: '1@example.com',
-        phone: '+48100000000',
         formName: 'form-A',
         submittedAt: '2026-07-08T07:09:14.000Z',
       },
     ])
   })
 
-  it('leaves an already-stored lead untouched and out of the added count', async () => {
+  it('leaves an already-stored lead out of the added count', async () => {
     vi.mocked(listLeadForms).mockResolvedValue([form('A', 1)])
     vi.mocked(fetchRecentLeads).mockResolvedValue([rawLead('1')])
-    vi.mocked(storeLead).mockResolvedValue({ lead: { id: 11 }, created: false } as never)
+    vi.mocked(captureLead).mockResolvedValue({ lead: { id: 11 }, created: false } as never)
 
     const result = await runLeadReconcileSweep(payload)
 
@@ -125,7 +116,7 @@ describe('runLeadReconcileSweep', () => {
     vi.mocked(fetchRecentLeads).mockImplementation(async (formId: string) =>
       formId === 'A' ? [rawLead('a1'), rawLead('a2')] : formId === 'C' ? [rawLead('c1')] : [],
     )
-    vi.mocked(storeLead).mockResolvedValue({ lead: { id: 99 }, created: true } as never)
+    vi.mocked(captureLead).mockResolvedValue({ lead: { id: 99 }, created: true } as never)
 
     const result = await runLeadReconcileSweep(payload)
 
@@ -143,7 +134,7 @@ describe('runLeadReconcileSweep', () => {
     const result = await runLeadReconcileSweep(payload)
 
     expect(counts(result)).toEqual({ added: 0, scanned: 0, ...clean })
-    expect(storeLead).not.toHaveBeenCalled()
+    expect(captureLead).not.toHaveBeenCalled()
   })
 
   it('propagates a failure to list the forms — nothing could be swept at all', async () => {
@@ -171,7 +162,7 @@ describe('runLeadReconcileSweep', () => {
         if (formId === 'B') throw new Error('rate limited')
         return [rawLead(formId)]
       })
-      vi.mocked(storeLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
+      vi.mocked(captureLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
 
       const result = await runLeadReconcileSweep(payload)
 
@@ -197,7 +188,7 @@ describe('runLeadReconcileSweep', () => {
         failedForms: ['A'],
         saturatedForms: [],
       })
-      expect(storeLead).not.toHaveBeenCalled()
+      expect(captureLead).not.toHaveBeenCalled()
     })
   })
 
@@ -207,7 +198,7 @@ describe('runLeadReconcileSweep', () => {
     const fullPage = Array.from({ length: 30 }, (_, index) => rawLead(`a${index}`))
     vi.mocked(listLeadForms).mockResolvedValue([form('A', 45)])
     vi.mocked(fetchRecentLeads).mockResolvedValue(fullPage)
-    vi.mocked(storeLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
+    vi.mocked(captureLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
 
     const result = await runLeadReconcileSweep(payload)
 
@@ -222,7 +213,7 @@ describe('runLeadReconcileSweep', () => {
   it('does not flag a form whose page came back short of the limit', async () => {
     vi.mocked(listLeadForms).mockResolvedValue([form('A', 1)])
     vi.mocked(fetchRecentLeads).mockResolvedValue([rawLead('1')])
-    vi.mocked(storeLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
+    vi.mocked(captureLead).mockResolvedValue({ lead: { id: 11 }, created: true } as never)
 
     const result = await runLeadReconcileSweep(payload)
 

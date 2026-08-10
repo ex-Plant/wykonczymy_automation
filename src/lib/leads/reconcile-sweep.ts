@@ -4,16 +4,13 @@ import { listLeadForms, fetchRecentLeads } from './fetch-recent-leads'
 import { fetchFormQuestions } from './fetch-form-questions'
 import { leadSchema } from './lead-schema'
 import { normalizeLead } from './normalize-lead'
-import { storeLead } from './store-lead'
+import { captureLead } from './capture-lead'
 
 // 30 is enough to close a delivery gap without re-scanning a form's entire history.
 const PER_FORM_LIMIT = 30
 
-/** Enough to act on a recovered lead straight from the alert, without opening the dashboard. */
-export type RecoveredLeadT = Pick<
-  Lead,
-  'id' | 'name' | 'email' | 'phone' | 'formName' | 'submittedAt'
->
+/** An audit trail for the ops alert, not a call list — sales already got the lead itself. */
+export type RecoveredLeadT = Pick<Lead, 'id' | 'name' | 'formName' | 'submittedAt'>
 
 export type ReconcileSweepResultT = {
   /** The leads this run actually inserted. Its length is the `added` count. */
@@ -31,10 +28,12 @@ export type ReconcileSweepResultT = {
  * token, an outage, or a mis-pointed webhook (see lessons.md — the webhook's
  * failure mode is silent).
  *
- * Backfill is SILENT by design: it stores via `storeLead` (never `captureLead`)
- * and stamps a fresh row's notify/auto-reply `skipped`. A lead recovered days late
- * must not trigger a "thanks for your inquiry" email, and must never re-send if the
- * webhook later redelivers the same `leadgen_id`.
+ * Backfill is silent to the CUSTOMER, never to sales. It goes through `captureLead`
+ * with `autoReply: 'skip'`, so a lead recovered days late gets no „Dziękujemy za
+ * kontakt" but does reach the sales inbox like any other lead. The sweep writes no
+ * statuses itself: it cannot know whether sales was told, so it has no business
+ * recording that decision (EX-660 — it used to stamp `notifyStatus: 'skipped'`, which
+ * is terminal, and silently buried every lead the webhook had dropped).
  *
  * Deliberately free of auth and cache revalidation: the server action and the cron
  * route each supply their own. `updateTag` throws in a Route Handler, so a
@@ -74,7 +73,7 @@ export async function runLeadReconcileSweep(payload: Payload): Promise<Reconcile
         scanned += 1
 
         const normalized = normalizeLead(parsed.data.field_data, questions)
-        const { lead, created } = await storeLead(
+        const { lead, created } = await captureLead(
           payload,
           {
             source: 'facebook_lead_ads',
@@ -88,25 +87,21 @@ export async function runLeadReconcileSweep(payload: Payload): Promise<Reconcile
             formName: form.name,
             submittedAt: parsed.data.created_time,
           },
-          // The afterChange hook's revalidateTag is redundant here — the caller does
-          // one revalidation after the whole sweep instead.
-          { skipRevalidation: true },
+          {
+            autoReply: 'skip',
+            // The afterChange hook's revalidateTag is redundant here — the caller does
+            // one revalidation after the whole sweep instead.
+            skipRevalidation: true,
+          },
         )
 
+        // Guards the `recovered` list only. A redelivered row's unsent channels are
+        // `captureLead`'s business, and it has already dealt with them by this point.
         if (!created) continue
 
-        await payload.update({
-          collection: 'leads',
-          id: lead.id,
-          data: { notifyStatus: 'skipped', autoReplyStatus: 'skipped' },
-          overrideAccess: true,
-          context: { skipRevalidation: true },
-        })
         recovered.push({
           id: lead.id,
           name: lead.name,
-          email: lead.email,
-          phone: lead.phone,
           formName: lead.formName,
           submittedAt: lead.submittedAt,
         })

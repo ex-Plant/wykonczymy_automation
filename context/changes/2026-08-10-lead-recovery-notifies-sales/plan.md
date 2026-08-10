@@ -331,17 +331,17 @@ Run once, after Phase 3.
 
 #### Automated
 
-- [x] 1.1 capture-lead spec passes
-- [x] 1.2 webhook-route + wpforms-route specs pass unchanged
+- [x] 1.1 capture-lead spec passes — adad7f1e
+- [x] 1.2 webhook-route + wpforms-route specs pass unchanged — adad7f1e
 
 ### Phase 2: The sweep captures instead of storing-and-stamping
 
 #### Automated
 
-- [ ] 2.1 reconcile-sweep spec passes
-- [ ] 2.2 reconcile-leads spec passes
-- [ ] 2.3 cron route spec passes
-- [ ] 2.4 Mutation check: reverting `autoReply: 'skip'` turns a spec red
+- [x] 2.1 reconcile-sweep spec passes
+- [x] 2.2 reconcile-leads spec passes
+- [x] 2.3 cron route spec passes
+- [x] 2.4 Mutation check: reverting `autoReply: 'skip'` turns a spec red
 
 ### Phase 3: The summary mail reverts to an ops signal
 
