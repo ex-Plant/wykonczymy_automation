@@ -75,6 +75,31 @@ export async function notifyShapeAlert(
 }
 
 /**
+ * The daily reconcile sweep recovered leads the webhook never delivered — which
+ * means the webhook itself is broken, not that the sweep did its job. Without this
+ * mail the cron would patch a dead delivery path forever and nobody would know.
+ * Silent on a clean run. Best-effort: the leads are already persisted, so a send
+ * failure must not fail the cron.
+ */
+export async function notifyReconcileRecovery(
+  payload: Payload,
+  context: { added: number; scanned: number },
+): Promise<void> {
+  const html = `
+    <h2>⚠️ Cron odzyskał zgłoszenia pominięte przez webhook</h2>
+    <p>Odzyskane: <strong>${context.added}</strong> z ${context.scanned} sprawdzonych.</p>
+    <p>Webhook Meta nie dostarczył tych zgłoszeń. Sprawdź <code>callback_url</code>
+    aplikacji, subskrypcję strony i ważność tokena.</p>
+  `
+
+  await payload.sendEmail({
+    to: serverEnv.LEADS_ALERT_EMAIL,
+    subject: `⚠️ Cron odzyskał ${context.added} zgłoszeń — webhook nie dowozi — Wykończymy`,
+    html,
+  })
+}
+
+/**
  * Customer-facing confirmation ("we got your contact") — sent TO the lead, FROM
  * `LEADS_REPLY_FROM` (an SPF/DKIM-authenticated domain, so it doesn't spam-folder).
  * Assumes `lead.email` is present; the caller skips this send for phone-only

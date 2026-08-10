@@ -262,12 +262,12 @@ Run once, after the final phase:
 
 #### Automated
 
-- [x] 1.1 New sweep spec passes
-- [x] 1.2 Existing action spec still passes unchanged
+- [x] 1.1 New sweep spec passes — 85b44d73
+- [x] 1.2 Existing action spec still passes unchanged — 85b44d73
 
 ### Phase 2: Cron route, schedule, and recovery alert
 
 #### Automated
 
-- [ ] 2.1 Route spec passes
-- [ ] 2.2 `vercel.json` holds exactly two cron entries with distinct paths
+- [x] 2.1 Route spec passes
+- [x] 2.2 `vercel.json` holds exactly two cron entries with distinct paths
