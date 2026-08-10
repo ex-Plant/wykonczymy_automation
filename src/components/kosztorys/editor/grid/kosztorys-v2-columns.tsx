@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { Column, type CellProps, keyColumn, textColumn, floatColumn } from 'react-datasheet-grid'
+import { Column, type CellProps, keyColumn, floatColumn } from 'react-datasheet-grid'
 import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
@@ -31,6 +31,7 @@ import {
 } from '@/components/kosztorys/editor/grid/cells/discount-columns'
 import { unitColumn } from '@/components/kosztorys/editor/grid/cells/unit-column'
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
+import { longTextColumn } from '@/components/ui/datasheet-grid/long-text-cell'
 import { type ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
 import {
   STAGE_QTY_PREFIX,
@@ -294,14 +295,15 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // section. Only an explicit in-cell clear-and-commit renames it.
       deleteValue: ({ rowData }) => rowData,
     },
-    keyCol('description', textColumn, {
+    keyCol('description', longTextColumn, {
       id: 'description',
       title: title('description', opts),
       minWidth: 360,
       grow: 2,
-      // Tailwind Preflight resets `text-transform: none` directly on <input>, so the class must
-      // target the cell's own input (`capitalize` on the wrapping .dsg-cell div is overridden).
-      cellClassName: '[&_input]:capitalize',
+      // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
+      // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
+      // re-applied to the editor.
+      cellClassName: 'capitalize [&_textarea]:capitalize',
     }),
   ]
 
@@ -473,7 +475,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // already diffed/persisted; this only surfaces it in the grid. Sits at the Praca/Postęp seam and
   // carries the left border, so it doubles as the block divider (layer-neutral → always visible).
   const komentarz: Column<KosztorysV2RowT>[] = [
-    keyCol('note', textColumn, {
+    keyCol('note', longTextColumn, {
       id: 'note',
       title: title('note', opts, false),
       minWidth: 200,
