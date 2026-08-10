@@ -725,3 +725,28 @@ exists — read them as superseded by this section, not as owed.
 
 - [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
 - [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.
+
+## EX-538 — nakładka do długiego tekstu w rozpisce („opis pracy", „komentarz")
+
+**Verified 2026-08-10** (właściciel, przebieg ręczny — wszystkie pudełka poniżej przeszły). — automated green (tsc 0, eslint 0 błędów, vitest 1928/1928). Pierwszy przebieg
+w przeglądarce (2026-08-10) wyłapał i naprawił dwa błędy: siatka malowała się po nakładce, a klik
+w część nakładki wystającą nad inny wiersz kończył edycję. Bramka przeglądowa dorzuciła cztery
+kolejne poprawki (Escape przeskakiwał wiersz niżej, Tab uciekał z siatki, wyczyszczona komórka
+zapisywała `''` zamiast pustki, Escape na pustej komórce zapisywał pustą wartość) — pudełka poniżej
+pokrywają jedno i drugie. Test przeglądarkowy odłożony do **EX-657** (`e2e-backlog`).
+
+Setup: **5435 test DB** (patrz wstęp), rozpiska zasiana `seed-kosztorys.ts`; wejdź w edytor rozpiski
+i pracuj na kolumnach „opis pracy" i „Komentarz".
+
+- [x] **Nakładka pokazuje całą treść.** Wejdź w edycję „opisu pracy" z długą treścią — otwiera się pole nad komórką pokazujące całą wartość, bez wewnętrznego paska przewijania; wygląd i wysokość wierszy w spoczynku bez zmian, „opis pracy" nadal z wielkiej litery.
+- [x] **Nic nie prześwituje przez nakładkę** — w szczególności ramka aktywnej komórki i jej cień (pierwszy przebieg: malowały się po wierzchu).
+- [x] **Klik w nakładkę nie kończy edycji** — także w tej części, która wystaje nad inny wiersz; przesuwa tylko kursor (pierwszy przebieg: kończył edycję).
+- [x] **Enter / Shift+Enter / Escape.** Enter zatwierdza i schodzi wiersz niżej; Shift+Enter wstawia nową linię i **nie** dodaje wiersza w siatce; Escape przywraca poprzednią treść **i zostawia zaznaczenie na tej samej komórce** (regresja z bramki przeglądowej — wcześniej schodziło wiersz niżej).
+- [x] **Tab nie wypada z siatki.** W trakcie edycji naciśnij Tab — edycja się kończy, fokus zostaje w siatce (regresja: wcześniej fokus przechodził do kolejnego elementu strony, a siatka wciąż uważała, że edytuje).
+- [x] **Wyczyszczenie komórki naprawdę ją opróżnia.** Zaznacz całość w nakładce, skasuj, zatwierdź Enterem, odśwież — komórka jest pusta (nie „pusty tekst"); to samo dla „Komentarza". Spacje na początku/końcu nie zostają zapisane.
+- [x] **Escape na nietkniętej komórce nic nie zapisuje.** Wejdź w pustą „Komentarz", nic nie pisz, Escape — brak zapisu i brak wpisu w cofnij/ponów. To samo po wpisaniu i skasowaniu treści.
+- [x] **Wielolinijkowa treść przeżywa rundę.** Wpisz „Komentarz" z kilkoma liniami (Shift+Enter), zatwierdź, odśwież stronę, wejdź ponownie — linie są na miejscu.
+- [x] **Nakładka przy dolnej krawędzi.** Przewiń tak, by edytowany wiersz był tuż nad dolną krawędzią siatki, otwórz nakładkę — nie jest ucięta.
+- [x] **Kopiuj/wklej nadal działa.** Cmd+C na komórce tekstowej, Cmd+V do innej — wartość przechodzi. _Znane ograniczenie:_ komórka z nową linią skopiowana **poza aplikację** (Arkusze/Excel) rozpadnie się na dwa wiersze — wklejenie wewnątrz siatki zachowuje linie.
+- [x] **Podpowiedź w nagłówku „Komentarz".** Najedź na nagłówek kolumny „Komentarz" — dymek mówi, że Enter/dwuklik otwiera duże pole, i wypisuje skróty (Shift+Enter, Enter, Escape, Tab); łamania linii w dymku faktycznie się łamią.
+- [x] **Pisanie zastępuje treść.** Na zaznaczonej (nieedytowanej) komórce naciśnij literę — otwiera edycję, litera zastępuje starą wartość i nie ginie.

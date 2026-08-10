@@ -11,36 +11,36 @@ to see the rest. Same for „komentarz".
 
 ## Starting Point
 
-`DynamicDataSheetGrid` with a fixed `rowHeight={32}`; heights are uniform and not content-measured, so
-wrapping is impossible without an overlay. Three text columns exist: `description` and `note` (stock
-`textColumn`, commit via `setRowData`) and `sectionName` (a hand-rolled cell committing via an
-`onRename` fan-out). Both item fields are already in `ItemPatchT`, so persistence needs no change.
+`DynamicDataSheetGrid` with a per-row `rowHeight` (32 for an item, 52 for a section band); heights are
+never content-measured, so wrapping is impossible without an overlay. The two item text columns
+`description` and `note` are stock `textColumn`, commit via `setRowData`, and are both already in
+`ItemPatchT` — so persistence needs no change.
 
 ## Desired End State
 
-Clicking any text cell opens a textarea big enough to read and edit the whole value, sized so a
-realistic opis fits without scrolling. Leaving the cell commits through that column's existing path.
-Resting row height, grid appearance, and copy-paste are unchanged, and there is one text-editing
-implementation instead of two.
+Editing a text cell opens a textarea big enough to read and edit the whole value, sized so a realistic
+opis fits without scrolling, committing through the column's existing path. Resting row height, grid
+appearance, and copy-paste are unchanged.
 
 ## Key Decisions Made
 
-| Decision                 | Choice                             | Why                                                                                                         | Source  |
-| ------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------- |
-| Overlay mechanism        | In-cell absolute textarea          | Least machinery; `.dsg-cell` doesn't clip, and `disableKeys`/`keepFocus` are the library's sanctioned hooks | Shaping |
-| Rejected: Radix Popover  | No                                 | Portal + focus trap fights DSG's keyboard model                                                             | Shaping |
-| Rejected: per-row height | No                                 | Breaks uniform rows and grows every column in the row                                                       | Shaping |
-| Scope                    | All three text columns             | Same pain in `description`; one dumb cell covers all commit paths                                           | Plan    |
-| Enter semantics          | Enter commits, Shift+Enter newline | Matches Sheets and every other cell in the grid                                                             | Plan    |
-| Hover-to-read            | Deferred                           | Owner wants an eyeball test of the overlay alone first                                                      | Shaping |
-| E2E                      | File to `e2e-backlog`              | No kosztorys editor fixture exists; building one dwarfs the change                                          | Plan    |
+| Decision                 | Choice                             | Why                                                                                           | Source  |
+| ------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------- | ------- |
+| Overlay mechanism        | In-cell absolute textarea          | Least machinery; `.dsg-cell` doesn't clip, and `disableKeys` is the library's sanctioned hook | Shaping |
+| Rejected: Radix Popover  | No                                 | Portal + focus trap fights DSG's keyboard model                                               | Shaping |
+| Rejected: per-row height | No                                 | Breaks uniform rows and grows every column in the row                                         | Shaping |
+| Scope                    | „opis pracy" + „komentarz"         | Same pain in both; the Sekcja cell was cut on re-verification (see below)                     | Plan    |
+| Enter semantics          | Enter commits, Shift+Enter newline | Matches Sheets and every other cell in the grid                                               | Plan    |
+| Hover-to-read            | Deferred                           | Owner wants an eyeball test of the overlay alone first                                        | Shaping |
+| E2E                      | File to `e2e-backlog`              | No kosztorys editor fixture exists; building one dwarfs the change                            | Plan    |
 
 ## Scope
 
-**In scope:** a generic `long-text-cell.tsx`; adoption by `description`, `note`, and `sectionName`;
-deletion of `section-name-cell.tsx`.
+**In scope:** a generic `src/components/ui/datasheet-grid/long-text-cell.tsx`; adoption by
+`description` and `note`.
 
-**Out of scope:** hover-to-read, per-row expansion, any persistence/autosave change, a new E2E fixture.
+**Out of scope:** the `sectionName` cell (see below), hover-to-read, per-row expansion, any
+persistence/autosave change, a new E2E fixture.
 
 ## Architecture / Approach
 
@@ -55,20 +55,20 @@ copy/paste/delete for free.
 | Phase                          | What it delivers                          | Key risk                                                                                    |
 | ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
 | 1. Cell + `description`/`note` | Overlay editing on both item text columns | Overlay stacking — rows are absolutely positioned siblings, so it needs an explicit z-index |
-| 2. Migrate `sectionName`       | One implementation; old cell deleted      | Regressing the rename fan-out or the no-op-on-Delete guard                                  |
+
+Phase 2 (migrating `sectionName` onto the generic cell) was **dropped on re-verification 2026-08-10**:
+`SectionNameCell` now has a second consumer — `section-header-cell.tsx` renders it inside the section
+band row — so it can't just be deleted, and an overlay buys nothing for a short name in a 52px row.
 
 **Prerequisites:** none — no migration, no env, no new dependency.
-**Estimated effort:** one session; Phase 1 is the bulk, Phase 2 is wiring plus a deletion.
+**Estimated effort:** one session.
 
 ## Open Risks & Assumptions
 
 - Assumes an overlay on a row near the grid's bottom edge stays usable; `.dsg-container` is
   `overflow: auto`, so it may extend the scroll area slightly. Covered by a manual check.
-- Phase 2 touches working code. If the rename fan-out proves awkward to express through the generic
-  `onCommit`, keeping `SectionNameCell` is an acceptable stopping point — Phase 1 stands alone.
 
 ## Success Criteria (Summary)
 
 - A full-length opis is readable and editable without leaving the grid
-- Section rename still fans out to every row of the section, and Delete still can't blank it
-- The grid looks and behaves exactly as before when no cell is focused
+- The grid looks and behaves exactly as before when no cell is being edited
