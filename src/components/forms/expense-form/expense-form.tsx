@@ -4,12 +4,11 @@ import { useState } from 'react'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
-import { useInvoiceFiles, type IngestResultT } from '@/components/forms/hooks/use-invoice-files'
-import { useReceiptGeneration } from '@/components/forms/hooks/use-receipt-generation'
+import { useInvoiceIngest } from '@/components/forms/expense-form/use-invoice-ingest'
+import { useReceiptGeneration } from '@/components/forms/expense-form/use-receipt-generation'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
 import { useSaldo } from '@/components/forms/hooks/use-saldo'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
-import { SubmitPill } from '@/components/forms/submit-pill'
 import {
   TRANSACTION_TRANSFER_TYPES,
   TRANSFER_TYPE_LABELS,
@@ -29,12 +28,7 @@ import {
   makeLineItem,
   type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
-import {
-  filesByRowId,
-  positionalFiles,
-  resolveInvoiceMediaIds,
-} from '@/lib/utils/upload-file-client'
-import { MAX_UPLOAD_BYTES, type BlockedFileError } from '@/lib/utils/process-upload-file'
+import { positionalFiles, resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
 import { toastMessage } from '@/lib/utils/toast'
 import {
   bulkExpenseFormSchema,
@@ -68,26 +62,6 @@ type FormValuesT = BulkExpenseFormValuesT
 
 const FORM_ID = 'expense'
 
-const MAX_UPLOAD_MB = MAX_UPLOAD_BYTES / (1024 * 1024)
-
-// One Polish line per blocked file (unconvertible HEIC / oversize) in a single toast so one bad
-// file in a batch never spams N toasts. Rendered as JSX rather than a "\n"-joined string because
-// react-toastify collapses newlines in HTML — a multi-file block would otherwise run together. The
-// MB figure tracks MAX_UPLOAD_BYTES (the guard), not the raw 4.5 MB Vercel cap.
-function blockedFilesMessage(blocked: BlockedFileError[]) {
-  return (
-    <div>
-      {blocked.map((error, index) => (
-        <p key={index}>
-          {error.reason === 'too-large'
-            ? `Plik „${error.filename}” przekracza ${MAX_UPLOAD_MB} MB — zmniejsz go i spróbuj ponownie.`
-            : `Nie udało się przekonwertować „${error.filename}” — zapisz jako JPG i spróbuj ponownie.`}
-        </p>
-      ))}
-    </div>
-  )
-}
-
 export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: TransferFormPropsT) {
   const { recoveredFiles, submit } = useFormSubmit(FORM_ID)
 
@@ -97,77 +71,19 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
 
   const { saldo, isSaldoLoading, fetchSaldo, resetSaldo } = useSaldo()
 
-  // Rows whose picked file is still being processed at ingest (HEIC convert can take ~1-2 s). The
-  // row shows a spinner and its actions are disabled meanwhile, and a batch scan waits for ingest
-  // before running the AI generation. Keyed on each row's stable id (EX-448).
-  const [ingestingIds, setIngestingIds] = useState<Set<string>>(new Set())
-
-  function markIngesting(ids: string[], busy: boolean) {
-    setIngestingIds((prev) => {
-      const next = new Set(prev)
-      ids.forEach((id) => (busy ? next.add(id) : next.delete(id)))
-      return next
-    })
-  }
-
-  const isIngesting = ingestingIds.size > 0
-
-  function reportBlocked(blocked: BlockedFileError[]) {
-    if (blocked.length === 0) return
-    // TODO(EX-449) SENTRY-REQUIRED: blocked-file ingest failures (unconvertible HEIC / oversize)
-    // must be captured once Sentry is wired — currently surfaced only as a per-item user toast.
-    toastMessage(blockedFilesMessage(blocked), 'error', 8000)
-  }
-
-  // recoveredFiles is the previous submit's positional Map<number,File> (wire order). Re-key it to
-  // id-space against the recovered rows (same order) so the restored form stays id-keyed — ids
-  // survive the submit→fail→restore round-trip via storedValues.
-  const recoveredFilesById =
-    recoveredFiles && storedValues?.lineItems
-      ? filesByRowId(storedValues.lineItems, recoveredFiles)
-      : undefined
-
   const {
+    ingestingIds,
+    isIngesting,
+    registerFiles,
+    attachFile,
+    // Keyed by id, so surviving rows' markers/files need no shift and the reactive store
+    // re-renders the removed row on its own.
     handleRemoveLineItem,
-    handleFileChange,
-    registerFilesAt,
     getFile,
     getFiles,
     renameFile,
     reset: resetInvoiceFiles,
-  } = useInvoiceFiles(recoveredFilesById)
-
-  // Run one ingest batch: mark the rows busy, report any blocked files, and — crucially — always
-  // clear the spinner in `finally`. The finally is load-bearing: an unexpected ingest rejection
-  // (e.g. a chunk-load failure on the lazy import) must still release the rows, or they stay busy
-  // forever and wedge the whole form. Blocked files enter no map; the row stays empty. The reactive
-  // file store re-renders attached rows (input → thumbnail) on its own — no remount key.
-  async function runIngest(ids: string[], ingest: () => Promise<IngestResultT>) {
-    markIngesting(ids, true)
-    try {
-      reportBlocked((await ingest()).blocked)
-    } catch {
-      // TODO(EX-449) SENTRY-REQUIRED: unexpected ingest failure (not a BlockedFileError) — capture
-      // once Sentry is wired; for now the user gets a generic retry toast.
-      toastMessage('Nie udało się przetworzyć pliku — spróbuj ponownie.', 'error', 6000)
-    } finally {
-      markIngesting(ids, false)
-    }
-  }
-
-  function handleRegisterFiles(ids: string[], files: File[]) {
-    return runIngest(ids, () => registerFilesAt(ids, files))
-  }
-
-  function handleAttachFile(id: string, e: React.ChangeEvent<HTMLInputElement>) {
-    return runIngest([id], () => handleFileChange(id, e))
-  }
-
-  // Drop the row's out-of-form file by id; the id keying means surviving rows' markers/files need
-  // no shift, and the reactive store re-renders the removed row on its own.
-  function handleRemove(id: string, index: number, removeValue: (index: number) => void) {
-    handleRemoveLineItem(id, index, removeValue)
-  }
+  } = useInvoiceIngest({ recoveredFiles, storedLineItems: storedValues?.lineItems })
 
   // FormClearButton runs form.reset() (restores the mount-time default, whose row id is stale) and
   // then this. Mint a fresh-id blank row so its React key changes and the row — with its uncontrolled
@@ -377,9 +293,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
             form={form}
             total={total}
             hasInvestment={!!currentInvestment}
-            onRemoveItem={handleRemove}
-            onFileChange={handleAttachFile}
-            onRegisterFiles={handleRegisterFiles}
+            onRemoveItem={handleRemoveLineItem}
+            onFileChange={attachFile}
+            onRegisterFiles={registerFiles}
             getFile={getFile}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
@@ -394,8 +310,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       </FieldGroup>
 
       {saldo !== null && <SaldoSummary saldo={saldo} total={total} />}
-
-      {isGenerating && <SubmitPill label="Odczytywanie paragonów…" />}
 
       <FormFooter className="mt-6" label="Zapisz" disabled={isIngesting} />
     </FormShell>

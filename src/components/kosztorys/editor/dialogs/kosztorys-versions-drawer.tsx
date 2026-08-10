@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { useSnapshotList } from '@/components/kosztorys/editor/hooks/use-snapshot-list'
 import { restoreSnapshotAction, type SnapshotListItemT } from '@/lib/actions/kosztorys-snapshots'
 import { formatPLDateTime } from '@/lib/utils/format-date'
+import { pluralize } from '@/lib/utils/polish-plural'
 import { toastMessage } from '@/lib/utils/toast'
 
 type PropsT = {
@@ -46,7 +47,21 @@ export function KosztorysVersionsDrawer({
       toastMessage(res.error ?? 'Nie udało się przywrócić wersji', 'error', 4000)
       return
     }
-    toastMessage('Przywrócono wersję', 'success')
+    // A warning, not a success, when assignments were dropped: the restore moved money the owner did
+    // not ask to move — należne recorded for a since-deleted person now sits in „Bez przypisanego
+    // pracownika". Their name can't be shown; the row they were on is gone from `users`.
+    const dropped = res.data?.droppedWorkerAssignments ?? 0
+    if (dropped > 0) {
+      toastMessage(
+        // The count is per etap, not per person — n etapy may have named one deleted worker or n of
+        // them — so the cause clause stays number-free rather than asserting a headcount it doesn't know.
+        `Przywrócono wersję. ${dropped} ${pluralize(dropped, ['etap', 'etapy', 'etapów'])} bez przypisania — nie odtworzono przypisań do usuniętych pracowników.`,
+        'warning',
+        8000,
+      )
+    } else {
+      toastMessage('Przywrócono wersję', 'success')
+    }
     onOpenChange(false)
     resetSnapshots()
     onRestored()

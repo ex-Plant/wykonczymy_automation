@@ -13,6 +13,37 @@ export const STAGE_INSERT_COLUMNS = [
 ] as const
 export const PROGRESS_INSERT_COLUMNS = ['item_id', 'stage_id', 'qty_done'] as const
 
+export type InsertKosztorysTreeResultT = {
+  // Etapy whose recorded assignee no longer exists, restored unassigned. Per ETAP, not per person —
+  // it is the number of rows whose attribution moved to the residual bucket, which is what the
+  // owner is being warned about.
+  droppedWorkerAssignments: number
+}
+
+// A snapshot outlives the people it names, and `worker_id` is the one column here pointing at a row
+// this module doesn't own. `ON DELETE SET NULL` covers the LIVE etap when someone is deleted; it does
+// nothing for a restore re-INSERTing the recorded id afterwards, which meets the FK head-on and takes
+// the WHOLE restore down with it (EX-641). Since the person can never come back, blocking would make
+// that snapshot permanently unrestorable — so a dangling assignee is dropped and the etap restored
+// unassigned, the same tolerance this module already applies to a dangling parent. Unassigned is a
+// legitimate resting state (the summary has a residual row for it), not a corrupted one.
+async function liveWorkerIds(db: DbExecutorT, ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set()
+  // FOR SHARE, not a bare SELECT: under READ COMMITTED a plain read takes no lock, so a user
+  // hard-deleted between this check and the stage INSERT would still meet the FK and take the whole
+  // restore down — the very failure above, merely rarer. The lock holds the rows for the caller's
+  // transaction; the id set is bounded by etap count, so it costs nothing worth measuring.
+  const res = await db.execute(sql`
+    SELECT id FROM users
+    WHERE id IN (${sql.join(
+      ids.map((id) => sql`${id}`),
+      sql.raw(', '),
+    )})
+    FOR SHARE
+  `)
+  return new Set(res.rows.map((row) => Number(row.id)))
+}
+
 // Bulk-insert a serialized kosztorys tree onto an investment, on a caller-owned transaction handle.
 // Shared by restoreKosztorys (wipe → insert → settings) and applyPreset (insert-only) — each caller
 // owns the transaction and adds its own wipe/settings semantics around this.
@@ -28,7 +59,7 @@ export async function insertKosztorysTree(
   db: DbExecutorT,
   investmentId: number,
   tree: SnapshotPayloadT,
-): Promise<void> {
+): Promise<InsertKosztorysTreeResultT> {
   const sections = tree.sections ?? []
   const sectionIds = await insertSections(
     db,
@@ -47,10 +78,19 @@ export async function insertKosztorysTree(
 
   const stages = tree.stages ?? []
   const stageIdMap = new Map<number, number>()
+  const live = await liveWorkerIds(db, [
+    ...new Set(stages.map((s) => s.workerId).filter((id) => id != null)),
+  ])
+  const assigneeOf = (s: (typeof stages)[number]) =>
+    s.workerId != null && live.has(s.workerId) ? s.workerId : null
+  const droppedWorkerAssignments = stages.filter(
+    (s) => s.workerId != null && !live.has(s.workerId),
+  ).length
+
   if (stages.length > 0) {
     const rows = stages.map(
       (s) =>
-        sql`(${investmentId}, ${s.ordinal}, ${s.label ?? null}, ${s.plane ?? null}, ${s.workerId ?? null})`,
+        sql`(${investmentId}, ${s.ordinal}, ${s.label ?? null}, ${s.plane ?? null}, ${assigneeOf(s)})`,
     )
     const res = await db.execute(sql`
       INSERT INTO kosztorys_stages (${sql.raw(STAGE_INSERT_COLUMNS.join(', '))})
@@ -81,4 +121,6 @@ export async function insertKosztorysTree(
       VALUES ${sql.join(rows, sql.raw(', '))}
     `)
   }
+
+  return { droppedWorkerAssignments }
 }

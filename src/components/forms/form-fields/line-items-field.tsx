@@ -3,6 +3,7 @@
 import { Fragment, useRef, useState } from 'react'
 import { Trash2, WandSparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Description } from '@/components/ui/description'
 import { Separator } from '@/components/ui/separator'
 import { GradientSpinner } from '@/components/ui/gradient-spinner'
 import { RemoveButton } from '@/components/ui/remove-button'
@@ -256,10 +257,18 @@ export function LineItemsField({
                         fieldClassName="min-w-0 flex-1"
                       />
                     )}
+                    {/* No icon: this row is already Kwota + Netto + Opis + kategoria + the delete
+                      slot, and a `shrink-0` glyph would take its ~1rem straight off the flex-1
+                      inputs. `tone="error"` alone carries the alarm here. */}
                     {failedIds?.has(item.id) && (
-                      <span className="text-destructive mt-8 shrink-0 text-xs whitespace-nowrap">
+                      <Description
+                        tone="error"
+                        size="xs"
+                        withIcon={false}
+                        className="mt-8 shrink-0 whitespace-nowrap"
+                      >
                         nie odczytano
-                      </span>
+                      </Description>
                     )}
                     {/* Delete lives in row 1, its height matching the inputs; the row being read
                       shows the loader in its slot and queued rows keep it disabled — removing a

@@ -8,6 +8,7 @@ import { insertPreset } from '@/lib/db/presets'
 import { appendPresetSectionsAction } from '@/lib/actions/kosztorys-presets'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // Same discipline as serialize-apply-preset: exercise against the REAL DB and assert PERSISTED state
 // by re-reading. next/cache is stubbed so the action's revalidateCollections (updateTag) doesn't throw
@@ -43,36 +44,30 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
     displayOrder: number,
     color: string | null = null,
   ) {
-    const section = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name,
-        displayOrder,
-        color,
-      },
-      context: { skipRevalidation: true },
+    const { sectionIds } = await createKosztorysTree(payload, investmentId, {
+      sections: [
+        {
+          name,
+          displayOrder,
+          color,
+          items: [
+            {
+              description: `Praca w ${name}`,
+              unit: 'm2',
+              plannedQty: 12,
+              clientPrice: 150,
+              discountType: 'percent',
+              discountValue: 10,
+              wToolsOverrideType: 'coeff',
+              wToolsOverrideValue: 0.65,
+              hiddenInExport: true,
+              note: 'uwaga',
+            },
+          ],
+        },
+      ],
     })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: section.id,
-        displayOrder: 0,
-        description: `Praca w ${name}`,
-        unit: 'm2',
-        plannedQty: 12,
-        clientPrice: 150,
-        discountType: 'percent',
-        discountValue: 10,
-        wToolsOverrideType: 'coeff',
-        wToolsOverrideValue: 0.65,
-        hiddenInExport: true,
-        note: 'uwaga',
-      },
-      context: { skipRevalidation: true },
-    })
-    return Number(section.id)
+    return sectionIds[0]
   }
 
   // Build a source investment with one named section, serialize it as a preset, store it, and return

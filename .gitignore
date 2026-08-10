@@ -93,3 +93,7 @@ tmp-heic-test/
 
 # Personal learning notes — temporary, not for commit (see Linear EX-474)
 tmp-lessons/
+
+# Root-only scratch file. Anchored: an unanchored `test.js` would ignore any file of that name at
+# any depth, for every contributor, and a later legitimate fixture would vanish from `git status`.
+/test.js

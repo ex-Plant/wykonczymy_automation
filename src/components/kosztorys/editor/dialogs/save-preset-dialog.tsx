@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Description } from '@/components/ui/description'
 import { FormDialogShell } from '@/components/ui/form-dialog-shell'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup } from '@/components/ui/toggle-group'
@@ -91,9 +92,9 @@ export function SavePresetDialog({ investmentId, open, onOpenChange, existingPre
       )}
 
       {mode === 'overwrite' && (
-        <p className="text-destructive text-xs">
+        <Description tone="error" size="xs">
           Nadpisanie trwale zastąpi zawartość wybranego szablonu — tej operacji nie można cofnąć.
-        </p>
+        </Description>
       )}
     </FormDialogShell>
   )

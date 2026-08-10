@@ -5,13 +5,14 @@ import config from '@payload-config'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { CACHE_TAGS } from '@/lib/cache/tags'
-import { buildMaterialyBreakdown } from '@/lib/db/map-category-costs'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
 import { fetchMaterialTransactionsForInvestment } from '@/lib/queries/investment-transactions'
-import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
+import {
+  deriveWholeInvestmentFinancials,
+  fetchWholeInvestmentFinancials,
+} from '@/lib/queries/whole-investment-financials'
 
 // No projection/stripping anywhere below: the owner accepted the leak, so the full tree ships and the
 // render side alone decides what a client sees.
@@ -36,18 +37,20 @@ const KOSZTORYS_TAGS = [
 async function buildPreviewKosztorysEditorData(
   investmentId: number,
 ): Promise<KosztorysEditorDataT> {
-  const investmentWhere = { investment: { equals: investmentId } }
   const payload = await getPayload({ config })
-  const [tree, investment, typeDistribution, breakdowns, expenseCategories, materialTransactions] =
+  const [tree, investment, financialsSource, expenseCategories, materialTransactions] =
     await Promise.all([
       buildKosztorysTree(investmentId),
       payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
-      fetchFilteredByType(investmentWhere),
-      fetchCategoryBreakdowns(investmentWhere),
+      fetchWholeInvestmentFinancials(investmentId),
       fetchExpenseCategories(),
       fetchMaterialTransactionsForInvestment(investmentId),
     ])
-  const financials = deriveFinancials(typeDistribution, breakdowns.categoryCosts)
+  const { financials, materialyBreakdown } = deriveWholeInvestmentFinancials(
+    financialsSource,
+    tree,
+    expenseCategories,
+  )
 
   return {
     investmentId,
@@ -55,11 +58,7 @@ async function buildPreviewKosztorysEditorData(
     investmentName: investment.name,
     materialsGrossBase: financials.materialsGrossBase,
     materialsNetBilled: financials.materialsNetBilled,
-    materialyBreakdown: buildMaterialyBreakdown(
-      financials,
-      expenseCategories,
-      breakdowns.netCategoryCosts,
-    ),
+    materialyBreakdown,
     wplatyNet: financials.totalIncome,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,

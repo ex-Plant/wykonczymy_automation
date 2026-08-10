@@ -82,7 +82,7 @@ type TxnSeed = {
 
 // The transaction afterChange balance hook calls revalidateTag, which throws outside a Next request
 // context. disableTransaction lets the insert survive that throw; balances are read-computed, so the
-// lost revalidation is a no-op in a script. (Same pattern as seed-inv31-expenses.ts.)
+// lost revalidation is a no-op in a script.
 async function seedTransaction(
   payload: Awaited<ReturnType<typeof getPayload>>,
   txn: TxnSeed,

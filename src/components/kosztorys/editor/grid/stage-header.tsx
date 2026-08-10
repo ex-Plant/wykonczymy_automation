@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronDown, Pencil, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Description } from '@/components/ui/description'
 import {
   DropdownMenuCheckboxRow,
   DropdownMenuItem,
@@ -168,7 +169,9 @@ export function StageHeader({
               // silent 0 zł należne.
               <>
                 <DropdownMenuLabel>{COPY.workerSectionLabel}</DropdownMenuLabel>
-                <p className="text-muted-foreground px-2 py-1.5 text-xs">{COPY.workerNeedsPlane}</p>
+                <Description size="xs" className="px-2 py-1.5">
+                  {COPY.workerNeedsPlane}
+                </Description>
               </>
             ) : (
               <StageWorkerSection

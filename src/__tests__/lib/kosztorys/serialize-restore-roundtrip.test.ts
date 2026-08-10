@@ -7,6 +7,7 @@ import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
+import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
 // The serialize→restore pair is the dangerous wipe-and-reinsert core, so we exercise it against the
 // REAL DB and assert PERSISTED state: restore is only correct if a re-serialize of the live tree
@@ -85,187 +86,107 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
       ownToolsCoeff: 0.5,
     })
 
-    // Section C exists purely for COLUMN COVERAGE. Restore hand-writes the INSERT column list and
-    // zips values into it positionally, so a column the fixture never sets is a column whose mapping
-    // no test can catch being wrong. Its two items are the extremes — every nullable field null, and
-    // every nullable field set — plus the section colour, the stage plane, and a note carrying
-    // unicode + a newline (a naive value-quoting bug shows up there first).
-    const sectionA = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'Sekcja A',
-        displayOrder: 0,
-      },
-      context: { skipRevalidation: true },
-    })
-    const sectionB = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'Sekcja B',
-        displayOrder: 1,
-      },
-      context: { skipRevalidation: true },
-    })
-
-    const item1 = await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionA.id,
-        displayOrder: 0,
-        description: 'Malowanie',
-        unit: 'm2',
-        plannedQty: 10,
-        clientPrice: 100,
-        discountValue: 0,
-        hiddenInExport: false,
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionA.id,
-        displayOrder: 1,
-        description: 'Gruntowanie',
-        unit: 'm2',
-        plannedQty: 5,
-        clientPrice: 40,
-        discountType: 'percent',
-        discountValue: 10,
-        hiddenInExport: false,
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionB.id,
-        displayOrder: 0,
-        description: 'Płytki',
-        unit: 'm2',
-        plannedQty: 20,
-        clientPrice: 250,
-        discountValue: 0,
-        hiddenInExport: true,
-      },
-      context: { skipRevalidation: true },
-    })
-
-    const sectionC = await payload.create({
-      collection: 'kosztorys-sections',
-      data: {
-        investment: investmentId,
-        name: 'Sekcja C — pokrycie kolumn',
-        displayOrder: 2,
-        color: 'blue-soft',
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionC.id,
-        displayOrder: 0,
-        description: null,
-        unit: null,
-        plannedQty: 0,
-        discountType: null,
-        discountValue: 0,
-        clientPrice: 0,
-        wToolsOverrideType: null,
-        wToolsOverrideValue: 0,
-        ownToolsOverrideType: null,
-        ownToolsOverrideValue: 0,
-        hiddenInExport: false,
-        note: null,
-      },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionC.id,
-        displayOrder: 1,
-        description: 'Ścianka działowa — GK 12,5 „podwójna"\ndruga linia opisu',
-        unit: 'mb',
-        plannedQty: 12.5,
-        discountType: 'amount',
-        discountValue: 33.33,
-        clientPrice: 149.99,
-        wToolsOverrideType: 'coeff',
-        wToolsOverrideValue: 0.62,
-        ownToolsOverrideType: 'amount',
-        ownToolsOverrideValue: 88.5,
-        hiddenInExport: true,
-        note: 'Uwaga: różnica ±5 cm\nDrugi wiersz — ćwierć „cudzysłów"',
-      },
-      context: { skipRevalidation: true },
-    })
-    // The mirrored override combo. Per plane each of the two legal types must appear somewhere, or a
-    // swapped pair of override columns survives the roundtrip unnoticed.
-    await payload.create({
-      collection: 'kosztorys-items',
-      data: {
-        investment: investmentId,
-        section: sectionC.id,
-        displayOrder: 2,
-        description: 'Odwrócone nadpisania',
-        unit: 'szt',
-        plannedQty: 3,
-        discountType: 'percent',
-        discountValue: 5,
-        clientPrice: 75,
-        wToolsOverrideType: 'amount',
-        wToolsOverrideValue: 210.4,
-        ownToolsOverrideType: 'coeff',
-        ownToolsOverrideValue: 0.33,
-        hiddenInExport: false,
-        note: null,
-      },
-      context: { skipRevalidation: true },
-    })
-
     // A real user id, not a hardcoded 1 — worker_id FKs users.id and a fresh prod-dump test DB has
     // no guaranteed user 1.
     const users = await payload.find({ collection: 'users', limit: 1, depth: 0, sort: 'id' })
     const workerId = Number(users.docs[0]!.id)
 
-    const stage1 = await payload.create({
-      collection: 'kosztorys-stages',
-      data: {
-        investment: investmentId,
-        ordinal: 1,
-        label: 'Etap 1',
-        plane: 'w_tools',
-        worker: workerId,
-      },
-      context: { skipRevalidation: true },
+    // Sekcja C exists purely for COLUMN COVERAGE. Restore hand-writes the INSERT column list and
+    // zips values into it positionally, so a column the fixture never sets is a column whose mapping
+    // no test can catch being wrong. Its two items are the extremes — every nullable field null, and
+    // every nullable field set — plus the section colour, the stage plane, and a note carrying
+    // unicode + a newline (a naive value-quoting bug shows up there first).
+    await createKosztorysTree(payload, investmentId, {
+      sections: [
+        {
+          name: 'Sekcja A',
+          items: [
+            { description: 'Malowanie', unit: 'm2', plannedQty: 10, clientPrice: 100 },
+            {
+              description: 'Gruntowanie',
+              unit: 'm2',
+              plannedQty: 5,
+              clientPrice: 40,
+              discountType: 'percent',
+              discountValue: 10,
+            },
+          ],
+        },
+        {
+          name: 'Sekcja B',
+          items: [
+            {
+              description: 'Płytki',
+              unit: 'm2',
+              plannedQty: 20,
+              clientPrice: 250,
+              hiddenInExport: true,
+            },
+          ],
+        },
+        {
+          name: 'Sekcja C — pokrycie kolumn',
+          color: 'blue-soft',
+          items: [
+            // Every nullable field null / every numeric field zero — the low extreme. Spelled out
+            // rather than left to the builder's defaults: this row's job is to state the extreme.
+            {
+              description: null,
+              unit: null,
+              plannedQty: 0,
+              discountType: null,
+              discountValue: 0,
+              clientPrice: 0,
+              wToolsOverrideType: null,
+              wToolsOverrideValue: 0,
+              ownToolsOverrideType: null,
+              ownToolsOverrideValue: 0,
+              hiddenInExport: false,
+              note: null,
+            },
+            {
+              description: 'Ścianka działowa — GK 12,5 „podwójna"\ndruga linia opisu',
+              unit: 'mb',
+              plannedQty: 12.5,
+              discountType: 'amount',
+              discountValue: 33.33,
+              clientPrice: 149.99,
+              wToolsOverrideType: 'coeff',
+              wToolsOverrideValue: 0.62,
+              ownToolsOverrideType: 'amount',
+              ownToolsOverrideValue: 88.5,
+              hiddenInExport: true,
+              note: 'Uwaga: różnica ±5 cm\nDrugi wiersz — ćwierć „cudzysłów"',
+            },
+            // The mirrored override combo. Per plane each of the two legal types must appear
+            // somewhere, or a swapped pair of override columns survives the roundtrip unnoticed.
+            {
+              description: 'Odwrócone nadpisania',
+              unit: 'szt',
+              plannedQty: 3,
+              discountType: 'percent',
+              discountValue: 5,
+              clientPrice: 75,
+              wToolsOverrideType: 'amount',
+              wToolsOverrideValue: 210.4,
+              ownToolsOverrideType: 'coeff',
+              ownToolsOverrideValue: 0.33,
+            },
+          ],
+        },
+      ],
+      stages: [
+        { label: 'Etap 1', plane: 'w_tools', worker: workerId },
+        // The all-nullable extreme on a stages row: the omitted plane and worker default null too.
+        { label: null },
+        { label: 'Etap 3', plane: 'own_tools' },
+      ],
+      // Sparse: the first item has both stages, every other item none.
+      progress: [
+        { item: 0, stage: 0, qtyDone: 4 },
+        { item: 0, stage: 1, qtyDone: 2 },
+      ],
     })
-    // label null AND plane null AND worker null — the all-nullable extreme on the stages row.
-    const stage2 = await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 2, label: null },
-      context: { skipRevalidation: true },
-    })
-    await payload.create({
-      collection: 'kosztorys-stages',
-      data: { investment: investmentId, ordinal: 3, label: 'Etap 3', plane: 'own_tools' },
-      context: { skipRevalidation: true },
-    })
-
-    // Sparse progress: item1 has both stages, other items none.
-    await db.execute(sql`
-      INSERT INTO stage_progress (item_id, stage_id, qty_done, created_at, updated_at) VALUES
-        (${item1.id}, ${stage1.id}, 4, now(), now()),
-        (${item1.id}, ${stage2.id}, 2, now(), now())
-    `)
   })
 
   afterAll(async () => {

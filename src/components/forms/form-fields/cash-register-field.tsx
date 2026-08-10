@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
-import { isActiveRef } from '@/lib/utils/is-active-ref'
+import { useFieldValue } from '@/components/forms/hooks/use-field-value'
+import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { ReferenceItemT } from '@/types/reference-data'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
@@ -26,9 +27,11 @@ export function CashRegisterField({
 }: CashRegisterFieldPropsT) {
   const [activeOnly, setActiveOnly] = useState(true)
 
+  const selectedId = useFieldValue(form, name)
+
   const filteredRegisters = useMemo(
-    () => cashRegisters.filter((register) => !activeOnly || isActiveRef(register)),
-    [cashRegisters, activeOnly],
+    () => activeOrSelected(cashRegisters, activeOnly, selectedId),
+    [cashRegisters, activeOnly, selectedId],
   )
 
   const emptyMessage = cashRegisters.length === 0 ? 'Brak kas' : 'Brak aktywnych kas'

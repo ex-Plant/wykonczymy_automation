@@ -338,6 +338,19 @@ pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „d
     Materiały budowlane/wykończeniowe, korekta i wpłaty = wartość nominalna (brak wiersza
     brutto). (Bug 1: wcześniej wszystko gruntowane hurtem przez `toGross(cały net)`; bug 2:
     rabat błędnie zrzucony do `faceValue` — powinien `moneyPair(…, vatRate)`.)
+  - **WYJĄTEK od „materiały nominalnie" — wydatek typu netto (wdrożone 2026-08-07).**
+    Reguła „wartość nominalna" mówi, że nie **wymyślamy** VAT-u, którego nie było na dokumencie —
+    a nie że materiał nigdy nie ma dwóch osi. Wydatek zapisany jako **netto** ma brutto policzone:
+    `brutto = netto × (1 + (materialsNetRate ?? vatRate))`, tą samą stawką, która w drugą stronę
+    rządzi kolumną Netto. Kierunek wynika z tego, na której płaszczyźnie wydatek zapisano; paragon
+    brutto dalej stoi po face value na obu osiach.
+    **Pułapka, którą to przywraca:** model „zapisane `netAmount`" wybrano właśnie po to, żeby
+    skasować dryf zaokrągleń (`ROUND` Postgresa vs `Math.round` JS-a) łamiący „lista === podsumowanie"
+    — brutto liczone wskrzesza dokładnie to ryzyko, więc niezmiennik Σ testuje się **na moście**
+    między płaszczyznami, nie po jednym teście na płaszczyznę.
+    **Konsekwencja w rozliczeniu mieszanym:** „Pozostało brutto" **nie** jest gruntowaniem kwoty
+    nierozliczonej — to gruntowałoby materiały razem z pracami. Liczy się z „Łącznie", gdzie
+    materiały już stoją po face value na obu osiach (`resztaGross = combined.gross − paidNet`).
   - **Skutek dla rekoncyliacji (strona inwestycji „z kosztorysu", EX-535):** porównanie idzie
     **netto ↔ netto** dla obu figur — kosztorys suma prac (netto) ↔ Σ `LABOR_COST`, kosztorys
     rabat (netto) ↔ Σ `RABAT`. Strony kosztorysowej **nie gruntujemy**. To usuwa fałszywy
@@ -454,6 +467,20 @@ przypiętego do widoku klienta.)
 pracownik (patrz notatka „Wypłaty = ręczny rejestr…"), nie z arkusza. Wariant per etap daje poprawną
 **sumę kosztu**; przypięcie „kto zrobił który etap" do konkretnej ekipy (dla rozliczenia per pracownik)
 to dalsza, opcjonalna warstwa — nie mieszać jej do tej zmiany.
+
+**Ta warstwa jest już wdrożona (EX-613).** Przypisanie siedzi na **etapie** (nullowalne, obok
+`plane`), nie na transakcji — bo most transakcja→etap raz już istniał i został wyrwany (EX-536,
+migracja `20260721_0`), a domknięcie go kosztowało dwie poprawki na spójność tagów, gdy wiersz
+nadrzędny się przesuwał. Przypisanie na etapie tego problemu nie ma.
+
+Dwie konsekwencje, które łatwo przeoczyć:
+
+- **Warstwa rozliczenia jest świadoma etapów, warstwa wyceny nie** (granica z EX-489). Figura per
+  pracownik to sprawa rozliczenia — nic z niej nie schodzi do wyceny pozycji.
+- **Dwie nullowalne osie na jednym etapie = dwa niezależne braki**, które potrafią wystąpić naraz.
+  Dominuje `plane`: etap bez wariantu nikomu nic nie zarabia, więc „brak osoby" jest na nim
+  twierdzeniem o zerze — i dlatego etap bez wariantu nie przyjmuje przypisania. Odwrotnie niż przy
+  `plane`, brak osoby **nigdy** nie blokuje wpisywania ilości.
 
 **Co wdrożono (EX-565).** Wariant siedzi na **etapie** (`kosztorys_stages.plane`) — dokładnie ten
 grain, który właściciel potwierdził. Rozliczenie podwykonawcy liczy się po wariancie etapu, więc

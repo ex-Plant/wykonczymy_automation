@@ -7,6 +7,63 @@ diff is the union of those commits, not `main...HEAD`.
 
 ## Findings
 
+- [x] 🔴 CRITICAL · fixed · code-review + impl-review · `subcontractor-columns.tsx` · „Mnożnik"
+      committed every parseable keystroke and its blur only cleared the message — a refused „0,9"
+      left the row at coefficient **0**, i.e. a 0 zł subcontractor price, silently. It also ate the
+      decimal point (the controlled input rewrote „0," back to „0"), so a decimal multiplier was
+      effectively untypeable. Both die with the shared `useOverrideEdit` draft machine, which routes
+      „Mnożnik" through the same `priceKeystroke`/`priceSettle` pair „Cena" already used.
+      test: test-driven-debugging · unit — `subcontractor-price-edit.test.ts` „odrzucony mnożnik nie
+      zostawia wiersza na prefiksie „0"" pins entry-state rollback for the coeff mode.
+- [x] 🔴 CRITICAL · fixed · code-review · `subcontractor-columns.tsx` · switching „Źródło" carried the
+      stored number across unread, and the two modes read that slot differently: a 200 zł kwota stała
+      became a multiplier of **200** (a 20 000 zł row the guard never saw — no keystroke went through
+      it), and a 0,65 mnożnik became a price of 65 groszy. `modeChange` now re-seeds from the price
+      the row already shows, so the switch changes the source, not the price — which is also what
+      makes it safe: whatever passed the guard before still passes after.
+      test: test-driven-debugging · unit — `modeChange` block, all four directions + the
+      clientPrice-0 fallback.
+- [x] 🟡 WARNING · fixed · code-review · `subcontractor-price-guard.ts:41` · a negative price passed
+      unremarked whenever `clientPrice` was 0 — the zero short-circuit returns before the ceiling, so
+      the rows still being priced were exactly the unguarded ones. Added a negative floor ahead of
+      the short-circuit.
+      test: TDD · unit — `checkSubcontractorPrice — cena ujemna`, incl. the zero-client-price case
+      and the zero-is-not-negative boundary.
+- [x] 🟡 WARNING · fixed · impl-review · `kosztorys-global-settings.tsx:36,48` · both global-coefficient
+      fields capped at `MAX_CLIENT_SHARE` but had no floor, so a negative global coefficient was
+      typeable and produced negative subcontractor prices on every auto row at once. `min={0}` added.
+      test: no automated test · — the guard's negative rung above covers the resulting row state; the
+      input attribute itself is browser-enforced and belongs to the manual/E2E pass.
+- [x] 🔵 OBSERVATION · fixed · code-review · `subcontractor-columns.tsx` · Escape had no handler, so
+      an in-flight rejected draft could only be resolved by blurring. Escape now rolls the row back to
+      the entry snapshot and clears the draft — deliberately WITHOUT calling `blur()`, because the
+      stale-closure `onBlur` would then settle the same draft a second time after the rollback.
+- [x] 🔵 OBSERVATION · fixed · code-review · `subcontractor-columns.tsx` · a draft outlived its row:
+      the grid recycles cell components across rows while virtualizing, so scrolling mid-edit could
+      settle one row's text onto another. The draft now carries `rowId` and settle/cancel no-op when
+      it doesn't match.
+- [x] 🔵 OBSERVATION · fixed · code-review · `subcontractor-columns.tsx` · the tooltip revealed on
+      pointer only, so a keyboard user reaching the cell by Tab never saw why their value was refused.
+      Added `onFocusCapture`/`onBlurCapture` alongside the pointer handlers.
+- [x] fixed · module-cohesion + structure-scatter · `constants.ts` · `OVERRIDE_FIELDS` lived in the
+      edit module while three columns and the cell file all needed it — two audits converged on the
+      same relocation. Moved to `kosztorys/constants.ts`.
+- [x] fixed · code-review · `subcontractor-price-edit.ts` · the cell file had hand-rolled its own
+      copy of the module's private `withOverride`. Exported the original, deleted the duplicate.
+- [x] fixed · code-review · `subcontractor-columns.tsx` · the price cell rendered a raw float
+      (`70.00000000000001`) and a dot separator in a Polish UI. `round2` now trims to two places and
+      emits a comma.
+- [x] fixed · tailwind-v4-audit + code-review + a11y · `globals.css` · `--color-warning` measured
+      1.83:1 on light, below the 3:1 non-text floor. First skipped as the owner's deliberate choice,
+      then resolved outright: they dropped the whole warning tier (2026-07-28), so the token, its
+      dark-mode twin and `AlertIcon`'s second tone all went as dead code. The contrast question
+      disappears with the colour.
+- [x] fixed · comment-noise · `subcontractor-price-guard.test.ts:53,86` · two comments were written in
+      Polish; AGENTS.md keeps comments English even beside Polish UI strings. Translated. The rest of
+      the proposed deletes/trims were re-read against the current files and every one carries
+      rationale that survives the STRIP TEST — dropped rather than churned.
+- [x] fixed · primitive-reuse · `slice-pie.tsx:47` · rendered a bare `AlertTriangle` (the deprecated
+      lucide alias) instead of the app's `AlertIcon`. Adopted.
 - [x] dismissed · primitive-reuse · `recon-mismatch-badge.tsx`, `plane-unconfirmed-badge.tsx` · look
       like the same duplication but aren't: each icon is the badge's ONLY content and carries the
       `aria-label` that names it — one of them asserted on by an E2E. `AlertIcon` is `aria-hidden` by
@@ -43,9 +100,9 @@ Held off every file dirty from a parallel session — `warning-banner.tsx`,
 
 ## Outcome
 
-**In review, not archived.** Every finding box is checked, but the second archive blocker stands:
-all 12 manual-check boxes in `manual-checks.md` are still unticked, and manual verification is a
-hard blocker for Done.
+**Archived 2026-07-28.** Every finding box is checked. The 12 manual-check boxes in
+`manual-checks.md` were still unticked at the time, which read as a blocker until the owner's
+2026-07-28 ruling made manual verification non-blocking for Done.
 
 Both open decisions were settled by the owner (2026-07-28):
 

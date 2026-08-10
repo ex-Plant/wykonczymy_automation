@@ -93,9 +93,11 @@ import type {
   KosztorysStageT,
   KosztorysTreeT,
   KosztorysV2RowT,
+  StagePatchT,
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
+import { usePendingStore } from '@/stores/pending-store'
 
 type ArgsT = {
   investmentId: number
@@ -122,6 +124,7 @@ const UNDO_COALESCE_MS = 700
 // Separate knob from UNDO_COALESCE_MS despite the matching value — one decides when a burst becomes
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
+const SETTINGS_PENDING_KEY = 'kosztorys-settings'
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -152,7 +155,7 @@ export function useKosztorysEditor({
   // `globalDiscount` is already stale — so its failure rollback reads the live value from here.
   // Same latest-value ref pattern as `rowsRef` below, for the same reason.
   const globalDiscountRef = useRef(globalDiscount)
-  // eslint-disable-next-line react-hooks/refs
+
   globalDiscountRef.current = globalDiscount
   // „Opcje rozliczenia" writes nothing optimistically — every figure the four settings move is
   // recomputed on the server, so the panel can only change once the write lands. One shared flag for
@@ -204,7 +207,7 @@ export function useKosztorysEditor({
   // its closures are rebuilt each render. Kept deliberately as the rollback path; whether they are
   // still load-bearing is EX-422's own follow-up, not a freebie to delete alongside it.
   const rowsRef = useRef(rows)
-  // eslint-disable-next-line react-hooks/refs
+
   rowsRef.current = rows
   // Persisted display_order per section, seeded at mount like `rows` and kept current on
   // add/append/move. The grid rows carry no section order (the array's block sequence IS the order),
@@ -212,7 +215,7 @@ export function useKosztorysEditor({
   const sectionOrderRef = useRef(new Map(tree.sections.map((s) => [s.id, s.displayOrder])))
   // Same, for the stage-rename handler's no-op guard (compares against the fresh label).
   const stagesRef = useRef(stages)
-  // eslint-disable-next-line react-hooks/refs
+
   stagesRef.current = stages
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
@@ -841,68 +844,52 @@ export function useKosztorysEditor({
     )
   }
 
-  // Optimistic rename; an empty label reverts to null (the header shows the "Etap N" placeholder).
-  // Guard against a no-op write: the header's onBlur fires on every focus-out, so skip when the
-  // label is unchanged (the header has no diff of its own, unlike item cells via diffRow).
+  // Shared by all three header edits so they inherit the cell edits' revert-on-error discipline.
+  // The revert restores the prior value only if nothing newer landed on the field meanwhile (it
+  // still reads `value`) — which is what makes a slow rejected write safe to roll back.
+  //
+  // `saveKey` is passed rather than derived from `field`: it is the debounce identity, so renaming a
+  // field must not silently re-bucket in-flight saves.
+  function patchStageField<K extends keyof StagePatchT & keyof KosztorysStageT>(
+    stageId: number,
+    field: K,
+    value: StagePatchT[K],
+    saveKey: string,
+  ) {
+    const current = stagesRef.current.find((st) => st.id === stageId)
+    if (current && current[field] === value) return
+    const prev = current?.[field] ?? null
+    const withField = (stage: KosztorysStageT, next: unknown) =>
+      ({ ...stage, [field]: next }) as KosztorysStageT
+    setStages((s) => s.map((st) => (st.id === stageId ? withField(st, value) : st)))
+    save(
+      `${saveKey}:${stageId}`,
+      () => updateStageAction(stageId, { [field]: value } as StagePatchT),
+      () =>
+        setStages((s) =>
+          s.map((st) => (st.id === stageId && st[field] === value ? withField(st, prev) : st)),
+        ),
+    )
+  }
+
+  // An empty label reverts to null (the header shows the "Etap N" placeholder). The no-op guard in
+  // patchStageField earns its keep here: the header's onBlur fires on every focus-out, and it has no
+  // diff of its own, unlike item cells via diffRow.
   function handleRenameStage(stageId: number, label: string) {
     const trimmed = label.trim()
-    const next = trimmed === '' ? null : trimmed
-    const current = stagesRef.current.find((st) => st.id === stageId)
-    if (current && current.label === next) return
-    const prevLabel = current?.label ?? null
-    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, label: next } : st)))
-    // Route through the debounced saver for the same revert-on-error discipline as cell edits.
-    // The revert restores the prior label only if nothing newer was typed (label still === next).
-    save(
-      `stage-label:${stageId}`,
-      () => updateStageAction(stageId, { label: next }),
-      () =>
-        setStages((s) =>
-          s.map((st) =>
-            st.id === stageId && st.label === next ? { ...st, label: prevLabel } : st,
-          ),
-        ),
-    )
+    patchStageField(stageId, 'label', trimmed === '' ? null : trimmed, 'stage-label')
   }
 
-  // Optimistic plane pick. Fired from the header's onValueChange (an event handler, never inside a
-  // state updater), with the same revert-on-error discipline as the rename saver. Picking any plane
-  // (even the default w_tools) writes it, which is what clears the unconfirmed warning.
+  // Fired from the header's onValueChange (an event handler, never inside a state updater). Picking
+  // any plane (even the default w_tools) writes it, which is what clears the unconfirmed warning.
   function handleSetStagePlane(stageId: number, plane: ToolPlaneT) {
-    const current = stagesRef.current.find((st) => st.id === stageId)
-    if (current && current.plane === plane) return
-    const prevPlane = current?.plane ?? null
-    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, plane } : st)))
-    save(
-      `stage-plane:${stageId}`,
-      () => updateStageAction(stageId, { plane }),
-      () =>
-        setStages((s) =>
-          s.map((st) =>
-            st.id === stageId && st.plane === plane ? { ...st, plane: prevPlane } : st,
-          ),
-        ),
-    )
+    patchStageField(stageId, 'plane', plane, 'stage-plane')
   }
 
-  // Optimistic worker pick, mirroring handleSetStagePlane. Diverges in one place: `null` is a legal
-  // target („Bez przypisania"). No undo push — matching plane, and reassigning back is the exact
-  // inverse.
+  // `null` is a legal target here („Bez przypisania"), unlike plane. No undo push — matching plane,
+  // and reassigning back is the exact inverse.
   function handleSetStageWorker(stageId: number, workerId: number | null) {
-    const current = stagesRef.current.find((st) => st.id === stageId)
-    if (current && current.workerId === workerId) return
-    const prevWorkerId = current?.workerId ?? null
-    setStages((s) => s.map((st) => (st.id === stageId ? { ...st, workerId } : st)))
-    save(
-      `stage-worker:${stageId}`,
-      () => updateStageAction(stageId, { workerId }),
-      () =>
-        setStages((s) =>
-          s.map((st) =>
-            st.id === stageId && st.workerId === workerId ? { ...st, workerId: prevWorkerId } : st,
-          ),
-        ),
-    )
+    patchStageField(stageId, 'workerId', workerId, 'stage-worker')
   }
 
   async function handleRemoveSection(sectionId: number) {
@@ -1088,9 +1075,21 @@ export function useKosztorysEditor({
   // share this shape differ only in where their `before` is read from — VAT off the denormalized rows,
   // the other two off `tree` — so that stays the caller's job.
   function saveSetting<T>(label: string, apply: (value: T) => Promise<void>, before: T, next: T) {
+    // Keyed per setting, not per subsystem: nothing serialises these transitions, so changing VAT
+    // and then tryb before the first lands would otherwise have the first `finally` clear the one
+    // shared key while the second write is still on the wire — the pill vanishing mid-save is the
+    // exact failure the store is keyed rather than boolean to prevent.
+    const pendingKey = `${SETTINGS_PENDING_KEY}:${label}`
     startSettingsSave(async () => {
-      await apply(next)
-      if (before !== next) pushReversible(label, apply, before, next)
+      // The popover can close mid-save, so the progress signal has to live outside this subtree —
+      // hence the global store rather than a pill rendered by „Opcje rozliczenia" itself.
+      usePendingStore.getState().start(pendingKey, 'Zapisywanie…')
+      try {
+        await apply(next)
+        if (before !== next) pushReversible(label, apply, before, next)
+      } finally {
+        usePendingStore.getState().stop(pendingKey)
+      }
     })
   }
 
