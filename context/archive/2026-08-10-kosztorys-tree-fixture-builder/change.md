@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-tree-fixture-builder
 title: Shared kosztorys tree fixture builder for the DB specs
-status: implemented
+status: archived
 created: 2026-08-10
 updated: 2026-08-10
-archived_at: null
+archived_at: 2026-08-10T10:14:00Z
 branch: konradantonik/ex-635-kosztorys-tree-fixture-builder
 worktree: null
 linear: EX-635
@@ -32,3 +32,8 @@ Two facts the issue predates:
   needs a different name.
 - `buildKosztorysTree` is a **production** function name (`src/lib/kosztorys`, it shows up in the
   specs' own PERF logs), so the builder can't take it either.
+
+Review record: `.review-gate/consolidated-gate.md` (branch-scoped gate, not a per-change
+`reviews/impl-review*.md`). `plan.md` dropped at archive — every piece of its rationale (the name
+collision, positional addressing, `??`-not-`||` so a deliberate `0`/`null` survives, why
+`skipRevalidation`) lives as comments in `src/__tests__/helpers/kosztorys-db-tree.ts`.
