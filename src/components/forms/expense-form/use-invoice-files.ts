@@ -1,13 +1,8 @@
 import { useRef, useState } from 'react'
 
-import { mapWithConcurrency } from '@/lib/utils/map-with-concurrency'
-import { BlockedFileError, processUploadFile } from '@/lib/utils/process-upload-file'
+import { ingestFiles } from '@/lib/invoices/ingest-files'
+import type { BlockedFileError } from '@/lib/utils/process-upload-file'
 import { splitExtension } from '@/lib/utils/append-short-id'
-
-// Cap parallel ingest processing to match the scan (GENERATION_CONCURRENCY) and upload
-// (UPLOAD_CONCURRENCY) paths: a batch pick (10-20+ files) each runs main-thread CompressorJS
-// plus a possible ~1.3 MB HEIC WASM decode, so an unbounded Promise.all would freeze the UI.
-const INGEST_CONCURRENCY = 4
 
 // Files that couldn't enter the map (unconvertible HEIC / oversize) — surfaced to the caller so
 // it can show a per-item Polish message. A blocked file leaves its row without a File.
@@ -72,16 +67,7 @@ export function useInvoiceFiles(initialFiles?: Map<string, File[]>) {
     picked: File[],
     mode: 'per-row' | 'single-row' = 'per-row',
   ): Promise<IngestResultT> {
-    const blocked: BlockedFileError[] = []
-    const processed = await mapWithConcurrency(picked, INGEST_CONCURRENCY, async (file) => {
-      try {
-        return await processUploadFile(file)
-      } catch (error) {
-        if (!(error instanceof BlockedFileError)) throw error
-        blocked.push(error)
-        return undefined
-      }
-    })
+    const { processed, blocked } = await ingestFiles(picked)
 
     commit((prev) => {
       const next = new Map(prev)

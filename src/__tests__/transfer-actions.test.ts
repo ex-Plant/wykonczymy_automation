@@ -88,7 +88,7 @@ const {
   createBulkTransferAction,
   cancelTransferAction,
   updateTransferAction,
-  updateTransferInvoiceAction,
+  addTransferInvoicesAction,
   removeTransferInvoiceAction,
   removeAllTransferInvoicesAction,
 } = await import('@/lib/actions/transfers')
@@ -873,11 +873,11 @@ describe('updateTransferAction', () => {
 // Invoice page actions
 // ═════════════════════════════════════════════════════════════════════════
 
-describe('updateTransferInvoiceAction', () => {
+describe('addTransferInvoicesAction', () => {
   it('appends the new page to the pages already attached', async () => {
     mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
 
-    const result = await updateTransferInvoiceAction(10, 88)
+    const result = await addTransferInvoicesAction(10, [88])
 
     expect(result.success).toBe(true)
     expect(mockUpdate).toHaveBeenCalledWith(
@@ -889,10 +889,23 @@ describe('updateTransferInvoiceAction', () => {
     )
   })
 
+  // The whole reason the action takes a batch: setTransferInvoices is a read-modify-write, so a
+  // page-at-a-time caller would race and keep only the last one.
+  it('a whole batch lands in pick order in ONE update', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55] })
+
+    await addTransferInvoicesAction(10, [88, 89, 90])
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [55, 88, 89, 90] } }),
+    )
+  })
+
   it('appending keeps every existing page — nothing is deleted', async () => {
     mockFindByID.mockResolvedValueOnce({ invoice: [55] })
 
-    await updateTransferInvoiceAction(10, 88)
+    await addTransferInvoicesAction(10, [88])
 
     expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
   })
@@ -900,7 +913,7 @@ describe('updateTransferInvoiceAction', () => {
   it('reads ids out of populated media docs, not just raw ids', async () => {
     mockFindByID.mockResolvedValueOnce({ invoice: [{ id: 55, filename: 'p1.jpg' }] })
 
-    await updateTransferInvoiceAction(10, 88)
+    await addTransferInvoicesAction(10, [88])
 
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: { invoice: [55, 88] } }),
@@ -910,24 +923,52 @@ describe('updateTransferInvoiceAction', () => {
   it('re-adding an attached page is a no-op rather than a duplicate', async () => {
     mockFindByID.mockResolvedValueOnce({ invoice: [88] })
 
-    await updateTransferInvoiceAction(10, 88)
+    await addTransferInvoicesAction(10, [88])
 
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [88] } }))
+  })
+
+  it('a batch mixing attached and new ids appends only the new ones', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
+
+    await addTransferInvoicesAction(10, [56, 88])
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [55, 56, 88] } }),
+    )
+  })
+
+  it('the same id twice in one batch attaches one page', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [] })
+
+    await addTransferInvoicesAction(10, [88, 88, 89])
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [88, 89] } }),
+    )
   })
 
   it('first page on an invoice-less transfer → one-page list', async () => {
     mockFindByID.mockResolvedValueOnce({ invoice: null })
 
-    await updateTransferInvoiceAction(10, 88)
+    await addTransferInvoicesAction(10, [88])
 
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [88] } }))
+  })
+
+  it('an empty batch touches nothing', async () => {
+    const result = await addTransferInvoicesAction(10, [])
+
+    expect(result.success).toBe(true)
+    expect(mockFindByID).not.toHaveBeenCalled()
+    expect(mockUpdate).not.toHaveBeenCalled()
   })
 
   it('payload.update failure → returns error', async () => {
     mockFindByID.mockResolvedValueOnce({ invoice: [] })
     mockUpdate.mockRejectedValueOnce(new Error('Invoice update failed'))
 
-    const result = await updateTransferInvoiceAction(10, 88)
+    const result = await addTransferInvoicesAction(10, [88])
 
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('Invoice update failed')

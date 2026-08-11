@@ -6,28 +6,8 @@ import {
   type IngestResultT,
 } from '@/components/forms/expense-form/use-invoice-files'
 import { filesByRowId } from '@/lib/utils/upload-file-client'
-import { MAX_UPLOAD_BYTES, type BlockedFileError } from '@/lib/utils/process-upload-file'
+import { reportBlockedFiles } from '@/lib/invoices/blocked-files-message'
 import { toastMessage } from '@/lib/utils/toast'
-
-const MAX_UPLOAD_MB = MAX_UPLOAD_BYTES / (1024 * 1024)
-
-// One Polish line per blocked file (unconvertible HEIC / oversize) in a single toast so one bad
-// file in a batch never spams N toasts. Rendered as JSX rather than a "\n"-joined string because
-// react-toastify collapses newlines in HTML — a multi-file block would otherwise run together. The
-// MB figure tracks MAX_UPLOAD_BYTES (the guard), not the raw 4.5 MB Vercel cap.
-function blockedFilesMessage(blocked: BlockedFileError[]) {
-  return (
-    <div>
-      {blocked.map((error, index) => (
-        <p key={index}>
-          {error.reason === 'too-large'
-            ? `Plik „${error.filename}” przekracza ${MAX_UPLOAD_MB} MB — zmniejsz go i spróbuj ponownie.`
-            : `Nie udało się przekonwertować „${error.filename}” — zapisz jako JPG i spróbuj ponownie.`}
-        </p>
-      ))}
-    </div>
-  )
-}
 
 type ArgsT = {
   // The previous submit's positional Map<number,File[]> (wire order), if this mount is a recovery.
@@ -69,13 +49,6 @@ export function useInvoiceIngest({ recoveredFiles, storedLineItems }: ArgsT) {
     })
   }
 
-  function reportBlocked(blocked: BlockedFileError[]) {
-    if (blocked.length === 0) return
-    // TODO(EX-449) SENTRY-REQUIRED: blocked-file ingest failures (unconvertible HEIC / oversize)
-    // must be captured once Sentry is wired — currently surfaced only as a per-item user toast.
-    toastMessage(blockedFilesMessage(blocked), 'error', 8000)
-  }
-
   // The `finally` is load-bearing: an unexpected ingest rejection (e.g. a chunk-load failure on the
   // lazy import) must still release the rows, or they stay busy forever and wedge the whole form.
   // Blocked files enter no map; the row stays empty. The reactive file store re-renders attached
@@ -83,7 +56,7 @@ export function useInvoiceIngest({ recoveredFiles, storedLineItems }: ArgsT) {
   async function runIngest(ids: string[], ingest: () => Promise<IngestResultT>) {
     markIngesting(ids, true)
     try {
-      reportBlocked((await ingest()).blocked)
+      reportBlockedFiles((await ingest()).blocked)
     } catch {
       // TODO(EX-449) SENTRY-REQUIRED: unexpected ingest failure (not a BlockedFileError) — capture
       // once Sentry is wired; for now the user gets a generic retry toast.

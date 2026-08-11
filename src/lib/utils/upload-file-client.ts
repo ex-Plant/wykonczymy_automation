@@ -20,7 +20,7 @@ export class InvoiceUploadError extends Error {
   }
 }
 
-export async function uploadFileClient(file: File): Promise<number> {
+async function uploadFileClient(file: File): Promise<number> {
   const formData = new FormData()
   formData.set('file', file)
 
@@ -112,4 +112,13 @@ export async function resolveInvoiceMediaIds(
     if (mediaId !== undefined) byRow[row].push(mediaId)
   })
   return byRow
+}
+
+/**
+ * The same upload, from a surface that has no rows — one invoice, its pages in pick order. Spares
+ * every such caller the `(1, new Map([[0, files]]))` incantation and the `[pages]` destructure.
+ */
+export async function resolveInvoicePageIds(files: File[]): Promise<number[]> {
+  const [pages] = await resolveInvoiceMediaIds(1, new Map([[0, files]]))
+  return pages
 }

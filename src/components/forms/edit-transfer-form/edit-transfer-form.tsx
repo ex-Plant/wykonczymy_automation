@@ -14,7 +14,7 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { editExpenseFormSchema } from '@/components/forms/expense-form/expense-schema'
-import { InvoiceUploadError, resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
+import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
 import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
 import type { z } from 'zod'
@@ -93,10 +93,7 @@ export function EditTransferForm({
           let invoiceMediaIds: number[] | undefined
           if (files.length > 0) {
             try {
-              // One row, so every picked file is a page of the same invoice: index 0 of a
-              // one-row positional batch.
-              const [pages] = await resolveInvoiceMediaIds(1, new Map([[0, files]]))
-              invoiceMediaIds = pages
+              invoiceMediaIds = await resolveInvoicePageIds(files)
             } catch (err) {
               if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
               const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'

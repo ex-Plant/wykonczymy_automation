@@ -325,14 +325,29 @@ async function setTransferInvoices(
   return { success: true }
 }
 
-/** Appends a page. Re-adding an id already attached is a no-op rather than a duplicate page. */
-export async function updateTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
+/**
+ * Takes the whole batch because `setTransferInvoices` is a read-modify-write — one call per page
+ * would race, and every page but the last would be lost.
+ */
+export async function addTransferInvoicesAction(
+  transferId: number,
+  invoiceMediaIds: number[],
+): Promise<ActionResultT> {
   return protectedAction(
-    'updateTransferInvoiceAction',
-    ({ payload }) =>
-      setTransferInvoices(payload, transferId, (current) =>
-        current.includes(invoiceMediaId) ? current : [...current, invoiceMediaId],
-      ),
+    'addTransferInvoicesAction',
+    async ({ payload }) => {
+      // Inside the auth boundary, not before it: a `{ success: true }` returned without one would
+      // read as "authorized" to the next caller.
+      if (invoiceMediaIds.length === 0) return { success: true }
+
+      return setTransferInvoices(payload, transferId, (current) => {
+        const next = [...current]
+        invoiceMediaIds.forEach((id) => {
+          if (!next.includes(id)) next.push(id)
+        })
+        return next
+      })
+    },
     ['transfers'],
   )
 }
