@@ -1,10 +1,10 @@
 ---
 change_id: lead-recovery-notifies-sales
 title: Recovered leads reach sales — stop stamping notifyStatus skipped
-status: implemented
+status: archived
 created: 2026-08-10
-updated: 2026-08-10
-archived_at: null
+updated: 2026-08-11
+archived_at: 2026-08-11T15:55:15Z
 branch: konradantonik/ex-416-cron-lead-reconcile
 worktree: null
 ---
