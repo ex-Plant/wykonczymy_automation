@@ -774,3 +774,36 @@ exists — read them as superseded by this section, not as owed.
 - [ ] Za duże zdjęcie daje ten sam polski komunikat co formularz wydatku, a reszta plików z paczki wchodzi.
 - [ ] Po udanym dodaniu pojawia się toast „Faktura dodana", a wiersz od razu pokazuje strony.
 - [ ] W trakcie przesyłania „+" jest zablokowany — drugiego wyboru nie da się zacząć.
+
+## cron-lead-reconcile (EX-416)
+
+Setup: run the app locally (`.env` → 5433 dev DB) and read `CRON_SECRET` from `.env`. The Graph calls
+hit **live Meta data** with the never-expiring Page token, so a sweep here really does insert leads —
+run it against the dev DB, not prod.
+
+### Phase 1: Extract the sweep core
+
+- [ ] „Pobierz zgłoszenia" in the app still reports the same added/scanned counts as before the split
+
+### Phase 2: Cron route, schedule, and recovery alert
+
+- [ ] Hitting `/api/cron/leads-reconcile` locally without a bearer returns 401
+- [ ] Hitting it with the correct `CRON_SECRET` returns counts, and a run that recovers a lead delivers the alert mail to `LEADS_ALERT_EMAIL`
+- [ ] The Vercel dashboard lists the new cron after deploy, and its first run logs a 200
+
+### Review gate (added 2026-08-10)
+
+- [ ] Break the Meta token in `.env`, hit the route with the correct secret → **500** _and_ a „🚨 Cron odzyskiwania zgłoszeń nie zadziałał" mail lands in `LEADS_ALERT_EMAIL`. This is the failure the whole change exists to prevent, and the only leg no unit test can prove end-to-end (real Graph rejection → real SMTP send).
+
+## lead-recovery-notifies-sales (EX-660)
+
+Same setup as `cron-lead-reconcile` above (local app, dev DB on 5433, `CRON_SECRET` from `.env`).
+**Caution:** these checks read live Meta data and send real mail to `LEADS_NOTIFY_EMAIL`,
+`LEADS_ALERT_EMAIL`, and — if anything regresses — to a real customer address.
+
+Precondition: a lead that exists in Meta's recent window but not in the local DB (delete it locally).
+
+- [ ] Click „Pobierz zgłoszenia" → the sales inbox receives one ordinary „Nowe zgłoszenie" for that lead, indistinguishable from a webhook-delivered one
+- [ ] The customer address receives **nothing** — no late „Dziękujemy za kontakt". This is the leg the whole `autoReply: 'skip'` option exists for
+- [ ] The recovered row in the admin panel shows `notifyStatus: sent`, `autoReplyStatus: skipped` — never `skipped`/`skipped`
+- [ ] Exactly one summary mail arrives, to `LEADS_ALERT_EMAIL` only (not the sales inbox), with no contact details and no "call them yourself" instruction

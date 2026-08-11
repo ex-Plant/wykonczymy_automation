@@ -37,13 +37,13 @@ manual Graph `curl` calls below (no committed script), not the webhook.
 
 ## Key facts
 
-| Thing                  | Value                                                                      |
-| ---------------------- | -------------------------------------------------------------------------- |
-| Meta app               | `wykonczymy` — App ID `1568997054330916`                                   |
-| FB Page                | `Wykończymy` — Page ID `104897439055542`                                   |
-| Prod domain (THIS app) | `wykonczymy.vercel.app` (NOT the WordPress `wykonczymy.com.pl`)            |
-| Prod callback URL      | `https://wykonczymy.vercel.app/api/webhooks/facebook-leads`                |
-| Token expiry           | `META_PAGE_ACCESS_TOKEN` **expires Sep 4 2026** — leads silently stop then |
+| Thing                  | Value                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| Meta app               | `wykonczymy` — App ID `1568997054330916`                                                              |
+| FB Page                | `Wykończymy` — Page ID `104897439055542`                                                              |
+| Prod domain (THIS app) | `wykonczymy.vercel.app` (NOT the WordPress `wykonczymy.com.pl`)                                       |
+| Prod callback URL      | `https://wykonczymy.vercel.app/api/webhooks/facebook-leads`                                           |
+| Token expiry           | none — `META_PAGE_ACCESS_TOKEN` is System-User-derived and reports `expires_at: 0` (since 2026-08-10) |
 
 ## Links to paste
 
@@ -117,6 +117,25 @@ A **form submission IS a lead** — there is no separate object. `/leads` return
 **Retention:** only leads still inside Meta's retention window come back; older ones are dropped
 server-side. The `next` pagination URL **embeds the page token in plaintext** — never log or paste it.
 
+## Daily reconcile cron (the webhook's backstop)
+
+`/api/cron/leads-reconcile` runs the same sweep the „Pobierz zgłoszenia" button runs, daily at 04:00
+(`vercel.json`). Three facts fixed its shape:
+
+- **Daily is enough because Meta retries a failed lead webhook for ~36h on its own.** A daily run
+  lands well inside that window, so the cron only ever catches what Meta itself gave up on — and it
+  costs three Graph calls a day (one `leadgen_forms`, plus leads + questions per _active_ form;
+  empty forms are skipped, and only 1 of 9 has data). Hourly would buy nothing but rate-limit
+  exposure.
+- **No token-expiry monitor, deliberately.** The System-User-derived Page token reports
+  `expires_at: 0`, so a `debug_token` watchdog would guard a failure mode that no longer exists.
+- **No cursor or watermark.** `storeLead` dedupes on `(source, externalId)`, so re-sweeping the same
+  recent leads every night is a no-op by construction. The run is bounded by a per-form limit, not
+  by history.
+
+A recovery is therefore _itself_ the alarm: if the cron ever inserts a lead, the webhook is not
+delivering and the ops mail says so.
+
 ## Data shape (for the `leads` Payload collection)
 
 Snapshot from the live page (2026-07-06): **9 forms, but only `899352536400611`
@@ -142,7 +161,7 @@ Design constraints this dump proves out:
 - Values arrive as a `values` **array**; every field here is single-value, but the shape is a list —
   store `values[0]` or the whole array, don't assume scalar.
 
-## Regenerating the token (before Sep 4 2026)
+## Regenerating the token (only if it is ever revoked)
 
 1. https://developers.facebook.com/tools/explorer → Get Page Access Token → select scopes
    (`leads_retrieval`, `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`) →
