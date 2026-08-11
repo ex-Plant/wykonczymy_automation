@@ -10,6 +10,7 @@ import { buildTransferCsv } from '@/lib/export/csv'
 import { triggerDownload } from '@/lib/export/download'
 import { sortTransferRows } from '@/lib/export/sort-rows'
 import { logError } from '@/lib/utils/log-error'
+import { today } from '@/lib/utils/date'
 
 type CsvButtonPropsT = {
   where: Where
@@ -31,7 +32,7 @@ export function CsvButton({ where, visibleColumnIds, sorting }: CsvButtonPropsT)
       const sorted = sortTransferRows(result.data, sorting)
       const csv = buildTransferCsv(sorted, visibleColumnIds)
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
-      const date = new Date().toISOString().slice(0, 10)
+      const date = today()
       triggerDownload(blob, `transfery-${date}.csv`)
     } finally {
       setIsLoading(false)

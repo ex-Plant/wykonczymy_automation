@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useInvoiceZip } from '@/hooks/use-invoice-zip'
 import { fetchFilteredTransfers } from '@/lib/actions/export'
 import { buildInvoiceArchiveName } from '@/lib/export/invoice-zip'
+import { today } from '@/lib/utils/date'
 
 type InvoiceDownloadButtonPropsT = {
   where: Where
@@ -34,7 +35,7 @@ export function InvoiceDownloadButton({ where }: InvoiceDownloadButtonPropsT) {
         return
       }
 
-      const date = new Date().toISOString().slice(0, 10)
+      const date = today()
       download(result.data, buildInvoiceArchiveName([], date))
     })
   }

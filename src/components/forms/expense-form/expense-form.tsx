@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { SelectItem } from '@/components/ui/select'
-import { FieldGroup } from '@/components/ui/field'
+import { FieldDescription, FieldGroup } from '@/components/ui/field'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useInvoiceIngest } from '@/components/forms/expense-form/use-invoice-ingest'
 import { useReceiptGeneration } from '@/components/forms/expense-form/use-receipt-generation'
@@ -23,12 +23,17 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { createBulkTransferAction } from '@/lib/actions/transfers'
+import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import {
   makeLineItem,
   type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
-import { positionalFiles, resolveInvoiceMediaIds } from '@/lib/utils/upload-file-client'
+import {
+  InvoiceUploadError,
+  positionalFiles,
+  resolveInvoiceMediaIds,
+} from '@/lib/utils/upload-file-client'
 import { toastMessage } from '@/lib/utils/toast'
 import {
   bulkExpenseFormSchema,
@@ -79,7 +84,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     // Keyed by id, so surviving rows' markers/files need no shift and the reactive store
     // re-renders the removed row on its own.
     handleRemoveLineItem,
-    getFile,
+    removeFileAt,
+    getRowFiles,
     getFiles,
     renameFile,
     reset: resetInvoiceFiles,
@@ -157,18 +163,25 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       await submit(!!keepOpen, {
         form,
         action: async () => {
-          let invoiceMediaIds: (number | undefined)[] | undefined
+          let invoiceMediaIds: number[][] | undefined
           if (files.size > 0) {
             try {
               // Submit is the only upload site: the AI scan sends raw bytes and persists nothing, so
               // every attached file is uploaded once here.
               invoiceMediaIds = await resolveInvoiceMediaIds(value.lineItems.length, files)
             } catch (err) {
+              // A partly-failed batch still landed pages in Blob; those belong to no expense.
+              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
               const message = err instanceof Error ? err.message : 'Nie udało się przesłać plików'
               return { success: false, error: message }
             }
           }
-          return createBulkTransferAction(data, invoiceMediaIds)
+          const result = await createBulkTransferAction(data, invoiceMediaIds)
+          // The files are already in Blob at this point and the expense that would have referenced
+          // them was never created, so nothing can reach them again — clean up rather than leak.
+          // The user keeps their form (files included) and can resubmit, which re-uploads.
+          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds.flat())
+          return result
         },
         successMessage: 'Transakcje dodane',
         files,
@@ -226,28 +239,30 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   return (
     <FormShell form={form} onReset={handleReset}>
       <FieldGroup>
-        <div className="flex items-start gap-4">
-          <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
-            {(field) => (
-              <field.Select
-                label="Typ wydatku"
-                description={
-                  billsNetAmount(currentType)
-                    ? 'Z kasy schodzi kwota brutto, a klienta obciąża kwota netto — dlatego przy każdej pozycji podajesz obie.'
-                    : undefined
-                }
-                showError
-                fieldClassName="min-w-0 flex-1"
-              >
-                {TRANSACTION_TRANSFER_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {TRANSFER_TYPE_LABELS[t]}
-                  </SelectItem>
-                ))}
-              </field.Select>
-            )}
-          </form.AppField>
-          <DateField form={form} fieldClassName="w-40" />
+        {/* The netto hint sits UNDER the row, not on the Select as a `description` — FormBase
+          renders a description between the label and the control, which would push the type
+          Select down while „Data" beside it stayed put, breaking the row's alignment. */}
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-4">
+            <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
+              {(field) => (
+                <field.Select label="Typ wydatku" showError fieldClassName="min-w-0 flex-1">
+                  {TRANSACTION_TRANSFER_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TRANSFER_TYPE_LABELS[t]}
+                    </SelectItem>
+                  ))}
+                </field.Select>
+              )}
+            </form.AppField>
+            <DateField form={form} fieldClassName="w-40" />
+          </div>
+          {billsNetAmount(currentType) && (
+            <FieldDescription>
+              Z kasy schodzi kwota brutto, a klienta obciąża kwota netto — dlatego przy każdej
+              pozycji podajesz obie.
+            </FieldDescription>
+          )}
         </div>
 
         {showsInvestment(currentType) && (
@@ -295,8 +310,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
             hasInvestment={!!currentInvestment}
             onRemoveItem={handleRemoveLineItem}
             onFileChange={attachFile}
+            onRemoveFile={removeFileAt}
             onRegisterFiles={registerFiles}
-            getFile={getFile}
+            getRowFiles={getRowFiles}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             generatingIds={generatingIds}

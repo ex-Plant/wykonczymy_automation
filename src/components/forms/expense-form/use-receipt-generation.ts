@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { extractReceiptAction } from '@/lib/actions/extract-receipt'
+import { scanReceiptClient } from '@/lib/utils/scan-receipt-client'
 import { mapWithConcurrency } from '@/lib/utils/map-with-concurrency'
 import { toastMessage } from '@/lib/utils/toast'
 import { logError } from '@/lib/utils/log-error'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
+import { applyReceiptToRow } from '@/components/forms/expense-form/apply-receipt-to-row'
 import type { OtherCategoryRefT } from '@/types/reference-data'
 import type { BulkExpenseFormApiT } from '@/components/forms/expense-form/bulk-expense-form'
 import { usePendingStore } from '@/stores/pending-store'
@@ -16,7 +17,7 @@ const SCAN_PENDING_KEY = 'receipt-generation'
 type ReceiptGenerationDepsT = {
   form: BulkExpenseFormApiT
   otherCategories: OtherCategoryRefT[]
-  getFiles: () => Map<string, File>
+  getFiles: () => Map<string, File[]>
   renameFile: (id: string, newName: string) => void
 }
 
@@ -71,24 +72,11 @@ export function useReceiptGeneration({
         const id = row.id
         setGeneratingIds((prev) => new Set(prev).add(id))
         try {
-          // The map already holds the file processed at ingest (compressed / HEIC-converted), so the
-          // scan payload is under the serverAction body limit without re-compressing here.
-          const result = await extractReceiptAction({
-            file: files.get(id)!,
-            otherCategoryNames,
-          })
-          if (!result.success) throw new Error(result.error)
-
-          const data = result.data
+          // The map already holds the files processed at ingest (compressed / HEIC-converted), and
+          // every page of this row goes into ONE scan — the total may sit on any of them.
+          const data = await scanReceiptClient(files.get(id)!, otherCategoryNames)
           if (data.description === UNREADABLE_RECEIPT) unreadable += 1
-          form.setFieldValue(`lineItems[${index}].description`, data.description)
-          form.setFieldValue(
-            `lineItems[${index}].amount`,
-            data.amount === null ? '' : String(data.amount),
-          )
-          form.setFieldValue(`lineItems[${index}].invoiceNote`, data.invoiceNote)
-          // Category is left blank for the user to pick — the model's category inference wasn't
-          // reliable enough (frequent mismatches).
+          applyReceiptToRow(form.setFieldValue, index, data)
           // Apply the Opis-based name to the file now so it uploads under that name at submit; the
           // reactive file store re-renders the FV label to match.
           if (data.filename) renameFile(id, data.filename)

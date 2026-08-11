@@ -9,7 +9,7 @@ type SubmitOptionsT = {
   form: ResettableFormT
   action: () => Promise<ActionResultT>
   successMessage: string
-  files?: Map<number, File>
+  files?: Map<number, File[]>
   onSubmitSuccess: () => void
   onReset?: () => void
 }

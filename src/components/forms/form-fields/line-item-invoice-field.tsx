@@ -6,46 +6,62 @@ import { FieldLabel } from '@/components/ui/field'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { cn } from '@/lib/utils/cn'
 
-// A picked file has no URL yet — mint a blob URL for the preview and revoke it when the
-// file changes/unmounts. Create AND revoke in the same effect so StrictMode's mount→cleanup→
-// remount can't leave us holding a URL it already revoked (splitting create into useMemo does).
-function useObjectUrl(file?: File): string | undefined {
-  const [url, setUrl] = useState<string>()
+const NO_FILES: File[] = []
+
+// Picked files have no URL yet — mint one blob URL per page and revoke them when the page list
+// changes/unmounts. Create AND revoke in the same effect so StrictMode's mount→cleanup→remount
+// can't leave us holding URLs it already revoked (splitting create into useMemo does).
+function useObjectUrls(files: File[]): string[] {
+  const [urls, setUrls] = useState<string[]>([])
   useEffect(() => {
-    // No file → leave `url` as-is; only rendered when `file` is set, so a stale URL is never shown.
-    if (!file) return
-    const objectUrl = URL.createObjectURL(file)
-    // Surfacing the external blob handle into state is the sanctioned effect use — creation
-    // must live in the effect so its revoke and this URL share one lifecycle (StrictMode-safe).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUrl(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [file])
-  return file ? url : undefined
+    if (files.length === 0) {
+      // Drop the previous run's URLs — the cleanup already revoked them, and leaving them in state
+      // would let the pairing guard below match new files against dead handles.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUrls((previous) => (previous.length === 0 ? previous : []))
+      return
+    }
+    const objectUrls = files.map((file) => URL.createObjectURL(file))
+    // Surfacing the external blob handles into state is the sanctioned effect use — creation
+    // must live in the effect so their revoke and these URLs share one lifecycle (StrictMode-safe).
+
+    setUrls(objectUrls)
+    return () => objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl))
+  }, [files])
+  return urls
 }
 
 type LineItemInvoiceFieldPropsT = {
   id: string
-  file?: File
+  files?: File[]
   fieldClassName?: string
   onFileChange: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void
+  onRemoveFile: (id: string, index: number) => void
 }
 
 export function LineItemInvoiceField({
   id,
-  file,
+  files = NO_FILES,
   fieldClassName,
   onFileChange,
+  onRemoveFile,
 }: LineItemInvoiceFieldPropsT) {
-  const url = useObjectUrl(file)
-  const replaceInputRef = useRef<HTMLInputElement>(null)
+  const urls = useObjectUrls(files)
+  const addInputRef = useRef<HTMLInputElement>(null)
 
-  if (!file || !url) {
+  // The URLs land one render after their files, so pair only as far as both go — a page rendered
+  // against the previous render's URL would show the wrong image for a frame.
+  const pages = files
+    .slice(0, urls.length)
+    .map((file, index) => ({ url: urls[index], filename: file.name, mimeType: file.type }))
+
+  if (pages.length === 0) {
     return (
       <FileInput
         label="FV"
         fieldClassName={fieldClassName}
         accept="image/*,application/pdf"
+        multiple
         onChange={(e) => onFileChange(id, e)}
       />
     )
@@ -55,18 +71,23 @@ export function LineItemInvoiceField({
     <div className={cn('flex w-full flex-col gap-1', fieldClassName)}>
       <FieldLabel>FV</FieldLabel>
       <InvoicePreviewButton
-        url={url}
-        filename={file.name}
-        mimeType={file.type}
-        // No `closePreview` — the picked file swaps in place, so the preview keeps showing it.
-        onReplace={() => replaceInputRef.current?.click()}
+        invoices={pages}
+        // No `closePreview` — the picked pages land in place, so the preview keeps showing them.
+        onAdd={() => addInputRef.current?.click()}
+        onRemove={(invoice) =>
+          onRemoveFile(
+            id,
+            pages.findIndex((page) => page.url === invoice.url),
+          )
+        }
       />
 
-      {/* Swap the receipt from inside the preview modal (Zamień). */}
+      {/* Add further pages from inside the preview modal („Dodaj stronę"). */}
       <input
-        ref={replaceInputRef}
+        ref={addInputRef}
         type="file"
         accept="image/*,application/pdf"
+        multiple
         className="sr-only"
         onChange={(e) => onFileChange(id, e)}
       />

@@ -5,25 +5,24 @@ import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialo
 import {
   InvoicePreviewTrigger,
   type InvoicePreviewTriggerPropsT,
-} from '@/components/ui/invoice-preview-trigger'
+} from '@/components/dialogs/invoice-preview-trigger'
+import type { InvoiceFileT } from '@/types/transfers'
 
 type InvoicePreviewButtonPropsT = {
-  url: string
-  filename: string | null
-  mimeType: string | null
+  invoices: InvoiceFileT[]
   // The open state lives here, so a caller that needs the preview gone (to make room for an upload
   // modal) gets `closePreview` rather than having it forced — a caller may want it to stay open
   // behind a `confirm()`, after a failed delete, or while the previewed file swaps in place.
-  onReplace?: (closePreview: () => void) => void
-  onRemove?: (closePreview: () => void) => void
+  onAdd?: (closePreview: () => void) => void
+  onRemove?: (invoice: InvoiceFileT, closePreview: () => void) => void
+  onRemoveAll?: (closePreview: () => void) => void
 } & Pick<InvoicePreviewTriggerPropsT, 'variant' | 'className'>
 
 export function InvoicePreviewButton({
-  url,
-  filename,
-  mimeType,
-  onReplace,
+  invoices,
+  onAdd,
   onRemove,
+  onRemoveAll,
   variant,
   className,
 }: InvoicePreviewButtonPropsT) {
@@ -33,8 +32,7 @@ export function InvoicePreviewButton({
   return (
     <>
       <InvoicePreviewTrigger
-        mimeType={mimeType}
-        label={filename ?? 'Faktura'}
+        label={invoices[0]?.filename ?? 'Faktura'}
         onClick={() => setPreviewOpen(true)}
         variant={variant}
         className={className}
@@ -42,13 +40,12 @@ export function InvoicePreviewButton({
 
       {previewOpen && (
         <InvoicePreviewDialog
-          url={url}
-          filename={filename}
-          mimeType={mimeType}
+          invoices={invoices}
           open={previewOpen}
           onOpenChange={setPreviewOpen}
-          onReplace={onReplace && (() => onReplace(closePreview))}
-          onRemove={onRemove && (() => onRemove(closePreview))}
+          onAdd={onAdd && (() => onAdd(closePreview))}
+          onRemove={onRemove && ((invoice) => onRemove(invoice, closePreview))}
+          onRemoveAll={onRemoveAll && (() => onRemoveAll(closePreview))}
           // Stored file is already ingest-compressed (≤1920px, q0.6) — skip the Next optimizer
           // and its cold-start round-trip; serve straight from the Blob CDN.
           unoptimized

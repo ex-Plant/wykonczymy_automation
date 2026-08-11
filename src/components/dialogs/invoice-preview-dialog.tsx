@@ -5,41 +5,61 @@ import Image from 'next/image'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/loader/spinner'
-import { Download, Printer, Replace, Trash2 } from 'lucide-react'
+import { useInvoiceZip } from '@/hooks/use-invoice-zip'
+import { buildInvoiceArchiveName, dedupeFilename } from '@/lib/export/invoice-zip'
+import { isImageMime, isPdfMime, isPreviewableMime } from '@/lib/invoices/mime'
+import { splitExtension } from '@/lib/utils/append-short-id'
+import { today } from '@/lib/utils/date'
+import { ChevronLeft, ChevronRight, Download, Plus, Printer, Trash2 } from 'lucide-react'
+import type { InvoiceFileT } from '@/types/transfers'
 
 type InvoicePreviewDialogPropsT = {
-  url: string
-  filename: string | null
-  mimeType: string | null
+  invoices: InvoiceFileT[]
   open: boolean
   onOpenChange: (open: boolean) => void
-  onReplace?: () => void
-  onRemove?: () => void
+  onAdd?: () => void
+  // Receives the page on screen — with a list, „usuń" has to say which one it means.
+  onRemove?: (invoice: InvoiceFileT) => void
+  onRemoveAll?: () => void
   // next/image can't run the optimizer on a local blob: URL (not-yet-uploaded file) — serve it raw.
   unoptimized?: boolean
 }
 
 export function InvoicePreviewDialog({
-  url,
-  filename,
-  mimeType,
+  invoices,
   open,
   onOpenChange,
-  onReplace,
+  onAdd,
   onRemove,
+  onRemoveAll,
   unoptimized,
 }: InvoicePreviewDialogPropsT) {
-  const isImage = mimeType?.startsWith('image/')
-  const isPdf = mimeType === 'application/pdf'
-  const displayName = filename ?? 'Faktura'
+  // Clamped rather than reset: removing the last page must not leave the pager pointing past the end.
+  const [pageIndex, setPageIndex] = useState(0)
   const [isMediaLoading, setIsMediaLoading] = useState(true)
+  const { downloadFiles } = useInvoiceZip()
+
+  const activeIndex = Math.min(pageIndex, Math.max(invoices.length - 1, 0))
+  const active = invoices[activeIndex]
+  const isMultiPage = invoices.length > 1
+  const isImage = isImageMime(active?.mimeType)
+  const isPdf = isPdfMime(active?.mimeType)
+  const displayName = active?.filename ?? 'Faktura'
+  const title = isMultiPage ? `${displayName} (${activeIndex + 1}/${invoices.length})` : displayName
+
+  function goToPage(index: number) {
+    setPageIndex(index)
+    setIsMediaLoading(true)
+  }
 
   function handlePrint() {
-    if (!isImage && !isPdf) return
     // Must open a blank window (about:blank inherits our origin + base URL), then build the
     // document with DOM APIs. Loading the window from a blob:/data: URL instead gives it an
-    // opaque origin where `url` — a relative Payload path OR a not-yet-uploaded blob: preview —
-    // no longer resolves, so the media never loads and print never fires.
+    // opaque origin where the page URL — a relative Payload path OR a not-yet-uploaded blob:
+    // preview — no longer resolves, so the media never loads and print never fires.
+    const printable = invoices.filter((invoice) => isPreviewableMime(invoice.mimeType))
+    if (printable.length === 0) return
+
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
 
@@ -47,34 +67,55 @@ export function InvoicePreviewDialog({
     doc.title = displayName
     doc.body.style.margin = '0'
 
-    let media: HTMLImageElement | HTMLIFrameElement
-    if (isImage) {
-      const img = doc.createElement('img')
-      img.src = url
-      img.alt = displayName
-      img.style.maxWidth = '100%'
-      img.style.height = 'auto'
-      media = img
-    } else {
-      const frame = doc.createElement('iframe')
-      frame.src = url
-      frame.style.width = '100%'
-      frame.style.height = '100vh'
-      frame.style.border = 'none'
-      media = frame
-    }
-
-    media.addEventListener('load', () => {
+    // One print job covers the whole document, so it fires only once every page has loaded —
+    // printing on the first `load` would emit a one-page job with the rest still blank.
+    let pending = printable.length
+    const onPageReady = () => {
+      pending--
+      if (pending > 0) return
       printWindow.print()
       printWindow.close()
-    })
-    doc.body.appendChild(media)
+    }
+
+    for (const invoice of printable) {
+      let media: HTMLImageElement | HTMLIFrameElement
+      if (isImageMime(invoice.mimeType)) {
+        const img = doc.createElement('img')
+        img.src = invoice.url
+        img.alt = invoice.filename ?? displayName
+        img.style.maxWidth = '100%'
+        img.style.height = 'auto'
+        media = img
+      } else {
+        const frame = doc.createElement('iframe')
+        frame.src = invoice.url
+        frame.style.width = '100%'
+        frame.style.height = '100vh'
+        frame.style.border = 'none'
+        media = frame
+      }
+
+      media.addEventListener('load', onPageReady)
+      media.addEventListener('error', onPageReady)
+      doc.body.appendChild(media)
+    }
+  }
+
+  function handleDownloadAll() {
+    const usedNames = new Set<string>()
+    downloadFiles(
+      invoices.map((invoice, index) => ({
+        url: invoice.url,
+        name: dedupeFilename(invoice.filename ?? `strona-${index + 1}`, usedNames),
+      })),
+      buildInvoiceArchiveName([splitExtension(displayName).base], today()),
+    )
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-full sm:max-w-4xl">
-        <DialogHeader title={displayName} />
+        <DialogHeader title={title} />
 
         <div className="relative flex h-[70vh] min-h-0 w-full flex-1 items-center justify-center">
           {(isImage || isPdf) && isMediaLoading && (
@@ -82,10 +123,11 @@ export function InvoicePreviewDialog({
               <Spinner />
             </div>
           )}
-          {isImage && (
+          {active && isImage && (
             <div className="relative h-full w-full">
               <Image
-                src={url}
+                key={active.url}
+                src={active.url}
                 alt={displayName}
                 fill
                 sizes="(max-width:1200px) 90vw, 1000px"
@@ -97,48 +139,96 @@ export function InvoicePreviewDialog({
               />
             </div>
           )}
-          {isPdf && (
+          {active && isPdf && (
             <iframe
-              src={url}
+              key={active.url}
+              src={active.url}
               title={displayName}
               className="h-[70vh] w-full rounded border-0"
               onLoad={() => setIsMediaLoading(false)}
             />
           )}
-          {!isImage && !isPdf && (
+          {active && !isImage && !isPdf && (
             <p className="text-muted-foreground text-sm">
               Podgląd niedostępny dla tego typu pliku.
             </p>
           )}
+          {!active && <p className="text-muted-foreground text-sm">Brak stron do wyświetlenia.</p>}
         </div>
 
+        {isMultiPage && (
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={activeIndex === 0}
+              onClick={() => goToPage(activeIndex - 1)}
+              aria-label="Poprzednia strona"
+            >
+              <ChevronLeft />
+            </Button>
+            <span className="text-muted-foreground text-sm tabular-nums">
+              {activeIndex + 1} / {invoices.length}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={activeIndex === invoices.length - 1}
+              onClick={() => goToPage(activeIndex + 1)}
+              aria-label="Następna strona"
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+        )}
+
         <DialogFooter>
-          {onRemove && (
-            <Button variant="destructive" onClick={onRemove}>
+          {onRemove && active && (
+            <Button variant="destructive" onClick={() => onRemove(active)}>
               <Trash2 />
-              Usuń
+              {isMultiPage ? 'Usuń stronę' : 'Usuń'}
             </Button>
           )}
-          {onReplace && (
-            <Button variant="outline" onClick={onReplace}>
-              <Replace />
-              Zamień
+          {onRemoveAll && (
+            <Button variant="destructive" onClick={onRemoveAll}>
+              <Trash2 />
+              Usuń całą fakturę
             </Button>
           )}
-          {/* PDFs render in the browser's native viewer, which already has print + download in
-              its toolbar — a footer pair would duplicate them. Keep them for images / unknown types. */}
-          {!isPdf && (
+          {onAdd && (
+            <Button variant="outline" onClick={onAdd}>
+              <Plus />
+              Dodaj stronę
+            </Button>
+          )}
+          {/* A single PDF renders in the browser's native viewer, which already has print + download
+              in its toolbar. A multi-page set has no such toolbar for the set as a whole. */}
+          {(!isPdf || isMultiPage) && (
             <>
               <Button variant="outline" onClick={handlePrint}>
                 <Printer />
                 Drukuj
               </Button>
-              <Button variant="outline" asChild>
-                <a href={url} download={filename ?? ''} target="_blank" rel="noopener noreferrer">
+              {isMultiPage ? (
+                <Button variant="outline" onClick={handleDownloadAll}>
                   <Download />
-                  Pobierz
-                </a>
-              </Button>
+                  Pobierz wszystkie
+                </Button>
+              ) : (
+                active && (
+                  <Button variant="outline" asChild>
+                    <a
+                      href={active.url}
+                      download={active.filename ?? ''}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download />
+                      Pobierz
+                    </a>
+                  </Button>
+                )
+              )}
             </>
           )}
         </DialogFooter>

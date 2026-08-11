@@ -6,6 +6,18 @@ import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/t
  * (tables, forms, dialogs), the export pipeline, and actions — so it lives here
  * rather than in any single module.
  */
+// One page of an invoice, already resolved to something openable. A media row whose `url` is null is
+// dropped upstream rather than carried as a hole — every consumer (preview, ZIP, CSV, print) needs
+// the URL, so a page without one is not a page.
+export type InvoiceFileT = {
+  // The media id, so a single page can be detached. Absent on a locally picked file that hasn't
+  // been uploaded yet — there is nothing to detach from.
+  id?: number
+  url: string
+  filename: string | null
+  mimeType: string | null
+}
+
 export type TransferRowT = {
   id: number
   description: string
@@ -31,9 +43,8 @@ export type TransferRowT = {
   createdByName: string
   createdById: number | null
   createdAt: string
-  invoiceUrl: string | null
-  invoiceFilename: string | null
-  invoiceMimeType: string | null
+  // Every page of the invoice, in the order they were attached. Empty when nothing is attached.
+  invoices: InvoiceFileT[]
   invoiceNote: string | null
   cancelled: boolean
   settled: boolean
@@ -82,8 +93,8 @@ export type DepositTransactionRowT = {
 // `findTransfersRaw` fetch; the expense-category `label` is resolved in the shared fetcher, not at
 // either page, so the owner view and the client share view label a row identically. `settled` and
 // `type` together pick the row's tab — see `partitionWydatkiRows`; the list shows exactly one of the
-// three sets at a time. The invoice triple feeds the list's bulk-ZIP download and its per-row
-// preview, and is null when no invoice is attached. `invoiceNote` is the transfer's free-text note —
+// three sets at a time. `invoices` feeds the list's bulk-ZIP download and its per-row
+// preview, and is empty when no invoice is attached. `invoiceNote` is the transfer's free-text note —
 // written by the AI scan in a known shape, but just as often typed by hand (see `lib/utils/invoice-note`).
 export type MaterialTransactionRowT = {
   id: number
@@ -99,8 +110,6 @@ export type MaterialTransactionRowT = {
   // field existed serves rows without it until KOSZTORYS_TAGS invalidates. Every consumer has to
   // handle that, and `undefined` here is what stops a cleanup pass deleting the guards as dead.
   type: TransferTypeT | undefined
-  invoiceUrl: string | null
-  invoiceFilename: string | null
-  invoiceMimeType: string | null
+  invoices: InvoiceFileT[]
   invoiceNote: string | null
 }

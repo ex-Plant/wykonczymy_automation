@@ -20,6 +20,7 @@ import {
   type WydatkiDatasetT,
 } from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
+import { today } from '@/lib/utils/date'
 import type { MaterialTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
@@ -95,7 +96,7 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
     },
   },
   {
-    accessorKey: 'invoiceUrl',
+    accessorKey: 'invoices',
     header: 'Faktura',
     size: 88,
     enableSorting: false,
@@ -105,11 +106,9 @@ const SHARED_COLUMNS: ColumnDef<MaterialTransactionRowT>[] = [
     // every row at ROW_HEIGHT and never measures, so an invoice-less row collapsing to the text line
     // height would drift the spacers.
     cell: ({ row }) =>
-      row.original.invoiceUrl ? (
+      row.original.invoices.length > 0 ? (
         <InvoicePreviewButton
-          url={row.original.invoiceUrl}
-          filename={row.original.invoiceFilename}
-          mimeType={row.original.invoiceMimeType}
+          invoices={row.original.invoices}
           variant="compact"
           className="size-7"
         />
@@ -162,7 +161,7 @@ export function MaterialsTransactionsTable({
   const visibleRows = partition[activeDataset]
   // Rows are already here, so an empty active dataset is knowable up front — no point offering a
   // button that could only ever answer „brak faktur". (The transfers variant can't know until it fetches.)
-  const hasInvoices = visibleRows.some((row) => row.invoiceUrl)
+  const hasInvoices = visibleRows.some((row) => row.invoices.length > 0)
 
   // The count rides in the label because a tab is otherwise silent about its size — „Pobierz faktury"
   // packs the whole active set, so how many rows that is has to be visible before the click.
@@ -174,7 +173,7 @@ export function MaterialsTransactionsTable({
   if (rows.length === 0) return null
 
   function handleDownload() {
-    const date = new Date().toISOString().slice(0, 10)
+    const date = today()
     download(
       visibleRows,
       buildInvoiceArchiveName([investmentName, DATASET_LABELS[activeDataset]], date),

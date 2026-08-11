@@ -26,8 +26,8 @@ export const Media: CollectionConfig = {
     // fire-and-forget (unawaited), so an action-level invalidation would both miss the admin
     // path and race the delete. The collection is the one seam every writer crosses.
     afterChange: [makeRevalidateAfterChange('media')],
-    // Bumps transfers too: `transactions_invoice_id_media_id_fk` is ON DELETE SET NULL, so deleting
-    // a media row silently nulls every transfer pointing at it.
+    // Bumps transfers too: the `transactions_rels` link is ON DELETE cascade, so deleting a media
+    // row silently drops that page from every transfer pointing at it.
     afterDelete: [makeRevalidateAfterDelete('media', 'transfers')],
   },
   upload: {

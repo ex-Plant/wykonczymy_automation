@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
+import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { uploadFile } from '@/lib/utils/upload-file'
 import { logError } from '@/lib/utils/log-error'
@@ -16,10 +16,8 @@ import { logError } from '@/lib/utils/log-error'
  * has no artificial cap — PDFs and edge cases pass through without issues.
  */
 export async function POST(request: Request) {
-  const user = await getCurrentUserJwt()
-  if (!user || !MANAGEMENT_ROLES.includes(user.role)) {
-    return NextResponse.json({ error: 'Brak uprawnień' }, { status: 401 })
-  }
+  const auth = await requireAuth(MANAGEMENT_ROLES)
+  if (!auth.success) return NextResponse.json({ error: auth.error }, { status: 401 })
 
   try {
     const formData = await request.formData()

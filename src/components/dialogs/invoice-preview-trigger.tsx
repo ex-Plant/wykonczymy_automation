@@ -1,9 +1,8 @@
-import { FileText, Search } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils/cn'
 
 export type InvoicePreviewTriggerPropsT = {
-  mimeType: string | null
   label: string
   onClick: () => void
   // `compact` defaults to the ghost icon-button's 36px box but lets `className` override it — the
@@ -13,7 +12,6 @@ export type InvoicePreviewTriggerPropsT = {
 }
 
 export function InvoicePreviewTrigger({
-  mimeType,
   label,
   onClick,
   variant = 'field',
@@ -34,7 +32,7 @@ export function InvoicePreviewTrigger({
         className,
       )}
     >
-      {mimeType?.startsWith('image/') ? <Search /> : <FileText />}
+      <FileText />
       {!isCompact && <span className="truncate text-sm">{label}</span>}
     </button>
   )

@@ -939,3 +939,45 @@
   correct for free.
 - **Applies to**: any global indicator fed by more than one store; more broadly, any place a `??`
   chain between two sources is standing in for "these should have been one".
+
+## No hook-test infrastructure is a design signal, not a blocker — extract the logic, don't install a runner
+
+- **Context**: EX-577's plan called for a `renderHook` spec on `useReceiptGeneration` to prove the
+  scan writes `netAmount` onto the row regardless of transfer type — the decision most likely to be
+  "corrected" by a later reader. The repo has no `@testing-library/react` and no jsdom, and on this
+  arm64 machine any `pnpm install` risks the lightningcss swap.
+- **Problem**: The two obvious moves are both bad. Installing a React test stack to assert four
+  `setFieldValue` calls buys a whole dependency and a jsdom environment for one test. Skipping the
+  spec leaves the load-bearing decision — the deliberately absent `billsNetAmount` gate — with
+  nothing but a comment defending it.
+- **Rule**: When a behaviour is only reachable through a rendered hook, that is usually the hook
+  hoarding logic that isn't stateful. Lift the pure part out (`applyReceiptToRow(setFieldValue,
+index, data)`) and spec it with a stub. The hook keeps the `useState`/concurrency/toast work that
+  genuinely needs React; the decision worth defending moves to a function whose name a future reader
+  meets before the comment. Reach for new test infrastructure only when the thing under test is
+  actually React behaviour — rendering, effects, re-render timing.
+- **Applies to**: any hook in `src/components/**` whose interesting logic is a mapping or a decision;
+  more broadly, any "I need a heavier harness to test this" moment — check first whether the harness
+  is standing in for a missing seam.
+
+## Widening a Payload relation to `hasMany` makes every `typeof field === 'number'` guard fail SILENTLY — `tsc` stays green and the data just disappears
+
+- **Context**: EX-659 turned `transactions.invoice` from a scalar `upload` field into `hasMany`. The
+  research pass expected "six read surfaces" and found ~19 code sites, four of which discriminated the
+  relation with `typeof doc.invoice === 'number'` to tell an unhydrated id from a populated doc.
+- **Problem**: At `depth: 0` a relation field is typed loosely enough (`RelationIdT`,
+  `(number | null) | Media`) that widening it to an array produces **no** type error — the guard simply
+  evaluates `false` on every array, the extractor returns `[]`, the media map comes back empty, and
+  every invoice vanishes from the UI with no error anywhere. One of the four guards was a _duplicated_
+  copy feeding the unauthenticated client-share page, so the silent regression would have been
+  client-visible. A second trap sat behind the same shape: the cleanup path read `oldMediaId` through
+  the same guard, so replaced blobs would silently stop being deleted.
+- **Rule**: Before widening a relation's cardinality, grep for `typeof <field> === 'number'` (and any
+  `Array.isArray`-free discrimination of that field) and treat each hit as a **red-first test target**,
+  not a reading exercise — `tsc` is not a safety net at a loosely-typed DB boundary. The related
+  structural facts, worth knowing before planning the same move: this repo joins media in TypeScript
+  (`lib/queries/media.ts` caches the whole table and filters by id), so an invasive relation change
+  touches zero raw SQL and `depth: 0` must stay; and the FK semantics flip — a scalar column's
+  `ON DELETE SET NULL` becomes `ON DELETE CASCADE` on the join row, which quietly re-points any
+  "delete this media id" action at every parent referencing it.
+- **Applies to**: plan, research, implement, impl-review, code-review

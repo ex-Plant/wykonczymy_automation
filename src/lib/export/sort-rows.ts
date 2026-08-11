@@ -12,7 +12,12 @@ const COLUMN_TO_ACCESSOR: Record<string, keyof TransferRowT> = {
   sourceRegister: 'sourceRegisterName',
   targetRegister: 'targetRegisterName',
   createdBy: 'createdByName',
-  invoice: 'invoiceUrl',
+}
+
+// Sorting a list column on its joined URLs is meaningless, so „Faktura" sorts on how many pages a
+// row carries. The transfers table disables sorting on this column; only export sorting sees it.
+const COLUMN_TO_VALUE: Record<string, (row: TransferRowT) => number> = {
+  invoice: (row) => row.invoices.length,
 }
 
 /** Sorts transfer rows to match the table's current SortingState. */
@@ -21,9 +26,10 @@ export function sortTransferRows(rows: TransferRowT[], sorting: SortingState): T
   const sorted = [...rows]
   sorted.sort((a, b) => {
     for (const { id, desc } of sorting) {
+      const derive = COLUMN_TO_VALUE[id]
       const key = COLUMN_TO_ACCESSOR[id] ?? (id as keyof TransferRowT)
-      const aVal = a[key]
-      const bVal = b[key]
+      const aVal = derive ? derive(a) : a[key]
+      const bVal = derive ? derive(b) : b[key]
 
       let cmp = 0
       if (aVal == null && bVal == null) cmp = 0

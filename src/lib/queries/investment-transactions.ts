@@ -10,7 +10,7 @@ import {
 import { findTransfersRaw } from '@/lib/queries/transfers'
 import { fetchMediaByIds } from '@/lib/queries/media'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
-import { extractInvoiceIds } from '@/lib/queries/transfer-mapping'
+import { extractInvoiceIds, resolveInvoiceFiles } from '@/lib/invoices/invoice-field'
 import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
   PayoutByWorkerT,
@@ -108,7 +108,6 @@ export async function fetchMaterialTransactionsForInvestment(
   // depth: 0 → `expenseCategory` and `invoice` are raw ids (`expenseCategory` null for a legacy
   // uncategorised row / a CORRECTION).
   return docs.map((doc) => {
-    const media = typeof doc.invoice === 'number' ? mediaById.get(doc.invoice) : undefined
     return {
       id: Number(doc.id),
       date: String(doc.date),
@@ -127,9 +126,7 @@ export async function fetchMaterialTransactionsForInvestment(
           : doc.type === 'CORRECTION'
             ? 'Korekta'
             : 'Bez kategorii',
-      invoiceUrl: media?.url ?? null,
-      invoiceFilename: media?.filename ?? null,
-      invoiceMimeType: media?.mimeType ?? null,
+      invoices: resolveInvoiceFiles(doc.invoice, mediaById),
       invoiceNote: doc.invoiceNote != null ? String(doc.invoiceNote) : null,
     }
   })

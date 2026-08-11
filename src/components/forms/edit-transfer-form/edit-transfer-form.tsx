@@ -14,7 +14,9 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { editExpenseFormSchema } from '@/components/forms/expense-form/expense-schema'
-import { uploadFileClient } from '@/lib/utils/upload-file-client'
+import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
+import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
+import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
 import type { z } from 'zod'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
@@ -51,7 +53,7 @@ export function EditTransferForm({
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [selectedFileName, setSelectedFileName] = useState<string | undefined>()
+  const [hasPickedFiles, setHasPickedFiles] = useState(false)
   // Bumped on reset to remount the (uncontrolled) file input, clearing its
   // native file and internal filename state — form.reset() can't reach them.
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -82,27 +84,31 @@ export function EditTransferForm({
         invoiceNote: value.invoiceNote || undefined,
       }
 
-      // Capture file before dialog closes — the ref won't be available after unmount
-      const file = fileRef.current?.files?.[0]
+      // Capture files before dialog closes — the ref won't be available after unmount
+      const files = [...(fileRef.current?.files ?? [])]
 
       await submit(!!keepOpen, {
         form,
         action: async () => {
-          let invoiceMediaId: number | undefined
-          if (file) {
+          let invoiceMediaIds: number[] | undefined
+          if (files.length > 0) {
             try {
-              invoiceMediaId = await uploadFileClient(file)
+              invoiceMediaIds = await resolveInvoicePageIds(files)
             } catch (err) {
+              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
               const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'
               return { success: false, error: message }
             }
           }
-          return updateTransferAction(row.id, data, invoiceMediaId)
+          const result = await updateTransferAction(row.id, data, invoiceMediaIds)
+          // The pages are in Blob but the update that would have attached them never happened.
+          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds)
+          return result
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
         onReset: () => {
-          setSelectedFileName(undefined)
+          setHasPickedFiles(false)
           setFileInputKey((k) => k + 1)
         },
       })
@@ -119,9 +125,12 @@ export function EditTransferForm({
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
 
   function handleFileChange() {
-    const file = fileRef.current?.files?.[0]
-    setSelectedFileName(file?.name)
+    setHasPickedFiles((fileRef.current?.files?.length ?? 0) > 0)
   }
+
+  // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
+  // the file input below only ever ADDS pages, so there is no other way to drop one here.
+  const { visibleInvoices, handleRemove, handleRemoveAll } = useInvoiceRemoval(row.id, row.invoices)
 
   return (
     <form.AppForm>
@@ -172,19 +181,19 @@ export function EditTransferForm({
           </form.AppField>
 
           <div className="space-y-2">
-            {row.invoiceUrl && !selectedFileName && (
+            {visibleInvoices.length > 0 && !hasPickedFiles && (
               <InvoicePreviewButton
-                url={row.invoiceUrl}
-                filename={row.invoiceFilename}
-                mimeType={row.invoiceMimeType}
+                invoices={visibleInvoices}
+                onRemove={handleRemove}
+                onRemoveAll={visibleInvoices.length > 1 ? handleRemoveAll : undefined}
               />
             )}
             <FileInput
               key={fileInputKey}
               ref={fileRef}
-              label={row.invoiceUrl ? 'Zamień fakturę' : 'Dodaj fakturę'}
+              label="Dodaj faktury"
               accept="image/*,application/pdf"
-              placeholder={selectedFileName ?? 'Przeciągnij lub kliknij'}
+              multiple
               onChange={handleFileChange}
             />
           </div>

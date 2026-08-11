@@ -116,22 +116,12 @@ const allColumns = [
     cell: (info) => info.getValue(),
   }),
 
-  col.accessor('invoiceUrl', {
+  col.accessor('invoices', {
     id: 'invoice',
     header: 'Faktura',
     enableSorting: false,
     meta: { align: 'center' },
-    cell: (info) => {
-      const row = info.row.original
-      return (
-        <InvoiceCell
-          transactionId={row.id}
-          url={row.invoiceUrl}
-          filename={row.invoiceFilename}
-          mimeType={row.invoiceMimeType}
-        />
-      )
-    },
+    cell: (info) => <InvoiceCell transactionId={info.row.original.id} invoices={info.getValue()} />,
   }),
   col.accessor('invoiceNote', {
     id: 'invoiceNote',
