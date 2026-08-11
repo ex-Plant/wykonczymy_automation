@@ -1,10 +1,10 @@
 ---
 change_id: cron-lead-reconcile
 title: Promote the manual lead reconcile sweep to a scheduled cron backstop
-status: implemented
+status: archived
 created: 2026-08-10
-updated: 2026-08-10
-archived_at: null
+updated: 2026-08-11
+archived_at: 2026-08-11T16:26:59Z
 branch: konradantonik/ex-416-cron-lead-reconcile
 worktree: .claude/worktrees/cron-lead-reconcile
 ---
