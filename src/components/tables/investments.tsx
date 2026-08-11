@@ -24,6 +24,9 @@ export type InvestmentRowT = {
   totalLaborCosts: number
   totalPayouts: number
   totalInvestmentExpense: number
+  uncategorisedCorrection: number
+  /** Priced on the plane the client is billed on, not the raw receipts — so these columns and
+   *  `totalInvestmentExpense` stand on the same plane and add up. */
   categoryCosts: CategoryCostT[]
   balance: number
   margin: number
@@ -80,7 +83,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       : []),
     // Per-category expense breakdown — mirrors the single-investment stats, one
     // column per expense category so labels stay 1:1 with the detail page and a
-    // future category appears automatically. Corrections (uncategorized) stay out.
+    // future category appears automatically.
     ...expenseCategories.map((cat) =>
       col.accessor((row) => costForCategory(row.categoryCosts, cat.id), {
         id: `category-${cat.id}`,
@@ -89,6 +92,15 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
         cell: (info) => formatPLN(info.getValue()),
       }),
     ),
+    // Sits between the categories and their total so the reader can add the columns up left to
+    // right and land on „Wydatki inwestycyjne". Always rendered, even at zero — a column that
+    // appears only when some investment has a correction makes the set depend on the data.
+    col.accessor('uncategorisedCorrection', {
+      id: 'uncategorisedCorrection',
+      header: 'Korekta',
+      meta: { align: 'right' },
+      cell: (info) => formatPLN(info.getValue()),
+    }),
     col.accessor('totalInvestmentExpense', {
       id: 'totalInvestmentExpense',
       header: 'Wydatki inwestycyjne',

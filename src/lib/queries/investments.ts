@@ -10,6 +10,8 @@ import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
+import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
+import { billedCategoryCosts, billedMaterials } from '@/lib/kosztorys/summary-economics'
 import type { InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentRowT } from '@/components/tables/investments'
 
@@ -22,6 +24,8 @@ export function shapeInvestments(
     const financials = fin ?? {
       categoryCosts: [],
       totalMaterialCosts: 0,
+      materialsGrossBase: 0,
+      materialsNetBilled: 0,
       totalIncome: 0,
       totalLaborCosts: 0,
       totalPayouts: 0,
@@ -30,12 +34,25 @@ export function shapeInvestments(
       totalSettled: 0,
       materialsNetDiscount: 0,
       settledCategoryCosts: [],
+      netCategoryCosts: [],
     }
     const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
-    // Sum of the categorised expense breakdown = total INVESTMENT_EXPENSE.
-    // Mirrors the detail page: corrections are uncategorised, so they sit outside
-    // this total (and outside the per-category columns), not folded in.
-    const totalInvestmentExpense = financials.categoryCosts.reduce((sum, c) => sum + c.total, 0)
+    const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
+    // The two-bucket form rather than Σ of the columns: equal to the grosz, but it is the same call
+    // the investment's own Podsumowanie makes, so the two surfaces cannot drift apart.
+    const totalInvestmentExpense = billedMaterials(
+      { grossBase: financials.materialsGrossBase, netBilled: financials.materialsNetBilled },
+      netRate,
+    )
+    const billedCategories = billedCategoryCosts(
+      financials.categoryCosts,
+      financials.netCategoryCosts,
+      netRate,
+    )
+    // Material spend booked to no category — carried as its own figure so the columns still add up
+    // to the total. It is a remainder, so it takes no repricing: the billed total already reflects it.
+    const uncategorisedCorrection =
+      totalInvestmentExpense - billedCategories.reduce((sum, c) => sum + c.total, 0)
     return {
       id: inv.id,
       name: inv.name,
@@ -46,7 +63,8 @@ export function shapeInvestments(
       totalLaborCosts: financials.totalLaborCosts,
       totalPayouts: financials.totalPayouts,
       totalInvestmentExpense,
-      categoryCosts: financials.categoryCosts,
+      uncategorisedCorrection,
+      categoryCosts: billedCategories,
       balance: calculateBalance(financials),
       margin: calculateMargin(financials),
       address: inv.address,

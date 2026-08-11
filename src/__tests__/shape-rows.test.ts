@@ -105,15 +105,16 @@ describe('shapeInvestments', () => {
     })
   })
 
-  it('totalInvestmentExpense sums the category breakdown and excludes corrections', () => {
+  // The uncategorised correction is part of what the investor is billed, so it belongs INSIDE
+  // „Wydatki inwestycyjne" — it just has no category column of its own, hence its own field.
+  it('folds the uncategorised correction into the total and carries it as its own figure', () => {
     const financials: InvestmentFinancialsMapT = {
       '5': {
-        // uncategorised corrections (-50) live in totalMaterialCosts but NOT in categoryCosts
         categoryCosts: [
           { categoryId: 1, total: 800 },
           { categoryId: 2, total: 400 },
         ],
-        totalMaterialCosts: 1150, // (800 + 400) + (-50) correction
+        totalMaterialCosts: 1150, // (800 + 400) + (-50) uncategorised
         materialsGrossBase: 1150,
         materialsNetBilled: 0,
         totalIncome: 0,
@@ -128,10 +129,89 @@ describe('shapeInvestments', () => {
       },
     }
     const [row] = shapeInvestments([baseInv], financials)
-    expect(row.totalInvestmentExpense).toBe(1200) // 800 + 400 — correction not folded in
+    expect(row.totalInvestmentExpense).toBe(1150)
+    expect(row.uncategorisedCorrection).toBe(-50)
     expect(row.categoryCosts).toEqual([
       { categoryId: 1, total: 800 },
       { categoryId: 2, total: 400 },
     ])
+  })
+
+  it('prices each category on the plane it was recorded on when a rate is set', () => {
+    const financials: InvestmentFinancialsMapT = {
+      '5': {
+        // Category 1 mixes planes: 1150 brutto receipts + 100 already billed netto.
+        categoryCosts: [{ categoryId: 1, total: 1250 }],
+        netCategoryCosts: [{ categoryId: 1, total: 100 }],
+        totalMaterialCosts: 1250,
+        materialsGrossBase: 1150,
+        materialsNetBilled: 100,
+        totalIncome: 0,
+        totalLaborCosts: 0,
+        totalPayouts: 0,
+        totalRabat: 0,
+        totalLoss: 0,
+        totalSettled: 0,
+        materialsNetDiscount: 230,
+        settledCategoryCosts: [],
+      },
+    }
+    const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
+    // 1150 ÷ 1,25 = 920, plus the 100 netto at face value — the netto part is NOT divided again.
+    expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1020 }])
+    expect(row.totalInvestmentExpense).toBe(1020)
+    expect(row.uncategorisedCorrection).toBe(0)
+  })
+
+  it('leaves the saved rate inert under rozliczenie brutto', () => {
+    const financials: InvestmentFinancialsMapT = {
+      '5': {
+        categoryCosts: [{ categoryId: 1, total: 1250 }],
+        netCategoryCosts: [{ categoryId: 1, total: 100 }],
+        totalMaterialCosts: 1250,
+        materialsGrossBase: 1150,
+        materialsNetBilled: 100,
+        totalIncome: 0,
+        totalLaborCosts: 0,
+        totalPayouts: 0,
+        totalRabat: 0,
+        totalLoss: 0,
+        totalSettled: 0,
+        materialsNetDiscount: 0,
+        settledCategoryCosts: [],
+      },
+    }
+    const [row] = shapeInvestments(
+      [{ ...baseInv, materialsNetRate: 0.25, settlementMode: 'GROSS' }],
+      financials,
+    )
+    expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1250 }])
+    expect(row.totalInvestmentExpense).toBe(1250)
+  })
+
+  it('keeps Σ columns + korekta === wydatki inwestycyjne', () => {
+    const financials: InvestmentFinancialsMapT = {
+      '5': {
+        categoryCosts: [
+          { categoryId: 1, total: 1250 },
+          { categoryId: 2, total: 500 },
+        ],
+        netCategoryCosts: [{ categoryId: 1, total: 100 }],
+        totalMaterialCosts: 1990, // the two categories plus a 240 uncategorised correction
+        materialsGrossBase: 1890,
+        materialsNetBilled: 100,
+        totalIncome: 0,
+        totalLaborCosts: 0,
+        totalPayouts: 0,
+        totalRabat: 0,
+        totalLoss: 0,
+        totalSettled: 0,
+        materialsNetDiscount: 378,
+        settledCategoryCosts: [],
+      },
+    }
+    const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
+    const columnSum = row.categoryCosts.reduce((sum, c) => sum + c.total, 0)
+    expect(columnSum + row.uncategorisedCorrection).toBeCloseTo(row.totalInvestmentExpense, 10)
   })
 })

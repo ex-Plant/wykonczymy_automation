@@ -502,17 +502,17 @@ Run **once**, after Phase 4.
 
 #### Automated
 
-- [x] 1.1 Bucketing spec passes with `netCategoryCosts` excluded in both places
-- [x] 1.2 Settlement-mode spec passes
-- [x] 1.3 New spec: `effectiveMaterialsNetRate` — null for GROSS, rate for NET/MIXED
-- [x] 1.4 `sum-transfers.test.ts` passes with the widened shape
+- [x] 1.1 Bucketing spec passes with `netCategoryCosts` excluded in both places — 385228eb
+- [x] 1.2 Settlement-mode spec passes — 385228eb
+- [x] 1.3 New spec: `effectiveMaterialsNetRate` — null for GROSS, rate for NET/MIXED — 385228eb
+- [x] 1.4 `sum-transfers.test.ts` passes with the widened shape — 385228eb
 
 ### Phase 2: Naprawa „Wydatków inwestycyjnych" i kolumn kategorii
 
 #### Automated
 
-- [ ] 2.1 `shape-rows.test.ts` rewritten red then green — mixed planes, GROSS-inert, Σ-invariant
-- [ ] 2.2 New spec for `billedCategoryCosts` passes
+- [x] 2.1 `shape-rows.test.ts` rewritten red then green — mixed planes, GROSS-inert, Σ-invariant
+- [x] 2.2 New spec for `billedCategoryCosts` passes
 
 ### Phase 3: Trzy nowe kolumny
 
