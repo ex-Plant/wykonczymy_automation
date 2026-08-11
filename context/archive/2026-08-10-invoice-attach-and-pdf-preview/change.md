@@ -1,10 +1,10 @@
 ---
 change_id: invoice-attach-and-pdf-preview
 title: Attach invoice pages straight from the picker in the transfers table
-status: implemented
+status: archived
 created: 2026-08-10
 updated: 2026-08-11
-archived_at: null
+archived_at: 2026-08-11T16:08:56Z
 branch: konradantonik/ex-662-invoice-attach-from-picker
 worktree: null
 ---
@@ -32,3 +32,8 @@ user-visible change on the one surface where PDFs are common.
 need `pdfjs-dist` plus a pager remodelled from files to (file, page) pairs, touching print and
 download too — too much machinery for the payoff. The folder name still carries `pdf-preview` from
 before that call.
+
+Archived with `plan.md` deleted — its two load-bearing facts already live elsewhere: the dropped
+PDF-preview scope and the 4 MB narrowing are in the paragraphs above, and the lost-update reason for
+batching the append into one action call is in commit `3f6c6c8a`'s message. Open manual checks moved
+to `context/foundation/manual-checks.md`.

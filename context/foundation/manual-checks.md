@@ -766,3 +766,11 @@ exists — read them as superseded by this section, not as owed.
 
 - [ ] Nieudany zapis formularza z 3 stronami nie zostawia osieroconych plików w Blob.
 - [ ] Usunięcie wydatku kasuje jego pliki, ale nie kasuje pliku, który wskazuje jeszcze inny wydatek.
+
+## Dodawanie faktur wprost z „+" w tabeli wydatków (EX-662)
+
+- [ ] Dwa zdjęcia wybrane na jednym „+" dokładają obie strony do tej samej transakcji.
+- [ ] HEIC prosto z iPhone'a dołącza się z tabeli (przed zmianą tu nie działał).
+- [ ] Za duże zdjęcie daje ten sam polski komunikat co formularz wydatku, a reszta plików z paczki wchodzi.
+- [ ] Po udanym dodaniu pojawia się toast „Faktura dodana", a wiersz od razu pokazuje strony.
+- [ ] W trakcie przesyłania „+" jest zablokowany — drugiego wyboru nie da się zacząć.
