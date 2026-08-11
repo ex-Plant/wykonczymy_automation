@@ -923,3 +923,25 @@ index, data)`) and spec it with a stub. The hook keeps the `useState`/concurrenc
 - **Applies to**: any hook in `src/components/**` whose interesting logic is a mapping or a decision;
   more broadly, any "I need a heavier harness to test this" moment — check first whether the harness
   is standing in for a missing seam.
+
+## Widening a Payload relation to `hasMany` makes every `typeof field === 'number'` guard fail SILENTLY — `tsc` stays green and the data just disappears
+
+- **Context**: EX-659 turned `transactions.invoice` from a scalar `upload` field into `hasMany`. The
+  research pass expected "six read surfaces" and found ~19 code sites, four of which discriminated the
+  relation with `typeof doc.invoice === 'number'` to tell an unhydrated id from a populated doc.
+- **Problem**: At `depth: 0` a relation field is typed loosely enough (`RelationIdT`,
+  `(number | null) | Media`) that widening it to an array produces **no** type error — the guard simply
+  evaluates `false` on every array, the extractor returns `[]`, the media map comes back empty, and
+  every invoice vanishes from the UI with no error anywhere. One of the four guards was a _duplicated_
+  copy feeding the unauthenticated client-share page, so the silent regression would have been
+  client-visible. A second trap sat behind the same shape: the cleanup path read `oldMediaId` through
+  the same guard, so replaced blobs would silently stop being deleted.
+- **Rule**: Before widening a relation's cardinality, grep for `typeof <field> === 'number'` (and any
+  `Array.isArray`-free discrimination of that field) and treat each hit as a **red-first test target**,
+  not a reading exercise — `tsc` is not a safety net at a loosely-typed DB boundary. The related
+  structural facts, worth knowing before planning the same move: this repo joins media in TypeScript
+  (`lib/queries/media.ts` caches the whole table and filters by id), so an invasive relation change
+  touches zero raw SQL and `depth: 0` must stay; and the FK semantics flip — a scalar column's
+  `ON DELETE SET NULL` becomes `ON DELETE CASCADE` on the join row, which quietly re-points any
+  "delete this media id" action at every parent referencing it.
+- **Applies to**: plan, research, implement, impl-review, code-review
