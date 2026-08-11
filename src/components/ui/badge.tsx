@@ -2,7 +2,8 @@ import type { RoleT } from '@/lib/auth/roles'
 import { cn } from '@/lib/utils/cn'
 
 /** Shared pill base for the app's status/role badges — colors layer on top. */
-export const BADGE_BASE = 'inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium'
+export const BADGE_BASE =
+  'inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium '
 
 const ROLE_COLORS: Record<RoleT, string> = {
   ADMIN: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
