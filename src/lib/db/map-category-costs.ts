@@ -24,7 +24,7 @@ export function costForCategory(categoryCosts: CategoryCostT[], categoryId: numb
   return categoryCosts.find((c) => c.categoryId === categoryId)?.total ?? 0
 }
 
-export function uncategorisedRemainder(financials: InvestmentFinancialsT): number {
+function uncategorisedRemainder(financials: InvestmentFinancialsT): number {
   const categorised = financials.categoryCosts.reduce((sum, c) => sum + c.total, 0)
   return financials.totalMaterialCosts - categorised
 }

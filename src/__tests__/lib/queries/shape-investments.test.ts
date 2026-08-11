@@ -3,51 +3,10 @@ import { describe, it, expect, vi } from 'vitest'
 // server-only throws at import time outside Next.js — stub it out
 vi.mock('server-only', () => ({}))
 
-import { shapeCashRegisters } from '@/lib/queries/cash-registers'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
-import type { CashRegisterRefT, WorkerRefT, InvestmentRefT } from '@/types/reference-data'
+import type { InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
-
-const workers: WorkerRefT[] = [{ id: 1, name: 'Adrian', role: 'MANAGER', email: 'a@x.pl' }]
-
-const registers: CashRegisterRefT[] = [
-  { id: 10, name: 'Kasa główna', type: 'MAIN', active: true, ownerId: 1 },
-  { id: 11, name: 'Kasa bez właściciela', type: 'AUXILIARY' },
-]
-
-describe('shapeCashRegisters', () => {
-  it('maps owner name, balance, and defaults', () => {
-    const rows = shapeCashRegisters(registers, workers, { '10': 500 })
-    expect(rows).toEqual([
-      {
-        id: 10,
-        name: 'Kasa główna',
-        ownerName: 'Adrian',
-        balance: 500,
-        type: 'MAIN',
-        active: true,
-      },
-      {
-        id: 11,
-        name: 'Kasa bez właściciela',
-        ownerName: '—',
-        balance: 0,
-        type: 'AUXILIARY',
-        active: true,
-      },
-    ])
-  })
-
-  it('falls back to — when owner id has no matching worker', () => {
-    const rows = shapeCashRegisters(
-      [{ id: 12, name: 'Sierota', type: 'WORKER', active: false, ownerId: 999 }],
-      workers,
-      {},
-    )
-    expect(rows[0]).toMatchObject({ ownerName: '—', balance: 0, active: false })
-  })
-})
 
 const baseInv: InvestmentRefT = {
   id: 5,
@@ -107,9 +66,9 @@ describe('shapeInvestments', () => {
     })
   })
 
-  // The uncategorised correction is part of what the investor is billed, so it belongs INSIDE
-  // „Wydatki inwestycyjne" — it just has no category column of its own, hence its own field.
-  it('folds the uncategorised correction into the total and carries it as its own figure', () => {
+  // Material booked to no category is legacy — three investments carry it and no column shows it.
+  // It still belongs INSIDE „Wydatki inwestycyjne", or the total would understate what was spent.
+  it('folds material with no category into the total', () => {
     const financials: InvestmentFinancialsMapT = {
       '5': {
         categoryCosts: [
@@ -132,7 +91,6 @@ describe('shapeInvestments', () => {
     }
     const [row] = shapeInvestments([baseInv], financials)
     expect(row.totalInvestmentExpense).toBe(1150)
-    expect(row.uncategorisedCorrection).toBe(-50)
     expect(row.categoryCosts).toEqual([
       { categoryId: 1, total: 800 },
       { categoryId: 2, total: 400 },
@@ -162,7 +120,6 @@ describe('shapeInvestments', () => {
     // 1150 ÷ 1,25 = 920, plus the 100 netto at face value — the netto part is NOT divided again.
     expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1020 }])
     expect(row.totalInvestmentExpense).toBe(1020)
-    expect(row.uncategorisedCorrection).toBe(0)
   })
 
   it('leaves the saved rate inert under rozliczenie brutto', () => {
@@ -260,7 +217,7 @@ describe('shapeInvestments', () => {
     expect(row.balanceGross).toBeCloseTo(row.balance - DEFAULT_VAT * 1000, 10)
   })
 
-  it('keeps Σ columns + korekta === wydatki inwestycyjne', () => {
+  it('keeps material with no category inside wydatki inwestycyjne', () => {
     const financials: InvestmentFinancialsMapT = {
       '5': {
         categoryCosts: [
@@ -282,7 +239,15 @@ describe('shapeInvestments', () => {
       },
     }
     const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
+    // Absolute figures first — the Σ identity alone is satisfied by any wrong pair, because the
+    // korekta is DERIVED as total − Σ columns and would silently absorb a mispriced column.
+    expect(row.totalInvestmentExpense).toBeCloseTo(1612, 10) // 1890/1.25 + 100
+    expect(row.categoryCosts).toEqual([
+      { categoryId: 1, total: 1020 }, // (1250 − 100)/1.25 + 100
+      { categoryId: 2, total: 400 }, // 500/1.25
+    ])
+    // 1612 − (1020 + 400): the 192 with no category is inside the total and shown by no column.
     const columnSum = row.categoryCosts.reduce((sum, c) => sum + c.total, 0)
-    expect(columnSum + row.uncategorisedCorrection).toBeCloseTo(row.totalInvestmentExpense, 10)
+    expect(row.totalInvestmentExpense - columnSum).toBeCloseTo(192, 10)
   })
 })

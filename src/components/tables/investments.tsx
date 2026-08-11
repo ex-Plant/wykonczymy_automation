@@ -25,7 +25,6 @@ export type InvestmentRowT = {
   totalPayouts: number
   totalInvestmentExpense: number
   totalSettled: number
-  uncategorisedCorrection: number
   /** Priced on the plane the client is billed on, not the raw receipts — so these columns and
    *  `totalInvestmentExpense` stand on the same plane and add up. */
   categoryCosts: CategoryCostT[]
@@ -68,8 +67,8 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
     }),
-    // Two fixed columns rather than one switched by tryb: in trybie mieszanym both planes stand at
-    // once, the same rule `settlementModeToGridAxis` applies with `MIXED → 'both'`.
+    // Two fixed columns rather than one switched by tryb: in trybie mieszanym both planes are owed
+    // at once, so a reader who sees only one of them cannot tell what the client still has to pay.
     col.accessor('balance', {
       id: 'balance',
       header: 'Bilans netto',
@@ -92,9 +91,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
           }),
         ]
       : []),
-    // Per-category expense breakdown — mirrors the single-investment stats, one
-    // column per expense category so labels stay 1:1 with the detail page and a
-    // future category appears automatically.
+    // Mirrors the single-investment stats so labels stay 1:1 with the detail page.
     ...expenseCategories.map((cat) =>
       col.accessor((row) => costForCategory(row.categoryCosts, cat.id), {
         id: `category-${cat.id}`,
@@ -103,15 +100,6 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
         cell: (info) => formatPLN(info.getValue()),
       }),
     ),
-    // Sits between the categories and their total so the reader can add the columns up left to
-    // right and land on „Wydatki inwestycyjne". Always rendered, even at zero — a column that
-    // appears only when some investment has a correction makes the set depend on the data.
-    col.accessor('uncategorisedCorrection', {
-      id: 'uncategorisedCorrection',
-      header: 'Korekta',
-      meta: { align: 'right' },
-      cell: (info) => formatPLN(info.getValue()),
-    }),
     col.accessor('totalInvestmentExpense', {
       id: 'totalInvestmentExpense',
       header: 'Wydatki inwestycyjne',

@@ -53,3 +53,21 @@ Rozstrzygnięcia (2026-08-11):
 
 Kwoty docelowe dla inwestycji 31: budowlane 105 712,10 · wykończeniowe 47 156,35 · pozostałe 20,00 ·
 korekta −240,00 · wydatki inwestycyjne 152 648,46 · wliczone w robociznę 1 004 421,85.
+
+## Po implementacji (2026-08-11)
+
+- **Punkt 5 był policzony źle w obie strony.** VAT od prac to kolejne obciążenie klienta, więc
+  **odejmuje** się od bilansu (bilans ujemny = klient jest winien), a podstawą są prace **po
+  rabacie** — złotówka, której klient nie zapłacił, nigdy nie niosła VAT-u. Poprawna postać:
+  `bilans − vatRate × (robocizna − rabat)`. Wyliczenie mieszka w jednym miejscu
+  (`grossBalance` w `src/lib/kosztorys/summary-economics.ts`), bo powiela je audyt parzystości.
+- **Składanie wiersza listingu wyprowadzone do `src/lib/queries/shape-investments.ts`.** W
+  `queries/investments.ts` zostały same odczyty. Powód: audyt parzystości (`src/scripts/
+audit-investment-parity.ts`) to zwykły skrypt node — import przez moduł zapytań ciągnie
+  `server-only` i audyt wracał do przepisywania formuły u siebie, czyli porównywał kopię z kopią.
+  Dlatego właśnie ta wada przeszła przez detektor. Teraz audyt woła prawdziwy builder wiersza.
+
+- **Kolumna „Korekta (bez kategorii)" zdjęta** (właściciel, 2026-08-11): materiał bez kategorii to
+  legacy z trzech inwestycji, więc nie dostaje stałej kolumny w liście. Kwota nie znika — siedzi
+  wewnątrz „Wydatków inwestycyjnych" i ma własny wiersz w panelu „Podsumowanie". Skutek: na tych
+  trzech inwestycjach suma kolumn kategorii nie domyka się do „Wydatków inwestycyjnych" — świadomie.

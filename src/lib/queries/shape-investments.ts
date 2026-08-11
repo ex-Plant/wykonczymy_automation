@@ -2,7 +2,12 @@ import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
-import { billedCategoryCosts, billedMaterials } from '@/lib/kosztorys/summary-economics'
+import {
+  billedCategoryCosts,
+  billedMaterials,
+  grossBalance,
+} from '@/lib/kosztorys/summary-economics'
+import { ZERO_FINANCIALS } from '@/types/investment-financials'
 import type { InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentRowT } from '@/components/tables/investments'
 
@@ -15,22 +20,7 @@ export function shapeInvestments(
   financialsRecord: InvestmentFinancialsMapT,
 ): InvestmentRowT[] {
   return investments.map((inv) => {
-    const fin = financialsRecord[String(inv.id)]
-    const financials = fin ?? {
-      categoryCosts: [],
-      totalMaterialCosts: 0,
-      materialsGrossBase: 0,
-      materialsNetBilled: 0,
-      totalIncome: 0,
-      totalLaborCosts: 0,
-      totalPayouts: 0,
-      totalRabat: 0,
-      totalLoss: 0,
-      totalSettled: 0,
-      materialsNetDiscount: 0,
-      settledCategoryCosts: [],
-      netCategoryCosts: [],
-    }
+    const financials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS
     const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
     const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
     // The two-bucket form rather than Σ of the columns: equal to the grosz, but it is the same call
@@ -44,10 +34,6 @@ export function shapeInvestments(
       financials.netCategoryCosts,
       netRate,
     )
-    // Material spend booked to no category — carried as its own figure so the columns still add up
-    // to the total. It is a remainder, so it takes no repricing: the billed total already reflects it.
-    const uncategorisedCorrection =
-      totalInvestmentExpense - billedCategories.reduce((sum, c) => sum + c.total, 0)
     const balance = calculateBalance(financials)
     return {
       id: inv.id,
@@ -59,16 +45,19 @@ export function shapeInvestments(
       totalLaborCosts: financials.totalLaborCosts,
       totalPayouts: financials.totalPayouts,
       totalInvestmentExpense,
-      uncategorisedCorrection,
       categoryCosts: billedCategories,
       totalSettled: financials.totalSettled,
       balance,
-      // VAT rides the prace alone (context/reference/kosztorys-editor-domain-notes.md), so nothing
-      // but robocizna is grossed up here — materiały and korekty enter both planes at face value.
-      // It DEDUCTS because negative means the client owes, and it runs on the labour net of the
-      // rabat: the same base the investment's own Podsumowanie grosses, so the two never disagree
-      // about one debt (the rabat is money the client was never billed, hence never VAT-ed).
-      balanceGross: balance - inv.vatRate * (financials.totalLaborCosts - financials.totalRabat),
+      // The transfers-plane labour is the right VAT base for a bilans built from transfers — the
+      // Podsumowanie grosses its own kosztorys-plane robocizna, and the two planes are disconnected
+      // by standing ruling. Where both are in sync the figures coincide, which is what makes them
+      // comparable on screen; it is not an equality this code establishes.
+      balanceGross: grossBalance(
+        balance,
+        inv.vatRate,
+        financials.totalLaborCosts,
+        financials.totalRabat,
+      ),
       margin: calculateMargin(financials),
       address: inv.address,
       phone: inv.phone,

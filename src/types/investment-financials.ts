@@ -31,6 +31,25 @@ export type InvestmentFinancialsT = {
   netCategoryCosts: CategoryCostT[]
 }
 
+/** An investment nobody has booked a transfer against. Typed rather than spelled out at each
+ *  fallback: a field added above then fails to compile here instead of going silently missing on
+ *  the no-transfers path, which is how a zero would masquerade as a real figure. */
+export const ZERO_FINANCIALS: InvestmentFinancialsT = {
+  categoryCosts: [],
+  totalMaterialCosts: 0,
+  materialsGrossBase: 0,
+  materialsNetBilled: 0,
+  totalIncome: 0,
+  totalLaborCosts: 0,
+  totalPayouts: 0,
+  totalRabat: 0,
+  totalLoss: 0,
+  totalSettled: 0,
+  materialsNetDiscount: 0,
+  settledCategoryCosts: [],
+  netCategoryCosts: [],
+}
+
 /** One row of the kosztorys „Materiały" split — a per-expense-category cost (`id` = the
  *  category), or the uncategorised remainder (`id` = null). Σ net === totalMaterialCosts.
  *  `net` is a legacy name: on a `gross` row it holds the recorded BRUTTO. `origin` says which

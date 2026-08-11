@@ -1,4 +1,5 @@
 import { toGross } from '@/lib/kosztorys/calc'
+import { costForCategory } from '@/lib/db/map-category-costs'
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import type { CategoryCostT } from '@/types/investment-financials'
 
@@ -91,12 +92,25 @@ export function billedCategoryCosts(
   netRate: number | null,
 ): CategoryCostT[] {
   return categoryCosts.map(({ categoryId, total }) => {
-    const netBilled = netCategoryCosts.find((c) => c.categoryId === categoryId)?.total ?? 0
+    const netBilled = costForCategory(netCategoryCosts, categoryId)
     return {
       categoryId,
       total: billedMaterials({ grossBase: total - netBilled, netBilled }, netRate),
     }
   })
+}
+
+/** The investor balance carried onto the brutto plane. Negative means the client owes, so the VAT —
+ *  another charge on them — DEDUCTS. It rides the prace alone, and on the prace net of the rabat: a
+ *  discounted złoty was never billed, so it never carried VAT. The rabat is already inside `balance`
+ *  (`calculateBalance` adds it back), which is why it has to come off the VAT base separately here. */
+export function grossBalance(
+  balance: number,
+  vatRate: number,
+  totalLaborCosts: number,
+  totalRabat: number,
+): number {
+  return balance - vatRate * (totalLaborCosts - totalRabat)
 }
 
 /** „Łącznie" — the prace on their own two planes, plus materiały. Materiały enters BOTH axes at the

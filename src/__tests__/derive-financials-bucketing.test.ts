@@ -98,8 +98,7 @@ describe('deriveFinancials — bucketing matrix', () => {
   it('covers every bucket', () => {
     const financials = deriveFinancials([])
     const buckets = Object.keys(financials).filter(
-      (k) =>
-        k !== 'categoryCosts' && k !== 'settledCategoryCosts' && k !== 'netCategoryCosts',
+      (k) => k !== 'categoryCosts' && k !== 'settledCategoryCosts' && k !== 'netCategoryCosts',
     )
     expect(buckets.sort()).toEqual(Object.keys(BUCKET_MEMBERSHIP).sort())
   })
