@@ -34,7 +34,7 @@ Verified in this worktree against investment 31 (`materials_net_rate = 0,25`, mo
 - `totalSettled` is already on `InvestmentFinancialsT`, just never copied onto the row.
   `uncategorisedRemainder` is computed (`map-category-costs.ts:27`) but private to its module.
 - `vatRate` exists on the collection (`src/collections/investments.ts:105`, `defaultValue:
-  DEFAULT_VAT = 0.08`) but is **not** in the `fetchReferenceData` SELECT (`reference-data.ts:63-68`)
+DEFAULT_VAT = 0.08`) but is **not** in the `fetchReferenceData` SELECT (`reference-data.ts:63-68`)
   nor on `InvestmentRefT`.
 - `calculateBalance` never touches `vatRate`, so the listing's bilans is VAT-free in every settlement
   mode — the „Bilans netto" label is true unconditionally.
@@ -49,7 +49,7 @@ Verified in this worktree against investment 31 (`materials_net_rate = 0,25`, mo
   It is green only because the test DB has 0/109 investments with a rate.
 - `src/scripts/audit-investment-parity.ts:51` computes `wydatkiInwestycyjne` as
   `f.categoryCosts.reduce(...)` inside `figuresOf`, and feeds **both** sides through it — its diff on
-  that figure is structurally always zero. (Its `deriveFinancials` call at `:100` *does* pass rate
+  that figure is structurally always zero. (Its `deriveFinancials` call at `:100` _does_ pass rate
   and mode correctly; only `figuresOf` is the problem.)
 - The listing's category columns (`investments.tsx:84-91`) have no test at all.
 
@@ -252,7 +252,7 @@ their billed values, `totalInvestmentExpense` computed as `billedMaterials` over
 buckets (not `Σ billedCategoryCosts` and not `totalMaterialCosts − materialsNetDiscount` — both are
 equal, but the bucket form is the same call the panel makes), and a new `uncategorisedCorrection`
 field. Delete the comment at `:35-37` that documents the old rule; replace it only if the new rule
-needs a *why* the code does not carry.
+needs a _why_ the code does not carry.
 
 **Contract**: `InvestmentRowT` gains `uncategorisedCorrection: number`. `categoryCosts` keeps its type
 but now carries billed figures — say so at the field. The zeroed fallback literal at `:22-33` gains
@@ -279,8 +279,9 @@ rendered (owner's choice: a fixed column set beats a data-dependent one).
 **Intent**: `:107-133` asserts `toBe(1200) // correction not folded in` — it is the old definition
 written down. Per `lessons.md:342` it gets **rewritten red first**, not amended: change the assertion
 to the new expectation, watch it fail, then make it pass. Add cases the old spec never had: a rate set
-+ a netto category (mixed planes in one category), GROSS mode with a rate set (rate inert, figures
-equal the raw receipts), and the Σ-columns-equals-total invariant.
+
+- a netto category (mixed planes in one category), GROSS mode with a rate set (rate inert, figures
+  equal the raw receipts), and the Σ-columns-equals-total invariant.
 
 **Contract**: new expectations reproduce investment 31's arithmetic at a scale that is checkable by
 hand — e.g. `categoryCosts: [{1, 1250}]`, `netCategoryCosts: [{1, 100}]`, rate 0,25 → column 1 020,00.
@@ -338,10 +339,16 @@ that pair's existing comment to say why the third rate now rides along.
 
 **Intent**: Copy `totalSettled` onto the row and compute the gross balance. VAT rides the prace alone
 — the same rule `summary-economics.ts` enforces — so the gross balance is the netto balance plus VAT
-on `totalLaborCosts`, and nothing else.
+on the labour, and nothing else.
+
+> **Correction (2026-08-11, post-implementation).** The formula below shipped wrong and was fixed
+> after comparing the row against the investment's own „Podsumowanie": VAT is a charge on the client,
+> so it **deducts** from a balance where negative means "owed", and its base is the labour **net of
+> the rabat** — a discounted złoty was never billed, so it never carried VAT. Correct form:
+> `balanceGross = balance - vatRate * (totalLaborCosts - totalRabat)`.
 
 **Contract**: `InvestmentRowT` gains `totalSettled: number` and `balanceGross: number`;
-`balanceGross = balance + inv.vatRate * financials.totalLaborCosts`.
+`balanceGross = balance - inv.vatRate * (financials.totalLaborCosts - financials.totalRabat)`.
 
 #### 3. Columns
 
@@ -366,13 +373,14 @@ column it follows; do not reuse the constant unless the strings are made identic
 #### Automated Verification:
 
 - `pnpm exec vitest run src/__tests__/shape-rows.test.ts` — covers `totalSettled` passthrough and
-  `balanceGross = balance + vatRate × totalLaborCosts`, including the vatRate-null → `DEFAULT_VAT`
+  `balanceGross = balance − vatRate × (totalLaborCosts − totalRabat)`, including the vatRate-null → `DEFAULT_VAT`
   fallback
 
 #### Manual Verification:
 
 - Investment 31 row: „Wydatki wliczone w robociznę" = 1 004 421,85
-- „Bilans brutto" on a row with labour = „Bilans netto" + 8% of that row's robocizna
+- „Bilans brutto" on investment 31 = −28 764,67, to the grosz the „Pozostało do zapłaty" brutto its
+  own „Podsumowanie" prints
 - Column toggle lists all three new columns and hiding/showing them survives a page reload
 - A MANAGER account sees „Korekta" and „Wydatki wliczone w robociznę", and still does not see Marża
   or Wypłaty

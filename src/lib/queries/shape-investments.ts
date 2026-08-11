@@ -65,7 +65,10 @@ export function shapeInvestments(
       balance,
       // VAT rides the prace alone (context/reference/kosztorys-editor-domain-notes.md), so nothing
       // but robocizna is grossed up here — materiały and korekty enter both planes at face value.
-      balanceGross: balance + inv.vatRate * financials.totalLaborCosts,
+      // It DEDUCTS because negative means the client owes, and it runs on the labour net of the
+      // rabat: the same base the investment's own Podsumowanie grosses, so the two never disagree
+      // about one debt (the rabat is money the client was never billed, hence never VAT-ed).
+      balanceGross: balance - inv.vatRate * (financials.totalLaborCosts - financials.totalRabat),
       margin: calculateMargin(financials),
       address: inv.address,
       phone: inv.phone,

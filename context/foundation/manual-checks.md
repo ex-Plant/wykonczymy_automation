@@ -830,7 +830,8 @@ with its materiały rate lives on the dev DB (5433), which is where the defect w
 ### Phase 3: Trzy nowe kolumny
 
 - [ ] Wiersz inwestycji 31: „Wydatki wliczone w robociznę" = 1 004 421,85
-- [ ] „Bilans brutto" w wierszu z robocizną = „Bilans netto" + VAT tej inwestycji od jej robocizny
+- [ ] „Bilans brutto" inwestycji 31 = −28 764,67, czyli co do grosza „Pozostało do zapłaty" brutto z „Podsumowania" tej inwestycji (ze znakiem: minus = klient winien)
+- [ ] „Bilans brutto" w wierszu z rabatem liczy VAT od robocizny **po rabacie** — kwota rabatu nie jest oVAT-owana
 - [ ] Przełącznik kolumn wymienia wszystkie trzy nowe kolumny, a ukrycie/pokazanie przeżywa odświeżenie strony
 - [ ] Konto MANAGERA widzi „Korektę" i „Wydatki wliczone w robociznę", a nadal nie widzi „Marży" ani „Wypłat"
 

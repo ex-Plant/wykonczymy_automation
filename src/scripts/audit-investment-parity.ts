@@ -68,7 +68,7 @@ function detailFigures(f: InvestmentFinancialsT, inv: AuditInvestmentT): Figures
   const bilans = calculateBalance(f)
   return {
     bilans,
-    bilansBrutto: bilans + inv.vatRate * f.totalLaborCosts,
+    bilansBrutto: bilans - inv.vatRate * (f.totalLaborCosts - f.totalRabat),
     marza: calculateMargin(f),
     materialy: f.totalMaterialCosts,
     wydatkiInwestycyjne: billedMaterials(

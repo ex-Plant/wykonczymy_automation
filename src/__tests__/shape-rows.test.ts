@@ -211,8 +211,31 @@ describe('shapeInvestments', () => {
     }
     const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.23 }], financials)
     expect(row.totalSettled).toBe(250)
-    // 4647 + 23% × 3900 — the 1000 materiały are NOT grossed.
-    expect(row.balanceGross).toBeCloseTo(row.balance + 897, 10)
+    // VAT is another charge on the client, so it DEDUCTS from a balance where negative = owed.
+    // The 1000 materiały are not grossed.
+    expect(row.balanceGross).toBeCloseTo(row.balance - 897, 10)
+  })
+
+  it('grosses the prace net of the rabat, not the raw labour', () => {
+    const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.05 }], {
+      '5': {
+        categoryCosts: [],
+        netCategoryCosts: [],
+        totalMaterialCosts: 0,
+        materialsGrossBase: 0,
+        materialsNetBilled: 0,
+        totalIncome: 0,
+        totalLaborCosts: 270951,
+        totalPayouts: 0,
+        totalRabat: 100000,
+        totalLoss: 0,
+        totalSettled: 0,
+        materialsNetDiscount: 0,
+        settledCategoryCosts: [],
+      },
+    })
+    // The client never pays VAT on money they were discounted: 5% × (270951 − 100000).
+    expect(row.balanceGross).toBeCloseTo(row.balance - 8547.55, 8)
   })
 
   it('falls back to the default VAT when the investment carries none', () => {
@@ -234,7 +257,7 @@ describe('shapeInvestments', () => {
         settledCategoryCosts: [],
       },
     })
-    expect(row.balanceGross).toBeCloseTo(row.balance + DEFAULT_VAT * 1000, 10)
+    expect(row.balanceGross).toBeCloseTo(row.balance - DEFAULT_VAT * 1000, 10)
   })
 
   it('keeps Σ columns + korekta === wydatki inwestycyjne', () => {
