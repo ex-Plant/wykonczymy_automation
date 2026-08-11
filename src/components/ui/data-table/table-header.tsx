@@ -3,6 +3,7 @@
 import { flexRender, type HeaderGroup } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[] }) {
   return (
@@ -13,6 +14,9 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
             const canSort = header.column.getCanSort()
             const sorted = header.column.getIsSorted()
             const align = header.column.columnDef.meta?.align
+            const tooltip = header.column.columnDef.meta?.tooltip
+            const rawHeader = header.column.columnDef.header
+            const label = typeof rawHeader === 'string' ? rawHeader : undefined
 
             return (
               <th
@@ -25,10 +29,14 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
                 )}
                 onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
               >
-                <span className="inline-flex items-center gap-1">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  {header.isPlaceholder ? null : flexRender(rawHeader, header.getContext())}
+                  {tooltip && (
+                    // Stops the icon click from bubbling into the <th>'s sort handler.
+                    <span onClick={(event) => event.stopPropagation()} className="inline-flex">
+                      <InfoTooltip content={tooltip} label={label} />
+                    </span>
+                  )}
                   {canSort && <SortIcon sorted={sorted} />}
                 </span>
               </th>
