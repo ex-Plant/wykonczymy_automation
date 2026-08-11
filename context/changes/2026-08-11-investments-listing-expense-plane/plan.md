@@ -524,5 +524,5 @@ Run **once**, after Phase 4.
 
 #### Automated
 
-- [x] 4.1 `investment-render-parity-db.test.ts` passes with rate and mode supplied
-- [x] 4.2 `audit-investment-parity.ts` reports zero mismatches on the dev DB with a non-zero, actually-compared `wydatkiInwestycyjne`
+- [x] 4.1 `investment-render-parity-db.test.ts` passes with rate and mode supplied — a69b3586
+- [x] 4.2 `audit-investment-parity.ts` reports zero mismatches on the dev DB with a non-zero, actually-compared `wydatkiInwestycyjne` — a69b3586
