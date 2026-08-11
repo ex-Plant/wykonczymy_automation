@@ -39,10 +39,11 @@ export type InvestmentRowT = {
   review: string
   notes: string
   hasSheet: boolean
-  // No column renders these two — the whole row is handed to EditInvestmentDialog, whose form
-  // needs them.
+  // No column renders these — the whole row is handed to EditInvestmentDialog, whose form needs
+  // them. `vatRate` is the exception that also prices `balanceGross`.
   materialsNetRate: number | null
   settlementMode: SettlementModeT
+  vatRate: number
 }
 
 const col = createColumnHelper<InvestmentRowT>()

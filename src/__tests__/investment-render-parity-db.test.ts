@@ -15,6 +15,7 @@ import { buildFinancialFields } from '@/lib/db/map-category-costs'
 // display fields. It is the one the DETAIL page actually uses for "Bilans inwestora".
 import { calculateBalance as sumVisibleFields } from '@/lib/export/header-fields'
 import { round2 } from '@/__tests__/helpers/money'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 // REAL-PATH parity: assemble each figure exactly the way each PAGE assembles it, over
 // the real DB, for every investment — then assert listing == detail.
@@ -30,7 +31,15 @@ const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SEC
 
 describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly paths (DB)', () => {
   let payload: Payload | null = null
-  let investments: { id: number; name: string }[] = []
+  // Rate and mode ride along because the LISTING side gets them (sum-transfers looks them up per
+  // investment). Deriving the detail side without them compares two different formulas the moment
+  // any investment has a rate saved.
+  let investments: {
+    id: number
+    name: string
+    materialsNetRate: number | null
+    settlementMode: SettlementModeT
+  }[] = []
   let expenseCategories: { id: number; name: string }[] = []
   let setupError: unknown = null
 
@@ -46,7 +55,12 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         depth: 0,
         overrideAccess: true,
       })
-      investments = inv.docs.map((d) => ({ id: Number(d.id), name: String(d.name) }))
+      investments = inv.docs.map((d) => ({
+        id: Number(d.id),
+        name: String(d.name),
+        materialsNetRate: d.materialsNetRate ?? null,
+        settlementMode: (d.settlementMode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+      }))
       const db = await getDb(payload)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cats: any = await db.execute('SELECT id, name FROM expense_categories ORDER BY name')
@@ -79,6 +93,9 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         byType,
         breakdowns.categoryCosts,
         breakdowns.settledCategoryCosts,
+        inv.materialsNetRate,
+        inv.settlementMode,
+        breakdowns.netCategoryCosts,
       )
 
       // LISTING assembly (mirrors src/lib/queries/investments.ts)

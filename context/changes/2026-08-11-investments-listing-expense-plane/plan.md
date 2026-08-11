@@ -518,11 +518,11 @@ Run **once**, after Phase 4.
 
 #### Automated
 
-- [x] 3.1 `shape-rows.test.ts` covers `totalSettled` and `balanceGross` incl. vatRate-null fallback
+- [x] 3.1 `shape-rows.test.ts` covers `totalSettled` and `balanceGross` incl. vatRate-null fallback — 572c0f5a
 
 ### Phase 4: Detektory
 
 #### Automated
 
-- [ ] 4.1 `investment-render-parity-db.test.ts` passes with rate and mode supplied
-- [ ] 4.2 `audit-investment-parity.ts` reports zero mismatches on the dev DB with a non-zero, actually-compared `wydatkiInwestycyjne`
+- [x] 4.1 `investment-render-parity-db.test.ts` passes with rate and mode supplied
+- [x] 4.2 `audit-investment-parity.ts` reports zero mismatches on the dev DB with a non-zero, actually-compared `wydatkiInwestycyjne`

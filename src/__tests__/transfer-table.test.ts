@@ -26,6 +26,7 @@ const stubInvestment = {
   hasSheet: false,
   materialsNetRate: null,
   settlementMode: 'NET' as const,
+  vatRate: 0.08,
 }
 
 const refData = {

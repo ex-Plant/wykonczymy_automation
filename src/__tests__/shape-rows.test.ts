@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import { shapeCashRegisters } from '@/lib/queries/cash-registers'
-import { shapeInvestments } from '@/lib/queries/investments'
+import { shapeInvestments } from '@/lib/queries/shape-investments'
 import type { CashRegisterRefT, WorkerRefT, InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
