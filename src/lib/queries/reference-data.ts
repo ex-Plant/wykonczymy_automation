@@ -145,7 +145,11 @@ export const fetchReferenceData = cache(
         expenseCategories,
       }
     },
-    ['reference-data'],
+    // Versioned key, bumped whenever the returned SHAPE changes (here: `vatRate` on the investment
+    // ref). A tag only marks an entry stale — it still SERVES the old payload once, and a payload
+    // missing a field the reader now dereferences is not stale, it is wrong: it crashes the page or
+    // renders NaN. The bump makes the old entry unreachable instead.
+    ['reference-data-v2'],
     {
       tags: [
         CACHE_TAGS.cashRegisters,
