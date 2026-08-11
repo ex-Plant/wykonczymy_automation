@@ -181,7 +181,7 @@ Bands: **editor parity S-01–S-10** → **financial-plane bridge S-11–S-12** 
 | S-12 | robocizna-from-kosztorys        | see investment robocizna + rabat derived from the kosztorys, not manual transfers       | S-11               | — (owner request)             | done     | —          |
 | S-13 | kosztorys-client-share          | share a live, read-only client view of a kosztorys via a token link (EX-532)            | S-01, S-02, S-04   | — (owner request)             | done     | —          |
 | S-14 | kosztorys-export                | CSV-export the kosztorys (WYSIWYG snapshot; no print/PDF)                               | S-01               | FR-008                        | deferred | —          |
-| S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | deferred | —          |
+| S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | ready    | —          |
 | S-16 | editor-e2e-coverage             | (gate) rely on automated E2E over the editor before release                             | F-01, S-01…S-15    | FR-013                        | deferred | —          |
 | S-17 | financial-core-smoke            | trust an automated smoke that transfers update balances/figures                         | F-01               | FR-012, FR-011, FR-015, US-02 | deferred | —          |
 | S-18 | kosztorys-hardening             | quality / perf / a11y hardening pass before cutover                                     | S-16               | — (POC)                       | deferred | —          |
@@ -516,9 +516,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** S-14 (export)
 - **Blockers:** —
 - **Unknowns:**
-  - Importer trigger — what concretely triggers this second-release importer so "later" does not become "never"? Name a condition or date. (PRD Q8). — Owner: user. Block: no.
-- **Risk:** Reads sheets, writes only new tables (additive). Guardrail: live sheet data must survive untouched until safely imported (FR-016). Risk: without a named trigger this slips indefinitely — resolve the trigger question before planning. **Note (2026-07-10):** no longer depends on the cutover (S-19) — moved ahead of it into the import/export band per the reorder; import now happens before, not after, new investments go sheet-less.
-- **Status:** deferred — band 3. Back-importing old sheet kosztorysy is unblocked only once the trigger question is answered.
+  - ~~Importer trigger (PRD Q8).~~ **Resolved (2026-08-11):** a button in the editor's "Opcje" menu, invoked per investment on demand — not a one-shot migration.
+- **Risk:** Reads sheets, writes only new tables (additive). Guardrail: live sheet data must survive untouched until safely imported (FR-016). **Note (2026-07-10):** no longer depends on the cutover (S-19) — moved ahead of it into the import/export band per the reorder; import now happens before, not after, new investments go sheet-less.
+- **Status:** ready — shaped 2026-08-11, `context/changes/2026-08-11-kosztorys-importer/`. Column resolution is by header label, validated across all 45 real sheets; 2 need an owner header fix.
 
 ### S-16: Editor E2E coverage (release gate)
 
@@ -634,7 +634,7 @@ slice's Unknowns.
 **Still open:**
 
 6. ~~**Catalogue seeding.**~~ **Resolved (2026-07-09):** dissolved by folding the catalogue into S-09 with Model A — autocomplete sources from preset prace, so building presets _is_ seeding. No standalone catalogue to seed.
-7. **Importer trigger (FR-010).** What concretely triggers the deferred importer? — Owner: user. Gates: S-15.
+7. ~~**Importer trigger (FR-010).**~~ **Resolved (2026-08-11):** a "Pobierz z arkusza Google…" item in the editor's "Opcje" menu, run per investment with a preview → confirm step. Not a migration, so it stays useful after the first pass.
 8. ~~**Settings-home UX.**~~ **Resolved (2026-07-15):** a **second row in the editor toolbar** — neither anticipated option (detail-inwestycji / a "Podsumowanie" panel). The global multipliers + VAT rate are always visible there; the Sekcje panel keeps only the per-section overrides. EX-478.
 9. ~~**Preset scope (S-09).**~~ **Resolved (2026-07-11):** named library (`kosztorys_presets` table), picked by name at seed-time.
 10. ~~**Preset save-as + retroactivity (S-09).**~~ **Resolved (2026-07-11):** save-as offers both new + overwrite; spawned kosztorysy stay frozen (snapshot).
@@ -648,7 +648,7 @@ slice's Unknowns.
 Lifted from PRD `## Non-Goals` — explicitly out of scope for this arc.
 
 - **Mirror / Google integration teardown** — Why parked: removing the integration (design-spec Phase 3b) is a later change, triggered only after cutover is proven.
-- **Bidirectional sheet ↔ app sync** — Why parked: the editor never reads from or writes to sheets; the one-shot importer (S-15) is the only exception.
+- **Bidirectional sheet ↔ app sync** — Why parked: the editor never reads from or writes to sheets; the importer (S-15) is the only exception, and it reads only — on demand, per investment, never writing back.
 - **Real-time collaborative editing** — Why parked: PRD non-goal.
 - **Multi-currency** — Why parked: PLN only, confirmed non-goal.
 - **Multi-tenant catalogues** — Why parked: single shared catalogue; PRD non-goal.
