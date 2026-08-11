@@ -57,6 +57,7 @@ export function deriveWholeInvestmentFinancials(
     breakdowns.settledCategoryCosts,
     settings.materialsNetRate,
     settings.settlementMode,
+    breakdowns.netCategoryCosts,
   )
   return {
     financials,

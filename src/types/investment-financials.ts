@@ -25,6 +25,10 @@ export type InvestmentFinancialsT = {
    *  Non-optional on purpose: an `undefined` here would poison both figures with NaN. */
   materialsNetDiscount: number
   settledCategoryCosts: CategoryCostT[]
+  /** The netto-billed subset of `categoryCosts` — a subset, not a sibling total. It travels with
+   *  `categoryCosts` because that array alone cannot say which plane a category's `total` stands
+   *  on, so any consumer pricing a category would have to guess. */
+  netCategoryCosts: CategoryCostT[]
 }
 
 /** One row of the kosztorys „Materiały" split — a per-expense-category cost (`id` = the

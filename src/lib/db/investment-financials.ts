@@ -11,7 +11,11 @@ import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
 } from '@/types/investment-financials'
-import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import {
+  effectiveMaterialsNetRate,
+  SETTLEMENT_MODE_DEFAULT,
+  type SettlementModeT,
+} from '@/lib/kosztorys/settlement-mode'
 import { materialsNetDiscount as concessionOn } from '@/lib/kosztorys/summary-economics'
 
 type BilledRowT = { type: string; total: number; netTotal?: number }
@@ -73,6 +77,7 @@ export function deriveFinancials(
   settledCategoryCosts: CategoryCostT[] = [],
   materialsNetRate: number | null = null,
   settlementMode: SettlementModeT = SETTLEMENT_MODE_DEFAULT,
+  netCategoryCosts: CategoryCostT[] = [],
 ): InvestmentFinancialsT {
   const isBruttoMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materials'
   const isNetMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materialsNet'
@@ -80,13 +85,14 @@ export function deriveFinancials(
   // Not split on `settled`: the netto type is `settleable: false`, so a settled netto row
   // cannot exist — and if one ever did, dropping it here would hide it from every figure.
   const materialsNetBilled = sumRows(rows, isNetMaterial)
-  // The gate lives here, not with the readers, so no surface can forget it: a brutto-settled client
-  // has VAT added on top of the bill, which leaves nothing to strip off. The base is the brutto
-  // bucket ALONE — running this off totalMaterialCosts would cut VAT off materialsNetBilled a
+  // The gate is applied here, not left to the readers, so no surface can forget it. The base is the
+  // brutto bucket ALONE — running this off totalMaterialCosts would cut VAT off materialsNetBilled a
   // second time, which is already netto. The arithmetic itself is the panel's, imported rather than
   // restated, so the marża term and the row that explains it cannot drift apart.
-  const materialsNetDiscount =
-    settlementMode === 'GROSS' ? 0 : concessionOn(materialsGrossBase, materialsNetRate)
+  const materialsNetDiscount = concessionOn(
+    materialsGrossBase,
+    effectiveMaterialsNetRate(settlementMode, materialsNetRate),
+  )
   return {
     categoryCosts,
     // The only bucket that splits on the per-ROW settled flag: settled material has been
@@ -102,5 +108,6 @@ export function deriveFinancials(
     totalSettled: sumRows(rows, (r) => isBruttoMaterial(r) && r.settled),
     materialsNetDiscount,
     settledCategoryCosts,
+    netCategoryCosts,
   }
 }
