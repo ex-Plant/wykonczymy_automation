@@ -22,7 +22,16 @@ export function KosztorysTotalsPanelToggle({ size = 'sm' }: { size?: 'sm' | 'def
       className={cn(totalsOpen && 'border border-transparent')}
       onClick={() => setTotalsOpen(!totalsOpen)}
     >
-      Pokaż podsumowanie
+      {/* Both labels stacked in the same grid cell so the button sizes to the wider one
+          and never resizes when the label swaps. */}
+      <span className="grid">
+        <span className={cn('col-start-1 row-start-1', totalsOpen && 'invisible')}>
+          Pokaż podsumowanie
+        </span>
+        <span className={cn('col-start-1 row-start-1', !totalsOpen && 'invisible')}>
+          Schowaj podsumowanie
+        </span>
+      </span>
       <ChevronDown
         className={cn('transition-transform duration-200', totalsOpen && 'rotate-180')}
       />
