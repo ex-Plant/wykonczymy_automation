@@ -14,7 +14,7 @@ rename, reorder, and delete kosztorys sections, and add, inline-edit, reorder, a
 items (description, unit, przedmiar, pomiar, note) under them, seeing live row / section /
 grand totals as they edit.
 
-Shape is settled by the POC decision register — see `context/changes/kosztorys-mvp/change.md`.
+Shape is settled by the POC decision register — see `context/archive/kosztorys-poc-in-app/`.
 Key POC decisions folded into S-01: unified item list (materials = `INVESTMENT_EXPENSE`, no
 separate table); hard-delete; ▲▼ reorder over a `display_order` layer (DnD deferred);
 przedmiar + pomiar as two independent columns (value computed from pomiar); two-mode discount
