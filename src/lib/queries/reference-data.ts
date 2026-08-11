@@ -6,6 +6,7 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import type { RoleT } from '@/lib/auth/roles'
 import { getDb } from '@/lib/db/get-db'
+import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { perfStart } from '@/lib/perf'
 
@@ -61,7 +62,7 @@ export const fetchReferenceData = cache(
         db.execute(sql`
         SELECT i.id, i.name, i.status::text,
                i.address, i.phone, i.email, i.contact_person, i.notes, i.review,
-               i.materials_net_rate::float8, i.settlement_mode::text,
+               i.materials_net_rate::float8, i.settlement_mode::text, i.vat_rate::float8,
                (k.google_sheet_id IS NOT NULL) AS has_sheet
         FROM investments i
         LEFT JOIN kosztoryses k ON k.investment_id = i.id
@@ -111,6 +112,7 @@ export const fetchReferenceData = cache(
         review: (row.review as string) ?? '',
         materialsNetRate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
         settlementMode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+        vatRate: row.vat_rate == null ? DEFAULT_VAT : Number(row.vat_rate),
         hasSheet: Boolean(row.has_sheet),
       }))
 

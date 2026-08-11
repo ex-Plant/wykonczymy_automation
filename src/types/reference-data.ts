@@ -27,10 +27,13 @@ export type InvestmentRefT = ReferenceItemT & {
   notes: string
   review: string
   hasSheet: boolean
-  // Both feed the per-row Marża on the investments list: the concession is gated on the settlement
-  // mode, so a reader that has one without the other cannot compute it. null rate = no concession.
+  // The three rates the investments list prices a row with. The materiały concession is gated on the
+  // settlement mode, so a reader that has one without the other cannot compute it (null rate = no
+  // concession); VAT rides the prace alone and turns „Bilans netto" into „Bilans brutto". Non-null
+  // because the read applies DEFAULT_VAT — a null here would make the brutto column NaN.
   materialsNetRate: number | null
   settlementMode: SettlementModeT
+  vatRate: number
 }
 
 export type WorkerRefT = Omit<ReferenceItemT, 'type'> & {

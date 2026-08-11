@@ -7,6 +7,7 @@ import { shapeCashRegisters } from '@/lib/queries/cash-registers'
 import { shapeInvestments } from '@/lib/queries/investments'
 import type { CashRegisterRefT, WorkerRefT, InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
+import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 
 const workers: WorkerRefT[] = [{ id: 1, name: 'Adrian', role: 'MANAGER', email: 'a@x.pl' }]
 
@@ -61,6 +62,7 @@ const baseInv: InvestmentRefT = {
   hasSheet: false,
   materialsNetRate: null,
   settlementMode: 'NET',
+  vatRate: DEFAULT_VAT,
   active: true,
 }
 
@@ -187,6 +189,52 @@ describe('shapeInvestments', () => {
     )
     expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1250 }])
     expect(row.totalInvestmentExpense).toBe(1250)
+  })
+
+  it('grosses the bilans on the prace alone and passes the settled spend through', () => {
+    const financials: InvestmentFinancialsMapT = {
+      '5': {
+        categoryCosts: [],
+        netCategoryCosts: [],
+        totalMaterialCosts: 1000,
+        materialsGrossBase: 1000,
+        materialsNetBilled: 0,
+        totalIncome: 9547,
+        totalLaborCosts: 3900,
+        totalPayouts: 0,
+        totalRabat: 0,
+        totalLoss: 0,
+        totalSettled: 250,
+        materialsNetDiscount: 0,
+        settledCategoryCosts: [],
+      },
+    }
+    const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.23 }], financials)
+    expect(row.totalSettled).toBe(250)
+    // 4647 + 23% × 3900 — the 1000 materiały are NOT grossed.
+    expect(row.balanceGross).toBeCloseTo(row.balance + 897, 10)
+  })
+
+  it('falls back to the default VAT when the investment carries none', () => {
+    // The read applies DEFAULT_VAT to a null vat_rate, so a row can never gross to NaN here.
+    const [row] = shapeInvestments([baseInv], {
+      '5': {
+        categoryCosts: [],
+        netCategoryCosts: [],
+        totalMaterialCosts: 0,
+        materialsGrossBase: 0,
+        materialsNetBilled: 0,
+        totalIncome: 0,
+        totalLaborCosts: 1000,
+        totalPayouts: 0,
+        totalRabat: 0,
+        totalLoss: 0,
+        totalSettled: 0,
+        materialsNetDiscount: 0,
+        settledCategoryCosts: [],
+      },
+    })
+    expect(row.balanceGross).toBeCloseTo(row.balance + DEFAULT_VAT * 1000, 10)
   })
 
   it('keeps Σ columns + korekta === wydatki inwestycyjne', () => {

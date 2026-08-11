@@ -53,6 +53,7 @@ export function shapeInvestments(
     // to the total. It is a remainder, so it takes no repricing: the billed total already reflects it.
     const uncategorisedCorrection =
       totalInvestmentExpense - billedCategories.reduce((sum, c) => sum + c.total, 0)
+    const balance = calculateBalance(financials)
     return {
       id: inv.id,
       name: inv.name,
@@ -65,7 +66,11 @@ export function shapeInvestments(
       totalInvestmentExpense,
       uncategorisedCorrection,
       categoryCosts: billedCategories,
-      balance: calculateBalance(financials),
+      totalSettled: financials.totalSettled,
+      balance,
+      // VAT rides the prace alone (context/reference/kosztorys-editor-domain-notes.md), so nothing
+      // but robocizna is grossed up here — materiały and korekty enter both planes at face value.
+      balanceGross: balance + inv.vatRate * financials.totalLaborCosts,
       margin: calculateMargin(financials),
       address: inv.address,
       phone: inv.phone,

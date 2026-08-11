@@ -511,14 +511,14 @@ Run **once**, after Phase 4.
 
 #### Automated
 
-- [x] 2.1 `shape-rows.test.ts` rewritten red then green — mixed planes, GROSS-inert, Σ-invariant
-- [x] 2.2 New spec for `billedCategoryCosts` passes
+- [x] 2.1 `shape-rows.test.ts` rewritten red then green — mixed planes, GROSS-inert, Σ-invariant — 63898e73
+- [x] 2.2 New spec for `billedCategoryCosts` passes — 63898e73
 
 ### Phase 3: Trzy nowe kolumny
 
 #### Automated
 
-- [ ] 3.1 `shape-rows.test.ts` covers `totalSettled` and `balanceGross` incl. vatRate-null fallback
+- [x] 3.1 `shape-rows.test.ts` covers `totalSettled` and `balanceGross` incl. vatRate-null fallback
 
 ### Phase 4: Detektory
 

@@ -24,11 +24,13 @@ export type InvestmentRowT = {
   totalLaborCosts: number
   totalPayouts: number
   totalInvestmentExpense: number
+  totalSettled: number
   uncategorisedCorrection: number
   /** Priced on the plane the client is billed on, not the raw receipts — so these columns and
    *  `totalInvestmentExpense` stand on the same plane and add up. */
   categoryCosts: CategoryCostT[]
   balance: number
+  balanceGross: number
   margin: number
   address: string
   phone: string
@@ -65,9 +67,17 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
     }),
+    // Two fixed columns rather than one switched by tryb: in trybie mieszanym both planes stand at
+    // once, the same rule `settlementModeToGridAxis` applies with `MIXED → 'both'`.
     col.accessor('balance', {
       id: 'balance',
-      header: 'Bilans',
+      header: 'Bilans netto',
+      meta: { align: 'right' },
+      cell: (info) => <BalanceCell value={info.getValue()} />,
+    }),
+    col.accessor('balanceGross', {
+      id: 'balanceGross',
+      header: 'Bilans brutto',
       meta: { align: 'right' },
       cell: (info) => <BalanceCell value={info.getValue()} />,
     }),
@@ -106,6 +116,12 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       header: 'Wydatki inwestycyjne',
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
+    }),
+    col.accessor('totalSettled', {
+      id: 'totalSettled',
+      header: 'Wydatki wliczone w robociznę',
+      meta: { align: 'right' },
+      cell: (info) => formatPLN(info.getValue()),
     }),
     // Wypłaty (payouts) is admin/owner-only, matching the detail page where it
     // sits alongside Marża behind the same role gate.
