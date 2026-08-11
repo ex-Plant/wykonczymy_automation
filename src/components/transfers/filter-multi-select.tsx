@@ -23,7 +23,21 @@ type FilterMultiSelectPropsT = {
   options: OptionT[]
   label: string
   icon?: LucideIcon
+  iconPosition?: 'left' | 'right'
   searchable?: boolean
+  triggerClassName?: string
+  // Render just the icon (no label / count) — for tight surfaces where a tooltip carries the meaning.
+  iconOnly?: boolean
+  title?: string
+  // Copy for the select-all row, which flips between the two. Overridable because a caller whose
+  // checkmarks mean "renders in the grid" wants the OUTCOME named („Pokaż/Ukryj wszystkie"), not the
+  // mechanism — the default suits a plain list filter.
+  selectAllLabel?: string
+  deselectAllLabel?: string
+  // An extra row beside the select-all one, for a caller-defined bulk selection move
+  // (e.g. "untick every empty section"). `select` maps the current selection to the next one; it
+  // routes through the same local state as the other rows, so the checkmarks move with it.
+  extraAction?: { label: string; select: (current: string[]) => string[] }
 }
 
 // URL param encoding: [] = all selected (no filter), ['__none__'] = nothing selected
@@ -36,7 +50,14 @@ export function FilterMultiSelect({
   options,
   label,
   icon: Icon,
+  iconPosition = 'left',
   searchable = false,
+  triggerClassName,
+  iconOnly = false,
+  title,
+  selectAllLabel = 'Zaznacz wszystkie',
+  deselectAllLabel = 'Odznacz wszystkie',
+  extraAction,
 }: FilterMultiSelectPropsT) {
   const [open, setOpen] = useState(false)
   const [localSelected, setLocalSelected] = useState<string[] | null>(null)
@@ -102,6 +123,13 @@ export function FilterMultiSelect({
     scheduleFlush(next)
   }
 
+  function runExtraAction() {
+    if (!extraAction) return
+    const next = extraAction.select(selected)
+    setLocalSelected(next)
+    scheduleFlush(next)
+  }
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -111,9 +139,19 @@ export function FilterMultiSelect({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <FilterTriggerButton active={!allSelected} icon={Icon}>
-          {label}
-          {allSelected ? '' : ` (${selected.length})`}
+        <FilterTriggerButton
+          active={!allSelected}
+          icon={Icon}
+          iconPosition={iconPosition}
+          className={triggerClassName}
+          title={title}
+        >
+          {iconOnly ? null : (
+            <>
+              {label}
+              {allSelected ? '' : ` (${selected.length})`}
+            </>
+          )}
         </FilterTriggerButton>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
@@ -122,9 +160,15 @@ export function FilterMultiSelect({
           <CommandList>
             <CommandGroup>
               <CommandItem onSelect={toggleAll} className="font-medium">
-                <CheckIcon className={cn('size-4', !allSelected && 'opacity-0')} />
-                {allSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+                <CheckIcon className={cn(!allSelected && 'opacity-0')} />
+                {allSelected ? deselectAllLabel : selectAllLabel}
               </CommandItem>
+              {extraAction && (
+                <CommandItem onSelect={runExtraAction} className="font-medium">
+                  <CheckIcon className="opacity-0" />
+                  {extraAction.label}
+                </CommandItem>
+              )}
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup>
@@ -134,9 +178,7 @@ export function FilterMultiSelect({
                   value={opt.label}
                   onSelect={() => toggleValue(opt.value)}
                 >
-                  <CheckIcon
-                    className={cn('size-4', !selected.includes(opt.value) && 'opacity-0')}
-                  />
+                  <CheckIcon className={cn(!selected.includes(opt.value) && 'opacity-0')} />
                   {opt.label}
                 </CommandItem>
               ))}

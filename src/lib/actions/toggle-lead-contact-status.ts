@@ -2,7 +2,7 @@
 
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { revalidateCollection } from '@/lib/cache/revalidate'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import type { ActionResultT } from '@/types/action'
@@ -24,7 +24,7 @@ export async function toggleLeadContactStatus(
       overrideAccess: true,
     })
 
-    revalidateCollection('leads')
+    revalidateCollections(['leads'])
     return { success: true }
   } catch (err) {
     return { success: false, error: getErrorMessage(err) }

@@ -6,6 +6,7 @@
 //   INV=7 node --env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts
 import { getPayload } from 'payload'
 import config from '../payload.config'
+import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 
 const INVESTMENT_ID = Number(process.env.INV ?? 7)
 const SECTIONS = 10
@@ -49,7 +50,7 @@ async function run() {
         investment: INVESTMENT_ID,
         name: `Sekcja ${si + 1}`,
         displayOrder: si,
-        defaultCostVariant: 'w_tools',
+        color: sectionColorForIndex(si),
       },
       ...ctx,
     })
@@ -68,7 +69,6 @@ async function run() {
               description: `Pozycja ${si + 1}.${i + 1} — robocizna testowa`,
               unit: ['m2', 'mb', 'szt', 'kpl'][i % 4],
               plannedQty: (i % 17) + 1,
-              measuredQty: (i % 13) + 1,
               discountType: i % 5 === 0 ? 'percent' : null,
               discountValue: i % 5 === 0 ? 5 : 0,
               clientPrice: 20 + (i % 50) * 3,
@@ -85,14 +85,14 @@ async function run() {
       )
       itemCount += items.length
 
-      // Rzadki postęp: co 3. pozycja ma wpis w 1–2 etapach.
-      const progress = items
-        .filter((_, idx) => (c + idx) % 3 === 0)
-        .flatMap((item, idx) => {
-          const entries = [{ item: item.id, stage: stageIds[0], qtyDone: 1 }]
-          if (idx % 2 === 0) entries.push({ item: item.id, stage: stageIds[1], qtyDone: 1 })
-          return entries
-        })
+      // „Pomiar z natury" = Σ etapów, więc każda pozycja dostaje wpis w 1. etapie;
+      // co 3. pozycja ma dodatkowo 2. etap, żeby zachować mieszankę wielo-etapowych wierszy.
+      const progress = items.flatMap((item, idx) => {
+        const localIndex = c + idx
+        const entries = [{ item: item.id, stage: stageIds[0], qtyDone: (localIndex % 13) + 1 }]
+        if (localIndex % 3 === 0) entries.push({ item: item.id, stage: stageIds[1], qtyDone: 1 })
+        return entries
+      })
       await Promise.all(
         progress.map((data) => payload.create({ collection: 'stage-progress', data, ...ctx })),
       )

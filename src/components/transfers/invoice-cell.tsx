@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { FileText, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
+import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { removeTransferInvoiceAction } from '@/lib/actions/transfers'
 import { toastMessage } from '@/lib/utils/toast'
 
@@ -22,40 +22,36 @@ type InvoiceCellPropsT = {
 }
 
 export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceCellPropsT) {
-  const [previewOpen, setPreviewOpen] = useState(false)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [removed, setRemoved] = useState(false)
 
   const hasInvoice = !!url && !removed
 
-  function handleReplace() {
-    setPreviewOpen(false)
-    setUploadOpen(true)
-  }
-
-  async function handleRemove() {
+  async function handleRemove(closePreview: () => void) {
     if (!confirm('Czy na pewno chcesz usunąć fakturę?')) return
     const result = await removeTransferInvoiceAction(transactionId)
-    if (result.success) {
-      setPreviewOpen(false)
-      setRemoved(true)
-    } else {
+    if (!result.success) {
       toastMessage(result.error ?? 'Nie udało się usunąć faktury', 'error')
+      return
     }
+    closePreview()
+    setRemoved(true)
   }
 
   return (
     <>
       {hasInvoice ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setPreviewOpen(true)}
-          className="text-muted-foreground"
-          aria-label={`Podgląd faktury: ${filename ?? 'faktura'}`}
-        >
-          <FileText />
-        </Button>
+        <InvoicePreviewButton
+          url={url}
+          filename={filename}
+          mimeType={mimeType}
+          variant="compact"
+          onReplace={(closePreview) => {
+            closePreview()
+            setUploadOpen(true)
+          }}
+          onRemove={handleRemove}
+        />
       ) : (
         <Button
           variant="ghost"
@@ -66,21 +62,6 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
         >
           <Plus />
         </Button>
-      )}
-
-      {url && previewOpen && (
-        <InvoicePreviewDialog
-          url={url}
-          filename={filename}
-          mimeType={mimeType}
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-          onReplace={handleReplace}
-          onRemove={handleRemove}
-          // Stored file is already ingest-compressed (≤1920px, q0.6) — skip the Next optimizer
-          // and its cold-start round-trip; serve straight from the Blob CDN.
-          unoptimized
-        />
       )}
 
       {uploadOpen && (

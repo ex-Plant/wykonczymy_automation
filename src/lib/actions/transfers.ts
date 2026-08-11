@@ -9,6 +9,7 @@ import {
 import { canMutateTransfer } from '@/lib/auth/roles'
 import { canBeSettled } from '@/lib/constants/transfers'
 import { perfStart } from '@/lib/perf'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import {
   cancelTransferSchema,
   createTransferSchema,
@@ -23,6 +24,8 @@ import { isLaborCost, needsSourceRegister } from '../constants/transfers'
 import { syncBulkExpensesToSheet } from './sheets-sync'
 import { validateAction, protectedAction } from './run-action'
 import { validateSourceRegister } from './validate-source-register'
+import { logError } from '@/lib/utils/log-error'
+import { resolveId } from '@/lib/utils/resolve-id'
 
 export async function createTransferAction(data: CreateTransferFormT, invoiceMediaId?: number) {
   return protectedAction(
@@ -41,7 +44,7 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
         if (!validated.success) return validated
       }
 
-      const created = await payload.create({
+      await payload.create({
         collection: 'transactions',
         data: {
           ...data,
@@ -80,45 +83,43 @@ export async function createBulkTransferAction(
         if (!validated.success) return validated
       }
 
-      const transactionId = await payload.db.beginTransaction()
-      if (!transactionId) throw new Error('Failed to start transaction')
       // skipSheetSync: the per-row afterChange hook must NOT sync each created
       // row one-by-one — this action batches them all in a single sheet write below
       // (review T4.2). The flag rides on req.context, which Payload passes to hooks.
-      const req = { transactionID: transactionId, context: { skipSheetSync: true } }
-
-      const createdIds: number[] = []
-      try {
-        for (let i = 0; i < parsed.data.lineItems.length; i++) {
-          const item = parsed.data.lineItems[i]
-          const created = await payload.create({
-            collection: 'transactions',
-            req,
-            data: {
-              description: item.description,
-              amount: item.amount,
-              date: parsed.data.date,
-              type: parsed.data.type,
-              paymentMethod: parsed.data.paymentMethod,
-              sourceRegister: parsed.data.sourceRegister,
-              targetRegister: parsed.data.targetRegister,
-              investment: parsed.data.investment,
-              worker: parsed.data.worker,
-              expenseCategory: item.expenseCategory,
-              otherCategory: item.category,
-              invoice: invoiceMediaIds?.[i],
-              invoiceNote: item.invoiceNote,
-              settled: canBeSettled(parsed.data.type) && parsed.data.settled === true,
-              createdBy: user.id,
-            },
-          })
-          createdIds.push(created.id)
-        }
-        await payload.db.commitTransaction(transactionId)
-      } catch (err) {
-        await payload.db.rollbackTransaction(transactionId)
-        throw err
-      }
+      const createdIds = await withPayloadTransaction(
+        payload,
+        async (req) => {
+          const ids: number[] = []
+          for (let i = 0; i < parsed.data.lineItems.length; i++) {
+            const item = parsed.data.lineItems[i]
+            const created = await payload.create({
+              collection: 'transactions',
+              req,
+              data: {
+                description: item.description,
+                amount: item.amount,
+                netAmount: item.netAmount,
+                date: parsed.data.date,
+                type: parsed.data.type,
+                paymentMethod: parsed.data.paymentMethod,
+                sourceRegister: parsed.data.sourceRegister,
+                targetRegister: parsed.data.targetRegister,
+                investment: parsed.data.investment,
+                worker: parsed.data.worker,
+                expenseCategory: item.expenseCategory,
+                otherCategory: item.category,
+                invoice: invoiceMediaIds?.[i],
+                invoiceNote: item.invoiceNote,
+                settled: canBeSettled(parsed.data.type) && parsed.data.settled === true,
+                createdBy: user.id,
+              },
+            })
+            ids.push(created.id)
+          }
+          return ids
+        },
+        { skipSheetSync: true },
+      )
       console.log(`[PERF]   payload.create x${lineCount} ${step()}ms`)
 
       // Post-response sync after commit — never before, else a rolled-back row would
@@ -152,8 +153,7 @@ async function fetchAndAuthorize(
   if (original.cancelled) return { error: 'Transakcja jest już anulowana.' }
   if (original.type === 'CANCELLATION') return { error: 'Nie można edytować anulowania.' }
 
-  const creatorId =
-    typeof original.createdBy === 'number' ? original.createdBy : original.createdBy?.id
+  const creatorId = resolveId(original.createdBy)
   const allowed = canMutateTransfer({
     role: user.role,
     userId: user.id,
@@ -193,7 +193,7 @@ export async function cancelTransferAction(transferId: number, data: CancelTrans
 
       // Create CANCELLATION audit row
       const today = new Date().toISOString().split('T')[0]
-      const cancellation = await payload.create({
+      await payload.create({
         collection: 'transactions',
         data: {
           type: 'CANCELLATION',
@@ -241,6 +241,9 @@ export async function updateTransferAction(
       const { amount, ...fields } = parsed.data
       const newAmount = isLaborCost(original.type) ? amount : undefined
       const amountChanged = newAmount !== undefined && newAmount !== original.amount
+
+      // Moving a zaliczka to another investment orphans its etap tag; the collection's
+      // beforeValidate hook clears it, so every write path is covered, not just this action.
 
       await payload.update({
         collection: 'transactions',
@@ -304,7 +307,9 @@ async function setTransferInvoice(
   console.log(`[PERF]   payload.update(${transferId}) ${step()}ms`)
 
   if (oldMediaId && oldMediaId !== invoiceMediaId) {
-    payload.delete({ collection: 'media', id: oldMediaId }).catch(console.error)
+    payload
+      .delete({ collection: 'media', id: oldMediaId })
+      .catch((err) => logError('[transfers] delete old invoice media failed', err))
   }
 
   return { success: true }

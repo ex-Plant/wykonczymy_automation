@@ -27,8 +27,8 @@ POC pełnego przejścia edytowalnej rozpiski robocizny z Google Sheets do aplika
 Czysty start (bez importu arkuszy), baza aplikacji = źródło prawdy, współistnienie
 z istniejącą zakładką „Arkusz".
 
-- **Spec (zaakceptowany):** `docs/superpowers/specs/2026-06-19-kosztorys-poc-in-app-design.md`
-- **Brain dump:** `docs/superpowers/specs/2026-06-19-kosztorys-poc-in-app-notes.md`
+- **Spec (zaakceptowany):** (dokument skasowany 2026-08-08 — sięga go `git log --follow`)
+- **Brain dump:** (dokument skasowany 2026-08-08 — sięga go `git log --follow`)
 - **Plan:** `context/changes/kosztorys-poc-in-app/plan.md` (strymowany — Status + Progress)
 
 ## Decyzje POC → MVP (do review właściciela)
@@ -67,7 +67,7 @@ z istniejącą zakładką „Arkusz".
   sekcja→pozycja — odrzucony.) **ZAIMPLEMENTOWANE 2026-06-20** zgodnie z tą decyzją: pole
   `investments.vat_rate` (edytowalne w panelu „Sekcje"), martwe kolumny `vat_rate` na
   sekcji/pozycji usunięte migracją `20260620_2_vat_per_investment`. Spec:
-  `docs/superpowers/specs/2026-06-20-kosztorys-vat-per-investment-design.md`.
+  (spec skasowany 2026-08-08 — sięga go `git log --follow`).
   **TODO (właściciel, 2026-06-20): wywalić kontrolkę VAT z panelu „Sekcje".** VAT to
   ustawienie INWESTYCJI, nie sekcji — w panelu sekcji nie ma czego szukać (ta sama myśl co
   follow-up „ustawienia wyliczania cen wydzielić z panelu bocznego"). Model `investments.vat_rate`
@@ -97,7 +97,7 @@ z istniejącą zakładką „Arkusz".
   2026-06-20, zastępuje dawny wariant „3 kolumny snapshot"). `clientPrice` to snapshot; ceny
   z/bez narzędzi wyprowadzane przez współczynnik dziedziczony globalny (inwestycja) → sekcja
   (nullable), z override per pozycja (`coeff`/`amount`/null). Szczegóły i geneza: pytanie #2
-  oraz `docs/superpowers/specs/2026-06-20-kosztorys-subcontractor-pricing-design.md`.
+  oraz (spec skasowany 2026-08-08 — sięga go `git log --follow`).
 
 ### B. Edytor — stack, UX, funkcje
 
@@ -212,8 +212,8 @@ POC od razu w wyglądzie aplikacji, nie surowy `<table>`. Decyzje:
 **Zaimplementowane i zacommitowane** (gałąź `poc-kosztorys-in-app`, NIE pushnięte):
 
 - **Ceny podwykonawcy przez współczynnik narzutu + dwustanowy override** (rozwiązuje #2).
-  Spec: `docs/superpowers/specs/2026-06-20-kosztorys-subcontractor-pricing-design.md`,
-  plan (9 tasków): `docs/superpowers/plans/2026-06-20-kosztorys-subcontractor-pricing.md`.
+  Spec: (spec skasowany 2026-08-08 — sięga go `git log --follow`),
+  plan (9 tasków): (dokument skasowany 2026-08-08 — sięga go `git log --follow`).
   - Model: `effectiveCoeff`/`subcontractorPrice` w `calc.ts`; współczynniki na `investments`
     (default 0,65/0,55) + `kosztorys_sections` (nullable→dziedziczy); override per pozycja
     (`{w,own}ToolsOverride{Type,Value}`, typ ∈ coeff/amount/null) zamiast snapshotów cen.
@@ -306,8 +306,8 @@ Faza 3 (edytowalna siatka) to rdzeń POC i **nie idziemy dalej, dopóki nie
 zdecydujemy, że siatka jest dość szybka/niezawodna/„sheet-like"**. Decyzja:
 budujemy drugą wersję na **react-datasheet-grid** (v2) obok obecnej TanStack (v1)
 i porównujemy. v2 = docelowy fundament — pozostałe funkcjonalności POC dokładamy
-na nim. Spec: `docs/superpowers/specs/2026-06-19-kosztorys-editor-grid-bakeoff-design.md`.
-Plan: `docs/superpowers/plans/2026-06-19-kosztorys-editor-v2-datasheet-grid.md`.
+na nim. Spec: (dokument skasowany 2026-08-08 — sięga go `git log --follow`).
+Plan: (dokument skasowany 2026-08-08 — sięga go `git log --follow`).
 
 **Warunek podstawowy (raison d'être):** trzy zduplikowane kosztorysy (robocizna /
 zakres z narzędziami / zakres bez narzędzi) → **jeden zbiór, trzy widoki** przez
@@ -504,13 +504,23 @@ za właściciela. Do rozstrzygnięcia, zanim ruszą:
    sortowaniu po cenie/netto sekcje się przeplatają i subtotale tracą sens. Decyzja:
    (a) subtotale w osobnym panelu/stopce liczonej zawsze po sekcji niezależnie od
    sortu, czy (b) subtotale tylko w trybie „bez sortu" (grupowanie wyłącza sort)?
+   **✅ ROZSTRZYGNIĘTE (właściciel, 2026-06-20) — wariant (a), osobny prawy panel.**
+   Wiersze-nagłówki wstrzykiwane w siatkę psułyby model v2 (płaska tablica mapowana 1:1
+   po `id` — `rowKey`, `diffRow`, autosave, `lockRows`, wirtualizacja), więc panel obok
+   omija problem w całości; wariant (b) odłożony, wróciłby najwyżej przy eksporcie.
+   Panel liczy **zawsze po pełnym zbiorze `rows`**, nie po `viewRows` — a licznik netto
+   w toolbarze zostaje **filtro-świadomy**: dwa liczniki nad tym samym zbiorem, celowo
+   różne (bieżąca suma tego, co widzisz, vs stabilna rozpiska całości). Metryki panelu:
+   nazwa · netto wg aktywnego widoku cenowego · udział % · liczba pozycji + stopka
+   „Suma netto". (Design + plan skasowane 2026-08-08 — `git log --follow` je sięga;
+   pułapka anty-migotania z tego designu żyje w `lessons.md:98`.)
 2. **Źródło cen podwykonawcy** — ✅ ROZWIĄZANE (zaimplementowane 2026-06-20). Ceny
    podwykonawcy wyprowadzane z ceny klienta przez **współczynnik narzutu** dziedziczony
    globalny (inwestycja) → sekcja (nullable), z **dwustanowym override per pozycja**
    (`coeff` = klient × %, `amount` = płaska kwota, null = wyprowadź). Cena liczona w locie
    (zero dryfu); panel sekcji ustawia współczynniki, siatka edytuje override w widokach
-   podwykonawcy. Spec: `docs/superpowers/specs/2026-06-20-kosztorys-subcontractor-pricing-design.md`,
-   plan: `docs/superpowers/plans/2026-06-20-kosztorys-subcontractor-pricing.md`. (Uwaga:
+   podwykonawcy. Spec: (spec skasowany 2026-08-08 — sięga go `git log --follow`),
+   plan: (dokument skasowany 2026-08-08 — sięga go `git log --follow`). (Uwaga:
    wcześniejsza notatka „snapshot, nie współczynnik" + „bulk-apply" **nieaktualna** — model
    zmienił się w brainstormingu na współczynnik+override, bo override jako współczynnik
    podąża za ceną klienta, a `amount` pokrywa płaskie wartości jak r07=700.) Domyślne

@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // createInvestmentAction seeds the new investment's kosztorys from a preset best-effort. A seed
 // failure AFTER the investment row commits must stay NON-FATAL: the action returns success so
@@ -14,7 +15,6 @@ import { getDb } from '@/lib/db/get-db'
 // and revalidation touches next/cache outside a request context.
 const authState = vi.hoisted(() => ({ userId: 0 }))
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => ({
     success: true,
@@ -22,6 +22,22 @@ vi.mock('@/lib/auth/require-auth', () => ({
   })),
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
+
+// A controllable seed: the throw test flips `shouldThrow` to simulate a mid-seed DB error; every
+// other test delegates to the real seed so the 'not-found' path stays a true integration check.
+const seedControl = vi.hoisted(() => ({ shouldThrow: false }))
+vi.mock('@/lib/kosztorys/seed-from-preset', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/kosztorys/seed-from-preset')>()
+  return {
+    ...actual,
+    seedInvestmentFromPreset: vi.fn(
+      async (...args: Parameters<typeof actual.seedInvestmentFromPreset>) => {
+        if (seedControl.shouldThrow) throw new Error('boom: seed failed mid-transaction')
+        return actual.seedInvestmentFromPreset(...args)
+      },
+    ),
+  }
+})
 
 const { createInvestmentAction } = await import('@/lib/actions/investments')
 
@@ -48,6 +64,10 @@ describe.skipIf(!ENV_READY)('createInvestmentAction — non-fatal preset seed (D
     authState.userId = Number(firstUser.id)
   })
 
+  afterEach(() => {
+    seedControl.shouldThrow = false
+  })
+
   afterAll(async () => {
     for (const name of createdNames) {
       const found = await payload.find({
@@ -57,11 +77,7 @@ describe.skipIf(!ENV_READY)('createInvestmentAction — non-fatal preset seed (D
         overrideAccess: true,
       })
       for (const doc of found.docs) {
-        await payload.delete({
-          collection: 'investments',
-          id: doc.id,
-          context: { skipRevalidation: true },
-        })
+        await deleteTestInvestment(payload, Number(doc.id))
       }
     }
   })
@@ -102,7 +118,25 @@ describe.skipIf(!ENV_READY)('createInvestmentAction — non-fatal preset seed (D
 
     const id = await investmentIdByName(name)
     expect(id).not.toBeNull()
-    // Seed skipped → the investment lands with an empty tree (the "Wypełnij z szablonu" CTA state).
+    // Seed skipped → the investment lands with an empty tree.
+    expect(await sectionCount(id!)).toBe(0)
+  })
+
+  it('when the preset seed throws, keeps the investment and returns a seed-failure warning', async () => {
+    seedControl.shouldThrow = true
+    const name = 'ex508-seed-throw-test'
+    createdNames.push(name)
+
+    const res = await createInvestmentAction({ ...baseData(name), presetId: '2000000000' })
+
+    // Non-fatal: the investment commits before the seed, so the throw must not flip the action to
+    // failure (that would skip revalidation + invite a duplicate-creating retry). EX-508: the failure
+    // is no longer silent — success carries a warning the form surfaces as a toast.
+    expect(res.success).toBe(true)
+    expect(res.success && res.warning).toBeTruthy()
+
+    const id = await investmentIdByName(name)
+    expect(id).not.toBeNull()
     expect(await sectionCount(id!)).toBe(0)
   })
 })

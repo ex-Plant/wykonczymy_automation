@@ -1,0 +1,48 @@
+'use client'
+
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
+
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils/cn'
+import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
+import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
+import type { SortDirT } from '@/lib/kosztorys/row-view'
+
+type PropsT = {
+  label: string
+  active: SortDirT | null
+  onSort: (dir: SortDirT | null) => void
+  // Explanatory tooltip composed ONTO the trigger (not a wrapping element) — a second wrapping
+  // trigger would fight the dropdown for the click.
+  tip?: string
+}
+
+export function SortHeader({ label, active, onSort, tip }: PropsT) {
+  const Icon = active === 'asc' ? ArrowUp : active === 'desc' ? ArrowDown : ChevronsUpDown
+
+  // The active-sort weight goes on the label element, not triggerClassName: HeaderLabel's own
+  // font-medium sits on that element and would beat anything merely inherited from the trigger.
+  return (
+    <HeaderMenu
+      label={<HeaderLabel className={cn(active && 'font-semibold')}>{label}</HeaderLabel>}
+      icon={<Icon className={cn('size-4 shrink-0', active ? 'opacity-100' : 'opacity-50')} />}
+      triggerClassName={cn(active && 'text-primary')}
+      triggerTitle="Sortuj kolumnę"
+      tip={tip}
+    >
+      <DropdownMenuItem onSelect={() => onSort('asc')}>
+        <ArrowUp className={cn(active === 'asc' ? 'opacity-100' : 'opacity-50')} />
+        Sortuj rosnąco
+      </DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => onSort('desc')}>
+        <ArrowDown className={cn(active === 'desc' ? 'opacity-100' : 'opacity-50')} />
+        Sortuj malejąco
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem disabled={!active} onSelect={() => onSort(null)}>
+        <ChevronsUpDown className="opacity-50" />
+        Wyczyść sortowanie
+      </DropdownMenuItem>
+    </HeaderMenu>
+  )
+}

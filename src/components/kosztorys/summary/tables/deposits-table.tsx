@@ -1,0 +1,95 @@
+'use client'
+
+import { Fragment } from 'react'
+import Link from 'next/link'
+import { DEPOSIT_TYPES, VAT_PLANE_LABELS } from '@/lib/constants/transfers'
+import { formatPLDate } from '@/lib/utils/format-date'
+import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
+import { formatNet } from '@/lib/kosztorys/format'
+import {
+  SUMMARY_LABEL_COL,
+  SUMMARY_VALUE_COL,
+  SummaryHeaderCell,
+  SummaryLabelCell,
+  SummaryTable,
+  SummaryValueCell,
+} from '@/components/ui/summary-grid'
+import type { DepositTransactionRowT } from '@/types/transfers'
+
+// The wpłaty list — same CSS-grid table as the Podsumowanie block above it (SummaryTable +
+// SummaryLabelCell/SummaryValueCell). Deposits are rare, so no virtualization: one row each,
+// date-desc.
+//
+// The table always adds a „Rozliczenie netto/brutto" column naming each wpłata's vatPlane — Netto
+// (`NET`), Brutto (`GROSS`), or „Nie określono" (`null`) — and closes with a Razem row for each of the
+// three rodzaje. The buckets are display-only: „Nie określono" still counts as netto in the settlement
+// math (owner's „brak wartości = netto" ruling, 2026-07-23).
+const planeLabel = (plane: DepositTransactionRowT['vatPlane']) =>
+  plane == null ? 'Nie określono' : VAT_PLANE_LABELS[plane]
+export function DepositsTable({
+  investmentId,
+  rows,
+  preview,
+}: {
+  investmentId: number
+  rows: DepositTransactionRowT[]
+  preview: boolean
+}) {
+  const dateCell = (row: DepositTransactionRowT) => (
+    <SummaryLabelCell className="tabular-nums">
+      {preview ? (
+        formatPLDate(row.date)
+      ) : (
+        <Link
+          href={investmentTransfersHref(investmentId, { types: DEPOSIT_TYPES })}
+          className="hover:underline"
+        >
+          {formatPLDate(row.date)}
+        </Link>
+      )}
+    </SummaryLabelCell>
+  )
+
+  // One Razem row per rodzaj — always all three, even a 0 zł bucket, so the split is fully readable.
+  const perPlane = (['NET', 'GROSS', null] as const).map((plane) => ({
+    plane,
+    total: rows.reduce((sum, row) => (row.vatPlane === plane ? sum + row.amount : sum), 0),
+  }))
+
+  // Two grids stacked flush (`-mt-px` collapses the doubled border into one line) so the block reads
+  // as one segment — but the Razem grid is only two columns wide, so it never paints an empty „Rodzaj"
+  // cell (the rodzaj is already in each Razem label). Their shared first two tracks are fixed rem
+  // widths, so Data/Kwota stay aligned across both.
+  const listCols = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_LABEL_COL}`
+  const totalCols = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
+  return (
+    <div className="flex w-fit flex-col">
+      <SummaryTable cols={listCols} className="w-fit">
+        <SummaryHeaderCell variant="label">Wpłaty</SummaryHeaderCell>
+        <SummaryHeaderCell>Kwota</SummaryHeaderCell>
+        <SummaryHeaderCell variant="label">Rozliczenie netto/brutto</SummaryHeaderCell>
+
+        {rows.map((row) => (
+          <Fragment key={row.id}>
+            {dateCell(row)}
+            <SummaryValueCell tone="success">{formatNet(row.amount)}</SummaryValueCell>
+            <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>
+          </Fragment>
+        ))}
+      </SummaryTable>
+
+      <SummaryTable cols={totalCols} className="-mt-px w-fit">
+        {perPlane.map((bucket) => (
+          <Fragment key={bucket.plane ?? 'null'}>
+            <SummaryLabelCell weight="bold">
+              Razem {planeLabel(bucket.plane).toLowerCase()}
+            </SummaryLabelCell>
+            <SummaryValueCell tone="success" weight="bold">
+              {formatNet(bucket.total)}
+            </SummaryValueCell>
+          </Fragment>
+        ))}
+      </SummaryTable>
+    </div>
+  )
+}

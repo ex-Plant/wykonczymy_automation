@@ -3,9 +3,10 @@ import { isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 // A sheet item. Client price = a snapshot. Subcontractor prices are derived from the
-// markup coefficient (section/investment), with a two-state per-item override:
-// *OverrideType ∈ {coeff, amount} | null (null = derive), *OverrideValue. The value is
-// computed from measuredQty (the measurement). costVariant = null = "inherit from section".
+// markup coefficient (investment), with a two-state per-item override:
+// *OverrideType ∈ {coeff, amount} | null (null = derive), *OverrideValue. „Pomiar z natury"
+// (the executed quantity) is not stored — it is the stage sum (Σ D:M in the sheet), computed
+// live in the settlement layer.
 // VAT does not live here — there is a single rate per investment (S-12, not yet implemented).
 export const KosztorysItems: CollectionConfig = {
   slug: 'kosztorys-items',
@@ -15,7 +16,7 @@ export const KosztorysItems: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'description',
-    defaultColumns: ['description', 'section', 'measuredQty', 'clientPrice'],
+    defaultColumns: ['description', 'section', 'plannedQty', 'clientPrice'],
     group: { en: 'Kosztorys', pl: 'Kosztorys' },
   },
   hooks: {
@@ -35,7 +36,6 @@ export const KosztorysItems: CollectionConfig = {
     { name: 'description', type: 'text', label: { en: 'Description', pl: 'Opis' } },
     { name: 'unit', type: 'text', label: { en: 'Unit', pl: 'Jednostka' } },
     { name: 'plannedQty', type: 'number', required: true, defaultValue: 0 },
-    { name: 'measuredQty', type: 'number', required: true, defaultValue: 0 },
     { name: 'discountType', type: 'text' },
     { name: 'discountValue', type: 'number', required: true, defaultValue: 0 },
     { name: 'clientPrice', type: 'number', required: true, defaultValue: 0 },
@@ -43,7 +43,6 @@ export const KosztorysItems: CollectionConfig = {
     { name: 'wToolsOverrideValue', type: 'number', defaultValue: 0 },
     { name: 'ownToolsOverrideType', type: 'text' },
     { name: 'ownToolsOverrideValue', type: 'number', defaultValue: 0 },
-    { name: 'costVariant', type: 'text' },
     { name: 'hiddenInExport', type: 'checkbox', required: true, defaultValue: false },
     { name: 'note', type: 'text', label: { en: 'Note', pl: 'Komentarz' } },
   ],

@@ -7,11 +7,25 @@ import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
 } from '@/types/investment-financials'
+import type {
+  DepositTransactionRowT,
+  PayoutByWorkerT,
+  PayoutTransactionRowT,
+} from '@/types/transfers'
 import { buildSqlConditions, isNoResultsSentinel } from '@/lib/db/where-to-sql'
 import { getDb } from '@/lib/db/get-db'
+import { DEPOSIT_TYPES, type VatPlaneT } from '@/lib/constants/transfers'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 // Re-exported so the existing importers of the derive functions keep resolving here.
 export { deriveCategoryBreakdowns, deriveFinancials } from '@/lib/db/investment-financials'
+
+// Parameterized `(type, …)` IN-list derived from the single DEPOSIT_TYPES source, so the
+// deposit-vs-expense split isn't re-inlined as a literal in every balance query.
+const depositTypesInList = sql`(${sql.join(
+  DEPOSIT_TYPES.map((type) => sql`${type}`),
+  sql.raw(', '),
+)})`
 
 /**
  * SUM balance for a cash register using SQL aggregation.
@@ -30,7 +44,7 @@ export const sumRegisterBalance = async (
     SELECT
       COALESCE(SUM(
         CASE
-          WHEN type IN ('INVESTOR_DEPOSIT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT')
+          WHEN type IN ${depositTypesInList}
             THEN amount
           ELSE -amount
         END
@@ -63,7 +77,7 @@ export const sumAllRegisterBalances = async (payload: Payload): Promise<Map<numb
       SELECT source_register_id AS register_id,
         COALESCE(SUM(
           CASE
-            WHEN type IN ('INVESTOR_DEPOSIT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT')
+            WHEN type IN ${depositTypesInList}
               THEN amount
             ELSE -amount
           END
@@ -133,12 +147,13 @@ export const sumAllInvestmentFinancials = async (
   const elapsed = perfStart()
   const db = await getDb(payload)
 
-  const [totalsResult, categoryResult] = await Promise.all([
+  const [totalsResult, categoryResult, investmentsResult] = await Promise.all([
     db.execute(sql`
       SELECT investment_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE investment_id IS NOT NULL
         AND cancelled IS NOT TRUE
@@ -148,14 +163,29 @@ export const sumAllInvestmentFinancials = async (
       SELECT investment_id, expense_category_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE investment_id IS NOT NULL
         AND cancelled IS NOT TRUE
         AND expense_category_id IS NOT NULL
       GROUP BY investment_id, expense_category_id, type, (settled IS TRUE)
     `),
+    // The materiały netto concession is per investment, so the listing's Marża can only be as
+    // correct as the detail page's if the rate and its settlement-mode gate travel with the sums.
+    db.execute(sql`
+      SELECT id, materials_net_rate::float8, settlement_mode::text
+      FROM investments
+    `),
   ])
+
+  const pricingByInvestment = new Map<number, { rate: number | null; mode: SettlementModeT }>()
+  for (const row of investmentsResult.rows) {
+    pricingByInvestment.set(Number(row.id), {
+      rate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
+      mode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+    })
+  }
 
   // Group the raw (type, settled) sums per investment.
   const rowsByInvestment = new Map<number, TypeSettledTotalT[]>()
@@ -170,6 +200,7 @@ export const sumAllInvestmentFinancials = async (
       type: row.type as string,
       settled: row.settled === true,
       total: Number(row.total),
+      netTotal: Number(row.net_total ?? 0),
     })
   }
 
@@ -187,6 +218,7 @@ export const sumAllInvestmentFinancials = async (
       type: row.type as string,
       settled: row.settled === true,
       total: Number(row.total),
+      netTotal: Number(row.net_total ?? 0),
     })
   }
 
@@ -198,7 +230,17 @@ export const sumAllInvestmentFinancials = async (
     const { categoryCosts, settledCategoryCosts } = deriveCategoryBreakdowns(
       categoryRowsByInvestment.get(invId) ?? [],
     )
-    map.set(invId, deriveFinancials(rows, categoryCosts, settledCategoryCosts))
+    const pricing = pricingByInvestment.get(invId)
+    map.set(
+      invId,
+      deriveFinancials(
+        rows,
+        categoryCosts,
+        settledCategoryCosts,
+        pricing?.rate ?? null,
+        pricing?.mode ?? SETTLEMENT_MODE_DEFAULT,
+      ),
+    )
   }
   console.log(`[PERF] query.sumAllInvestmentFinancials ${elapsed()}ms (${map.size} investments)`)
   return map
@@ -222,7 +264,8 @@ export const sumCategoryByTypeSettled = async (
       SELECT expense_category_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE cancelled IS NOT TRUE
         AND expense_category_id IS NOT NULL
@@ -237,7 +280,133 @@ export const sumCategoryByTypeSettled = async (
     type: row.type as string,
     settled: row.settled === true,
     total: Number(row.total),
+    netTotal: Number(row.net_total ?? 0),
   }))
+}
+
+/**
+ * The individual INVESTOR_DEPOSIT rows matching `where` — the un-summed twin of `totalIncome`, so
+ * the client Podsumowanie can list each wpłata (data · kwota · netto/brutto), sortable, mirroring the
+ * subcontractor block's wypłaty list. Cancelled excluded, date-desc. `vat_plane` is null for the
+ * „nie określono" state.
+ *
+ * INVESTOR_DEPOSIT only, NOT the full DEPOSIT_TYPES: COMPANY_FUNDING („zasilenie z konta firmowego")
+ * is the company financing its own investment, not a client payment, so it must never land in the
+ * client wpłaty surface — the wpłaty list, „Rozliczenie wpłat", nor the gotówka target of the mixed
+ * settlement. The deposit form already hides the investment picker for COMPANY_FUNDING (it can't be
+ * investment-scoped there), so this closes the only remaining path — a hand-made row via the Payload
+ * admin panel — at the read boundary, where the exclusion is guaranteed regardless of how a row was
+ * written. It also carries the netto/brutto plane, which exists for INVESTOR_DEPOSIT only.
+ */
+export const getDepositTransactions = async (
+  payload: Payload,
+  where: Where,
+): Promise<DepositTransactionRowT[]> => {
+  if (isNoResultsSentinel(where)) return []
+
+  const elapsed = perfStart()
+  const db = await getDb(payload)
+  const conditions = buildSqlConditions(where)
+
+  // The `type = 'INVESTOR_DEPOSIT'` guard is fixed, so a caller's own `type` filter can only narrow
+  // further — `?type=PAYOUT` correctly yields zero wpłaty rather than widening the surface.
+  const result = await db.execute(
+    sql.raw(`
+    SELECT id, date, amount, vat_plane
+    FROM transactions
+    WHERE cancelled IS NOT TRUE
+      AND type = 'INVESTOR_DEPOSIT'
+      ${conditions}
+    ORDER BY date DESC, id DESC
+  `),
+  )
+
+  const rows = result.rows.map((row) => ({
+    id: Number(row.id),
+    // timestamptz arrives year-first ("2026-07-18 09:00:00+00") — lexically == chronologically
+    // sortable, so the client DataTable re-sorts „Wg daty" on it directly.
+    date: String(row.date),
+    amount: Number(row.amount),
+    vatPlane: row.vat_plane == null ? null : (row.vat_plane as VatPlaneT),
+  }))
+  console.log(`[PERF] query.getDepositTransactions ${elapsed()}ms (${rows.length} rows)`)
+  return rows
+}
+
+export const getDepositTransactionsForInvestment = async (
+  payload: Payload,
+  investmentId: number,
+): Promise<DepositTransactionRowT[]> =>
+  getDepositTransactions(payload, { investment: { equals: investmentId } })
+
+/**
+ * SUM realized PAYOUT amounts for ONE investment, grouped by worker. Mirrors sumAllWorkerBalances
+ * but scoped to an investment and — critically — WITHOUT a `worker_id IS NOT NULL` guard: a null
+ * worker is a real cash payout that must still count toward Σ zaliczek, else „Pozostało do wypłaty"
+ * overstates the debt. Names are resolved at the page (kept off this query so it stays tagged on
+ * transfers alone).
+ */
+export const sumPayoutsByWorkerForInvestment = async (
+  payload: Payload,
+  investmentId: number,
+): Promise<PayoutByWorkerT[]> => {
+  const elapsed = perfStart()
+  const db = await getDb(payload)
+
+  const result = await db.execute(sql`
+    SELECT worker_id,
+      COALESCE(SUM(amount), 0) AS total
+    FROM transactions
+    WHERE type = 'PAYOUT'
+      AND investment_id = ${investmentId}
+      AND cancelled IS NOT TRUE
+    GROUP BY worker_id
+  `)
+
+  const rows = result.rows.map((row) => ({
+    workerId: row.worker_id == null ? null : Number(row.worker_id),
+    total: Number(row.total),
+  }))
+  console.log(
+    `[PERF] query.sumPayoutsByWorkerForInvestment ${elapsed()}ms (${rows.length} workers)`,
+  )
+  return rows
+}
+
+/**
+ * The individual realized PAYOUT rows for an investment — the un-summed twin of
+ * `sumPayoutsByWorkerForInvestment`, so the subcontractor block can list each wypłata
+ * (data · pracownik · opis · kwota), sortable, alongside the per-worker totals. Same filter
+ * (PAYOUT, this investment, not cancelled), null worker kept. Names resolve at the page.
+ */
+export const getPayoutTransactionsForInvestment = async (
+  payload: Payload,
+  investmentId: number,
+): Promise<PayoutTransactionRowT[]> => {
+  const elapsed = perfStart()
+  const db = await getDb(payload)
+
+  const result = await db.execute(sql`
+    SELECT worker_id, date, amount, description
+    FROM transactions
+    WHERE type = 'PAYOUT'
+      AND investment_id = ${investmentId}
+      AND cancelled IS NOT TRUE
+    ORDER BY date DESC, id DESC
+  `)
+
+  const rows = result.rows.map((row) => ({
+    workerId: row.worker_id == null ? null : Number(row.worker_id),
+    // The driver returns timestamptz as a year-first string ("2026-07-18 09:00:00+00"), which is
+    // lexically == chronologically sortable — the client DataTable re-sorts „Wg daty" on it directly.
+    date: String(row.date),
+    amount: Number(row.amount),
+    description: row.description == null ? null : String(row.description),
+  }))
+  console.log(
+    `[PERF] query.getPayoutTransactionsForInvestment ${elapsed()}ms (${rows.length} rows)`,
+  )
+  return rows
 }
 
 export const sumFilteredByType = async (
@@ -256,7 +425,8 @@ export const sumFilteredByType = async (
     SELECT
       type::text AS type,
       (settled IS TRUE) AS settled,
-      COALESCE(SUM(amount), 0) AS total
+      COALESCE(SUM(amount), 0) AS total,
+      COALESCE(SUM(net_amount), 0) AS net_total
     FROM transactions
     WHERE cancelled IS NOT TRUE
       ${conditions}
@@ -270,5 +440,6 @@ export const sumFilteredByType = async (
     type: row.type as string,
     settled: row.settled === true,
     total: Number(row.total),
+    netTotal: Number(row.net_total ?? 0),
   }))
 }

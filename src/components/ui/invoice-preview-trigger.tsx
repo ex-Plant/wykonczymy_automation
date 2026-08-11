@@ -1,21 +1,41 @@
 import { FileText, Search } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils/cn'
 
-type InvoicePreviewTriggerPropsT = {
-  isImage: boolean
+export type InvoicePreviewTriggerPropsT = {
+  mimeType: string | null
   label: string
   onClick: () => void
+  // `compact` defaults to the ghost icon-button's 36px box but lets `className` override it — the
+  // transfers table and a fixed-height virtualized row have different height budgets.
+  variant?: 'field' | 'compact'
+  className?: string
 }
 
-export function InvoicePreviewTrigger({ isImage, label, onClick }: InvoicePreviewTriggerPropsT) {
+export function InvoicePreviewTrigger({
+  mimeType,
+  label,
+  onClick,
+  variant = 'field',
+  className,
+}: InvoicePreviewTriggerPropsT) {
+  const isCompact = variant === 'compact'
+
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`Podgląd: ${label}`}
-      className="border-input text-muted-foreground hover:border-primary/50 hover:text-foreground hover:bg-muted/50 flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-md border px-3 transition-colors"
+      aria-label={`Podgląd faktury: ${label}`}
+      className={cn(
+        'text-muted-foreground hover:text-foreground cursor-pointer',
+        isCompact
+          ? cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'mx-auto')
+          : 'border-input hover:border-primary/50 hover:bg-muted/50 flex h-9 w-full min-w-0 items-center gap-2 rounded-md border px-3 transition-colors',
+        className,
+      )}
     >
-      {isImage ? <Search className="size-4 shrink-0" /> : <FileText className="size-4 shrink-0" />}
-      <span className="truncate text-sm">{label}</span>
+      {mimeType?.startsWith('image/') ? <Search /> : <FileText />}
+      {!isCompact && <span className="truncate text-sm">{label}</span>}
     </button>
   )
 }

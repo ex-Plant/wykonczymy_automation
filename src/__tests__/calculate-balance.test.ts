@@ -5,13 +5,15 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 const base: InvestmentFinancialsT = {
   categoryCosts: [],
   totalMaterialCosts: 0,
-  totalCorrections: 0,
+  materialsGrossBase: 0,
+  materialsNetBilled: 0,
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
   totalRabat: 0,
   totalLoss: 0,
   totalSettled: 0,
+  materialsNetDiscount: 0,
   settledCategoryCosts: [],
 }
 

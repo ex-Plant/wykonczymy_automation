@@ -1,0 +1,233 @@
+// Flat types for the labor ("robocizna") breakdown. Relations are reduced to numeric *_id
+// values — the query fetches with depth 0.
+// VAT is a single rate per investment (KosztorysTreeT.vatRate), not per section/item.
+
+import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
+import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { WorkerRefT } from '@/types/reference-data'
+import type {
+  SubcontractorPayoutRowT,
+  PayoutTransactionRowT,
+  DepositTransactionRowT,
+  MaterialTransactionRowT,
+} from '@/types/transfers'
+
+export type DiscountTypeT = 'percent' | 'amount'
+// Per-investment global discount over the whole kosztorys. type null = none (per-item discounts
+// apply). When set, per-item discounts are overridden and this is subtracted once from the executed
+// total (PLN netto). Amount-only: a percent rabat isn't stored here — it's a one-shot tool that
+// stamps a percent into every per-item rabat (see applyPercentRabatToAllItemsAction).
+export type GlobalDiscountT = { type: 'amount' | null; value: number }
+// Per-item subcontractor price override: 'coeff' = client × value (tracks the client
+// price), 'amount' = flat frozen amount, null = derive from the effective coefficient.
+export type SubcontractorOverrideTypeT = 'coeff' | 'amount'
+
+export type KosztorysSectionT = {
+  id: number
+  name: string
+  displayOrder: number
+  // Palette key (src/lib/kosztorys/section-colors.ts); null = unpinned — the pie colours this
+  // section by position.
+  color: SectionColorKeyT | null
+}
+
+export type KosztorysItemT = {
+  id: number
+  sectionId: number
+  displayOrder: number
+  description: string | null
+  unit: string | null
+  plannedQty: number
+  discountType: DiscountTypeT | null
+  discountValue: number
+  clientPrice: number
+  wToolsOverrideType: SubcontractorOverrideTypeT | null
+  wToolsOverrideValue: number
+  ownToolsOverrideType: SubcontractorOverrideTypeT | null
+  ownToolsOverrideValue: number
+  hiddenInExport: boolean
+  note: string | null
+}
+
+// Item autosave patch = the subset of fields editable in the grid (excluding id/sectionId/displayOrder).
+// Single source of truth: imported both by the pure core (v2-rows diffRow/RowDiffT) and
+// by the server action updateItemFieldAction (its zod validation is derived from this shape).
+export type ItemPatchT = Partial<
+  Pick<
+    KosztorysItemT,
+    | 'description'
+    | 'unit'
+    | 'plannedQty'
+    | 'discountType'
+    | 'discountValue'
+    | 'clientPrice'
+    | 'wToolsOverrideType'
+    | 'wToolsOverrideValue'
+    | 'ownToolsOverrideType'
+    | 'ownToolsOverrideValue'
+    | 'hiddenInExport'
+    | 'note'
+  >
+>
+
+// Global (per-investment) subcontractor markup coefficients; carried through the tree.
+export type KosztorysGlobalCoeffsT = { wTools: number; ownTools: number }
+
+// Minimal shape for deriving the view price — KosztorysV2RowT satisfies it
+// (KosztorysItemT + denormalized global coefficients).
+export type ViewPricingT = KosztorysItemT & {
+  // Denormalized: the investment's global discount is set — per-item discounts stop applying
+  // (applyDiscount returns gross), the global discount is subtracted once at the total level.
+  globalDiscountActive: boolean
+  globalWToolsCoeff: number
+  globalOwnToolsCoeff: number
+}
+
+// The subcontractor tool-plane — the subset of PriceViewT without 'client', so a plane IS a valid
+// price view and flows straight into viewPrice(). The grain is the etap, not the pozycja
+// (EX-565, owner-confirmed).
+// null = undecided, which is NOT a plane: such an etap belongs to no subcontractor bill and counts
+// toward neither settlement figure.
+export type ToolPlaneT = 'w_tools' | 'own_tools'
+
+export type KosztorysStageT = {
+  id: number
+  ordinal: number
+  label: string | null
+  plane: ToolPlaneT | null
+  workerId: number | null
+}
+
+// Stage autosave patch = the fields the header edits one at a time (rename → label, plane picker →
+// plane, worker picker → workerId). Mirrors ItemPatchT; the action's zod validation is derived from
+// this shape. plane is never patched to null — an explicit pick only ever confirms a concrete plane.
+export type StagePatchT = Partial<{
+  label: string | null
+  plane: ToolPlaneT
+  // Nullable unlike plane: „Bez przypisania" is a legal edit, so the patch must be able to clear it.
+  workerId: number | null
+}>
+
+export type StageProgressT = {
+  itemId: number
+  stageId: number
+  qtyDone: number
+}
+
+export type KosztorysTreeT = {
+  sections: (KosztorysSectionT & { items: KosztorysItemT[] })[]
+  stages: KosztorysStageT[]
+  progress: StageProgressT[]
+  globalCoeffs: KosztorysGlobalCoeffsT
+  // A single VAT rate per investment — carried through the tree (like globalCoeffs), denormalized onto each row.
+  vatRate: number
+  // Rides the tree (not the rows) because it is one value for the whole sheet and nothing per-row
+  // branches on it — unlike vatRate above.
+  settlementMode: SettlementModeT
+  // Fraction (0.23 = 23%) at which materiały are billed netto instead of at the brutto receipt.
+  // `null` = the concession is off, which is a different state from 0%.
+  materialsNetRate: number | null
+  // A single global discount per investment — its `active` flag is denormalized onto each row (see
+  // KosztorysV2RowBaseT.globalDiscountActive), the amount is subtracted once at the total level.
+  globalDiscount: GlobalDiscountT
+  // Server-supplied change token = investment.updatedAt (ISO). A restore always bumps it (its final
+  // payload.update stamps updatedAt), so the editor shell can key its restore remount on this token
+  // changing rather than on the `tree` prop's object identity, which router.refresh reshapes every time.
+  revision: string
+}
+
+// The full data set the editor body/shell needs to render: the tree plus the investment-level figures
+// (materials, wpłaty, robocizna/rabat) the footer reconciles against. Assembled identically
+// by the admin page, the owner preview, and the public share read — one shape so those three can't
+// drift on which figures the editor receives.
+export type KosztorysEditorDataT = {
+  investmentId: number
+  tree: KosztorysTreeT
+  investmentName: string
+  // The two materiały buckets, kept apart all the way down: only `materialsGrossBase` may be
+  // repriced by the global „wszystko netto" toggle. Their sum is the billed materiały total.
+  materialsGrossBase: number
+  materialsNetBilled: number
+  materialyBreakdown: MaterialyBreakdownRowT[]
+  // Company-plane material folded into robocizna, split per category. Optional because omitting it IS
+  // the gate: the client share never builds it.
+  settledBreakdown?: MaterialyBreakdownRowT[]
+  wplatyNet: number
+  // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
+  laborCostsNetFromTransactions: number
+  investmentRabat: number
+  // Realized PAYOUTs per worker for the subcontractor summary block. Optional (default []) because the
+  // two client-view share entry points never render that block and don't supply it.
+  payoutsByWorker?: SubcontractorPayoutRowT[]
+  // Individual realized PAYOUT rows for the subcontractor block's sortable wypłaty list. Optional
+  // (default []) — same reason as payoutsByWorker.
+  payoutTransactions?: PayoutTransactionRowT[]
+  // Individual deposit rows for the client Podsumowanie's sortable wpłaty list. Optional (default []).
+  depositTransactions?: DepositTransactionRowT[]
+  // Individual materiały rows for the Podsumowanie's wydatki list (data · typ · kwota), both settled
+  // states. Required: every entry point serves this list, the client share path included.
+  materialTransactions: MaterialTransactionRowT[]
+  // Company-plane transfer aggregates behind the „Marża" tab. Optional for the same gating reason as
+  // settledBreakdown, plus the ADMIN/OWNER check the page applies before passing it.
+  financials?: InvestmentFinancialsT
+  // Roster for the etap header's worker picker (EX-613). Optional for the same gating reason as
+  // settledBreakdown: the two client-share entry points never render a stage menu.
+  workers?: WorkerRefT[]
+}
+
+// --- v2 variant (react-datasheet-grid): a flat row with stages flattened
+// into stage_<stageId> keys so that keyColumn maps 1:1. ---
+export type KosztorysV2RowBaseT = KosztorysItemT & {
+  sectionName: string
+  // Denormalized like sectionName: `rows` is the only carrier that reaches the summary subtotals,
+  // and the grid marker reads it per row.
+  sectionColor: SectionColorKeyT | null
+  // Denormalized investment VAT rate (one for the whole kosztorys) — gross = net × (1 + vatRate).
+  vatRate: number
+  globalDiscountActive: boolean
+  // Denormalized global coefficients for deriving the subcontractor price on the row (ViewPricingT).
+  globalWToolsCoeff: number
+  globalOwnToolsCoeff: number
+}
+
+// Keyed off the constant so the type and diffRow's runtime `startsWith` can never drift apart.
+// `import type` on a value import keeps this erased — no runtime cycle with constants.ts, which
+// imports types from here.
+export type StageKeyT = `${typeof STAGE_QTY_PREFIX}${number}`
+
+export type KosztorysV2RowT = KosztorysV2RowBaseT & {
+  [stageKey: StageKeyT]: number
+}
+
+export type SectionSubtotalT = {
+  sectionId: number
+  sectionName: string
+  // Carried through so the Podsumowanie pie can honour the section's pinned colour.
+  sectionColor: SectionColorKeyT | null
+  net: number // executed (the sheet's T), at the active price view — a MONEY figure
+  // Offered (the sheet's S), at the active price view — a MONEY figure. `null` outside the client
+  // view, and that is the whole point: the przedmiar is typed once per row for the WHOLE offered
+  // scope and carries no rozliczenie, so beside a plane-filtered `net` it would put one crew's
+  // numerator over everyone's denominator. There is no correct subcontractor reading to substitute —
+  // 0 would claim nothing was offered — so the figure is withheld rather than guessed.
+  plannedNet: number | null
+
+  // Σ per-item rabat actually taken on the executed qty, at the active price view — a MONEY figure.
+  // 0 when the global discount is active (it overrides per-item rabat). Lets the totals show one
+  // explicit „Rabat" figure without re-deriving it from pre/post-rabat totals.
+  discount: number
+  // 0..1, the section's share of all sections' executed value — weighted at the CLIENT price only, so
+  // like completionRatio it is a STRUCTURE figure that must not move with the price view.
+  share: number
+  // Completion (executed ÷ offered) weighted at the CLIENT price only — a PROGRESS figure, so it
+  // must not move with the price view. `null` when there is no offer to divide by.
+  completionRatio: number | null
+  itemCount: number
+}
+
+// A subtotal built at the client view, where the przedmiar figure is always present. Consumers pinned
+// to that view (the progress counter, the section pie) take this and never handle a `null` that their
+// call site has already ruled out — sectionSubtotalsForView's overload hands it to them.
+export type SectionSubtotalClientT = SectionSubtotalT & { plannedNet: number }

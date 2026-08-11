@@ -8,6 +8,7 @@ import { type HeaderGroup, type Row } from '@tanstack/react-table'
 import { type useVirtualizer } from '@tanstack/react-virtual'
 import { DataTableRow } from './data-table-row'
 import { TableHeader } from './table-header'
+import { TableFooter } from './table-footer'
 import { EmptyRow } from './empty-row'
 
 type VirtualizedTableBodyPropsT<TData> = {
@@ -20,6 +21,7 @@ type VirtualizedTableBodyPropsT<TData> = {
   visibleColumnIds: Set<string>
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
+  footer?: (colCount: number) => React.ReactNode
 }
 
 export function VirtualizedTableBody<TData>({
@@ -32,12 +34,26 @@ export function VirtualizedTableBody<TData>({
   visibleColumnIds,
   getRowHref,
   getRowClassName,
+  footer,
 }: VirtualizedTableBodyPropsT<TData>) {
   const virtualItems = virtualizer.getVirtualItems()
+  // `table-auto` sizes columns from the cells currently in the DOM — which, under virtualization, is
+  // whatever the scroll window happens to hold, so columns resize mid-scroll. A colgroup + fixed
+  // layout pins them to the column defs' own sizes instead, and the summed width becomes the table's
+  // floor so a narrow container scrolls rather than squeezing every column.
+  const leafHeaders = (headerGroups.at(-1)?.headers ?? []).filter((header) =>
+    visibleColumnIds.has(header.column.id),
+  )
+  const totalWidth = leafHeaders.reduce((sum, header) => sum + header.getSize(), 0)
 
   return (
     <div ref={parentRef} style={{ height: containerHeight, overflow: 'auto' }}>
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm" style={{ minWidth: totalWidth }}>
+        <colgroup>
+          {leafHeaders.map((header) => (
+            <col key={header.id} style={{ width: header.getSize() }} />
+          ))}
+        </colgroup>
         <TableHeader headerGroups={headerGroups} />
         <tbody>
           {rows.length === 0 ? (
@@ -78,6 +94,7 @@ export function VirtualizedTableBody<TData>({
             </>
           )}
         </tbody>
+        {footer && rows.length > 0 && <TableFooter>{footer(colCount)}</TableFooter>}
       </table>
     </div>
   )

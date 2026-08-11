@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { ActiveFilterLabel } from './active-filter-label'
+import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
+import { useFieldValue } from '@/components/forms/hooks/use-field-value'
+import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type EntityItemT = {
@@ -45,21 +47,31 @@ type EntityComboboxFieldPropsT = {
   form: any
   variant: keyof typeof VARIANT_CONFIG
   items: EntityItemT[]
+  // Forwarded to the inner AppField; only onChange is used at call sites (reset a dependent field).
+  listeners?: { onChange?: () => void }
 }
 
-export function EntityComboboxField({ form, variant, items }: EntityComboboxFieldPropsT) {
+export function EntityComboboxField({
+  form,
+  variant,
+  items,
+  listeners,
+}: EntityComboboxFieldPropsT) {
   const [activeOnly, setActiveOnly] = useState(true)
   const config = VARIANT_CONFIG[variant]
 
-  const filtered = items
-    .filter((item) => !activeOnly || item.active !== false)
-    .map((item) => ({ value: String(item.id), label: item.name }))
+  const selectedId = useFieldValue(form, config.name)
+
+  const filtered = activeOrSelected(items, activeOnly, selectedId).map((item) => ({
+    value: String(item.id),
+    label: item.name,
+  }))
 
   const emptyMessage = items.length === 0 ? config.noItemsMessage : config.noActiveItemsMessage
   const labelExtra = <ActiveFilterLabel activeOnly={activeOnly} onToggle={setActiveOnly} />
 
   return (
-    <form.AppField name={config.name}>
+    <form.AppField name={config.name} listeners={listeners}>
       {(field: AppFieldComponentsT) =>
         filtered.length > 0 ? (
           <field.Combobox

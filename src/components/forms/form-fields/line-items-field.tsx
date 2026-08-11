@@ -3,6 +3,7 @@
 import { Fragment, useRef, useState } from 'react'
 import { Trash2, WandSparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Description } from '@/components/ui/description'
 import { Separator } from '@/components/ui/separator'
 import { GradientSpinner } from '@/components/ui/gradient-spinner'
 import { RemoveButton } from '@/components/ui/remove-button'
@@ -11,15 +12,17 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils/cn'
 import { formatPLN } from '@/lib/utils/format-currency'
 import {
+  billsNetAmount,
   EXPENSE_CATEGORY_LABEL,
   needsExpenseCategory,
   showsOtherCategory,
 } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
-import type {
-  BulkExpenseFormApiT,
-  BulkExpenseFormValuesT,
+import {
+  makeLineItem,
+  type BulkExpenseFormApiT,
+  type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
 
 // The TanStack array-field API this component drives (`form.Field name="lineItems" mode="array"`).
@@ -42,14 +45,6 @@ type CategoryFieldConfigT = {
 const isReceiptFile = (file: File) =>
   file.type.startsWith('image/') || file.type === 'application/pdf'
 
-const EMPTY_LINE_ITEM: BulkExpenseFormValuesT['lineItems'][number] = {
-  description: '',
-  amount: '',
-  invoiceNote: '',
-  category: '',
-  expenseCategory: '',
-}
-
 type LineItemsFieldPropsT = {
   form: BulkExpenseFormApiT
   transferType: string
@@ -57,22 +52,21 @@ type LineItemsFieldPropsT = {
   defaultExpenseCategory?: string
   total: number
   hasInvestment?: boolean
-  onRemoveItem: (index: number, removeValue: (index: number) => void) => void
-  onFileChange: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void
-  // Batch-attach N receipt images: register each file at its row index (see use-invoice-files).
+  onRemoveItem: (id: string, index: number, removeValue: (index: number) => void) => void
+  onFileChange: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void
+  // Batch-attach N receipt images: register `files[i]` against row `ids[i]` (see use-invoice-files).
   // Async (ingest processing) — awaited before generation so the files map is populated first.
-  onRegisterFiles: (startIndex: number, files: File[]) => Promise<void>
+  onRegisterFiles: (ids: string[], files: File[]) => Promise<void>
   // Read a row's attached file so it can render a thumbnail preview (undefined → file input).
-  getFile: (index: number) => File | undefined
-  // Bump to force-remount the uncontrolled file inputs (clears their selection).
-  fileInputKey?: number
+  getFile: (id: string) => File | undefined
   // Receipt generation: scan every eligible row's image and populate its fields (see use-receipt-generation).
   onGenerate?: () => void
   isGenerating?: boolean
-  generatingIndices?: Set<number>
+  // Marker sets key on each row's stable id (EX-448), not its position.
+  generatingIds?: Set<string>
   // Rows whose picked file is still being processed at ingest — show a spinner, disable actions.
-  ingestingIndices?: Set<number>
-  failedIndices?: Set<number>
+  ingestingIds?: Set<string>
+  failedIds?: Set<string>
   generationProgress?: { done: number; total: number } | null
 }
 
@@ -147,21 +141,21 @@ export function LineItemsField({
   onFileChange,
   onRegisterFiles,
   getFile,
-  fileInputKey = 0,
   onGenerate,
   isGenerating = false,
-  generatingIndices,
-  ingestingIndices,
-  failedIndices,
+  generatingIds,
+  ingestingIds,
+  failedIds,
   generationProgress,
 }: LineItemsFieldPropsT) {
   const inlineCategory = getInlineCategory(transferType, referenceData, hasInvestment)
+  const showsNetAmount = billsNetAmount(transferType)
   const secondRowCategory = getSecondRowCategory(transferType, referenceData)
-  const emptyItem = defaultExpenseCategory
-    ? { ...EMPTY_LINE_ITEM, expenseCategory: defaultExpenseCategory }
-    : EMPTY_LINE_ITEM
+  // Fresh per call — each pushed row needs its own `id` (a shared object would collide ids).
+  const newItem = () =>
+    makeLineItem(defaultExpenseCategory ? { expenseCategory: defaultExpenseCategory } : undefined)
   const receiptInputRef = useRef<HTMLInputElement>(null)
-  const isIngesting = (ingestingIndices?.size ?? 0) > 0
+  const isIngesting = (ingestingIds?.size ?? 0) > 0
   const [isDragOver, setIsDragOver] = useState(false)
 
   // Scan flow: add each picked receipt as a row (image attached) FIRST, then run the AI generation.
@@ -172,14 +166,18 @@ export function LineItemsField({
   async function scanReceipts(picked: File[], lineItemsField: LineItemsArrayFieldT) {
     if (picked.length > 0) {
       // Reuse the lone initial blank row for the first image so the first receipt lands on
-      // row 0 rather than after an empty row; otherwise append after the existing rows.
+      // row 0 rather than after an empty row; otherwise append after the existing rows. Mint the
+      // new rows up front so we know their ids (pushValue is async in the form's state) and can
+      // pair each picked file to its row by id — `ids[i]` holds `picked[i]`.
       const rows = lineItemsField.state.value
       const reuseFirstRow = rows.length === 1 && !rows[0].description && !rows[0].amount
-      const startIndex = reuseFirstRow ? 0 : rows.length
-      const rowsToPush = reuseFirstRow ? picked.length - 1 : picked.length
-
-      for (let i = 0; i < rowsToPush; i++) lineItemsField.pushValue(emptyItem)
-      await onRegisterFiles(startIndex, picked)
+      const newRows = Array.from(
+        { length: reuseFirstRow ? picked.length - 1 : picked.length },
+        () => newItem(),
+      )
+      for (const row of newRows) lineItemsField.pushValue(row)
+      const ids = (reuseFirstRow ? [rows[0], ...newRows] : newRows).map((row) => row.id)
+      await onRegisterFiles(ids, picked)
     }
     onGenerate?.()
   }
@@ -209,10 +207,14 @@ export function LineItemsField({
       {(lineItemsField: LineItemsArrayFieldT) => (
         <div className="space-y-4">
           <div className="space-y-6">
-            {lineItemsField.state.value.map((_: unknown, index: number) => (
-              <Fragment key={index}>
+            {lineItemsField.state.value.map((item, index: number) => (
+              <Fragment key={item.id}>
                 <div className="space-y-2">
-                  <div className="flex items-end gap-2">
+                  {/* Top-aligned, not bottom: every field here carries a label, so their inputs
+                    line up on their own — and a validation error growing under one field can no
+                    longer drag its neighbours (and the delete button) down a line. The label-less
+                    slots below pay for it with an mt-6 that clears a label + its gap. */}
+                  <div className="flex items-start gap-2">
                     <form.AppField name={`lineItems[${index}].amount`}>
                       {(field: AppFieldComponentsT) => (
                         <field.Input
@@ -224,6 +226,19 @@ export function LineItemsField({
                         />
                       )}
                     </form.AppField>
+                    {showsNetAmount && (
+                      <form.AppField name={`lineItems[${index}].netAmount`}>
+                        {(field: AppFieldComponentsT) => (
+                          <field.Input
+                            label="Netto"
+                            placeholder="0.00 PLN"
+                            type="number"
+                            showError
+                            fieldClassName="w-28"
+                          />
+                        )}
+                      </form.AppField>
+                    )}
                     <form.AppField name={`lineItems[${index}].description`}>
                       {(field: AppFieldComponentsT) => (
                         <field.Input
@@ -242,22 +257,30 @@ export function LineItemsField({
                         fieldClassName="min-w-0 flex-1"
                       />
                     )}
-                    {failedIndices?.has(index) && (
-                      <span className="text-destructive mb-2 shrink-0 text-xs whitespace-nowrap">
+                    {/* No icon: this row is already Kwota + Netto + Opis + kategoria + the delete
+                      slot, and a `shrink-0` glyph would take its ~1rem straight off the flex-1
+                      inputs. `tone="error"` alone carries the alarm here. */}
+                    {failedIds?.has(item.id) && (
+                      <Description
+                        tone="error"
+                        size="xs"
+                        withIcon={false}
+                        className="mt-8 shrink-0 whitespace-nowrap"
+                      >
                         nie odczytano
-                      </span>
+                      </Description>
                     )}
                     {/* Delete lives in row 1, its height matching the inputs; the row being read
                       shows the loader in its slot and queued rows keep it disabled — removing a
                       row mid-generation shifts the array under in-flight extraction tasks (captured
                       index), landing a result on the wrong row. */}
-                    <div className="flex size-9 shrink-0 items-center justify-center">
-                      {generatingIndices?.has(index) || ingestingIndices?.has(index) ? (
+                    <div className="mt-6 flex size-9 shrink-0 items-center justify-center">
+                      {generatingIds?.has(item.id) || ingestingIds?.has(item.id) ? (
                         <GradientSpinner />
                       ) : (
                         <RemoveButton
                           icon={Trash2}
-                          onClick={() => onRemoveItem(index, lineItemsField.removeValue)}
+                          onClick={() => onRemoveItem(item.id, index, lineItemsField.removeValue)}
                           disabled={
                             isGenerating || isIngesting || lineItemsField.state.value.length === 1
                           }
@@ -275,10 +298,9 @@ export function LineItemsField({
                       />
                     )}
                     <LineItemInvoiceField
-                      index={index}
-                      file={getFile(index)}
+                      id={item.id}
+                      file={getFile(item.id)}
                       fieldClassName="min-w-0 flex-1"
-                      fileInputKey={fileInputKey}
                       onFileChange={onFileChange}
                     />
                   </div>
@@ -306,7 +328,7 @@ export function LineItemsField({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => lineItemsField.pushValue(emptyItem)}
+              onClick={() => lineItemsField.pushValue(newItem())}
             >
               Dodaj pozycję
             </Button>

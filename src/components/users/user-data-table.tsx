@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ColumnToggle } from '@/components/ui/column-toggle'
 import { ActiveFilterButton } from '@/components/ui/active-filter-button'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { AddWorkerDialog } from '@/components/dialogs/add-worker-dialog'
 import { getUserColumns, type UserRowT } from '@/components/tables/users'
 import { useActiveFilter } from '@/hooks/use-active-filter'
@@ -51,7 +51,11 @@ export function UserDataTable({ data, cashRegisters }: UserDataTablePropsT) {
       getRowClassName={(row) => (!row.active ? 'opacity-50' : '')}
       toolbar={(table, cv) => (
         <>
-          <SearchFilterInput value={searchTerm} onChange={setSearchTerm} />
+          <SearchFilterInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            className={SEARCH_FILTER_TOOLBAR_WIDTH}
+          />
           <ActiveFilterButton
             isActive={showOnlyActive}
             onChange={setShowOnlyActive}

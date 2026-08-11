@@ -1,6 +1,10 @@
 import 'server-only'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { SNAPSHOT_SCHEMA_VERSION, type SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import {
+  SNAPSHOT_SCHEMA_VERSION,
+  assertReadableSchemaVersion,
+  type SnapshotPayloadT,
+} from '@/lib/kosztorys/snapshot-format'
 import type { DbExecutorT } from './get-db'
 
 // The single place that reads/writes the raw kosztorys_presets table (no Payload collection —
@@ -15,6 +19,17 @@ export type PresetMetaT = {
   name: string
   createdAt: string
   createdBy: number | null
+}
+
+// One row per section across ALL presets — the "append a section from a szablon" picker's data.
+// `sectionId` is the section's id INSIDE the preset payload (the OLD id), paired with `presetId` so
+// the append action can resolve it back to the payload; never a live kosztorys_sections id.
+export type PresetSectionMetaT = {
+  presetId: number
+  presetName: string
+  sectionId: number
+  sectionName: string
+  itemCount: number
 }
 
 // Save a preset under a NEW name. `ON CONFLICT DO NOTHING` makes the duplicate-name case return no
@@ -66,11 +81,53 @@ export async function getPreset(
   presetId: number,
 ): Promise<{ payload: SnapshotPayloadT } | null> {
   const res = await db.execute(sql`
-    SELECT payload FROM kosztorys_presets WHERE id = ${presetId}
+    SELECT schema_version, payload FROM kosztorys_presets WHERE id = ${presetId}
   `)
   const row = res.rows[0]
   if (!row) return null
+  assertReadableSchemaVersion(Number(row.schema_version), 'preset')
   return { payload: row.payload as SnapshotPayloadT }
+}
+
+// Flatten every preset's sections into pickable metas. Counted in SQL on purpose (EX-622): the
+// payloads are the only large thing here and this needs nothing from them but a tally, so shipping
+// them to Node would be an O(payload bytes) read for an O(sections) result — megabytes decoded to
+// emit a few hundred small metas, re-paid on every `presets` cache miss.
+//
+// The `counts` CTE expands `items` ONCE per preset and hashes the result. Counting inside the
+// section-row lateral instead would re-expand the whole items array per section (O(sections×items)) —
+// measured 50× slower on a 2-preset/320-item library, and it widens from there.
+//
+// Order matches listPresets (preset created_at DESC, id DESC) then displayOrder within each preset.
+// `WITH ORDINALITY` is load-bearing, not decoration: Postgres' sort is unstable where JS's `.sort`
+// was, and the picker's grouping requires one preset's metas to arrive CONSECUTIVELY, so the payload
+// array position has to break displayOrder ties.
+export async function listPresetSections(db: DbExecutorT): Promise<PresetSectionMetaT[]> {
+  const res = await db.execute(sql`
+    WITH counts AS (
+      SELECT p.id AS preset_id, i.value->>'sectionId' AS section_id, COUNT(*) AS item_count
+      FROM kosztorys_presets p
+      CROSS JOIN LATERAL jsonb_array_elements(p.payload->'items') i
+      GROUP BY 1, 2
+    )
+    SELECT
+      p.id                      AS preset_id,
+      p.name                    AS preset_name,
+      (s.value->>'id')::int     AS section_id,
+      s.value->>'name'          AS section_name,
+      COALESCE(c.item_count, 0) AS item_count
+    FROM kosztorys_presets p
+    CROSS JOIN LATERAL jsonb_array_elements(p.payload->'sections') WITH ORDINALITY AS s(value, ord)
+    LEFT JOIN counts c ON c.preset_id = p.id AND c.section_id = s.value->>'id'
+    ORDER BY p.created_at DESC, p.id DESC, (s.value->>'displayOrder')::numeric, s.ord
+  `)
+  return res.rows.map((row) => ({
+    presetId: Number(row.preset_id),
+    presetName: String(row.preset_name),
+    sectionId: Number(row.section_id),
+    sectionName: String(row.section_name),
+    itemCount: Number(row.item_count),
+  }))
 }
 
 export async function listPresets(db: DbExecutorT): Promise<PresetMetaT[]> {

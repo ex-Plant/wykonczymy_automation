@@ -138,6 +138,14 @@ export function buildTransferFilters(
   if (expenseCategoryIds.length > 0) where.expenseCategory = { in: expenseCategoryIds }
   else if (expenseCategoryParam) where.id = NO_RESULTS
 
+  // Worker filter — a single PAYOUT worker (the subcontractor summary's per-worker link target,
+  // `?type=PAYOUT&worker=<id>`). A non-numeric value is ignored rather than short-circuited to
+  // NO_RESULTS: the link only ever emits a real id, so tolerating garbage keeps the URL forgiving.
+  const workerParam = getStringParam(searchParams.worker)
+  if (workerParam && /^\d+$/.test(workerParam)) {
+    where.worker = { equals: Number(workerParam) }
+  }
+
   // Other category filter
   const otherCategoryParam = getStringParam(searchParams.otherCategory)
   const otherCategoryIds = parseNumericIds(otherCategoryParam)
@@ -171,14 +179,15 @@ export function buildTransferFilters(
   return where
 }
 
-/** Strip cancelled-related conditions from a Where object (for stats queries that handle it in SQL). */
+/**
+ * Drop the `cancelled` condition for stats queries, which hardcode `cancelled IS NOT TRUE` in SQL.
+ *
+ * The `type` condition must survive: a CANCELLATION row copies its original's amount and carries
+ * `cancelled = false`, so the default `not_in: ['CANCELLATION']` is the only thing keeping it out
+ * of the sum (EX-574).
+ */
 export function stripCancelledFilters(where: Where): Where {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { cancelled, type, ...rest } = where
-  const result: Where = { ...rest }
-  // Keep type filter only if it's a user-selected inclusion filter, not the default not_in exclusion
-  if (type && typeof type === 'object' && 'in' in type) {
-    result.type = type
-  }
-  return result
+  const { cancelled, ...rest } = where
+  return rest
 }

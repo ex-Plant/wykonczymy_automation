@@ -19,6 +19,7 @@ type TransferFieldsT = {
   expenseCategory?: unknown
   otherCategory?: unknown
   worker?: unknown
+  vatPlane?: unknown
 }
 
 type FieldRuleT = {

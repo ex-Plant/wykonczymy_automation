@@ -6,7 +6,7 @@ vi.mock('server-only', () => ({}))
 import { shapeCashRegisters } from '@/lib/queries/cash-registers'
 import { shapeInvestments } from '@/lib/queries/investments'
 import type { CashRegisterRefT, WorkerRefT, InvestmentRefT } from '@/types/reference-data'
-import type { InvestmentFinancialsMapT } from '@/lib/queries/reference-data'
+import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
 
 const workers: WorkerRefT[] = [{ id: 1, name: 'Adrian', role: 'MANAGER', email: 'a@x.pl' }]
 
@@ -59,6 +59,8 @@ const baseInv: InvestmentRefT = {
   notes: '',
   review: '',
   hasSheet: false,
+  materialsNetRate: null,
+  settlementMode: 'NET',
   active: true,
 }
 
@@ -68,13 +70,15 @@ describe('shapeInvestments', () => {
       '5': {
         categoryCosts: [],
         totalMaterialCosts: 1000,
-        totalCorrections: 0,
+        materialsGrossBase: 1000,
+        materialsNetBilled: 0,
         totalIncome: 9547,
         totalLaborCosts: 3900,
         totalPayouts: 1000,
         totalRabat: 0,
         totalLoss: 0,
         totalSettled: 0,
+        materialsNetDiscount: 0,
         settledCategoryCosts: [],
       },
     }
@@ -109,13 +113,15 @@ describe('shapeInvestments', () => {
           { categoryId: 2, total: 400 },
         ],
         totalMaterialCosts: 1150, // (800 + 400) + (-50) correction
-        totalCorrections: -50,
+        materialsGrossBase: 1150,
+        materialsNetBilled: 0,
         totalIncome: 0,
         totalLaborCosts: 0,
         totalPayouts: 0,
         totalRabat: 0,
         totalLoss: 0,
         totalSettled: 0,
+        materialsNetDiscount: 0,
         settledCategoryCosts: [],
       },
     }

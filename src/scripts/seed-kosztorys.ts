@@ -6,6 +6,7 @@
 import { google } from 'googleapis'
 import { getPayload } from 'payload'
 import config from '../payload.config'
+import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 
 const SHEET_ID = '1TWZuU7ZDElhUameN4ii2U5TztmQG387Gqcn9NgwwObE'
 const TAB = 'kosztorys_robocizny'
@@ -85,13 +86,14 @@ async function run() {
     // Wiersz-nagłówek sekcji: kolumna A to tekst (nie numer).
     if (typeof a === 'string' && a.trim() !== '') {
       const name = b || a.trim()
+      const order = sectionOrder++
       const section = await payload.create({
         collection: 'kosztorys-sections',
         data: {
           investment: INVESTMENT_ID,
           name,
-          displayOrder: sectionOrder++,
-          defaultCostVariant: 'w_tools',
+          displayOrder: order,
+          color: sectionColorForIndex(order),
         },
         ...ctx,
       })
@@ -104,9 +106,9 @@ async function run() {
     // Pozycja: A numeryczne + niepusty opis. Puste wiersze pomijamy.
     if (typeof a === 'number' && b !== '') {
       if (currentSectionId == null) continue // pozycja przed pierwszą sekcją — pomiń
+      // „Pomiar z natury" = Σ etapów, więc pomiar bierze się z etapów C–H, nie z kolumny J.
       const stageQty = [row[2], row[3], row[4], row[5], row[6], row[7]].map(num) // C–H
       const plannedQty = num(row[8]) // I
-      const measuredQty = num(row[9]) // J
       const unit = str(row[10]) || null // K
       const clientPrice = num(row[11]) // L
       const rabat = num(row[12]) // M (ułamek, 0,05 = 5%)
@@ -120,7 +122,6 @@ async function run() {
           description: b,
           unit,
           plannedQty,
-          measuredQty,
           discountType: rabat > 0 ? 'percent' : null,
           discountValue: rabat > 0 ? rabat * 100 : 0,
           clientPrice,

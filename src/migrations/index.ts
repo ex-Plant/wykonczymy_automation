@@ -48,6 +48,22 @@ import * as migration_20260709_2_add_website_form_source from './20260709_2_add_
 import * as migration_20260710_0_add_vat_rate_to_investments from './20260710_0_add_vat_rate_to_investments'
 import * as migration_20260710_1_add_kosztorys_snapshots from './20260710_1_add_kosztorys_snapshots'
 import * as migration_20260711_0_add_kosztorys_presets from './20260711_0_add_kosztorys_presets'
+import * as migration_20260716_0_drop_kosztorys_measured_qty from './20260716_0_drop_kosztorys_measured_qty'
+import * as migration_20260716_1_add_global_discount_to_investments from './20260716_1_add_global_discount_to_investments'
+import * as migration_20260718_0_add_planowana_investment_status from './20260718_0_add_planowana_investment_status'
+import * as migration_20260718_1_add_kosztorys_stage_to_transactions from './20260718_1_add_kosztorys_stage_to_transactions'
+import * as migration_20260720_0_add_kosztorys_shares from './20260720_0_add_kosztorys_shares'
+import * as migration_20260721_0_drop_kosztorys_stage_from_transactions from './20260721_0_drop_kosztorys_stage_from_transactions'
+import * as migration_20260721_1_add_vat_plane_to_transactions from './20260721_1_add_vat_plane_to_transactions'
+import * as migration_20260724_1_drop_kosztorys_section_coeff from './20260724_1_drop_kosztorys_section_coeff'
+import * as migration_20260724_2_add_plane_to_kosztorys_stages from './20260724_2_add_plane_to_kosztorys_stages'
+import * as migration_20260726_0_add_investment_expense_net_type from './20260726_0_add_investment_expense_net_type'
+import * as migration_20260726_1_add_net_amount_to_transactions from './20260726_1_add_net_amount_to_transactions'
+import * as migration_20260726_2_add_color_to_kosztorys_sections from './20260726_2_add_color_to_kosztorys_sections'
+import * as migration_20260726_3_add_settlement_mode_to_investments from './20260726_3_add_settlement_mode_to_investments'
+import * as migration_20260726_4_add_materials_net_rate_to_investments from './20260726_4_add_materials_net_rate_to_investments'
+import * as migration_20260728_0_drop_kosztorys_cost_variant from './20260728_0_drop_kosztorys_cost_variant'
+import * as migration_20260728_1_add_worker_to_kosztorys_stages from './20260728_1_add_worker_to_kosztorys_stages'
 
 export const migrations = [
   {
@@ -299,5 +315,85 @@ export const migrations = [
     up: migration_20260711_0_add_kosztorys_presets.up,
     down: migration_20260711_0_add_kosztorys_presets.down,
     name: '20260711_0_add_kosztorys_presets',
+  },
+  {
+    up: migration_20260716_0_drop_kosztorys_measured_qty.up,
+    down: migration_20260716_0_drop_kosztorys_measured_qty.down,
+    name: '20260716_0_drop_kosztorys_measured_qty',
+  },
+  {
+    up: migration_20260716_1_add_global_discount_to_investments.up,
+    down: migration_20260716_1_add_global_discount_to_investments.down,
+    name: '20260716_1_add_global_discount_to_investments',
+  },
+  {
+    up: migration_20260718_0_add_planowana_investment_status.up,
+    down: migration_20260718_0_add_planowana_investment_status.down,
+    name: '20260718_0_add_planowana_investment_status',
+  },
+  {
+    up: migration_20260718_1_add_kosztorys_stage_to_transactions.up,
+    down: migration_20260718_1_add_kosztorys_stage_to_transactions.down,
+    name: '20260718_1_add_kosztorys_stage_to_transactions',
+  },
+  {
+    up: migration_20260720_0_add_kosztorys_shares.up,
+    down: migration_20260720_0_add_kosztorys_shares.down,
+    name: '20260720_0_add_kosztorys_shares',
+  },
+  {
+    up: migration_20260721_0_drop_kosztorys_stage_from_transactions.up,
+    down: migration_20260721_0_drop_kosztorys_stage_from_transactions.down,
+    name: '20260721_0_drop_kosztorys_stage_from_transactions',
+  },
+  {
+    up: migration_20260721_1_add_vat_plane_to_transactions.up,
+    down: migration_20260721_1_add_vat_plane_to_transactions.down,
+    name: '20260721_1_add_vat_plane_to_transactions',
+  },
+  {
+    up: migration_20260724_1_drop_kosztorys_section_coeff.up,
+    down: migration_20260724_1_drop_kosztorys_section_coeff.down,
+    name: '20260724_1_drop_kosztorys_section_coeff',
+  },
+  {
+    up: migration_20260724_2_add_plane_to_kosztorys_stages.up,
+    down: migration_20260724_2_add_plane_to_kosztorys_stages.down,
+    name: '20260724_2_add_plane_to_kosztorys_stages',
+  },
+  {
+    up: migration_20260726_0_add_investment_expense_net_type.up,
+    down: migration_20260726_0_add_investment_expense_net_type.down,
+    name: '20260726_0_add_investment_expense_net_type',
+  },
+  {
+    up: migration_20260726_1_add_net_amount_to_transactions.up,
+    down: migration_20260726_1_add_net_amount_to_transactions.down,
+    name: '20260726_1_add_net_amount_to_transactions',
+  },
+  {
+    up: migration_20260726_2_add_color_to_kosztorys_sections.up,
+    down: migration_20260726_2_add_color_to_kosztorys_sections.down,
+    name: '20260726_2_add_color_to_kosztorys_sections',
+  },
+  {
+    up: migration_20260726_3_add_settlement_mode_to_investments.up,
+    down: migration_20260726_3_add_settlement_mode_to_investments.down,
+    name: '20260726_3_add_settlement_mode_to_investments',
+  },
+  {
+    up: migration_20260726_4_add_materials_net_rate_to_investments.up,
+    down: migration_20260726_4_add_materials_net_rate_to_investments.down,
+    name: '20260726_4_add_materials_net_rate_to_investments',
+  },
+  {
+    up: migration_20260728_0_drop_kosztorys_cost_variant.up,
+    down: migration_20260728_0_drop_kosztorys_cost_variant.down,
+    name: '20260728_0_drop_kosztorys_cost_variant',
+  },
+  {
+    up: migration_20260728_1_add_worker_to_kosztorys_stages.up,
+    down: migration_20260728_1_add_worker_to_kosztorys_stages.down,
+    name: '20260728_1_add_worker_to_kosztorys_stages',
   },
 ]

@@ -6,12 +6,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@payload-config', () => ({ default: {} }))
 vi.mock('payload', () => ({ getPayload: async () => ({}) }))
 vi.mock('@/lib/auth/require-auth', () => ({ requireAuth: vi.fn() }))
-vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollection: vi.fn() }))
+vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 vi.mock('@/lib/leads/reconcile-sweep', () => ({ runLeadReconcileSweep: vi.fn() }))
 
 import { reconcileLeads } from '@/lib/actions/reconcile-leads'
 import { requireAuth } from '@/lib/auth/require-auth'
-import { revalidateCollection } from '@/lib/cache/revalidate'
+import { revalidateCollections } from '@/lib/cache/revalidate'
 import { runLeadReconcileSweep } from '@/lib/leads/reconcile-sweep'
 
 const recoveredLead = (id: number) => ({
@@ -40,7 +40,7 @@ describe('reconcileLeads', () => {
     const result = await reconcileLeads()
 
     expect(result).toEqual({ success: true, data: sweepResult(2) })
-    expect(revalidateCollection).toHaveBeenCalledWith('leads')
+    expect(revalidateCollections).toHaveBeenCalledWith(['leads'])
   })
 
   it('does not revalidate when nothing was added', async () => {
@@ -49,7 +49,7 @@ describe('reconcileLeads', () => {
     const result = await reconcileLeads()
 
     expect(result).toEqual({ success: true, data: sweepResult(0) })
-    expect(revalidateCollection).not.toHaveBeenCalled()
+    expect(revalidateCollections).not.toHaveBeenCalled()
   })
 
   it('returns the auth failure and never runs the sweep when unauthorized', async () => {
@@ -67,7 +67,7 @@ describe('reconcileLeads', () => {
     const result = await reconcileLeads()
 
     expect(result).toEqual({ success: false, error: 'Graph request failed' })
-    expect(revalidateCollection).not.toHaveBeenCalled()
+    expect(revalidateCollections).not.toHaveBeenCalled()
   })
 
   // Partial failure still carries real counts, so the action must not turn it into
@@ -84,6 +84,6 @@ describe('reconcileLeads', () => {
     const result = await reconcileLeads()
 
     expect(result).toEqual({ success: true, data: partial })
-    expect(revalidateCollection).toHaveBeenCalledWith('leads')
+    expect(revalidateCollections).toHaveBeenCalledWith(['leads'])
   })
 })

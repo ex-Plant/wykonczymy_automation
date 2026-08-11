@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { FileInput } from '@/components/ui/file-input'
 import { FieldLabel } from '@/components/ui/field'
-import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
-import { InvoicePreviewTrigger } from '@/components/ui/invoice-preview-trigger'
+import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { cn } from '@/lib/utils/cn'
 
 // A picked file has no URL yet — mint a blob URL for the preview and revoke it when the
@@ -26,46 +25,41 @@ function useObjectUrl(file?: File): string | undefined {
 }
 
 type LineItemInvoiceFieldPropsT = {
-  index: number
+  id: string
   file?: File
   fieldClassName?: string
-  // Bumped to remount the (uncontrolled) FileInput so it re-reads its filename from the ref.
-  fileInputKey: number
-  onFileChange: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void
+  onFileChange: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
 export function LineItemInvoiceField({
-  index,
+  id,
   file,
   fieldClassName,
-  fileInputKey,
   onFileChange,
 }: LineItemInvoiceFieldPropsT) {
   const url = useObjectUrl(file)
-  const [previewOpen, setPreviewOpen] = useState(false)
   const replaceInputRef = useRef<HTMLInputElement>(null)
 
   if (!file || !url) {
     return (
       <FileInput
-        key={`file-${fileInputKey}-${index}`}
         label="FV"
         fieldClassName={fieldClassName}
         accept="image/*,application/pdf"
-        onChange={(e) => onFileChange(index, e)}
+        onChange={(e) => onFileChange(id, e)}
       />
     )
   }
 
-  const isImage = file.type.startsWith('image/')
-
   return (
     <div className={cn('flex w-full flex-col gap-1', fieldClassName)}>
       <FieldLabel>FV</FieldLabel>
-      <InvoicePreviewTrigger
-        isImage={isImage}
-        label={file.name}
-        onClick={() => setPreviewOpen(true)}
+      <InvoicePreviewButton
+        url={url}
+        filename={file.name}
+        mimeType={file.type}
+        // No `closePreview` — the picked file swaps in place, so the preview keeps showing it.
+        onReplace={() => replaceInputRef.current?.click()}
       />
 
       {/* Swap the receipt from inside the preview modal (Zamień). */}
@@ -74,20 +68,8 @@ export function LineItemInvoiceField({
         type="file"
         accept="image/*,application/pdf"
         className="sr-only"
-        onChange={(e) => onFileChange(index, e)}
+        onChange={(e) => onFileChange(id, e)}
       />
-
-      {previewOpen && (
-        <InvoicePreviewDialog
-          url={url}
-          filename={file.name}
-          mimeType={file.type}
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-          unoptimized
-          onReplace={() => replaceInputRef.current?.click()}
-        />
-      )}
     </div>
   )
 }

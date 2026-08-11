@@ -46,6 +46,8 @@ type TransferFiltersPropsT = {
   baseUrl: string
   className?: string
   totalFilteredAmount?: number
+  /** Server-derived (see TransferTableServer) — the list shows cancelled rows, the sum never does. */
+  listsCancelled?: boolean
 }
 
 export function TransferFilters({
@@ -59,6 +61,7 @@ export function TransferFilters({
   baseUrl,
   className,
   totalFilteredAmount,
+  listsCancelled,
 }: TransferFiltersPropsT) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -197,7 +200,7 @@ export function TransferFilters({
             onChange={(v) => updateParam('amount', v)}
             placeholder="Kwota"
             inputMode="decimal"
-            inputClassName="w-36 lg:w-36"
+            className="w-36"
             debounceMs={DEBOUNCE_MS}
           />
 
@@ -206,7 +209,7 @@ export function TransferFilters({
             onChange={(v) => updateParam('id', stripNonDigits(v))}
             placeholder="ID"
             inputMode="numeric"
-            inputClassName="w-24 lg:w-28"
+            className="w-24 lg:w-28"
             debounceMs={DEBOUNCE_MS}
           />
 
@@ -222,6 +225,11 @@ export function TransferFilters({
           label="Suma wybranych transakcji"
           value={formatPLN(totalFilteredAmount)}
           className="border-chart-blue"
+          tooltip={
+            listsCancelled
+              ? 'Suma pomija transakcje anulowane, ale liczy anulowania, które je cofają — dlatego nie zgadza się z listą poniżej.'
+              : undefined
+          }
         />
       )}
     </div>

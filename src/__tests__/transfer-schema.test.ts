@@ -46,7 +46,13 @@ const base = {
 
 /** Valid server payloads for each transfer type. */
 const VALID_SERVER_PAYLOADS: Record<string, Record<string, unknown>> = {
-  INVESTOR_DEPOSIT: { ...base, type: 'INVESTOR_DEPOSIT', sourceRegister: 1, investment: 1 },
+  INVESTOR_DEPOSIT: {
+    ...base,
+    type: 'INVESTOR_DEPOSIT',
+    sourceRegister: 1,
+    investment: 1,
+    vatPlane: 'NET',
+  },
   COMPANY_FUNDING: { ...base, type: 'COMPANY_FUNDING', sourceRegister: 1 },
   OTHER_DEPOSIT: { ...base, type: 'OTHER_DEPOSIT', sourceRegister: 1 },
   INVESTMENT_EXPENSE: {
@@ -210,6 +216,40 @@ describe('createTransferSchema — missing required fields', () => {
   })
 })
 
+// ── 2b: Server Schema — vatPlane (netto/brutto bucket, EX-536) ──────────
+
+describe('createTransferSchema — vatPlane', () => {
+  it('INVESTOR_DEPOSIT without vatPlane → passes (optional, third null state)', () => {
+    const { vatPlane, ...rest } = VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT
+    const result = createTransferSchema.safeParse(rest)
+    expect(result.success).toBe(true)
+  })
+
+  it('INVESTOR_DEPOSIT with vatPlane = GROSS → passes', () => {
+    const result = createTransferSchema.safeParse({
+      ...VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT,
+      vatPlane: 'GROSS',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('INVESTOR_DEPOSIT with vatPlane = garbage → error on vatPlane', () => {
+    const result = createTransferSchema.safeParse({
+      ...VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT,
+      vatPlane: 'MAYBE',
+    })
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('vatPlane')
+  })
+
+  it('non-deposit types do NOT require vatPlane (legacy NULL stays valid)', () => {
+    for (const type of ['COMPANY_FUNDING', 'OTHER_DEPOSIT', 'PAYOUT', 'LABOR_COST']) {
+      const result = createTransferSchema.safeParse(VALID_SERVER_PAYLOADS[type])
+      expect(result.success, `${type} should not require vatPlane`).toBe(true)
+    }
+  })
+})
+
 // ── 2b: Server Schema — Amount edge cases ───────────────────────────────
 
 describe('createTransferSchema — amount edge cases', () => {
@@ -282,6 +322,49 @@ describe('createBulkExpenseSchema — per-line-item category', () => {
       lineItems: [{ description: 'Item', amount: 100 }],
     })
     expect(result.success).toBe(true)
+  })
+
+  // GUARD B7 at the schema layer — the form's own gate on the netto figure. The hook is the real
+  // authority; this is what stops a bad line before it ever reaches the server action.
+  describe('netAmount on the netto expense type', () => {
+    const netBase = {
+      ...bulkBase,
+      type: 'INVESTMENT_EXPENSE_NET' as const,
+      investment: 1,
+    }
+
+    it('netto below brutto → passes', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        lineItems: [{ description: 'Item', amount: 1230, netAmount: 1000, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it('netto above brutto → rejected', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        lineItems: [{ description: 'Item', amount: 1000, netAmount: 1230, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('missing netto → rejected (a netto row that bills 0 is worse than a blocked one)', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        lineItems: [{ description: 'Item', amount: 1000, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('a brutto-billed type needs no netto', () => {
+      const result = createBulkExpenseSchema.safeParse({
+        ...netBase,
+        type: 'INVESTMENT_EXPENSE',
+        lineItems: [{ description: 'Item', amount: 1000, expenseCategory: 1 }],
+      })
+      expect(result.success).toBe(true)
+    })
   })
 })
 
@@ -394,6 +477,7 @@ describe('bulk expense — UNREADABLE_RECEIPT sentinel row is blocked', () => {
     settled: false,
     lineItems: [
       {
+        id: 'row-1',
         description: 'Normalny opis',
         amount: '100',
         invoiceNote: '',

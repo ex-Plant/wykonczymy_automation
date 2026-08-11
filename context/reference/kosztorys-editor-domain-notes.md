@@ -17,6 +17,13 @@ zero kontaktu z Sheets dla nowych robót.
 > pełne wiersze, litery kolumn AA+). Run:
 > `SHEET_ID=<id> node --env-file=./.env scripts/inspect-sheet.mjs > /tmp/dump.txt`
 > (needs `GOOGLE_SERVICE_ACCOUNT_JSON`; defaults to `KOSZTORYS_TEMPLATE_SHEET_ID`).
+>
+> **Dostęp (2026-07-15):** service account
+> `kosztorys-sheets@wykonczymy-kosztorys-bk.iam.gserviceaccount.com` ma **Viewera** na
+> `KOSZTORYS_TEMPLATE_SHEET_ID`. Wcześniej inspector zwracał `403 PERMISSION_DENIED` —
+> jeśli znowu zwróci, arkusz stracił udostępnienie (nadaj Viewera w UI, SA nie zrobi tego samo).
+> **Nie zgaduj ze screenshotów — odpal inspector.** Ten plik był już raz źle „poprawiony"
+> na podstawie przyciętego obrazka.
 
 - **Arkusz = actuals z appki (mirror) + ręczna rozpiska robocizny.**
 - Aplikacja **już** liczy wszystkie actuals z transakcji: wydatki inwestycyjne,
@@ -38,24 +45,96 @@ zero kontaktu z Sheets dla nowych robót.
 
 ## Mapa kolumn arkusza `kosztorys_robocizny` (klient)
 
+**Zweryfikowane na formułach 2026-07-15** (inspector, nie screenshot). Etapów jest **10, nie 6** —
+poprzednia wersja tej mapy (`C–H` / `P–U`, 6 etapów) była nieaktualna i przesunięta o kolumnę.
+
 ```
-A ordinal | B opis | C–H 1–6 etap ilość (wykonano) | I Przedmiar | J Pomiar z natury
-K j.m. | L Cena j.m. (klient) | M rabat % | N Wartość netto | O komentarz
-P–U 1–6 etap wartość | V pozostało do rozliczenia / bilans
+A sekcja | B ordinal (na wierszu sekcji: nazwa sekcji) | C opis
+D–M   1–10 etap ilość (wykonano)      ← inputy
+N Przedmiar | O Pomiar z natury | P j.m. | Q Cena j.m. (klient) | R rabat %
+S wartość przedmiaru | T Wartość netto | U komentarz
+V–AE  1–10 etap wartość               ← liczone
+AF    pozostało do rozliczenia / bilans
 ```
 
-- Wiersz-nagłówek sekcji: A = nazwa sekcji, N = suma sekcji.
-- Wartość = **pomiar (J)** × cena (np. 57 m² × 70 = 3990), nie przedmiar.
+- **Wiersz-nagłówek sekcji:** A/B/C = nazwa sekcji, `T4 = SUM(T5:T21)` = suma sekcji,
+  `U4 = T4` (lustro — po `U` sumuje `SUMIF` z zakładki `Podsumowanie`).
+  Kolumny etapów (`V`–`AE`) w wierszu sekcji są **puste** — patrz niżej.
+- Wartość = **pomiar (O)** × cena (np. 57 m² × 70 = 3990), nie przedmiar.
 - Zakładki `zakres pracy z narzędziami` / `bez narzędzi` = te same pozycje,
   inne ceny (cennik z narzędziami N, bez narzędzi P). Ceny podwykonawcy NIE są
   stałym % klienta (raz 65%, raz 58%) → niezależne.
+
+### Formuły (dosłownie z arkusza, wiersz 390)
+
+```
+T  = O*Q - (Q*R)*O                     wartość netto  = pomiar × cena − rabat
+V  = D*$Q - (D*$Q*$R)                  wartość etapu  = ilość_wykonana × cena − rabat
+AF = T - V - W - X - Y - Z - AA…AE     bilans         = wartość − Σ etapów
+```
+
+Appka jest z tym **1:1**: `stageValueForView` = `V`, `rowRemainingForView` = `AF`
+(`src/lib/kosztorys/calc.ts:52,61`). Potwierdza P9.
+
+### BRAK sumy per etap — zweryfikowane
+
+Arkusz **nie sumuje osi etapów nigdzie**: 0 formuł `SUM` nad `V`–`AE` w całych 464 wierszach.
+Sumuje wyłącznie oś sekcji (`T4`) i sekcje w zakładce `Podsumowanie`. Czyli „podsumowanie etapu"
+(ile zapłacić za dany etap) to **nowa figura, nie parytet** — nie ma czego skopiować, wymaga
+decyzji właściciela (cena klienta = faktura vs cena podwykonawcy = wypłata). Roadmap: pytanie 12b.
+
+## Zakładka `Podsumowanie` (2026-07-15 — wcześniej nieudokumentowana)
+
+Pełna lista zakładek (9, zweryfikowana na żywym arkuszu 2026-07-15 — wcześniej
+wymienialiśmy 6, bez luster): `kosztorys_robocizny` · **`Podsumowanie`** ·
+`materiały` · `pokoje` · `zakres pracy z narzędziami` · `zakres pracy z bez narzędzi` ·
+`wydatki inwestycyjne (tylko do odczytu)` · `transfery (tylko do odczytu)` ·
+`rozliczone R+M (tylko do odczytu)`.
+
+```
+Robocizna / Materiały / Łącznie      (B6 = robocizny!T395, B7 = robocizny!T398)
+Prace dodatkowe            8 400 zł   54,9%
+Wyburzenia i demontaże     6 900 zł   45,1%
+… 13 sekcji …
+Łącznie                   15 300 zł   (=SUM(B11:B23))
+```
+
+- Suma per sekcja: `=SUMIF(kosztorys_robocizny!B:B; <nazwa sekcji>; kosztorys_robocizny!U:U)` —
+  stąd lustro `U4 = T4` w wierszu sekcji.
+- **Udział %** per sekcja (`=B11/$B$25`) — appka tego nie ma.
+- Rozbicie **Robocizna / Materiały / Łącznie** — appka tego nie ma.
+- Panel sum w appce (`kosztorys-section-summary.tsx`) pokrywa tylko sumy sekcji + Suma netto/brutto.
+  Reszta = luka parytetu, bez slice'a. Roadmap: pytanie 12a.
+
+- **`Materiały` (`B7`) ciągnie z lustra, nie z zakładki `materiały`** — widoczne dopiero na żywym
+  arkuszu (Altowa 12, 2026-07-15): `B7 → kosztorys_robocizny!S459 → 'wydatki inwestycyjne (tylko do
+odczytu)'!H3 → =SUM(E:E)`. Czyli klient w V1 **już** widzi wydatki z apki, a v2 nie odtwarza
+  połączenia od zera, tylko przenosi je do bazy. Lustro ma gotowy rozbiór `Materiały budowlane` /
+  `Pozostałe koszty` — kandydat na kształt figury w v2.
+- **`rozliczone R+M` NIE wchodzi do `Materiały` w `Podsumowaniu`** (sprawdzone 2026-07-18): lustro
+  `rozliczone R+M` ma identyczne kolumny `H/I/J/K` (`SUM` + trzy `SUMIF` po kategorii) co
+  `wydatki inwestycyjne`, ale `B7` ciągnie **wyłącznie** z tego drugiego. Ta sama granica stoi po
+  stronie appki — `totalSettled` jest wycięte z `totalMaterialCosts` i z bilansu, wchodzi tylko do
+  marży. Czyli **materiały rozliczone to figura marżowa, nigdy klientowa** — na obu płaszczyznach
+  osobna powierzchnia, nigdy dodana do materiałów w ofercie.
+- **`transfery!K3 = SUMIF(C:C; "Rabat"; E:E)` istnieje i nikt go nie czyta** — żadna formuła nie
+  sięga po tę sumę. Miejsce na podpięcie rabatu stoi gotowe i puste.
+- **Rabatu za całość w V1 nie ma** (sprawdzone na wzorcu i na żywym arkuszu): `Podsumowanie` to
+  `Robocizna + Materiały = Łącznie`, jedyny działający rabat to `R` — procent per wiersz. Globalny
+  rabat (`kosztorys-global-discount`) jest więc **nową robotą bez parytetu**.
+
+**Uwaga — w szablonie te referencje są zepsute:** `B6`/`B7` wskazują na `T395`/`T398`, czyli
+**wiersze pozycji** (pusta pozycja w „Kuchnia", „Sufit podwieszany" w „Wiatrołap"), a nie na sumy
+całkowite → `Robocizna = 0 zł` i `#DIV/0!` w udziale, a wiersz `check, ok` (`B26 = B25-B6`) kłamie.
+Ręczne referencje gniją przy wstawianiu wierszy — argument za liczeniem tych sum w kodzie.
 
 ## Schemat (rdzeń robocizny)
 
 ```
 kosztorys_sections   investment_id, name, display_order
 kosztorys_items      investment_id, section_id, display_order,
-                     description, unit, planned_qty (przedmiar), measured_qty (pomiar),
+                     description, unit, planned_qty (przedmiar),
+                     -- „pomiar z natury" NIE jest kolumną: = Σ stage_progress.qty_done (arkusz: O=SUM(D:M))
                      discount_type (%|kwota) + discount_value (rabat),
                      vat_rate? (override per pozycja — otwarte),
                      <CENY: patrz decyzja A/B otwarta>, note
@@ -85,8 +164,9 @@ powierzchnia malowania = Σ ścian − ściany pomieszczeń mokrych (łazienki/W
 
 ## Wartości liczone (nie przechowywane)
 
-- wartość wiersza = `pomiar × cena` minus rabat (procent lub kwota — patrz wyżej)
-- „pozostało/bilans" (V) = wartość pozycji − Σ wartości wykonanych etapów
+- wartość wiersza = `pomiar × cena` minus rabat (procent lub kwota — patrz wyżej),
+  **a przy braku pomiaru = Σ wartości etapów** — patrz „Pomiar ≠ etapy" niżej
+- „pozostało/bilans" (AF) = wartość pozycji − Σ wartości wykonanych etapów
   = **kontrola postępu robót** (ile zostało do wykonania); informacyjna (P9)
 - sumy sekcja / całość = redukcja w kodzie
 - plan-vs-actual = porównanie na odczyt (patrz sekcja „Panel plan-vs-actual").
@@ -101,17 +181,16 @@ Czysto na odczyt, per inwestycja. Niezależny od P5 (linkage LABOR_COST).
 | Wykonano (postęp)        | Σ wartości odhaczonych etapów (klient) + % planu            |
 | Zafakturowano            | `LABOR_COST` inwestycji                                     |
 | Wypłacono ekipie         | `PAYOUT` inwestycji                                         |
-| Plan kosztu podwykonawcy | Σ `pomiar × cena_wariantu_kosztu_pozycji`                   |
+| Plan kosztu podwykonawcy | Σ po etapach (ilość etapu × stawka wariantu etapu)          |
 | **Marża planowana**      | plan klient − plan podwykonawcy                             |
 | **Marża rzeczywista**    | wzór aplikacji: `robocizna − wypłaty − rabat − strata`      |
 | Materiały (actuals)      | `INVESTMENT_EXPENSE` — bez planu (materiałów nie planujemy) |
 
-- **Wariant kosztu PER POZYCJA** (z narzędziami | bez) — w jednej inwestycji
-  mogą występować oba (jedna ekipa z narzędziami, druga bez), więc wybór NIE jest
-  per inwestycja. Każda pozycja wskazuje, która cena podwykonawcy jest jej
-  rzeczywistym kosztem. Kaskada jak VAT: **default na sekcji → pozycja dziedziczy
-  → można nadpisać** (zwykle ekipa robi całą sekcję, więc default sekcji łapie
-  większość). Default sekcji → P11.
+- **Wariant kosztu PER ETAP** (z narzędziami | bez) — w jednej inwestycji mogą
+  występować oba (jedna ekipa z narzędziami, druga bez), a ta sama praca może mieć
+  etapy 1–2 zrobione z narzędziami, a 3–4 bez. Wybór siedzi więc na etapie i to on
+  mówi, która cena podwykonawcy jest kosztem danej ilości (EX-565, patrz sekcja
+  „Wariant «z narzędziami / bez narzędzi»").
 
 ## Edytor — zapis i edycja (D)
 
@@ -121,9 +200,9 @@ UX siatki = zwykła tabela (TanStack); sednem nie jest wygląd, tylko zapis.
 
 ```
 inputy: pozycja (opis, jednostka, przedmiar, pomiar, 3 ceny, discount_type+value,
-        cost_variant, note, hidden_in_export, display_order);
-        sekcja (nazwa, display_order, vat_rate, default cost_variant);
-        etap (ordinal, label); stage_progress (item, stage → ilość)
+        note, hidden_in_export, display_order);
+        sekcja (nazwa, display_order, vat_rate);
+        etap (ordinal, label, plane); stage_progress (item, stage → ilość)
 liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
 ```
 
@@ -163,10 +242,30 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
 - **Sekcje w pełni edytowalne:** dodawanie, zmiana nazwy, zmiana kolejności
   (`display_order`); nagłówek + suma sekcji (liczona). Dowolna liczba pozycji
   w sekcji (bez limitu).
-- **Przedmiar vs pomiar = dwie zwykłe kolumny**, obie edytowalne, obie zapisane,
-  niezależne. Przedmiar = ilość z wyceny; pomiar z natury = ilość zmierzona.
-  **Wartość liczy się z pomiaru.** Bez „nadpisywania", bez dwóch sum (w szablonie
-  pomiar startuje skopiowany z przedmiaru, żeby nie był pusty — to wszystko).
+- **Dwa wejścia, nie trzy** (arkusz właściciela; EX-494, 2026-07-16). Właściciel wpisuje
+  **Przedmiar** (oferowany zakres) i **etapy** (faktycznie wykonana ilość). „Pomiar z natury"
+  **nie jest wpisywany** — w arkuszu to formuła `O = SUM(D:M)`, czyli **suma etapów**; nasz
+  edytor pokazuje ją jako kolumnę read-only. Wcześniej mieliśmy tu czwarte, niezależne pole
+  (`measured_qty`) — usunięte, bo dublowało sumę etapów i rozjeżdżało się z nią po cichu.
+  Kanon domenowy: `AGENTS.md` → „The Owner's Reference Sheet".
+
+- **Oferta i wykonanie to dwie równoległe kwoty** (arkusz: `S` i `T`):
+  - **„Wartość netto przedmiar"** = `applyDiscount(Przedmiar × cena)` = arkuszowe `S` — oferta.
+  - **„Wartość netto"** = `applyDiscount(Σ etapów × cena)` = arkuszowe `T` — wykonanie.
+  - **„Pozostało do rozliczenia"** = `S − T`; przy pustym Przedmiarze „—" (brak mianownika).
+  - **„% wykonania"** = `Σ etapów / Przedmiar` (nie z sumy etapów — inaczej `Σ/Σ = 100%` wszędzie).
+
+  Konsekwencja architektoniczna: wartość wykonania zależy od etapów, więc `calc.ts` (czysta
+  warstwa cenowa, `ViewPricingT` nie widzi etapów) **nie może** jej policzyć. Warstwa
+  rozliczeniowa — `rowValueForView`, `rowRemainingForView`, `sectionSubtotalsForView` — mieszka
+  w `v2-rows.ts`, które etapy zna. `rowPlannedNetForView` (oferta = z Przedmiaru) zostaje w
+  `calc.ts`, bo jej ilością jest Przedmiar, a nie etapy.
+
+  Rozjazd zostaje **widoczny, nie wygładzony**: komórka `% wykonania` świeci na czerwono
+  (`hasStagesOverPlanned`), gdy `Σ etapów > Przedmiar` — praca przekroczyła oferowany zakres.
+  Częściowo zrobiony wiersz (`Σ etapów < Przedmiar`) to normalna praca w toku i czerwony **nie**
+  jest — inaczej cała siatka świeciłaby na zdrowym kosztorysie.
+
 - **Lista prac dynamiczna** (wiersze, bez limitu).
 - **Etapy dynamiczne** (wiersze `kosztorys_stages`; kolumny siatki renderowane
   z danych). Usunięcie etapu z wpisanym postępem → **BLOKADA** (najpierw wyczyść).
@@ -177,21 +276,264 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
   czasem niezwiązana). Źródło prawdy = wpisana liczba.
 - **Default ceny = cienka podpowiedź, ODŁOŻONA.** Ceny wpisywane ręcznie.
   Podpowiadarka przyjdzie z szablonami.
+- **Import cennika podwykonawcy z arkusza: pusta stawka = 0, nie default** (Białostocka 5,
+  blueprint EX-554). Zakładki `zakres pracy z/bez narzędzi` mają stawkę per pozycja albo jako
+  formułę (`P×0,65`, `P×0,5525`), albo **pustą — a pusta w arkuszu znaczy 0**: `suma wykonanej
+pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „dziedzicz
+  domyślny współczynnik"** — każda stawka jest jawna. Wniosek dla seeda: importuj **każdą
+  jawną wartość** (override `coeff`/`amount`), **nigdy `null`** — `null` w `calc.ts` znaczy
+  „dziedzicz sekcyjny/globalny współczynnik" i wymyśliłby koszt, którego arkusz nie ma
+  (dawało +~9 000 na `suma wykonanej pracy`, plan „bez narzędzi": 65 638 zamiast ~57 114 ≈
+  56 431 z arkusza). Pusta stawka → `{ type: 'amount', value: 0 }`.
+- **Wypłaty podwykonawcy w arkuszu = ręczny rejestr, NIE wyliczenie** (Białostocka 5, zweryfikowane
+  na formułach zakładki `zakres pracy bez narzędzi`, wiersze 396–400). Po stronie podwykonawcy arkusz
+  liczy **tylko jedno**: „suma wykonanej pracy" (r398 `=SUM(W396:AF396)` = Σ etapów × stawka „bez
+  narzędzi"). Pojedyncze wypłaty (zaliczki, multisport, zus…) to **literały wpisywane z palca**;
+  „suma wypłat" (r400 `=sum(W397:AE401)` = 56 440) i „pozostało do wypłaty" (r399
+  `=SUM(U398)-SUM(W397:AB400)` = −9) tylko sumują te ręczne wpisy. **Wniosek:** app **nie ma się
+  zgadzać** z arkuszową „suma wypłat" — to tylko tyle, ile właściciel zdążył wpisać. App bierze realne
+  transakcje PAYOUT (per podwykonawca), co jest **wiarygodniejszym** źródłem niż ręczna lista.
+  Jedyna kwota, która MUSI się zgadzać, to „suma wykonanej pracy" (po naprawie buga stawki, na planie
+  „bez narzędzi").
 - **VAT (netto/brutto):** ceny wpisywane **netto**; **brutto = netto × (1 + vat)**
   liczone, nie przechowywane. Nadpisuje wcześniejsze „netto bez VAT".
 - **`vat_rate` jako kaskada:** globalny **default** → nadpisanie **per
   kategoria/sekcja** → pozycja **dziedziczy** stawkę swojej sekcji. Czyli
   `vat_rate` siedzi na `kosztorys_sections` (+ globalny default w konfiguracji),
   nie na pozycji. (Otwarte: czy potrzebny też override per pojedyncza pozycja.)
+- **VAT dotyczy WYŁĄCZNIE prac (robocizna) — dwie płaszczyzny** (właściciel, 2026-07-19).
+  Oś netto/brutto jest pojęciem **cennika prac**, nie księgi. Rozstrzyga powracające
+  zamieszanie (rabat „100 vs 102", brutto na wydatkach):
+  - **Płaszczyzna cen klienta (prace):** ceny wpisywane netto, `brutto = netto × (1 + vat)`
+    liczone. Oś netto/brutto istnieje TYLKO tu i obejmuje wszystkie 3 warianty ceny
+    (klient + oba podwykonawcy) po stawce inwestycji — spójne z P8 (2026-07-15).
+  - **Płaszczyzna księgi (actuals):** transakcje i wydatki są **netto, bez VAT** — schemat
+    transferów nie ma osi VAT. `LABOR_COST`, `RABAT`, materiały (`INVESTMENT_EXPENSE`),
+    korekty (`CORRECTION`), wpłaty, wypłaty — wszystkie renderują się w **wartości nominalnej,
+    bez doliczania VAT**. „Wpłaty to pieniądze już wpłacone przez inwestora — nie ma czego
+    gruntować"; korekta i wydatki tak samo.
+    - **WYJĄTEK — zaliczka (deposit) (właściciel, 2026-07-21, EX-536): obie osie, netto I brutto.**
+      Odpowiedź na „zaliczka netto czy brutto" = **obie**. To rewiduje regułę „wpłaty face value"
+      **tylko dla zaliczki/deposit**. **Mechanika — ROZSTRZYGNIĘTA (EX-536):** każda wpłata niesie
+      przechowywany, trójstanowy znacznik `vatPlane` (`NET` / `GROSS` / `null`), wybierany per wpłata
+      przy tworzeniu (create-only, immutable), a nie wyliczany jedna z drugiej. `null` w rozliczeniu
+      mieszanym traktowane jest jako **netto** (właściciel, 2026-07-23, odwrócone z wcześniejszego
+      null→brutto): tylko `GROSS` idzie na część fakturowaną, `NET` i `null` spłacają gotówkę.
+      **Formularz wymusza wybór (2026-07-25):** opcja „— nie określono —" zniknęła, „Netto" jest
+      preselektowane, więc `null` zostaje już tylko na wpłatach zaksięgowanych wcześniej. Pole nazywa
+      się wszędzie tak samo — **„Rozliczenie netto/brutto"** (formularz, kolumna w transakcjach, admin,
+      tabela wpłat w Podsumowaniu) — z opisem: _„Określ czy wpłata ma trafić do puli netto czy brutto.
+      Na tej podstawie określamy wartość rozliczenia mieszanego (część brutto, część netto)."_
+      Kwota gotówki nie jest wpisywana — wynika z sumy wpłat netto. Kod:
+      `src/collections/transfers.ts` (pole `vatPlane`) + `src/lib/kosztorys/summary-economics.ts`
+      (`bucketDepositsByPlane`) + migracja `20260721_1`.
+  - **Rabat też jest na płaszczyźnie prac — gruntuje się** (właściciel, 2026-07-19). Rabat to
+    **obniżka prac**, a nie ruch gotówki ani koszt materiału, więc dzieli oś netto/brutto z
+    pracami: `rabat_brutto = rabat_netto × (1 + vat)`. Dowód z arkusza: `S = N × cena − rabat`,
+    a na osi brutto cała ta linia gruntuje, więc efektywny rabat brutto = `rabat × (1+vat)`.
+    To **odróżnia rabat** od materiałów / korekty / wpłat (te są nominalne). Bez tego brutto-
+    kaskada się nie spina: „Suma prac" brutto − rabat nominalny ≠ „Robocizna" brutto.
+  - **Skutek dla `Podsumowania` (edytor):** kolumna brutto dotyczy wierszy z płaszczyzny prac —
+    „Suma prac wykonanych", **„Rabat"** oraz „Robocizna/Do zapłaty" (gruntowana po rabacie).
+    Materiały budowlane/wykończeniowe, korekta i wpłaty = wartość nominalna (brak wiersza
+    brutto). (Bug 1: wcześniej wszystko gruntowane hurtem przez `toGross(cały net)`; bug 2:
+    rabat błędnie zrzucony do `faceValue` — powinien `moneyPair(…, vatRate)`.)
+  - **WYJĄTEK od „materiały nominalnie" — wydatek typu netto (wdrożone 2026-08-07).**
+    Reguła „wartość nominalna" mówi, że nie **wymyślamy** VAT-u, którego nie było na dokumencie —
+    a nie że materiał nigdy nie ma dwóch osi. Wydatek zapisany jako **netto** ma brutto policzone:
+    `brutto = netto × (1 + (materialsNetRate ?? vatRate))`, tą samą stawką, która w drugą stronę
+    rządzi kolumną Netto. Kierunek wynika z tego, na której płaszczyźnie wydatek zapisano; paragon
+    brutto dalej stoi po face value na obu osiach.
+    **Pułapka, którą to przywraca:** model „zapisane `netAmount`" wybrano właśnie po to, żeby
+    skasować dryf zaokrągleń (`ROUND` Postgresa vs `Math.round` JS-a) łamiący „lista === podsumowanie"
+    — brutto liczone wskrzesza dokładnie to ryzyko, więc niezmiennik Σ testuje się **na moście**
+    między płaszczyznami, nie po jednym teście na płaszczyznę.
+    **Konsekwencja w rozliczeniu mieszanym:** „Pozostało brutto" **nie** jest gruntowaniem kwoty
+    nierozliczonej — to gruntowałoby materiały razem z pracami. Liczy się z „Łącznie", gdzie
+    materiały już stoją po face value na obu osiach (`resztaGross = combined.gross − paidNet`).
+  - **Skutek dla rekoncyliacji (strona inwestycji „z kosztorysu", EX-535):** porównanie idzie
+    **netto ↔ netto** dla obu figur — kosztorys suma prac (netto) ↔ Σ `LABOR_COST`, kosztorys
+    rabat (netto) ↔ Σ `RABAT`. Strony kosztorysowej **nie gruntujemy**. To usuwa fałszywy
+    rozjazd o VAT (rabat 100 netto mylnie porównywany z „102 brutto") — sygnalizacja świeci
+    tylko przy realnej różnicy ≥ 1 gr.
+
+    **POTWIERDZONE (właściciel, 2026-07-21): transakcja `RABAT` w zasadzie znika.**
+    Rabat nie jest już ręczną transakcją — staje się kwotą **readonly z arkusza**
+    (kosztorysu), pokazywaną w **widoku inwestycji** i wchodzącą w **podsumowanie tej
+    inwestycji**. Skutek: nie ma już `Σ RABAT` do rekoncyliacji — rabat inwestycji =
+    rabat kosztorysowy wprost. **To rozpuszcza otwarte pytanie EX-539** (transakcja
+    `RABAT` netto vs brutto) — bez ręcznej transakcji `RABAT` nie ma osi wpisu do
+    rozstrzygnięcia. (EX-536 / zaliczka pozostaje osobno.) Do zbudowania w widoku
+    inwestycji — należy do EX-535.
+
 - **Rabat dwutrybowy:** `discount_type` ∈ {procent, kwota} + `discount_value`.
   - procent: `wartość = ilość × cena × (1 − %)`
   - kwota: `wartość = ilość × cena − kwota`
 
+### Rabat globalny — kontrakt sterowania (EX-605, 2026-07-27)
+
+O zastąpieniu rabatów per pozycja decyduje **tryb, nie kwota**: „Kwotowy" wyłącza rabaty
+per pozycja przy **każdej** wartości, łącznie z 0 zł. Stąd wybór trybu **od razu zapisuje** —
+czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik nie robił.
+
+- **Kwota startowa = suma rabatów per pozycja** przy aktywnym widoku, więc przełączenie
+  na „Kwotowy" nie rusza żadnej liczby na ekranie: użytkownik najpierw wybiera mechanizm,
+  potem zmienia liczbę. (0 zł też by działało, ale czytałoby się jak „skasuj rabaty".)
+- **Odwracalne**: rabaty per pozycja nigdy nie są kasowane, tylko pomijane w liczeniu —
+  „Wyłączony" przywraca je w całości. To jedyny powód, dla którego wybór trybu może
+  zapisywać od razu.
+- **Ctrl+Z cofa zmianę trybu i kwoty** — rabat globalny chodzi tą samą ścieżką zapisu co
+  stawka VAT, sposób rozliczenia i stawka netto wydatków (`saveSetting`).
+- **Oba tryby zatwierdza się przyciskiem „Zapisz"** (lub Enterem). Nic nie zapisuje się na
+  wyjściu z pola: rabat to ustalenie handlowe, więc samo opuszczenie pola nie może go zmienić.
+- **„%" pozostaje destrukcyjne i niecofalne** — jednorazowo nadpisuje rabat każdej pozycji,
+  Ctrl+Z tego nie cofa (decyzja właściciela, podtrzymana 2026-07-27 przy EX-606). Zamiast
+  cofania: **okno potwierdzenia** przed zapisem, mówiące co ginie i gdzie jest droga powrotna.
+  Droga powrotna istnieje i jest starsza od tej decyzji — `applyPercentRabatToAllItemsAction`
+  robi automatyczny zapis wersji kosztorysu przed każdym nadpisaniem, tak samo jak usunięcie
+  sekcji. **Nie zgłaszaj ponownie „brak cofania" jako buga** — to wybór, a stan da się odzyskać
+  z listy wersji.
+- **Migawki (wersje) nie niosą ustawień rabatu globalnego** — rabat to ustalenie per inwestycja i
+  nigdy nie podróżuje przez przywrócenie wersji ani przez preset. Przywrócenie starej wersji zostawia
+  bieżący rabat kwotowy nietknięty (wiersze migawki mają swoje własne rabaty per pozycja).
+
+### Zasięg filtrów na stronie inwestycji (EX-600, 2026-07-28)
+
+Panel podsumowania na `/inwestycje/<id>` pokazuje obok siebie liczby z dwóch źródeł, a filtry z
+adresu (data, typ, kasa, …) sięgają tylko do jednego z nich:
+
+- **Płaszczyzna transakcji** — Materiały, marża i **Wpłaty** — zwęża się razem z filtrem. Wpłaty
+  dołączyły do tej grupy dopiero teraz; wcześniej czytały całą inwestycję niezależnie od filtra,
+  co było regresją względem odczytu v1, gdzie ta sama liczba filtrowi podlegała.
+- **Płaszczyzna kosztorysu** — Robocizna, Rabat, Łącznie, „Do zapłaty" — filtrowi podlegać nie
+  może: pozycja kosztorysu nie ma daty, typu ani kasy, po których dałoby się ciąć. Przy aktywnym
+  filtrze każda taka liczba dostaje `*`, a panel raz drukuje przypis, co ta gwiazdka znaczy.
+- **Werdykty porównujące obie płaszczyzny** — krzyk o rozjeździe robocizny/rabatu z transakcjami
+  oraz ostrzeżenie o trybie mieszanym — przy aktywnym filtrze milkną. Zestawiają całość kosztorysu
+  z zawężoną księgą, więc pod filtrem zgłaszałyby sam filtr jako lukę.
+
+Reguła generalna dla nowych liczb w tym panelu: jeśli liczba pochodzi z kosztorysu, oznacz ją
+gwiazdką; jeśli porównuje kosztorys z transakcjami — wycisz ją pod filtrem.
+
 ## Domyślne
 
 PLN • netto+brutto z `vat_rate` per pozycja • hard-delete • reorder strzałkami
-(bez drag) • etapy zmienne (zwykle 6) • współistnienie z zakładką „Arkusz" •
+(bez drag) • etapy zmienne (w szablonie 10) • współistnienie z zakładką „Arkusz" •
 bez `work_catalogue`.
+
+## Wariant „z narzędziami / bez narzędzi" — ROZSTRZYGNIĘTE, wdrożone (EX-565)
+
+**Problem (właściciel, 2026-07-21).** Cena podwykonawcy „z narzędziami" i „bez narzędzi" to **NIE
+dwie równoległe ceny tej samej pracy**. Dana praca jest wykonana **albo** z narzędziami **albo** bez
+— **OR, nie AND**. W „Podsumowaniu podwykonawców" nie może być dwóch osobnych kwot per wariant; ma być
+**jedna** kwota, w której każda praca liczy się po **swoim** wariancie.
+
+**Eskalacja: wariant zmienia się per etap — POTWIERDZONE realnym przypadkiem (2026-07-21).** Kilka
+ekip na inwestycji, część pracuje z narzędziami, część bez. Ta sama praca: „etapy 1–2 robił ktoś
+z narzędziami, etapy 3–4 bez". Czyli grain wyboru wariantu to **etap**, nie praca. Wtedy model app się
+**rozwalał** — nie było gdzie tego zapisać.
+
+**Kierunek rozwiązania (czysty, zaskakująco mały).** Stawki i tak są **dwie na pracę** (z i bez, obie
+własne — już importowane). Nie trzeba „dowolnej stawki per etap" — trzeba jednej nowej rzeczy:
+**oznaczenia wariantu na etapie**, które wybiera, która z dwóch stawek pracy obowiązuje na daną ilość.
+
+- **Koszt pracy = Σ po etapach (ilość_etapu × stawka wariantu tego etapu).**
+- „Podsumowanie podwykonawców" = **jedna** zsumowana kwota z realnych miksów; globalny przełącznik
+  z/bez miał wtedy **zniknąć** — ostatecznie zostaje jako widełki, patrz „Co wdrożono" niżej.
+- Dane jednorazowe do dogfoodingu → czysty dopis kolumny, bez migracji/backfillu.
+- Przykład (malowanie, stawki 18/15): (e1+e2)×18 + (e3+e4)×15. Ani „całość z" (×18), ani „całość bez"
+  (×15) tego nie odda — prawda leży pomiędzy.
+
+**Widoki — czwarty „mieszany", z/bez zostają jako widełki** (2026-07-21, właściciel; **wciąż otwarte**,
+już pod wdrożonym modelem per etap). Zamiast usuwać globalne z/bez, **dokładamy czwarty widok
+„mieszany"** = rzeczywistość (każdy etap po swoim wariancie). Własności:
+
+- Mieszany **zawsze leży między** „całość z" a „całość bez" → z/bez przestają być dwiema równoległymi
+  prawdami (odrzucone AND), stają się **widełkami-hipotezą**.
+- Przy **jednorodnej** inwestycji mieszany == widok podstawowy (wszystkie komórki jeden wariant), więc
+  nic nie tracimy — mieszany tylko uogólnia. Dlatego z/bez zostają (większość inwestycji jednorodna);
+  ich ewentualne wchłonięcie przez mieszany — dopiero „jak się sprawdzi".
+- UI mieszanego = powierzchnia przypisania ekip: kolumna etapu **kolorowana jego wariantem**, wybór
+  wariantu w nagłówku etapu. Wiersz pokazuje samą **kwotę** (nie „cenę j.m." — etapy mieszają stawki).
+
+**GATE rozliczenia (twarda konsekwencja).** „należne − wypłaty = pozostało do wypłaty" żyje **tylko
+w widoku mieszanym**. To był źródłowy błąd 78 033 vs 56 431: podsumowanie liczyło należne w widoku
+**z narzędziami** (całość × stawka z = 78k) i zestawiało z **realnymi** wypłatami — jabłko do
+pomarańczy. W z/bez suma należnego to hipoteza → **bez** bloku „pozostało do wypłaty"; pełne
+rozliczenie tylko w mieszanym. (Ten sam per-widokowy gating panel już stosuje dla „scream" recon,
+przypiętego do widoku klienta.)
+
+**Rozliczenie per pracownik jest osobną warstwą.** Wypłaty i tak idą z realnych transakcji PAYOUT per
+pracownik (patrz notatka „Wypłaty = ręczny rejestr…"), nie z arkusza. Wariant per etap daje poprawną
+**sumę kosztu**; przypięcie „kto zrobił który etap" do konkretnej ekipy (dla rozliczenia per pracownik)
+to dalsza, opcjonalna warstwa — nie mieszać jej do tej zmiany.
+
+**Ta warstwa jest już wdrożona (EX-613).** Przypisanie siedzi na **etapie** (nullowalne, obok
+`plane`), nie na transakcji — bo most transakcja→etap raz już istniał i został wyrwany (EX-536,
+migracja `20260721_0`), a domknięcie go kosztowało dwie poprawki na spójność tagów, gdy wiersz
+nadrzędny się przesuwał. Przypisanie na etapie tego problemu nie ma.
+
+Dwie konsekwencje, które łatwo przeoczyć:
+
+- **Warstwa rozliczenia jest świadoma etapów, warstwa wyceny nie** (granica z EX-489). Figura per
+  pracownik to sprawa rozliczenia — nic z niej nie schodzi do wyceny pozycji.
+- **Dwie nullowalne osie na jednym etapie = dwa niezależne braki**, które potrafią wystąpić naraz.
+  Dominuje `plane`: etap bez wariantu nikomu nic nie zarabia, więc „brak osoby" jest na nim
+  twierdzeniem o zerze — i dlatego etap bez wariantu nie przyjmuje przypisania. Odwrotnie niż przy
+  `plane`, brak osoby **nigdy** nie blokuje wpisywania ilości.
+
+**Co wdrożono (EX-565).** Wariant siedzi na **etapie** (`kosztorys_stages.plane`) — dokładnie ten
+grain, który właściciel potwierdził. Rozliczenie podwykonawcy liczy się po wariancie etapu, więc
+„koszt = Σ po etapach" jest już policzalne z danych. Etap bez wybranego wariantu nie należy do
+żadnego rachunku podwykonawcy i nie wchodzi do żadnej z dwóch sum.
+
+Globalny przełącznik z/bez **zostaje** jako widok wyceny (widełki-hipoteza, patrz wyżej) — nie jest
+już drugim miejscem zapisu wariantu. Wariantu **nie ma** ani na pracy, ani na sekcji — kolumny, które kiedyś miały go tam nieść, były
+martwe od pierwszego dnia i zostały usunięte (EX-575, migracja `20260728_0`). Kaskada
+sekcja → (sekcja × etap) → praca nigdy nie powstała i nie jest planowana.
+
+Otwarte pod wdrożonym modelem: **skąd import zna wariant** — arkusz ma obie zakładki („zakres pracy
+z/bez narzędzi") dla **wszystkich** prac, bez znacznika per etap; potrzebna reguła od właściciela.
+Powiązane: EX-554 („Podsumowanie podwykonawców").
+
+**Widok podwykonawcy to rachunek jednej ekipy, nie ta sama rozpiska po innej cenie (EX-570, 2026-07-25).**
+W „Z narzędziami" / „Bez narzędzi" **„Pomiar z natury" liczy tylko etapy tego wariantu** — a że pomiar
+JEST sumą etapów (EX-494), poprawia się od razu wszystko, co z niego wynika: wartość wiersza, sumy
+sekcji, stopki per etap, „Razem". Kolumny drugiego wariantu **znikają**, nie są wygaszane: wersję
+„nie dotyczy" zbudowano i odrzucono — ściana martwych komórek, w której kolumny ilości dalej pokazywały
+liczby, jakby się liczyły.
+
+**Przedmiar nie ma wariantu**, bo jest wpisywany raz na wiersz na cały oferowany zakres. Dlatego
+w widokach podwykonawcy nie ma go w żadnej postaci — ani ilości, ani wartości, ani „% wykonania", ani
+„Pozostało": porównanie przefiltrowanego pomiaru z całym przedmiarem nic nie znaczy. Ilości wprowadza
+się w widoku klienta, który pokazuje wszystkie etapy, więc zwężenie kolumn niczego nie odbiera.
+
+**Konsekwencja przyjęta świadomie:** dopóki jakiś etap nie ma wybranego wariantu, dwa rachunki **nie
+sumują się** do całości pracy wykonanej — brakującą kwotę zgłasza tylko plakietka ostrzeżenia. Lepsza
+brakująca kwota niż kwota dopisana ekipie, której nikt nie wskazał.
+
+### Należne podwykonawcy jest PRZED rabatem (EX-554, 2026-07-21)
+
+Rabat to ustępstwo handlowe wobec klienta, wchłaniane przez marżę firmy — **ekipie należy się jej
+cena niezależnie od tego, ile właściciel odpuścił klientowi**. Stąd „Suma wykonanej pracy" w
+„Podsumowaniu podwykonawców" liczy się przed rabatem, i to jest łatwe do pomylenia, bo dwie
+sąsiednie figury już rabat **mają w środku**:
+
+- **nie** suma wartości netto (rabat per pozycja jest w niej zaszyty — `netForQtyForView`
+  przepuszcza wartość przez `applyDiscount`),
+- **nie** robocizna z kosztorysu (odejmuje na wierzchu jeszcze rabat globalny),
+- **tak**: `Σ(net + discount)` po podsumowaniach sekcji **aktywnego widoku** — ta sama konstrukcja
+  „dodaj rabat z powrotem", której używa „Suma prac" po stronie klienta. Przy rabacie globalnym
+  `net` jest już pełną kwotą, a `discount` = 0, więc tożsamość dalej się trzyma.
+
+Baza to zawsze prace **wykonane** (pomiar / odhaczone etapy), nie przedmiar, i zawsze cena
+podwykonawcy **aktywnego** widoku (z narzędziami / bez) — nie cena klienta.
+
+**Cała płaszczyzna podwykonawcy jest wolna od rabatu, nie tylko suma** (2026-07-24). Reguła siedzi
+w jednym punkcie wyceny — `netForQtyForView` odejmuje rabat wyłącznie przy `view === 'client'` — a
+że przez ten punkt przechodzą wszystkie figury podwykonawcy (wartości komórek, wartości etapów,
+podsumowania sekcji), zeruje je jednym ruchem. Cztery kolumny rabatowe w ogóle się nie składają w
+widokach Z/Bez narzędzi, bo pokazywałyby zera.
 
 ## Otwarte / odłożone
 
@@ -237,18 +579,67 @@ this section is the original phrasing/context for those questions.
 - **P4.** Zestaw modeli ceny to stałe 3 (klient / podwyk. z narzędziami / bez),
   czy spodziewasz się dodawać/usuwać warianty? (decyduje schemat: A vs B)
 - **P7.** Domyślna stawka VAT dla nowej pozycji (8% remont mieszkań vs 23%)?
-- **P8.** Brutto/VAT dotyczy **wszystkich** wariantów ceny (też podwykonawcy),
-  czy tylko ceny klienta (oferta)?
+- **P8. [ROZSTRZYGNIĘTE — właściciel 2026-07-15]** Brutto/VAT dotyczy
+  **wszystkich trzech** wariantów ceny (klient + oba podwykonawcy), po stawce
+  inwestycji. Uzasadnienie właściciela: „czytam brutto podwykonawcy".
+  Rozstrzyga sprzeczność w zapisach slice'u S-05: `plan-brief.md:33`
+  (`context/archive/2026-07-10-kosztorys-vat/`) nazywał brutto „figurą decyzji
+  klienta" (sugerując tylko widok klienta), a wdrożony `plan.md:232` tego samego
+  slice'u mówi „Brutto consistent across all three price views" — **wygrywa
+  zachowanie wdrożone**, które jest zgodne z odpowiedzią właściciela.
 
 ### Pozostało do rozliczenia / bilans
 
-- **P9. [ROZSTRZYGNIĘTE]** Kolumna „pozostało do rozliczenia" (V) = **kontrola
+- **P9. [ROZSTRZYGNIĘTE — potwierdzone formułą `AF` 2026-07-15]** Kolumna „pozostało do rozliczenia" (AF) = **kontrola
   postępu robót**: ile wartościowo zostało do zrobienia w pozycji. Nie figura
   rozliczeniowa z klientem — wskaźnik „jak idzie robota". Formuła: wartość
   pozycji − Σ wartości wykonanych etapów. W aplikacji: kolumna wyliczana
   (informacyjna, postępowa). Rozważyć nazwę „pozostało do wykonania".
 
 ### Robocizna ↔ rozliczenia
+
+- **POTWIERDZONE (właściciel, 2026-07-21, EX-551): robocizna = cena klienta za
+  prace, PO RABACIE.** Model marży spinający kosztorys z inwestycją:
+  - **robocizna** = Σ ceny klienta wykonanych prac, **po rabacie** (widok „Klient").
+  - **wypłaty** = cena podwykonawcy = cena klienta × współczynnik (domyślnie `0,65`
+    z narzędziami / `0,55` bez; override na sekcji / pozycji) = to, co właściciel
+    płaci ekipie.
+  - **marża** = robocizna − wypłaty (przy domyślnym współczynniku strukturalnie
+    35% / 45% wartości oferty — nigdy 0).
+
+  **POTWIERDZONE (właściciel, 2026-07-21): wypłaty należne = ceny podwykonawcy z
+  kosztorysu; realne wypłaty (`PAYOUT`) zmniejszają „kwotę do zapłaty
+  podwykonawcy".** Czyli istnieją **obie** figury i wchodzą w relację spłaty:
+  - **wypłaty należne** = Σ cena podwykonawcy (z kosztorysu) — ile ekipie się należy,
+  - **kwota do zapłaty podwykonawcy** = należne − Σ zrealizowanych `PAYOUT` —
+    każda realna wypłata spłaca to, co ekipie należne z kosztorysu.
+
+  To domyka otwarty wcześniej wybór „należne vs wypłacone" z EX-551: nie jest to
+  albo/albo — cena podwykonawcy definiuje należne, `PAYOUT` je spłaca.
+
+  **DO ZBUDOWANIA (właściciel, 2026-07-21):** figury „kwota do zapłaty
+  podwykonawcy" jeszcze nie ma — trzeba ją dodać do **`Podsumowania`** edytora.
+  Linear: EX-554.
+
+- **Kosztorys = dokument dla klienta; docelowo wchłania całe koszty inwestycji**
+  (właściciel, 2026-07-15). „To kosztorys finalnie trafia do klienta. Tam mamy
+  wszystkie prace, plus wydatki na materiały i tak dalej, plus koszt robocizny."
+  Czyli rozpiska prac to **część** docelowego kosztorysu, nie całość: dochodzą
+  materiały (`INVESTMENT_EXPENSE`) i robocizna (`LABOR_COST`).
+
+  **Oderwany jest edytor v2 — nie V1**, gdzie lustro `INVESTMENT_EXPENSE` (PRD
+  FR-014, `prd.md:30`) już te koszty wnosi. Skutek dla v2, ważny przy każdej
+  figurze pieniężnej w edytorze: **marża liczy się wyłącznie z transferów**
+  (`robocizna − wypłaty − rabat − strata`), a kosztorys v2 w nią nie wchodzi —
+  rabat wpisany w edytorze obniża tylko wartość kosztorysu. To nie bug edytora,
+  to nieodtworzone połączenie. Pierwszy kawałek = parytet `Podsumowania`
+  (roadmap 12a); slice'a na samo łączenie brak.
+
+  Konsekwencja dla P5 niżej: to nie jest wąskie pytanie „czy suma ustawia
+  `LABOR_COST`", tylko **kierunek zależności między dwiema płaszczyznami**, które
+  mają się zejść. Parytet zakładki `Podsumowanie` (roadmap 12a, `roadmap.md:546`)
+  jest tego pierwszym kawałkiem — arkusz **już** dzieli na Robocizna/Materiały/
+  Łącznie, appka ma tylko sumy sekcji. Brak slice'a na samo łączenie.
 
 - **P5.** Czy suma rozpiski robocizny ma **automatycznie** ustawiać kwotę
   `LABOR_COST` (Koszty robocizny), czy zostaje ona osobną, ręczną transakcją
@@ -263,8 +654,9 @@ this section is the original phrasing/context for those questions.
 
 ### Plan-vs-actual
 
-- **P11.** Domyślny wariant kosztu podwykonawcy (z narzędziami vs bez) — jako
-  default sekcji, od którego dziedziczą pozycje (nadpisywalny per pozycja)?
+- **P11.** ~~Domyślny wariant kosztu podwykonawcy (z narzędziami vs bez) — jako
+  default sekcji, od którego dziedziczą pozycje?~~ **ROZSTRZYGNIĘTE (EX-565):**
+  wariant siedzi na **etapie**; defaultu sekcji ani dziedziczenia na pozycji nie ma.
 
 ### Druk / eksport
 

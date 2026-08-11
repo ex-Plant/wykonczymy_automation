@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { gcSnapshots, insertSnapshot, pruneAutoCount } from '@/lib/db/snapshots'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // pruneAutoCount is raw SQL, so its "keep newest 50 auto, never touch manual" invariant is only real
 // against the DB — assert persisted row counts, not a return value.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -17,7 +17,11 @@ const emptyPayload: SnapshotPayloadT = {
   items: [],
   stages: [],
   progress: [],
-  settings: { wToolsCoeff: 0, ownToolsCoeff: 0, vatRate: 0 },
+  settings: {
+    wToolsCoeff: 0,
+    ownToolsCoeff: 0,
+    vatRate: 0,
+  },
 }
 
 describe.skipIf(!ENV_READY)('pruneAutoCount (DB)', () => {
@@ -30,21 +34,12 @@ describe.skipIf(!ENV_READY)('pruneAutoCount (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
     db = await getDb(payload)
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'prune-auto-test', status: 'active' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'prune-auto-test')
   })
 
   afterAll(async () => {
     if (investmentId) {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 
@@ -105,21 +100,12 @@ describe.skipIf(!ENV_READY)('gcSnapshots age caps (DB)', () => {
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })
     db = await getDb(payload)
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'gc-snapshots-test', status: 'active' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'gc-snapshots-test')
   })
 
   afterAll(async () => {
     if (investmentId) {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 

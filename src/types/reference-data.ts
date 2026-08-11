@@ -1,4 +1,5 @@
 import type { RoleT } from '@/lib/auth/roles'
+import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 export type ReferenceItemT = {
   id: number
@@ -11,12 +12,14 @@ export type ReferenceItemT = {
 
 export type CashRegisterTypeT = 'MAIN' | 'AUXILIARY' | 'VIRTUAL' | 'WORKER'
 
+export type InvestmentStatusT = 'active' | 'completed' | 'planowana'
+
 export type CashRegisterRefT = Omit<ReferenceItemT, 'type'> & {
   type: CashRegisterTypeT
 }
 
 export type InvestmentRefT = ReferenceItemT & {
-  status: 'active' | 'completed'
+  status: InvestmentStatusT
   address: string
   phone: string
   email: string
@@ -24,6 +27,10 @@ export type InvestmentRefT = ReferenceItemT & {
   notes: string
   review: string
   hasSheet: boolean
+  // Both feed the per-row Marża on the investments list: the concession is gated on the settlement
+  // mode, so a reader that has one without the other cannot compute it. null rate = no concession.
+  materialsNetRate: number | null
+  settlementMode: SettlementModeT
 }
 
 export type WorkerRefT = Omit<ReferenceItemT, 'type'> & {

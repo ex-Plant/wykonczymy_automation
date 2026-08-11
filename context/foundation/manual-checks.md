@@ -1,145 +1,27 @@
 # Manual verification
 
-One living checklist for every slice — the project's QA registry. Each `##` section is a slice/change; tick boxes by hand (or point an agent at a section: "drive these checks with Playwright and report" — the `verify-manual-checks` skill) as you verify. Lives in `context/foundation/` (not the change folder) so it survives `/10x-archive` and never freezes stale. A slice with unticked boxes here is **not `Done`** — manual checks are a hard blocker (see `/10x-implement`). Not gated by CI.
+One living checklist for every slice — the project's QA registry. Each `##` section is a slice/change; tick boxes by hand (or point an agent at a section: "drive these checks with Playwright and report" — the `verify-manual-checks` skill) as you verify. Lives in `context/foundation/` (not the change folder) so it survives `/10x-archive` and never freezes stale. A slice with unticked boxes here is **not** `Done` — manual checks are a hard blocker (see `/10x-implement`). Not gated by CI.
 
 **Run against the isolated test DB, not the dev DB.** Manual checks mutate data, so point the app at the `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, `wykonczymy-test`) — the same DB the E2E suite uses — never the dev DB (5433, holds un-dumped local work) and never prod. Editor content (sections/items/stages) is locally seeded, so it is **not** in a prod dump; `pnpm db:import:test` leaves the test DB content-empty for kosztorys flows. Seed it separately: `perf-seed-kosztorys.ts` for a synthetic set (no external deps) or `seed-kosztorys.ts` for the realistic rozpiska (reads the live template sheet), with the seed's DB env pointed at `DB_POSTGRES_URL_TEST`.
 
-## S-03 — kosztorys-stages
+## EX-448 — stable per-row ids for expense line-items
 
-**In review** — pending author sign-off. Phases 1–3 manual rows already confirmed (1.5, 2.5, 2.6, 3.4); Phase 4 (Editor UI) verified 2026-07-10 (OWNER `e2e@wykonczymy.test`, investment 7, 5435 test DB, throwaway `:3010` server) — all rows below pass, manual-check gate now green.
+**In review** — all automated checks green (tsc 0, eslint 0, unit 10/10). Pure refactor of the
+investment-expense dialog (index-as-identity → stable row `id`; retired `fileInputKey`/reindex
+machinery; reactive `useInvoiceFiles` store). No new user-visible behavior, so the boxes below are
+**regression** checks — the observable flows the id-rekey could break. **One 🔴 was caught + fixed at
+the review gate** (batch scan silently skipped generation — see box 1); its browser guard is filed to
+**EX-447 §3** (`e2e-backlog`). Standalone change (not a kosztorys slice); merges to **staging**.
 
-Setup: run the app against the **5435 test DB** (see intro — S-03 migration is applied there; seed a kosztorys into it first, the dump won't carry one). Log in as **OWNER/MANAGER** (stage controls require MANAGEMENT_ROLES; `ADMIN`/`PASS` env is stale — mint a temp OWNER via the Local API script with `skipRevalidation`). Open an existing investment's **Kosztorys** tab with ≥1 section and items across the three price views.
+Setup: run against the **5435 test DB** (see intro), log in as OWNER/MANAGER (expense dialog needs
+MANAGEMENT_ROLES), open "Nowy wydatek" with type `INVESTMENT_EXPENSE` + an investment selected. Need a
+real `OPENROUTER_API_KEY` in `.env` for the scan/fill boxes. Have ≥3 receipt images ready.
 
-### Phase 4: Editor UI — stages
-
-- [x] **4.5 — Add stage → new column; second stage → existing rows show 0.** `＋ etap` adds an "Etap N" column (remount-key check — no column ⇒ `stagesKey` isn't forcing the dsg remount). Second `＋ etap` → second column; existing rows show `0`, not blanks. _Verified: two ＋etap clicks appended Etap 8 & 9 columns (no page reload → stagesKey remount OK), DB ordinals 8/9 persisted, all existing rows showed 0._
-- [x] **4.6 — Rename a stage via its header, persists across refresh.** Type a label, blur/Enter, reload → sticks. Empty label → header shows `Etap N` placeholder and persists `null`. Tabbing through with no change issues no write (no-op guard). _Verified: renamed Etap 9 → "Malowanie", survived reload; cleared → persisted `NULL`, header reverted to "Etap 9" placeholder. No-op guard confirmed by code (`use-kosztorys-editor.ts:307`)._
-- [x] **4.7 — Progress entry → Pozostało recomputes live; view toggle recomputes.** Enter a done-quantity → "Pozostało" updates and equals `row net − Σ(stage qty × view price − discount)`. Toggle Klient / Z narzędziami / Bez narzędzi → stage values and Pozostało recompute under each view's price. _Verified: row 1 Etap3=2 → Pozostało −19,00→−57,00 live (=19 − 3×19). Toggle Z narzędziami → Netto 665, Pozostało −1995 (=665 − 4×665) — formula holds under second view._
-- [x] **4.8 — Progress persists across reload; no duplicate row on re-entry (upsert).** Reload → quantities persist. Re-edit the same item×stage cell → updates in place (`ON CONFLICT` upsert), no duplicate `stage_progress` row. _Verified: qty persisted across reload (Etap3=5); re-edit 2→5 kept same row id 521, `stage_progress` count stayed 521 (no dup)._
-- [x] **4.9 — Delete a stage with progress is blocked (toast); clear + delete removes column.** Non-zero quantity → header ✕ blocked with toast "Najpierw wyczyść ilości wpisane w tym etapie". Clear all to 0 → ✕ removes the column. _Verified: ✕ on Etap 1 (340 nonzero progress rows) blocked, exact toast shown (react-toastify), stage row untouched. ✕ on a clean stage (no non-zero progress) removed its column (9→8 stages)._
-- [x] **4.10 — EMPLOYEE no access; sections/items/reorder/discount unchanged; financials unchanged.** EMPLOYEE still can't open the editor. OWNER/MANAGER: add/remove/reorder items, rename/remove sections, discount edits, three price views, per-section subtotals all intact. Transfer balances / marża / bilans elsewhere unaffected (slice is additive). _Verified: temp EMPLOYEE hitting `/inwestycje/7/kosztorys` redirected to `/`. OWNER: three views recompute distinct Suma netto (643 940 / 1 259 938 / 354 167), per-section subtotals render (view-dependent), item delete works (1000→999), reorder ("Przesuń w górę/dół") + discount (Rabat) controls render. Financials additive-only — no transfer code touched (design-verified)._
-
-### Findings — 2026-07-10
-
-Pass ran clean — **no bugs found**, all six Phase-4 boxes ticked. No open findings; nothing blocks S-03 from `Done`.
-
-- Test DB left dirty (extra stages, a renamed/deleted stage, row-1 stage progress, one deleted item on investment 7) — reseedable via `perf-seed-kosztorys.ts` against `DB_POSTGRES_URL_TEST`. A temp EMPLOYEE (`temp-employee@wykonczymy.test`) was minted in the test DB for the access check.
-- **Test disposition (coverage) — DONE 2026-07-10.** Coverage added for the highest-value boundaries:
-  - **integration** (server action → DB, assert persisted state): `src/__tests__/lib/actions/kosztorys-stages.test.ts` — `removeStageAction` delete guard (blocked with progress / deletes when cleared to 0 / deletes when empty) and `setStageProgressAction` `ON CONFLICT` upsert (re-entry mutates the same row, no duplicate).
-  - **unit**: `src/__tests__/kosztorys-calc.test.ts` — `rowRemainingForView` over-completion (negative Pozostało, the 4.7 behavior) + amount-discount path.
-  - All green. DB tests gated on `DB_POSTGRES_URL`/`PAYLOAD_SECRET` (local dev DB, `--env-file=.env`), self-cleaning fixtures.
-
-## receipt-scan-line-items (EX-443)
-
-**In review** — all automated checks green. Human gate **driven 2026-07-11** across two agent passes (JPEG images + garbage.png, then real PDFs + Castorama/Leroy PNGs); all boxes below pass, **all findings closed (0 open)**. The one real finding (a sentinel row saving with a hallucinated amount) was fixed with a schema guard + regression test. Standalone change (investment-expense dialog), not a kosztorys slice.
-
-> **Prereq (satisfied 2026-07-11):** `OPENROUTER_API_KEY` in `.env` was a placeholder; a real OpenRouter key was in place for both verification passes (extraction calls succeeded). The key gates the fill flow, nothing else.
-
-Setup: run the app against the **5435 test DB** (see intro), log in as OWNER/MANAGER (expense dialog needs MANAGEMENT_ROLES), open "Nowy wydatek" with type `INVESTMENT_EXPENSE` + an investment selected. Have a few receipt image files ready.
-
-### Phase 3: Batch multi-file add
-
-- [x] "Dodaj paragony" picks N images → N line-item rows, each showing its filename in the FV input; the first image reuses the lone initial blank row (no leading empty row). _Verified pass 1: batch-add 3 JPEGs → 3 rows, no leading empty row, each FV shows its own filename in order._
-- [x] Removing a middle row keeps every other row's attached image aligned to its row (no off-by-one on save). _Verified pass 1: batch-add 3 → remove middle → **saved**, and the persisted `transactions.invoice` for each surviving row pointed at the correctly-shifted media (removed media not linked). This is the "on save" half the prior partial pass left open — now closed._
-
-### Phase 4: Fill orchestration
-
-- [x] Batch-add the receipts, click "Wypełnij z paragonów": rows stream in with correct description / amount (brutto) / category; the "Odczytano X/M" counter advances; per-row spinner shows while in flight. _Verified pass 1 (JPEGs, exact ground-truth amounts) + pass 2 (**PDF-native path** — the reason for the model choice): Telmak 300.00 / 886.50 filled via the native engine, supplier=Dostawca not Odbiorca, date correct; media rows `application/pdf`._
-- [x] A receipt with an unrecognizable / hallucinated category yields a **blank** `expenseCategory` (never a wrong one); the required-field validation forces a manual pick. _Verified pass 2 (the real mismatch case pass 1 couldn't reach): the wv-05177 row's model-suggested category didn't exact-match investment 6's list → `resolveExpenseCategoryId` returned `''`, field blank, manual pick forced. Other rows resolved to valid members (narzędzia / inne). No invented category persisted._
-- [x] Force one extraction failure (e.g. a garbage image): that row stays blank + marked "nie odczytano", the others succeed, the toast reports the failure count. _Verified pass 1 (garbage.png): degraded to the graceful `UNREADABLE_RECEIPT` sentinel in Opis (`NIE UDAŁO SIĘ ODCZYTAĆ !!! :(`), other rows filled fine. **Benign divergence from the box wording:** the soft-sentinel path, not the hard red "nie odczytano" marker + dev toast — matches the code's current design (see finding)._
-- [x] Manually filling a row's description/amount before clicking leaves that row untouched (skip-non-empty). _Verified pass 1._
-- [x] Save: each scanned row's `transactions.invoice` points at the right media, with **no duplicate** media docs created (verify via admin / DB) — confirms upload-once threading. _Verified both passes against `wykonczymy-test`: tx→invoice media one-to-one, distinct ids, total media count steady on save (upload-once holds — telmak media = exactly 2 rows, no dup on save)._
-
-### Findings — 2026-07-11
-
-Partial pass (agent, 5435 test DB, throwaway `:3010` server, OWNER `e2e@wykonczymy.test`, investment 6). Only Phase 3 was driven; Phase 4 handed back to the human. Phase 3.1 passed (batch-add 3 receipts → 3 rows, no leading empty row, each FV shows its own filename in order). Phase 3.2 surfaced the finding below; Phases 4.1–4.5 not driven.
-
-- [x] **Stale FV filename after removing a middle receipt row (display only) — FIXED 2026-07-11.** After batch-adding 3 receipts (rows show receipt1/receipt2/receipt3) and removing the **middle** row, the surviving second row's FV input displayed `receipt2` (the removed file) instead of `receipt3`. Root cause: `handleRemove` reindexed the file/mediaId maps (`reindexAfterRemoval`) but was the only mutation that did **not** bump `fileInputKey`, unlike batch-add/reset/type-switch — so the uncontrolled `FileInput`s (keyed `file-${fileInputKey}-${index}`) never remounted to re-read `initialFileName={getFileName(index)}`. The underlying map WAS reindexed correctly (save alignment fine by code), so this was display-only. **Fix:** added `setFileInputKey((k) => k + 1)` to `handleRemove` at `src/components/forms/expense-form/expense-form.tsx:106`. **Re-verified in the browser:** batch-add 3 → remove middle → the two rows now show `receipt1` + `receipt3` (was `receipt1` + `receipt2`). **Save half now closed** (see the 2026-07-11 full-pass finding on 3.2). **Test disposition:** test-driven-debugging · e2e — the defect only manifests through the real uncontrolled-input remount behavior, so a Playwright spec (batch-add → remove middle → assert row 2's FV filename **and** the saved `invoice` media) is the honest regression guard; the pure map logic (`reindexAfterRemoval`) is already unit-coverable and not where the bug lived. **E2e filed as EX-447** (e2e-backlog) alongside the fill-race spec.
-
-### Findings — 2026-07-11 (full pass, both agent runs)
-
-Two passes drove the whole section against `wykonczymy-test` (investment 6, throwaway `:3010`, OWNER `e2e@wykonczymy.test`). **Pass 1** — 3 WhatsApp JPEGs + garbage.png (7/7 boxes). **Pass 2** — real PDFs (`WV 4-05184` Telmak 300.00, `WV 4-05177` Telmak 886.50) + Castorama/Leroy PNGs (4/4 focused checks). No source edits needed in either pass (`git status` clean). **All 7 boxes now ticked.** Two open, non-blocking findings:
-
-- [x] **`UNREADABLE_RECEIPT` sentinel row could save with a hallucinated amount — FIXED 2026-07-11 (decision: block).** Original framing ("silently saveable, blank amount") was **overstated**: when the model returns `amount: null` the row gets a blank amount and the existing `!item.amount` guard (`expense-schema.ts` superRefine) already blocks save. **The real hole:** if the model returns the sentinel description (`NIE UDAŁO SIĘ ODCZYTAĆ !!! :(`) **together with a hallucinated positive amount**, the amount guard passes and the row saves — garbage description + made-up amount. Author's call: **block on the sentinel itself** (option a), don't lean on the amount guard. **Fix:** both bulk superRefines (`bulkExpenseFormSchema` client + `createBulkExpenseSchema` server) now raise a `['lineItems', index, 'description']` issue when `item.description === UNREADABLE_RECEIPT` ("Nie udało się odczytać tego paragonu — popraw pozycję ręcznie"), forcing a manual correction before save. **Test disposition — DONE:** test-driven-debugging · unit — `src/__tests__/transfer-schema.test.ts` › "UNREADABLE_RECEIPT sentinel row is blocked" (4 cases incl. the killer sentinel-with-positive-amount on both schemas); red→green, 61/61 pass, typecheck clean.
-- [x] **PDF-native single-file latency is high (~17.5 s for one no-text-layer PDF) — OBSERVATION, no fix owed.** `WV 4-05184` took 17.5 s to extract vs ~3.3–3.9 s for the other PDF and the PNGs. It's the native PDF engine parsing a scan with no text layer, not a bug; under `FILL_CONCURRENCY=4` the batch still completes fine, and a lone large scanned PDF is simply the slow path. Logged so the number isn't a surprise later. **Test disposition:** no automated test — latency of a third-party engine, no behavioral defect to guard.
-- [x] **4.3 sentinel path vs box wording — DISMISSED (benign divergence, documented).** The garbage-image box expects a hard red "nie odczytano" marker + failure toast; the code instead degrades to the soft `UNREADABLE_RECEIPT` sentinel in Opis with no red marker and no dev toast (the `NODE_ENV`-gated toast block only fires on a thrown extraction error, not on a graceful sentinel). The row is clearly flagged (garbage description, blank amount) and other rows are unaffected, so the observable guarantee — bad receipt doesn't corrupt the batch — holds. The wording is stale vs the current graceful-sentinel design; the open finding above is the real follow-up. **Test disposition:** no automated test — wording reconciliation, folded into the sentinel-save decision.
-
-### Delta re-review — 2026-07-12 (PR, 18 commits past the archive gate)
-
-The open PR gained ~18 refactor commits after the slice was archived (Zod v4, nav credits→balance +
-TopNav server component, invoice-thumbnail→preview button, note-dialog→note-popover/RevealPopover,
-keep-open→store, extract-receipt by-bytes). Full read-only fan-out + /simplify re-run clean; ledger:
-`context/archive/2026-07-11-receipt-scan-line-items/review-gate-delta-2026-07-12.md`. One manual check owed:
-
-- [ ] **Notatka hover-popover reachability (hover bridge).** In the transakcje table, hover a long/legacy
-      `notatka` cell → the truncated one-liner opens a reveal panel → **move the cursor across the ~4px gap onto
-      the panel** → the panel must **stay open and scroll**, not close under the cursor. Also check a row near the
-      viewport bottom (panel flips above). Regression from the note-dialog→note-popover refactor; fixed with a
-      150ms hover-close bridge (`reveal-popover.tsx`), verified structurally, **owes a real-pointer browser check**
-      (pointer-timing is flaky to assert in Playwright). **Open — blocks marking the PR delta done.**
-
-### Findings — 2026-07-12 (live full pass, all review surfaces, `388d991..HEAD`)
-
-Drove the whole review against `wykonczymy-test` (5435, throwaway `:3010` server on `.next-e2e`, OWNER,
-investment 6 = Apenińska 2/37). Working tree was **under active edit** throughout (many Fast Refresh cycles),
-so every check was re-confirmed against current source. **The rewritten receipt scan — the review's highest-risk
-surface — was verified end-to-end with real fixtures** (a no-text-layer PDF + a PNG):
-
-- **Scan flow (1a–1h) — all pass.** Batch-add PDF+PNG → "Wypełnij z paragonów" → both rows filled from real
-  vision extraction (PDF→`Telmak Kędzierski 04.07.2026` / 300, PNG→`Castorama` / 174.89; notes + other-category
-  `narzędzia`/`inne` resolved). **No media created mid-scan** (test-DB `media` held at 950 across the whole scan —
-  confirms the by-`File` action creates no record). **Opis rename applied client-side** (files renamed to
-  `telmak-…-….pdf` / `castorama-….png`). **Upload-once at submit, no duplicates:** clean submit created exactly
-  **2 media** (950→952) + **2 `INVESTMENT_EXPENSE` rows**, each tx→its own renamed media 1:1 (fire-and-forget, so
-  the write lands a beat after the dialog closes). **Validation gate holds** — submit blocked until each row's
-  required `expenseCategory` (Materiały budowlane/…) is picked; the scan fills `category` (other-category) but
-  correctly leaves `expenseCategory` to the human. 30s per-attempt timeout (`RECEIPT_TIMEOUT_MS`, AbortController)
-  - fallback-model retry + `UNREADABLE_RECEIPT` sentinel confirmed in `openrouter.ts`/`extract-receipt.ts`. Client
-    compression logged (`[compress] receipt.png …`).
-- **Keep-open store migration (2a–2d) — pass.** Checkbox renders; default (unchecked) closes on submit;
-  `openDialog` resets `keepOpen:false` on every fresh open and `submitOptimistically` leaves it untouched for the
-  retry (`optimistic-form-store.ts`), context→Zustand migration complete across all dialogs.
-- **TopNav server component / Suspense (3a, 3b) — pass.** Saldo balance chip renders under Suspense (live,
-  earlier); `NavBackButton` is a client island that returns null unless `pathname.endsWith('/kosztorys')`.
-- **Invoice preview button + print (4, 5b, 5c) — pass.** Invoice-cell PDF preview dialog opens (live); statically
-  imported dialog with `Zamień`/`Usuń`/`Drukuj`/`Pobierz`; PDF print fires (live); `handlePrint` has the
-  `if (!isImage && !isPdf) return` no-op guard + `if (!printWindow) return` popup guard, DOM-API rewrite. _Image
-  print (5a) not re-driven — `window.print()` on headed Chrome is an OS-modal that wedges the MCP browser; PDF path
-  already exercises the same code._
-- **Note popover (6a, 6b) — pass.** Hover reveals the panel (live); `if (!note) return null` for the null case.
-  _The hover-**bridge** reachability box above stays open — needs a real-pointer check._
-- **Zod v4 migration (7a–7e) — pass.** Expense validation messages fire live; **zero** stale v3 API in `src`
-  (`ZodIssueCode` / `z.string().email()` both absent), `code: 'custom'` + `z.email()` throughout the schemas.
-- **Gates (8a–8c) — pass.** Typecheck exit 0; unit suite **839 passed / 0 failed** (24 skipped); the type-aware
-  `@typescript-eslint/no-deprecated` pass reports **zero** deprecation hits (the Zod migration is clean).
-
-- [ ] **`pnpm lint` fails — 15 `no-undef` errors in `scripts/inspect-sheet.mjs` (out of scope, PRE-EXISTS the
-      review).** All 15 errors (`'process'/'console' is not defined`) are in one root-level POC script added
-      2026-07-10 in `9266d4b` ("add poc artifacts"), an ancestor of the review boundary `388d991` — so CI lint was
-      already red before the review; **not a review regression.** Root cause: eslint's Node-globals/CLI-scripts
-      allowlist covers `src/scripts/**`, not root `scripts/**`, so this `.mjs` gets browser globals. **Needs
-      human:** decide the fix — add `scripts/**` to the eslint CLI-scripts block, or delete/gitignore the POC
-      artifact. Logged per the pass's "never skip an out-of-scope problem" rule. **Test disposition:** no automated
-      test — lint/config hygiene, no runtime behavior to guard.
-
-## S-05 — kosztorys-vat
-
-Manual QA completed 2026-07-10 (OWNER, investment 6, fresh dev server on :3000).
-
-> Deploy gate (not a manual check — does not block `Done`): a human applies the Phase-1 migration to prod before the code ships. Owed at deploy, guarded by the pre-push hook.
-
-### Phase 1: Schema + query wiring (backend)
-
-- [x] Tree carries real `vatRate` (not 0) on a local investment
-- [x] Payload admin shows VAT field, default 0.08
-
-### Phase 2: Editor UI — brutto column, Suma brutto, in-editor rate input
-
-- [x] Netto 100.00 → Brutto 108.00; Suma brutto = Suma netto × 1.08
-- [x] Brutto toggle hides/shows column + Suma brutto cleanly (remount key)
-- [x] Editing VAT updates all brutto live and persists across reload
-- [x] Brutto consistent across all three price views
-- [x] No regressions to netto totals, coeffs, stages, autosave
+- [ ] **Batch scan → generate populates rows (the fixed 🔴).** "Dodaj paragony" pick ≥2 receipts → click "Wypełnij z paragonów" → rows fill with description/amount. **Must NOT silently skip** — this is the regression the write-through-ref fix closed (pre-fix the fresh batch found zero eligible rows).
+- [ ] **Remove a middle row keeps every other row's file + FV label aligned.** Batch-add 3 → remove the middle row → surviving rows show their OWN filenames (row 2 = receipt #3, not #2), no remount flicker; on save each `transactions.invoice` points at the correctly-aligned media (no off-by-one).
+- [ ] **Attach / replace / remove a single row's FV updates the label in place.** Attach a file → label shows its name; replace via the preview modal (Zamień) → label updates; the row's other fields untouched.
+- [ ] **Reset / clear mints a fresh blank row.** After scanning/filling, reset the form (Wyczyść) → one blank line-item, empty FV input (fresh id — the FileInput remounts), re-picking the same files works.
+- [ ] **AI rename applies to the uploaded file.** Scan a readable receipt → the FV label reflects the Opis-based name → on save the media uploads under that name.
 
 ## S-08 — kosztorys-delete-guard
 
@@ -147,11 +29,11 @@ Manual QA completed 2026-07-10 (OWNER, investment 6, fresh dev server on :3000).
 
 ### Phase 2: UI pre-check + block surfacing
 
-- [x] Row with pomiar / recorded progress: blocked with toast, row stays. _Verified: deleted a populated row (all 999 items carry `measured_qty<>0`) → toast "Najpierw wyczyść wartości wpisane w tej pozycji", count stayed 999, row untouched in DB._
-- [x] Plan-only row (przedmiar/price only): still deletes instantly. _Verified: added a blank row (id 1001, `measured_qty 0`/`planned_qty 0`) → delete removed it with no toast, count 1000→999, gone from DB._
-- [x] Section with a populated item: blocked; empty/plan-only section still deletes. _Verified: "Usuń sekcję" on Sekcja 1 (populated) → toast "Najpierw wyczyść wartości w pozycjach tej sekcji", `window.confirm` never reached (pre-check short-circuits), section survives. New empty "Nowa sekcja" (id 11, 1 blank item) → deleted after confirm, section + item gone from DB._
-- [x] No vanish-then-reappear flicker on a blocked delete. _Verified: the client pre-check (`isRowPopulated` → toast + `return`) runs synchronously before any optimistic `setRows`, so no removed state is ever rendered; observed the row count never left 999 on a blocked delete._
-- [x] Stage (column) delete still blocks on recorded progress (regression). _Verified: "Usuń etap" on Etap 1 (stage id 2, 340 non-zero `stage_progress` rows) → toast "Najpierw wyczyść ilości wpisane w tym etapie", stage survives (8 stages intact). Unchanged from S-03 4.9._
+- [x] Row with pomiar / recorded progress: blocked with toast, row stays. _Verified: deleted a populated row (all 999 items carry_ `measured_qty<>0`_) → toast "Najpierw wyczyść wartości wpisane w tej pozycji", count stayed 999, row untouched in DB._
+- [x] Plan-only row (przedmiar/price only): still deletes instantly. _Verified: added a blank row (id 1001,_ `measured_qty 0`_/_`planned_qty 0`_) → delete removed it with no toast, count 1000→999, gone from DB._
+- [x] Section with a populated item: blocked; empty/plan-only section still deletes. _Verified: "Usuń sekcję" on Sekcja 1 (populated) → toast "Najpierw wyczyść wartości w pozycjach tej sekcji",_ `window.confirm` _never reached (pre-check short-circuits), section survives. New empty "Nowa sekcja" (id 11, 1 blank item) → deleted after confirm, section + item gone from DB._
+- [x] No vanish-then-reappear flicker on a blocked delete. _Verified: the client pre-check (_`isRowPopulated` _→ toast +_ `return`_) runs synchronously before any optimistic_ `setRows`_, so no removed state is ever rendered; observed the row count never left 999 on a blocked delete._
+- [x] Stage (column) delete still blocks on recorded progress (regression). _Verified: "Usuń etap" on Etap 1 (stage id 2, 340 non-zero_ `stage_progress` _rows) → toast "Najpierw wyczyść ilości wpisane w tym etapie", stage survives (8 stages intact). Unchanged from S-03 4.9._
 
 ### Findings — 2026-07-10
 
@@ -160,84 +42,689 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - Test DB left dirty on investment 7 (one added-then-deleted blank item id 1001; one added-then-deleted "Nowa sekcja" id 11 — both net-zero; item/section id counters advanced). Reseedable via `perf-seed-kosztorys.ts` against `DB_POSTGRES_URL_TEST`. Row/stage/section content otherwise unchanged from the S-03 pass state.
 - **Test disposition (coverage) — already DONE.** The server guards (the authority) are covered by integration tests: `src/__tests__/lib/actions/kosztorys-delete-guard.test.ts` asserts persisted state for the blocked/allowed item + section deletes (cases a–e). The UI pre-check is a thin client mirror of that predicate; per the two-plane lesson the server test + this manual pass cover the bridge. No further automated test warranted this slice — browser-level coverage is deferred to S-13 per the plan's "What We're NOT Doing".
 
-## S-06 — kosztorys-snapshots
+      fixed to avoid a judgment call on whether a 0 robocizna row should ever hide.
+      **Test disposition:** no automated test — cosmetic legend content, cheaper to eyeball; no defect.
 
-**In review** — verified 2026-07-10 (OWNER `e2e@wykonczymy.test`, investment 7 = 999-item perf seed, 5435 test DB, throwaway `.next-e2e` `:3010` server). All Phase 1–5 rows pass except 5.7 (post-deploy gate, open). Backend rows (1.x, 2.7, 2.8, 3.5, 3.7, 5.5, 5.6) driven via `src/scripts/verify-s06.ts` against `DB_POSTGRES_URL_TEST`; UI rows (2.6, 3.6, 4.x) driven in the browser. **One blocking bug found and fixed** during the pass (see Findings — the "Wersje" drawer never loaded its list). Note: 4.3 (E2E save→edit→restore) is still deferred to `/10x-e2e` and now MUST exercise the drawer through the real toolbar button (a pure server-action test would have missed the load-on-open bug).
+## kosztorys-zaliczka-v2 — materiały netto/brutto w Podsumowaniu (slice A)
 
-### Phase 1: Schema + serialization/restore core
+### Phase 1: Materiały as brutto through the waterfall + formula hint
 
-- [x] 1.5 On a seeded investment, serialize → mutate → restore returns the tree to the serialized state — id-independent tree fingerprint matches after restore (mutated ≠ baseline, restored == baseline)
-- [x] 1.6 An injected mid-restore error leaves the live tree intact (rollback), not half-wiped — bad stage `ordinal` throws mid-restore; tree fingerprint unchanged after the throw
-- [x] 1.7 Restored subcontractor/brutto prices match pre-restore values (settings rewritten) — coeffs+VAT changed then restored back to baseline; round-trips at identical scale (no double-transform)
+- [ ] Podsumowanie in **Netto** axis: „Materiały", each category row, Łącznie, and Do zapłaty all show `brutto/(1+VAT)`; in **Brutto** axis they show the raw amount; the two columns differ by the VAT.
+- [ ] The formula hint appears on materiały rows and reads correctly (VAT subtracted).
+- [ ] Robocizna („Suma prac wykonanych") figures are unchanged; udział percentages still sum sensibly.
+- [ ] Share/preview render (`preview`) renders the same derived figures without owner-only links/screams.
 
-### Phase 2: Capture triggers + inline pruning
+## kosztorys-tryb-mieszany — cash-settlement view w Podsumowaniu (slice B)
 
-- [x] 2.5 An open editor produces one `auto` snapshot per ~10-min interval; the interval clears on unmount — verified by code (`kosztorys-editor-v2.tsx`: single `setInterval` at 10 min → `snapshotAction`, `clearInterval` in the effect cleanup, keyed on `investmentId`) + `snapshotAction` proven to write exactly one `auto` row. A live 10-min wait was not driven (impractical; failure mode structurally impossible)
-- [x] 2.6 "Zapisz jako…" with a name creates a `manual` row with that label — dialog saved "QA wersja testowa"; DB row id 64 `kind=manual label='QA wersja testowa' taken_by=62`(OWNER)
-- [x] 2.7 Deleting a section/stage creates an `auto` row immediately before the delete, every time — auto count +1 and the snapshot holds the full pre-delete tree (999 items) while the deleted section had 100
-- [x] 2.8 After 50+ auto snapshots on one investment, only the newest 50 remain — 55 inserts + inline prune → 50 auto rows
+> **SUPERSEDED (2026-07-23/24, EX-536):** the **manual `C` cash input** below was **removed** — the owner flipped tryb mieszany to derive the cash (netto) part from **Σ netto wpłaty** (deposits bucketed by `vatPlane`, null⇒netto), not a typed field. Checks referencing typing `C` exercise a deleted control; do **not** run them. The live Mieszane behavior is verified in the consolidated batch section below (`kosztorys-podsumowanie-tabs`). Kept as history.
 
-### Phase 3: Restore action + forced pre-restore snapshot + listing
+### Phase 2: Panel wiring + cash-settlement UI
 
-- [x] 3.5 Restore reverts the tree + prices; a following restore of the auto-created pre-restore snapshot returns to the pre-restore state (mis-restore recoverable) — restore A matches state A, then restoring the pre-restore snapshot recovers state B
-- [x] 3.6 Restore fires revalidation — the editor shows restored data without a hard reload — a `window` marker survived the restore (soft `router.refresh` + remount, not a full reload); grid re-rendered
-- [x] 3.7 Restore never touches transfers/balances/marża — `transactions` (2833 rows), `cash_registers`, and investment core fields (name/address) all byte-identical before/after
+- [ ] Panel opens on **Netto** by default; grid columns/toggle default unchanged (still show all).
+- [ ] „Mieszana" shows netto-only waterfall + „Suma transzy" netto + the three cash rows.
+- [ ] ~~Typing `C` recomputes Reszta and Razem live~~ — **removed control (see SUPERSEDED note above).**
+- [ ] Netto and Brutto axes unchanged from before.
+- [ ] Preview render (`preview`) shows the block with a **disabled** input.
 
-### Phase 4: "Wersje" drawer UI
+## kosztorys-podsumowanie-tabs — zaliczka-v2 batch: tabbed Podsumowanie, Mieszane via vatPlane, wpłaty base fix (EX-536)
 
-- [x] 4.4 Drawer lists named manual versions prominently and auto snapshots as timestamped history, with author — "NAZWANE WERSJE" (label bold + timestamp + author "E2E User") and "HISTORIA AUTOMATYCZNA" (timestamp + "Auto · Temp Employee")
-- [x] 4.5 Restore shows the confirm dialog and, on confirm, the grid reflects the restored tree without a hard reload — `window.confirm` message correct; drawer auto-closed; grid re-rendered without a hard reload (marker survived)
-- [x] 4.6 "Zapisz jako…" requires a name; the label appears in the list; canceling does nothing — "Zapisz" disabled while the input is empty; label appears under "NAZWANE WERSJE"; Anuluj created no snapshot (count unchanged)
-- [x] 4.7 Restore of a ~1000-row kosztorys completes acceptably and re-renders correctly — 999-item restore completed and the grid re-rendered correctly (still 999 pozycji). **~12.6 s server time** — completes but slow; see Findings
+**Not yet driven** — collected at the branch-wide review gate (`.review-gate/staging-batch-2026-07-24.md`), authored per the "no manual checks; register them" directive. Consolidates the manual surface of the whole zaliczka-v2 / tryb-mieszany arc as **actually shipped** (supersedes the typed-`C` slice-B checks above). Drive against the **5435 test DB**, OWNER/MANAGER, an investment with a seeded kosztorys + deposits.
 
-### Phase 5: Daily GC cron
+### Podsumowanie tabs + money axis
 
-- [x] 5.5 Hitting the endpoint with the secret prunes aged snapshots and returns a count — `GET /api/cron/cleanup` with `Authorization: Bearer <CRON_SECRET>` → `200 {"ok":true,"snapshots":{"deleted":1}}`; no/wrong secret → `401` (fail-closed)
-- [x] 5.6 A dormant kosztorys's aged `auto` snapshots are removed by the job (inline pruning never would) — an 8-day-old `auto` and a 400-day-old `manual` are deleted; fresh `auto`/`manual` kept
-- [x] 5.7 `CRON_SECRET` is set in Vercel and the scheduled run appears in Vercel cron logs (post-deploy) — **deferred to EX-429** (deploy-time gate, cannot verify locally). Cron is registered (`vercel.json`: `/api/cron/cleanup` `0 3 * * *`) and the route auth is proven above. `CRON_SECRET` **set in Vercel 2026-07-11** (all three envs, via CLI) and promoted to a required server env var (`src/lib/env/schema.ts`). Post-deploy confirmation (the scheduled run appearing in Vercel cron logs) is tracked as a standalone follow-up in **EX-429**, no longer a slice-gate item.
+- [ ] Podsumowanie renders as **tabs**; the panel money-axis toggle offers **Netto / Brutto / Mieszane**; a `Description` explains Mieszane ("częściowo netto, częściowo brutto").
+- [ ] **Netto** vs **Brutto**: materiały (+ each category, Łącznie, Do zapłaty) differ by exactly the VAT (`brutto/(1+VAT)` vs raw); robocizna („Suma prac wykonanych") unchanged between axes.
+- [ ] **Mieszane**: two stacked tables — netto section (Robocizna + Materiały = Łącznie − wpłaty netto → Do zapłaty netto) and faktura section (Reszta brutto − wpłaty brutto → Do zapłaty brutto). Rabat > 0 → trailing informational row. No crash when Do zapłaty goes negative (overpaid).
+- [ ] **Materiały brutto→netto reduction**: the reduction-% control drives the netto materiały figure (default = VAT rate); Łącznie/Do zapłaty follow. Clearing/changing % recomputes live.
 
-### Findings — 2026-07-10
+### Deposits + wpłaty base (⚠ the code-review WARNING fix — money-semantics)
 
-- [x] **"Wersje" drawer never loaded its list (list + restore entirely non-functional)** — the drawer opens _programmatically_ (toolbar `onOpenVersions` → `setVersionsOpen(true)`), but `load()` only ran inside `handleOpenChange`, which Radix's `onOpenChange` fires only on _user-initiated_ changes — so opening never triggered the fetch and the drawer sat on "Wczytywanie…" forever, at `src/components/kosztorys/kosztorys-versions-drawer.tsx`. **Fixed:** fetch on the `open` prop via `useEffect(() => { if (open) load() else setSnapshots(null) }, [open])`; re-verified the full list → confirm → restore flow. **Test disposition:** test-driven-debugging · e2e — the bug is invisible to a server-action test (the action is fine); the deferred 4.3 E2E must open the drawer through the real toolbar button and assert the list renders + a restore round-trips. File it against the `e2e-backlog` obligation for this slice.
-- [x] **Restore of ~1000 rows takes ~12.6 s — FIXED 2026-07-11.** Rewrote `src/lib/kosztorys/restore-kosztorys.ts` from row-by-row `payload.create` to ONE bulk `INSERT … RETURNING id` per level on the tx-scoped Drizzle handle. Measured **~216 ms for 3030 rows** (~50–60× faster). Safe: the only hooks are cache revalidation (already `skipRevalidation`-suppressed + redone by the action) and validation is redundant (snapshot was valid when captured). Raw-SQL bypass hardening (RETURNING-order reliance, column-drift guard, owed rollback test) tracked in **EX-430**. **Test disposition:** no automated test for the perf number; guarded functionally by the roundtrip identity + restore-action tests.
-- [x] **Dev-only React warning: "side-effect in render function…" — SKIPPED 2026-07-11 (decided).** The render-phase conditional `setState` (`setAwaitingTree`/`setRemountKey`) in `src/components/kosztorys/kosztorys-editor-v2.tsx:37-40` is the documented "store info from previous render" remount pattern — **not** the drawer fetch fix. Dev-only console hygiene, pre-dates the drawer bug, non-blocking; deliberately not moving the remount trigger into an effect. **Test disposition:** no automated test.
-- [x] **`restoreSnapshotAction` / `saveSnapshotAction` PERF line reports `0 ms`** — **FIXED 2026-07-11.** Not a timing bug — a misread of a lap timer. `perfStart` (`src/lib/perf.ts`) returns ms since the _previous_ `elapsed()` call, so `protectedAction`'s summary line `[PERF] ${label}` printed the last lap (the empty gap after "handler done", ~0 ms for these two actions since they pass no `revalidate`), not the total. The real ~12.5 s was logged all along on the indented `[PERF]   handler done` split. The handler `await` IS inside the timed region — the work was measured correctly; only the summary line's semantics were wrong. **Fix:** added a `started = performance.now()` at entry and print `performance.now() - started` on the summary line (`src/lib/actions/run-action.ts`), so it now reports true total elapsed while the splits keep using the lap timer. Verified against the real `protectedAction` module (mocked deps, 300 ms handler, no-revalidate shape) → summary printed `302ms`, not `0ms`. **Test disposition:** no automated test — instrumentation accuracy, eyeball-level; verified with a throwaway test, not kept.
+- [ ] **Wpłaty tab / deposit list**: shows the investment's INVESTOR_DEPOSIT rows only; plane pie splits netto vs brutto (null⇒netto bucket).
+- [ ] ⚠ **`wplatyNet` base fix — verify on an investment carrying a legacy `COMPANY_FUNDING` (or `OTHER_DEPOSIT`) row.** In **every** axis (Netto/Brutto/Mieszane), the „Wpłaty"/„Do zapłaty" figure must sum **only INVESTOR_DEPOSIT** — the legacy deposit must **not** inflate „Wpłaty". Before the fix the non-mixed axes folded it in (3 different totals per toggle); after, all surfaces agree. **This changes a client-facing figure on such investments — flagged for owner sign-off.** (Fresh COMPANY_FUNDING can't attach to an investment via the form per EX-557, so this only bites legacy/admin rows.) Regression-guarded by `src/__tests__/lib/db/get-deposit-transactions.test.ts`.
 
-## S-09 — kosztorys-preset
+### Wydatki + Robocizna tabs
 
-All UI-level boxes verified 2026-07-11 against the 5435 test DB (see per-box notes). Phases 1 & 4 are automated-only (migration up/down + real-DB serialize/apply specs — no manual rows). The boxes below are the UI-level flows the specs don't reach.
+- [ ] **Wydatki tab**: per-category materiały breakdown table + expense pie; Σ === materiały brutto.
+- [ ] **Robocizna tab**: per-etap „Suma transzy" table + Razem; the **„Postęp prac" bar** sits **below the table** with the caption „Ile zostało wykonane względem pierwotnych estymat z wyceny projektu" (no tooltip); percent can exceed 100% (bar caps, text shows the real overrun); hidden entirely when Przedmiar (plannedNet) ≤ 0.
 
-Setup: run the app against the **5435 test DB** (see intro — the S-09 preset migration is applied there; seed a kosztorys into it first). Log in as **OWNER/MANAGER** (save/seed require MANAGEMENT_ROLES). Open an investment's **Kosztorys** tab with a populated tree, and have a second **empty** investment ready for the seed flows.
+### Deploy note (migration ordering — deploy-time, not a code check)
 
-> UI wording note: "preset" was renamed to **"szablon"** across all Polish UI strings (code identifiers stay English), and the two save-as toolbar buttons ("Zapisz jako…" + "Zapisz jako szablon…") were merged into a **single "Zapisz jako…"** button whose dialog carries a **Wersja / Szablon** target toggle.
+- [ ] **Both `20260721_*` migrations must be applied to preview/prod before/with this merge** — `20260721_0_drop_kosztorys_stage_from_transactions` then `20260721_1_add_vat_plane_to_transactions`. The `vat_plane` SELECT in `getDepositTransactionsForInvestment` **500s** if the code ships before the migration runs. Human-applied via `pnpm db:migrate:prod` (per AGENTS.md); order: migrate **before** the code that reads the column lands.
 
-### Phase 2: Save-as-szablon — merged "Zapisz jako…" CTA
+## remove-section-coeff — drop per-section coeff tier + explicit section sidebar buttons
 
-- [x] Save a szablon from a seeded kosztorys via the toolbar **"Zapisz jako…"** CTA → **Szablon** tab → mode "Nowy" → success toast "Zapisano szablon". _(Verified 2026-07-11 vs 5435 test DB: preset row persisted, all 1000 items' job fields zeroed, prices kept, progress empty.)_
-- [x] Overwrite-by-name via the CTA's **Szablon → "Nadpisz istniejący"** mode replaces the payload in place (same szablon, new content). _(Verified: DB-delta — re-serialized under same preset id, single row, new content.)_
-- [x] Duplicate name in "Nowy" mode is rejected with the Polish message "Szablon o tej nazwie już istnieje". _(Verified via merged button: toast fired, no duplicate row.)_
+**Driven 2026-07-24** — all 5 sidebar checks pass (OWNER `e2e@wykonczymy.test`, investment 7, perf-seed, 5435 test DB migrated with `20260724_1_drop_kosztorys_section_coeff`, throwaway `:3010` server). Two apparent failures during the pass were **environment artifacts, not product bugs** (see Findings). Removes the per-section subcontractor markup coeff (`wToolsCoeff`/`ownToolsCoeff` on `kosztorys_sections`) — `effectiveCoeff` collapses to global(investment)→per-item-override only — and replaces the icon-only sidebar actions with explicit labeled buttons.
 
-### Phase 3: Seed-from-szablon — two entry points
+### Findings — 2026-07-24
 
-- [x] The **"Wypełnij z szablonu"** empty-state CTA appears **only** when the tree is empty; seeding it populates the grid (grid remounts and shows rows) with all planned/measured quantities zero and the target's VAT/coeffs unchanged. _(Verified: inv seeded 10 sections/1000 items/7 stages, all qty zero, settings 0.70/0.60/0.23 untouched, grid remounted.)_
-- [x] Creating a new investment with a szablon chosen in the **"Kosztorys z szablonu"** create-form picker → the new investment's kosztorys is pre-populated from it. _(Verified: investment 158 created via picker, seeded 10 sections/1000 items/7 stages, all qty zero.)_
-- [x] Seeding a **non-empty** kosztorys is rejected with the Polish message "Kosztorys nie jest pusty". _(Verified via message-mapping code review + no UI path for non-empty seed; automated test 4.2 covers the guard.)_
+- [ ] **Deploy note (unchanged, human-owned):** `20260724_1_drop_kosztorys_section_coeff` still owes application to preview/prod via `pnpm db:migrate:prod` before the code lands there. Applied to the 5435 test DB during this pass (the dry-run) with no issue. **Needs human:** run the prod/preview migration at deploy time. **Test disposition:** no automated test — deploy-ordering step.
 
-## receipt-scan-heic-and-filesize (EX-457)
+### Deploy note (migration ordering — deploy-time, not a code check)
 
-**In review** — all automated checks green (tsc, eslint, unit 14/14). The boxes below are the load-bearing device/platform gates that headless CI cannot cover; **4 of 4 ticked (2026-07-12)** — Safari native-decode, Chromium WASM fallback, sharp derivative render (on staging), and the oversize guard (>4 MB PDF blocked on a deploy) all confirmed.
+- [ ] **`20260724_1_drop_kosztorys_section_coeff` must be applied to preview/prod with this merge.** Drops `w_tools_coeff` / `own_tools_coeff` from `kosztorys_sections` **only** (the investment-level columns of the same name stay). Human-applied via `pnpm db:migrate:prod`. **Ordering is reversed vs the usual "migrate before push" rule** — that rule is for column _adds_ (new code needs the column to exist). This is a _drop_: sections are read through the Payload ORM (`payload.find`), which builds its `SELECT` from the collection schema, so dropping the columns while old code (whose field defs still list them) is live would 500 on a missing column. Deploy the **code first** (its removed field defs stop selecting the columns), **then** run the migration to drop them. Kosztorys data is throwaway pre-dogfooding, so no backfill is owed.
 
-Setup: run the app against the **5435 test DB** (see intro), log in as OWNER/MANAGER (expense dialog needs MANAGEMENT_ROLES), open "Nowy wydatek" with an investment selected. Have real **HEIC** photos (straight off an iPhone) and one oversized (>4 MB) file ready. Item 4 must be checked on a **Vercel preview deploy**, not local — the 4.5 MB cap is a platform behavior dev can't reproduce.
+## EX-564 — kosztorys-percent-rabat-bulk-apply
 
-- [x] **Safari-native HEIC spike (load-bearing).** On a real iPhone/Safari, attach a HEIC photo → CompressorJS `{ mimeType: 'image/jpeg' }` produces a **valid JPEG** (row thumbnail renders, not a blank canvas). If this fails, the WASM fallback must cover Safari too. — 2026-07-12, verified in Safari locally: valid JPEG, and noticeably **faster** than the Chromium/WASM path (consistent with the OS HEVC codec native-decode branch). If this was **desktop** Safari, the iOS-Safari majority path shares the same native-decode branch but hasn't been eyeballed on-device.
-- [x] **Chrome/Firefox desktop lazy fallback.** Attach a HEIC → the lazy `heic-to` WASM chunk loads (Network tab: not in the initial bundle, fetched only on pick) and produces a JPEG thumbnail. — 2026-07-12, verified in Comet (Chromium) locally: single- and multi-HEIC batch pick both convert to JPEG (batch exercises `registerFilesAt` concurrency cap + positional contract). Bundle-isolation sub-point (WASM absent from initial chunk, fetched only on pick) not yet eyeballed in Network tab.
-- [x] **Preview + sharp derivative render.** A freshly-uploaded HEIC-turned-JPEG shows a correct preview and its server-side sharp derivatives render (no broken/black image). — 2026-07-12, verified on **staging** (a Vercel deploy): a ~45 MB HEIC (`large.heic`) uploaded to `large-9f7604.jpg` (127.5 KB), main preview renders correctly in the image modal, and its server-side sharp derivative `large-9f7604-400x300.jpg` (18.5 KB, valid JPEG) exists in the shared blob store — no broken/black image.
-- [x] **Oversize guard on a Vercel preview deploy.** Attach a >4 MB file → blocked client-side with the Polish oversize toast **before** any request; confirmed on a preview deploy (platform 4.5 MB cap), not just local. — 2026-07-12, confirmed with a **>4 MB PDF** (PDFs skip compression, so they reach `guardSize` still oversized): blocked with the Polish oversize toast. Note: an oversized _image_ is **not** a valid test here — compression shrinks any high-res photo under the 4 MB cap first, so the guard is a correct no-op for images (a 45 MB HEIC and a 47 MB JPEG both passed by design).
+**Awaiting manual verification.** All automated checks green (tsc 0, full unit suite 1117 pass, lint 0). No DB migration owed — `investments.globalDiscountType` is a plain `text` field, so narrowing the stored global discount to amount-only needs no schema change. Percent global rabat stops being stored state and becomes a one-shot bulk-apply into every per-item rabat; the stored global discount is now amount-only; subcontractor views are rabat-free.
 
-**Follow-up findings (from manual checks):**
+Setup: run the app against the **5435 test DB** (see intro — seed a kosztorys into it first; the dump carries none). Log in as **OWNER/MANAGER**. Open an investment's **Kosztorys** tab → **Podsumowanie** tab (the „Rabat % na wszystkie pozycje" tool + „Rabat całościowy" select live in the settings bar there).
 
-- [x] **Media labels polluted with a ~30-char blob token** (e.g. `praga-17-06-2026-ed13f6-5b4d4f-3fyR3xjeRHZWrztkEQ4KkRZpKaMhxh.jpg`). Root cause: `addRandomSuffix: true` (commit `1da49ed`) made `@payloadcms/storage-vercel-blob` rewrite the `filename` field with the suffixed blob key; a _separate_ pre-existing double `appendShortId` (extraction + upload) added the second hex. **Fixed** 2026-07-12: reverted `addRandomSuffix`, deduped the short id to the upload boundary. Documented on **EX-394** (corrects its "overwrite risk closed by addRandomSuffix" claim). `test: TDD · unit` — `src/__tests__/receipt-filename.test.ts` guards the dedupe; the `addRandomSuffix` label-rewrite is plugin-level (config revert), **observable only end-to-end** → still owes the upload-a-receipt-and-check-stored-filename verification below.
-- [x] **Re-verify clean label after fix.** Upload a fresh receipt (scan path) → stored `filename` / opened-image label is `<opis>-<one-6hex>.<ext>` with **no** 30-char token and **no** double hex. — 2026-07-12, confirmed on **staging**: `large.heic` stored as `large-9f7604.jpg` — one 6-hex id, **no** 30-char blob token. This exercises a _direct_ upload (not the scan path), which validates the harder-to-test half end-to-end: the `addRandomSuffix` revert (the plugin-level rewrite no unit test can reach). The scan-path double-hex dedupe is deterministic and covered by `src/__tests__/receipt-filename.test.ts` — `buildReceiptFileName` adds no id, so a scan gets exactly the one id from `uniqueFileName`.
+### Phase 0: Subcontractor views are rabat-free
+
+- [ ] **Discount columns hidden in subcontractor views.** In **Klient** view the per-item rabat columns render; switch to **Z narzędziami** / **Bez narzędzi** → the rabat columns disappear entirely.
+- [ ] **Subcontractor prices are gross of rabat.** A row carrying a per-item rabat prices at full net in the two subcontractor views (no rabat subtracted); the same row in Klient view shows the discounted net. Section subtotals and „Suma" match (subcontractor total ignores rabat).
+- [ ] **Percent tool disabled while an amount „Rabat całościowy" is active.** Check „Rabat całościowy" and enter an amount → „Rabat % na wszystkie pozycje" greys out, its checkbox is disabled, and its hover hint explains why. Uncheck „Rabat całościowy" → the percent checkbox re-enables.
+
+### Phase 1: Percent bulk-apply tool
+
+- [ ] **Apply 10% → every row shows 10% rabat; persists after reload.** Check „Rabat % na wszystkie pozycje" to reveal the input, type `10` → „Zastosuj" → every item's rabat cell reads 10% (percent mode), totals drop accordingly, input clears. Reload → the per-item rabaty persist.
+- [ ] **Overwrite check.** Hand-set one row to a 50 zł (amount) rabat, then apply 15% → that row now shows 15% (percent), overwriting the 50 zł.
+- [ ] **Invalid input rejected.** With the percent input revealed, `0`, a negative, `>100`, and non-numeric input leave „Zastosuj" disabled (nothing written).
+
+### Phase 2: Amount-only stored discount
+
+- [ ] **„Rabat całościowy" is a checkbox → amount only.** Checking it reveals a netto **zł** amount field (no **%** option anywhere for the stored discount). Setting e.g. `5000` zł hides the per-item rabat columns and „Do zapłaty" drops by 5000; survives reload. Unchecking clears the discount.
+- [ ] **Version restore keeps the live amount discount.** With an active amount discount set, restore an older kosztorys version → the amount discount is untouched (restore no longer rewrites the global discount).
+
+## etap-tool-plane (EX-565) — per-etap rozliczenie plane + view-independent subcontractor settlement
+
+**In review** — automated checks green (tsc, full unit suite, lint, webpack build; Turbopack build is blocked only by the worktree's symlinked `node_modules`). Manual boxes below **not yet driven**. Gives each etap a `plane` (z/bez narzędzi, `null` = defaulted-to-z-narzędziami + warned) and rebuilds „Podsumowanie podwykonawców" as ONE view-independent settlement — each etap valued at its own plane's price, split + razem, one shared wypłaty pool. Klient view + client share must stay byte-for-byte unchanged.
+
+Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2_add_plane_to_kosztorys_stages` there first, then seed a kosztorys into it; the dump carries none). Log in as **OWNER/MANAGER** (stage controls need MANAGEMENT_ROLES; `ADMIN`/`PASS` env is stale — mint a temp OWNER via the Local API script). Open an investment's **Kosztorys** tab with ≥1 section and etapy across both planes.
+
+### Phase 1: Data layer
+
+- [ ] After migration + dev-server **restart**, the kosztorys editor loads without query errors (lessons.md: verify the running app, restart pre-migration servers)
+- [ ] Payload admin shows the plane select on a Kosztorys Stage
+
+### Phase 2: Settlement math
+
+- [ ] On a mixed-plane test kosztorys, „Suma wykonanej pracy" is identical in the Z and Bez views and equals the hand-computed per-plane sum
+
+### Phase 3: Etap header UI
+
+- [ ] Picking a plane updates the header icon instantly and survives a reload (persisted)
+- [ ] A fresh etap shows the default wrench + `TriangleAlert`; picking z narzędziami explicitly clears the warning
+- [ ] Client share page shows plain etap labels — no plane icons or warnings
+- [ ] Selecting a plane does not disturb grid state (sort, filter, unsaved edits)
+
+### Phase 4: Grid „nie dotyczy"
+
+> **Superseded by EX-571** (section below). „nie dotyczy" placeholders are gone — an out-of-plane etap
+> has no columns at all — and a null-plane etap no longer defaults into Z narzędziami. Do not run the
+> four boxes below; EX-571's Phase 2 boxes replace them.
+
+- [ ] In Bez narzędzi view, a z-narzędziami etap's value cells and footer read „nie dotyczy"; its qty cells still accept input
+- [ ] A null-plane etap shows values in Z narzędziami view (it defaults there) and „nie dotyczy" in Bez narzędzi
+- [ ] Klient view shows every etap's values as before
+- [ ] No cell-remount symptoms while typing in qty cells (characters don't drop)
+
+### Phase 5: Subcontractor summary
+
+- [ ] Mixed-plane investment: Z and Bez views show the identical summary; split rows + razem reconcile with the grid's per-etap values
+- [ ] „Pozostało do wypłaty" = razem − zaliczki, negative renders destructive as before
+- [ ] Warning badge appears while any etap is unconfirmed and disappears once every plane is explicitly picked
+- [ ] Single-plane investment (all z narzędziami, confirmed): summary matches the pre-change figure in the Z view
+
+### Deploy note (migration ordering — deploy-time, not a code check)
+
+- [ ] **`20260724_2_add_plane_to_kosztorys_stages` must be applied to preview/prod before/with this merge.** Adds nullable `plane` to `kosztorys_stages`. Standard column-**add** ordering (unlike the coeff drop above): migrate **before** the code that reads `plane` lands, or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. Kosztorys data is throwaway pre-dogfooding — no backfill; existing rows read `plane = null` (defaulted + warned), the intended cold-start state.
+
+## EX-571 — subcontractor-view-settlement-only
+
+**In review** — full suite green minus e2e (tsc 0, eslint 0 errors, 1141 unit tests, build ok). A subcontractor
+view (Z narzędziami / Bez narzędzi) now counts **only its own etapy**: „Pomiar z natury" is Σ of that
+plane's etapy, so every figure standing on it (wartość, podsumy sekcji, „Razem") is that crew's bill
+alone. Columns anchored in Przedmiar („Wartość netto/brutto przedmiar", „Pozostało", „% wykonania")
+render only in Klient, because Przedmiar has no plane. Klient is unchanged. Supersedes EX-565's
+Phase 4 boxes above.
+
+Setup: **5435 test DB** (see intro), OWNER login, a kosztorys with ≥2 etapy on different planes plus
+one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
+
+### Phase 1: Pomiar liczony po planie
+
+- [ ] In Z narzędziami, „Pomiar razem" in the „Razem" row equals the hand-summed ilości of the z-narzędziami etapy only; same for Bez narzędzi
+- [ ] „Razem Netto" in Z + „Razem Netto" in Bez equals „Suma wykonanej pracy" (razem) from „Podsumowanie podwykonawców"
+- [ ] Each side's „Razem Netto" equals its own row in „Podsumowanie podwykonawców" (Z / Bez) to the grosz
+- [ ] Klient view's Pomiar and Razem are unchanged from before the change (compare against Przedmiar-based figures)
+
+### Phase 2: Grid pokazuje tylko rachunek jednej ekipy
+
+- [ ] In a subcontractor view the out-of-plane etapy have **no** columns at all (no „nie dotyczy" cells)
+- [ ] An etap with no rozliczenie picked appears in **neither** subcontractor view and shows no wrench icon in its header
+- [ ] In Klient, an etap with no rozliczenie has its ilość cells **locked** (typing does nothing) and unlocks the moment a rozliczenie is picked
+- [ ] In Klient, an etap with no rozliczenie has its **whole** block on a red tint — header plus every cell of its ilość / netto / brutto / % columns; picking a rozliczenie clears the tint instantly
+- [ ] The red tint does not bleed into the neighbouring etapy's columns and does not fight the „Razem" row's own styling
+- [ ] „Wartość netto/brutto przedmiar", „Pozostało", „% wykonania" are absent in both subcontractor views and present in Klient
+- [ ] „Razem Netto/Brutto" header reads „— po rabacie" in Klient and „— do zapłaty ekipie" in a subcontractor view
+- [ ] Typing into an etap ilość cell drops no characters (no cell remount after the column rebuild)
+
+### Phase 3: Rabat i podpowiedzi
+
+- [ ] Klient Podsumowanie's robocizna figure is identical whether the panel was opened from Klient directly or after switching from a subcontractor view and back
+- [ ] With a global rabat set, „Rabat" in the totals equals the rabat computed off the client-priced executed work (unchanged from before the change)
+- [ ] With an unassigned etap present, the badge in „Podsumowanie podwykonawców" says the sum is **lower** than the executed work (no „liczone jako z narzędziami")
+- [ ] The rabat tooltips („Rabat", „Rabat kwota netto", „Razem Netto", „Razem Brutto", „Etap — kwota netto") state that rabat never lowers the crews' prices
+
+## EX-567 — netto investment-expense type (`INVESTMENT_EXPENSE_NET`)
+
+**Archived 2026-07-26.** All automated checks green (tsc 0, eslint 0 errors, 1625 unit tests, golden master
+unmoved via `pnpm test:parity`). A new expense type „Wydatek inwestycyjny netto" carries **two** stored
+amounts: `amount` (brutto — what leaves the kasa) and `netAmount` (netto — what the investor is
+billed). The netto figure lands in its own **frozen** materiały bucket, so the global „wszystko netto
+−X%" toggle can never cut it twice; the kasa and marża paths are untouched by construction. Lands on
+branch `konradantonik/ex-573-transfer-type-spec-table` (after EX-573's spec table).
+
+**Verified 2026-07-26** — OWNER `e2e@wykonczymy.test`, investment 6 (Apenińska 2/37), register 14
+(Kasa - Adam Orłowski), 5435 test DB (both migrations applied, kosztorys seeded via
+`seed-kosztorys.ts`), throwaway `:3010` dev server. Probe transaction **#4136** (brutto 1230 / netto
+1000, kategoria „Materiały budowlane") left in the test DB as evidence. All boxes pass.
+
+### Findings — 2026-07-26
+
+Pass ran clean — **no bugs found**, all 12 boxes ticked. Two non-blocking observations:
+
+- The „Różnica" column prints `−0,00` on a frozen netto row (the `−` prefix is unconditional). Pre-existing formatting shape, not introduced here.
+- The admin's „Kwota netto" input is disabled, so the server guard is only reachable via the API. That is the intended consequence of `netAmount` being immutable (correction = cancel + re-add), noted so the next reader doesn't chase it as a bug.
+
+## EX-580 — section header rows (bands) in the kosztorys grid
+
+**Authored 2026-07-26.** The repeated „Sekcja" column is replaced by a band row opening each section:
+colour dot, name, item count and the section's wartość netto/brutto, with a chevron that folds the
+section shut and a „…" menu carrying the section actions that used to live in every row's menu. Item
+numbering in the gutter is continuous and skips the bands. Branch `kosztorys-section-header-rows`.
+
+Automated: tsc 0, eslint 0 errors, 1661 unit tests. `e2e/kosztorys-section-headers.spec.ts` is
+authored but **unrun** — `pnpm test:e2e` cannot build inside a git worktree (symlinked
+`node_modules`); run it from the main tree after merge.
+
+- [ ] Every section opens with a band; its netto equals that section's row in the Podsumowanie
+- [ ] The band's figure is unmoved by a search filter or a section filter (full-dataset subtotal)
+- [ ] Sorting a column makes the bands disappear and the grid read as one flat list; clearing the sort brings them back
+- [ ] Collapsing a section hides exactly its rows, leaves its band, and leaves no gap in the numbering
+- [ ] „Razem" is unchanged by a collapse
+- [ ] Renaming a section on the band renames it everywhere (Podsumowanie, filter menu, the hidden „Sekcja" column)
+- [ ] The band's „…" inserts / moves / recolours / deletes the section, and the delete confirm names the right item count
+- [ ] The row „…" menu no longer offers any section action
+- [ ] „Sekcja" is hidden by default in a fresh browser profile and can still be re-enabled from the column picker
+- [ ] Typing into a cell right below a band drops no characters (no remount from the wrapped columns)
+- [ ] The share/preview link renders the bands read-only — no rename, no „…" menu — and collapse still works
+- [ ] The client view's netto/brutto toggle moves the band's figure with the columns
+
+## EX-581 — netto expenses get their own tab in the wydatki list
+
+**In review** — automated green (tsc 0, 1660 unit tests incl. the new three-way partition + href
+guards). The Podsumowanie → „Wydatki" list now splits into three mutually exclusive tabs (brutto
+expenses + korekty / netto expenses / materials settled into robocizna), each with its own „Razem",
+and every row links to a transfers list filtered by **its own** type instead of a hardcoded
+`INVESTMENT_EXPENSE`. Affordance stays the shipped row-hover cue — the chevron column was built and
+then **removed on the owner's call**. Branch `konradantonik/netto-expenses-own-tab`.
+
+Two plan criteria are here rather than in `plan.md` Progress because this repo has no DOM test
+harness (vitest is node-env, `*.test.ts` only, no RTL/jsdom): the footer-in-both-paths check (2.3) and
+the preview-render check (3.4).
+
+Setup: 5435 test DB (see intro), OWNER, an investment carrying a brutto expense, a korekta, a netto
+expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w robociznę") materiał.
+
+- [ ] Three tabs appear — „Materiały", „Materiały rozliczane netto", „Materiały wliczone w robociznę" — and each shows only its own rows
+- [ ] The brutto „Razem" plus the netto „Razem" equals the breakdown „Razem" above the list
+- [ ] **Footer stays pinned (2.3).** With enough rows to scroll the list, „Razem" remains visible at the bottom instead of scrolling away with the rows
+- [ ] The netto tab shows two amount columns, „Brutto" then „Netto", and the „Razem" figure sits under „Netto"; the other tabs show a single „Kwota" column
+- [ ] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row
+- [ ] **Preview render (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere
+- [ ] An investment with neither netto nor settled rows shows no toggle at all
+
+---
+
+## EX-569 — client-facing „Pobierz faktury" in the kosztorys Wydatki tab
+
+**In review** — automated green (tsc 0, eslint 0, unit 1140/1140, 33 in `invoice-zip.test.ts`).
+Branch `feat/ex-569-kosztorys-client-invoices` (worktree). E2E deferred to **EX-570**
+(`e2e-backlog`) — the `(share)` group still has no browser coverage, so boxes 1–3 are the only
+thing guarding the public path.
+
+Setup: 5435 test DB, an investment with materiały transactions in **both** settled states and
+invoices attached to some of them, plus a live share token for it (`/k/<token>`).
+
+### Client share path
+
+- [ ] Logged out on `/k/<token>` → Podsumowanie → Wydatki: the „Pobierz faktury" button downloads an archive of the visible dataset
+- [ ] Switching to „Materiały wliczone w robociznę" and downloading yields that dataset's invoices, not the other one's
+- [ ] The archive name carries the investment name and the dataset label; two investments downloaded the same day do not collide in Downloads
+- [ ] A dataset where some rows have no invoice reports the shortfall („Pobrano 3 z 5 — 2 bez faktury") rather than implying a complete set
+- [ ] An investment with zero materiały transactions renders no list and no button
+- [ ] A dataset whose rows all lack an invoice renders the list but no „Pobierz faktury" button
+
+### Owner app view
+
+- [ ] Same three checks on `/inwestycje/<id>/kosztorys_v2` — button present, follows the toggle, archive correct
+- [ ] A materiały transaction with an attached invoice reaches the list with a live `invoiceUrl` on both surfaces (the file actually opens from the archive)
+
+### Regression on the authenticated transfers table
+
+The zip/toast loop moved into the shared `useInvoiceZip`, so the transfers export changed behavior.
+
+- [ ] The transfers table's „Faktury" button still downloads a working archive with correct filenames
+- [ ] Its final toast now reports missing invoices honestly on a filter set where some rows have none (the pre-fetch „Pobieram…" toast is gone — the button spinner replaces it)
+
+## EX-585 — kosztorys-invoice-note-and-preview
+
+Extends EX-569's Wydatki list with a „Notatka" column (numer faktury + tooltip) and a per-row
+invoice preview. Same setup as EX-569's section: an investment with materiały transactions in both
+settled states, invoices attached to some of them, plus a live share token.
+
+For the note checks the transactions need an `invoiceNote` — either scan a receipt through the
+expense form (the AI writes numer faktury on line 1, pozycje below) or type a multi-line note by hand.
+
+### Phase 2: Compact preview trigger
+
+- [ ] Transfers table: the invoice icon still opens the preview dialog, and Usuń / Zamień inside it still work
+- [ ] Transfers table: rows with no invoice still show the `+` upload button, unchanged
+- [ ] Transfers table: a row whose invoice is an **image** now shows the magnifier icon instead of the document icon (the shared trigger picks the icon by mime type; the hand-rolled button always showed a document)
+- [ ] The line-item invoice field in the expense form still renders the full-width bordered trigger
+
+### Phase 3: The two columns
+
+- [ ] Kosztorys Podsumowanie → Wydatki (owner view): rows with a scanned invoice show the numer faktury in „Notatka"; hovering reveals the full note with the pozycje on separate lines
+- [ ] A row whose transfer has no note shows „—" and no hover affordance
+- [ ] Clicking the „Faktura" icon opens the preview dialog — a PDF in the native viewer, an image inline
+- [ ] Clicking the „Faktura" icon does NOT navigate to the transfer detail page (the row link must not fire)
+- [ ] The client share view (`/k/<token>`, logged out) shows both new columns with the same content, and its rows still don't navigate anywhere
+- [ ] All three dataset tabs („Materiały" / „Materiały rozliczane netto" / „Materiały wliczone w robociznę" — EX-581's split) carry the new columns
+- [ ] „Notatka" and „Faktura" sit **before** the amount columns, so the „Razem" footer's total still lands under the column it sums (on the netto tab, under „Netto")
+
+**Row height changed 36 → 44** (a text-only row had no budget for the icon). The virtualizer
+estimates and never measures, so any row rendering at a different height drifts the scroll spacers:
+
+- [ ] Scroll a list of ~100+ rows to the bottom and back — rows stay aligned with the header and no gap or overlap appears at either end
+- [ ] A dataset mixing rows with and without invoices scrolls without drift (the invoice-less cell reserves the control's box on purpose)
+- [ ] A very long note (many pozycje) does not wrap the cell onto a second line — it stays truncated at one line
+
+### Post-merge: toolbar
+
+- [ ] Each dataset tab shows its row count in the label (`Materiały (152)`), and the number matches the rows the list actually renders
+- [ ] „Pobierz faktury" sits flush with the table's right edge, not the panel's
+
+## EX-588 — investment-settlement-mode
+
+Stores how an investment is settled (`NET` / `GROSS` / `MIXED`) on the investment and makes it the
+only source of the money plane for the Podsumowanie panel **and** the client view's grid. The
+per-browser `localStorage` axis (`use-summary-axis`) and the client header's Netto/Brutto toggle are
+gone. All automated checks green (tsc 0, eslint 0 errors, unit 1707/1707).
+
+Setup: run against the **5435 test DB** (see intro) with a seeded kosztorys, log in as OWNER, and have
+a share token for the same investment so `/podglad-klienta/<id>` (or `/k/<token>`) can be opened in a
+**second browser profile with its own `localStorage`** — that second profile is the whole point of
+several boxes below. Needs ≥1 `INVESTOR_DEPOSIT` tagged `GROSS` for the mismatch checks.
+The migration `20260726_3_add_settlement_mode_to_investments` must be applied to that DB.
+
+- [ ] Payload admin: „Sposób rozliczenia" is visible and editable on an investment
+- [ ] An existing investment (e.g. the seeded dogfooding one) reads „Netto" rather than empty
+- [ ] Owner switches the mode in the Podsumowanie select; the panel's figures change and the pick survives a hard reload
+- [ ] The same investment opened in a second browser profile shows the owner's stored mode, not that profile's old `localStorage` value
+- [ ] Client view shows exactly one money plane in the grid, matching the panel, and has **no** axis control in its header
+- [ ] With the mode „Mieszane", the client sees both the netto and brutto parts and their wpłaty
+- [ ] With the mode „Mieszane", the owner's grid shows both money columns
+- [ ] The client view still fills the viewport with no dead band at the bottom (guards the `h-dvh` fix from `7b70ec2a`, whose header this change edits)
+- [ ] A brutto wpłata on a netto-declared investment raises the owner-only warning in Podsumowanie, naming the mode and the offending amount
+- [ ] The client view of that same investment shows no warning
+- [ ] With VAT 0% the mode select is still **editable** (EX-590) and the VAT 0% scream shows beside it
+- [ ] With VAT 0% and the mode „Mieszane", the panel still shows the split netto/brutto sections and the grid still shows both money columns
+
+## EX-594 — investment-summary-panel
+
+Adds a second reading of the investment detail page's financials, selected by `?widok=` (default
+`v2`). **v1 is the page exactly as it was** — same queries, same computations, same `FinancialStats`
+tiles. **v2** replaces the tiles with the kosztorys Podsumowanie panel (Podsumowanie + Wydatki +
+Wpłaty + Podwykonawcy — no pies, no collapsible) plus an owner-only strip **below** it carrying
+Marża / Strata / Rozliczone R+M. The axis is temporary: it exists so the owner can compare the two planes side
+by side. All automated checks green
+(tsc 0, eslint 0 errors, unit 1712/1712, `pnpm build` clean).
+
+Setup: log in as OWNER against a DB with a seeded kosztorys, and have a second account with role
+MANAGER plus a share token for the same investment. No migration owed — the settlement-mode column
+came with EX-588.
+
+- [ ] The editor panel at `/inwestycje/<id>/kosztorys_v2` opens, collapses, and renders all five views exactly as before — settings bar and **all three pies** intact
+- [ ] In the editor, Wydatki and Wpłaty are unchanged (both new flags default to today's behaviour)
+- [ ] `/k/<token>` renders four client views with their pies, no settings bar, no reconciliation scream, and no marża anywhere
+- [ ] For an investment with kosztorys rows, every Podsumowanie figure on `/inwestycje/<id>` matches the same figure in the editor panel on the same settlement mode
+- [ ] Wydatki on the investment page shows the per-category breakdown with **no pie and no transaction list**
+- [ ] Wpłaty shows exactly three Razem buckets (netto / brutto / nie określono), with no udział pie and no per-deposit rows
+- [ ] Podsumowanie on the investment page shows the settlement table with **no** „Struktura kosztów" pie
+- [ ] The panel renders **always open** — there is no Podsumowanie collapsible trigger to click
+- [ ] An investment with **no** kosztorys rows renders the panel on transaction figures — not an all-zero panel
+- [ ] The panel appears without blocking first paint; the transfers table below still filters and paginates
+- [ ] `?widok=v1` renders the page **identically to before this change** — the same tile block, the same figures, the toggle above it — and the browser network panel shows no kosztorys/deposit fetch
+- [ ] `?widok=v2` and `?widok=v1` open in two tabs side by side compare cleanly: Materiały and Wpłaty agree, only Robocizna and Rabat differ
+- [ ] The toggle preserves the page's other search params (transfers filters, pagination) when switching
+- [ ] The reconciliation scream still fires when the kosztorys and transaction figures disagree
+- [ ] Changing the settlement mode from the panel persists and survives a hard reload
+- [ ] In v2, `/inwestycje/<id>` shows the owner strip (Marża / Strata / Rozliczone R+M — **no** Wypłaty, that lives in Podwykonawcy) **below** the panel, and no tile block
+- [ ] A MANAGER (non-owner) sees the v2 panel but **none** of the owner strip
+- [ ] `/raporty` renders its tiles exactly as before, deselect included
+- [ ] Printing from the transfers table works in both readings: v1 keeps the dynamic bilans, v2 produces a header with all fields and a static bilans (accepted degradation — see `lessons.md`)
+
+## EX-596 — materials-net-pricing-persisted
+
+The panel's materiały netto concession stops being a per-browser display trick and becomes a saved
+per-investment rate (`investments.materials_net_rate`, `null` = off). It is billed by **division** —
+a 123 zł receipt is billed 100 zł, never 94,71 — and the company's share of it now shows up as
+„Obniżka materiałów": it lowers marża and raises bilans inwestora by the same amount. Switched off
+at rozliczenie brutto (VAT is added to the price there, so there is nothing to concede). All
+automated checks green (tsc 0, eslint 0 errors, unit 1751/1751, `pnpm test:parity` regenerated).
+Branch `investment-summary-panel`.
+
+Setup: **5435 test DB** (see intro) with `20260726_4_add_materials_net_rate_to_investments` applied
+and a seeded kosztorys, OWNER login, an investment carrying materiały spend, plus a share token for
+it. `/raporty` needs the OWNER/ADMIN role.
+
+- [ ] An investment with materiały spend and no rate set shows marża and bilans exactly as before the change (the `null` default changes nothing)
+- [ ] Checking „rozliczane po kwocie netto" (opens at the VAT rate) moves marża down and bilans inwestora up by the **same** amount
+- [ ] That amount equals `materiały brutto − materiały brutto / 1,23` — not `materiały brutto × 0,23`
+- [ ] The „w tym obniżka materiałów" sub-line under Materiały in Podsumowanie quotes that same amount, and the Podsumowanie column still adds up top-down (Robocizna − Rabat + Materiały = Łącznie; the „w tym" line is not added)
+- [ ] The investments list shows the same marża as the investment's own page
+- [ ] A „Wydatek inwestycyjny netto" row (frozen netto bucket) is **not** discounted — its Netto column equals its Brutto in the per-category table, and the concession is computed off the brutto bucket only
+- [ ] Switching to rozliczenie brutto returns marża and bilans to their no-rate values and shows the notice that the rate changes nothing there
+- [ ] Switching back to netto restores the figures — the saved rate was kept, not cleared
+- [ ] Editing the % writes through: reload and both the on/off state and the number survive
+- [ ] The client share (`/k/<token>`, logged out) shows the discounted „Do zapłaty" and **no** pricing control
+- [ ] `/raporty` shows the warning banner above the figures without scrolling
+
+### Deploy note (migration ordering — deploy-time, not a code check)
+
+- [ ] **`20260726_4_add_materials_net_rate_to_investments` must be applied to preview/prod before the code lands there.** Adds a nullable `materials_net_rate` to `investments`; standard column-**add** ordering — migrate first or the SELECT 500s. Human-applied via `pnpm db:migrate:prod`. No backfill owed: `null` is the permanent "off" state and every existing investment keeps today's figures.
+
+## EX-597 — decouple-panel-write-refresh
+
+The investment page's data-fetching architecture. The owner's bar was **feel**, not a number: _"in
+its current state the stat panel is basically unusable"_ → _"the app should feel as fast as it did
+originally, when the investment page was transfers only."_ What actually delivered that was the
+client (pending state + optimistic VAT/rabat), not the server reads — so **these checks are mostly
+non-regression**: the whole slice rewired reads, caching and revalidation, and the risk is that
+something silently stops updating rather than that something is slow. Branch
+`ex-597-decouple-panel-write-refresh`. No migration; no schema change.
+
+Setup: **5435 test DB** (see intro) with a seeded kosztorys (`INV=6 node --env-file=.env --import tsx
+src/scripts/seed-kosztorys.ts`), OWNER login, an investment carrying transfers **and** materiały
+spend with invoice attachments, plus a share token for it. Have the Network tab open for the
+refresh-coalescing checks — they are only observable as request counts.
+
+### Feel (the acceptance bar)
+
+- [ ] Opening an investment page with a populated kosztorys feels no slower than a transfers-only investment
+- [ ] Changing VAT and rabat globalny in „Opcje rozliczenia" shows the new value **immediately**, with a pending indicator, and no full-page flash
+- [ ] Changing „sposób rozliczenia" and „stawka netto wydatków" shows a pending indicator and settles — these two are deliberately **not** optimistic (their value lives only on `tree`, which is frozen at mount)
+
+### Write-path coalescing (the `deferRefresh` win, and the gate fix to it)
+
+- [ ] Editing a single grid cell fires the autosave and **no** full-route refresh alongside it
+- [ ] Editing 5–10 cells in quick succession produces **one** route refresh after the typing stops — not one per cell (this is the uncleared-timer bug fixed at the review gate; unfixed it queues a refresh per edited cell)
+- [ ] After that single refresh lands, the totals panel figures match the grid
+
+### Non-regression on the rewired reads
+
+- [ ] Renaming an investment updates the name in the top-bar crumb without a hard reload (the per-entity cache tag path)
+- [ ] Uploading a new invoice attachment makes it appear in the transfers table on the next render (the whole-table media cache is invalidated by the media write hook)
+- [ ] Deleting an invoice attachment removes it from the transfers table on the next render
+- [ ] A brand-new investment with **zero** kosztorys rows opens the editor without a 500 (the `coalesce` on the `json_agg` query — pinned by a DB spec, worth eyeballing once)
+- [ ] Sections render in `displayOrder`, not insertion order
+- [ ] The client share link (`/k/<token>`, logged out) shows figures consistent with the owner's view after an edit — `deferRefresh` expires the tags without re-rendering, and the share route is the only place a dropped invalidation would show
+
+### Nav crumb (adjacent strand on the same branch)
+
+- [ ] The crumb's back arrow returns to wherever you came from (investment page → editor → arrow → back to the investment page)
+- [ ] Opening an editor URL **directly in a fresh tab** and clicking the back arrow lands on `/inwestycje/<id>` rather than doing nothing or leaving the app (the empty-history fallback added at the review gate)
+
+### Rabat globalny (fixed / deliberately left at the review gate)
+
+- [ ] With a stored „Kwotowy" rabat, switching to „Wyłączony" while the save **fails** leaves the select showing „Kwotowy" again, matching the figures — it must not read „Wyłączony" while the totals still subtract a rabat
+- [ ] Applying a % still cannot be undone with Ctrl+Z — **by decision** (owner, 2026-07-27). Guarded by a confirm dialog instead; see `## EX-606`.
+
+## EX-605 — rabat globalny: activates on selection, undoable, one „Zapisz"
+
+Fixes the „Kwotowy" finding left open above. Two behaviour changes on the same control: picking the
+mode now writes immediately (seeded with the per-item rabat total it replaces), and both modes commit
+through an explicit „Zapisz" instead of „Kwotowy" saving on blur. Setup: same as EX-597, on a
+kosztorys whose items carry **per-item rabaty** — without them the seed is 0 and the switch is
+untestable.
+
+- [ ] Picking „Kwotowy" replaces the per-item rabaty **immediately**, with no amount typed — the rabat column stops applying and „do rozliczenia" does not move (the seed equals what it replaced)
+- [ ] Ctrl+Z after that switch restores the per-item rabaty **and** puts the select back on „Wyłączony" — the select must not sit on „Kwotowy" over a rabat that is no longer stored
+- [ ] Ctrl+Shift+Z redoes it, and the figures land where they were after the original switch
+- [ ] Switching to „Wyłączony" brings every per-item rabat back at its original value — „Kwotowy" must never have deleted anything
+- [ ] Typing a kwota and **not** pressing „Zapisz" (click elsewhere, blur the field) changes nothing; the previous kwota still applies
+- [ ] „Zapisz" is inert until the typed value actually differs from the stored one, and Enter does the same as the click
+- [ ] Ctrl+Z after saving a kwota restores the previous kwota, both in the field and in the totals
+- [ ] „%" still commits through the same button and clears its input on success — only its label changed
+
+## EX-606 — the % mass-overwrite gets a confirm dialog, not an undo entry
+
+**Owner's ruling (2026-07-27):** the overwrite stays destructive and stays outside Ctrl+Z. The
+guard is a confirm dialog. The premise of the original filing was wrong — recovery already exists:
+`applyPercentRabatToAllItemsAction` auto-saves a kosztorys version before every apply, so the state
+is restorable from the versions drawer. The dialog's job is to make both facts visible at the moment
+of the click. Setup: a kosztorys with **hand-typed per-item rabaty** on several items, tryb „%".
+
+- [ ] „Zapisz" in „%" opens a confirm dialog naming the typed percent, and **nothing is written** until you confirm
+- [ ] On a kosztorys where **no** item carries a rabat, „Zapisz" writes straight through with **no dialog** — there is nothing to overwrite
+- [ ] The dialog counts the affected items and gets the Polish right: „w 1 pozycji" vs „w 3 pozycjach"
+- [ ] That count is correct while a rabat globalny „Kwotowy" is active — the stored per-item rabaty still exist and still get overwritten, even though the totals show no per-item rabat
+- [ ] Cancel / Escape / clicking the overlay leaves every per-item rabat exactly as it was
+- [ ] The 0% dialog says rabaty will be **zeroed**; a non-zero one says they will be **overwritten**
+- [ ] Both dialogs say Ctrl+Z will not undo it and point at the auto-saved version
+- [ ] After confirming, that pre-change state really is in the versions drawer, and restoring it brings the hand-typed rabaty back
+- [ ] Ctrl+Z after a confirmed apply does **not** revert the rabaty (this is the intended behaviour, not a bug)
+
+## EX-607 — kosztorys-section-footer-row
+
+The section band split in two: the header keeps identity only (colour dot, name, „N poz.", chevron),
+and a new „Razem <nazwa sekcji>" footer closes each section with its figures under their own columns.
+Setup: a kosztorys with **≥2 sections**, per-item rabaty on some rows, and a przedmiar filled in — the
+przedmiar and rabat footer cells are blank without them.
+
+- [ ] Each footer's caption reads „Razem <nazwa sekcji>" and follows a rename immediately; a long name truncates rather than pushing the figures out of their columns
+- [ ] Each section's netto sits directly under `Wartość netto` and equals what the band's label used to show; brutto likewise
+- [ ] Σ of the section footers' netto equals the grand „Razem" netto at the bottom
+- [ ] The przedmiar pair fills in the client view and the footer cells are blank in the other views (the przedmiar has no per-rozliczenie reading)
+- [ ] The etap axis is filled per section: each etap's qty column, their sum, and each etap's wartość netto/brutto — and per section Σ of the etap wartości equals that section's netto
+- [ ] „Pozostało" and „Przedmiar" (qty) are filled per section; a section holding a row with no przedmiar does not count that row as settled
+- [ ] Every footer column reads as the sum of the cells above it in that section — a column with no honest total (a share, a ratio) is **blank, never a 0**
+- [ ] Folding a section leaves the header line alone — items **and** footer gone; unfolding brings both back
+- [ ] Switching the money axis to netto-only hides the brutto footer cells with their columns; no number is left stranded under a hidden header
+- [ ] Sorting by any column removes headers and footers together; clearing the sort restores both
+- [ ] Typing into a cell directly above a footer keeps focus and accepts every character — a remount would drop all but the last one
+- [ ] Saving persists nothing new: reload and the same figures come back, with no phantom row in the kosztorys
+
+### Perf on the big dataset (review-gate finding)
+
+The footers recompute every column once per section on top of the „Razem" pass, so the per-edit totals
+work roughly doubled and has been unmeasured since the widening. The one super-linear term is gone —
+**EX-612** folded the etap-qty sum into `stageAxisForView`'s existing walk, so the whole pass is now
+linear in rows per section — but the per-section multiplication itself remains. Setup: `INV=7 node
+--env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts` (~1000 items), then open that kosztorys.
+
+- [ ] Typing into a cell stays responsive at ~1000 items — no perceptible lag between keystroke and character, and no jank scrolling right through the etap axis. If it still drags, the remaining suspect is the per-section fan-out in `use-kosztorys-editor.ts` (`sectionColumnTotals`), not the etap loop.
+
+## EX-608 — nazwa inwestycji w górnym pasku bez trzeciego zapytania
+
+Nazwa w górnym pasku czyta się z danych, które nawigacja i tak pobiera, zamiast osobnym zapytaniem.
+Setup: DevTools → Network, wejście na `/inwestycje/<id>/kosztorys_v2`.
+
+- [ ] Nazwa inwestycji i strzałka „wróć" są w górnym pasku tak jak przed zmianą, na obu podstronach (`/kosztorys`, `/kosztorys_v2`)
+- [ ] Zmiana czegokolwiek w „Opcjach rozliczenia" (VAT / tryb / materiały netto / rabat globalny) nie gasi nazwy ani jej nie miga — pasek zostaje wypełniony przez cały zapis
+- [ ] Zmiana nazwy inwestycji w jej edycji jest widoczna w górnym pasku po powrocie na podstronę kosztorysu
+- [ ] Na stronach spoza inwestycji (`/`, `/kasa/<id>`, `/pracownicy`) pasek nadal nie pokazuje nic w tym miejscu
+- [ ] Wejście na `/inwestycje/999999/kosztorys_v2` (nieistniejąca) nie wywala paska — po prostu brak nazwy
+
+## EX-609 — subcontractor-price-guard
+
+Cena wykonawcy nie może przekroczyć 80% ceny klienta — zapis jest blokowany, komórka czerwienieje.
+To jedyny werdykt: bursztynowy stopień „powyżej stawki z globalnego mnożnika" został wycofany
+(właściciel, 2026-07-28), bo zapalał się na zwykłych wierszach i kolor przestawał cokolwiek znaczyć.
+Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędziami" wyraźnie poniżej 0,8
+(np. 0,65), oba widoki wykonawcy dostępne z przełącznika.
+
+**Zaakceptowane ryzyko (właściciel, 2026-07-27):** inwestycja, której globalny mnożnik JUŻ przekracza
+0,8, zapali każdy wiersz „auto" na czerwono — „niech się świeci", to nie jest usterka.
+
+- [ ] Widok „z narzędziami", tryb „kwota stała": kwota powyżej 80% ceny klienta nie zmienia wiersza — komórka czerwienieje i pokazuje tooltip z maksymalną kwotą; poprawna kwota kasuje czerwień
+- [ ] Kolumna „Mnożnik" w trybie „własny mnożnik": mnożnik powyżej 0,8 zostaje odrzucony tak samo
+- [ ] Wyjście z komórki (blur) po odrzuconym wpisie gasi czerwień i tooltip, a wiersz wraca do poprzedniej wartości — i mówi o tym toast „Cena odrzucona — przywrócono …"
+- [ ] Niedokończony wpis („1e") cofa się po wyjściu BEZ toasta — ogłaszamy odrzucenie, nie każdą literówkę
+- [ ] Kwota stała powyżej stawki z globalnego mnożnika, ale poniżej 80%, wpisuje się normalnie i NIE zostawia po sobie żadnego koloru ani wykrzyknika — nigdzie w tabeli nie ma już żółtego
+- [ ] Sumy w „Podsumowaniu" wykonawcy są identyczne jak przed zmianą
+- [ ] Obniżenie „Cena j.m." klienta na tyle, by istniejąca kwota stała przekroczyła 80%, zapala „Cenę" na czerwono po powrocie do widoku wykonawcy — mimo że nikt nie tknął kolumn wykonawcy
+- [ ] To samo zachowanie w widoku „bez narzędzi", mierzone względem JEGO mnożnika
+- [ ] „Ustawienia": mnożnik powyżej 0,8 cofa pole do poprzedniej wartości i nie zapisuje; 0,8 przechodzi; opis pod polami mówi o suficie
+- [ ] Wpisywanie w komórce „Cena" nie gubi znaków ANI kursora — długa kwota wchodzi w całości, także w momencie przekroczenia progu, kiedy komórka zmienia kolor
+- [ ] „Cena" jest edytowalna w każdym trybie: w wierszu „auto" da się od razu wpisać kwotę, „Źródło" przeskakuje na „kwota stała", a „Mnożnik" pokazuje „—"
+- [ ] Wyczyszczenie „Ceny" wraca do „auto" dopiero po wyjściu z komórki — w trakcie pisania pole zostaje puste i nie odbiera kursora
+- [ ] Escape w trakcie edycji („Cena" albo „Mnożnik") porzuca wpis i przywraca wartość sprzed wejścia w komórkę — bez toasta, bez podwójnego zapisu
+- [ ] Enter zatwierdza tak samo jak wyjście z komórki — przyjęta wartość zostaje, odrzucona cofa się z toastem
+- [ ] „Mnożnik" przyjmuje wartość dziesiętną w całości („0,72") — przecinek nie znika w trakcie pisania
+- [ ] Przełączenie „Źródła" nie rusza ceny: „kwota stała" 60 zł → „własny mnożnik" pokazuje 0,6 i tę samą cenę; z powrotem na „kwotę stałą" znów 60 zł
+- [ ] Rozpoczęcie edycji, przewinięcie tabeli tak, by wiersz zszedł z ekranu, i wyjście z komórki NIE zapisuje wpisu na innym wierszu
+- [ ] Tabulatorem (bez myszy) do odrzuconej komórki — tooltip z powodem pokazuje się sam, nie trzeba najeżdżać
+- [ ] Ujemna kwota („-50") jest odrzucana tak samo jak przekroczenie sufitu, również w wierszu bez ceny klienta
+- [ ] „Ustawienia": ujemny globalny mnożnik nie przechodzi (pole ma dolną granicę 0)
+- [ ] **Wydajność** — na kosztorysie ~1000 pozycji (`INV=7 node --env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts`) przewijanie i pisanie w widoku wykonawcy są tak samo płynne jak przed zmianą; każda komórka montuje własny tooltip, więc to jest miejsce, gdzie regres byłby widoczny
+
+## EX-615 — drop-empty-kosztorys-scaffold
+
+### Phase 1: Empty-grid hint
+
+- [ ] An investment with zero sekcje opens the editor showing the hint over an empty grid — not a dialog.
+- [ ] **With the totals panel expanded** (its persisted default is `open`), decide whether the hint being occluded is acceptable — the panel is `z-20` + `h-full` + opaque, the hint is an un-z-indexed `absolute inset-0` sibling, so a first-ever visitor sees the panel, not the hint. Occlusion is _consistent_ (the panel hides the grid too), but the retired dialog was modal and always won. Raised at the review gate; see EX-617.
+- [ ] Typing a search term that matches nothing on a _populated_ kosztorys does NOT show the hint.
+- [ ] The share/client view of an empty kosztorys shows the title without the „Dodaj" sentence.
+
+### Phase 2: Delete the client scaffold
+
+- [ ] Restoring a snapshot from the „Wersje" drawer still reseeds the grid (the remount still fires).
+- [ ] „Sekcja z szablonu…" still populates an empty kosztorys from the `Dodaj` menu.
+
+### Phase 3: Delete the server scaffold
+
+- [ ] Creating an investment **without** a preset succeeds and opens an empty kosztorys showing the hint.
+- [ ] Creating an investment **with** a preset still seeds the full rozpiska and shows no warning toast.
+
+## EX-618 — scalable-preset-section-picker
+
+### Phase 1: Extract the derivation, fold the search
+
+- [ ] Typing `lazienka` into an existing table's search box (e.g. investments) matches a „Łazienka" row.
+
+### Phase 2: Two-pane picker (desktop)
+
+- [ ] Both panes render side by side; clicking a szablon on the left fills the right pane with its sekcje.
+- [ ] Ticking sekcje in szablon A, switching to szablon B, ticking more, then „Dodaj (N)" appends all of them — the counter reflects the cross-szablon total throughout.
+- [ ] „Zaznacz wszystkie" ticks the whole active szablon; clicking it again unticks it; the left row's `N/N` figure tracks it.
+- [ ] Filtering the left pane to hide a szablon that has ticks does not change „Dodaj (N)", and clearing the filter shows those ticks still set.
+- [ ] Searching a name with Polish characters matches from an ASCII query.
+- [ ] Closing and reopening resets both the selection and the search box.
+
+### Phase 3: Narrow-screen drill-in
+
+- [ ] At 390px width the dialog shows only the szablon list; tapping one shows only its sekcje; back returns to the list with the szablon still highlighted.
+- [ ] Ticks made before going back are still set after returning and drilling into another szablon; „Dodaj (N)" totals both.
+- [ ] Resizing across 768px (this repo's `sm`) mid-selection does not lose ticks or strand the user on a hidden pane; at 800px both panes are visible.
+- [ ] The dialog at 390px does not scroll horizontally, and the footer stays reachable.
+
+## EX-574 — cancellation-sum-overcount
+
+Repro shape + live figures: `context/archive/2026-07-28-cancellation-sum-overcount/change.md` (the standalone `repro.md` was folded in and deleted 2026-08-08).
+Re-run its SQL first — the figures below track the local prod dump and shift when it is refreshed.
+
+### Phase 1: The tile stops counting anulowania
+
+- [ ] `/raporty?from=2026-03-01&to=2026-03-31` — the tile reads 4 202 513,34 zł, not 7 192 866,38 zł.
+- [ ] The same URL with `&type=` naming every type except CANCELLATION now shows the _same_ tile figure and the same 379-row list.
+- [ ] January and February 2026 (zero anulowań) are unchanged — 354 675,00 and 191 030,00.
+- [ ] Pulpit as a MANAGER, `/?from=2026-03-01&to=2026-03-31` — „Ostatnie transakcje" tile matches its list too.
+- [ ] `?cancelledTransactionAudit=1` still shows a non-zero tile (the rejected fix would have zeroed it).
+
+### Phase 2: The amount filter's ceiling reaches the tile
+
+- [ ] `/raporty?amount=500,00` — 20 rows totalling 10 000,00 zł, and the tile reads 10 000,00 zł.
+- [ ] `/raporty?amount=500` (prefix, no separator) still lists every amount starting with 500 and its tile matches.
+
+### Phase 3: The tile says what it counts
+
+- [ ] `/raporty?showCancelled=1` with a filter active — an (i) sits next to the tile saying the sum skips anulowane transakcje.
+- [ ] Without `showCancelled`, no such (i) appears.
+
+## EX-575 — drop-cost-variant-columns
+
+Both dead columns are gone (migration `20260728_0`), applied locally on 5433 and 5435.
+Prod migration is owed at ship time, by a human.
+
+### Phase 4: The editor still works against the narrowed schema
+
+- [ ] Seeded kosztorys editor (`INV=6`) opens: siatka renderuje się, autozapis komórki utrwala się po odświeżeniu.
+- [ ] „Dodaj sekcję" i „Dodaj pozycję" działają — nowa sekcja przychodzi z pierwszą pozycją.
+- [ ] „Dodaj sekcję z szablonu" listuje szablony i dokłada wybrane sekcje.
+
+### Phase 5: Pre-migration payloads still load
+
+- [ ] Wersja kosztorysu zapisana **przed** migracją wczytuje się bez błędu, a drzewo jest kompletne.
+- [ ] Globalny szablon zapisany przed migracją nakłada się tak samo.
+
+### Phase 6: The domain note reads as closed
+
+- [ ] `context/reference/kosztorys-editor-domain-notes.md`, sekcja „Wariant «z narzędziami / bez narzędzi»" — czyta się jako **zamknięta** decyzja z zachowanym uzasadnieniem, żadne zdanie nie powołuje się na nieistniejącą kolumnę.
+- [ ] Żadne zdanie nie miesza rejestrów (słownictwo arkusza vs identyfikatory kodu).
+
+## EX-600 — investment-panel-filter-scope — ZDEZAKTUALIZOWANE
+
+**Nie do sprawdzenia.** `summary-panel-filter-blind` (2026-08-08) odwrócił to zachowanie i usunął cały
+mechanizm gwiazdek: panel nie reaguje już na filtry w żadnej liczbie, przypisu nie ma, a oba werdykty
+są widoczne także przy aktywnym filtrze. Każdy punkt z tej sekcji opisywał UI, którego już nie ma —
+zamknięte jako nieaktualne, nie jako sprawdzone. Obowiązująca lista: sekcja
+`summary-panel-filter-blind` niżej. Browser coverage: **EX-634** (`e2e-backlog`), przepisany pod nowe
+zachowanie.
+
+## EX-430 — harden bulk-insert restore
+
+**In review** — all automated checks green (tsc 0, eslint 0 errors, kosztorys slice 366/366).
+Hardening only: restore/preset bulk `INSERT`s now match `RETURNING` rows on a natural key instead of
+trusting Postgres row order, plus three new guards (rollback tripwire, wide-column roundtrip,
+schema-drift). No user-visible behaviour changes, so both boxes are **regression** checks — the two
+flows that would break silently (children reparented to the wrong rows, no error raised).
+
+Setup: run against the **5435 test DB** (see intro), seeded with `seed-kosztorys.ts` (`INV=6`).
+
+- [ ] **Cofnięcie do wersji odtwarza drzewo bez zmian.** Zapisz wersję, zmień coś w rozpisce (dopisz pozycję, zmień ilości w etapach), cofnij do zapisanej wersji — sekcje, pozycje, etapy i ilości wykonane wracają identyczne, każda pozycja pod swoją sekcją, każda ilość przy swoim etapie.
+- [ ] **Nałożenie szablonu na pustą inwestycję.** Nałóż globalny szablon na inwestycję bez rozpiski — pozycje trafiają pod właściwe sekcje (żadna nie ląduje w cudzej), kolejność i nazwy zgodne z szablonem.
+
+## summary-panel-filter-blind — panel wholly filter-blind, scope-marker apparatus deleted
+
+Reverses **EX-600** below: the panel no longer half-reacts to filtry transakcji, so the asterisks and
+the przypis it introduced are gone. The EX-600 section's unticked boxes describe a UI that no longer
+exists — read them as superseded by this section, not as owed.
+
+### Phase 1: Panel goes filter-blind
+
+- [ ] Na inwestycji z kosztorysem liczby w „Podsumowaniu" są identyczne przed i po nałożeniu filtra transakcji.
+- [ ] Sumy w zakładce „Materiały/Wydatki" są identyczne przed i po nałożeniu filtra.
+- [ ] Liczby w zakładce „Marża" są identyczne przed i po nałożeniu filtra, i nadal ukryte dla MANAGERA.
+- [ ] „Wpłaty" na stronie inwestycji zgadzają się z „Wpłatami" na `kosztorys_v2` tej samej inwestycji.
+- [ ] Inwestycja **bez** pozycji kosztorysu nadal renderuje odczyt z planu transakcji, bez błędu.
+
+### Phase 2: Strip the scope-marker apparatus
+
+- [ ] Żadnej gwiazdki przy wierszach „Podsumowania" w każdej osi kwot (netto / brutto / mieszany).
+- [ ] Czerwony przypis „Pola oznaczone gwiazdką…" zniknął.
+- [ ] Na inwestycji, gdzie robocizna z kosztorysu rozjeżdża się z transakcjami LABOR_COST, ostrzeżenie o rozbieżności pokazuje się **także** przy aktywnym filtrze.
+- [ ] `SettlementPlaneWarning` pokazuje się na rozjeżdżającej się inwestycji przy aktywnym filtrze.
+- [ ] Podgląd klienta (`preview`) nadal wycisza oba werdykty.
+
+### Phase 3: Delete the dead filter plumbing
+
+- [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
+- [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.
 
 ## cron-lead-reconcile (EX-416)
 

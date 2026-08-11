@@ -2,8 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
-// Labor cost sheet section (a header grouping items). defaultCostVariant
-// cascades to items (an item inherits it and may override). VAT does not live on the section —
+// Labor cost sheet section (a header grouping items). VAT does not live on the section —
 // there is a single rate per investment (S-12, not yet implemented).
 export const KosztorysSections: CollectionConfig = {
   slug: 'kosztorys-sections',
@@ -30,23 +29,9 @@ export const KosztorysSections: CollectionConfig = {
     { name: 'investment', type: 'relationship', relationTo: 'investments', required: true },
     { name: 'name', type: 'text', required: true, label: { en: 'Name', pl: 'Nazwa' } },
     { name: 'displayOrder', type: 'number', required: true, defaultValue: 0 },
-    {
-      name: 'defaultCostVariant',
-      type: 'text',
-      required: true,
-      defaultValue: 'w_tools',
-      label: { en: 'Default cost variant', pl: 'Domyślny wariant kosztu' },
-    },
-    // Per-section subcontractor markup coefficient; null = inherit the global one from the investment.
-    {
-      name: 'wToolsCoeff',
-      type: 'number',
-      label: { en: 'Coeff (with tools)', pl: 'Współczynnik (z narzędziami)' },
-    },
-    {
-      name: 'ownToolsCoeff',
-      type: 'number',
-      label: { en: 'Coeff (own tools)', pl: 'Współczynnik (bez narzędzi)' },
-    },
+    // Palette key from src/lib/kosztorys/section-colors.ts (text, not a select → pg enum: the
+    // palette is a design-system list that grows, and each new swatch would otherwise owe an
+    // ALTER TYPE). null = unpinned → the pie falls back to its positional palette.
+    { name: 'color', type: 'text', label: { en: 'Color', pl: 'Kolor' } },
   ],
 }

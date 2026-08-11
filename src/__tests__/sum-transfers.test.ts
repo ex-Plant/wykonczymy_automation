@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Payload } from 'payload'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   sumRegisterBalance,
   sumAllRegisterBalances,
@@ -9,22 +8,14 @@ import {
   deriveFinancials,
   deriveCategoryBreakdowns,
 } from '@/lib/db/sum-transfers'
+import {
+  fakePayload,
+  lastSql,
+  mockExecute,
+  resetFakePayload,
+} from '@/__tests__/helpers/fake-payload-sql'
 
-// ── Fake Payload with controllable db.drizzle.execute ────────────────────
-
-const mockExecute = vi.fn()
-
-/**
- * getDb resolves to payload.db.drizzle (when no req/transactionID).
- * We provide a minimal shape that satisfies the internal access pattern.
- */
-const fakePayload = {
-  db: { drizzle: { execute: mockExecute }, sessions: {} },
-} as unknown as Payload
-
-beforeEach(() => {
-  mockExecute.mockReset()
-})
+beforeEach(resetFakePayload)
 
 // ── sumRegisterBalance ───────────────────────────────────────────────────
 
@@ -130,18 +121,23 @@ describe('sumAllInvestmentFinancials', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: null, settlement_mode: 'NET' }],
+      })
     const map = await sumAllInvestmentFinancials(fakePayload)
     expect(map.size).toBe(2)
     expect(map.get(1)).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 3000,
-      totalCorrections: 0,
+      materialsGrossBase: 3000,
+      materialsNetBilled: 0,
       totalIncome: 10000,
       totalLaborCosts: 200,
       totalPayouts: 150,
       totalRabat: 50,
       totalLoss: 120,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     })
     expect(map.get(2)?.totalMaterialCosts).toBe(500)
@@ -156,6 +152,9 @@ describe('sumAllInvestmentFinancials', () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: null, settlement_mode: 'NET' }],
+      })
     const inv = (await sumAllInvestmentFinancials(fakePayload)).get(1)!
     expect(inv.totalMaterialCosts).toBe(1000)
     expect(inv.totalSettled).toBe(-200)
@@ -187,6 +186,9 @@ describe('sumAllInvestmentFinancials', () => {
           },
         ],
       })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: null, settlement_mode: 'NET' }],
+      })
     const map = await sumAllInvestmentFinancials(fakePayload)
     const inv = map.get(1)!
     expect(inv.totalMaterialCosts).toBe(7000)
@@ -198,88 +200,48 @@ describe('sumAllInvestmentFinancials', () => {
   })
 
   it('returns empty Map for no rows', async () => {
-    mockExecute.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] })
+    mockExecute
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
     const map = await sumAllInvestmentFinancials(fakePayload)
     expect(map.size).toBe(0)
   })
+
+  // The listing's Marża has to carry the same concession the detail page's does — the pricing
+  // lookup is the seam where it could silently go missing for one surface only.
+  it('applies the per-investment materiały netto rate it looked up', async () => {
+    mockExecute
+      .mockResolvedValueOnce({
+        rows: [{ investment_id: '1', type: 'INVESTMENT_EXPENSE', settled: false, total: '123' }],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ id: '1', materials_net_rate: 0.23, settlement_mode: 'NET' }],
+      })
+    const inv = (await sumAllInvestmentFinancials(fakePayload)).get(1)!
+    expect(inv.materialsNetDiscount).toBeCloseTo(23, 10)
+  })
 })
 
-// ── buildSqlConditions — filter translation (via sumFilteredByType) ──
+// ── sumFilteredByType — how it consumes the Where ────────────────────────
+// Per-operator translation lives in lib/db/where-to-sql.test.ts; these two pin the seam.
 
-/** Extract raw SQL string from sql.raw() query object passed to db.execute */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractSql(query: any): string {
-  return query.queryChunks?.[0]?.value?.[0] ?? String(query)
-}
-
-describe('buildSqlConditions — filter translation', () => {
-  beforeEach(() => {
-    mockExecute.mockResolvedValue({ rows: [] })
-  })
-
-  it('passes type filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { type: { in: ['PAYOUT', 'OTHER'] } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("type IN ('PAYOUT', 'OTHER')")
-  })
-
-  it('passes date range to SQL', async () => {
-    await sumFilteredByType(fakePayload, {
-      date: { greater_than_equal: '2024-01-01', less_than_equal: '2024-12-31' },
-    })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("date >= '2024-01-01'")
-    expect(queryStr).toContain("date <= '2024-12-31'")
-  })
-
-  it('passes investment filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { investment: { in: [5] } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('investment_id IN (5)')
-  })
-
-  it('passes OR register filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, {
-      or: [{ sourceRegister: { in: [3] } }, { targetRegister: { in: [3] } }],
-    })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('source_register_id IN (3)')
-    expect(queryStr).toContain('target_register_id IN (3)')
-    expect(queryStr).toContain(' OR ')
-  })
-
-  it('passes worker filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { worker: { equals: 5 } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('worker_id = 5')
-  })
-
-  it('passes worker filter combined with date range to SQL', async () => {
-    await sumFilteredByType(fakePayload, {
-      worker: { equals: 3 },
-      date: { greater_than_equal: '2024-06-01', less_than_equal: '2024-12-31' },
-    })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain('worker_id = 3')
-    expect(queryStr).toContain("date >= '2024-06-01'")
-    expect(queryStr).toContain("date <= '2024-12-31'")
-  })
-
-  it('passes payment method filter to SQL', async () => {
-    await sumFilteredByType(fakePayload, { paymentMethod: { in: ['CASH'] } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("payment_method IN ('CASH')")
-  })
-
+describe('sumFilteredByType — Where handling', () => {
   it('returns empty array and skips SQL when NO_RESULTS sentinel present', async () => {
     const result = await sumFilteredByType(fakePayload, { id: { equals: -1 } })
     expect(result).toEqual([])
     expect(mockExecute).not.toHaveBeenCalled()
   })
 
+  it('splices the translated conditions into the WHERE slot', async () => {
+    await sumFilteredByType(fakePayload, { investment: { in: [5] } })
+    expect(lastSql()).toContain('AND investment_id IN (5)')
+  })
+
   it('empty where produces no extra conditions', async () => {
     await sumFilteredByType(fakePayload, {})
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
+    const queryStr = lastSql()
     expect(queryStr).toContain('WHERE cancelled IS NOT TRUE')
     // No filter clauses appended in the conditions slot (between WHERE and GROUP BY).
     // The base SELECT now contains an unrelated `AND` inside the settled re-bucket CASE.
@@ -303,13 +265,15 @@ describe('deriveFinancials', () => {
     expect(deriveFinancials(rows)).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 5000,
-      totalCorrections: 0,
+      materialsGrossBase: 5000,
+      materialsNetBilled: 0,
       totalIncome: 12000,
       totalLaborCosts: 800,
       totalPayouts: 300,
       totalRabat: 200,
       totalLoss: 150,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     })
   })
@@ -318,13 +282,15 @@ describe('deriveFinancials', () => {
     expect(deriveFinancials([])).toEqual({
       categoryCosts: [],
       totalMaterialCosts: 0,
-      totalCorrections: 0,
+      materialsGrossBase: 0,
+      materialsNetBilled: 0,
       totalIncome: 0,
       totalLaborCosts: 0,
       totalPayouts: 0,
       totalRabat: 0,
       totalLoss: 0,
       totalSettled: 0,
+      materialsNetDiscount: 0,
       settledCategoryCosts: [],
     })
   })
@@ -360,16 +326,15 @@ describe('deriveFinancials — settled material is symmetric for EXPENSE and COR
     expect(f.settledCategoryCosts).toEqual([])
   })
 
-  it('keeps settled CORRECTION out of materials/corrections, into totalSettled', () => {
+  it('keeps settled CORRECTION out of materials, into totalSettled', () => {
     const rows = [
       { type: 'CORRECTION', settled: false, total: 50 },
       { type: 'CORRECTION', settled: true, total: -200 },
       { type: 'INVESTMENT_EXPENSE', settled: false, total: 1000 },
     ]
     const f = deriveFinancials(rows)
-    // unsettled correction stays in materials and corrections
+    // unsettled correction stays in materials
     expect(f.totalMaterialCosts).toBe(1050)
-    expect(f.totalCorrections).toBe(50)
     // settled correction leaves materials, lands in totalSettled (negative ok)
     expect(f.totalSettled).toBe(-200)
   })
@@ -417,6 +382,7 @@ describe('deriveCategoryBreakdowns', () => {
     ]
     expect(deriveCategoryBreakdowns(rows)).toEqual({
       categoryCosts: [],
+      netCategoryCosts: [],
       settledCategoryCosts: [],
     })
   })
@@ -441,16 +407,9 @@ describe('sumFilteredByType', () => {
     })
     const result = await sumFilteredByType(fakePayload, {})
     expect(result).toEqual([
-      { type: 'INVESTMENT_EXPENSE', settled: false, total: 5000 },
-      { type: 'INVESTMENT_EXPENSE', settled: true, total: 100 },
-      { type: 'INVESTOR_DEPOSIT', settled: false, total: 12000 },
+      { type: 'INVESTMENT_EXPENSE', settled: false, total: 5000, netTotal: 0 },
+      { type: 'INVESTMENT_EXPENSE', settled: true, total: 100, netTotal: 0 },
+      { type: 'INVESTOR_DEPOSIT', settled: false, total: 12000, netTotal: 0 },
     ])
-  })
-
-  it('passes filters to SQL', async () => {
-    mockExecute.mockResolvedValue({ rows: [] })
-    await sumFilteredByType(fakePayload, { date: { greater_than_equal: '2024-01-01' } })
-    const queryStr = extractSql(mockExecute.mock.calls[0][0])
-    expect(queryStr).toContain("date >= '2024-01-01'")
   })
 })

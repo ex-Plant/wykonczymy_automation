@@ -3,15 +3,35 @@ import type {
   KosztorysSectionT,
   KosztorysStageT,
   StageProgressT,
-} from '@/types/kosztorys'
+} from '@/lib/kosztorys/types'
 
 // Bump only on a non-additive payload change (a renamed/dropped field). Additive fields need no
 // bump — the restore mapper defaults anything missing, so an old snapshot still restores. See
 // restore-kosztorys.ts for the tolerant deserialization contract.
+//
+// A field DROPPED without ever having been read is exempt: the restore mapper picks keys it knows,
+// so the stale key in an old payload is inert and the snapshot still restores whole (precedent:
+// 20260724_1).
+// The exemption matters because bumping is asymmetric — the list queries (snapshots.ts, presets.ts)
+// don't assert, so every stored version and every global preset would keep being offered in the UI
+// and throw the Polish error only once clicked.
 export const SNAPSHOT_SCHEMA_VERSION = 1 as const
 
-// The three investment editor-settings that shape computed prices — captured so a restore is
-// faithful (restore rewrites them). Kept off the tree because they live on `investments`.
+// Gate a stored payload at read time. Because the version bumps ONLY on a non-additive change, any
+// mismatch (an old row written before that change, or a future row from newer code) means the
+// tolerant mapper would seed wrong/missing columns — so reject loudly instead of silently applying.
+// Never bumped yet, so this rejects nothing today; it's the guard that arms on the first bump.
+export function assertReadableSchemaVersion(version: number, kind: 'preset' | 'snapshot'): void {
+  if (version === SNAPSHOT_SCHEMA_VERSION) return
+  const label = kind === 'preset' ? 'szablonu' : 'wersji'
+  throw new Error(
+    `Nie można wczytać ${label}: zapisano w formacie ${version}, aplikacja obsługuje ${SNAPSHOT_SCHEMA_VERSION}.`,
+  )
+}
+
+// The investment editor-settings that shape computed prices — captured so a restore is faithful
+// (restore rewrites them). Kept off the tree because they live on `investments`. The global discount
+// is deliberately NOT captured: restoring a version must not reset the live amount discount.
 export type SnapshotSettingsT = {
   wToolsCoeff: number
   ownToolsCoeff: number

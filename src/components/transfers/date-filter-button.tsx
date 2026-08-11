@@ -30,9 +30,10 @@ export function DateFilterButton({ label, value, onChange }: DateFilterButtonPro
         <Button
           variant={value ? 'activeFilter' : 'outline'}
           size="sm"
-          className="min-w-40 justify-start gap-1.5"
+          align="start"
+          className="min-w-40"
         >
-          <CalendarIcon className="size-4" />
+          <CalendarIcon />
           {selected ? format(selected, 'd MMM yyyy', { locale: pl }) : label}
         </Button>
       </PopoverTrigger>

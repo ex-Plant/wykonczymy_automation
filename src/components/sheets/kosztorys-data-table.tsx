@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { AddSheetDialog } from '@/components/dialogs/add-sheet-dialog'
 import { Button } from '@/components/ui/button'
 import { useSearchFilter } from '@/hooks/use-search-filter'
@@ -36,11 +36,16 @@ export function KosztorysDataTable({ data, availableInvestments }: PropsT) {
       initialSorting={INITIAL_SORTING}
       toolbar={() => (
         <>
-          <SearchFilterInput value={searchTerm} onChange={setSearchTerm} placeholder="Szukaj..." />
+          <SearchFilterInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Szukaj..."
+            className={SEARCH_FILTER_TOOLBAR_WIDTH}
+          />
           <AddSheetDialog
             trigger={
               <Button size="sm">
-                <Plus className="size-4" />
+                <Plus />
                 Nowy kosztorys
               </Button>
             }

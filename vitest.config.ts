@@ -22,6 +22,9 @@ export default defineConfig({
       // Node test env lacks the `react-server` condition, so the real `server-only`
       // throws on import. Map it to a no-op stub.
       'server-only': path.resolve(__dirname, './src/__tests__/stubs/server-only.ts'),
+      // Same reason: `unstable_cache` wants a request scope and `updateTag` a server action,
+      // neither of which exists in node. See the stub for why it's aliased, not per-spec mocked.
+      'next/cache': path.resolve(__dirname, './src/__tests__/stubs/next-cache.ts'),
     },
   },
 })

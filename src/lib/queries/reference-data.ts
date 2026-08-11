@@ -1,209 +1,161 @@
+import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import type { RoleT } from '@/lib/auth/roles'
-import type { Where } from 'payload'
-import {
-  sumAllRegisterBalances,
-  sumAllWorkerBalances,
-  sumAllInvestmentFinancials,
-  sumFilteredByType,
-  sumCategoryByTypeSettled,
-  deriveCategoryBreakdowns,
-} from '@/lib/db/sum-transfers'
 import { getDb } from '@/lib/db/get-db'
-import type {
-  InvestmentFinancialsT,
-  TypeSettledTotalT,
-  CategoryBreakdownsT,
-} from '@/types/investment-financials'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { perfStart } from '@/lib/perf'
 
 import type {
   CashRegisterRefT,
   CashRegisterTypeT,
   InvestmentRefT,
+  InvestmentStatusT,
   WorkerRefT,
   OtherCategoryRefT,
   ExpenseCategoryRefT,
   ReferenceDataBaseT,
 } from '@/types/reference-data'
 
-export const fetchReferenceData = unstable_cache(
-  async (): Promise<ReferenceDataBaseT> => {
-    const elapsed = perfStart()
+// Categories alone, for callers that need only these. `fetchReferenceData` also returns every user
+// (name, role, email) and every investment (address, phone, email, notes) — company-wide PII that
+// must not be one identifier away on the unauthenticated share path.
+export const fetchExpenseCategories = unstable_cache(
+  async (): Promise<ExpenseCategoryRefT[]> => {
     const payload = await getPayload({ config })
     const db = await getDb(payload)
+    const result = await db.execute(sql`
+      SELECT id, name FROM expense_categories
+      ORDER BY name
+    `)
+    return result.rows.map((row) => ({ id: Number(row.id), name: row.name as string }))
+  },
+  ['expense-categories'],
+  { tags: [CACHE_TAGS.expenseCategories] },
+)
 
-    const [crResult, invResult, usersResult, catResult, expCatResult] = await Promise.all([
-      db.execute(sql`
+// `cache()` over `unstable_cache()` on purpose: the two dedupe on different axes. `unstable_cache`
+// spans requests but re-runs whenever its tag is invalidated; `cache()` collapses the calls *within*
+// one render, which is what actually hurt — the page, the transfers table and the root-layout nav
+// each call this, so it ran 3× per render (EX-597 baseline). Safe here only because nothing reads
+// reference data before a mutation in the same request, so the first call is always post-write.
+export const fetchReferenceData = cache(
+  unstable_cache(
+    async (): Promise<ReferenceDataBaseT> => {
+      const elapsed = perfStart()
+      const payload = await getPayload({ config })
+      const db = await getDb(payload)
+
+      const [crResult, invResult, usersResult, catResult, expCatResult] = await Promise.all([
+        db.execute(sql`
         SELECT id, name, type::text, active::boolean, owner_id::integer
         FROM cash_registers
         ORDER BY name
       `),
-      // The sheet id lives on kosztoryses now (1:1 via partial unique index on
-      // investment_id). LEFT JOIN so investments without a kosztorys still appear,
-      // and we project a boolean instead of leaking the sheet id into the cache.
-      db.execute(sql`
+        // The sheet id lives on kosztoryses now (1:1 via partial unique index on
+        // investment_id). LEFT JOIN so investments without a kosztorys still appear,
+        // and we project a boolean instead of leaking the sheet id into the cache.
+        db.execute(sql`
         SELECT i.id, i.name, i.status::text,
                i.address, i.phone, i.email, i.contact_person, i.notes, i.review,
+               i.materials_net_rate::float8, i.settlement_mode::text,
                (k.google_sheet_id IS NOT NULL) AS has_sheet
         FROM investments i
         LEFT JOIN kosztoryses k ON k.investment_id = i.id
         ORDER BY i.name
       `),
-      db.execute(sql`
+        db.execute(sql`
         SELECT id, name, role::text, active::boolean, email, default_cash_register_id::integer
         FROM users
         ORDER BY name
       `),
-      db.execute(sql`
+        db.execute(sql`
         SELECT id, name FROM other_categories
         ORDER BY name
       `),
-      db.execute(sql`
+        db.execute(sql`
         SELECT id, name FROM expense_categories
         ORDER BY name
       `),
-    ])
+      ])
 
-    const totalRows =
-      crResult.rows.length +
-      invResult.rows.length +
-      usersResult.rows.length +
-      catResult.rows.length +
-      expCatResult.rows.length
-    console.log(`[PERF] query.fetchReferenceData ${elapsed()}ms (5 SQL, ${totalRows} rows)`)
+      const totalRows =
+        crResult.rows.length +
+        invResult.rows.length +
+        usersResult.rows.length +
+        catResult.rows.length +
+        expCatResult.rows.length
+      console.log(`[PERF] query.fetchReferenceData ${elapsed()}ms (5 SQL, ${totalRows} rows)`)
 
-    const cashRegisters: CashRegisterRefT[] = crResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-      type: (row.type as CashRegisterTypeT) ?? 'AUXILIARY',
-      active: row.active as boolean,
-      ownerId: row.owner_id ? Number(row.owner_id) : undefined,
-    }))
+      const cashRegisters: CashRegisterRefT[] = crResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+        type: (row.type as CashRegisterTypeT) ?? 'AUXILIARY',
+        active: row.active as boolean,
+        ownerId: row.owner_id ? Number(row.owner_id) : undefined,
+      }))
 
-    const investments: InvestmentRefT[] = invResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-      status: (row.status as 'active' | 'completed') ?? 'active',
-      active: row.status === 'active',
-      address: (row.address as string) ?? '',
-      phone: (row.phone as string) ?? '',
-      email: (row.email as string) ?? '',
-      contactPerson: (row.contact_person as string) ?? '',
-      notes: (row.notes as string) ?? '',
-      review: (row.review as string) ?? '',
-      hasSheet: Boolean(row.has_sheet),
-    }))
+      const investments: InvestmentRefT[] = invResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+        status: (row.status as InvestmentStatusT) ?? 'active',
+        active: row.status === 'active',
+        address: (row.address as string) ?? '',
+        phone: (row.phone as string) ?? '',
+        email: (row.email as string) ?? '',
+        contactPerson: (row.contact_person as string) ?? '',
+        notes: (row.notes as string) ?? '',
+        review: (row.review as string) ?? '',
+        materialsNetRate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
+        settlementMode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+        hasSheet: Boolean(row.has_sheet),
+      }))
 
-    const workers: WorkerRefT[] = usersResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-      role: (row.role as RoleT) ?? 'EMPLOYEE',
-      active: row.active as boolean,
-      email: (row.email as string) ?? '',
-      defaultCashRegisterId: row.default_cash_register_id
-        ? Number(row.default_cash_register_id)
-        : undefined,
-    }))
+      const workers: WorkerRefT[] = usersResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+        role: (row.role as RoleT) ?? 'EMPLOYEE',
+        active: row.active as boolean,
+        email: (row.email as string) ?? '',
+        defaultCashRegisterId: row.default_cash_register_id
+          ? Number(row.default_cash_register_id)
+          : undefined,
+      }))
 
-    const otherCategories: OtherCategoryRefT[] = catResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-    }))
+      const otherCategories: OtherCategoryRefT[] = catResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+      }))
 
-    const expenseCategories: ExpenseCategoryRefT[] = expCatResult.rows.map((row) => ({
-      id: Number(row.id),
-      name: row.name as string,
-    }))
+      const expenseCategories: ExpenseCategoryRefT[] = expCatResult.rows.map((row) => ({
+        id: Number(row.id),
+        name: row.name as string,
+      }))
 
-    return { cashRegisters, investments, workers, otherCategories, expenseCategories }
-  },
-  ['reference-data'],
-  {
-    tags: [
-      CACHE_TAGS.cashRegisters,
-      CACHE_TAGS.investments,
-      CACHE_TAGS.users,
-      CACHE_TAGS.otherCategories,
-      CACHE_TAGS.expenseCategories,
-      // hasSheet derives from kosztoryses via JOIN — invalidate on kosztorys
-      // create/link/unlink/delete too, otherwise the listing's "kosztorys" badge
-      // stays stale.
-      CACHE_TAGS.kosztoryses,
-    ],
-  },
-)
-
-export type RegisterBalanceMapT = Record<string, number>
-
-export const fetchRegisterBalances = unstable_cache(
-  async (): Promise<RegisterBalanceMapT> => {
-    const elapsed = perfStart()
-    const payload = await getPayload({ config })
-    const map = await sumAllRegisterBalances(payload)
-    const record = Object.fromEntries(map)
-    console.log(`[PERF] query.fetchRegisterBalances ${elapsed()}ms (${map.size} registers)`)
-    return record
-  },
-  ['register-balances'],
-  { tags: [CACHE_TAGS.transfers] },
-)
-
-export type WorkerBalanceMapT = Record<string, number>
-
-export const fetchWorkerBalances = unstable_cache(
-  async (): Promise<WorkerBalanceMapT> => {
-    const elapsed = perfStart()
-    const payload = await getPayload({ config })
-    const map = await sumAllWorkerBalances(payload)
-    const record = Object.fromEntries(map)
-    console.log(`[PERF] query.fetchWorkerBalances ${elapsed()}ms (${map.size} workers)`)
-    return record
-  },
-  ['worker-balances'],
-  { tags: [CACHE_TAGS.transfers] },
-)
-
-export type InvestmentFinancialsMapT = Record<string, InvestmentFinancialsT>
-
-export const fetchInvestmentFinancials = unstable_cache(
-  async (): Promise<InvestmentFinancialsMapT> => {
-    const elapsed = perfStart()
-    const payload = await getPayload({ config })
-    const map = await sumAllInvestmentFinancials(payload)
-    const record: InvestmentFinancialsMapT = {}
-    for (const [id, financials] of map) {
-      record[String(id)] = financials
-    }
-    console.log(`[PERF] query.fetchInvestmentFinancials ${elapsed()}ms (${map.size} investments)`)
-    return record
-  },
-  ['investment-financials'],
-  { tags: [CACHE_TAGS.transfers] },
-)
-
-export async function fetchFilteredByType(where: Where): Promise<TypeSettledTotalT[]> {
-  return unstable_cache(
-    async () => {
-      const payload = await getPayload({ config })
-      return sumFilteredByType(payload, where)
+      return {
+        cashRegisters,
+        investments,
+        workers,
+        otherCategories,
+        expenseCategories,
+      }
     },
-    ['filtered-by-type', JSON.stringify(where)],
-    { tags: [CACHE_TAGS.transfers] },
-  )()
-}
-
-export async function fetchCategoryBreakdowns(where: Where): Promise<CategoryBreakdownsT> {
-  return unstable_cache(
-    async () => {
-      const payload = await getPayload({ config })
-      return deriveCategoryBreakdowns(await sumCategoryByTypeSettled(payload, where))
+    ['reference-data'],
+    {
+      tags: [
+        CACHE_TAGS.cashRegisters,
+        CACHE_TAGS.investments,
+        CACHE_TAGS.users,
+        CACHE_TAGS.otherCategories,
+        CACHE_TAGS.expenseCategories,
+        // hasSheet derives from kosztoryses via JOIN — invalidate on kosztorys
+        // create/link/unlink/delete too, otherwise the listing's "kosztorys" badge
+        // stays stale.
+        CACHE_TAGS.kosztoryses,
+      ],
     },
-    ['category-breakdowns', JSON.stringify(where)],
-    { tags: [CACHE_TAGS.transfers] },
-  )()
-}
+  ),
+)

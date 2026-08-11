@@ -24,6 +24,8 @@ const stubInvestment = {
   notes: '',
   review: '',
   hasSheet: false,
+  materialsNetRate: null,
+  settlementMode: 'NET' as const,
 }
 
 const refData = {

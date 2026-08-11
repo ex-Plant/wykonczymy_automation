@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
+import { OptionalLink } from '@/components/ui/optional-link'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { formatPLDate, formatPLDateTime } from '@/lib/utils/format-date'
 import { InvoiceCell } from '@/components/transfers/invoice-cell'
@@ -14,6 +14,8 @@ import {
   isCancellationType,
   EXPENSE_CATEGORY_LABEL,
   SETTLED_TYPE,
+  VAT_PLANE_LABELS,
+  billsNetAmount,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
@@ -36,17 +38,31 @@ const allColumns = [
     id: 'amount',
     header: 'Kwota',
     cell: (info) => {
-      const { type, cancelled, settled } = info.row.original
+      const { type, cancelled, settled, netAmount } = info.row.original
       const isMuted = cancelled || type === 'CANCELLATION'
       const color = settled ? SETTLED_TYPE.color : TRANSFER_TYPE_COLORS[type]
+      // Brutto stays the primary figure: this column is summed against the kasa balance, and only
+      // the amount that left the register reconciles there.
+      const showsNet = billsNetAmount(type) && netAmount !== null
       return (
         <span
-          className="font-medium"
+          className="flex flex-col font-medium"
           style={isMuted ? undefined : { color: `var(--color-${color})` }}
         >
           {formatPLN(info.getValue())}
+          {showsNet && (
+            <span className="text-muted-foreground text-xs">netto {formatPLN(netAmount)}</span>
+          )}
         </span>
       )
+    },
+  }),
+  col.accessor('vatPlane', {
+    id: 'vatPlane',
+    header: 'Rozliczenie netto/brutto',
+    cell: (info) => {
+      const value = info.getValue()
+      return value ? VAT_PLANE_LABELS[value] : '—'
     },
   }),
   col.accessor('investmentName', {
@@ -55,11 +71,10 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.investmentId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/inwestycje/${id}`} className="hover:underline">
+        <OptionalLink href={name !== '—' && id ? `/inwestycje/${id}` : undefined}>
           {name}
-        </Link>
+        </OptionalLink>
       )
     },
   }),
@@ -132,11 +147,8 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.sourceRegisterId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/kasa/${id}`} className="hover:underline">
-          {name}
-        </Link>
+        <OptionalLink href={name !== '—' && id ? `/kasa/${id}` : undefined}>{name}</OptionalLink>
       )
     },
   }),
@@ -146,11 +158,8 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.targetRegisterId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/kasa/${id}`} className="hover:underline">
-          {name}
-        </Link>
+        <OptionalLink href={name !== '—' && id ? `/kasa/${id}` : undefined}>{name}</OptionalLink>
       )
     },
   }),
@@ -166,11 +175,10 @@ const allColumns = [
     cell: (info) => {
       const id = info.row.original.workerId
       const name = info.getValue()
-      if (!id || name === '—') return name
       return (
-        <Link href={`/pracownicy/${id}`} className="hover:underline">
+        <OptionalLink href={name !== '—' && id ? `/pracownicy/${id}` : undefined}>
           {name}
-        </Link>
+        </OptionalLink>
       )
     },
   }),

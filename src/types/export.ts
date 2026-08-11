@@ -27,6 +27,8 @@ export type TransferTableConfigT = {
   headerFields?: HeaderFieldT[]
   totalPayouts?: number
   totalFilteredAmount?: number
+  /** Server-derived: the list shows cancelled rows but the sum's SQL never counts them. */
+  listsCancelled?: boolean
   /** Defaults to true. Set to false to hide the "Suma kwot" button in TransferFilters. */
   showTotalAmount?: boolean
   cancelledTransactionAudit?: boolean

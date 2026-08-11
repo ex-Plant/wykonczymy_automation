@@ -5,6 +5,7 @@ import { Command as CommandPrimitive } from 'cmdk'
 import { SearchIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils/cn'
+import { foldFilter } from '@/lib/utils/fold-text'
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
+function Command({ className, filter, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
     <CommandPrimitive
       data-slot="command"
@@ -21,6 +22,7 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
         'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md',
         className,
       )}
+      filter={filter ?? foldFilter}
       {...props}
     />
   )
@@ -62,8 +64,11 @@ function CommandInput({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div data-slot="command-input-wrapper" className="flex h-9 items-center gap-2 border-b px-3">
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
+    <div
+      data-slot="command-input-wrapper"
+      className="border-border flex h-9 items-center gap-2 border-b px-3"
+    >
+      <SearchIcon className="opacity-50" />
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
