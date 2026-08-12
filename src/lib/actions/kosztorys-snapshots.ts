@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { protectedAction, validateAction } from '@/lib/actions/run-action'
+import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { getSnapshot, insertSnapshot, listSnapshots, type SnapshotMetaT } from '@/lib/db/snapshots'
@@ -87,8 +88,7 @@ export async function restoreSnapshotAction(
       // snapshot attributed to a since-deleted person lands in the residual bucket instead.
       return { success: true, data: restored }
     },
-    // Settings (VAT/coeffs) change too, so bump investments alongside the four tree tags.
-    ['kosztorysSections', 'kosztorysItems', 'kosztorysStages', 'stageProgress', 'investments'],
+    [...KOSZTORYS_TREE_TAGS],
   )
 }
 

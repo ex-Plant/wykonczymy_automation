@@ -1,6 +1,7 @@
 'use server'
 
 import { protectedAction } from '@/lib/actions/run-action'
+import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
@@ -15,17 +16,6 @@ import {
 import { MissingRobociznaTabError, readImportGrids } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import type { ActionResultT } from '@/types/action'
-
-// Every tag the tree touches. Settings are copied rather than changed, but `restoreKosztorys`
-// rewrites the investment row regardless, so `investments` goes with them — same list
-// `restoreSnapshotAction` bumps.
-const IMPORT_TAGS = [
-  'kosztorysSections',
-  'kosztorysItems',
-  'kosztorysStages',
-  'stageProgress',
-  'investments',
-] as const
 
 // `manual`, not `auto`, is what makes the import genuinely undoable: an auto snapshot is ambient
 // history — indistinguishable from the periodic autosaves in „Wersje", capped at the newest 50 and
@@ -143,6 +133,6 @@ export async function applyKosztorysImport(
         },
       }
     },
-    [...IMPORT_TAGS],
+    [...KOSZTORYS_TREE_TAGS],
   )
 }
