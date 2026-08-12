@@ -50,3 +50,22 @@ export function resolveSummaryReading(
 ): SummaryReadingT {
   return clientTotals ? readingFromKosztorys(clientTotals) : readingFromTransactions(financials)
 }
+
+/**
+ * The financials as the reading sees them: the robocizna/rabat pair swapped in, every cash-movement
+ * figure untouched. Exists so `calculateBalance` and `calculateMargin` keep taking one object — a
+ * switch threaded as parameters could be passed to one formula and forgotten at the other.
+ *
+ * `totalLaborCosts` is the PRE-rabat figure on both planes, which is why the reading's post-rabat
+ * robocizna gets its rabat added back here.
+ */
+export function financialsOnReading(
+  financials: InvestmentFinancialsT,
+  reading: SummaryReadingT,
+): InvestmentFinancialsT {
+  return {
+    ...financials,
+    totalLaborCosts: reading.laborCostsNetFromKosztorys + reading.rabatAmount,
+    totalRabat: reading.rabatAmount,
+  }
+}

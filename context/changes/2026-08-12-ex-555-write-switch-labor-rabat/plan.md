@@ -660,7 +660,7 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [ ] 4.1 Margin tab specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys/summary/tabs/summary-margin-tab.test.ts`
+- [ ] 4.1 Margin tab specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys/summary/tabs/summary-margin-tab.test.ts` — NOT authored: the repo has no React render harness (no `@testing-library/react`, no jsdom env), so this box is browser-level and owed to the E2E backlog at the review gate. The plane swap the tab now depends on is covered at unit level by `financialsOnReading` in `src/__tests__/lib/kosztorys/summary-reading.test.ts`.
 
 ### Phase 5: Write-switch
 

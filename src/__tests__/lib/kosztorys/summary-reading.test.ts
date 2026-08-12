@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  financialsOnReading,
   readingFromKosztorys,
   readingFromTransactions,
   resolveSummaryReading,
@@ -75,5 +76,35 @@ describe('resolveSummaryReading', () => {
       laborCostsNetFromKosztorys: 0,
       rabatAmount: 0,
     })
+  })
+})
+
+// The swap both the listing rows and v2's Marża tab apply before calling calculateBalance /
+// calculateMargin. Its whole job is to move exactly two figures and nothing else.
+describe('financialsOnReading', () => {
+  it('restores the pre-rabat robocizna the formulas expect', () => {
+    const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
+
+    expect(swapped.totalLaborCosts).toBe(90_000)
+    expect(swapped.totalRabat).toBe(5_000)
+  })
+
+  it('leaves every cash-movement figure alone', () => {
+    // The guard against a swap that quietly rebases materiały or wypłaty onto the kosztorys plane,
+    // which the kosztorys has no figure for at all.
+    const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
+    const { totalLaborCosts: _labor, totalRabat: _rabat, ...untouched } = swapped
+    const {
+      totalLaborCosts: _originalLabor,
+      totalRabat: _originalRabat,
+      ...originalUntouched
+    } = financials
+
+    expect(untouched).toEqual(originalUntouched)
+  })
+
+  it('is a no-op on the transactions reading', () => {
+    // v1 must survive the seam byte-identical: 84 of 96 investments have no kosztorys.
+    expect(financialsOnReading(financials, readingFromTransactions(financials))).toEqual(financials)
   })
 })

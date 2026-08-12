@@ -5,6 +5,8 @@ import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
+import { financialsOnReading } from '@/lib/kosztorys/summary-reading'
+import type { SummaryReadingT } from '@/lib/kosztorys/summary-reading'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 
 const HINTS = {
@@ -21,12 +23,23 @@ const HINTS = {
 
 type PropsT = {
   financials: InvestmentFinancialsT
-}
+} & SummaryReadingT
 
 // Company-plane figures. Visibility is enforced upstream by the host omitting `financials` for anyone
 // but ADMIN/OWNER, which keeps the numbers out of the RSC payload rather than merely off the screen —
 // so this component carries no role check of its own.
-export function SummaryMarginTab({ financials }: PropsT) {
+//
+// Robocizna and rabat arrive as the reading the host resolved, not off `financials`: the block above
+// this tab is already on that plane, and a tab reading the transactions figures made the same panel
+// report two different robocizny. Everything else below stays `financials`-sourced — wypłaty, strata
+// and materiały are cash movements the kosztorys knows nothing about.
+export function SummaryMarginTab({
+  financials,
+  laborCostsNetFromKosztorys,
+  rabatAmount,
+}: PropsT) {
+  const reading = { laborCostsNetFromKosztorys, rabatAmount }
+  const readFinancials = financialsOnReading(financials, reading)
   const {
     totalLaborCosts,
     totalPayouts,
@@ -34,8 +47,8 @@ export function SummaryMarginTab({ financials }: PropsT) {
     totalLoss,
     totalSettled,
     materialsNetDiscount,
-  } = financials
-  const margin = calculateMargin(financials)
+  } = readFinancials
+  const margin = calculateMargin(readFinancials)
 
   // No VAT plane: marża sums net transfer amounts, so there is one „Kwota" track.
   const cols = summaryMoneyCols('net')

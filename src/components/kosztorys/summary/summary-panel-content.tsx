@@ -323,7 +323,13 @@ export function SummaryPanelContent({
                 vatRate={vatRate}
               />
             )}
-            {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
+            {view === 'margin' && financials && (
+              <SummaryMarginTab
+                financials={financials}
+                laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+                rabatAmount={rabatAmount}
+              />
+            )}
           </div>
         )}
       </SummaryScrollRegion>
