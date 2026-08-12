@@ -227,7 +227,7 @@ export const sumAllInvestmentFinancials = async (
   // computing settledCategoryCosts here keeps the two paths identical by construction.
   const map = new Map<number, InvestmentFinancialsT>()
   for (const [invId, rows] of rowsByInvestment) {
-    const { categoryCosts, settledCategoryCosts } = deriveCategoryBreakdowns(
+    const { categoryCosts, settledCategoryCosts, netCategoryCosts } = deriveCategoryBreakdowns(
       categoryRowsByInvestment.get(invId) ?? [],
     )
     const pricing = pricingByInvestment.get(invId)
@@ -239,6 +239,7 @@ export const sumAllInvestmentFinancials = async (
         settledCategoryCosts,
         pricing?.rate ?? null,
         pricing?.mode ?? SETTLEMENT_MODE_DEFAULT,
+        netCategoryCosts,
       ),
     )
   }

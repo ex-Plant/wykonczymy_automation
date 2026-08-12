@@ -57,3 +57,14 @@ const GRID_AXIS_BY_MODE: Record<SettlementModeT, MoneyAxisT> = {
 export function settlementModeToGridAxis(mode: SettlementModeT): MoneyAxisT {
   return GRID_AXIS_BY_MODE[mode]
 }
+
+// A brutto-settled client has VAT added on top of the bill, so there is nothing to strip off and the
+// saved rate goes inert. The rate itself is kept rather than cleared: switching back to netto
+// restores the old figures with nothing to re-enter. One home for the rule, because every surface
+// that prices materiały has to apply it and one that forgets prices a whole listing wrong.
+export function effectiveMaterialsNetRate(
+  mode: SettlementModeT,
+  rate: number | null,
+): number | null {
+  return mode === 'GROSS' ? null : rate
+}

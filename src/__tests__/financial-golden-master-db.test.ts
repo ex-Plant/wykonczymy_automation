@@ -75,6 +75,7 @@ const ZERO_FINANCIALS: InvestmentFinancialsT = {
   totalSettled: 0,
   materialsNetDiscount: 0,
   settledCategoryCosts: [],
+  netCategoryCosts: [],
 }
 
 const toPairs = (costs: { categoryId: number; total: number }[]): CategoryPairT[] =>

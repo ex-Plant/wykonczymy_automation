@@ -24,8 +24,12 @@ export type InvestmentRowT = {
   totalLaborCosts: number
   totalPayouts: number
   totalInvestmentExpense: number
+  totalSettled: number
+  /** Priced on the plane the client is billed on, not the raw receipts — so these columns and
+   *  `totalInvestmentExpense` stand on the same plane and add up. */
   categoryCosts: CategoryCostT[]
   balance: number
+  balanceGross: number
   margin: number
   address: string
   phone: string
@@ -34,10 +38,11 @@ export type InvestmentRowT = {
   review: string
   notes: string
   hasSheet: boolean
-  // No column renders these two — the whole row is handed to EditInvestmentDialog, whose form
-  // needs them.
+  // No column renders these — the whole row is handed to EditInvestmentDialog, whose form needs
+  // them. `vatRate` is the exception that also prices `balanceGross`.
   materialsNetRate: number | null
   settlementMode: SettlementModeT
+  vatRate: number
 }
 
 const col = createColumnHelper<InvestmentRowT>()
@@ -62,9 +67,17 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
     }),
+    // Two fixed columns rather than one switched by tryb: in trybie mieszanym both planes are owed
+    // at once, so a reader who sees only one of them cannot tell what the client still has to pay.
     col.accessor('balance', {
       id: 'balance',
-      header: 'Bilans',
+      header: 'Bilans netto',
+      meta: { align: 'right' },
+      cell: (info) => <BalanceCell value={info.getValue()} />,
+    }),
+    col.accessor('balanceGross', {
+      id: 'balanceGross',
+      header: 'Bilans brutto',
       meta: { align: 'right' },
       cell: (info) => <BalanceCell value={info.getValue()} />,
     }),
@@ -78,9 +91,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
           }),
         ]
       : []),
-    // Per-category expense breakdown — mirrors the single-investment stats, one
-    // column per expense category so labels stay 1:1 with the detail page and a
-    // future category appears automatically. Corrections (uncategorized) stay out.
+    // Mirrors the single-investment stats so labels stay 1:1 with the detail page.
     ...expenseCategories.map((cat) =>
       col.accessor((row) => costForCategory(row.categoryCosts, cat.id), {
         id: `category-${cat.id}`,
@@ -94,6 +105,12 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       header: 'Wydatki inwestycyjne',
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
+    }),
+    col.accessor('totalSettled', {
+      id: 'totalSettled',
+      header: 'Wydatki wliczone w robociznę',
+      meta: { align: 'right' },
+      cell: (info) => formatPLN(info.getValue()),
     }),
     // Wypłaty (payouts) is admin/owner-only, matching the detail page where it
     // sits alongside Marża behind the same role gate.

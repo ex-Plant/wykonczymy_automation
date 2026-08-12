@@ -8,6 +8,7 @@ import {
   faceValue,
   materialsNetDiscount,
   materialsPair,
+  billedCategoryCosts,
   billedMaterials,
   billedMaterialsPair,
   moneyPair,
@@ -136,6 +137,43 @@ describe('billedMaterials', () => {
     const pair = materialsPair({ grossBase: 123, netBilled: 10 }, null)
     expect(pair.net).toBe(pair.gross)
     expect(billedMaterials({ grossBase: 123, netBilled: 10 }, null)).toBe(133)
+  })
+})
+
+describe('billedCategoryCosts', () => {
+  it('divides only the brutto part of a category that mixes both planes', () => {
+    const billed = billedCategoryCosts(
+      [{ categoryId: 1, total: 1250 }],
+      [{ categoryId: 1, total: 100 }],
+      0.25,
+    )
+    expect(billed).toEqual([{ categoryId: 1, total: 1020 }]) // 1150 ÷ 1,25 + 100
+  })
+
+  it('treats a category with no netto part as pure brutto receipts', () => {
+    expect(billedCategoryCosts([{ categoryId: 2, total: 123 }], [], 0.23)).toEqual([
+      { categoryId: 2, total: expect.closeTo(100, 10) },
+    ])
+  })
+
+  it('bills the raw receipts when no rate is saved', () => {
+    const categories = [
+      { categoryId: 1, total: 1250 },
+      { categoryId: 2, total: 500 },
+    ]
+    expect(billedCategoryCosts(categories, [{ categoryId: 1, total: 100 }], null)).toEqual(
+      categories,
+    )
+  })
+
+  it('sums to the same figure as the aggregate over the two buckets', () => {
+    const categories = [
+      { categoryId: 1, total: 1250 },
+      { categoryId: 2, total: 500 },
+    ]
+    const net = [{ categoryId: 1, total: 100 }]
+    const columnSum = billedCategoryCosts(categories, net, 0.25).reduce((s, c) => s + c.total, 0)
+    expect(columnSum).toBeCloseTo(billedMaterials({ grossBase: 1650, netBilled: 100 }, 0.25), 10)
   })
 })
 

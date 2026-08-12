@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { SETTLEMENT_MODES, settlementModeToGridAxis } from '@/lib/kosztorys/settlement-mode'
+import {
+  effectiveMaterialsNetRate,
+  SETTLEMENT_MODES,
+  settlementModeToGridAxis,
+} from '@/lib/kosztorys/settlement-mode'
 import { computeDoZaplatyRM } from '@/lib/kosztorys/summary-economics'
 
 // The stored mode is the only source of the grid's money plane. The panel has no such projection —
@@ -16,6 +20,23 @@ describe('settlement mode projections', () => {
 
   it('never yields a hidden-money axis for any mode', () => {
     for (const mode of SETTLEMENT_MODES) expect(settlementModeToGridAxis(mode)).not.toBe('none')
+  })
+})
+
+// Every surface that prices materiały reads the rate through here, so a new one cannot ship the
+// GROSS gate from memory — which is exactly how the investments listing ended up without it.
+describe('effectiveMaterialsNetRate', () => {
+  it('goes inert under GROSS whatever rate is saved', () => {
+    expect(effectiveMaterialsNetRate('GROSS', 0.25)).toBeNull()
+    expect(effectiveMaterialsNetRate('GROSS', 0)).toBeNull()
+    expect(effectiveMaterialsNetRate('GROSS', null)).toBeNull()
+  })
+
+  it('hands the saved rate through untouched under NET and MIXED', () => {
+    expect(effectiveMaterialsNetRate('NET', 0.25)).toBe(0.25)
+    expect(effectiveMaterialsNetRate('MIXED', 0.25)).toBe(0.25)
+    expect(effectiveMaterialsNetRate('NET', null)).toBeNull()
+    expect(effectiveMaterialsNetRate('MIXED', null)).toBeNull()
   })
 })
 
