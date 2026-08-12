@@ -355,8 +355,8 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [ ] 1.1 Constants spec passes: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts`
-- [ ] 1.2 Spec-table consistency passes: `pnpm exec vitest run src/__tests__/transfer-spec-table.test.ts`
+- [x] 1.1 Constants spec passes: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts`
+- [x] 1.2 Spec-table consistency passes: `pnpm exec vitest run src/__tests__/transfer-spec-table.test.ts`
 
 ### Phase 2: Validation hook
 

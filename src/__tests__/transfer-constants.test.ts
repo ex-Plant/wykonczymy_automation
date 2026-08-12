@@ -72,8 +72,6 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
       'INVESTMENT_EXPENSE',
       'INVESTMENT_EXPENSE_NET',
       'LABOR_COST',
-      'COMPANY_FUNDING',
-      'OTHER_DEPOSIT',
       'CORRECTION',
       'PAYOUT',
       'RABAT',
@@ -239,7 +237,7 @@ describe('membership arrays — exact contents and order', () => {
   })
 
   it('DEPOSIT_UI_TYPES', () => {
-    expect(DEPOSIT_UI_TYPES).toEqual(['INVESTOR_DEPOSIT', 'COMPANY_FUNDING'])
+    expect(DEPOSIT_UI_TYPES).toEqual(['OTHER_DEPOSIT', 'INVESTOR_DEPOSIT', 'COMPANY_FUNDING'])
   })
 
   it('TRANSACTION_TRANSFER_TYPES', () => {
