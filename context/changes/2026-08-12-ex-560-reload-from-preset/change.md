@@ -1,7 +1,7 @@
 ---
 change_id: ex-560-reload-from-preset
 title: Reload a kosztorys from a preset onto a non-empty investment, reversibly
-status: implementing
+status: implemented
 created: 2026-08-12
 updated: 2026-08-12
 archived_at: null
@@ -35,4 +35,4 @@ real work recorded against it makes no business sense in the first place, so pro
 complexity for nothing. Plain replacement: everything except the investment's settings goes. This
 removed an entire phase (the shared praca-identity extraction) from the plan.
 
-Plan: `plan.md` (four phases), condensed in `plan-brief.md`.
+Plan: `plan.md` (three phases), condensed in `plan-brief.md`.

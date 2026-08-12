@@ -309,7 +309,7 @@ Run **once**, after Phase 3.
 
 #### Automated
 
-- [x] 3.1 No phase-scoped automated check (browser-level; E2E disposition in Testing Strategy)
+- [x] 3.1 No phase-scoped automated check (browser-level; E2E disposition in Testing Strategy) — 7d0dd6ce
 
 ### Whole-tree Gate
 
