@@ -62,7 +62,6 @@ export function KosztorysEditorBody({
   onOpenVersions,
   onTreeReplaced,
   workers,
-  canImportFromSheet = false,
   ...panelData
 }: PropsT) {
   const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
@@ -157,7 +156,6 @@ export function KosztorysEditorBody({
         tree,
         onOpenVersions,
         onTreeReplaced,
-        canImportFromSheet,
       }}
     >
       <div

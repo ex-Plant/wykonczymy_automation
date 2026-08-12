@@ -14,7 +14,7 @@ per-investment button, not a one-shot migration, so it stays useful after the fi
 
 **The write path already exists in the exact shape this needs.** `restoreSnapshotAction`
 (`src/lib/actions/kosztorys-snapshots.ts:61`) runs, inside one `withPayloadTransaction`: a forced
-`captureAutoSnapshot` → `restoreKosztorys` (wipe → `insertKosztorysTree` → rewrite settings) → a
+a labelled manual snapshot (`insertSnapshot`, „Przed importem z arkusza Google") → `restoreKosztorys` (wipe → `insertKosztorysTree` → rewrite settings) → a
 single post-commit revalidation of five cache tags. Any throw rolls the whole thing back and the
 live tree is untouched. Import is that same operation with a different tree source.
 
@@ -50,11 +50,11 @@ projektowe at 3500 zł). Its `deriveOverride` (`:79`) is the one piece worth lif
 
 ## Desired End State
 
-An OWNER or ADMIN opens an investment's kosztorys, picks „Pobierz z arkusza Google…" from „Opcje",
+Anyone who can reach the editor (MANAGEMENT_ROLES: OWNER, ADMIN, MANAGER) opens an investment's kosztorys, picks „Pobierz z arkusza Google…" from „Opcje",
 and sees a dialog reporting: which columns were recognised in which tab, how many sections / prace /
 etapy were read, every rate auto-resolution, every praca present in the app but absent from the
 sheet, and a comparison of the app's computed net total against the sheet's own footer total. On
-confirm the kosztorys is replaced; a snapshot taken immediately before is restorable from „Wczytaj".
+confirm the kosztorys is replaced; a named version „Przed importem z arkusza Google" taken immediately before is restorable from „Wersje".
 
 When a required column cannot be resolved, the dialog says which column in which tab and offers no
 confirm.
@@ -73,7 +73,8 @@ auto-resolutions and 1 conflict.
 - `serializeKosztorys` (`src/lib/kosztorys/serialize-kosztorys.ts`) gives the current tree in exactly
   the shape the merge needs, settings included. One call covers both.
 - `protectedAction` gates at `MANAGEMENT_ROLES` (`src/lib/actions/run-action.ts:43`), which includes
-  MANAGER. OWNER/ADMIN-only needs an explicit `isAdminOrOwnerRole(user.role)` check in the handler.
+  MANAGER — which is where the importer landed (see Contract below): it is a kosztorys mutation like
+  any other, and `restoreSnapshotAction` replaces the whole tree at that same level.
 - `getInvestmentSheetId` (`src/lib/google/sheet-lookup.ts`) already resolves the link and is
   importable from any context.
 - `insertKosztorysTree` skips a child whose parent is absent rather than orphaning it
@@ -352,8 +353,9 @@ Two actions sharing the plan builder: one displays, one writes.
 **Intent**: `previewKosztorysImport(investmentId)` returns the report for the dialog;
 `applyKosztorysImport(investmentId)` re-derives the plan server-side and replaces the kosztorys.
 
-**Contract**: Both are `protectedAction` handlers with an added `isAdminOrOwnerRole(user.role)`
-check — `protectedAction` alone admits MANAGER. Both resolve the sheet via `getInvestmentSheetId`
+**Contract**: Both are plain `protectedAction` handlers, so both sit at `MANAGEMENT_ROLES`. (Planned
+as OWNER/ADMIN-only; reversed at the review gate — every other kosztorys mutation, restore included,
+admits MANAGER, so the narrowing protected nothing.) Both resolve the sheet via `getInvestmentSheetId`
 and return the Polish „Inwestycja nie ma kosztorysu." on a missing link, matching
 `sheets-sync.ts:159`. Preview returns `report` only, never the tree — the browser has no use for it
 and shipping it invites a round-trip.
@@ -361,7 +363,7 @@ and shipping it invites a round-trip.
 Apply **takes no plan from the client**: it re-reads the sheet and rebuilds the plan, exactly as
 `applyMaterialSync` re-derives its row set (`sheets-sync.ts:234`). It refuses when column resolution
 fails. Then, inside one `withPayloadTransaction` with `skipRevalidation: true`:
-`captureAutoSnapshot(txDb, …)` → `restoreKosztorys(payload, req, investmentId, plan.tree)`, and
+a labelled manual `insertSnapshot(txDb, …)` → `restoreKosztorys(payload, req, investmentId, plan.tree)`, and
 revalidates the same five tags `restoreSnapshotAction` does (`kosztorysSections`, `kosztorysItems`,
 `kosztorysStages`, `stageProgress`, `investments`). Returns the counts written plus
 `droppedWorkerAssignments` from `insertKosztorysTree`.
@@ -371,9 +373,9 @@ revalidates the same five tags `restoreSnapshotAction` does (`kosztorysSections`
 #### Automated Verification:
 
 - Action specs pass: `pnpm exec vitest run src/__tests__/lib/actions/kosztorys-import.test.ts`
-- A MANAGER session is refused by both actions
+- A MANAGER session can preview and apply
 - Apply ignores a forged plan passed from the client and writes the server-derived one
-- After apply, the pre-import snapshot exists and restores the previous tree — asserted against the
+- After apply, the pre-import snapshot exists as a labelled manual row (found by label, not by „newest auto") and restores the previous tree — asserted against the
   **persisted** tree, not the action's return value
 
 #### Manual Verification:
@@ -546,7 +548,7 @@ the button and reads its own sheets.
 #### Automated
 
 - [x] 4.1 Action specs pass
-- [x] 4.2 MANAGER refused by both actions
+- [x] 4.2 MANAGER can preview and apply
 - [x] 4.3 Apply ignores a client-forged plan
 - [x] 4.4 Pre-import snapshot exists and restores the prior tree
 

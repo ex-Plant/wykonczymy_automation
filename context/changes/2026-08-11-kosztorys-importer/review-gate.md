@@ -25,23 +25,23 @@ Fan-out: `/10x-impl-review` · `/code-review` · `tailwind-v4-audit` · `feature
       spacer row mid-sheet looks like — the import truncated there, silently dropping every praca below.
       Replaced with a backward scan from the bottom, where the footer has no ambiguity.
       test: test-driven-debugging · unit — `'keeps reading past a blank spacer row that looks exactly like
-    the footer'`, red pre-fix.
+  the footer'`, red pre-fix.
 - [x] 🟡 WARNING · fixed · impl-review · `src/lib/kosztorys/sheet-import/parse-robocizna.ts:80` ·
       a summary label typed into the opis column mid-sheet became a section, and every praca below it was
       filed under it. Footer labels are now recognised via the shared `isFooterLabel`.
       test: test-driven-debugging · unit — `'does not make a section out of a footer label typed into the
-    opis column'`, red pre-fix.
+  opis column'`, red pre-fix.
 - [x] 🟡 WARNING · fixed · code-review · `src/lib/kosztorys/sheet-import/parse-robocizna.ts:108` ·
       rabat is a fraction in the sheet (`0,09`) but the owner sometimes types the whole percent (`9`);
       unclamped, that priced the praca at a 900% discount, i.e. deeply negative. Values ≥ 1 are now read
       as the percent they are.
       test: test-driven-debugging · unit — `'reads a rabat typed as a whole percent as that percent, not
-    as a 900% discount'`, red pre-fix.
+  as a 900% discount'`, red pre-fix.
 - [x] 🟡 WARNING · fixed · impl-review · `src/lib/kosztorys/sheet-import/parse-robocizna.ts:98` ·
       rows carrying a description above the first section header were dropped without a trace. They still
       cannot be imported (no section), but they are now counted and surfaced as a preview warning.
       test: test-driven-debugging · unit — `'counts the rows above the first section instead of dropping
-    them in silence'`, red pre-fix.
+  them in silence'`, red pre-fix.
 - [x] 🟡 WARNING · fixed · code-review · `src/lib/actions/kosztorys-import.ts:96` ·
       the apply path had no try/catch around `derivePlan`, so a Google read failure at confirm time
       escaped the action as an unhandled rejection instead of a Polish error toast. Both paths now share
@@ -53,12 +53,12 @@ Fan-out: `/10x-impl-review` · `/code-review` · `tailwind-v4-audit` · `feature
       do not reliably say which of the two a row holds (on a sheet with nothing executed both carry the
       same number). Every row is now checked against both and reported via `matchedAgainst`.
       test: TDD · unit — `'matches a footer row against the other figure when that is the one it agrees
-    with'`.
+  with'`.
 - [x] 🟡 WARNING · fixed · code-review · `src/lib/kosztorys/sheet-import/footer-totals.ts:52` ·
       the summary figure was read from the „Wartość netto" column only, so a footer the owner merged
       across columns read as absent. A row with exactly one number now yields that number.
       test: TDD · unit — `'finds the summary figure when the owner merged it out of the Wartość netto
-    column'`.
+  column'`.
 - [x] 🟡 WARNING · fixed · code-review · `src/components/kosztorys/editor/dialogs/sheet-import-gate.ts:24` ·
       a footer row that could not be found at all counted as a mismatch, so a sheet with no summary block
       showed a fabricated disagreement. A `null` sheetValue is now excluded.
@@ -136,6 +136,27 @@ Fan-out: `/10x-impl-review` · `/code-review` · `tailwind-v4-audit` · `feature
 - [x] dropped · comment-noise-audit · slice-wide ·
       the flag-only pass returned no restatement/vanished-state comments to delete; the two it trimmed
       were rewritten in place during the correctness fixes above.
+- [x] 🔴 CRITICAL · fixed · post-gate · `src/lib/actions/kosztorys-import.ts` ·
+      the pre-import snapshot was taken with `captureAutoSnapshot`, i.e. `kind: 'auto'` — which made the
+      import **not actually undoable in the app**: in „Wersje" it renders as a bare „Auto" + timestamp
+      among the periodic autosaves (no way to tell which row is the one), and it is subject to both the
+      `AUTO_KEEP = 50` count cap and the 7-day GC. Now a labelled manual snapshot („Przed importem
+      z arkusza Google"), exempt from both caps and targetable by name.
+      test: TDD · integration — the restore spec now finds the row **by label**, not by „newest auto",
+      so a silent regression to `kind: 'auto'` fails it.
+- [x] fixed · post-gate · `src/lib/actions/kosztorys-import.ts` ·
+      the planned OWNER/ADMIN narrowing (`isAdminOrOwnerRole`) was **reversed** on the owner's call: every
+      other kosztorys mutation — `restoreSnapshotAction` included, which replaces the whole tree the same
+      way — sits at `MANAGEMENT_ROLES`, and nothing in `src/components/kosztorys/` gates on role, so the
+      narrowing protected nothing while hiding the feature from the role that runs the sites day to day.
+      Both actions, the `canImportFromSheet` prop chain and the menu condition are gone.
+      test: TDD · integration — the MANAGER spec flipped from „refused" to „can preview and apply".
+- [x] dropped · post-gate · `src/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu.tsx` ·
+      the plan wanted the menu item **disabled with a reason** on an investment with no linked sheet; what
+      shipped shows it enabled and refuses inside the dialog with „Inwestycja nie ma kosztorysu.". Closing
+      the gap needs a fresh `getInvestmentSheetId` round-trip on every kosztorys page load plus the exact
+      prop chain just deleted — not worth it for one extra click to the same Polish sentence.
+      `manual-checks.md` now describes the shipped behaviour.
 
 ## Simplify pass
 

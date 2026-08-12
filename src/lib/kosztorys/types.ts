@@ -175,9 +175,6 @@ export type KosztorysEditorDataT = {
   // Roster for the etap header's worker picker (EX-613). Optional for the same gating reason as
   // settledBreakdown: the two client-share entry points never render a stage menu.
   workers?: WorkerRefT[]
-  // Whether „Pobierz z arkusza Google…" appears in „Opcje". It replaces the whole kosztorys, so it is
-  // OWNER/ADMIN-only — the same check the action enforces, mirrored here only to keep the menu honest.
-  canImportFromSheet?: boolean
 }
 
 // --- v2 variant (react-datasheet-grid): a flat row with stages flattened

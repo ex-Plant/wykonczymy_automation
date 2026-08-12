@@ -46,16 +46,8 @@ function MenuItemBody({ label, description }: { label: string; description: stri
 // The Save-preset dialog is a controlled sibling of the menu, not a child of DropdownMenuContent —
 // onSelect closes the menu, so opening the dialog from inside it would fight the menu for focus.
 export function KosztorysActionsMenu() {
-  const {
-    investmentId,
-    onOpenVersions,
-    onTreeReplaced,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    canImportFromSheet,
-  } = useKosztorysEditorContext()
+  const { investmentId, onOpenVersions, onTreeReplaced, undo, redo, canUndo, canRedo } =
+    useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
@@ -150,18 +142,14 @@ export function KosztorysActionsMenu() {
               description="Zapisz jako wzór do użycia na innych inwestycjach."
             />
           </DropdownMenuItem>
-          {canImportFromSheet && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={handleOpenImport}>
-                <SheetIcon />
-                <MenuItemBody
-                  label="Pobierz z arkusza Google…"
-                  description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
-                />
-              </DropdownMenuItem>
-            </>
-          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={handleOpenImport}>
+            <SheetIcon />
+            <MenuItemBody
+              label="Pobierz z arkusza Google…"
+              description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
+            />
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href={`/podglad-klienta/${investmentId}`} target="_blank">

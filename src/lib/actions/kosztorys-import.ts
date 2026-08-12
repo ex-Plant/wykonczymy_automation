@@ -1,11 +1,10 @@
 'use server'
 
 import { protectedAction } from '@/lib/actions/run-action'
-import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
-import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
+import { insertSnapshot } from '@/lib/db/snapshots'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import {
@@ -27,6 +26,12 @@ const IMPORT_TAGS = [
   'stageProgress',
   'investments',
 ] as const
+
+// `manual`, not `auto`, is what makes the import genuinely undoable: an auto snapshot is ambient
+// history — indistinguishable from the periodic autosaves in „Wersje", capped at the newest 50 and
+// swept after 7 days. A labelled manual row is exempt from both, and shows up as a named targetable
+// entry, so „przywróć stan sprzed importu" stays a click rather than a guess.
+const PRE_IMPORT_LABEL = 'Przed importem z arkusza Google'
 
 export type ImportPreviewT = { report: ImportReportT; problems: string[] }
 
@@ -57,16 +62,10 @@ function sheetFailureMessage(error: unknown): string {
   return SHEET_UNREADABLE
 }
 
-// `protectedAction` admits every management role, MANAGER included. Import replaces the whole
-// kosztorys behind one confirm, so it is narrowed to the two roles that own the numbers.
-const ADMIN_ONLY = 'Tylko właściciel lub administrator może wczytać kosztorys z arkusza.'
-
 export async function previewKosztorysImport(
   investmentId: number,
 ): Promise<ActionResultT<ImportPreviewT>> {
-  return protectedAction<ImportPreviewT>('previewKosztorysImport', async ({ payload, user }) => {
-    if (!isAdminOrOwnerRole(user.role)) return { success: false, error: ADMIN_ONLY }
-
+  return protectedAction<ImportPreviewT>('previewKosztorysImport', async ({ payload }) => {
     const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
     if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
 
@@ -107,8 +106,6 @@ export async function applyKosztorysImport(
   return protectedAction<ApplyImportResultT>(
     'applyKosztorysImport',
     async ({ payload, user }) => {
-      if (!isAdminOrOwnerRole(user.role)) return { success: false, error: ADMIN_ONLY }
-
       const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
       if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
 
@@ -124,7 +121,13 @@ export async function applyKosztorysImport(
         payload,
         async (req) => {
           const txDb = await getDb(payload, req)
-          await captureAutoSnapshot(txDb, investmentId, user.id)
+          await insertSnapshot(txDb, {
+            investmentId,
+            kind: 'manual',
+            label: PRE_IMPORT_LABEL,
+            takenBy: user.id,
+            payload: await serializeKosztorys(investmentId),
+          })
           return restoreKosztorys(payload, req, investmentId, plan.tree)
         },
         { skipRevalidation: true },

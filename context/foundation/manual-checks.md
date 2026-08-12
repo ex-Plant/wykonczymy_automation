@@ -810,13 +810,13 @@ Precondition: a lead that exists in Meta's recent window but not in the local DB
 
 ## kosztorys-importer (EX-417)
 
-Setup: local app against the 5433 dev DB, logged in as OWNER, on an investment that has a linked
-Google Sheet. **The Sheets credential in `.env` is live** — the importer only ever reads, but pick an
-investment whose sheet you are happy to have read. Kosztorys rows are throwaway until dogfooding
-merges to `main`, so replacing one is safe.
+Setup: local app against the 5433 dev DB, logged in as OWNER or MANAGER, on an investment that has a
+linked Google Sheet. **The Sheets credential in `.env` is live** — the importer only ever reads, but
+pick an investment whose sheet you are happy to have read. Kosztorys rows are throwaway until
+dogfooding merges to `main`, so replacing one is safe.
 
-- [ ] „Opcje" → „Pobierz z arkusza Google…" is present for OWNER/ADMIN, and absent for MANAGER
-- [ ] On an investment with no linked sheet the item is disabled and says why
+- [ ] „Opcje" → „Pobierz z arkusza Google…" is present for every role that reaches the editor — OWNER/ADMIN **and MANAGER** (the importer sits at MANAGEMENT_ROLES like every other kosztorys mutation)
+- [ ] On an investment with no linked sheet the dialog opens and refuses with „Inwestycja nie ma kosztorysu." — the confirm button stays disabled
 - [ ] Preview opens with **Rozpoznane kolumny first** — Przedmiar / j.m. / Cena j.m. / rabat / Wartość netto plus nazwa sekcji + opis pracy, each with the column letter and the header cell it matched
 - [ ] „Co wejdzie" counts match the sheet: sekcje, prace, etapy
 - [ ] Rate auto-resolutions are listed one by one with the rejected side visible — never silently applied
@@ -824,5 +824,5 @@ merges to `main`, so replacing one is safe.
 - [ ] „Zostaną zachowane" lists vanished prace and nothing is deleted
 - [ ] During the write both „Pobierz i zastąp" and „Anuluj" are disabled and the button reads „Pobieram…"
 - [ ] After apply the grid **re-seeds without a manual reload** — the imported rozpiska is on screen
-- [ ] „Historia" shows an automatic snapshot taken immediately before the import, and restoring it brings the previous kosztorys back
+- [ ] „Wersje" shows a **named** entry „Przed importem z arkusza Google" at the top (among the manual versions, **not** buried in „Historia automatyczna"), and restoring it brings the previous kosztorys back — this is the undo for a bad import
 - [ ] On a sheet whose cennik headers are unreadable the dialog **refuses** with „Nie odczytałem żadnego cennika…" and the confirm button stays disabled — no import of flat 0 zł stawki

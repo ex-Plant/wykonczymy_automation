@@ -89,7 +89,6 @@ export default async function InvestmentKosztorysV2Page({
       materialyBreakdown={materialyBreakdown}
       settledBreakdown={settledBreakdown}
       financials={isAdminOrOwnerRole(user.role) ? financials : undefined}
-      canImportFromSheet={isAdminOrOwnerRole(user.role)}
       wplatyNet={wplatyNet}
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation
       // scream — compared against the kosztorys figures during the population/verification transition.

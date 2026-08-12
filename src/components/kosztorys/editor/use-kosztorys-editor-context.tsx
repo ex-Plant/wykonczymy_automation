@@ -14,7 +14,6 @@ type KosztorysEditorContextT = ReturnType<typeof useKosztorysEditor> & {
   onOpenVersions?: () => void
   // Fires after the whole tree is swapped out (version restore, sheet import) — remounts the body.
   onTreeReplaced?: () => void
-  canImportFromSheet: boolean
 }
 
 const KosztorysEditorContext = createContext<KosztorysEditorContextT | null>(null)

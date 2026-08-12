@@ -94,7 +94,10 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
     expect(await sectionNames()).toEqual(['Prace dodatkowe', 'Klimatyzacja'])
   })
 
-  it('takes a pre-import snapshot that restores the tree the import replaced', async () => {
+  // Found by LABEL, not by „newest auto": the whole point of the pre-import row being `manual` is
+  // that it survives the auto count cap + 7-day GC and stays identifiable among the periodic
+  // autosaves. Querying it the way the „Wersje" panel presents it is what pins that.
+  it('takes a labelled pre-import snapshot that restores the tree the import replaced', async () => {
     await payload.delete({
       collection: 'kosztorys-sections',
       where: { investment: { equals: investmentId } },
@@ -107,9 +110,14 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
     expect(await sectionNames()).not.toContain('Stan sprzed importu')
 
     const snapshots = await db.execute(sql`
-      SELECT id FROM kosztorys_snapshots WHERE investment_id = ${investmentId} AND kind = 'auto'
+      SELECT id FROM kosztorys_snapshots
+      WHERE investment_id = ${investmentId}
+        AND kind = 'manual'
+        AND label = 'Przed importem z arkusza Google'
       ORDER BY id DESC LIMIT 1
     `)
+    expect(snapshots.rows).toHaveLength(1)
+
     const { restoreSnapshotAction } = await import('@/lib/actions/kosztorys-snapshots')
     await restoreSnapshotAction(Number(snapshots.rows[0].id), investmentId)
 
@@ -128,16 +136,20 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
     expect(await sectionNames()).not.toContain('Podłożone przez klienta')
   })
 
-  it('refuses a MANAGER on both actions — import replaces the whole kosztorys', async () => {
+  // The importer carries no role gate of its own: it sits at MANAGEMENT_ROLES like every other
+  // kosztorys mutation (restore included, which replaces the whole tree the same way). This pins that
+  // — a re-added ADMIN/OWNER narrowing would silently strip the feature from the role that runs the
+  // sites day to day.
+  it('lets a MANAGER preview and apply', async () => {
     authState.role = 'MANAGER'
     try {
-      await seedSection('Nietknięta przez managera')
+      await seedSection('Zastąpiona przez managera')
       const preview = await previewKosztorysImport(investmentId)
       const applied = await applyKosztorysImport(investmentId)
 
-      expect(preview).toMatchObject({ success: false })
-      expect(applied).toMatchObject({ success: false })
-      expect(await sectionNames()).toContain('Nietknięta przez managera')
+      expect(preview).toMatchObject({ success: true })
+      expect(applied).toMatchObject({ success: true })
+      expect(await sectionNames()).not.toContain('Zastąpiona przez managera')
     } finally {
       authState.role = 'OWNER'
     }
