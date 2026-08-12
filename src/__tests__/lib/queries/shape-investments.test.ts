@@ -5,7 +5,7 @@ vi.mock('server-only', () => ({}))
 
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import type { InvestmentRefT } from '@/types/reference-data'
-import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
+import type { InvestmentFinancialsMapT, KosztorysClientTotalsMapT } from '@/lib/queries/balances'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 
 const baseInv: InvestmentRefT = {
@@ -249,5 +249,77 @@ describe('shapeInvestments', () => {
     // 1612 − (1020 + 400): the 192 with no category is inside the total and shown by no column.
     const columnSum = row.categoryCosts.reduce((sum, c) => sum + c.total, 0)
     expect(row.totalInvestmentExpense - columnSum).toBeCloseTo(192, 10)
+  })
+})
+
+// The read-switch (EX-555): robocizna and rabat come from the kosztorys wherever there is one. The
+// figures below are chosen so the two planes DISAGREE — a switch that silently kept reading
+// transactions would still produce plausible numbers, just the old ones.
+describe('shapeInvestments read-switch', () => {
+  const transactionFinancials: InvestmentFinancialsMapT = {
+    '5': {
+      categoryCosts: [],
+      netCategoryCosts: [],
+      totalMaterialCosts: 1000,
+      materialsGrossBase: 1000,
+      materialsNetBilled: 0,
+      totalIncome: 9547,
+      totalLaborCosts: 3900,
+      totalPayouts: 1000,
+      totalRabat: 0,
+      totalLoss: 0,
+      totalSettled: 0,
+      materialsNetDiscount: 0,
+      settledCategoryCosts: [],
+    },
+  }
+
+  const kosztorysTotals: KosztorysClientTotalsMapT = {
+    '5': { doneNet: 4500, sumaPracNet: 5000, rabatClientNet: 500, globalRabatNet: 0 },
+  }
+
+  it('builds bilans, marża and koszty from the kosztorys pair', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
+
+    expect(row.totalLaborCosts).toBe(5000)
+    expect(row.totalCosts).toBe(6000) // 1000 materiały + 5000 robocizny z kosztorysu
+    expect(row.balance).toBe(4047) // 9547 − 6000 + 500 rabatu
+    expect(row.margin).toBe(3500) // 5000 − 1000 wypłat − 500 rabatu
+  })
+
+  it('grosses the bilans on the kosztorys pair, not the transactions one', () => {
+    // The whole point of the switched VAT base: 3900 would produce a brutto figure that is not the
+    // netto one plus its tax.
+    const [row] = shapeInvestments(
+      [{ ...baseInv, vatRate: 0.23 }],
+      transactionFinancials,
+      kosztorysTotals,
+    )
+
+    expect(row.balanceGross).toBeCloseTo(row.balance - 0.23 * 4500, 10)
+  })
+
+  it('leaves an investment with no kosztorys byte-identical to the pre-switch output', () => {
+    // The regression guard for the 84 of 96 investments that have no kosztorys and must not move.
+    const [before] = shapeInvestments([baseInv], transactionFinancials)
+    const [after] = shapeInvestments([baseInv], transactionFinancials, {})
+    const [absentFromMap] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
+
+    expect(after).toEqual(before)
+    expect(after.totalLaborCosts).toBe(3900)
+    // Same map, different investment: the lookup must key on the id, not merely on the map existing.
+    expect(shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals)[0].totalLaborCosts).toBe(0)
+    expect(absentFromMap.totalLaborCosts).toBe(5000)
+  })
+
+  it('reads a zero-progress kosztorys as zero robocizny, not as a fallback', () => {
+    // An investment whose kosztorys exists but has nothing executed yet is on the kosztorys plane.
+    // Falling back here would surface its legacy LABOR_COST rows as if they were current.
+    const [row] = shapeInvestments([baseInv], transactionFinancials, {
+      '5': { doneNet: 0, sumaPracNet: 0, rabatClientNet: 0, globalRabatNet: 0 },
+    })
+
+    expect(row.totalLaborCosts).toBe(0)
+    expect(row.margin).toBe(-1000) // same wypłaty, no robocizna to cover them
   })
 })

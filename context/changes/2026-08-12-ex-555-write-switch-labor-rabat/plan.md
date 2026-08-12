@@ -647,14 +647,14 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [x] 2.1 Reading specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-reading.test.ts`
+- [x] 2.1 Reading specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-reading.test.ts` — 47347c6c
 
 ### Phase 3: Listing read-switch
 
 #### Automated
 
-- [ ] 3.1 Listing specs pass: `pnpm exec vitest run src/__tests__/lib/queries/shape-investments.test.ts`
-- [ ] 3.2 Balance/margin specs pass: `pnpm exec vitest run src/__tests__/lib/db/calculate-balance.test.ts src/__tests__/lib/db/calculate-margin.test.ts`
+- [x] 3.1 Listing specs pass: `pnpm exec vitest run src/__tests__/lib/queries/shape-investments.test.ts`
+- [x] 3.2 Balance/margin specs pass: `pnpm exec vitest run src/__tests__/calculate-balance.test.ts src/__tests__/calculate-margin.test.ts` (plan named a `lib/db/` path these specs never had)
 
 ### Phase 4: v2 Marża tab
 

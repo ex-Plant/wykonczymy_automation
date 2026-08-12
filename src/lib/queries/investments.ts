@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS, entityTag } from '@/lib/cache/tags'
-import { fetchInvestmentFinancials } from '@/lib/queries/balances'
+import { fetchInvestmentFinancials, fetchKosztorysClientTotals } from '@/lib/queries/balances'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { perfStart } from '@/lib/perf'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
@@ -14,11 +14,12 @@ import type { InvestmentRowT } from '@/types/table-rows'
 export async function fetchAllInvestments(): Promise<InvestmentRowT[]> {
   const { user } = await requireAuth(MANAGEMENT_ROLES)
   if (!user) throw new Error('Nie jesteś zalogowany')
-  const [refData, financials] = await Promise.all([
+  const [refData, financials, kosztorysTotals] = await Promise.all([
     fetchReferenceData(),
     fetchInvestmentFinancials(),
+    fetchKosztorysClientTotals(),
   ])
-  return shapeInvestments(refData.investments, financials)
+  return shapeInvestments(refData.investments, financials, kosztorysTotals)
 }
 
 // The single home for the id-validity rule so nothing re-inlines the check and drifts from it.

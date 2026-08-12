@@ -1,5 +1,12 @@
 // READ-ONLY parity check for the investment financial figures.
 //
+// SCOPE SINCE EX-555: this audits the two TRANSACTION-PLANE aggregations against each other. It is
+// not a check on what the listing renders, because since the read-switch an investment with a
+// kosztorys draws its robocizna and rabat from there — so bilans, bilans brutto and marża on screen
+// are DELIBERATELY not the figures below. Both sides here are fed transaction financials, so a
+// kosztorys-plane investment cannot show up as an outlier; it is reported separately instead, as a
+// reminder that its three switched figures are outside this net.
+//
 // WHY THIS EXISTS: the seven per-investment figures (bilans netto/brutto, marża,
 // materiały, wydatki inwestycyjne, wypłaty, settled) are computed by TWO
 // independent code paths that must always agree:
@@ -22,6 +29,7 @@
 // Avoids the next/cache-wrapped query wrappers (they throw outside Next): it calls the
 // raw db aggregation functions directly and lists investments via payload.find.
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { sql } from '@payloadcms/db-vercel-postgres'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import {
@@ -32,6 +40,7 @@ import {
   deriveFinancials,
 } from '@/lib/db/sum-transfers'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
+import { getDb } from '@/lib/db/get-db'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { effectiveMaterialsNetRate, SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
@@ -74,7 +83,9 @@ function detailFigures(f: InvestmentFinancialsT, inv: InvestmentRefT): FiguresT 
 }
 
 // The LISTING side through the REAL row assembly — `shapeInvestments` is what the page renders, so
-// a figure that only the row builder gets wrong still shows up here (lessons.md:19).
+// a figure that only the row builder gets wrong still shows up here (lessons.md:19). The kosztorys
+// totals argument is left empty on purpose: this side must stay on the same plane as `detailFigures`
+// or every kosztorys-bearing investment diffs by design (see SCOPE at the top).
 function listingFigures(f: InvestmentFinancialsT, inv: InvestmentRefT): FiguresT {
   const [row] = shapeInvestments([inv], { [String(inv.id)]: f })
   return {
@@ -135,6 +146,15 @@ async function main() {
 
   const listingMap = await sumAllInvestmentFinancials(payload)
 
+  // Plane membership, read straight rather than through `selectKosztorysClientTotals`: that module is
+  // `server-only` and this script runs under tsx. Presence of items is the whole switch condition, so
+  // a count is the same answer the aggregate would give.
+  const db = await getDb(payload)
+  const planeRows = await db.execute(
+    sql`SELECT DISTINCT investment_id FROM kosztorys_items WHERE investment_id IS NOT NULL`,
+  )
+  const kosztorysPlane = new Set(planeRows.rows.map((row) => Number(row.investment_id)))
+
   const rows = []
   for (const inv of investments) {
     const where = { investment: { equals: inv.id } }
@@ -161,7 +181,15 @@ async function main() {
       : (Object.fromEntries(FIGURE_KEYS.map((k) => [k, 0])) as FiguresT)
 
     const diffs = FIGURE_KEYS.filter((k) => round2(listing[k]) !== round2(detail[k]))
-    rows.push({ id: inv.id, name: inv.name, listing, detail, match: diffs.length === 0, diffs })
+    rows.push({
+      id: inv.id,
+      name: inv.name,
+      listing,
+      detail,
+      match: diffs.length === 0,
+      diffs,
+      onKosztorysPlane: kosztorysPlane.has(inv.id),
+    })
   }
 
   // `dumps/` is gitignored, so it is absent in a fresh clone or worktree — the audit is read-only
@@ -184,6 +212,15 @@ async function main() {
     ].join(','),
   )
   writeFileSync(`dumps/parity-${label}.csv`, [header, ...csvLines].join('\n'))
+
+  const onPlane = rows.filter((r) => r.onKosztorysPlane)
+  if (onPlane.length > 0) {
+    console.log(
+      `\n${onPlane.length} investments read robocizna + rabat from the kosztorys — their bilans, ` +
+        `bilans brutto and marża on screen are NOT the figures audited here:`,
+    )
+    for (const r of onPlane) console.log(`  #${r.id} ${r.name}`)
+  }
 
   const outliers = rows.filter((r) => !r.match)
   console.log(`\n${rows.length} investments. Outliers: ${outliers.length}`)
