@@ -253,16 +253,16 @@ describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () 
     const laborCostsNet = 800 // do zapłaty, po rabacie
     const rabatNet = 200
     const materialsGross = 123 // → 100 netto at 23%
-    const wplatyNet = 300
+    const depositsNet = 300
     const vat = 0.23
 
     const sumaPracNet = laborCostsNet + rabatNet // 1000, pre-rabat
     const combined = combinedPair(sumaPracNet, billedMaterials(justGross(materialsGross), vat), vat)
     const rabat = moneyPair(rabatNet, vat)
-    const wplaty = faceValue(wplatyNet)
+    const wplaty = faceValue(depositsNet)
     const doZaplaty = computeDoZaplatyRM(
       laborCostsNet,
-      wplatyNet,
+      depositsNet,
       justGross(materialsGross),
       vat,
       vat,

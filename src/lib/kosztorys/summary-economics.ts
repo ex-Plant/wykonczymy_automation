@@ -142,7 +142,7 @@ export function sumaPracPreRabat(laborCostsNet: number, rabatAmount: number): nu
 // overpaid state, not clamped here.
 export function computeDoZaplatyRM(
   laborCostsNet: number,
-  wplatyNet: number,
+  depositsNet: number,
   materials: MaterialsT,
   vatRate: number,
   materialsNetRate: number | null,
@@ -152,7 +152,7 @@ export function computeDoZaplatyRM(
     billedMaterials(materials, materialsNetRate),
     vatRate,
   )
-  return { net: combined.net - wplatyNet, gross: combined.gross - wplatyNet }
+  return { net: combined.net - depositsNet, gross: combined.gross - depositsNet }
 }
 
 export type MixedSettlementT = {

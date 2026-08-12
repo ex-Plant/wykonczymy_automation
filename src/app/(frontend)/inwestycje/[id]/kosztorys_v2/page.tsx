@@ -6,7 +6,6 @@ import {
   fetchPayoutTransactionsForInvestment,
   fetchDepositTransactionsForInvestment,
   fetchMaterialTransactionsForInvestment,
-  sumDepositAmounts,
 } from '@/lib/queries/investment-transactions'
 import {
   deriveWholeInvestmentFinancials,
@@ -73,8 +72,6 @@ export default async function InvestmentKosztorysV2Page({
     tree,
     refData.expenseCategories,
   )
-  // Drives the podsumowanie „Wpłaty"/„Do zapłaty".
-  const wplatyNet = sumDepositAmounts(depositTransactions)
   // Names join here (not in the cached query): resolve each worker id against reference data.
   // Sorting/totals live in the pure block helper.
   const payoutsByWorker = resolvePayoutWorkerNames(payouts, refData.workers)
@@ -89,7 +86,6 @@ export default async function InvestmentKosztorysV2Page({
       materialyBreakdown={materialyBreakdown}
       settledBreakdown={settledBreakdown}
       financials={isAdminOrOwnerRole(user.role) ? financials : undefined}
-      wplatyNet={wplatyNet}
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation
       // scream — compared against the kosztorys figures during the population/verification transition.
       laborCostsNetFromTransactions={financials.totalLaborCosts}

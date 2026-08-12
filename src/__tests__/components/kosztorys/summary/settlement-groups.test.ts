@@ -10,7 +10,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
     const groups = buildSettlementGroups({
       mixed: null,
       doZaplaty: { net: 1000, gross: 1230 },
-      wplatyNet: 300,
+      depositsNet: 300,
       vatRate: 0.23,
     })
     expect(groups.map((group) => group.axis)).toEqual(['both'])
@@ -31,7 +31,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
     const groups = buildSettlementGroups({
       mixed: null,
       doZaplaty: { net: -100, gross: 130 },
-      wplatyNet: 1100,
+      depositsNet: 1100,
       vatRate: 0.23,
     })
     expect(rowNamed(groups, 'Pozostało do zapłaty')?.danger).toEqual({ net: false, gross: true })
@@ -43,7 +43,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
     const groups = buildSettlementGroups({
       mixed: null,
       doZaplaty: { net: 1000, gross: 1230 },
-      wplatyNet: 300,
+      depositsNet: 300,
       vatRate: 0.23,
     })
     expect(rowNamed(groups, 'Materiały')).toBeUndefined()
@@ -56,7 +56,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
     const groups = buildSettlementGroups({
       mixed,
       doZaplaty: { net: 0, gross: 0 },
-      wplatyNet: 0,
+      depositsNet: 0,
       vatRate: 0.23,
     })
     expect(groups.map((group) => group.caption)).toEqual([
@@ -87,7 +87,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
     const groups = buildSettlementGroups({
       mixed,
       doZaplaty: { net: 0, gross: 0 },
-      wplatyNet: 0,
+      depositsNet: 0,
       vatRate: 0.23,
     })
     expect(mixed.doZaplatyNet).toBeGreaterThan(0)
@@ -109,7 +109,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
     const groups = buildSettlementGroups({
       mixed,
       doZaplaty: { net: 0, gross: 0 },
-      wplatyNet: 0,
+      depositsNet: 0,
       vatRate: 0.23,
     })
     expect(rowNamed(groups, 'Materiały')).toBeUndefined()

@@ -324,9 +324,9 @@ Brak — zmiana nie dotyka schematu ani danych.
 
 #### Automated
 
-- [ ] 2.1 `settlement-groups.test.ts` zielone
-- [ ] 2.2 `summary-economics.test.ts` zielone
-- [ ] 2.3 `grep -rn "wplatyNet" src e2e` nic nie zwraca
+- [x] 2.1 `settlement-groups.test.ts` zielone
+- [x] 2.2 `summary-economics.test.ts` zielone
+- [x] 2.3 `grep -rn "wplatyNet" src e2e` nic nie zwraca
 
 ### Phase 3: Guard na niezmiennik
 

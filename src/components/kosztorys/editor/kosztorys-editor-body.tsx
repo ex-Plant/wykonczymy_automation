@@ -56,8 +56,7 @@ export function KosztorysEditorBody({
   investmentName,
   laborCostsNetFromTransactions,
   investmentRabat,
-  // Defaulted here rather than relayed: the panel requires it, `KosztorysEditorDataT` doesn't.
-  depositTransactions = [],
+  depositTransactions,
   preview = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,

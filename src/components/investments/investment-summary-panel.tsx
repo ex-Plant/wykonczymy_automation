@@ -1,9 +1,6 @@
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { perfStart } from '@/lib/perf'
-import {
-  fetchDepositTransactionsForInvestment,
-  sumDepositAmounts,
-} from '@/lib/queries/investment-transactions'
+import { fetchDepositTransactionsForInvestment } from '@/lib/queries/investment-transactions'
 import {
   deriveWholeInvestmentFinancials,
   fetchWholeInvestmentFinancials,
@@ -61,7 +58,6 @@ export async function InvestmentSummaryPanel({
   const clientTotals = kosztorysClientTotals(rows, tree.stages, tree.globalDiscount)
   const reading = readingFromKosztorys(clientTotals)
 
-  const wplatyNet = sumDepositAmounts(depositTransactions)
   // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
   // next to the row count it consumed, because that ratio is the argument for aggregating in SQL.
   const deriveMs = elapsed()
@@ -79,7 +75,6 @@ export async function InvestmentSummaryPanel({
       materialsNetBilled={financials.materialsNetBilled}
       materialyBreakdown={materialyBreakdown}
       settledBreakdown={settledBreakdown}
-      wplatyNet={wplatyNet}
       financials={canSeeMargin ? financials : undefined}
       {...reading}
       // An empty kosztorys against booked transfers is a REAL gap, not noise: it is legacy robocizna

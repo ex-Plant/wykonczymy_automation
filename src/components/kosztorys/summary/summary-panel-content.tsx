@@ -50,8 +50,8 @@ type PropsT = {
   investmentId: number
   // Only reaches the wydatki list, which names its invoice archive after the investment.
   investmentName: string
-  // Individual deposit rows — feed the client Podsumowanie's sortable wpłaty list AND the VAT-plane
-  // buckets every view's settlement reads, so this one is required on every host.
+  // Individual deposit rows — the wpłaty list, the VAT-plane buckets every view's settlement reads,
+  // AND the wpłaty total, which is summed from them here rather than passed in beside them.
   depositTransactions: DepositTransactionRowT[]
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
   laborCostsNet: number
@@ -64,9 +64,6 @@ type PropsT = {
   // Company-plane material folded into robocizna, split per category — its own table in the wydatki
   // view. Omitted by the client share, which never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
-  // Investor's wpłaty (totalIncome — every deposit on the investment) — subtracted to reach the
-  // still-owed „Do zapłaty" total.
-  wplatyNet: number
   rabatAmount: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
   // (every host computes it unconditionally); preview suppresses the scream downstream, not by
@@ -134,7 +131,6 @@ export function SummaryPanelContent({
   materialsNetBilled,
   materialyBreakdown,
   settledBreakdown,
-  wplatyNet,
   rabatAmount,
   reconciliation,
   vatRate,
@@ -195,6 +191,10 @@ export function SummaryPanelContent({
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
+  // The wpłaty total, derived here rather than passed in beside the list: the two buckets partition
+  // the same rows, so their sum IS Σ of the list and no host can hand us a total that disagrees with
+  // the wpłaty it also handed us (EX-680).
+  const depositsNet = paidNet + paidGross
   // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
   // rather than deciding it.
   const settlementVerdict = buildSettlementPlaneVerdict({
@@ -211,7 +211,7 @@ export function SummaryPanelContent({
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNet,
-    wplatyNet,
+    depositsNet,
     materials,
     vatRate,
     effectiveNetRate,
@@ -278,7 +278,7 @@ export function SummaryPanelContent({
                 laborCostsNet={laborCostsNet}
                 doZaplaty={doZaplaty}
                 materials={materials}
-                wplatyNet={wplatyNet}
+                depositsNet={depositsNet}
                 rabatAmount={rabatAmount}
                 reconciliation={reconciliation}
                 settlementVerdict={settlementVerdict}

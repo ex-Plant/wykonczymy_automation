@@ -139,9 +139,10 @@ export type KosztorysTreeT = {
 }
 
 // The full data set the editor body/shell needs to render: the tree plus the investment-level figures
-// (materials, wpłaty, robocizna/rabat) the footer reconciles against. Assembled identically
-// by the admin page, the owner preview, and the public share read — one shape so those three can't
-// drift on which figures the editor receives.
+// (materials, wpłaty, robocizna/rabat) the footer reconciles against. Assembled by the admin page, the
+// owner preview, and the public share read — every figure here is a row set or a server aggregate, and
+// nothing that can be derived from one of them appears beside it. The wpłaty total used to (EX-680),
+// and the preview fed it from a different query than the list, so the two disagreed on the share.
 export type KosztorysEditorDataT = {
   investmentId: number
   tree: KosztorysTreeT
@@ -154,7 +155,6 @@ export type KosztorysEditorDataT = {
   // Company-plane material folded into robocizna, split per category. Optional because omitting it IS
   // the gate: the client share never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
-  wplatyNet: number
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
   laborCostsNetFromTransactions: number
   investmentRabat: number
@@ -164,8 +164,10 @@ export type KosztorysEditorDataT = {
   // Individual realized PAYOUT rows for the subcontractor block's sortable wypłaty list. Optional
   // (default []) — same reason as payoutsByWorker.
   payoutTransactions?: PayoutTransactionRowT[]
-  // Individual deposit rows for the client Podsumowanie's sortable wpłaty list. Optional (default []).
-  depositTransactions?: DepositTransactionRowT[]
+  // Individual deposit rows for the client Podsumowanie's sortable wpłaty list. Required: the wpłaty
+  // TOTAL is summed from these rows, so a host that omits them isn't showing an empty list — it is
+  // showing zero wpłaty against a debt that never got them deducted.
+  depositTransactions: DepositTransactionRowT[]
   // Individual materiały rows for the Podsumowanie's wydatki list (data · typ · kwota), both settled
   // states. Required: every entry point serves this list, the client share path included.
   materialTransactions: MaterialTransactionRowT[]

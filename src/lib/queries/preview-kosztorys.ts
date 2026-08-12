@@ -36,7 +36,6 @@ const KOSZTORYS_TAGS = [
 
 // Unexported: the only two ways in are the guarded entrances below. This one is deliberately
 // authorization-free, so exporting it would hand any caller an unauthenticated read of a kosztorys.
-// Mirrors the admin page's fetches (kosztorys_v2/page.tsx) so the client body reads the same figures.
 async function buildPreviewKosztorysEditorData(
   investmentId: number,
 ): Promise<KosztorysEditorDataT> {
@@ -69,7 +68,6 @@ async function buildPreviewKosztorysEditorData(
     materialsGrossBase: financials.materialsGrossBase,
     materialsNetBilled: financials.materialsNetBilled,
     materialyBreakdown,
-    wplatyNet: financials.totalIncome,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,
     materialTransactions,
