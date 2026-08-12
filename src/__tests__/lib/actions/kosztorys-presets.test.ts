@@ -128,6 +128,8 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
         unit: 'm2',
         plannedQty: 12,
         clientPrice: 50,
+        discountValue: 0,
+        hiddenInExport: false,
       },
       context: { skipRevalidation: true },
       overrideAccess: true,

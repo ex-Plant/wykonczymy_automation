@@ -20,7 +20,8 @@ export async function serializeKosztorysAsPreset(investmentId: number): Promise<
       note: null,
     })),
     // Etapy (stages + their recorded progress) are per-job execution structure, not reusable scope —
-    // a preset carries none. The seed installs one fresh blank etap on the target instead.
+    // a preset carries none, and neither the seed nor the reload installs one: an etap's plane is
+    // forced at creation, so the first etap is the user's explicit call through the picker.
     stages: [],
     progress: [],
   }

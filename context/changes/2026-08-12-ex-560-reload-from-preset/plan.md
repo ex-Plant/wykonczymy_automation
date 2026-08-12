@@ -302,11 +302,18 @@ Run **once**, after Phase 3.
 
 #### Automated
 
-- [x] 2.1 Reversibility spec passes
-- [x] 2.2 DB-backed integration suite passes
+- [x] 2.1 Reversibility spec passes — 13d4bf91
+- [x] 2.2 DB-backed integration suite passes — 13d4bf91
 
 ### Phase 3: Dialog and menu entry
 
 #### Automated
 
-- [ ] 3.1 No phase-scoped automated check (browser-level; E2E disposition in Testing Strategy)
+- [x] 3.1 No phase-scoped automated check (browser-level; E2E disposition in Testing Strategy)
+
+### Whole-tree Gate
+
+- [x] `pnpm typecheck`
+- [x] `pnpm lint` (0 errors; pre-existing warnings only)
+- [x] `pnpm test` — 2107 passed, 96 skipped
+- [x] `pnpm build`
