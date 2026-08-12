@@ -9,6 +9,7 @@ import { FormShell } from '@/components/forms/form-components/form-shell'
 import {
   DEPOSIT_UI_TYPES,
   TRANSFER_TYPE_LABELS,
+  showsInvestment,
   VAT_PLANES,
   type PaymentMethodT,
   type VatPlaneT,
@@ -95,9 +96,16 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
       date: value.date,
       type: value.type as CreateTransferFormT['type'],
       paymentMethod: value.paymentMethod as PaymentMethodT,
-      vatPlane: isVatPlane(value.vatPlane) ? value.vatPlane : undefined,
+      // Hiding a field does not clear it: the investment is seeded from the URL and vatPlane
+      // has a default, so both would ride along on a type that carries neither. The hook
+      // would null the investment server-side, but a submitted vatPlane has no such guard.
+      vatPlane:
+        value.type === 'INVESTOR_DEPOSIT' && isVatPlane(value.vatPlane)
+          ? value.vatPlane
+          : undefined,
       sourceRegister: Number(value.sourceRegister),
-      investment: value.investment ? Number(value.investment) : undefined,
+      investment:
+        showsInvestment(value.type) && value.investment ? Number(value.investment) : undefined,
     }),
   })
 
@@ -112,6 +120,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
           listeners={{
             onChange: () => {
               form.resetField('investment')
+              form.resetField('vatPlane')
             },
           }}
         >
@@ -127,9 +136,9 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
         </form.AppField>
 
         {/* Directly under the type, same slot the wydatek form gives it — the investment is what the
-            rest of the form is about, not a trailing detail. INVESTOR_DEPOSIT only; COMPANY_FUNDING
-            hides it along with netto/brutto. */}
-        {currentType === 'INVESTOR_DEPOSIT' && (
+            rest of the form is about, not a trailing detail. Which types offer it is the predicate's
+            call, not this form's — netto/brutto below is a separate, INVESTOR_DEPOSIT-only axis. */}
+        {showsInvestment(currentType) && (
           <EntityComboboxField form={form} variant="investment" items={referenceData.investments} />
         )}
 

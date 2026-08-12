@@ -369,8 +369,8 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [ ] 3.1 Action specs pass: `pnpm exec vitest run src/__tests__/transfer-actions.test.ts`
-- [ ] 3.2 Schema specs unaffected: `pnpm exec vitest run src/__tests__/transfer-schema.test.ts`
+- [x] 3.1 Action specs pass: `pnpm exec vitest run src/__tests__/transfer-actions.test.ts`
+- [x] 3.2 Schema specs unaffected: `pnpm exec vitest run src/__tests__/transfer-schema.test.ts`
 
 ### Phase 4: Documentation and backlog
 
