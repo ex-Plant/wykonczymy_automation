@@ -344,7 +344,7 @@ Run once, after Phase 4.
 
 - Research: `context/changes/2026-08-12-ex-557-legacy-deposit-types/research.md`
 - Change identity and owner rulings: `context/changes/2026-08-12-ex-557-legacy-deposit-types/change.md`
-- Linear: EX-557; E2E backlog issue: _(recorded in Phase 4)_
+- Linear: EX-557; E2E backlog issue: **EX-679** (label `e2e-backlog`)
 - Regression origin: commit `72ddc5d7` (2026-07-21)
 
 ## Progress
@@ -376,4 +376,4 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [ ] 4.1 No phase-scoped automated check — verified by the whole-tree gate
+- [x] 4.1 No phase-scoped automated check — verified by the whole-tree gate

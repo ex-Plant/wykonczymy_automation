@@ -294,10 +294,11 @@ export const sumCategoryByTypeSettled = async (
  * INVESTOR_DEPOSIT only, NOT the full DEPOSIT_TYPES: COMPANY_FUNDING („zasilenie z konta firmowego")
  * is the company financing its own investment, not a client payment, so it must never land in the
  * client wpłaty surface — the wpłaty list, „Rozliczenie wpłat", nor the gotówka target of the mixed
- * settlement. The deposit form already hides the investment picker for COMPANY_FUNDING (it can't be
- * investment-scoped there), so this closes the only remaining path — a hand-made row via the Payload
- * admin panel — at the read boundary, where the exclusion is guaranteed regardless of how a row was
- * written. It also carries the netto/brutto plane, which exists for INVESTOR_DEPOSIT only.
+ * settlement. Neither COMPANY_FUNDING nor OTHER_DEPOSIT can even be investment-scoped any more:
+ * `showsInvestment` is false for both, so the validate hook nulls an investment on every write path
+ * (EX-557). This filter is the second, independent guarantee — it holds at the read boundary
+ * regardless of how a row got written. It also carries the netto/brutto plane, which exists for
+ * INVESTOR_DEPOSIT only.
  */
 export const getDepositTransactions = async (
   payload: Payload,
