@@ -1086,3 +1086,30 @@ Before deleting such a container, list its children and give each surviving one 
 condition (here: `invoiceDownload?: boolean`). Splitting the buttons apart is not enough if the shared
 gate survives the split — that is exactly what an earlier refactor did here and why the trap was still
 live.
+
+## Hiding a form field in JSX does not clear it — the value ships anyway
+
+The deposit form seeded `investment` from the URL into `defaultValues`, hid the picker behind a JSX
+condition when the type changed, and `toData` still submitted the whole value object. That is where
+the three garbage `OTHER_DEPOSIT` rows carrying an investment came from — nobody ever saw the field
+they filled in. The identical shape leaked a stale `vatPlane: 'NET'` onto deposit types that must not
+carry a VAT plane; `resetField` only reset it back to that same seeded default.
+
+**The rule.** A type-conditional field owes **two** edits, not one: hide it _and_ drop it from the
+submitted payload (clear on the type change, or strip in `toData`). A hidden field is a field the user
+cannot see and therefore cannot correct — it is strictly worse than a visible wrong value. And when a
+form both seeds a default from the URL and resets on a control change, `resetField` restores the seed;
+"reset" is not "clear".
+
+## An action spec with a mocked writer can assert that a forbidden shape SUCCEEDS
+
+`transfer-actions.test.ts` sent `investment: 1` on `COMPANY_FUNDING` / `OTHER_DEPOSIT` and asserted
+`success: true`, with `payload.create` mocked — so the `beforeValidate` hook never ran. Adding the
+guard in the hook left both tests **green while they pinned the illegal shape as accepted**. The suite
+was not silent about the change; it was actively arguing for the bug.
+
+**The rule.** Before choosing an enforcement layer, grep the specs that already exercise the shape you
+are about to forbid and read what they assert. A spec that mocks the layer holding the new rule cannot
+observe it — it must be rewritten to assert rejection, or the rule needs a second seat above the mock.
+Related: enforcing in SQL was disqualified here for the mirror-image reason — two DB specs deliberately
+insert the forbidden shape by raw SQL, and a CHECK constraint would have broken them.

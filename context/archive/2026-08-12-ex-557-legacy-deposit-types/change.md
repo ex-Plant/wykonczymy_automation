@@ -1,10 +1,10 @@
 ---
 change_id: ex-557-legacy-deposit-types
 title: Wpłaty bez inwestycji — przywrócenie OTHER_DEPOSIT i blokada inwestycji na OTHER_DEPOSIT / COMPANY_FUNDING
-status: implemented
+status: archived
 created: 2026-08-12
 updated: 2026-08-12
-archived_at: null
+archived_at: 2026-08-12T18:18:03Z
 branch: konradantonik/ex-557-inna-wplata-zasilenie-bez-inwestycji
 worktree: null
 ---
