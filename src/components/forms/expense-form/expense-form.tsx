@@ -25,6 +25,7 @@ import {
 import { createBulkTransferAction } from '@/lib/actions/transfers'
 import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
+import { restorableType } from '@/components/forms/expense-form/draft-type'
 import {
   makeLineItem,
   type BulkExpenseFormValuesT,
@@ -122,7 +123,15 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   }))
 
   const initialValues = storedValues
-    ? { ...storedValues, investment: storedValues.investment || investmentFromUrl }
+    ? {
+        ...storedValues,
+        investment: storedValues.investment || investmentFromUrl,
+        // A draft saved before a type left the dialog would restore a value the Select cannot render:
+        // it shows empty while the form still submits the removed type, which the server accepts.
+        // Coerced rather than dropping the whole draft — one stale field is not worth discarding
+        // everything the user typed.
+        type: restorableType(storedValues.type),
+      }
     : blankValues
 
   const form = useAppForm({

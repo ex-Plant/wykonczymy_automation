@@ -666,8 +666,8 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [ ] 5.1 Constants specs pass: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts src/__tests__/transfer-rabat.test.ts`
-- [ ] 5.2 Draft guard passes: `pnpm exec vitest run src/__tests__/components/forms/expense-form/draft-type-coercion.test.ts`
+- [x] 5.1 Constants specs pass: `pnpm exec vitest run src/__tests__/transfer-constants.test.ts src/__tests__/transfer-rabat.test.ts`
+- [x] 5.2 Draft guard passes: `pnpm exec vitest run src/__tests__/components/forms/expense-form/draft-type-coercion.test.ts`
 
 ### Phase 6: Reconciliation silencing
 

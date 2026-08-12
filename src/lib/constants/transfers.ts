@@ -270,12 +270,14 @@ export const DEPOSIT_TYPES: TransferTypeT[] = [
 // (EX-536); the netto/brutto plane applies to INVESTOR_DEPOSIT only — COMPANY_FUNDING hides it.
 export const DEPOSIT_UI_TYPES: TransferTypeT[] = ['INVESTOR_DEPOSIT', 'COMPANY_FUNDING']
 
-// Transfer types visible in the transaction transfer dialog (sorted by Polish label)
+// Transfer types visible in the transaction transfer dialog (sorted by Polish label).
+// „Koszty robocizny" and „Rabat" are gone (EX-555): both figures are now read off the kosztorys, so
+// booking either by hand would double-count against it. Neither type is retired — existing rows still
+// render, filter, edit, cancel and travel to the sheet, and both keep their places in every other list
+// in this file. This array is the „offerable in the dialog" list, nothing more.
 export const TRANSACTION_TRANSFER_TYPES: TransferTypeT[] = [
   'OTHER', // Inny wydatek
   'CORRECTION', // Korekta
-  'LABOR_COST', // Koszty robocizny
-  'RABAT', // Rabat
   'LOSS', // Strata
   'INVESTMENT_EXPENSE', // Wydatek inwestycyjny
   'INVESTMENT_EXPENSE_NET', // Wydatek inwestycyjny netto
