@@ -131,6 +131,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           contextId: investmentId,
           headerFields,
           totalPayouts: financials.totalPayouts,
+          invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
       />

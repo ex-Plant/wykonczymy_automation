@@ -7,6 +7,7 @@ import { CancelledFilterButton } from '@/components/transfers/cancelled-filter-b
 import { CancelledTransactionAuditButton } from '@/components/transfers/cancelled-transaction-audit-button'
 import { TransferFilters } from '@/components/transfers/transfer-filters'
 import { TransferExportToolbar } from '@/components/transfers/transfer-export-toolbar'
+import { InvoiceDownloadButton } from '@/components/transfers/invoice-download-button'
 import { getTransferColumns } from '@/components/tables/transfers'
 import type { TransferRowT } from '@/types/transfers'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -35,6 +36,7 @@ export function TransferDataTable({
     headerFields,
     totalFilteredAmount,
     listsCancelled,
+    invoiceDownload,
   } = config
 
   const columns = getTransferColumns(excludeColumns, {
@@ -69,6 +71,7 @@ export function TransferDataTable({
             {headerFields && headerFields.length > 0 && (
               <TransferExportToolbar config={config} columnVisibility={cv} sorting={sorting} />
             )}
+            {invoiceDownload && <InvoiceDownloadButton where={config.query.where} />}
             <ColumnToggle table={table} columnVisibility={cv} />
           </div>
         )}

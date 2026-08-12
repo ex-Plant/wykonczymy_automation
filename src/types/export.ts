@@ -32,4 +32,10 @@ export type TransferTableConfigT = {
   /** Defaults to true. Set to false to hide the "Suma kwot" button in TransferFilters. */
   showTotalAmount?: boolean
   cancelledTransactionAudit?: boolean
+  /**
+   * Opt in to the invoice-download button. Set it only where the table's own filter is a meaningful
+   * invoice scope — the fetch behind it is unpaginated, so an unanchored `where` would ZIP every
+   * invoice in the system.
+   */
+  invoiceDownload?: boolean
 }

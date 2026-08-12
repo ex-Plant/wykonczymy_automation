@@ -4,7 +4,6 @@ import type { SortingState, VisibilityState } from '@tanstack/react-table'
 import { getTransferColumns } from '@/components/tables/transfers'
 import { PrintButton } from '@/components/transfers/print-button'
 import { CsvButton } from '@/components/transfers/csv-button'
-import { InvoiceDownloadButton } from '@/components/transfers/invoice-download-button'
 import type { TransferTableConfigT } from '@/types/export'
 
 type TransferExportToolbarPropsT = {
@@ -35,7 +34,6 @@ export function TransferExportToolbar({
     <>
       <PrintButton config={config} visibleColumnIds={visibleColumnIds} sorting={sorting} />
       <CsvButton where={config.query.where} visibleColumnIds={visibleColumnIds} sorting={sorting} />
-      <InvoiceDownloadButton where={config.query.where} />
     </>
   )
 }

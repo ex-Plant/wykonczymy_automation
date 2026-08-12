@@ -80,6 +80,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
           context: 'register',
           contextId: registerId,
           headerFields,
+          invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
       />
