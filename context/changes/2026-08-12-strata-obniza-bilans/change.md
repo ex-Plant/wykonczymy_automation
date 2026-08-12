@@ -14,8 +14,26 @@ worktree: .claude/worktrees/ex-675-strata
 
 `LOSS` gets the same arithmetic as `RABAT` — ↓ marża, ↑ bilans — while staying a separately
 summed figure, because the owner wants to report "ile mam strat". Investment becomes required
-(`requiresInvestment('LOSS') → true`); the local prod dump has 4 LOSS rows, all already carrying
-an investment, so no backfill is owed.
+(`requiresInvestment('LOSS') → true`): prod carries 6 LOSS rows (3 live, 3 cancelled) and **every
+one already has an investment**, so no backfill is owed. Verified against the FTP backup
+`wykonczymy-backup-20260812-130516` — max id 4479, latest `created_at` 12:42 UTC. The local Docker
+DB and `dumps/dump-latest.sql` were both stale and disagreed with prod on `cancelled` flags; read
+prod through a fresh FTP backup, not either of those.
+
+**The owner already stated the intent in the data.** The three live losses:
+
+| id | kwota | inw. | opis |
+| --- | --- | --- | --- |
+| 3298 | 362,84 | 62 | „naprawa połogi kolejny raz" |
+| 3737 | 39,00 | 98 | „brak skasowania za to klienta" |
+| 4470 | 142,65 | 47 | „strata źle zamówione coś tam" |
+
+3737's description *is* this change's premise in the owner's own words: a strata means the client
+was not charged. And he has already migrated his own workarounds onto the right types — cancelled
+`OTHER_DEPOSIT` 1381 (142,65, inw. 47) reappears as live LOSS 4470 for the same amount and
+investment, while cancelled `OTHER_DEPOSIT` 1171 (132,87, inw. 18) reappears as live `RABAT` 4467.
+He picked strata in one case and rabat in the other, so the strata-vs-rabat distinction is his,
+not ours to invent.
 
 **The defect this closes.** Investment 62: two `INVESTMENT_EXPENSE` rows (222,88 + 139,96 =
 362,84, `settled = false`) plus a `LOSS` of 362,84 („naprawa połogi kolejny raz"), robocizna 0,
@@ -55,9 +73,9 @@ Re-verify this plan against the post-EX-555 shape before implementing. Four cons
 3. **The VAT assumption weakens.** After EX-555 the netto robocizna base comes from the kosztorys, so
    deducting strata pre-VAT means a transfer figure cutting the VAT base of a kosztorys figure —
    the two-planes seam `lessons.md` warns about. Strengthens the face-value reading instead.
-4. **Same double-counting family.** EX-555 found id 2774, a rabat entered as a `CORRECTION`; once
-   rabat feeds marża and bilans from the kosztorys, that row double-counts. Structurally identical to
-   the strata + `settled` checkbox overlap accepted above — worth one shared answer, not two.
+4. ~~Same double-counting family (id 2774, a rabat entered as a `CORRECTION`).~~ **Dead** — 2774 is
+   cancelled on prod (`cancelled = t`), as is `OTHER_DEPOSIT` 1196. Both looked live only because the
+   local DB and `dumps/dump-latest.sql` were stale. Nothing to coordinate here.
 
 **Scope trap — v2 does not use `calculateBalance`.** The v2 panel and the kosztorys podsumowanie
 compute the client figure through `computeDoZaplatyRM` / `computeMixedSettlement`
