@@ -35,7 +35,7 @@ listing.
 | Both types together      | One change                                                                  | `clientTotalsFromSubtotals` returns both figures from one pass; rabat alone leaves a two-plane hybrid                             | Owner    |
 | Existing rows            | Legacy, untouched                                                           | No backfill; enum, sheet sync and cancellation all keep working                                                                   | Owner    |
 | Where the seam sits      | `shapeInvestments`, not `deriveFinancials`                                  | Seam A makes the reconciliation compare a number with itself and five specs go green on `x === x`                                 | Research |
-| How the figures are read | SQL aggregate (B), not batched rows (D), not materialized columns (C)      | C has an anti-precedent and no chokepoint; D ships 49 MB at 1 000 investments to produce 2 000 numbers                            | Measured |
+| How the figures are read | SQL aggregate (B), not batched rows (D), not materialized columns (C)       | C has an anti-precedent and no chokepoint; D ships 49 MB at 1 000 investments to produce 2 000 numbers                            | Measured |
 | Fallback                 | No kosztorys rows → transactions                                            | Same rule the panel already uses; 84 of 96 investments have no kosztorys                                                          | Owner    |
 | v1                       | Stays on transactions                                                       | Legacy, kept for side-by-side comparison                                                                                          | Owner    |
 | v2 Marża tab             | Switched too                                                                | It was reading `financials` directly, one layer below the switch                                                                  | Owner    |
@@ -67,15 +67,15 @@ real row builder.
 
 ## Phases at a Glance
 
-| Phase                       | What it delivers                                                  | Key risk                                                                                             |
-| --------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 1. SQL-aggregated totals    | One row per investment, cached read with kosztorys tags          | The formula now exists twice (SQL + TS) — pinned by a DB-backed parity spec                          |
-| 2. Shared switch rule       | Has-rows rule extracted out of the panel                          | The reconciliation feed must stay bound to `financials`                                              |
-| 3. Listing read-switch      | The figures actually change on `/inwestycje`                      | `balanceGross`'s VAT base moves; the parity audit's invariant becomes conditional                    |
-| 4. v2 Marża tab             | v2 internally consistent                                          | The `canSeeMargin` payload gate must survive the rewiring                                            |
-| 5. Write-switch             | Both types gone from the form; draft coercion                     | Must **not** copy EX-557's `INVESTMENT_TYPES` removal — it would null `investment` on 89 legacy rows |
-| 6. Reconciliation silencing | Alert stays useful, stops false-alarming                          | Silencing is per investment, never per figure                                                        |
-| 7. Blind spots              | Fingerprint, renamed specs, staleness E2E, docs                   | The suite is green-by-blindness until this lands                                                     |
+| Phase                       | What it delivers                                        | Key risk                                                                                             |
+| --------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1. SQL-aggregated totals    | One row per investment, cached read with kosztorys tags | The formula now exists twice (SQL + TS) — pinned by a DB-backed parity spec                          |
+| 2. Shared switch rule       | Has-rows rule extracted out of the panel                | The reconciliation feed must stay bound to `financials`                                              |
+| 3. Listing read-switch      | The figures actually change on `/inwestycje`            | `balanceGross`'s VAT base moves; the parity audit's invariant becomes conditional                    |
+| 4. v2 Marża tab             | v2 internally consistent                                | The `canSeeMargin` payload gate must survive the rewiring                                            |
+| 5. Write-switch             | Both types gone from the form; draft coercion           | Must **not** copy EX-557's `INVESTMENT_TYPES` removal — it would null `investment` on 89 legacy rows |
+| 6. Reconciliation silencing | Alert stays useful, stops false-alarming                | Silencing is per investment, never per figure                                                        |
+| 7. Blind spots              | Fingerprint, renamed specs, staleness E2E, docs         | The suite is green-by-blindness until this lands                                                     |
 
 **Prerequisites:** EX-557 first (same file, and it establishes a pattern this change must not copy).
 `pnpm db:import` before implementation — the local DB is behind the dump.

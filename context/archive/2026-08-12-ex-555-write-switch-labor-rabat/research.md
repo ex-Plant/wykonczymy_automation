@@ -140,7 +140,7 @@ POST/DELETE `stage-progress`. Odpalają się tylko hooki, a te wołają wyłącz
 ### 4. Anty-precedens materializacji
 
 - `src/migrations/20260218_add_investment_financials.ts:4-8` — dodaje `investments.total_income`
-  + `labor_costs`.
+  - `labor_costs`.
 - `src/migrations/20260222_drop_materialized_columns.ts:4-12` — kasuje `cash_registers.balance`,
   `investments.total_costs`, `investments.total_income`. **Cztery dni później.**
 - `recalcAfterChange` (`hooks/transfers/recalculate-balances.ts:9-11`) **nic nie zapisuje** — jego
@@ -223,16 +223,16 @@ Plus `transfer-constants.test.ts:245-256` (pin exact-array, twardy fail) i
 
 **Czego NIE ruszać** — wszystko poniżej jest nośne dla legacy:
 
-| Eksport | Linia | Dlaczego |
-| --- | --- | --- |
-| `TRANSFER_TYPES` | `:2-16` | union, enum Payloada, filtry, `z.enum` |
-| `TRANSFER_TYPE_SPECS` | `:135-156` | `financialBucket`, `transfersSheetTab` |
-| `TRANSFER_TYPE_LABELS` | `:247` | tabela, CSV, **kryterium SUMIF w arkuszu** (`sheet-configs.ts:85`) |
-| `SHEET_TRANSFER_TAB_TYPES` | `:292-298` | bez tego legacy przestaje się synchronizować i zostaje sierotą w arkuszu klienta |
-| `TRANSFERS_SUMMARY_TYPES` | `:323-330` | **layout zamrożony** — sloty 2 i 3 |
+| Eksport                       | Linia        | Dlaczego                                                                                             |
+| ----------------------------- | ------------ | ---------------------------------------------------------------------------------------------------- |
+| `TRANSFER_TYPES`              | `:2-16`      | union, enum Payloada, filtry, `z.enum`                                                               |
+| `TRANSFER_TYPE_SPECS`         | `:135-156`   | `financialBucket`, `transfersSheetTab`                                                               |
+| `TRANSFER_TYPE_LABELS`        | `:247`       | tabela, CSV, **kryterium SUMIF w arkuszu** (`sheet-configs.ts:85`)                                   |
+| `SHEET_TRANSFER_TAB_TYPES`    | `:292-298`   | bez tego legacy przestaje się synchronizować i zostaje sierotą w arkuszu klienta                     |
+| `TRANSFERS_SUMMARY_TYPES`     | `:323-330`   | **layout zamrożony** — sloty 2 i 3                                                                   |
 | `INVESTMENT_TYPES` (prywatne) | `:423, :427` | usunięcie → `validate.ts:75-77` **zeruje `investment` na 89 wierszach legacy przy pierwszej edycji** |
-| `REQUIRES_INVESTMENT_TYPES` | `:438-439` | osłabia walidację edycji legacy |
-| `isLaborCost` | `:466` | `updateTransferAction` (`actions/transfers.ts:246`) pozwala edytować kwotę tylko dla `LABOR_COST` |
+| `REQUIRES_INVESTMENT_TYPES`   | `:438-439`   | osłabia walidację edycji legacy                                                                      |
+| `isLaborCost`                 | `:466`       | `updateTransferAction` (`actions/transfers.ts:246`) pozwala edytować kwotę tylko dla `LABOR_COST`    |
 
 Uwaga na `roles.ts:39` — `transferType === 'LABOR_COST' && isManagementRole(role)` daje MANAGER-owi
 prawo anulowania cudzych wierszy `LABOR_COST`. Nośne dla „legacy dalej daje się anulować".
@@ -295,7 +295,7 @@ mówi nic o feature'rze — dokładnie `lessons.md:1020`.
 
 To samo dotyczy `src/scripts/audit-investment-parity.ts`. Jego nagłówek (`:3-14`) — „siedem figur
 liczonych dwiema niezależnymi ścieżkami, które muszą się zawsze zgadzać" — **staje się fałszywy**
-przy szwie B: ścieżki *powinny* się wtedy różnić.
+przy szwie B: ścieżki _powinny_ się wtedy różnić.
 
 **Ścieżki nie strzeże nic DB-owego na push.** Oba specy dotykające figur są jawnie wyłączone z
 `scripts/test-integration.sh:45-47` i siedzą za ręcznym `pnpm test:parity`.

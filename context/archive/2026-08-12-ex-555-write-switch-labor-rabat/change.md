@@ -1,10 +1,10 @@
 ---
 change_id: ex-555-write-switch-labor-rabat
 title: Robocizna + rabat z kosztorysu na liście inwestycji; LABOR_COST i RABAT znikają z formularza
-status: implemented
+status: archived
 created: 2026-08-12
 updated: 2026-08-12
-archived_at: null
+archived_at: 2026-08-12
 branch: konradantonik/ex-672-remove-print-csv-export
 worktree: null
 ---
