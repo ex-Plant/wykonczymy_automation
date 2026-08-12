@@ -11,7 +11,7 @@ import {
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
-import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
+import { resolveSummaryReading } from '@/lib/kosztorys/summary-reading'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
@@ -58,12 +58,9 @@ export async function InvestmentSummaryPanel({
   )
 
   const rows = treeToRows(tree)
-  // No kosztorys rows ⇒ the transaction reading: there is no kosztorys to read from.
   const clientTotals =
     rows.length === 0 ? null : kosztorysClientTotals(rows, tree.stages, tree.globalDiscount)
-  const reading = clientTotals
-    ? readingFromKosztorys(clientTotals)
-    : readingFromTransactions(financials)
+  const reading = resolveSummaryReading(clientTotals, financials)
 
   const wplatyNet = sumDepositAmounts(depositTransactions)
   // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged

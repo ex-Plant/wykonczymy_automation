@@ -640,14 +640,14 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [x] 1.0 SQL↔TS parity spec passes: `pnpm test:integration`
-- [x] 1.1 Cache-tag guard passes: `pnpm exec vitest run src/__tests__/lib/queries/balances-cache-tags.test.ts`
+- [x] 1.0 SQL↔TS parity spec passes: `pnpm test:integration` — d9da2daa
+- [x] 1.1 Cache-tag guard passes: `pnpm exec vitest run src/__tests__/lib/queries/balances-cache-tags.test.ts` — d9da2daa
 
 ### Phase 2: One switch rule, shared
 
 #### Automated
 
-- [ ] 2.1 Reading specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-reading.test.ts`
+- [x] 2.1 Reading specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-reading.test.ts`
 
 ### Phase 3: Listing read-switch
 

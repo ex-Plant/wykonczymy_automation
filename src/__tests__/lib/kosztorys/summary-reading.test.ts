@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
+import {
+  readingFromKosztorys,
+  readingFromTransactions,
+  resolveSummaryReading,
+} from '@/lib/kosztorys/summary-reading'
 import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-totals'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
@@ -41,5 +45,35 @@ describe('summary reading projection', () => {
     expect(
       readingFromKosztorys({ sumaPracNet: 90_000, rabatClientNet: 0 } as KosztorysClientTotalsT),
     ).toEqual({ laborCostsNetFromKosztorys: 90_000, rabatAmount: 0 })
+  })
+})
+
+// The choice between the two readings, as opposed to their arithmetic above. Two surfaces make it —
+// the Podsumowanie panel and the investments listing — and the point of extracting it is that they
+// cannot make it differently.
+describe('resolveSummaryReading', () => {
+  it('reads the kosztorys when totals are present', () => {
+    expect(resolveSummaryReading(clientTotals, financials)).toEqual(
+      readingFromKosztorys(clientTotals),
+    )
+  })
+
+  it('falls back to transactions when there is no kosztorys', () => {
+    expect(resolveSummaryReading(null, financials)).toEqual(readingFromTransactions(financials))
+    expect(resolveSummaryReading(undefined, financials)).toEqual(
+      readingFromTransactions(financials),
+    )
+  })
+
+  it('stays on the kosztorys plane when the kosztorys sums to zero', () => {
+    // The trap this guards: a truthiness test on the figures rather than on their presence would
+    // send an investment with a kosztorys but nothing executed yet back to the transactions plane,
+    // where it would report the legacy LABOR_COST rows as its robocizna.
+    const nothingExecuted = { sumaPracNet: 0, rabatClientNet: 0 } as KosztorysClientTotalsT
+
+    expect(resolveSummaryReading(nothingExecuted, financials)).toEqual({
+      laborCostsNetFromKosztorys: 0,
+      rabatAmount: 0,
+    })
   })
 })

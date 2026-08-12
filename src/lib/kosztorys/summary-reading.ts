@@ -33,3 +33,20 @@ export function readingFromKosztorys({
     rabatAmount: rabatClientNet,
   }
 }
+
+/**
+ * Which reading an investment is on. Two surfaces answer this — the Podsumowanie panel, which derives
+ * the totals from the tree it already holds, and the investments listing, which reads them from the
+ * SQL aggregate — and they must never answer it differently.
+ *
+ * ABSENCE of totals selects the transaction reading, not a zero total. An investment whose kosztorys
+ * sums to zero (nothing executed yet) is still on the kosztorys plane and must read 0 zł robocizny
+ * from it; only an investment with no kosztorys at all falls back. That is why
+ * `selectKosztorysClientTotals` omits itemless investments rather than returning zero rows.
+ */
+export function resolveSummaryReading(
+  clientTotals: KosztorysClientTotalsT | null | undefined,
+  financials: InvestmentFinancialsT,
+): SummaryReadingT {
+  return clientTotals ? readingFromKosztorys(clientTotals) : readingFromTransactions(financials)
+}
