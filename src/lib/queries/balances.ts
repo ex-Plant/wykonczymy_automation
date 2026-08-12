@@ -2,11 +2,14 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
+import { getDb } from '@/lib/db/get-db'
+import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
 import {
   sumAllRegisterBalances,
   sumAllWorkerBalances,
   sumAllInvestmentFinancials,
 } from '@/lib/db/sum-transfers'
+import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-totals'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import { perfStart } from '@/lib/perf'
 
@@ -63,4 +66,41 @@ export const fetchInvestmentFinancials = unstable_cache(
   // rate left the listing serving the pre-change marża until an unrelated transfer happened to
   // expire it, while the detail page (uncached) already showed the new one.
   { tags: [CACHE_TAGS.transfers, CACHE_TAGS.investments] },
+)
+
+export type KosztorysClientTotalsMapT = Record<string, KosztorysClientTotalsT>
+
+// Every tag whose collection can move these figures. `investments` is load-bearing, not padding: the
+// global rabat is a column there, so a rabat change moves the pair without touching a single
+// kosztorys row. Sections carry no figure of their own, but deleting one takes its items with it.
+//
+// Accepted cost (owner): every debounced autosave in the editor expires this entry for the whole
+// listing, so the next visit to /inwestycje pays a full recompute. That is the price of the listing
+// never showing a stale kosztorys figure — and the recompute is one aggregate returning one row per
+// investment, not a re-read of the kosztoryses themselves.
+export const KOSZTORYS_CLIENT_TOTALS_TAGS = [
+  CACHE_TAGS.kosztorysItems,
+  CACHE_TAGS.kosztorysSections,
+  CACHE_TAGS.kosztorysStages,
+  CACHE_TAGS.stageProgress,
+  CACHE_TAGS.investments,
+]
+
+export const fetchKosztorysClientTotals = unstable_cache(
+  async (): Promise<KosztorysClientTotalsMapT> => {
+    const elapsed = perfStart()
+    const payload = await getPayload({ config })
+    const db = await getDb(payload)
+    const rows = await selectKosztorysClientTotals(db)
+    const record: KosztorysClientTotalsMapT = {}
+    for (const { investmentId, ...totals } of rows) {
+      record[String(investmentId)] = totals
+    }
+    console.log(
+      `[PERF] query.fetchKosztorysClientTotals ${elapsed()}ms (${rows.length} investments)`,
+    )
+    return record
+  },
+  ['kosztorys-client-totals-v1'],
+  { tags: KOSZTORYS_CLIENT_TOTALS_TAGS },
 )
