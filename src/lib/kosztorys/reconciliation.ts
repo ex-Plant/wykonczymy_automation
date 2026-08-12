@@ -117,8 +117,24 @@ export function buildKosztorysReconciliation({
   laborCostsNetFromTransactions,
   investmentRabat,
 }: InputT): KosztorysReconciliationT {
-  return {
-    laborCosts: reconcile(sumaPracNet, laborCostsNetFromTransactions),
-    rabat: reconcile(rabatClientNet, investmentRabat),
+  const laborCosts = reconcile(sumaPracNet, laborCostsNetFromTransactions)
+  const rabat = reconcile(rabatClientNet, investmentRabat)
+
+  // Nothing on the transactions plane at all ⇒ nothing to reconcile against. Since the write-switch
+  // (EX-555) no new LABOR_COST or RABAT can be booked, so every investment created from here on would
+  // otherwise scream forever — an alarm that fires on everything verifies nothing. The alert exists
+  // for the OLD investments, which do carry bookings.
+  //
+  // Silenced per INVESTMENT, never per figure: a per-figure rule would mute „robocizna zaksięgowana,
+  // rabat nie", which is precisely the gap `showRabat` (settlement-summary.tsx) forces onto the screen.
+  // Both verdicts go quiet together or neither does.
+  const nothingBooked = laborCostsNetFromTransactions === 0 && investmentRabat === 0
+  if (nothingBooked) {
+    return {
+      laborCosts: { ...laborCosts, mismatch: false },
+      rabat: { ...rabat, mismatch: false },
+    }
   }
+
+  return { laborCosts, rabat }
 }

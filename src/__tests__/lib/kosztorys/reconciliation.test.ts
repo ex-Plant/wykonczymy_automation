@@ -161,6 +161,32 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
   })
 })
 
+describe('nothing booked on the transactions plane silences BOTH verdicts (EX-555)', () => {
+  it('a populated kosztorys with no LABOR_COST and no RABAT stays silent', () => {
+    const tree = makeReconTree()
+    const { sumaPracNet, rabatClientNet } = clientTotals(tree)
+    expect(sumaPracNet).toBeCloseTo(140)
+    expect(rabatClientNet).toBeCloseTo(8)
+
+    const verdict = reconcile(tree, [])
+    expect(verdict.laborCosts.mismatch).toBe(false)
+    expect(verdict.rabat.mismatch).toBe(false)
+    // Silenced, not erased — the figures stay readable so the surface can still show both sides.
+    expect(verdict.laborCosts.expected).toBeCloseTo(140)
+    expect(verdict.laborCosts.actual).toBe(0)
+  })
+
+  it('one figure booked and the other not still SCREAMS on the unbooked one', () => {
+    // The gap the per-investment rule protects: „robocizna zaksięgowana, rabat nie" is exactly the
+    // half-migrated legacy investment the alert exists for. A per-figure silence would hide it.
+    const tree = makeReconTree()
+    const { sumaPracNet } = clientTotals(tree)
+    const verdict = reconcile(tree, [{ type: 'LABOR_COST', settled: false, total: sumaPracNet }])
+    expect(verdict.laborCosts.mismatch).toBe(false)
+    expect(verdict.rabat.mismatch).toBe(true)
+  })
+})
+
 describe('robocizna compares the PRE-rabat suma prac (EX-535 regression)', () => {
   // The bug this guards: kosztorysClientTotals summed the post-rabat section net for robocizna. Against
   // a correctly-populated investment (LABOR_COST = gross of the PRE-rabat suma prac, rabat a separate

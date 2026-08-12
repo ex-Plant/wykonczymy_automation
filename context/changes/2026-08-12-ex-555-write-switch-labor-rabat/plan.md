@@ -673,7 +673,7 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [ ] 6.1 Reconciliation specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/reconciliation.test.ts`
+- [x] 6.1 Reconciliation specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/reconciliation.test.ts` (20 tests)
 
 ### Phase 7: Close the blind spots
 
