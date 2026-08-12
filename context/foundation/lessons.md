@@ -1113,3 +1113,27 @@ are about to forbid and read what they assert. A spec that mocks the layer holdi
 observe it — it must be rewritten to assert rejection, or the rule needs a second seat above the mock.
 Related: enforcing in SQL was disqualified here for the mirror-image reason — two DB specs deliberately
 insert the forbidden shape by raw SQL, and a CHECK constraint would have broken them.
+
+## A total and the list it summarises must come from ONE query — and after you unify them, an equality test is a tautology
+
+The wpłaty figure reached one component through three hosts. Two passed a SQL aggregate (`totalIncome`,
+bucket `income`) **and** the deposit list side by side and trusted them to agree; the third — the client
+share — passed the aggregate and no list at all, so `bucketDepositsByPlane([])` returned zeros and „Do
+zapłaty" was overstated by the entire amount paid. Nobody had to make a mistake: the type let a host
+supply the total without the rows, and four comments cheerfully claimed the three hosts were assembled
+identically.
+
+**The rule.** When a component renders both a figure and the rows behind it, the figure is **derived
+from the rows in the component**, not delivered alongside them. Delete the redundant prop rather than
+picking a winner — a drift you cannot represent is one you cannot ship, and a missing required list is
+a compile error instead of a silently empty table.
+
+**The corollary about the guard.** Once all hosts read the same list, a test asserting `Σ list ===
+aggregate` pins its own implementation — green by construction, green also on broken data. The real
+precondition here was a **data** invariant (`COMPANY_FUNDING` / `OTHER_DEPOSIT` never carry an
+`investment_id`, EX-557), so that is what the guard asserts, on the persisted row. Guard the cause that
+makes the two definitions coincide, not the coincidence.
+
+**Do not "fix" the aggregate's definition to match.** `totalIncome` is a **company-level** figure —
+`/raporty` needs both legacy deposit types inside bucket `income`. It is only correct per-investment
+because of the EX-557 invariant, and its name says none of that.

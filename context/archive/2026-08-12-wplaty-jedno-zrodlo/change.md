@@ -1,10 +1,10 @@
 ---
 change_id: wplaty-jedno-zrodlo
 title: Wpłaty per inwestycja — jedna ścieżka wyliczenia zamiast dwóch
-status: implemented
+status: archived
 created: 2026-08-12
 updated: 2026-08-12
-archived_at: null
+archived_at: 2026-08-12T18:18:48Z
 branch: konradantonik/wplaty-jedno-zrodlo
 worktree: null
 ---
