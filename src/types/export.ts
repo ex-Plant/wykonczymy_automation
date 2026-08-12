@@ -1,9 +1,7 @@
 import type { Where } from 'payload'
 import type { FilterConfigT } from '@/types/filters'
 
-type ExportContextT = 'investment' | 'register'
-
-export type HeaderFieldT = {
+type HeaderFieldT = {
   label: string
   value: string
   amount?: number
@@ -22,10 +20,6 @@ export type TransferTableConfigT = {
   baseUrl: string
   excludeColumns?: string[]
   filters?: FilterConfigT
-  context?: ExportContextT
-  contextId?: number
-  headerFields?: HeaderFieldT[]
-  totalPayouts?: number
   totalFilteredAmount?: number
   /** Server-derived: the list shows cancelled rows but the sum's SQL never counts them. */
   listsCancelled?: boolean

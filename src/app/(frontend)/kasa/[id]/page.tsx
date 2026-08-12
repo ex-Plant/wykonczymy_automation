@@ -5,7 +5,6 @@ import { parsePagination } from '@/lib/utils/pagination'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchRegisterBalances } from '@/lib/queries/balances'
 import { buildTransferFilters } from '@/lib/queries/transfer-filters'
-import { formatPLN } from '@/lib/utils/format-currency'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
@@ -13,7 +12,6 @@ import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
 import { SaldoDisplay } from '@/components/ui/saldo-display'
 import type { Where } from 'payload'
-import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function CashRegisterDetailPage({ params, searchParams }: DynamicPagePropsT) {
@@ -59,12 +57,6 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
     ? (refData.workers.find((w) => w.id === register.ownerId)?.name ?? '—')
     : '—'
 
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Kasa', value: register.name },
-    { label: 'Właściciel', value: ownerName },
-    { label: 'Saldo', value: formatPLN(saldo) },
-  ]
-
   return (
     <PageWrapper title={register.name}>
       <InfoList items={[{ label: 'Właściciel', value: ownerName }]} />
@@ -77,9 +69,6 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
           baseUrl: `/kasa/${id}`,
           excludeColumns: [],
           filters: buildFilterConfig(refData, 'cashRegisters'),
-          context: 'register',
-          contextId: registerId,
-          headerFields,
           invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}

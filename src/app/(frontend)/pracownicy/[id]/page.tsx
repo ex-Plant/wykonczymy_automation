@@ -11,8 +11,6 @@ import { EditWorkerDialog } from '@/components/dialogs/edit-worker-dialog'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
 import { SaldoDisplay } from '@/components/ui/saldo-display'
-import { formatPLN } from '@/lib/utils/format-currency'
-import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function UserDetailPage({ params, searchParams }: DynamicPagePropsT) {
@@ -53,11 +51,6 @@ export default async function UserDetailPage({ params, searchParams }: DynamicPa
 
   const saldo = typeDistribution.find((row) => row.type === 'PAYOUT')?.total ?? 0
 
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Pracownik', value: worker.name },
-    { label: 'Wypłaty', value: formatPLN(saldo), amount: saldo },
-  ]
-
   return (
     <PageWrapper title={worker.name} backHref="/pracownicy" backLabel="Pracownicy">
       <EditWorkerDialog worker={worker} cashRegisters={refData.cashRegisters} />
@@ -69,7 +62,6 @@ export default async function UserDetailPage({ params, searchParams }: DynamicPa
           baseUrl: `/pracownicy/${id}`,
           excludeColumns: ['worker'],
           filters: buildFilterConfig(refData, ['users', 'expenseCategories', 'type']),
-          headerFields,
           invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}

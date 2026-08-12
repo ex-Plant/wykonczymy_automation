@@ -393,17 +393,17 @@ persistence.
 
 #### Automated
 
-- [x] 2.1 Parity golden master passes with the inlined sum: `pnpm test:parity`
-- [x] 2.2 No references remain to the deleted modules (rg sweep)
-- [x] 2.3 `pnpm exec tsc --noEmit`
+- [x] 2.1 Parity golden master passes with the inlined sum: `pnpm test:parity` — 12d45c44
+- [x] 2.2 No references remain to the deleted modules (rg sweep) — 12d45c44
+- [x] 2.3 `pnpm exec tsc --noEmit` — 12d45c44
 
 ### Phase 3: Strip the dead producers and dead config fields
 
 #### Automated
 
-- [ ] 3.1 rg sweep for `headerFields|ExportContextT|contextId|totalPayouts` is clean on `TransferTableConfigT`
-- [ ] 3.2 `dead-code-scanner` reports no orphan left by this change
-- [ ] 3.3 `pnpm exec tsc --noEmit`
+- [x] 3.1 rg sweep for `headerFields|ExportContextT|contextId|totalPayouts` is clean on `TransferTableConfigT`
+- [x] 3.2 `dead-code-scanner` reports no orphan left by this change
+- [x] 3.3 `pnpm exec tsc --noEmit`
 
 ### Phase 4: Reconcile the docs the deletion invalidates
 

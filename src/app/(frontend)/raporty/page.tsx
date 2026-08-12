@@ -14,7 +14,6 @@ import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { FinancialStats } from '@/components/investments/financial-stats'
 import { WarningBanner } from '@/components/ui/warning-banner'
-import type { HeaderFieldT } from '@/types/export'
 import type { PagePropsT } from '@/types/page'
 
 export default async function TransactionsReportPage({ searchParams }: PagePropsT) {
@@ -56,11 +55,6 @@ export default async function TransactionsReportPage({ searchParams }: PageProps
     financials.settledCategoryCosts,
     refData.expenseCategories,
   )
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Transakcje', value: 'Raport' },
-    ...financialFields,
-  ]
-
   return (
     <PageWrapper title="Raporty">
       {/* The report aggregates many investments at once, so there is no single netto rate to apply —
@@ -85,8 +79,6 @@ export default async function TransactionsReportPage({ searchParams }: PageProps
           query: { where: urlFilters, page, limit },
           baseUrl: '/raporty',
           filters: buildFilterConfig(refData),
-          headerFields,
-          totalPayouts: financials.totalPayouts,
           invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}

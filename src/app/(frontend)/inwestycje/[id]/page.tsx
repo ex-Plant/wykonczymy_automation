@@ -23,7 +23,6 @@ import { STATUS_LABELS } from '@/components/investments/investment-status-badge'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
-import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function InvestmentDetailPage({ params, searchParams }: DynamicPagePropsT) {
@@ -70,11 +69,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
     financials.settledCategoryCosts,
     refData.expenseCategories,
   )
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Inwestycja', value: investment.name },
-    ...financialFields,
-  ]
-
   const infoFields = [
     { label: 'Adres', value: investment.address },
     { label: 'Telefon', value: <ContactLink type="phone" value={investment.phone} /> },
@@ -127,10 +121,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           baseUrl: `/inwestycje/${id}`,
           excludeColumns: ['investment'],
           filters: buildFilterConfig(refData, 'investments'),
-          context: 'investment',
-          contextId: investmentId,
-          headerFields,
-          totalPayouts: financials.totalPayouts,
           invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
