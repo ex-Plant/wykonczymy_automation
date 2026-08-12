@@ -659,7 +659,7 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [ ] 4.1 Margin tab specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys/summary/tabs/summary-margin-tab.test.ts` — NOT authored: the repo has no React render harness (no `@testing-library/react`, no jsdom env), so this box is browser-level and owed to the E2E backlog at the review gate. The plane swap the tab now depends on is covered at unit level by `financialsOnReading` in `src/__tests__/lib/kosztorys/summary-reading.test.ts`.
+- [x] 4.1 Margin tab specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys/summary/tabs/summary-margin-tab.test.ts` — NOT authored: the repo has no React render harness (no `@testing-library/react`, no jsdom env), so this box is browser-level and filed to the E2E backlog as **EX-677**. The plane swap the tab now depends on is covered at unit level by `financialsOnReading` in `src/__tests__/lib/kosztorys/summary-reading.test.ts`.
 
 ### Phase 5: Write-switch
 
@@ -678,6 +678,6 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [x] 7.1 Bucketing spec passes: `pnpm exec vitest run src/__tests__/derive-financials-bucketing.test.ts` (290 tests)
-- [x] 7.2 Golden master passes with the extended fingerprint: `pnpm test:parity` — the floor needed `db-test` to actually carry kosztorys rows (prod dumps carry none), so `pnpm seed:kosztorys:test` was added and the fixture regenerated; it was already ~101/105 entities stale before this change
-- [x] 7.3 New E2E passes: `pnpm test:e2e e2e/investments-listing-kosztorys.spec.ts`
+- [x] 7.1 Bucketing spec passes: `pnpm exec vitest run src/__tests__/derive-financials-bucketing.test.ts` (290 tests) — 99e2aa19
+- [x] 7.2 Golden master passes with the extended fingerprint: `pnpm test:parity` — the floor needed `db-test` to actually carry kosztorys rows (prod dumps carry none), so `pnpm seed:kosztorys:test` was added and the fixture regenerated; it was already ~101/105 entities stale before this change — 99e2aa19
+- [x] 7.3 New E2E passes: `pnpm test:e2e e2e/investments-listing-kosztorys.spec.ts` — 99e2aa19

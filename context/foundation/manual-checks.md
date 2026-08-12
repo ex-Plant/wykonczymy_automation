@@ -870,3 +870,26 @@ library.
 - [ ] VAT and the coefficients are unchanged afterwards; a rabat globalny set beforehand is cleared, and „do zapłaty" is never negative
 - [ ] „Wczytaj" lists „Przed wczytaniem: «nazwa szablonu»" — named after the szablon, so two swaps are distinguishable — and restoring it brings the original rozpiska back including etapy and postęp
 - [ ] Reloading an investment with an empty kosztorys works too (no special-casing)
+
+## EX-555 — robocizna + rabat z kosztorysu na liście inwestycji (write-switch)
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2118, `pnpm test:integration` 99,
+`pnpm test:parity` 3, nowy E2E `investments-listing-kosztorys`). Zmiana przepina **dwa wejścia**
+figur (robocizna, rabat) z transakcji na kosztorys dla inwestycji, która ma wiersze kosztorysu —
+reszta figur zostaje na transakcjach. Boksy poniżej to głównie **regresja**: to samo, co dotąd, ma
+się zgadzać po obu stronach szwu.
+
+Setup: aplikacja na **5435** (`DB_POSTGRES_URL_TEST`), zalogowany jako OWNER (kolumna „Marża" jest
+dla ADMIN/OWNER). Po `pnpm db:import:test` uruchom `pnpm seed:kosztorys:test`, inaczej baza nie ma
+ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
+
+- [ ] Inwestycja **z kosztorysem**: „Bilans netto", „Bilans brutto", „Koszty inwestora" i „Marża" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
+- [ ] Inwestycja **bez kosztorysu** wygląda dokładnie jak przed zmianą — dalej czyta transakcje, żadna liczba nie spadła do zera.
+- [ ] Inwestycja z kosztorysem sumującym się **do zera** dalej stoi na płaszczyźnie kosztorysowej (nie wraca na transakcje) — przełącznik patrzy na brak wierszy, nie na zerowy total.
+- [ ] Zmiana ilości w kosztorysie rusza „Marżę" na liście **bez** klikania „Odśwież dane".
+- [ ] Zakładka **Marża** w v2 pokazuje tę samą robociznę i ten sam rabat co blok nad nią.
+- [ ] Okno „Nowa transakcja" (i **edycji** transakcji) nie oferuje już „Robocizny" ani „Rabatu"; stary wiersz `LABOR_COST`/`RABAT` dalej się renderuje w tabeli, daje się anulować i jedzie do arkusza.
+- [ ] Draft w sessionStorage: wybierz stary typ, przeładuj — formularz nie wraca do ukrytego typu.
+- [ ] Inwestycja z kosztorysem i **bez żadnej** transakcji `LABOR_COST`/`RABAT` **nie krzyczy** „Niezgodność z transakcjami" (ani w edytorze, ani na stronie inwestycji).
+- [ ] Inwestycja, która ma zaksięgowaną robociznę, ale **nie ma** rabatu — krzyk na rabacie **zostaje**. Wyciszenie jest per inwestycja, nie per figura.
+- [ ] Przełącznik **v1/v2** w panelu: v1 dalej pokazuje liczby z transakcji (celowo rozjeżdża się z listą — legacy do porównań).

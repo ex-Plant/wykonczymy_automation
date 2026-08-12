@@ -1,7 +1,7 @@
 ---
 change_id: ex-555-write-switch-labor-rabat
 title: Robocizna + rabat z kosztorysu na liście inwestycji; LABOR_COST i RABAT znikają z formularza
-status: implementing
+status: implemented
 created: 2026-08-12
 updated: 2026-08-12
 archived_at: null
@@ -112,12 +112,12 @@ dodatkowej, niechcianej roboty.
 
 ### Skala legacy (lokalna kopia prod, 2026-08-12)
 
-| | |
-| --- | --- |
-| `LABOR_COST` | 78 wierszy, Σ 3 312 680,30 zł |
-| `RABAT` | 11 wierszy, Σ 106 622,69 zł |
-| inwestycje z tymi transakcjami | 60 z 96 |
-| z nich z wierszami kosztorysu | 7 (w tym inwestycja 7 = seed perf 1000 wierszy) |
+|                                |                                                 |
+| ------------------------------ | ----------------------------------------------- |
+| `LABOR_COST`                   | 78 wierszy, Σ 3 312 680,30 zł                   |
+| `RABAT`                        | 11 wierszy, Σ 106 622,69 zł                     |
+| inwestycje z tymi transakcjami | 60 z 96                                         |
+| z nich z wierszami kosztorysu  | 7 (w tym inwestycja 7 = seed perf 1000 wierszy) |
 
 ### Uwagi na start
 
