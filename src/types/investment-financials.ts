@@ -25,6 +25,29 @@ export type InvestmentFinancialsT = {
    *  Non-optional on purpose: an `undefined` here would poison both figures with NaN. */
   materialsNetDiscount: number
   settledCategoryCosts: CategoryCostT[]
+  /** The netto-billed subset of `categoryCosts` — a subset, not a sibling total. It travels with
+   *  `categoryCosts` because that array alone cannot say which plane a category's `total` stands
+   *  on, so any consumer pricing a category would have to guess. */
+  netCategoryCosts: CategoryCostT[]
+}
+
+/** An investment nobody has booked a transfer against. Typed rather than spelled out at each
+ *  fallback: a field added above then fails to compile here instead of going silently missing on
+ *  the no-transfers path, which is how a zero would masquerade as a real figure. */
+export const ZERO_FINANCIALS: InvestmentFinancialsT = {
+  categoryCosts: [],
+  totalMaterialCosts: 0,
+  materialsGrossBase: 0,
+  materialsNetBilled: 0,
+  totalIncome: 0,
+  totalLaborCosts: 0,
+  totalPayouts: 0,
+  totalRabat: 0,
+  totalLoss: 0,
+  totalSettled: 0,
+  materialsNetDiscount: 0,
+  settledCategoryCosts: [],
+  netCategoryCosts: [],
 }
 
 /** One row of the kosztorys „Materiały" split — a per-expense-category cost (`id` = the

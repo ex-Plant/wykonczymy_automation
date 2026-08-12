@@ -39,10 +39,16 @@ export default async function TransactionsReportPage({ searchParams }: PageProps
   ])
   console.log(`[PERF] raporty data fetch ${step()}ms`)
 
+  // No rate/mode: this is an aggregate across investments, which have no single rate between them.
+  // The netto subset still travels, because the type promises it always accompanies `categoryCosts`
+  // — a reader that later prices these categories would otherwise bill the netto rows a second time.
   const financials = deriveFinancials(
     typeDistribution,
     breakdowns.categoryCosts,
     breakdowns.settledCategoryCosts,
+    undefined,
+    undefined,
+    breakdowns.netCategoryCosts,
   )
 
   const financialFields = buildFinancialFields(financials, refData.expenseCategories)

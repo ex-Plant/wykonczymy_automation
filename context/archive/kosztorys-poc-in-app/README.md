@@ -7,8 +7,10 @@ editor approach and settled the shape; these are its raw brainstorm/design/plan 
 **Not the source of truth, and not a build spec.** They are POC-grade notes — decisions may
 have since changed or been superseded. The reconciled, current decisions live in:
 
-- `context/changes/kosztorys-mvp/change.md` — the durable MVP decision register (distilled from these).
-- `context/foundation/roadmap.md` — the reconciled slice arc (F-01, S-01…S-15).
+- `context/foundation/roadmap.md` — the reconciled slice arc (F-01, S-01…S-19); its "Reconciled with
+  the POC" note and "Open Roadmap Questions" section absorbed the MVP decision register that once
+  lived at `context/changes/kosztorys-mvp/change.md` (deleted 2026-07-24 in a bulk cleanup, no
+  distillation needed — everything it carried is already here or in roadmap.md).
 
 Kept as archive (not deleted) because they carry unique rationale the distilled docs don't
 fully capture — the reasoning behind each POC decision, the sheet-inspection findings, and the

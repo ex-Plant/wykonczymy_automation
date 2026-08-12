@@ -1,5 +1,7 @@
 import { toGross } from '@/lib/kosztorys/calc'
+import { costForCategory } from '@/lib/db/map-category-costs'
 import type { VatPlaneT } from '@/lib/constants/transfers'
+import type { CategoryCostT } from '@/types/investment-financials'
 
 export type MoneyPairT = { net: number; gross: number }
 
@@ -77,6 +79,38 @@ export function materialsPair(materials: MaterialsT, netRate: number | null): Mo
  *  here would only pretend they differ. */
 export function billedMaterials(materials: MaterialsT, netRate: number | null): number {
   return materialsPair(materials, netRate).net
+}
+
+/** The same billed figure as `billedMaterials`, per expense category — for a surface that shows the
+ *  split rather than the aggregate. `netCategoryCosts` is a SUBSET of `categoryCosts`, so a
+ *  category's brutto base is its total minus its netto part; feeding the raw total as `grossBase`
+ *  would divide the netto part a second time. Built on `billedMaterials` so Σ of these columns is
+ *  the same arithmetic as the total they must add up to. */
+export function billedCategoryCosts(
+  categoryCosts: CategoryCostT[],
+  netCategoryCosts: CategoryCostT[],
+  netRate: number | null,
+): CategoryCostT[] {
+  return categoryCosts.map(({ categoryId, total }) => {
+    const netBilled = costForCategory(netCategoryCosts, categoryId)
+    return {
+      categoryId,
+      total: billedMaterials({ grossBase: total - netBilled, netBilled }, netRate),
+    }
+  })
+}
+
+/** The investor balance carried onto the brutto plane. Negative means the client owes, so the VAT —
+ *  another charge on them — DEDUCTS. It rides the prace alone, and on the prace net of the rabat: a
+ *  discounted złoty was never billed, so it never carried VAT. The rabat is already inside `balance`
+ *  (`calculateBalance` adds it back), which is why it has to come off the VAT base separately here. */
+export function grossBalance(
+  balance: number,
+  vatRate: number,
+  totalLaborCosts: number,
+  totalRabat: number,
+): number {
+  return balance - vatRate * (totalLaborCosts - totalRabat)
 }
 
 /** „Łącznie" — the prace on their own two planes, plus materiały. Materiały enters BOTH axes at the

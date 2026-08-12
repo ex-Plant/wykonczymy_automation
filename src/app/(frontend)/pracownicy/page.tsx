@@ -5,7 +5,7 @@ import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchWorkerBalances } from '@/lib/queries/balances'
 import { UserDataTable } from '@/components/users/user-data-table'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import type { UserRowT } from '@/components/tables/users'
+import type { UserRowT } from '@/types/table-rows'
 
 export default async function UsersListPage() {
   const session = await requireAuth(ADMIN_OR_OWNER_MANAGER_ROLES)

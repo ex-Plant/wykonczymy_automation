@@ -3,9 +3,8 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
-import type { ExpenseCategoryRefT, InvestmentStatusT } from '@/types/reference-data'
-import type { CategoryCostT } from '@/types/investment-financials'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { ExpenseCategoryRefT } from '@/types/reference-data'
+import type { InvestmentRowT } from '@/types/table-rows'
 import { costForCategory } from '@/lib/db/map-category-costs'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
@@ -13,32 +12,6 @@ import { ContactLink } from '@/components/ui/contact-link'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
-
-export type InvestmentRowT = {
-  id: number
-  name: string
-  status: InvestmentStatusT
-  totalCosts: number
-  totalMaterialCosts: number
-  totalIncome: number
-  totalLaborCosts: number
-  totalPayouts: number
-  totalInvestmentExpense: number
-  categoryCosts: CategoryCostT[]
-  balance: number
-  margin: number
-  address: string
-  phone: string
-  email: string
-  contactPerson: string
-  review: string
-  notes: string
-  hasSheet: boolean
-  // No column renders these two — the whole row is handed to EditInvestmentDialog, whose form
-  // needs them.
-  materialsNetRate: number | null
-  settlementMode: SettlementModeT
-}
 
 const col = createColumnHelper<InvestmentRowT>()
 
@@ -53,7 +26,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
     col.accessor('name', {
       id: 'name',
       header: 'Nazwa',
-      meta: { canHide: false },
+      meta: { canHide: false, minWidth: 'min-w-56' },
     }),
 
     col.accessor('totalCosts', {
@@ -62,9 +35,17 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
     }),
+    // Two fixed columns rather than one switched by tryb: in trybie mieszanym both planes are owed
+    // at once, so a reader who sees only one of them cannot tell what the client still has to pay.
     col.accessor('balance', {
       id: 'balance',
-      header: 'Bilans',
+      header: 'Bilans netto',
+      meta: { align: 'right' },
+      cell: (info) => <BalanceCell value={info.getValue()} />,
+    }),
+    col.accessor('balanceGross', {
+      id: 'balanceGross',
+      header: 'Bilans brutto',
       meta: { align: 'right' },
       cell: (info) => <BalanceCell value={info.getValue()} />,
     }),
@@ -78,9 +59,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
           }),
         ]
       : []),
-    // Per-category expense breakdown — mirrors the single-investment stats, one
-    // column per expense category so labels stay 1:1 with the detail page and a
-    // future category appears automatically. Corrections (uncategorized) stay out.
+    // Mirrors the single-investment stats so labels stay 1:1 with the detail page.
     ...expenseCategories.map((cat) =>
       col.accessor((row) => costForCategory(row.categoryCosts, cat.id), {
         id: `category-${cat.id}`,
@@ -94,6 +73,12 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       header: 'Wydatki inwestycyjne',
       meta: { align: 'right' },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
+    }),
+    col.accessor('totalSettled', {
+      id: 'totalSettled',
+      header: 'Wydatki wliczone w robociznę',
+      meta: { align: 'right' },
+      cell: (info) => formatPLN(info.getValue()),
     }),
     // Wypłaty (payouts) is admin/owner-only, matching the detail page where it
     // sits alongside Marża behind the same role gate.
@@ -110,11 +95,13 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
     col.accessor('address', {
       id: 'address',
       header: 'Adres',
+      meta: { minWidth: 'min-w-56' },
       cell: (info) => info.getValue() || '—',
     }),
     col.accessor('phone', {
       id: 'phone',
       header: 'Telefon',
+      meta: { minWidth: 'min-w-36' },
       cell: (info) => <ContactLink type="phone" value={info.getValue()} />,
     }),
     col.accessor('email', {
@@ -130,6 +117,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
     col.accessor('review', {
       id: 'review',
       header: 'Opinia',
+      meta: { minWidth: 'min-w-56' },
       cell: (info) => info.getValue() || '—',
     }),
     col.accessor('status', {

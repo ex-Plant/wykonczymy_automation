@@ -4,15 +4,7 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { ActiveToggleBadge } from '@/components/ui/active-toggle-badge'
 import type { CashRegisterTypeT } from '@/types/reference-data'
-
-export type CashRegisterRowT = {
-  id: number
-  name: string
-  ownerName: string
-  balance: number
-  type: CashRegisterTypeT
-  active: boolean
-}
+import type { CashRegisterRowT } from '@/types/table-rows'
 
 export const REGISTER_TYPE_LABELS: Record<CashRegisterTypeT, string> = {
   MAIN: 'Główne',

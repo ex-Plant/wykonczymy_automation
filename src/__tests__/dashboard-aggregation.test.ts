@@ -38,6 +38,7 @@ const mockRefData: ReferenceDataBaseT = {
       hasSheet: false,
       materialsNetRate: null,
       settlementMode: 'NET' as const,
+      vatRate: 0.08,
     },
     {
       id: 20,
@@ -53,6 +54,7 @@ const mockRefData: ReferenceDataBaseT = {
       hasSheet: false,
       materialsNetRate: null,
       settlementMode: 'NET' as const,
+      vatRate: 0.08,
     },
   ],
   workers: [

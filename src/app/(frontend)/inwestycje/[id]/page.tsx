@@ -62,6 +62,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
     breakdowns.settledCategoryCosts,
     investment.materialsNetRate,
     investment.settlementMode,
+    breakdowns.netCategoryCosts,
   )
 
   const financialFields = buildFinancialFields(financials, refData.expenseCategories)

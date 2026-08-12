@@ -1,8 +1,8 @@
 // READ-ONLY parity check for the investment financial figures.
 //
-// WHY THIS EXISTS: the six per-investment figures (bilans, marża, materiały,
-// wydatki inwestycyjne, wypłaty, settled) are computed by TWO independent code
-// paths that must always agree:
+// WHY THIS EXISTS: the seven per-investment figures (bilans netto/brutto, marża,
+// materiały, wydatki inwestycyjne, wypłaty, settled) are computed by TWO
+// independent code paths that must always agree:
 //   - listing path — sumAllInvestmentFinancials(): one batched aggregate over ALL
 //     investments, used by the list view (fast, single query).
 //   - detail path  — sumFilteredByType + sumCategoryByTypeSettled ->
@@ -21,7 +21,7 @@
 //
 // Avoids the next/cache-wrapped query wrappers (they throw outside Next): it calls the
 // raw db aggregation functions directly and lists investments via payload.find.
-import { writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import {
@@ -34,9 +34,15 @@ import {
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
+import { effectiveMaterialsNetRate, SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
+import { billedMaterials, grossBalance } from '@/lib/kosztorys/summary-economics'
+import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
+import { shapeInvestments } from '@/lib/queries/shape-investments'
+import type { InvestmentRefT } from '@/types/reference-data'
 
 type FiguresT = {
   bilans: number
+  bilansBrutto: number
   marza: number
   materialy: number
   wydatkiInwestycyjne: number
@@ -44,20 +50,50 @@ type FiguresT = {
   settled: number
 }
 
-const figuresOf = (f: InvestmentFinancialsT): FiguresT => ({
-  bilans: calculateBalance(f),
-  marza: calculateMargin(f),
-  materialy: f.totalMaterialCosts,
-  wydatkiInwestycyjne: f.categoryCosts.reduce((s, c) => s + c.total, 0),
-  wyplaty: f.totalPayouts,
-  settled: f.totalSettled,
-})
+// The DETAIL side, assembled from the financials the panel reads — deliberately NOT the listing's
+// formula. The two sides once shared one `figuresOf`, which made `wydatkiInwestycyjne` diff to zero
+// by construction and let the plane defect ship unnoticed.
+function detailFigures(f: InvestmentFinancialsT, inv: InvestmentRefT): FiguresT {
+  const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
+  const bilans = calculateBalance(f)
+  return {
+    bilans,
+    // The one figure with no second implementation to compare against, so this side calls the same
+    // helper the row builder does. It still detects an ASSEMBLY drift (did the row get fed the right
+    // financials?) — it cannot police the formula, and is not claimed to.
+    bilansBrutto: grossBalance(bilans, inv.vatRate, f.totalLaborCosts, f.totalRabat),
+    marza: calculateMargin(f),
+    materialy: f.totalMaterialCosts,
+    wydatkiInwestycyjne: billedMaterials(
+      { grossBase: f.materialsGrossBase, netBilled: f.materialsNetBilled },
+      netRate,
+    ),
+    wyplaty: f.totalPayouts,
+    settled: f.totalSettled,
+  }
+}
+
+// The LISTING side through the REAL row assembly — `shapeInvestments` is what the page renders, so
+// a figure that only the row builder gets wrong still shows up here (lessons.md:19).
+function listingFigures(f: InvestmentFinancialsT, inv: InvestmentRefT): FiguresT {
+  const [row] = shapeInvestments([inv], { [String(inv.id)]: f })
+  return {
+    bilans: row.balance,
+    bilansBrutto: row.balanceGross,
+    marza: row.margin,
+    materialy: row.totalMaterialCosts,
+    wydatkiInwestycyjne: row.totalInvestmentExpense,
+    wyplaty: row.totalPayouts,
+    settled: row.totalSettled,
+  }
+}
 
 // Compare at 2 dp — the two paths sum in different orders, so raw floats differ by
 // sub-grosz noise that isn't a real mismatch.
 const round2 = (n: number) => Math.round(n * 100) / 100
 const FIGURE_KEYS: (keyof FiguresT)[] = [
   'bilans',
+  'bilansBrutto',
   'marza',
   'materialy',
   'wydatkiInwestycyjne',
@@ -80,11 +116,21 @@ async function main() {
   // The concession columns travel with each investment: the listing aggregate reads them from SQL,
   // so the detail path must be handed the same two or every investment with a rate set reports a
   // false mismatch on bilans and marża.
-  const investments = invResult.docs.map((d) => ({
+  const investments: InvestmentRefT[] = invResult.docs.map((d) => ({
     id: Number(d.id),
     name: String(d.name),
+    status: d.status ?? 'active',
+    active: d.status === 'active',
+    address: d.address ?? '',
+    phone: d.phone ?? '',
+    email: d.email ?? '',
+    contactPerson: d.contactPerson ?? '',
+    notes: d.notes ?? '',
+    review: d.review ?? '',
+    hasSheet: false,
     materialsNetRate: d.materialsNetRate ?? null,
-    settlementMode: d.settlementMode ?? undefined,
+    settlementMode: d.settlementMode ?? SETTLEMENT_MODE_DEFAULT,
+    vatRate: d.vatRate ?? DEFAULT_VAT,
   }))
 
   const listingMap = await sumAllInvestmentFinancials(payload)
@@ -103,20 +149,24 @@ async function main() {
       breakdowns.settledCategoryCosts,
       inv.materialsNetRate,
       inv.settlementMode,
+      breakdowns.netCategoryCosts,
     )
     const listingFin = listingMap.get(inv.id)
 
-    const detail = figuresOf(detailFin)
+    const detail = detailFigures(detailFin, inv)
     // An investment with no transfers is absent from the listing aggregate; treat it
     // as all-zero so it still diffs against the detail path instead of crashing.
     const listing = listingFin
-      ? figuresOf(listingFin)
+      ? listingFigures(listingFin, inv)
       : (Object.fromEntries(FIGURE_KEYS.map((k) => [k, 0])) as FiguresT)
 
     const diffs = FIGURE_KEYS.filter((k) => round2(listing[k]) !== round2(detail[k]))
     rows.push({ id: inv.id, name: inv.name, listing, detail, match: diffs.length === 0, diffs })
   }
 
+  // `dumps/` is gitignored, so it is absent in a fresh clone or worktree — the audit is read-only
+  // and must not die on its own output dir.
+  mkdirSync('dumps', { recursive: true })
   writeFileSync(`dumps/parity-${label}.json`, JSON.stringify(rows, null, 2))
 
   const header = [

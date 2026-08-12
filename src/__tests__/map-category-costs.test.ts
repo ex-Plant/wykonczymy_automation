@@ -20,6 +20,7 @@ const base: InvestmentFinancialsT = {
   totalSettled: 0,
   materialsNetDiscount: 0,
   settledCategoryCosts: [],
+  netCategoryCosts: [],
 }
 
 describe('buildFinancialFields — rabat row', () => {

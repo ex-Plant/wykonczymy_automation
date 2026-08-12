@@ -54,7 +54,10 @@ export const fetchInvestmentFinancials = unstable_cache(
     console.log(`[PERF] query.fetchInvestmentFinancials ${elapsed()}ms (${map.size} investments)`)
     return record
   },
-  ['investment-financials'],
+  // Versioned key — see the note on `reference-data-v2`. Bumped when `InvestmentFinancialsT` gained
+  // `netCategoryCosts`: an entry written before that lacks the array, and `billedCategoryCosts`
+  // dereferences it, so the listing throws rather than merely showing an old number.
+  ['investment-financials-v2'],
   // Two tags, not one: the figures are summed from transfers, but the materiały concession and the
   // settlement mode that gates it are columns on `investments`. Tagged on transfers alone, saving a
   // rate left the listing serving the pre-change marża until an unrelated transfer happened to

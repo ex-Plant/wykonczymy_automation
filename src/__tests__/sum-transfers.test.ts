@@ -139,6 +139,7 @@ describe('sumAllInvestmentFinancials', () => {
       totalSettled: 0,
       materialsNetDiscount: 0,
       settledCategoryCosts: [],
+      netCategoryCosts: [],
     })
     expect(map.get(2)?.totalMaterialCosts).toBe(500)
   })
@@ -275,6 +276,7 @@ describe('deriveFinancials', () => {
       totalSettled: 0,
       materialsNetDiscount: 0,
       settledCategoryCosts: [],
+      netCategoryCosts: [],
     })
   })
 
@@ -292,6 +294,7 @@ describe('deriveFinancials', () => {
       totalSettled: 0,
       materialsNetDiscount: 0,
       settledCategoryCosts: [],
+      netCategoryCosts: [],
     })
   })
 

@@ -3,64 +3,13 @@ import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS, entityTag } from '@/lib/cache/tags'
+import { fetchInvestmentFinancials } from '@/lib/queries/balances'
+import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { perfStart } from '@/lib/perf'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
-import { fetchInvestmentFinancials, type InvestmentFinancialsMapT } from '@/lib/queries/balances'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
-import { calculateBalance } from '@/lib/db/calculate-balance'
-import { calculateMargin } from '@/lib/db/calculate-margin'
-import type { InvestmentRefT } from '@/types/reference-data'
-import type { InvestmentRowT } from '@/components/tables/investments'
-
-export function shapeInvestments(
-  investments: InvestmentRefT[],
-  financialsRecord: InvestmentFinancialsMapT,
-): InvestmentRowT[] {
-  return investments.map((inv) => {
-    const fin = financialsRecord[String(inv.id)]
-    const financials = fin ?? {
-      categoryCosts: [],
-      totalMaterialCosts: 0,
-      totalIncome: 0,
-      totalLaborCosts: 0,
-      totalPayouts: 0,
-      totalRabat: 0,
-      totalLoss: 0,
-      totalSettled: 0,
-      materialsNetDiscount: 0,
-      settledCategoryCosts: [],
-    }
-    const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
-    // Sum of the categorised expense breakdown = total INVESTMENT_EXPENSE.
-    // Mirrors the detail page: corrections are uncategorised, so they sit outside
-    // this total (and outside the per-category columns), not folded in.
-    const totalInvestmentExpense = financials.categoryCosts.reduce((sum, c) => sum + c.total, 0)
-    return {
-      id: inv.id,
-      name: inv.name,
-      status: inv.status,
-      totalCosts,
-      totalMaterialCosts: financials.totalMaterialCosts,
-      totalIncome: financials.totalIncome,
-      totalLaborCosts: financials.totalLaborCosts,
-      totalPayouts: financials.totalPayouts,
-      totalInvestmentExpense,
-      categoryCosts: financials.categoryCosts,
-      balance: calculateBalance(financials),
-      margin: calculateMargin(financials),
-      address: inv.address,
-      phone: inv.phone,
-      email: inv.email,
-      contactPerson: inv.contactPerson,
-      review: inv.review,
-      notes: inv.notes,
-      hasSheet: inv.hasSheet,
-      materialsNetRate: inv.materialsNetRate,
-      settlementMode: inv.settlementMode,
-    }
-  })
-}
+import type { InvestmentRowT } from '@/types/table-rows'
 
 export async function fetchAllInvestments(): Promise<InvestmentRowT[]> {
   const { user } = await requireAuth(MANAGEMENT_ROLES)

@@ -25,7 +25,10 @@ const ROW_BASE = {
   invoiceNote: null,
 } as const
 
-type BucketNameT = Exclude<keyof InvestmentFinancialsT, 'categoryCosts' | 'settledCategoryCosts'>
+type BucketNameT = Exclude<
+  keyof InvestmentFinancialsT,
+  'categoryCosts' | 'settledCategoryCosts' | 'netCategoryCosts'
+>
 
 /** Which (type, settled) pairs land in each bucket today. Hand-typed, not derived. */
 const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
@@ -95,7 +98,7 @@ describe('deriveFinancials — bucketing matrix', () => {
   it('covers every bucket', () => {
     const financials = deriveFinancials([])
     const buckets = Object.keys(financials).filter(
-      (k) => k !== 'categoryCosts' && k !== 'settledCategoryCosts',
+      (k) => k !== 'categoryCosts' && k !== 'settledCategoryCosts' && k !== 'netCategoryCosts',
     )
     expect(buckets.sort()).toEqual(Object.keys(BUCKET_MEMBERSHIP).sort())
   })
@@ -162,15 +165,18 @@ describe('deriveFinancials — breakdowns pass through untouched', () => {
   it('returns the category arrays it was given', () => {
     const live = [{ categoryId: 1, total: 10 }]
     const settled = [{ categoryId: 2, total: 20 }]
-    const financials = deriveFinancials([], live, settled)
+    const net = [{ categoryId: 1, total: 4 }]
+    const financials = deriveFinancials([], live, settled, null, 'NET', net)
     expect(financials.categoryCosts).toEqual(live)
     expect(financials.settledCategoryCosts).toEqual(settled)
+    expect(financials.netCategoryCosts).toEqual(net)
   })
 
-  it('defaults both to empty', () => {
+  it('defaults all three to empty', () => {
     const financials = deriveFinancials([])
     expect(financials.categoryCosts).toEqual([])
     expect(financials.settledCategoryCosts).toEqual([])
+    expect(financials.netCategoryCosts).toEqual([])
   })
 })
 
