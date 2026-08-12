@@ -67,7 +67,6 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
         config={{
           query: { where: transferWhere, page, limit },
           baseUrl: `/kasa/${id}`,
-          excludeColumns: [],
           filters: buildFilterConfig(refData, 'cashRegisters'),
           invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',

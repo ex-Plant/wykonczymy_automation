@@ -10,6 +10,7 @@ import {
 import { getDb } from '@/lib/db/get-db'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { buildFinancialFields } from '@/lib/db/map-category-costs'
+import { computeSummary } from '@/components/ui/toggle-stat-buttons'
 import { round2 } from '@/__tests__/helpers/money'
 import {
   SETTLEMENT_MODE_DEFAULT,
@@ -26,27 +27,10 @@ import type { InvestmentRefT, InvestmentStatusT } from '@/types/reference-data'
 //   listing (queries/shape-investments.ts): the REAL row builder the list view renders
 //   detail  (page + financial-stats): sum of visible buildFinancialFields(...) / calculateMargin
 //     with settled re-summed from buildSettledFields — exactly as financial-stats.tsx does.
-// This is NOT extractFigures-vs-extractFigures; it runs the code each page renders.
 //
 // Gated like test:parity: skips with no DB env (portable), FAILS if env is set but DB
 // is unreachable. Run via `pnpm test:parity`.
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
-
-const BILANS_LABEL = 'Bilans'
-
-// "Bilans inwestora" as the detail page renders it: the sum of the visible stat cards. Until EX-672
-// this was imported from the print/export layer, which was a third surface computing the same
-// figure; that layer is gone, so parity now spans listing vs detail only.
-function sumVisibleFields(
-  fields: { label: string; amount?: number }[],
-  visibility: Record<string, boolean>,
-): number {
-  return fields
-    .filter(
-      (f) => f.label !== BILANS_LABEL && f.amount !== undefined && visibility[f.label] !== false,
-    )
-    .reduce((sum, f) => sum + (f.amount ?? 0), 0)
-}
 
 describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly paths (DB)', () => {
   let payload: Payload | null = null
@@ -132,7 +116,9 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
 
       // DETAIL assembly (mirrors inwestycje/[id]/page.tsx + financial-stats.tsx)
       const fields = buildFinancialFields(detailFin, expenseCategories)
-      const detailBilans = sumVisibleFields(fields, {}) // {} = all cards visible
+      // The formula ToggleStatButtons renders, over every card (nothing hidden) — FinancialStats
+      // partitions `fields` into rows without dropping any, so rows.flat() is `fields`.
+      const detailBilans = computeSummary(fields, new Set())
       const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
 
       const compare: [string, number, number][] = [

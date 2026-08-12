@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { TransferTableServer } from '@/components/transfers/transfer-table-server'
-import type { TransferTableConfigT } from '@/types/export'
+import type { TransferTableConfigT } from '@/components/transfers/transfer-table-config'
 
 type TransfersSectionPropsT = {
   title?: string

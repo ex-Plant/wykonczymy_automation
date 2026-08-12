@@ -1,19 +1,8 @@
 import type { Where } from 'payload'
 import type { FilterConfigT } from '@/types/filters'
+import type { PaginationParamsT } from '@/lib/utils/pagination'
 
-type HeaderFieldT = {
-  label: string
-  value: string
-  amount?: number
-}
-
-export type FinancialFieldT = HeaderFieldT & { amount: number }
-
-type TransferQueryT = {
-  where: Where
-  page: number
-  limit: number
-}
+type TransferQueryT = PaginationParamsT & { where: Where }
 
 export type TransferTableConfigT = {
   query: TransferQueryT
@@ -27,9 +16,9 @@ export type TransferTableConfigT = {
   showTotalAmount?: boolean
   cancelledTransactionAudit?: boolean
   /**
-   * Opt in to the invoice-download button. Set it only where the table's own filter is a meaningful
-   * invoice scope — the fetch behind it is unpaginated, so an unanchored `where` would ZIP every
-   * invoice in the system.
+   * Opt in to the invoice-download button. The fetch behind it is unpaginated over the table's own
+   * `where`, so on an unanchored filter (`/raporty` with nothing applied) it ZIPs every invoice in
+   * the system — deliberate there, but weigh it before opting a new page in.
    */
   invoiceDownload?: boolean
 }

@@ -2,7 +2,7 @@
 
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
-import type { FinancialFieldT } from '@/types/export'
+import type { FinancialFieldT } from '@/types/investment-financials'
 import { SaldoDisplay } from '@/components/ui/saldo-display'
 import { StatButton } from '@/components/ui/stat-button'
 import { Description } from '@/components/ui/description'

@@ -90,3 +90,10 @@ export type TypeSettledTotalT = {
   total: number
   netTotal?: number
 }
+
+/** One tile in the investment's financial stat grid: a figure with its formatted display value. */
+export type FinancialFieldT = {
+  label: string
+  value: string
+  amount: number
+}

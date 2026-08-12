@@ -6,7 +6,7 @@ import {
   flattenInvoiceRows,
   sanitizeForFilename,
   pluralizeInvoice,
-} from '@/lib/export/invoice-zip'
+} from '@/lib/invoices/invoice-zip'
 
 // ── sanitizeForFilename ─────────────────────────────────────────────────
 

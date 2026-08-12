@@ -11,7 +11,7 @@ import { getTransferColumns } from '@/components/tables/transfers'
 import type { TransferRowT } from '@/types/transfers'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import type { PaginationMetaT } from '@/lib/utils/pagination'
-import type { TransferTableConfigT } from '@/types/export'
+import type { TransferTableConfigT } from '@/components/transfers/transfer-table-config'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 
 type TransferDataTablePropsT = {

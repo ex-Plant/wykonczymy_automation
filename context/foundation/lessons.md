@@ -224,7 +224,7 @@
 
 - **Context**: `investment-summary-panel` (2026-07-26). Under `?widok=v2`, `/inwestycje/[id]` stops rendering `FinancialStats`; the summary panel carries the client figures and an owner-only strip carries the rest. The tile block was also the only UI writing `header-fields-store`. (`?widok=v1` is the unchanged page and keeps the dynamic bilans.) **EX-672 (2026-08-12) deleted the concrete subject** — print, CSV and the store are gone — so the paragraphs below are the worked example, not live behavior; the rule outlives them.
 - **Problem**: the print button read the visibility store and, when it was **empty**, passed every header field through. With no tiles on the page the store was always empty, so the printout took the all-fields branch unconditionally: the header printed complete, but its bilans was **static** — the deselect-a-tile-and-watch-the-bilans-move affordance was gone from that page. Nothing errored and nothing looked broken, so the next reader was likely to read the always-empty store as a bug and "restore" it.
-- **Rule**: When you remove the only writer of a store that another feature reads with an empty-means-everything fallback, the fallback stops being a fallback and becomes the behavior — say so in writing at the moment you remove it. There it was **accepted, not a defect**: the owner wanted the tiles off that page and a static header was the correct trade. A silent always-default branch is the kind of thing a code review flags as dead code and deletes.
+- **Rule**: When you remove the only writer of a store that another feature reads with an empty-means-everything fallback, the fallback stops being a fallback and becomes the behavior — say so in writing at the moment you remove it. In that case it was **accepted, not a defect**: the owner wanted the tiles off that page and a static header was the correct trade. A silent always-default branch is the kind of thing a code review flags as dead code and deletes.
 - **Applies to**: implement, code-review, simplify
 
 ## A guard that fails on the ordinary path teaches people to silence it — scope its invalidation to the entity that actually moved
@@ -566,7 +566,7 @@
 ## A server action that accepts a caller-supplied `Where` can never be relaxed for a public surface
 
 - **Context**: EX-569 put a bulk invoice download on the unauthenticated kosztorys share path. The
-  obvious move was to reuse the transfers table's export action, `fetchFilteredTransfers`.
+  obvious move was to reuse the transfers table's bulk-fetch action, `fetchFilteredTransfers`.
 - **Problem**: That action takes a `Where` from the caller with no investment scoping — its only
   scope check is `requireAuth`. Dropping the auth to serve a public page would hand anyone the entire
   transfers table, not just the invoices of one investment.
@@ -574,7 +574,7 @@
   the query. If the _caller_ supplies the filter, the auth check is the only bound and the action is
   not reusable — route around it (server-render the rows into props, or write a scoped read that takes
   an id, not a `Where`).
-- **Applies to**: `src/lib/actions/export.ts`, and any `'use server'` read whose parameter is a query
+- **Applies to**: `src/lib/actions/fetch-transfers-for-invoices.ts`, and any `'use server'` read whose parameter is a query
   rather than an identifier.
 
 ## An exhaustiveness assertion only protects while both sides are authored independently

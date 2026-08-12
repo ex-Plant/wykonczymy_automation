@@ -1,9 +1,9 @@
 import type {
   CategoryCostT,
+  FinancialFieldT,
   InvestmentFinancialsT,
   MaterialyBreakdownRowT,
 } from '@/types/investment-financials'
-import type { FinancialFieldT } from '@/types/export'
 import { formatPLN } from '@/lib/utils/format-currency'
 
 // Material spend not attributed to any expense category — in practice legacy corrections
