@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   ChevronDown,
   Eye,
+  FileDown,
   FileStack,
   History,
   Redo2,
@@ -25,6 +26,7 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-share-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
+import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { previewKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
@@ -50,6 +52,7 @@ export function KosztorysActionsMenu() {
     useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [reloadOpen, setReloadOpen] = useState(false)
   const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
   const [importLoaded, setImportLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
@@ -143,6 +146,13 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setReloadOpen(true)}>
+            <FileDown />
+            <MenuItemBody
+              label="Wczytaj szablon…"
+              description="Zastąp całą rozpiskę zapisanym szablonem."
+            />
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleOpenImport}>
             <SheetIcon />
             <MenuItemBody
@@ -190,6 +200,12 @@ export function KosztorysActionsMenu() {
           setImportPreview(null)
           onTreeReplaced?.()
         }}
+      />
+      <ReloadFromPresetDialog
+        investmentId={investmentId}
+        open={reloadOpen}
+        onOpenChange={setReloadOpen}
+        onReloaded={() => onTreeReplaced?.()}
       />
       <KosztorysShareDialog
         investmentId={investmentId}

@@ -1,11 +1,9 @@
 'use server'
 
 import { protectedAction } from '@/lib/actions/run-action'
-import { getDb } from '@/lib/db/get-db'
-import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
+import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
-import { insertSnapshot } from '@/lib/db/snapshots'
-import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
+import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import {
   buildImportPlan,
@@ -16,21 +14,6 @@ import { MissingRobociznaTabError, readImportGrids } from '@/lib/kosztorys/sheet
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import type { ActionResultT } from '@/types/action'
 
-// Every tag the tree touches. Settings are copied rather than changed, but `restoreKosztorys`
-// rewrites the investment row regardless, so `investments` goes with them — same list
-// `restoreSnapshotAction` bumps.
-const IMPORT_TAGS = [
-  'kosztorysSections',
-  'kosztorysItems',
-  'kosztorysStages',
-  'stageProgress',
-  'investments',
-] as const
-
-// `manual`, not `auto`, is what makes the import genuinely undoable: an auto snapshot is ambient
-// history — indistinguishable from the periodic autosaves in „Wersje", capped at the newest 50 and
-// swept after 7 days. A labelled manual row is exempt from both, and shows up as a named targetable
-// entry, so „przywróć stan sprzed importu" stays a click rather than a guess.
 const PRE_IMPORT_LABEL = 'Przed importem z arkusza Google'
 
 export type ImportPreviewT = { report: ImportReportT; problems: string[] }
@@ -96,10 +79,7 @@ function emptyReport(): ImportReportT {
 }
 
 // Takes no plan from the client: it re-reads the sheet and rebuilds, so a forged preview payload
-// cannot decide what gets written. Then, in ONE transaction, a forced pre-import snapshot (captured
-// on the transaction handle and BEFORE the wipe — outside it, a rollback would leave the snapshot
-// behind; after the wipe it would snapshot nothing) and the replacement itself. Any throw rolls both
-// back and the live kosztorys is untouched.
+// cannot decide what gets written.
 export async function applyKosztorysImport(
   investmentId: number,
 ): Promise<ActionResultT<ApplyImportResultT>> {
@@ -117,21 +97,12 @@ export async function applyKosztorysImport(
       }
       if (!plan.ok) return { success: false, error: plan.problems.join(' ') }
 
-      const restored = await withPayloadTransaction(
-        payload,
-        async (req) => {
-          const txDb = await getDb(payload, req)
-          await insertSnapshot(txDb, {
-            investmentId,
-            kind: 'manual',
-            label: PRE_IMPORT_LABEL,
-            takenBy: user.id,
-            payload: await serializeKosztorys(investmentId),
-          })
-          return restoreKosztorys(payload, req, investmentId, plan.tree)
-        },
-        { skipRevalidation: true },
-      )
+      const restored = await replaceTreeWithSnapshot(payload, {
+        investmentId,
+        label: PRE_IMPORT_LABEL,
+        takenBy: user.id,
+        tree: plan.tree,
+      })
 
       return {
         success: true,
@@ -143,6 +114,6 @@ export async function applyKosztorysImport(
         },
       }
     },
-    [...IMPORT_TAGS],
+    [...KOSZTORYS_TREE_TAGS],
   )
 }

@@ -1,26 +1,23 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Check, ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { SearchFilterInput } from '@/components/ui/search-filter-input'
-import {
-  appendPresetSectionsAction,
-  listPresetSectionsAction,
-} from '@/lib/actions/kosztorys-presets'
+import { appendPresetSectionsAction } from '@/lib/actions/kosztorys-presets'
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import type { AppendedSliceT } from '@/lib/kosztorys/append-preset-sections'
-import type { PresetSectionMetaT } from '@/lib/db/presets'
 import { cn } from '@/lib/utils/cn'
-import { pluralize } from '@/lib/utils/polish-plural'
 import { toastMessage } from '@/lib/utils/toast'
 import {
+  getPresetName,
   groupPresetSections,
   isGroupFullySelected,
   metaKey,
-  type PresetGroupT,
+  sekcjeNoun,
 } from './preset-picker-groups'
+import { usePresetSections } from './use-preset-sections'
 
 type PropsT = {
   investmentId: number
@@ -30,10 +27,6 @@ type PropsT = {
   onAppended: (slice: AppendedSliceT) => void
 }
 
-const getPresetName = (group: PresetGroupT) => group.presetName
-
-const sekcjeNoun = (count: number) => pluralize(count, ['sekcja', 'sekcje', 'sekcji'])
-
 // Selection is cumulative across szablony and confirms once.
 export function AddSectionsFromPresetDialog({
   investmentId,
@@ -41,9 +34,7 @@ export function AddSectionsFromPresetDialog({
   onOpenChange,
   onAppended,
 }: PropsT) {
-  // null = not yet loaded (distinct from [] = loaded-but-empty), so the „Brak szablonów" empty-state
-  // never flashes during the fetch and a failed load isn't mistaken for a genuinely empty library.
-  const [sections, setSections] = useState<PresetSectionMetaT[] | null>(null)
+  const { sections, resetSections } = usePresetSections(open)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [activePresetId, setActivePresetId] = useState<number | null>(null)
   // Below `sm` (48rem — this repo overrides the scale) only one pane fits, so this drives which of
@@ -62,41 +53,13 @@ export function AddSectionsFromPresetDialog({
   // `| undefined`, so the empty-library case can't be read past without narrowing first.
   const activeGroup = groups.find((group) => group.presetId === activePresetId) ?? groups.at(0)
 
-  // Fetch-on-open: the picker can be opened programmatically (from the „Dodaj" menu item, bypassing
-  // Radix's own open trigger), so syncing the load to the `open` prop is the one reliable seam. Only
-  // the async list write happens here — the reset-to-null lives in the close handler (a synchronous
-  // setState in an effect body is a cascading-render smell the lint forbids).
-  useEffect(() => {
-    if (!open) return
-    // A close-then-reopen while the first load is in flight would otherwise resolve into the reset
-    // state — showing a stale list, or toasting an error at a dialog nobody is looking at.
-    let stale = false
-    const fail = (message: string) => {
-      if (stale) return
-      setSections([])
-      toastMessage(message, 'error', 4000)
-    }
-    void listPresetSectionsAction()
-      .then((res) => {
-        if (stale) return
-        if (res.success) setSections(res.data)
-        else fail(res.error ?? 'Nie udało się wczytać szablonów')
-      })
-      // A transport-level RPC rejection never resolves to {success:false}; without this „Ładowanie
-      // szablonów…" hangs forever on a dropped request.
-      .catch(() => fail('Nie udało się wczytać szablonów'))
-    return () => {
-      stale = true
-    }
-  }, [open])
-
   // Every close routes through here (cancel / esc / overlay / post-confirm), so resetting on close
   // guarantees the next open re-fetches fresh instead of showing the previous list — without an
   // in-effect setState.
   function handleOpenChange(next: boolean) {
     if (!next) {
       setSelected(new Set())
-      setSections(null)
+      resetSections()
       setActivePresetId(null)
       setPane('presets')
       setSearchTerm('')

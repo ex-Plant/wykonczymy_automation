@@ -857,3 +857,17 @@ dogfooding merges to `main`, so replacing one is safe.
 - [ ] After apply the grid **re-seeds without a manual reload** — the imported rozpiska is on screen
 - [ ] „Wersje" shows a **named** entry „Przed importem z arkusza Google" at the top (among the manual versions, **not** buried in „Historia automatyczna"), and restoring it brings the previous kosztorys back — this is the undo for a bad import
 - [ ] On a sheet whose cennik headers are unreadable the dialog **refuses** with „Nie odczytałem żadnego cennika…" and the confirm button stays disabled — no import of flat 0 zł stawki
+
+## EX-560 — ex-560-reload-from-preset
+
+Setup: local app against the 5433 dev DB, logged in as OWNER, on an investment whose kosztorys has at
+least one sekcja, an etap and some wpisane wykonanie, plus at least one zapisany szablon in the
+library.
+
+- [ ] „Wczytaj szablon…" appears in „Opcje" and lists saved szablony
+- [ ] The search box filters the szablon list by name
+- [ ] The dialog states how many sekcje and prace disappear and how many arrive
+- [ ] Confirming replaces the rozpiska; the grid shows the new content without a manual refresh
+- [ ] VAT and the coefficients are unchanged afterwards; a rabat globalny set beforehand is cleared, and „do zapłaty" is never negative
+- [ ] „Wczytaj" lists „Przed wczytaniem: «nazwa szablonu»" — named after the szablon, so two swaps are distinguishable — and restoring it brings the original rozpiska back including etapy and postęp
+- [ ] Reloading an investment with an empty kosztorys works too (no special-casing)

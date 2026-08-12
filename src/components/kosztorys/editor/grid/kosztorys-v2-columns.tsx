@@ -287,6 +287,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       id: 'sectionName',
       title: title('sectionName', opts),
       keepFocus: true,
+      // Named so the section footer can drop its vertical rule (globals.css) — dsg has no colspan.
+      cellClassName: 'kosztorys-section-name-cell',
       component: ({ rowData, disabled }: CellProps<KosztorysV2RowT, unknown>) => (
         <SectionNameCell rowData={rowData} onRename={opts.onRenameSection} disabled={disabled} />
       ),

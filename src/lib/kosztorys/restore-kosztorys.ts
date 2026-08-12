@@ -14,6 +14,7 @@ export async function restoreKosztorys(
   req: PayloadRequest,
   investmentId: number,
   snapshot: SnapshotPayloadT,
+  { clearGlobalDiscount = false }: { clearGlobalDiscount?: boolean } = {},
 ): Promise<InsertKosztorysTreeResultT> {
   const db = await getDb(payload, req) // transaction-scoped Drizzle handle (req carries transactionID)
   const where = { investment: { equals: investmentId } }
@@ -25,6 +26,9 @@ export async function restoreKosztorys(
 
   const inserted = await insertKosztorysTree(db, investmentId, snapshot)
 
+  // Load-bearing beyond the three columns it writes: it bumps `investment.updatedAt`, which is the
+  // `revision` token `useRestoreRemount` latches on to remount the grid. Writing the same values back
+  // is therefore NOT a deletable no-op — drop this and the editor keeps rendering the wiped rows.
   await payload.update({
     collection: 'investments',
     id: investmentId,
@@ -33,7 +37,10 @@ export async function restoreKosztorys(
       wToolsCoeff: snapshot.settings.wToolsCoeff,
       ownToolsCoeff: snapshot.settings.ownToolsCoeff,
       vatRate: snapshot.settings.vatRate,
-      // Global discount is intentionally not restored — the live amount discount stays as-is.
+      // The global discount lives outside the snapshot payload, so restoring a version leaves the
+      // live amount discount alone. Only a caller replacing the rozpiska wholesale with zeroed
+      // przedmiar asks for it to be cleared.
+      ...(clearGlobalDiscount ? { globalDiscountType: null, globalDiscountValue: 0 } : {}),
     },
   })
 

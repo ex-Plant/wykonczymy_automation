@@ -255,6 +255,13 @@
 - **Rule**: The invariant is load-bearing, not incidental — the day something starts keying on a kosztorys item id (a per-item photo, a per-item transfer link), restore-by-reinsert stops being correct and must preserve ids or remap the referrer. Check this before adding an FK **to** `kosztorys_items` / `kosztorys_sections` / `kosztorys_stages`.
 - **Applies to**: plan, implement, code-review
 
+## A destructive replace's undo is a `manual` snapshot taken on the TRANSACTION handle, before the wipe
+
+- **Context**: The two paths that replace a whole kosztorys — the Google-sheet import (EX-417) and „Wczytaj szablon…" (EX-560) — both promise the user the swap is reversible from „Wczytaj". They now share `lib/kosztorys/replace-tree-with-snapshot.ts`.
+- **Problem**: Three independent ways to break that promise, none of which errors. Take the snapshot **outside** the transaction and a rollback leaves an orphan restore point pointing at a wipe that never happened. Take it **after** the wipe and it captures an empty tree — the undo restores nothing. Write it as `kind: 'auto'` and it is ambient history: capped at the newest 50 and swept after 7 days, so the undo silently expires. Only a labelled `manual` row is a targetable entry in „Wczytaj".
+- **Rule**: Snapshot on the transaction handle, before the destructive write, `kind: 'manual'`, with a label that names _what_ it precedes (`Przed wczytaniem: «nazwa szablonu»`) — an unnamed label makes two swaps indistinguishable. Pin it with a spec that forces a mid-transaction throw and asserts the snapshot table is **unchanged**, not just that the tree is. Related: the client sends a preset/sheet **id**, never tree data, so a forged payload can't decide what gets written.
+- **Applies to**: plan, implement, code-review
+
 ## A restored dump has invoice METADATA but not the bytes — media lives in Vercel Blob, and most of it is PDF
 
 - **Context**: Building a ground-truth eval for receipt extraction (2026-07-11) from real `INVESTMENT_EXPENSE` rows in the restored local DB.

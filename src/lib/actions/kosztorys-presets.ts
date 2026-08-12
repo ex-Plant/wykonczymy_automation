@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import { protectedAction, validateAction } from '@/lib/actions/run-action'
+import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import {
@@ -17,6 +18,7 @@ import {
   type AppendedSliceT,
   type SectionSliceT,
 } from '@/lib/kosztorys/append-preset-sections'
+import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
 import { serializeKosztorysAsPreset } from '@/lib/kosztorys/serialize-preset'
 import type { ActionResultT } from '@/types/action'
 
@@ -130,5 +132,56 @@ export async function appendPresetSectionsAction(
       return { success: true, data: created }
     },
     ['kosztorysSections', 'kosztorysItems'],
+  )
+}
+
+const reloadSchema = z.object({
+  investmentId: z.number().int().positive(),
+  presetId: z.number().int().positive(),
+})
+
+// The szablon's name rides in the label because the restore points are otherwise indistinguishable:
+// swap three szablony and „Wczytaj" lists three identical rows, none of which says what it precedes.
+const preReloadLabel = (presetName: string) => `Przed wczytaniem: ${presetName}`
+
+export type ReloadFromPresetResultT = { sections: number; items: number }
+
+// Replace an investment's WHOLE rozpiska with a preset. The counterpart to `seedInvestmentFromPreset`,
+// which refuses a non-empty target — this is the path for swapping the szablon after the investment
+// exists, so picking the wrong one at creation stops being unrecoverable.
+//
+// Takes only ids: the payload is resolved server-side, so a forged tree can't decide what gets
+// written. `restoreKosztorys` (via replaceTreeWithSnapshot) rather than `applyPreset`: the latter is
+// insert-only by contract and assumes an empty target.
+export async function reloadFromPresetAction(
+  investmentId: number,
+  presetId: number,
+): Promise<ActionResultT<ReloadFromPresetResultT>> {
+  return protectedAction<ReloadFromPresetResultT>(
+    'reloadFromPresetAction',
+    async ({ payload, user }) => {
+      const parsed = validateAction(reloadSchema, { investmentId, presetId })
+      if (!parsed.success) return parsed
+
+      const preset = await getPreset(await getDb(payload), parsed.data.presetId)
+      if (!preset) return { success: false, error: 'Nie znaleziono szablonu' }
+
+      await replaceTreeWithSnapshot(payload, {
+        investmentId: parsed.data.investmentId,
+        label: preReloadLabel(preset.name),
+        takenBy: user.id,
+        tree: preset.payload,
+        clearGlobalDiscount: true,
+      })
+
+      return {
+        success: true,
+        data: {
+          sections: preset.payload.sections.length,
+          items: preset.payload.items.length,
+        },
+      }
+    },
+    [...KOSZTORYS_TREE_TAGS],
   )
 }

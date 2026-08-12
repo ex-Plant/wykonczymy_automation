@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
+import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
@@ -105,16 +106,24 @@ export function KosztorysEditorBody({
     [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection],
   )
 
+  const sectionFooter = useMemo(
+    () => ({
+      figures: sectionColumnTotals,
+      labelColumnId: sectionFooterLabelColumnId(columns.map((column) => column.id)),
+    }),
+    [sectionColumnTotals, columns],
+  )
+
   const gridColumns = useMemo(
     () =>
       columns.map((column) =>
         withSyntheticRows(column, {
           totals: columnTotals,
           sectionHeader,
-          sectionFooter: { figures: sectionColumnTotals },
+          sectionFooter,
         }),
       ),
-    [columns, columnTotals, sectionHeader, sectionColumnTotals],
+    [columns, columnTotals, sectionHeader, sectionFooter],
   )
   const { rows: bodyRows, ordinalByRowId } = useMemo(
     () =>
