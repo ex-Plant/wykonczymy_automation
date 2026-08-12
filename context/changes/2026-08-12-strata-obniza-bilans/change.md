@@ -1,0 +1,69 @@
+---
+change_id: strata-obniza-bilans
+title: Strata obniża dług klienta jak rabat, pozostając osobną figurą raportową
+linear: EX-675
+status: new
+created: 2026-08-12
+updated: 2026-08-12
+archived_at: null
+branch: konradantonik/ex-675-strata-obniza-dlug-klienta-jak-rabat-pozostajac-osobna
+worktree: .claude/worktrees/ex-675-strata
+---
+
+## Notes
+
+`LOSS` gets the same arithmetic as `RABAT` — ↓ marża, ↑ bilans — while staying a separately
+summed figure, because the owner wants to report "ile mam strat". Investment becomes required
+(`requiresInvestment('LOSS') → true`); the local prod dump has 4 LOSS rows, all already carrying
+an investment, so no backfill is owed.
+
+**The defect this closes.** Investment 62: two `INVESTMENT_EXPENSE` rows (222,88 + 139,96 =
+362,84, `settled = false`) plus a `LOSS` of 362,84 („naprawa połogi kolejny raz"), robocizna 0,
+wpłaty 0. Marża reads −362,84 (correct — the company ate the cost) but bilans reads −362,84,
+i.e. the app claims the client still owes 362,84. The owner entered the strata precisely so the
+client would not. Strata does half its job today: it eats the margin and leaves the debt standing.
+
+Regression fixture: that exact shape → bilans 0, marża −362,84.
+
+**Why not the existing `settled` checkbox.** „Wliczone w robociznę" on the wydatek produces the
+same two numbers, but its label is false when robocizna is 0, and it cannot express a loss with no
+cash expense behind it (kara, przestój, odpuszczona robocizna). Strata is the more general tool and
+the one the owner reached for. Accepted consequence: two routes to one outcome — ticking the
+checkbox *and* adding a strata for the same amount would swing bilans to +362,84, which the code
+cannot detect (two independent rows).
+
+**Assumption to confirm with the owner: VAT plane.** Taken as *identical to rabat*, i.e. strata
+deducts BEFORE VAT, inside the netto robocizna base — at 23% a 1000 zł strata cuts the client's
+brutto debt by 1230 zł. If the owner reads strata as covering a materiały expense (which carries no
+VAT), it must deduct at face value instead — one line each in `grossBalance` and `combinedPair`.
+
+## Blocked on EX-555 (2026-08-12)
+
+Implementation waits for `context/changes/2026-08-12-ex-555-write-switch-labor-rabat` to land
+(in flight on `konradantonik/ex-672-remove-print-csv-export`). It moves robocizna **and rabat** on
+the investment listing onto a kosztorys source and hides `LABOR_COST` / `RABAT` from the expense
+form; legacy rows stay. It rewrites the exact functions this change touches — `calculate-balance.ts`,
+`calculate-margin.ts`, `shape-investments.ts`, `summary-reading.ts`, `summary-margin-tab.tsx`.
+Re-verify this plan against the post-EX-555 shape before implementing. Four consequences:
+
+1. **„Jak rabat" stops meaning „like the `RABAT` transfer".** After EX-555 rabat is a kosztorys
+   figure (`rabatClientNet`); strata stays a transfer, because the arkusz has no strata column. The
+   analogy survives in the arithmetic only — the plumbing must stay transaction-sourced.
+2. **Scope shrinks: strata does NOT enter `SummaryReadingT`.** That pair is robocizna + rabat, both
+   kosztorys-sourced. Strata rides alongside like materiały and wpłaty, so the v1↔v2 reconciliation
+   never compares it and the false-mismatch risk noted below no longer applies.
+3. **The VAT assumption weakens.** After EX-555 the netto robocizna base comes from the kosztorys, so
+   deducting strata pre-VAT means a transfer figure cutting the VAT base of a kosztorys figure —
+   the two-planes seam `lessons.md` warns about. Strengthens the face-value reading instead.
+4. **Same double-counting family.** EX-555 found id 2774, a rabat entered as a `CORRECTION`; once
+   rabat feeds marża and bilans from the kosztorys, that row double-counts. Structurally identical to
+   the strata + `settled` checkbox overlap accepted above — worth one shared answer, not two.
+
+**Scope trap — v2 does not use `calculateBalance`.** The v2 panel and the kosztorys podsumowanie
+compute the client figure through `computeDoZaplatyRM` / `computeMixedSettlement`
+(`Robocizna post-rabat + Materiały − Wpłaty`), so `+ totalLoss` in `calculateBalance` alone fixes
+only v1 (legacy) and the investment listing. Rabat reaches v2 by being baked into the kosztorys
+(`rabatClientNet`); strata has no kosztorys row, so it needs its own explicit deduction row in the
+settlement steps. `summary-reading.ts` currently asserts the opposite in prose — that strata never
+enters those readings — and both readings must gain it identically or the v1↔v2 reconciliation
+will report a false mismatch.
