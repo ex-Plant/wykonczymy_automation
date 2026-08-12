@@ -1058,3 +1058,31 @@ broken a balance that currently reconciles.
 invariant that place holds. Identical arithmetic under a different closure rule is a different
 defect, and the shared-looking line is a coincidence, not a duplication. (This one became EX-670 —
 an owner decision, not a fix.)
+
+## An optional config field hides its own death — `tsc` stays green while pages compute into the void
+
+`TransferTableConfigT` carried three optional fields (`headerFields`, `totalPayouts`,
+`context`/`contextId`) that four pages built and nobody read. Because they were optional, deleting the
+reader never broke the writer: the pages kept running aggregate queries and formatting figures that
+went nowhere, and the compiler had nothing to say. EX-672 removed one such reader (print) and found
+two more fields already long dead in the same type.
+
+**The rule.** Optionality is what lets a config field outlive its consumer, so when you delete the
+consumer, gate the producer cleanup on **grep + `dead-code-scanner`, not on `tsc`**. A green typecheck
+after removing a reader proves nothing about whether its writers are now dead code. The same asymmetry
+applies to any optional prop or optional payload key — deleting the read end is silent by
+construction.
+
+## Parking two features' buttons in one component makes one feature's data the other's visibility gate
+
+Print, CSV and invoice download all lived in `TransferExportToolbar`, and the toolbar was mounted on
+`headerFields` — **print's** data. So invoice download appeared exactly where print's data happened to
+be built, and was absent from the manager dashboard by accident rather than by decision. Deleting
+print as the ticket described would have silently dropped invoice download from four pages.
+
+**The rule.** When a container renders buttons for more than one feature, its mount condition belongs
+to whichever feature it names — every other feature inside it is gated on a condition nobody chose.
+Before deleting such a container, list its children and give each surviving one its own explicit
+condition (here: `invoiceDownload?: boolean`). Splitting the buttons apart is not enough if the shared
+gate survives the split — that is exactly what an earlier refactor did here and why the trap was still
+live.
