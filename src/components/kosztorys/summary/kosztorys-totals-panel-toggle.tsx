@@ -25,11 +25,11 @@ export function KosztorysTotalsPanelToggle({ size = 'sm' }: { size?: 'sm' | 'def
       {/* Both labels stacked in the same grid cell so the button sizes to the wider of the two —
           a plain ternary let the width twitch by a couple px on toggle (kerning, not length). */}
       <span className="grid">
-        <span className={cn('col-start-1 row-start-1', !totalsOpen && 'invisible')}>
-          Ukryj podsumowanie
-        </span>
         <span className={cn('col-start-1 row-start-1', totalsOpen && 'invisible')}>
           Pokaż podsumowanie
+        </span>
+        <span className={cn('col-start-1 row-start-1', !totalsOpen && 'invisible')}>
+          Schowaj podsumowanie
         </span>
       </span>
       <ChevronDown

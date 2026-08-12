@@ -988,3 +988,66 @@ index, data)`) and spec it with a stub. The hook keeps the `useState`/concurrenc
 - **Problem**: The sweep stamped every lead it recovered `notifyStatus: 'skipped'` — a **terminal** state meaning "we decided not to send". It had no authority to decide that: it cannot know whether sales was told, and sales was not. So a lead the webhook silently dropped was recovered into the DB and then hidden from the only people who could act on it. Worse, `captureLead` gates each channel on `pending`, so `skipped` also short-circuited a later webhook redelivery — the one thing that would have rescued it. The failure is invisible by construction: the row looks fully processed, and the alert mail (counts only) reads like a clean recovery. It shipped, then needed a stopgap (listing contact details in the alert) whose only job was to make the swallowed leads findable at all.
 - **Rule**: A status column records **what happened**, not what a caller assumed. Only the component that owns the send may write its outcome — give the backfill an _option_ on that component (`captureLead(…, { autoReply: 'skip' })`) instead of letting it stamp the row itself. Suppress a channel only where lateness genuinely degrades it: a customer-facing reply days late is embarrassing, an internal heads-up never is — so the internal one gets **no** suppression option at all, deliberately. Resist a freshness window as the fix: once the internal channel is unconditional, a threshold has nothing left to decide and a wrong N just reintroduces the same defect in a narrower band. Tell: a record whose status says "settled" while no one can name the message that was sent.
 - **Applies to**: plan, implement, impl-review, plan-review
+
+## Widening a type that flows through an `unstable_cache` payload needs a KEY bump — tags don't help
+
+**Symptom.** The investments listing threw `Cannot read properties of undefined (reading 'find')` in
+`costForCategory`, and before that rendered `NaN zł` in three columns — on a branch whose typecheck,
+2036 unit tests, DB parity spec and cross-path audit were all green.
+
+**Cause.** `investments-listing-expense-plane` widened two shapes: `InvestmentFinancialsT` gained
+`netCategoryCosts`, and the investment reference row gained `vatRate`. Both travel through
+`unstable_cache` — `['investment-financials']` and `['reference-data']`. A cache entry written before
+the change carries the OLD shape. The new reader dereferences a field that entry doesn't have, so it
+crashes (`.find` on `undefined`) or prints `NaN`.
+
+**Why a tag doesn't save you.** A tag marks an entry stale; the request that finds it stale still
+serves the old payload once and revalidates behind it. That is exactly right for a value that is
+merely out of date, and exactly wrong for one that is structurally incompatible — the "one last
+serve" is the crash. Adding more tags, or revalidating harder, cannot fix it.
+
+**The rule.** The cache key is the schema version of its payload. **Change the shape → bump the key**
+(`['reference-data-v2']`). The old entry becomes unreachable instead of being served once more. A
+field ADDED is as breaking as one removed the moment a reader dereferences it.
+
+**Why no test caught it, and what would.** Every gate we ran calls the query functions directly or
+re-derives them — none goes through the cache layer, and a fresh cache is always the right shape.
+The failure needs an OLD entry, which only exists in a long-running dev server or a live deploy. So
+this is not a coverage gap to close with another spec; it is a **checklist item at the moment of the
+edit**: widening a type, grep for the `unstable_cache` keys its payload passes through and bump them
+in the same commit.
+
+## A guard running on REAL data is still blind if the real data predates the feature
+
+`lessons.md:19` says a parity test must run the real per-surface assembly on real data. The
+investments-listing plane defect satisfied that rule and shipped anyway. The reason is one level
+below it: the test DB is restored from a prod dump taken **before** the materiały-netto concession
+existed, so it held **0 of 109** investments with a `materials_net_rate` and **0**
+`INVESTMENT_EXPENSE_NET` rows. Every guard reading that dataset — the parity test, the golden master
+— was green because the entire plane it was supposed to police was absent from its input. The
+integration test that would have screamed on a rate-bearing investment was, on that dataset,
+unfalsifiable.
+
+Worse, the same restore hid a second defect: the parity test called `deriveFinancials` without the
+rate and mode, which would have produced a **false** mismatch on any investment with a rate. It was
+green only because no such row existed. A borrowed dataset can make a guard both blind and wrong at
+the same time, and neither shows up as a failure.
+
+**The rule.** When a feature adds a new plane, rate, or type, ask what the guard's dataset actually
+contains before trusting a green run — `SELECT count(*) WHERE <the new column IS NOT NULL>` is a
+ten-second check. Zero rows means the guard is decorative on that axis, and the honest options are a
+synthetic unit test (independent of the restore) or a fixture, not a green integration run.
+
+## Two surfaces reading the same figure wrong are not always the same defect
+
+The investments listing and the investment page's v1 stat tiles both summed raw `categoryCosts`, so
+the tiles looked like the same one-line fix. They were not. On the listing the category columns are
+independent figures, so pricing them onto the billed plane is simply a correction. On the tiles the
+**sum of the visible tiles IS the balance**, and the concession already has its own tile („Obniżka
+materiałów") — repricing the category tiles there would have counted the concession twice and
+broken a balance that currently reconciles.
+
+**The rule.** Before extending a fix to "the other place with the same expression", check what
+invariant that place holds. Identical arithmetic under a different closure rule is a different
+defect, and the shared-looking line is a coincidence, not a duplication. (This one became EX-670 —
+an owner decision, not a fix.)

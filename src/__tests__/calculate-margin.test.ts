@@ -16,6 +16,7 @@ const fin = (p: Partial<InvestmentFinancialsT>): InvestmentFinancialsT => ({
   totalSettled: 0,
   materialsNetDiscount: 0,
   settledCategoryCosts: [],
+  netCategoryCosts: [],
   ...p,
 })
 

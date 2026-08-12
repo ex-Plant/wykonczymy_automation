@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
@@ -202,11 +202,9 @@ export function SummaryPanelContent({
     taggedNet,
     taggedGross,
   })
-  // A brutto-settled investment adds VAT on top, so there is nothing to strip and the saved rate goes
-  // inert — the same gate the server applies to `materialsNetDiscount`. Both sides fall silent
-  // together rather than the panel discounting a figure marża never saw. The rate itself is kept, not
-  // cleared: switching back to netto restores the old figures with nothing to re-enter.
-  const effectiveNetRate = settlementMode === 'GROSS' ? null : materialsNetRate
+  // The same gate the server applies to `materialsNetDiscount`, so both sides fall silent together
+  // rather than the panel discounting a figure marża never saw.
+  const effectiveNetRate = effectiveMaterialsNetRate(settlementMode, materialsNetRate)
   // Derived once for both surfaces that offer the choice: the popover and the Materiały tab print
   // this same lock, so they can never disagree about whether the choice is available.
   const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined

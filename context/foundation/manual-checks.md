@@ -807,3 +807,34 @@ Precondition: a lead that exists in Meta's recent window but not in the local DB
 - [ ] The customer address receives **nothing** — no late „Dziękujemy za kontakt". This is the leg the whole `autoReply: 'skip'` option exists for
 - [ ] The recovered row in the admin panel shows `notifyStatus: sent`, `autoReplyStatus: skipped` — never `skipped`/`skipped`
 - [ ] Exactly one summary mail arrives, to `LEADS_ALERT_EMAIL` only (not the sales inbox), with no contact details and no "call them yourself" instruction
+
+## investments-listing-expense-plane — wydatki w liście na płaszczyźnie rozliczenia materiałów
+
+**In review** — automated gate green (tsc 0, eslint 0 errors, unit 2035, integration 83, build OK) and
+the parity audit reports 0 outliers across 96 inwestycji on the dev DB. Boxes below are what no test
+proves: the figures the owner actually reads on `/inwestycje`, against the same investment's
+Podsumowanie. Setup per the intro (5435 test DB) **except** the investment-31 rows — that investment
+with its materiały rate lives on the dev DB (5433), which is where the defect was found.
+
+### Phase 1: Bramka i brakujący kabel
+
+- [ ] „Podsumowanie" inwestycji 31 pokazuje te same liczby co przed zmianą w trybie netto, i tak samo zachowuje się po przełączeniu na brutto i z powrotem
+
+### Phase 2: Naprawa „Wydatków inwestycyjnych" i kolumn kategorii
+
+- [ ] `/inwestycje`, wiersz „11 Listopada 40": budowlane 105 712,10 · wykończeniowe 47 156,35 · pozostałe 20,00 · wydatki inwestycyjne 152 648,46 (suma kolumn nie domyka się do totalu o −240,00 — to legacy materiał bez kategorii, kolumny „Korekta" już nie ma)
+- [ ] Te same liczby zgadzają się co do grosza z „Razem" netto w „Podsumowaniu" tej inwestycji
+- [ ] Inwestycja bez stawki materiałów wygląda dokładnie jak przed zmianą
+- [ ] Po przełączeniu inwestycji 31 na rozliczenie brutto kolumny pokazują surowe kwoty z ewidencji, a po powrocie na netto wracają liczby netto
+
+### Phase 3: Trzy nowe kolumny
+
+- [ ] Wiersz inwestycji 31: „Wydatki wliczone w robociznę" = 1 004 421,85
+- [ ] „Bilans brutto" inwestycji 31 = −28 764,67, czyli co do grosza „Pozostało do zapłaty" brutto z „Podsumowania" tej inwestycji (ze znakiem: minus = klient winien)
+- [ ] „Bilans brutto" w wierszu z rabatem liczy VAT od robocizny **po rabacie** — kwota rabatu nie jest oVAT-owana
+- [ ] Przełącznik kolumn wymienia wszystkie trzy nowe kolumny, a ukrycie/pokazanie przeżywa odświeżenie strony
+- [ ] Konto MANAGERA widzi „Korektę" i „Wydatki wliczone w robociznę", a nadal nie widzi „Marży" ani „Wypłat"
+
+### Phase 4: Detektory
+
+- [ ] `dumps/parity-post-fix.json` pokazuje dla inwestycji 31 niezerowe `wydatkiInwestycyjne` i `match: true` — czyli że ta pozycja jest naprawdę porównywana, a nie skraca się do zera
