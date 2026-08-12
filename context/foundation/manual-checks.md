@@ -895,3 +895,17 @@ ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
 - [ ] Inwestycja z kosztorysem i **bez żadnej** transakcji `LABOR_COST`/`RABAT` **nie krzyczy** „Niezgodność z transakcjami" (ani w edytorze, ani na stronie inwestycji).
 - [ ] Inwestycja, która ma zaksięgowaną robociznę, ale **nie ma** rabatu — krzyk na rabacie **zostaje**. Wyciszenie jest per inwestycja, nie per figura.
 - [ ] Przełącznik **v1/v2** w panelu: v1 dalej pokazuje liczby z transakcji (celowo rozjeżdża się z listą — legacy do porównań).
+
+## EX-557 — wpłaty bez inwestycji („Inna wpłata" wraca, oba typy tracą inwestycję)
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2131, `pnpm test:integration` 99,
+`pnpm test:parity` 3). E2E okna wpłaty odroczone do **EX-679** (`e2e-backlog`).
+
+Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER.
+
+- [ ] Jako MANAGER okno wpłaty oferuje „Inna wpłata" (wróciła) i „Wpłata od inwestora", ale **nie** „Zasilenie z konta firmowego"
+- [ ] Jako ADMIN/OWNER lista typów ma wszystkie trzy, w kolejności alfabetycznej po polskiej etykiecie
+- [ ] Wejście z `/inwestycje/<id>` → „Inna wpłata" → pole inwestycji znika, a zapisany wiersz ma w kolumnie Inwestycja „—", nie inwestycję, na której stałeś
+- [ ] To samo dla „Zasilenie z konta firmowego"
+- [ ] Wybierz „Wpłata od inwestora", ustaw inwestycję i netto/brutto, przełącz typ na „Zasilenie" i zapisz — żadna z tych dwóch wartości nie ląduje na wierszu
+- [ ] Edycja istniejącego wiersza `COMPANY_FUNDING` z tabeli transakcji nie oferuje pola inwestycji, a zapis niepowiązanego pola (opis) przechodzi bez błędu
