@@ -411,6 +411,15 @@
     1px 0 var(--dsg-border-color);
 }
 
+/* „Sekcja" gives up its right edge so it and „Opis prac" read as the one cell holding „Razem …" —
+   dsg has no colspan, and suppressing that edge is how a merged cell is spelled. Only the horizontal
+   rule survives. */
+.kosztorys-grid .dsg-row.kosztorys-section-footer .dsg-cell.kosztorys-section-name-cell {
+  box-shadow:
+    inset 0 var(--section-footer-divider-width) 0 var(--section-rail, var(--color-border)),
+    0 1px var(--dsg-border-color);
+}
+
 /*https://tailwindcss.com/docs/adding-custom-styles/*
 
 
