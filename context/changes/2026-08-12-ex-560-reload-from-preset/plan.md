@@ -296,14 +296,14 @@ Run **once**, after Phase 3.
 
 #### Automated
 
-- [x] 1.1 Typecheck passes
+- [x] 1.1 Typecheck passes — d0bed5d7
 
 ### Phase 2: The action
 
 #### Automated
 
-- [ ] 2.1 Reversibility spec passes
-- [ ] 2.2 DB-backed integration suite passes
+- [x] 2.1 Reversibility spec passes
+- [x] 2.2 DB-backed integration suite passes
 
 ### Phase 3: Dialog and menu entry
 
