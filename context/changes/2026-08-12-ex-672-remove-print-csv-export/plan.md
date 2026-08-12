@@ -401,12 +401,12 @@ persistence.
 
 #### Automated
 
-- [x] 3.1 rg sweep for `headerFields|ExportContextT|contextId|totalPayouts` is clean on `TransferTableConfigT`
-- [x] 3.2 `dead-code-scanner` reports no orphan left by this change
-- [x] 3.3 `pnpm exec tsc --noEmit`
+- [x] 3.1 rg sweep for `headerFields|ExportContextT|contextId|totalPayouts` is clean on `TransferTableConfigT` — bef9379a
+- [x] 3.2 `dead-code-scanner` reports no orphan left by this change — bef9379a
+- [x] 3.3 `pnpm exec tsc --noEmit` — bef9379a
 
 ### Phase 4: Reconcile the docs the deletion invalidates
 
 #### Automated
 
-- [ ] 4.1 No phase-scoped automated check applies (prose-only phase)
+- [x] 4.1 No phase-scoped automated check applies (prose-only phase)

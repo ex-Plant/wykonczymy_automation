@@ -723,7 +723,7 @@ exists — read them as superseded by this section, not as owed.
 
 ### Phase 3: Delete the dead filter plumbing
 
-- [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
+- [ ] Filtrowanie tabeli transferów, paginacja i kafelek „Suma wybranych transakcji" działają bez zmian na stronie inwestycji. ~~eksport CSV/druk~~ — usunięte w EX-672.
 - [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.
 
 ## AI receipt scan: extract the netto amount (EX-577)
@@ -745,7 +745,7 @@ exists — read them as superseded by this section, not as owed.
 - [ ] „Pobierz wszystkie" z podglądu wielostronicowego daje ZIP z 3 plikami o różnych nazwach.
 - [ ] „Drukuj" w podglądzie wielostronicowym drukuje wszystkie strony w jednym zadaniu, nie tylko pierwszą.
 - [ ] Masowe pobieranie faktur z tabeli wydatków liczy strony, nie wiersze — toast pokazuje liczbę plików w ZIP-ie.
-- [ ] Eksport CSV i druk tabeli działają bez zmian.
+- [x] ~~Eksport CSV i druk tabeli działają bez zmian.~~ — nie do sprawdzenia: EX-672 usunął eksport CSV i druk tabeli.
 
 ### Phase 3: Edycja zapisanej faktury
 
@@ -871,3 +871,16 @@ library.
 - [ ] VAT and the coefficients are unchanged afterwards; a rabat globalny set beforehand is cleared, and „do zapłaty" is never negative
 - [ ] „Wczytaj" lists „Przed wczytaniem: «nazwa szablonu»" — named after the szablon, so two swaps are distinguishable — and restoring it brings the original rozpiska back including etapy and postęp
 - [ ] Reloading an investment with an empty kosztorys works too (no special-casing)
+
+## EX-672 — ex-672-remove-print-csv-export
+
+Setup: local app against the 5433 dev DB, logged in as OWNER (invoice download and the owner-only
+figures both need it), on an investment that has transakcje with faktury attached.
+
+- [ ] Na `/inwestycje/[id]`, `/kasa/[id]`, `/pracownicy/[id]` i `/raporty` nie ma już przycisków „Drukuj" ani „CSV" nad tabelą transakcji
+- [ ] „Pobierz faktury" jest na wszystkich czterech stronach i pobiera ZIP z fakturami z aktualnego filtra
+- [ ] Na pulpicie managera nadal **nie ma** przycisku „Pobierz faktury"
+- [ ] `?widok=v1` na stronie inwestycji: kafelki nadal się przełączają, przygasają po odznaczeniu, a „Bilans inwestora" przelicza się na klik
+- [ ] Kafelki kas i wykres sald na pulpicie nadal się przełączają
+- [ ] Filtry, paginacja i „Suma wybranych transakcji" działają bez zmian na wszystkich czterech stronach
+- [ ] Podgląd wielostronicowej faktury nadal ma własne „Drukuj" i „Pobierz wszystkie" (to inna funkcja niż usunięty druk tabeli)

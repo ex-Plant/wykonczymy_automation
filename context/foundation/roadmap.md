@@ -506,7 +506,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Blockers:** —
 - **Unknowns:**
   - CSV shape for nested data (sections → items → stages) — flatten how? — Owner: user. Block: no.
-- **Risk:** Reuses the existing export infrastructure (transfers already CSV-export); only the kosztorys-shaped render is new — which is why this is cheap.
+- **Risk:** ~~Reuses the existing export infrastructure (transfers already CSV-export)~~ — EX-672 (2026-08-12) deleted the transfers CSV/print layer, so there is nothing left to reuse; this slice now writes its export path from scratch and is no longer cheap for that reason.
 - **Status:** deferred — parked 2026-07-10 into the import/export band (band 3 since 2026-07-20; last feature work before the editor is locked with tests). The export scope (what to actually export, CSV shape) rides on open POC decisions not yet settled; pick back up once the export contract is decided.
 
 ### S-15: Importer for existing sheet kosztorysy
