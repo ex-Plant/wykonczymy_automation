@@ -68,10 +68,13 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     errors.push('Investment is required for this transfer type.')
   }
 
-  // Auto-clear investment for types that never carry one. deriveFinancials buckets by
-  // type, so an investment-linked OTHER lands in no bucket — invisible to marża and
-  // bilans while still leaving the register. The form hides the field (showsInvestment),
-  // so only the API or a script can plant one; this is the server-side counterpart.
+  // Auto-clear investment for types that never carry one — two distinct reasons, one rule.
+  // For OTHER / REGISTER_TRANSFER the investment is invisible: deriveFinancials buckets by
+  // type, so the row lands in no bucket while still leaving the register. For the two
+  // company deposits it is worse than invisible — they DO bucket as income, so an
+  // investment would silently raise that investment's bilans with company-level cash
+  // (EX-557). The forms hide the field, so only the API or a script can plant one; this is
+  // the server-side counterpart.
   if (!showsInvestment(type)) {
     d.investment = null
   }

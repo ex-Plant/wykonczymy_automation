@@ -362,8 +362,8 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [ ] 2.1 New guard passes: `pnpm exec vitest run src/__tests__/hooks/transfers/investment-write-guard.test.ts`
-- [ ] 2.2 Existing hook spec still passes: `pnpm exec vitest run src/__tests__/validate-hook.test.ts`
+- [x] 2.1 New guard passes: `pnpm exec vitest run src/__tests__/hooks/transfers/investment-write-guard.test.ts`
+- [x] 2.2 Existing hook spec still passes: `pnpm exec vitest run src/__tests__/validate-hook.test.ts`
 
 ### Phase 3: Deposit form and the write-side cleanup
 
