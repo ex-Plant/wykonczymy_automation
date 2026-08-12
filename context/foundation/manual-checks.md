@@ -822,7 +822,7 @@ with its materiały rate lives on the dev DB (5433), which is where the defect w
 
 ### Phase 2: Naprawa „Wydatków inwestycyjnych" i kolumn kategorii
 
-- [ ] `/inwestycje`, wiersz „11 Listopada 40": budowlane 105 712,10 · wykończeniowe 47 156,35 · pozostałe 20,00 · korekta −240,00 · wydatki inwestycyjne 152 648,46
+- [ ] `/inwestycje`, wiersz „11 Listopada 40": budowlane 105 712,10 · wykończeniowe 47 156,35 · pozostałe 20,00 · wydatki inwestycyjne 152 648,46 (suma kolumn nie domyka się do totalu o −240,00 — to legacy materiał bez kategorii, kolumny „Korekta" już nie ma)
 - [ ] Te same liczby zgadzają się co do grosza z „Razem" netto w „Podsumowaniu" tej inwestycji
 - [ ] Inwestycja bez stawki materiałów wygląda dokładnie jak przed zmianą
 - [ ] Po przełączeniu inwestycji 31 na rozliczenie brutto kolumny pokazują surowe kwoty z ewidencji, a po powrocie na netto wracają liczby netto

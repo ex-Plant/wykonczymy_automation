@@ -1016,3 +1016,38 @@ The failure needs an OLD entry, which only exists in a long-running dev server o
 this is not a coverage gap to close with another spec; it is a **checklist item at the moment of the
 edit**: widening a type, grep for the `unstable_cache` keys its payload passes through and bump them
 in the same commit.
+
+## A guard running on REAL data is still blind if the real data predates the feature
+
+`lessons.md:19` says a parity test must run the real per-surface assembly on real data. The
+investments-listing plane defect satisfied that rule and shipped anyway. The reason is one level
+below it: the test DB is restored from a prod dump taken **before** the materiały-netto concession
+existed, so it held **0 of 109** investments with a `materials_net_rate` and **0**
+`INVESTMENT_EXPENSE_NET` rows. Every guard reading that dataset — the parity test, the golden master
+— was green because the entire plane it was supposed to police was absent from its input. The
+integration test that would have screamed on a rate-bearing investment was, on that dataset,
+unfalsifiable.
+
+Worse, the same restore hid a second defect: the parity test called `deriveFinancials` without the
+rate and mode, which would have produced a **false** mismatch on any investment with a rate. It was
+green only because no such row existed. A borrowed dataset can make a guard both blind and wrong at
+the same time, and neither shows up as a failure.
+
+**The rule.** When a feature adds a new plane, rate, or type, ask what the guard's dataset actually
+contains before trusting a green run — `SELECT count(*) WHERE <the new column IS NOT NULL>` is a
+ten-second check. Zero rows means the guard is decorative on that axis, and the honest options are a
+synthetic unit test (independent of the restore) or a fixture, not a green integration run.
+
+## Two surfaces reading the same figure wrong are not always the same defect
+
+The investments listing and the investment page's v1 stat tiles both summed raw `categoryCosts`, so
+the tiles looked like the same one-line fix. They were not. On the listing the category columns are
+independent figures, so pricing them onto the billed plane is simply a correction. On the tiles the
+**sum of the visible tiles IS the balance**, and the concession already has its own tile („Obniżka
+materiałów") — repricing the category tiles there would have counted the concession twice and
+broken a balance that currently reconciles.
+
+**The rule.** Before extending a fix to "the other place with the same expression", check what
+invariant that place holds. Identical arithmetic under a different closure rule is a different
+defect, and the shared-looking line is a coincidence, not a duplication. (This one became EX-670 —
+an owner decision, not a fix.)

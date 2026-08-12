@@ -1,10 +1,10 @@
 ---
 change_id: investments-listing-expense-plane
 title: Wydatki w liście inwestycji na płaszczyźnie rozliczenia materiałów
-status: implemented
+status: archived
 created: 2026-08-11
-updated: 2026-08-11
-archived_at: null
+updated: 2026-08-12
+archived_at: 2026-08-12T08:08:48Z
 branch: konradantonik/investments-listing-expense-plane
 worktree: .claude/worktrees/investments-listing-expense-plane
 ---
