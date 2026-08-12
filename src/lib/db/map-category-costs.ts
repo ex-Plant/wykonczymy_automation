@@ -91,7 +91,16 @@ type BuildOptionsT = {
   hideZeroCosts?: boolean
 }
 
-/** Build the shared financial header fields (category costs + totals). */
+/** Build the shared financial header fields (category costs + totals).
+ *
+ *  Category tiles stay on the RAW receipt plane while the listing prices the same labels at what the
+ *  investor is billed — so one label carries two numbers across the two surfaces. Deliberate (EX-670,
+ *  cancelled): no total drifts, because the whole concession sits in the `MATERIALS_DISCOUNT_LABEL`
+ *  tile and the header's bilans is the Σ of these tiles. Moving the tiles onto the billed plane is
+ *  only correct together with DROPPING that tile — Σ billed categories === Σ raw − materialsNetDiscount
+ *  — and it would cost the toggle that lets the owner switch the concession off. Not worth it: the
+ *  consumer, `FinancialStats`, renders only under `version === 'v1'`, which is legacy kept for
+ *  side-by-side testing. `raporty` also calls this with no rate available at all. */
 export function buildFinancialFields(
   financials: InvestmentFinancialsT,
   expenseCategories: { id: number; name: string }[],
