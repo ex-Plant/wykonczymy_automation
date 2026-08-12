@@ -30,12 +30,12 @@ import config from '../payload.config'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '../lib/kosztorys/constants'
 import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 import { SNAPSHOT_SCHEMA_VERSION, type SnapshotPayloadT } from '../lib/kosztorys/snapshot-format'
+import { deriveOverride } from '../lib/kosztorys/sheet-import/derive-override'
 import type {
   KosztorysItemT,
   KosztorysSectionT,
   KosztorysStageT,
   StageProgressT,
-  SubcontractorOverrideTypeT,
 } from '../lib/kosztorys/types'
 
 const SHEET_ID = process.env.SHEET_ID ?? '1EgNFob2baPlKUMTSQlfbzc2HJI5zmITPZUQsJbkomz4'
@@ -70,20 +70,6 @@ const RATE = {
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : v == null ? '' : String(v))
 const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0)
 const round6 = (v: number): number => Math.round(v * 1e6) / 1e6
-
-// One view's per-item subcontractor override. A rate over a positive client price becomes a `'coeff'`
-// (tracks the client price); a rate with no client price is frozen as a flat `'amount'`. A blank rate
-// means 0, NOT "inherit the default coeff": the sheet has no inherit concept, and its subcontractor
-// total (`SUM` over per-etap wartości) drops such rows to zero — a `null` override would instead invent
-// a section/global-coeff cost the sheet never has. So a blank rate freezes an explicit flat 0.
-function deriveOverride(
-  rate: number,
-  clientPrice: number,
-): { type: SubcontractorOverrideTypeT | null; value: number } {
-  if (rate <= 0) return { type: 'amount', value: 0 }
-  if (clientPrice > 0) return { type: 'coeff', value: round6(rate / clientPrice) }
-  return { type: 'amount', value: rate }
-}
 
 async function fetchRows(tab: string): Promise<unknown[][]> {
   const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON as string)

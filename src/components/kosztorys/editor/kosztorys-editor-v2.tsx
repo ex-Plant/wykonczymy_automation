@@ -32,13 +32,15 @@ export function KosztorysEditorV2(props: PropsT) {
   revisionRef.current = undoRedo.revision
   const autoSnapshot = useAutoSnapshot(investmentId, revisionRef)
 
-  function handleRestored() {
+  // Shared by every path that swaps the whole tree under the editor — restoring a version and
+  // importing the Google sheet both land here.
+  function handleTreeReplaced() {
     router.refresh()
     triggerRestore()
-    // Restore reseeds the whole grid via a body remount — drop the stack whose commands close over
+    // Reseeding the whole grid via a body remount — drop the stack whose commands close over
     // the outgoing body's state.
     undoRedo.reset()
-    // The restored tree is a known-good baseline, not a user edit — don't let the next tick snapshot it.
+    // The incoming tree is a known-good baseline, not a user edit — don't let the next tick snapshot it.
     autoSnapshot.skipNext()
   }
 
@@ -49,13 +51,14 @@ export function KosztorysEditorV2(props: PropsT) {
         {...props}
         undoRedo={undoRedo}
         onOpenVersions={() => setVersionsOpen(true)}
+        onTreeReplaced={handleTreeReplaced}
       />
       <KosztorysVersionsDrawer
         investmentId={investmentId}
         investmentName={investmentName}
         open={versionsOpen}
         onOpenChange={setVersionsOpen}
-        onRestored={handleRestored}
+        onRestored={handleTreeReplaced}
       />
     </>
   )
