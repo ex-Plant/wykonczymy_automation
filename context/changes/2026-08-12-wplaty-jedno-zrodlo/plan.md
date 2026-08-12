@@ -332,5 +332,5 @@ Brak — zmiana nie dotyka schematu ani danych.
 
 #### Automated
 
-- [ ] 3.1 `deposit-investment-invariant.test.ts` zielone
-- [ ] 3.2 Test pada po tymczasowym przywróceniu `COMPANY_FUNDING` do `INVESTMENT_TYPES`
+- [x] 3.1 `deposit-investment-invariant.test.ts` zielone
+- [x] 3.2 Test pada po tymczasowym przywróceniu `COMPANY_FUNDING` do `INVESTMENT_TYPES`

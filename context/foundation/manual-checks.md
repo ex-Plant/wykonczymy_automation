@@ -909,3 +909,16 @@ Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER
 - [ ] To samo dla „Zasilenie z konta firmowego"
 - [ ] Wybierz „Wpłata od inwestora", ustaw inwestycję i netto/brutto, przełącz typ na „Zasilenie" i zapisz — żadna z tych dwóch wartości nie ląduje na wierszu
 - [ ] Edycja istniejącego wiersza `COMPANY_FUNDING` z tabeli transakcji nie oferuje pola inwestycji, a zapis niepowiązanego pola (opis) przechodzi bez błędu
+
+## EX-680 — wpłaty z jednego źródła (podgląd klienta dostaje listę, total wypada z listy)
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2133, `pnpm test:integration` 103,
+`pnpm test:parity` 3).
+
+Setup: aplikacja na dev DB (5433), inwestycja z wpłatami i z kosztorysem.
+
+- [ ] Na `/inwestycje/<id>/podglad-klienta` lista wpłat pokazuje te same wiersze co strona właściciela (przed zmianą była pusta)
+- [ ] Link „do wpłat" na podglądzie prowadzi do niepustej listy
+- [ ] Po przełączeniu tej inwestycji w **tryb mieszany** „Wpłaty netto"/„Wpłaty brutto" na podglądzie są niezerowe i sumują się do totalu z wiersza „Wpłaty"; „Do zapłaty" spada
+- [ ] Kwota wpłat jest identyczna na trzech powierzchniach: Podsumowanie inwestycji, kosztorys v2, podgląd klienta
+- [ ] `/raporty` — firmowe wpłaty bez zmian (kontrola, że `totalIncome` nie został tknięty)
