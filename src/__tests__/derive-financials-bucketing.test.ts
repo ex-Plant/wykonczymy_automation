@@ -60,6 +60,9 @@ const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
     ['OTHER_DEPOSIT', false],
     ['OTHER_DEPOSIT', true],
   ],
+  // Since the write-switch (EX-555) this bucket is the FALLBACK rule, not the listing rule: an
+  // investment with kosztorys rows reads robocizna from the kosztorys and never reaches here. What
+  // is pinned below is what a legacy, kosztorys-less investment still bills at.
   totalLaborCosts: [
     ['LABOR_COST', false],
     ['LABOR_COST', true],
@@ -68,6 +71,7 @@ const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
     ['PAYOUT', false],
     ['PAYOUT', true],
   ],
+  // Fallback rule, same as totalLaborCosts above — the kosztorys branch supplies rabat itself.
   totalRabat: [
     ['RABAT', false],
     ['RABAT', true],
@@ -94,7 +98,10 @@ const ALL_PAIRS: [string, boolean][] = TRANSFER_TYPES.flatMap((type) => [
 const isMember = (bucket: BucketNameT, [type, settled]: [string, boolean]) =>
   BUCKET_MEMBERSHIP[bucket].some(([t, s]) => t === type && s === settled)
 
-describe('deriveFinancials — bucketing matrix', () => {
+// `deriveFinancials` is the TRANSACTIONS plane. For robocizna and rabat that plane is now only the
+// fallback the listing takes when an investment has no kosztorys rows (EX-555); every other bucket
+// here is a cash movement the kosztorys knows nothing about and is still the one rule.
+describe('deriveFinancials — bucketing matrix (transactions plane)', () => {
   it('covers every bucket', () => {
     const financials = deriveFinancials([])
     const buckets = Object.keys(financials).filter(

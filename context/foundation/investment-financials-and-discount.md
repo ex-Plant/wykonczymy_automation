@@ -22,6 +22,28 @@ The base model: **`marża` starts from robocizna alone, `bilans` from wpłaty mi
 Four modifier types (`korekta`, `rabat`, `strata`, `settled` material) bend those two
 formulas — see the table below.
 
+## Where robocizna and rabat come from (EX-555)
+
+The **formulas** below are unchanged; what moved is **where two of their inputs are read**.
+Since EX-555 robocizna and rabat come from the **kosztorys** for any investment that has
+kosztorys rows, and from the transactions plane only for one that does not. The switch is
+keyed on the **absence of rows**, never on a zero total — an investment whose kosztorys sums
+to zero is still on the kosztorys plane, and reading it as "no kosztorys" would silently
+re-bill the old `LABOR_COST` rows.
+
+- One rule, one place: `resolveSummaryReading` / `financialsOnReading`
+  (`src/lib/kosztorys/summary-reading.ts`), applied by the listing (`shape-investments.ts`),
+  the v2 Podsumowanie and the v2 Marża tab.
+- The kosztorys pair is folded in Postgres for every investment at once
+  (`src/lib/db/kosztorys-client-totals.ts`), pinned against the TS reference formula by a
+  DB-backed parity spec.
+- `LABOR_COST` / `RABAT` are **no longer offered by the transfer dialog** — nothing new can be
+  booked on the plane we stopped reading. Existing rows keep working everywhere else.
+- **v1 deliberately stays transaction-sourced** and therefore disagrees with the listing; it is
+  legacy kept for side-by-side comparison.
+- Every other figure here — wpłaty, materiały, wypłaty, korekty, strata — is a cash movement
+  the kosztorys knows nothing about and stays transaction-sourced.
+
 ---
 
 ## The transaction types and where each one lands

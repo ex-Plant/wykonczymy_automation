@@ -8,7 +8,7 @@ Podsumowanie panel already reads. **Write-switch:** `LABOR_COST` and `RABAT` sto
 the transfer form, so no new row can be booked on the plane we just stopped reading. Existing rows
 stay as legacy: enum, history, sheet sync, cancellation — all untouched.
 
-## Current State Analysis
+robociz## Current State Analysis
 
 - The listing computes every figure from one transactions `GROUP BY`
   (`shape-investments.ts:18-74` ← `fetchInvestmentFinancials` ← `sumAllInvestmentFinancials`). The
@@ -200,7 +200,6 @@ every debounced autosave in the editor expires the whole listing aggregate.
 
 #### 4. Tag/revalidation agreement guard
 
-
 **File**: `src/__tests__/lib/queries/balances-cache-tags.test.ts` (new)
 
 **Intent**: Nothing today asserts that the listing's tag set covers the actions that change its
@@ -329,7 +328,7 @@ today.
 **File**: `src/scripts/audit-investment-parity.ts`
 
 **Intent**: Its header (`:3-14`) claims seven figures computed by two independent paths that must
-always agree. Under seam B that becomes false — the paths are *supposed* to differ for
+always agree. Under seam B that becomes false — the paths are _supposed_ to differ for
 kosztorys-bearing investments.
 
 **Contract**: restate the invariant as conditional on the reading, and make the script skip or
@@ -679,6 +678,6 @@ Run once, after Phase 7.
 
 #### Automated
 
-- [ ] 7.1 Bucketing spec passes: `pnpm exec vitest run src/__tests__/derive-financials-bucketing.test.ts`
-- [ ] 7.2 Golden master passes with the extended fingerprint: `pnpm test:parity`
-- [ ] 7.3 New E2E passes: `pnpm test:e2e e2e/investments-listing-kosztorys.spec.ts`
+- [x] 7.1 Bucketing spec passes: `pnpm exec vitest run src/__tests__/derive-financials-bucketing.test.ts` (290 tests)
+- [x] 7.2 Golden master passes with the extended fingerprint: `pnpm test:parity` — the floor needed `db-test` to actually carry kosztorys rows (prod dumps carry none), so `pnpm seed:kosztorys:test` was added and the fixture regenerated; it was already ~101/105 entities stale before this change
+- [x] 7.3 New E2E passes: `pnpm test:e2e e2e/investments-listing-kosztorys.spec.ts`

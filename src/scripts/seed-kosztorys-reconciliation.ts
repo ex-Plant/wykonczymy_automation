@@ -22,7 +22,7 @@ const SUMA_PRAC_NET = CLIENT_PRICE * QTY_DONE // 500 — the „Suma prac wykona
 
 const ctx = { context: { skipRevalidation: true } }
 
-type SeededInvestment = { investmentId: number }
+type SeededInvestment = { investmentId: number; name: string }
 
 // Create an investment carrying one section / one stage / one no-discount item with recorded
 // progress, so its executed „Suma prac wykonanych" is exactly SUMA_PRAC_NET.
@@ -69,7 +69,7 @@ async function seedKosztorys(
     data: { item: item.id, stage: stage.id, qtyDone: QTY_DONE },
     ...ctx,
   })
-  return { investmentId: investment.id }
+  return { investmentId: investment.id, name }
 }
 
 type TxnSeed = {
@@ -102,7 +102,8 @@ async function seedTransaction(
 async function main() {
   const payload = await getPayload({ config })
   // A per-run suffix keeps names unique — the test DB is not reset between runs, so a stable name
-  // would collide. The spec only ever uses the IDs printed below, never the names.
+  // would collide. Both the id and the name are printed: the listing exposes no per-row href, so a
+  // spec that has to find the row on /inwestycje can only do it by name.
   const stamp = Date.now()
 
   const mismatch = await seedKosztorys(payload, `E2E Recon mismatch ${stamp}`)
@@ -134,6 +135,7 @@ async function main() {
     `RECON_SEED=${JSON.stringify({
       mismatch: mismatch.investmentId,
       match: match.investmentId,
+      matchName: match.name,
       // The „Suma prac wykonanych" both surfaces must display for either investment.
       sumaPracNet: SUMA_PRAC_NET,
     })}`,
