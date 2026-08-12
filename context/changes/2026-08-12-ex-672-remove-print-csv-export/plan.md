@@ -387,15 +387,15 @@ persistence.
 
 #### Automated
 
-- [x] 1.1 `pnpm exec tsc --noEmit` accepts the new optional field and its four write sites
+- [x] 1.1 `pnpm exec tsc --noEmit` accepts the new optional field and its four write sites — d252498c
 
 ### Phase 2: Delete print, CSV, the toolbar and the store
 
 #### Automated
 
-- [ ] 2.1 Parity golden master passes with the inlined sum: `pnpm test:parity`
-- [ ] 2.2 No references remain to the deleted modules (rg sweep)
-- [ ] 2.3 `pnpm exec tsc --noEmit`
+- [x] 2.1 Parity golden master passes with the inlined sum: `pnpm test:parity`
+- [x] 2.2 No references remain to the deleted modules (rg sweep)
+- [x] 2.3 `pnpm exec tsc --noEmit`
 
 ### Phase 3: Strip the dead producers and dead config fields
 

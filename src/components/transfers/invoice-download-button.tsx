@@ -24,8 +24,8 @@ export function InvoiceDownloadButton({ where }: InvoiceDownloadButtonPropsT) {
 
   function handleDownload() {
     startTransition(async () => {
-      // Fetches ALL matching transfers (unpaginated), same as Print/CSV exports —
-      // the table data is paginated, so we can't use it directly.
+      // Fetches ALL matching transfers (unpaginated) — the table data is paginated,
+      // so we can't use it directly.
       const result = await fetchFilteredTransfers(where)
       if (!result.success) {
         toast.error(result.error ?? 'Nie udało się pobrać danych', {

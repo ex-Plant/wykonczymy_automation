@@ -10,9 +10,6 @@ import {
 import { getDb } from '@/lib/db/get-db'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { buildFinancialFields } from '@/lib/db/map-category-costs'
-// NOTE: a SECOND function also named calculateBalance — this one sums the *visible*
-// display fields. It is the one the DETAIL page actually uses for "Bilans inwestora".
-import { calculateBalance as sumVisibleFields } from '@/lib/export/header-fields'
 import { round2 } from '@/__tests__/helpers/money'
 import {
   SETTLEMENT_MODE_DEFAULT,
@@ -34,6 +31,22 @@ import type { InvestmentRefT, InvestmentStatusT } from '@/types/reference-data'
 // Gated like test:parity: skips with no DB env (portable), FAILS if env is set but DB
 // is unreachable. Run via `pnpm test:parity`.
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
+
+const BILANS_LABEL = 'Bilans'
+
+// "Bilans inwestora" as the detail page renders it: the sum of the visible stat cards. Until EX-672
+// this was imported from the print/export layer, which was a third surface computing the same
+// figure; that layer is gone, so parity now spans listing vs detail only.
+function sumVisibleFields(
+  fields: { label: string; amount?: number }[],
+  visibility: Record<string, boolean>,
+): number {
+  return fields
+    .filter(
+      (f) => f.label !== BILANS_LABEL && f.amount !== undefined && visibility[f.label] !== false,
+    )
+    .reduce((sum, f) => sum + (f.amount ?? 0), 0)
+}
 
 describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly paths (DB)', () => {
   let payload: Payload | null = null

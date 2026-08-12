@@ -1,7 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useHeaderFieldsStore } from '@/stores/header-fields-store'
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
 import type { FinancialFieldT } from '@/types/export'
@@ -51,7 +49,7 @@ const TOOLTIPS = {
   balance:
     'Bilans inwestora = Wpłaty − Materiały − Robocizna + Rabat + obniżka materiałów.\n' +
     'Jeśli minus — inwestor wisi pieniądze.\n' +
-    'Dynamiczny: odznaczenie kafelka usuwa go z wyliczenia i z wydruku.',
+    'Dynamiczny: odznaczenie kafelka usuwa go z wyliczenia.',
   margin:
     'Marża = Robocizna − Wypłaty − Rabat − Strata − materiały wliczone w robociznę − obniżka materiałów.\n' +
     'Ile firma zarabia na inwestycji.' +
@@ -81,12 +79,6 @@ export function FinancialStats({
   settledFields = [],
 }: FinancialStatsPropsT) {
   const { role: userRole } = useCurrentUser()
-  const toggle = useHeaderFieldsStore((s) => s.toggle)
-  const reset = useHeaderFieldsStore((s) => s.reset)
-
-  useEffect(() => {
-    reset()
-  }, [reset])
 
   const addBtnBorderColor = (field: FinancialFieldT, borderClassName: string): StatEntryT => ({
     ...field,
@@ -121,7 +113,6 @@ export function FinancialStats({
         rowLabels={['Koszty inwestora']}
         rowTooltips={[TOOLTIPS.investorCosts]}
         summaryLabel="Bilans inwestora"
-        onToggle={toggle}
         summaryTooltip={TOOLTIPS.balance}
       />
 
