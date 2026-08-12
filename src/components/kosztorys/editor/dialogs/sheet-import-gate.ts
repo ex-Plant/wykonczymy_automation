@@ -1,0 +1,26 @@
+import type { ImportPreviewT } from '@/lib/actions/kosztorys-import'
+import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
+
+export type ImportGateT = {
+  // Whether „Pobierz i zastąp" may be pressed.
+  confirmDisabled: boolean
+  // Footer sums the sheet and the app disagree on — surfaced, never blocking. A row we could not
+  // find at all is NOT one of these: it is a sheet with no such summary row, which says nothing
+  // about whether the parse was right.
+  mismatchedTotals: FooterComparisonT[]
+}
+
+// The one decision the preview dialog makes: may the owner press confirm? A problem is a refusal to
+// read the sheet at all, so it blocks; a total that doesn't add up is the owner's own stale SUM often
+// enough that blocking on it would disable the button exactly where it's needed.
+export function evaluateImportGate(
+  preview: ImportPreviewT | null,
+  loaded: boolean,
+  pending: boolean,
+): ImportGateT {
+  return {
+    confirmDisabled: !loaded || pending || !preview || preview.problems.length > 0,
+    mismatchedTotals:
+      preview?.report.totals.filter((total) => total.sheetValue !== null && !total.matches) ?? [],
+  }
+}

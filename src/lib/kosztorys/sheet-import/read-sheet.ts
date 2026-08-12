@@ -1,0 +1,83 @@
+import type { sheets_v4 } from 'googleapis'
+import { fold } from './columns'
+
+export const ROBOCIZNA_TAB = 'kosztorys_robocizny'
+const RATE_TAB_PREFIX = 'zakres pracy'
+
+// Wide enough for the widest layout seen (the wartość block ends at AF) with room to spare, and
+// bounded so a sheet with junk far to the right doesn't inflate every response.
+const LAST_COLUMN = 'BZ'
+
+export type RateTabGridT = {
+  title: string
+  grid: unknown[][]
+  // The same cells rendered as formulas. A rate the owner typed by hand comes back as the number
+  // itself; one the sheet computed comes back as „=…". That difference is the only evidence of
+  // which tab's price is a deliberate decision, and it decides which tab wins when they disagree.
+  formulas: unknown[][]
+}
+
+export type ImportGridsT = {
+  robocizna: unknown[][]
+  // Both „zakres pracy" tabs carry both price lists, so either one can supply the rates. They are
+  // returned as a list rather than a z-narzędziami/bez-narzędzi pair because the tab TITLES are not
+  // a reliable index — a tab titled „z narzędziami" holds the „bez narzędzi" columns too, and the
+  // titles carry stray trailing spaces. Which column is which is the resolver's job, not the
+  // title's.
+  rateTabs: RateTabGridT[]
+}
+
+export class MissingRobociznaTabError extends Error {
+  constructor(spreadsheetId: string) {
+    super(`Arkusz ${spreadsheetId} nie ma zakładki „${ROBOCIZNA_TAB}".`)
+  }
+}
+
+// Takes the client rather than building one so this module stays free of the `server-only` env
+// layer — that guard makes anything importing it unusable from a `tsx` script, and the smoke script
+// that checks the resolver against live sheets has to run exactly this code, not a copy of it.
+// The app's caller gets its client from `./sheets-client`.
+export async function readImportGrids(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+): Promise<ImportGridsT> {
+  // Tab titles have to be discovered rather than assumed: the rate tabs are named „zakres pracy z
+  // narzędziami   " on one sheet and „zakres pracy bez narzędzi" on the next, trailing spaces
+  // included, and asking for a range on a tab that doesn't exist fails the whole batch.
+  const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties.title' })
+  const titles = (meta.data.sheets ?? []).map((sheet) => sheet.properties?.title ?? '')
+
+  const robociznaTitle = titles.find((title) => fold(title) === ROBOCIZNA_TAB)
+  if (!robociznaTitle) throw new MissingRobociznaTabError(spreadsheetId)
+
+  const rateTitles = titles.filter((title) => fold(title).startsWith(RATE_TAB_PREFIX))
+  const wanted = [robociznaTitle, ...rateTitles]
+
+  const range = (title: string) => `'${title}'!A:${LAST_COLUMN}`
+  const read = async (titles: string[], valueRenderOption: 'UNFORMATTED_VALUE' | 'FORMULA') => {
+    const response = await sheets.spreadsheets.values.batchGet({
+      spreadsheetId,
+      ranges: titles.map(range),
+      valueRenderOption,
+    })
+    return (response.data.valueRanges ?? []).map((values) => (values.values ?? []) as unknown[][])
+  }
+
+  const [grids, rateFormulas] = await Promise.all([
+    // Numbers must arrive as numbers: formatted values come back as „1 234,56 zł" strings that a
+    // locale-naive parseFloat reads as 1.
+    read(wanted, 'UNFORMATTED_VALUE'),
+    // Only the rate tabs need the formula render; the robocizna tab's figures are read for their
+    // value alone, so fetching it twice would double the payload for nothing.
+    rateTitles.length > 0 ? read(rateTitles, 'FORMULA') : Promise.resolve([]),
+  ])
+
+  return {
+    robocizna: grids[0] ?? [],
+    rateTabs: rateTitles.map((title, index) => ({
+      title,
+      grid: grids[index + 1] ?? [],
+      formulas: rateFormulas[index] ?? [],
+    })),
+  }
+}

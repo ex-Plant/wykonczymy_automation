@@ -2,7 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, Eye, FileStack, History, Redo2, Save, Share2, Undo2 } from 'lucide-react'
+import {
+  ChevronDown,
+  Eye,
+  FileStack,
+  History,
+  Redo2,
+  Save,
+  Share2,
+  SheetIcon,
+  Undo2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,6 +25,8 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-share-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
+import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
+import { previewKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { toastMessage } from '@/lib/utils/toast'
@@ -34,8 +46,20 @@ function MenuItemBody({ label, description }: { label: string; description: stri
 // The Save-preset dialog is a controlled sibling of the menu, not a child of DropdownMenuContent —
 // onSelect closes the menu, so opening the dialog from inside it would fight the menu for focus.
 export function KosztorysActionsMenu() {
-  const { investmentId, onOpenVersions, undo, redo, canUndo, canRedo } = useKosztorysEditorContext()
+  const {
+    investmentId,
+    onOpenVersions,
+    onTreeReplaced,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    canImportFromSheet,
+  } = useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
+  const [importLoaded, setImportLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
@@ -65,6 +89,24 @@ export function KosztorysActionsMenu() {
         toastMessage('Nie udało się sprawdzić linku', 'error')
       })
       .finally(() => setShareLoaded(true))
+  }
+
+  // Fired on the click for the same Radix reason as handleOpenShare: a programmatic `open` never
+  // triggers onOpenChange, so the dialog cannot fetch its own report.
+  function handleOpenImport() {
+    setImportOpen(true)
+    setImportLoaded(false)
+    setImportPreview(null)
+    void previewKosztorysImport(investmentId)
+      .then((res) => {
+        setImportPreview(res.success ? res.data : null)
+        if (!res.success) toastMessage(res.error, 'error', 6000)
+      })
+      .catch(() => {
+        setImportPreview(null)
+        toastMessage('Nie udało się odczytać arkusza', 'error')
+      })
+      .finally(() => setImportLoaded(true))
   }
 
   return (
@@ -108,6 +150,18 @@ export function KosztorysActionsMenu() {
               description="Zapisz jako wzór do użycia na innych inwestycjach."
             />
           </DropdownMenuItem>
+          {canImportFromSheet && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleOpenImport}>
+                <SheetIcon />
+                <MenuItemBody
+                  label="Pobierz z arkusza Google…"
+                  description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
+                />
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href={`/podglad-klienta/${investmentId}`} target="_blank">
@@ -137,6 +191,17 @@ export function KosztorysActionsMenu() {
         open={presetOpen}
         onOpenChange={setPresetOpen}
         existingPresets={existingPresets}
+      />
+      <SheetImportDialog
+        investmentId={investmentId}
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        preview={importPreview}
+        loaded={importLoaded}
+        onImported={() => {
+          setImportPreview(null)
+          onTreeReplaced?.()
+        }}
       />
       <KosztorysShareDialog
         investmentId={investmentId}

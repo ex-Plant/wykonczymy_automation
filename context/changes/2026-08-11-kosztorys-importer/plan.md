@@ -201,7 +201,7 @@ A missing „zakres pracy" tab is not fatal (rates fall back to the other tab); 
 #### Automated Verification:
 
 - Resolver specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/resolve-columns.test.ts`
-- Fixture grids contain no client names: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/fixtures-pii.test.ts`
+- Fixture grids contain no client PII: `pnpm exec vitest run src/__tests__/fixtures/kosztorys-sheet/no-pii.test.ts` (colocated with the fixtures it guards, since the fixture directory is its subject)
 
 #### Manual Verification:
 
@@ -423,7 +423,7 @@ the counts and `router.refresh()` per the project's optimistic-submit convention
 
 #### Automated Verification:
 
-- Dialog specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/dialogs/sheet-import-dialog.test.tsx`
+- Dialog specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/dialogs/sheet-import-gate.test.ts`
 - Confirm is disabled when the report carries a column-resolution failure
 - A total mismatch renders the warning **and** leaves confirm enabled
 
@@ -522,38 +522,38 @@ the button and reads its own sheets.
 
 #### Automated
 
-- [ ] 1.1 Resolver specs pass
-- [ ] 1.2 Fixture PII spec passes
+- [x] 1.1 Resolver specs pass
+- [x] 1.2 Fixture PII spec passes
 
 ### Phase 2: Parsing and rate resolution
 
 #### Automated
 
-- [ ] 2.1 Parser specs pass
-- [ ] 2.2 Rate specs pass, including the guard
-- [ ] 2.3 Seeder typechecks against the extracted helper
+- [x] 2.1 Parser specs pass
+- [x] 2.2 Rate specs pass, including the guard
+- [x] 2.3 Seeder typechecks against the extracted helper
 
 ### Phase 3: Import plan
 
 #### Automated
 
-- [ ] 3.1 Plan specs pass
-- [ ] 3.2 Retention spec passes
-- [ ] 3.3 Settings spec passes
+- [x] 3.1 Plan specs pass
+- [x] 3.2 Retention spec passes
+- [x] 3.3 Settings spec passes
 
 ### Phase 4: Server actions
 
 #### Automated
 
-- [ ] 4.1 Action specs pass
-- [ ] 4.2 MANAGER refused by both actions
-- [ ] 4.3 Apply ignores a client-forged plan
-- [ ] 4.4 Pre-import snapshot exists and restores the prior tree
+- [x] 4.1 Action specs pass
+- [x] 4.2 MANAGER refused by both actions
+- [x] 4.3 Apply ignores a client-forged plan
+- [x] 4.4 Pre-import snapshot exists and restores the prior tree
 
 ### Phase 5: Menu item and preview dialog
 
 #### Automated
 
-- [ ] 5.1 Dialog specs pass
-- [ ] 5.2 Confirm disabled on column-resolution failure
-- [ ] 5.3 Total mismatch warns and leaves confirm enabled
+- [x] 5.1 Dialog specs pass
+- [x] 5.2 Confirm disabled on column-resolution failure
+- [x] 5.3 Total mismatch warns and leaves confirm enabled

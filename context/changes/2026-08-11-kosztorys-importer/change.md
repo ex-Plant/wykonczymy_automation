@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-importer
 title: Pull kosztorys data from the linked Google Sheet into the editor
-status: planned
+status: implemented
 created: 2026-08-11
 updated: 2026-08-11
 archived_at: null
@@ -75,6 +75,46 @@ Located by label, since the footer row position varies per sheet.
 now, so the bulk rehearsal can't run yet. Build and prove the import on a single investment with a
 linked sheet (Białostocka is the known-good fixture), then run the scan as a follow-up once access
 is there. The footer-total gate still applies — it just runs per investment instead of over all 45.
+
+### Sheets we can read (owner-shared, growing list)
+
+All shared read-only with the service account in `GOOGLE_SERVICE_ACCOUNT_JSON`; tab
+`kosztorys_robocizny`, `gid=70964819` on each. Dump one with:
+
+```bash
+SHEET_ID=<id> TABS="kosztorys_robocizny" MAX_ROWS=6 node --env-file=./.env scripts/inspect-sheet.mjs
+```
+
+| #   | Sheet id                                       | Etapy    | Przedmiar | What it proves                                                                                                                                                                  |
+| --- | ---------------------------------------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `1EgNFob2baPlKUMTSQlfbzc2HJI5zmITPZUQsJbkomz4` | 10 (D–M) | N         | The wide baseline. Both footer rows present; `S = Pomiar × cena − rabat` with `O = N`, so „wartość netto" is the **offered** total here.                                        |
+| 2   | `15zV_w5Z2EmGZCkWvm1wzXJgmGVAO0_V98-wufGF3Tn4` | 6 (D–I)  | **J**     | Narrow layout **and** stages renamed to crews in row 3 („1 etap PAWEL AES", „3 etap EKIPA MYKOLA"). The case that kills label-based stage detection.                            |
+| 3   | `1ma2HMdjK8GirBNJeLJKy4l5ADJSI5Z20Ru1gsx3pBJM` | 10 (D–M) | N         | Wide like #1, but the wartość block starts at **V**, not U, with „komentarz" at U — a blank column between „Wartość netto" and the money block. Kills any adjacency assumption. |
+
+Header-block facts that hold across all three:
+
+- **Fields sit on different rows of the block.** `rabat` is labelled on row 1 only, `komentarz` on
+  row 3 only, `j.m.` on both with different wording. A single-row resolver cannot work — this is why
+  `resolveHeaders` (`src/lib/google/sheets.ts`) is unusable here, on top of its duplicate check.
+- **Row 1 labels the qty block and the money block identically** (`V1` is literally `=D1`). **Row 2
+  is the only discriminator**: „wykonano" over quantities, „wartość" over money. Without it an import
+  reads twenty etapy instead of ten.
+- **`section` and `description` have no header label at all** (row 1 of those columns holds the
+  client's address). They are located relative to the resolved first stage column:
+  `description = firstStage − 1`, `section = firstStage − 3` when the tab has one. The rate tabs have
+  no section column, so they resolve to two leading columns instead of three.
+- **A rate column is identified by a PAIR of labels.** In the `zakres pracy` tabs a banner groups two
+  columns under „cennik z narzędziami" / „cennik bez narzędzi" and row 3 splits each into „cena j.m."
+  and „wartość suma" — so „cena j.m." appears at three columns, one of them the client price. Match
+  the banner together with the row-3 sub-label. Three traps in that banner (details in
+  `research.md` §10): it may be spelled without diacritics („cennik z narz**e**dziami", #1's own
+  z-narzędziami tab), it may name the split by **who works** instead of by tooling („cennik
+  podwykonawca" / „cennik pracownik", #3), and it may sit on row 1, row 2 or both.
+- **Never take the etap count from a rates tab.** Its „wykonano" run can be shorter than the
+  kosztorys' — #1 has 6 markers there against 10 etapy. Read the run only to locate the description
+  column next to it.
+- **PII lives in the header block**: row 1 column C is the client's address, row 2 the phone, row 3
+  the e-mail. Fixtures blank those cells; nothing reads them.
 
 ### Owed
 

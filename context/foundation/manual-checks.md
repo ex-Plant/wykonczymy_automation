@@ -807,3 +807,22 @@ Precondition: a lead that exists in Meta's recent window but not in the local DB
 - [ ] The customer address receives **nothing** — no late „Dziękujemy za kontakt". This is the leg the whole `autoReply: 'skip'` option exists for
 - [ ] The recovered row in the admin panel shows `notifyStatus: sent`, `autoReplyStatus: skipped` — never `skipped`/`skipped`
 - [ ] Exactly one summary mail arrives, to `LEADS_ALERT_EMAIL` only (not the sales inbox), with no contact details and no "call them yourself" instruction
+
+## kosztorys-importer (EX-417)
+
+Setup: local app against the 5433 dev DB, logged in as OWNER, on an investment that has a linked
+Google Sheet. **The Sheets credential in `.env` is live** — the importer only ever reads, but pick an
+investment whose sheet you are happy to have read. Kosztorys rows are throwaway until dogfooding
+merges to `main`, so replacing one is safe.
+
+- [ ] „Opcje" → „Pobierz z arkusza Google…" is present for OWNER/ADMIN, and absent for MANAGER
+- [ ] On an investment with no linked sheet the item is disabled and says why
+- [ ] Preview opens with **Rozpoznane kolumny first** — Przedmiar / j.m. / Cena j.m. / rabat / Wartość netto plus nazwa sekcji + opis pracy, each with the column letter and the header cell it matched
+- [ ] „Co wejdzie" counts match the sheet: sekcje, prace, etapy
+- [ ] Rate auto-resolutions are listed one by one with the rejected side visible — never silently applied
+- [ ] Footer totals compare against the sheet's own „wartość netto" / „R netto - suma prac wykonannych"; a match is neutral, a real difference is amber. **This is the parse's own proof** — a green pair means every cena, rabat and ilość landed right
+- [ ] „Zostaną zachowane" lists vanished prace and nothing is deleted
+- [ ] During the write both „Pobierz i zastąp" and „Anuluj" are disabled and the button reads „Pobieram…"
+- [ ] After apply the grid **re-seeds without a manual reload** — the imported rozpiska is on screen
+- [ ] „Historia" shows an automatic snapshot taken immediately before the import, and restoring it brings the previous kosztorys back
+- [ ] On a sheet whose cennik headers are unreadable the dialog **refuses** with „Nie odczytałem żadnego cennika…" and the confirm button stays disabled — no import of flat 0 zł stawki

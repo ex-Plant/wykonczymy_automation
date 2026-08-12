@@ -12,6 +12,9 @@ type KosztorysEditorContextT = ReturnType<typeof useKosztorysEditor> & {
   tree: KosztorysTreeT
   // Absent in preview — the versions button lives in the toolbar, which the client render omits.
   onOpenVersions?: () => void
+  // Fires after the whole tree is swapped out (version restore, sheet import) — remounts the body.
+  onTreeReplaced?: () => void
+  canImportFromSheet: boolean
 }
 
 const KosztorysEditorContext = createContext<KosztorysEditorContextT | null>(null)

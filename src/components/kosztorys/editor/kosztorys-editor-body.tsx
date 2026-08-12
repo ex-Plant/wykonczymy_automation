@@ -43,6 +43,7 @@ type PropsT = KosztorysEditorDataT & {
   // Optional because the read-only client body omits it and falls back to NOOP_UNDO_REDO.
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
+  onTreeReplaced?: () => void
 }
 
 // The stateful editor: seeds the grid from `tree` at mount (useKosztorysEditor's useState
@@ -59,7 +60,9 @@ export function KosztorysEditorBody({
   preview = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
+  onTreeReplaced,
   workers,
+  canImportFromSheet = false,
   ...panelData
 }: PropsT) {
   const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
@@ -147,7 +150,15 @@ export function KosztorysEditorBody({
   // so subtracting there is what WOULD leave the dead band — it takes the whole viewport.
   return (
     <KosztorysEditorProvider
-      editor={{ ...editor, investmentId, investmentName, tree, onOpenVersions }}
+      editor={{
+        ...editor,
+        investmentId,
+        investmentName,
+        tree,
+        onOpenVersions,
+        onTreeReplaced,
+        canImportFromSheet,
+      }}
     >
       <div
         className={cn(

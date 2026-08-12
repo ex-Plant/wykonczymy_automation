@@ -206,6 +206,89 @@ Footer rows must be located **by label**; their row number varies per sheet. AGE
 that some formulas in the filled test sheet are broken, which is why a mismatch is a warning rather
 than a block.
 
+### 9. Header block and footer, read from Białostocka directly (2026-08-11)
+
+Dumped with `scripts/inspect-sheet.mjs`, formulas alongside values. Four things this settled:
+
+**Fields live on different rows of the block, so a single-row resolver cannot work.** On
+`kosztorys_robocizny`: `rabat` (R) is labelled on **row 1 only**; `komentarz` (T) on **row 3 only**;
+`j.m.` (P) on both, differently („jednostka miary" / „j.m."). This is the concrete reason
+`resolveHeaders` is unusable, beyond the duplicate problem.
+
+**Row 2 == „wykonano" is confirmed as the stage discriminator, and it is doing real work.** Row 1
+labels D–M _and_ U–AD identically („1 etap ilość"…) because U1 is literally `=D1`. D–M carry
+„wykonano" on row 2; U–AD carry „wartość". A label-based stage search would grab both blocks — the
+quantity columns and the money columns — and import twenty etapy.
+
+**A rate column is identified by a PAIR of labels, not one.** In `zakres pracy bez narzędzi`, row 1
+groups R+S under „cennik z narzędziami" and T+U under „cennik bez narzędzi"; row 3 then splits each
+group into „cena j.m." and „wartość suma". So „cena j.m." appears at **P, R and T** — three columns,
+one of which is the client price. The rate resolver must match row-1 group + row-3 sub-label
+together. This is the case `resolveHeaders` throws on, and rightly.
+
+Both rate tabs are formula-mirrors of `kosztorys_robocizny` (`=kosztorys_robocizny!B5`), so on _this_
+sheet the rows happen to be aligned — which is why the seeder's positional join has not visibly
+broken yet. It is alignment by accident of formula, not a guarantee.
+
+Rate arithmetic here: `R = cena × 0,65`, `T = R − R×0,15`. So bez-narzędzi is 85% of z-narzędziami —
+consistent with the sanity guard, and evidence the guard encodes a real property rather than a hunch.
+
+**The footer mapping is sheet-dependent — this corrects the plan.** Białostocka's footer:
+
+| row | label (column Q)                  | value (column S) | formula                                            |
+| --- | --------------------------------- | ---------------- | -------------------------------------------------- |
+| 395 | „wartość netto"                   | 143 089 zł       | `=SUM(S4;S22;S336;…)` — the section-header S cells |
+| 402 | „R netto - suma prac wykonannych" | 129 036 zł       | `=SUM(U396:AD396)` — the per-etap wartości         |
+
+Row 402 is unambiguously **executed** work (sum over the etap money columns), which is exactly the
+app's executed total under EX-489.
+
+Row 395 is not decidable from its label. Its per-item formula is `S = O×cena − rabat` — _Pomiar_, not
+Przedmiar. AGENTS.md documents the canonical sheet as `S = N×cena − rabat` (offered) with executed in
+`T`; Białostocka's `T` is „komentarz" instead. And on Białostocka `O5 = =N5` — Pomiar is a plain
+mirror of Przedmiar, not the `=SUM(D:M)` the canonical sheet uses. So the same label and the same
+formula yield the **offered** total here and the **executed** total there.
+
+Consequence: **do not fix a label→total mapping.** Compare each located footer figure against _both_
+app totals and report which one it matches. If either agrees to the grosz the parse is proven, and
+the gate gets stronger rather than weaker — two independent checks instead of one assumed one.
+
+**Two incidental parsing rules fall out:**
+
+- The footer label sits in a different column from its value (Q vs S). The value is in the
+  „Wartość netto" column, so the rule is: find the label anywhere in the row, read the value from the
+  resolved Wartość netto column.
+- Footer rows carry „x" across D–O — the _same_ marker section headers use. Item parsing must stop at
+  the first footer row rather than rely on footer rows happening to have an empty description.
+
+### 10. The rate tabs are named on two different axes (2026-08-11, from Phase 1)
+
+Resolving the `zakres pracy` header blocks against all three sheets turned up three facts the plan
+had not anticipated. All are now encoded in `src/lib/kosztorys/sheet-import/columns.ts`.
+
+1. **Diacritics are not reliable.** Białostocka's own „z narzędziami" tab spells its banner
+   `cennik z narzedziami` — no `ę` — while the „bez narzędzi" tab one click away spells it with the
+   `ę`. The shared `normalize` in `src/lib/google/sheet-configs.ts:111` only trims and lowercases, so
+   import needs its own `fold()`: normalize + strip Polish diacritics + collapse internal whitespace.
+   `normalize` itself is left alone — it governs the tabs we WRITE, where exact matching is a feature.
+2. **The banner names the split on either of two axes.** By tooling
+   („cennik z narzędziami" / „cennik bez narzędzi", Białostocka and Przedpole) or by who does the work
+   („cennik podwykonawca" / „cennik pracownik", Altowa). Same two price lists, and the cheaper one is
+   the second in both namings. An unrecognised banner **fails**; it is never resolved by column order,
+   because silently swapping the two lists puts the wrong cost on every praca and only shows up later
+   as a wrong margin.
+3. **The banner may sit on row 1, row 2, or both.** It is therefore searched across every header row
+   _except the last_, while the „cena j.m." sub-label is read from the last row only — that split is
+   what stops the banner scan from matching the sub-label itself.
+
+**And one rule about the stage columns in a rates tab:** its „wykonano" run can be _shorter_ than the
+kosztorys' (Białostocka: 6 markers against 10 etapy). The run is read only to locate the description
+column beside it — the etap count comes from `kosztorys_robocizny` and nowhere else. `ResolvedRatesT`
+deliberately does not carry `stages` so this can't be got wrong downstream.
+
+Verified: all three `kosztorys_robocizny` tabs and all six `zakres pracy` tabs resolve
+(`src/scripts/check-column-resolution.ts`).
+
 ## Code references
 
 - `src/lib/actions/kosztorys-snapshots.ts:61-93` — the write path to mirror (transaction, snapshot, tags)
