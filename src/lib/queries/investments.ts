@@ -9,7 +9,7 @@ import { perfStart } from '@/lib/perf'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
-import type { InvestmentRowT } from '@/components/tables/investments'
+import type { InvestmentRowT } from '@/types/table-rows'
 
 export async function fetchAllInvestments(): Promise<InvestmentRowT[]> {
   const { user } = await requireAuth(MANAGEMENT_ROLES)

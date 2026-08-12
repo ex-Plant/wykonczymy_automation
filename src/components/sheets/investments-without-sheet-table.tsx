@@ -4,10 +4,8 @@ import { useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { useSearchFilter } from '@/hooks/use-search-filter'
-import {
-  getInvestmentWithoutSheetColumns,
-  type InvestmentWithoutSheetRowT,
-} from '@/components/tables/sheets'
+import { getInvestmentWithoutSheetColumns } from '@/components/tables/sheets'
+import type { InvestmentWithoutSheetRowT } from '@/types/table-rows'
 
 type PropsT = {
   data: InvestmentWithoutSheetRowT[]

@@ -3,9 +3,8 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
-import type { ExpenseCategoryRefT, InvestmentStatusT } from '@/types/reference-data'
-import type { CategoryCostT } from '@/types/investment-financials'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { ExpenseCategoryRefT } from '@/types/reference-data'
+import type { InvestmentRowT } from '@/types/table-rows'
 import { costForCategory } from '@/lib/db/map-category-costs'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
@@ -13,37 +12,6 @@ import { ContactLink } from '@/components/ui/contact-link'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
-
-export type InvestmentRowT = {
-  id: number
-  name: string
-  status: InvestmentStatusT
-  totalCosts: number
-  totalMaterialCosts: number
-  totalIncome: number
-  totalLaborCosts: number
-  totalPayouts: number
-  totalInvestmentExpense: number
-  totalSettled: number
-  /** Priced on the plane the client is billed on, not the raw receipts — so these columns and
-   *  `totalInvestmentExpense` stand on the same plane and add up. */
-  categoryCosts: CategoryCostT[]
-  balance: number
-  balanceGross: number
-  margin: number
-  address: string
-  phone: string
-  email: string
-  contactPerson: string
-  review: string
-  notes: string
-  hasSheet: boolean
-  // No column renders these — the whole row is handed to EditInvestmentDialog, whose form needs
-  // them. `vatRate` is the exception that also prices `balanceGross`.
-  materialsNetRate: number | null
-  settlementMode: SettlementModeT
-  vatRate: number
-}
 
 const col = createColumnHelper<InvestmentRowT>()
 

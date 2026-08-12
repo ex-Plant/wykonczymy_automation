@@ -14,7 +14,7 @@ import { useClientMultiFilter } from '@/hooks/use-client-multi-filter'
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import { useOptimisticToggle } from '@/hooks/use-optimistic-toggle'
 import { toggleCashRegisterActive } from '@/lib/actions/toggle-active'
-import type { CashRegisterRowT } from '@/components/tables/cash-registers'
+import type { CashRegisterRowT } from '@/types/table-rows'
 import type { CashRegisterTypeT } from '@/types/reference-data'
 
 const isCashRegisterActive = (row: CashRegisterRowT) => row.active
