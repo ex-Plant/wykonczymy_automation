@@ -81,6 +81,7 @@ const allColumns = [
   col.accessor('type', {
     id: 'type',
     header: 'Typ',
+    meta: { minWidth: 'min-w-40' },
     cell: (info) => {
       const { settled, type, originalType } = info.row.original
       if (settled) return SETTLED_TYPE.label
@@ -108,6 +109,7 @@ const allColumns = [
   col.accessor('description', {
     id: 'description',
     header: 'Opis',
+    meta: { minWidth: 'min-w-64' },
     cell: (info) => <span className="whitespace-pre-line">{info.getValue()}</span>,
   }),
   col.accessor('otherCategoryName', {
@@ -134,6 +136,7 @@ const allColumns = [
   col.accessor('sourceRegisterName', {
     id: 'sourceRegister',
     header: 'Kasa źródłowa',
+    meta: { minWidth: 'min-w-40' },
     cell: (info) => {
       const id = info.row.original.sourceRegisterId
       const name = info.getValue()
@@ -180,6 +183,7 @@ const allColumns = [
   col.accessor('createdAt', {
     id: 'createdAt',
     header: 'Czas dodania',
+    meta: { minWidth: 'min-w-40' },
     cell: (info) => formatPLDateTime(info.getValue()),
   }),
 ]
