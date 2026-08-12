@@ -51,7 +51,7 @@ type PropsT = {
   // Only reaches the wydatki list, which names its invoice archive after the investment.
   investmentName: string
   // Individual deposit rows — the wpłaty list, the VAT-plane buckets every view's settlement reads,
-  // AND the wpłaty total, which is summed from them here rather than passed in beside them.
+  // AND the wpłaty total, which is summed from them rather than supplied beside them (EX-680).
   depositTransactions: DepositTransactionRowT[]
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
   laborCostsNet: number
@@ -190,11 +190,13 @@ export function SummaryPanelContent({
   const isSubcontractorView = view === 'subcontractors'
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
-  const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
-  // The wpłaty total, derived here rather than passed in beside the list: the two buckets partition
-  // the same rows, so their sum IS Σ of the list and no host can hand us a total that disagrees with
-  // the wpłaty it also handed us (EX-680).
-  const depositsNet = paidNet + paidGross
+  const {
+    paidNet,
+    paidGross,
+    total: depositsTotal,
+    taggedNet,
+    taggedGross,
+  } = bucketDepositsByPlane(depositTransactions)
   // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
   // rather than deciding it.
   const settlementVerdict = buildSettlementPlaneVerdict({
@@ -211,7 +213,7 @@ export function SummaryPanelContent({
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
     laborCostsNet,
-    depositsNet,
+    depositsTotal,
     materials,
     vatRate,
     effectiveNetRate,
@@ -278,7 +280,7 @@ export function SummaryPanelContent({
                 laborCostsNet={laborCostsNet}
                 doZaplaty={doZaplaty}
                 materials={materials}
-                depositsNet={depositsNet}
+                depositsTotal={depositsTotal}
                 rabatAmount={rabatAmount}
                 reconciliation={reconciliation}
                 settlementVerdict={settlementVerdict}

@@ -39,7 +39,7 @@ type PropsT = {
   laborCostsNet: number
   doZaplaty: MoneyPairT
   materials: MaterialsT
-  depositsNet: number
+  depositsTotal: number
   rabatAmount: number
   reconciliation: KosztorysReconciliationT
   settlementVerdict: SettlementPlaneVerdictT
@@ -69,7 +69,7 @@ export function SummaryOverviewTab({
   laborCostsNet,
   doZaplaty,
   materials,
-  depositsNet,
+  depositsTotal,
   rabatAmount,
   reconciliation,
   settlementVerdict,
@@ -100,7 +100,7 @@ export function SummaryOverviewTab({
   const settlementGroups = buildSettlementGroups({
     mixed,
     doZaplaty,
-    depositsNet,
+    depositsTotal,
     vatRate,
   })
   // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the

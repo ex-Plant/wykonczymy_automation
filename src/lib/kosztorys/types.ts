@@ -139,10 +139,10 @@ export type KosztorysTreeT = {
 }
 
 // The full data set the editor body/shell needs to render: the tree plus the investment-level figures
-// (materials, wpłaty, robocizna/rabat) the footer reconciles against. Assembled by the admin page, the
-// owner preview, and the public share read — every figure here is a row set or a server aggregate, and
-// nothing that can be derived from one of them appears beside it. The wpłaty total used to (EX-680),
-// and the preview fed it from a different query than the list, so the two disagreed on the share.
+// (materials, wpłaty, robocizna/rabat) the footer reconciles against. Assembled identically by the
+// admin page, the owner preview and the public share read — one shape so those three can't drift on
+// which figures the editor receives. Every figure here is a row set or a server aggregate, and nothing
+// derivable from one of them sits beside it: a derived twin is how two hosts start disagreeing (EX-680).
 export type KosztorysEditorDataT = {
   investmentId: number
   tree: KosztorysTreeT

@@ -253,16 +253,16 @@ describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () 
     const laborCostsNet = 800 // do zapłaty, po rabacie
     const rabatNet = 200
     const materialsGross = 123 // → 100 netto at 23%
-    const depositsNet = 300
+    const depositsTotal = 300
     const vat = 0.23
 
     const sumaPracNet = laborCostsNet + rabatNet // 1000, pre-rabat
     const combined = combinedPair(sumaPracNet, billedMaterials(justGross(materialsGross), vat), vat)
     const rabat = moneyPair(rabatNet, vat)
-    const wplaty = faceValue(depositsNet)
+    const wplaty = faceValue(depositsTotal)
     const doZaplaty = computeDoZaplatyRM(
       laborCostsNet,
-      depositsNet,
+      depositsTotal,
       justGross(materialsGross),
       vat,
       vat,
@@ -392,6 +392,7 @@ describe('bucketDepositsByPlane', () => {
     expect(b).toEqual({
       paidNet: 0,
       paidGross: 0,
+      total: 0,
       taggedNet: { total: 0, count: 0 },
       taggedGross: { total: 0, count: 0 },
     })

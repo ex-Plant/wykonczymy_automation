@@ -918,7 +918,7 @@ Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER
 Setup: aplikacja na dev DB (5433), inwestycja z wpłatami i z kosztorysem.
 
 - [ ] Na `/inwestycje/<id>/podglad-klienta` lista wpłat pokazuje te same wiersze co strona właściciela (przed zmianą była pusta)
-- [ ] Link „do wpłat" na podglądzie prowadzi do niepustej listy
+- [ ] Na podglądzie wiersz „Wpłaty" i daty wpłat są zwykłym tekstem, nie linkami (linki celowo wyłączone — prowadzą w głąb aplikacji)
 - [ ] Po przełączeniu tej inwestycji w **tryb mieszany** „Wpłaty netto"/„Wpłaty brutto" na podglądzie są niezerowe i sumują się do totalu z wiersza „Wpłaty"; „Do zapłaty" spada
 - [ ] Kwota wpłat jest identyczna na trzech powierzchniach: Podsumowanie inwestycji, kosztorys v2, podgląd klienta
 - [ ] `/raporty` — firmowe wpłaty bez zmian (kontrola, że `totalIncome` nie został tknięty)

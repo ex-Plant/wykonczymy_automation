@@ -142,7 +142,7 @@ export function sumaPracPreRabat(laborCostsNet: number, rabatAmount: number): nu
 // overpaid state, not clamped here.
 export function computeDoZaplatyRM(
   laborCostsNet: number,
-  depositsNet: number,
+  depositsTotal: number,
   materials: MaterialsT,
   vatRate: number,
   materialsNetRate: number | null,
@@ -152,7 +152,7 @@ export function computeDoZaplatyRM(
     billedMaterials(materials, materialsNetRate),
     vatRate,
   )
-  return { net: combined.net - depositsNet, gross: combined.gross - depositsNet }
+  return { net: combined.net - depositsTotal, gross: combined.gross - depositsTotal }
 }
 
 export type MixedSettlementT = {
@@ -220,6 +220,9 @@ export type DepositTallyT = { total: number; count: number }
 export type DepositPlaneSumsT = {
   paidNet: number
   paidGross: number
+  // Σ of the very rows the two buckets partition, returned from the one place that already reduces
+  // them — so „Wpłaty" and the wpłaty list it sits above cannot be summed by two different rules.
+  total: number
   // Deposits whose plane was actually typed, per plane. Separate from paidNet/paidGross because the
   // null→netto ruling is a *settlement* rule, not evidence: an unmarked deposit is unknown, and
   // reading it as netto turns "nobody has tagged anything here" into a contradiction the plane
@@ -251,6 +254,7 @@ export function bucketDepositsByPlane(
   return {
     paidNet: total - taggedGross.total,
     paidGross: taggedGross.total,
+    total,
     taggedNet: tally(rows, 'NET'),
     taggedGross,
   }

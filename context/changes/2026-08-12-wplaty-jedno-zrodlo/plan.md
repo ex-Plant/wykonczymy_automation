@@ -317,20 +317,20 @@ Brak — zmiana nie dotyka schematu ani danych.
 
 #### Automated
 
-- [x] 1.1 Spec podglądu / `src/__tests__/lib/queries` zielone
-- [x] 1.2 Typecheck zmienionych plików nie zgłasza braku pola
+- [x] 1.1 Spec podglądu / `src/__tests__/lib/queries` zielone — f49b320e
+- [x] 1.2 Typecheck zmienionych plików nie zgłasza braku pola — f49b320e
 
 ### Phase 2: Zwinięcie kontraktu + rename
 
 #### Automated
 
-- [x] 2.1 `settlement-groups.test.ts` zielone
-- [x] 2.2 `summary-economics.test.ts` zielone
-- [x] 2.3 `grep -rn "wplatyNet" src e2e` nic nie zwraca
+- [x] 2.1 `settlement-groups.test.ts` zielone — 195f564f
+- [x] 2.2 `summary-economics.test.ts` zielone — 195f564f
+- [x] 2.3 `grep -rn "wplatyNet" src e2e` nic nie zwraca — 195f564f
 
 ### Phase 3: Guard na niezmiennik
 
 #### Automated
 
-- [x] 3.1 `deposit-investment-invariant.test.ts` zielone
-- [x] 3.2 Test pada po tymczasowym przywróceniu `COMPANY_FUNDING` do `INVESTMENT_TYPES`
+- [x] 3.1 `investment-write-guard.db.test.ts` zielone — 12d59470
+- [x] 3.2 Test pada po tymczasowym przywróceniu `COMPANY_FUNDING` do `INVESTMENT_TYPES` — 12d59470
