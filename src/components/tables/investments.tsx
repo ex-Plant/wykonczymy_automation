@@ -58,7 +58,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
     col.accessor('name', {
       id: 'name',
       header: 'Nazwa',
-      meta: { canHide: false },
+      meta: { canHide: false, minWidth: 'min-w-56' },
     }),
 
     col.accessor('totalCosts', {
@@ -127,11 +127,13 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
     col.accessor('address', {
       id: 'address',
       header: 'Adres',
+      meta: { minWidth: 'min-w-56' },
       cell: (info) => info.getValue() || '—',
     }),
     col.accessor('phone', {
       id: 'phone',
       header: 'Telefon',
+      meta: { minWidth: 'min-w-36' },
       cell: (info) => <ContactLink type="phone" value={info.getValue()} />,
     }),
     col.accessor('email', {
@@ -147,6 +149,7 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
     col.accessor('review', {
       id: 'review',
       header: 'Opinia',
+      meta: { minWidth: 'min-w-56' },
       cell: (info) => info.getValue() || '—',
     }),
     col.accessor('status', {
