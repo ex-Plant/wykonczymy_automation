@@ -13,6 +13,10 @@ last_updated_by: ex-Plant
 
 # Research: EX-557 — investment-less deposits
 
+> ⚠️ **Częściowo nieaktualne.** Trzy wiersze 1171 / 1196 / 1381 zostały na prodzie anulowane po
+> napisaniu tego dokumentu — wszystko, co dotyczy „zachowaj istniejącą inwestycję" i predykatu
+> `ignoresInvestment`, jest uchylone. Obowiązuje sekcja „Korekta zasady 5" w `change.md`.
+
 **Date**: 2026-08-12T10:14:52Z
 **Researcher**: ex-Plant
 **Git Commit**: 13d4bf9197d03a2a5473ed6544094a95f8c010bb

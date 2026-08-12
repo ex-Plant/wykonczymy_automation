@@ -4,8 +4,14 @@
 
 Restore `OTHER_DEPOSIT` („Inna wpłata") to the deposit dialog, and make the rule "neither
 `OTHER_DEPOSIT` nor `COMPANY_FUNDING` may ever carry an investment" structural — enforced by a
-predicate on the server, not by a JSX literal in one form. The three grandfathered rows
-(`id=1171`, `1196`, `1381`) keep their stored `investment_id` untouched.
+predicate on the server, not by a JSX literal in one form.
+
+> **Korekta zakresu (2026-08-12, po napisaniu tego planu).** Trzy śmieciowe wiersze
+> (`id=1171`, `1196`, `1381`) zostały na prodzie **anulowane** (`cancelled = true`; `investment_id`
+> zostało w kolumnie, ale wiersz wypadł z bilansu). Aktywnych `OTHER_DEPOSIT` / `COMPANY_FUNDING`
+> z inwestycją jest **zero**. Znika przez to jedyny powód, dla którego plan wprowadzał osobną
+> semantykę zapisu „pomiń, nie zeruj" (`ignoresInvestment`) — oba typy dostają zwykłą ścieżkę
+> `showsInvestment === false → investment = null`, tę samą co `OTHER` / `REGISTER_TRANSFER`.
 
 ## Current State Analysis
 
@@ -21,10 +27,13 @@ predicate on the server, not by a JSX literal in one form. The three grandfather
   resets _to that default_, the picker is gated on a JSX literal (`:132`), and `toData` (`:100`)
   still submits it. A deposit added from `/inwestycje/<id>` therefore carries that investment.
   Same shape for `vatPlane`: defaulted at `:77`, never reset, hidden at `:147`, submitted at `:98`.
-- `validate.ts:75-77` clears `investment` unconditionally (`d.investment = null`) on every write,
-  create and update alike, and `originalDoc` is never consulted for that field. So merely narrowing
-  `INVESTMENT_TYPES` would wipe the three grandfathered rows on their first unrelated edit —
-  including an invoice-only edit via `setTransferInvoices` (`src/lib/actions/transfers.ts:311-315`).
+- `validate.ts:75-77` clears `investment` (`d.investment = null`) on every write of a type outside
+  `INVESTMENT_TYPES`, create and update alike. Narrowing `INVESTMENT_TYPES` therefore already
+  delivers the whole rule for the two deposit types — no new hook branch is needed. Its only
+  side effect is that an edit of one of the three cancelled legacy rows (reachable from the Payload
+  admin or a script only — the transfers table hides the actions column for cancelled rows,
+  `src/components/tables/transfers.tsx:209`) would drop their stored `investment_id`. Accepted:
+  they are cancelled backfill junk, already outside every sum.
 - The zod layer has no "must NOT have an investment" rule at all
   (`src/lib/schemas/transfer-validation.ts:31-64`).
 
@@ -36,18 +45,16 @@ Full evidence: `research.md`.
   „Zasilenie z konta firmowego" stays ADMIN/OWNER-only (client-side gate, per ruling 6).
 - No server path — action, REST, GraphQL, admin panel, script — can write an investment onto either
   type. New rows always land with `investment_id IS NULL`.
-- Rows 1171 / 1196 / 1381 still hold their `investment_id` after an arbitrary update. The parity
-  golden master does not move.
+- The parity golden master does not move — no active row of either type carries an investment, so
+  no bucket can change.
 - No deposit other than `INVESTOR_DEPOSIT` persists a `vatPlane`.
 
 ### Key Discoveries
 
-- **Two different write semantics are needed.** `showsInvestment === false` currently means "null
-  it", which is correct and tested for `OTHER` / `REGISTER_TRANSFER`
-  (`validate-hook.test.ts:144-154`) but forbidden for the two deposit types. Owner's pick: a
-  separate rule for the deposits — the incoming value is **ignored**, the stored one is left alone.
-- **`transfer-constants.test.ts:146-155`** derives its predicate list from the module's exports — a
-  new exported predicate fails that test until registered in `HELPERS`. Useful tripwire.
+- **One write semantic, not two.** `showsInvestment === false` means "null it", already correct and
+  tested for `OTHER` / `REGISTER_TRANSFER` (`validate-hook.test.ts:144-154`). With the three legacy
+  rows cancelled there is nothing left to preserve, so the deposits join that same path — the
+  planned `ignoresInvestment` predicate is dropped.
 - **`transfer-actions.test.ts:212-221`** currently asserts that a create with `investment: 1` on
   both types **succeeds**, with `payload.create` mocked so the hook never runs. It is a false-green
   by construction and must be rewritten in the same commit.
@@ -59,7 +66,9 @@ Full evidence: `research.md`.
 
 ## What We're NOT Doing
 
-- Not touching rows 1171 / 1196 / 1381 — no unlink, no retype, no backfill (ruling 5).
+- Not touching rows 1171 / 1196 / 1381 — no unlink, no retype, no backfill. They were cancelled on
+  prod, which settled the problem; this change neither depends on nor protects their stored
+  `investment_id`.
 - Not removing either type from `TransferTypeT`, `DEPOSIT_TYPES`, the label/colour map, or the type
   filter — both types stay fully visible and filterable.
 - Not hardening the ADMIN/OWNER gate on `COMPANY_FUNDING` server-side (ruling 6: "client jest good
@@ -72,21 +81,11 @@ Full evidence: `research.md`.
 
 ## Implementation Approach
 
-One predicate carries the new rule and every consumer reads it. `INVESTMENT_TYPES` loses both
-deposit types, which switches off the field in the edit form and the admin panel for free. A new
-`ignoresInvestment(type)` predicate names the narrower set (the two deposit types) whose incoming
-`investment` is dropped from the write payload rather than nulled — so a create can never plant one
-and an update can never clear one. The deposit form stops submitting hidden values, and its
-type-conditional JSX switches from a hardcoded type literal to the predicate.
-
-## Critical Implementation Details
-
-**Ordering inside `validate.ts`.** The new `ignoresInvestment` branch must sit **before** the
-existing `if (!showsInvestment(type)) d.investment = null`, and must `return`/skip that assignment —
-otherwise the wipe still fires and the grandfathered rows are lost. Deleting the key from `data`
-(rather than assigning `null` or `undefined`) is what makes Payload leave the stored column
-untouched on a partial update; assigning `undefined` is not equivalent for every adapter path, so
-the delete is load-bearing, not stylistic.
+One existing predicate carries the rule and every consumer already reads it. `INVESTMENT_TYPES`
+loses both deposit types, which switches off the field in the edit form and the admin panel and
+routes both types into the hook's existing auto-clear — one array edit, no new branch in
+`validate.ts`. The deposit form stops submitting hidden values, and its type-conditional JSX
+switches from a hardcoded type literal to `showsInvestment`.
 
 ---
 
@@ -94,8 +93,8 @@ the delete is load-bearing, not stylistic.
 
 ### Overview
 
-Restore the type to the dialog, narrow the investment type set, and introduce the predicate that
-names the new write rule. Update the two hand-written membership tables that pin these.
+Restore the type to the dialog and narrow the investment type set — the single edit that carries the
+whole rule. Update the hand-written membership tables that pin it.
 
 ### Changes Required:
 
@@ -111,31 +110,26 @@ longer true.
 `['OTHER_DEPOSIT', 'INVESTOR_DEPOSIT', 'COMPANY_FUNDING']` — byte-identical to its pre-`72ddc5d7`
 value.
 
-#### 2. Investment type set and the new predicate
+#### 2. Investment type set
 
 **File**: `src/lib/constants/transfers.ts`
 
 **Intent**: Remove `'COMPANY_FUNDING'` and `'OTHER_DEPOSIT'` from `INVESTMENT_TYPES` so
-`showsInvestment` is false for them everywhere (edit dialog, admin panel, and the deposit form once
-Phase 3 switches to the predicate). Add a predicate naming the types whose incoming investment is
-ignored on write rather than cleared, and document _why_ the distinction exists (grandfathered rows).
+`showsInvestment` is false for them everywhere — edit dialog, admin panel, the validate hook's
+auto-clear, and the deposit form once Phase 3 switches to the predicate.
 
-**Contract**: `ignoresInvestment(type: string): boolean`, backed by a module-level
-`IGNORES_INVESTMENT_TYPES: TransferTypeT[] = ['COMPANY_FUNDING', 'OTHER_DEPOSIT']`, exported
-alongside the other field-rule predicates in the same block (`:415-443`). It is a strict subset of
-the complement of `showsInvestment` — assert that relationship rather than restating membership.
+**Contract**: array membership only — no new predicate, no new export. The comment above
+`INVESTMENT_TYPES` names EX-557 as the reason both deposit types left the set.
 
 #### 3. Predicate membership tables
 
 **File**: `src/__tests__/transfer-constants.test.ts`
 
-**Intent**: Update the two pins that fail, and register the new predicate so the exhaustiveness
-tripwire passes deliberately rather than by accident.
+**Intent**: Update the two pins that fail.
 
 **Contract**: `:241-243` exact-array expectation gains `'OTHER_DEPOSIT'` in label-sorted position;
-`showsInvestment.trueFor` (`:68-82`) drops both deposit types; a `ignoresInvestment` entry with its
-own hand-written `trueFor: ['COMPANY_FUNDING', 'OTHER_DEPOSIT']` joins `HELPERS`. Keep these lists
-hand-authored — deriving them from the source destroys the guard (`lessons.md`).
+`showsInvestment.trueFor` (`:68-82`) drops both deposit types. Keep these lists hand-authored —
+deriving them from the source destroys the guard (`lessons.md`).
 
 #### 4. Stale spec-table comment
 
@@ -163,36 +157,35 @@ equality (the dialog list is label-sorted and role-filtered, the spec column is 
 
 ### Overview
 
-Teach the server-side authority the new rule: drop an incoming investment for the two deposit types
-without touching what is already stored.
+No behaviour change in `validate.ts` — Phase 1's narrowing already routes both deposit types into
+the existing auto-clear. What this phase owes is the regression guard for an axis with zero coverage
+today, plus the comment that now misstates the reason.
 
 ### Changes Required:
 
-#### 1. The ignore branch
+#### 1. Auto-clear comment
 
 **File**: `src/hooks/transfers/validate.ts`
 
-**Intent**: Before the existing auto-clear, branch on `ignoresInvestment(type)`: remove `investment`
-from the incoming data so neither a create nor an update can write one, and skip the `= null`
-assignment so a stored value survives. The existing clear stays exactly as-is for every other type.
+**Intent**: The comment at `:71-77` justifies the clear purely by `deriveFinancials` bucketing
+(`OTHER` lands in no bucket). That reason does not cover the deposit types, which do bucket. Extend
+it with the deposit reason: „Inna wpłata" and „Zasilenie z konta firmowego" are company-level cash,
+never client-level, so an investment on them would silently move that investment's Bilans.
 
-**Contract**: the mutation is `delete d.investment` (not `d.investment = null`), guarded by
-`ignoresInvestment(type)`, placed above `if (!showsInvestment(type))`. Comment must name the reason:
-three grandfathered rows predate the rule and the owner ruled they stay.
+**Contract**: comment only, the `if (!showsInvestment(type)) d.investment = null` body is unchanged.
 
 #### 2. Regression guard
 
 **File**: `src/__tests__/hooks/transfers/investment-write-guard.test.ts` (new)
 
-**Intent**: Pin both halves of the rule at the hook layer — the half that blocks and the half that
-preserves. There is zero coverage of this axis today, in either direction.
+**Intent**: Pin at the hook layer that neither deposit type can be written with an investment, from
+either a create or an update. Zero coverage of this axis today.
 
-**Contract**: three cases per deposit type — (a) create with `investment` set → returned data has no
-investment; (b) update carrying `investment` → returned data has no `investment` **key**, so the
-stored column is untouched (assert the key's absence, not a null value — a null is exactly the
-failure being guarded against); (c) the existing `OTHER` / `REGISTER_TRANSFER` clear still yields
-`null`. Mirror the harness shape of `src/__tests__/validate-hook.test.ts:144-154`; this spec is pure
-unit (no DB), so it carries no `skipIf(!ENV_READY)` marker.
+**Contract**: per deposit type — (a) create with `investment` set → returned data has
+`investment: null`; (b) update carrying `investment` → same; plus (c) the existing `OTHER` /
+`REGISTER_TRANSFER` clear still yields `null`, and (d) `INVESTOR_DEPOSIT` keeps its investment.
+Mirror the harness shape of `src/__tests__/validate-hook.test.ts:144-154`; pure unit (no DB), so no
+`skipIf(!ENV_READY)` marker.
 
 ### Success Criteria:
 
@@ -203,8 +196,8 @@ unit (no DB), so it carries no `skipIf(!ENV_READY)` marker.
 
 #### Manual Verification:
 
-- Open one of the three legacy rows (id 1171) in the edit dialog, change only the description, save
-  — the row still shows its investment in the transfers table afterwards.
+- Open a `COMPANY_FUNDING` row in the edit dialog — no investment picker is offered, and saving an
+  unrelated field (description) does not error.
 
 ---
 
@@ -274,9 +267,9 @@ Correct the prose that this change makes false, and file the deferred browser co
 
 **Intent**: The comment at `:294-300` claims the deposit form hiding the picker is what keeps
 `COMPANY_FUNDING` investment-free. That was never true (the form submitted it anyway) and is now
-superseded by the hook rule. Rewrite it to point at the predicate as the authority, and record the
-accepted discrepancy: three grandfathered rows still contribute to `totalIncome` on their
-investments while this query omits them.
+superseded by the `showsInvestment` rule. Rewrite it to point at that predicate as the authority.
+No discrepancy note is owed — the only rows that ever broke the invariant were cancelled on prod
+(2026-08-12), so no active row of either type carries an investment.
 
 **Contract**: comment only — the `type = 'INVESTOR_DEPOSIT'` filter is unchanged.
 
@@ -307,26 +300,26 @@ behaviours and linking EX-557. Record its id in this plan's References section.
 
 ### Unit Tests
 
-- The new hook guard (Phase 2) is the primary regression asset: it pins that a create cannot plant
-  an investment and that an update cannot clear one.
+- The new hook guard (Phase 2) is the primary regression asset: it pins that neither a create nor an
+  update can plant an investment on either deposit type.
 - The two hand-written membership tables in `transfer-constants.test.ts` remain the only guard over
-  `showsInvestment` / `ignoresInvestment` — they must stay hand-authored.
+  `showsInvestment` — they must stay hand-authored.
 
 ### Integration Tests
 
 - `pnpm test:integration` (5435 `db-test`) covers the DB-backed deposit specs. Both insert
   investment-bearing rows of these types by raw SQL and must stay green — that is the proof the
   guard sits above SQL and not inside it.
-- `pnpm test:parity` is the over-reach detector: if the golden master moves on Łomianki Staszica
-  20a/3, Szaserów 30b/32, or Meander 22/25, the guard has clipped stored data and Phase 2 is wrong.
+- `pnpm test:parity` must stay unmoved: no active row of either type carries an investment, so no
+  investment's buckets can shift. Any movement means the change reached further than intended.
 
 ### Manual Testing Steps
 
 1. As MANAGER, open the deposit dialog from `/kasy` — „Inna wpłata" is offered, „Zasilenie z konta
    firmowego" is not.
 2. From `/inwestycje/<id>`, add an „Inna wpłata" — the row lands with no investment.
-3. Edit row 1171 (change the description only) — its investment survives.
-4. Edit a `COMPANY_FUNDING` row from the transfers table — no investment picker is offered.
+3. Edit a `COMPANY_FUNDING` row from the transfers table — no investment picker is offered, and an
+   unrelated edit (description) saves cleanly.
 
 ## Performance Considerations
 
@@ -334,7 +327,8 @@ None. The change adds one array membership test per write.
 
 ## Migration Notes
 
-No schema change, no migration, no backfill. Existing rows are deliberately untouched.
+No schema change, no migration, no backfill. Existing rows are deliberately untouched — the only
+three that violated the new rule were cancelled on prod on 2026-08-12, outside this change.
 
 ## Whole-tree Gate
 

@@ -30,11 +30,8 @@ Obowiązujące zasady:
 3. **„Zasilenie z konta firmowego" widzi wyłącznie ADMIN/OWNER** — obecny podział zostaje bez zmian.
    „Inna wpłata" bez ograniczenia roli.
 4. **„Wpłata od inwestora" zostaje jedyną wpłatą z inwestycją** i jedyną niosącą netto/brutto (EX-536).
-5. **Trzy śmieciowe wiersze z 25.03 zostają jak są** (decyzja właściciela 2026-08-12) — nie odpinamy
-   im inwestycji, nie przetypowujemy. Zakres zmiany blokuje tylko powstawanie nowych.
-   → Konsekwencja projektowa: usunięcie tych typów z `INVESTMENT_TYPES` uruchomiłoby czyszczenie pola
-   przez `validate.ts:75` przy pierwszej edycji takiego wiersza. Rozwiązanie musi zablokować
-   **zapis nowej** inwestycji, nie kasować istniejącej.
+5. ~~**Trzy śmieciowe wiersze z 25.03 zostają jak są**~~ — **zasada uchylona 2026-08-12 po fakcie**
+   (patrz „Korekta" niżej). Zakres zmiany nadal blokuje tylko powstawanie nowych wierszy.
 
 Znacznik LEGACY z lipcowego EDIT-a **nie obowiązuje** — oba typy są żywe, tylko bezinwestycyjne.
 
@@ -84,8 +81,35 @@ Rozkład w czasie — oba typy to dwa krótkie zrywy, nie bieżący przepływ:
    - `id=1196` Szaserów 30b/32, 986,18 — „rabat" (`RABAT`)
    - `id=1381` Meander 22/25, 142,65 — „stara - naprawa gwarancyjna" (`LOSS`)
 
-   Zostają nietknięte (zasada 5 wyżej) — to jest **ograniczenie projektowe** dla rozwiązania, nie
-   zadanie do wykonania: mechanizm musi blokować zapis nowej inwestycji, a nie kasować istniejącą.
+   → Nieaktualne, patrz korekta niżej.
+
+## Korekta zasady 5 — wiersze anulowane na prodzie (2026-08-12, po planie)
+
+Właściciel naprawił dane na prodzie: wszystkie trzy wiersze mają `cancelled = true` (`id=1381`
+dostał przy okazji datę 2026-04-07). `investment_id` zostało w kolumnie, ale anulowany wiersz nie
+wchodzi do żadnej sumy, więc **przestały podbijać bilans** — dokładnie ten efekt, o który chodziło.
+
+Stan na kopii lokalnej (`transactions`, najświeższy wiersz 2026-08-12):
+
+| Typ                | Wszystkie | Aktywne | Aktywne z inwestycją | Ostatnio utworzony |
+| ------------------ | --------- | ------- | -------------------- | ------------------ |
+| `INVESTOR_DEPOSIT` | 241       | 215     | 215                  | 2026-08-06         |
+| `COMPANY_FUNDING`  | 26        | 26      | **0**                | 2026-04-02         |
+| `OTHER_DEPOSIT`    | 14        | 5       | **0**                | 2026-07-20         |
+
+**Konsekwencja dla rozwiązania:** znika jedyny powód, dla którego plan wprowadzał drugą semantykę
+zapisu (`ignoresInvestment` — „pomiń pole", zamiast „wyzeruj"). Oba typy idą istniejącą ścieżką
+`showsInvestment === false → investment = null`, tą samą co `OTHER` / `REGISTER_TRANSFER`. Wyjęcie
+ich z `INVESTMENT_TYPES` niesie całą zasadę — bez nowego predykatu i bez nowej gałęzi w
+`validate.ts`.
+
+Przyjęte ryzyko: edycja jednego z tych trzech wierszy **z panelu Payload lub skryptu** wyczyściłaby
+mu `investment_id`. Z tabeli transakcji nie da się ich edytować — anulowany wiersz nie ma kolumny
+Akcje (`src/components/tables/transfers.tsx:209`). To anulowane śmieci z przenosin danych, poza
+każdą sumą.
+
+**Ubocznie: manualny check „edytuj wiersz 1171 i sprawdź, czy inwestycja przeżyła" jest
+niewykonywalny** — z tego samego powodu. Zastąpiony edycją dowolnego wiersza `COMPANY_FUNDING`.
 
 4. Etykiety obu typów wypływają w: tabeli transferów, filtrze typu (`transfer-filters.tsx:121`
    listuje **wszystkie** `TRANSFER_TYPES`), dialogu edycji, eksporcie CSV, konfigach arkusza.
