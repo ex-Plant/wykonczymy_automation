@@ -875,17 +875,19 @@ library.
 
 **In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2118, `pnpm test:integration` 99,
 `pnpm test:parity` 3, nowy E2E `investments-listing-kosztorys`). Zmiana przepina **dwa wejścia**
-figur (robocizna, rabat) z transakcji na kosztorys dla inwestycji, która ma wiersze kosztorysu —
-reszta figur zostaje na transakcjach. Boksy poniżej to głównie **regresja**: to samo, co dotąd, ma
-się zgadzać po obu stronach szwu.
+figur (robocizna, rabat) z transakcji na kosztorys — bez fallbacku, bo **jest jedno właściwe
+źródło**: pusty kosztorys to 0 zł, a nie zaglądanie do transakcji. Wybór źródła robi się jednym
+ruchem: **v1 = transakcje, v2 = kosztorys**. Reszta figur (wpłaty, materiały, wypłaty) zostaje na
+transakcjach po obu stronach.
 
 Setup: aplikacja na **5435** (`DB_POSTGRES_URL_TEST`), zalogowany jako OWNER (kolumna „Marża" jest
 dla ADMIN/OWNER). Po `pnpm db:import:test` uruchom `pnpm seed:kosztorys:test`, inaczej baza nie ma
 ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
 
 - [ ] Inwestycja **z kosztorysem**: „Bilans netto", „Bilans brutto", „Koszty inwestora" i „Marża" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
-- [ ] Inwestycja **bez kosztorysu** wygląda dokładnie jak przed zmianą — dalej czyta transakcje, żadna liczba nie spadła do zera.
-- [ ] Inwestycja z kosztorysem sumującym się **do zera** dalej stoi na płaszczyźnie kosztorysowej (nie wraca na transakcje) — przełącznik patrzy na brak wierszy, nie na zerowy total.
+- [ ] Inwestycja **bez kosztorysu** pokazuje na liście i w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31). Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
+- [ ] Inwestycja z kosztorysem sumującym się **do zera** wygląda identycznie jak ta bez kosztorysu. Nie da się ich odróżnić po liczbach i nie ma powodu, żeby dało się je odróżnić.
+- [ ] Inwestycja z pustym kosztorysem, ale z zaksięgowaną robocizną w transakcjach — reconciliation **krzyczy** niezgodność. To jest sygnał „ta robota czeka na wprowadzenie do kosztorysu", nie fałszywy alarm.
 - [ ] Zmiana ilości w kosztorysie rusza „Marżę" na liście **bez** klikania „Odśwież dane".
 - [ ] Zakładka **Marża** w v2 pokazuje tę samą robociznę i ten sam rabat co blok nad nią.
 - [ ] Okno „Nowa transakcja" (i **edycji** transakcji) nie oferuje już „Robocizny" ani „Rabatu"; stary wiersz `LABOR_COST`/`RABAT` dalej się renderuje w tabeli, daje się anulować i jedzie do arkusza.

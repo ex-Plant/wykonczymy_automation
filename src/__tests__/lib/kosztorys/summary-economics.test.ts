@@ -250,18 +250,18 @@ describe('computeDoZaplatyRM', () => {
 // brutto axis too, not just netto — now with materiały entering as brutto (netto derived).
 describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () => {
   it('Łącznie − Rabat − Wpłaty === Do zapłaty on BOTH axes', () => {
-    const laborCostsNetFromKosztorys = 800 // do zapłaty, po rabacie
+    const laborCostsNet = 800 // do zapłaty, po rabacie
     const rabatNet = 200
     const materialsGross = 123 // → 100 netto at 23%
     const wplatyNet = 300
     const vat = 0.23
 
-    const sumaPracNet = laborCostsNetFromKosztorys + rabatNet // 1000, pre-rabat
+    const sumaPracNet = laborCostsNet + rabatNet // 1000, pre-rabat
     const combined = combinedPair(sumaPracNet, billedMaterials(justGross(materialsGross), vat), vat)
     const rabat = moneyPair(rabatNet, vat)
     const wplaty = faceValue(wplatyNet)
     const doZaplaty = computeDoZaplatyRM(
-      laborCostsNetFromKosztorys,
+      laborCostsNet,
       wplatyNet,
       justGross(materialsGross),
       vat,
@@ -498,39 +498,29 @@ describe('sumaPracPreRabat — one „Robocizna", one number', () => {
       type: 'amount',
       value: 100_000,
     })
-    const laborCostsNetFromKosztorys = totals.doneNet - totals.globalRabatNet
-    expect(laborCostsNetFromKosztorys).toBe(-82_000)
+    const laborCostsNet = totals.doneNet - totals.globalRabatNet
+    expect(laborCostsNet).toBe(-82_000)
 
-    expect(sumaPracPreRabat(laborCostsNetFromKosztorys, totals.rabatClientNet)).toBe(
-      totals.sumaPracNet,
-    )
+    expect(sumaPracPreRabat(laborCostsNet, totals.rabatClientNet)).toBe(totals.sumaPracNet)
     expect(totals.sumaPracNet).toBe(18_000)
   })
 
   it('holds for a per-item rabat too, not just a global one', () => {
     const totals = clientTotalsFromSubtotals([subtotal(9_200, 800)], { type: null, value: 0 })
-    const laborCostsNetFromKosztorys = totals.doneNet - totals.globalRabatNet
+    const laborCostsNet = totals.doneNet - totals.globalRabatNet
 
-    expect(sumaPracPreRabat(laborCostsNetFromKosztorys, totals.rabatClientNet)).toBe(
-      totals.sumaPracNet,
-    )
+    expect(sumaPracPreRabat(laborCostsNet, totals.rabatClientNet)).toBe(totals.sumaPracNet)
     expect(totals.sumaPracNet).toBe(10_000)
   })
 
   it('relocating the rabat leaves Łącznie where it was: Robocizna − Rabat + Materiały', () => {
-    const laborCostsNetFromKosztorys = 90_000 // already post-rabat
+    const laborCostsNet = 90_000 // already post-rabat
     const rabatAmount = 10_000
     const materials = justGross(12_300)
-    const combined = combinedPair(
-      laborCostsNetFromKosztorys,
-      billedMaterials(materials, 0.23),
-      0.23,
-    )
+    const combined = combinedPair(laborCostsNet, billedMaterials(materials, 0.23), 0.23)
 
     const rows =
-      sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount) -
-      rabatAmount +
-      billedMaterials(materials, 0.23)
+      sumaPracPreRabat(laborCostsNet, rabatAmount) - rabatAmount + billedMaterials(materials, 0.23)
 
     expect(rows).toBeCloseTo(combined.net)
   })

@@ -2,7 +2,7 @@ import type { InvestmentFinancialsMapT, KosztorysClientTotalsMapT } from '@/lib/
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
-import { financialsOnReading, resolveSummaryReading } from '@/lib/kosztorys/summary-reading'
+import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import {
   billedCategoryCosts,
   billedMaterials,
@@ -23,12 +23,10 @@ export function shapeInvestments(
 ): InvestmentRowT[] {
   return investments.map((inv) => {
     const transactionFinancials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS
-    // The read-switch. Robocizna and rabat come from the kosztorys wherever there is one; every other
-    // figure here is a cash movement the kosztorys knows nothing about and stays transaction-sourced.
-    const reading = resolveSummaryReading(
-      kosztorysTotalsRecord[String(inv.id)],
-      transactionFinancials,
-    )
+    // Robocizna and rabat come from the kosztorys, full stop — no kosztorys reads as zero. Every
+    // other figure here is a cash movement the kosztorys knows nothing about and stays
+    // transaction-sourced.
+    const reading = readingFromKosztorys(kosztorysTotalsRecord[String(inv.id)])
     const financials = financialsOnReading(transactionFinancials, reading)
     const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
     const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
@@ -57,10 +55,9 @@ export function shapeInvestments(
       categoryCosts: billedCategories,
       totalSettled: financials.totalSettled,
       balance,
-      // The VAT base must be the SAME pair the netto bilans was built from — whichever plane the
-      // read-switch put this investment on. Grossing a kosztorys-sourced bilans with the transfers
-      // robocizna would price the VAT on work the bilans never counted, so the brutto figure would
-      // stop being the netto one plus its tax.
+      // The VAT base must be the SAME pair the netto bilans was built from. Grossing a
+      // kosztorys-sourced bilans with the transfers robocizna would price the VAT on work the bilans
+      // never counted, so the brutto figure would stop being the netto one plus its tax.
       balanceGross: grossBalance(
         balance,
         inv.vatRate,

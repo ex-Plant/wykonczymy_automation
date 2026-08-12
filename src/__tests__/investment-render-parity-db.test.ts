@@ -20,6 +20,9 @@ import {
 import { billedMaterials, grossBalance } from '@/lib/kosztorys/summary-economics'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
+import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
+import type { KosztorysClientTotalsMapT } from '@/lib/queries/balances'
 import type { InvestmentRefT, InvestmentStatusT } from '@/types/reference-data'
 
 // REAL-PATH parity: assemble each figure exactly the way each PAGE assembles it, over
@@ -27,6 +30,11 @@ import type { InvestmentRefT, InvestmentStatusT } from '@/types/reference-data'
 //   listing (queries/shape-investments.ts): the REAL row builder the list view renders
 //   detail  (page + financial-stats): sum of visible buildFinancialFields(...) / calculateMargin
 //     with settled re-summed from buildSettledFields — exactly as financial-stats.tsx does.
+//
+// Both sides read robocizna and rabat from the KOSZTORYS, because that is the plane the listing is
+// on. The v1 cards render the transactions plane by design — comparing the listing against those
+// would assert that two deliberately different readings agree, which is not what this guards. What
+// it guards is `shapeInvestments` drifting from the detail formulas (lessons.md:19).
 //
 // Gated like test:parity: skips with no DB env (portable), FAILS if env is set but DB
 // is unreachable. Run via `pnpm test:parity`.
@@ -88,6 +96,11 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
     }
 
     const listingMap = await sumAllInvestmentFinancials(payload)
+    const kosztorysTotals: KosztorysClientTotalsMapT = {}
+    for (const row of await selectKosztorysClientTotals(await getDb(payload))) {
+      const { investmentId, ...totals } = row
+      kosztorysTotals[String(investmentId)] = totals
+    }
 
     const mismatches: string[] = []
     for (const inv of investments) {
@@ -97,22 +110,29 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         sumCategoryByTypeSettled(payload, where),
       ])
       const breakdowns = deriveCategoryBreakdowns(catRows)
-      const detailFin = deriveFinancials(
-        byType,
-        breakdowns.categoryCosts,
-        breakdowns.settledCategoryCosts,
-        inv.materialsNetRate,
-        inv.settlementMode,
-        breakdowns.netCategoryCosts,
+      const detailFin = financialsOnReading(
+        deriveFinancials(
+          byType,
+          breakdowns.categoryCosts,
+          breakdowns.settledCategoryCosts,
+          inv.materialsNetRate,
+          inv.settlementMode,
+          breakdowns.netCategoryCosts,
+        ),
+        readingFromKosztorys(kosztorysTotals[String(inv.id)]),
       )
 
       // LISTING assembly — the REAL row builder, not a re-derivation of its formulas. A figure the
       // listing gets wrong ONLY inside `shapeInvestments` is exactly what slipped past this spec
       // before (lessons.md:19).
+      // Always through the row builder, even with no transfers at all: the listing renders such an
+      // investment too, and its kosztorys robocizna has to show up there like anywhere else.
       const listingFin = listingMap.get(inv.id)
-      const [listingRow] = listingFin
-        ? shapeInvestments([inv], { [String(inv.id)]: listingFin })
-        : []
+      const [listingRow] = shapeInvestments(
+        [inv],
+        listingFin ? { [String(inv.id)]: listingFin } : {},
+        kosztorysTotals,
+      )
 
       // DETAIL assembly (mirrors inwestycje/[id]/page.tsx + financial-stats.tsx)
       const fields = buildFinancialFields(detailFin, expenseCategories)

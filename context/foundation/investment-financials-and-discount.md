@@ -25,13 +25,16 @@ formulas — see the table below.
 ## Where robocizna and rabat come from (EX-555)
 
 The **formulas** below are unchanged; what moved is **where two of their inputs are read**.
-Since EX-555 robocizna and rabat come from the **kosztorys** for any investment that has
-kosztorys rows, and from the transactions plane only for one that does not. The switch is
-keyed on the **absence of rows**, never on a zero total — an investment whose kosztorys sums
-to zero is still on the kosztorys plane, and reading it as "no kosztorys" would silently
-re-bill the old `LABOR_COST` rows.
+Since EX-555 robocizna and rabat come from the **kosztorys** — and from nowhere else. There is
+no fallback: an investment with no kosztorys reads **0 zł robocizny and 0 zł rabatu**, however
+many `LABOR_COST` rows it carries. An empty kosztorys is an answer, not a question to forward
+to the transfers.
 
-- One rule, one place: `resolveSummaryReading` / `financialsOnReading`
+- **v1 vs v2 is the source choice, and it is the only one.** v1 renders the transactions plane;
+  v2 and the listing render the kosztorys. Legacy robocizna booked as transfers stays readable
+  on v1 until someone enters that work into the kosztorys — it is **not** backfilled, and no
+  figure silently swaps planes to cover for it.
+- One rule, one place: `readingFromKosztorys` / `financialsOnReading`
   (`src/lib/kosztorys/summary-reading.ts`), applied by the listing (`shape-investments.ts`),
   the v2 Podsumowanie and the v2 Marża tab.
 - The kosztorys pair is folded in Postgres for every investment at once
@@ -39,8 +42,8 @@ re-bill the old `LABOR_COST` rows.
   DB-backed parity spec.
 - `LABOR_COST` / `RABAT` are **no longer offered by the transfer dialog** — nothing new can be
   booked on the plane we stopped reading. Existing rows keep working everywhere else.
-- **v1 deliberately stays transaction-sourced** and therefore disagrees with the listing; it is
-  legacy kept for side-by-side comparison.
+- The **reconciliation** on the investment page screams for an investment with booked transfers
+  and an empty kosztorys. That is correct: it is the list of work still to be entered.
 - Every other figure here — wpłaty, materiały, wypłaty, korekty, strata — is a cash movement
   the kosztorys knows nothing about and stays transaction-sourced.
 

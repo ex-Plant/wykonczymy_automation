@@ -11,7 +11,7 @@ import {
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
-import { resolveSummaryReading } from '@/lib/kosztorys/summary-reading'
+import { readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import type { ExpenseCategoryRefT } from '@/types/reference-data'
@@ -58,9 +58,8 @@ export async function InvestmentSummaryPanel({
   )
 
   const rows = treeToRows(tree)
-  const clientTotals =
-    rows.length === 0 ? null : kosztorysClientTotals(rows, tree.stages, tree.globalDiscount)
-  const reading = resolveSummaryReading(clientTotals, financials)
+  const clientTotals = kosztorysClientTotals(rows, tree.stages, tree.globalDiscount)
+  const reading = readingFromKosztorys(clientTotals)
 
   const wplatyNet = sumDepositAmounts(depositTransactions)
   // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
@@ -83,11 +82,11 @@ export async function InvestmentSummaryPanel({
       wplatyNet={wplatyNet}
       financials={canSeeMargin ? financials : undefined}
       {...reading}
-      // Nothing to reconcile without a kosztorys: feeding the transaction figures to both sides keeps
-      // the verdict silent rather than screaming a gap against an empty kosztorys.
+      // An empty kosztorys against booked transfers is a REAL gap, not noise: it is legacy robocizna
+      // nobody has entered here yet. It screams until someone does.
       reconciliation={buildKosztorysReconciliation({
-        sumaPracNet: clientTotals?.sumaPracNet ?? financials.totalLaborCosts,
-        rabatClientNet: clientTotals?.rabatClientNet ?? financials.totalRabat,
+        sumaPracNet: clientTotals.sumaPracNet,
+        rabatClientNet: clientTotals.rabatClientNet,
         laborCostsNetFromTransactions: financials.totalLaborCosts,
         investmentRabat: financials.totalRabat,
       })}

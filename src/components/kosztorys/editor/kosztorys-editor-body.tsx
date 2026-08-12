@@ -81,7 +81,7 @@ export function KosztorysEditorBody({
     totalNet,
     sumaPracNet,
     rabatClientNet,
-    laborCostsNetFromKosztorys,
+    laborCostsNet,
     subcontractorDue,
     sort,
     search,
@@ -261,7 +261,7 @@ export function KosztorysEditorBody({
             workers={workers}
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
-            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+            laborCostsNet={laborCostsNet}
             sectionSubtotals={progressSubtotals}
             rabatAmount={rabatClientNet}
             reconciliation={reconciliation}

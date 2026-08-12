@@ -46,9 +46,13 @@ liście w cztery kolumny: Koszty inwestora, Bilans netto, Bilans brutto, Marża.
    - **Nie B** (formuła w SQL): `sectionSubtotalsForView` to nie gołe `SUM` — `rowTotalQtyDone` po
      etapach filtrowanych widokiem, `netForQtyForView`, `rowDiscountForView`, zaokrąglenia do
      groszy. Druga kopia = rozjazd „two-planes-both-green" z `lessons.md`.
-5. **Fallback jak w panelu:** brak wierszy kosztorysu → transakcje. 84 z 96 inwestycji nie ma dziś
-   kosztorysu i nie mogą spaść do zera.
-6. **v1 idzie na legacy** — nie inwestujemy w utrzymanie starej ścieżki odczytu poza fallbackiem.
+5. ~~**Fallback jak w panelu:** brak wierszy kosztorysu → transakcje.~~ **ODWOŁANE przez
+   właściciela 2026-08-12**, po zobaczeniu inwestycji 31 (pusty kosztorys, a v2 pokazywało
+   235 911 zł z transakcji). Obowiązuje: **jest jedno właściwe źródło i żadna liczba go nie
+   deklaruje**. Kosztorys pusty → **0 zł**. 84 z 96 inwestycji faktycznie spadają na liście do
+   zera i tak ma być — ta luka to lista roboty do wprowadzenia, nie defekt. **Zero backfillu.**
+6. **v1 to wybór źródła, nie legacy-do-wygaszenia.** v1 czyta płaszczyznę transakcji i po to
+   istnieje — tam widać starą robociznę, dopóki ktoś nie wprowadzi jej do kosztorysu.
 
 ### Decyzje po researchu (2026-08-12)
 

@@ -36,7 +36,7 @@ type PropsT = {
   settlementMode: SettlementModeT
   onSettlementModeChange?: (mode: SettlementModeT) => void
   isSavingSettings?: boolean
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   doZaplaty: MoneyPairT
   materials: MaterialsT
   wplatyNet: number
@@ -66,7 +66,7 @@ export function SummaryOverviewTab({
   settlementMode,
   onSettlementModeChange,
   isSavingSettings = false,
-  laborCostsNetFromKosztorys,
+  laborCostsNet,
   doZaplaty,
   materials,
   wplatyNet,
@@ -89,7 +89,7 @@ export function SummaryOverviewTab({
   const mixed =
     settlementMode === 'MIXED'
       ? computeMixedSettlement(
-          laborCostsNetFromKosztorys,
+          laborCostsNet,
           materials,
           vatRate,
           paidNet,
@@ -132,7 +132,7 @@ export function SummaryOverviewTab({
         <div className="flex flex-col gap-y-4">
           <SettlementSummary
             investmentId={investmentId}
-            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+            laborCostsNet={laborCostsNet}
             materialsBilled={materialsBilled}
             settlementGroups={settlementGroups}
             rabatAmount={rabatAmount}
@@ -145,7 +145,7 @@ export function SummaryOverviewTab({
         {showPie && (
           <SlicePie
             slices={costTotalsPieSlices(
-              sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
+              sumaPracPreRabat(laborCostsNet, rabatAmount),
               materialsBilled,
             )}
             formatValue={formatNet}

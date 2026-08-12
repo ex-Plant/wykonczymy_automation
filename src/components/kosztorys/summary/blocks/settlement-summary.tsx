@@ -32,7 +32,7 @@ const SETTLEMENT_COLS = `${SUMMARY_LABEL_COL} calc(${SUMMARY_VALUE_COL} * 2 + 1p
 type PropsT = {
   investmentId: number
   // Robocizna wartość netto (po rabacie) — client-side, reacts to unsaved edits.
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   // What the investor is billed for materiały — one figure on the plane they settle, built upstream
   // by `billedMaterials`. It enters both money columns unchanged, so the table renders it as a single
   // merged cell rather than a netto/brutto pair.
@@ -63,7 +63,7 @@ type PropsT = {
 // settlement tor, where wpłaty pay that Łącznie down to what is left to pay.
 export function SettlementSummary({
   investmentId,
-  laborCostsNetFromKosztorys,
+  laborCostsNet,
   materialsBilled,
   settlementGroups,
   rabatAmount,
@@ -81,12 +81,12 @@ export function SettlementSummary({
   const showRabat =
     rabatAmount > 0 ||
     (reconVisible && (reconciliation.rabat.actual > 0 || reconciliation.rabat.mismatch))
-  const sumaPrac = moneyPair(sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount), vatRate)
+  const sumaPrac = moneyPair(sumaPracPreRabat(laborCostsNet, rabatAmount), vatRate)
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
   // figure. It renders negative: it is a deduction step, and a positive figure in a subtracted row
   // reads as if it were being added.
   const rabat = moneyPair(-rabatAmount, vatRate)
-  const combined = combinedPair(laborCostsNetFromKosztorys, materialsBilled, vatRate)
+  const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
 
   const moneyCols = summaryMoneyCols(MONEY_AXIS)
 

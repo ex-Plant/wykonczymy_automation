@@ -317,22 +317,24 @@ max, not the sum.
 **Intent**: The existing file has no case with a kosztorys at all (`:47-51`), and `:169-196` pins
 `balanceGross` on the old VAT base. Add cases that fail before the seam lands: an investment with
 kosztorys totals differing from its transaction figures must produce bilans, bilans brutto, koszty and
-marża from the kosztorys pair; an investment with no totals must produce byte-identical output to
-today.
+marża from the kosztorys pair; an investment with **no** kosztorys must produce **zero** robocizny and
+rabatu, however many `LABOR_COST` rows it carries (decyzja 5, odwołany fallback).
 
-**Contract**: assert both branches in the same file. The fallback case is the regression guard for the
-84-of-96 investments that have no kosztorys and must not move.
+**Contract**: assert both readings in the same file, including that an absent kosztorys is
+indistinguishable from one summing to zero.
 
-#### 5. Parity audit header
+#### 5. Parity audit script — usunięty
 
-**File**: `src/scripts/audit-investment-parity.ts`
+**File**: `src/scripts/audit-investment-parity.ts` (deleted)
 
-**Intent**: Its header (`:3-14`) claims seven figures computed by two independent paths that must
-always agree. Under seam B that becomes false — the paths are _supposed_ to differ for
-kosztorys-bearing investments.
+**Intent**: Its whole premise was that the listing and the detail page compute the same seven figures
+by two independent paths. Po odwołaniu fallbacku listing czyta robociznę i rabat z kosztorysu, więc
+skrypt audytował płaszczyznę, której żadna powierzchnia listingu nie renderuje — jedyny sposób, by
+dalej „się zgadzał", to karmić obie strony transakcjami, czyli porównywać go z niczym.
 
-**Contract**: restate the invariant as conditional on the reading, and make the script skip or
-separately report investments on the kosztorys plane rather than flagging them as drift.
+**Contract**: parytet listing↔szczegóły pilnuje teraz `src/__tests__/investment-render-parity-db.test.ts`
+(`pnpm test:parity`), na płaszczyźnie kosztorysu i po tym samym `shapeInvestments`, który renderuje
+strona.
 
 ### Success Criteria:
 

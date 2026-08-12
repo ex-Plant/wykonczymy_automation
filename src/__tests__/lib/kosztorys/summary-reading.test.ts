@@ -3,7 +3,6 @@ import {
   financialsOnReading,
   readingFromKosztorys,
   readingFromTransactions,
-  resolveSummaryReading,
 } from '@/lib/kosztorys/summary-reading'
 import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-totals'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
@@ -25,11 +24,11 @@ const clientTotals = {
 describe('summary reading projection', () => {
   it('lands both readings on the same POST-rabat axis', () => {
     expect(readingFromTransactions(financials)).toEqual({
-      laborCostsNetFromKosztorys: 92_000,
+      laborCostsNet: 92_000,
       rabatAmount: 8_000,
     })
     expect(readingFromKosztorys(clientTotals)).toEqual({
-      laborCostsNetFromKosztorys: 85_000,
+      laborCostsNet: 85_000,
       rabatAmount: 5_000,
     })
   })
@@ -38,44 +37,30 @@ describe('summary reading projection', () => {
     const v1 = readingFromTransactions(financials)
     const v2 = readingFromKosztorys(clientTotals)
 
-    expect(v1.laborCostsNetFromKosztorys + v1.rabatAmount).toBe(financials.totalLaborCosts)
-    expect(v2.laborCostsNetFromKosztorys + v2.rabatAmount).toBe(clientTotals.sumaPracNet)
+    expect(v1.laborCostsNet + v1.rabatAmount).toBe(financials.totalLaborCosts)
+    expect(v2.laborCostsNet + v2.rabatAmount).toBe(clientTotals.sumaPracNet)
   })
 
   it('reports no rabat when there is none to report', () => {
     expect(
       readingFromKosztorys({ sumaPracNet: 90_000, rabatClientNet: 0 } as KosztorysClientTotalsT),
-    ).toEqual({ laborCostsNetFromKosztorys: 90_000, rabatAmount: 0 })
+    ).toEqual({ laborCostsNet: 90_000, rabatAmount: 0 })
   })
 })
 
-// The choice between the two readings, as opposed to their arithmetic above. Two surfaces make it —
-// the Podsumowanie panel and the investments listing — and the point of extracting it is that they
-// cannot make it differently.
-describe('resolveSummaryReading', () => {
-  it('reads the kosztorys when totals are present', () => {
-    expect(resolveSummaryReading(clientTotals, financials)).toEqual(
-      readingFromKosztorys(clientTotals),
-    )
+// No kosztorys is an ANSWER, not a question to forward to the transfers. The two surfaces on this
+// reading — the Podsumowanie panel and the investments listing — must both report zero, however much
+// robocizna the investment still carries as legacy LABOR_COST rows. v1 is where those are read.
+describe('readingFromKosztorys without a kosztorys', () => {
+  it('reads zero rather than the transactions plane', () => {
+    expect(readingFromKosztorys(null)).toEqual({ laborCostsNet: 0, rabatAmount: 0 })
+    expect(readingFromKosztorys(undefined)).toEqual({ laborCostsNet: 0, rabatAmount: 0 })
   })
 
-  it('falls back to transactions when there is no kosztorys', () => {
-    expect(resolveSummaryReading(null, financials)).toEqual(readingFromTransactions(financials))
-    expect(resolveSummaryReading(undefined, financials)).toEqual(
-      readingFromTransactions(financials),
-    )
-  })
-
-  it('stays on the kosztorys plane when the kosztorys sums to zero', () => {
-    // The trap this guards: a truthiness test on the figures rather than on their presence would
-    // send an investment with a kosztorys but nothing executed yet back to the transactions plane,
-    // where it would report the legacy LABOR_COST rows as its robocizna.
+  it('cannot be told apart from a kosztorys that sums to zero', () => {
     const nothingExecuted = { sumaPracNet: 0, rabatClientNet: 0 } as KosztorysClientTotalsT
 
-    expect(resolveSummaryReading(nothingExecuted, financials)).toEqual({
-      laborCostsNetFromKosztorys: 0,
-      rabatAmount: 0,
-    })
+    expect(readingFromKosztorys(nothingExecuted)).toEqual(readingFromKosztorys(null))
   })
 })
 

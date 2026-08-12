@@ -6,49 +6,37 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
  * wypłaty and strata are cash movements the kosztorys knows nothing about, so they stay
  * transaction-sourced in both readings and never enter here.
  *
- * `laborCostsNetFromKosztorys` is POST-rabat and `rabatAmount` rides alongside it — the panel adds
- * them back where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that
- * same axis or the „Struktura kosztów" pie and the waterfall disagree between them.
+ * `laborCostsNet` is POST-rabat and `rabatAmount` rides alongside it — the panel adds them back
+ * where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that same
+ * axis or the „Struktura kosztów" pie and the waterfall disagree between them.
  */
 export type SummaryReadingT = {
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   rabatAmount: number
 }
 
 /** v1 — Σ LABOR_COST (pre-rabat, like `sumaPracNet`) less Σ RABAT. */
 export function readingFromTransactions(financials: InvestmentFinancialsT): SummaryReadingT {
   return {
-    laborCostsNetFromKosztorys: financials.totalLaborCosts - financials.totalRabat,
+    laborCostsNet: financials.totalLaborCosts - financials.totalRabat,
     rabatAmount: financials.totalRabat,
   }
 }
 
-/** v2 — the kosztorys client-view nets, the same pair the reconciliation compares against v1. */
-export function readingFromKosztorys({
-  sumaPracNet,
-  rabatClientNet,
-}: KosztorysClientTotalsT): SummaryReadingT {
-  return {
-    laborCostsNetFromKosztorys: sumaPracNet - rabatClientNet,
-    rabatAmount: rabatClientNet,
-  }
-}
-
 /**
- * Which reading an investment is on. Two surfaces answer this — the Podsumowanie panel, which derives
- * the totals from the tree it already holds, and the investments listing, which reads them from the
- * SQL aggregate — and they must never answer it differently.
- *
- * ABSENCE of totals selects the transaction reading, not a zero total. An investment whose kosztorys
- * sums to zero (nothing executed yet) is still on the kosztorys plane and must read 0 zł robocizny
- * from it; only an investment with no kosztorys at all falls back. That is why
- * `selectKosztorysClientTotals` omits itemless investments rather than returning zero rows.
+ * v2 and the investments listing — the kosztorys is the entire source. No kosztorys means zero
+ * robocizna and zero rabat; it never falls back to the transfers, because a figure that silently
+ * swaps its source is a figure nobody can read. Legacy robocizna still booked as transfers is read
+ * on **v1**, which exists for exactly that, until it is entered into the kosztorys.
  */
-export function resolveSummaryReading(
+export function readingFromKosztorys(
   clientTotals: KosztorysClientTotalsT | null | undefined,
-  financials: InvestmentFinancialsT,
 ): SummaryReadingT {
-  return clientTotals ? readingFromKosztorys(clientTotals) : readingFromTransactions(financials)
+  const rabatAmount = clientTotals?.rabatClientNet ?? 0
+  return {
+    laborCostsNet: (clientTotals?.sumaPracNet ?? 0) - rabatAmount,
+    rabatAmount,
+  }
 }
 
 /**
@@ -65,7 +53,7 @@ export function financialsOnReading(
 ): InvestmentFinancialsT {
   return {
     ...financials,
-    totalLaborCosts: reading.laborCostsNetFromKosztorys + reading.rabatAmount,
+    totalLaborCosts: reading.laborCostsNet + reading.rabatAmount,
     totalRabat: reading.rabatAmount,
   }
 }

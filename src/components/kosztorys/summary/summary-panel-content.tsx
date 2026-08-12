@@ -54,7 +54,7 @@ type PropsT = {
   // buckets every view's settlement reads, so this one is required on every host.
   depositTransactions: DepositTransactionRowT[]
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   // Materiały brutto — server sum of the investment's unsettled brutto-billed transactions.
   materialsGrossBase: number
   // Σ netAmount of the netto-billed wydatki — frozen: the netto pricing toggle must not touch it.
@@ -129,7 +129,7 @@ export function SummaryPanelContent({
   investmentId,
   investmentName,
   depositTransactions,
-  laborCostsNetFromKosztorys,
+  laborCostsNet,
   materialsGrossBase,
   materialsNetBilled,
   materialyBreakdown,
@@ -210,7 +210,7 @@ export function SummaryPanelContent({
   const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
-    laborCostsNetFromKosztorys,
+    laborCostsNet,
     wplatyNet,
     materials,
     vatRate,
@@ -275,7 +275,7 @@ export function SummaryPanelContent({
                 // that supplied the writer may edit it from inside the tab.
                 onSettlementModeChange={preview ? undefined : onSettlementModeChange}
                 isSavingSettings={isSavingSettings}
-                laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+                laborCostsNet={laborCostsNet}
                 doZaplaty={doZaplaty}
                 materials={materials}
                 wplatyNet={wplatyNet}
@@ -326,7 +326,7 @@ export function SummaryPanelContent({
             {view === 'margin' && financials && (
               <SummaryMarginTab
                 financials={financials}
-                laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+                laborCostsNet={laborCostsNet}
                 rabatAmount={rabatAmount}
               />
             )}

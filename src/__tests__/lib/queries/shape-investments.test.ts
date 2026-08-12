@@ -34,7 +34,7 @@ describe('shapeInvestments', () => {
         materialsGrossBase: 1000,
         materialsNetBilled: 0,
         totalIncome: 9547,
-        totalLaborCosts: 3900,
+        totalLaborCosts: 0,
         totalPayouts: 1000,
         totalRabat: 0,
         totalLoss: 0,
@@ -44,7 +44,9 @@ describe('shapeInvestments', () => {
         netCategoryCosts: [],
       },
     }
-    const [row] = shapeInvestments([baseInv], financials)
+    const [row] = shapeInvestments([baseInv], financials, {
+      '5': { doneNet: 3900, sumaPracNet: 3900, rabatClientNet: 0, globalRabatNet: 0 },
+    })
     expect(row.totalCosts).toBe(4900) // 1000 + 3900
     expect(row.balance).toBe(4647) // 9547 - (1000 + 3900)
     expect(row.margin).toBe(2900) // 3900 - 1000
@@ -157,7 +159,7 @@ describe('shapeInvestments', () => {
         materialsGrossBase: 1000,
         materialsNetBilled: 0,
         totalIncome: 9547,
-        totalLaborCosts: 3900,
+        totalLaborCosts: 0,
         totalPayouts: 0,
         totalRabat: 0,
         totalLoss: 0,
@@ -166,7 +168,9 @@ describe('shapeInvestments', () => {
         settledCategoryCosts: [],
       },
     }
-    const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.23 }], financials)
+    const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.23 }], financials, {
+      '5': { doneNet: 3900, sumaPracNet: 3900, rabatClientNet: 0, globalRabatNet: 0 },
+    })
     expect(row.totalSettled).toBe(250)
     // VAT is another charge on the client, so it DEDUCTS from a balance where negative = owed.
     // The 1000 materiały are not grossed.
@@ -174,46 +178,63 @@ describe('shapeInvestments', () => {
   })
 
   it('grosses the prace net of the rabat, not the raw labour', () => {
-    const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.05 }], {
-      '5': {
-        categoryCosts: [],
-        netCategoryCosts: [],
-        totalMaterialCosts: 0,
-        materialsGrossBase: 0,
-        materialsNetBilled: 0,
-        totalIncome: 0,
-        totalLaborCosts: 270951,
-        totalPayouts: 0,
-        totalRabat: 100000,
-        totalLoss: 0,
-        totalSettled: 0,
-        materialsNetDiscount: 0,
-        settledCategoryCosts: [],
+    const [row] = shapeInvestments(
+      [{ ...baseInv, vatRate: 0.05 }],
+      {
+        '5': {
+          categoryCosts: [],
+          netCategoryCosts: [],
+          totalMaterialCosts: 0,
+          materialsGrossBase: 0,
+          materialsNetBilled: 0,
+          totalIncome: 0,
+          totalLaborCosts: 0,
+          totalPayouts: 0,
+          totalRabat: 0,
+          totalLoss: 0,
+          totalSettled: 0,
+          materialsNetDiscount: 0,
+          settledCategoryCosts: [],
+        },
       },
-    })
+      {
+        '5': {
+          doneNet: 170951,
+          sumaPracNet: 270951,
+          rabatClientNet: 100000,
+          globalRabatNet: 100000,
+        },
+      },
+    )
     // The client never pays VAT on money they were discounted: 5% × (270951 − 100000).
     expect(row.balanceGross).toBeCloseTo(row.balance - 8547.55, 8)
   })
 
   it('falls back to the default VAT when the investment carries none', () => {
     // The read applies DEFAULT_VAT to a null vat_rate, so a row can never gross to NaN here.
-    const [row] = shapeInvestments([baseInv], {
-      '5': {
-        categoryCosts: [],
-        netCategoryCosts: [],
-        totalMaterialCosts: 0,
-        materialsGrossBase: 0,
-        materialsNetBilled: 0,
-        totalIncome: 0,
-        totalLaborCosts: 1000,
-        totalPayouts: 0,
-        totalRabat: 0,
-        totalLoss: 0,
-        totalSettled: 0,
-        materialsNetDiscount: 0,
-        settledCategoryCosts: [],
+    const [row] = shapeInvestments(
+      [baseInv],
+      {
+        '5': {
+          categoryCosts: [],
+          netCategoryCosts: [],
+          totalMaterialCosts: 0,
+          materialsGrossBase: 0,
+          materialsNetBilled: 0,
+          totalIncome: 0,
+          totalLaborCosts: 0,
+          totalPayouts: 0,
+          totalRabat: 0,
+          totalLoss: 0,
+          totalSettled: 0,
+          materialsNetDiscount: 0,
+          settledCategoryCosts: [],
+        },
       },
-    })
+      {
+        '5': { doneNet: 1000, sumaPracNet: 1000, rabatClientNet: 0, globalRabatNet: 0 },
+      },
+    )
     expect(row.balanceGross).toBeCloseTo(row.balance - DEFAULT_VAT * 1000, 10)
   })
 
@@ -252,10 +273,10 @@ describe('shapeInvestments', () => {
   })
 })
 
-// The read-switch (EX-555): robocizna and rabat come from the kosztorys wherever there is one. The
-// figures below are chosen so the two planes DISAGREE — a switch that silently kept reading
-// transactions would still produce plausible numbers, just the old ones.
-describe('shapeInvestments read-switch', () => {
+// EX-555: robocizna and rabat come from the kosztorys, and from nowhere else. The figures below are
+// chosen so the two planes DISAGREE — a listing that silently kept reading transactions would still
+// produce plausible numbers, just the old ones.
+describe('shapeInvestments robocizna source', () => {
   const transactionFinancials: InvestmentFinancialsMapT = {
     '5': {
       categoryCosts: [],
@@ -299,27 +320,26 @@ describe('shapeInvestments read-switch', () => {
     expect(row.balanceGross).toBeCloseTo(row.balance - 0.23 * 4500, 10)
   })
 
-  it('leaves an investment with no kosztorys byte-identical to the pre-switch output', () => {
-    // The regression guard for the 84 of 96 investments that have no kosztorys and must not move.
-    const [before] = shapeInvestments([baseInv], transactionFinancials)
-    const [after] = shapeInvestments([baseInv], transactionFinancials, {})
-    const [absentFromMap] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
+  it('reads zero robocizny for an investment with no kosztorys', () => {
+    // 3900 zł of legacy LABOR_COST sits on this investment and must NOT appear here — v1 is the
+    // surface that reads the transactions plane, and someone re-enters that work into the kosztorys.
+    const [missingMap] = shapeInvestments([baseInv], transactionFinancials)
+    const [emptyMap] = shapeInvestments([baseInv], transactionFinancials, {})
 
-    expect(after).toEqual(before)
-    expect(after.totalLaborCosts).toBe(3900)
+    expect(emptyMap).toEqual(missingMap)
+    expect(emptyMap.totalLaborCosts).toBe(0)
+    expect(emptyMap.margin).toBe(-1000) // wypłaty with no robocizna to cover them
     // Same map, different investment: the lookup must key on the id, not merely on the map existing.
-    expect(shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals)[0].totalLaborCosts).toBe(0)
-    expect(absentFromMap.totalLaborCosts).toBe(5000)
+    expect(shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals)[0].totalLaborCosts).toBe(
+      0,
+    )
   })
 
-  it('reads a zero-progress kosztorys as zero robocizny, not as a fallback', () => {
-    // An investment whose kosztorys exists but has nothing executed yet is on the kosztorys plane.
-    // Falling back here would surface its legacy LABOR_COST rows as if they were current.
-    const [row] = shapeInvestments([baseInv], transactionFinancials, {
+  it('cannot tell an absent kosztorys from one that sums to zero', () => {
+    const [zeroProgress] = shapeInvestments([baseInv], transactionFinancials, {
       '5': { doneNet: 0, sumaPracNet: 0, rabatClientNet: 0, globalRabatNet: 0 },
     })
 
-    expect(row.totalLaborCosts).toBe(0)
-    expect(row.margin).toBe(-1000) // same wypłaty, no robocizna to cover them
+    expect(zeroProgress).toEqual(shapeInvestments([baseInv], transactionFinancials, {})[0])
   })
 })

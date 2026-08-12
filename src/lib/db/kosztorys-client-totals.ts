@@ -29,9 +29,8 @@ export type KosztorysClientTotalsRowT = KosztorysClientTotalsT & { investmentId:
 const num = (v: unknown): number => Number(v ?? 0)
 
 /**
- * Investments with at least one kosztorys item, one row each. An investment with no items is ABSENT
- * rather than present with zeros: absence is what the read-switch's fallback keys on, so a zero row
- * would silently claim „kosztorys says the robocizna is 0 zł".
+ * Investments with at least one kosztorys item, one row each. An investment with no items is simply
+ * absent, which the reading turns into zeros — that is the answer: no kosztorys, no robocizna.
  */
 export async function selectKosztorysClientTotals(
   db: DbExecutorT,
