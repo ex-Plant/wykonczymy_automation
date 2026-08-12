@@ -8,29 +8,8 @@ import { LinkSheetToInvestmentDialog } from '@/components/dialogs/link-sheet-to-
 import { LinkedSheetActions } from '@/components/sheets/linked-sheet-actions'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
 import { SheetSetupDialog } from '@/components/dialogs/sheet-setup-dialog'
-import { SHEET_STATUS_LABELS, type SheetStatusT } from '@/lib/constants/sheets'
-
-// A kosztorys is a real Google Sheet registered in the app — either linked to an
-// investment or standing alone. This is a distinct entity from an investment
-// that simply has no kosztorys yet (see InvestmentWithoutSheetRowT), which is why
-// the two now render as separate tables instead of one status-discriminated list.
-export type KosztorysRowT = {
-  id: string
-  status: SheetStatusT
-  name: string
-  sheetId: number
-  sheetName: string
-  googleSheetId: string
-  investmentId?: number
-  investmentName?: string
-}
-
-// An investment with no kosztorys yet — the target for "Dodaj kosztorys".
-export type InvestmentWithoutSheetRowT = {
-  id: string
-  investmentId: number
-  name: string
-}
+import { SHEET_STATUS_LABELS } from '@/lib/constants/sheets'
+import type { InvestmentWithoutSheetRowT, KosztorysRowT } from '@/types/table-rows'
 
 type InvestmentOptionT = { id: number; name: string }
 

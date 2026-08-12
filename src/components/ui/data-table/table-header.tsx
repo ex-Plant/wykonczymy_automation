@@ -15,6 +15,7 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
             const sorted = header.column.getIsSorted()
             const align = header.column.columnDef.meta?.align
             const tooltip = header.column.columnDef.meta?.tooltip
+            const minWidth = header.column.columnDef.meta?.minWidth
             const rawHeader = header.column.columnDef.header
             const label = typeof rawHeader === 'string' ? rawHeader : undefined
 
@@ -26,6 +27,7 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
                   align === 'right' && 'text-right',
                   align === 'center' && 'text-center',
                   canSort && 'cursor-pointer select-none',
+                  minWidth,
                 )}
                 onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
               >

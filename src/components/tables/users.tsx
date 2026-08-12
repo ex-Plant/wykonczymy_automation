@@ -1,20 +1,11 @@
 'use client'
 
 import { createColumnHelper } from '@tanstack/react-table'
-import { ROLE_LABELS, type RoleT } from '@/lib/auth/roles'
+import { ROLE_LABELS } from '@/lib/auth/roles'
+import type { UserRowT } from '@/types/table-rows'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { RoleBadge } from '@/components/ui/badge'
 import { ActiveToggleBadge } from '@/components/ui/active-toggle-badge'
-
-export type UserRowT = {
-  id: number
-  name: string
-  role: RoleT
-  email: string
-  active: boolean
-  defaultCashRegisterName?: string
-  balance: number
-}
 
 const col = createColumnHelper<UserRowT>()
 

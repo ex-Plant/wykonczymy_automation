@@ -9,7 +9,7 @@ import {
 } from '@/lib/kosztorys/summary-economics'
 import { ZERO_FINANCIALS } from '@/types/investment-financials'
 import type { InvestmentRefT } from '@/types/reference-data'
-import type { InvestmentRowT } from '@/components/tables/investments'
+import type { InvestmentRowT } from '@/types/table-rows'
 
 /** The listing row assembly, kept apart from the fetches in `queries/investments.ts` so the parity
  *  audit can run the REAL row builder from a plain node script — importing it through the query
