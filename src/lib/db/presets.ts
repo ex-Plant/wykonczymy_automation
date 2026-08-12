@@ -79,14 +79,14 @@ export async function upsertPresetByName(
 export async function getPreset(
   db: DbExecutorT,
   presetId: number,
-): Promise<{ payload: SnapshotPayloadT } | null> {
+): Promise<{ name: string; payload: SnapshotPayloadT } | null> {
   const res = await db.execute(sql`
-    SELECT schema_version, payload FROM kosztorys_presets WHERE id = ${presetId}
+    SELECT name, schema_version, payload FROM kosztorys_presets WHERE id = ${presetId}
   `)
   const row = res.rows[0]
   if (!row) return null
   assertReadableSchemaVersion(Number(row.schema_version), 'preset')
-  return { payload: row.payload as SnapshotPayloadT }
+  return { name: String(row.name), payload: row.payload as SnapshotPayloadT }
 }
 
 // Flatten every preset's sections into pickable metas. Counted in SQL on purpose (EX-622): the

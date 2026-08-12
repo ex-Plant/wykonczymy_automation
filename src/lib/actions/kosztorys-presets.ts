@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { protectedAction, validateAction } from '@/lib/actions/run-action'
 import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
-import { insertSnapshot } from '@/lib/db/snapshots'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import {
   getPreset,
@@ -19,8 +18,7 @@ import {
   type AppendedSliceT,
   type SectionSliceT,
 } from '@/lib/kosztorys/append-preset-sections'
-import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
-import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
+import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
 import { serializeKosztorysAsPreset } from '@/lib/kosztorys/serialize-preset'
 import type { ActionResultT } from '@/types/action'
 
@@ -142,10 +140,9 @@ const reloadSchema = z.object({
   presetId: z.number().int().positive(),
 })
 
-// `manual`, not `auto`, is what makes the reload genuinely undoable: an auto snapshot is ambient
-// history — capped at the newest 50 and swept after 7 days. A labelled manual row is exempt from both
-// and shows up as a named targetable entry in „Wczytaj".
-const PRE_RELOAD_LABEL = 'Przed wczytaniem szablonu'
+// The szablon's name rides in the label because the restore points are otherwise indistinguishable:
+// swap three szablony and „Wczytaj" lists three identical rows, none of which says what it precedes.
+const preReloadLabel = (presetName: string) => `Przed wczytaniem: ${presetName}`
 
 export type ReloadFromPresetResultT = { sections: number; items: number }
 
@@ -154,14 +151,8 @@ export type ReloadFromPresetResultT = { sections: number; items: number }
 // exists, so picking the wrong one at creation stops being unrecoverable.
 //
 // Takes only ids: the payload is resolved server-side, so a forged tree can't decide what gets
-// written. Then, in ONE transaction, a forced pre-reload snapshot (captured on the transaction handle
-// and BEFORE the wipe — outside it, a rollback would leave the snapshot behind; after the wipe it
-// would snapshot nothing) and the replacement itself. Any throw rolls both back.
-//
-// `restoreKosztorys` rather than `applyPreset`: the latter is insert-only by contract and assumes an
-// empty target. Handing the restore path `settings` from the CURRENT tree keeps its settings
-// write-back a no-op, which is how the preset's own VAT/coeffs stay ignored (a preset must not carry
-// one job's pricing config onto another) without a second wipe-and-insert in the codebase.
+// written. `restoreKosztorys` (via replaceTreeWithSnapshot) rather than `applyPreset`: the latter is
+// insert-only by contract and assumes an empty target.
 export async function reloadFromPresetAction(
   investmentId: number,
   presetId: number,
@@ -175,25 +166,13 @@ export async function reloadFromPresetAction(
       const preset = await getPreset(await getDb(payload), parsed.data.presetId)
       if (!preset) return { success: false, error: 'Nie znaleziono szablonu' }
 
-      await withPayloadTransaction(
-        payload,
-        async (req) => {
-          const txDb = await getDb(payload, req)
-          const current = await serializeKosztorys(parsed.data.investmentId)
-          await insertSnapshot(txDb, {
-            investmentId: parsed.data.investmentId,
-            kind: 'manual',
-            label: PRE_RELOAD_LABEL,
-            takenBy: user.id,
-            payload: current,
-          })
-          return restoreKosztorys(payload, req, parsed.data.investmentId, {
-            ...preset.payload,
-            settings: current.settings,
-          })
-        },
-        { skipRevalidation: true },
-      )
+      await replaceTreeWithSnapshot(payload, {
+        investmentId: parsed.data.investmentId,
+        label: preReloadLabel(preset.name),
+        takenBy: user.id,
+        tree: preset.payload,
+        clearGlobalDiscount: true,
+      })
 
       return {
         success: true,

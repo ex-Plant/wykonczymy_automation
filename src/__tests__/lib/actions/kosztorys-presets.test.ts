@@ -8,6 +8,7 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // „Wczytaj szablon" replaces a whole rozpiska behind an automatic snapshot, so the only assertions
 // worth making are against PERSISTED state — a success result would hide a failed write, and the
 // „odwracalne" guarantee is real only if the pre-reload snapshot actually restores.
+
 const authState = vi.hoisted(() => ({ userId: 0 }))
 
 vi.mock('server-only', () => ({}))
@@ -24,7 +25,13 @@ const { reloadFromPresetAction } = await import('@/lib/actions/kosztorys-presets
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
 const PRESET_NAME = 'ex560-reload-fixture'
+// A second szablon whose payload violates the (investment_id, ordinal) unique index — the cheapest
+// way to make `restoreKosztorys` throw AFTER the wipe and the snapshot insert.
+const BROKEN_PRESET_NAME = 'ex560-reload-fixture-broken'
+const PRE_RELOAD_LABEL = `Przed wczytaniem: ${PRESET_NAME}`
 const INVESTMENT_VAT = 8
+const INVESTMENT_COEFFS = { wToolsCoeff: 1.4, ownToolsCoeff: 1.7 }
+const INVESTMENT_DISCOUNT = 5000
 // Deliberately absurd and different from the investment's own: a preset must never carry one job's
 // pricing config onto another, so these values landing on the target would be the bug.
 const PRESET_SETTINGS = { wToolsCoeff: 0.11, ownToolsCoeff: 0.22, vatRate: 99 }
@@ -58,11 +65,22 @@ function presetPayload(): SnapshotPayloadT {
   }
 }
 
+function brokenPresetPayload(): SnapshotPayloadT {
+  return {
+    ...presetPayload(),
+    stages: [
+      { id: 1, ordinal: 1, label: 'Etap 1', plane: null, workerId: null },
+      { id: 2, ordinal: 1, label: 'Etap 1 znowu', plane: null, workerId: null },
+    ],
+  }
+}
+
 describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', () => {
   let payload: Payload
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
   let presetId: number
+  let brokenPresetId: number
 
   beforeAll(async () => {
     const { getPayload } = await import('payload')
@@ -81,6 +99,8 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
 
     investmentId = await createTestInvestment(payload, 'ex560-reload-preset-test', {
       vatRate: INVESTMENT_VAT,
+      wToolsCoeff: INVESTMENT_COEFFS.wToolsCoeff,
+      ownToolsCoeff: INVESTMENT_COEFFS.ownToolsCoeff,
     })
 
     const { upsertPresetByName } = await import('@/lib/db/presets')
@@ -89,15 +109,21 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
       createdBy: authState.userId,
       payload: presetPayload(),
     })
+    brokenPresetId = await upsertPresetByName(db, {
+      name: BROKEN_PRESET_NAME,
+      createdBy: authState.userId,
+      payload: brokenPresetPayload(),
+    })
   })
 
   afterAll(async () => {
     if (investmentId) await deleteTestInvestment(payload, investmentId)
-    if (presetId) await db.execute(sql`DELETE FROM kosztorys_presets WHERE id = ${presetId}`)
+    await db.execute(
+      sql`DELETE FROM kosztorys_presets WHERE name IN (${PRESET_NAME}, ${BROKEN_PRESET_NAME})`,
+    )
   })
 
-  // The state a reload is supposed to blow away: a hand-built rozpiska with a typed przedmiar, an
-  // etap, and wykonano recorded against it — every kind of row the wipe must reach.
+  // Every kind of row the wipe has to reach, so a partial wipe can't pass.
   async function seedLiveTree(): Promise<void> {
     await payload.delete({
       collection: 'kosztorys-sections',
@@ -171,9 +197,27 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
     return res.rows.map((row) => Number(row.qty_done))
   }
 
-  async function investmentVatRate(): Promise<number> {
-    const res = await db.execute(sql`SELECT vat_rate FROM investments WHERE id = ${investmentId}`)
-    return Number(res.rows[0].vat_rate)
+  async function investmentSettings() {
+    const res = await db.execute(sql`
+      SELECT vat_rate, w_tools_coeff, own_tools_coeff, global_discount_type, global_discount_value
+      FROM investments WHERE id = ${investmentId}
+    `)
+    const row = res.rows[0]
+    return {
+      vatRate: Number(row.vat_rate),
+      wToolsCoeff: Number(row.w_tools_coeff),
+      ownToolsCoeff: Number(row.own_tools_coeff),
+      discountType: row.global_discount_type,
+      discountValue: Number(row.global_discount_value),
+    }
+  }
+
+  async function setGlobalDiscount(value: number): Promise<void> {
+    await db.execute(sql`
+      UPDATE investments
+      SET global_discount_type = 'amount', global_discount_value = ${value}
+      WHERE id = ${investmentId}
+    `)
   }
 
   async function preReloadSnapshotIds(): Promise<number[]> {
@@ -181,8 +225,15 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
       SELECT id FROM kosztorys_snapshots
       WHERE investment_id = ${investmentId}
         AND kind = 'manual'
-        AND label = 'Przed wczytaniem szablonu'
+        AND label = ${PRE_RELOAD_LABEL}
       ORDER BY id DESC
+    `)
+    return res.rows.map((row) => Number(row.id))
+  }
+
+  async function allSnapshotIds(): Promise<number[]> {
+    const res = await db.execute(sql`
+      SELECT id FROM kosztorys_snapshots WHERE investment_id = ${investmentId} ORDER BY id
     `)
     return res.rows.map((row) => Number(row.id))
   }
@@ -201,14 +252,28 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
   })
 
   // The preset payload keeps full snapshot shape-parity, `settings` included, but applying those
-  // would drag one job's VAT onto another. Handing `restoreKosztorys` the CURRENT settings is what
-  // neutralizes its write-back; this pins that the neutralization actually holds.
-  it('leaves the investment’s own VAT alone rather than taking the szablon’s', async () => {
+  // would drag one job's pricing config onto another. Handing `restoreKosztorys` the CURRENT settings
+  // is what neutralizes its write-back; this pins that the neutralization actually holds.
+  it('leaves the investment’s own VAT and coefficients alone rather than taking the szablon’s', async () => {
     await seedLiveTree()
 
     await reloadFromPresetAction(investmentId, presetId)
 
-    expect(await investmentVatRate()).toBe(INVESTMENT_VAT)
+    expect(await investmentSettings()).toMatchObject({
+      vatRate: INVESTMENT_VAT,
+      ...INVESTMENT_COEFFS,
+    })
+  })
+
+  // A szablon's przedmiar is all zeroes, so a surviving amount discount would price the fresh
+  // rozpiska below nothing — `globalDiscountAmount` is deliberately unclamped (calc.ts).
+  it('zeroes the rabat globalny, which would otherwise outlive the work it discounts', async () => {
+    await seedLiveTree()
+    await setGlobalDiscount(INVESTMENT_DISCOUNT)
+
+    await reloadFromPresetAction(investmentId, presetId)
+
+    expect(await investmentSettings()).toMatchObject({ discountType: null, discountValue: 0 })
   })
 
   // Found by LABEL, not by „newest": the whole point of the pre-reload row being `manual` is that it
@@ -241,5 +306,22 @@ describe.skipIf(!ENV_READY)('reloadFromPresetAction — persisted state (DB)', (
     expect(result).toMatchObject({ success: false })
     expect(await sectionNames()).toEqual(['Stan sprzed wczytania'])
     expect(await preReloadSnapshotIds()).toEqual(before)
+  })
+
+  // The case above never enters the transaction, so it says nothing about the safety argument the
+  // whole design rests on: the snapshot is written on the transaction handle BEFORE the wipe, so a
+  // throw during the insert must take the snapshot down with it rather than strand a restore point
+  // for a state that was never replaced.
+  it('rolls the pre-reload snapshot back when the insert itself throws', async () => {
+    await seedLiveTree()
+    const snapshotsBefore = await allSnapshotIds()
+
+    const result = await reloadFromPresetAction(investmentId, brokenPresetId)
+
+    expect(result).toMatchObject({ success: false })
+    expect(await sectionNames()).toEqual(['Stan sprzed wczytania'])
+    expect(await stageLabels()).toEqual(['Etap 1'])
+    expect(await progressQty()).toEqual([4])
+    expect(await allSnapshotIds()).toEqual(snapshotsBefore)
   })
 })

@@ -864,10 +864,10 @@ Setup: local app against the 5433 dev DB, logged in as OWNER, on an investment w
 least one sekcja, an etap and some wpisane wykonanie, plus at least one zapisany szablon in the
 library.
 
-- [ ] After a reload, „Wczytaj" lists „Przed wczytaniem szablonu" and restoring it brings back the original rozpiska including etapy and postęp
 - [ ] „Wczytaj szablon…" appears in „Opcje" and lists saved szablony
+- [ ] The search box filters the szablon list by name
 - [ ] The dialog states how many sekcje and prace disappear and how many arrive
 - [ ] Confirming replaces the rozpiska; the grid shows the new content without a manual refresh
-- [ ] VAT, the coefficients and the global discount are the same afterwards
-- [ ] „Wczytaj" offers „Przed wczytaniem szablonu" and restoring it brings everything back
+- [ ] VAT and the coefficients are unchanged afterwards; a rabat globalny set beforehand is cleared, and „do zapłaty" is never negative
+- [ ] „Wczytaj" lists „Przed wczytaniem: «nazwa szablonu»" — named after the szablon, so two swaps are distinguishable — and restoring it brings the original rozpiska back including etapy and postęp
 - [ ] Reloading an investment with an empty kosztorys works too (no special-casing)

@@ -25,15 +25,15 @@ nothing else. This plan is the plain replacement.
 
 ## Current State Analysis
 
-| Piece                    | Where                                                              | State                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Reversible wipe+insert   | `src/lib/kosztorys/restore-kosztorys.ts`                           | Exists. Caller owns the transaction; rewrites investment settings from the payload it is handed.      |
-| Forced pre-wipe snapshot | `src/lib/actions/kosztorys-import.ts:120-134`                      | Exists. `kind: 'manual'` + a label, so it is exempt from the 50-row cap and the 7-day sweep.          |
-| Insert-only preset apply | `src/lib/kosztorys/apply-preset.ts`                                | Exists, but **no wipe** — it documents that the caller guarantees an empty target.                    |
-| Preset payload shape     | `src/lib/kosztorys/serialize-preset.ts`                            | A `SnapshotPayloadT` with the job-specific fields zeroed and `stages`/`progress` emptied.             |
-| Preset picker control    | `src/components/forms/investment-form/investment-form.tsx:116-131` | A plain `<Select>` of preset names. **This is the control to reuse** — no new picker UI is warranted. |
-| Per-preset counts        | `getPresetSections()` → `PresetSectionMetaT`                       | Already fetched by the section picker; gives „co wejdzie" with no new query.                          |
-| Post-replace refresh     | `onTreeReplaced` on the editor context                             | Exists; the sheet import already calls it.                                                            |
+| Piece                    | Where                                                              | State                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reversible wipe+insert   | `src/lib/kosztorys/restore-kosztorys.ts`                           | Exists. Caller owns the transaction; rewrites investment settings from the payload it is handed.                                                                                                                                                                                                                                                                                 |
+| Forced pre-wipe snapshot | `src/lib/actions/kosztorys-import.ts:120-134`                      | Exists. `kind: 'manual'` + a label, so it is exempt from the 50-row cap and the 7-day sweep.                                                                                                                                                                                                                                                                                     |
+| Insert-only preset apply | `src/lib/kosztorys/apply-preset.ts`                                | Exists, but **no wipe** — it documents that the caller guarantees an empty target.                                                                                                                                                                                                                                                                                               |
+| Preset payload shape     | `src/lib/kosztorys/serialize-preset.ts`                            | A `SnapshotPayloadT` with the job-specific fields zeroed and `stages`/`progress` emptied.                                                                                                                                                                                                                                                                                        |
+| Preset picker control    | `src/components/forms/investment-form/investment-form.tsx:116-131` | A plain `<Select>` of preset names. ~~**This is the control to reuse**~~ — **superseded during Phase 3**: the `<Select>` renders names only, and the dialog's whole job is stating „ile zniknie / ile wejdzie", which needs the per-szablon counts from `listPresetSectionsAction`. The dialog therefore borrows the sibling preset picker's list + `SearchFilterInput` instead. |
+| Per-preset counts        | `getPresetSections()` → `PresetSectionMetaT`                       | Already fetched by the section picker; gives „co wejdzie" with no new query.                                                                                                                                                                                                                                                                                                     |
+| Post-replace refresh     | `onTreeReplaced` on the editor context                             | Exists; the sheet import already calls it.                                                                                                                                                                                                                                                                                                                                       |
 
 ### Key Discoveries
 
@@ -317,3 +317,11 @@ Run **once**, after Phase 3.
 - [x] `pnpm lint` (0 errors; pre-existing warnings only)
 - [x] `pnpm test` — 2107 passed, 96 skipped
 - [x] `pnpm build`
+
+### Review gate (slice-review-gate, 2026-08-12)
+
+Ledger: `review-gate.md`. Findings and their dispositions live there, not here.
+
+- [x] Fan-out (impl-review · code-review · tailwind · comment-noise · 3× structure)
+- [x] Fixes applied
+- [x] Regression tests authored — reload spec now 6 cases
