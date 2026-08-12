@@ -8,7 +8,10 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
-import { fetchMaterialTransactionsForInvestment } from '@/lib/queries/investment-transactions'
+import {
+  fetchDepositTransactionsForInvestment,
+  fetchMaterialTransactionsForInvestment,
+} from '@/lib/queries/investment-transactions'
 import {
   deriveWholeInvestmentFinancials,
   fetchWholeInvestmentFinancials,
@@ -38,14 +41,21 @@ async function buildPreviewKosztorysEditorData(
   investmentId: number,
 ): Promise<KosztorysEditorDataT> {
   const payload = await getPayload({ config })
-  const [tree, investment, financialsSource, expenseCategories, materialTransactions] =
-    await Promise.all([
-      buildKosztorysTree(investmentId),
-      payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
-      fetchWholeInvestmentFinancials(investmentId),
-      fetchExpenseCategories(),
-      fetchMaterialTransactionsForInvestment(investmentId),
-    ])
+  const [
+    tree,
+    investment,
+    financialsSource,
+    expenseCategories,
+    materialTransactions,
+    depositTransactions,
+  ] = await Promise.all([
+    buildKosztorysTree(investmentId),
+    payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
+    fetchWholeInvestmentFinancials(investmentId),
+    fetchExpenseCategories(),
+    fetchMaterialTransactionsForInvestment(investmentId),
+    fetchDepositTransactionsForInvestment(investmentId),
+  ])
   const { financials, materialyBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
@@ -63,6 +73,7 @@ async function buildPreviewKosztorysEditorData(
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,
     materialTransactions,
+    depositTransactions,
   }
 }
 
