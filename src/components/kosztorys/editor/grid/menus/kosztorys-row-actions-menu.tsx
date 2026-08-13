@@ -23,7 +23,6 @@ import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigge
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SortScopeT } from '@/lib/kosztorys/row-view'
-import { reorderLockHint } from '@/lib/kosztorys/sort-lock-hints'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type OrderActionsT = {
@@ -84,8 +83,6 @@ export function KosztorysRowActionsMenu({
       </SimpleTooltip>
     )
 
-  const sortHint = reorderLockHint(sortScope)
-
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertAbove}>
@@ -118,7 +115,7 @@ export function KosztorysRowActionsMenu({
           {/* Names the target: both groups carry the same four order commands, so the label is the
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
-          {withHint(orderItems(item), sortHint)}
+          {orderItems(item)}
           {onClearSheetMeasuredQty &&
             withHint(
               <DropdownMenuItem onSelect={onClearSheetMeasuredQty}>
@@ -142,7 +139,7 @@ export function KosztorysRowActionsMenu({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
-              {withHint(orderItems(section), sortHint)}
+              {orderItems(section)}
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
                 <Trash2 />

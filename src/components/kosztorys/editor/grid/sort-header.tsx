@@ -3,8 +3,6 @@
 import { ArrowDown, ArrowUp, ChevronsUpDown, ListOrdered } from 'lucide-react'
 
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { SimpleTooltip } from '@/components/ui/tooltip'
-import { persistOrderBlockReason } from '@/lib/kosztorys/sort-lock-hints'
 import { cn } from '@/lib/utils/cn'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
@@ -15,7 +13,7 @@ type PropsT = {
   label: string
   active: SortPickT | null
   onSort: (pick: SortPickT | null) => void
-  // „Zapisz sortowanie" — writes the sort showing right now into the stored order, so it survives
+  // „Zapisz kolejność" — writes the sort showing right now into the stored order, so it survives
   // clearing the sort. Absent in the read-only view, where the item does not appear at all. It sits
   // in this menu because it bakes THIS menu's sort; from a column header there is no one section to
   // aim at, so it covers every section at once.
@@ -26,7 +24,6 @@ type PropsT = {
 }
 
 export function SortHeader({ label, active, onSort, onPersistOrder, tip }: PropsT) {
-  const persistBlockReason = persistOrderBlockReason(active?.scope ?? null)
   const Icon = active?.dir === 'asc' ? ArrowUp : active?.dir === 'desc' ? ArrowDown : ChevronsUpDown
 
   // Scope is spelled out in each label instead of hiding behind a mode toggle: four commands, so
@@ -47,33 +44,22 @@ export function SortHeader({ label, active, onSort, onPersistOrder, tip }: Props
   return (
     <HeaderMenu
       label={<HeaderLabel className={cn(active && 'font-semibold')}>{label}</HeaderLabel>}
-      icon={<Icon className={cn('size-4 shrink-0', active ? 'opacity-100' : 'opacity-50')} />}
+      icon={<Icon className={cn(active ? 'opacity-100' : 'opacity-50')} />}
       triggerClassName={cn(active && 'text-primary')}
       triggerTitle="Sortuj kolumnę"
       tip={tip}
     >
-      {item('asc', 'section', 'Sortuj rosnąco w sekcjach')}
-      {item('desc', 'section', 'Sortuj malejąco w sekcjach')}
+      {item('asc', 'section', 'Sortuj rosnąco zachowując sekcje')}
+      {item('desc', 'section', 'Sortuj malejąco zachowując sekcje')}
       <DropdownMenuSeparator />
-      {item('asc', 'global', 'Sortuj rosnąco w całym kosztorysie')}
-      {item('desc', 'global', 'Sortuj malejąco w całym kosztorysie')}
+      {item('asc', 'global', 'Sortuj rosnąco ')}
+      {item('desc', 'global', 'Sortuj malejąco')}
       <DropdownMenuSeparator />
       {onPersistOrder && (
-        // The wrapper div catches the hover a disabled item swallows (pointer-events-none), and keeps
-        // the tooltip and the menu item off each other's ref.
-        <SimpleTooltip
-          content={
-            persistBlockReason ??
-            'Zapisuje bieżącą kolejność we wszystkich sekcjach — zostanie po wyłączeniu sortowania'
-          }
-        >
-          <div>
-            <DropdownMenuItem disabled={persistBlockReason != null} onSelect={onPersistOrder}>
-              <ListOrdered />
-              Zapisz sortowanie
-            </DropdownMenuItem>
-          </div>
-        </SimpleTooltip>
+        <DropdownMenuItem onSelect={onPersistOrder}>
+          <ListOrdered />
+          Zapisz kolejność
+        </DropdownMenuItem>
       )}
       <DropdownMenuItem disabled={!active} onSelect={() => onSort(null)}>
         <ChevronsUpDown className="opacity-50" />

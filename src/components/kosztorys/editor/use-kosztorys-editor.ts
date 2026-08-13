@@ -737,7 +737,7 @@ export function useKosztorysEditor({
     })
   }
 
-  // Menu nagłówka → „Zapisz sortowanie": the active sort is only a view, so this is what makes it
+  // Menu nagłówka → „Zapisz kolejność": the active sort is only a view, so this is what makes it
   // survive a reload — every section's rows take display_order 0…n-1 in the order they're shown.
   // Computed from `rows`, never `viewRows`: the search box would otherwise renumber the visible
   // rows and leave the hidden ones interleaved among them.
@@ -755,9 +755,10 @@ export function useKosztorysEditor({
   }
 
   function handlePersistKosztorysOrder() {
-    // A global sort's order interleaves sections, so it cannot be stored at all — the menu disables
-    // the item and says why.
-    if (!sort || sort.scope === 'global') return
+    // Scope-blind on purpose: the plan renumbers each section by the same sort key either way, so a
+    // global sort bakes exactly what „w sekcjach" would. What it does NOT preserve is the interleaved
+    // view itself — rows fall back under their own sections once the sort is cleared.
+    if (!sort) return
     const { before, after } = planKosztorysRenumber(
       rowsRef.current,
       (r) => columnSortValue(r, sort.field, view, stages),
