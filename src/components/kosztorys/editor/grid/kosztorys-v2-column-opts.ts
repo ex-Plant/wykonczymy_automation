@@ -3,12 +3,15 @@ import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
-import type { SortDirT } from '@/lib/kosztorys/row-view'
+import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 
-export type V2SortStateT = { field: string; dir: SortDirT } | null
+// The scope rides inside the sort rather than as a separate editor toggle, so clearing the sort
+// cannot leave a stale scope behind.
+export type SortPickT = { dir: SortDirT; scope: SortScopeT }
+export type V2SortStateT = ({ field: string } & SortPickT) | null
 
 export type BuildV2ColumnsOptsT = {
   view: PriceViewT
@@ -23,7 +26,7 @@ export type BuildV2ColumnsOptsT = {
   // Only so the reassignment confirm can quote the amount being moved.
   executedValueByStage?: Map<number, number>
   sort?: V2SortStateT
-  onSetSort?: (field: string, dir: SortDirT | null) => void
+  onSetSort?: (field: string, pick: SortPickT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by
   // DEFAULT_HIDDEN_COLUMNS, which the caller resolves; the two are indistinguishable here. Keyed by
   // column id, except stage columns, which answer to one of the three stage groups (constants.ts).

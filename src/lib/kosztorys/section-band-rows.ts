@@ -4,6 +4,9 @@ import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 const EMPTY_COLLAPSED: ReadonlySet<number> = new Set()
 
 type OptsT = {
+  // Off under a whole-kosztorys sort: that order interleaves sections, and a band presumes its
+  // section's rows are contiguous — so the rows pass through bandless rather than mis-bracketed.
+  enabled: boolean
   collapsedSectionIds: ReadonlySet<number>
   // Any row filter narrows to the rows that matched, so a fold left over from before it would hide
   // hits behind a band that gives no hint they exist — the grid would read as "no results". The fold
@@ -20,9 +23,15 @@ type OptsT = {
  */
 export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
-  { collapsedSectionIds, foldSuppressed }: OptsT,
+  { enabled, collapsedSectionIds, foldSuppressed }: OptsT,
 ): { rows: KosztorysV2RowT[]; ordinalByRowId: Map<number, number> } {
   const ordinalByRowId = new Map<number, number>()
+  // With no bands there is no control left to expand a folded section, so a fold would hide rows
+  // for good — every row renders, numbered straight through.
+  if (!enabled) {
+    for (const row of viewRows) ordinalByRowId.set(row.id, ordinalByRowId.size + 1)
+    return { rows: viewRows, ordinalByRowId }
+  }
   const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
   const rows: KosztorysV2RowT[] = []
   // A band's id is a pure function of its section, so a section appearing in two blocks would emit

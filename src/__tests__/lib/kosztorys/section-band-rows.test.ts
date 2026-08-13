@@ -23,7 +23,8 @@ function row(id: number, sectionId: number): KosztorysV2RowT {
 // Two sections, three items then two — the shape every case below narrows.
 const VIEW_ROWS = [row(1, 10), row(2, 10), row(3, 10), row(4, 20), row(5, 20)]
 
-const opts = (collapsed: number[] = [], foldSuppressed = false) => ({
+const opts = (collapsed: number[] = [], foldSuppressed = false, enabled = true) => ({
+  enabled,
   collapsedSectionIds: new Set(collapsed),
   foldSuppressed,
 })
@@ -74,6 +75,21 @@ describe('buildSectionBandRows', () => {
     expect(rows[0].sectionId).toBe(10)
     expect(rows[0].sectionName).toBe('Sekcja 10')
     expect(rows[4].sectionId).toBe(10)
+  })
+
+  // Under a whole-kosztorys sort the rows are interleaved, so bands would bracket the wrong rows —
+  // and with no header left to click, a fold would hide its rows with no way back.
+  it('passes the rows through bandless and unfolded when disabled', () => {
+    const { rows, ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, opts([10], false, false))
+
+    expect(rows).toBe(VIEW_ROWS)
+    expect([...ordinalByRowId.entries()]).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+      [4, 4],
+      [5, 5],
+    ])
   })
 
   it('keeps a collapsed section header and drops its items with their footer', () => {

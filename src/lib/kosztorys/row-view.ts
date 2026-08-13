@@ -24,6 +24,10 @@ export function divergedRows(
 
 export type SortDirT = 'asc' | 'desc'
 
+// Which set of rows one sort orders: each section on its own, or the whole kosztorys as one list.
+// Chosen per sort in the column header menu — the two scopes are separate commands, never a mode.
+export type SortScopeT = 'section' | 'global'
+
 // Sort by the accessor's value; strings by locale (pl), numbers numerically. Returns a new array.
 // Decorate-sort-undecorate: getValue can be an O(stages) reduce (the "remaining" key), and calling
 // it inside the comparator would re-evaluate it ~2·n·log(n) times — compute it once per row instead.

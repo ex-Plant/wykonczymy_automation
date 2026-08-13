@@ -130,7 +130,7 @@ function title(
   sortable = true,
 ): ReactNode {
   const label = columnLabelForView(field, opts.view)
-  const active = opts.sort?.field === field ? opts.sort.dir : null
+  const active = opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null
   const tip = HEADER_TIPS[field]
   // The tip goes ONTO the sort trigger (same element), not around it — a second wrapping trigger
   // would fight the dropdown for the click. Plain-label columns have no trigger, so wrap directly.
@@ -140,7 +140,7 @@ function title(
         label={label}
         active={active}
         tip={tip}
-        onSort={(dir) => opts.onSetSort?.(field, dir)}
+        onSort={(pick) => opts.onSetSort?.(field, pick)}
       />
     )
   }

@@ -6,19 +6,33 @@ import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdow
 import { cn } from '@/lib/utils/cn'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
-import type { SortDirT } from '@/lib/kosztorys/row-view'
+import type { SortPickT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
+import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
 
 type PropsT = {
   label: string
-  active: SortDirT | null
-  onSort: (dir: SortDirT | null) => void
+  active: SortPickT | null
+  onSort: (pick: SortPickT | null) => void
   // Explanatory tooltip composed ONTO the trigger (not a wrapping element) — a second wrapping
   // trigger would fight the dropdown for the click.
   tip?: string
 }
 
 export function SortHeader({ label, active, onSort, tip }: PropsT) {
-  const Icon = active === 'asc' ? ArrowUp : active === 'desc' ? ArrowDown : ChevronsUpDown
+  const Icon = active?.dir === 'asc' ? ArrowUp : active?.dir === 'desc' ? ArrowDown : ChevronsUpDown
+
+  // Scope is spelled out in each label instead of hiding behind a mode toggle: four commands, so
+  // direction and scope are picked in one gesture and no scope can be in force unnoticed.
+  function item(dir: SortDirT, scope: SortScopeT, text: string) {
+    const DirIcon = dir === 'asc' ? ArrowUp : ArrowDown
+    const on = active?.dir === dir && active.scope === scope
+    return (
+      <DropdownMenuItem onSelect={() => onSort({ dir, scope })}>
+        <DirIcon className={cn(on ? 'opacity-100' : 'opacity-50')} />
+        {text}
+      </DropdownMenuItem>
+    )
+  }
 
   // The active-sort weight goes on the label element, not triggerClassName: HeaderLabel's own
   // font-medium sits on that element and would beat anything merely inherited from the trigger.
@@ -30,14 +44,11 @@ export function SortHeader({ label, active, onSort, tip }: PropsT) {
       triggerTitle="Sortuj kolumnę"
       tip={tip}
     >
-      <DropdownMenuItem onSelect={() => onSort('asc')}>
-        <ArrowUp className={cn(active === 'asc' ? 'opacity-100' : 'opacity-50')} />
-        Sortuj rosnąco
-      </DropdownMenuItem>
-      <DropdownMenuItem onSelect={() => onSort('desc')}>
-        <ArrowDown className={cn(active === 'desc' ? 'opacity-100' : 'opacity-50')} />
-        Sortuj malejąco
-      </DropdownMenuItem>
+      {item('asc', 'section', 'Sortuj rosnąco w sekcjach')}
+      {item('desc', 'section', 'Sortuj malejąco w sekcjach')}
+      <DropdownMenuSeparator />
+      {item('asc', 'global', 'Sortuj rosnąco w całym kosztorysie')}
+      {item('desc', 'global', 'Sortuj malejąco w całym kosztorysie')}
       <DropdownMenuSeparator />
       <DropdownMenuItem disabled={!active} onSelect={() => onSort(null)}>
         <ChevronsUpDown className="opacity-50" />

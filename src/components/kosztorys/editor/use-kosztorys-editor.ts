@@ -21,7 +21,10 @@ import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-prog
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
-import { type V2SortStateT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
+import {
+  type SortPickT,
+  type V2SortStateT,
+} from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
 import { diffRow, inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   applyAddItem,
@@ -57,8 +60,8 @@ import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import {
   divergedRows,
   filterRows,
+  sortRows,
   sortRowsWithinSections,
-  type SortDirT,
 } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
@@ -319,8 +322,8 @@ export function useKosztorysEditor({
     pushCommand({ label, undo: () => apply(before), redo: () => apply(after) })
   }
 
-  function setSortField(field: string, dir: SortDirT | null) {
-    setSort(dir ? { field, dir } : null)
+  function setSortField(field: string, pick: SortPickT | null) {
+    setSort(pick ? { field, ...pick } : null)
   }
 
   // One O(n) pass feeding the render-hot getRemovePlan (see below) an O(1) per-row lookup.
@@ -414,11 +417,10 @@ export function useKosztorysEditor({
     let filtered = filterRows(rows, search)
     if (divergedOnlyActive) filtered = divergedRows(filtered, stages)
     if (!sort) return filtered
-    return sortRowsWithinSections(
-      filtered,
-      (r) => columnSortValue(r, sort.field, view, stages),
-      sort.dir,
-    )
+    const getValue = (r: KosztorysV2RowT) => columnSortValue(r, sort.field, view, stages)
+    return sort.scope === 'global'
+      ? sortRows(filtered, getValue, sort.dir)
+      : sortRowsWithinSections(filtered, getValue, sort.dir)
   }, [rows, search, divergedOnlyActive, sort, view, stages])
   // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
