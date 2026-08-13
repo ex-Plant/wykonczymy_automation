@@ -5,11 +5,15 @@ status: implemented
 created: 2026-08-13
 updated: 2026-08-13
 archived_at: null
-branch: sheet-live-compare
-worktree: /Users/konradantonik/workspace/yolo/wykonczymy-worktrees/sheet-live-compare
+branch: pomiar-bez-etapu
+worktree: null
 ---
 
 ## Notes
+
+Ta zmiana jest domknięciem EX-686 (kasuje akcję, którą tamta dodała), więc jej commity leżą na
+gałęzi `pomiar-bez-etapu` — jedna gałąź na obie. Osobna `sheet-live-compare` była pomyłką i została
+usunięta.
 
 akcja „Porównaj z arkuszem": czytanie arkusza na żywo, rachunek obu stron, wykrywanie podejrzanych
 formuł (Pomiar przepisany z Przedmiaru, Przedmiar liczony z etapu) i osobna akcja „zaciągnij pomiary
