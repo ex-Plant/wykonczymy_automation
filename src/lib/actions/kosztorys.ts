@@ -14,6 +14,7 @@ import { createBlankItem, sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/c
 import {
   nextSectionDisplayOrder,
   renumberDisplayOrder,
+  renumberDisplayOrderAcrossBlocksSchema,
   renumberDisplayOrderSchema,
   shiftDisplayOrderFrom,
   swapDisplayOrder,
@@ -500,6 +501,41 @@ export async function renumberItemOrderAction(
       `)
       if (Number(res.rows[0]?.n ?? 0) !== parsed.data.length) {
         return { success: false, error: ITEMS_NOT_IN_SECTION }
+      }
+      await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
+      return { success: true }
+    },
+    ['kosztorysItems'],
+  )
+}
+
+const ITEMS_NOT_IN_KOSZTORYS = 'Pozycje spoza tego kosztorysu.'
+
+// „Utrwal kolejność w całym kosztorysie" — the same write across every section, in one statement so a
+// half-applied renumber can't leave sections sharing indices.
+export async function renumberKosztorysOrderAction(
+  investmentId: number,
+  refs: { id: number; displayOrder: number }[],
+): Promise<ActionResultT> {
+  return protectedAction(
+    'renumberKosztorysOrderAction',
+    async ({ payload }) => {
+      // Across sections the index repeats once per section, so the one-block schema (which forbids
+      // that) would reject every multi-section bake.
+      const parsed = validateAction(renumberDisplayOrderAcrossBlocksSchema, refs)
+      if (!parsed.success) return parsed
+      const db = await getDb(payload)
+      // Same reason as the section guard, one column over: the ids come from the client and
+      // renumberDisplayOrder joins on id alone.
+      const res = await db.execute(sql`
+        SELECT COUNT(*)::int AS n FROM kosztorys_items
+        WHERE investment_id = ${investmentId} AND id IN (${sql.join(
+          parsed.data.map((r) => sql`${r.id}`),
+          sql.raw(', '),
+        )})
+      `)
+      if (Number(res.rows[0]?.n ?? 0) !== parsed.data.length) {
+        return { success: false, error: ITEMS_NOT_IN_KOSZTORYS }
       }
       await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
       return { success: true }

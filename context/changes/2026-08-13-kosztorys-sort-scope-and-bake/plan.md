@@ -340,17 +340,17 @@ Run **once**, after the final phase.
 
 #### Automated
 
-- [x] 1.1 New unit spec for the scope split passes — 42841448
-- [x] 1.2 The restored band kill-switch spec passes — 42841448
-- [x] 1.3 Existing within-sections spec still passes — 42841448
+- [x] 1.1 New unit spec for the scope split passes — f47aaf57
+- [x] 1.2 The restored band kill-switch spec passes — f47aaf57
+- [x] 1.3 Existing within-sections spec still passes — f47aaf57
 
 ### Phase 2: Zapis kolejności całego kosztorysu
 
 #### Automated
 
-- [ ] 2.1 New unit spec for the whole-kosztorys planner passes
-- [ ] 2.2 New DB spec for the action passes against `db-test`
-- [ ] 2.3 Existing section-scoped DB spec still passes
+- [x] 2.1 New unit spec for the whole-kosztorys planner passes
+- [x] 2.2 New DB spec for the action passes against `db-test`
+- [x] 2.3 Existing section-scoped DB spec still passes
 
 ### Phase 3: „Utrwal kolejność w całym kosztorysie" w menu
 

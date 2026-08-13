@@ -28,18 +28,26 @@ export const swapDisplayOrderSchema = z.object({
   second: displayOrderRefSchema,
 })
 
-// Both uniqueness checks matter for a different reason: a duplicate id makes the VALUES join
-// ambiguous (two rows claim one target), a duplicate displayOrder lands two rows on one index —
-// there is no unique constraint, so the reloaded order would be non-deterministic.
-export const renumberDisplayOrderSchema = z
+// A duplicate id makes the VALUES join ambiguous — two rows claim one target — whatever the write
+// spans, so this floor holds for every renumber.
+const renumberRefsSchema = z
   .array(displayOrderRefSchema)
   .min(1)
   .refine((refs) => new Set(refs.map((r) => r.id)).size === refs.length, {
     message: 'Duplicate id',
   })
-  .refine((refs) => new Set(refs.map((r) => r.displayOrder)).size === refs.length, {
-    message: 'Duplicate displayOrder',
-  })
+
+// One block (one section's items, one investment's sections): a duplicate displayOrder lands two rows
+// on one index, and with no unique constraint the reloaded order goes non-deterministic.
+export const renumberDisplayOrderSchema = renumberRefsSchema.refine(
+  (refs) => new Set(refs.map((r) => r.displayOrder)).size === refs.length,
+  { message: 'Duplicate displayOrder' },
+)
+
+// Several blocks in one write: display_order is only ever compared within a block, so every section
+// legitimately starts again at 0 and the index repeats once per section. Uniqueness is asserted per
+// block by the planner that builds the refs, not here — it cannot be seen from the flat list.
+export const renumberDisplayOrderAcrossBlocksSchema = renumberRefsSchema
 
 export type DisplayOrderRefT = z.infer<typeof displayOrderRefSchema>
 
