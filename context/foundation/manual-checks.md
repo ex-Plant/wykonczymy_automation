@@ -909,3 +909,24 @@ Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER
 - [ ] To samo dla „Zasilenie z konta firmowego"
 - [ ] Wybierz „Wpłata od inwestora", ustaw inwestycję i netto/brutto, przełącz typ na „Zasilenie" i zapisz — żadna z tych dwóch wartości nie ląduje na wierszu
 - [ ] Edycja istniejącego wiersza `COMPANY_FUNDING` z tabeli transakcji nie oferuje pola inwestycji, a zapis niepowiązanego pola (opis) przechodzi bez błędu
+
+## EX-686 — rozjazd „Pomiar z natury" vs suma etapów po imporcie
+
+**In review** — cała bramka zielona (tsc, eslint 0 błędów, `pnpm test` 2150,
+`pnpm test:integration` 104). `pnpm build` przeszedł przez `next build --webpack`; turbopack nie
+buduje w worktree z dowiązanym `node_modules` — ścieżkę turbopackową potwierdzić po scaleniu.
+E2E odroczone (patrz bramka przeglądu).
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkuszem, w którym
+„Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
+
+- [ ] Po imporcie pozycje z rozjazdem mają czerwoną sumę etapów, a podpowiedź podaje: arkusz, etapy, kwotę różnicy
+- [ ] Przycisk „Rozjazdy" w pasku narzędzi pokazuje liczbę pozycji z rozjazdem; kliknięcie zawęża siatkę tylko do nich
+- [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
+- [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym filtrze widać „Brak rozjazdów" z powrotem do pełnej listy, a sam przycisk znika
+- [ ] Sekcja zwinięta nie chowa pozycji z rozjazdem przy włączonym filtrze
+- [ ] Menu wiersza → „Etapy są prawdą" zdejmuje pozycję z listy na stałe; po przeładowaniu strony nie wraca
+- [ ] Ponowny import tego samego arkusza przywraca odniesienie, więc odrzucone pozycje wracają, jeśli arkusz dalej się nie zgadza
+- [ ] Robocizna, marża i bilans nie drgnęły ani po imporcie, ani po „Etapy są prawdą" — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak przycisku „Rozjazdy" i pozycji w menu
+- [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle

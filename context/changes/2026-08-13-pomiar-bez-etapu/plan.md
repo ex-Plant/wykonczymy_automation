@@ -354,11 +354,14 @@ tej samej figury.
 
 Uruchamiane **raz**, po ostatniej fazie — nie po każdej.
 
-- [ ] `pnpm typecheck`
-- [ ] `pnpm lint`
-- [ ] `pnpm test`
-- [ ] `pnpm test:integration`
-- [ ] `pnpm build`
+- [x] `pnpm typecheck`
+- [x] `pnpm lint` (0 błędów; 79 ostrzeżeń — wszystkie zastane, w migracjach)
+- [x] `pnpm test` — 2150 zielonych
+- [x] `pnpm test:integration` — 104 zielone
+- [x] `pnpm build` — przez `next build --webpack`. Turbopack przewraca się w worktree na
+      `node_modules` będącym dowiązaniem poza katalog główny („Symlink node_modules is invalid"),
+      co jest ograniczeniem worktree, nie kodu. Ścieżkę turbopackową trzeba potwierdzić po scaleniu
+      w głównym drzewie.
 
 `pnpm test:parity` wymaga świeżego `db:import:test` + `seed:kosztorys:test` — uruchamiane ręcznie
 przy weryfikacji, nie w bramce.
@@ -401,9 +404,9 @@ przy weryfikacji, nie w bramce.
 
 ### Phase 5: Guardy przecinające warstwy
 
-- [x] 5.1 Spec „nigdy nie wyceniane" (`kosztorys-v2-rows.test.ts`)
-- [x] 5.2 Spec „nie wycieka do klienta" (`preview-columns.test.ts`)
-- [x] 5.3 Roundtrip niesie niezerowe odniesienie
-- [x] 5.4 Skrypty seedujące — tylko `seed-kosztorys.ts` (kolumna J arkusza). Trzy pozostałe skrypty
+- [x] 5.1 Spec „nigdy nie wyceniane" (`kosztorys-v2-rows.test.ts`) · 20d2fe7e
+- [x] 5.2 Spec „nie wycieka do klienta" (`preview-columns.test.ts`) · 20d2fe7e
+- [x] 5.3 Roundtrip niesie niezerowe odniesienie · 20d2fe7e
+- [x] 5.4 Skrypty seedujące · 20d2fe7e — tylko `seed-kosztorys.ts` (kolumna J arkusza). Trzy pozostałe skrypty
       pomijają pole: `payload.create` zapisuje wtedy `null`, więc jawny literał niczego by nie zmienił,
       a te skrypty i tak nie wyliczają pozostałych pól opcjonalnych.

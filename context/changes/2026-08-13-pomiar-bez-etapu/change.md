@@ -1,7 +1,7 @@
 ---
 change_id: pomiar-bez-etapu
 title: Rozjazd „Pomiar z natury" vs suma etapów — trwały podgląd i ręczna naprawa w aplikacji
-status: implementing
+status: implemented
 created: 2026-08-13
 updated: 2026-08-13
 archived_at: null
@@ -19,11 +19,11 @@ etapy. W modelu aplikacji Pomiar JEST sumą etapów (EX-494/EX-489), więc ta pr
 
 Dowody zebrane 2026-08-13 (odczyt formuł przez `scripts/inspect-sheet.mjs`):
 
-| Arkusz | Pomiar jako formuła `=SUM(D:M)` | Pomiar > Σetap | Pomiar < Σetap |
-| --- | --- | --- | --- |
-| kanoniczny (16 lipca, pusta oferta) | 435 / 435 | 0 | 0 |
-| „wypełniony kosztorys do testów" | 0 / 253 | 27 poz. (+18 782 zł) | 3 poz. (−4 279 zł) |
-| inwestycja 31 (11 listopada Gabinety) | 0 / 245 | 32 poz. (+41 377 zł) | 0 |
+| Arkusz                                | Pomiar jako formuła `=SUM(D:M)` | Pomiar > Σetap       | Pomiar < Σetap     |
+| ------------------------------------- | ------------------------------- | -------------------- | ------------------ |
+| kanoniczny (16 lipca, pusta oferta)   | 435 / 435                       | 0                    | 0                  |
+| „wypełniony kosztorys do testów"      | 0 / 253                         | 27 poz. (+18 782 zł) | 3 poz. (−4 279 zł) |
+| inwestycja 31 (11 listopada Gabinety) | 0 / 245                         | 32 poz. (+41 377 zł) | 0                  |
 
 Formuła w kolumnie Pomiar przeżywa tylko w pustym arkuszu ofertowym — na którym budowany był model.
 Każdy realnie wypełniony arkusz ma ją nadpisaną ręcznym wpisem, więc rozjazd to reguła, nie wyjątek.
