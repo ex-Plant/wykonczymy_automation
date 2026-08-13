@@ -4,7 +4,7 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { createTestInvestment } from '@/__tests__/helpers/investment'
 
-// „Zapisz sortowanie" — the multi-section write, driven against the REAL DB and
+// „Zapisz kolejność" — the multi-section write, driven against the REAL DB and
 // asserting the PERSISTED sequence (a success result can hide a failed write).
 //   RK1 — every section takes its new order in one call, each restarting at 0.
 //   RK2 — ids from another investment are refused outright; nothing is written.

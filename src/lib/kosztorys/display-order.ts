@@ -111,7 +111,7 @@ export async function swapDisplayOrder(
   `)
 }
 
-// Rewrites a whole block's display_order in ONE statement — what „Zapisz sortowanie" needs, where the
+// Rewrites a whole block's display_order in ONE statement — what „Zapisz kolejność" needs, where the
 // ▲▼ swap would take O(n²) neighbour exchanges to reach the same order.
 //
 // One statement for the same reason as swapDisplayOrder: a half-applied renumber leaves rows sharing
