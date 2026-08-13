@@ -13,6 +13,8 @@ import {
 import { createBlankItem, sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import {
   nextSectionDisplayOrder,
+  renumberDisplayOrder,
+  renumberDisplayOrderSchema,
   shiftDisplayOrderFrom,
   swapDisplayOrder,
   swapDisplayOrderSchema,
@@ -112,6 +114,30 @@ export async function updateItemFieldAction(itemId: number, patch: ItemPatchT) {
       const parsed = validateAction(itemPatchSchema, patch)
       if (!parsed.success) return parsed
       await payload.update({ collection: 'kosztorys-items', id: itemId, data: parsed.data })
+      return { success: true }
+    },
+    ['kosztorysItems'],
+    { deferRefresh: true },
+  )
+}
+
+/**
+ * „Etapy są prawdą" — drops the sheet's imported „Pomiar z natury" from one pozycja, which is what
+ * takes it off the rozjazd list for good.
+ *
+ * Its own action rather than a key on `itemPatchSchema`: the reference figure is read-only by TYPE
+ * that way, so no future patch can quietly write one. Clearing is the only mutation it admits, hence
+ * no payload at all. Reversible by re-importing the sheet, so the caller needs no confirmation.
+ */
+export async function clearSheetMeasuredQtyAction(itemId: number) {
+  return protectedAction(
+    'clearSheetMeasuredQtyAction',
+    async ({ payload }) => {
+      await payload.update({
+        collection: 'kosztorys-items',
+        id: itemId,
+        data: { sheetMeasuredQty: null },
+      })
       return { success: true }
     },
     ['kosztorysItems'],
@@ -443,6 +469,50 @@ export async function swapItemOrderAction(
       const parsed = validateAction(swapDisplayOrderSchema, { first, second })
       if (!parsed.success) return parsed
       await swapDisplayOrder(payload, 'kosztorys-items', parsed.data.first, parsed.data.second)
+      return { success: true }
+    },
+    ['kosztorysItems'],
+  )
+}
+
+const ITEMS_NOT_IN_KOSZTORYS = 'Pozycje spoza tego kosztorysu.'
+const DUPLICATE_ORDER_IN_SECTION = 'Dwie pozycje jednej sekcji na tej samej pozycji w kolejności.'
+
+// „Zapisz kolejność" (menu nagłówka kolumny) — writes the grid's current order into display_order
+// across every section, in one statement so a half-applied renumber can't leave sections sharing
+// indices.
+export async function renumberKosztorysOrderAction(
+  investmentId: number,
+  refs: { id: number; displayOrder: number }[],
+): Promise<ActionResultT> {
+  return protectedAction(
+    'renumberKosztorysOrderAction',
+    async ({ payload }) => {
+      const parsed = validateAction(renumberDisplayOrderSchema, refs)
+      if (!parsed.success) return parsed
+      const db = await getDb(payload)
+      // The ids come from the client and renumberDisplayOrder joins on id alone, so this read is the
+      // only thing standing between a caller and another investment's rows. It also carries
+      // `section_id`, because that is the one invariant the schema cannot see: display_order is
+      // compared within a section, so an index may repeat across sections but never inside one —
+      // two rows on the same index would make the reloaded order non-deterministic (no unique
+      // constraint backs the column).
+      const res = await db.execute(sql`
+        SELECT id, section_id FROM kosztorys_items
+        WHERE investment_id = ${investmentId} AND id IN (${sql.join(
+          parsed.data.map((r) => sql`${r.id}`),
+          sql.raw(', '),
+        )})
+      `)
+      if (res.rows.length !== parsed.data.length) {
+        return { success: false, error: ITEMS_NOT_IN_KOSZTORYS }
+      }
+      const sectionById = new Map(res.rows.map((row) => [Number(row.id), Number(row.section_id)]))
+      const slots = parsed.data.map((ref) => `${sectionById.get(ref.id)}:${ref.displayOrder}`)
+      if (new Set(slots).size !== slots.length) {
+        return { success: false, error: DUPLICATE_ORDER_IN_SECTION }
+      }
+      await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
       return { success: true }
     },
     ['kosztorysItems'],

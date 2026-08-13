@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
+  CheckCheck,
+  Trash2,
+} from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -24,7 +31,7 @@ type OrderActionsT = {
   onMoveDown: () => void
 }
 
-// One bundle rather than six optional callbacks: they all come from the same `editorOnly()` gate, so
+// One bundle rather than a callback per command: they all come from the same `editorOnly()` gate, so
 // they are all-present or all-absent — as separate props the „Sekcja" group could half-appear.
 type SectionActionsT = OrderActionsT & {
   color: SectionColorKeyT | null
@@ -35,7 +42,8 @@ type SectionActionsT = OrderActionsT & {
 }
 
 type PropsT = {
-  // Insert + move have no meaning against a price-sorted view — disabled with a hint.
+  // Insert + move have no meaning against a sorted view — array position no longer mirrors
+  // display_order — so they go dead while any sort is on, whatever its scope.
   sortActive: boolean
   // Why delete is blocked (only the empty-sheet floor now), or undefined if removable. Present →
   // delete disabled with the reason in a tooltip (disabled items are pointer-events-none, so a
@@ -44,6 +52,9 @@ type PropsT = {
   // Populated row: delete destroys recorded stage progress, so route through a confirm dialog first.
   removeNeedsConfirm?: boolean
   item: OrderActionsT & { onRemove: () => void }
+  // „Etapy są prawdą" — absent unless this pozycja actually carries an imported pomiar, so a
+  // kosztorys that never came from a sheet never shows the command.
+  onClearSheetMeasuredQty?: () => void
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
@@ -53,12 +64,14 @@ export function KosztorysRowActionsMenu({
   removeBlockReason,
   removeNeedsConfirm,
   item,
+  onClearSheetMeasuredQty,
   section,
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
-  // Disabled items are pointer-events-none, so anything disabled is wrapped in a tooltip trigger,
-  // which catches the hover the disabled item would otherwise pass through.
+  // The wrapper div is not decoration: a disabled item is pointer-events-none and would swallow the
+  // hover, and a menu item makes a poor tooltip trigger anyway — both are Radix primitives fighting
+  // over the same ref and props. The div catches the hover for either case.
   const withHint = (items: ReactNode, reason?: string) =>
     reason == null ? (
       items
@@ -67,10 +80,6 @@ export function KosztorysRowActionsMenu({
         <div>{items}</div>
       </SimpleTooltip>
     )
-
-  const sortHint = sortActive
-    ? 'Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować'
-    : undefined
 
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
@@ -104,7 +113,15 @@ export function KosztorysRowActionsMenu({
           {/* Names the target: both groups carry the same four order commands, so the label is the
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
-          {withHint(orderItems(item), sortHint)}
+          {orderItems(item)}
+          {onClearSheetMeasuredQty &&
+            withHint(
+              <DropdownMenuItem onSelect={onClearSheetMeasuredQty}>
+                <CheckCheck />
+                Etapy są prawdą
+              </DropdownMenuItem>,
+              'Usuwa pomiar wpisany w arkuszu — od tej pory prawdą dla tej pozycji są wyłącznie etapy',
+            )}
           {withHint(
             <DropdownMenuItem
               variant="destructive"
@@ -120,7 +137,7 @@ export function KosztorysRowActionsMenu({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
-              {withHint(orderItems(section), sortHint)}
+              {orderItems(section)}
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
                 <Trash2 />

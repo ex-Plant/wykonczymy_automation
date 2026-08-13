@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Column, type CellProps } from 'react-datasheet-grid'
 import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
+import { HintTooltip } from '@/components/ui/tooltip'
 import { formatNet as fmt } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -18,6 +19,9 @@ type ComputedCellDataT = {
   tone: ComputedCellToneT | ((r: KosztorysV2RowT) => ComputedCellToneT)
   emphasize?: boolean
   format: (value: number | null) => string
+  // Per-row explanation, `null` on the rows that need none — a `danger` tone tells the user
+  // something is wrong but not what, and a computed cell has nowhere else to say it.
+  tip?: (r: KosztorysV2RowT) => string | null
 }
 
 // Module-level so every computed column shares ONE component identity. An inline `component:
@@ -26,9 +30,9 @@ type ComputedCellDataT = {
 // per-cell compute/format travels via `columnData` instead. Not a remount `key` (see EX-422,
 // lessons.md:119-135): identity is stabilised, the grid stays reactive.
 function ComputedCell({ rowData, columnData }: CellProps<KosztorysV2RowT, ComputedCellDataT>) {
-  const { compute, tone, emphasize, format } = columnData
+  const { compute, tone, emphasize, format, tip } = columnData
   const resolvedTone = typeof tone === 'function' ? tone(rowData) : tone
-  return (
+  const text = (
     <ReadOnlyCellText
       muted={resolvedTone === 'muted'}
       danger={resolvedTone === 'danger'}
@@ -36,6 +40,17 @@ function ComputedCell({ rowData, columnData }: CellProps<KosztorysV2RowT, Comput
     >
       {format(compute(rowData))}
     </ReadOnlyCellText>
+  )
+  const hint = tip?.(rowData)
+  // `w-full` on the wrapper span: ReadOnlyCellText is `block w-full truncate`, and an inline-flex
+  // parent shrink-wraps it, so without this the wrapped figure stops right-aligning with the
+  // untipped cells in the same column.
+  return hint ? (
+    <HintTooltip content={hint} className="w-full">
+      {text}
+    </HintTooltip>
+  ) : (
+    text
   )
 }
 
@@ -46,6 +61,7 @@ export function computedColumn(
   style: {
     tone?: ComputedCellToneT | ((r: KosztorysV2RowT) => ComputedCellToneT)
     emphasize?: boolean
+    tip?: (r: KosztorysV2RowT) => string | null
   } = {},
   format: (value: number | null) => string = fmtOrDash,
 ): Column<KosztorysV2RowT> {
@@ -53,7 +69,13 @@ export function computedColumn(
     id,
     title: titleNode,
     disabled: true,
-    columnData: { compute, tone: style.tone ?? 'muted', emphasize: style.emphasize, format },
+    columnData: {
+      compute,
+      tone: style.tone ?? 'muted',
+      emphasize: style.emphasize,
+      format,
+      tip: style.tip,
+    },
     component: ComputedCell,
   }
 }

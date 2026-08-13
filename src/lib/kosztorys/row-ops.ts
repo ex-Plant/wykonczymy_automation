@@ -44,6 +44,7 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
     description: DEFAULT_ITEM_DESCRIPTION,
     unit: DEFAULT_UNIT,
     plannedQty: 0,
+    sheetMeasuredQty: null,
     discountType: null,
     discountValue: 0,
     clientPrice: 0,
@@ -185,6 +186,29 @@ export function applyInsertSectionRow(
   seq.splice(dir === 'above' ? pos : pos + 1, 0, row.sectionId)
   blocks.set(row.sectionId, [row])
   return regroup(blocks, seq)
+}
+
+// „Zapisz kolejność": stamp the rows with the display_order just written and re-lay every block in
+// that order. A row the refs don't mention stays where it is, so a stale ref set degrades to a
+// partial reorder rather than a scramble. One pass over the sheet, not one per section.
+export function applyKosztorysOrder(
+  rows: KosztorysV2RowT[],
+  refs: { id: number; displayOrder: number }[],
+): KosztorysV2RowT[] {
+  const orderById = new Map(refs.map((ref) => [ref.id, ref.displayOrder]))
+  const blocks = groupBySection(rows)
+  for (const [sectionId, block] of blocks) {
+    blocks.set(
+      sectionId,
+      block
+        .map((row) => {
+          const displayOrder = orderById.get(row.id)
+          return displayOrder == null ? row : { ...row, displayOrder }
+        })
+        .sort((a, b) => a.displayOrder - b.displayOrder),
+    )
+  }
+  return regroup(blocks, [...blocks.keys()])
 }
 
 export function neighborSectionId(

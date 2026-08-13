@@ -53,9 +53,10 @@ import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
 import { PROGRESS_DISPLAY_DEFAULT, progressDisplayAllows } from '@/lib/kosztorys/progress-display'
-import { formatPercent } from '@/lib/kosztorys/format'
+import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
+  measureDiscrepancy,
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
@@ -125,11 +126,11 @@ function withTip(node: ReactNode, tip: string): ReactNode {
 // the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
 function title(
   field: string,
-  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'view'>,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
   sortable = true,
 ): ReactNode {
   const label = columnLabelForView(field, opts.view)
-  const active = opts.sort?.field === field ? opts.sort.dir : null
+  const active = opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null
   const tip = HEADER_TIPS[field]
   // The tip goes ONTO the sort trigger (same element), not around it — a second wrapping trigger
   // would fight the dropdown for the click. Plain-label columns have no trigger, so wrap directly.
@@ -139,7 +140,8 @@ function title(
         label={label}
         active={active}
         tip={tip}
-        onSort={(dir) => opts.onSetSort?.(field, dir)}
+        onSort={(pick) => opts.onSetSort?.(field, pick)}
+        onPersistOrder={opts.onPersistKosztorysOrder}
       />
     )
   }
@@ -196,8 +198,6 @@ function withResize(
   }
 }
 
-// Insert/move disabled under an active sort (no display_order mapping); delete disabled with a
-// reason (last item in a section, or a populated row) surfaced via tooltip.
 function RowActionsCell({
   rowData,
   opts,
@@ -205,7 +205,6 @@ function RowActionsCell({
   rowData: KosztorysV2RowT
   opts: BuildV2ColumnsOptsT
 }) {
-  const sortActive = opts.sort != null
   const plan = opts.getRemovePlan?.(rowData)
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
   const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
@@ -231,7 +230,7 @@ function RowActionsCell({
 
   return (
     <KosztorysRowActionsMenu
-      sortActive={sortActive}
+      sortActive={opts.sort != null}
       removeBlockReason={removeBlockReason}
       removeNeedsConfirm={removeNeedsConfirm}
       item={{
@@ -241,6 +240,11 @@ function RowActionsCell({
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
       }}
+      onClearSheetMeasuredQty={
+        opts.onClearSheetMeasuredQty && rowData.sheetMeasuredQty != null
+          ? () => opts.onClearSheetMeasuredQty?.(rowData)
+          : undefined
+      }
       section={section}
     />
   )
@@ -313,18 +317,25 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
   const viewStages = stagesForView(stages, view)
 
+  // Rows are replaced immutably on every edit, so row identity is a self-invalidating cache key — a
+  // stale value can't outlive the row it was computed from.
+  const memoisedByRow = <T,>(compute: (row: KosztorysV2RowT) => T) => {
+    const cache = new WeakMap<KosztorysV2RowT, { value: T }>()
+    return (row: KosztorysV2RowT) => {
+      const hit = cache.get(row)
+      if (hit) return hit.value
+      const value = compute(row)
+      cache.set(row, { value })
+      return value
+    }
+  }
+
   // Σ etapów for the row — the denominator every stage-value cell divides by. There are 2×|etapy| of
   // those cells per row (netto + brutto) and each used to re-run the O(|etapy|) reduce to arrive at
-  // the SAME number, making a row O(|etapy|²). Memoised per row object: rows are replaced immutably
-  // on every edit, so identity is a self-invalidating cache key — a stale total can't outlive its row.
-  const totalQtyDoneByRow = new WeakMap<KosztorysV2RowT, number>()
-  const totalQtyDone = (row: KosztorysV2RowT) => {
-    const cached = totalQtyDoneByRow.get(row)
-    if (cached !== undefined) return cached
-    const total = rowTotalQtyDone(row, viewStages, view)
-    totalQtyDoneByRow.set(row, total)
-    return total
-  }
+  // the SAME number, making a row O(|etapy|²).
+  const totalQtyDone = memoisedByRow((row: KosztorysV2RowT) =>
+    rowTotalQtyDone(row, viewStages, view),
+  )
 
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
@@ -336,9 +347,27 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
+  // The imported sheet's „Pomiar z natury" against Σ etapów.
+  //
+  // Owner-only: the reference figure is scaffolding for entering old sheets into the app, and a
+  // client's document must not carry the company's own bookkeeping doubts. Client plane only for a
+  // second reason: `measureDiscrepancy` is hard-anchored to the whole offered scope, so hanging it
+  // on a subcontractor view's cell would put two different „etapy" numbers side by side.
+  const divergenceFor =
+    opts.previewVisible || view !== 'client'
+      ? () => null
+      : memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages))
+
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
+        tone: (r) => (divergenceFor(r) ? 'danger' : 'muted'),
+        tip: (r) => {
+          const divergence = divergenceFor(r)
+          if (!divergence) return null
+          return `Arkusz: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · różnica ${formatNet(divergence.net)} zł`
+        },
+      }),
       minWidth: 170,
     },
     unitColumn(title('unit', opts)),

@@ -13,6 +13,7 @@ const RATES = [
 
 const source = (overrides: Partial<ImportGridsT> = {}): ImportGridsT => ({
   robocizna: BIALOSTOCKA_ROWS,
+  robociznaFormulas: [],
   rateTabs: [ratesTab('zakres pracy z narzędziami', RATES)],
   ...overrides,
 })
@@ -30,6 +31,7 @@ function currentTree(overrides: Partial<SnapshotPayloadT> = {}): SnapshotPayload
         description: 'montaż jednostki wewnętrznej',
         unit: 'szt.',
         plannedQty: 9,
+        sheetMeasuredQty: 99,
         discountType: null,
         discountValue: 0,
         clientPrice: 999,
@@ -164,6 +166,27 @@ describe('buildImportPlan', () => {
     expect(item.note).toBe('ustalone z klientem')
     // Everything the sheet DOES carry still comes from the sheet.
     expect(item).toMatchObject({ plannedQty: 2, clientPrice: 120 })
+  })
+
+  it('overwrites a matched praca’s reference figure with what the sheet now says', () => {
+    // The opposite of `note`: the figure IS the sheet's claim, so a re-import must revive a
+    // rozjazd the owner dismissed if the sheet still disagrees.
+    const item = plan().tree.items.find(
+      (row) => row.description === 'montaż jednostki wewnętrznej',
+    )!
+
+    expect(item.sheetMeasuredQty).toBe(2)
+  })
+
+  it('leaves a retained praca’s reference figure alone — no sheet row overwrote it', () => {
+    const current = currentTree()
+    current.items[0].description = 'demontaż starej klimatyzacji'
+
+    const retained = plan(source(), current).tree.items.find(
+      (row) => row.description === 'demontaż starej klimatyzacji',
+    )!
+
+    expect(retained.sheetMeasuredQty).toBe(99)
   })
 
   it('drops a retained praca’s wykonano for etapy the sheet no longer has', () => {

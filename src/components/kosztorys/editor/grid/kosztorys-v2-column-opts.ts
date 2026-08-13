@@ -3,12 +3,15 @@ import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
-import type { SortDirT } from '@/lib/kosztorys/row-view'
+import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 
-export type V2SortStateT = { field: string; dir: SortDirT } | null
+// The scope rides inside the sort rather than as a separate editor toggle, so clearing the sort
+// cannot leave a stale scope behind.
+export type SortPickT = { dir: SortDirT; scope: SortScopeT }
+export type V2SortStateT = ({ field: string } & SortPickT) | null
 
 export type BuildV2ColumnsOptsT = {
   view: PriceViewT
@@ -23,7 +26,7 @@ export type BuildV2ColumnsOptsT = {
   // Only so the reassignment confirm can quote the amount being moved.
   executedValueByStage?: Map<number, number>
   sort?: V2SortStateT
-  onSetSort?: (field: string, dir: SortDirT | null) => void
+  onSetSort?: (field: string, pick: SortPickT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by
   // DEFAULT_HIDDEN_COLUMNS, which the caller resolves; the two are indistinguishable here. Keyed by
   // column id, except stage columns, which answer to one of the three stage groups (constants.ts).
@@ -61,9 +64,15 @@ export type BuildV2ColumnsOptsT = {
   // menu. Greyed out under an active column sort, for the same reason as the per-item ▲▼.
   onReorderSection?: (sectionId: number, dir: 'up' | 'down') => void
   onInsertSection?: (sectionId: number, dir: 'above' | 'below') => void
+  // „Zapisz kolejność": writes the active sort into display_order across every section, so the order
+  // survives clearing the sort. Silent no-op without a sort — there is nothing to write then.
+  onPersistKosztorysOrder?: () => void
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
+  // „Etapy są prawdą": drops the sheet's imported pomiar from this pozycja, which takes it off the
+  // rozjazd list. Behind the same `editorOnly()` gate as every other row action.
+  onClearSheetMeasuredQty?: (row: KosztorysV2RowT) => void
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

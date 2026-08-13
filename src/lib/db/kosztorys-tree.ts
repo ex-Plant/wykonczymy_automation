@@ -69,6 +69,7 @@ export async function selectKosztorysTreeData(
         SELECT coalesce(json_agg(i ORDER BY i.display_order, i.id), '[]'::json)
         FROM (
           SELECT id, section_id, display_order, description, unit, planned_qty,
+                 sheet_measured_qty,
                  discount_type, discount_value, client_price,
                  w_tools_override_type, w_tools_override_value,
                  own_tools_override_type, own_tools_override_value,
@@ -138,6 +139,9 @@ const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
   description: str(row.description),
   unit: str(row.unit),
   plannedQty: num(row.planned_qty),
+  // `numOrNull`, not `num`: NULL means „the sheet made no claim" and must not collapse to a claim
+  // of zero, which would flag every unmeasured row as diverged.
+  sheetMeasuredQty: numOrNull(row.sheet_measured_qty),
   discountType: str(row.discount_type) as DiscountTypeT | null,
   discountValue: num(row.discount_value),
   clientPrice: num(row.client_price),

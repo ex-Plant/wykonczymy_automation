@@ -33,6 +33,7 @@ describe.skipIf(!ENV_READY)('listPresetSections (DB)', () => {
       description: `pozycja-${id}`,
       unit: 'm2',
       plannedQty: 1,
+      sheetMeasuredQty: null,
       discountType: null,
       discountValue: 0,
       clientPrice: 100,

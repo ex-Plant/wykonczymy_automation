@@ -21,7 +21,10 @@ import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-prog
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
-import { type V2SortStateT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
+import {
+  type SortPickT,
+  type V2SortStateT,
+} from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
 import { diffRow, inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   applyAddItem,
@@ -29,6 +32,7 @@ import {
   applyInsertSectionRow,
   applyRemoveItem,
   applyRestoreItem,
+  applyKosztorysOrder,
   buildBlankRow,
   groupBySection,
   insertDisplayOrder,
@@ -53,8 +57,15 @@ import {
 } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
-import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
+import {
+  divergedRows,
+  filterRows,
+  sortRows,
+  sortRowsWithinSections,
+} from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
+import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
+import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
@@ -70,11 +81,13 @@ import {
   addSectionAction,
   addStageAction,
   applyPercentRabatToAllItemsAction,
+  clearSheetMeasuredQtyAction,
   insertItemAction,
   insertSectionAction,
   removeItemAction,
   removeSectionAction,
   removeStageAction,
+  renumberKosztorysOrderAction,
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
@@ -170,6 +183,13 @@ export function useKosztorysEditor({
   // plane would simply render it.
   const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
+  // „Pokaż tylko rozjechane" — a working mode while old sheets are being entered into the app, not a
+  // preference: persisted, it would greet the owner with a near-empty grid and no explanation of what
+  // hid the rows. Same reasoning as the section fold below. Forced off under the preview like `view`
+  // above — the rozjazd is the company's own bookkeeping doubt and has no business in a client's
+  // document.
+  const [divergedOnly, setDivergedOnly] = useState(false)
+  const divergedOnlyActive = !preview && divergedOnly
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
@@ -302,8 +322,8 @@ export function useKosztorysEditor({
     pushCommand({ label, undo: () => apply(before), redo: () => apply(after) })
   }
 
-  function setSortField(field: string, dir: SortDirT | null) {
-    setSort(dir ? { field, dir } : null)
+  function setSortField(field: string, pick: SortPickT | null) {
+    setSort(pick ? { field, ...pick } : null)
   }
 
   // One O(n) pass feeding the render-hot getRemovePlan (see below) an O(1) per-row lookup.
@@ -352,7 +372,9 @@ export function useKosztorysEditor({
     onRemoveSection: editorOnly(handleRemoveSection),
     onReorderSection: editorOnly(handleReorderSection),
     onInsertSection: editorOnly(handleInsertSection),
+    onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
+    onClearSheetMeasuredQty: editorOnly(handleClearSheetMeasuredQty),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
@@ -389,13 +411,24 @@ export function useKosztorysEditor({
     })
   }
 
-  // View = search + sort. Sections are not filtered here: hiding one is a fold, applied further down
-  // by buildSectionBandRows so the band survives its own collapse.
+  // View = search + rozjazd + sort. Sections are not filtered here: hiding one is a fold, applied
+  // further down by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
-    const filtered = filterRows(rows, search)
+    let filtered = filterRows(rows, search)
+    if (divergedOnlyActive) filtered = divergedRows(filtered, stages)
     if (!sort) return filtered
-    return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
-  }, [rows, search, sort, view, stages])
+    const getValue = (r: KosztorysV2RowT) => columnSortValue(r, sort.field, view, stages)
+    return sort.scope === 'global'
+      ? sortRows(filtered, getValue, sort.dir)
+      : sortRowsWithinSections(filtered, getValue, sort.dir)
+  }, [rows, search, divergedOnlyActive, sort, view, stages])
+  // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
+  // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
+  // Zero under the preview, like the filter above — the client's document carries none of this.
+  const divergedCount = useMemo(
+    () => (preview ? 0 : divergedRows(rows, stages).length),
+    [preview, rows, stages],
+  )
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -704,6 +737,45 @@ export function useKosztorysEditor({
     })
   }
 
+  // Menu nagłówka → „Zapisz kolejność": the active sort is only a view, so this is what makes it
+  // survive a reload — every section's rows take display_order 0…n-1 in the order they're shown.
+  // Computed from `rows`, never `viewRows`: the search box would otherwise renumber the visible
+  // rows and leave the hidden ones interleaved among them.
+  //
+  // One server call for the whole sheet, so a half-applied bake can't leave some sections renumbered
+  // and others not.
+  // `revertTo` is the order to fall back to when the server refuses the whole write — one stale id
+  // (a row deleted in another tab) rejects the entire bake, and without the rollback the grid would
+  // keep showing an order no reload can reproduce.
+  async function runKosztorysRenumber(refs: DisplayOrderRefT[], revertTo: DisplayOrderRefT[]) {
+    setRows((rs) => applyKosztorysOrder(rs, refs))
+    const res = await renumberKosztorysOrderAction(investmentId, refs)
+    if (!res.success) {
+      setRows((rs) => applyKosztorysOrder(rs, revertTo))
+      toastMessage(res.error ?? 'Nie udało się zapisać kolejności', 'warning', 4000)
+    }
+  }
+
+  function handlePersistKosztorysOrder() {
+    // Scope-blind on purpose: the plan renumbers each section by the same sort key either way, so a
+    // global sort bakes exactly what „w sekcjach" would. What it does NOT preserve is the interleaved
+    // view itself — rows fall back under their own sections once the sort is cleared.
+    if (!sort) return
+    const { before, after } = planKosztorysRenumber(
+      rowsRef.current,
+      (r) => columnSortValue(r, sort.field, view, stages),
+      sort.dir,
+    )
+    if (after.length === 0) return
+    void runKosztorysRenumber(after, before)
+    pushCommand({
+      label: 'Zapisanie kolejności',
+      undo: () => void runKosztorysRenumber(before, after),
+      redo: () => void runKosztorysRenumber(after, before),
+      touchedIds: after.map((ref) => ref.id),
+    })
+  }
+
   // Mirrors handleReorderItem one level up: the grid regroups its blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
   // false at the edge so the undo command isn't pushed for a no-op.
   function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
@@ -965,6 +1037,27 @@ export function useKosztorysEditor({
 
   function handleSetSectionColor(sectionId: number, color: SectionColorKeyT | null) {
     handleSetSectionField(sectionId, 'sectionColor', color, 'Zmiana koloru sekcji')
+  }
+
+  // „Etapy są prawdą" — the escape hatch from the rozjazd list for a pozycja whose sheet pomiar is
+  // simply wrong. Reverted on a server rejection, unlike the cosmetic section fields above: the row
+  // vanishing from the list is the whole feedback, so a silently failed write would read as done.
+  // No undo push — a re-import brings the reference back, which is the documented way out.
+  async function handleClearSheetMeasuredQty(row: KosztorysV2RowT) {
+    const before = row.sheetMeasuredQty
+    if (before == null) return
+    patchRows(
+      (r) => r.id === row.id,
+      (r) => ({ ...r, sheetMeasuredQty: null }),
+    )
+    const res = await clearSheetMeasuredQtyAction(row.id)
+    if (!res.success) {
+      patchRows(
+        (r) => r.id === row.id,
+        (r) => ({ ...r, sheetMeasuredQty: before }),
+      )
+      toastMessage(res.error ?? 'Nie udało się usunąć pomiaru z arkusza', 'warning', 4000)
+    }
   }
 
   function handleRenameSection(sectionId: number, name: string) {
@@ -1321,6 +1414,9 @@ export function useKosztorysEditor({
     setView,
     search,
     setSearch,
+    divergedOnly: divergedOnlyActive,
+    setDivergedOnly,
+    divergedCount,
     emptySections,
     // handlers
     onChange,

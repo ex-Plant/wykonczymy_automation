@@ -931,3 +931,62 @@ ADMIN/OWNER). Inwestycja **62** jest wzorcem: 362,84 zł materiału pokryte stra
 - [ ] Do istniejącej straty da się dopiąć fakturę (edycja tylko tego pola) — zapis przechodzi, nie żąda ponownie inwestycji
 - [ ] Wyczyszczenie inwestycji na istniejącej stracie (panel Payloada) jest **odrzucone** — wcześniej przechodziło po cichu, zostawiając stratę bez właściciela
 - [ ] Krok „Strata" nie ma żadnej podpowiedzi pod kwotą — ani w panelu, ani w podglądzie klienta
+
+## EX-686 — rozjazd „Pomiar z natury" vs suma etapów po imporcie
+
+**In review** — cała bramka zielona (tsc, eslint 0 błędów, `pnpm test` 2150,
+`pnpm test:integration` 104). `pnpm build` przeszedł przez `next build --webpack`; turbopack nie
+buduje w worktree z dowiązanym `node_modules` — ścieżkę turbopackową potwierdzić po scaleniu.
+E2E odroczone (patrz bramka przeglądu).
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkuszem, w którym
+„Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
+
+- [ ] Po imporcie pozycje z rozjazdem mają czerwoną sumę etapów, a podpowiedź podaje: arkusz, etapy, kwotę różnicy
+- [ ] Przycisk „Rozjazdy" w pasku narzędzi pokazuje liczbę pozycji z rozjazdem; kliknięcie zawęża siatkę tylko do nich
+- [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
+- [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym filtrze widać „Brak rozjazdów" z powrotem do pełnej listy, a sam przycisk znika
+- [ ] Sekcja zwinięta nie chowa pozycji z rozjazdem przy włączonym filtrze
+- [ ] Menu wiersza → „Etapy są prawdą" zdejmuje pozycję z listy na stałe; po przeładowaniu strony nie wraca
+- [ ] Ponowny import tego samego arkusza przywraca odniesienie, więc odrzucone pozycje wracają, jeśli arkusz dalej się nie zgadza
+- [ ] Robocizna, marża i bilans nie drgnęły ani po imporcie, ani po „Etapy są prawdą" — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak przycisku „Rozjazdy" i pozycji w menu
+- [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
+
+## EX-682 / EX-683 — sortowanie wewnątrz sekcji
+
+**In review** — cała bramka zielona (tsc, eslint 0 błędów, `pnpm test` 2162,
+`pnpm test:integration` 107, `next build --webpack`). E2E odroczone (patrz bramka przeglądu).
+
+Zapis kolejności przeniesiony do menu nagłówka kolumny — sprawdza go sekcja EX-688 niżej;
+punkty o utrwalaniu z menu wiersza wypadły razem z tamtym poleceniem.
+
+Setup: aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER, zakładka
+Kosztorys inwestycji.
+
+- [ ] Sortowanie po „Opis" układa pozycje alfabetycznie wewnątrz każdej sekcji, kolejność sekcji bez zmian
+- [ ] Pas nagłówka i pas podsumowania sekcji są widoczne przy aktywnym sortowaniu
+- [ ] Zwijanie sekcji działa przy aktywnym sortowaniu; wyszukiwarka nadal chwilowo rozwija sekcje
+- [ ] Sortowanie po kolumnie z „—" (np. „Pozostało") spycha te wiersze na koniec **swojej** sekcji
+- [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" w ogóle się nie pokazuje
+
+## EX-688 — zakres sortowania kolumny + „Zapisz kolejność" w menu nagłówka
+
+**In review** — tsc czysty, eslint bez błędów, specy sortowania i zapisu kolejności zielone.
+E2E odroczone (patrz bramka przeglądu).
+
+Setup: jak wyżej — aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER,
+zakładka Kosztorys inwestycji.
+
+- [ ] Menu kolumny pokazuje cztery polecenia sortowania (dwa „zachowując sekcje", dwa przez cały kosztorys), „Zapisz kolejność" i „Wyczyść sortowanie"
+- [ ] Sortowanie „w sekcjach" po „Opis" zachowuje pasy sekcji i kolejność samych sekcji
+- [ ] Sortowanie „w całym kosztorysie" daje jedną płaską listę — pasy sekcji znikają, numeracja idzie ciągiem
+- [ ] „Zapisz kolejność" działa przy każdym sortowaniu, także „w całym kosztorysie" — zapisuje kolejność wewnątrz każdej sekcji
+- [ ] Sortowanie „w sekcjach" → „Zapisz kolejność" → wyczyszczenie sortowania → kolejność została **w każdej** sekcji; po odświeżeniu nadal ta sama
+- [ ] Cmd+Z cofa utrwalenie wszystkich sekcji jednym ruchem; Cmd+Shift+Z je przywraca
+- [ ] Utrwalenie przy wpisanej frazie w wyszukiwarce porządkuje **całe** sekcje, nie tylko widoczne wiersze
+- [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ oraz „Wstaw" działają normalnie
+- [ ] W menu wiersza (grupa „Sekcja") nie ma już żadnego utrwalania kolejności
+- [ ] Sekcja zwinięta przy sortowaniu „w całym kosztorysie" nie chowa swoich pozycji (bez pasa nie ma czym rozwinąć)
+- [ ] Żadne sortowanie nie przeżywa odświeżenia strony — po reloadzie kosztorys wraca do kolejności zapisanej
+- [ ] Podgląd dla klienta (link publiczny): w menu nagłówka nie ma „Zapisz kolejność"

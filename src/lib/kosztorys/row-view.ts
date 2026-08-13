@@ -1,4 +1,6 @@
-import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { groupBySection } from '@/lib/kosztorys/row-ops'
+import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Parity with v1.
 export function filterRows(rows: KosztorysV2RowT[], query: string): KosztorysV2RowT[] {
@@ -12,7 +14,20 @@ export function filterRows(rows: KosztorysV2RowT[], query: string): KosztorysV2R
   )
 }
 
+// One function for both the toolbar's counter and the row filter, so the number can never promise
+// rows the filter then declines to show.
+export function divergedRows(
+  rows: KosztorysV2RowT[],
+  stages: KosztorysStageT[],
+): KosztorysV2RowT[] {
+  return rows.filter((r) => measureDiscrepancy(r, stages) != null)
+}
+
 export type SortDirT = 'asc' | 'desc'
+
+// Which set of rows one sort orders: each section on its own, or the whole kosztorys as one list.
+// Chosen per sort in the column header menu — the two scopes are separate commands, never a mode.
+export type SortScopeT = 'section' | 'global'
 
 // Sort by the accessor's value; strings by locale (pl), numbers numerically. Returns a new array.
 // Decorate-sort-undecorate: getValue can be an O(stages) reduce (the "remaining" key), and calling
@@ -39,4 +54,22 @@ export function sortRows(
     return sign * (a.key - b.key)
   })
   return decorated.map((d) => d.row)
+}
+
+// The grid's sort, applied per section instead of across the whole sheet. A flat sort scatters a
+// section's rows through the list, and a section band presumes its rows are contiguous — which is
+// why sorting used to drop the bands (header, subtotal, collapse) entirely. Grouping first keeps
+// them: the sections stay in their own order (first-appearance = display_order, as the tree
+// delivers them) and only the rows inside each one move.
+//
+// Delegates to sortRows per group rather than re-implementing the comparator, so null-sinking and
+// the `pl` collation cannot drift between the two.
+export function sortRowsWithinSections(
+  rows: KosztorysV2RowT[],
+  getValue: (row: KosztorysV2RowT) => string | number | null,
+  dir: SortDirT,
+): KosztorysV2RowT[] {
+  // groupBySection's Map iterates in insertion order, so the sections come back in the order they
+  // first appeared.
+  return [...groupBySection(rows).values()].flatMap((group) => sortRows(group, getValue, dir))
 }

@@ -87,12 +87,14 @@ function resolveFields(
       labels[field] = hits[0].label
       continue
     }
+    // An optional field is one the import can do without, and that holds for BOTH ways of failing to
+    // pin it down: absent, or matching two headers. Blocking the whole import over an ambiguous
+    // optional column would reject sheets that imported fine before the column existed.
+    if (OPTIONAL_FIELDS.has(field)) continue
     if (hits.length === 0) {
-      // Optional fields are allowed to be absent; a required one names itself so the owner knows
-      // which cell to fix, rather than getting a guess written into their kosztorys.
-      if (!OPTIONAL_FIELDS.has(field)) {
-        problems.push(`Nie znaleziono kolumny „${FIELD_LABELS[field]}".`)
-      }
+      // A required one names itself so the owner knows which cell to fix, rather than getting a
+      // guess written into their kosztorys.
+      problems.push(`Nie znaleziono kolumny „${FIELD_LABELS[field]}".`)
       continue
     }
     problems.push(
@@ -105,6 +107,7 @@ function resolveFields(
 
 const ROBOCIZNA_FIELDS = [
   'plannedQty',
+  'measuredQty',
   'unit',
   'clientPrice',
   'discount',

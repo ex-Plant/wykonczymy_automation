@@ -109,6 +109,10 @@ async function run() {
       // „Pomiar z natury" = Σ etapów, więc pomiar bierze się z etapów C–H, nie z kolumny J.
       const stageQty = [row[2], row[3], row[4], row[5], row[6], row[7]].map(num) // C–H
       const plannedQty = num(row[8]) // I
+      // J: the sheet's own „Pomiar z natury" — kept as the read-only reference figure the rozjazd
+      // list compares against Σ etapów. `str() === ''` rather than `num() || null`, so a genuine 0
+      // stays a claim instead of collapsing into „arkusz nic nie twierdzi".
+      const sheetMeasuredQty = str(row[9]) === '' ? null : num(row[9])
       const unit = str(row[10]) || null // K
       const clientPrice = num(row[11]) // L
       const rabat = num(row[12]) // M (ułamek, 0,05 = 5%)
@@ -122,6 +126,7 @@ async function run() {
           description: b,
           unit,
           plannedQty,
+          sheetMeasuredQty,
           discountType: rabat > 0 ? 'percent' : null,
           discountValue: rabat > 0 ? rabat * 100 : 0,
           clientPrice,

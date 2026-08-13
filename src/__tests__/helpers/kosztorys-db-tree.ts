@@ -85,6 +85,7 @@ export async function createKosztorysTree(
           description: item.description ?? null,
           unit: item.unit ?? null,
           plannedQty: item.plannedQty ?? 0,
+          sheetMeasuredQty: item.sheetMeasuredQty ?? null,
           discountType: item.discountType ?? null,
           discountValue: item.discountValue ?? 0,
           clientPrice: item.clientPrice ?? 0,

@@ -28,6 +28,19 @@ export const swapDisplayOrderSchema = z.object({
   second: displayOrderRefSchema,
 })
 
+// A duplicate id makes the VALUES join ambiguous — two rows claim one target.
+//
+// A duplicate displayOrder is NOT rejected here: one renumber spans every section at once, and
+// display_order is only ever compared within a section, so each one legitimately starts again at 0
+// and the index repeats once per section. Uniqueness within a section is asserted by the planner that
+// builds the refs — it cannot be seen from the flat list.
+export const renumberDisplayOrderSchema = z
+  .array(displayOrderRefSchema)
+  .min(1)
+  .refine((refs) => new Set(refs.map((r) => r.id)).size === refs.length, {
+    message: 'Duplicate id',
+  })
+
 export type DisplayOrderRefT = z.infer<typeof displayOrderRefSchema>
 
 // Append slot for a new row = MAX(display_order)+1, not COUNT — a delete leaves a gap, so counting
@@ -95,5 +108,35 @@ export async function swapDisplayOrder(
     WHERE id IN (
       SELECT id FROM ${table} WHERE id IN (${first.id}, ${second.id}) ORDER BY id FOR UPDATE
     )
+  `)
+}
+
+// Rewrites a whole block's display_order in ONE statement — what „Zapisz kolejność" needs, where the
+// ▲▼ swap would take O(n²) neighbour exchanges to reach the same order.
+//
+// One statement for the same reason as swapDisplayOrder: a half-applied renumber leaves rows sharing
+// a display_order and the reloaded order goes non-deterministic. And it locks through the same
+// `ORDER BY id FOR UPDATE` subquery, so it cannot deadlock against shiftDisplayOrderFrom (EX-632).
+export async function renumberDisplayOrder(
+  payload: Payload,
+  scope: OrderScopeT,
+  refs: DisplayOrderRefT[],
+): Promise<void> {
+  const { table } = ORDER_SCOPES[scope]
+  const db = await getDb(payload)
+  const ids = sql.join(
+    refs.map((r) => sql`${r.id}`),
+    sql.raw(', '),
+  )
+  const values = sql.join(
+    refs.map((r) => sql`(${r.id}::int, ${r.displayOrder}::int)`),
+    sql.raw(', '),
+  )
+  await db.execute(sql`
+    UPDATE ${table} AS t
+    SET display_order = v.ord, updated_at = now()
+    FROM (VALUES ${values}) AS v(id, ord)
+    WHERE t.id = v.id
+      AND t.id IN (SELECT id FROM ${table} WHERE id IN (${ids}) ORDER BY id FOR UPDATE)
   `)
 }

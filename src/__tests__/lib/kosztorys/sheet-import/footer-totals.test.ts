@@ -7,7 +7,7 @@ import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 function compare(grid: (string | number)[][]) {
   const resolved = resolveRobocizna(grid)
   if (!resolved.ok) expect.fail(`fixture header did not resolve: ${resolved.problems.join(' | ')}`)
-  return compareFooterTotals(grid, resolved, parseRobocizna(grid, resolved))
+  return compareFooterTotals(grid, resolved, parseRobocizna(grid, resolved, []))
 }
 
 const byKey = (grid: (string | number)[][], key: string) =>

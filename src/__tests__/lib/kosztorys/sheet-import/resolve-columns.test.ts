@@ -88,6 +88,35 @@ describe('resolveRobocizna', () => {
     expect(result.matchedLabels.unit).toBe('jednostka miary')
   })
 
+  it('finds „Pomiar z natury" beside Przedmiar', () => {
+    const result = resolveRobocizna(BIALOSTOCKA_ROBOCIZNA_HEADER)
+    expectResolved(result)
+
+    expect(result.columns.measuredQty).toBe(14)
+  })
+
+  it('imports a sheet with no „Pomiar z natury" column rather than refusing it', () => {
+    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    grid[0][14] = ''
+    grid[2][14] = ''
+
+    const result = resolveRobocizna(grid)
+    expectResolved(result)
+    expect(result.columns.measuredQty).toBeUndefined()
+  })
+
+  it('imports a sheet whose „Pomiar z natury" matches twice rather than refusing it', () => {
+    // An optional column the resolver cannot pin down is dropped, not escalated: refusing here would
+    // reject a sheet that imported fine before the column was ever looked for.
+    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    grid[0][20] = grid[0][14]
+    grid[2][20] = grid[2][14]
+
+    const result = resolveRobocizna(grid)
+    expectResolved(result)
+    expect(result.columns.measuredQty).toBeUndefined()
+  })
+
   it('treats a missing rabat column as fine — some sheets genuinely have none', () => {
     const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
     grid[0][17] = '' // blank out „rabat"
