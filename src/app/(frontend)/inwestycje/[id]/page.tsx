@@ -99,7 +99,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
           fields={financialFields}
           margin={calculateMargin(financials)}
           totalPayouts={financials.totalPayouts}
-          totalLoss={financials.totalLoss}
           settledFields={settledFields}
         />
       ) : (

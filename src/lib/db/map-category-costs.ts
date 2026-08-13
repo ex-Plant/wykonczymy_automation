@@ -18,6 +18,7 @@ export const LABOR_LABEL = 'Robocizna netto'
 export const RABAT_LABEL = 'Rabat netto'
 export const INCOME_LABEL = 'Wpłaty'
 export const MATERIALS_DISCOUNT_LABEL = 'Obniżka materiałów'
+export const LOSS_LABEL = 'Strata'
 
 /** Amount booked to a given expense category, 0 when that category has no rows. */
 export function costForCategory(categoryCosts: CategoryCostT[], categoryId: number): number {
@@ -106,8 +107,14 @@ export function buildFinancialFields(
   expenseCategories: { id: number; name: string }[],
   { hideZeroCosts = false }: BuildOptionsT = {},
 ): FinancialFieldT[] {
-  const { categoryCosts, totalIncome, totalLaborCosts, totalRabat, materialsNetDiscount } =
-    financials
+  const {
+    categoryCosts,
+    totalIncome,
+    totalLaborCosts,
+    totalRabat,
+    materialsNetDiscount,
+    totalLoss,
+  } = financials
   const uncategorised = uncategorisedRemainder(financials)
 
   return [
@@ -141,6 +148,9 @@ export function buildFinancialFields(
             amount: materialsNetDiscount,
           },
         ]
+      : []),
+    ...(totalLoss !== 0
+      ? [{ label: LOSS_LABEL, value: formatPLN(totalLoss), amount: totalLoss }]
       : []),
   ]
 }

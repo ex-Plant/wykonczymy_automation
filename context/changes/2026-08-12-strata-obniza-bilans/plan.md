@@ -217,18 +217,18 @@ review — autorować albo odłożyć jako `e2e-backlog`.
 
 #### Automated
 
-- [x] 0.1 Repro fallbacku `originalDoc`
-- [x] 0.2 Naprawa albo guard, zależnie od wyniku
+- [x] 0.1 Repro fallbacku `originalDoc` — f50cf210
+- [x] 0.2 Naprawa albo guard, zależnie od wyniku — f50cf210
 
 ### Phase 1
 
 #### Automated
 
-- [ ] 1.1 `calculate-balance.test.ts` red-first
-- [ ] 1.2 Σ kafelków === `calculateBalance`
-- [ ] 1.3 `transfer-loss.test.ts`
-- [ ] 1.4 Złoty master przeliczony
-- [ ] 1.5 typecheck
+- [x] 1.1 `calculate-balance.test.ts` red-first
+- [x] 1.2 Σ kafelków === `calculateBalance`
+- [ ] 1.3 `transfer-loss.test.ts` — asercje z `:17-20` dotyczą `requiresInvestment`, więc lecą z flipem w fazie 3
+- [x] 1.4 Złoty master przeliczony
+- [ ] 1.5 typecheck — bramka całego drzewa, na koniec przebiegu
 
 ### Phase 2
 

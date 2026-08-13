@@ -70,7 +70,6 @@ export default async function TransactionsReportPage({ searchParams }: PageProps
         fields={financialFields}
         margin={calculateMargin(financials)}
         totalPayouts={financials.totalPayouts}
-        totalLoss={financials.totalLoss}
         settledFields={settledFields}
       />
 
