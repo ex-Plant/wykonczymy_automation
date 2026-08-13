@@ -306,11 +306,18 @@ Uruchomić **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 2.1 Spec `kosztorys-renumber-order.test.ts` przechodzi
-- [x] 2.2 Spec `display-order.test.ts` przechodzi
+- [x] 2.1 Spec `kosztorys-renumber-order.test.ts` przechodzi — fc0eb390
+- [x] 2.2 Spec `display-order.test.ts` przechodzi — fc0eb390
 
 ### Phase 3: „Utrwal kolejność" w menu sekcji + cofanie
 
 #### Automated
 
-- [ ] 3.1 Spec `display-order-plan.test.ts` przechodzi
+- [x] 3.1 Spec `display-order-plan.test.ts` przechodzi
+
+### Whole-tree Gate
+
+- [x] G.1 `pnpm typecheck`
+- [x] G.2 `pnpm lint` (0 błędów, 80 wcześniejszych ostrzeżeń)
+- [x] G.3 `pnpm test` (142 pliki, 2162 testy)
+- [x] G.4 `next build --webpack`

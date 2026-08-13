@@ -61,6 +61,9 @@ export type BuildV2ColumnsOptsT = {
   // menu. Greyed out under an active column sort, for the same reason as the per-item ▲▼.
   onReorderSection?: (sectionId: number, dir: 'up' | 'down') => void
   onInsertSection?: (sectionId: number, dir: 'above' | 'below') => void
+  // „Utrwal kolejność": writes the active sort into this section's display_order, so the order
+  // survives clearing the sort. No-op without one — the menu item is disabled there.
+  onPersistSectionOrder?: (sectionId: number) => void
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void

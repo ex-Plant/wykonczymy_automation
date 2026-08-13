@@ -211,11 +211,21 @@ function RowActionsCell({
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
   const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
 
-  // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
+  // All five section callbacks come from one `editorOnly()` gate, so this reads as a single
   // "editor mode?" test rather than four independent ones.
-  const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
+  const {
+    onInsertSection,
+    onReorderSection,
+    onPersistSectionOrder,
+    onSetSectionColor,
+    onRemoveSection,
+  } = opts
   const section =
-    onInsertSection && onReorderSection && onSetSectionColor && onRemoveSection
+    onInsertSection &&
+    onReorderSection &&
+    onPersistSectionOrder &&
+    onSetSectionColor &&
+    onRemoveSection
       ? {
           color: rowData.sectionColor,
           name: rowData.sectionName ?? undefined,
@@ -224,6 +234,7 @@ function RowActionsCell({
           onInsertBelow: () => onInsertSection(rowData.sectionId, 'below'),
           onMoveUp: () => onReorderSection(rowData.sectionId, 'up'),
           onMoveDown: () => onReorderSection(rowData.sectionId, 'down'),
+          onPersistOrder: () => onPersistSectionOrder(rowData.sectionId),
           onSetColor: (color: SectionColorKeyT | null) =>
             onSetSectionColor(rowData.sectionId, color),
           onRemove: () => onRemoveSection(rowData.sectionId),

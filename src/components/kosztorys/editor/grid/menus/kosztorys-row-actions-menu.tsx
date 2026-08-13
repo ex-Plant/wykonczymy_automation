@@ -8,6 +8,7 @@ import {
   ArrowUp,
   ArrowUpToLine,
   CheckCheck,
+  ListOrdered,
   Trash2,
 } from 'lucide-react'
 
@@ -38,6 +39,9 @@ type SectionActionsT = OrderActionsT & {
   name?: string
   itemCount: number
   onSetColor: (color: SectionColorKeyT | null) => void
+  // „Utrwal kolejność": writes the sorted view into the section's stored order. Only meaningful
+  // while a sort is active, so the item is disabled without one.
+  onPersistOrder: () => void
   onRemove: () => void
 }
 
@@ -81,7 +85,7 @@ export function KosztorysRowActionsMenu({
     )
 
   const sortHint = sortActive
-    ? 'Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować'
+    ? 'Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować. Aby zachować bieżącą kolejność, użyj „Utrwal kolejność" w grupie „Sekcja"'
     : undefined
 
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
@@ -141,6 +145,15 @@ export function KosztorysRowActionsMenu({
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
               {withHint(orderItems(section), sortHint)}
+              {withHint(
+                <DropdownMenuItem disabled={!sortActive} onSelect={section.onPersistOrder}>
+                  <ListOrdered />
+                  Utrwal kolejność
+                </DropdownMenuItem>,
+                sortActive
+                  ? 'Zapisuje bieżącą kolejność pozycji tej sekcji — zostanie po wyłączeniu sortowania'
+                  : 'Najpierw posortuj kolumnę — utrwalana jest kolejność z sortowania',
+              )}
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
                 <Trash2 />

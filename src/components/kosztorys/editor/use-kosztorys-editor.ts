@@ -29,6 +29,7 @@ import {
   applyInsertSectionRow,
   applyRemoveItem,
   applyRestoreItem,
+  applySectionOrder,
   buildBlankRow,
   groupBySection,
   insertDisplayOrder,
@@ -60,6 +61,8 @@ import {
   type SortDirT,
 } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
+import { planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
+import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
@@ -81,6 +84,7 @@ import {
   removeItemAction,
   removeSectionAction,
   removeStageAction,
+  renumberItemOrderAction,
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
@@ -365,6 +369,7 @@ export function useKosztorysEditor({
     onRemoveSection: editorOnly(handleRemoveSection),
     onReorderSection: editorOnly(handleReorderSection),
     onInsertSection: editorOnly(handleInsertSection),
+    onPersistSectionOrder: editorOnly(handlePersistSectionOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
     onClearSheetMeasuredQty: editorOnly(handleClearSheetMeasuredQty),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
@@ -727,6 +732,33 @@ export function useKosztorysEditor({
       undo: () => runReorderReversal(a, b, 'undo'),
       redo: () => runReorderReversal(a, b, 'redo'),
       touchedIds: [a.id, b.id],
+    })
+  }
+
+  // ⋯ → Sekcja → „Utrwal kolejność": the active sort is only a view, so this is what makes it
+  // survive a reload — the section's rows take display_order 0…n-1 in the order they're shown.
+  // Computed from `rows`, never `viewRows`: the search box would otherwise renumber the visible
+  // rows and leave the hidden ones interleaved among them.
+  function runSectionRenumber(sectionId: number, refs: DisplayOrderRefT[]) {
+    setRows((rs) => applySectionOrder(rs, sectionId, refs))
+    void renumberItemOrderAction(sectionId, refs)
+  }
+
+  function handlePersistSectionOrder(sectionId: number) {
+    if (!sort) return // nothing to persist — the menu also disables the item
+    const { before, after } = planSectionRenumber(
+      rowsRef.current,
+      sectionId,
+      (r) => columnSortValue(r, sort.field, view, stages),
+      sort.dir,
+    )
+    if (after.length === 0) return
+    runSectionRenumber(sectionId, after)
+    pushCommand({
+      label: 'Utrwalenie kolejności',
+      undo: () => runSectionRenumber(sectionId, before),
+      redo: () => runSectionRenumber(sectionId, after),
+      touchedIds: after.map((ref) => ref.id),
     })
   }
 
