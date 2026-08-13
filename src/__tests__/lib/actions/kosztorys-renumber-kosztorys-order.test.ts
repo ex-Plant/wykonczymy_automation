@@ -4,14 +4,13 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { createTestInvestment } from '@/__tests__/helpers/investment'
 
-// „Utrwal kolejność" writes the grid's order into display_order, driven against the REAL DB and
-// asserting the PERSISTED sequence — a success result can hide a failed write.
-//   RN1 — the whole block takes its new order in one go, every display_order distinct.
-//   RN2 — ids from another section are refused outright; nothing is written.
-//   RN3 — a duplicate target index is refused (no unique constraint would catch it).
+// „Utrwal kolejność w całym kosztorysie" — the multi-section variant, driven against the REAL DB and
+// asserting the PERSISTED sequence (a success result can hide a failed write).
+//   RK1 — every section takes its new order in one call, each restarting at 0.
+//   RK2 — ids from another investment are refused outright; nothing is written.
+//   RK3 — a duplicate id is refused (it would make the VALUES join ambiguous).
 //
-// Same mock surface as the sibling action specs: requireAuth needs a request/cookie we lack in node,
-// and revalidation touches next/cache outside a request context.
+// Same mock surface as the sibling action specs.
 const authState = vi.hoisted(() => ({ userId: 0 }))
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/auth/require-auth', () => ({
@@ -22,14 +21,14 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
-const { addItemAction, addSectionAction, renumberItemOrderAction } =
+const { addItemAction, addSectionAction, renumberKosztorysOrderAction } =
   await import('@/lib/actions/kosztorys')
 
 // Gated like the sibling specs: skips with no DB env, FAILS if env is set but the DB is unreachable.
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
-const FIXTURE_PREFIX = 'renumber-order-test-'
+const FIXTURE_PREFIX = 'renumber-kosztorys-order-test-'
 
-describe.skipIf(!ENV_READY)('renumberItemOrderAction (DB)', () => {
+describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
   let payload: Payload
   let db: Awaited<ReturnType<typeof getDb>>
   const createdInvestments: number[] = []
@@ -78,13 +77,6 @@ describe.skipIf(!ENV_READY)('renumberItemOrderAction (DB)', () => {
     return res.rows.map((r) => Number(r.id))
   }
 
-  async function itemOrders(sectionId: number): Promise<number[]> {
-    const res = await db.execute(
-      sql`SELECT display_order FROM kosztorys_items WHERE section_id = ${sectionId} ORDER BY display_order`,
-    )
-    return res.rows.map((r) => Number(r.display_order))
-  }
-
   // addSectionAction seeds item @0; `extra` more give a 1+extra-row section.
   async function sectionWithItems(investmentId: number, extra: number): Promise<number> {
     const section = await addSectionAction(investmentId)
@@ -93,50 +85,54 @@ describe.skipIf(!ENV_READY)('renumberItemOrderAction (DB)', () => {
     return section.data.section.id
   }
 
-  it('rewrites the whole block in one call and leaves every index distinct (RN1)', async () => {
+  it('renumbers every section in one call, each restarting at 0 (RK1)', async () => {
     const investmentId = await freshInvestment()
-    const sectionId = await sectionWithItems(investmentId, 3)
-    const [a, b, c, d] = await itemIdsInOrder(sectionId)
+    const first = await sectionWithItems(investmentId, 1)
+    const second = await sectionWithItems(investmentId, 1)
+    const [a, b] = await itemIdsInOrder(first)
+    const [c, d] = await itemIdsInOrder(second)
 
-    const res = await renumberItemOrderAction(sectionId, [
+    const res = await renumberKosztorysOrderAction(investmentId, [
+      { id: b, displayOrder: 0 },
+      { id: a, displayOrder: 1 },
       { id: d, displayOrder: 0 },
       { id: c, displayOrder: 1 },
-      { id: b, displayOrder: 2 },
-      { id: a, displayOrder: 3 },
     ])
     expect(res.success).toBe(true)
 
-    expect(await itemIdsInOrder(sectionId)).toEqual([d, c, b, a])
-    expect(await itemOrders(sectionId)).toEqual([0, 1, 2, 3])
+    expect(await itemIdsInOrder(first)).toEqual([b, a])
+    expect(await itemIdsInOrder(second)).toEqual([d, c])
   })
 
-  it('refuses ids belonging to another section and writes nothing (RN2)', async () => {
+  it('refuses ids belonging to another investment and writes nothing (RK2)', async () => {
     const investmentId = await freshInvestment()
     const mine = await sectionWithItems(investmentId, 1)
-    const other = await sectionWithItems(investmentId, 1)
+    const otherInvestmentId = await freshInvestment()
+    const theirs = await sectionWithItems(otherInvestmentId, 1)
     const [a, b] = await itemIdsInOrder(mine)
-    const [foreign] = await itemIdsInOrder(other)
-    const otherBefore = await itemIdsInOrder(other)
+    const [foreign] = await itemIdsInOrder(theirs)
+    const theirsBefore = await itemIdsInOrder(theirs)
 
-    const res = await renumberItemOrderAction(mine, [
+    const res = await renumberKosztorysOrderAction(investmentId, [
       { id: b, displayOrder: 0 },
       { id: a, displayOrder: 1 },
-      { id: foreign, displayOrder: 2 },
+      { id: foreign, displayOrder: 0 },
     ])
     expect(res.success).toBe(false)
 
     expect(await itemIdsInOrder(mine)).toEqual([a, b])
-    expect(await itemIdsInOrder(other)).toEqual(otherBefore)
+    expect(await itemIdsInOrder(theirs)).toEqual(theirsBefore)
   })
 
-  it('refuses two rows targeting the same index (RN3)', async () => {
+  it('refuses a duplicate id (RK3)', async () => {
     const investmentId = await freshInvestment()
     const sectionId = await sectionWithItems(investmentId, 1)
     const [a, b] = await itemIdsInOrder(sectionId)
 
-    const res = await renumberItemOrderAction(sectionId, [
+    const res = await renumberKosztorysOrderAction(investmentId, [
       { id: a, displayOrder: 0 },
-      { id: b, displayOrder: 0 },
+      { id: a, displayOrder: 1 },
+      { id: b, displayOrder: 1 },
     ])
     expect(res.success).toBe(false)
 

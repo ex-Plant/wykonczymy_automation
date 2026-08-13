@@ -37,17 +37,18 @@ zostało zamienione na wyłącznie wewnątrzsekcyjne — ta zmiana przywraca sor
   wszystkich sekcjach, refy sklejone w jeden zapis i jedno cofnięcie. `renumberDisplayOrder`
   przyjmuje dowolną listę id→indeks, więc mechanizm już to unosi.
 
-### Wycofane po implementacji (2026-08-13)
+### Korekta po implementacji (2026-08-13)
 
-„Utrwal kolejność w całym kosztorysie" **usunięte wraz z całym wiringiem** — decyzja właściciela już
-po zaimplementowaniu fazy 2 i 3. Zostaje wyłącznie „Utrwal kolejność" w grupie „Sekcja" (EX-683).
+Utrwalanie kolejności **przeniesione z menu wiersza do menu nagłówka kolumny** — tam, gdzie się
+sortuje. Jedno polecenie „Utrwal kolejność", obejmujące wszystkie sekcje naraz.
 
-Usunięte: grupa „Kosztorys" w menu wiersza, `onPersistKosztorysOrder`, `handlePersistKosztorysOrder`,
-`planKosztorysRenumber`, `renumberKosztorysOrderAction` wraz ze specem bazodanowym, oraz podział
-schematu na `renumberDisplayOrderSchema` / `renumberDisplayOrderAcrossBlocksSchema` (wrócił jeden
-schemat jednoblokowy). Zostaje faza 1 w całości — wybór zakresu sortowania w menu kolumny.
+Powód (właściciel): nie da się posortować jednej sekcji. „w sekcjach" porządkuje **każdą** sekcję,
+„w całym kosztorysie" miesza wszystkie — więc zapis zaczepiony o jedną sekcję zapisywał wycinek
+czegoś, czego nigdy nie dało się osobno wywołać, a menu wiersza dodatkowo sugerowało, że wiersz ma
+z tym coś wspólnego. Z nagłówka kolumny i tak nie ma jak wskazać sekcji.
 
-Wnioski z fazy 2/3, gdyby wariant kiedyś wrócił: `renumberDisplayOrder` przyjmuje dowolną listę
-id→indeks i pisze ją jednym `UPDATE … FROM (VALUES …)`, więc obsłużyłby zapis całego kosztorysu bez
-zmian; jedyne, co trzeba by ruszyć, to strażnik (`investment_id` zamiast `section_id`) i schemat,
-który dziś zabrania powtórzonego indeksu — a przy wielu sekcjach każda zaczyna numerację od zera.
+Konsekwencje: znika pozycja utrwalania z grupy „Sekcja" w menu wiersza wraz z akcją serwerową
+zapisującą pojedynczą sekcję (EX-683) i jej specem — nikt jej już nie woła, a szersza akcja robi to
+samo zapytanie bez ograniczenia do jednej sekcji. Schemat walidacji wraca do jednego kształtu:
+odrzuca powtórzone id, ale **nie** powtórzony indeks, bo przy wielu sekcjach każda zaczyna
+numerację od zera. Strzałki ▲▼ i „Wstaw" bez zmian.

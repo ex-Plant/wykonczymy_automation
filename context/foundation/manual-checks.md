@@ -950,18 +950,23 @@ Kosztorys inwestycji.
 - [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ działają normalnie
 - [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" i „Utrwal kolejność" w ogóle się nie pokazują
 
-## EX-688 — zakres sortowania kolumny (w sekcjach / w całym kosztorysie)
+## EX-688 — zakres sortowania kolumny + „Utrwal kolejność" w menu nagłówka
 
-**In review** — cała bramka zielona (tsc, eslint bez błędów w zmienionych plikach, `pnpm test` 2173,
-`test-integration.sh` 110, `next build --webpack`). E2E odroczone (patrz bramka przeglądu).
+**In review** — tsc czysty, eslint bez błędów, specy sortowania i zapisu kolejności zielone.
+E2E odroczone (patrz bramka przeglądu).
 
 Setup: jak wyżej — aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER,
 zakładka Kosztorys inwestycji.
 
-- [ ] Menu kolumny pokazuje cztery polecenia sortowania z jawnym zakresem („w sekcjach" / „w całym kosztorysie") plus „Wyczyść sortowanie"
+- [ ] Menu kolumny pokazuje cztery polecenia sortowania z jawnym zakresem („w sekcjach" / „w całym kosztorysie"), „Utrwal kolejność" i „Wyczyść sortowanie"
 - [ ] Sortowanie „w sekcjach" po „Opis" zachowuje pasy sekcji i kolejność samych sekcji
 - [ ] Sortowanie „w całym kosztorysie" daje jedną płaską listę — pasy sekcji znikają, numeracja idzie ciągiem
-- [ ] Przy sortowaniu „w całym kosztorysie" „Utrwal kolejność" jest wyszarzone i tłumaczy, że takiej kolejności nie da się zapisać
-- [ ] Powrót na „w sekcjach" odblokowuje „Utrwal kolejność"
+- [ ] „Utrwal kolejność" jest wyszarzone bez sortowania i przy sortowaniu „w całym kosztorysie"; w obu przypadkach podpowiedź tłumaczy dlaczego
+- [ ] Sortowanie „w sekcjach" → „Utrwal kolejność" → wyczyszczenie sortowania → kolejność została **w każdej** sekcji; po odświeżeniu nadal ta sama
+- [ ] Cmd+Z cofa utrwalenie wszystkich sekcji jednym ruchem; Cmd+Shift+Z je przywraca
+- [ ] Utrwalenie przy wpisanej frazie w wyszukiwarce porządkuje **całe** sekcje, nie tylko widoczne wiersze
+- [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ oraz „Wstaw" działają normalnie
+- [ ] W menu wiersza (grupa „Sekcja") nie ma już żadnego utrwalania kolejności
 - [ ] Sekcja zwinięta przy sortowaniu „w całym kosztorysie" nie chowa swoich pozycji (bez pasa nie ma czym rozwinąć)
 - [ ] Żadne sortowanie nie przeżywa odświeżenia strony — po reloadzie kosztorys wraca do kolejności zapisanej
+- [ ] Podgląd dla klienta (link publiczny): w menu nagłówka nie ma „Utrwal kolejność"

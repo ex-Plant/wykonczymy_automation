@@ -12,7 +12,7 @@ export function reorderLockHint(scope: SortScopeT | null): string | undefined {
   const escape =
     scope === 'global'
       ? 'Sortowania „w całym kosztorysie" nie da się utrwalić — posortuj „w sekcjach", jeśli chcesz zachować kolejność'
-      : 'Aby zachować bieżącą kolejność, użyj „Utrwal kolejność" w grupie „Sekcja"'
+      : 'Aby zachować bieżącą kolejność, użyj „Utrwal kolejność" w menu nagłówka sortowanej kolumny'
   return `Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować. ${escape}`
 }
 

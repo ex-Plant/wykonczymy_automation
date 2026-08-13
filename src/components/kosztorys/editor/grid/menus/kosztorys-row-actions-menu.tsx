@@ -8,7 +8,6 @@ import {
   ArrowUp,
   ArrowUpToLine,
   CheckCheck,
-  ListOrdered,
   Trash2,
 } from 'lucide-react'
 
@@ -24,7 +23,7 @@ import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigge
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SortScopeT } from '@/lib/kosztorys/row-view'
-import { persistOrderBlockReason, reorderLockHint } from '@/lib/kosztorys/sort-lock-hints'
+import { reorderLockHint } from '@/lib/kosztorys/sort-lock-hints'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type OrderActionsT = {
@@ -34,16 +33,13 @@ type OrderActionsT = {
   onMoveDown: () => void
 }
 
-// One bundle rather than six optional callbacks: they all come from the same `editorOnly()` gate, so
+// One bundle rather than a callback per command: they all come from the same `editorOnly()` gate, so
 // they are all-present or all-absent — as separate props the „Sekcja" group could half-appear.
 type SectionActionsT = OrderActionsT & {
   color: SectionColorKeyT | null
   name?: string
   itemCount: number
   onSetColor: (color: SectionColorKeyT | null) => void
-  // „Utrwal kolejność": writes the sorted view into the section's stored order. Only meaningful
-  // while a sort is active, so the item is disabled without one.
-  onPersistOrder: () => void
   onRemove: () => void
 }
 
@@ -89,7 +85,6 @@ export function KosztorysRowActionsMenu({
     )
 
   const sortHint = reorderLockHint(sortScope)
-  const persistBlockReason = persistOrderBlockReason(sortScope)
 
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
@@ -148,17 +143,6 @@ export function KosztorysRowActionsMenu({
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
               {withHint(orderItems(section), sortHint)}
-              {withHint(
-                <DropdownMenuItem
-                  disabled={persistBlockReason != null}
-                  onSelect={section.onPersistOrder}
-                >
-                  <ListOrdered />
-                  Utrwal kolejność
-                </DropdownMenuItem>,
-                persistBlockReason ??
-                  'Zapisuje bieżącą kolejność pozycji tej sekcji — zostanie po wyłączeniu sortowania',
-              )}
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
                 <Trash2 />

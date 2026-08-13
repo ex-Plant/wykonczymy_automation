@@ -475,31 +475,32 @@ export async function swapItemOrderAction(
   )
 }
 
-const ITEMS_NOT_IN_SECTION = 'Pozycje spoza tej sekcji.'
+const ITEMS_NOT_IN_KOSZTORYS = 'Pozycje spoza tego kosztorysu.'
 
-// „Utrwal kolejność" — writes the grid's current order into one section's display_order.
-export async function renumberItemOrderAction(
-  sectionId: number,
+// „Utrwal kolejność" (menu nagłówka kolumny) — writes the grid's current order into display_order
+// across every section, in one statement so a half-applied renumber can't leave sections sharing
+// indices.
+export async function renumberKosztorysOrderAction(
+  investmentId: number,
   refs: { id: number; displayOrder: number }[],
 ): Promise<ActionResultT> {
   return protectedAction(
-    'renumberItemOrderAction',
+    'renumberKosztorysOrderAction',
     async ({ payload }) => {
       const parsed = validateAction(renumberDisplayOrderSchema, refs)
       if (!parsed.success) return parsed
       const db = await getDb(payload)
-      // The ids come from the client, and renumberDisplayOrder joins on id alone — without this the
-      // caller could rewrite the order of any section in any investment. Counting the ids that DO
-      // belong is enough: the schema already rejected duplicates.
+      // Same reason as the section guard, one column over: the ids come from the client and
+      // renumberDisplayOrder joins on id alone.
       const res = await db.execute(sql`
         SELECT COUNT(*)::int AS n FROM kosztorys_items
-        WHERE section_id = ${sectionId} AND id IN (${sql.join(
+        WHERE investment_id = ${investmentId} AND id IN (${sql.join(
           parsed.data.map((r) => sql`${r.id}`),
           sql.raw(', '),
         )})
       `)
       if (Number(res.rows[0]?.n ?? 0) !== parsed.data.length) {
-        return { success: false, error: ITEMS_NOT_IN_SECTION }
+        return { success: false, error: ITEMS_NOT_IN_KOSZTORYS }
       }
       await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
       return { success: true }

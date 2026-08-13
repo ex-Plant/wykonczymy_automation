@@ -1,8 +1,10 @@
 'use client'
 
-import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronsUpDown, ListOrdered } from 'lucide-react'
 
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { SimpleTooltip } from '@/components/ui/tooltip'
+import { persistOrderBlockReason } from '@/lib/kosztorys/sort-lock-hints'
 import { cn } from '@/lib/utils/cn'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
@@ -13,12 +15,18 @@ type PropsT = {
   label: string
   active: SortPickT | null
   onSort: (pick: SortPickT | null) => void
+  // „Utrwal kolejność" — writes the sort showing right now into the stored order, so it survives
+  // clearing the sort. Absent in the read-only view, where the item does not appear at all. It sits
+  // in this menu because it bakes THIS menu's sort; from a column header there is no one section to
+  // aim at, so it covers every section at once.
+  onPersistOrder?: () => void
   // Explanatory tooltip composed ONTO the trigger (not a wrapping element) — a second wrapping
   // trigger would fight the dropdown for the click.
   tip?: string
 }
 
-export function SortHeader({ label, active, onSort, tip }: PropsT) {
+export function SortHeader({ label, active, onSort, onPersistOrder, tip }: PropsT) {
+  const persistBlockReason = persistOrderBlockReason(active?.scope ?? null)
   const Icon = active?.dir === 'asc' ? ArrowUp : active?.dir === 'desc' ? ArrowDown : ChevronsUpDown
 
   // Scope is spelled out in each label instead of hiding behind a mode toggle: four commands, so
@@ -50,6 +58,23 @@ export function SortHeader({ label, active, onSort, tip }: PropsT) {
       {item('asc', 'global', 'Sortuj rosnąco w całym kosztorysie')}
       {item('desc', 'global', 'Sortuj malejąco w całym kosztorysie')}
       <DropdownMenuSeparator />
+      {onPersistOrder && (
+        // The wrapper div catches the hover a disabled item swallows (pointer-events-none), and keeps
+        // the tooltip and the menu item off each other's ref.
+        <SimpleTooltip
+          content={
+            persistBlockReason ??
+            'Zapisuje bieżącą kolejność we wszystkich sekcjach — zostanie po wyłączeniu sortowania'
+          }
+        >
+          <div>
+            <DropdownMenuItem disabled={persistBlockReason != null} onSelect={onPersistOrder}>
+              <ListOrdered />
+              Utrwal kolejność
+            </DropdownMenuItem>
+          </div>
+        </SimpleTooltip>
+      )}
       <DropdownMenuItem disabled={!active} onSelect={() => onSort(null)}>
         <ChevronsUpDown className="opacity-50" />
         Wyczyść sortowanie

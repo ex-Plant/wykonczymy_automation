@@ -28,17 +28,17 @@ export const swapDisplayOrderSchema = z.object({
   second: displayOrderRefSchema,
 })
 
-// A duplicate id makes the VALUES join ambiguous — two rows claim one target. A duplicate
-// displayOrder lands two rows on one index, and with no unique constraint the reloaded order goes
-// non-deterministic.
+// A duplicate id makes the VALUES join ambiguous — two rows claim one target.
+//
+// A duplicate displayOrder is NOT rejected here: one renumber spans every section at once, and
+// display_order is only ever compared within a section, so each one legitimately starts again at 0
+// and the index repeats once per section. Uniqueness within a section is asserted by the planner that
+// builds the refs — it cannot be seen from the flat list.
 export const renumberDisplayOrderSchema = z
   .array(displayOrderRefSchema)
   .min(1)
   .refine((refs) => new Set(refs.map((r) => r.id)).size === refs.length, {
     message: 'Duplicate id',
-  })
-  .refine((refs) => new Set(refs.map((r) => r.displayOrder)).size === refs.length, {
-    message: 'Duplicate displayOrder',
   })
 
 export type DisplayOrderRefT = z.infer<typeof displayOrderRefSchema>

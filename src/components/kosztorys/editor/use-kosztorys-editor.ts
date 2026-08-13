@@ -64,7 +64,7 @@ import {
   sortRowsWithinSections,
 } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
-import { planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
+import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -87,7 +87,7 @@ import {
   removeItemAction,
   removeSectionAction,
   removeStageAction,
-  renumberItemOrderAction,
+  renumberKosztorysOrderAction,
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
@@ -372,7 +372,7 @@ export function useKosztorysEditor({
     onRemoveSection: editorOnly(handleRemoveSection),
     onReorderSection: editorOnly(handleReorderSection),
     onInsertSection: editorOnly(handleInsertSection),
-    onPersistSectionOrder: editorOnly(handlePersistSectionOrder),
+    onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
     onClearSheetMeasuredQty: editorOnly(handleClearSheetMeasuredQty),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
@@ -737,31 +737,38 @@ export function useKosztorysEditor({
     })
   }
 
-  // ⋯ → Sekcja → „Utrwal kolejność": the active sort is only a view, so this is what makes it
-  // survive a reload — the section's rows take display_order 0…n-1 in the order they're shown.
+  // Menu nagłówka → „Utrwal kolejność": the active sort is only a view, so this is what makes it
+  // survive a reload — every section's rows take display_order 0…n-1 in the order they're shown.
   // Computed from `rows`, never `viewRows`: the search box would otherwise renumber the visible
   // rows and leave the hidden ones interleaved among them.
-  function runSectionRenumber(sectionId: number, refs: DisplayOrderRefT[]) {
-    setRows((rs) => applySectionOrder(rs, sectionId, refs))
-    void renumberItemOrderAction(sectionId, refs)
+  //
+  // One server call for the whole sheet, so a half-applied bake can't leave some sections renumbered
+  // and others not.
+  function runKosztorysRenumber(refs: DisplayOrderRefT[]) {
+    setRows((rs) =>
+      [...new Set(rs.map((r) => r.sectionId))].reduce(
+        (acc, sectionId) => applySectionOrder(acc, sectionId, refs),
+        rs,
+      ),
+    )
+    void renumberKosztorysOrderAction(investmentId, refs)
   }
 
-  function handlePersistSectionOrder(sectionId: number) {
-    // A global sort's order interleaves sections, so there is no per-section order to store — the
-    // menu disables the item and says why.
+  function handlePersistKosztorysOrder() {
+    // A global sort's order interleaves sections, so it cannot be stored at all — the menu disables
+    // the item and says why.
     if (!sort || sort.scope === 'global') return
-    const { before, after } = planSectionRenumber(
+    const { before, after } = planKosztorysRenumber(
       rowsRef.current,
-      sectionId,
       (r) => columnSortValue(r, sort.field, view, stages),
       sort.dir,
     )
     if (after.length === 0) return
-    runSectionRenumber(sectionId, after)
+    runKosztorysRenumber(after)
     pushCommand({
       label: 'Utrwalenie kolejności',
-      undo: () => runSectionRenumber(sectionId, before),
-      redo: () => runSectionRenumber(sectionId, after),
+      undo: () => runKosztorysRenumber(before),
+      redo: () => runKosztorysRenumber(after),
       touchedIds: after.map((ref) => ref.id),
     })
   }

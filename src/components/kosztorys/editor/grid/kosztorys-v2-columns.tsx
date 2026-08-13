@@ -126,7 +126,7 @@ function withTip(node: ReactNode, tip: string): ReactNode {
 // the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
 function title(
   field: string,
-  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'view'>,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
   sortable = true,
 ): ReactNode {
   const label = columnLabelForView(field, opts.view)
@@ -141,6 +141,7 @@ function title(
         active={active}
         tip={tip}
         onSort={(pick) => opts.onSetSort?.(field, pick)}
+        onPersistOrder={opts.onPersistKosztorysOrder}
       />
     )
   }
@@ -210,21 +211,11 @@ function RowActionsCell({
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
   const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
 
-  // All five section callbacks come from one `editorOnly()` gate, so this reads as a single
+  // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
   // "editor mode?" test rather than four independent ones.
-  const {
-    onInsertSection,
-    onReorderSection,
-    onPersistSectionOrder,
-    onSetSectionColor,
-    onRemoveSection,
-  } = opts
+  const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
   const section =
-    onInsertSection &&
-    onReorderSection &&
-    onPersistSectionOrder &&
-    onSetSectionColor &&
-    onRemoveSection
+    onInsertSection && onReorderSection && onSetSectionColor && onRemoveSection
       ? {
           color: rowData.sectionColor,
           name: rowData.sectionName ?? undefined,
@@ -233,7 +224,6 @@ function RowActionsCell({
           onInsertBelow: () => onInsertSection(rowData.sectionId, 'below'),
           onMoveUp: () => onReorderSection(rowData.sectionId, 'up'),
           onMoveDown: () => onReorderSection(rowData.sectionId, 'down'),
-          onPersistOrder: () => onPersistSectionOrder(rowData.sectionId),
           onSetColor: (color: SectionColorKeyT | null) =>
             onSetSectionColor(rowData.sectionId, color),
           onRemove: () => onRemoveSection(rowData.sectionId),
