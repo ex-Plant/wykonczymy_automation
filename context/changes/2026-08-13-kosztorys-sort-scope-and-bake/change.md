@@ -36,3 +36,18 @@ zostało zamienione na wyłącznie wewnątrzsekcyjne — ta zmiana przywraca sor
 - **Nowy wariant**: „Utrwal kolejność w całym kosztorysie" — ten sam planner przelatuje po
   wszystkich sekcjach, refy sklejone w jeden zapis i jedno cofnięcie. `renumberDisplayOrder`
   przyjmuje dowolną listę id→indeks, więc mechanizm już to unosi.
+
+### Wycofane po implementacji (2026-08-13)
+
+„Utrwal kolejność w całym kosztorysie" **usunięte wraz z całym wiringiem** — decyzja właściciela już
+po zaimplementowaniu fazy 2 i 3. Zostaje wyłącznie „Utrwal kolejność" w grupie „Sekcja" (EX-683).
+
+Usunięte: grupa „Kosztorys" w menu wiersza, `onPersistKosztorysOrder`, `handlePersistKosztorysOrder`,
+`planKosztorysRenumber`, `renumberKosztorysOrderAction` wraz ze specem bazodanowym, oraz podział
+schematu na `renumberDisplayOrderSchema` / `renumberDisplayOrderAcrossBlocksSchema` (wrócił jeden
+schemat jednoblokowy). Zostaje faza 1 w całości — wybór zakresu sortowania w menu kolumny.
+
+Wnioski z fazy 2/3, gdyby wariant kiedyś wrócił: `renumberDisplayOrder` przyjmuje dowolną listę
+id→indeks i pisze ją jednym `UPDATE … FROM (VALUES …)`, więc obsłużyłby zapis całego kosztorysu bez
+zmian; jedyne, co trzeba by ruszyć, to strażnik (`investment_id` zamiast `section_id`) i schemat,
+który dziś zabrania powtórzonego indeksu — a przy wielu sekcjach każda zaczyna numerację od zera.

@@ -63,8 +63,6 @@ type PropsT = {
   onClearSheetMeasuredQty?: () => void
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
-  // Same gate as `section` — absent in the read-only view, so the „Kosztorys" group is hidden too.
-  kosztorys?: { onPersistOrder: () => void }
 }
 
 export function KosztorysRowActionsMenu({
@@ -74,7 +72,6 @@ export function KosztorysRowActionsMenu({
   item,
   onClearSheetMeasuredQty,
   section,
-  kosztorys,
 }: PropsT) {
   const sortActive = sortScope != null
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -93,15 +90,6 @@ export function KosztorysRowActionsMenu({
 
   const sortHint = reorderLockHint(sortScope)
   const persistBlockReason = persistOrderBlockReason(sortScope)
-
-  const persistItem = (label: string, onSelect: () => void, enabledHint: string) =>
-    withHint(
-      <DropdownMenuItem disabled={persistBlockReason != null} onSelect={onSelect}>
-        <ListOrdered />
-        {label}
-      </DropdownMenuItem>,
-      persistBlockReason ?? enabledHint,
-    )
 
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
@@ -160,27 +148,22 @@ export function KosztorysRowActionsMenu({
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
               {withHint(orderItems(section), sortHint)}
-              {persistItem(
-                'Utrwal kolejność',
-                section.onPersistOrder,
-                'Zapisuje bieżącą kolejność pozycji tej sekcji — zostanie po wyłączeniu sortowania',
+              {withHint(
+                <DropdownMenuItem
+                  disabled={persistBlockReason != null}
+                  onSelect={section.onPersistOrder}
+                >
+                  <ListOrdered />
+                  Utrwal kolejność
+                </DropdownMenuItem>,
+                persistBlockReason ??
+                  'Zapisuje bieżącą kolejność pozycji tej sekcji — zostanie po wyłączeniu sortowania',
               )}
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
                 <Trash2 />
                 Usuń sekcję
               </DropdownMenuItem>
-            </>
-          )}
-          {kosztorys && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Kosztorys</DropdownMenuLabel>
-              {persistItem(
-                'Utrwal kolejność w całym kosztorysie',
-                kosztorys.onPersistOrder,
-                'Zapisuje bieżącą kolejność we wszystkich sekcjach naraz — jednym cofnięciem wraca poprzednia',
-              )}
             </>
           )}
         </DropdownMenuContent>

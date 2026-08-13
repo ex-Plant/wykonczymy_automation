@@ -258,9 +258,6 @@ function RowActionsCell({
           : undefined
       }
       section={section}
-      kosztorys={
-        opts.onPersistKosztorysOrder ? { onPersistOrder: opts.onPersistKosztorysOrder } : undefined
-      }
     />
   )
 }

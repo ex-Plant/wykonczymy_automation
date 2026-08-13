@@ -64,7 +64,7 @@ import {
   sortRowsWithinSections,
 } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
-import { planKosztorysRenumber, planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
+import { planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
 import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -88,7 +88,6 @@ import {
   removeSectionAction,
   removeStageAction,
   renumberItemOrderAction,
-  renumberKosztorysOrderAction,
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
@@ -374,7 +373,6 @@ export function useKosztorysEditor({
     onReorderSection: editorOnly(handleReorderSection),
     onInsertSection: editorOnly(handleInsertSection),
     onPersistSectionOrder: editorOnly(handlePersistSectionOrder),
-    onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
     onClearSheetMeasuredQty: editorOnly(handleClearSheetMeasuredQty),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
@@ -748,39 +746,9 @@ export function useKosztorysEditor({
     void renumberItemOrderAction(sectionId, refs)
   }
 
-  // The same write across every section — one server call, so a half-applied bake can't leave some
-  // sections renumbered and others not.
-  function runKosztorysRenumber(refs: DisplayOrderRefT[]) {
-    setRows((rs) =>
-      [...new Set(rs.map((r) => r.sectionId))].reduce(
-        (acc, sectionId) => applySectionOrder(acc, sectionId, refs),
-        rs,
-      ),
-    )
-    void renumberKosztorysOrderAction(investmentId, refs)
-  }
-
-  function handlePersistKosztorysOrder() {
-    // A global sort's order interleaves sections, so it cannot be stored at all — the menu disables
-    // the item and says why.
-    if (!sort || sort.scope === 'global') return
-    const { before, after } = planKosztorysRenumber(
-      rowsRef.current,
-      (r) => columnSortValue(r, sort.field, view, stages),
-      sort.dir,
-    )
-    if (after.length === 0) return
-    runKosztorysRenumber(after)
-    pushCommand({
-      label: 'Utrwalenie kolejności kosztorysu',
-      undo: () => runKosztorysRenumber(before),
-      redo: () => runKosztorysRenumber(after),
-      touchedIds: after.map((ref) => ref.id),
-    })
-  }
-
   function handlePersistSectionOrder(sectionId: number) {
-    // Same reason as above: under a global sort there is no per-section order to store.
+    // A global sort's order interleaves sections, so there is no per-section order to store — the
+    // menu disables the item and says why.
     if (!sort || sort.scope === 'global') return
     const { before, after } = planSectionRenumber(
       rowsRef.current,

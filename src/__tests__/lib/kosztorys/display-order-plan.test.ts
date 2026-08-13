@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { planKosztorysRenumber, planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
+import { planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 function row(
@@ -65,37 +65,5 @@ describe('planSectionRenumber', () => {
 
   it('returns empty plans for a section with no rows', () => {
     expect(planSectionRenumber(ROWS, 99, byDescription, 'asc')).toEqual({ before: [], after: [] })
-  })
-})
-
-describe('planKosztorysRenumber', () => {
-  it('restarts the numbering in every section', () => {
-    const { after } = planKosztorysRenumber(ROWS, byDescription, 'asc')
-
-    expect(after).toEqual([
-      { id: 4, displayOrder: 0 },
-      { id: 2, displayOrder: 1 },
-      { id: 1, displayOrder: 2 },
-      { id: 3, displayOrder: 0 },
-    ])
-  })
-
-  it('covers every row exactly once', () => {
-    const { before, after } = planKosztorysRenumber(ROWS, byDescription, 'asc')
-
-    expect(after.map((ref) => ref.id).sort()).toEqual([1, 2, 3, 4])
-    expect(before.map((ref) => ref.id).sort()).toEqual([1, 2, 3, 4])
-  })
-
-  // What undo replays, so it must be the stored indices — gaps included.
-  it('reports the stored order as before', () => {
-    const { before } = planKosztorysRenumber(ROWS, byDescription, 'asc')
-
-    expect(before).toEqual([
-      { id: 1, displayOrder: 0 },
-      { id: 2, displayOrder: 1 },
-      { id: 4, displayOrder: 2 },
-      { id: 3, displayOrder: 0 },
-    ])
   })
 })

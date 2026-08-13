@@ -21,25 +21,3 @@ export function planSectionRenumber(
     after: sorted.map((row, index) => ({ id: row.id, displayOrder: index })),
   }
 }
-
-// „Utrwal kolejność w całym kosztorysie": the same write over every section at once, so one command
-// bakes the whole sheet and one undo takes it back.
-//
-// Each section is still renumbered 0…n-1 on its own — that is what keeps the sections apart. A single
-// running index across the whole sheet would express the sort's interleaving, which display_order
-// cannot carry: position is only ever read within a section, so a global index would re-file prace
-// under whichever section they landed next to.
-export function planKosztorysRenumber(
-  rows: KosztorysV2RowT[],
-  getValue: (row: KosztorysV2RowT) => string | number | null,
-  dir: SortDirT,
-): { before: DisplayOrderRefT[]; after: DisplayOrderRefT[] } {
-  const before: DisplayOrderRefT[] = []
-  const after: DisplayOrderRefT[] = []
-  for (const sectionId of new Set(rows.map((r) => r.sectionId))) {
-    const plan = planSectionRenumber(rows, sectionId, getValue, dir)
-    before.push(...plan.before)
-    after.push(...plan.after)
-  }
-  return { before, after }
-}
