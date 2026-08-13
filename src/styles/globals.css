@@ -248,25 +248,6 @@
   );
 }
 
-@media print {
-  /* Hide navigation and sidebar */
-  aside,
-  [data-slot='mobile-nav'],
-  [data-slot='sheet-overlay'] {
-    display: none !important;
-  }
-
-  /* Clean print background */
-  body {
-    background: white !important;
-  }
-
-  /* Remove shadows for cleaner print */
-  * {
-    box-shadow: none !important;
-  }
-}
-
 /* The DSG root is a grid item in a definite-height cell. Its default `min-height: auto` lets it grow
    PAST that cell to its content height, so with enough rows it overflows the viewport and the last
    rows are clipped with no way to scroll to them. Pinning `min-height: 0` holds it to the cell, so

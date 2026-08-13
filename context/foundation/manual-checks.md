@@ -723,7 +723,7 @@ exists — read them as superseded by this section, not as owed.
 
 ### Phase 3: Delete the dead filter plumbing
 
-- [ ] Filtrowanie tabeli transferów, paginacja, kafelek „Suma wybranych transakcji" i eksport CSV/druk działają bez zmian na stronie inwestycji.
+- [ ] Filtrowanie tabeli transferów, paginacja i kafelek „Suma wybranych transakcji" działają bez zmian na stronie inwestycji.
 - [ ] Te same filtry działają na `/pracownicy/[id]`, `/raporty` i `/kasa/[id]`.
 
 ## AI receipt scan: extract the netto amount (EX-577)
@@ -745,7 +745,6 @@ exists — read them as superseded by this section, not as owed.
 - [ ] „Pobierz wszystkie" z podglądu wielostronicowego daje ZIP z 3 plikami o różnych nazwach.
 - [ ] „Drukuj" w podglądzie wielostronicowym drukuje wszystkie strony w jednym zadaniu, nie tylko pierwszą.
 - [ ] Masowe pobieranie faktur z tabeli wydatków liczy strony, nie wiersze — toast pokazuje liczbę plików w ZIP-ie.
-- [ ] Eksport CSV i druk tabeli działają bez zmian.
 
 ### Phase 3: Edycja zapisanej faktury
 
@@ -871,3 +870,55 @@ library.
 - [ ] VAT and the coefficients are unchanged afterwards; a rabat globalny set beforehand is cleared, and „do zapłaty" is never negative
 - [ ] „Wczytaj" lists „Przed wczytaniem: «nazwa szablonu»" — named after the szablon, so two swaps are distinguishable — and restoring it brings the original rozpiska back including etapy and postęp
 - [ ] Reloading an investment with an empty kosztorys works too (no special-casing)
+
+## EX-555 — robocizna + rabat z kosztorysu na liście inwestycji (write-switch)
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2118, `pnpm test:integration` 99,
+`pnpm test:parity` 3, nowy E2E `investments-listing-kosztorys`). Zmiana przepina **dwa wejścia**
+figur (robocizna, rabat) z transakcji na kosztorys — bez fallbacku, bo **jest jedno właściwe
+źródło**: pusty kosztorys to 0 zł, a nie zaglądanie do transakcji. Wybór źródła robi się jednym
+ruchem: **v1 = transakcje, v2 = kosztorys**. Reszta figur (wpłaty, materiały, wypłaty) zostaje na
+transakcjach po obu stronach.
+
+Setup: aplikacja na **5435** (`DB_POSTGRES_URL_TEST`), zalogowany jako OWNER (kolumna „Marża" jest
+dla ADMIN/OWNER). Po `pnpm db:import:test` uruchom `pnpm seed:kosztorys:test`, inaczej baza nie ma
+ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
+
+- [ ] Inwestycja **z kosztorysem**: „Bilans netto", „Bilans brutto", „Koszty inwestora" i „Marża" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
+- [ ] Inwestycja **bez kosztorysu** pokazuje na liście i w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31). Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
+- [ ] Inwestycja z kosztorysem sumującym się **do zera** wygląda identycznie jak ta bez kosztorysu. Nie da się ich odróżnić po liczbach i nie ma powodu, żeby dało się je odróżnić.
+- [ ] Inwestycja z pustym kosztorysem, ale z zaksięgowaną robocizną w transakcjach — reconciliation **krzyczy** niezgodność. To jest sygnał „ta robota czeka na wprowadzenie do kosztorysu", nie fałszywy alarm.
+- [ ] Zmiana ilości w kosztorysie rusza „Marżę" na liście **bez** klikania „Odśwież dane".
+- [ ] Zakładka **Marża** w v2 pokazuje tę samą robociznę i ten sam rabat co blok nad nią.
+- [ ] Okno „Nowa transakcja" (i **edycji** transakcji) nie oferuje już „Robocizny" ani „Rabatu"; stary wiersz `LABOR_COST`/`RABAT` dalej się renderuje w tabeli, daje się anulować i jedzie do arkusza.
+- [ ] Draft w sessionStorage: wybierz stary typ, przeładuj — formularz nie wraca do ukrytego typu.
+- [ ] Inwestycja z kosztorysem i **bez żadnej** transakcji `LABOR_COST`/`RABAT` **nie krzyczy** „Niezgodność z transakcjami" (ani w edytorze, ani na stronie inwestycji).
+- [ ] Inwestycja, która ma zaksięgowaną robociznę, ale **nie ma** rabatu — krzyk na rabacie **zostaje**. Wyciszenie jest per inwestycja, nie per figura.
+- [ ] Przełącznik **v1/v2** w panelu: v1 dalej pokazuje liczby z transakcji (celowo rozjeżdża się z listą — legacy do porównań).
+
+## EX-557 — wpłaty bez inwestycji („Inna wpłata" wraca, oba typy tracą inwestycję)
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2131, `pnpm test:integration` 99,
+`pnpm test:parity` 3). E2E okna wpłaty odroczone do **EX-679** (`e2e-backlog`).
+
+Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER.
+
+- [ ] Jako MANAGER okno wpłaty oferuje „Inna wpłata" (wróciła) i „Wpłata od inwestora", ale **nie** „Zasilenie z konta firmowego"
+- [ ] Jako ADMIN/OWNER lista typów ma wszystkie trzy, w kolejności alfabetycznej po polskiej etykiecie
+- [ ] Wejście z `/inwestycje/<id>` → „Inna wpłata" → pole inwestycji znika, a zapisany wiersz ma w kolumnie Inwestycja „—", nie inwestycję, na której stałeś
+- [ ] To samo dla „Zasilenie z konta firmowego"
+- [ ] Wybierz „Wpłata od inwestora", ustaw inwestycję i netto/brutto, przełącz typ na „Zasilenie" i zapisz — żadna z tych dwóch wartości nie ląduje na wierszu
+- [ ] Edycja istniejącego wiersza `COMPANY_FUNDING` z tabeli transakcji nie oferuje pola inwestycji, a zapis niepowiązanego pola (opis) przechodzi bez błędu
+
+## EX-680 — wpłaty z jednego źródła (podgląd klienta dostaje listę, total wypada z listy)
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2133, `pnpm test:integration` 103,
+`pnpm test:parity` 3).
+
+Setup: aplikacja na dev DB (5433), inwestycja z wpłatami i z kosztorysem.
+
+- [ ] Na `/inwestycje/<id>/podglad-klienta` lista wpłat pokazuje te same wiersze co strona właściciela (przed zmianą była pusta)
+- [ ] Na podglądzie wiersz „Wpłaty" i daty wpłat są zwykłym tekstem, nie linkami (linki celowo wyłączone — prowadzą w głąb aplikacji)
+- [ ] Po przełączeniu tej inwestycji w **tryb mieszany** „Wpłaty netto"/„Wpłaty brutto" na podglądzie są niezerowe i sumują się do totalu z wiersza „Wpłaty"; „Do zapłaty" spada
+- [ ] Kwota wpłat jest identyczna na trzech powierzchniach: Podsumowanie inwestycji, kosztorys v2, podgląd klienta
+- [ ] `/raporty` — firmowe wpłaty bez zmian (kontrola, że `totalIncome` nie został tknięty)

@@ -209,17 +209,26 @@ describe('createTransferAction', () => {
     expect(mockCreate).toHaveBeenCalledOnce()
   })
 
-  it('valid COMPANY_FUNDING → success', async () => {
-    const result = await createTransferAction(makeDepositData({ type: 'COMPANY_FUNDING' }))
+  // Both company deposits are investment-free by rule (EX-557), so their fixtures must be too —
+  // and `success` alone cannot tell "the row landed as asked" from "the row landed wrong", since
+  // payload.create is mocked and the hook that would clear a stray investment never runs here.
+  // The hook's own guard is src/__tests__/hooks/transfers/investment-write-guard.test.ts.
+  it.each(['COMPANY_FUNDING', 'OTHER_DEPOSIT'])(
+    'valid %s → success, and the created row carries no investment',
+    async (type) => {
+      const result = await createTransferAction(
+        makeDepositData({ type, investment: undefined, vatPlane: undefined }),
+      )
 
-    expect(result.success).toBe(true)
-  })
-
-  it('valid OTHER_DEPOSIT → success', async () => {
-    const result = await createTransferAction(makeDepositData({ type: 'OTHER_DEPOSIT' }))
-
-    expect(result.success).toBe(true)
-  })
+      expect(result.success).toBe(true)
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: 'transactions',
+          data: expect.objectContaining({ type, investment: undefined, vatPlane: undefined }),
+        }),
+      )
+    },
+  )
 
   it('valid PAYOUT → success', async () => {
     const result = await createTransferAction(

@@ -26,10 +26,14 @@ type ToggleStatButtonsPropsT = {
   summaryTooltip?: string
   helpText?: string
   colorValues?: boolean
-  onToggle?: (label: string) => void
 }
 
-export function computeSummary(entries: readonly StatEntryT[], hidden: Set<string>): number {
+// Takes the structural minimum rather than StatEntryT — the sum reads no styling, so any
+// {label, amount} list can be summed by the same formula the tiles render.
+export function computeSummary(
+  entries: readonly { label: string; amount: number }[],
+  hidden: Set<string>,
+): number {
   return entries.filter((e) => !hidden.has(e.label)).reduce((sum, e) => sum + e.amount, 0)
 }
 
@@ -41,7 +45,6 @@ export function ToggleStatButtons({
   summaryTooltip,
   helpText,
   colorValues,
-  onToggle,
 }: ToggleStatButtonsPropsT) {
   const allEntries = rows.flat()
 
@@ -54,7 +57,6 @@ export function ToggleStatButtons({
       else next.add(label)
       return next
     })
-    onToggle?.(label)
   }
 
   if (allEntries.length === 0) return null
@@ -89,11 +91,7 @@ export function ToggleStatButtons({
                     key={entry.label}
                     onClick={() => toggle(entry.label)}
                     align="start"
-                    className={cn(
-                      'border-2',
-                      entry.borderClassName,
-                      isHidden && 'opacity-40',
-                    )}
+                    className={cn('border-2', entry.borderClassName, isHidden && 'opacity-40')}
                   >
                     <span className="text-muted-foreground">{entry.label}:</span>
                     <span className={cn('font-medium', colorValues && saldoColor(entry.amount))}>
@@ -131,4 +129,4 @@ export function ToggleStatButtons({
   )
 }
 
-export type { StatEntryT, ToggleStatButtonsPropsT }
+export type { StatEntryT }

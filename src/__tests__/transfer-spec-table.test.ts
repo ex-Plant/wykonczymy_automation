@@ -91,14 +91,12 @@ describe('literal arrays agree with the table', () => {
   })
 
   it('SHEET_TRANSFER_TAB_TYPES === transfersSheetTab column', () => {
-    expect(sorted(SHEET_TRANSFER_TAB_TYPES)).toEqual(
-      sorted(typesWhere((s) => s.transfersSheetTab)),
-    )
+    expect(sorted(SHEET_TRANSFER_TAB_TYPES)).toEqual(sorted(typesWhere((s) => s.transfersSheetTab)))
   })
 
   it('DEPOSIT_UI_TYPES is a subset of the deposit column', () => {
-    // A strict subset by design — „Inna wpłata" was dropped from the dialog (EX-536)
-    // while remaining a deposit everywhere else.
+    // Containment, not equality: the dialog array is sorted by Polish label and further
+    // role-filtered at render, so its order and length are free to differ from the column.
     for (const type of DEPOSIT_UI_TYPES) {
       expect(TRANSFER_TYPE_SPECS[type].deposit, type).toBe(true)
     }
@@ -150,7 +148,11 @@ describe('financialBucket vs the routing columns', () => {
     // toggle may still deduct, and the frozen netto figure it must never reach. Both
     // mirror to the expenses tab, so the union is what the column equals.
     expect(
-      sorted(typesWhere((s) => s.financialBucket === 'materials' || s.financialBucket === 'materialsNet')),
+      sorted(
+        typesWhere(
+          (s) => s.financialBucket === 'materials' || s.financialBucket === 'materialsNet',
+        ),
+      ),
     ).toEqual(sorted(typesWhere((s) => s.expensesSheetTab)))
   })
 

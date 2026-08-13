@@ -238,7 +238,7 @@ export const TRANSFER_TYPE_SPECS = {
   },
 } satisfies Record<TransferTypeT, TransferSpecT>
 
-const mapSpecs = <V,>(pick: (spec: TransferSpecT) => V): Record<TransferTypeT, V> =>
+const mapSpecs = <V>(pick: (spec: TransferSpecT) => V): Record<TransferTypeT, V> =>
   Object.fromEntries(TRANSFER_TYPES.map((t) => [t, pick(TRANSFER_TYPE_SPECS[t])])) as Record<
     TransferTypeT,
     V
@@ -266,16 +266,23 @@ export const DEPOSIT_TYPES: TransferTypeT[] = [
   'OTHER_DEPOSIT',
 ]
 
-// Deposit types visible in the deposit dialog (sorted by Polish label). „Inna wpłata" is dropped
-// (EX-536); the netto/brutto plane applies to INVESTOR_DEPOSIT only — COMPANY_FUNDING hides it.
-export const DEPOSIT_UI_TYPES: TransferTypeT[] = ['INVESTOR_DEPOSIT', 'COMPANY_FUNDING']
+// Deposit types visible in the deposit dialog (sorted by Polish label). „Inna wpłata" is the type
+// for cash entering a register without an investment — EX-536 took the investment away from it, not
+// the type, and EX-557 restores it. The netto/brutto plane still applies to INVESTOR_DEPOSIT only.
+export const DEPOSIT_UI_TYPES: TransferTypeT[] = [
+  'OTHER_DEPOSIT',
+  'INVESTOR_DEPOSIT',
+  'COMPANY_FUNDING',
+]
 
-// Transfer types visible in the transaction transfer dialog (sorted by Polish label)
+// Transfer types visible in the transaction transfer dialog (sorted by Polish label).
+// „Koszty robocizny" and „Rabat" are gone (EX-555): both figures are now read off the kosztorys, so
+// booking either by hand would double-count against it. Neither type is retired — existing rows still
+// render, filter, edit, cancel and travel to the sheet, and both keep their places in every other list
+// in this file. This array is the „offerable in the dialog" list, nothing more.
 export const TRANSACTION_TRANSFER_TYPES: TransferTypeT[] = [
   'OTHER', // Inny wydatek
   'CORRECTION', // Korekta
-  'LABOR_COST', // Koszty robocizny
-  'RABAT', // Rabat
   'LOSS', // Strata
   'INVESTMENT_EXPENSE', // Wydatek inwestycyjny
   'INVESTMENT_EXPENSE_NET', // Wydatek inwestycyjny netto
@@ -372,8 +379,7 @@ const specOf = (type: unknown): TransferSpecT | undefined =>
 
 export const isDepositType = (type: string) => specOf(type)?.deposit === true
 
-export const isExpensesTabType = (type: unknown): boolean =>
-  specOf(type)?.expensesSheetTab === true
+export const isExpensesTabType = (type: unknown): boolean => specOf(type)?.expensesSheetTab === true
 
 export const canBeSettled = (type: unknown): boolean => specOf(type)?.settleable === true
 
@@ -417,13 +423,14 @@ export const billedAmountFor = (
 // alone uses three of them over two different type sets. One boolean column per predicate
 // would be wrong by construction.
 
+// COMPANY_FUNDING and OTHER_DEPOSIT left this set in EX-557: both are company-level cash, never
+// client-level, so an investment on them would silently move that investment's bilans. Membership
+// here is what the edit dialog, the Payload admin and the validate hook's auto-clear all read.
 const INVESTMENT_TYPES: TransferTypeT[] = [
   'INVESTMENT_EXPENSE',
   'INVESTMENT_EXPENSE_NET',
   'LABOR_COST',
   'INVESTOR_DEPOSIT',
-  'COMPANY_FUNDING',
-  'OTHER_DEPOSIT',
   'RABAT',
   'LOSS',
   'CORRECTION',

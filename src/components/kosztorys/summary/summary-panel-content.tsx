@@ -50,11 +50,11 @@ type PropsT = {
   investmentId: number
   // Only reaches the wydatki list, which names its invoice archive after the investment.
   investmentName: string
-  // Individual deposit rows — feed the client Podsumowanie's sortable wpłaty list AND the VAT-plane
-  // buckets every view's settlement reads, so this one is required on every host.
+  // Individual deposit rows — the wpłaty list, the VAT-plane buckets every view's settlement reads,
+  // AND the wpłaty total, which is summed from them rather than supplied beside them (EX-680).
   depositTransactions: DepositTransactionRowT[]
   // Robocizna wartość netto — executed total AFTER rabat; the Podsumowanie waterfall's base.
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   // Materiały brutto — server sum of the investment's unsettled brutto-billed transactions.
   materialsGrossBase: number
   // Σ netAmount of the netto-billed wydatki — frozen: the netto pricing toggle must not touch it.
@@ -64,9 +64,6 @@ type PropsT = {
   // Company-plane material folded into robocizna, split per category — its own table in the wydatki
   // view. Omitted by the client share, which never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
-  // Investor's wpłaty (totalIncome — every deposit on the investment) — subtracted to reach the
-  // still-owed „Do zapłaty" total.
-  wplatyNet: number
   rabatAmount: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
   // (every host computes it unconditionally); preview suppresses the scream downstream, not by
@@ -129,12 +126,11 @@ export function SummaryPanelContent({
   investmentId,
   investmentName,
   depositTransactions,
-  laborCostsNetFromKosztorys,
+  laborCostsNet,
   materialsGrossBase,
   materialsNetBilled,
   materialyBreakdown,
   settledBreakdown,
-  wplatyNet,
   rabatAmount,
   reconciliation,
   vatRate,
@@ -194,7 +190,13 @@ export function SummaryPanelContent({
   const isSubcontractorView = view === 'subcontractors'
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
-  const { paidNet, paidGross, taggedNet, taggedGross } = bucketDepositsByPlane(depositTransactions)
+  const {
+    paidNet,
+    paidGross,
+    total: depositsTotal,
+    taggedNet,
+    taggedGross,
+  } = bucketDepositsByPlane(depositTransactions)
   // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
   // rather than deciding it.
   const settlementVerdict = buildSettlementPlaneVerdict({
@@ -210,8 +212,8 @@ export function SummaryPanelContent({
   const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const doZaplaty = computeDoZaplatyRM(
-    laborCostsNetFromKosztorys,
-    wplatyNet,
+    laborCostsNet,
+    depositsTotal,
     materials,
     vatRate,
     effectiveNetRate,
@@ -275,10 +277,10 @@ export function SummaryPanelContent({
                 // that supplied the writer may edit it from inside the tab.
                 onSettlementModeChange={preview ? undefined : onSettlementModeChange}
                 isSavingSettings={isSavingSettings}
-                laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+                laborCostsNet={laborCostsNet}
                 doZaplaty={doZaplaty}
                 materials={materials}
-                wplatyNet={wplatyNet}
+                depositsTotal={depositsTotal}
                 rabatAmount={rabatAmount}
                 reconciliation={reconciliation}
                 settlementVerdict={settlementVerdict}
@@ -323,7 +325,13 @@ export function SummaryPanelContent({
                 vatRate={vatRate}
               />
             )}
-            {view === 'margin' && financials && <SummaryMarginTab financials={financials} />}
+            {view === 'margin' && financials && (
+              <SummaryMarginTab
+                financials={financials}
+                laborCostsNet={laborCostsNet}
+                rabatAmount={rabatAmount}
+              />
+            )}
           </div>
         )}
       </SummaryScrollRegion>

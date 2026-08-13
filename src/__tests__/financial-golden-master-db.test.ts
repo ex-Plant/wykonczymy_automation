@@ -54,7 +54,7 @@ type InvestmentSnapshotT = {
 type HashMapT = Record<string, string>
 
 type SnapshotT = {
-  fingerprint: { transactionCount: number }
+  fingerprint: { transactionCount: number; kosztorysItemCount: number }
   /** Per-entity hash of the transaction rows that feed that entity's figures — see readInputHashes. */
   inputHashes: { investments: HashMapT; registers: HashMapT; workers: HashMapT }
   investments: Record<string, InvestmentSnapshotT>
@@ -132,8 +132,39 @@ async function readInputHashes(payload: Payload) {
     hashes[String(row.scope) as keyof SnapshotT['inputHashes']][String(row.key)] = String(row.hash)
   }
 
+  // Since the read-switch (EX-555) an investment's robocizna and rabat can come from its kosztorys,
+  // so the kosztorys rows are an INPUT to the figures below and belong in the per-investment
+  // signature. Without them a kosztorys edit would read as code drift (the figure moved, the hash
+  // didn't) and — worse — a read that stopped seeing the kosztorys at all would read as nothing.
+  const kosztorys = await db.execute(sql`
+    SELECT
+      ki.investment_id AS key,
+      count(*)::int AS item_count,
+      coalesce(sum(sp.qty), 0)::text AS qty_done,
+      coalesce(inv.global_discount_type, '') || ':' ||
+        coalesce(inv.global_discount_value::text, '') AS global_discount
+    FROM kosztorys_items ki
+    JOIN investments inv ON inv.id = ki.investment_id
+    LEFT JOIN (
+      SELECT item_id, sum(qty_done) AS qty FROM stage_progress GROUP BY item_id
+    ) sp ON sp.item_id = ki.id
+    GROUP BY ki.investment_id, inv.global_discount_type, inv.global_discount_value
+  `)
+
+  let kosztorysItemCount = 0
+  for (const row of kosztorys.rows) {
+    const key = String(row.key)
+    kosztorysItemCount += Number(row.item_count)
+    const sig = `k:${row.item_count}|${row.qty_done}|${row.global_discount}`
+    hashes.investments[key] = `${hashes.investments[key] ?? ''}/${sig}`
+  }
+
   const counted = await db.execute(sql`SELECT count(*)::int AS row_count FROM transactions`)
-  return { hashes, transactionCount: Number(counted.rows[0].row_count) }
+  return {
+    hashes,
+    transactionCount: Number(counted.rows[0].row_count),
+    kosztorysItemCount,
+  }
 }
 
 async function buildSnapshot(payload: Payload): Promise<{
@@ -183,7 +214,10 @@ async function buildSnapshot(payload: Payload): Promise<{
 
   return {
     snapshot: {
-      fingerprint: { transactionCount: inputs.transactionCount },
+      fingerprint: {
+        transactionCount: inputs.transactionCount,
+        kosztorysItemCount: inputs.kosztorysItemCount,
+      },
       inputHashes: inputs.hashes,
       investments,
       registers: mapToRecord(registerBalances),
@@ -197,13 +231,17 @@ async function buildSnapshot(payload: Payload): Promise<{
  *  every comparison trivially pass) and as a precondition on the REGENERATE path, which
  *  overwrites the only committed record of the pre-refactor figures. Regenerating against
  *  a half-restored container would destroy the net and report the reason afterwards. */
-const DATASET_FLOOR = { investments: 50, registers: 10, transactions: 1000 }
+/*  `kosztorysItems` carries the floor's whole point onto the new axis: with the kosztorys tables
+ *  empty every investment falls back to the transactions plane, so the read-switch branch is never
+ *  executed and the suite passes green having tested nothing about it. */
+const DATASET_FLOOR = { investments: 50, registers: 10, transactions: 1000, kosztorysItems: 20 }
 
 function assertNonTrivial(snapshot: SnapshotT) {
   const counts = {
     investments: Object.keys(snapshot.investments).length,
     registers: Object.keys(snapshot.registers).length,
     transactions: snapshot.fingerprint.transactionCount,
+    kosztorysItems: snapshot.fingerprint.kosztorysItemCount,
   }
   for (const key of Object.keys(DATASET_FLOOR) as (keyof typeof DATASET_FLOOR)[]) {
     if (counts[key] <= DATASET_FLOOR[key]) {

@@ -7,8 +7,8 @@ import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/t
  * rather than in any single module.
  */
 // One page of an invoice, already resolved to something openable. A media row whose `url` is null is
-// dropped upstream rather than carried as a hole — every consumer (preview, ZIP, CSV, print) needs
-// the URL, so a page without one is not a page.
+// dropped upstream rather than carried as a hole — every consumer (preview, ZIP) needs the URL,
+// so a page without one is not a page.
 export type InvoiceFileT = {
   // The media id, so a single page can be detached. Absent on a locally picked file that hasn't
   // been uploaded yet — there is nothing to detach from.

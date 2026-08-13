@@ -116,23 +116,23 @@ export function grossBalance(
 /** „Łącznie" — the prace on their own two planes, plus materiały. Materiały enters BOTH axes at the
  *  same billed figure, because it IS one figure: the panel renders it as a single merged cell across
  *  both money columns, so shifting the two axes by different złoty would print a total the reader
- *  cannot reproduce from the cell above it. `laborCostsNetFromKosztorys` is already post-rabat, which
+ *  cannot reproduce from the cell above it. `laborCostsNet` is already post-rabat, which
  *  is what lets the Rabat row sit above this and still reconcile. */
 export function combinedPair(
-  laborCostsNetFromKosztorys: number,
+  laborCostsNet: number,
   materialsBilled: number,
   vatRate: number,
 ): MoneyPairT {
-  const prace = moneyPair(laborCostsNetFromKosztorys, vatRate)
+  const prace = moneyPair(laborCostsNet, vatRate)
   return { net: prace.net + materialsBilled, gross: prace.gross + materialsBilled }
 }
 
 // „Robocizna" is shown PRE-rabat, with the rabat as its own deduction row below it — the same figure
 // the investment page's „z kosztorysu" block labels Robocizna, so one label never means two numbers.
-// Łącznie is unaffected: `laborCostsNetFromKosztorys` is already post-rabat, so the row pair adds
+// Łącznie is unaffected: `laborCostsNet` is already post-rabat, so the row pair adds
 // back and deducts the same amount.
-export function sumaPracPreRabat(laborCostsNetFromKosztorys: number, rabatAmount: number): number {
-  return laborCostsNetFromKosztorys + rabatAmount
+export function sumaPracPreRabat(laborCostsNet: number, rabatAmount: number): number {
+  return laborCostsNet + rabatAmount
 }
 
 // „Pozostało do zapłaty" (sheet footer r456–464): the headline still-owed figure — Łącznie less the
@@ -141,18 +141,18 @@ export function sumaPracPreRabat(laborCostsNetFromKosztorys: number, rabatAmount
 // the reader arrive at both columns below. Can go negative when wpłaty exceed Łącznie: a real
 // overpaid state, not clamped here.
 export function computeDoZaplatyRM(
-  laborCostsNetFromKosztorys: number,
-  wplatyNet: number,
+  laborCostsNet: number,
+  depositsTotal: number,
   materials: MaterialsT,
   vatRate: number,
   materialsNetRate: number | null,
 ): MoneyPairT {
   const combined = combinedPair(
-    laborCostsNetFromKosztorys,
+    laborCostsNet,
     billedMaterials(materials, materialsNetRate),
     vatRate,
   )
-  return { net: combined.net - wplatyNet, gross: combined.gross - wplatyNet }
+  return { net: combined.net - depositsTotal, gross: combined.gross - depositsTotal }
 }
 
 export type MixedSettlementT = {
@@ -183,7 +183,7 @@ export type MixedSettlementT = {
 // Robocizna netto is already post-rabat (Suma prac po rabacie), so the rabat's effect flows through
 // both sections without a second deduction — the panel shows it as an informational line only.
 export function computeMixedSettlement(
-  laborCostsNetFromKosztorys: number,
+  laborCostsNet: number,
   materials: MaterialsT,
   vatRate: number,
   paidNet: number,
@@ -191,7 +191,7 @@ export function computeMixedSettlement(
   materialsNetRate: number | null,
 ): MixedSettlementT {
   const materialsBilled = billedMaterials(materials, materialsNetRate)
-  const combined = combinedPair(laborCostsNetFromKosztorys, materialsBilled, vatRate)
+  const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
   const doRozliczeniaNet = combined.net - paidNet
   // VAT rides the prace alone, so the gross-up runs on „Łącznie" — where materiały already sits at
   // face value on both axes — and the wpłaty come off after it. Grossing `doRozliczeniaNet` instead
@@ -200,7 +200,7 @@ export function computeMixedSettlement(
   const resztaGross = combined.gross - paidNet
   const doZaplatyGross = resztaGross - paidGross
   return {
-    robocizna: laborCostsNetFromKosztorys,
+    robocizna: laborCostsNet,
     materialy: materialsBilled,
     combinedNet: combined.net,
     paidNet,
@@ -220,6 +220,9 @@ export type DepositTallyT = { total: number; count: number }
 export type DepositPlaneSumsT = {
   paidNet: number
   paidGross: number
+  // Σ of the very rows the two buckets partition, returned from the one place that already reduces
+  // them — so „Wpłaty" and the wpłaty list it sits above cannot be summed by two different rules.
+  total: number
   // Deposits whose plane was actually typed, per plane. Separate from paidNet/paidGross because the
   // null→netto ruling is a *settlement* rule, not evidence: an unmarked deposit is unknown, and
   // reading it as netto turns "nobody has tagged anything here" into a contradiction the plane
@@ -251,6 +254,7 @@ export function bucketDepositsByPlane(
   return {
     paidNet: total - taggedGross.total,
     paidGross: taggedGross.total,
+    total,
     taggedNet: tally(rows, 'NET'),
     taggedGross,
   }

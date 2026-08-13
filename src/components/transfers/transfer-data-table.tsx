@@ -6,12 +6,12 @@ import { PaginationFooter } from '@/components/ui/pagination-footer'
 import { CancelledFilterButton } from '@/components/transfers/cancelled-filter-button'
 import { CancelledTransactionAuditButton } from '@/components/transfers/cancelled-transaction-audit-button'
 import { TransferFilters } from '@/components/transfers/transfer-filters'
-import { TransferExportToolbar } from '@/components/transfers/transfer-export-toolbar'
+import { InvoiceDownloadButton } from '@/components/transfers/invoice-download-button'
 import { getTransferColumns } from '@/components/tables/transfers'
 import type { TransferRowT } from '@/types/transfers'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import type { PaginationMetaT } from '@/lib/utils/pagination'
-import type { TransferTableConfigT } from '@/types/export'
+import type { TransferTableConfigT } from '@/components/transfers/transfer-table-config'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 
 type TransferDataTablePropsT = {
@@ -32,9 +32,9 @@ export function TransferDataTable({
     baseUrl,
     excludeColumns = [],
     filters,
-    headerFields,
     totalFilteredAmount,
     listsCancelled,
+    invoiceDownload,
   } = config
 
   const columns = getTransferColumns(excludeColumns, {
@@ -62,13 +62,11 @@ export function TransferDataTable({
           if (row.type === 'CANCELLATION') return '[&_td]:text-muted-foreground'
           return ''
         }}
-        toolbar={(table, cv, sorting) => (
+        toolbar={(table, cv) => (
           <div className="ml-auto flex items-center gap-2">
             <CancelledTransactionAuditButton baseUrl={baseUrl} />
             <CancelledFilterButton baseUrl={baseUrl} />
-            {headerFields && headerFields.length > 0 && (
-              <TransferExportToolbar config={config} columnVisibility={cv} sorting={sorting} />
-            )}
+            {invoiceDownload && <InvoiceDownloadButton where={config.query.where} />}
             <ColumnToggle table={table} columnVisibility={cv} />
           </div>
         )}
