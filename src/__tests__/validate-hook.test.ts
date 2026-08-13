@@ -50,6 +50,7 @@ const VALID_DATA: Record<string, Record<string, unknown>> = {
     netAmount: 80,
   },
   LABOR_COST: { ...base, type: 'LABOR_COST', investment: 1 },
+  LOSS: { ...base, type: 'LOSS', investment: 1 },
   REGISTER_TRANSFER: { ...base, type: 'REGISTER_TRANSFER', sourceRegister: 1, targetRegister: 2 },
   OTHER: { ...base, type: 'OTHER', sourceRegister: 1, otherCategory: 1 },
 }
@@ -103,6 +104,13 @@ describe('validateTransfer — missing required fields', () => {
 
   it('LABOR_COST without investment → throws', () => {
     const { investment, ...data } = VALID_DATA.LABOR_COST
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
+  })
+
+  // EX-675: a strata now lowers the investor's bilans, so it has to say whose.
+  it('LOSS without investment → throws', () => {
+    const { investment, ...data } = VALID_DATA.LOSS
+    void investment
     expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
   })
 
@@ -278,6 +286,14 @@ describe('validateTransfer — a partial update reads required fields from the s
 
   it('accepts an invoice-only PATCH on a row that already has its investment', () => {
     const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: storedExpense })
+    expect(() => validateTransfer(args)).not.toThrow()
+  })
+
+  // The type that made the investment mandatory in the first place — attaching a faktura to an
+  // existing strata must not re-litigate a link the row already carries.
+  it('accepts an invoice-only PATCH on a stored LOSS', () => {
+    const storedLoss = { type: 'LOSS', amount: 1000, date: '2026-02-19', investment: 62 }
+    const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: storedLoss })
     expect(() => validateTransfer(args)).not.toThrow()
   })
 

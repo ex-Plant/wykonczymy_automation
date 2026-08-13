@@ -444,6 +444,9 @@ const REQUIRES_INVESTMENT_TYPES: TransferTypeT[] = [
   'INVESTMENT_EXPENSE_NET',
   'LABOR_COST',
   'RABAT',
+  // Mandatory since EX-675, when a strata started lowering the investor's bilans: an unlinked one
+  // would be a concession credited to nobody.
+  'LOSS',
 ]
 
 export const showsInvestment = (type: string) =>

@@ -226,7 +226,7 @@ review — autorować albo odłożyć jako `e2e-backlog`.
 
 - [x] 1.1 `calculate-balance.test.ts` red-first — 4a169452
 - [x] 1.2 Σ kafelków === `calculateBalance` — 4a169452
-- [ ] 1.3 `transfer-loss.test.ts` — asercje z `:17-20` dotyczą `requiresInvestment`, więc lecą z flipem w fazie 3
+- [x] 1.3 `transfer-loss.test.ts` — asercje z `:17-20` poleciały z flipem w fazie 3
 - [x] 1.4 Złoty master przeliczony — 4a169452
 - [ ] 1.5 typecheck — bramka całego drzewa, na koniec przebiegu
 
@@ -234,19 +234,19 @@ review — autorować albo odłożyć jako `e2e-backlog`.
 
 #### Automated
 
-- [x] 2.1 `computeDoZaplatyRM` nominalnie
-- [x] 2.2 `computeMixedSettlement` odbija `paidNet`
-- [x] 2.3 `summary-economics.test.ts` zielony
-- [x] 2.4 `settlement-groups` + `settlement-mode` zielone
+- [x] 2.1 `computeDoZaplatyRM` nominalnie — 9c367f1f
+- [x] 2.2 `computeMixedSettlement` odbija `paidNet` — 9c367f1f
+- [x] 2.3 `summary-economics.test.ts` zielony — 9c367f1f
+- [x] 2.4 `settlement-groups` + `settlement-mode` zielone — 9c367f1f
 
 ### Phase 3
 
 #### Automated
 
-- [ ] 3.1 `transfer-constants.test.ts` red-first
-- [ ] 3.2 `LOSS` bez inwestycji odrzucony
-- [ ] 3.3 Częściowa aktualizacja `LOSS` przechodzi
-- [ ] 3.4 `transfer-schema.test.ts` pokrywa `LOSS`
+- [x] 3.1 `transfer-constants.test.ts` red-first
+- [x] 3.2 `LOSS` bez inwestycji odrzucony
+- [x] 3.3 Częściowa aktualizacja `LOSS` przechodzi
+- [x] 3.4 `transfer-schema.test.ts` pokrywa `LOSS`
 
 ### Phase 4
 
