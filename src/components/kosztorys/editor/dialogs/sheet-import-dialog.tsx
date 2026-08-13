@@ -4,6 +4,7 @@ import { useTransition } from 'react'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { evaluateImportGate } from '@/components/kosztorys/editor/dialogs/sheet-import-gate'
+import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
 import type { ReportedRateKindT } from '@/lib/kosztorys/sheet-import/resolve-rates'
 import { formatPLN } from '@/lib/utils/format-currency'
@@ -67,13 +68,13 @@ export function SheetImportDialog({
         ) : (
           <div className="space-y-4 text-sm">
             {preview.problems.length > 0 && (
-              <Block title="Nie mogę odczytać arkusza">
+              <SheetReportBlock title="Nie mogę odczytać arkusza">
                 {preview.problems.map((problem) => (
                   <p key={problem} className="text-destructive">
                     {problem}
                   </p>
                 ))}
-              </Block>
+              </SheetReportBlock>
             )}
 
             {preview.report.warnings.map((warning, index) => (
@@ -84,26 +85,28 @@ export function SheetImportDialog({
 
             {preview.problems.length === 0 && (
               <>
-                <Block title="Rozpoznane kolumny">
+                <SheetReportBlock title="Rozpoznane kolumny">
                   {preview.report.columns.map((column, index) => (
                     <p key={index} className="text-muted-foreground text-xs">
                       {column.field} → kolumna {column.column} („{column.header}”) w zakładce{' '}
                       {column.tab}
                     </p>
                   ))}
-                </Block>
+                </SheetReportBlock>
 
-                <Block title="Co wejdzie">
+                <SheetReportBlock title="Co wejdzie">
                   <p className="text-muted-foreground">
                     {preview.report.counts.sections} sekcji · {preview.report.counts.items} prac ·{' '}
                     {preview.report.counts.stages} etapów
                   </p>
-                </Block>
+                </SheetReportBlock>
 
                 {preview.report.rateDecisions.length > 0 && (
                   // Listed one by one, never collapsed to a count: each line is a price the two
                   // cenniki disagreed about, and the owner is the only one who can say which is right.
-                  <Block title={`Rozstrzygnięcia stawek (${preview.report.rateDecisions.length})`}>
+                  <SheetReportBlock
+                    title={`Rozstrzygnięcia stawek (${preview.report.rateDecisions.length})`}
+                  >
                     {preview.report.rateDecisions.map((rate, index) => (
                       <p
                         key={`${index}-${rate.description}`}
@@ -116,11 +119,11 @@ export function SheetImportDialog({
                           : ''}
                       </p>
                     ))}
-                  </Block>
+                  </SheetReportBlock>
                 )}
 
                 {preview.report.retained.length > 0 && (
-                  <Block
+                  <SheetReportBlock
                     title={`Prace, których nie ma w arkuszu (${preview.report.retained.length})`}
                   >
                     <p className="text-muted-foreground text-xs">
@@ -132,10 +135,10 @@ export function SheetImportDialog({
                         {item.section} · {item.description}
                       </p>
                     ))}
-                  </Block>
+                  </SheetReportBlock>
                 )}
 
-                <Block title="Porównanie sum">
+                <SheetReportBlock title="Porównanie sum">
                   {preview.report.totals.map((total) => (
                     <p
                       key={total.key}
@@ -158,7 +161,7 @@ export function SheetImportDialog({
                       Sumy się nie zgadzają — sprawdź arkusz. Pobranie jest nadal możliwe.
                     </p>
                   )}
-                </Block>
+                </SheetReportBlock>
               </>
             )}
           </div>
@@ -174,14 +177,5 @@ export function SheetImportDialog({
         />
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="font-medium">{title}</p>
-      {children}
-    </div>
   )
 }

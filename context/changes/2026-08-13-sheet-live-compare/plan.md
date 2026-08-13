@@ -600,14 +600,14 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 2.1 Formula-health and comparison specs pass
-- [x] 2.2 The importer's own specs still pass after the key extraction
+- [x] 2.1 Formula-health and comparison specs pass — daaa172c
+- [x] 2.2 The importer's own specs still pass after the key extraction — daaa172c
 
 ### Phase 3: Odczyt serwerowy i okno „Porównaj z arkuszem"
 
 #### Automated
 
-- [ ] 3.1 No phase-scoped automated check (server wiring + presentation; logic tested in Phase 2)
+- [x] 3.1 No phase-scoped automated check (server wiring + presentation; logic tested in Phase 2)
 
 ### Phase 4: „Zaciągnij pomiary z arkusza"
 

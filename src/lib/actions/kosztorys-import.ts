@@ -10,6 +10,10 @@ import {
   type ImportPlanT,
   type ImportReportT,
 } from '@/lib/kosztorys/sheet-import/build-import-plan'
+import {
+  buildSheetComparison,
+  type SheetComparisonT,
+} from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import { MissingRobociznaTabError, readImportGrids } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import type { ActionResultT } from '@/types/action'
@@ -76,6 +80,34 @@ function emptyReport(): ImportReportT {
     totals: [],
     warnings: [],
   }
+}
+
+/**
+ * „Porównaj z arkuszem" — a live read that writes nothing, so it carries no revalidation tags and is
+ * never cached: every open asks the sheet what it says right now.
+ *
+ * Lives here rather than in `lib/queries` (where an on-demand client read normally belongs) because
+ * it shares `getInvestmentSheetId`, `readImportGrids` and `sheetFailureMessage` with the import pair
+ * above — splitting them would duplicate the failure-message translation and give the two
+ * sheet-reading dialogs two different error shapes.
+ */
+export async function compareWithSheet(
+  investmentId: number,
+): Promise<ActionResultT<SheetComparisonT>> {
+  return protectedAction<SheetComparisonT>('compareWithSheet', async ({ payload }) => {
+    const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
+    if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
+
+    try {
+      const grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
+      const built = buildSheetComparison(grids, await serializeKosztorys(investmentId))
+      return built.ok
+        ? { success: true, data: built.comparison }
+        : { success: false, error: built.problems.join(' ') }
+    } catch (error) {
+      return { success: false, error: sheetFailureMessage(error) }
+    }
+  })
 }
 
 // Takes no plan from the client: it re-reads the sheet and rebuilds, so a forged preview payload

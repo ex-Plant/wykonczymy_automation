@@ -10,6 +10,7 @@ import {
   History,
   Redo2,
   Save,
+  Scale as ScaleIcon,
   Share2,
   SheetIcon,
   Undo2,
@@ -28,7 +29,13 @@ import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-pre
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
-import { previewKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
+import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-compare-dialog'
+import {
+  compareWithSheet,
+  previewKosztorysImport,
+  type ImportPreviewT,
+} from '@/lib/actions/kosztorys-import'
+import type { SheetComparisonT } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { toastMessage } from '@/lib/utils/toast'
@@ -55,6 +62,9 @@ export function KosztorysActionsMenu() {
   const [reloadOpen, setReloadOpen] = useState(false)
   const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
   const [importLoaded, setImportLoaded] = useState(false)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [comparison, setComparison] = useState<SheetComparisonT | null>(null)
+  const [compareLoaded, setCompareLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
@@ -102,6 +112,22 @@ export function KosztorysActionsMenu() {
         toastMessage('Nie udało się odczytać arkusza', 'error')
       })
       .finally(() => setImportLoaded(true))
+  }
+
+  function handleOpenCompare() {
+    setCompareOpen(true)
+    setCompareLoaded(false)
+    setComparison(null)
+    void compareWithSheet(investmentId)
+      .then((res) => {
+        setComparison(res.success ? res.data : null)
+        if (!res.success) toastMessage(res.error, 'error', 6000)
+      })
+      .catch(() => {
+        setComparison(null)
+        toastMessage('Nie udało się odczytać arkusza', 'error')
+      })
+      .finally(() => setCompareLoaded(true))
   }
 
   return (
@@ -160,6 +186,13 @@ export function KosztorysActionsMenu() {
               description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
             />
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleOpenCompare}>
+            <ScaleIcon />
+            <MenuItemBody
+              label="Porównaj z arkuszem…"
+              description="Sprawdź, czy arkusz i aplikacja liczą to samo — bez zapisywania czegokolwiek."
+            />
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href={`/podglad-klienta/${investmentId}`} target="_blank">
@@ -200,6 +233,12 @@ export function KosztorysActionsMenu() {
           setImportPreview(null)
           onTreeReplaced?.()
         }}
+      />
+      <SheetCompareDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        comparison={comparison}
+        loaded={compareLoaded}
       />
       <ReloadFromPresetDialog
         investmentId={investmentId}
