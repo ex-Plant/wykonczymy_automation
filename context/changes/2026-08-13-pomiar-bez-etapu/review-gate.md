@@ -93,6 +93,17 @@ Krok 0.5 pominięty — projekt nie ma skilla weryfikacji przeglądarkowej.
       toolbara, duplikacja `EmptyState`, kolejność eksportów w `types.ts`) — sprzed tego slice'a,
       poza jego zakresem, nie pogłębione przez tę zmianę.
 
+- [x] fixed · dogfooding · `src/components/kosztorys/editor/grid/kosztorys-v2-columns.tsx` ·
+      podpowiedź pod kursorem była jedynym miejscem, gdzie dało się przeczytać różnicę — właściciel
+      po dogfoodingu na inwestycji 31: „nikt tego tak nie będzie sprawdzał". Doszła kolumna „Rozjazd
+      (arkusz − etapy)" z ilością i kwotą wprost, widoczna tylko wtedy, gdy cokolwiek się rozjeżdża
+      (`hasDivergence`, ta sama liczba co licznik w pasku). Stoi na czele rozpiski, z czerwonym
+      nagłówkiem i tłem — to lista roboty, nie kolejny odczyt arkusza, więc nie idzie w kolejność
+      arkusza. Podpowiedź na „Pomiar" zostaje — niesie oba składniki odejmowania, których sama
+      różnica nie pokazuje.
+      test: TDD · unit — `divergence-column.test.ts` pilnuje bramki (brak rozjazdu / podgląd
+      klienta / plan ekipy) oraz pozycji na czele; arytmetyka dalej w `measure-discrepancy`.
+
 ## Simplify pass
 
 Wykonany inline, seryjnie, po triage'u (nie w fan-oucie): przebieg reuse/dedup po całym diffie

@@ -7,6 +7,7 @@ import {
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
 import {
+  measureDiscrepancy,
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
@@ -46,14 +47,17 @@ export function columnSortValue(
       return toGross(rowDiscountForView(row, rowTotalQtyDone(row, stages, view), view), row.vatRate)
     case 'stageQtySum':
       return rowTotalQtyDone(row, stages, view)
+    // By value, not by quantity: sorting a rozjazd list is triage, and „which m² gap is biggest" says
+    // nothing across rows priced at 30 zł and 3000 zł. `null` on the rows that agree sinks them to the
+    // bottom, which is where a work list wants them.
+    case 'divergence':
+      return measureDiscrepancy(row, stages)?.net ?? null
     case 'donePercent':
       return rowDoneFraction(row, rowTotalQtyDone(row, stages, view))
     case 'remaining':
       return rowRemainingForView(row, stages, view)
-    case 'remainingGross': {
-      const net = rowRemainingForView(row, stages, view)
-      return net === null ? null : toGross(net, row.vatRate)
-    }
+    case 'remainingGross':
+      return toGross(rowRemainingForView(row, stages, view), row.vatRate)
     default: {
       const value = row[field as keyof KosztorysV2RowT]
       return (typeof value === 'number' ? value : (value ?? '')) as string | number

@@ -921,6 +921,9 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 „Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
 
 - [ ] Po imporcie pozycje z rozjazdem mają czerwoną sumę etapów, a podpowiedź podaje: arkusz, etapy, kwotę różnicy
+- [ ] Kolumna „Rozjazd (arkusz − etapy)" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
+- [ ] Kolumna „Rozjazd" jest widoczna tylko wtedy, gdy jest choć jeden rozjazd: znika po wyczyszczeniu ostatniego (i nie ma jej też w liście „Kolumny")
+- [ ] Kolumna „Rozjazd" zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty
 - [ ] Przycisk „Rozjazdy" w pasku narzędzi pokazuje liczbę pozycji z rozjazdem; kliknięcie zawęża siatkę tylko do nich
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
 - [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym filtrze widać „Brak rozjazdów" z powrotem do pełnej listy, a sam przycisk znika
@@ -928,5 +931,5 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Menu wiersza → „Etapy są prawdą" zdejmuje pozycję z listy na stałe; po przeładowaniu strony nie wraca
 - [ ] Ponowny import tego samego arkusza przywraca odniesienie, więc odrzucone pozycje wracają, jeśli arkusz dalej się nie zgadza
 - [ ] Robocizna, marża i bilans nie drgnęły ani po imporcie, ani po „Etapy są prawdą" — odniesienie nie wchodzi do żadnej kwoty
-- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak przycisku „Rozjazdy" i pozycji w menu
+- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd", brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle

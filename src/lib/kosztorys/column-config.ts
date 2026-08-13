@@ -15,6 +15,9 @@ export const COLUMN_LABELS: Record<string, string> = {
   description: 'Opis prac',
   plannedQty: 'Przedmiar',
   stageQtySum: 'Pomiar (razem etapy)',
+  // Names its own subtraction in the header: the column exists to be read at a glance, so needing a
+  // tooltip to learn which way round the difference runs would defeat it.
+  divergence: 'Rozjazd (arkusz − etapy)',
   unit: 'J.m.',
   priceMode: 'Źródło ceny wykonawcy',
   priceCoeff: 'Mnożnik',
@@ -134,6 +137,10 @@ export const LAYER_NEUTRAL_COLUMNS: ReadonlySet<string> = new Set([
   'sectionName',
   'description',
   'stageQtySum',
+  // A rozjazd is a to-do about the etapy, so it belongs to the progress reading — but it is also the
+  // reason to go back and fix the offer's execution record, so dropping it in „Praca" would hide the
+  // work list in the mode where the fixing happens.
+  'divergence',
   // Komentarz (sheet col T): annotation that reads the same in Praca and Postęp, so the layer axis
   // must not drop it — same reasoning as `description`.
   'note',

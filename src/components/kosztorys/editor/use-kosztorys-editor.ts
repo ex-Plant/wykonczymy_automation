@@ -335,6 +335,16 @@ export function useKosztorysEditor({
   // so the panel and the dialog can never cite different amounts for the same etap.
   const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
+  // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
+  // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
+  // Zero under the preview, like the filter itself — the client's document carries none of this.
+  // Read by the toolbar's counter AND by the „Rozjazd" column's existence gate, so the badge and the
+  // column can never disagree about whether there is anything to fix.
+  const divergedCount = useMemo(
+    () => (preview ? 0 : divergedRows(rows, stages).length),
+    [preview, rows, stages],
+  )
+
   const columnOpts = {
     view,
     stages,
@@ -365,6 +375,7 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
+    hasDivergence: divergedCount > 0,
     readOnly: preview,
     previewVisible: preview,
   }
@@ -406,13 +417,6 @@ export function useKosztorysEditor({
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
   }, [rows, search, divergedOnlyActive, sort, view, stages])
-  // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
-  // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
-  // Zero under the preview, like the filter above — the client's document carries none of this.
-  const divergedCount = useMemo(
-    () => (preview ? 0 : divergedRows(rows, stages).length),
-    [preview, rows, stages],
-  )
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])

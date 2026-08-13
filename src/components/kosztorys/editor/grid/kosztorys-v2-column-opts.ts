@@ -67,6 +67,12 @@ export type BuildV2ColumnsOptsT = {
   // „Etapy są prawdą": drops the sheet's imported pomiar from this pozycja, which takes it off the
   // rozjazd list. Behind the same `editorOnly()` gate as every other row action.
   onClearSheetMeasuredQty?: (row: KosztorysV2RowT) => void
+  // Does ANY pozycja in the whole dataset diverge from its imported „Pomiar z natury"? Gates the
+  // „Rozjazd" column's existence — a column of dashes down every row would be permanent chrome for a
+  // condition that is normally absent, so it appears with the first rozjazd and leaves with the last.
+  // Dataset-wide on purpose (same figure the toolbar's counter shows): scoped to the visible rows it
+  // would vanish the moment the „Rozjazdy" filter narrowed the list to exactly the rows it explains.
+  hasDivergence?: boolean
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

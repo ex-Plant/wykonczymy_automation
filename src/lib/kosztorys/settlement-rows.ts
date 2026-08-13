@@ -50,16 +50,19 @@ export function rowValueForView(
  * instead, the figure says something ("how much of the offer is left") and can go negative, which is
  * also information: more was executed than was offered.
  *
- * `null`, not 0, when there is no przedmiar — 0 would claim the row is settled. The guard is `> 0`
- * rather than `=== 0` because a cleared cell writes null, which strict equality walks past.
+ * A row with no przedmiar is an offer of ZERO, not an absent answer, so it reads −wykonane rather
+ * than being withheld. Withholding it made the total claim work was still owed while the executed
+ * value that cancels it sat outside the sum: inv. 31 read +64 311 zł „left" on a kosztorys already
+ * 23 602 zł past its own offer. `?? 0` because a cleared cell writes null.
  */
 export function rowRemainingForView(
   row: KosztorysV2RowT,
   stages: KosztorysStageT[],
   view: PriceViewT,
-): number | null {
-  if (!(row.plannedQty > 0)) return null
-  return rowPlannedNetForView(row, view) - rowValueForView(row, stages, view)
+): number {
+  return (
+    netForQtyForView(row, row.plannedQty ?? 0, view) - rowValueForView(row, stages, view)
+  )
 }
 
 /**

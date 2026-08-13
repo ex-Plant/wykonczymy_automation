@@ -95,11 +95,16 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
-  // The count comes off the full-dataset `subtotals`, so a search filter narrows the visible rows
-  // without changing what the section says it holds.
+  // Both figures come off the full-dataset `subtotals`, so a search filter narrows the visible rows
+  // without changing what the section says it holds or what it is worth.
   const sectionHeader = useMemo(
     () => ({
-      figures: new Map(subtotals.map((section) => [section.sectionId, section.itemCount])),
+      figures: new Map(
+        subtotals.map((section) => [
+          section.sectionId,
+          { itemCount: section.itemCount, net: section.net },
+        ]),
+      ),
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
