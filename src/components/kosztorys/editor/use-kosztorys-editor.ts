@@ -737,7 +737,7 @@ export function useKosztorysEditor({
     })
   }
 
-  // Menu nagłówka → „Utrwal kolejność": the active sort is only a view, so this is what makes it
+  // Menu nagłówka → „Zapisz sortowanie": the active sort is only a view, so this is what makes it
   // survive a reload — every section's rows take display_order 0…n-1 in the order they're shown.
   // Computed from `rows`, never `viewRows`: the search box would otherwise renumber the visible
   // rows and leave the hidden ones interleaved among them.

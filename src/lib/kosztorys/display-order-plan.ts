@@ -2,7 +2,7 @@ import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-// What „Utrwal kolejność" writes: one section's rows renumbered 0…n-1 in the grid's current sort
+// What „Zapisz sortowanie" writes: one section's rows renumbered 0…n-1 in the grid's current sort
 // order, plus the order they held before so undo is the same write with the two swapped.
 //
 // Takes the FULL row set, never viewRows: the search box and „tylko rozjechane" narrow a section to
@@ -22,7 +22,7 @@ export function planSectionRenumber(
   }
 }
 
-// „Utrwal kolejność w całym kosztorysie": the same write over every section at once, so one command
+// „Zapisz sortowanie": the same write over every section at once, so one command
 // bakes the whole sheet and one undo takes it back.
 //
 // Each section is still renumbered 0…n-1 on its own — that is what keeps the sections apart. A single

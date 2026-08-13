@@ -64,7 +64,7 @@ export type BuildV2ColumnsOptsT = {
   // menu. Greyed out under an active column sort, for the same reason as the per-item ▲▼.
   onReorderSection?: (sectionId: number, dir: 'up' | 'down') => void
   onInsertSection?: (sectionId: number, dir: 'above' | 'below') => void
-  // „Utrwal kolejność": writes the active sort into display_order across every section, so the order
+  // „Zapisz sortowanie": writes the active sort into display_order across every section, so the order
   // survives clearing the sort. Lives in the column header menu, next to the sort it bakes — there is
   // no per-section sort to bake, so there is no per-section variant either. No-op without a sort, and
   // under a global one — the menu item is disabled in both cases.

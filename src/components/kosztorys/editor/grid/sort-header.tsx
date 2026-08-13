@@ -15,7 +15,7 @@ type PropsT = {
   label: string
   active: SortPickT | null
   onSort: (pick: SortPickT | null) => void
-  // „Utrwal kolejność" — writes the sort showing right now into the stored order, so it survives
+  // „Zapisz sortowanie" — writes the sort showing right now into the stored order, so it survives
   // clearing the sort. Absent in the read-only view, where the item does not appear at all. It sits
   // in this menu because it bakes THIS menu's sort; from a column header there is no one section to
   // aim at, so it covers every section at once.
@@ -70,7 +70,7 @@ export function SortHeader({ label, active, onSort, onPersistOrder, tip }: Props
           <div>
             <DropdownMenuItem disabled={persistBlockReason != null} onSelect={onPersistOrder}>
               <ListOrdered />
-              Utrwal kolejność
+              Zapisz sortowanie
             </DropdownMenuItem>
           </div>
         </SimpleTooltip>

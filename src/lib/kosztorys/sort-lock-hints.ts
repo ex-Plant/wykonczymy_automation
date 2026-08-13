@@ -12,11 +12,11 @@ export function reorderLockHint(scope: SortScopeT | null): string | undefined {
   const escape =
     scope === 'global'
       ? 'Sortowania „w całym kosztorysie" nie da się utrwalić — posortuj „w sekcjach", jeśli chcesz zachować kolejność'
-      : 'Aby zachować bieżącą kolejność, użyj „Utrwal kolejność" w menu nagłówka sortowanej kolumny'
+      : 'Aby zachować bieżącą kolejność, użyj „Zapisz sortowanie" w menu nagłówka sortowanej kolumny'
   return `Przyciski zablokowane — wyłącz sortowanie kolumn, aby odblokować. ${escape}`
 }
 
-// Why „Utrwal kolejność" (either scope) is unavailable, or undefined when it can run.
+// Why „Zapisz sortowanie" (either scope) is unavailable, or undefined when it can run.
 export function persistOrderBlockReason(scope: SortScopeT | null): string | undefined {
   if (scope === 'section') return undefined
   return scope === 'global'

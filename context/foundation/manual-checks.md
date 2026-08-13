@@ -931,10 +931,13 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
 
-## EX-682 / EX-683 — sortowanie wewnątrz sekcji + „Utrwal kolejność"
+## EX-682 / EX-683 — sortowanie wewnątrz sekcji
 
 **In review** — cała bramka zielona (tsc, eslint 0 błędów, `pnpm test` 2162,
 `pnpm test:integration` 107, `next build --webpack`). E2E odroczone (patrz bramka przeglądu).
+
+Zapis kolejności przeniesiony do menu nagłówka kolumny — sprawdza go sekcja EX-688 niżej;
+punkty o utrwalaniu z menu wiersza wypadły razem z tamtym poleceniem.
 
 Setup: aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER, zakładka
 Kosztorys inwestycji.
@@ -943,14 +946,9 @@ Kosztorys inwestycji.
 - [ ] Pas nagłówka i pas podsumowania sekcji są widoczne przy aktywnym sortowaniu
 - [ ] Zwijanie sekcji działa przy aktywnym sortowaniu; wyszukiwarka nadal chwilowo rozwija sekcje
 - [ ] Sortowanie po kolumnie z „—" (np. „Pozostało") spycha te wiersze na koniec **swojej** sekcji
-- [ ] Menu wiersza → Sekcja → „Utrwal kolejność" → wyczyszczenie sortowania → kolejność została; po odświeżeniu strony nadal ta sama
-- [ ] Cmd+Z przywraca poprzednią kolejność; Cmd+Shift+Z ponownie ją utrwala
-- [ ] „Utrwal kolejność" jest wyszarzona bez aktywnego sortowania i tłumaczy dlaczego
-- [ ] Utrwalenie przy wpisanej frazie w wyszukiwarce porządkuje **całą** sekcję, nie tylko widoczne wiersze
-- [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ działają normalnie
-- [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" i „Utrwal kolejność" w ogóle się nie pokazują
+- [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" w ogóle się nie pokazuje
 
-## EX-688 — zakres sortowania kolumny + „Utrwal kolejność" w menu nagłówka
+## EX-688 — zakres sortowania kolumny + „Zapisz sortowanie" w menu nagłówka
 
 **In review** — tsc czysty, eslint bez błędów, specy sortowania i zapisu kolejności zielone.
 E2E odroczone (patrz bramka przeglądu).
@@ -958,15 +956,15 @@ E2E odroczone (patrz bramka przeglądu).
 Setup: jak wyżej — aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER,
 zakładka Kosztorys inwestycji.
 
-- [ ] Menu kolumny pokazuje cztery polecenia sortowania z jawnym zakresem („w sekcjach" / „w całym kosztorysie"), „Utrwal kolejność" i „Wyczyść sortowanie"
+- [ ] Menu kolumny pokazuje cztery polecenia sortowania z jawnym zakresem („w sekcjach" / „w całym kosztorysie"), „Zapisz sortowanie" i „Wyczyść sortowanie"
 - [ ] Sortowanie „w sekcjach" po „Opis" zachowuje pasy sekcji i kolejność samych sekcji
 - [ ] Sortowanie „w całym kosztorysie" daje jedną płaską listę — pasy sekcji znikają, numeracja idzie ciągiem
-- [ ] „Utrwal kolejność" jest wyszarzone bez sortowania i przy sortowaniu „w całym kosztorysie"; w obu przypadkach podpowiedź tłumaczy dlaczego
-- [ ] Sortowanie „w sekcjach" → „Utrwal kolejność" → wyczyszczenie sortowania → kolejność została **w każdej** sekcji; po odświeżeniu nadal ta sama
+- [ ] „Zapisz sortowanie" jest wyszarzone bez sortowania i przy sortowaniu „w całym kosztorysie"; w obu przypadkach podpowiedź tłumaczy dlaczego
+- [ ] Sortowanie „w sekcjach" → „Zapisz sortowanie" → wyczyszczenie sortowania → kolejność została **w każdej** sekcji; po odświeżeniu nadal ta sama
 - [ ] Cmd+Z cofa utrwalenie wszystkich sekcji jednym ruchem; Cmd+Shift+Z je przywraca
 - [ ] Utrwalenie przy wpisanej frazie w wyszukiwarce porządkuje **całe** sekcje, nie tylko widoczne wiersze
 - [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ oraz „Wstaw" działają normalnie
 - [ ] W menu wiersza (grupa „Sekcja") nie ma już żadnego utrwalania kolejności
 - [ ] Sekcja zwinięta przy sortowaniu „w całym kosztorysie" nie chowa swoich pozycji (bez pasa nie ma czym rozwinąć)
 - [ ] Żadne sortowanie nie przeżywa odświeżenia strony — po reloadzie kosztorys wraca do kolejności zapisanej
-- [ ] Podgląd dla klienta (link publiczny): w menu nagłówka nie ma „Utrwal kolejność"
+- [ ] Podgląd dla klienta (link publiczny): w menu nagłówka nie ma „Zapisz sortowanie"

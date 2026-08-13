@@ -26,7 +26,7 @@ describe('reorderLockHint', () => {
   it('explains the lock under either scope, differing on the escape route', () => {
     const section = reorderLockHint('section')
     const global = reorderLockHint('global')
-    expect(section).toContain('Utrwal kolejność')
+    expect(section).toContain('Zapisz sortowanie')
     expect(global).toContain('w całym kosztorysie')
     expect(section).not.toBe(global)
   })

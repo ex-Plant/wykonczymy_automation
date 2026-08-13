@@ -477,7 +477,7 @@ export async function swapItemOrderAction(
 
 const ITEMS_NOT_IN_KOSZTORYS = 'Pozycje spoza tego kosztorysu.'
 
-// „Utrwal kolejność" (menu nagłówka kolumny) — writes the grid's current order into display_order
+// „Zapisz sortowanie" (menu nagłówka kolumny) — writes the grid's current order into display_order
 // across every section, in one statement so a half-applied renumber can't leave sections sharing
 // indices.
 export async function renumberKosztorysOrderAction(

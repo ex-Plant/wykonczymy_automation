@@ -188,7 +188,7 @@ export function applyInsertSectionRow(
   return regroup(blocks, seq)
 }
 
-// „Utrwal kolejność": stamp one section's rows with the display_order just written and re-lay its
+// „Zapisz sortowanie": stamp one section's rows with the display_order just written and re-lay its
 // block in that order. Rows outside the section — and any row the refs don't mention — are left
 // exactly where they are, so a stale ref set degrades to a partial reorder rather than a scramble.
 export function applySectionOrder(
