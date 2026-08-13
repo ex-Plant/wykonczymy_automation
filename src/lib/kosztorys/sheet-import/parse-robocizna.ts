@@ -11,7 +11,7 @@ import type { ResolvedRobociznaT } from './resolve-columns'
 
 // The marker the owner types into Przedmiar + Pomiar on a row that is not a praca. A section header
 // and a footer row are BOTH marked this way — the section name is the only thing separating them.
-const NON_ITEM_MARKER = 'x'
+export const NON_ITEM_MARKER = 'x'
 
 // The praca's own fields. The four subcontractor-override fields are missing on purpose: they come
 // from the „zakres pracy" tabs, so the parser has no honest value for them and refuses to invent

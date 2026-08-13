@@ -593,15 +593,15 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 1.1 No reference to `clearSheetMeasuredQty` remains in `src/`
-- [x] 1.2 The divergence-column spec still passes
+- [x] 1.1 No reference to `clearSheetMeasuredQty` remains in `src/` — b5307753
+- [x] 1.2 The divergence-column spec still passes — b5307753
 
 ### Phase 2: Rdzeń porównania
 
 #### Automated
 
-- [ ] 2.1 Formula-health and comparison specs pass
-- [ ] 2.2 The importer's own specs still pass after the key extraction
+- [x] 2.1 Formula-health and comparison specs pass
+- [x] 2.2 The importer's own specs still pass after the key extraction
 
 ### Phase 3: Odczyt serwerowy i okno „Porównaj z arkuszem"
 
