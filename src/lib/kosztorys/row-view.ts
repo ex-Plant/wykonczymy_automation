@@ -1,3 +1,4 @@
+import { groupBySection } from '@/lib/kosztorys/row-ops'
 import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -68,12 +69,7 @@ export function sortRowsWithinSections(
   getValue: (row: KosztorysV2RowT) => string | number | null,
   dir: SortDirT,
 ): KosztorysV2RowT[] {
-  const bySection = new Map<number, KosztorysV2RowT[]>()
-  for (const row of rows) {
-    const group = bySection.get(row.sectionId)
-    if (group) group.push(row)
-    else bySection.set(row.sectionId, [row])
-  }
-  // Map iterates in insertion order, so the sections come back in the order they first appeared.
-  return [...bySection.values()].flatMap((group) => sortRows(group, getValue, dir))
+  // groupBySection's Map iterates in insertion order, so the sections come back in the order they
+  // first appeared.
+  return [...groupBySection(rows).values()].flatMap((group) => sortRows(group, getValue, dir))
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { planKosztorysRenumber, planSectionRenumber } from '@/lib/kosztorys/display-order-plan'
+import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 function row(
@@ -22,51 +22,6 @@ const ROWS = [
   row(3, 20, 0, 'parapet'),
   row(4, 10, 2, 'gruntowanie'),
 ]
-
-describe('planSectionRenumber', () => {
-  it('assigns 0…n-1 in the sort order', () => {
-    const { after } = planSectionRenumber(ROWS, 10, byDescription, 'asc')
-
-    expect(after).toEqual([
-      { id: 4, displayOrder: 0 },
-      { id: 2, displayOrder: 1 },
-      { id: 1, displayOrder: 2 },
-    ])
-  })
-
-  it('touches only the named section', () => {
-    const { before, after } = planSectionRenumber(ROWS, 10, byDescription, 'asc')
-
-    expect([...before, ...after].every((ref) => ref.id !== 3)).toBe(true)
-  })
-
-  // The write is what undo replays, so `before` has to carry the stored indices — including the
-  // gaps a delete leaves behind, which renumbering to 0…n-1 would silently close.
-  it('reports the stored order as before, gaps and all', () => {
-    const gapped = [row(1, 10, 0, 'b'), row(2, 10, 7, 'a')]
-
-    expect(planSectionRenumber(gapped, 10, byDescription, 'asc').before).toEqual([
-      { id: 1, displayOrder: 0 },
-      { id: 2, displayOrder: 7 },
-    ])
-  })
-
-  it('covers every row of the section, not just the ones a filter left visible', () => {
-    const { after } = planSectionRenumber(ROWS, 10, byDescription, 'asc')
-
-    expect(after.map((ref) => ref.id).sort()).toEqual([1, 2, 4])
-  })
-
-  it('reverses under desc', () => {
-    const { after } = planSectionRenumber(ROWS, 10, byDescription, 'desc')
-
-    expect(after.map((ref) => ref.id)).toEqual([1, 2, 4])
-  })
-
-  it('returns empty plans for a section with no rows', () => {
-    expect(planSectionRenumber(ROWS, 99, byDescription, 'asc')).toEqual({ before: [], after: [] })
-  })
-})
 
 describe('planKosztorysRenumber', () => {
   it('restarts the numbering in every section', () => {
@@ -92,6 +47,28 @@ describe('planKosztorysRenumber', () => {
     const { before } = planKosztorysRenumber(ROWS, byDescription, 'asc')
 
     expect(before).toEqual([
+      { id: 1, displayOrder: 0 },
+      { id: 2, displayOrder: 1 },
+      { id: 4, displayOrder: 2 },
+      { id: 3, displayOrder: 0 },
+    ])
+  })
+
+  // Renumbering to 0…n-1 would silently close the gaps a delete left behind, and undo replays
+  // `before` verbatim.
+  it('keeps the gaps a delete left in before', () => {
+    const gapped = [row(1, 10, 0, 'b'), row(2, 10, 7, 'a')]
+
+    expect(planKosztorysRenumber(gapped, byDescription, 'asc').before).toEqual([
+      { id: 1, displayOrder: 0 },
+      { id: 2, displayOrder: 7 },
+    ])
+  })
+
+  it('reverses under desc', () => {
+    const { after } = planKosztorysRenumber(ROWS, byDescription, 'desc')
+
+    expect(after).toEqual([
       { id: 1, displayOrder: 0 },
       { id: 2, displayOrder: 1 },
       { id: 4, displayOrder: 2 },
