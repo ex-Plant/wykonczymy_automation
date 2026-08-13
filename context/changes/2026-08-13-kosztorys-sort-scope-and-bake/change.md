@@ -29,10 +29,9 @@ zostało zamienione na wyłącznie wewnątrzsekcyjne — ta zmiana przywraca sor
 - **Dlaczego nie zapisywać reguły sortowania**: zapisana reguła jest żywa i przebija pozycje —
   po ▲/▼ i przeładowaniu przesunięcie wiersza znika, bo reguła sortuje go z powrotem. Dwa
   źródła prawdy o kolejności. Zapisujemy wynik (`display_order`), nie regułę.
-- **Sortowanie globalne nie jest utrwalane nigdzie** — przeplata wiersze różnych sekcji, a
-  `display_order` wyraża tylko pozycję wewnątrz sekcji; utrwalenie oznaczałoby przenoszenie prac
-  do cudzych sekcji. Przy aktywnym sortowaniu globalnym „Utrwal kolejność" jest wyszarzona z tym
-  uzasadnieniem; ▲▼ i wstawianie pozostają wyłączone jak przy każdym sortowaniu.
+- **Reguła sortowania nie jest utrwalana nigdzie** — ani globalna, ani sekcyjna; ▲▼ i wstawianie
+  pozostają wyłączone przy każdym sortowaniu. (Wyszarzanie zapisu przy sortowaniu globalnym —
+  patrz korekta niżej: wycofane.)
 - **Nowy wariant**: „Utrwal kolejność w całym kosztorysie" — ten sam planner przelatuje po
   wszystkich sekcjach, refy sklejone w jeden zapis i jedno cofnięcie. `renumberDisplayOrder`
   przyjmuje dowolną listę id→indeks, więc mechanizm już to unosi.
@@ -47,7 +46,19 @@ Powód (właściciel): nie da się posortować jednej sekcji. „w sekcjach" por
 czegoś, czego nigdy nie dało się osobno wywołać, a menu wiersza dodatkowo sugerowało, że wiersz ma
 z tym coś wspólnego. Z nagłówka kolumny i tak nie ma jak wskazać sekcji.
 
-Konsekwencje: znika pozycja utrwalania z grupy „Sekcja" w menu wiersza wraz z akcją serwerową
+### Korekta druga — zapis zawsze aktywny (2026-08-13)
+
+Polecenie nazywa się **„Zapisz kolejność"** i jest **aktywne przy każdym sortowaniu, także „w całym
+kosztorysie"** (wcześniej: wyszarzone). Wyszarzanie opierało się na błędnym założeniu — plan zapisu
+przenumerowuje **każdą sekcję osobno wg tego samego klucza sortowania**, więc sortowanie globalne
+zapisuje bajt w bajt to samo co sekcyjne. Zakres zmienia to, co widać na ekranie, nigdy to, co
+trafia do bazy. Jedyny koszt: po wyczyszczeniu sortowania globalnego przeplot nie wraca — wiersze
+wracają pod swoje sekcje (właściciel: „możemy zawsze z powrotem posortować sekcjami").
+
+Skutkiem tego zniknęły wszystkie podpowiedzi (tooltipy) tłumaczące blokadę, razem z modułem
+`sort-lock-hints` i jego specem — nie ma już blokady do wytłumaczenia.
+
+Konsekwencje pierwszej korekty: znika pozycja utrwalania z grupy „Sekcja" w menu wiersza wraz z akcją serwerową
 zapisującą pojedynczą sekcję (EX-683) i jej specem — nikt jej już nie woła, a szersza akcja robi to
 samo zapytanie bez ograniczenia do jednej sekcji. Schemat walidacji wraca do jednego kształtu:
 odrzuca powtórzone id, ale **nie** powtórzony indeks, bo przy wielu sekcjach każda zaczyna

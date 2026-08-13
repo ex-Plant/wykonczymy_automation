@@ -356,7 +356,7 @@ Run **once**, after the final phase.
 
 #### Automated
 
-- [x] 3.1 Menu spec covering the disabled/enabled states of both bake items passes — 7adade39 — covered at logic level (`src/__tests__/lib/kosztorys/sort-lock-hints.test.ts`): the repo has no DOM render harness (no testing-library/jsdom), so the scope→disabled/reason decision was extracted to `src/lib/kosztorys/sort-lock-hints.ts` and asserted there
+- [x] 3.1 Menu spec covering the disabled/enabled states of both bake items passes — moot: the disabled state was removed (see change.md „Korekta druga") — „Zapisz kolejność" is a single, always-enabled item, so there is no scope→disabled decision left to assert; the write itself is covered by `src/__tests__/lib/actions/kosztorys-renumber-kosztorys-order.test.ts`
 
 ### Whole-tree Gate
 
