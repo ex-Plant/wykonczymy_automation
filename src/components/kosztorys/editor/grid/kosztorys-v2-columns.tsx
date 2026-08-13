@@ -206,7 +206,6 @@ function RowActionsCell({
   rowData: KosztorysV2RowT
   opts: BuildV2ColumnsOptsT
 }) {
-  const sortActive = opts.sort != null
   const plan = opts.getRemovePlan?.(rowData)
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
   const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
@@ -243,7 +242,7 @@ function RowActionsCell({
 
   return (
     <KosztorysRowActionsMenu
-      sortActive={sortActive}
+      sortScope={opts.sort?.scope ?? null}
       removeBlockReason={removeBlockReason}
       removeNeedsConfirm={removeNeedsConfirm}
       item={{
@@ -259,6 +258,9 @@ function RowActionsCell({
           : undefined
       }
       section={section}
+      kosztorys={
+        opts.onPersistKosztorysOrder ? { onPersistOrder: opts.onPersistKosztorysOrder } : undefined
+      }
     />
   )
 }

@@ -67,6 +67,9 @@ export type BuildV2ColumnsOptsT = {
   // „Utrwal kolejność": writes the active sort into this section's display_order, so the order
   // survives clearing the sort. No-op without one — the menu item is disabled there.
   onPersistSectionOrder?: (sectionId: number) => void
+  // The same write across every section at once — one command, one undo. Row-independent, so it
+  // takes no row: the menu it hangs in just happens to be a row's.
+  onPersistKosztorysOrder?: () => void
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void

@@ -348,15 +348,15 @@ Run **once**, after the final phase.
 
 #### Automated
 
-- [x] 2.1 New unit spec for the whole-kosztorys planner passes
-- [x] 2.2 New DB spec for the action passes against `db-test`
-- [x] 2.3 Existing section-scoped DB spec still passes
+- [x] 2.1 New unit spec for the whole-kosztorys planner passes — 2acfabc5
+- [x] 2.2 New DB spec for the action passes against `db-test` — 2acfabc5
+- [x] 2.3 Existing section-scoped DB spec still passes — 2acfabc5
 
 ### Phase 3: „Utrwal kolejność w całym kosztorysie" w menu
 
 #### Automated
 
-- [ ] 3.1 Menu spec covering the disabled/enabled states of both bake items passes
+- [x] 3.1 Menu spec covering the disabled/enabled states of both bake items passes — covered at logic level (`src/__tests__/lib/kosztorys/sort-lock-hints.test.ts`): the repo has no DOM render harness (no testing-library/jsdom), so the scope→disabled/reason decision was extracted to `src/lib/kosztorys/sort-lock-hints.ts` and asserted there
 
 ### Whole-tree Gate
 
