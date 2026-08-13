@@ -173,11 +173,11 @@ Wartość nominalna: ta sama kwota schodzi z osi netto i z osi brutto.
 
 #### Automated
 
-- [x] 4.1 Fixture inw. 62 — bilans 0, marża −362,84, rozliczenie v2 na zero zielony
-- [x] 4.2 Guard VAT — strata przesuwa brutto o 1000, rabat o 1230 zielony i czerwony po dopisaniu `totalLoss` do `grossBalance` (zweryfikowane ręcznie raz)
+- [ ] 4.1 Fixture inw. 62 zielony
+- [ ] 4.2 Guard VAT zielony i czerwony po dopisaniu `totalLoss` do `grossBalance` (zweryfikowane ręcznie raz)
 - [ ] 4.3 `investment-render-parity-db.test.ts:141-146` przeanalizowany — jeśli czerwony, to **po fazie 1 nie powinien być**; czerwień tam oznacza rozjazd mechanizmów 1 i 2
 - [ ] 4.4 `pnpm typecheck && pnpm lint && pnpm test` zielone
-- [x] 4.5 `pnpm test:parity` zielony zielony
+- [ ] 4.5 `pnpm test:parity` zielony
 
 ## Testing Strategy
 
@@ -228,7 +228,7 @@ review — autorować albo odłożyć jako `e2e-backlog`.
 - [x] 1.2 Σ kafelków === `calculateBalance` — 4a169452
 - [x] 1.3 `transfer-loss.test.ts` — asercje z `:17-20` poleciały z flipem w fazie 3 — 7a009ecc
 - [x] 1.4 Złoty master przeliczony — 4a169452
-- [x] 1.5 typecheck — zielony w bramce końcowej (poza prezniejącym szumem `importMap.js`)
+- [x] 1.5 typecheck — zielony w bramce końcowej (poza istniejącym szumem `importMap.js`) — 0d76ff26
 
 ### Phase 2
 
@@ -252,8 +252,8 @@ review — autorować albo odłożyć jako `e2e-backlog`.
 
 #### Automated
 
-- [x] 4.1 Fixture inw. 62 — bilans 0, marża −362,84, rozliczenie v2 na zero
-- [x] 4.2 Guard VAT — strata przesuwa brutto o 1000, rabat o 1230
-- [x] 4.3 Parity zielony — mechanizmy 1 i 2 zgodne
-- [x] 4.4 typecheck + lint + test (2153 zielone)
-- [x] 4.5 `pnpm test:parity` zielony
+- [x] 4.1 Fixture inw. 62 (bilans 0, marża −362,84, rozliczenie v2 na zero) — 0d76ff26
+- [x] 4.2 Guard VAT (strata przesuwa brutto o 1000, rabat o 1230) — 0d76ff26
+- [x] 4.3 Parity zielony — mechanizmy 1 i 2 zgodne — 0d76ff26
+- [x] 4.4 typecheck + lint + test (2153 zielone) — 0d76ff26
+- [x] 4.5 `pnpm test:parity` zielony — 0d76ff26

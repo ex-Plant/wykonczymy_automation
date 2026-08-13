@@ -909,3 +909,23 @@ Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER
 - [ ] To samo dla „Zasilenie z konta firmowego"
 - [ ] Wybierz „Wpłata od inwestora", ustaw inwestycję i netto/brutto, przełącz typ na „Zasilenie" i zapisz — żadna z tych dwóch wartości nie ląduje na wierszu
 - [ ] Edycja istniejącego wiersza `COMPANY_FUNDING` z tabeli transakcji nie oferuje pola inwestycji, a zapis niepowiązanego pola (opis) przechodzi bez błędu
+
+## EX-675 — strata obniża dług klienta jak rabat
+
+**In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2153, `pnpm test:parity` 3). Strata
+wchodzi teraz w bilans **nominalnie**: 1000 zł wchłonięte to dokładnie 1000 zł mniej długu na
+netto i na brutto — inaczej niż rabat, który jest ustępstwem od ceny i gruntuje się o VAT. Marża
+bez zmian. Inwestycja przy stracie stała się **wymagana**.
+
+Setup: aplikacja na dev DB (5433), zalogowany jako OWNER (kafelek „Strata" i „Marża" są dla
+ADMIN/OWNER). Inwestycja **62** jest wzorcem: 362,84 zł materiału pokryte stratą 362,84 zł.
+
+- [ ] Inwestycja 62: nagłówkowy bilans pokazuje **0 zł**, marża **−362,84 zł**
+- [ ] Kafelek „Strata" stoi w wierszu kredytów obok rabatu (nie w osobnym bloku), a suma kafelków po odznaczeniu/zaznaczeniu dowolnego z nich dalej zgadza się z nagłówkiem
+- [ ] Bilans brutto tej samej inwestycji nie „gruntuje" straty — przy stracie 1000 zł i VAT 23% dług spada o 1000 zł, nie o 1230 zł
+- [ ] Podsumowanie v2 inwestycji ze stratą: krok **„Strata"** stoi pod „Wpłatami", na minusie, spięty przez oba tory kwotowe; „Pozostało do zapłaty" schodzi o tę samą kwotę na netto i na brutto
+- [ ] Inwestycja **bez** straty nie pokazuje kroku „Strata" w ogóle (żadnego 0 zł)
+- [ ] Tryb **mieszany**: „Strata" pojawia się raz, w torze netto (jak „Wpłaty netto"), a podpowiedź przy „Pozostało brutto" wymienia stratę wśród odjętych pozycji
+- [ ] Podgląd klienta (link do kosztorysu) pokazuje ten sam obniżony dług — bez ujawniania marży i wypłat
+- [ ] Okno „Nowa transakcja" → „Strata": pole inwestycji jest **wymagane**, zapis bez niej odrzucony
+- [ ] Do istniejącej straty da się dopiąć fakturę (edycja tylko tego pola) — zapis przechodzi, nie żąda ponownie inwestycji
