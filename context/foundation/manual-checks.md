@@ -930,3 +930,22 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Robocizna, marża i bilans nie drgnęły ani po imporcie, ani po „Etapy są prawdą" — odniesienie nie wchodzi do żadnej kwoty
 - [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
+
+## EX-682 / EX-683 — sortowanie wewnątrz sekcji + „Utrwal kolejność"
+
+**In review** — cała bramka zielona (tsc, eslint 0 błędów, `pnpm test` 2162,
+`pnpm test:integration` 107, `next build --webpack`). E2E odroczone (patrz bramka przeglądu).
+
+Setup: aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER, zakładka
+Kosztorys inwestycji.
+
+- [ ] Sortowanie po „Opis" układa pozycje alfabetycznie wewnątrz każdej sekcji, kolejność sekcji bez zmian
+- [ ] Pas nagłówka i pas podsumowania sekcji są widoczne przy aktywnym sortowaniu
+- [ ] Zwijanie sekcji działa przy aktywnym sortowaniu; wyszukiwarka nadal chwilowo rozwija sekcje
+- [ ] Sortowanie po kolumnie z „—" (np. „Pozostało") spycha te wiersze na koniec **swojej** sekcji
+- [ ] Menu wiersza → Sekcja → „Utrwal kolejność" → wyczyszczenie sortowania → kolejność została; po odświeżeniu strony nadal ta sama
+- [ ] Cmd+Z przywraca poprzednią kolejność; Cmd+Shift+Z ponownie ją utrwala
+- [ ] „Utrwal kolejność" jest wyszarzona bez aktywnego sortowania i tłumaczy dlaczego
+- [ ] Utrwalenie przy wpisanej frazie w wyszukiwarce porządkuje **całą** sekcję, nie tylko widoczne wiersze
+- [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ działają normalnie
+- [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" i „Utrwal kolejność" w ogóle się nie pokazują

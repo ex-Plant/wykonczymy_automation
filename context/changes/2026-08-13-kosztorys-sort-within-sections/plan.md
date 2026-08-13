@@ -313,11 +313,11 @@ Uruchomić **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 3.1 Spec `display-order-plan.test.ts` przechodzi
+- [x] 3.1 Spec `display-order-plan.test.ts` przechodzi — 26c91a68
 
 ### Whole-tree Gate
 
-- [x] G.1 `pnpm typecheck`
-- [x] G.2 `pnpm lint` (0 błędów, 80 wcześniejszych ostrzeżeń)
-- [x] G.3 `pnpm test` (142 pliki, 2162 testy)
-- [x] G.4 `next build --webpack`
+- [x] G.1 `pnpm typecheck` — 26c91a68
+- [x] G.2 `pnpm lint` (0 błędów, 80 wcześniejszych ostrzeżeń) — 26c91a68
+- [x] G.3 `pnpm test` (142 pliki, 2162 testy) — 26c91a68
+- [x] G.4 `next build --webpack` — 26c91a68

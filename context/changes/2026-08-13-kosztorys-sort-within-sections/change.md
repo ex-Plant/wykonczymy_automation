@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-sort-within-sections
 title: Sortowanie pozycji wewnątrz sekcji — widok + trwały zapis kolejności
-status: planned
+status: implemented
 created: 2026-08-13
 updated: 2026-08-13
 archived_at: null
