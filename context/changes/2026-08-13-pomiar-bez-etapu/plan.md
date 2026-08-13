@@ -21,11 +21,11 @@ jak właściciel wpisuje ilości w etapy — nikt niczego nie kasuje ręcznie, �
 
 Trzy afordancje na tej jednej liczbie:
 
-| # | Afordancja | Gdzie |
-| --- | --- | --- |
-| 1 | Czerwony ton komórki „Pomiar z natury" + podpowiedź z obiema liczbami i kwotą | `kosztorys-v2-columns.tsx` (kolumna `stageQtySum`) |
-| 2 | Filtr „tylko rozjechane" z licznikiem | pasek narzędzi + memo `viewRows` |
-| 3 | Akcja „etapy są prawdą" w menu wiersza (czyści odniesienie) | `kosztorys-row-actions-menu.tsx` |
+| #   | Afordancja                                                                    | Gdzie                                              |
+| --- | ----------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1   | Czerwony ton komórki „Pomiar z natury" + podpowiedź z obiema liczbami i kwotą | `kosztorys-v2-columns.tsx` (kolumna `stageQtySum`) |
+| 2   | Filtr „tylko rozjechane" z licznikiem                                         | pasek narzędzi + memo `viewRows`                   |
+| 3   | Akcja „etapy są prawdą" w menu wiersza (czyści odniesienie)                   | `kosztorys-row-actions-menu.tsx`                   |
 
 Wszystko **wyłącznie dla właściciela** — podgląd klienta nie dostaje ani znacznika, ani filtra, ani
 akcji.
@@ -33,7 +33,7 @@ akcji.
 ## Current State
 
 - **Kolumna O arkusza nie jest w ogóle czytana.** `ColumnFieldT` = `plannedQty | unit | clientPrice |
-  discount | netValue | comment` (`sheet-import/columns.ts:37-43`); `ROBOCIZNA_FIELDS`
+discount | netValue | comment` (`sheet-import/columns.ts:37-43`); `ROBOCIZNA_FIELDS`
   (`resolve-columns.ts:106-113`) jej nie zna.
 - **Formuły zakładki `kosztorys_robocizny` nie są pobierane.** `readImportGrids` bierze render
   `FORMULA` **tylko** dla zakładek „zakres pracy" (`read-sheet.ts:70-74`), z komentarzem
@@ -237,7 +237,7 @@ Bez tego nie ma czego pokazywać. Największa faza; reszta to warstwa widoku na 
   z wierszy już przefiltrowanych, więc pusta sekcja nie emituje pasa za darmo
   (`section-band-rows.ts:58-63`).
 - `section-band-rows.ts:35` — `searchActive` rozszerzyć do `foldSuppressed = searchActive ||
-  divergedOnly`, żeby zwinięta sekcja nie zasłoniła rozjechanego wiersza.
+divergedOnly`, żeby zwinięta sekcja nie zasłoniła rozjechanego wiersza.
 - Pasek narzędzi: przełącznik obok `KosztorysSectionFilterMenu`, licznik przez istniejący
   `src/components/ui/count-badge.tsx`. Renderowany tylko gdy `!preview`
   (`kosztorys-editor-body.tsx:175-186` już to zapewnia dla całego paska).
@@ -379,18 +379,18 @@ przy weryfikacji, nie w bramce.
 
 ### Phase 2: Czerwony znacznik i podpowiedź
 
-- [x] 2.1 `measureDiscrepancy` w `settlement-rows.ts` (z progiem porównania ilości)
-- [x] 2.2 `ComputedCellDataT.tip` + `SimpleTooltip` w `computed-cell.tsx`
-- [x] 2.3 Ton `danger` i podpowiedź na kolumnie `stageQtySum`, tylko poza podglądem
-- [x] 2.4 Spec `measureDiscrepancy`
+- [x] 2.1 `measureDiscrepancy` w `settlement-rows.ts` (z progiem porównania ilości) · 6434c0ae
+- [x] 2.2 `ComputedCellDataT.tip` + `SimpleTooltip` w `computed-cell.tsx` · 6434c0ae
+- [x] 2.3 Ton `danger` i podpowiedź na kolumnie `stageQtySum`, tylko poza podglądem · 6434c0ae
+- [x] 2.4 Spec `measureDiscrepancy` · 6434c0ae
 
 ### Phase 3: Filtr „tylko rozjechane" z licznikiem
 
-- [ ] 3.1 Stan ulotny + wymuszenie `false` pod podglądem (`use-kosztorys-editor.ts`)
-- [ ] 3.2 Trzeci etap w memo `viewRows`
-- [ ] 3.3 `foldSuppressed` w `section-band-rows.ts`
-- [ ] 3.4 Przełącznik + licznik w pasku narzędzi
-- [ ] 3.5 Testy: pasy sekcji, filtr wierszy
+- [x] 3.1 Stan ulotny + wymuszenie `false` pod podglądem (`use-kosztorys-editor.ts`)
+- [x] 3.2 Trzeci etap w memo `viewRows`
+- [x] 3.3 `foldSuppressed` w `section-band-rows.ts`
+- [x] 3.4 Przełącznik + licznik w pasku narzędzi
+- [x] 3.5 Testy: pasy sekcji, filtr wierszy
 
 ### Phase 4: Akcja „etapy są prawdą"
 
@@ -405,4 +405,3 @@ przy weryfikacji, nie w bramce.
 - [ ] 5.2 Spec „nie wycieka do klienta" (`preview-columns.test.ts`)
 - [ ] 5.3 Roundtrip niesie niezerowe odniesienie
 - [ ] 5.4 Skrypty seedujące
-

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { divergedRows } from '@/lib/kosztorys/row-view'
 import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
@@ -46,7 +47,10 @@ describe('measureDiscrepancy', () => {
 
   it('says nothing when the sheet and the etapy agree', () => {
     expect(
-      measureDiscrepancy(row({ sheetMeasuredQty: 55, [stageKey(1)]: 30, [stageKey(2)]: 25 }), STAGES),
+      measureDiscrepancy(
+        row({ sheetMeasuredQty: 55, [stageKey(1)]: 30, [stageKey(2)]: 25 }),
+        STAGES,
+      ),
     ).toBeNull()
   })
 
@@ -66,9 +70,7 @@ describe('measureDiscrepancy', () => {
   it('counts every crew’s etapy, not only the client-plane ones', () => {
     // The sheet's pomiar covers the whole offered scope, so measuring it against one crew's share
     // would report a rozjazd on work the other crew finished.
-    expect(
-      measureDiscrepancy(row({ sheetMeasuredQty: 55, [stageKey(2)]: 55 }), STAGES),
-    ).toBeNull()
+    expect(measureDiscrepancy(row({ sheetMeasuredQty: 55, [stageKey(2)]: 55 }), STAGES)).toBeNull()
   })
 
   it('ignores a difference too small to have been typed', () => {
@@ -79,8 +81,25 @@ describe('measureDiscrepancy', () => {
   })
 
   it('still reports a real difference in the hundredths', () => {
-    expect(measureDiscrepancy(row({ sheetMeasuredQty: 0.5, [stageKey(1)]: 0.4 }), STAGES)).toMatchObject(
-      { qtyDiff: expect.closeTo(0.1, 6) },
-    )
+    expect(
+      measureDiscrepancy(row({ sheetMeasuredQty: 0.5, [stageKey(1)]: 0.4 }), STAGES),
+    ).toMatchObject({ qtyDiff: expect.closeTo(0.1, 6) })
+  })
+})
+
+describe('divergedRows', () => {
+  it('keeps only the pozycje whose sheet pomiar still disagrees with the etapy', () => {
+    const rows = [
+      row({ id: 1, sheetMeasuredQty: 95, [stageKey(1)]: 55 }),
+      row({ id: 2, sheetMeasuredQty: 30, [stageKey(1)]: 30 }),
+      row({ id: 3, [stageKey(1)]: 12 }),
+      row({ id: 4, sheetMeasuredQty: 0, [stageKey(1)]: 8 }),
+    ]
+
+    expect(divergedRows(rows, STAGES).map((r) => r.id)).toEqual([1, 4])
+  })
+
+  it('empties itself once every rozjazd has been answered', () => {
+    expect(divergedRows([row({ sheetMeasuredQty: 40, [stageKey(2)]: 40 })], STAGES)).toEqual([])
   })
 })

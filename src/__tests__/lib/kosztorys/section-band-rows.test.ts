@@ -23,10 +23,10 @@ function row(id: number, sectionId: number): KosztorysV2RowT {
 // Two sections, three items then two — the shape every case below narrows.
 const VIEW_ROWS = [row(1, 10), row(2, 10), row(3, 10), row(4, 20), row(5, 20)]
 
-const enabled = (collapsed: number[] = [], searchActive = false) => ({
+const enabled = (collapsed: number[] = [], foldSuppressed = false) => ({
   collapsedSectionIds: new Set(collapsed),
   enabled: true,
-  searchActive,
+  foldSuppressed,
 })
 
 describe('section band row ids', () => {
@@ -119,7 +119,7 @@ describe('buildSectionBandRows', () => {
     ])
   })
 
-  it('ignores a collapsed section while a search is active', () => {
+  it('ignores a collapsed section while a row filter is active', () => {
     const { rows } = buildSectionBandRows(VIEW_ROWS, enabled([10], true))
 
     expect(rows.map((r) => r.id)).toEqual([
@@ -176,7 +176,7 @@ describe('buildSectionBandRows', () => {
       // Even a collapsed section stays visible: with no band there would be nothing to re-expand it.
       collapsedSectionIds: new Set([10]),
       enabled: false,
-      searchActive: false,
+      foldSuppressed: false,
     })
 
     expect(rows).toBe(VIEW_ROWS)

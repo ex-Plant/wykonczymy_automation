@@ -1,5 +1,8 @@
 'use client'
 
+import { TriangleAlert } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CountBadge } from '@/components/ui/count-badge'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
@@ -15,7 +18,8 @@ import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolba
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
-  const { search, setSearch, view, setView } = useKosztorysEditorContext()
+  const { search, setSearch, view, setView, divergedOnly, setDivergedOnly, divergedCount } =
+    useKosztorysEditorContext()
 
   return (
     <div className="border-border shrink-0 border-b">
@@ -42,6 +46,22 @@ export function KosztorysEditorToolbar() {
             />
           </div>
         </SimpleTooltip>
+        {/* Absent, not disabled, at zero: the whole reference figure is scaffolding for entering old
+            sheets, so a kosztorys that never came from one must not carry a permanent dead control. */}
+        {divergedCount > 0 && (
+          <SimpleTooltip content="Pokaż tylko pozycje, gdzie pomiar z arkusza nie zgadza się z etapami">
+            <Button
+              variant={divergedOnly ? 'secondary' : 'outline'}
+              size="sm"
+              aria-pressed={divergedOnly}
+              onClick={() => setDivergedOnly(!divergedOnly)}
+            >
+              <TriangleAlert className="text-destructive" />
+              Rozjazdy
+              <CountBadge count={divergedCount} />
+            </Button>
+          </SimpleTooltip>
+        )}
         <div className="ml-auto flex items-center gap-1">
           <KosztorysActionsMenu />
           <KosztorysSectionFilterMenu />

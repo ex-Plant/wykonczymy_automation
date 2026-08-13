@@ -53,7 +53,7 @@ import {
 } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
-import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
+import { divergedRows, filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -170,6 +170,13 @@ export function useKosztorysEditor({
   // plane would simply render it.
   const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
+  // „Pokaż tylko rozjechane" — a working mode while old sheets are being entered into the app, not a
+  // preference: persisted, it would greet the owner with a near-empty grid and no explanation of what
+  // hid the rows. Same reasoning as the section fold below. Forced off under the preview like `view`
+  // above — the rozjazd is the company's own bookkeeping doubt and has no business in a client's
+  // document.
+  const [divergedOnly, setDivergedOnly] = useState(false)
+  const divergedOnlyActive = !preview && divergedOnly
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
@@ -389,13 +396,17 @@ export function useKosztorysEditor({
     })
   }
 
-  // View = search + sort. Sections are not filtered here: hiding one is a fold, applied further down
-  // by buildSectionBandRows so the band survives its own collapse.
+  // View = search + rozjazd + sort. Sections are not filtered here: hiding one is a fold, applied
+  // further down by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
-    const filtered = filterRows(rows, search)
+    let filtered = filterRows(rows, search)
+    if (divergedOnlyActive) filtered = divergedRows(filtered, stages)
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
-  }, [rows, search, sort, view, stages])
+  }, [rows, search, divergedOnlyActive, sort, view, stages])
+  // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
+  // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
+  const divergedCount = useMemo(() => divergedRows(rows, stages).length, [rows, stages])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -1321,6 +1332,9 @@ export function useKosztorysEditor({
     setView,
     search,
     setSearch,
+    divergedOnly: divergedOnlyActive,
+    setDivergedOnly,
+    divergedCount,
     emptySections,
     // handlers
     onChange,

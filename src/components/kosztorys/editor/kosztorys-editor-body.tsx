@@ -84,6 +84,8 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
+    divergedOnly,
+    setDivergedOnly,
     setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
@@ -129,9 +131,9 @@ export function KosztorysEditorBody({
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
-        searchActive: search.trim() !== '',
+        foldSuppressed: search.trim() !== '' || divergedOnly,
       }),
-    [viewRows, collapsedSectionIds, sort, search],
+    [viewRows, collapsedSectionIds, sort, search, divergedOnly],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
@@ -245,6 +247,25 @@ export function KosztorysEditorBody({
                 onClick={() => setSearch('')}
               >
                 Wyczyść wyszukiwanie
+              </Button>
+            </EmptyState>
+          )}
+          {/* The filter emptying itself is the goal state, not a dead end — every rozjazd has been
+              answered, so say that rather than leave a blank grid. Search takes precedence above:
+              with both on, „nie pasuje do…" is the more specific explanation. */}
+          {viewRows.length === 0 && search.trim() === '' && divergedOnly && (
+            <EmptyState
+              className="pointer-events-none absolute inset-0"
+              title="Brak rozjazdów"
+              description="Każda pozycja zgadza się z pomiarem z arkusza."
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto"
+                onClick={() => setDivergedOnly(false)}
+              >
+                Pokaż wszystkie pozycje
               </Button>
             </EmptyState>
           )}
