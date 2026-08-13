@@ -74,10 +74,11 @@
       klasyfikacji wpłat doklejona do arytmetyki rozliczenia. Zgłoszone jako **EX-685** —
       wieloplikowy refaktor, za duży na tę bramkę i bez związku ze stratą.
 
-- [x] 🔵 OBSERVATION · filed · impl-review · `src/components/kosztorys/summary/settlement-groups.ts:32`
-      · podpowiedź „Koszt, którego firma nie przerzuciła na klienta" trafia też do podglądu klienta,
-      czyli klient czyta wewnętrzne sformułowanie firmy. To decyzja biznesowa, nie techniczna —
-      dopisana jako pytanie do właściciela w `manual-checks.md` §EX-675.
+- [x] 🔵 OBSERVATION · fixed · impl-review · `src/components/kosztorys/summary/settlement-groups.ts:32`
+      · podpowiedź „Koszt, którego firma nie przerzuciła na klienta" trafiała też do podglądu klienta,
+      czyli klient czytał wewnętrzne sformułowanie firmy. Właściciel rozstrzygnął (2026-08-13):
+      podpowiedź usunięta, krok „Strata" stoi bez opisu. Pytanie w `manual-checks.md` §EX-675
+      zamienione na sprawdzenie, że opisu nie ma.
 
 - [x] dropped · structure-scatter · `src/hooks/` · dwie niepowiązane rzeczy pod jedną nazwą (hooki
       Reacta w korzeniu, hooki kolekcji Payloada w `transfers/`, plus dwa pliki-sieroty w korzeniu).

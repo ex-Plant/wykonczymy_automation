@@ -29,7 +29,6 @@ function lossRows(lossAmount: number, span: boolean): SettlementRowT[] {
   return [
     {
       label: 'Strata',
-      hint: '*Koszt, którego firma nie przerzuciła na klienta — obniża jego dług',
       line: faceValue(-lossAmount),
       discount: true,
       span,
