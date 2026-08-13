@@ -119,6 +119,30 @@ export async function updateItemFieldAction(itemId: number, patch: ItemPatchT) {
   )
 }
 
+/**
+ * „Etapy są prawdą" — drops the sheet's imported „Pomiar z natury" from one pozycja, which is what
+ * takes it off the rozjazd list for good.
+ *
+ * Its own action rather than a key on `itemPatchSchema`: the reference figure is read-only by TYPE
+ * that way, so no future patch can quietly write one. Clearing is the only mutation it admits, hence
+ * no payload at all. Reversible by re-importing the sheet, so the caller needs no confirmation.
+ */
+export async function clearSheetMeasuredQtyAction(itemId: number) {
+  return protectedAction(
+    'clearSheetMeasuredQtyAction',
+    async ({ payload }) => {
+      await payload.update({
+        collection: 'kosztorys-items',
+        id: itemId,
+        data: { sheetMeasuredQty: null },
+      })
+      return { success: true }
+    },
+    ['kosztorysItems'],
+    { deferRefresh: true },
+  )
+}
+
 export async function updateSectionFieldAction(sectionId: number, patch: SectionPatchT) {
   return protectedAction(
     'updateSectionFieldAction',

@@ -242,6 +242,11 @@ function RowActionsCell({
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
       }}
+      onClearSheetMeasuredQty={
+        opts.onClearSheetMeasuredQty && rowData.sheetMeasuredQty != null
+          ? () => opts.onClearSheetMeasuredQty?.(rowData)
+          : undefined
+      }
       section={section}
     />
   )
@@ -345,19 +350,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn(
-        'stageQtySum',
-        title('stageQtySum', opts),
-        (r) => totalQtyDone(r),
-        {
-          tone: (r) => (measureRozjazd(r) ? 'danger' : 'muted'),
-          tip: (r) => {
-            const rozjazd = measureRozjazd(r)
-            if (!rozjazd) return null
-            return `Arkusz: ${formatQty(rozjazd.sheetQty)} · etapy: ${formatQty(rozjazd.stageQty)} · różnica ${formatNet(rozjazd.net)} zł`
-          },
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
+        tone: (r) => (measureRozjazd(r) ? 'danger' : 'muted'),
+        tip: (r) => {
+          const rozjazd = measureRozjazd(r)
+          if (!rozjazd) return null
+          return `Arkusz: ${formatQty(rozjazd.sheetQty)} · etapy: ${formatQty(rozjazd.stageQty)} · różnica ${formatNet(rozjazd.net)} zł`
         },
-      ),
+      }),
       minWidth: 170,
     },
     unitColumn(title('unit', opts)),

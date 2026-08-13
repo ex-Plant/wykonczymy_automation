@@ -386,18 +386,18 @@ przy weryfikacji, nie w bramce.
 
 ### Phase 3: Filtr „tylko rozjechane" z licznikiem
 
-- [x] 3.1 Stan ulotny + wymuszenie `false` pod podglądem (`use-kosztorys-editor.ts`)
-- [x] 3.2 Trzeci etap w memo `viewRows`
-- [x] 3.3 `foldSuppressed` w `section-band-rows.ts`
-- [x] 3.4 Przełącznik + licznik w pasku narzędzi
-- [x] 3.5 Testy: pasy sekcji, filtr wierszy
+- [x] 3.1 Stan ulotny + wymuszenie `false` pod podglądem (`use-kosztorys-editor.ts`) · 492c219c
+- [x] 3.2 Trzeci etap w memo `viewRows` · 492c219c
+- [x] 3.3 `foldSuppressed` w `section-band-rows.ts` · 492c219c
+- [x] 3.4 Przełącznik + licznik w pasku narzędzi · 492c219c
+- [x] 3.5 Testy: pasy sekcji, filtr wierszy · 492c219c
 
 ### Phase 4: Akcja „etapy są prawdą"
 
-- [ ] 4.1 `clearSheetMeasuredQtyAction` w `lib/actions/kosztorys.ts`
-- [ ] 4.2 Pozycja w menu wiersza + callback przez `editorOnly()`
-- [ ] 4.3 Optymistyczny `patchRows`
-- [ ] 4.4 Spec akcji na stanie zapisanym
+- [x] 4.1 `clearSheetMeasuredQtyAction` w `lib/actions/kosztorys.ts`
+- [x] 4.2 Pozycja w menu wiersza + callback przez `editorOnly()`
+- [x] 4.3 Optymistyczny `patchRows`
+- [x] 4.4 Spec akcji na stanie zapisanym
 
 ### Phase 5: Guardy przecinające warstwy
 

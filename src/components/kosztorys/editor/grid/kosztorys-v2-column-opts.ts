@@ -64,6 +64,9 @@ export type BuildV2ColumnsOptsT = {
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
+  // „Etapy są prawdą": drops the sheet's imported pomiar from this pozycja, which takes it off the
+  // rozjazd list. Behind the same `editorOnly()` gate as every other row action.
+  onClearSheetMeasuredQty?: (row: KosztorysV2RowT) => void
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

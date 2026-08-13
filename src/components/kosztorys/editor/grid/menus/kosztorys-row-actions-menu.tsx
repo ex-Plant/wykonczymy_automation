@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
+  CheckCheck,
+  Trash2,
+} from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -44,6 +51,9 @@ type PropsT = {
   // Populated row: delete destroys recorded stage progress, so route through a confirm dialog first.
   removeNeedsConfirm?: boolean
   item: OrderActionsT & { onRemove: () => void }
+  // „Etapy są prawdą" — absent unless this pozycja actually carries an imported pomiar, so a
+  // kosztorys that never came from a sheet never shows the command.
+  onClearSheetMeasuredQty?: () => void
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
@@ -53,6 +63,7 @@ export function KosztorysRowActionsMenu({
   removeBlockReason,
   removeNeedsConfirm,
   item,
+  onClearSheetMeasuredQty,
   section,
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -105,6 +116,14 @@ export function KosztorysRowActionsMenu({
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {withHint(orderItems(item), sortHint)}
+          {onClearSheetMeasuredQty && (
+            <SimpleTooltip content="Usuwa pomiar wpisany w arkuszu — od tej pory prawdą dla tej pozycji są wyłącznie etapy">
+              <DropdownMenuItem onSelect={onClearSheetMeasuredQty}>
+                <CheckCheck />
+                Etapy są prawdą
+              </DropdownMenuItem>
+            </SimpleTooltip>
+          )}
           {withHint(
             <DropdownMenuItem
               variant="destructive"
