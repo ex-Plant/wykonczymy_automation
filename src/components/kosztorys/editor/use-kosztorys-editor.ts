@@ -32,7 +32,7 @@ import {
   applyInsertSectionRow,
   applyRemoveItem,
   applyRestoreItem,
-  applySectionOrder,
+  applyKosztorysOrder,
   buildBlankRow,
   groupBySection,
   insertDisplayOrder,
@@ -744,14 +744,16 @@ export function useKosztorysEditor({
   //
   // One server call for the whole sheet, so a half-applied bake can't leave some sections renumbered
   // and others not.
-  function runKosztorysRenumber(refs: DisplayOrderRefT[]) {
-    setRows((rs) =>
-      [...new Set(rs.map((r) => r.sectionId))].reduce(
-        (acc, sectionId) => applySectionOrder(acc, sectionId, refs),
-        rs,
-      ),
-    )
-    void renumberKosztorysOrderAction(investmentId, refs)
+  // `revertTo` is the order to fall back to when the server refuses the whole write — one stale id
+  // (a row deleted in another tab) rejects the entire bake, and without the rollback the grid would
+  // keep showing an order no reload can reproduce.
+  async function runKosztorysRenumber(refs: DisplayOrderRefT[], revertTo: DisplayOrderRefT[]) {
+    setRows((rs) => applyKosztorysOrder(rs, refs))
+    const res = await renumberKosztorysOrderAction(investmentId, refs)
+    if (!res.success) {
+      setRows((rs) => applyKosztorysOrder(rs, revertTo))
+      toastMessage(res.error ?? 'Nie udało się zapisać kolejności', 'warning', 4000)
+    }
   }
 
   function handlePersistKosztorysOrder() {
@@ -765,11 +767,11 @@ export function useKosztorysEditor({
       sort.dir,
     )
     if (after.length === 0) return
-    runKosztorysRenumber(after)
+    void runKosztorysRenumber(after, before)
     pushCommand({
-      label: 'Utrwalenie kolejności',
-      undo: () => runKosztorysRenumber(before),
-      redo: () => runKosztorysRenumber(after),
+      label: 'Zapisanie kolejności',
+      undo: () => void runKosztorysRenumber(before, after),
+      redo: () => void runKosztorysRenumber(after, before),
       touchedIds: after.map((ref) => ref.id),
     })
   }

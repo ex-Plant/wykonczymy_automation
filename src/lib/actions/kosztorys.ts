@@ -476,6 +476,7 @@ export async function swapItemOrderAction(
 }
 
 const ITEMS_NOT_IN_KOSZTORYS = 'Pozycje spoza tego kosztorysu.'
+const DUPLICATE_ORDER_IN_SECTION = 'Dwie pozycje jednej sekcji na tej samej pozycji w kolejności.'
 
 // „Zapisz kolejność" (menu nagłówka kolumny) — writes the grid's current order into display_order
 // across every section, in one statement so a half-applied renumber can't leave sections sharing
@@ -490,17 +491,26 @@ export async function renumberKosztorysOrderAction(
       const parsed = validateAction(renumberDisplayOrderSchema, refs)
       if (!parsed.success) return parsed
       const db = await getDb(payload)
-      // Same reason as the section guard, one column over: the ids come from the client and
-      // renumberDisplayOrder joins on id alone.
+      // The ids come from the client and renumberDisplayOrder joins on id alone, so this read is the
+      // only thing standing between a caller and another investment's rows. It also carries
+      // `section_id`, because that is the one invariant the schema cannot see: display_order is
+      // compared within a section, so an index may repeat across sections but never inside one —
+      // two rows on the same index would make the reloaded order non-deterministic (no unique
+      // constraint backs the column).
       const res = await db.execute(sql`
-        SELECT COUNT(*)::int AS n FROM kosztorys_items
+        SELECT id, section_id FROM kosztorys_items
         WHERE investment_id = ${investmentId} AND id IN (${sql.join(
           parsed.data.map((r) => sql`${r.id}`),
           sql.raw(', '),
         )})
       `)
-      if (Number(res.rows[0]?.n ?? 0) !== parsed.data.length) {
+      if (res.rows.length !== parsed.data.length) {
         return { success: false, error: ITEMS_NOT_IN_KOSZTORYS }
+      }
+      const sectionById = new Map(res.rows.map((row) => [Number(row.id), Number(row.section_id)]))
+      const slots = parsed.data.map((ref) => `${sectionById.get(ref.id)}:${ref.displayOrder}`)
+      if (new Set(slots).size !== slots.length) {
+        return { success: false, error: DUPLICATE_ORDER_IN_SECTION }
       }
       await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
       return { success: true }

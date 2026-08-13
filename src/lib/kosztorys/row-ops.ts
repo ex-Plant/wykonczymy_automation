@@ -188,25 +188,26 @@ export function applyInsertSectionRow(
   return regroup(blocks, seq)
 }
 
-// „Zapisz kolejność": stamp one section's rows with the display_order just written and re-lay its
-// block in that order. Rows outside the section — and any row the refs don't mention — are left
-// exactly where they are, so a stale ref set degrades to a partial reorder rather than a scramble.
-export function applySectionOrder(
+// „Zapisz kolejność": stamp the rows with the display_order just written and re-lay every block in
+// that order. A row the refs don't mention stays where it is, so a stale ref set degrades to a
+// partial reorder rather than a scramble. One pass over the sheet, not one per section.
+export function applyKosztorysOrder(
   rows: KosztorysV2RowT[],
-  sectionId: number,
   refs: { id: number; displayOrder: number }[],
 ): KosztorysV2RowT[] {
   const orderById = new Map(refs.map((ref) => [ref.id, ref.displayOrder]))
   const blocks = groupBySection(rows)
-  const block = blocks.get(sectionId)
-  if (!block) return rows
-  const reordered = block
-    .map((row) => {
-      const displayOrder = orderById.get(row.id)
-      return displayOrder == null ? row : { ...row, displayOrder }
-    })
-    .sort((a, b) => a.displayOrder - b.displayOrder)
-  blocks.set(sectionId, reordered)
+  for (const [sectionId, block] of blocks) {
+    blocks.set(
+      sectionId,
+      block
+        .map((row) => {
+          const displayOrder = orderById.get(row.id)
+          return displayOrder == null ? row : { ...row, displayOrder }
+        })
+        .sort((a, b) => a.displayOrder - b.displayOrder),
+    )
+  }
   return regroup(blocks, [...blocks.keys()])
 }
 

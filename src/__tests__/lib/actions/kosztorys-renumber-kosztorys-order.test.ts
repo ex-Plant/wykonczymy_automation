@@ -9,6 +9,9 @@ import { createTestInvestment } from '@/__tests__/helpers/investment'
 //   RK1 — every section takes its new order in one call, each restarting at 0.
 //   RK2 — ids from another investment are refused outright; nothing is written.
 //   RK3 — a duplicate id is refused (it would make the VALUES join ambiguous).
+//   RK4 — two rows of ONE section on the same index are refused: display_order is only compared
+//         within a section, so repeating an index across sections is legal (RK1) and repeating it
+//         inside one is not — and no unique constraint backs the column.
 //
 // Same mock surface as the sibling action specs.
 const authState = vi.hoisted(() => ({ userId: 0 }))
@@ -77,6 +80,15 @@ describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
     return res.rows.map((r) => Number(r.id))
   }
 
+  // The ids alone can't show it: any strictly increasing pair yields the same sequence, so only the
+  // values prove each section restarted at 0.
+  async function itemOrders(sectionId: number): Promise<number[]> {
+    const res = await db.execute(
+      sql`SELECT display_order FROM kosztorys_items WHERE section_id = ${sectionId} ORDER BY display_order`,
+    )
+    return res.rows.map((r) => Number(r.display_order))
+  }
+
   // addSectionAction seeds item @0; `extra` more give a 1+extra-row section.
   async function sectionWithItems(investmentId: number, extra: number): Promise<number> {
     const section = await addSectionAction(investmentId)
@@ -102,6 +114,8 @@ describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
 
     expect(await itemIdsInOrder(first)).toEqual([b, a])
     expect(await itemIdsInOrder(second)).toEqual([d, c])
+    expect(await itemOrders(first)).toEqual([0, 1])
+    expect(await itemOrders(second)).toEqual([0, 1])
   })
 
   it('refuses ids belonging to another investment and writes nothing (RK2)', async () => {
@@ -137,5 +151,19 @@ describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
     expect(res.success).toBe(false)
 
     expect(await itemIdsInOrder(sectionId)).toEqual([a, b])
+  })
+
+  it('refuses two rows of one section on the same index (RK4)', async () => {
+    const investmentId = await freshInvestment()
+    const sectionId = await sectionWithItems(investmentId, 1)
+    const [a, b] = await itemIdsInOrder(sectionId)
+
+    const res = await renumberKosztorysOrderAction(investmentId, [
+      { id: a, displayOrder: 0 },
+      { id: b, displayOrder: 0 },
+    ])
+    expect(res.success).toBe(false)
+
+    expect(await itemOrders(sectionId)).toEqual([0, 1])
   })
 })
