@@ -91,6 +91,14 @@ describe('diffRow', () => {
     expect(diffRow(prev, next)).toEqual({})
   })
 
+  // Pomiar wczytany z arkusza jest liczbą odniesienia tylko do odczytu — czyści go osobna akcja,
+  // nigdy autozapis komórki. Gdyby przeciekł do `itemPatch`, arkuszowa wartość zapisywałaby się z
+  // powrotem przy każdej edycji wiersza i rozjazd nigdy by nie zniknął.
+  it('nie zapisuje pomiaru z arkusza jako edycji pozycji', () => {
+    const [prev] = treeToRows(tree)
+    expect(diffRow(prev, { ...prev, sheetMeasuredQty: 42 })).toEqual({})
+  })
+
   it('prefiksy etapowe są parami rozłączne', () => {
     const prefixes = [
       STAGE_QTY_PREFIX,

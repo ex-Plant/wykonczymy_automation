@@ -134,6 +134,7 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               description: null,
               unit: null,
               plannedQty: 0,
+              sheetMeasuredQty: null,
               discountType: null,
               discountValue: 0,
               clientPrice: 0,
@@ -148,6 +149,9 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               description: 'Ścianka działowa — GK 12,5 „podwójna"\ndruga linia opisu',
               unit: 'mb',
               plannedQty: 12.5,
+              // Fractional and different from the przedmiar: a field dropped from the VALUES tuple or
+              // zipped one column over shows up here rather than passing as a coincidence.
+              sheetMeasuredQty: 11.25,
               discountType: 'amount',
               discountValue: 33.33,
               clientPrice: 149.99,

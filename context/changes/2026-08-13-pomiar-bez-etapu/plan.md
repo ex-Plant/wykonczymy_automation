@@ -394,14 +394,16 @@ przy weryfikacji, nie w bramce.
 
 ### Phase 4: Akcja „etapy są prawdą"
 
-- [x] 4.1 `clearSheetMeasuredQtyAction` w `lib/actions/kosztorys.ts`
-- [x] 4.2 Pozycja w menu wiersza + callback przez `editorOnly()`
-- [x] 4.3 Optymistyczny `patchRows`
-- [x] 4.4 Spec akcji na stanie zapisanym
+- [x] 4.1 `clearSheetMeasuredQtyAction` w `lib/actions/kosztorys.ts` · 450d2bac
+- [x] 4.2 Pozycja w menu wiersza + callback przez `editorOnly()` · 450d2bac
+- [x] 4.3 Optymistyczny `patchRows` · 450d2bac
+- [x] 4.4 Spec akcji na stanie zapisanym · 450d2bac
 
 ### Phase 5: Guardy przecinające warstwy
 
-- [ ] 5.1 Spec „nigdy nie wyceniane" (`kosztorys-v2-rows.test.ts`)
-- [ ] 5.2 Spec „nie wycieka do klienta" (`preview-columns.test.ts`)
-- [ ] 5.3 Roundtrip niesie niezerowe odniesienie
-- [ ] 5.4 Skrypty seedujące
+- [x] 5.1 Spec „nigdy nie wyceniane" (`kosztorys-v2-rows.test.ts`)
+- [x] 5.2 Spec „nie wycieka do klienta" (`preview-columns.test.ts`)
+- [x] 5.3 Roundtrip niesie niezerowe odniesienie
+- [x] 5.4 Skrypty seedujące — tylko `seed-kosztorys.ts` (kolumna J arkusza). Trzy pozostałe skrypty
+      pomijają pole: `payload.create` zapisuje wtedy `null`, więc jawny literał niczego by nie zmienił,
+      a te skrypty i tak nie wyliczają pozostałych pól opcjonalnych.
