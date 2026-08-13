@@ -244,11 +244,6 @@ function RowActionsCell({
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
       }}
-      onClearSheetMeasuredQty={
-        opts.onClearSheetMeasuredQty && rowData.sheetMeasuredQty != null
-          ? () => opts.onClearSheetMeasuredQty?.(rowData)
-          : undefined
-      }
       section={section}
     />
   )

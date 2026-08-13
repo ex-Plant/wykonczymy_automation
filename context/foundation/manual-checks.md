@@ -928,8 +928,7 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
 - [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym filtrze widać „Brak rozjazdów" z powrotem do pełnej listy, a sam przycisk znika
 - [ ] Sekcja zwinięta nie chowa pozycji z rozjazdem przy włączonym filtrze
-- [ ] Menu wiersza → „Etapy są prawdą" zdejmuje pozycję z listy na stałe; po przeładowaniu strony nie wraca
-- [ ] Ponowny import tego samego arkusza przywraca odniesienie, więc odrzucone pozycje wracają, jeśli arkusz dalej się nie zgadza
-- [ ] Robocizna, marża i bilans nie drgnęły ani po imporcie, ani po „Etapy są prawdą" — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Ponowny import tego samego arkusza nadpisuje odniesienie bieżącą treścią arkusza
+- [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
 - [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd", brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle

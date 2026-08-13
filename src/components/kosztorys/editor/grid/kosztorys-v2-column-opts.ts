@@ -64,9 +64,6 @@ export type BuildV2ColumnsOptsT = {
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
-  // „Etapy są prawdą": drops the sheet's imported pomiar from this pozycja, which takes it off the
-  // rozjazd list. Behind the same `editorOnly()` gate as every other row action.
-  onClearSheetMeasuredQty?: (row: KosztorysV2RowT) => void
   // Does ANY pozycja in the whole dataset diverge from its imported „Pomiar z natury"? Gates the
   // „Rozjazd" column's existence — a column of dashes down every row would be permanent chrome for a
   // condition that is normally absent, so it appears with the first rozjazd and leaves with the last.

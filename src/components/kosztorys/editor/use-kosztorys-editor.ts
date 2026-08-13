@@ -70,7 +70,6 @@ import {
   addSectionAction,
   addStageAction,
   applyPercentRabatToAllItemsAction,
-  clearSheetMeasuredQtyAction,
   insertItemAction,
   insertSectionAction,
   removeItemAction,
@@ -371,7 +370,6 @@ export function useKosztorysEditor({
     onReorderSection: editorOnly(handleReorderSection),
     onInsertSection: editorOnly(handleInsertSection),
     onSetSectionColor: editorOnly(handleSetSectionColor),
-    onClearSheetMeasuredQty: editorOnly(handleClearSheetMeasuredQty),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
@@ -986,27 +984,6 @@ export function useKosztorysEditor({
 
   function handleSetSectionColor(sectionId: number, color: SectionColorKeyT | null) {
     handleSetSectionField(sectionId, 'sectionColor', color, 'Zmiana koloru sekcji')
-  }
-
-  // „Etapy są prawdą" — the escape hatch from the rozjazd list for a pozycja whose sheet pomiar is
-  // simply wrong. Reverted on a server rejection, unlike the cosmetic section fields above: the row
-  // vanishing from the list is the whole feedback, so a silently failed write would read as done.
-  // No undo push — a re-import brings the reference back, which is the documented way out.
-  async function handleClearSheetMeasuredQty(row: KosztorysV2RowT) {
-    const before = row.sheetMeasuredQty
-    if (before == null) return
-    patchRows(
-      (r) => r.id === row.id,
-      (r) => ({ ...r, sheetMeasuredQty: null }),
-    )
-    const res = await clearSheetMeasuredQtyAction(row.id)
-    if (!res.success) {
-      patchRows(
-        (r) => r.id === row.id,
-        (r) => ({ ...r, sheetMeasuredQty: before }),
-      )
-      toastMessage(res.error ?? 'Nie udało się usunąć pomiaru z arkusza', 'warning', 4000)
-    }
   }
 
   function handleRenameSection(sectionId: number, name: string) {
