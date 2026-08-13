@@ -235,10 +235,15 @@ export function KosztorysActionsMenu() {
         }}
       />
       <SheetCompareDialog
+        investmentId={investmentId}
         open={compareOpen}
         onOpenChange={setCompareOpen}
         comparison={comparison}
         loaded={compareLoaded}
+        onRefreshed={() => {
+          setComparison(null)
+          onTreeReplaced?.()
+        }}
       />
       <ReloadFromPresetDialog
         investmentId={investmentId}

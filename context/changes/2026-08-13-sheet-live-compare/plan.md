@@ -607,13 +607,13 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 3.1 No phase-scoped automated check (server wiring + presentation; logic tested in Phase 2)
+- [x] 3.1 No phase-scoped automated check (server wiring + presentation; logic tested in Phase 2) — 143516b1
 
 ### Phase 4: „Zaciągnij pomiary z arkusza"
 
 #### Automated
 
-- [ ] 4.1 The refresh spec passes against the persisted rows
+- [x] 4.1 The refresh spec passes against the persisted rows
 
 ### Phase 5: Domknięcie
 

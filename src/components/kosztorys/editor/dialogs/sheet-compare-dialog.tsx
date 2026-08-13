@@ -1,18 +1,24 @@
 'use client'
 
+import { useTransition } from 'react'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
+import { refreshSheetMeasuredQty } from '@/lib/actions/kosztorys-import'
 import type {
   ComparedItemT,
   SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import { formatPLN } from '@/lib/utils/format-currency'
+import { toastMessage } from '@/lib/utils/toast'
 
 type PropsT = {
+  investmentId: number
   open: boolean
   onOpenChange: (open: boolean) => void
   comparison: SheetComparisonT | null
   loaded: boolean
+  onRefreshed: () => void
 }
 
 // A rozpiska runs to hundreds of prace, and an unmatched list that long is a wall, not an answer —
@@ -24,7 +30,33 @@ const LIST_CAP = 12
  * does not compute: everything here comes from `buildSheetComparison`, fetched by the parent on the
  * click (a programmatically-opened Radix dialog never fires `onOpenChange`, so it cannot fetch itself).
  */
-export function SheetCompareDialog({ open, onOpenChange, comparison, loaded }: PropsT) {
+export function SheetCompareDialog({
+  investmentId,
+  open,
+  onOpenChange,
+  comparison,
+  loaded,
+  onRefreshed,
+}: PropsT) {
+  const [pending, startTransition] = useTransition()
+
+  function handleRefresh() {
+    startTransition(async () => {
+      const result = await refreshSheetMeasuredQty(investmentId)
+      if (!result.success) {
+        toastMessage(result.error, 'error', 6000)
+        return
+      }
+      const { updated, cleared, unmatched } = result.data
+      toastMessage(
+        `Zaciągnięto pomiary: ${updated} pozycji · wyczyszczono ${cleared} · pominięto ${unmatched}`,
+        'success',
+      )
+      onOpenChange(false)
+      onRefreshed()
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
@@ -89,6 +121,9 @@ export function SheetCompareDialog({ open, onOpenChange, comparison, loaded }: P
                   wiersz {sample.row} · {sample.description}
                 </p>
               ))}
+              <Button size="sm" variant="outline" onClick={handleRefresh} disabled={pending}>
+                {pending ? 'Zaciągam…' : 'Zaciągnij pomiary z arkusza'}
+              </Button>
             </SheetReportBlock>
 
             <SheetReportBlock title="Sumy w samym arkuszu">
