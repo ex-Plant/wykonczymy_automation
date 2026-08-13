@@ -158,6 +158,10 @@ export type KosztorysEditorDataT = {
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
   laborCostsNetFromTransactions: number
   investmentRabat: number
+  // Σ LOSS — the cost the company absorbed, which the settlement deducts at face value. Travels as
+  // its own scalar rather than through `financials`, which is the ADMIN/OWNER gate: the client share
+  // must see its own debt come down without seeing wypłaty or marża.
+  investmentLoss: number
   // Realized PAYOUTs per worker for the subcontractor summary block. Optional (default []) because the
   // two client-view share entry points never render that block and don't supply it.
   payoutsByWorker?: SubcontractorPayoutRowT[]

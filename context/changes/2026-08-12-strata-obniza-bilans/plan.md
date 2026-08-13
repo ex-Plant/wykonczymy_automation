@@ -224,20 +224,20 @@ review — autorować albo odłożyć jako `e2e-backlog`.
 
 #### Automated
 
-- [x] 1.1 `calculate-balance.test.ts` red-first
-- [x] 1.2 Σ kafelków === `calculateBalance`
+- [x] 1.1 `calculate-balance.test.ts` red-first — 4a169452
+- [x] 1.2 Σ kafelków === `calculateBalance` — 4a169452
 - [ ] 1.3 `transfer-loss.test.ts` — asercje z `:17-20` dotyczą `requiresInvestment`, więc lecą z flipem w fazie 3
-- [x] 1.4 Złoty master przeliczony
+- [x] 1.4 Złoty master przeliczony — 4a169452
 - [ ] 1.5 typecheck — bramka całego drzewa, na koniec przebiegu
 
 ### Phase 2
 
 #### Automated
 
-- [ ] 2.1 `computeDoZaplatyRM` nominalnie
-- [ ] 2.2 `computeMixedSettlement` odbija `paidNet`
-- [ ] 2.3 `summary-economics.test.ts` zielony
-- [ ] 2.4 `settlement-groups` + `settlement-mode` zielone
+- [x] 2.1 `computeDoZaplatyRM` nominalnie
+- [x] 2.2 `computeMixedSettlement` odbija `paidNet`
+- [x] 2.3 `summary-economics.test.ts` zielony
+- [x] 2.4 `settlement-groups` + `settlement-mode` zielone
 
 ### Phase 3
 

@@ -65,6 +65,10 @@ type PropsT = {
   // view. Omitted by the client share, which never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
   rabatAmount: number
+  // Σ LOSS — the cost the company absorbed, deducted from the settlement at face value. Its own prop
+  // rather than a field of `financials`, which is the marża gate: the client must see their debt come
+  // down without seeing wypłaty or marża. Defaults to 0, so a host with no strata says nothing.
+  lossAmount?: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
   // (every host computes it unconditionally); preview suppresses the scream downstream, not by
   // withholding the verdict.
@@ -132,6 +136,7 @@ export function SummaryPanelContent({
   materialyBreakdown,
   settledBreakdown,
   rabatAmount,
+  lossAmount = 0,
   reconciliation,
   vatRate,
   settlementMode,
@@ -217,6 +222,7 @@ export function SummaryPanelContent({
     materials,
     vatRate,
     effectiveNetRate,
+    lossAmount,
   )
   return (
     <>
@@ -282,6 +288,7 @@ export function SummaryPanelContent({
                 materials={materials}
                 depositsTotal={depositsTotal}
                 rabatAmount={rabatAmount}
+                lossAmount={lossAmount}
                 reconciliation={reconciliation}
                 settlementVerdict={settlementVerdict}
                 priceView="client"

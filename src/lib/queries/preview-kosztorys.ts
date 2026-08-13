@@ -70,6 +70,7 @@ async function buildPreviewKosztorysEditorData(
     materialyBreakdown,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,
+    investmentLoss: financials.totalLoss,
     materialTransactions,
     depositTransactions,
   }

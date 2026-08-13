@@ -2,9 +2,10 @@ import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-t
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
 /**
- * The only pair of figures the two readings of an investment disagree about. Materiały, wpłaty,
- * wypłaty and strata are cash movements the kosztorys knows nothing about, so they stay
- * transaction-sourced in both readings and never enter here.
+ * The only pair of figures the two readings of an investment disagree about. Materiały, wpłaty and
+ * wypłaty are cash movements the kosztorys knows nothing about, and strata is booked on the
+ * transfers even though no cash moves — so all four stay transaction-sourced in both readings and
+ * never enter here.
  *
  * `laborCostsNet` is POST-rabat and `rabatAmount` rides alongside it — the panel adds them back
  * where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that same

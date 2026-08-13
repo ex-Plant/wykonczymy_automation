@@ -245,6 +245,38 @@ describe('computeDoZaplatyRM', () => {
   })
 })
 
+// A strata is a cost the company swallowed, so the client stops owing exactly the złoty entered —
+// the same złoty on both axes. That is what separates it from a rabat, which is a concession ON the
+// price and therefore grosses: 1000 zł of rabat wipes 1230 zł of brutto debt, 1000 zł of strata
+// wipes 1000 zł. Grossing it here would hand the client 230 zł nobody ever charged.
+describe('strata enters the settlement at face value', () => {
+  it('computeDoZaplatyRM: one loss lowers netto and brutto by the SAME złoty', () => {
+    const base = computeDoZaplatyRM(1000, 300, justGross(123), 0.23, 0.23)
+    const withLoss = computeDoZaplatyRM(1000, 300, justGross(123), 0.23, 0.23, 400)
+    expect(base.net - withLoss.net).toBeCloseTo(400)
+    expect(base.gross - withLoss.gross).toBeCloseTo(400)
+  })
+
+  it('computeMixedSettlement: a loss mirrors a wpłata netto on both sections', () => {
+    const vat = 0.23
+    const base = computeMixedSettlement(700, justGross(369), vat, 400, 200, vat)
+    const withLoss = computeMixedSettlement(700, justGross(369), vat, 400, 200, vat, 150)
+    expect(base.doRozliczeniaNet - withLoss.doRozliczeniaNet).toBeCloseTo(150)
+    expect(base.resztaGross - withLoss.resztaGross).toBeCloseTo(150)
+    // Both closing figures inherit the shift from the two terms above — no second deduction.
+    expect(base.doZaplatyGross - withLoss.doZaplatyGross).toBeCloseTo(150)
+    expect(base.doZaplatyNet - withLoss.doZaplatyNet).toBeCloseTo(150)
+  })
+
+  it('computeMixedSettlement: a loss lands exactly where an equal wpłata netto would', () => {
+    const vat = 0.23
+    const asDeposit = computeMixedSettlement(700, justGross(369), vat, 550, 200, vat)
+    const asLoss = computeMixedSettlement(700, justGross(369), vat, 400, 200, vat, 150)
+    expect(asLoss.doRozliczeniaNet).toBeCloseTo(asDeposit.doRozliczeniaNet)
+    expect(asLoss.resztaGross).toBeCloseTo(asDeposit.resztaGross)
+  })
+})
+
 // Rabat is an obniżka OF prace, so it grosses like prace. This guards the Podsumowanie brutto
 // waterfall: the display composes Łącznie − Rabat − Wpłaty and it MUST land on Do zapłaty on the
 // brutto axis too, not just netto — now with materiały entering as brutto (netto derived).
