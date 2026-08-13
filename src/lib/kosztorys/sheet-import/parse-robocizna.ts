@@ -70,7 +70,8 @@ function readMeasuredQty(
   if (column === undefined) return null
   if (typeof formulaRow[column] === 'string' && formulaRow[column].startsWith('=')) return null
   const cell = row[column]
-  if (cell === '' || cell == null) return null
+  if (cell == null) return null
+  if (typeof cell === 'string' && cell.trim() === '') return null
   const value = typeof cell === 'number' ? cell : Number(cell)
   return Number.isFinite(value) ? value : null
 }

@@ -319,18 +319,25 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
   const viewStages = stagesForView(stages, view)
 
+  // Rows are replaced immutably on every edit, so row identity is a self-invalidating cache key — a
+  // stale value can't outlive the row it was computed from.
+  const memoisedByRow = <T,>(compute: (row: KosztorysV2RowT) => T) => {
+    const cache = new WeakMap<KosztorysV2RowT, { value: T }>()
+    return (row: KosztorysV2RowT) => {
+      const hit = cache.get(row)
+      if (hit) return hit.value
+      const value = compute(row)
+      cache.set(row, { value })
+      return value
+    }
+  }
+
   // Σ etapów for the row — the denominator every stage-value cell divides by. There are 2×|etapy| of
   // those cells per row (netto + brutto) and each used to re-run the O(|etapy|) reduce to arrive at
-  // the SAME number, making a row O(|etapy|²). Memoised per row object: rows are replaced immutably
-  // on every edit, so identity is a self-invalidating cache key — a stale total can't outlive its row.
-  const totalQtyDoneByRow = new WeakMap<KosztorysV2RowT, number>()
-  const totalQtyDone = (row: KosztorysV2RowT) => {
-    const cached = totalQtyDoneByRow.get(row)
-    if (cached !== undefined) return cached
-    const total = rowTotalQtyDone(row, viewStages, view)
-    totalQtyDoneByRow.set(row, total)
-    return total
-  }
+  // the SAME number, making a row O(|etapy|²).
+  const totalQtyDone = memoisedByRow((row: KosztorysV2RowT) =>
+    rowTotalQtyDone(row, viewStages, view),
+  )
 
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
@@ -342,20 +349,25 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
-  // The imported sheet's „Pomiar z natury" against Σ etapów. Owner-only: the reference figure is
-  // scaffolding for entering old sheets into the app, and a client's document must not carry the
-  // company's own bookkeeping doubts.
-  const measureRozjazd = (row: KosztorysV2RowT) =>
-    opts.previewVisible ? null : measureDiscrepancy(row, stages)
+  // The imported sheet's „Pomiar z natury" against Σ etapów.
+  //
+  // Owner-only: the reference figure is scaffolding for entering old sheets into the app, and a
+  // client's document must not carry the company's own bookkeeping doubts. Client plane only for a
+  // second reason: `measureDiscrepancy` is hard-anchored to the whole offered scope, so hanging it
+  // on a subcontractor view's cell would put two different „etapy" numbers side by side.
+  const divergenceFor =
+    opts.previewVisible || view !== 'client'
+      ? () => null
+      : memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages))
 
   const measure: Column<KosztorysV2RowT>[] = [
     {
       ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
-        tone: (r) => (measureRozjazd(r) ? 'danger' : 'muted'),
+        tone: (r) => (divergenceFor(r) ? 'danger' : 'muted'),
         tip: (r) => {
-          const rozjazd = measureRozjazd(r)
-          if (!rozjazd) return null
-          return `Arkusz: ${formatQty(rozjazd.sheetQty)} · etapy: ${formatQty(rozjazd.stageQty)} · różnica ${formatNet(rozjazd.net)} zł`
+          const divergence = divergenceFor(r)
+          if (!divergence) return null
+          return `Arkusz: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · różnica ${formatNet(divergence.net)} zł`
         },
       }),
       minWidth: 170,

@@ -408,7 +408,11 @@ export function useKosztorysEditor({
   }, [rows, search, divergedOnlyActive, sort, view, stages])
   // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
-  const divergedCount = useMemo(() => divergedRows(rows, stages).length, [rows, stages])
+  // Zero under the preview, like the filter above — the client's document carries none of this.
+  const divergedCount = useMemo(
+    () => (preview ? 0 : divergedRows(rows, stages).length),
+    [preview, rows, stages],
+  )
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])

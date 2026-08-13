@@ -79,8 +79,8 @@ export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStag
 }
 
 // Quantities are typed in m², mb and kpl, often to two decimals, so an exact `!==` would light up
-// half the kosztorys on float noise alone (0.1 + 0.2 ≠ 0.3). A hundredth of a unit is below what
-// anyone types and worth pennies at any real price — the money reconciliation's grosz-exact
+// half the kosztorys on float noise alone (0.1 + 0.2 ≠ 0.3). Half a hundredth of a unit is below
+// what anyone types and worth pennies at any real price — the money reconciliation's grosz-exact
 // tolerance is a different axis and does not transfer here.
 const QTY_TOLERANCE = 0.005
 
@@ -117,10 +117,11 @@ export function measureDiscrepancy(
   const qtyDiff = sheetQty - stageQty
   if (Math.abs(qtyDiff) < QTY_TOLERANCE) return null
 
-  // Priced on the absolute difference and re-signed: `netForQtyForView` floors a negative quantity
-  // at 0 zł (nothing is worth negative money), which would silently mute the „etapy ahead of the
-  // sheet" half of the rozjazd.
-  const net = Math.sign(qtyDiff) * netForQtyForView(row, Math.abs(qtyDiff), 'client')
+  // The gap between two whole-row values, never the difference priced as a row of its own: a
+  // kwotowy rabat is deducted once from the row, so pricing `qtyDiff` directly would subtract the
+  // whole rabat from a partial quantity — and on a small difference invert its sign. Subtracting
+  // two row values cancels the rabat exactly, and the sign falls out of the subtraction.
+  const net = netForQtyForView(row, sheetQty, 'client') - netForQtyForView(row, stageQty, 'client')
 
   return { sheetQty, stageQty, qtyDiff, net }
 }

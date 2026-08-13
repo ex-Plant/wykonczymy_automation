@@ -13,9 +13,8 @@ export function filterRows(rows: KosztorysV2RowT[], query: string): KosztorysV2R
   )
 }
 
-// The pozycje whose imported „Pomiar z natury" still disagrees with their etapy. One function for
-// both the toolbar's counter and the row filter, so the number can never promise rows the filter
-// then declines to show.
+// One function for both the toolbar's counter and the row filter, so the number can never promise
+// rows the filter then declines to show.
 export function divergedRows(
   rows: KosztorysV2RowT[],
   stages: KosztorysStageT[],

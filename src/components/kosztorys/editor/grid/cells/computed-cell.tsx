@@ -42,7 +42,16 @@ function ComputedCell({ rowData, columnData }: CellProps<KosztorysV2RowT, Comput
     </ReadOnlyCellText>
   )
   const hint = tip?.(rowData)
-  return hint ? <HintTooltip content={hint}>{text}</HintTooltip> : text
+  // `w-full` on the wrapper span: ReadOnlyCellText is `block w-full truncate`, and an inline-flex
+  // parent shrink-wraps it, so without this the wrapped figure stops right-aligning with the
+  // untipped cells in the same column.
+  return hint ? (
+    <HintTooltip content={hint} className="w-full">
+      {text}
+    </HintTooltip>
+  ) : (
+    text
+  )
 }
 
 export function computedColumn(

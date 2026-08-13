@@ -73,6 +73,21 @@ describe('measureDiscrepancy', () => {
     expect(measureDiscrepancy(row({ sheetMeasuredQty: 55, [stageKey(2)]: 55 }), STAGES)).toBeNull()
   })
 
+  // A kwotowy rabat is deducted once from the whole row, not per unit, so pricing the difference as
+  // if it were a row of its own subtracts the entire rabat from a partial quantity — enough to turn
+  // a positive rozjazd into a negative number on a small difference.
+  it('prices a difference on a row with a kwotowy rabat as the gap between two row values', () => {
+    const kwotowy = { discountType: 'amount' as const, discountValue: 500 }
+
+    expect(
+      measureDiscrepancy(row({ ...kwotowy, sheetMeasuredQty: 95, [stageKey(1)]: 55 }), STAGES)!.net,
+    ).toBe(4000)
+    expect(
+      measureDiscrepancy(row({ ...kwotowy, sheetMeasuredQty: 55.5, [stageKey(1)]: 55 }), STAGES)!
+        .net,
+    ).toBeCloseTo(50, 6)
+  })
+
   it('ignores a difference too small to have been typed', () => {
     // 0.1 + 0.2 is not 0.3 in binary; an exact comparison would paint the row red on float noise.
     const noise = row({ sheetMeasuredQty: 0.3, [stageKey(1)]: 0.1, [stageKey(2)]: 0.2 })

@@ -409,4 +409,6 @@ przy weryfikacji, nie w bramce.
 - [x] 5.3 Roundtrip niesie niezerowe odniesienie · 20d2fe7e
 - [x] 5.4 Skrypty seedujące · 20d2fe7e — tylko `seed-kosztorys.ts` (kolumna J arkusza). Trzy pozostałe skrypty
       pomijają pole: `payload.create` zapisuje wtedy `null`, więc jawny literał niczego by nie zmienił,
-      a te skrypty i tak nie wyliczają pozostałych pól opcjonalnych.
+      a te skrypty i tak nie wyliczają pozostałych pól opcjonalnych. Korekta uzasadnienia z bloku fazy:
+      `pnpm seed:kosztorys:test` odpala `perf-seed-kosztorys.ts`, nie `seed-kosztorys.ts` — zbiór parity
+      nie niesie więc żadnej liczby odniesienia i to jest stan zamierzony (rozjazd = 0 wierszy).
