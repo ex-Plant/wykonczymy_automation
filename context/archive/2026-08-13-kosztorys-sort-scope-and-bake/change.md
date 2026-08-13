@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-sort-scope-and-bake
 title: Zakres sortowania w menu kolumny + utrwalanie kolejności całego kosztorysu
-status: implemented
+status: archived
 created: 2026-08-13
 updated: 2026-08-13
-archived_at: null
+archived_at: 2026-08-13T18:10:00Z
 branch: konradantonik/ex-682-sort-within-sections
 worktree: null
 ---
