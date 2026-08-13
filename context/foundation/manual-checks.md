@@ -949,3 +949,22 @@ Kosztorys inwestycji.
 - [ ] Utrwalenie przy wpisanej frazie w wyszukiwarce porządkuje **całą** sekcję, nie tylko widoczne wiersze
 - [ ] Po utrwaleniu i wyczyszczeniu sortowania ▲▼ działają normalnie
 - [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" i „Utrwal kolejność" w ogóle się nie pokazują
+
+## EX-688 — zakres sortowania + „Utrwal kolejność w całym kosztorysie"
+
+**In review** — cała bramka zielona (tsc, eslint bez błędów w zmienionych plikach, `pnpm test` 2173,
+`test-integration.sh` 110, `next build --webpack`). E2E odroczone (patrz bramka przeglądu).
+
+Setup: jak wyżej — aplikacja na 5435 (test DB) z zaseedowanym kosztorysem, zalogowany jako OWNER,
+zakładka Kosztorys inwestycji.
+
+- [ ] Menu kolumny pokazuje cztery polecenia sortowania z jawnym zakresem („w sekcjach" / „w całym kosztorysie") plus „Wyczyść sortowanie"
+- [ ] Sortowanie „w sekcjach" po „Opis" zachowuje pasy sekcji i kolejność samych sekcji
+- [ ] Sortowanie „w całym kosztorysie" daje jedną płaską listę — pasy sekcji znikają, numeracja idzie ciągiem
+- [ ] Przy sortowaniu „w całym kosztorysie" obie pozycje „Utrwal kolejność" są wyszarzone i tłumaczą, że takiej kolejności nie da się zapisać
+- [ ] Powrót na „w sekcjach" odblokowuje obie pozycje „Utrwal kolejność"
+- [ ] Menu wiersza → Kosztorys → „Utrwal kolejność w całym kosztorysie" → wyczyszczenie sortowania → kolejność została **w każdej** sekcji; po odświeżeniu nadal ta sama
+- [ ] Cmd+Z cofa utrwalenie wszystkich sekcji jednym ruchem; Cmd+Shift+Z je przywraca
+- [ ] Sekcja zwinięta przy sortowaniu „w całym kosztorysie" nie chowa swoich pozycji (bez pasa nie ma czym rozwinąć)
+- [ ] Żadne sortowanie nie przeżywa odświeżenia strony — po reloadzie kosztorys wraca do kolejności zapisanej
+- [ ] Podgląd dla klienta (link publiczny): grupa „Kosztorys" i jej pozycja w ogóle się nie pokazują

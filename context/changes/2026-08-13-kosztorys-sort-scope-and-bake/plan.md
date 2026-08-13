@@ -356,11 +356,11 @@ Run **once**, after the final phase.
 
 #### Automated
 
-- [x] 3.1 Menu spec covering the disabled/enabled states of both bake items passes — covered at logic level (`src/__tests__/lib/kosztorys/sort-lock-hints.test.ts`): the repo has no DOM render harness (no testing-library/jsdom), so the scope→disabled/reason decision was extracted to `src/lib/kosztorys/sort-lock-hints.ts` and asserted there
+- [x] 3.1 Menu spec covering the disabled/enabled states of both bake items passes — 7adade39 — covered at logic level (`src/__tests__/lib/kosztorys/sort-lock-hints.test.ts`): the repo has no DOM render harness (no testing-library/jsdom), so the scope→disabled/reason decision was extracted to `src/lib/kosztorys/sort-lock-hints.ts` and asserted there
 
 ### Whole-tree Gate
 
-- [ ] G.1 `pnpm typecheck`
-- [ ] G.2 `pnpm lint`
-- [ ] G.3 `pnpm test` + `bash scripts/test-integration.sh`
-- [ ] G.4 `pnpm exec next build --webpack`
+- [x] G.1 `pnpm typecheck`
+- [x] G.2 `pnpm lint` — no findings in changed files (the one error is a pre-existing, gitignored `test.js` at the repo root)
+- [x] G.3 `pnpm test` + `bash scripts/test-integration.sh` — 2173 + 110 passed
+- [x] G.4 `pnpm exec next build --webpack`

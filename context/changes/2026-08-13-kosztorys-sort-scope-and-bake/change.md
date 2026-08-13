@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-sort-scope-and-bake
 title: Zakres sortowania w menu kolumny + utrwalanie kolejności całego kosztorysu
-status: implementing
+status: implemented
 created: 2026-08-13
 updated: 2026-08-13
 archived_at: null
