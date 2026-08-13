@@ -1,13 +1,10 @@
 import type { InvestmentFinancialsMapT, KosztorysClientTotalsMapT } from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
+import { grossBalance } from '@/lib/db/gross-balance'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
-import {
-  billedCategoryCosts,
-  billedMaterials,
-  grossBalance,
-} from '@/lib/kosztorys/summary-economics'
+import { billedCategoryCosts, billedMaterials } from '@/lib/kosztorys/summary-economics'
 import { ZERO_FINANCIALS } from '@/types/investment-financials'
 import type { InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentRowT } from '@/types/table-rows'

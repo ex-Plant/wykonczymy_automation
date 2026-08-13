@@ -76,6 +76,10 @@ export async function InvestmentSummaryPanel({
       materialyBreakdown={materialyBreakdown}
       settledBreakdown={settledBreakdown}
       financials={canSeeMargin ? financials : undefined}
+      // Its own prop, deliberately outside the `financials` gate above: a strata lowers what the
+      // client owes, so every reader of the settlement must see it — only the marża figures are
+      // owner-only.
+      lossAmount={financials.totalLoss}
       {...reading}
       // An empty kosztorys against booked transfers is a REAL gap, not noise: it is legacy robocizna
       // nobody has entered here yet. It screams until someone does.

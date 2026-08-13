@@ -177,4 +177,14 @@ describe('buildFinancialFields — Σ tiles reconciles with calculateBalance', (
   it('reconciles when neither concession is present', () => {
     expect(sumTiles(withMaterials)).toBeCloseTo(calculateBalance(withMaterials), 2)
   })
+
+  it('reconciles with a loss on top of both concessions', () => {
+    const financials = {
+      ...withMaterials,
+      totalRabat: 300,
+      materialsNetDiscount: 280.49,
+      totalLoss: 362.84,
+    }
+    expect(sumTiles(financials)).toBeCloseTo(calculateBalance(financials), 2)
+  })
 })

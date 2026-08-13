@@ -11,6 +11,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
       mixed: null,
       doZaplaty: { net: 1000, gross: 1230 },
       depositsTotal: 300,
+      lossAmount: 0,
       vatRate: 0.23,
     })
     expect(groups.map((group) => group.axis)).toEqual(['both'])
@@ -32,6 +33,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
       mixed: null,
       doZaplaty: { net: -100, gross: 130 },
       depositsTotal: 1100,
+      lossAmount: 0,
       vatRate: 0.23,
     })
     expect(rowNamed(groups, 'Pozostało do zapłaty')?.danger).toEqual({ net: false, gross: true })
@@ -44,6 +46,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
       mixed: null,
       doZaplaty: { net: 1000, gross: 1230 },
       depositsTotal: 300,
+      lossAmount: 0,
       vatRate: 0.23,
     })
     expect(rowNamed(groups, 'Materiały')).toBeUndefined()
@@ -57,6 +60,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
       mixed,
       doZaplaty: { net: 0, gross: 0 },
       depositsTotal: 0,
+      lossAmount: 0,
       vatRate: 0.23,
     })
     expect(groups.map((group) => group.caption)).toEqual([
@@ -88,6 +92,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
       mixed,
       doZaplaty: { net: 0, gross: 0 },
       depositsTotal: 0,
+      lossAmount: 0,
       vatRate: 0.23,
     })
     expect(mixed.doZaplatyNet).toBeGreaterThan(0)
@@ -110,8 +115,72 @@ describe('buildSettlementGroups — tryb mieszany', () => {
       mixed,
       doZaplaty: { net: 0, gross: 0 },
       depositsTotal: 0,
+      lossAmount: 0,
       vatRate: 0.23,
     })
     expect(rowNamed(groups, 'Materiały')).toBeUndefined()
+  })
+})
+
+// A strata is a deduction step like a wpłata, at face value on both planes — and only when there is
+// one: a 0 zł step would tell every investment about a concession it never got.
+describe('buildSettlementGroups — the strata step', () => {
+  it('renders no strata step when nothing was absorbed', () => {
+    const groups = buildSettlementGroups({
+      mixed: null,
+      doZaplaty: { net: 1000, gross: 1230 },
+      depositsTotal: 300,
+      lossAmount: 0,
+      vatRate: 0.23,
+    })
+    expect(rowNamed(groups, 'Strata')).toBeUndefined()
+  })
+
+  it('spans both tracks below the wpłaty in the non-mixed tryby', () => {
+    const groups = buildSettlementGroups({
+      mixed: null,
+      doZaplaty: { net: 1000, gross: 1230 },
+      depositsTotal: 300,
+      lossAmount: 250,
+      vatRate: 0.23,
+    })
+    expect(groups[0]?.rows.map((row) => row.label)).toEqual([
+      'Wpłaty',
+      'Strata',
+      'Pozostało do zapłaty',
+    ])
+    expect(rowNamed(groups, 'Strata')?.line).toEqual({ net: -250, gross: -250 })
+    expect(rowNamed(groups, 'Strata')?.span).toBe(true)
+  })
+
+  // It deducts from both tory but appears once, exactly like „Wpłaty netto" — the faktura tor names
+  // it in the „Pozostało brutto" hint instead, so that figure stays reconstructible.
+  it('sits in the netto tor only under tryb mieszany, and the faktura hint says so', () => {
+    const mixed = computeMixedSettlement(
+      1000,
+      { grossBase: 0, netBilled: 0 },
+      0.23,
+      400,
+      123,
+      null,
+      250,
+    )
+    const groups = buildSettlementGroups({
+      mixed,
+      doZaplaty: { net: 0, gross: 0 },
+      depositsTotal: 0,
+      lossAmount: 250,
+      vatRate: 0.23,
+    })
+    expect(groups[0]?.rows.map((row) => row.label)).toEqual([
+      'Wpłaty netto',
+      'Strata',
+      'Pozostało netto',
+      'Do zapłaty netto',
+    ])
+    expect(groups[1]?.rows.map((row) => row.label)).not.toContain('Strata')
+    expect(rowNamed(groups, 'Pozostało brutto')?.hint).toContain('stratę')
+    // Łącznie brutto 1230 − 400 wpłaty netto − 250 strata.
+    expect(rowNamed(groups, 'Pozostało brutto')?.line.net).toBeCloseTo(580)
   })
 })

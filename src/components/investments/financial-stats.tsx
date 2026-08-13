@@ -14,13 +14,14 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import {
   INCOME_LABEL,
   LABOR_LABEL,
+  LOSS_LABEL,
   MATERIALS_DISCOUNT_LABEL,
   RABAT_LABEL,
 } from '@/lib/db/map-category-costs'
 
 // The tiles that RAISE the balance — everything else in `fields` is a cost. Routed by label because
 // the field list is flat strings + amounts by the time it reaches here.
-const CREDIT_LABELS: string[] = [INCOME_LABEL, RABAT_LABEL, MATERIALS_DISCOUNT_LABEL]
+const CREDIT_LABELS: string[] = [INCOME_LABEL, RABAT_LABEL, MATERIALS_DISCOUNT_LABEL, LOSS_LABEL]
 
 // Both figures render only inside the isAdminOrOwnerRole(...) block below, so this
 // note is shown exclusively to Admin/Owner — flags the figure as owner-level.
@@ -42,12 +43,14 @@ const TOOLTIPS = {
   payouts:
     'Kwoty wypłacone pracownikom. Obniżają marżę. Nie wchodzą do bilansu inwestora.' +
     RESTRICTED_NOTE,
-  loss: 'Koszt pokrywany przez firmę. Obniża marżę. Nie wchodzi do bilansu inwestora.',
+  loss:
+    'Koszt, którego firma nie przerzuciła na klienta — obniża jego dług, więc podnosi bilans ' +
+    'inwestora. Jednocześnie obniża marżę firmy.',
   settledMaterials:
     'Materiały kupione przez firmę, wliczone w robociznę. ' +
     'Obniżają marżę, ale nie obciążają bilansu inwestora.',
   balance:
-    'Bilans inwestora = Wpłaty − Materiały − Robocizna + Rabat + obniżka materiałów.\n' +
+    'Bilans inwestora = Wpłaty − Materiały − Robocizna + Rabat + obniżka materiałów + Strata.\n' +
     'Jeśli minus — inwestor wisi pieniądze.\n' +
     'Dynamiczny: odznaczenie kafelka usuwa go z wyliczenia.',
   margin:
@@ -59,6 +62,7 @@ const TOOLTIPS = {
 const CREDIT_TOOLTIPS: Record<string, string> = {
   [RABAT_LABEL]: TOOLTIPS.discount,
   [MATERIALS_DISCOUNT_LABEL]: TOOLTIPS.materialsDiscount,
+  [LOSS_LABEL]: TOOLTIPS.loss,
 }
 
 type FinancialStatsPropsT = {
@@ -67,7 +71,6 @@ type FinancialStatsPropsT = {
   // component does not re-derive it, so listing and detail can't drift on marża.
   margin: number
   totalPayouts?: number
-  totalLoss?: number
   settledFields?: FinancialFieldT[]
 }
 
@@ -75,7 +78,6 @@ export function FinancialStats({
   fields,
   margin,
   totalPayouts = 0,
-  totalLoss = 0,
   settledFields = [],
 }: FinancialStatsPropsT) {
   const { role: userRole } = useCurrentUser()
@@ -115,17 +117,6 @@ export function FinancialStats({
         summaryLabel="Bilans inwestora"
         summaryTooltip={TOOLTIPS.balance}
       />
-
-      {totalLoss !== 0 && (
-        <div className="text-muted-foreground space-y-1 text-sm">
-          <StatButton
-            label="Strata"
-            value={formatPLN(totalLoss)}
-            className="border-chart-purple"
-            tooltip={TOOLTIPS.loss}
-          />
-        </div>
-      )}
 
       {settledFields.length > 0 && (
         <div className="text-muted-foreground space-y-1 text-sm">

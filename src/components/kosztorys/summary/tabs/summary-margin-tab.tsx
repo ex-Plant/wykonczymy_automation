@@ -17,7 +17,7 @@ const HINTS = {
   materialsDiscount:
     'Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu — inwestor zwraca mniej, ' +
     'niż firma wydała.',
-  loss: 'Koszt pokrywany przez firmę.',
+  loss: 'Koszt pokrywany przez firmę — obniża jej marżę i dług inwestora.',
   margin: 'Ile firma zarabia na inwestycji.\nWidoczność — właściciel.',
 } as const
 

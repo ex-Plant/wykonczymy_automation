@@ -213,7 +213,7 @@ Non-obvious rules:
 - `LABOR_COST` (robocizna) has **no source register** — it is a billing/markup figure, not a cash movement. It feeds the margin (`marża = robocizna − wypłaty − rabat − strata`), not the cash ledger.
 - `CORRECTION` may be negative (invoice credits).
 - `RABAT` (rabat) is a labour discount: **no source register**, positive amount, requires an investment. It hits **both** figures — lowers `marża` and raises `bilans` (the client owes less) — unlike `CORRECTION`, which moves only the balance.
-- `LOSS` (strata) is a company-absorbed cost: **no source register**, positive amount, investment **optional**. It only lowers `marża`; `bilans` is untouched — unlike `RABAT`, which moves both.
+- `LOSS` (strata) is a company-absorbed cost: **no source register**, positive amount, investment **required** (EX-675). Like `RABAT` it hits **both** figures — lowers `marża` and raises `bilans` (the client stops owing what the company swallowed). The two differ on the brutto plane: a rabat is a concession on the _price_, so it grosses by VAT, while a strata deducts at **face value** on netto and brutto alike and never widens the VAT base.
 - Cancellation is an audit trail: the original is marked `cancelled: true`, a new `CANCELLATION` row links back to it.
 - Cash register balances are **not** stored — they are computed on read by cached functions. The transfer hooks (`hooks/transfers/recalculate-balances.ts`) only revalidate cache tags; nothing is written back.
 

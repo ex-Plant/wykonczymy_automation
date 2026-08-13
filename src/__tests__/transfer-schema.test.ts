@@ -63,6 +63,7 @@ const VALID_SERVER_PAYLOADS: Record<string, Record<string, unknown>> = {
     expenseCategory: 1,
   },
   LABOR_COST: { ...base, type: 'LABOR_COST', investment: 1 },
+  LOSS: { ...base, type: 'LOSS', investment: 1 },
   REGISTER_TRANSFER: {
     ...base,
     type: 'REGISTER_TRANSFER',
@@ -124,6 +125,16 @@ describe('createTransferSchema — valid payloads', () => {
 describe('createTransferSchema — missing required fields', () => {
   it('LABOR_COST without investment → error on investment', () => {
     const { investment, ...rest } = VALID_SERVER_PAYLOADS.LABOR_COST
+    const result = createTransferSchema.safeParse(rest)
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('investment')
+  })
+
+  // A strata lowers the investor's bilans (EX-675), so the link is what tells it whose debt to
+  // lower — an unlinked one would be a concession credited to nobody.
+  it('LOSS without investment → error on investment', () => {
+    const { investment, ...rest } = VALID_SERVER_PAYLOADS.LOSS
+    void investment
     const result = createTransferSchema.safeParse(rest)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('investment')
@@ -382,6 +393,16 @@ describe('expenseFormSchema — valid payloads (string values)', () => {
 // ── 2c: Client Schema — Missing required fields ────────────────────────
 
 describe('expenseFormSchema — missing required fields', () => {
+  // A strata lowers the investor's bilans (EX-675), so the link is what tells it whose debt to
+  // lower — an unlinked one would be a concession credited to nobody.
+  it('LOSS without investment → error on investment', () => {
+    const payload = toClientPayload(VALID_SERVER_PAYLOADS.LOSS)
+    payload.investment = ''
+    const result = expenseFormSchema.safeParse(payload)
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('investment')
+  })
+
   it('INVESTOR_DEPOSIT without sourceRegister → error on sourceRegister', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT)
     payload.sourceRegister = ''

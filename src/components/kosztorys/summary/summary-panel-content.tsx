@@ -65,6 +65,10 @@ type PropsT = {
   // view. Omitted by the client share, which never builds it.
   settledBreakdown?: MaterialyBreakdownRowT[]
   rabatAmount: number
+  // Σ LOSS — the cost the company absorbed, deducted from the settlement at face value. Its own prop
+  // rather than a field of `financials`, which is the marża gate: the client must see their debt come
+  // down without seeing wypłaty or marża. Defaults to 0, so a host with no strata says nothing.
+  lossAmount: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
   // (every host computes it unconditionally); preview suppresses the scream downstream, not by
   // withholding the verdict.
@@ -115,8 +119,10 @@ type PropsT = {
   totalNet?: number
   // Client-priced, view-invariant per-section subtotals — the section pie's structure source.
   sectionSubtotals?: SectionSliceInputT[]
-  // Company-plane transfer aggregates — feeds the „Marża" tab. Supplying it IS the visibility gate:
-  // every host omits it for anyone but ADMIN/OWNER, and the client share never builds it at all.
+  // Company-plane transfer aggregates — feeds the „Marża" tab. Absent only where the reader's ROLE
+  // says so (a MANAGER gets no marża); the client share passes it like every other host, and the
+  // tab is kept off the client by `preview` below, on the render side where every other client/owner
+  // difference is decided.
   financials?: InvestmentFinancialsT
 }
 
@@ -132,6 +138,7 @@ export function SummaryPanelContent({
   materialyBreakdown,
   settledBreakdown,
   rabatAmount,
+  lossAmount,
   reconciliation,
   vatRate,
   settlementMode,
@@ -169,10 +176,9 @@ export function SummaryPanelContent({
   const [sessionView, setSessionView] = useState<SummaryViewT>('summary')
   const summaryView = preview ? sessionView : persistedView
   const setSummaryView = preview ? setSessionView : setPersistedView
-  // „Marża" rides entirely on `financials` being present, and the hosts only build it for ADMIN/OWNER
-  // — so the figures never reach a non-owner's RSC payload, which a client-side role check could not
-  // have achieved. This component reads no session on purpose: it also renders under (share), which
-  // mounts no CurrentUserProvider.
+  // This component reads no session on purpose: it also renders under (share), which mounts no
+  // CurrentUserProvider — so who may see „Marża" arrives as `preview` plus the presence of
+  // `financials`, both decided by the host.
   const allowedViews = views.filter((value) => {
     if (value === 'subcontractors') return !preview
     // TODO(EX-649): „Marża" is hidden until we agree what it measures — the tab sources the
@@ -217,6 +223,7 @@ export function SummaryPanelContent({
     materials,
     vatRate,
     effectiveNetRate,
+    lossAmount,
   )
   return (
     <>
@@ -282,6 +289,7 @@ export function SummaryPanelContent({
                 materials={materials}
                 depositsTotal={depositsTotal}
                 rabatAmount={rabatAmount}
+                lossAmount={lossAmount}
                 reconciliation={reconciliation}
                 settlementVerdict={settlementVerdict}
                 priceView="client"

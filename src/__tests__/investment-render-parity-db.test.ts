@@ -17,7 +17,8 @@ import {
   effectiveMaterialsNetRate,
   type SettlementModeT,
 } from '@/lib/kosztorys/settlement-mode'
-import { billedMaterials, grossBalance } from '@/lib/kosztorys/summary-economics'
+import { billedMaterials } from '@/lib/kosztorys/summary-economics'
+import { grossBalance } from '@/lib/db/gross-balance'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'

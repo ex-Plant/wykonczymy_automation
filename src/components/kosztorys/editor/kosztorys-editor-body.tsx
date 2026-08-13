@@ -56,6 +56,7 @@ export function KosztorysEditorBody({
   investmentName,
   laborCostsNetFromTransactions,
   investmentRabat,
+  investmentLoss,
   depositTransactions,
   preview = false,
   undoRedo = NOOP_UNDO_REDO,
@@ -263,6 +264,7 @@ export function KosztorysEditorBody({
             laborCostsNet={laborCostsNet}
             sectionSubtotals={progressSubtotals}
             rabatAmount={rabatClientNet}
+            lossAmount={investmentLoss}
             reconciliation={reconciliation}
             vatRate={tree.vatRate}
             settlementMode={tree.settlementMode}

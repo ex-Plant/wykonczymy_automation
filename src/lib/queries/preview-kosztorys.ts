@@ -17,8 +17,12 @@ import {
   fetchWholeInvestmentFinancials,
 } from '@/lib/queries/whole-investment-financials'
 
-// No projection/stripping anywhere below: the owner accepted the leak, so the full tree ships and the
-// render side alone decides what a client sees.
+// No projection/stripping anywhere below: the owner accepted the leak, so the full payload ships —
+// tree AND figures — and the render side alone decides what a client sees. That is not laziness, it
+// is the anti-drift rule: the moment this path hands the panel a different set of inputs than the
+// editor page does, the same formula can print two different debts and only a test would notice.
+// The one thing left out is the subcontractor roster, and on cost alone — it feeds a block the
+// preview never renders, so fetching it here buys nothing.
 
 // Every read below is invalidated by the same collections the editor writes, so a client who
 // reloads the share link sees the owner's latest etap entries — the whole point of a live view.
@@ -55,7 +59,7 @@ async function buildPreviewKosztorysEditorData(
     fetchMaterialTransactionsForInvestment(investmentId),
     fetchDepositTransactionsForInvestment(investmentId),
   ])
-  const { financials, materialyBreakdown } = deriveWholeInvestmentFinancials(
+  const { financials, materialyBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
     expenseCategories,
@@ -68,8 +72,11 @@ async function buildPreviewKosztorysEditorData(
     materialsGrossBase: financials.materialsGrossBase,
     materialsNetBilled: financials.materialsNetBilled,
     materialyBreakdown,
+    settledBreakdown,
+    financials,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,
+    investmentLoss: financials.totalLoss,
     materialTransactions,
     depositTransactions,
   }

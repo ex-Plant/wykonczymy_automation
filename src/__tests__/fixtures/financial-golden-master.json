@@ -892,7 +892,7 @@
       "totalRabat": 0,
       "totalLoss": 362.84,
       "totalSettled": 0,
-      "balance": -362.84,
+      "balance": 0,
       "margin": -362.84,
       "categoryCosts": [[1, 362.84]],
       "settledCategoryCosts": []
@@ -1317,7 +1317,7 @@
       "totalRabat": 0,
       "totalLoss": 39,
       "totalSettled": 0,
-      "balance": -39,
+      "balance": 0,
       "margin": -39,
       "categoryCosts": [[1, 39]],
       "settledCategoryCosts": []

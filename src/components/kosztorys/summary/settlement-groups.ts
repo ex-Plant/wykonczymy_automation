@@ -16,7 +16,24 @@ type ArgsT = {
   mixed: MixedSettlementT | null
   doZaplaty: MoneyPairT
   depositsTotal: number
+  lossAmount: number
   vatRate: number
+}
+
+// „Strata" — a cost the company swallowed, so the client stops owing it. A deduction step like
+// „Wpłaty", and like them at face value on both planes: unlike a rabat, which is a concession on the
+// price and therefore grosses. Rendered only when there is one; an investment with no strata says
+// nothing rather than printing a 0 zł step.
+function lossRows(lossAmount: number, span: boolean): SettlementRowT[] {
+  if (lossAmount === 0) return []
+  return [
+    {
+      label: 'Strata',
+      line: faceValue(-lossAmount),
+      discount: true,
+      span,
+    },
+  ]
 }
 
 // The settlement steps under the breakdown, as one group per tor. Their sequence IS the tryb
@@ -30,6 +47,7 @@ export function buildSettlementGroups({
   mixed,
   doZaplaty,
   depositsTotal,
+  lossAmount,
   vatRate,
 }: ArgsT): SettlementGroupT[] {
   // One pool of wpłaty, one debt — one table. Wpłaty span both money tracks as a single centred cell
@@ -48,6 +66,7 @@ export function buildSettlementGroups({
             linkToDeposits: true,
             span: true,
           },
+          ...lossRows(lossAmount, true),
           {
             label: 'Pozostało do zapłaty',
             line: doZaplaty,
@@ -66,6 +85,10 @@ export function buildSettlementGroups({
   // Each tor closes on ONE plane here, so neither gets the two-column treatment — a second column
   // would print a figure that tor never settles.
   const vatPercent = ratePercentText(vatRate)
+  // The strata step is rendered in the netto tor only — exactly like „Wpłaty netto", which also
+  // deducts from both tory but appears once. The faktura tor names it in its hint instead, so its
+  // „Pozostało brutto" stays reconstructible from the rows the reader can see.
+  const deducted = lossAmount === 0 ? 'wpłaty netto' : 'wpłaty netto i stratę'
   return [
     {
       caption: 'Rozliczenie netto',
@@ -77,9 +100,10 @@ export function buildSettlementGroups({
           discount: true,
           linkToDeposits: true,
         },
+        ...lossRows(lossAmount, false),
         {
           label: 'Pozostało netto',
-          hint: '*Łącznie netto minus wpłaty netto',
+          hint: `*Łącznie netto minus ${deducted}`,
           line: faceValue(mixed.doRozliczeniaNet),
         },
         {
@@ -106,7 +130,7 @@ export function buildSettlementGroups({
         },
         {
           label: 'Pozostało brutto',
-          hint: `*Łącznie brutto (VAT ${vatPercent}% na robociznę) minus wpłaty netto`,
+          hint: `*Łącznie brutto (VAT ${vatPercent}% na robociznę) minus ${deducted}`,
           line: faceValue(mixed.resztaGross),
         },
         {

@@ -18,6 +18,7 @@ export const LABOR_LABEL = 'Robocizna netto'
 export const RABAT_LABEL = 'Rabat netto'
 export const INCOME_LABEL = 'Wpłaty'
 export const MATERIALS_DISCOUNT_LABEL = 'Obniżka materiałów'
+export const LOSS_LABEL = 'Strata'
 
 /** Amount booked to a given expense category, 0 when that category has no rows. */
 export function costForCategory(categoryCosts: CategoryCostT[], categoryId: number): number {
@@ -84,6 +85,15 @@ function mapCategoryCostsToFields(
     .map(({ cat, total }) => ({ label: cat.name, value: formatPLN(total), amount: -total }))
 }
 
+/** Concessions the investor stops owing — positive amounts, unlike the cost tiles above. A zero one
+ *  is dropped rather than rendered: "the company gave up 0 zł" says the same thing as no concession
+ *  at all, and the tile row is already crowded. */
+function creditFields(credits: [label: string, amount: number][]): FinancialFieldT[] {
+  return credits
+    .filter(([, amount]) => amount !== 0)
+    .map(([label, amount]) => ({ label, value: formatPLN(amount), amount }))
+}
+
 type BuildOptionsT = {
   /** Drop expense categories with no spend instead of rendering them at 0. Scopes to the cost
    *  tiles only — Robocizna and Wpłaty are the figures under comparison and must stay visible
@@ -106,8 +116,14 @@ export function buildFinancialFields(
   expenseCategories: { id: number; name: string }[],
   { hideZeroCosts = false }: BuildOptionsT = {},
 ): FinancialFieldT[] {
-  const { categoryCosts, totalIncome, totalLaborCosts, totalRabat, materialsNetDiscount } =
-    financials
+  const {
+    categoryCosts,
+    totalIncome,
+    totalLaborCosts,
+    totalRabat,
+    materialsNetDiscount,
+    totalLoss,
+  } = financials
   const uncategorised = uncategorisedRemainder(financials)
 
   return [
@@ -127,21 +143,14 @@ export function buildFinancialFields(
       amount: -totalLaborCosts,
     },
     { label: INCOME_LABEL, value: formatPLN(totalIncome), amount: totalIncome },
-    ...(totalRabat !== 0
-      ? [{ label: RABAT_LABEL, value: formatPLN(totalRabat), amount: totalRabat }]
-      : []),
     // The header's bilans is the SUM of these tiles, so every term of `calculateBalance` owes one or
     // the two readings drift apart. Rabat has a tile for exactly this reason; the materiały
-    // concession raises the balance the same way and needs the same seat.
-    ...(materialsNetDiscount !== 0
-      ? [
-          {
-            label: MATERIALS_DISCOUNT_LABEL,
-            value: formatPLN(materialsNetDiscount),
-            amount: materialsNetDiscount,
-          },
-        ]
-      : []),
+    // concession and the strata raise the balance the same way and need the same seat.
+    ...creditFields([
+      [RABAT_LABEL, totalRabat],
+      [MATERIALS_DISCOUNT_LABEL, materialsNetDiscount],
+      [LOSS_LABEL, totalLoss],
+    ]),
   ]
 }
 

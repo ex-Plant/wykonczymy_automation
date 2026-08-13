@@ -86,6 +86,7 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
       'INVESTMENT_EXPENSE_NET',
       'LABOR_COST',
       'RABAT',
+      'LOSS',
     ],
   },
   needsTargetRegister: {

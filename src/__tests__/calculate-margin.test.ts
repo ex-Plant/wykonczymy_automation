@@ -45,6 +45,12 @@ describe('calculateMargin', () => {
     ).toBe(2500)
   })
 
+  // The reference shape (investment 62): 362,84 of material the owner covered with a strata of the
+  // same amount, nothing billed. Bilans closes at zero, and the whole cost lands on the margin.
+  it('puts the absorbed cost on the company when nothing was billed', () => {
+    expect(calculateMargin(fin({ totalLoss: 362.84 }))).toBeCloseTo(-362.84, 10)
+  })
+
   it('subtracts settled internal material from margin', () => {
     // robocizna 500, settled 100 → 400
     expect(calculateMargin(fin({ totalLaborCosts: 500, totalSettled: 100 }))).toBe(400)

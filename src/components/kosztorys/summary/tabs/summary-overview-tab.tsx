@@ -41,6 +41,8 @@ type PropsT = {
   materials: MaterialsT
   depositsTotal: number
   rabatAmount: number
+  // Σ LOSS — the deduction step between the wpłaty and the closing figure. Face value on both axes.
+  lossAmount: number
   reconciliation: KosztorysReconciliationT
   settlementVerdict: SettlementPlaneVerdictT
   priceView: PriceViewT
@@ -71,6 +73,7 @@ export function SummaryOverviewTab({
   materials,
   depositsTotal,
   rabatAmount,
+  lossAmount,
   reconciliation,
   settlementVerdict,
   priceView,
@@ -95,12 +98,14 @@ export function SummaryOverviewTab({
           paidNet,
           paidGross,
           materialsNetRate,
+          lossAmount,
         )
       : null
   const settlementGroups = buildSettlementGroups({
     mixed,
     doZaplaty,
     depositsTotal,
+    lossAmount,
     vatRate,
   })
   // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the

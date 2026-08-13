@@ -50,6 +50,7 @@ const VALID_DATA: Record<string, Record<string, unknown>> = {
     netAmount: 80,
   },
   LABOR_COST: { ...base, type: 'LABOR_COST', investment: 1 },
+  LOSS: { ...base, type: 'LOSS', investment: 1 },
   REGISTER_TRANSFER: { ...base, type: 'REGISTER_TRANSFER', sourceRegister: 1, targetRegister: 2 },
   OTHER: { ...base, type: 'OTHER', sourceRegister: 1, otherCategory: 1 },
 }
@@ -103,6 +104,13 @@ describe('validateTransfer — missing required fields', () => {
 
   it('LABOR_COST without investment → throws', () => {
     const { investment, ...data } = VALID_DATA.LABOR_COST
+    expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
+  })
+
+  // EX-675: a strata now lowers the investor's bilans, so it has to say whose.
+  it('LOSS without investment → throws', () => {
+    const { investment, ...data } = VALID_DATA.LOSS
+    void investment
     expect(() => validateTransfer(hookArgs(data))).toThrow(/[Ii]nvestment/)
   })
 
@@ -263,6 +271,50 @@ describe('validateTransfer — a CANCELLATION never keeps a register', () => {
   })
 })
 
+// EX-675. A PATCH of one field carries no relational fields at all, so every "required" check
+// below must read through to the stored row or an invoice attachment would be rejected for a
+// missing investment the row has had all along.
+describe('validateTransfer — a partial update reads required fields from the stored row', () => {
+  const storedExpense = {
+    type: 'INVESTMENT_EXPENSE',
+    amount: 222.88,
+    date: '2026-02-19',
+    investment: 62,
+    expenseCategory: 4,
+    sourceRegister: 1,
+  }
+
+  it('accepts an invoice-only PATCH on a row that already has its investment', () => {
+    const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: storedExpense })
+    expect(() => validateTransfer(args)).not.toThrow()
+  })
+
+  // The type that made the investment mandatory in the first place — attaching a faktura to an
+  // existing strata must not re-litigate a link the row already carries.
+  it('accepts an invoice-only PATCH on a stored LOSS', () => {
+    const storedLoss = { type: 'LOSS', amount: 1000, date: '2026-02-19', investment: 62 }
+    const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: storedLoss })
+    expect(() => validateTransfer(args)).not.toThrow()
+  })
+
+  // The fallback may not read the stored row when the PATCH is an explicit CLEAR. Payload's admin
+  // panel saves the whole document, so a cleared relationship arrives as `null` — distinct from the
+  // key being absent, which is what a partial update looks like. Conflate the two and clearing the
+  // investment on a stored strata passes validation on the OLD link and then persists nothing.
+  it('refuses a PATCH that explicitly nulls the investment on a stored LOSS', () => {
+    const storedLoss = { type: 'LOSS', amount: 1000, date: '2026-02-19', investment: 62 }
+    const args = hookArgs({ investment: null }, { operation: 'update', originalDoc: storedLoss })
+    expect(() => validateTransfer(args)).toThrow(/[Ii]nvestment/)
+  })
+
+  it('still refuses when neither the payload nor the stored row carries an investment', () => {
+    const { investment, ...orphan } = storedExpense
+    void investment
+    const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: orphan })
+    expect(() => validateTransfer(args)).toThrow(/[Ii]nvestment/)
+  })
+})
+
 // GUARD B7 — the netto figure is what the investor is billed, and the hook is the single server-side
 // authority on it (the form schema is a convenience mirror the API can bypass entirely).
 describe('validateTransfer — netAmount (the netto expense type)', () => {
@@ -270,7 +322,9 @@ describe('validateTransfer — netAmount (the netto expense type)', () => {
 
   it('refuses a netto above the brutto that left the kasa', () => {
     const data = { ...netExpense, amount: 100, netAmount: 101 }
-    expect(() => validateTransfer(hookArgs(data))).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
+    expect(() => validateTransfer(hookArgs(data))).toThrow(
+      /Kwota netto nie może przekraczać kwoty brutto/,
+    )
   })
 
   it('accepts a netto equal to brutto (0% VAT is a real case)', () => {

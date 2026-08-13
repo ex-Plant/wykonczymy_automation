@@ -42,7 +42,9 @@ describe('calculateBalance', () => {
     ).toBe(5800)
   })
 
-  it('ignores losses — strata is the company cost, not the investor cost', () => {
+  // EX-675. A strata is the amount the client stops being charged, so it raises the balance the
+  // way a rabat does — at face value, never grossed up.
+  it('adds the loss so the client owes less', () => {
     expect(
       calculateBalance({
         ...base,
@@ -51,6 +53,14 @@ describe('calculateBalance', () => {
         totalLaborCosts: 2000,
         totalLoss: 1500,
       }),
-    ).toBe(5000)
+    ).toBe(6500)
+  })
+
+  // The reference defect: an expense the owner covered with a strata of the same amount must
+  // leave the client owing nothing (investment 62 — 362,84 of material against a 362,84 strata).
+  it('cancels an expense covered by a loss of the same amount', () => {
+    expect(
+      calculateBalance({ ...base, totalMaterialCosts: 362.84, totalLoss: 362.84 }),
+    ).toBeCloseTo(0, 10)
   })
 })
