@@ -31,6 +31,7 @@ export const baseItem: Omit<KosztorysItemT, 'id' | 'description' | 'plannedQty' 
   sectionId: 10,
   displayOrder: 0,
   unit: 'm2',
+  sheetMeasuredQty: null,
   discountType: null,
   discountValue: 0,
   wToolsOverrideType: 'amount',

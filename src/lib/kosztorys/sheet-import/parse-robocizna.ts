@@ -57,7 +57,31 @@ function findFooterStart(grid: unknown[][], columns: ResolvedRobociznaT['columns
   return -1
 }
 
-export function parseRobocizna(grid: unknown[][], resolved: ResolvedRobociznaT): ParsedRobociznaT {
+// „Pomiar z natury" only means something when the owner TYPED it. On the blank offer sheet the
+// column is `=SUM(D:M)` in every row, so importing its value would store Σ etapów and later compare
+// it against Σ etapów — a reconciliation that can never fire. `number()` is deliberately not used:
+// its `|| 0` would turn an empty cell into a measurement of zero, flagging every row nobody has
+// measured yet.
+function readMeasuredQty(
+  row: unknown[],
+  formulaRow: unknown[],
+  column: number | undefined,
+): number | null {
+  if (column === undefined) return null
+  if (typeof formulaRow[column] === 'string' && formulaRow[column].startsWith('=')) return null
+  const cell = row[column]
+  if (cell === '' || cell == null) return null
+  const value = typeof cell === 'number' ? cell : Number(cell)
+  return Number.isFinite(value) ? value : null
+}
+
+export function parseRobocizna(
+  grid: unknown[][],
+  resolved: ResolvedRobociznaT,
+  // Required rather than defaulted: a caller that forgets it would silently import no measurement
+  // at all, and the whole reconciliation would go quiet without a single failing test.
+  formulas: unknown[][],
+): ParsedRobociznaT {
   const { columns, stages: stageColumns } = resolved
   const sections: KosztorysSectionT[] = []
   const items: ParsedItemT[] = []
@@ -121,6 +145,7 @@ export function parseRobocizna(grid: unknown[][], resolved: ResolvedRobociznaT):
       discountType: rabat > 0 ? 'percent' : null,
       discountValue: rabat > 0 ? discountPercent : 0,
       clientPrice: number(row[columns.clientPrice]),
+      sheetMeasuredQty: readMeasuredQty(row, formulas[rowIndex] ?? [], columns.measuredQty),
       hiddenInExport: false,
       note: null,
     })

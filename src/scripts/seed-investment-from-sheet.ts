@@ -136,6 +136,7 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
       description,
       unit: str(rob[ROB.unit]) || null,
       plannedQty: num(rob[ROB.headerMarkPrzedmiar]), // N — Przedmiar (a number on data rows)
+      sheetMeasuredQty: null,
       discountType: rabat > 0 ? 'percent' : null,
       discountValue: rabat > 0 ? round6(rabat * 100) : 0,
       clientPrice,

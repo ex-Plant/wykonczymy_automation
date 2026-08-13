@@ -104,6 +104,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
               description: 'Malowanie',
               unit: 'm2',
               plannedQty: 10,
+              sheetMeasuredQty: 7,
               clientPrice: 100,
               note: 'uwaga do pozycji',
             },
@@ -171,6 +172,8 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     // Job fields are zeroed everywhere — proven on the PERSISTED tree, not just the preset payload.
     for (const item of after.items) {
       expect(item.plannedQty).toBe(0)
+      // A reference figure belongs to the job it was imported for, never to the next one.
+      expect(item.sheetMeasuredQty).toBeNull()
       expect(item.discountType).toBeNull()
       expect(item.discountValue).toBe(0)
       expect(item.hiddenInExport).toBe(false)

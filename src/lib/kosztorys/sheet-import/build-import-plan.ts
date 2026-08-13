@@ -149,7 +149,7 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
     }
   }
 
-  const parsed = parseRobocizna(grids.robocizna, resolvedRobocizna)
+  const parsed = parseRobocizna(grids.robocizna, resolvedRobocizna, grids.robociznaFormulas)
   const rates = resolveItemRates(
     parsed.items.map((item) => ({ description: item.description ?? '' })),
     rateTabs,
@@ -216,7 +216,10 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
         ownToolsOverrideType: ownTools.type,
         ownToolsOverrideValue: ownTools.value,
         // The sheet has no column for either, so a matched praca keeps what the app holds rather
-        // than having it blanked by an import that never had an opinion.
+        // than having it blanked by an import that never had an opinion. `sheetMeasuredQty` gets
+        // the opposite treatment on purpose — it rides the spread above and OVERWRITES, because it
+        // is the sheet's own claim: a re-import must revive a row the owner dismissed with „etapy
+        // są prawdą" if the sheet still disagrees.
         note: current?.note ?? null,
         hiddenInExport: current?.hiddenInExport ?? false,
       })

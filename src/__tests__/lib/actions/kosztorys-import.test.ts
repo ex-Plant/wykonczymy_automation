@@ -32,6 +32,7 @@ vi.mock('@/lib/kosztorys/sheet-import/read-sheet', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   readImportGrids: vi.fn().mockImplementation(async () => ({
     robocizna: BIALOSTOCKA_ROWS,
+    robociznaFormulas: [],
     rateTabs: [
       ratesTab('zakres pracy z narzędziami', [
         { description: 'montaż jednostki wewnętrznej', wTools: 78, ownTools: 60 },

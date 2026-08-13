@@ -105,6 +105,7 @@ function resolveFields(
 
 const ROBOCIZNA_FIELDS = [
   'plannedQty',
+  'measuredQty',
   'unit',
   'clientPrice',
   'discount',

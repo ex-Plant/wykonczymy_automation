@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { parseRobocizna } from '@/lib/kosztorys/sheet-import/parse-robocizna'
 import { resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import { fold } from '@/lib/kosztorys/sheet-import/columns'
 import { BIALOSTOCKA_ROWS, PRZEDPOLE_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
-function parse(grid: (string | number)[][]) {
+function parse(grid: (string | number)[][], formulas: (string | number)[][] = []) {
   const resolved = resolveRobocizna(grid)
   if (!resolved.ok) expect.fail(`fixture header did not resolve: ${resolved.problems.join(' | ')}`)
-  return parseRobocizna(grid, resolved)
+  return parseRobocizna(grid, resolved, formulas)
 }
+
+const POMIAR_COLUMN = 14 // O on Białostocka
 
 describe('parseRobocizna', () => {
   it('groups prace under the section header that precedes them', () => {
@@ -139,6 +142,40 @@ describe('parseRobocizna', () => {
     const { items, skippedBeforeFirstSection } = parse(grid)
     expect(skippedBeforeFirstSection).toBe(1)
     expect(items.map((item) => item.description)).not.toContain('praca bez sekcji')
+  })
+
+  it('keeps a hand-typed „Pomiar z natury" as the reference figure', () => {
+    expect(parse(BIALOSTOCKA_ROWS).items.map((item) => item.sheetMeasuredQty)).toEqual([1, 50, 2])
+  })
+
+  it('reads a „Pomiar z natury" written as a formula as no claim at all', () => {
+    // The blank offer sheet has `=SUM(D:M)` in every row of that column, so its value IS Σ etapów.
+    // Storing it would set up a comparison of Σ etapów against itself.
+    const formulas = BIALOSTOCKA_ROWS.map((row) => {
+      const blank = row.map(() => '')
+      blank[POMIAR_COLUMN] = '=SUM(D3:M3)'
+      return blank
+    })
+
+    expect(parse(BIALOSTOCKA_ROWS, formulas).items.every((item) => item.sheetMeasuredQty === null))
+      .toBe(true)
+  })
+
+  it('reads an empty „Pomiar z natury" as no claim, not as a measurement of zero', () => {
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    grid[4][POMIAR_COLUMN] = ''
+
+    expect(parse(grid).items[0].sheetMeasuredQty).toBeNull()
+  })
+
+  it('imports a sheet with no „Pomiar z natury" column at all', () => {
+    const grid = BIALOSTOCKA_ROWS.map((row, index) =>
+      index < 3 ? row.map((cell) => (fold(cell) === 'pomiar z natury' ? '' : cell)) : row,
+    )
+
+    const { items } = parse(grid)
+    expect(items).toHaveLength(3)
+    expect(items.every((item) => item.sheetMeasuredQty === null)).toBe(true)
   })
 
   it('gives every section a colour by position, as the editor does', () => {
