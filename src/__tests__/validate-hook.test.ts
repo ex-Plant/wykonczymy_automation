@@ -297,6 +297,16 @@ describe('validateTransfer — a partial update reads required fields from the s
     expect(() => validateTransfer(args)).not.toThrow()
   })
 
+  // The fallback may not read the stored row when the PATCH is an explicit CLEAR. Payload's admin
+  // panel saves the whole document, so a cleared relationship arrives as `null` — distinct from the
+  // key being absent, which is what a partial update looks like. Conflate the two and clearing the
+  // investment on a stored strata passes validation on the OLD link and then persists nothing.
+  it('refuses a PATCH that explicitly nulls the investment on a stored LOSS', () => {
+    const storedLoss = { type: 'LOSS', amount: 1000, date: '2026-02-19', investment: 62 }
+    const args = hookArgs({ investment: null }, { operation: 'update', originalDoc: storedLoss })
+    expect(() => validateTransfer(args)).toThrow(/[Ii]nvestment/)
+  })
+
   it('still refuses when neither the payload nor the stored row carries an investment', () => {
     const { investment, ...orphan } = storedExpense
     void investment

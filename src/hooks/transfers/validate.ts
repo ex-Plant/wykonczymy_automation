@@ -34,13 +34,19 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   // `type`, and an empty one would route a netto row down the else-branch below and null its
   // netAmount. The same holds for every relational field the required-checks read — an
   // invoice-only PATCH would otherwise be rejected for fields the row has carried all along.
-  const type = d.type ?? original?.type ?? ''
-  const sourceRegister = d.sourceRegister ?? original?.sourceRegister
-  const investment = d.investment ?? original?.investment
-  const targetRegister = d.targetRegister ?? original?.targetRegister
-  const otherCategory = d.otherCategory ?? original?.otherCategory
-  const worker = d.worker ?? original?.worker
-  const expenseCategory = d.expenseCategory ?? original?.expenseCategory
+  // Keyed on PRESENCE, not on truthiness: an explicit `null` is a CLEAR — the admin panel saves the
+  // whole document, so that is how a wiped relationship arrives — and it must reach the
+  // required-checks as the empty value it is, not silently read the old link off the stored row.
+  const resolved = <K extends keyof TransferData>(field: K) =>
+    field in d ? d[field] : original?.[field]
+
+  const type = resolved('type') ?? ''
+  const sourceRegister = resolved('sourceRegister')
+  const investment = resolved('investment')
+  const targetRegister = resolved('targetRegister')
+  const otherCategory = resolved('otherCategory')
+  const worker = resolved('worker')
+  const expenseCategory = resolved('expenseCategory')
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
@@ -119,6 +125,9 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   // The netto figure is load-bearing exactly on the type whose spec row bills at `netAmount`, and
   // meaningless anywhere else — so the type that doesn't bill at it stores null. This hook is the
   // server-side authority; the rule itself lives once in getNetAmountError.
+  // The numerics stay on `??` rather than `resolved()`: unlike a relationship, a money field has no
+  // "cleared" state — an explicit null on a required amount is the absence the stored row must fill,
+  // not an erasure to validate against.
   if (billsNetAmount(type)) {
     const netErr = getNetAmountError(
       d.netAmount ?? original?.netAmount,

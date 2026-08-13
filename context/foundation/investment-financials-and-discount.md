@@ -108,12 +108,12 @@ booked.
 
 ## The four modifiers — how each bends the two formulas
 
-| Type / flag               | source_register | marża | bilans | Notes                                                                                                                                                                                                                   |
-| ------------------------- | --------------- | ----- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CORRECTION` (korekta)    | optional        | —     | ↓/↑    | Folds into materiały; may be negative. Moves only the balance.                                                                                                                                                          |
-| `RABAT` (rabat)           | **none**        | ↓     | ↑      | Labour discount: company earns less, client owes less. Positive amount. Requires investment.                                                                                                                            |
-| `LOSS` (strata)           | **none**        | ↓     | —      | Company-absorbed cost. Positive amount, investment **optional** (unattached losses hit only the global marża on Raporty). Never touches bilans (a test pins this).                                                      |
-| `settled` flag on expense | required        | ↓     | —      | "Wliczone w robociznę": R+M material the company buys but already priced into robocizna. Leaves a register, lowers marża, off the client bill. Valid on `INVESTMENT_EXPENSE` and `CORRECTION` (`transfers.ts:227-239`). |
+| Type / flag               | source_register | marża | bilans | Notes                                                                                                                                                                                                                     |
+| ------------------------- | --------------- | ----- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CORRECTION` (korekta)    | optional        | —     | ↓/↑    | Folds into materiały; may be negative. Moves only the balance.                                                                                                                                                            |
+| `RABAT` (rabat)           | **none**        | ↓     | ↑      | Labour discount: company earns less, client owes less. Positive amount. Requires investment.                                                                                                                              |
+| `LOSS` (strata)           | **none**        | ↓     | ↑      | Company-absorbed cost the client stops owing (EX-675). Positive amount, investment **required**. Deducts at **face value** on netto and brutto alike — unlike the rabat, a concession on the price, which grosses by VAT. |
+| `settled` flag on expense | required        | ↓     | —      | "Wliczone w robociznę": R+M material the company buys but already priced into robocizna. Leaves a register, lowers marża, off the client bill. Valid on `INVESTMENT_EXPENSE` and `CORRECTION` (`transfers.ts:227-239`).   |
 
 `RABAT` and `LOSS` are positive-amount types with **no source register** (billing figures,
 not cash movements). `settled` is a boolean on an otherwise normal material expense, so it
@@ -124,9 +124,10 @@ type approach would need one type _per category_ (`INTERNAL_BUILDING_MATERIAL`,
 `INTERNAL_FINISHING_MATERIAL`, …), multiplying every time a category is added — disqualifying.
 A boolean stays orthogonal to the category axis.
 
-Display: `RABAT` is the green "Rabat" line, `LOSS` the purple "Strata" stat, and settled
-material its own block in `financial-stats.tsx`. `LOSS` is deliberately kept out of
-`buildFinancialFields` so it never enters the bilans toggle sum or the client-facing export.
+Display: `RABAT` and `LOSS` are both green tiles in the credit row of `financial-stats.tsx`
+(settled material keeps its own block). `LOSS` now goes **through** `buildFinancialFields` — its
+own standalone purple block is gone, and that is what keeps the tiles summing to the bilans they
+sit under.
 
 Specs: `context/reference/superpowers/archive/2026-06-11-investment-rabat.md`,
 `context/reference/superpowers/archive/2026-06-11-loss-strata-transfer-type.md`,

@@ -929,3 +929,5 @@ ADMIN/OWNER). Inwestycja **62** jest wzorcem: 362,84 zł materiału pokryte stra
 - [ ] Podgląd klienta (link do kosztorysu) pokazuje ten sam obniżony dług — bez ujawniania marży i wypłat
 - [ ] Okno „Nowa transakcja" → „Strata": pole inwestycji jest **wymagane**, zapis bez niej odrzucony
 - [ ] Do istniejącej straty da się dopiąć fakturę (edycja tylko tego pola) — zapis przechodzi, nie żąda ponownie inwestycji
+- [ ] Wyczyszczenie inwestycji na istniejącej stracie (panel Payloada) jest **odrzucone** — wcześniej przechodziło po cichu, zostawiając stratę bez właściciela
+- [ ] **Pytanie do właściciela, nie test:** podpowiedź przy kroku „Strata" brzmi „Koszt, którego firma nie przerzuciła na klienta — obniża jego dług" i widzi ją także klient w podglądzie. Czy tak ma zostać, czy klient ma widzieć inne sformułowanie?

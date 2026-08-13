@@ -42,7 +42,7 @@ type PropsT = {
   depositsTotal: number
   rabatAmount: number
   // Σ LOSS — the deduction step between the wpłaty and the closing figure. Face value on both axes.
-  lossAmount?: number
+  lossAmount: number
   reconciliation: KosztorysReconciliationT
   settlementVerdict: SettlementPlaneVerdictT
   priceView: PriceViewT
@@ -73,7 +73,7 @@ export function SummaryOverviewTab({
   materials,
   depositsTotal,
   rabatAmount,
-  lossAmount = 0,
+  lossAmount,
   reconciliation,
   settlementVerdict,
   priceView,

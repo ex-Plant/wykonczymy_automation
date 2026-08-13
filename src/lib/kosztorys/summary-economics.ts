@@ -100,19 +100,6 @@ export function billedCategoryCosts(
   })
 }
 
-/** The investor balance carried onto the brutto plane. Negative means the client owes, so the VAT —
- *  another charge on them — DEDUCTS. It rides the prace alone, and on the prace net of the rabat: a
- *  discounted złoty was never billed, so it never carried VAT. The rabat is already inside `balance`
- *  (`calculateBalance` adds it back), which is why it has to come off the VAT base separately here. */
-export function grossBalance(
-  balance: number,
-  vatRate: number,
-  totalLaborCosts: number,
-  totalRabat: number,
-): number {
-  return balance - vatRate * (totalLaborCosts - totalRabat)
-}
-
 /** „Łącznie" — the prace on their own two planes, plus materiały. Materiały enters BOTH axes at the
  *  same billed figure, because it IS one figure: the panel renders it as a single merged cell across
  *  both money columns, so shifting the two axes by different złoty would print a total the reader

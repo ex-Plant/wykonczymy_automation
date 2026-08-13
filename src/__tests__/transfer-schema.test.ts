@@ -396,9 +396,9 @@ describe('expenseFormSchema — missing required fields', () => {
   // A strata lowers the investor's bilans (EX-675), so the link is what tells it whose debt to
   // lower — an unlinked one would be a concession credited to nobody.
   it('LOSS without investment → error on investment', () => {
-    const { investment, ...rest } = VALID_SERVER_PAYLOADS.LOSS
-    void investment
-    const result = createTransferSchema.safeParse(rest)
+    const payload = toClientPayload(VALID_SERVER_PAYLOADS.LOSS)
+    payload.investment = ''
+    const result = expenseFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('investment')
   })

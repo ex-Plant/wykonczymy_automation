@@ -68,7 +68,7 @@ type PropsT = {
   // Σ LOSS — the cost the company absorbed, deducted from the settlement at face value. Its own prop
   // rather than a field of `financials`, which is the marża gate: the client must see their debt come
   // down without seeing wypłaty or marża. Defaults to 0, so a host with no strata says nothing.
-  lossAmount?: number
+  lossAmount: number
   // Robocizna/rabat reconciliation verdict — drives the Podsumowanie mismatch scream. Always supplied
   // (every host computes it unconditionally); preview suppresses the scream downstream, not by
   // withholding the verdict.
@@ -136,7 +136,7 @@ export function SummaryPanelContent({
   materialyBreakdown,
   settledBreakdown,
   rabatAmount,
-  lossAmount = 0,
+  lossAmount,
   reconciliation,
   vatRate,
   settlementMode,
