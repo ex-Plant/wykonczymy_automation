@@ -129,6 +129,45 @@ Display: `RABAT` and `LOSS` are both green tiles in the credit row of `financial
 own standalone purple block is gone, and that is what keeps the tiles summing to the bilans they
 sit under.
 
+### Three mechanisms compute the bilans, and they must agree
+
+There is no single balance function. Three independent mechanisms produce the same figure on
+three surfaces, and any modifier that moves the bilans has to be taught to **all three** by hand:
+
+1. `calculateBalance(financials)` (`src/lib/db/calculate-balance.ts`) — the investments listing.
+2. Σ of the tiles from `buildFinancialFields` (`src/lib/db/map-category-costs.ts` →
+   `financial-stats.tsx`) — the investment page (v1) and `/raporty`. The header's bilans is the
+   **sum of the tiles**, so a term with no tile makes the two readings disagree on one screen.
+3. `computeDoZaplatyRM` / `computeMixedSettlement` (`src/lib/kosztorys/summary-economics.ts`) —
+   the v2 settlement panel and the client preview.
+
+A modifier taught to only some of them shows one investment two different debts on two screens.
+That is the primary risk of any change here, not the arithmetic. The parity guard
+(`investment-render-parity-db.test.ts`) exists to catch mechanisms 1↔2 drifting; 3 is pinned by
+unit tests plus a whole-investment fixture.
+
+### Face value vs gross-up is a choice between two primitives
+
+Wherever a figure enters the settlement it is written as either `faceValue(...)` — one amount on
+the netto **and** the brutto axis — or a `moneyPair`, which grosses by VAT. A wpłata is the
+face-value pattern; a rabat is the counter-pattern. Getting the VAT rule right is entirely about
+picking the correct primitive at every site the figure appears, not about writing arithmetic.
+`span: true` belongs with `faceValue`: without it the row prints an identical netto and brutto,
+which reads as a pair that happens to match rather than as one figure covering both axes.
+
+**EX-675 reversed a deliberate earlier decision.** "Strata never touches the bilans" was
+intentional, repeated three times in the 2026-06-11 spec, and pinned by a purpose-written test —
+but its whole justification was one unexpanded sentence ("a strata is the company's cost, not the
+investor's"), which never addressed the case the owner actually has: a strata entered _precisely
+so_ the client stops paying. Don't restore the old behaviour from that spec without re-opening the
+question with the owner.
+
+**Double-counting is possible and the code cannot detect it.** Marking an expense `settled`
+("wliczone w robociznę") _and_ booking a strata for the same amount are two independent rows, so
+the bilans moves twice. Accepted knowingly (EX-675). Related: the owner types the amount by which
+the client's bill should drop — the app never grosses a strata up, so the figure entered is the
+figure deducted.
+
 Specs: `context/reference/superpowers/archive/2026-06-11-investment-rabat.md`,
 `context/reference/superpowers/archive/2026-06-11-loss-strata-transfer-type.md`,
 `context/reference/superpowers/archive/2026-06-12-settled-internal-material-design.md`.
