@@ -358,10 +358,10 @@ Uruchamiane **raz**, po ostatniej fazie — nie po każdej.
 - [x] `pnpm lint` (0 błędów; 79 ostrzeżeń — wszystkie zastane, w migracjach)
 - [x] `pnpm test` — 2150 zielonych
 - [x] `pnpm test:integration` — 104 zielone
-- [x] `pnpm build` — przez `next build --webpack`. Turbopack przewraca się w worktree na
+- [x] `pnpm build` — w worktree szedł tylko przez `next build --webpack`: turbopack przewraca się na
       `node_modules` będącym dowiązaniem poza katalog główny („Symlink node_modules is invalid"),
-      co jest ograniczeniem worktree, nie kodu. Ścieżkę turbopackową trzeba potwierdzić po scaleniu
-      w głównym drzewie.
+      co jest ograniczeniem worktree, nie kodu. Potwierdzone po przeniesieniu gałęzi do głównego
+      drzewa — domyślna ścieżka turbopackowa buduje się czysto.
 
 `pnpm test:parity` wymaga świeżego `db:import:test` + `seed:kosztorys:test` — uruchamiane ręcznie
 przy weryfikacji, nie w bramce.
