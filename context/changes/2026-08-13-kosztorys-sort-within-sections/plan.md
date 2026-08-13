@@ -299,15 +299,15 @@ Uruchomić **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 1.1 Spec `row-view-sort-within-sections.test.ts` przechodzi
-- [x] 1.2 Specy `kosztorys-v2-rows.test.ts` + `kosztorys-sort-value.test.ts` przechodzą
+- [x] 1.1 Spec `row-view-sort-within-sections.test.ts` przechodzi — f5acb87e
+- [x] 1.2 Specy `kosztorys-v2-rows.test.ts` + `kosztorys-sort-value.test.ts` przechodzą — f5acb87e
 
 ### Phase 2: Przenumerowanie `display_order` (serwer)
 
 #### Automated
 
-- [ ] 2.1 Spec `kosztorys-renumber-order.test.ts` przechodzi
-- [ ] 2.2 Spec `display-order.test.ts` przechodzi
+- [x] 2.1 Spec `kosztorys-renumber-order.test.ts` przechodzi
+- [x] 2.2 Spec `display-order.test.ts` przechodzi
 
 ### Phase 3: „Utrwal kolejność" w menu sekcji + cofanie
 

@@ -13,6 +13,8 @@ import {
 import { createBlankItem, sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import {
   nextSectionDisplayOrder,
+  renumberDisplayOrder,
+  renumberDisplayOrderSchema,
   shiftDisplayOrderFrom,
   swapDisplayOrder,
   swapDisplayOrderSchema,
@@ -467,6 +469,39 @@ export async function swapItemOrderAction(
       const parsed = validateAction(swapDisplayOrderSchema, { first, second })
       if (!parsed.success) return parsed
       await swapDisplayOrder(payload, 'kosztorys-items', parsed.data.first, parsed.data.second)
+      return { success: true }
+    },
+    ['kosztorysItems'],
+  )
+}
+
+const ITEMS_NOT_IN_SECTION = 'Pozycje spoza tej sekcji.'
+
+// „Utrwal kolejność" — writes the grid's current order into one section's display_order.
+export async function renumberItemOrderAction(
+  sectionId: number,
+  refs: { id: number; displayOrder: number }[],
+): Promise<ActionResultT> {
+  return protectedAction(
+    'renumberItemOrderAction',
+    async ({ payload }) => {
+      const parsed = validateAction(renumberDisplayOrderSchema, refs)
+      if (!parsed.success) return parsed
+      const db = await getDb(payload)
+      // The ids come from the client, and renumberDisplayOrder joins on id alone — without this the
+      // caller could rewrite the order of any section in any investment. Counting the ids that DO
+      // belong is enough: the schema already rejected duplicates.
+      const res = await db.execute(sql`
+        SELECT COUNT(*)::int AS n FROM kosztorys_items
+        WHERE section_id = ${sectionId} AND id IN (${sql.join(
+          parsed.data.map((r) => sql`${r.id}`),
+          sql.raw(', '),
+        )})
+      `)
+      if (Number(res.rows[0]?.n ?? 0) !== parsed.data.length) {
+        return { success: false, error: ITEMS_NOT_IN_SECTION }
+      }
+      await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
       return { success: true }
     },
     ['kosztorysItems'],
