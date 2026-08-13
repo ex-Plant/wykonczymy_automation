@@ -22,13 +22,13 @@ prod through a fresh FTP backup, not either of those.
 
 **The owner already stated the intent in the data.** The three live losses:
 
-| id | kwota | inw. | opis |
-| --- | --- | --- | --- |
-| 3298 | 362,84 | 62 | „naprawa połogi kolejny raz" |
-| 3737 | 39,00 | 98 | „brak skasowania za to klienta" |
-| 4470 | 142,65 | 47 | „strata źle zamówione coś tam" |
+| id   | kwota  | inw. | opis                            |
+| ---- | ------ | ---- | ------------------------------- |
+| 3298 | 362,84 | 62   | „naprawa połogi kolejny raz"    |
+| 3737 | 39,00  | 98   | „brak skasowania za to klienta" |
+| 4470 | 142,65 | 47   | „strata źle zamówione coś tam"  |
 
-3737's description *is* this change's premise in the owner's own words: a strata means the client
+3737's description _is_ this change's premise in the owner's own words: a strata means the client
 was not charged. And he has already migrated his own workarounds onto the right types — cancelled
 `OTHER_DEPOSIT` 1381 (142,65, inw. 47) reappears as live LOSS 4470 for the same amount and
 investment, while cancelled `OTHER_DEPOSIT` 1171 (132,87, inw. 18) reappears as live `RABAT` 4467.
@@ -47,13 +47,25 @@ Regression fixture: that exact shape → bilans 0, marża −362,84.
 same two numbers, but its label is false when robocizna is 0, and it cannot express a loss with no
 cash expense behind it (kara, przestój, odpuszczona robocizna). Strata is the more general tool and
 the one the owner reached for. Accepted consequence: two routes to one outcome — ticking the
-checkbox *and* adding a strata for the same amount would swing bilans to +362,84, which the code
+checkbox _and_ adding a strata for the same amount would swing bilans to +362,84, which the code
 cannot detect (two independent rows).
 
-**Assumption to confirm with the owner: VAT plane.** Taken as *identical to rabat*, i.e. strata
-deducts BEFORE VAT, inside the netto robocizna base — at 23% a 1000 zł strata cuts the client's
-brutto debt by 1230 zł. If the owner reads strata as covering a materiały expense (which carries no
-VAT), it must deduct at face value instead — one line each in `grossBalance` and `combinedPair`.
+**VAT plane — settled with the owner (2026-08-12): face value, one rule, no flag.** A strata may
+cover a cash expense _or_ odpuszczona robocizna, and those two sit on different VAT planes
+(materiały carry none, prace carry 23%). The owner's ruling is to ignore that split rather than
+model it: **the amount entered is the amount the client stops paying, identically in netto and in
+brutto.** No 23% is ever added to or stripped from a strata.
+
+So strata deducts at face value, like a wpłata — _not_ pre-VAT like rabat, despite „działa jak
+rabat" being the origin of this change. The analogy holds for the direction (↓ marża, ↑ bilans) and
+stops at the VAT plane.
+
+Accepted consequence, and the one thing to tell the owner: on odpuszczona robocizna he must enter
+the figure he wants taken off the client's bill — if he is thinking brutto, he types brutto. The app
+will not gross it up for him.
+
+This resolves consequence 3 below (face value was the reading it pointed at): no transaction figure
+ever cuts the VAT base of a kosztorys figure.
 
 ## Blocked on EX-555 (2026-08-12)
 
@@ -70,9 +82,9 @@ Re-verify this plan against the post-EX-555 shape before implementing. Four cons
 2. **Scope shrinks: strata does NOT enter `SummaryReadingT`.** That pair is robocizna + rabat, both
    kosztorys-sourced. Strata rides alongside like materiały and wpłaty, so the v1↔v2 reconciliation
    never compares it and the false-mismatch risk noted below no longer applies.
-3. **The VAT assumption weakens.** After EX-555 the netto robocizna base comes from the kosztorys, so
-   deducting strata pre-VAT means a transfer figure cutting the VAT base of a kosztorys figure —
-   the two-planes seam `lessons.md` warns about. Strengthens the face-value reading instead.
+3. ~~**The VAT assumption weakens.**~~ **Resolved above** — strata deducts at face value, so no
+   transaction figure ever cuts the VAT base of a kosztorys figure. The two-planes seam this
+   consequence warned about does not arise.
 4. ~~Same double-counting family (id 2774, a rabat entered as a `CORRECTION`).~~ **Dead** — 2774 is
    cancelled on prod (`cancelled = t`), as is `OTHER_DEPOSIT` 1196. Both looked live only because the
    local DB and `dumps/dump-latest.sql` were stale. Nothing to coordinate here.
