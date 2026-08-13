@@ -36,10 +36,10 @@ type PropsT = {
   settlementMode: SettlementModeT
   onSettlementModeChange?: (mode: SettlementModeT) => void
   isSavingSettings?: boolean
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   doZaplaty: MoneyPairT
   materials: MaterialsT
-  wplatyNet: number
+  depositsTotal: number
   rabatAmount: number
   reconciliation: KosztorysReconciliationT
   settlementVerdict: SettlementPlaneVerdictT
@@ -66,10 +66,10 @@ export function SummaryOverviewTab({
   settlementMode,
   onSettlementModeChange,
   isSavingSettings = false,
-  laborCostsNetFromKosztorys,
+  laborCostsNet,
   doZaplaty,
   materials,
-  wplatyNet,
+  depositsTotal,
   rabatAmount,
   reconciliation,
   settlementVerdict,
@@ -89,7 +89,7 @@ export function SummaryOverviewTab({
   const mixed =
     settlementMode === 'MIXED'
       ? computeMixedSettlement(
-          laborCostsNetFromKosztorys,
+          laborCostsNet,
           materials,
           vatRate,
           paidNet,
@@ -100,7 +100,7 @@ export function SummaryOverviewTab({
   const settlementGroups = buildSettlementGroups({
     mixed,
     doZaplaty,
-    wplatyNet,
+    depositsTotal,
     vatRate,
   })
   // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the
@@ -132,7 +132,7 @@ export function SummaryOverviewTab({
         <div className="flex flex-col gap-y-4">
           <SettlementSummary
             investmentId={investmentId}
-            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+            laborCostsNet={laborCostsNet}
             materialsBilled={materialsBilled}
             settlementGroups={settlementGroups}
             rabatAmount={rabatAmount}
@@ -145,7 +145,7 @@ export function SummaryOverviewTab({
         {showPie && (
           <SlicePie
             slices={costTotalsPieSlices(
-              sumaPracPreRabat(laborCostsNetFromKosztorys, rabatAmount),
+              sumaPracPreRabat(laborCostsNet, rabatAmount),
               materialsBilled,
             )}
             formatValue={formatNet}

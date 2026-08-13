@@ -44,9 +44,11 @@ export function SectionHeaderCell({
 }) {
   const itemCount = context.figures.get(rowData.sectionId) ?? 0
   const { onRename } = context
+  const collapsed = context.collapsedSectionIds.has(rowData.sectionId)
+  const toggle = () => context.onToggleCollapsed(rowData.sectionId)
+  const title = collapsed ? 'Rozwiń sekcję' : 'Zwiń sekcję'
 
   if (slot === 'label') {
-    const collapsed = context.collapsedSectionIds.has(rowData.sectionId)
     const Chevron = collapsed ? ChevronRight : ChevronDown
     return (
       // The whole band (not just the chevron) is the toggle target — rename stays reachable by
@@ -54,13 +56,13 @@ export function SectionHeaderCell({
       <div
         role="button"
         tabIndex={0}
-        title={collapsed ? 'Rozwiń sekcję' : 'Zwiń sekcję'}
+        title={title}
         aria-expanded={!collapsed}
-        onClick={() => context.onToggleCollapsed(rowData.sectionId)}
+        onClick={toggle}
         onKeyDown={(event) => {
           if (event.key !== 'Enter' && event.key !== ' ') return
           event.preventDefault()
-          context.onToggleCollapsed(rowData.sectionId)
+          toggle()
         }}
         className="hover:bg-accent/50 flex size-full cursor-pointer items-center gap-2 px-2 text-lg font-semibold"
       >
@@ -86,5 +88,7 @@ export function SectionHeaderCell({
     )
   }
 
-  return <div className="size-full" />
+  // The blank cells toggle too, so any point on the band row works — keyboard/aria stay on the label
+  // cell alone, which is the one control.
+  return <div aria-hidden title={title} onClick={toggle} className="size-full cursor-pointer" />
 }

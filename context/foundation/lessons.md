@@ -18,7 +18,7 @@
 
 ## A parity test must run the REAL per-surface assembly on REAL data — a shared stand-in is false confidence
 
-- **Context**: Any figure shown in more than one place computed by more than one code path — here the investor `bilans`/`marża` on the investments listing (`lib/queries/investments.ts` → `calculateBalance`/`calculateMargin`) vs the detail/report page (`financial-stats` → `ToggleStatButtons` interactive sum + `calculateMargin`) vs print/export (`lib/export/header-fields.ts`). Two functions are even both named `calculateBalance` (a static formula vs a sum-of-visible-cards). Applies to any future change touching these figures.
+- **Context**: Any figure shown in more than one place computed by more than one code path — here the investor `bilans`/`marża` on the investments listing (`lib/queries/investments.ts` → `calculateBalance`/`calculateMargin`) vs the detail/report page (`financial-stats` → `ToggleStatButtons` interactive sum + `calculateMargin`). A third surface — print/export — computed the same figure with its own `calculateBalance` until EX-672 deleted it; two functions of that name (a static formula vs a sum-of-visible-cards) is what the drift below turns on, and the parity spec now inlines the sum-of-visible-cards side. Applies to any future change touching these figures.
 - **Problem**: Equality between independently-assembled copies of the same figure is an unenforced coincidence that decays on every change. We shipped a "parity test" that compared `extractFigures ↔ extractFigures` — a helper **no page uses** — so it stayed green while the listing and detail pages disagreed by hundreds of zł on 7 real investments (legacy un-categorised corrections: counted by the listing's `totalMaterialCosts`, absent from the detail's category-card sum). Repeatedly declared "verified / can't break" from reasoning about the wrong layer; only real/legacy data exposed the gap. Also mis-stated the duplication ("4–6 places") from memory instead of grep (truth: marża = 1 formula, 3 call sites incl. an orphaned `extractFigures`; bilans = 2 legitimate algorithms — the detail's interactive toggle vs the listing's static formula).
 - **Rule**: (1) A parity/regression test must call the **actual functions the surface renders**, on **real data** (gated DB test), not a stand-in. (2) Prove it **red** — it must fail when you break the real thing; a test that's only ever green may be tautological. (3) A _legitimate_ difference (interactive toggle vs static formula) is fine — but then assert the invariant (default/all-visible == formula) with a test; don't assume. (4) Never claim "verified" without an executable red→green on the real path. (5) Count call sites with `grep`, never from memory. (6) Consolidate duplicated assembly into one function that takes the whole `financials` object (`calculateBalance(financials)`, `calculateMargin(financials)`) — no long positional-arg lists, no vaguely-named orphan bundles.
 - **Applies to**: plan, plan-review, implement, impl-review, tdd, simplify
@@ -220,11 +220,11 @@
 - **Rule**: Translate at the boundary and never again. A DB enum value, a sheet label, a third-party payload key, a URL segment — each is frozen exactly where it is serialized; the first identifier that touches it takes the **domain** name, not the wire name. When a wrapper renames an already-correct English field into the local dialect (`AS balance` → `{ saldo }`), that wrapper is the defect, not the callers downstream of it. Corollary for audits: "we can't change it, it's in the DB" is a claim about one string — verify it against `src/collections` / `src/migrations` before accepting it as cover for a family of identifiers (here: zero hits for every drift stem).
 - **Applies to**: code-review, impl-review, simplify, plan, rule-authoring
 
-## A print header that falls back to "all fields" degrades silently when its selector is removed — record the degradation, or it gets "fixed"
+## A consumer with an empty-means-everything fallback degrades silently when the store's only writer goes — record the degradation, or it gets "fixed"
 
-- **Context**: `investment-summary-panel` (2026-07-26). Under `?widok=v2`, `/inwestycje/[id]` stops rendering `FinancialStats`; the summary panel carries the client figures and an owner-only strip carries the rest. The tile block was also the only UI writing `header-fields-store`. (`?widok=v1` is the unchanged page and keeps the dynamic bilans.)
-- **Problem**: `print-button.tsx:24-36` reads the visibility store and, when it is **empty**, passes every `headerField` through. With no tiles on the page the store is now always empty, so the printout takes the all-fields branch unconditionally: the header prints complete, but the bilans it shows is **static** — the deselect-a-tile-and-watch-the-bilans-move affordance is gone from this page. Nothing errors and nothing looks broken, so the next reader is likely to read the always-empty store as a bug and "restore" it.
-- **Rule**: When you remove the only writer of a store that another feature reads with an empty-means-everything fallback, the fallback stops being a fallback and becomes the behavior — say so in writing at the moment you remove it. Here it is **accepted, not a defect**: the owner wanted the tiles off this page, `/raporty` still renders `FinancialStats` with the dynamic bilans, and a static header is the correct trade. A silent always-default branch is the kind of thing a code review flags as dead code and deletes.
+- **Context**: `investment-summary-panel` (2026-07-26). Under `?widok=v2`, `/inwestycje/[id]` stops rendering `FinancialStats`; the summary panel carries the client figures and an owner-only strip carries the rest. The tile block was also the only UI writing `header-fields-store`. (`?widok=v1` is the unchanged page and keeps the dynamic bilans.) **EX-672 (2026-08-12) deleted the concrete subject** — print, CSV and the store are gone — so the paragraphs below are the worked example, not live behavior; the rule outlives them.
+- **Problem**: the print button read the visibility store and, when it was **empty**, passed every header field through. With no tiles on the page the store was always empty, so the printout took the all-fields branch unconditionally: the header printed complete, but its bilans was **static** — the deselect-a-tile-and-watch-the-bilans-move affordance was gone from that page. Nothing errored and nothing looked broken, so the next reader was likely to read the always-empty store as a bug and "restore" it.
+- **Rule**: When you remove the only writer of a store that another feature reads with an empty-means-everything fallback, the fallback stops being a fallback and becomes the behavior — say so in writing at the moment you remove it. In that case it was **accepted, not a defect**: the owner wanted the tiles off that page and a static header was the correct trade. A silent always-default branch is the kind of thing a code review flags as dead code and deletes.
 - **Applies to**: implement, code-review, simplify
 
 ## A guard that fails on the ordinary path teaches people to silence it — scope its invalidation to the entity that actually moved
@@ -566,7 +566,7 @@
 ## A server action that accepts a caller-supplied `Where` can never be relaxed for a public surface
 
 - **Context**: EX-569 put a bulk invoice download on the unauthenticated kosztorys share path. The
-  obvious move was to reuse the transfers table's export action, `fetchFilteredTransfers`.
+  obvious move was to reuse the transfers table's bulk-fetch action, `fetchFilteredTransfers`.
 - **Problem**: That action takes a `Where` from the caller with no investment scoping — its only
   scope check is `requireAuth`. Dropping the auth to serve a public page would hand anyone the entire
   transfers table, not just the invoices of one investment.
@@ -574,7 +574,7 @@
   the query. If the _caller_ supplies the filter, the auth check is the only bound and the action is
   not reusable — route around it (server-render the rows into props, or write a scoped read that takes
   an id, not a `Where`).
-- **Applies to**: `src/lib/actions/export.ts`, and any `'use server'` read whose parameter is a query
+- **Applies to**: `src/lib/actions/fetch-transfers-for-invoices.ts`, and any `'use server'` read whose parameter is a query
   rather than an identifier.
 
 ## An exhaustiveness assertion only protects while both sides are authored independently
@@ -1058,3 +1058,82 @@ broken a balance that currently reconciles.
 invariant that place holds. Identical arithmetic under a different closure rule is a different
 defect, and the shared-looking line is a coincidence, not a duplication. (This one became EX-670 —
 an owner decision, not a fix.)
+
+## An optional config field hides its own death — `tsc` stays green while pages compute into the void
+
+`TransferTableConfigT` carried three optional fields (`headerFields`, `totalPayouts`,
+`context`/`contextId`) that four pages built and nobody read. Because they were optional, deleting the
+reader never broke the writer: the pages kept running aggregate queries and formatting figures that
+went nowhere, and the compiler had nothing to say. EX-672 removed one such reader (print) and found
+two more fields already long dead in the same type.
+
+**The rule.** Optionality is what lets a config field outlive its consumer, so when you delete the
+consumer, gate the producer cleanup on **grep + `dead-code-scanner`, not on `tsc`**. A green typecheck
+after removing a reader proves nothing about whether its writers are now dead code. The same asymmetry
+applies to any optional prop or optional payload key — deleting the read end is silent by
+construction.
+
+## Parking two features' buttons in one component makes one feature's data the other's visibility gate
+
+Print, CSV and invoice download all lived in `TransferExportToolbar`, and the toolbar was mounted on
+`headerFields` — **print's** data. So invoice download appeared exactly where print's data happened to
+be built, and was absent from the manager dashboard by accident rather than by decision. Deleting
+print as the ticket described would have silently dropped invoice download from four pages.
+
+**The rule.** When a container renders buttons for more than one feature, its mount condition belongs
+to whichever feature it names — every other feature inside it is gated on a condition nobody chose.
+Before deleting such a container, list its children and give each surviving one its own explicit
+condition (here: `invoiceDownload?: boolean`). Splitting the buttons apart is not enough if the shared
+gate survives the split — that is exactly what an earlier refactor did here and why the trap was still
+live.
+
+## Hiding a form field in JSX does not clear it — the value ships anyway
+
+The deposit form seeded `investment` from the URL into `defaultValues`, hid the picker behind a JSX
+condition when the type changed, and `toData` still submitted the whole value object. That is where
+the three garbage `OTHER_DEPOSIT` rows carrying an investment came from — nobody ever saw the field
+they filled in. The identical shape leaked a stale `vatPlane: 'NET'` onto deposit types that must not
+carry a VAT plane; `resetField` only reset it back to that same seeded default.
+
+**The rule.** A type-conditional field owes **two** edits, not one: hide it _and_ drop it from the
+submitted payload (clear on the type change, or strip in `toData`). A hidden field is a field the user
+cannot see and therefore cannot correct — it is strictly worse than a visible wrong value. And when a
+form both seeds a default from the URL and resets on a control change, `resetField` restores the seed;
+"reset" is not "clear".
+
+## An action spec with a mocked writer can assert that a forbidden shape SUCCEEDS
+
+`transfer-actions.test.ts` sent `investment: 1` on `COMPANY_FUNDING` / `OTHER_DEPOSIT` and asserted
+`success: true`, with `payload.create` mocked — so the `beforeValidate` hook never ran. Adding the
+guard in the hook left both tests **green while they pinned the illegal shape as accepted**. The suite
+was not silent about the change; it was actively arguing for the bug.
+
+**The rule.** Before choosing an enforcement layer, grep the specs that already exercise the shape you
+are about to forbid and read what they assert. A spec that mocks the layer holding the new rule cannot
+observe it — it must be rewritten to assert rejection, or the rule needs a second seat above the mock.
+Related: enforcing in SQL was disqualified here for the mirror-image reason — two DB specs deliberately
+insert the forbidden shape by raw SQL, and a CHECK constraint would have broken them.
+
+## A total and the list it summarises must come from ONE query — and after you unify them, an equality test is a tautology
+
+The wpłaty figure reached one component through three hosts. Two passed a SQL aggregate (`totalIncome`,
+bucket `income`) **and** the deposit list side by side and trusted them to agree; the third — the client
+share — passed the aggregate and no list at all, so `bucketDepositsByPlane([])` returned zeros and „Do
+zapłaty" was overstated by the entire amount paid. Nobody had to make a mistake: the type let a host
+supply the total without the rows, and four comments cheerfully claimed the three hosts were assembled
+identically.
+
+**The rule.** When a component renders both a figure and the rows behind it, the figure is **derived
+from the rows in the component**, not delivered alongside them. Delete the redundant prop rather than
+picking a winner — a drift you cannot represent is one you cannot ship, and a missing required list is
+a compile error instead of a silently empty table.
+
+**The corollary about the guard.** Once all hosts read the same list, a test asserting `Σ list ===
+aggregate` pins its own implementation — green by construction, green also on broken data. The real
+precondition here was a **data** invariant (`COMPANY_FUNDING` / `OTHER_DEPOSIT` never carry an
+`investment_id`, EX-557), so that is what the guard asserts, on the persisted row. Guard the cause that
+makes the two definitions coincide, not the coincidence.
+
+**Do not "fix" the aggregate's definition to match.** `totalIncome` is a **company-level** figure —
+`/raporty` needs both legacy deposit types inside bucket `income`. It is only correct per-investment
+because of the EX-557 invariant, and its name says none of that.

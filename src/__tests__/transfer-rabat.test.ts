@@ -23,7 +23,9 @@ describe('RABAT transfer type', () => {
     expect(needsSourceRegister('RABAT')).toBe(false)
   })
 
-  it('appears in the transaction transfer dialog', () => {
-    expect(TRANSACTION_TRANSFER_TYPES).toContain('RABAT')
+  it('is no longer offered by the transaction transfer dialog', () => {
+    // The write-switch (EX-555): rabat comes from the kosztorys, so booking one by hand would
+    // double-count against it. Every assertion above still holds — the type is live for legacy rows.
+    expect(TRANSACTION_TRANSFER_TYPES).not.toContain('RABAT')
   })
 })

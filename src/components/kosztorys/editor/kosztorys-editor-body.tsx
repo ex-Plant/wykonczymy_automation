@@ -56,8 +56,7 @@ export function KosztorysEditorBody({
   investmentName,
   laborCostsNetFromTransactions,
   investmentRabat,
-  // Defaulted here rather than relayed: the panel requires it, `KosztorysEditorDataT` doesn't.
-  depositTransactions = [],
+  depositTransactions,
   preview = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
@@ -81,7 +80,7 @@ export function KosztorysEditorBody({
     totalNet,
     sumaPracNet,
     rabatClientNet,
-    laborCostsNetFromKosztorys,
+    laborCostsNet,
     subcontractorDue,
     sort,
     search,
@@ -261,7 +260,7 @@ export function KosztorysEditorBody({
             workers={workers}
             subcontractorDue={subcontractorDue}
             totalNet={totalNet}
-            laborCostsNetFromKosztorys={laborCostsNetFromKosztorys}
+            laborCostsNet={laborCostsNet}
             sectionSubtotals={progressSubtotals}
             rabatAmount={rabatClientNet}
             reconciliation={reconciliation}

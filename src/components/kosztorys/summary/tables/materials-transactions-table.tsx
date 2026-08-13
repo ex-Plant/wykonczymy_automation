@@ -9,7 +9,7 @@ import { SimpleTooltip } from '@/components/ui/tooltip'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { useInvoiceZip } from '@/hooks/use-invoice-zip'
-import { buildInvoiceArchiveName } from '@/lib/export/invoice-zip'
+import { buildInvoiceArchiveName } from '@/lib/invoices/invoice-zip'
 import { firstNoteLine } from '@/lib/utils/invoice-note'
 import { formatNet } from '@/lib/kosztorys/format'
 import {

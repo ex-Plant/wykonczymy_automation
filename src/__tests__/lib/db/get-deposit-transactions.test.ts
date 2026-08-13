@@ -65,8 +65,8 @@ describe.skipIf(!ENV_READY)('getDepositTransactionsForInvestment (DB)', () => {
     expect(rows).toHaveLength(2)
 
     // The Σ the Podsumowanie „Wpłaty" figure sums: 5000 + 3000, NOT +7000 (company) or +1000 (other).
-    const wplatyNet = rows.reduce((sum, row) => sum + row.amount, 0)
-    expect(wplatyNet).toBe(8000)
+    const depositsNet = rows.reduce((sum, row) => sum + row.amount, 0)
+    expect(depositsNet).toBe(8000)
 
     // vat_plane survives per row (GROSS marked, legacy null) for the tryb-mieszany split.
     expect([...rows].map((row) => row.vatPlane).sort()).toEqual(['GROSS', null])

@@ -8,7 +8,10 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
-import { fetchMaterialTransactionsForInvestment } from '@/lib/queries/investment-transactions'
+import {
+  fetchDepositTransactionsForInvestment,
+  fetchMaterialTransactionsForInvestment,
+} from '@/lib/queries/investment-transactions'
 import {
   deriveWholeInvestmentFinancials,
   fetchWholeInvestmentFinancials,
@@ -33,19 +36,25 @@ const KOSZTORYS_TAGS = [
 
 // Unexported: the only two ways in are the guarded entrances below. This one is deliberately
 // authorization-free, so exporting it would hand any caller an unauthenticated read of a kosztorys.
-// Mirrors the admin page's fetches (kosztorys_v2/page.tsx) so the client body reads the same figures.
 async function buildPreviewKosztorysEditorData(
   investmentId: number,
 ): Promise<KosztorysEditorDataT> {
   const payload = await getPayload({ config })
-  const [tree, investment, financialsSource, expenseCategories, materialTransactions] =
-    await Promise.all([
-      buildKosztorysTree(investmentId),
-      payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
-      fetchWholeInvestmentFinancials(investmentId),
-      fetchExpenseCategories(),
-      fetchMaterialTransactionsForInvestment(investmentId),
-    ])
+  const [
+    tree,
+    investment,
+    financialsSource,
+    expenseCategories,
+    materialTransactions,
+    depositTransactions,
+  ] = await Promise.all([
+    buildKosztorysTree(investmentId),
+    payload.findByID({ collection: 'investments', id: investmentId, depth: 0 }),
+    fetchWholeInvestmentFinancials(investmentId),
+    fetchExpenseCategories(),
+    fetchMaterialTransactionsForInvestment(investmentId),
+    fetchDepositTransactionsForInvestment(investmentId),
+  ])
   const { financials, materialyBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
@@ -59,10 +68,10 @@ async function buildPreviewKosztorysEditorData(
     materialsGrossBase: financials.materialsGrossBase,
     materialsNetBilled: financials.materialsNetBilled,
     materialyBreakdown,
-    wplatyNet: financials.totalIncome,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
     investmentRabat: financials.totalRabat,
     materialTransactions,
+    depositTransactions,
   }
 }
 

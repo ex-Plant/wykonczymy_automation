@@ -1,7 +1,8 @@
-import type { InvestmentFinancialsMapT } from '@/lib/queries/balances'
+import type { InvestmentFinancialsMapT, KosztorysClientTotalsMapT } from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
+import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import {
   billedCategoryCosts,
   billedMaterials,
@@ -18,9 +19,15 @@ import type { InvestmentRowT } from '@/types/table-rows'
 export function shapeInvestments(
   investments: InvestmentRefT[],
   financialsRecord: InvestmentFinancialsMapT,
+  kosztorysTotalsRecord: KosztorysClientTotalsMapT = {},
 ): InvestmentRowT[] {
   return investments.map((inv) => {
-    const financials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS
+    const transactionFinancials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS
+    // Robocizna and rabat come from the kosztorys, full stop — no kosztorys reads as zero. Every
+    // other figure here is a cash movement the kosztorys knows nothing about and stays
+    // transaction-sourced.
+    const reading = readingFromKosztorys(kosztorysTotalsRecord[String(inv.id)])
+    const financials = financialsOnReading(transactionFinancials, reading)
     const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
     const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
     // The two-bucket form rather than Σ of the columns: equal to the grosz, but it is the same call
@@ -48,10 +55,9 @@ export function shapeInvestments(
       categoryCosts: billedCategories,
       totalSettled: financials.totalSettled,
       balance,
-      // The transfers-plane labour is the right VAT base for a bilans built from transfers — the
-      // Podsumowanie grosses its own kosztorys-plane robocizna, and the two planes are disconnected
-      // by standing ruling. Where both are in sync the figures coincide, which is what makes them
-      // comparable on screen; it is not an equality this code establishes.
+      // The VAT base must be the SAME pair the netto bilans was built from. Grossing a
+      // kosztorys-sourced bilans with the transfers robocizna would price the VAT on work the bilans
+      // never counted, so the brutto figure would stop being the netto one plus its tax.
       balanceGross: grossBalance(
         balance,
         inv.vatRate,

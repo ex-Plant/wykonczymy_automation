@@ -9,7 +9,7 @@ import { fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { buildTransferRows } from '@/lib/queries/fetch-transfer-rows'
 import { TransferDataTable } from '@/components/transfers/transfer-data-table'
 import { perfStart } from '@/lib/perf'
-import type { TransferTableConfigT } from '@/types/export'
+import type { TransferTableConfigT } from '@/components/transfers/transfer-table-config'
 
 type TransferTableServerPropsT = {
   config: TransferTableConfigT

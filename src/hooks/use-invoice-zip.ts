@@ -2,13 +2,13 @@
 
 import { useRef, useTransition } from 'react'
 import { toast } from 'react-toastify'
-import { triggerDownload } from '@/lib/export/download'
+import { triggerDownload } from '@/lib/utils/trigger-download'
 import {
   buildInvoiceZipMessage,
   flattenInvoiceRows,
   type InvoiceZipFileT,
   type InvoiceZipRowT,
-} from '@/lib/export/invoice-zip'
+} from '@/lib/invoices/invoice-zip'
 import { toastMessage } from '@/lib/utils/toast'
 
 // Browsers cap concurrent connections per origin; larger batches just queue and stall the progress toast.

@@ -147,6 +147,7 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 - **Kosztorys data is throwaway until dogfooding merges to `main`** (owner, 2026-07-16). No kosztorys row — item, stage progress, snapshot, preset — is production data yet. So a change that drops a column, invalidates a snapshot, or breaks a preset owes **no data-preservation path**: delete the stale rows and move on. Don't plan a backfill, a compat shim, or a two-step migration for data nobody has. **Scope: kosztorys only** — transfers, investments, and registers on the same DB are restored from prod dumps and are real. **Delete this bullet when dogfooding lands on `main`**; after that the rules above apply unqualified.
 - The local app points at the docker Postgres on 5433 (`DB_POSTGRES_URL`, db `wykonczymy-db`) — a copy restored from Neon dumps: `pnpm db:dump` (prod → `dumps/dump-latest.sql`, also run by the pre-push hook) and `pnpm db:import` (dump → local). Refreshable, but confirm before wiping it — a restore loses anything entered locally since the last dump.
 - The **E2E suite** runs against an isolated `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, db `wykonczymy-test`), never the dev DB. Populate/reset its fixtures with `pnpm db:import:test` (same dump → test DB). `pnpm test:e2e` starts the container (`--wait` on its healthcheck) but does **not** import — run `db:import:test` once after a fresh volume or to reset.
+- **`pnpm db:import:test` must be followed by `pnpm seed:kosztorys:test`.** Prod dumps carry zero kosztorys rows, and `pnpm test:parity`'s dataset floor now fails closed on that — with no kosztorys in `db-test` every listing figure reads zero robocizny and the parity guard would pass green having tested nothing about it.
 - `GOOGLE_SERVICE_ACCOUNT_JSON` and `KOSZTORYS_TEMPLATE_SHEET_ID` in `.env` are real working credentials — Google Sheets writes hit live data.
 - Never `git push`; a human pushes to remotes.
 
@@ -214,7 +215,11 @@ Non-obvious rules:
 - `RABAT` (rabat) is a labour discount: **no source register**, positive amount, requires an investment. It hits **both** figures — lowers `marża` and raises `bilans` (the client owes less) — unlike `CORRECTION`, which moves only the balance.
 - `LOSS` (strata) is a company-absorbed cost: **no source register**, positive amount, investment **optional**. It only lowers `marża`; `bilans` is untouched — unlike `RABAT`, which moves both.
 - Cancellation is an audit trail: the original is marked `cancelled: true`, a new `CANCELLATION` row links back to it.
-- Cash register balances are recalculated via Payload hooks on transfer create and delete.
+- Cash register balances are **not** stored — they are computed on read by cached functions. The transfer hooks (`hooks/transfers/recalculate-balances.ts`) only revalidate cache tags; nothing is written back.
+
+**`LABOR_COST` and `RABAT` are no longer bookable (EX-555).** The transfer dialog stopped offering them: robocizna and rabat come from the **kosztorys**, on the investments listing and in the v2 Podsumowanie/Marża alike. Both types stay live in every other respect — the enum, existing rows, history, filters, cancellation and sheet sync are untouched.
+
+**There is no fallback, and no figure declares its source.** No kosztorys means robocizna 0 zł and rabat 0 zł on v2 and on the listing — an empty kosztorys is an answer, not a question forwarded to the transfers. **v1 vs v2 IS the source choice**: v1 renders the transactions plane and is where legacy robocizna booked as `LABOR_COST`/`RABAT` stays readable until someone enters that work into the kosztorys. So v1 and the listing legitimately disagree for such an investment — that gap is the to-do list, not a defect, and it is not backfilled. On the investment page the reconciliation says the same thing out loud: an empty kosztorys against booked transfers screams a mismatch until the work is entered.
 
 How the financial figures (marża / materiały / robocizna / korekty) connect: `context/foundation/investment-financials-and-discount.md`.
 

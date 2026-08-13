@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { readingFromKosztorys, readingFromTransactions } from '@/lib/kosztorys/summary-reading'
+import {
+  financialsOnReading,
+  readingFromKosztorys,
+  readingFromTransactions,
+} from '@/lib/kosztorys/summary-reading'
 import type { KosztorysClientTotalsT } from '@/lib/kosztorys/settlement-client-totals'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
@@ -20,11 +24,11 @@ const clientTotals = {
 describe('summary reading projection', () => {
   it('lands both readings on the same POST-rabat axis', () => {
     expect(readingFromTransactions(financials)).toEqual({
-      laborCostsNetFromKosztorys: 92_000,
+      laborCostsNet: 92_000,
       rabatAmount: 8_000,
     })
     expect(readingFromKosztorys(clientTotals)).toEqual({
-      laborCostsNetFromKosztorys: 85_000,
+      laborCostsNet: 85_000,
       rabatAmount: 5_000,
     })
   })
@@ -33,13 +37,59 @@ describe('summary reading projection', () => {
     const v1 = readingFromTransactions(financials)
     const v2 = readingFromKosztorys(clientTotals)
 
-    expect(v1.laborCostsNetFromKosztorys + v1.rabatAmount).toBe(financials.totalLaborCosts)
-    expect(v2.laborCostsNetFromKosztorys + v2.rabatAmount).toBe(clientTotals.sumaPracNet)
+    expect(v1.laborCostsNet + v1.rabatAmount).toBe(financials.totalLaborCosts)
+    expect(v2.laborCostsNet + v2.rabatAmount).toBe(clientTotals.sumaPracNet)
   })
 
   it('reports no rabat when there is none to report', () => {
     expect(
       readingFromKosztorys({ sumaPracNet: 90_000, rabatClientNet: 0 } as KosztorysClientTotalsT),
-    ).toEqual({ laborCostsNetFromKosztorys: 90_000, rabatAmount: 0 })
+    ).toEqual({ laborCostsNet: 90_000, rabatAmount: 0 })
+  })
+})
+
+// No kosztorys is an ANSWER, not a question to forward to the transfers. The two surfaces on this
+// reading — the Podsumowanie panel and the investments listing — must both report zero, however much
+// robocizna the investment still carries as legacy LABOR_COST rows. v1 is where those are read.
+describe('readingFromKosztorys without a kosztorys', () => {
+  it('reads zero rather than the transactions plane', () => {
+    expect(readingFromKosztorys(null)).toEqual({ laborCostsNet: 0, rabatAmount: 0 })
+    expect(readingFromKosztorys(undefined)).toEqual({ laborCostsNet: 0, rabatAmount: 0 })
+  })
+
+  it('cannot be told apart from a kosztorys that sums to zero', () => {
+    const nothingExecuted = { sumaPracNet: 0, rabatClientNet: 0 } as KosztorysClientTotalsT
+
+    expect(readingFromKosztorys(nothingExecuted)).toEqual(readingFromKosztorys(null))
+  })
+})
+
+// The swap both the listing rows and v2's Marża tab apply before calling calculateBalance /
+// calculateMargin. Its whole job is to move exactly two figures and nothing else.
+describe('financialsOnReading', () => {
+  it('restores the pre-rabat robocizna the formulas expect', () => {
+    const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
+
+    expect(swapped.totalLaborCosts).toBe(90_000)
+    expect(swapped.totalRabat).toBe(5_000)
+  })
+
+  it('leaves every cash-movement figure alone', () => {
+    // The guard against a swap that quietly rebases materiały or wypłaty onto the kosztorys plane,
+    // which the kosztorys has no figure for at all.
+    const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
+    const { totalLaborCosts: _labor, totalRabat: _rabat, ...untouched } = swapped
+    const {
+      totalLaborCosts: _originalLabor,
+      totalRabat: _originalRabat,
+      ...originalUntouched
+    } = financials
+
+    expect(untouched).toEqual(originalUntouched)
+  })
+
+  it('is a no-op on the transactions reading', () => {
+    // v1 must survive the seam byte-identical: 84 of 96 investments have no kosztorys.
+    expect(financialsOnReading(financials, readingFromTransactions(financials))).toEqual(financials)
   })
 })

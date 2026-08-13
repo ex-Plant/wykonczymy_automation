@@ -148,9 +148,9 @@ describe('buildMaterialyBreakdown', () => {
   })
 })
 
-// The investment header renders „Bilans inwestora" as the SUM of these tiles, while every other
-// surface (listing, export, print) calls calculateBalance. A term that gains a place in the formula
-// but no tile makes the two readings disagree silently — that is the regression this pins.
+// The investment header renders „Bilans inwestora" as the SUM of these tiles, while the listing
+// calls calculateBalance. A term that gains a place in the formula but no tile makes the two
+// readings disagree silently — that is the regression this pins.
 describe('buildFinancialFields — Σ tiles reconciles with calculateBalance', () => {
   const cats = [
     { id: 1, name: 'Materiały budowlane' },

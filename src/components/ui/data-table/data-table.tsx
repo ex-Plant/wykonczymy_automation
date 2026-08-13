@@ -35,11 +35,7 @@ type DataTablePropsT<TData> = {
   getRowClassName?: (row: TData) => string
   /** Summary `<tr>` pinned below the rows. Receives the visible column count so it can span them. */
   footer?: (colCount: number) => React.ReactNode
-  toolbar?: (
-    table: Table<TData>,
-    columnVisibility: VisibilityState,
-    sorting: SortingState,
-  ) => React.ReactNode
+  toolbar?: (table: Table<TData>, columnVisibility: VisibilityState) => React.ReactNode
   className?: string
 }
 
@@ -100,9 +96,7 @@ export function DataTable<TData>({
 
   return (
     <div className={cn('space-y-2', className)}>
-      {toolbar && (
-        <div className="flex items-center gap-2">{toolbar(table, columnVisibility, sorting)}</div>
-      )}
+      {toolbar && <div className="flex items-center gap-2">{toolbar(table, columnVisibility)}</div>}
       <div className="border-border overflow-x-auto rounded-lg border">
         {enableVirtualization ? (
           <VirtualizedTableBody

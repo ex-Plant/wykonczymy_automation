@@ -460,7 +460,7 @@ export function useKosztorysEditor({
   // NOT the „Do zapłaty" the UI shows — that one adds materiały and subtracts wpłaty
   // (computeDoZaplatyRM). This is robocizna alone, after rabat. Both total surfaces (the Sekcje Suma
   // block and the totals bar) read this one prop, so they can never disagree.
-  const laborCostsNetFromKosztorys = doneNet - globalRabatNet
+  const laborCostsNet = doneNet - globalRabatNet
 
   // revert-on-error: roll an optimistic field edit back to its pre-save value
   // (rows + diff snapshot) when the server rejects it. The "current === attempted" guard lives
@@ -1316,7 +1316,7 @@ export function useKosztorysEditor({
     itemsWithDiscountCount,
     isSavingSettings,
     subcontractorDue,
-    laborCostsNetFromKosztorys,
+    laborCostsNet,
     // toolbar / panel state
     setView,
     search,

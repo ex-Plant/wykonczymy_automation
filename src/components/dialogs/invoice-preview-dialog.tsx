@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/loader/spinner'
 import { useInvoiceZip } from '@/hooks/use-invoice-zip'
-import { buildInvoiceArchiveName, dedupeFilename } from '@/lib/export/invoice-zip'
+import { buildInvoiceArchiveName, dedupeFilename } from '@/lib/invoices/invoice-zip'
 import { isImageMime, isPdfMime, isPreviewableMime } from '@/lib/invoices/mime'
 import { splitExtension } from '@/lib/utils/append-short-id'
 import { today } from '@/lib/utils/date'

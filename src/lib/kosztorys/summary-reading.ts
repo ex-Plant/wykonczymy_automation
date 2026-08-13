@@ -6,30 +6,54 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
  * wypłaty and strata are cash movements the kosztorys knows nothing about, so they stay
  * transaction-sourced in both readings and never enter here.
  *
- * `laborCostsNetFromKosztorys` is POST-rabat and `rabatAmount` rides alongside it — the panel adds
- * them back where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that
- * same axis or the „Struktura kosztów" pie and the waterfall disagree between them.
+ * `laborCostsNet` is POST-rabat and `rabatAmount` rides alongside it — the panel adds them back
+ * where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that same
+ * axis or the „Struktura kosztów" pie and the waterfall disagree between them.
  */
 export type SummaryReadingT = {
-  laborCostsNetFromKosztorys: number
+  laborCostsNet: number
   rabatAmount: number
 }
 
 /** v1 — Σ LABOR_COST (pre-rabat, like `sumaPracNet`) less Σ RABAT. */
 export function readingFromTransactions(financials: InvestmentFinancialsT): SummaryReadingT {
   return {
-    laborCostsNetFromKosztorys: financials.totalLaborCosts - financials.totalRabat,
+    laborCostsNet: financials.totalLaborCosts - financials.totalRabat,
     rabatAmount: financials.totalRabat,
   }
 }
 
-/** v2 — the kosztorys client-view nets, the same pair the reconciliation compares against v1. */
-export function readingFromKosztorys({
-  sumaPracNet,
-  rabatClientNet,
-}: KosztorysClientTotalsT): SummaryReadingT {
+/**
+ * v2 and the investments listing — the kosztorys is the entire source. No kosztorys means zero
+ * robocizna and zero rabat; it never falls back to the transfers, because a figure that silently
+ * swaps its source is a figure nobody can read. Legacy robocizna still booked as transfers is read
+ * on **v1**, which exists for exactly that, until it is entered into the kosztorys.
+ */
+export function readingFromKosztorys(
+  clientTotals: KosztorysClientTotalsT | null | undefined,
+): SummaryReadingT {
+  const rabatAmount = clientTotals?.rabatClientNet ?? 0
   return {
-    laborCostsNetFromKosztorys: sumaPracNet - rabatClientNet,
-    rabatAmount: rabatClientNet,
+    laborCostsNet: (clientTotals?.sumaPracNet ?? 0) - rabatAmount,
+    rabatAmount,
+  }
+}
+
+/**
+ * The financials as the reading sees them: the robocizna/rabat pair swapped in, every cash-movement
+ * figure untouched. Exists so `calculateBalance` and `calculateMargin` keep taking one object — a
+ * switch threaded as parameters could be passed to one formula and forgotten at the other.
+ *
+ * `totalLaborCosts` is the PRE-rabat figure on both planes, which is why the reading's post-rabat
+ * robocizna gets its rabat added back here.
+ */
+export function financialsOnReading(
+  financials: InvestmentFinancialsT,
+  reading: SummaryReadingT,
+): InvestmentFinancialsT {
+  return {
+    ...financials,
+    totalLaborCosts: reading.laborCostsNet + reading.rabatAmount,
+    totalRabat: reading.rabatAmount,
   }
 }

@@ -15,7 +15,7 @@ export type SettlementGroupT = { caption?: string; axis: MoneyAxisT; rows: Settl
 type ArgsT = {
   mixed: MixedSettlementT | null
   doZaplaty: MoneyPairT
-  wplatyNet: number
+  depositsTotal: number
   vatRate: number
 }
 
@@ -29,7 +29,7 @@ type ArgsT = {
 export function buildSettlementGroups({
   mixed,
   doZaplaty,
-  wplatyNet,
+  depositsTotal,
   vatRate,
 }: ArgsT): SettlementGroupT[] {
   // One pool of wpłaty, one debt — one table. Wpłaty span both money tracks as a single centred cell
@@ -43,7 +43,7 @@ export function buildSettlementGroups({
         rows: [
           {
             label: 'Wpłaty',
-            line: faceValue(-wplatyNet),
+            line: faceValue(-depositsTotal),
             discount: true,
             linkToDeposits: true,
             span: true,

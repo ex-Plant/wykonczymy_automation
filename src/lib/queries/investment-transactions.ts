@@ -67,15 +67,6 @@ export async function fetchDepositTransactionsForInvestment(
 }
 
 /**
- * „Wpłaty" = Σ of exactly the rows the fetch above returns, i.e. INVESTOR_DEPOSIT only
- * (COMPANY_FUNDING / OTHER_DEPOSIT are legacy and stay out of client wpłaty). Lives next to that
- * fetch so the rule and its sum cannot drift apart across the surfaces that show both.
- */
-export function sumDepositAmounts(deposits: DepositTransactionRowT[]): number {
-  return deposits.reduce((sum, deposit) => sum + deposit.amount, 0)
-}
-
-/**
  * The individual materiały rows for the Podsumowanie's wydatki list — this investment's
  * INVESTMENT_EXPENSE + INVESTMENT_EXPENSE_NET + CORRECTION, both settled states, so the list can
  * split them into its three tabs (`partitionWydatkiRows` owns the rule and the labels).
