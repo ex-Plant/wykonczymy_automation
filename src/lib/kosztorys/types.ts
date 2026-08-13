@@ -152,15 +152,12 @@ export type KosztorysEditorDataT = {
   materialsGrossBase: number
   materialsNetBilled: number
   materialyBreakdown: MaterialyBreakdownRowT[]
-  // Company-plane material folded into robocizna, split per category. Optional because omitting it IS
-  // the gate: the client share never builds it.
-  settledBreakdown?: MaterialyBreakdownRowT[]
+  // Company-plane material folded into robocizna, split per category.
+  settledBreakdown: MaterialyBreakdownRowT[]
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
   laborCostsNetFromTransactions: number
   investmentRabat: number
-  // Σ LOSS — the cost the company absorbed, which the settlement deducts at face value. Travels as
-  // its own scalar rather than through `financials`, which is the ADMIN/OWNER gate: the client share
-  // must see its own debt come down without seeing wypłaty or marża.
+  // Σ LOSS — the cost the company absorbed, which the settlement deducts at face value.
   investmentLoss: number
   // Realized PAYOUTs per worker for the subcontractor summary block. Optional (default []) because the
   // two client-view share entry points never render that block and don't supply it.
@@ -175,11 +172,12 @@ export type KosztorysEditorDataT = {
   // Individual materiały rows for the Podsumowanie's wydatki list (data · typ · kwota), both settled
   // states. Required: every entry point serves this list, the client share path included.
   materialTransactions: MaterialTransactionRowT[]
-  // Company-plane transfer aggregates behind the „Marża" tab. Optional for the same gating reason as
-  // settledBreakdown, plus the ADMIN/OWNER check the page applies before passing it.
+  // Company-plane transfer aggregates behind the „Marża" tab. Optional only for the ROLE gate the
+  // investment page applies (a MANAGER gets no marża) — never as client-share stripping: both preview
+  // entrances pass it, so the preview and the owner's own panel compute from identical inputs.
   financials?: InvestmentFinancialsT
-  // Roster for the etap header's worker picker (EX-613). Optional for the same gating reason as
-  // settledBreakdown: the two client-share entry points never render a stage menu.
+  // Roster for the etap header's worker picker (EX-613). Optional on cost, not on visibility: the
+  // client-share entry points render no stage menu, so fetching the roster there buys nothing.
   workers?: WorkerRefT[]
 }
 
