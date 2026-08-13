@@ -198,8 +198,6 @@ function withResize(
   }
 }
 
-// Insert/move disabled under an active sort (no display_order mapping); delete disabled with a
-// reason (last item in a section, or a populated row) surfaced via tooltip.
 function RowActionsCell({
   rowData,
   opts,
@@ -232,7 +230,7 @@ function RowActionsCell({
 
   return (
     <KosztorysRowActionsMenu
-      sortScope={opts.sort?.scope ?? null}
+      sortActive={opts.sort != null}
       removeBlockReason={removeBlockReason}
       removeNeedsConfirm={removeNeedsConfirm}
       item={{

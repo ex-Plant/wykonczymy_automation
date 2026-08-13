@@ -22,7 +22,6 @@ import {
 import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
 import { SimpleTooltip } from '@/components/ui/tooltip'
-import type { SortScopeT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type OrderActionsT = {
@@ -43,9 +42,9 @@ type SectionActionsT = OrderActionsT & {
 }
 
 type PropsT = {
-  // The active sort's scope, or null for no sort. Insert + move have no meaning against a
-  // price-sorted view under either scope; the scope itself decides whether the order can be stored.
-  sortScope: SortScopeT | null
+  // Insert + move have no meaning against a sorted view — array position no longer mirrors
+  // display_order — so they go dead while any sort is on, whatever its scope.
+  sortActive: boolean
   // Why delete is blocked (only the empty-sheet floor now), or undefined if removable. Present →
   // delete disabled with the reason in a tooltip (disabled items are pointer-events-none, so a
   // native title never fires).
@@ -61,14 +60,13 @@ type PropsT = {
 }
 
 export function KosztorysRowActionsMenu({
-  sortScope,
+  sortActive,
   removeBlockReason,
   removeNeedsConfirm,
   item,
   onClearSheetMeasuredQty,
   section,
 }: PropsT) {
-  const sortActive = sortScope != null
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
   // The wrapper div is not decoration: a disabled item is pointer-events-none and would swallow the

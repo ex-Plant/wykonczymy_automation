@@ -14,20 +14,16 @@ type PropsT = {
   active: SortPickT | null
   onSort: (pick: SortPickT | null) => void
   // „Zapisz kolejność" — writes the sort showing right now into the stored order, so it survives
-  // clearing the sort. Absent in the read-only view, where the item does not appear at all. It sits
-  // in this menu because it bakes THIS menu's sort; from a column header there is no one section to
-  // aim at, so it covers every section at once.
+  // clearing the sort. Absent in the read-only view, where the item does not appear at all.
   onPersistOrder?: () => void
-  // Explanatory tooltip composed ONTO the trigger (not a wrapping element) — a second wrapping
-  // trigger would fight the dropdown for the click.
   tip?: string
 }
 
 export function SortHeader({ label, active, onSort, onPersistOrder, tip }: PropsT) {
   const Icon = active?.dir === 'asc' ? ArrowUp : active?.dir === 'desc' ? ArrowDown : ChevronsUpDown
 
-  // Scope is spelled out in each label instead of hiding behind a mode toggle: four commands, so
-  // direction and scope are picked in one gesture and no scope can be in force unnoticed.
+  // Four commands rather than a direction pair plus a scope toggle: direction and scope are picked
+  // in one gesture, and no scope can be in force unnoticed.
   function item(dir: SortDirT, scope: SortScopeT, text: string) {
     const DirIcon = dir === 'asc' ? ArrowUp : ArrowDown
     const on = active?.dir === dir && active.scope === scope
@@ -52,7 +48,7 @@ export function SortHeader({ label, active, onSort, onPersistOrder, tip }: Props
       {item('asc', 'section', 'Sortuj rosnąco zachowując sekcje')}
       {item('desc', 'section', 'Sortuj malejąco zachowując sekcje')}
       <DropdownMenuSeparator />
-      {item('asc', 'global', 'Sortuj rosnąco ')}
+      {item('asc', 'global', 'Sortuj rosnąco')}
       {item('desc', 'global', 'Sortuj malejąco')}
       <DropdownMenuSeparator />
       {onPersistOrder && (

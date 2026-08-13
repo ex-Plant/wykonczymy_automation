@@ -65,9 +65,7 @@ export type BuildV2ColumnsOptsT = {
   onReorderSection?: (sectionId: number, dir: 'up' | 'down') => void
   onInsertSection?: (sectionId: number, dir: 'above' | 'below') => void
   // „Zapisz kolejność": writes the active sort into display_order across every section, so the order
-  // survives clearing the sort. Lives in the column header menu, next to the sort it bakes — there is
-  // no per-section sort to bake, so there is no per-section variant either. Silent no-op without a
-  // sort — there is nothing to write then.
+  // survives clearing the sort. Silent no-op without a sort — there is nothing to write then.
   onPersistKosztorysOrder?: () => void
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
