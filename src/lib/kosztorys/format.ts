@@ -5,6 +5,12 @@
 export const formatNet = (n: number) =>
   (n + 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+// A quantity as prose, not as a grid figure: no fixed decimals, because „95" reads as the whole
+// number the owner typed while `formatNet` would render it „95,00" and invite the reader to look for
+// a precision that isn't there.
+export const formatQty = (n: number) =>
+  (n + 0).toLocaleString('pl-PL', { maximumFractionDigits: 3 })
+
 // A fraction (0.746) as a percentage; `null` (no denominator — see stageDoneFraction) renders as a
 // dash. Two precisions: integer for the dense grid cells, one decimal for the headline figures where
 // the whole kosztorys hangs on a single number.

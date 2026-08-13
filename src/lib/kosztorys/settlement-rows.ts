@@ -77,3 +77,50 @@ export function rowRemainingForView(
 export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStageT[]): boolean {
   return rowTotalQtyDone(row, stages, 'client') > (row.plannedQty ?? 0)
 }
+
+// Quantities are typed in m², mb and kpl, often to two decimals, so an exact `!==` would light up
+// half the kosztorys on float noise alone (0.1 + 0.2 ≠ 0.3). A hundredth of a unit is below what
+// anyone types and worth pennies at any real price — the money reconciliation's grosz-exact
+// tolerance is a different axis and does not transfer here.
+const QTY_TOLERANCE = 0.005
+
+export type MeasureDiscrepancyT = {
+  sheetQty: number
+  stageQty: number
+  qtyDiff: number
+  // What the difference is worth at the client price — the figure that says whether a rozjazd is
+  // worth chasing. Always the client plane: the sheet's own „Pomiar z natury" covers the whole
+  // offered scope, so the money beside it has to be the client's money too.
+  net: number
+}
+
+/**
+ * What the imported sheet claimed as „Pomiar z natury" against what the etapy actually say.
+ *
+ * `null` — including for a difference under the tolerance — means „nothing to answer for": either
+ * the sheet made no claim (never imported, a formula, or dismissed with „etapy są prawdą"), or the
+ * two agree. Anything else is a live rozjazd, and it shrinks by itself as quantities are typed into
+ * the etapy.
+ *
+ * Hard-anchored to the client plane like `hasStagesOverPlanned`, for the same reason: the sheet's
+ * pomiar has no plane, so measuring one crew's share against it would report a rozjazd on work the
+ * other crew finished.
+ */
+export function measureDiscrepancy(
+  row: KosztorysV2RowT,
+  stages: KosztorysStageT[],
+): MeasureDiscrepancyT | null {
+  const sheetQty = row.sheetMeasuredQty
+  if (sheetQty == null) return null
+
+  const stageQty = rowTotalQtyDone(row, stages, 'client')
+  const qtyDiff = sheetQty - stageQty
+  if (Math.abs(qtyDiff) < QTY_TOLERANCE) return null
+
+  // Priced on the absolute difference and re-signed: `netForQtyForView` floors a negative quantity
+  // at 0 zł (nothing is worth negative money), which would silently mute the „etapy ahead of the
+  // sheet" half of the rozjazd.
+  const net = Math.sign(qtyDiff) * netForQtyForView(row, Math.abs(qtyDiff), 'client')
+
+  return { sheetQty, stageQty, qtyDiff, net }
+}

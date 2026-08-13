@@ -53,9 +53,10 @@ import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
 import { PROGRESS_DISPLAY_DEFAULT, progressDisplayAllows } from '@/lib/kosztorys/progress-display'
-import { formatPercent } from '@/lib/kosztorys/format'
+import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
+  measureDiscrepancy,
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
@@ -336,9 +337,27 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
+  // The imported sheet's „Pomiar z natury" against Σ etapów. Owner-only: the reference figure is
+  // scaffolding for entering old sheets into the app, and a client's document must not carry the
+  // company's own bookkeeping doubts.
+  const measureRozjazd = (row: KosztorysV2RowT) =>
+    opts.previewVisible ? null : measureDiscrepancy(row, stages)
+
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
+      ...computedColumn(
+        'stageQtySum',
+        title('stageQtySum', opts),
+        (r) => totalQtyDone(r),
+        {
+          tone: (r) => (measureRozjazd(r) ? 'danger' : 'muted'),
+          tip: (r) => {
+            const rozjazd = measureRozjazd(r)
+            if (!rozjazd) return null
+            return `Arkusz: ${formatQty(rozjazd.sheetQty)} · etapy: ${formatQty(rozjazd.stageQty)} · różnica ${formatNet(rozjazd.net)} zł`
+          },
+        },
+      ),
       minWidth: 170,
     },
     unitColumn(title('unit', opts)),

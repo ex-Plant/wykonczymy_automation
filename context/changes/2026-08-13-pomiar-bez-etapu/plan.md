@@ -369,20 +369,20 @@ przy weryfikacji, nie w bramce.
 
 ### Phase 1: Import zapisuje liczbę odniesienia
 
-- [x] 1.1 Odczyt formuł zakładki robocizny w `read-sheet.ts` (+ przepisany komentarz)
-- [x] 1.2 Rozpoznanie kolumny „Pomiar z natury" (`columns.ts`, `resolve-columns.ts`, opcjonalna)
-- [x] 1.3 Parser czyta wpis ręczny, formuła/pusta → `null` (`parse-robocizna.ts`)
-- [x] 1.4 Migracja `sheet_measured_qty` + rejestracja w `migrations/index.ts`
-- [x] 1.5 Kolekcja, `KosztorysItemT`, `kosztorys-tree` (SELECT + `mapItem`), `insert-rows` (kolumny + krotka)
-- [x] 1.6 `serialize-preset` zeruje, `buildBlankRow` uzupełnione, `build-import-plan` nadpisuje przy re-imporcie
-- [x] 1.7 Testy fazy 1: parser, resolver, plan importu, drift schematu, wzorzec
+- [x] 1.1 Odczyt formuł zakładki robocizny w `read-sheet.ts` (+ przepisany komentarz) · 5cc3173b
+- [x] 1.2 Rozpoznanie kolumny „Pomiar z natury" (`columns.ts`, `resolve-columns.ts`, opcjonalna) · 5cc3173b
+- [x] 1.3 Parser czyta wpis ręczny, formuła/pusta → `null` (`parse-robocizna.ts`) · 5cc3173b
+- [x] 1.4 Migracja `sheet_measured_qty` + rejestracja w `migrations/index.ts` · 5cc3173b
+- [x] 1.5 Kolekcja, `KosztorysItemT`, `kosztorys-tree` (SELECT + `mapItem`), `insert-rows` (kolumny + krotka) · 5cc3173b
+- [x] 1.6 `serialize-preset` zeruje, `buildBlankRow` uzupełnione, `build-import-plan` nadpisuje przy re-imporcie · 5cc3173b
+- [x] 1.7 Testy fazy 1: parser, resolver, plan importu, drift schematu, wzorzec · 5cc3173b
 
 ### Phase 2: Czerwony znacznik i podpowiedź
 
-- [ ] 2.1 `measureDiscrepancy` w `settlement-rows.ts` (z progiem porównania ilości)
-- [ ] 2.2 `ComputedCellDataT.tip` + `SimpleTooltip` w `computed-cell.tsx`
-- [ ] 2.3 Ton `danger` i podpowiedź na kolumnie `stageQtySum`, tylko poza podglądem
-- [ ] 2.4 Spec `measureDiscrepancy`
+- [x] 2.1 `measureDiscrepancy` w `settlement-rows.ts` (z progiem porównania ilości)
+- [x] 2.2 `ComputedCellDataT.tip` + `SimpleTooltip` w `computed-cell.tsx`
+- [x] 2.3 Ton `danger` i podpowiedź na kolumnie `stageQtySum`, tylko poza podglądem
+- [x] 2.4 Spec `measureDiscrepancy`
 
 ### Phase 3: Filtr „tylko rozjechane" z licznikiem
 
