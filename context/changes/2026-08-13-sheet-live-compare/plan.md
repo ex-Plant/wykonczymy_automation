@@ -613,10 +613,18 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 4.1 The refresh spec passes against the persisted rows
+- [x] 4.1 The refresh spec passes against the persisted rows — 96a5e734
 
 ### Phase 5: Domknięcie
 
 #### Automated
 
-- [ ] 5.1 No phase-scoped automated check (prose and tracker state only)
+- [x] 5.1 No phase-scoped automated check (prose and tracker state only)
+
+### Whole-tree Gate
+
+- [x] `pnpm typecheck` — clean
+- [x] `pnpm lint` — 0 errors (80 pre-existing warnings)
+- [x] `pnpm test` — 2176 passed, 108 skipped (DB-gated)
+- [ ] `pnpm build` — turbopack refuses on the worktree's symlinked `node_modules`
+      („Symlink node_modules is invalid"); an environment limit, not a code defect. Re-run after merge.

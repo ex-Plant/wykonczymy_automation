@@ -165,29 +165,29 @@ One row per F-NN / S-NN — the index and the backlog handoff in one place. **Pl
 
 Bands: **editor parity S-01–S-10** → **financial-plane bridge S-11–S-12** (active) → **import/export S-13–S-15** → **testing + hardening S-16–S-18** → **cutover S-19**.
 
-| ID   | Change ID                       | Outcome (user can …)                                                                    | Prerequisites      | PRD refs                      | Status   | Plan-ready |
-| ---- | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------ | ----------------------------- | -------- | ---------- |
-| F-01 | e2e-harness                     | (foundation) Playwright E2E harness, CI-runnable, isolated DB                           | —                  | FR-011                        | done     | —          |
-| O-01 | sentry-observability            | capture prod errors + tracing + session replay in Sentry (standalone infra)             | —                  | — (owner request)             | proposed | yes        |
-| S-01 | kosztorys-sections-items        | author kosztorys sections + items in-app with live totals                               | —                  | FR-001, FR-002, FR-007, US-01 | done     | —          |
-| S-02 | kosztorys-price-models          | record three price models per item and toggle the pricing view                          | S-01               | FR-003                        | done     | —          |
-| S-03 | kosztorys-stages                | manage stages (etapy) and record per-item, per-stage progress                           | S-01               | FR-004                        | done     | —          |
-| S-04 | kosztorys-subcontractor-pricing | price subcontractor work via markup coefficient + per-item override                     | S-01, S-02         | — (POC)                       | done     | —          |
-| S-05 | kosztorys-vat                   | set VAT per investment; enter net, compute gross                                        | S-01               | — (POC)                       | done     | yes        |
-| S-06 | kosztorys-snapshots             | save + restore point-in-time versions of a kosztorys (durable net)                      | S-01               | — (owner request)             | done     | yes        |
-| S-07 | kosztorys-undo                  | fast in-session undo/redo of the last editor edit(s)                                    | S-01               | — (owner request)             | done     | yes        |
-| S-08 | kosztorys-delete-guard          | confirm-then-snapshot when deleting a populated row / section / stage / column (EX-477) | S-01               | — (owner request)             | done     | yes        |
-| S-09 | kosztorys-preset                | seed from a preset; save as preset (autocomplete carved out → EX-434, since cut)        | S-01               | (owner request)               | done     | yes        |
-| S-10 | kosztorys-column-rbac           | restrict sensitive columns + rows (subcontractor cost/margin; sections) to OWNER/ADMIN  | S-01, S-02, S-04   | — (POC P10)                   | proposed | yes        |
-| S-11 | kosztorys-bridge                | read kosztorys figures joined into the investment financial plane (read-only)           | S-01, S-03         | — (owner request)             | done     | —          |
-| S-12 | robocizna-from-kosztorys        | see investment robocizna + rabat derived from the kosztorys, not manual transfers       | S-11               | — (owner request)             | done     | —          |
-| S-13 | kosztorys-client-share          | share a live, read-only client view of a kosztorys via a token link (EX-532)            | S-01, S-02, S-04   | — (owner request)             | done     | —          |
-| S-14 | kosztorys-export                | CSV-export the kosztorys (WYSIWYG snapshot; no print/PDF)                               | S-01               | FR-008                        | deferred | —          |
-| S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | ready    | —          |
-| S-16 | editor-e2e-coverage             | (gate) rely on automated E2E over the editor before release                             | F-01, S-01…S-15    | FR-013                        | deferred | —          |
-| S-17 | financial-core-smoke            | trust an automated smoke that transfers update balances/figures                         | F-01               | FR-012, FR-011, FR-015, US-02 | deferred | —          |
-| S-18 | kosztorys-hardening             | quality / perf / a11y hardening pass before cutover                                     | S-16               | — (POC)                       | deferred | —          |
-| S-19 | new-investment-no-sheet         | create a new investment with no Google Sheet, kosztorys app-only                        | S-16, S-18         | FR-009, FR-014, FR-016, US-01 | deferred | —          |
+| ID   | Change ID                       | Outcome (user can …)                                                                    | Prerequisites      | PRD refs                      | Status    | Plan-ready |
+| ---- | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------ | ----------------------------- | --------- | ---------- |
+| F-01 | e2e-harness                     | (foundation) Playwright E2E harness, CI-runnable, isolated DB                           | —                  | FR-011                        | done      | —          |
+| O-01 | sentry-observability            | capture prod errors + tracing + session replay in Sentry (standalone infra)             | —                  | — (owner request)             | proposed  | yes        |
+| S-01 | kosztorys-sections-items        | author kosztorys sections + items in-app with live totals                               | —                  | FR-001, FR-002, FR-007, US-01 | done      | —          |
+| S-02 | kosztorys-price-models          | record three price models per item and toggle the pricing view                          | S-01               | FR-003                        | done      | —          |
+| S-03 | kosztorys-stages                | manage stages (etapy) and record per-item, per-stage progress                           | S-01               | FR-004                        | done      | —          |
+| S-04 | kosztorys-subcontractor-pricing | price subcontractor work via markup coefficient + per-item override                     | S-01, S-02         | — (POC)                       | done      | —          |
+| S-05 | kosztorys-vat                   | set VAT per investment; enter net, compute gross                                        | S-01               | — (POC)                       | done      | yes        |
+| S-06 | kosztorys-snapshots             | save + restore point-in-time versions of a kosztorys (durable net)                      | S-01               | — (owner request)             | done      | yes        |
+| S-07 | kosztorys-undo                  | fast in-session undo/redo of the last editor edit(s)                                    | S-01               | — (owner request)             | done      | yes        |
+| S-08 | kosztorys-delete-guard          | confirm-then-snapshot when deleting a populated row / section / stage / column (EX-477) | S-01               | — (owner request)             | done      | yes        |
+| S-09 | kosztorys-preset                | seed from a preset; save as preset (autocomplete carved out → EX-434, since cut)        | S-01               | (owner request)               | done      | yes        |
+| S-10 | kosztorys-column-rbac           | restrict sensitive columns + rows (subcontractor cost/margin; sections) to OWNER/ADMIN  | S-01, S-02, S-04   | — (POC P10)                   | proposed  | yes        |
+| S-11 | kosztorys-bridge                | read kosztorys figures joined into the investment financial plane (read-only)           | S-01, S-03         | — (owner request)             | done      | —          |
+| S-12 | robocizna-from-kosztorys        | see investment robocizna + rabat derived from the kosztorys, not manual transfers       | S-11               | — (owner request)             | done      | —          |
+| S-13 | kosztorys-client-share          | share a live, read-only client view of a kosztorys via a token link (EX-532)            | S-01, S-02, S-04   | — (owner request)             | done      | —          |
+| S-14 | kosztorys-export                | CSV-export the kosztorys (WYSIWYG snapshot; no print/PDF)                               | S-01               | FR-008                        | deferred  | —          |
+| S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | in review | —          |
+| S-16 | editor-e2e-coverage             | (gate) rely on automated E2E over the editor before release                             | F-01, S-01…S-15    | FR-013                        | deferred  | —          |
+| S-17 | financial-core-smoke            | trust an automated smoke that transfers update balances/figures                         | F-01               | FR-012, FR-011, FR-015, US-02 | deferred  | —          |
+| S-18 | kosztorys-hardening             | quality / perf / a11y hardening pass before cutover                                     | S-16               | — (POC)                       | deferred  | —          |
+| S-19 | new-investment-no-sheet         | create a new investment with no Google Sheet, kosztorys app-only                        | S-16, S-18         | FR-009, FR-014, FR-016, US-01 | deferred  | —          |
 
 **Cut / folded (unnumbered):** `kosztorys-rooms` — CUT (pokoje out of scope, 2026-07-08). `kosztorys-catalogue` — FOLDED into S-09 (2026-07-09), then the autocomplete carved back out as `kosztorys-item-autocomplete` — now CUT (2026-07-28, superseded by EX-503 section-append). See [Cut & folded slices](#cut--folded-slices).
 
@@ -520,7 +520,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Importer trigger (PRD Q8).~~ **Resolved (2026-08-11):** a button in the editor's "Opcje" menu, invoked per investment on demand — not a one-shot migration.
 - **Risk:** Reads sheets, writes only new tables (additive). Guardrail: live sheet data must survive untouched until safely imported (FR-016). **Note (2026-07-10):** no longer depends on the cutover (S-19) — moved ahead of it into the import/export band per the reorder; import now happens before, not after, new investments go sheet-less.
-- **Status:** ready — shaped 2026-08-11, `context/changes/2026-08-11-kosztorys-importer/`. Column resolution is by header label, validated across all 45 real sheets; 2 need an owner header fix.
+- **Status:** in review (EX-417) — shaped 2026-08-11, `context/changes/2026-08-11-kosztorys-importer/`. Column resolution is by header label, validated across all 45 real sheets; 2 need an owner header fix. **Follow-up shipped 2026-08-13**, `context/changes/2026-08-13-sheet-live-compare/`: „Porównaj z arkuszem" (live read, writes nothing — both sides' totals, one-sided pozycje, three classes of suspicious formula) and „Zaciągnij pomiary z arkusza" (refreshes the stored reference quantities without a full import). The per-row „Etapy są prawdą" escape hatch was removed on the owner's ruling. E2E deferred to EX-687 (`e2e-backlog`).
 
 ### S-16: Editor E2E coverage (release gate)
 

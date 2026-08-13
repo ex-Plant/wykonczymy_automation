@@ -1,7 +1,7 @@
 ---
 change_id: sheet-live-compare
 title: Porównanie z arkuszem na żywo zamiast raportu z importu
-status: implementing
+status: implemented
 created: 2026-08-13
 updated: 2026-08-13
 archived_at: null
@@ -42,3 +42,9 @@ gasiła objaw kasując dane zamiast pokazać niezgodność, działała per wiers
 który jest zbiorowy (26 pozycji naraz), i była jedynym powodem, dla którego odświeżanie pomiarów
 musiałoby cokolwiek rozstrzygać. Rozjazd zamyka się teraz poprawieniem arkusza albo wypełnieniem
 etapów — innego wyjścia nie ma.
+
+## Odroczone
+
+E2E dla obu akcji: **EX-687** (`e2e-backlog`) — najpierw trzeba mieć podstawiony klient Sheets,
+inaczej spec przeglądarkowy nie ma czego asertować. Ten sam brak dotyczy EX-686 i jest odnotowany
+w tym samym zgłoszeniu, żeby nie tworzyć drugiego za tą samą zaporą.

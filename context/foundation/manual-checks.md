@@ -932,3 +932,25 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
 - [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd", brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
+
+## sheet-live-compare — „Porównaj z arkuszem" + „Zaciągnij pomiary z arkusza" (EX-417)
+
+**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2176, spec odświeżania zielony na 5435.
+`pnpm build` **nie przeszedł w worktree**: turbopack odmawia na dowiązanym `node_modules`
+(„Symlink node_modules is invalid") — to ograniczenie środowiska, nie kodu; potwierdzić po scaleniu.
+E2E odroczone do EX-687 (`e2e-backlog`).
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja 31 (arkusz podpięty, 26 pozycji z Pomiarem
+jako formułą `=N`).
+
+- [ ] Opcje → „Porównaj z arkuszem…" otwiera okno, pokazuje „Czytam arkusz…", a potem rachunek obu stron
+- [ ] Różnica „Wartość netto przedmiar" zgadza się z tym, co pokazuje sam arkusz (508 196 zł vs 491 519,25 zł)
+- [ ] Blok „Pomiar z natury a „Rozjazd”" podaje 26 z ~435 pozycji z Pomiarem przepisanym z Przedmiaru
+- [ ] Pozycja przemianowana w arkuszu pojawia się na obu listach „tylko po jednej stronie" — i okno mówi wprost dlaczego
+- [ ] „Zaciągnij pomiary z arkusza" zgłasza niezerową liczbę i licznik „Rozjazdy" w pasku się zmienia
+- [ ] Zmiana jednego Pomiaru w arkuszu i ponowne zaciągnięcie rusza wyłącznie tę pozycję
+- [ ] Wyczyszczenie Pomiaru w arkuszu i ponowne zaciągnięcie zdejmuje odniesienie z tej pozycji (znika z „Rozjazdów")
+- [ ] Robocizna, marża i bilans nie drgnęły po zaciągnięciu — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Inwestycja bez podpiętego arkusza: jeden toast „Inwestycja nie ma kosztorysu.", nie puste okno
+- [ ] Odebranie kontu serwisowemu dostępu do arkusza daje jeden polski toast, nie surowy błąd Google
+- [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji, z rozjazdem czy bez
