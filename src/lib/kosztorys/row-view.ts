@@ -50,3 +50,26 @@ export function sortRows(
   })
   return decorated.map((d) => d.row)
 }
+
+// The grid's sort, applied per section instead of across the whole sheet. A flat sort scatters a
+// section's rows through the list, and a section band presumes its rows are contiguous — which is
+// why sorting used to drop the bands (header, subtotal, collapse) entirely. Grouping first keeps
+// them: the sections stay in their own order (first-appearance = display_order, as the tree
+// delivers them) and only the rows inside each one move.
+//
+// Delegates to sortRows per group rather than re-implementing the comparator, so null-sinking and
+// the `pl` collation cannot drift between the two.
+export function sortRowsWithinSections(
+  rows: KosztorysV2RowT[],
+  getValue: (row: KosztorysV2RowT) => string | number | null,
+  dir: SortDirT,
+): KosztorysV2RowT[] {
+  const bySection = new Map<number, KosztorysV2RowT[]>()
+  for (const row of rows) {
+    const group = bySection.get(row.sectionId)
+    if (group) group.push(row)
+    else bySection.set(row.sectionId, [row])
+  }
+  // Map iterates in insertion order, so the sections come back in the order they first appeared.
+  return [...bySection.values()].flatMap((group) => sortRows(group, getValue, dir))
+}

@@ -1,12 +1,12 @@
 ---
 change_id: kosztorys-sort-within-sections
 title: Sortowanie pozycji wewnątrz sekcji — widok + trwały zapis kolejności
-status: new
+status: planned
 created: 2026-08-13
 updated: 2026-08-13
 archived_at: null
-branch: null
-worktree: null
+branch: konradantonik/ex-682-sort-within-sections
+worktree: .claude/worktrees/kosztorys-sort-within-sections
 ---
 
 ## Notes
@@ -19,5 +19,6 @@ Dwie części, w tej kolejności:
 - **EX-683** — trwałe „Posortuj alfabetycznie": przenumerowanie `display_order` w obrębie sekcji,
   z undo, żeby kolejność przeżyła reload / eksport oferty / sync arkusza.
 
-Do rozstrzygnięcia w planie: czy trwała akcja utrwala **bieżące sortowanie widoku**, czy jest
-osobnym „alfabetycznie po opisie"; oraz co robić z ▲▼ / wstawianiem przy aktywnym sortowaniu.
+Rozstrzygnięte przy planowaniu: trwała akcja utrwala **bieżące sortowanie widoku** (alfabetycznie =
+posortuj po „Opis" i utrwal), zasięg = jedna sekcja z jej menu, ▲▼ i wstawianie zostają wyłączone
+przy aktywnym sortowaniu.

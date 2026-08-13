@@ -23,9 +23,8 @@ function row(id: number, sectionId: number): KosztorysV2RowT {
 // Two sections, three items then two — the shape every case below narrows.
 const VIEW_ROWS = [row(1, 10), row(2, 10), row(3, 10), row(4, 20), row(5, 20)]
 
-const enabled = (collapsed: number[] = [], foldSuppressed = false) => ({
+const opts = (collapsed: number[] = [], foldSuppressed = false) => ({
   collapsedSectionIds: new Set(collapsed),
-  enabled: true,
   foldSuppressed,
 })
 
@@ -59,7 +58,7 @@ describe('section band row ids', () => {
 
 describe('buildSectionBandRows', () => {
   it('brackets each section with an opening and a closing band', () => {
-    const { rows } = buildSectionBandRows(VIEW_ROWS, enabled())
+    const { rows } = buildSectionBandRows(VIEW_ROWS, opts())
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -78,7 +77,7 @@ describe('buildSectionBandRows', () => {
   })
 
   it('keeps a collapsed section header and drops its items with their footer', () => {
-    const { rows } = buildSectionBandRows(VIEW_ROWS, enabled([10]))
+    const { rows } = buildSectionBandRows(VIEW_ROWS, opts([10]))
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -90,13 +89,13 @@ describe('buildSectionBandRows', () => {
   })
 
   it('emits no band for a section whose rows were all filtered away', () => {
-    const { rows } = buildSectionBandRows([row(4, 20), row(5, 20)], enabled())
+    const { rows } = buildSectionBandRows([row(4, 20), row(5, 20)], opts())
 
     expect(rows.map((r) => r.id)).toEqual([sectionHeaderRowId(20), 4, 5, sectionFooterRowId(20)])
   })
 
   it('numbers item rows continuously across bands, never the bands themselves', () => {
-    const { rows, ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, enabled())
+    const { rows, ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, opts())
 
     expect([...ordinalByRowId.entries()]).toEqual([
       [1, 1],
@@ -111,7 +110,7 @@ describe('buildSectionBandRows', () => {
   })
 
   it('leaves no gap in the numbering when a section is collapsed', () => {
-    const { ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, enabled([10]))
+    const { ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, opts([10]))
 
     expect([...ordinalByRowId.entries()]).toEqual([
       [4, 1],
@@ -120,7 +119,7 @@ describe('buildSectionBandRows', () => {
   })
 
   it('ignores a collapsed section while a row filter is active', () => {
-    const { rows } = buildSectionBandRows(VIEW_ROWS, enabled([10], true))
+    const { rows } = buildSectionBandRows(VIEW_ROWS, opts([10], true))
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -136,7 +135,7 @@ describe('buildSectionBandRows', () => {
   })
 
   it('emits one band pair per section even when its rows arrive in two blocks', () => {
-    const { rows } = buildSectionBandRows([row(1, 10), row(4, 20), row(2, 10)], enabled())
+    const { rows } = buildSectionBandRows([row(1, 10), row(4, 20), row(2, 10)], opts())
 
     expect(rows.map((r) => r.id)).toEqual([
       sectionHeaderRowId(10),
@@ -155,7 +154,7 @@ describe('buildSectionBandRows', () => {
   it('leaves a third block of the same section outside any band rather than repeating its id', () => {
     const { rows } = buildSectionBandRows(
       [row(1, 10), row(4, 20), row(2, 10), row(5, 20), row(3, 10)],
-      enabled(),
+      opts(),
     )
 
     expect(rows.map((r) => r.id)).toEqual([
@@ -169,17 +168,5 @@ describe('buildSectionBandRows', () => {
       5,
       3,
     ])
-  })
-
-  it('passes the rows through untouched when disabled by an active sort', () => {
-    const { rows, ordinalByRowId } = buildSectionBandRows(VIEW_ROWS, {
-      // Even a collapsed section stays visible: with no band there would be nothing to re-expand it.
-      collapsedSectionIds: new Set([10]),
-      enabled: false,
-      foldSuppressed: false,
-    })
-
-    expect(rows).toBe(VIEW_ROWS)
-    expect([...ordinalByRowId.values()]).toEqual([1, 2, 3, 4, 5])
   })
 })

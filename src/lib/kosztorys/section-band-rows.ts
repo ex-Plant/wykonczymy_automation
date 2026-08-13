@@ -5,10 +5,6 @@ const EMPTY_COLLAPSED: ReadonlySet<number> = new Set()
 
 type OptsT = {
   collapsedSectionIds: ReadonlySet<number>
-  // False under an active column sort: grouping presumes section-contiguous rows, which a sort
-  // breaks. Bands are then dropped entirely AND the collapsed set ignored — a collapsed section with
-  // no band left to re-expand it would be rows the user can't get back.
-  enabled: boolean
   // Any row filter narrows to the rows that matched, so a fold left over from before it would hide
   // hits behind a band that gives no hint they exist — the grid would read as "no results". The fold
   // is suppressed while a filter is on (search, „tylko rozjechane") and restored when it clears.
@@ -24,14 +20,9 @@ type OptsT = {
  */
 export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
-  { collapsedSectionIds, enabled, foldSuppressed }: OptsT,
+  { collapsedSectionIds, foldSuppressed }: OptsT,
 ): { rows: KosztorysV2RowT[]; ordinalByRowId: Map<number, number> } {
   const ordinalByRowId = new Map<number, number>()
-  if (!enabled) {
-    viewRows.forEach((row, index) => ordinalByRowId.set(row.id, index + 1))
-    return { rows: viewRows, ordinalByRowId }
-  }
-
   const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
   const rows: KosztorysV2RowT[] = []
   // A band's id is a pure function of its section, so a section appearing in two blocks would emit

@@ -53,7 +53,12 @@ import {
 } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
-import { divergedRows, filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
+import {
+  divergedRows,
+  filterRows,
+  sortRowsWithinSections,
+  type SortDirT,
+} from '@/lib/kosztorys/row-view'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -404,7 +409,11 @@ export function useKosztorysEditor({
     let filtered = filterRows(rows, search)
     if (divergedOnlyActive) filtered = divergedRows(filtered, stages)
     if (!sort) return filtered
-    return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
+    return sortRowsWithinSections(
+      filtered,
+      (r) => columnSortValue(r, sort.field, view, stages),
+      sort.dir,
+    )
   }, [rows, search, divergedOnlyActive, sort, view, stages])
   // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.

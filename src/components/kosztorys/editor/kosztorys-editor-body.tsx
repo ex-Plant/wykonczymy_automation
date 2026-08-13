@@ -130,10 +130,9 @@ export function KosztorysEditorBody({
     () =>
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
-        enabled: sort == null,
         foldSuppressed: search.trim() !== '' || divergedOnly,
       }),
-    [viewRows, collapsedSectionIds, sort, search, divergedOnly],
+    [viewRows, collapsedSectionIds, search, divergedOnly],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
