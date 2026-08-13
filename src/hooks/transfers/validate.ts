@@ -28,9 +28,19 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.createdBy = req.user.id
   }
 
-  // Fall back to the stored type: a partial update (PATCH of one field) carries no `type`, and
-  // an empty one would route a netto row down the else-branch below and null its netAmount.
-  const type = d.type ?? (originalDoc as TransferData | undefined)?.type ?? ''
+  const original = originalDoc as TransferData | undefined
+
+  // Fall back to the stored row throughout: a partial update (PATCH of one field) carries no
+  // `type`, and an empty one would route a netto row down the else-branch below and null its
+  // netAmount. The same holds for every relational field the required-checks read — an
+  // invoice-only PATCH would otherwise be rejected for fields the row has carried all along.
+  const type = d.type ?? original?.type ?? ''
+  const sourceRegister = d.sourceRegister ?? original?.sourceRegister
+  const investment = d.investment ?? original?.investment
+  const targetRegister = d.targetRegister ?? original?.targetRegister
+  const otherCategory = d.otherCategory ?? original?.otherCategory
+  const worker = d.worker ?? original?.worker
+  const expenseCategory = d.expenseCategory ?? original?.expenseCategory
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
@@ -56,7 +66,7 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     if (amountErr) errors.push(amountErr)
   }
 
-  if (needsSourceRegister(type) && !d.sourceRegister) {
+  if (needsSourceRegister(type) && !sourceRegister) {
     errors.push('Cash register is required for this transfer type.')
   }
 
@@ -64,7 +74,7 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.sourceRegister = null
   }
 
-  if (requiresInvestment(type) && !d.investment) {
+  if (requiresInvestment(type) && !investment) {
     errors.push('Investment is required for this transfer type.')
   }
 
@@ -80,18 +90,18 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   }
 
   if (needsTargetRegister(type)) {
-    if (!d.targetRegister) {
+    if (!targetRegister) {
       errors.push('Target register is required for register transfers.')
-    } else if (d.sourceRegister && d.targetRegister === d.sourceRegister) {
+    } else if (sourceRegister && targetRegister === sourceRegister) {
       errors.push('Target register must be different from source register.')
     }
   }
 
-  if (needsOtherCategory(type) && !d.otherCategory) {
+  if (needsOtherCategory(type) && !otherCategory) {
     errors.push('Category is required for OTHER transfers.')
   }
 
-  if (needsWorker(type) && !d.worker) {
+  if (needsWorker(type) && !worker) {
     errors.push('Worker is required for payout transfers.')
   }
 
@@ -110,7 +120,6 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   // meaningless anywhere else — so the type that doesn't bill at it stores null. This hook is the
   // server-side authority; the rule itself lives once in getNetAmountError.
   if (billsNetAmount(type)) {
-    const original = originalDoc as TransferData | undefined
     const netErr = getNetAmountError(
       d.netAmount ?? original?.netAmount,
       d.amount ?? original?.amount,
@@ -121,7 +130,7 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.netAmount = null
   }
 
-  if (needsExpenseCategory(type, !!d.investment) && !d.expenseCategory) {
+  if (needsExpenseCategory(type, !!investment) && !expenseCategory) {
     errors.push('Expense category is required for investment-related expenses.')
   }
 

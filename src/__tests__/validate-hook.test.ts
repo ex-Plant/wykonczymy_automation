@@ -263,6 +263,32 @@ describe('validateTransfer — a CANCELLATION never keeps a register', () => {
   })
 })
 
+// EX-675. A PATCH of one field carries no relational fields at all, so every "required" check
+// below must read through to the stored row or an invoice attachment would be rejected for a
+// missing investment the row has had all along.
+describe('validateTransfer — a partial update reads required fields from the stored row', () => {
+  const storedExpense = {
+    type: 'INVESTMENT_EXPENSE',
+    amount: 222.88,
+    date: '2026-02-19',
+    investment: 62,
+    expenseCategory: 4,
+    sourceRegister: 1,
+  }
+
+  it('accepts an invoice-only PATCH on a row that already has its investment', () => {
+    const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: storedExpense })
+    expect(() => validateTransfer(args)).not.toThrow()
+  })
+
+  it('still refuses when neither the payload nor the stored row carries an investment', () => {
+    const { investment, ...orphan } = storedExpense
+    void investment
+    const args = hookArgs({ invoice: 5 }, { operation: 'update', originalDoc: orphan })
+    expect(() => validateTransfer(args)).toThrow(/[Ii]nvestment/)
+  })
+})
+
 // GUARD B7 — the netto figure is what the investor is billed, and the hook is the single server-side
 // authority on it (the form schema is a convenience mirror the API can bypass entirely).
 describe('validateTransfer — netAmount (the netto expense type)', () => {
@@ -270,7 +296,9 @@ describe('validateTransfer — netAmount (the netto expense type)', () => {
 
   it('refuses a netto above the brutto that left the kasa', () => {
     const data = { ...netExpense, amount: 100, netAmount: 101 }
-    expect(() => validateTransfer(hookArgs(data))).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
+    expect(() => validateTransfer(hookArgs(data))).toThrow(
+      /Kwota netto nie może przekraczać kwoty brutto/,
+    )
   })
 
   it('accepts a netto equal to brutto (0% VAT is a real case)', () => {

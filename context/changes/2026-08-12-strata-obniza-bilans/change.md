@@ -2,7 +2,7 @@
 change_id: strata-obniza-bilans
 title: Strata obniża dług klienta jak rabat, pozostając osobną figurą raportową
 linear: EX-675
-status: preparing
+status: implementing
 created: 2026-08-12
 updated: 2026-08-13
 archived_at: null
