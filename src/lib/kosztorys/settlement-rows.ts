@@ -60,9 +60,7 @@ export function rowRemainingForView(
   stages: KosztorysStageT[],
   view: PriceViewT,
 ): number {
-  return (
-    netForQtyForView(row, row.plannedQty ?? 0, view) - rowValueForView(row, stages, view)
-  )
+  return netForQtyForView(row, row.plannedQty ?? 0, view) - rowValueForView(row, stages, view)
 }
 
 /**
@@ -85,7 +83,7 @@ export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStag
 // half the kosztorys on float noise alone (0.1 + 0.2 ≠ 0.3). Half a hundredth of a unit is below
 // what anyone types and worth pennies at any real price — the money reconciliation's grosz-exact
 // tolerance is a different axis and does not transfer here.
-const QTY_TOLERANCE = 0.005
+export const QTY_TOLERANCE = 0.005
 
 export type MeasureDiscrepancyT = {
   sheetQty: number

@@ -30,26 +30,30 @@ describe('scanFormulaHealth', () => {
     expect(scan({}).totalRows).toBe(3)
   })
 
-  it('reports a Pomiar copied straight from Przedmiar', () => {
+  it('counts a Pomiar copied straight from Przedmiar without listing the row', () => {
+    // The collective class: it closes by fixing the sheet or filling the etapy, never row by row,
+    // and its rows used to crowd the actionable ones out of a shared bucket.
     const health = scan({ 4: { O: '=N5' } })
 
     expect(health.measuredCopiedFromPlanned).toBe(1)
-    expect(health.samples).toEqual([
-      {
-        row: 5,
-        description: 'zakup, transport i wniesienie towaru budowlanego',
-        klass: 'measuredCopiedFromPlanned',
-      },
-    ])
+    expect(health.samples).toEqual({ plannedReadFromStage: [], errorValue: [] })
   })
 
   it('leaves the sheet’s own Σ etapów alone', () => {
     // `=SUM(D:M)` is the canonical shape of a blank offer sheet. Reporting it would flag every row
     // of every sheet and teach the owner to ignore the whole block.
-    expect(scan({ 4: { O: '=SUM(D5:M5)' } })).toMatchObject({
-      measuredCopiedFromPlanned: 0,
-      samples: [],
-    })
+    expect(scan({ 4: { O: '=SUM(D5:M5)' } }).measuredCopiedFromPlanned).toBe(0)
+  })
+
+  it('lists a punctual row even when the collective class fills the sheet above it', () => {
+    // The bug this splits the buckets for: a shared cap filled in row order let 241 mass-class rows
+    // exhaust it before the 7 actionable ones were reached.
+    const health = scan({ 4: { O: '=N5' }, 5: { O: '=N6' }, 7: { N: '=D8' } })
+
+    expect(health.measuredCopiedFromPlanned).toBe(2)
+    expect(health.samples.plannedReadFromStage).toEqual([
+      { row: 8, description: 'montaż jednostki wewnętrznej', cell: 'N8' },
+    ])
   })
 
   it('ignores a reference to a different row — only a self-copy is the anomaly', () => {
@@ -60,7 +64,7 @@ describe('scanFormulaHealth', () => {
     const health = scan({ 7: { N: '=D8' } })
 
     expect(health.plannedReadFromStage).toBe(1)
-    expect(health.samples[0]).toMatchObject({ row: 8, klass: 'plannedReadFromStage' })
+    expect(health.samples.plannedReadFromStage[0]).toMatchObject({ row: 8, cell: 'N8' })
   })
 
   it('leaves hand-typed arithmetic alone in both columns', () => {
@@ -80,7 +84,7 @@ describe('scanFormulaHealth', () => {
     const health = scan({}, broken)
 
     expect(health.errorValues).toBe(1)
-    expect(health.samples[0]).toMatchObject({ row: 5, klass: 'errorValue' })
+    expect(health.samples.errorValue[0]).toMatchObject({ row: 5, cell: 'Q5' })
   })
 
   it('says nothing about a sheet whose prace are all typed by hand', () => {
@@ -88,7 +92,7 @@ describe('scanFormulaHealth', () => {
       measuredCopiedFromPlanned: 0,
       plannedReadFromStage: 0,
       errorValues: 0,
-      samples: [],
+      samples: { plannedReadFromStage: [], errorValue: [] },
     })
   })
 })

@@ -19,6 +19,10 @@ export type RateTabGridT = {
 
 export type ImportGridsT = {
   robocizna: unknown[][]
+  // The tab's numeric sheetId — the `#gid=` a link to a single cell needs. Comes free with the
+  // metadata call the tab titles already require; `undefined` only if Google omits it, in which case
+  // the report degrades to a plain row number rather than a dead link.
+  robociznaGid: number | undefined
   // The robocizna tab rendered as formulas, aligned cell-for-cell with `robocizna`. See the comment
   // at the fetch site for why a formula is load-bearing here and not just a cheaper render.
   robociznaFormulas: unknown[][]
@@ -47,8 +51,12 @@ export async function readImportGrids(
   // Tab titles have to be discovered rather than assumed: the rate tabs are named „zakres pracy z
   // narzędziami   " on one sheet and „zakres pracy bez narzędzi" on the next, trailing spaces
   // included, and asking for a range on a tab that doesn't exist fails the whole batch.
-  const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties.title' })
-  const titles = (meta.data.sheets ?? []).map((sheet) => sheet.properties?.title ?? '')
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties(title,sheetId)',
+  })
+  const properties = (meta.data.sheets ?? []).map((sheet) => sheet.properties)
+  const titles = properties.map((props) => props?.title ?? '')
 
   const robociznaTitle = titles.find((title) => fold(title) === ROBOCIZNA_TAB)
   if (!robociznaTitle) throw new MissingRobociznaTabError(spreadsheetId)
@@ -79,6 +87,7 @@ export async function readImportGrids(
 
   return {
     robocizna: grids[0] ?? [],
+    robociznaGid: properties.find((props) => props?.title === robociznaTitle)?.sheetId ?? undefined,
     robociznaFormulas: formulaGrids[0] ?? [],
     rateTabs: rateTitles.map((title, index) => ({
       title,

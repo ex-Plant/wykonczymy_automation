@@ -7,9 +7,12 @@ import type { KosztorysItemT } from '@/lib/kosztorys/types'
 import { row } from '@/__tests__/fixtures/kosztorys-sheet/grid'
 import { BIALOSTOCKA_ROWS, ratesTab } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
+const SPREADSHEET_ID = 'sheet-abc'
+
 const source = (overrides: Partial<ImportGridsT> = {}): ImportGridsT => ({
   robocizna: BIALOSTOCKA_ROWS,
   robociznaFormulas: [],
+  robociznaGid: 70964819,
   rateTabs: [ratesTab('zakres pracy z narzędziami', [])],
   ...overrides,
 })
@@ -84,7 +87,7 @@ function currentTree(overrides: Partial<SnapshotPayloadT> = {}): SnapshotPayload
 }
 
 function compare(grids: ImportGridsT = source(), current: SnapshotPayloadT = currentTree()) {
-  const built = buildSheetComparison(grids, current)
+  const built = buildSheetComparison(grids, current, SPREADSHEET_ID)
   if (!built.ok) expect.fail(`comparison did not build: ${built.problems.join(' | ')}`)
   return built.comparison
 }
@@ -127,7 +130,9 @@ describe('buildSheetComparison', () => {
   it('still compares a sheet whose cennik cannot be read — the import refuses, this does not', () => {
     // Rates only ever feed the subcontractor overrides, and the comparison reads none. This is the
     // sheet that most needs diagnosing, so a refusal here would blank the diagnosis.
-    expect(buildSheetComparison(source({ rateTabs: [] }), currentTree()).ok).toBe(true)
+    expect(buildSheetComparison(source({ rateTabs: [] }), currentTree(), SPREADSHEET_ID).ok).toBe(
+      true,
+    )
   })
 
   it('refuses only when the robocizna columns themselves cannot be located', () => {
@@ -137,7 +142,7 @@ describe('buildSheetComparison', () => {
         : cells,
     )
 
-    const built = buildSheetComparison(source({ robocizna: broken }), currentTree())
+    const built = buildSheetComparison(source({ robocizna: broken }), currentTree(), SPREADSHEET_ID)
 
     expect(built.ok).toBe(false)
     expect(built.ok === false && built.problems.join(' ')).toContain('Przedmiar')
@@ -159,5 +164,10 @@ describe('buildSheetComparison', () => {
 
     expect(comparison.footer.map((total) => total.key)).toEqual(['plannedNet', 'executedNet'])
     expect(comparison.health.totalRows).toBe(3)
+  })
+
+  it('hands over everything a per-cell link needs, and nothing when the tab’s gid is missing', () => {
+    expect(compare().sheetLink).toEqual({ spreadsheetId: SPREADSHEET_ID, gid: 70964819 })
+    expect(compare(source({ robociznaGid: undefined })).sheetLink).toBeNull()
   })
 })

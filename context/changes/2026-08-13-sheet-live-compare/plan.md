@@ -532,6 +532,124 @@ filling the etapy — and what the live comparison answers that the stored figur
 
 ---
 
+## Phase 6: Okno mówi to, co owner z niego czyta
+
+### Overview
+
+Dogfooding on investment 31 (owner, 2026-08-14) killed three things Phase 3–4 shipped. The refresh
+button asked a question with only one sensible answer; the row list under „Pomiar z natury a
+«Rozjazd»" was the first 25 rows of the sheet wearing a diagnosis it never printed; and a row number
+is not something anyone wants to retype into a sheet by hand.
+
+Owner rulings, verbatim in effect:
+
+- **The refresh is not a choice.** The stored reference figure is a copy of the sheet's Pomiar. Once
+  we have read the sheet live, "keep the stale copy" is not an option anybody would pick — so the
+  refresh happens on open and the button goes away.
+- **The mass class gets a number, the punctual classes get rows.** „Pomiar przepisany z Przedmiaru"
+  is collective (241 of 336 on investment 31) and closes by fixing the sheet or filling the etapy —
+  listing examples only invites row-by-row work against a problem that has no row-by-row answer.
+  „Przedmiar liczony z etapu" (7) and wartości błędu are punctual: those you go and fix, one cell at
+  a time, so those get their rows.
+- **A row number is a link**, straight to the offending cell in the sheet.
+
+### Changes Required:
+
+#### 1. The refresh folds into the comparison
+
+**File**: `src/lib/actions/kosztorys-import.ts`
+
+**Intent**: `compareWithSheet` performs the refresh itself and reports what it changed. One sheet
+read serves both, so auto-refreshing costs nothing over today's open; two actions each doing their
+own `readImportGrids` would have doubled it. `refreshSheetMeasuredQty` loses its last caller and is
+deleted rather than left as an unreachable export.
+
+**Contract**: `compareWithSheet(investmentId): Promise<ActionResultT<{ comparison: SheetComparisonT; refresh: RefreshMeasuredQtyResultT }>>`,
+now a `protectedAction` carrying `KOSZTORYS_TREE_TAGS` — it writes. Order inside: read grids → build
+the refresh → write → **re-serialize the tree** → build the comparison. The comparison must describe
+the state after the write, and re-reading the tree is the unambiguous way to get it; patching the
+serialized tree in memory would put the same truth in two places.
+
+#### 2. The refresh writes only what actually differs
+
+**File**: `src/lib/kosztorys/sheet-import/build-measured-qty-refresh.ts`
+
+**Intent**: Today it emits a row for every matched pozycja, so `updated` counts writes, not changes,
+and the dialog could never honestly say „nothing to pull". Emit only pozycje whose stored figure
+differs from the sheet's current claim (`null` vs a number included) — the counts then mean what
+they say, and an already-current kosztorys writes zero rows.
+
+**Contract**: `refresh.rows` narrows to changed pozycje; `updated`/`cleared` keep their meaning but
+now count changes. Numeric comparison must tolerate the stored `numeric` round-trip — compare with
+the same epsilon the rozjazd already uses rather than `!==`.
+
+#### 3. Samples split by class, and carry their cell
+
+**File**: `src/lib/kosztorys/sheet-import/formula-health.ts`
+
+**Intent**: One shared 25-slot bucket filled in row order is why the block printed the top of the
+sheet: the 241-row class exhausts it before the 7-row class is reached. Collect per class, and only
+for the classes the report renders — `measuredCopiedFromPlanned` keeps its count and loses its
+samples.
+
+**Contract**: `samples` becomes `{ plannedReadFromStage: FormulaSampleT[]; errorValue: FormulaSampleT[] }`,
+each capped independently. `FormulaSampleT` gains `cell: string` — the A1 reference of the offending
+cell (the Przedmiar column for a stage-derived Przedmiar, the column that actually holds the error
+value for an error), built with the existing `columnLetter`.
+
+#### 4. The sheet link
+
+**File**: `src/lib/kosztorys/sheet-import/read-sheet.ts`, `build-sheet-comparison.ts`
+
+**Intent**: A number the owner retypes is a number they won't check. The metadata call already made
+in `readImportGrids` can return the tab's `sheetId` by widening its `fields` — no extra API call.
+
+**Contract**: `ImportGridsT` gains `robociznaGid: number | undefined`; `SheetComparisonT` gains
+`sheetLink: { spreadsheetId: string; gid: number } | null`. The dialog builds
+`https://docs.google.com/spreadsheets/d/<id>/edit#gid=<gid>&range=<cell>`. Null gid (a sheet whose
+metadata didn't carry one) degrades to plain text — never a dead link.
+
+#### 5. The dialog
+
+**File**: `src/components/kosztorys/editor/dialogs/sheet-compare-dialog.tsx`
+
+**Intent**: Button and `useTransition` go. The header stops claiming „Nic nie jest zapisywane" — it
+now writes on open, and saying otherwise is a lie the owner already caught. The refresh result is one
+line: what changed, or that the stored figures were already current. Rows move under their own class
+paragraph, each row number a link.
+
+**Contract**: `PropsT` loses `investmentId` and `onRefreshed`; the parent
+(`kosztorys-actions-menu.tsx`) calls `onTreeReplaced?.()` after a successful fetch, so the grid
+recomputes „Rozjazd" against the figures the dialog just wrote. `LIST_CAP` stays for the
+one-side-only lists.
+
+#### 6. Specs
+
+**Files**: `src/__tests__/lib/kosztorys/sheet-import/formula-health.test.ts`,
+`.../build-measured-qty-refresh.test.ts`, `src/__tests__/lib/actions/kosztorys-refresh-sheet-measured-qty.test.ts`
+
+**Intent**: The refresh spec keeps asserting **persisted rows**, but drives them through
+`compareWithSheet` — the action that now owns the write. Add the case the diff-only change makes
+possible: a second call on an unchanged sheet writes nothing and reports zero. Formula-health gains
+a case pinning that a sheet dominated by the mass class still yields the punctual class's rows —
+the exact bug the shared bucket caused.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/formula-health.test.ts`
+- `pnpm exec vitest run src/__tests__/lib/actions/kosztorys-refresh-sheet-measured-qty.test.ts`
+
+#### Manual Verification:
+
+- Opening „Porównaj z arkuszem" on investment 31 changes the „Rozjazd" counter without any further click
+- Opening it a second time reports that the stored figures were already current
+- The 7 „Przedmiar liczony z etapu" rows are listed and each row number opens that cell in the sheet
+- The 241 „Pomiar przepisany z Przedmiaru" pozycje are a count only — no row list
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -570,7 +688,7 @@ removes a mutation of that column, not the column.
 
 ## Whole-tree Gate
 
-Run once, after Phase 5.
+Run once, after the final phase.
 
 - Type checking passes: `pnpm typecheck`
 - Linting passes: `pnpm lint`
@@ -621,10 +739,17 @@ Run once, after Phase 5.
 
 - [x] 5.1 No phase-scoped automated check (prose and tracker state only)
 
+### Phase 6: Okno mówi to, co owner z niego czyta
+
+#### Automated
+
+- [x] 6.1 Formula-health spec passes, including the punctual-class-survives-the-mass-class case — bb7fce0d
+- [x] 6.2 The refresh spec passes through `compareWithSheet`, incl. the no-op second call — bb7fce0d
+
 ### Whole-tree Gate
 
 - [x] `pnpm typecheck` — clean
-- [x] `pnpm lint` — 0 errors (80 pre-existing warnings)
-- [x] `pnpm test` — 2176 passed, 108 skipped (DB-gated)
-- [ ] `pnpm build` — turbopack refuses on the worktree's symlinked `node_modules`
-      („Symlink node_modules is invalid"); an environment limit, not a code defect. Re-run after merge.
+- [x] `pnpm lint` — 0 errors in `src/` (1 pre-existing error in the untouched root `test.js`, 82 warnings)
+- [x] `pnpm test` — 2178 passed, 109 skipped (DB-gated); `pnpm test:integration` 106 passed @ 5435
+- [x] `pnpm build` — succeeds in the main tree (the earlier refusal was the worktree's symlinked
+      `node_modules`, now folded back)

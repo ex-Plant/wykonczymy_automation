@@ -31,6 +31,11 @@ export type RefreshMeasuredQtyResultT = {
   unmatched: number
 }
 
+export type SheetCompareResultT = {
+  comparison: SheetComparisonT
+  refresh: RefreshMeasuredQtyResultT
+}
+
 export type ApplyImportResultT = {
   sections: number
   items: number
@@ -92,8 +97,12 @@ function emptyReport(): ImportReportT {
 }
 
 /**
- * „Porównaj z arkuszem" — a live read that writes nothing, so it carries no revalidation tags and is
- * never cached: every open asks the sheet what it says right now.
+ * „Porównaj z arkuszem" — a live read that also refreshes the stored reference quantity, in one pass.
+ *
+ * The refresh is not a decision: the stored figure is a copy of the sheet's Pomiar, so once the sheet
+ * has been read live, „keep the stale copy" is not an answer anybody would pick (owner, 2026-08-14).
+ * Folding it in here also keeps it to ONE sheet read — two actions each calling `readImportGrids`
+ * would have doubled the Google round-trip for a single open.
  *
  * Lives here rather than in `lib/queries` (where an on-demand client read normally belongs) because
  * it shares `getInvestmentSheetId`, `readImportGrids` and `sheetFailureMessage` with the import pair
@@ -102,56 +111,42 @@ function emptyReport(): ImportReportT {
  */
 export async function compareWithSheet(
   investmentId: number,
-): Promise<ActionResultT<SheetComparisonT>> {
-  return protectedAction<SheetComparisonT>('compareWithSheet', async ({ payload }) => {
-    const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
-    if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
-
-    try {
-      const grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
-      const built = buildSheetComparison(grids, await serializeKosztorys(investmentId))
-      return built.ok
-        ? { success: true, data: built.comparison }
-        : { success: false, error: built.problems.join(' ') }
-    } catch (error) {
-      return { success: false, error: sheetFailureMessage(error) }
-    }
-  })
-}
-
-/**
- * „Zaciągnij pomiary z arkusza" — refresh the stored reference quantity on every matched pozycja
- * without the wipe-and-reinsert an import performs. Takes only the investment id, for the same reason
- * `applyKosztorysImport` does: the browser has already been shown the comparison, but what gets
- * written is re-derived here.
- */
-export async function refreshSheetMeasuredQty(
-  investmentId: number,
-): Promise<ActionResultT<RefreshMeasuredQtyResultT>> {
-  return protectedAction<RefreshMeasuredQtyResultT>(
-    'refreshSheetMeasuredQty',
+): Promise<ActionResultT<SheetCompareResultT>> {
+  return protectedAction<SheetCompareResultT>(
+    'compareWithSheet',
     async ({ payload }) => {
       const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
       if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
 
-      let built: ReturnType<typeof buildMeasuredQtyRefresh>
+      let grids: Awaited<ReturnType<typeof readImportGrids>>
+      let tree: Awaited<ReturnType<typeof serializeKosztorys>>
       try {
-        const grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
-        built = buildMeasuredQtyRefresh(grids, await serializeKosztorys(investmentId))
+        grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
+        tree = await serializeKosztorys(investmentId)
       } catch (error) {
         return { success: false, error: sheetFailureMessage(error) }
       }
-      if (!built.ok) return { success: false, error: built.problems.join(' ') }
 
-      const { rows, unmatched } = built.refresh
+      const refreshed = buildMeasuredQtyRefresh(grids, tree)
+      if (!refreshed.ok) return { success: false, error: refreshed.problems.join(' ') }
+      const { rows, unmatched } = refreshed.refresh
       await setSheetMeasuredQty(await getDb(payload), rows)
+
+      // Built from the same grids and the same tree the refresh just used. Re-reading the tree after
+      // the write would describe the same state: the stored reference figure feeds „Rozjazd" only,
+      // and no figure this comparison reports is derived from it.
+      const built = buildSheetComparison(grids, tree, spreadsheetId)
+      if (!built.ok) return { success: false, error: built.problems.join(' ') }
 
       return {
         success: true,
         data: {
-          updated: rows.filter((row) => row.qty !== null).length,
-          cleared: rows.filter((row) => row.qty === null).length,
-          unmatched,
+          comparison: built.comparison,
+          refresh: {
+            updated: rows.filter((row) => row.qty !== null).length,
+            cleared: rows.filter((row) => row.qty === null).length,
+            unmatched,
+          },
         },
       }
     },

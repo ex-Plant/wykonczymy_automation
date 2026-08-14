@@ -3,9 +3,13 @@ import { fold, HEADER_BLOCK_ROWS } from './columns'
 import { NON_ITEM_MARKER } from './parse-robocizna'
 import type { ResolvedRobociznaT } from './resolve-columns'
 
-export type FormulaClassT = 'measuredCopiedFromPlanned' | 'plannedReadFromStage' | 'errorValue'
-
-export type FormulaSampleT = { row: number; description: string; klass: FormulaClassT }
+export type FormulaSampleT = {
+  row: number
+  description: string
+  // A1 reference of the cell to go and fix — the report links straight to it, because a row number
+  // the owner retypes into the sheet is a row number they won't check.
+  cell: string
+}
 
 export type FormulaHealthT = {
   // Pomiar copied from Przedmiar (`=N<own row>`): not a measurement, so no reference quantity is
@@ -17,7 +21,10 @@ export type FormulaHealthT = {
   // #REF! / #DIV/0! arriving as strings from UNFORMATTED_VALUE and silently coerced to 0. Counted
   // per row, like the two classes above, so the three numbers are read on one scale.
   errorValues: number
-  samples: FormulaSampleT[]
+  // Rows only for the classes fixed one cell at a time. `measuredCopiedFromPlanned` is collective —
+  // it closes by fixing the sheet or filling the etapy, never row by row — so it keeps its count and
+  // gets no list; a shared bucket used to let its 241 rows crowd out the 7 that were actionable.
+  samples: { plannedReadFromStage: FormulaSampleT[]; errorValue: FormulaSampleT[] }
   totalRows: number
 }
 
@@ -73,7 +80,7 @@ export function scanFormulaHealth(
     measuredCopiedFromPlanned: 0,
     plannedReadFromStage: 0,
     errorValues: 0,
-    samples: [],
+    samples: { plannedReadFromStage: [], errorValue: [] },
     totalRows: 0,
   }
 
@@ -88,24 +95,32 @@ export function scanFormulaHealth(
     if (fold(row[columns.plannedQty]) === NON_ITEM_MARKER || !description) continue
     health.totalRows++
 
-    const record = (klass: FormulaClassT) => {
-      health[klass === 'errorValue' ? 'errorValues' : klass]++
-      if (health.samples.length < SAMPLE_CAP) {
-        health.samples.push({ row: rowIndex + 1, description, klass })
+    const rowNumber = rowIndex + 1
+    const sample = (klass: 'plannedReadFromStage' | 'errorValue', column: number) => {
+      const list = health.samples[klass]
+      if (list.length < SAMPLE_CAP) {
+        list.push({ row: rowNumber, description, cell: `${columnLetter(column)}${rowNumber}` })
       }
     }
 
     if (
       columns.measuredQty !== undefined &&
-      ownRowReference(formulaRow[columns.measuredQty], rowIndex + 1) === plannedLetter
+      ownRowReference(formulaRow[columns.measuredQty], rowNumber) === plannedLetter
     ) {
-      record('measuredCopiedFromPlanned')
+      health.measuredCopiedFromPlanned++
     }
 
-    const plannedSource = ownRowReference(formulaRow[columns.plannedQty], rowIndex + 1)
-    if (plannedSource !== null && stageLetters.has(plannedSource)) record('plannedReadFromStage')
+    const plannedSource = ownRowReference(formulaRow[columns.plannedQty], rowNumber)
+    if (plannedSource !== null && stageLetters.has(plannedSource)) {
+      health.plannedReadFromStage++
+      sample('plannedReadFromStage', columns.plannedQty)
+    }
 
-    if (readColumns.some((column) => ERROR_VALUE.test(text(row[column])))) record('errorValue')
+    const erroring = readColumns.find((column) => ERROR_VALUE.test(text(row[column])))
+    if (erroring !== undefined) {
+      health.errorValues++
+      sample('errorValue', erroring)
+    }
   }
 
   return health

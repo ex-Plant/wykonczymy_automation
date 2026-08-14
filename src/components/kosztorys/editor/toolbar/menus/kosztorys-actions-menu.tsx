@@ -34,8 +34,8 @@ import {
   compareWithSheet,
   previewKosztorysImport,
   type ImportPreviewT,
+  type SheetCompareResultT,
 } from '@/lib/actions/kosztorys-import'
-import type { SheetComparisonT } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { toastMessage } from '@/lib/utils/toast'
@@ -63,7 +63,7 @@ export function KosztorysActionsMenu() {
   const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
   const [importLoaded, setImportLoaded] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
-  const [comparison, setComparison] = useState<SheetComparisonT | null>(null)
+  const [compareResult, setCompareResult] = useState<SheetCompareResultT | null>(null)
   const [compareLoaded, setCompareLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -114,17 +114,20 @@ export function KosztorysActionsMenu() {
       .finally(() => setImportLoaded(true))
   }
 
+  // Same Radix reason as the two above. The refresh rides along with the read, so a successful
+  // fetch means rows were just written — the grid has to recompute „Rozjazd" against them.
   function handleOpenCompare() {
     setCompareOpen(true)
     setCompareLoaded(false)
-    setComparison(null)
+    setCompareResult(null)
     void compareWithSheet(investmentId)
       .then((res) => {
-        setComparison(res.success ? res.data : null)
-        if (!res.success) toastMessage(res.error, 'error', 6000)
+        setCompareResult(res.success ? res.data : null)
+        if (res.success) onTreeReplaced?.()
+        else toastMessage(res.error, 'error', 6000)
       })
       .catch(() => {
-        setComparison(null)
+        setCompareResult(null)
         toastMessage('Nie udało się odczytać arkusza', 'error')
       })
       .finally(() => setCompareLoaded(true))
@@ -190,7 +193,7 @@ export function KosztorysActionsMenu() {
             <ScaleIcon />
             <MenuItemBody
               label="Porównaj z arkuszem…"
-              description="Sprawdź, czy arkusz i aplikacja liczą to samo — bez zapisywania czegokolwiek."
+              description="Sprawdź, czy arkusz i aplikacja liczą to samo, i odśwież zapisane Pomiary z natury."
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -235,15 +238,10 @@ export function KosztorysActionsMenu() {
         }}
       />
       <SheetCompareDialog
-        investmentId={investmentId}
         open={compareOpen}
         onOpenChange={setCompareOpen}
-        comparison={comparison}
+        result={compareResult}
         loaded={compareLoaded}
-        onRefreshed={() => {
-          setComparison(null)
-          onTreeReplaced?.()
-        }}
       />
       <ReloadFromPresetDialog
         investmentId={investmentId}

@@ -29,6 +29,9 @@ export type SheetComparisonT = {
   // behind „Rozjazd nic o nich nie powie".
   referenceQty: { matched: number; withValue: number }
   health: FormulaHealthT
+  // Everything a per-cell deep link needs, or null when the tab's gid didn't come back — the report
+  // then prints the cell as text instead of a link that would open the wrong tab.
+  sheetLink: { spreadsheetId: string; gid: number } | null
 }
 
 export type SheetComparisonResultT =
@@ -84,6 +87,7 @@ function planeTotals(
 export function buildSheetComparison(
   grids: ImportGridsT,
   currentTree: SnapshotPayloadT,
+  spreadsheetId: string,
 ): SheetComparisonResultT {
   const resolved = resolveRobocizna(grids.robocizna)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
@@ -152,6 +156,8 @@ export function buildSheetComparison(
         resolved,
         parsed.footerStart,
       ),
+      sheetLink:
+        grids.robociznaGid === undefined ? null : { spreadsheetId, gid: grids.robociznaGid },
     },
   }
 }

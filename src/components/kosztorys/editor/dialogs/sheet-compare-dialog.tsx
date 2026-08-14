@@ -1,24 +1,20 @@
 'use client'
 
-import { useTransition } from 'react'
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
-import { refreshSheetMeasuredQty } from '@/lib/actions/kosztorys-import'
+import type { SheetCompareResultT } from '@/lib/actions/kosztorys-import'
 import type {
   ComparedItemT,
   SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
+import type { FormulaSampleT } from '@/lib/kosztorys/sheet-import/formula-health'
 import { formatPLN } from '@/lib/utils/format-currency'
-import { toastMessage } from '@/lib/utils/toast'
 
 type PropsT = {
-  investmentId: number
   open: boolean
   onOpenChange: (open: boolean) => void
-  comparison: SheetComparisonT | null
+  result: SheetCompareResultT | null
   loaded: boolean
-  onRefreshed: () => void
 }
 
 // A rozpiska runs to hundreds of prace, and an unmatched list that long is a wall, not an answer —
@@ -26,108 +22,79 @@ type PropsT = {
 const LIST_CAP = 12
 
 /**
- * „Porównaj z arkuszem" — a live read of the sheet against the stored kosztorys. Renders a record it
- * does not compute: everything here comes from `buildSheetComparison`, fetched by the parent on the
- * click (a programmatically-opened Radix dialog never fires `onOpenChange`, so it cannot fetch itself).
+ * „Porównaj z arkuszem" — a live read of the sheet against the stored kosztorys, which also pulls the
+ * sheet's Pomiar onto the stored reference figure. Renders a record it does not compute: everything
+ * here comes from the action, fetched by the parent on the click (a programmatically-opened Radix
+ * dialog never fires `onOpenChange`, so it cannot fetch itself).
  */
-export function SheetCompareDialog({
-  investmentId,
-  open,
-  onOpenChange,
-  comparison,
-  loaded,
-  onRefreshed,
-}: PropsT) {
-  const [pending, startTransition] = useTransition()
-
-  function handleRefresh() {
-    startTransition(async () => {
-      const result = await refreshSheetMeasuredQty(investmentId)
-      if (!result.success) {
-        toastMessage(result.error, 'error', 6000)
-        return
-      }
-      const { updated, cleared, unmatched } = result.data
-      toastMessage(
-        `Zaciągnięto pomiary: ${updated} pozycji · wyczyszczono ${cleared} · pominięto ${unmatched}`,
-        'success',
-      )
-      onOpenChange(false)
-      onRefreshed()
-    })
-  }
-
+export function SheetCompareDialog({ open, onOpenChange, result, loaded }: PropsT) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader
           title="Porównaj z arkuszem"
-          description="Odczyt arkusza na żywo. Nic nie jest zapisywane — to tylko rachunek obu stron."
+          description="Odczyt arkusza na żywo. Zapisane Pomiary z natury są przy okazji odświeżane — reszta kosztorysu zostaje nietknięta."
         />
 
         {!loaded ? (
           <p className="text-muted-foreground text-sm">Czytam arkusz…</p>
-        ) : !comparison ? (
+        ) : !result ? (
           <p className="text-destructive text-sm">Nie udało się odczytać arkusza.</p>
         ) : (
           <div className="space-y-4 text-sm">
             <SheetReportBlock title="Rachunek obu stron">
               <TotalsRow
                 label="Wartość netto przedmiar"
-                sheet={comparison.totals.plannedNetFromSheet}
-                app={comparison.totals.plannedNetFromApp}
+                sheet={result.comparison.totals.plannedNetFromSheet}
+                app={result.comparison.totals.plannedNetFromApp}
               />
               <TotalsRow
                 label="Wartość prac wykonanych"
-                sheet={comparison.totals.executedNetFromSheet}
-                app={comparison.totals.executedNetFromApp}
+                sheet={result.comparison.totals.executedNetFromSheet}
+                app={result.comparison.totals.executedNetFromApp}
               />
               <p className="text-muted-foreground text-xs">
-                Arkusz: {comparison.counts.sheetItems} prac · aplikacja {comparison.counts.appItems}{' '}
-                prac · wspólnych {comparison.counts.matched}
+                Arkusz: {result.comparison.counts.sheetItems} prac · aplikacja{' '}
+                {result.comparison.counts.appItems} prac · wspólnych{' '}
+                {result.comparison.counts.matched}
               </p>
             </SheetReportBlock>
 
             <SheetReportBlock title="Pomiar z natury a „Rozjazd”">
+              <RefreshLine refresh={result.refresh} />
               <p
                 className={
-                  comparison.health.measuredCopiedFromPlanned > 0
+                  result.comparison.health.measuredCopiedFromPlanned > 0
                     ? 'text-amber-600'
                     : 'text-muted-foreground'
                 }
               >
-                {comparison.health.measuredCopiedFromPlanned > 0
-                  ? `Na ${comparison.health.measuredCopiedFromPlanned} z ${comparison.health.totalRows} pozycji arkusza Pomiar z natury jest przepisany z Przedmiaru — to nie jest pomiar, więc kolumna „Rozjazd” nic o nich nie powie.`
+                {result.comparison.health.measuredCopiedFromPlanned > 0
+                  ? `Na ${result.comparison.health.measuredCopiedFromPlanned} z ${result.comparison.health.totalRows} pozycji arkusza Pomiar z natury jest przepisany z Przedmiaru — to nie jest pomiar, więc kolumna „Rozjazd” nic o nich nie powie.`
                   : 'Żadna pozycja arkusza nie ma Pomiaru przepisanego z Przedmiaru.'}
               </p>
               <p className="text-muted-foreground text-xs">
-                Odniesienie zapisane w aplikacji ma {comparison.referenceQty.withValue} z{' '}
-                {comparison.referenceQty.matched} wspólnych pozycji.
+                Odniesienie zapisane w aplikacji ma {result.comparison.referenceQty.withValue} z{' '}
+                {result.comparison.referenceQty.matched} wspólnych pozycji.
               </p>
-              {comparison.health.plannedReadFromStage > 0 && (
-                <p className="text-xs text-amber-600">
-                  {comparison.health.plannedReadFromStage} pozycji ma Przedmiar liczony z etapu —
-                  oferta staje się pochodną wykonania, a pusty etap daje ofertę zerową.
-                </p>
-              )}
-              {comparison.health.errorValues > 0 && (
-                <p className="text-destructive text-xs">
-                  {comparison.health.errorValues} pozycji ma w arkuszu wartość błędu (#REF!,
-                  #DIV/0!) — czytamy je jako zero.
-                </p>
-              )}
-              {comparison.health.samples.map((sample) => (
-                <p key={`${sample.row}-${sample.klass}`} className="text-muted-foreground text-xs">
-                  wiersz {sample.row} · {sample.description}
-                </p>
-              ))}
-              <Button size="sm" variant="outline" onClick={handleRefresh} disabled={pending}>
-                {pending ? 'Zaciągam…' : 'Zaciągnij pomiary z arkusza'}
-              </Button>
+
+              <SampleList
+                count={result.comparison.health.plannedReadFromStage}
+                note="Przedmiar liczony z etapu — oferta staje się pochodną wykonania, a pusty etap daje ofertę zerową."
+                samples={result.comparison.health.samples.plannedReadFromStage}
+                link={result.comparison.sheetLink}
+              />
+              <SampleList
+                count={result.comparison.health.errorValues}
+                note="wartość błędu w arkuszu (#REF!, #DIV/0!) — czytamy ją jako zero."
+                samples={result.comparison.health.samples.errorValue}
+                link={result.comparison.sheetLink}
+                tone="text-destructive"
+              />
             </SheetReportBlock>
 
             <SheetReportBlock title="Sumy w samym arkuszu">
-              {comparison.footer.map((total) => (
+              {result.comparison.footer.map((total) => (
                 <p
                   key={total.key}
                   className={
@@ -144,20 +111,78 @@ export function SheetCompareDialog({
               ))}
             </SheetReportBlock>
 
-            {(comparison.onlyInSheet.length > 0 || comparison.onlyInApp.length > 0) && (
+            {(result.comparison.onlyInSheet.length > 0 ||
+              result.comparison.onlyInApp.length > 0) && (
               <SheetReportBlock title="Pozycje tylko po jednej stronie">
                 <p className="text-muted-foreground text-xs">
                   Pozycje rozpoznajemy po nazwie sekcji i opisie — arkusz nie ma identyfikatorów. Po
                   zmianie nazwy ta sama praca pojawi się na obu listach.
                 </p>
-                <CappedList label="Tylko w arkuszu" items={comparison.onlyInSheet} />
-                <CappedList label="Tylko w aplikacji" items={comparison.onlyInApp} />
+                <CappedList label="Tylko w arkuszu" items={result.comparison.onlyInSheet} />
+                <CappedList label="Tylko w aplikacji" items={result.comparison.onlyInApp} />
               </SheetReportBlock>
             )}
           </div>
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function RefreshLine({ refresh }: { refresh: SheetCompareResultT['refresh'] }) {
+  const { updated, cleared, unmatched } = refresh
+  const skipped = unmatched > 0 ? ` · pominięto ${unmatched} bez odpowiednika w arkuszu` : ''
+  return (
+    <p className="text-muted-foreground text-xs">
+      {updated === 0 && cleared === 0
+        ? `Zapisane Pomiary były już zgodne z arkuszem${skipped}.`
+        : `Zaciągnięto Pomiary: ${updated} pozycji · wyczyszczono ${cleared}${skipped}.`}
+    </p>
+  )
+}
+
+function SampleList({
+  count,
+  note,
+  samples,
+  link,
+  tone = 'text-amber-600',
+}: {
+  count: number
+  note: string
+  samples: FormulaSampleT[]
+  link: SheetComparisonT['sheetLink']
+  tone?: string
+}) {
+  if (count === 0) return null
+  return (
+    <div className="space-y-0.5">
+      <p className={`text-xs ${tone}`}>
+        {count} {count === 1 ? 'pozycja ma' : 'pozycji ma'} {note}
+      </p>
+      {samples.map((sample) => (
+        <p key={sample.cell} className="text-muted-foreground text-xs">
+          <SheetCellLink cell={sample.cell} link={link} /> · {sample.description}
+        </p>
+      ))}
+      {count > samples.length && (
+        <p className="text-muted-foreground text-xs">…i {count - samples.length} więcej</p>
+      )}
+    </div>
+  )
+}
+
+function SheetCellLink({ cell, link }: { cell: string; link: SheetComparisonT['sheetLink'] }) {
+  if (!link) return <>komórka {cell}</>
+  return (
+    <a
+      href={`https://docs.google.com/spreadsheets/d/${link.spreadsheetId}/edit#gid=${link.gid}&range=${cell}`}
+      target="_blank"
+      rel="noreferrer"
+      className="underline underline-offset-2"
+    >
+      komórka {cell}
+    </a>
   )
 }
 

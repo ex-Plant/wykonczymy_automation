@@ -1,4 +1,5 @@
 import type { SheetMeasuredQtyRowT } from '@/lib/db/kosztorys-sheet-measured-qty'
+import { QTY_TOLERANCE } from '@/lib/kosztorys/settlement-rows'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT } from '@/lib/kosztorys/types'
 import { keyItems } from './item-key'
@@ -7,6 +8,9 @@ import type { ImportGridsT } from './read-sheet'
 import { resolveRobocizna } from './resolve-columns'
 
 export type MeasuredQtyRefreshT = {
+  // Only pozycje whose stored figure actually differs from the sheet's current claim. Emitting every
+  // matched pozycja would make the counts mean „ile zapisano" instead of „ile się zmieniło", and the
+  // report could never say that the stored figures were already current.
   rows: SheetMeasuredQtyRowT[]
   // Pozycje the app holds that the sheet no longer names — left alone, since the sheet has said
   // nothing about them rather than said zero.
@@ -16,6 +20,13 @@ export type MeasuredQtyRefreshT = {
 export type MeasuredQtyRefreshResultT =
   | { ok: true; refresh: MeasuredQtyRefreshT }
   | { ok: false; problems: string[] }
+
+// The stored figure round-trips through `numeric`, so an equality test has to allow the same slack
+// the rozjazd itself calls „no difference" — otherwise a re-read would rewrite rows nothing changed.
+const sameQty = (stored: number | null, fromSheet: number | null): boolean =>
+  stored === null || fromSheet === null
+    ? stored === fromSheet
+    : Math.abs(stored - fromSheet) < QTY_TOLERANCE
 
 /**
  * Pair the sheet's pozycje with the stored ones and hand back what „Zaciągnij pomiary z arkusza"
@@ -51,7 +62,8 @@ export function buildMeasuredQtyRefresh(
       unmatched++
       continue
     }
-    rows.push({ id: item.id, qty: fromSheet.sheetMeasuredQty })
+    const qty = fromSheet.sheetMeasuredQty
+    if (!sameQty(item.sheetMeasuredQty, qty)) rows.push({ id: item.id, qty })
   }
   return { ok: true, refresh: { rows, unmatched } }
 }

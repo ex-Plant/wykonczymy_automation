@@ -6,9 +6,9 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 import { BIALOSTOCKA_ROWS, ratesTab } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 import { row } from '@/__tests__/fixtures/kosztorys-sheet/grid'
 
-// „Zaciągnij pomiary z arkusza" writes one column on rows it did not create, so the only assertion
-// worth making is against the PERSISTED value — the action's own counters would report a write that
-// never landed.
+// „Porównaj z arkuszem" writes one column on rows it did not create, so the only assertion worth
+// making is against the PERSISTED value — the action's own counters would report a write that never
+// landed.
 //
 // The sheet is mocked at the reader; resolve → parse → match below it is the real code.
 const authState = vi.hoisted(() => ({ userId: 0 }))
@@ -36,6 +36,7 @@ vi.mock('@/lib/kosztorys/sheet-import/read-sheet', async (importOriginal) => ({
   readImportGrids: vi.fn().mockImplementation(async () => ({
     robocizna: BIALOSTOCKA_ROWS,
     robociznaFormulas: sheetState.formulas,
+    robociznaGid: 70964819,
     rateTabs: [
       ratesTab('zakres pracy z narzędziami', [
         { description: 'montaż jednostki wewnętrznej', wTools: 78, ownTools: 60 },
@@ -44,8 +45,7 @@ vi.mock('@/lib/kosztorys/sheet-import/read-sheet', async (importOriginal) => ({
   })),
 }))
 
-const { applyKosztorysImport, refreshSheetMeasuredQty } =
-  await import('@/lib/actions/kosztorys-import')
+const { applyKosztorysImport, compareWithSheet } = await import('@/lib/actions/kosztorys-import')
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -53,7 +53,7 @@ const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SEC
 // exactly the „przepisany z Przedmiaru" case the refresh must translate into „no measurement".
 const FIRST_PRACA_ROW = 4
 
-describe.skipIf(!ENV_READY)('refreshSheetMeasuredQty — persisted state (DB)', () => {
+describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
   let payload: Payload
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
@@ -132,9 +132,12 @@ describe.skipIf(!ENV_READY)('refreshSheetMeasuredQty — persisted state (DB)', 
       index === FIRST_PRACA_ROW ? row({ O: '=N5' }) : [],
     )
 
-    const result = await refreshSheetMeasuredQty(investmentId)
+    const result = await compareWithSheet(investmentId)
 
-    expect(result).toMatchObject({ success: true, data: { updated: 2, cleared: 1, unmatched: 1 } })
+    expect(result).toMatchObject({
+      success: true,
+      data: { refresh: { updated: 2, cleared: 1, unmatched: 1 } },
+    })
     expect(await measuredQtyByDescription()).toMatchObject({
       'zakup, transport i wniesienie towaru budowlanego': null,
       'montaż płyt akustycznych dodatek': 50,
@@ -146,10 +149,22 @@ describe.skipIf(!ENV_READY)('refreshSheetMeasuredQty — persisted state (DB)', 
     expect((await measuredQtyByDescription())['praca wpisana ręcznie']).toBe(999)
   })
 
+  it('writes nothing on a second read of the same sheet, and still reports the comparison', async () => {
+    // The window opens on every glance, so a re-read that rewrote every row would make „zaciągnięto"
+    // meaningless — the counters have to say „już zgodne".
+    const result = await compareWithSheet(investmentId)
+
+    expect(result).toMatchObject({
+      success: true,
+      data: { refresh: { updated: 0, cleared: 0, unmatched: 1 } },
+    })
+    expect(result.success && result.data.comparison.counts.matched).toBe(3)
+  })
+
   it('reports a missing sheet link in Polish instead of clearing every measurement', async () => {
     sheetState.spreadsheetId = undefined
     try {
-      expect(await refreshSheetMeasuredQty(investmentId)).toMatchObject({
+      expect(await compareWithSheet(investmentId)).toMatchObject({
         success: false,
         error: 'Inwestycja nie ma kosztorysu.',
       })

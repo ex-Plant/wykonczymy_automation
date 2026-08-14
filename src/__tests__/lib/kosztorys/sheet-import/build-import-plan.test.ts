@@ -14,6 +14,7 @@ const RATES = [
 const source = (overrides: Partial<ImportGridsT> = {}): ImportGridsT => ({
   robocizna: BIALOSTOCKA_ROWS,
   robociznaFormulas: [],
+  robociznaGid: 70964819,
   rateTabs: [ratesTab('zakres pracy z narzędziami', RATES)],
   ...overrides,
 })
