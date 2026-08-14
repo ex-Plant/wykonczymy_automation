@@ -337,11 +337,18 @@ export function useKosztorysEditor({
   // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
   // Zero under the preview, like the filter itself — the client's document carries none of this.
-  // Read by the toolbar's counter AND by the „Rozjazd" column's existence gate, so the badge and the
-  // column can never disagree about whether there is anything to fix.
+  // Read by the toolbar's filter badge: how many pozycje still carry pomiar nobody rozpisał.
   const divergedCount = useMemo(
     () => (preview ? 0 : divergedRows(rows, stages).length),
     [preview, rows, stages],
+  )
+
+  // Gates the „Pozostało do rozliczenia" column. Not `divergedCount > 0`: the column has to survive
+  // its own zero, or it becomes a counter the owner clears by typing quantities into etapy — which
+  // is the app declaring work done that nobody did.
+  const hasSheetMeasure = useMemo(
+    () => !preview && rows.some((row) => row.sheetMeasuredQty != null),
+    [preview, rows],
   )
 
   const columnOpts = {
@@ -373,7 +380,7 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    hasDivergence: divergedCount > 0,
+    hasSheetMeasure,
     readOnly: preview,
     previewVisible: preview,
   }

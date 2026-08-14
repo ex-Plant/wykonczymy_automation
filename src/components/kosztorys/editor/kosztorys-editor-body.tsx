@@ -255,14 +255,14 @@ export function KosztorysEditorBody({
               </Button>
             </EmptyState>
           )}
-          {/* The filter emptying itself is the goal state, not a dead end — every rozjazd has been
-              answered, so say that rather than leave a blank grid. Search takes precedence above:
-              with both on, „nie pasuje do…" is the more specific explanation. */}
+          {/* The filter emptying itself is not a dead end — the whole pomiar is on the etapy, so say
+              that rather than leave a blank grid. Search takes precedence above: with both on,
+              „nie pasuje do…" is the more specific explanation. */}
           {viewRows.length === 0 && search.trim() === '' && divergedOnly && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
-              title="Brak rozjazdów"
-              description="Każda pozycja zgadza się z pomiarem z arkusza."
+              title="Nic nie zostało do rozliczenia"
+              description="Cały pomiar z arkusza Google jest rozpisany na etapy."
             >
               <Button
                 variant="outline"

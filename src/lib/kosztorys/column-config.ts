@@ -17,7 +17,10 @@ export const COLUMN_LABELS: Record<string, string> = {
   stageQtySum: 'Pomiar (razem etapy)',
   // Names its own subtraction in the header: the column exists to be read at a glance, so needing a
   // tooltip to learn which way round the difference runs would defeat it.
-  divergence: 'Rozjazd (arkusz − etapy)',
+  // The sheet's own name for this figure. Ours used to be „Rozjazd", which framed a normal balance
+  // line as a defect — and the only way to clear it is to type into the etapy, i.e. to declare work
+  // done that nobody did.
+  divergence: 'Pozostało do rozliczenia',
   unit: 'J.m.',
   priceMode: 'Źródło ceny wykonawcy',
   priceCoeff: 'Mnożnik',

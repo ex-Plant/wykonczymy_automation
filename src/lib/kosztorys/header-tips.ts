@@ -19,7 +19,7 @@ export const HEADER_TIPS: Record<string, string> = {
   stageQtySum:
     'Pomiar — ilość faktycznie wykonana.\nSuma ilości z etapów widocznych w tym widoku: w „Kliencie" ze wszystkich, w widoku ekipy tylko z etapów rozliczanych z tą ekipą.',
   divergence:
-    'Różnica między „Pomiar z natury" wczytanym z arkusza a sumą etapów w aplikacji.\nNa plusie = arkusz pokazuje więcej, niż rozpisano na etapy — tyle ilości i pieniędzy brakuje w etapach.\nNa minusie = etapy przekraczają pomiar z arkusza.\nKolumna pojawia się tylko wtedy, gdy choć jedna pozycja się rozjeżdża, i znika, gdy lista się wyczyści.',
+    'Różnica pomiędzy sumą wynikającą  z rozpisanych etapów w arkuszu google, a sumą z pomiaru z natury.',
   priceCoeff:
     '1 = tyle co Cena klienta \n 0.65 = 65% ceny klienta · 1.2 = 120% ceny klienta.\n\nSzary kursywą = dziedziczony (z sekcji lub domyślny z inwestycji). Wpisanie własnego przestawia wiersz na „własny mnożnik".\n„—" Kwota stała, mnożnik się nie stosuje',
   priceMode: 'Auto = mnożnik dziedziczony - domyślny z inwestycji lub ustawiony dla danej sekcji.',

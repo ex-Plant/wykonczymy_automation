@@ -26,10 +26,10 @@ function DivergenceCell({ rowData, columnData }: CellProps<KosztorysV2RowT, Dive
     // the nearest quantity on screen, so „96 − 55 = 41, why 40?" is the first reaction to a cell that
     // subtracts a pomiar the grid never shows. The header names the subtraction; this names its terms.
     <HintTooltip
-      content={`Arkusz: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)}\nPrzedmiar w tym nie uczestniczy — to porównanie pomiaru z arkusza z sumą etapów.`}
+      content={`Pomiar z arkusza Google: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)}\nPrzedmiar w tym nie uczestniczy — to porównanie pomiaru z arkusza Google z sumą etapów.`}
       className="w-full"
     >
-      <ReadOnlyCellText danger emphasize>
+      <ReadOnlyCellText emphasize>
         {signed(divergence.qtyDiff, formatQty)}
         {/* Muted, unlike the quantity: the money is what says whether this row is worth chasing, but
             the quantity is what gets typed into an etap to clear it. */}
