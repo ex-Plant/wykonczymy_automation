@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -143,6 +144,7 @@ export function KosztorysActionsMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel>Edycja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
             <Undo2 />
             <MenuItemBody label="Cofnij" description="Cmd/Ctrl+Z" />
@@ -152,6 +154,7 @@ export function KosztorysActionsMenu() {
             <MenuItemBody label="Ponów" description="Cmd/Ctrl+Shift+Z" />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Wersje</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => setVersionOpen(true)}>
             <Save />
             <MenuItemBody
@@ -167,6 +170,7 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Szablony</DropdownMenuLabel>
           <DropdownMenuItem onSelect={handleOpenPreset}>
             <FileStack />
             <MenuItemBody
@@ -174,7 +178,6 @@ export function KosztorysActionsMenu() {
               description="Zapisz jako wzór do użycia na innych inwestycjach."
             />
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setReloadOpen(true)}>
             <FileDown />
             <MenuItemBody
@@ -182,6 +185,8 @@ export function KosztorysActionsMenu() {
               description="Zastąp całą rozpiskę zapisanym szablonem."
             />
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
           <DropdownMenuItem onSelect={handleOpenImport}>
             <SheetIcon />
             <MenuItemBody
@@ -197,6 +202,7 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Klient</DropdownMenuLabel>
           <DropdownMenuItem asChild>
             <Link href={`/podglad-klienta/${investmentId}`} target="_blank">
               <Eye />

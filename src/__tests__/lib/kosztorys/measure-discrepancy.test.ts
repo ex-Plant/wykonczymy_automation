@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rowsMatchingConditions } from '@/lib/kosztorys/row-conditions'
+import { applyRowConditions } from '@/lib/kosztorys/row-conditions'
 import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
@@ -104,7 +104,7 @@ describe('measureDiscrepancy', () => {
 
 describe('the „rozjazd" condition over a set of rows', () => {
   const diverged = (rows: KosztorysV2RowT[]) =>
-    rowsMatchingConditions(rows, ['measure-diverged'], { stages: STAGES })
+    applyRowConditions(rows, ['measure-diverged'], { stages: STAGES })
 
   it('keeps only the pozycje whose sheet pomiar still disagrees with the etapy', () => {
     const rows = [

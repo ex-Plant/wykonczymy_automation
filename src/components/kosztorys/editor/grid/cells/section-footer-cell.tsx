@@ -13,12 +13,10 @@ export type SectionFooterContextT = {
   labelColumnId: string | undefined
 }
 
-// The label starts under „Sekcja" rather than „Opis prac", so it opens right where the section's own
-// name reads in the rows above. dsg has no colspan, so the span is spelled the only way it can be:
-// „Sekcja" prints the label and simply overflows „Opis prac" (which renders blank and, per
-// globals.css, drops its vertical rule) — the two read as one merged cell, „Akcje" stays its own.
-// „Sekcja" can be hidden by the picker, hence a candidate list rather than a fixed id.
-const LABEL_COLUMN_CANDIDATES = ['sectionName', IDENTITY_COLUMN_ID]
+// The label sits under „Opis prac", where the eye already reads what each row is, and that column is
+// wide enough (min 360px) to hold it without spilling into its neighbour. It can be hidden by the
+// picker, hence a candidate list rather than a fixed id — „Sekcja" then takes over.
+const LABEL_COLUMN_CANDIDATES = [IDENTITY_COLUMN_ID, 'sectionName']
 
 export function sectionFooterLabelColumnId(
   columnIds: readonly (string | undefined)[],

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ROW_CONDITIONS,
   countMatching,
-  rowsMatchingConditions,
+  applyRowConditions,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
@@ -47,14 +47,14 @@ function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
 const matches = (conditionId: string, subject: KosztorysV2RowT) =>
   countMatching([subject], conditionId, CTX) === 1
 
-describe('the four conditions, each on its boundary', () => {
+describe('the conditions, each on its boundary', () => {
   it('„bez przedmiaru" reads a cleared cell and a zero alike, but not a real quantity', () => {
     expect(matches('no-planned-qty', row({ plannedQty: 0 }))).toBe(true)
     expect(matches('no-planned-qty', row({ plannedQty: null as unknown as number }))).toBe(true)
     expect(matches('no-planned-qty', row({ plannedQty: 0.01 }))).toBe(false)
   })
 
-  it('„bez pomiaru z natury" asks Σ etapów, across every crew', () => {
+  it('„bez wykonanej pracy" asks Σ etapów, across every crew', () => {
     expect(matches('no-measured-qty', row())).toBe(true)
     expect(matches('no-measured-qty', row({ [stageKey(1)]: 0, [stageKey(2)]: 0 }))).toBe(true)
     // A subcontractor-plane etap is still executed work — the pomiar covers the whole scope.
@@ -86,9 +86,29 @@ describe('the four conditions, each on its boundary', () => {
       expect(condition.sectionLabel === null).toBe(condition.kind === 'diagnostic')
     }
   })
+
+  // The picker grammar rests on this: untick one half and you are left with exactly the other half.
+  // A pair that overlapped (or left a gap) would make „pokaż tylko te z przedmiarem" quietly lie.
+  it('pairs every filter with its exact complement', () => {
+    const subjects = [
+      row({ plannedQty: 0 }),
+      row({ plannedQty: 5 }),
+      row({ [stageKey(1)]: 0, [stageKey(2)]: 0 }),
+      row({ [stageKey(2)]: 3 }),
+    ]
+
+    for (const [negative, positive] of [
+      ['no-planned-qty', 'has-planned-qty'],
+      ['no-measured-qty', 'has-measured-qty'],
+    ]) {
+      for (const subject of subjects) {
+        expect(matches(positive, subject)).toBe(!matches(negative, subject))
+      }
+    }
+  })
 })
 
-describe('rowsMatchingConditions — several conditions narrow to their intersection', () => {
+describe('applyRowConditions — each kind pulls the direction its wording promises', () => {
   const rows = [
     row({ id: 1, plannedQty: 0, clientPrice: 0 }),
     row({ id: 2, plannedQty: 0, clientPrice: 100 }),
@@ -97,22 +117,42 @@ describe('rowsMatchingConditions — several conditions narrow to their intersec
   ]
   const ids = (subject: KosztorysV2RowT[]) => subject.map((r) => r.id)
 
-  it('combines with AND', () => {
-    expect(ids(rowsMatchingConditions(rows, ['no-planned-qty', 'no-client-price'], CTX))).toEqual([
-      1,
-    ])
+  it('hides what a filter matches — „Schowaj pozycje bez przedmiaru"', () => {
+    expect(ids(applyRowConditions(rows, ['no-planned-qty'], CTX))).toEqual([3, 4])
+  })
+
+  it('keeps only what a diagnostic matches — „Pokaż tylko pozycje bez ceny j.m."', () => {
+    expect(ids(applyRowConditions(rows, ['no-client-price'], CTX))).toEqual([1, 3])
+  })
+
+  it('applies the hiders first, then keeps only what a diagnostic still matches', () => {
+    expect(ids(applyRowConditions(rows, ['no-planned-qty', 'no-client-price'], CTX))).toEqual([3])
+  })
+
+  // The bug this rule exists to prevent: under AND, „bez ceny j.m. (9)" + „z rozjazdem pomiaru (5)"
+  // asked for pozycje that are both at once — none — so the grid blanked while the badges promised 14.
+  it('unions two diagnostics rather than intersecting them', () => {
+    const divergedRows = [
+      row({ id: 5, clientPrice: 100, sheetMeasuredQty: 95, [stageKey(1)]: 55 }),
+      row({ id: 6, clientPrice: 0, sheetMeasuredQty: 40, [stageKey(1)]: 40 }),
+      row({ id: 7, clientPrice: 100, sheetMeasuredQty: 40, [stageKey(1)]: 40 }),
+    ]
+
+    expect(
+      ids(applyRowConditions(divergedRows, ['no-client-price', 'measure-diverged'], CTX)),
+    ).toEqual([5, 6])
   })
 
   it('is a no-op with nothing active — and hands back the same array, not a copy', () => {
-    expect(rowsMatchingConditions(rows, [], CTX)).toBe(rows)
+    expect(applyRowConditions(rows, [], CTX)).toBe(rows)
   })
 
   it('ignores an id nobody knows rather than matching nothing', () => {
     // A filter persisted under a condition that has since been removed must not blank the kosztorys.
-    expect(ids(rowsMatchingConditions(rows, ['no-such-condition'], CTX))).toEqual([1, 2, 3, 4])
-    expect(
-      ids(rowsMatchingConditions(rows, ['no-such-condition', 'no-client-price'], CTX)),
-    ).toEqual([1, 3])
+    expect(ids(applyRowConditions(rows, ['no-such-condition'], CTX))).toEqual([1, 2, 3, 4])
+    expect(ids(applyRowConditions(rows, ['no-such-condition', 'no-client-price'], CTX))).toEqual([
+      1, 3,
+    ])
   })
 })
 

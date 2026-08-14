@@ -33,7 +33,7 @@ export function useActiveConditions(investmentId: number): {
   const store = storeFor(investmentId)
   const active = useJsonMap<boolean>(store)
 
-  // Ids nobody recognises are carried through untouched rather than pruned here: rowsMatchingConditions
+  // Ids nobody recognises are carried through untouched rather than pruned here: applyRowConditions
   // already ignores them, and deleting one would drop a filter the user set under a condition that is
   // only temporarily gone.
   const activeIds = useMemo(() => new Set(Object.keys(active).filter((id) => active[id])), [active])

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CheckIcon, type LucideIcon } from 'lucide-react'
+import { CheckIcon, RotateCcw, type LucideIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Command,
@@ -34,15 +35,36 @@ type FilterMultiSelectPropsT = {
   // mechanism — the default suits a plain list filter.
   selectAllLabel?: string
   deselectAllLabel?: string
-  // Extra rows beside the select-all one, for caller-defined bulk selection moves
-  // (e.g. "untick every section with no executed work"). `select` maps the current selection to the
-  // next one; it routes through the same local state as the other rows, so the checkmarks move with
-  // it.
-  extraActions?: ReadonlyArray<{ label: string; select: (current: string[]) => string[] }>
+  // Replaces that flipping pair with one fixed sentence that ticks when it has been carried out — the
+  // row stops being a label that rewrites itself under the cursor and becomes a state like every other
+  // row in the menu. Its ON state is "nothing selected", so it reads as the opposite of the list.
+  bulkToggleLabel?: string
+  // Rows that tick a whole SUBSET of the options at once ("every section with no executed work").
+  // They obey the same grammar as the options below them — a tick means "selected" — so both hooks
+  // read the live local selection rather than any state of their own: `isActive` decides the tick,
+  // `select` maps the current selection to the next one. Untick one member by hand and the group row
+  // unticks with it, which is what keeps the two halves from ever disagreeing.
+  optionToggles?: ReadonlyArray<{
+    label: string
+    isActive: (current: string[]) => boolean
+    select: (current: string[]) => string[]
+  }>
   // An independent group of on/off rows above the options, owned entirely by the caller. Lets one
   // menu answer one question („czego nie widzę") with two mechanisms behind it, instead of splitting
   // the answer across two triggers the user has to check separately.
   toggles?: ReadonlyArray<{ id: string; label: string; active: boolean; onToggle: () => void }>
+  // Group captions, one per group in render order: the toggles, the bulk actions, the option list.
+  // Worth setting once a menu mixes rows that act on different things — unlabelled, a separator only
+  // says "these are different", never what each group is about.
+  togglesHeading?: string
+  actionsHeading?: string
+  optionsHeading?: string
+  // A one-click way back to "wszystko widać". It sits above the list as a Button rather than a row
+  // with a checkmark because it is the one thing in the menu that is an action, not a state — its
+  // own effect is to leave nothing engaged, so a tick would have nothing to report afterwards.
+  // `onReset` covers whatever the caller keeps outside the option list; the option list itself is
+  // reset here.
+  resetAction?: { label: string; onReset: () => void; disabled?: boolean }
   // Replaces the trigger's derived "how many options are ticked" count (hidden at 0). For a caller
   // whose menu hides things by more than the option list, where the ticked count would answer a
   // question nobody asked.
@@ -66,8 +88,13 @@ export function FilterMultiSelect({
   title,
   selectAllLabel = 'Zaznacz wszystkie',
   deselectAllLabel = 'Odznacz wszystkie',
-  extraActions,
+  bulkToggleLabel,
+  optionToggles,
   toggles,
+  resetAction,
+  togglesHeading,
+  actionsHeading,
+  optionsHeading,
   triggerCount,
 }: FilterMultiSelectPropsT) {
   const [open, setOpen] = useState(false)
@@ -128,13 +155,30 @@ export function FilterMultiSelect({
     scheduleFlush(result)
   }
 
+  // In fixed-label mode the row's own tick decides the direction, so clicking it always does what the
+  // sentence says. The flipping-label mode keeps its original meaning: "everything is on → turn it off".
+  const bulkActive = selected.length === 0
+
   function toggleAll() {
-    const next = allSelected ? [] : [...allValues]
+    const selectAll = bulkToggleLabel ? bulkActive : !allSelected
+    const next = selectAll ? [...allValues] : []
     setLocalSelected(next)
     scheduleFlush(next)
   }
 
-  function runExtraAction(select: (current: string[]) => string[]) {
+  // Flushes straight through: a pending debounce from the clicks being undone would land after the
+  // reset and put them back.
+  function handleReset() {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    setLocalSelected([...allValues])
+    onValuesChange([])
+    resetAction?.onReset()
+  }
+
+  function runOptionToggle(select: (current: string[]) => string[]) {
     const next = select(selected)
     setLocalSelected(next)
     scheduleFlush(next)
@@ -171,12 +215,26 @@ export function FilterMultiSelect({
         </FilterTriggerButton>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0" align="start">
+        {resetAction && (
+          <div className="border-border border-b p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start font-normal"
+              disabled={resetAction.disabled}
+              onClick={handleReset}
+            >
+              <RotateCcw />
+              {resetAction.label}
+            </Button>
+          </div>
+        )}
         <Command>
           {searchable && <CommandInput placeholder="Szukaj..." />}
           <CommandList>
             {toggles && toggles.length > 0 && (
               <>
-                <CommandGroup>
+                <CommandGroup heading={togglesHeading}>
                   {toggles.map((toggle) => (
                     <CommandItem key={toggle.id} value={toggle.label} onSelect={toggle.onToggle}>
                       <CheckIcon className={cn(!toggle.active && 'opacity-0')} />
@@ -187,24 +245,26 @@ export function FilterMultiSelect({
                 <CommandSeparator />
               </>
             )}
-            <CommandGroup>
-              <CommandItem onSelect={toggleAll} className="font-medium">
-                <CheckIcon className={cn(!allSelected && 'opacity-0')} />
-                {allSelected ? deselectAllLabel : selectAllLabel}
+            <CommandGroup heading={actionsHeading}>
+              <CommandItem onSelect={toggleAll}>
+                <CheckIcon
+                  className={cn(!(bulkToggleLabel ? bulkActive : allSelected) && 'opacity-0')}
+                />
+                {bulkToggleLabel ?? (allSelected ? deselectAllLabel : selectAllLabel)}
               </CommandItem>
-              {extraActions?.map((action) => (
+              {optionToggles?.map((group) => (
                 <CommandItem
-                  key={action.label}
-                  onSelect={() => runExtraAction(action.select)}
-                  className="font-medium"
+                  key={group.label}
+                  value={group.label}
+                  onSelect={() => runOptionToggle(group.select)}
                 >
-                  <CheckIcon className="opacity-0" />
-                  {action.label}
+                  <CheckIcon className={cn(!group.isActive(selected) && 'opacity-0')} />
+                  {group.label}
                 </CommandItem>
               ))}
             </CommandGroup>
             <CommandSeparator />
-            <CommandGroup>
+            <CommandGroup heading={optionsHeading}>
               {options.map((opt) => (
                 <CommandItem
                   key={opt.value}

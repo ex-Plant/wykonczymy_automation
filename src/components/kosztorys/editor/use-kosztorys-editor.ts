@@ -52,8 +52,8 @@ import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
 import {
   ROW_CONDITIONS,
+  applyRowConditions,
   countMatching,
-  rowsMatchingConditions,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { useActiveConditions } from '@/components/kosztorys/editor/hooks/use-active-conditions'
@@ -185,7 +185,7 @@ export function useKosztorysEditor({
     toggle: toggleCondition,
     clear: clearConditions,
   } = useActiveConditions(investmentId)
-  const activeConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
+  const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
@@ -195,6 +195,14 @@ export function useKosztorysEditor({
   const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
+  // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
+  // the conditions and the folds alike. Two half-resets would leave the user clicking one and still
+  // facing a short grid.
+  function resetFilters() {
+    clearConditions()
+    setCollapsedSectionIds(new Set())
+  }
+
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel). During the drag we only show a vertical guide
   // (guideX = cursor X), without touching the grid.
@@ -408,9 +416,11 @@ export function useKosztorysEditor({
   // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
   // the filter/sort.
   const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
-  // Sections every one of whose pozycje match a liftable condition — the ids each fold shortcut in
-  // the „Sekcje" menu unticks. „Wszystkie co do jednej", never „suma = 0": a section fully executed
-  // but unpriced sums to zero and is exactly the one nobody wants folded away.
+  // Sections every one of whose pozycje match a liftable condition — the ids each „Sekcje …" row in
+  // the menu ticks and unticks as a block. „Wszystkie co do jednej", never „suma = 0": a section fully
+  // executed but unpriced sums to zero and is exactly the one nobody wants folded away. A mixed
+  // section belongs to neither half of a pair and so stays visible under both — by design, since
+  // „sekcje bez przedmiaru" cannot honestly name a section that has some.
   const foldableSectionIds = useMemo(() => {
     const ctx = { stages }
     return new Map(
@@ -432,12 +442,12 @@ export function useKosztorysEditor({
   // View = search + active conditions + sort. Sections are not filtered here: hiding one is a fold,
   // applied further down by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
-    const filtered = rowsMatchingConditions(filterRows(rows, search), activeConditionIds, {
+    const filtered = applyRowConditions(filterRows(rows, search), engagedConditionIds, {
       stages,
     })
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
-  }, [rows, search, activeConditionIds, sort, view, stages])
+  }, [rows, search, engagedConditionIds, sort, view, stages])
   // Both read the FULL dataset in display order, which is what makes a filter visible: numbers skip
   // over the rows it hid, and a section it emptied still gets its band.
   const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
@@ -1374,9 +1384,9 @@ export function useKosztorysEditor({
     setView,
     search,
     setSearch,
-    activeConditionIds,
+    engagedConditionIds,
     toggleCondition,
-    clearConditions,
+    resetFilters,
     conditionCounts,
     hiddenRowCount,
     foldableSectionIds,

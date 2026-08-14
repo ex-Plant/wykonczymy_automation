@@ -5,10 +5,14 @@ import { FilterMultiSelect, FILTER_NONE } from '@/components/transfers/filter-mu
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
-// One menu for „czego nie widzę", with the two mechanisms that answer it side by side: the toggles
-// HIDE pozycje (a condition narrows the grid to the rows that match), the section list FOLDS whole
-// sekcje under their band (which stays visible, with its total). Both are the same question asked at
-// two granularities, so splitting them across two triggers would make the user check twice.
+// One menu for „co widzę", at three granularities that all read the same way: a tick means the thing
+// is on screen, unticking it takes it away. Pozycje are hidden outright; sekcje fold under their band
+// (which stays visible, with its total). Same question at three levels, so splitting them across
+// separate triggers would make the user check three times.
+//
+// Every condition comes as a complementary pair („bez przedmiaru" / „z przedmiarem"), which is what
+// makes the picker grammar work: „pokaż mi tylko te z przedmiarem" is unticking the other half, not a
+// separate mode. It also means a new axis is two registry entries and nothing else.
 //
 // The section half reuses the transfers FilterMultiSelect, whose URL encoding is
 // [] = all / [FILTER_NONE] = none / [ids] = those — bridged here to collapsedSectionIds.
@@ -18,8 +22,9 @@ export function KosztorysFiltersMenu() {
     collapsedSectionIds,
     setCollapsedSectionIds,
     foldableSectionIds,
-    activeConditionIds,
+    engagedConditionIds,
     toggleCondition,
+    resetFilters,
     conditionCounts,
   } = useKosztorysEditorContext()
 
@@ -47,24 +52,32 @@ export function KosztorysFiltersMenu() {
   const filters = ROW_CONDITIONS.filter((condition) => condition.kind === 'filter')
   const toggles = filters.map((condition) => ({
     id: condition.id,
-    label: `Tylko ${condition.label} (${conditionCounts.get(condition.id) ?? 0})`,
-    active: activeConditionIds.has(condition.id),
+    // The count is how many pozycje are in that state, not how many the row is currently showing —
+    // a count of the survivors would be a count of itself and would jump on every click.
+    label: `Pozycje ${condition.label} (${conditionCounts.get(condition.id) ?? 0})`,
+    active: !engagedConditionIds.has(condition.id),
     onToggle: () => toggleCondition(condition.id),
   }))
 
-  // Folds by unticking rather than filtering on top: the checkmarks stay the only description of what
-  // the grid shows, so the picker can't disagree with it. A one-shot write, not a live rule — the
-  // user can re-expand any section afterwards without the shortcut folding it again.
-  const extraActions = ROW_CONDITIONS.filter((condition) => condition.sectionLabel !== null).map(
-    (condition) => {
-      const sectionIds = foldableSectionIds.get(condition.id) ?? new Set<number>()
+  // Folds by unticking sections rather than filtering on top of them: the checkmarks below stay the
+  // only description of what the grid shows, so this row and the list can never disagree. Both its
+  // tick and its click read the LIVE selection, so re-expanding one section by hand unticks the group.
+  const sectionToggles = filters.map((condition) => {
+    const sectionIds = foldableSectionIds.get(condition.id) ?? new Set<number>()
+    // With nothing in that state the row has nothing to report, so it stays unticked rather than
+    // claiming „wszystkie widoczne" vacuously.
+    const isActive = (current: string[]) =>
+      sectionIds.size > 0 && [...sectionIds].every((id) => current.includes(String(id)))
 
-      return {
-        label: `${condition.sectionLabel} (${sectionIds.size})`,
-        select: (current: string[]) => current.filter((v) => !sectionIds.has(Number(v))),
-      }
-    },
-  )
+    return {
+      label: `${condition.sectionLabel} (${sectionIds.size})`,
+      isActive,
+      select: (current: string[]) =>
+        isActive(current)
+          ? current.filter((v) => !sectionIds.has(Number(v)))
+          : [...current, ...[...sectionIds].map(String).filter((v) => !current.includes(v))],
+    }
+  })
 
   return (
     <FilterMultiSelect
@@ -72,18 +85,28 @@ export function KosztorysFiltersMenu() {
       onValuesChange={onValuesChange}
       options={options}
       label="Filtry"
-      // Active conditions, not ticked sections: the trigger has to say something is being hidden
-      // without the menu open, and the number of expanded sections doesn't say that.
-      triggerCount={activeConditionIds.size}
+      // Everything this menu is currently taking away: the unticked filters plus the folded sections.
+      // Only the toolbar's diagnostics stay out — nothing inside is ticked for them, so counting them
+      // produced „Filtry (2)" over an untouched list.
+      triggerCount={toggles.filter((toggle) => !toggle.active).length + collapsedSectionIds.size}
       icon={ListFilter}
       iconPosition="right"
       searchable
-      title="Ukryj pozycje lub zwiń sekcje"
+      title="Co widać: pozycje i sekcje"
       triggerClassName="w-fit min-w-0"
-      selectAllLabel="Rozwiń wszystkie sekcje"
-      deselectAllLabel="Zwiń wszystkie sekcje"
+      resetAction={{
+        label: 'Zresetuj filtry',
+        // The same reset the empty state offers — one way back to „pokaż wszystko", not a second one
+        // that happens to undo a different half.
+        onReset: resetFilters,
+        disabled: engagedConditionIds.size === 0 && collapsedSectionIds.size === 0,
+      }}
+      bulkToggleLabel="Zwiń wszystkie sekcje"
       toggles={toggles}
-      extraActions={extraActions}
+      togglesHeading="Prace"
+      actionsHeading="Sekcje"
+      optionsHeading="Widoczne sekcje"
+      optionToggles={sectionToggles}
     />
   )
 }

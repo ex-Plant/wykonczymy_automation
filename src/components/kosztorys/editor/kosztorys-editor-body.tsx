@@ -18,7 +18,7 @@ import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/c
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
-import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
+import { engagedConditionsOfKind, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -85,8 +85,8 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
-    activeConditionIds,
-    clearConditions,
+    engagedConditionIds,
+    resetFilters,
     ordinalByRowId,
     sectionRows,
     setSearch,
@@ -139,17 +139,17 @@ export function KosztorysEditorBody({
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
-        foldSuppressed: search.trim() !== '' || activeConditionIds.size > 0,
+        foldSuppressed: search.trim() !== '',
         sections: sectionRows,
       }),
-    [viewRows, collapsedSectionIds, sort, search, activeConditionIds, sectionRows],
+    [viewRows, collapsedSectionIds, sort, search, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
-  // „bez ceny j.m. i z rozjazdem pomiaru" — the AND the filters actually apply, said out loud, so the
-  // empty grid names what emptied it.
-  const activeConditionLabels = ROW_CONDITIONS.filter((c) => activeConditionIds.has(c.id))
-    .map((c) => c.label)
-    .join(' i ')
+  // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
+  // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
+  // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
+  const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
+  const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
@@ -267,19 +267,25 @@ export function KosztorysEditorBody({
           {/* A filter emptying itself is the goal state, not a dead end — nothing is left in the
               state it was looking for, so say that rather than leave a blank grid. Search takes
               precedence above: with both on, „nie pasuje do…" is the more specific explanation. */}
-          {viewRows.length === 0 && search.trim() === '' && activeConditionIds.size > 0 && (
+          {viewRows.length === 0 && search.trim() === '' && engagedConditionIds.size > 0 && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
-              title={`Brak pozycji ${activeConditionLabels}`}
-              description="Filtr zrobił swoje — nie ma już czego poprawiać."
+              title={
+                emptyByFilter
+                  ? 'Wszystkie pozycje schowane'
+                  : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
+              }
+              description={
+                emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
+              }
             >
               <Button
                 variant="outline"
                 size="sm"
                 className="pointer-events-auto"
-                onClick={clearConditions}
+                onClick={resetFilters}
               >
-                Pokaż wszystkie pozycje
+                Zresetuj filtry
               </Button>
             </EmptyState>
           )}

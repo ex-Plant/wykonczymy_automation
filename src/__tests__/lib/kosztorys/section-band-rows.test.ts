@@ -95,30 +95,16 @@ describe('buildSectionBandRows', () => {
     ])
   })
 
-  // The point of the whole phase: a filter that empties a section must not make the section
-  // disappear, or the grid reads as though it never existed.
-  it('keeps the band of a section whose rows were all filtered away', () => {
+  // A header over a footer with nothing between says only „tu nic nie ma". Under a strict filter the
+  // grid would be mostly such frames, with the few hits lost among them.
+  it('drops the band of a section whose rows were all filtered away', () => {
     const rows = buildSectionBandRows([row(4, 20), row(5, 20)], enabled())
 
-    expect(rows.map((r) => r.id)).toEqual([
-      sectionHeaderRowId(10),
-      sectionFooterRowId(10),
-      sectionHeaderRowId(20),
-      4,
-      5,
-      sectionFooterRowId(20),
-    ])
+    expect(rows.map((r) => r.id)).toEqual([sectionHeaderRowId(20), 4, 5, sectionFooterRowId(20)])
   })
 
-  it('keeps every band when the filter emptied the whole grid', () => {
-    const rows = buildSectionBandRows([], enabled())
-
-    expect(rows.map((r) => r.id)).toEqual([
-      sectionHeaderRowId(10),
-      sectionFooterRowId(10),
-      sectionHeaderRowId(20),
-      sectionFooterRowId(20),
-    ])
+  it('drops every band when the filter emptied the whole grid', () => {
+    expect(buildSectionBandRows([], enabled())).toEqual([])
   })
 
   it('ignores a collapsed section while a row filter is active', () => {

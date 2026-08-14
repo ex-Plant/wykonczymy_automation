@@ -14,8 +14,8 @@ type OptsT = {
   // is suppressed while a filter is on (search or a condition) and restored when it clears.
   foldSuppressed: boolean
   // Every section in the base dataset, in display order, each represented by one of its rows (the
-  // band reads name and colour off it). Taken from the FULL dataset, not the filtered view, so a
-  // section the filter emptied still says it exists.
+  // band reads name and colour off it). Taken from the FULL dataset, not the filtered view, so the
+  // sections keep their original order regardless of which ones the filter thinned out.
   sections: readonly KosztorysV2RowT[]
 }
 
@@ -40,9 +40,9 @@ export function baseOrdinals(rows: readonly KosztorysV2RowT[]): Map<number, numb
 /**
  * The grid's row list with one band opening each section and a totals band closing it.
  *
- * Bands come from the section list, not from the surviving rows, so a section the filter emptied
- * renders its header and footer with nothing between rather than disappearing — the sum stays on
- * screen and the section keeps announcing itself.
+ * A section the filter emptied is dropped whole — band, sum and all. A header over a footer with
+ * nothing between says only „tu nic nie ma", and a strict filter (five hits across a dozen sections)
+ * would bury its own results under eleven such frames.
  */
 export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
@@ -60,7 +60,8 @@ export function buildSectionBandRows(
 
   const rows: KosztorysV2RowT[] = []
   for (const section of sections) {
-    const group = bySection.get(section.sectionId) ?? []
+    const group = bySection.get(section.sectionId)
+    if (!group) continue
     bySection.delete(section.sectionId)
     rows.push(makeSectionHeaderRow(section))
     // A collapsed section shows its header alone: the footer sums the rows it hides, so it goes

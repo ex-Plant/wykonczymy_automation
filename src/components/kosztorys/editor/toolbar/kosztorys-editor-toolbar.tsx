@@ -19,8 +19,15 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
 export function KosztorysEditorToolbar() {
-  const { search, setSearch, view, setView, activeConditionIds, toggleCondition, conditionCounts } =
-    useKosztorysEditorContext()
+  const {
+    search,
+    setSearch,
+    view,
+    setView,
+    engagedConditionIds,
+    toggleCondition,
+    conditionCounts,
+  } = useKosztorysEditorContext()
   const diagnostics = ROW_CONDITIONS.filter((condition) => condition.kind === 'diagnostic')
 
   return (
@@ -55,7 +62,7 @@ export function KosztorysEditorToolbar() {
         {diagnostics.map((condition) => {
           const count = conditionCounts.get(condition.id) ?? 0
           if (count === 0) return null
-          const active = activeConditionIds.has(condition.id)
+          const active = engagedConditionIds.has(condition.id)
 
           return (
             <SimpleTooltip key={condition.id} content={`Pokaż tylko pozycje ${condition.label}`}>
