@@ -455,8 +455,8 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [ ] 1.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts`
-- [ ] 1.2 Rewritten section spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-empty-sections.test.ts`
+- [x] 1.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts`
+- [x] 1.2 Rewritten section spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-empty-sections.test.ts`
 
 ### Phase 2: Active-condition state, persisted per investment
 

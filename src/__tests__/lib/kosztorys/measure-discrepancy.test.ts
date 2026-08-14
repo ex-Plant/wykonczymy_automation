@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { divergedRows } from '@/lib/kosztorys/row-view'
+import { rowsMatchingConditions } from '@/lib/kosztorys/row-conditions'
 import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
@@ -102,7 +102,10 @@ describe('measureDiscrepancy', () => {
   })
 })
 
-describe('divergedRows', () => {
+describe('the „rozjazd" condition over a set of rows', () => {
+  const diverged = (rows: KosztorysV2RowT[]) =>
+    rowsMatchingConditions(rows, ['measure-diverged'], { stages: STAGES })
+
   it('keeps only the pozycje whose sheet pomiar still disagrees with the etapy', () => {
     const rows = [
       row({ id: 1, sheetMeasuredQty: 95, [stageKey(1)]: 55 }),
@@ -111,10 +114,10 @@ describe('divergedRows', () => {
       row({ id: 4, sheetMeasuredQty: 0, [stageKey(1)]: 8 }),
     ]
 
-    expect(divergedRows(rows, STAGES).map((r) => r.id)).toEqual([1, 4])
+    expect(diverged(rows).map((r) => r.id)).toEqual([1, 4])
   })
 
   it('empties itself once every rozjazd has been answered', () => {
-    expect(divergedRows([row({ sheetMeasuredQty: 40, [stageKey(2)]: 40 })], STAGES)).toEqual([])
+    expect(diverged([row({ sheetMeasuredQty: 40, [stageKey(2)]: 40 })])).toEqual([])
   })
 })
