@@ -57,6 +57,7 @@ import {
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { useActiveConditions } from '@/components/kosztorys/editor/hooks/use-active-conditions'
+import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -437,6 +438,10 @@ export function useKosztorysEditor({
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
   }, [rows, search, activeConditionIds, sort, view, stages])
+  // Both read the FULL dataset in display order, which is what makes a filter visible: numbers skip
+  // over the rows it hid, and a section it emptied still gets its band.
+  const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
+  const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // How many pozycje the conditions took away — the number the toolbar shows next to „wyczyść".
   // Against the search-narrowed set, not the whole dataset: with a search on, the rows the search
   // hid were never candidates and counting them would overstate what the filter did.
@@ -1375,6 +1380,8 @@ export function useKosztorysEditor({
     conditionCounts,
     hiddenRowCount,
     foldableSectionIds,
+    ordinalByRowId,
+    sectionRows,
     // handlers
     onChange,
     handleAddItem,

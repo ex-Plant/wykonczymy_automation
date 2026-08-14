@@ -86,6 +86,8 @@ export function KosztorysEditorBody({
     search,
     activeConditionIds,
     clearConditions,
+    ordinalByRowId,
+    sectionRows,
     setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
@@ -131,14 +133,15 @@ export function KosztorysEditorBody({
       ),
     [columns, columnTotals, sectionHeader, sectionFooter],
   )
-  const { rows: bodyRows, ordinalByRowId } = useMemo(
+  const bodyRows = useMemo(
     () =>
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
         foldSuppressed: search.trim() !== '' || activeConditionIds.size > 0,
+        sections: sectionRows,
       }),
-    [viewRows, collapsedSectionIds, sort, search, activeConditionIds],
+    [viewRows, collapsedSectionIds, sort, search, activeConditionIds, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])

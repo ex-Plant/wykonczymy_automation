@@ -462,14 +462,14 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 2.1 Editor-hook and body specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
-- [x] 2.2 Row-view spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-v2-rows.test.ts`
+- [x] 2.1 Editor-hook and body specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys` — be094952
+- [x] 2.2 Row-view spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-v2-rows.test.ts` — be094952
 
 ### Phase 3: Make the filter visible — stable numbers, surviving bands
 
 #### Automated
 
-- [ ] 3.1 Band spec passes, extended for both rules: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-band-rows.test.ts`
+- [x] 3.1 Band spec passes, extended for both rules: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-band-rows.test.ts`
 
 ### Phase 4: The „Filtry" menu and the diagnostic buttons
 
