@@ -549,6 +549,45 @@ w jednym punkcie wyceny — `netForQtyForView` odejmuje rabat wyłącznie przy `
 podsumowania sekcji), zeruje je jednym ruchem. Cztery kolumny rabatowe w ogóle się nie składają w
 widokach Z/Bez narzędzi, bo pokazywałyby zera.
 
+## Filtry edytora — gramatyka „ptaszek znaczy widoczne" (2026-08-14, EX-665)
+
+**Skąd to się wzięło:** „Zwiń puste sekcje" chowało sekcje po jednej liczbie —
+`roundToCents(section.net) === 0`. Ta liczba zeruje się z dwóch niezależnych powodów: nic nie
+wykonano **albo** nic nie wyceniono. Drugi przypadek jest szkodliwy — sekcja w całości wykonana, ale
+bez ceny j.m., sumuje się do zera, więc przycisk zwijał dokładnie tę sekcję, która wymagała uwagi.
+Stąd rozbicie jednej liczby na nazwane warunki i stąd zasada, że sekcja lifted się przez **∀** (każdy
+wiersz pasuje), a nie przez sumę: suma dochodzi do zera przypadkiem, „wszystkie" nie. Brak ceny j.m.
+został przy tym **diagnostyką, nie zwinięciem** — to defekt do znalezienia, nie stan do schowania.
+
+Reszta rozstrzygnięta przy kliencie, po przetestowaniu wersji przeciwnej. Warunki chowania pozycji siedzą
+w jednym rejestrze (`ROW_CONDITIONS`), a menu „Filtry" renderuje się z niego — ale kluczowa jest
+**gramatyka ptaszka**, nie rejestr.
+
+- **Ptaszek = widoczne.** Wiersz filtru jest domyślnie **zaznaczony**; odptaszkowanie chowa to, co
+  pasuje. Pierwsza wersja miała odwrotnie („zaznacz, żeby zawęzić") i owner czytał ją źle za każdym
+  razem — menu wyglądało wtedy na puste przy pełnej liście, a zaznaczenie jednej pozycji sprawiało
+  wrażenie, że reszta zniknęła przypadkiem.
+- **Filtry chodzą parami dopełniającymi** („bez przedmiaru" / „z przedmiarem"). Cztery warunki stały
+  się sześcioma. Bez pary odptaszkowanie jednej strony nie ma czym się odwrócić, a użytkownik nie ma
+  jak zapytać o dopełnienie.
+- **Filtry odejmują (AND), diagnostyki zostawiają (OR).** Diagnostyka to przycisk w pasku, domyślnie
+  wyłączony, po włączeniu zostawia **wyłącznie** swoje trafienia. Stąd rozdział `kind` w rejestrze i
+  słowo **„engaged", nie „active"** w kodzie: dla filtru stanem domyślnym jest włączony, więc
+  „aktywny" nazywałby połowie rejestru stan przeciwny.
+- **Liczniki liczą się po całym kosztorysie, nigdy po ocalałych** — licznik ocalałych byłby liczbą
+  samego siebie. To ta sama zasada, co przy sumach: `SUM` w arkuszu liczy ukryte wiersze.
+- **Zwinięcie sekcji tłumi tylko szukanie, nie warunki.** Oba mieszkają w tym samym menu „Filtry",
+  więc stłumione zwinięcie kazałoby własnym ptaszkom opisywać nic. Szukanie jest inne — pole szukania
+  to nie miejsce, w którym ktoś szuka przyczyny schowanego trafienia.
+- **Sekcja, którą filtr opróżnił, znika w całości** — z pasem i sumą. Ostry filtr inaczej zakopuje
+  pięć trafień pod jedenastoma pustymi ramkami.
+- **Jeden „Zresetuj filtry" cofa i warunki, i zwinięcia.** Dwa półresety zostawiają użytkownika
+  dalej przed krótką listą, nie wiedzącego, którego z nich brakuje.
+
+Numery pozycji liczą się po **pełnym, nieposortowanym** zbiorze — dziura w numeracji jest sygnałem,
+że coś jest schowane. Numeracja przeliczana per widok czyniłaby filtr niewidocznym (1…N tak czy
+inaczej).
+
 ## Otwarte / odłożone
 
 - **A vs B (przechowywanie cen):** 3 sztywne kolumny vs dynamiczna tabela

@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-filter-conditions
 title: One condition registry for the kosztorys editor's filters (EX-665)
-status: implemented
+status: archived
 created: 2026-08-14
 updated: 2026-08-14
-archived_at: null
+archived_at: 2026-08-14T16:31:20Z
 branch: kosztorys-filter-conditions
 worktree: /Users/konradantonik/workspace/yolo/wykonczymy-worktrees/kosztorys-filter-conditions
 ---
