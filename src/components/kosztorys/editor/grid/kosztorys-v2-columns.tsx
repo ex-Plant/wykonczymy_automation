@@ -308,7 +308,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
       // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
       // re-applied to the editor.
-      cellClassName: 'capitalize [&_textarea]:capitalize',
+      // `kosztorys-identity-cell`: the section band paints its whole label here, and globals.css lets
+      // it out over the blank cells to its right (dsg has no colspan).
+      cellClassName: 'kosztorys-identity-cell capitalize [&_textarea]:capitalize',
     }),
   ]
 
