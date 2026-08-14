@@ -1,8 +1,8 @@
 'use client'
 
-import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
+import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
 import {
   ComparisonRow,
   ComparisonTable,
@@ -46,31 +46,24 @@ const MATCHES = 0.005
  */
 export function SheetCompareDialog({ open, onOpenChange, result, loaded }: PropsT) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader
-          title="Porównaj z arkuszem Google"
-          description="Czy arkusz Google i ta aplikacja liczą to samo — i gdzie się rozjeżdżają."
-        />
-
-        {!loaded ? (
-          <p className="text-muted-foreground text-sm">Czytam arkusz Google…</p>
-        ) : !result ? (
-          <p className="text-destructive text-sm">Nie udało się odczytać arkusza Google.</p>
-        ) : (
-          <div className="space-y-5 text-sm">
-            <MoneyBlock comparison={result.comparison} />
-            <ItemsBlock comparison={result.comparison} />
-            <SheetRatesBlock
-              decisions={result.comparison.rates.decisions}
-              stale={result.comparison.rates.stale}
-            />
-            <ReadingBlock comparison={result.comparison} />
-            <RefreshLine refresh={result.refresh} />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    <SheetReportDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Porównaj z arkuszem Google"
+      description="Czy arkusz Google i ta aplikacja liczą to samo — i gdzie się rozjeżdżają."
+      loaded={loaded}
+      data={result}
+    >
+      {({ comparison, refresh }) => (
+        <>
+          <MoneyBlock comparison={comparison} />
+          <ItemsBlock comparison={comparison} />
+          <SheetRatesBlock decisions={comparison.rates.decisions} stale={comparison.rates.stale} />
+          <ReadingBlock comparison={comparison} />
+          <RefreshLine refresh={refresh} />
+        </>
+      )}
+    </SheetReportDialog>
   )
 }
 
@@ -104,13 +97,7 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
     <SheetReportBlock
       title="Kwoty"
       status={agree ? 'ok' : 'warn'}
-      verdict={
-        agree
-          ? 'Obie strony policzyły tyle samo prac wykonanych.'
-          : executed < 0
-            ? `Tutaj rozpisano na etapy o ${formatPLN(-executed)} więcej pracy niż w arkuszu Google.`
-            : `W arkuszu Google rozpisano na etapy o ${formatPLN(executed)} więcej pracy niż tutaj.`
-      }
+      verdict={executedVerdict(executed)}
     >
       <ComparisonTable>
         <ComparisonRow
@@ -146,6 +133,15 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
       )}
     </SheetReportBlock>
   )
+}
+
+// The sign says which side is ahead, so it is named rather than left as a bare `< 0` in the middle
+// of a ternary — reading it backwards would tell the owner the wrong side is behind on its etapy.
+function executedVerdict(executed: number): string {
+  if (Math.abs(executed) < MATCHES) return 'Obie strony policzyły tyle samo prac wykonanych.'
+  if (executed < 0)
+    return `Tutaj rozpisano na etapy o ${formatPLN(-executed)} więcej pracy niż w arkuszu Google.`
+  return `W arkuszu Google rozpisano na etapy o ${formatPLN(executed)} więcej pracy niż tutaj.`
 }
 
 function ItemsBlock({ comparison }: { comparison: SheetComparisonT }) {

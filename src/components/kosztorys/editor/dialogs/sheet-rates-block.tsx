@@ -40,17 +40,7 @@ export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
     <SheetReportBlock
       title="Stawki podwykonawców"
       status={decisions === null || conflicts > 0 || stale.length > 0 ? 'warn' : 'ok'}
-      verdict={
-        decisions === null
-          ? 'Nie odczytaliśmy żadnego cennika („zakres pracy") — o stawkach podwykonawców nic tu nie powiemy.'
-          : stale.length > 0
-            ? `${stale.length} ${rateNounDiffers(stale.length)} od cennika w arkuszu Google — kosztorys trzyma to, co było przy pobraniu.`
-            : conflicts > 0
-              ? `${conflicts} ${rateNoun(conflicts)} do sprawdzenia: cenniki podają różne kwoty i żadna nie jest wpisana ręcznie.`
-              : decisions.length === 0
-                ? 'Oba cenniki podały te same stawki.'
-                : `${decisions.length} ${rateNoun(decisions.length)} wzięliśmy z jednego cennika — reszta zgodna.`
-      }
+      verdict={ratesVerdict(decisions, stale, conflicts)}
     >
       {stale.length > 0 && (
         <ReportFold summary={`Stawki inne niż w cenniku (${stale.length}) — zobacz które`}>
@@ -108,6 +98,28 @@ export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
       )}
     </SheetReportBlock>
   )
+}
+
+/**
+ * One line, and the order is the point: this is a precedence chain, not a list of things that are
+ * true. „Żadnego cennika nie odczytaliśmy" outranks the rest because nothing below it is even
+ * knowable; a stawka that has drifted from the cennik outranks one we merely had to choose between,
+ * because the drifted one is already billing somebody. „Zgodne" is what is left when nothing above
+ * fired.
+ */
+function ratesVerdict(
+  decisions: ReportedRateResolutionT[] | null,
+  stale: StaleRateT[],
+  conflicts: number,
+): string {
+  if (decisions === null)
+    return 'Nie odczytaliśmy żadnego cennika („zakres pracy") — o stawkach podwykonawców nic tu nie powiemy.'
+  if (stale.length > 0)
+    return `${stale.length} ${rateNounDiffers(stale.length)} od cennika w arkuszu Google — kosztorys trzyma to, co było przy pobraniu.`
+  if (conflicts > 0)
+    return `${conflicts} ${rateNoun(conflicts)} do sprawdzenia: cenniki podają różne kwoty i żadna nie jest wpisana ręcznie.`
+  if (decisions.length === 0) return 'Oba cenniki podały te same stawki.'
+  return `${decisions.length} ${rateNoun(decisions.length)} wzięliśmy z jednego cennika — reszta zgodna.`
 }
 
 // The cennik's figure over the kosztorys's, so a scan down the column reads as one pair per praca.

@@ -1,11 +1,11 @@
 'use client'
 
 import { useTransition } from 'react'
-import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { evaluateImportGate } from '@/components/kosztorys/editor/dialogs/sheet-import-gate'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
+import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
 import {
   ComparisonRow,
   ComparisonTable,
@@ -66,45 +66,14 @@ export function SheetImportDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader
-          title="Pobierz kosztorys z arkusza Google"
-          description="Kosztorys zostanie zastąpiony danymi z arkusza. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
-        />
-
-        {!loaded ? (
-          <p className="text-muted-foreground text-sm">Czytam arkusz Google…</p>
-        ) : !preview ? (
-          <p className="text-destructive text-sm">Nie udało się odczytać arkusza Google.</p>
-        ) : (
-          <div className="space-y-5 text-sm">
-            {preview.problems.length > 0 && (
-              <SheetReportBlock
-                title="Nie mogę odczytać arkusza Google"
-                status="warn"
-                verdict="Popraw nagłówki w arkuszu i spróbuj ponownie — nic nie zostanie nadpisane."
-              >
-                {preview.problems.map((problem) => (
-                  <p key={problem} className="text-destructive">
-                    {problem}
-                  </p>
-                ))}
-              </SheetReportBlock>
-            )}
-
-            {preview.problems.length === 0 && (
-              <>
-                <ScopeBlock report={preview.report} />
-                <ColumnsBlock missing={preview.report.missingColumns} />
-                <SheetRatesBlock decisions={preview.report.rateDecisions} />
-                <RetainedBlock retained={preview.report.retained} />
-                <TotalsBlock totals={preview.report.totals} mismatched={mismatchedTotals} />
-              </>
-            )}
-          </div>
-        )}
-
+    <SheetReportDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Pobierz kosztorys z arkusza Google"
+      description="Kosztorys zostanie zastąpiony danymi z arkusza. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
+      loaded={loaded}
+      data={preview}
+      actions={
         <DialogActions
           confirmLabel="Pobierz i zastąp"
           pending={pending}
@@ -113,8 +82,32 @@ export function SheetImportDialog({
           onCancel={() => onOpenChange(false)}
           confirmDisabled={confirmDisabled}
         />
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      {({ problems, report }) =>
+        problems.length > 0 ? (
+          <SheetReportBlock
+            title="Nie mogę odczytać arkusza Google"
+            status="warn"
+            verdict="Popraw nagłówki w arkuszu i spróbuj ponownie — nic nie zostanie nadpisane."
+          >
+            {problems.map((problem) => (
+              <p key={problem} className="text-destructive">
+                {problem}
+              </p>
+            ))}
+          </SheetReportBlock>
+        ) : (
+          <>
+            <ScopeBlock report={report} />
+            <ColumnsBlock missing={report.missingColumns} />
+            <SheetRatesBlock decisions={report.rateDecisions} />
+            <RetainedBlock retained={report.retained} />
+            <TotalsBlock totals={report.totals} mismatched={mismatchedTotals} />
+          </>
+        )
+      }
+    </SheetReportDialog>
   )
 }
 
@@ -207,22 +200,11 @@ function TotalsBlock({
   totals: ImportReportT['totals']
   mismatched: FooterComparisonT[]
 }) {
-  const misread = mismatched.some((total) => total.key === 'plannedNet')
-  const progressDiffers = mismatched.some((total) => total.key === 'executedNet')
-
   return (
     <SheetReportBlock
       title="Porównanie sum"
       status={mismatched.length === 0 ? 'ok' : 'warn'}
-      verdict={
-        // A stale SUM in the owner's own footer is common enough that blocking on any of this would
-        // make the button useless exactly where it is needed.
-        misread
-          ? 'Nasz odczyt prac nie daje sumy, którą arkusz Google ma w podsumowaniu — sprawdź ceny i rabaty. Pobranie jest nadal możliwe.'
-          : progressDiffers
-            ? 'Arkusz Google i ta aplikacja mają rozpisane różne etapy — to właśnie tę różnicę pobranie zastąpi danymi z arkusza.'
-            : 'Podsumowanie arkusza Google zgadza się z tym, co policzyliśmy z jego prac.'
-      }
+      verdict={totalsVerdict(mismatched)}
     >
       <ComparisonTable>
         {totals.map((total) => (
@@ -243,4 +225,19 @@ function TotalsBlock({
       </ComparisonTable>
     </SheetReportBlock>
   )
+}
+
+/**
+ * „wartość netto" first: it is the only one of the two that doubts the read itself, and a wrong cena
+ * makes every other figure in the dialog wrong too. A difference on „R netto" is not a fault at all —
+ * it is the two sides holding different etapy, which is precisely what the import replaces. A stale
+ * SUM in the owner's own footer is common enough that blocking on any of this would make the button
+ * useless exactly where it is needed, so neither line stops the import.
+ */
+function totalsVerdict(mismatched: FooterComparisonT[]): string {
+  if (mismatched.some((total) => total.key === 'plannedNet'))
+    return 'Nasz odczyt prac nie daje sumy, którą arkusz Google ma w podsumowaniu — sprawdź ceny i rabaty. Pobranie jest nadal możliwe.'
+  if (mismatched.some((total) => total.key === 'executedNet'))
+    return 'Arkusz Google i ta aplikacja mają rozpisane różne etapy — to właśnie tę różnicę pobranie zastąpi danymi z arkusza.'
+  return 'Podsumowanie arkusza Google zgadza się z tym, co policzyliśmy z jego prac.'
 }
