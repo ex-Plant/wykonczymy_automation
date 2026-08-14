@@ -11,6 +11,8 @@ worktree: null
 
 ## Notes
 
+Linear: **EX-690**
+
 Import odmawia, gdy nie znajdzie kolumny wymaganej po nazwie — Żupnicza 18/73 rozbija wartość netto
 na dwie kolumny („Wartość netto przedmiar" S / „Wartość netto pomiar z natury" T) i żadna nie pasuje
 do dokładnego dopasowania `wartość netto`. Dostęp do arkusza działa, blok nagłówkowy odczytany, jedna
