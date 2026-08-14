@@ -1,5 +1,6 @@
 import { fold, HEADER_BLOCK_ROWS } from './columns'
-import type { ResolvedRatesT } from './resolve-columns'
+import type { RateTabGridT } from './read-sheet'
+import { resolveRates, type ResolvedRatesT } from './resolve-columns'
 
 export type RateRowT = {
   description: string
@@ -38,7 +39,13 @@ export type RateResolutionT = {
   rejected?: { tab: string; wToolsRate: number; ownToolsRate: number }
 }
 
+// A resolution worth showing to the owner — the two silent kinds are already filtered out.
+export type ReportedRateResolutionT = RateResolutionT & { kind: ReportedRateKindT }
+
 export type RateItemT = { description: string }
+
+export const isReported = (rate: RateResolutionT): rate is ReportedRateResolutionT =>
+  rate.kind !== 'agree' && rate.kind !== 'missing'
 
 // Rates are money to six places at most; comparing raw floats would call 0.65×20 and 13 different.
 const same = (a: number, b: number): boolean => Math.abs(a - b) < 1e-6
@@ -141,6 +148,31 @@ function decide(
 
   // Both typed and different, or both derived and different: pick the authoritative tab and say so.
   return { ...base, kind: 'conflict', rejected }
+}
+
+/**
+ * Every readable „zakres pracy" tab, plus a note for each one that could not be read. Shared by the
+ * import and by „Porównaj z arkuszem" so the two can never resolve a stawka differently — they part
+ * ways only on what an empty result means: the import refuses (it would write 400 zeroes), the
+ * comparison reports that it has nothing to say about stawki.
+ */
+export function readRateTabs(grids: readonly RateTabGridT[]): {
+  tabs: RateTabT[]
+  warnings: string[]
+} {
+  const tabs: RateTabT[] = []
+  const warnings: string[] = []
+
+  for (const tab of grids) {
+    const resolved = resolveRates(tab.grid)
+    if (!resolved.ok) {
+      warnings.push(`Pominięto zakładkę „${tab.title}": ${resolved.problems.join(' ')}`)
+      continue
+    }
+    tabs.push({ title: tab.title, rows: readRateRows(tab.grid, tab.formulas, resolved) })
+  }
+
+  return { tabs, warnings }
 }
 
 // Resolve one rate pair per praca. `tabs` is in PRIORITY order — the first tab supplies the value

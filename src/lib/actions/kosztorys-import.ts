@@ -87,7 +87,7 @@ export async function previewKosztorysImport(
 // with — the problems list is what the owner reads and the confirm button is what it disables.
 function emptyReport(): ImportReportT {
   return {
-    columns: [],
+    missingColumns: [],
     counts: { sections: 0, items: 0, stages: 0 },
     rateDecisions: [],
     retained: [],

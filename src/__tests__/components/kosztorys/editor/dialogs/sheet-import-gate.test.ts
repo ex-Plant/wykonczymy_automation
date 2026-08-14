@@ -17,7 +17,7 @@ function preview(overrides: Partial<ImportPreviewT> = {}): ImportPreviewT {
   return {
     problems: [],
     report: {
-      columns: [],
+      missingColumns: [],
       counts: { sections: 2, items: 9, stages: 3 },
       rateDecisions: [],
       retained: [],
