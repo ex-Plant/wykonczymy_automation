@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { sectionSubtotalsForView, emptySectionIds } from '@/lib/kosztorys/settlement-aggregates'
+import { countMatching, sectionIdsWhereAllMatch } from '@/lib/kosztorys/row-conditions'
+import { sectionSubtotalsForView } from '@/lib/kosztorys/settlement-aggregates'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysItemT, KosztorysTreeT } from '@/lib/kosztorys/types'
 import { makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
-function item(id: number, sectionId: number): KosztorysItemT {
+function item(id: number, sectionId: number, overrides: Partial<KosztorysItemT> = {}) {
   return {
     id,
     sectionId,
@@ -22,105 +23,69 @@ function item(id: number, sectionId: number): KosztorysItemT {
     ownToolsOverrideValue: 0,
     hiddenInExport: false,
     note: null,
-  }
+    ...overrides,
+  } satisfies KosztorysItemT
 }
 
-// Three sections, one of them "pusta" — B carries a position but no executed work (no progress row),
-// which is the only sense of empty that exists here: a section with no ITEMS is cascade-deleted.
+const STAGES = [{ id: 100, ordinal: 1, label: null, plane: 'w_tools' as const, workerId: null }]
+
+// A: worked and priced. B: nothing executed. C: fully executed but never priced — its subtotal is
+// zero for a reason that is a defect, not a state, which is what the cases below separate.
 const tree: KosztorysTreeT = makeTree({
   sections: [
-    {
-      id: 10,
-      name: 'Sekcja A',
-      displayOrder: 0,
-      color: null,
-      items: [item(1, 10)],
-    },
-    {
-      id: 20,
-      name: 'Sekcja B',
-      displayOrder: 1,
-      color: null,
-      items: [item(2, 20)],
-    },
+    { id: 10, name: 'Sekcja A', displayOrder: 0, color: null, items: [item(1, 10)] },
+    { id: 20, name: 'Sekcja B', displayOrder: 1, color: null, items: [item(2, 20)] },
     {
       id: 30,
       name: 'Sekcja C',
       displayOrder: 2,
       color: null,
-      items: [item(3, 30)],
+      items: [item(3, 30, { clientPrice: 0 })],
     },
   ],
-  stages: [{ id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null }],
+  stages: STAGES,
   progress: [
     { itemId: 1, stageId: 100, qtyDone: 4 },
-    { itemId: 3, stageId: 100, qtyDone: 2 },
+    { itemId: 3, stageId: 100, qtyDone: 10 },
   ],
 })
 
 const rows = treeToRows(tree)
-// Derived, not hand-written: proves "pusta" means net === 0 at the live subtotals, so the test can't
-// drift from the definition the toggle's label promises.
-const empties = emptySectionIds(sectionSubtotalsForView(rows, tree.stages, 'client'))
+const ctx = { stages: tree.stages }
 
-// „Zwiń puste sekcje" folds by unticking the picker's selection, so the grid can only ever show
-// what the checkmarks say. This guards the one domain fact it rests on — which sections count as
-// pusta — plus the deselect itself; the selection is FilterMultiSelect's string encoding.
-const deselectEmpty = (current: string[]) => current.filter((v) => !empties.has(Number(v)))
+describe('a section fully executed but unpriced', () => {
+  it('sums to zero — which is why the old net-is-zero rule folded it away', () => {
+    const subtotals = sectionSubtotalsForView(rows, tree.stages, 'client')
 
-describe('emptySectionIds — a section is pusta when nothing has been executed in it', () => {
-  it('picks out only the section with no recorded work', () => {
-    expect([...empties]).toEqual([20])
+    expect(subtotals.find((s) => s.sectionId === 30)!.net).toBe(0)
   })
 
-  it('counts positions as irrelevant — B holds one and is still pusta', () => {
-    expect(rows.filter((r) => r.sectionId === 20)).toHaveLength(1)
-  })
-})
-
-// A kwota rabat that cancels its own row: 3 × 0,10 zł − 0,30 zł is zero in złotych but 5.55e-17 in
-// binary, so a strict `net === 0` read this section as carrying work and left it expanded.
-const cancelledTree: KosztorysTreeT = makeTree({
-  sections: [
-    {
-      id: 40,
-      name: 'Sekcja D',
-      displayOrder: 0,
-      color: null,
-      items: [{ ...item(4, 40), clientPrice: 0.1, discountType: 'amount', discountValue: 0.3 }],
-    },
-  ],
-  stages: [{ id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null }],
-  progress: [{ itemId: 4, stageId: 100, qtyDone: 3 }],
-})
-
-describe('emptySectionIds — a section whose value cancels to a float residue', () => {
-  const subtotals = sectionSubtotalsForView(
-    treeToRows(cancelledTree),
-    cancelledTree.stages,
-    'client',
-  )
-
-  it('sums to a non-zero float, which is what makes the case worth guarding', () => {
-    expect(subtotals[0].net).not.toBe(0)
-    expect(Math.abs(subtotals[0].net)).toBeLessThan(0.005)
+  it('is not folded by „bez pomiaru z natury" — the work IS recorded', () => {
+    expect([...sectionIdsWhereAllMatch(rows, 'no-measured-qty', ctx)]).toEqual([20])
   })
 
-  it('still counts as pusta', () => {
-    expect([...emptySectionIds(subtotals)]).toEqual([40])
+  it('is counted by the „bez ceny j.m." diagnostic instead of being hidden', () => {
+    expect(countMatching(rows, 'no-client-price', ctx)).toBe(1)
   })
 })
 
-describe('„Zwiń puste sekcje" — the bulk deselect it applies to the selection', () => {
-  it('drops the pusta section and leaves the rest ticked', () => {
-    expect(deselectEmpty(['10', '20', '30'])).toEqual(['10', '30'])
+describe('„zwiń sekcje wg warunku" — the section list it unticks', () => {
+  // The fold is a one-shot deselect on FilterMultiSelect's string encoding, so the grid can only
+  // ever show what the checkmarks say.
+  const deselect = (current: string[], conditionId: string) => {
+    const folded = sectionIdsWhereAllMatch(rows, conditionId, ctx)
+    return current.filter((value) => !folded.has(Number(value)))
+  }
+
+  it('drops the sections the condition names and leaves the rest ticked', () => {
+    expect(deselect(['10', '20', '30'], 'no-measured-qty')).toEqual(['10', '30'])
   })
 
-  it('is a no-op on a selection that holds no pusta section', () => {
-    expect(deselectEmpty(['10', '30'])).toEqual(['10', '30'])
+  it('is a no-op on a selection holding none of them', () => {
+    expect(deselect(['10', '30'], 'no-measured-qty')).toEqual(['10', '30'])
   })
 
   it('can empty the selection outright — „pokaż nic", not „pokaż wszystko"', () => {
-    expect(deselectEmpty(['20'])).toEqual([])
+    expect(deselect(['20'], 'no-measured-qty')).toEqual([])
   })
 })
