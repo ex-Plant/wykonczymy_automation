@@ -80,12 +80,11 @@ describe('resolveRobocizna', () => {
     expect(result.stages).toEqual({ firstColumn: 3, count: 10 })
   })
 
-  it('reports the header text it matched, so the preview can show the mapping', () => {
+  it('reports nothing unresolved when every optional column is there', () => {
     const result = resolveRobocizna(BIALOSTOCKA_ROBOCIZNA_HEADER)
     expectResolved(result)
 
-    expect(result.matchedLabels.plannedQty).toBe('Przedmiar')
-    expect(result.matchedLabels.unit).toBe('jednostka miary')
+    expect(result.unresolvedOptional).toEqual([])
   })
 
   it('finds „Pomiar z natury" beside Przedmiar', () => {
@@ -103,6 +102,10 @@ describe('resolveRobocizna', () => {
     const result = resolveRobocizna(grid)
     expectResolved(result)
     expect(result.columns.measuredQty).toBeUndefined()
+    expect(result.unresolvedOptional).toContainEqual({
+      field: 'measuredQty',
+      reason: 'absent',
+    })
   })
 
   it('imports a sheet whose „Pomiar z natury" matches twice rather than refusing it', () => {
@@ -115,6 +118,11 @@ describe('resolveRobocizna', () => {
     const result = resolveRobocizna(grid)
     expectResolved(result)
     expect(result.columns.measuredQty).toBeUndefined()
+    // The report has to tell the two apart: „dopisz kolumnę" vs „zmień nazwę tej drugiej".
+    expect(result.unresolvedOptional).toContainEqual({
+      field: 'measuredQty',
+      reason: 'ambiguous',
+    })
   })
 
   it('treats a missing rabat column as fine — some sheets genuinely have none', () => {

@@ -2,19 +2,27 @@ import {
   FIELD_LABELS,
   FIELD_MATCHERS,
   HEADER_BLOCK_ROWS,
-  OPTIONAL_FIELDS,
+  isOptionalField,
   RATE_GROUP_LABELS,
   RATE_GROUP_MATCHERS,
   RATE_UNIT_PRICE_MATCHER,
   STAGE_MARKER,
   fold,
   type ColumnFieldT,
+  type OptionalFieldT,
   type RateGroupT,
 } from './columns'
 
 export type StageColumnsT = { firstColumn: number; count: number }
 
 export type ResolveFailureT = { ok: false; problems: string[] }
+
+// Why an optional column was dropped: it isn't in the header block at all, or its name matches more
+// than one column and the resolver refuses to guess. Different sentences for the owner — one is
+// „dopisz kolumnę", the other „zmień nazwę tej drugiej".
+export type UnresolvedReasonT = 'absent' | 'ambiguous'
+
+export type UnresolvedColumnT = { field: OptionalFieldT; reason: UnresolvedReasonT }
 
 export type ResolvedRobociznaT = {
   ok: true
@@ -25,9 +33,10 @@ export type ResolvedRobociznaT = {
       netValue: number
     }
   stages: StageColumnsT
-  // The header text actually found, per field — the preview shows it so the owner can confirm we
-  // read the column they meant rather than a same-named neighbour.
-  matchedLabels: Partial<Record<ColumnFieldT, string>>
+  // Optional columns that did NOT make it in. A resolved import says nothing worth reading — every
+  // required column is resolved or the import is refused outright — so the preview reports the
+  // absences instead: each one is data silently missing from the kosztorys.
+  unresolvedOptional: UnresolvedColumnT[]
 }
 
 // No `stages` here on purpose. A rates tab carries its own „wykonano" run and it can be SHORTER
@@ -39,20 +48,18 @@ export type ResolvedRatesT = {
   columns: { description: number; wToolsRate: number; ownToolsRate: number }
 }
 
-type FieldHitT = { column: number; label: string }
-
-// Scan the whole header block for one field. A field may be labelled on any row, and the same field
-// is often labelled on two rows with different wording — those agree on the column, so they are one
-// hit, not two.
-function findField(block: unknown[][], matches: (value: string) => boolean): FieldHitT[] {
-  const byColumn = new Map<number, string>()
+// The columns matching one field. A field may be labelled on any row of the block, and the same
+// field is often labelled on two rows with different wording — those agree on the column, so they
+// are one hit, not two.
+function findField(block: unknown[][], matches: (value: string) => boolean): number[] {
+  const hits = new Set<number>()
   for (const row of block) {
     row.forEach((cell, column) => {
-      const raw = typeof cell === 'string' ? cell.trim() : cell == null ? '' : String(cell).trim()
-      if (raw && matches(fold(cell)) && !byColumn.has(column)) byColumn.set(column, raw)
+      const raw = String(cell ?? '').trim()
+      if (raw && matches(fold(cell))) hits.add(column)
     })
   }
-  return [...byColumn].map(([column, label]) => ({ column, label }))
+  return [...hits]
 }
 
 // The contiguous run of columns marked „wykonano" on row 2. Contiguous on purpose: a stray
@@ -72,25 +79,28 @@ function resolveFields(
   fields: readonly ColumnFieldT[],
 ): {
   columns: Partial<Record<ColumnFieldT, number>>
-  labels: Partial<Record<ColumnFieldT, string>>
+  unresolvedOptional: UnresolvedColumnT[]
 } & {
   problems: string[]
 } {
   const columns: Partial<Record<ColumnFieldT, number>> = {}
-  const labels: Partial<Record<ColumnFieldT, string>> = {}
+  const unresolvedOptional: UnresolvedColumnT[] = []
   const problems: string[] = []
 
   for (const field of fields) {
     const hits = findField(block, FIELD_MATCHERS[field])
     if (hits.length === 1) {
-      columns[field] = hits[0].column
-      labels[field] = hits[0].label
+      columns[field] = hits[0]
       continue
     }
     // An optional field is one the import can do without, and that holds for BOTH ways of failing to
     // pin it down: absent, or matching two headers. Blocking the whole import over an ambiguous
-    // optional column would reject sheets that imported fine before the column existed.
-    if (OPTIONAL_FIELDS.has(field)) continue
+    // optional column would reject sheets that imported fine before the column existed — but it is
+    // still reported, because a silently dropped column is a hole in the imported kosztorys.
+    if (isOptionalField(field)) {
+      unresolvedOptional.push({ field, reason: hits.length === 0 ? 'absent' : 'ambiguous' })
+      continue
+    }
     if (hits.length === 0) {
       // A required one names itself so the owner knows which cell to fix, rather than getting a
       // guess written into their kosztorys.
@@ -102,7 +112,7 @@ function resolveFields(
     )
   }
 
-  return { columns, labels, problems }
+  return { columns, unresolvedOptional, problems }
 }
 
 const ROBOCIZNA_FIELDS = [
@@ -119,7 +129,7 @@ const ROBOCIZNA_FIELDS = [
 // value the preview renders and a confirm button it disables, not an exception.
 export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | ResolveFailureT {
   const block = grid.slice(0, HEADER_BLOCK_ROWS)
-  const { columns, labels, problems } = resolveFields(block, ROBOCIZNA_FIELDS)
+  const { columns, unresolvedOptional, problems } = resolveFields(block, ROBOCIZNA_FIELDS)
 
   const stages = findStages(block)
   if (!stages) {
@@ -155,7 +165,7 @@ export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | Resolv
     ok: true,
     columns: { section, description, ...columns, plannedQty, unit, clientPrice, netValue },
     stages,
-    matchedLabels: labels,
+    unresolvedOptional,
   }
 }
 
