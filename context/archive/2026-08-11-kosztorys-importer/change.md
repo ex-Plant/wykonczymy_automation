@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-importer
 title: Pull kosztorys data from the linked Google Sheet into the editor
-status: implemented
+status: archived
 created: 2026-08-11
-updated: 2026-08-11
-archived_at: null
+updated: 2026-08-14
+archived_at: 2026-08-14T16:40:00Z
 branch: konradantonik/ex-417-kosztorys-importer
 worktree: ../wykonczymy-worktrees/kosztorys-importer
 ---

@@ -444,7 +444,7 @@ Run once, after Phase 4.
 
 - Shaping and decisions: `context/changes/2026-08-14-kosztorys-filter-conditions/change.md`
 - Linear: EX-665
-- The rozjazd filter this generalizes: `context/changes/2026-08-13-pomiar-bez-etapu/`
+- The rozjazd filter this generalizes: `context/archive/2026-08-13-pomiar-bez-etapu/`
 - Persistence primitive: `src/hooks/create-json-map-store.ts`
 
 ## Progress

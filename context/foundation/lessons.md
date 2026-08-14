@@ -1158,3 +1158,16 @@ precedent does not transfer.
 **The tell that this is worth checking:** a golden-master spec whose per-investment fingerprint
 includes `sum(sp.qty)` **skips silently** when the input hash moves. Green-but-blind is the loud
 failure; no-signal-at-all is the quiet one.
+
+## A snapshot taken "inside the transaction, before the wipe" is not a transaction-consistent read
+
+`captureAutoSnapshot` → `serializeKosztorys` → `getKosztorysTree` goes through the cached query layer,
+which opens its own connection. So calling it from inside a `withPayloadTransaction` block — with that
+block's `txDb` handle threaded through every write around it — still reads whatever the query layer
+currently returns, not the rows the transaction is about to destroy. Nothing at the call site says so;
+the handle you passed for the writes simply isn't the one the read used.
+
+Every caller that reuses the snapshot-before-write pattern inherits this: import, restore, presets.
+In practice the tags are fresh at click time so it hasn't produced a wrong undo yet, which is exactly
+why it will stay unnoticed. **If a restore or an import ever comes back subtly wrong — the right shape,
+stale contents — start here**, not in the write path.
