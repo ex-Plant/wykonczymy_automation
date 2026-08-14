@@ -522,5 +522,5 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 4.1 Spec blokady pobrania przechodzi (wymagane blokuje, opcjonalne nie)
-- [x] 4.2 Spec etykiet kandydatów przechodzi
+- [x] 4.1 Spec blokady pobrania przechodzi (wymagane blokuje, opcjonalne nie) — 94ffefd0
+- [x] 4.2 Spec etykiet kandydatów przechodzi — 94ffefd0
