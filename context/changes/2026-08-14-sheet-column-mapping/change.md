@@ -1,11 +1,11 @@
 ---
 change_id: sheet-column-mapping
-title: Ręczne przypisanie kolumn arkusza, gdy import ich nie rozpozna
-status: new
+title: Ręczne przypisanie kolumn arkusza i czytelne komunikaty, gdy import odmówi
+status: implementing
 created: 2026-08-14
 updated: 2026-08-14
 archived_at: null
-branch: null
+branch: ex-690-sheet-column-mapping
 worktree: null
 ---
 
@@ -36,5 +36,15 @@ najpierw dopasowuje po nazwach jak dziś i sięga do zapisu wyłącznie dla pól
 Poprawiony nagłówek w arkuszu zawsze wygrywa ze starym wyborem, więc zapis nie może zapiąć złej
 kolumny na siłę i nie dotyka arkuszy, które i tak działają.
 
-Uwaga na kolizję: `footer-totals.ts` / `build-sheet-comparison.ts` / `resolve-rates.ts` przerabia
-równolegle inna sesja — to one konsumują `columns.netValue`.
+Kolizja z `footer-totals.ts` / `build-sheet-comparison.ts` / `resolve-rates.ts` jest już nieaktualna —
+tamta sesja skończyła i wszystko jest na staging.
+
+Druga część zmiany (dopisana 2026-08-14, po rozszerzeniu EX-690): **komunikaty o dostępie do
+arkusza**. Dziś każda porażka odczytu — brak udostępnienia kontu serwisowemu, martwy identyfikator,
+realna awaria Google — wychodzi jako „Nie udało się odczytać arkusza Google. Spróbuj ponownie za
+chwilę." (`sheetFailureMessage` w `src/lib/actions/kosztorys-import.ts`). Przy braku dostępu to rada,
+która nigdy nie zadziała: arkusz trzeba udostępnić. Do tego brak zakładki `kosztorys_robocizny`
+podpowiada „Popraw nagłówki w arkuszu", choć nagłówki nie mają z tym nic wspólnego.
+
+Ta część idzie razem z pierwszą, bo wychodzi w tym samym dialogu i dotyka tej samej ścieżki odczytu —
+oba przypadki to „import odmówił i właściciel nie wie, co zrobić dalej".

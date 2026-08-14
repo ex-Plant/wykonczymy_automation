@@ -100,7 +100,8 @@ export function KosztorysActionsMenu() {
       .then((res) => {
         setCompareResult(res.success ? res.data : null)
         if (!res.success) toastMessage(res.error, 'error', 6000)
-        else if (res.data.refresh.updated + res.data.refresh.cleared > 0) onTreeReplaced?.()
+        else if ((res.data.refresh?.updated ?? 0) + (res.data.refresh?.cleared ?? 0) > 0)
+          onTreeReplaced?.()
       })
       .catch(() => {
         setCompareResult(null)

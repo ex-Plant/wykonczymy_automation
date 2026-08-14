@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import { DialogActions } from '@/components/ui/dialog-actions'
+import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
 import { evaluateImportGate } from '@/components/kosztorys/editor/dialogs/sheet-import-gate'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
@@ -84,8 +85,10 @@ export function SheetImportDialog({
         />
       }
     >
-      {({ problems, report }) =>
-        problems.length > 0 ? (
+      {({ problems, report, failure }) =>
+        failure ? (
+          <SheetAccessBlock failure={failure} />
+        ) : problems.length > 0 ? (
           <SheetReportBlock
             title="Nie mogę odczytać arkusza Google"
             status="warn"

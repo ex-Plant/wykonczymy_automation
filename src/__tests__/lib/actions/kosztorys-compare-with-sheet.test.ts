@@ -158,7 +158,7 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
       success: true,
       data: { refresh: { updated: 0, cleared: 0, unmatched: 1 } },
     })
-    expect(result.success && result.data.comparison.counts.matched).toBe(3)
+    expect(result.success && result.data.comparison?.counts.matched).toBe(3)
   })
 
   // The editor reseeds its grid off the investment's revision token, so a write that moves rows

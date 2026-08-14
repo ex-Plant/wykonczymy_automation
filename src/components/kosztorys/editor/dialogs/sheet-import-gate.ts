@@ -10,16 +10,18 @@ export type ImportGateT = {
   mismatchedTotals: FooterComparisonT[]
 }
 
-// The one decision the preview dialog makes: may the owner press confirm? A problem is a refusal to
-// read the sheet at all, so it blocks; a total that doesn't add up is the owner's own stale SUM often
-// enough that blocking on it would disable the button exactly where it's needed.
+// The one decision the preview dialog makes: may the owner press confirm? An unreadable sheet and an
+// unresolved column are both refusals to read the sheet at all, so both block; a total that doesn't
+// add up is the owner's own stale SUM often enough that blocking on it would disable the button
+// exactly where it's needed.
 export function evaluateImportGate(
   preview: ImportPreviewT | null,
   loaded: boolean,
   pending: boolean,
 ): ImportGateT {
   return {
-    confirmDisabled: !loaded || pending || !preview || preview.problems.length > 0,
+    confirmDisabled:
+      !loaded || pending || !preview || preview.problems.length > 0 || preview.failure !== null,
     mismatchedTotals:
       preview?.report.totals.filter((total) => total.sheetValue !== null && !total.matches) ?? [],
   }

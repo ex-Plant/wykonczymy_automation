@@ -1,5 +1,6 @@
 'use client'
 
+import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
 import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
@@ -54,15 +55,22 @@ export function SheetCompareDialog({ open, onOpenChange, result, loaded }: Props
       loaded={loaded}
       data={result}
     >
-      {({ comparison, refresh }) => (
-        <>
-          <MoneyBlock comparison={comparison} />
-          <ItemsBlock comparison={comparison} />
-          <SheetRatesBlock decisions={comparison.rates.decisions} stale={comparison.rates.stale} />
-          <ReadingBlock comparison={comparison} />
-          <RefreshLine refresh={refresh} />
-        </>
-      )}
+      {({ comparison, refresh, failure }) =>
+        failure ? (
+          <SheetAccessBlock failure={failure} />
+        ) : !comparison || !refresh ? null : (
+          <>
+            <MoneyBlock comparison={comparison} />
+            <ItemsBlock comparison={comparison} />
+            <SheetRatesBlock
+              decisions={comparison.rates.decisions}
+              stale={comparison.rates.stale}
+            />
+            <ReadingBlock comparison={comparison} />
+            <RefreshLine refresh={refresh} />
+          </>
+        )
+      }
     </SheetReportDialog>
   )
 }
@@ -235,7 +243,7 @@ function ReadingBlock({ comparison }: { comparison: SheetComparisonT }) {
 
 // The one line that says this window wrote something. „Już zgodne" is the answer that matters most:
 // it is what tells the owner a second look changed nothing, rather than leaving them to wonder.
-function RefreshLine({ refresh }: { refresh: SheetCompareResultT['refresh'] }) {
+function RefreshLine({ refresh }: { refresh: NonNullable<SheetCompareResultT['refresh']> }) {
   const { updated, cleared, unmatched } = refresh
   const skipped =
     unmatched > 0

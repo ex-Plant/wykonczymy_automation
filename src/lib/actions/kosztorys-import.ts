@@ -17,13 +17,32 @@ import {
   buildSheetComparison,
   type SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
-import { MissingRobociznaTabError, readImportGrids } from '@/lib/kosztorys/sheet-import/read-sheet'
+import {
+  classifySheetFailure,
+  readImportGrids,
+  ROBOCIZNA_TAB,
+  type SheetFailureReasonT,
+} from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
+import { serviceAccountEmail } from '@/lib/google/sheet-access'
 import type { ActionResultT } from '@/types/action'
 
 const PRE_IMPORT_LABEL = 'Przed importem z arkusza Google'
 
-export type ImportPreviewT = { report: ImportReportT; problems: string[] }
+// A read that never happened, carried as DATA rather than as a red toast — the dialog needs
+// somewhere to render the address a sheet has to be shared with, and a copy button beside it.
+export type SheetFailureT = {
+  reason: SheetFailureReasonT
+  // Filled only for `forbidden`. Everywhere else the address is not the answer, and showing it would
+  // send the owner off sharing a sheet that is already shared.
+  serviceAccountEmail: string | null
+}
+
+export type ImportPreviewT = {
+  report: ImportReportT
+  problems: string[]
+  failure: SheetFailureT | null
+}
 
 export type RefreshMeasuredQtyResultT = {
   updated: number
@@ -31,9 +50,13 @@ export type RefreshMeasuredQtyResultT = {
   unmatched: number
 }
 
+// Both halves are null exactly when `failure` is set: the comparison describes a read that did not
+// happen, and the refresh is deliberately skipped — writing a figure off an unreadable sheet would
+// be worse than leaving the stored one alone.
 export type SheetCompareResultT = {
-  comparison: SheetComparisonT
-  refresh: RefreshMeasuredQtyResultT
+  comparison: SheetComparisonT | null
+  refresh: RefreshMeasuredQtyResultT | null
+  failure: SheetFailureT | null
 }
 
 export type ApplyImportResultT = {
@@ -51,16 +74,29 @@ async function derivePlan(investmentId: number, spreadsheetId: string): Promise<
 }
 
 const MISSING_SHEET = 'Inwestycja nie ma kosztorysu.'
-const SHEET_UNREADABLE = 'Nie udało się odczytać arkusza Google. Spróbuj ponownie za chwilę.'
+
+const FAILURE_MESSAGES: Record<SheetFailureReasonT, string> = {
+  forbidden: 'Arkusz Google nie jest udostępniony kontu usługi tej aplikacji.',
+  'not-found': 'Arkusz Google o tym identyfikatorze nie istnieje albo został usunięty.',
+  'missing-tab': `Arkusz Google nie ma zakładki „${ROBOCIZNA_TAB}".`,
+  unknown: 'Nie udało się odczytać arkusza Google. Spróbuj ponownie za chwilę.',
+}
 
 // Google's own errors are English, unactionable („The caller does not have permission") and would
-// land in a Polish toast. Only the one failure the owner can actually fix — no `kosztorys_robocizny`
-// tab — keeps its own wording; everything else becomes one message and a log line.
+// land in a Polish toast — so the reason is translated here. Only a genuine outage is logged: a
+// sheet nobody shared is not a fault worth reporting, it is a thing the owner has to do.
+function toSheetFailure(error: unknown): SheetFailureT {
+  const reason = classifySheetFailure(error)
+  if (reason === 'unknown') {
+    // TODO(EX-449) SENTRY-REQUIRED: capture the underlying Google error, not just the console line.
+    console.error('[kosztorys-import] sheet read failed', error)
+  }
+  return { reason, serviceAccountEmail: reason === 'forbidden' ? serviceAccountEmail() : null }
+}
+
+// „Pobierz i zastąp" has nothing to render — it refuses the write and says why in one sentence.
 function sheetFailureMessage(error: unknown): string {
-  if (error instanceof MissingRobociznaTabError) return error.message
-  // TODO(EX-449) SENTRY-REQUIRED: capture the underlying Google error, not just the console line.
-  console.error('[kosztorys-import] sheet read failed', error)
-  return SHEET_UNREADABLE
+  return FAILURE_MESSAGES[toSheetFailure(error).reason]
 }
 
 export async function previewKosztorysImport(
@@ -75,10 +111,13 @@ export async function previewKosztorysImport(
       // The tree stays on the server: the browser has no use for it, and shipping it would invite a
       // round-trip that apply would have to distrust anyway.
       return plan.ok
-        ? { success: true, data: { report: plan.report, problems: [] } }
-        : { success: true, data: { report: emptyReport(), problems: plan.problems } }
+        ? { success: true, data: { report: plan.report, problems: [], failure: null } }
+        : { success: true, data: { report: emptyReport(), problems: plan.problems, failure: null } }
     } catch (error) {
-      return { success: false, error: sheetFailureMessage(error) }
+      return {
+        success: true,
+        data: { report: emptyReport(), problems: [], failure: toSheetFailure(error) },
+      }
     }
   })
 }
@@ -126,7 +165,10 @@ export async function compareWithSheet(
       try {
         grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
       } catch (error) {
-        return { success: false, error: sheetFailureMessage(error) }
+        return {
+          success: true,
+          data: { comparison: null, refresh: null, failure: toSheetFailure(error) },
+        }
       }
 
       const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite)
@@ -151,6 +193,7 @@ export async function compareWithSheet(
             cleared: rows.filter((row) => row.qty === null).length,
             unmatched,
           },
+          failure: null,
         },
       }
     },

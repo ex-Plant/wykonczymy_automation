@@ -16,6 +16,7 @@ const matchingTotal: FooterComparisonT = {
 function preview(overrides: Partial<ImportPreviewT> = {}): ImportPreviewT {
   return {
     problems: [],
+    failure: null,
     report: {
       missingColumns: [],
       counts: { sections: 2, items: 9, stages: 3 },
@@ -47,6 +48,18 @@ describe('evaluateImportGate', () => {
   it('blocks the import when a column could not be resolved', () => {
     const gate = evaluateImportGate(
       preview({ problems: ['Nie znalazłem kolumny „Cena j.m." w zakładce kosztorys_robocizny.'] }),
+      true,
+      false,
+    )
+
+    expect(gate.confirmDisabled).toBe(true)
+  })
+
+  it('blocks the import when the sheet itself could not be reached', () => {
+    // The failure now travels as data so the dialog can render the address to share the sheet with —
+    // which means a loaded preview is no longer proof the sheet was read.
+    const gate = evaluateImportGate(
+      preview({ failure: { reason: 'forbidden', serviceAccountEmail: 'sa@example.iam' } }),
       true,
       false,
     )

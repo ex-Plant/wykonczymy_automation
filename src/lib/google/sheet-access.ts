@@ -1,14 +1,10 @@
 import { google } from 'googleapis'
-import { createServiceAccountJWT } from './auth'
-import { serverEnv } from '@/lib/env/server'
+import { createServiceAccountJWT, parseServiceAccountCredentials } from './auth'
 
 // The service-account email — what an owner must share a sheet with for the app
 // to read/sync it. Parsed from the same credential JSON the clients use.
 export function serviceAccountEmail(): string {
-  return (
-    (JSON.parse(serverEnv.GOOGLE_SERVICE_ACCOUNT_JSON) as { client_email?: string }).client_email ??
-    ''
-  )
+  return parseServiceAccountCredentials().client_email
 }
 
 // Pull the spreadsheet id out of a pasted Google Sheets URL, or accept a raw id.

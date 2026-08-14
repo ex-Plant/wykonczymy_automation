@@ -45,6 +45,35 @@ export class MissingRobociznaTabError extends Error {
   }
 }
 
+// Why the sheet could not be read, in the owner's terms — each one maps to a DIFFERENT thing to do,
+// which is the whole point: „spróbuj później" is advice that can never work on a sheet nobody shared
+// with the service account.
+export type SheetFailureReasonT = 'forbidden' | 'not-found' | 'missing-tab' | 'unknown'
+
+const PERMISSION_DENIED = 'PERMISSION_DENIED'
+
+// googleapis puts the status in a different place depending on which layer threw: the gaxios error
+// carries `status`, the API error object carries `code` (number or a string enum), and a wrapped
+// response keeps it on `response.status`. Reading only one of them silently degrades every 403 into
+// the catch-all.
+function errorCodes(error: unknown): (number | string)[] {
+  if (typeof error !== 'object' || error === null) return []
+  const candidate = error as { status?: unknown; code?: unknown; response?: { status?: unknown } }
+  return [candidate.status, candidate.code, candidate.response?.status].flatMap((value) => {
+    if (typeof value === 'number') return [value]
+    if (typeof value !== 'string') return []
+    return [/^\d+$/.test(value) ? Number(value) : value]
+  })
+}
+
+export function classifySheetFailure(error: unknown): SheetFailureReasonT {
+  if (error instanceof MissingRobociznaTabError) return 'missing-tab'
+  const codes = errorCodes(error)
+  if (codes.includes(403) || codes.includes(PERMISSION_DENIED)) return 'forbidden'
+  if (codes.includes(404)) return 'not-found'
+  return 'unknown'
+}
+
 // Takes the client rather than building one so this module stays free of the `server-only` env
 // layer — that guard makes anything importing it unusable from a `tsx` script, and the smoke script
 // that checks the resolver against live sheets has to run exactly this code, not a copy of it.
