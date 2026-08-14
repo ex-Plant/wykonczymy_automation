@@ -4,7 +4,7 @@ import { protectedAction } from '@/lib/actions/run-action'
 import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { setSheetMeasuredQty } from '@/lib/db/kosztorys-sheet-measured-qty'
-import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
+import { getInvestmentSheet, MISSING_SHEET, type InvestmentSheetT } from '@/lib/google/sheet-lookup'
 import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import {
@@ -68,12 +68,10 @@ export type ApplyImportResultT = {
 
 // Reading the sheet and merging it with the current tree — the single derivation both actions run,
 // so the preview can never describe an import different from the one apply performs.
-async function derivePlan(investmentId: number, spreadsheetId: string): Promise<ImportPlanT> {
-  const grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
-  return buildImportPlan(grids, await serializeKosztorys(investmentId))
+async function derivePlan(investmentId: number, sheet: InvestmentSheetT): Promise<ImportPlanT> {
+  const grids = await readImportGrids(getReadonlySheetsClient(), sheet.googleSheetId)
+  return buildImportPlan(grids, await serializeKosztorys(investmentId), sheet.columnMapping)
 }
-
-const MISSING_SHEET = 'Inwestycja nie ma kosztorysu.'
 
 const FAILURE_MESSAGES: Record<SheetFailureReasonT, string> = {
   forbidden: 'Arkusz Google nie jest udostępniony kontu usługi tej aplikacji.',
@@ -103,11 +101,11 @@ export async function previewKosztorysImport(
   investmentId: number,
 ): Promise<ActionResultT<ImportPreviewT>> {
   return protectedAction<ImportPreviewT>('previewKosztorysImport', async ({ payload }) => {
-    const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
-    if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
+    const sheet = await getInvestmentSheet(payload, investmentId)
+    if (!sheet) return { success: false, error: MISSING_SHEET }
 
     try {
-      const plan = await derivePlan(investmentId, spreadsheetId)
+      const plan = await derivePlan(investmentId, sheet)
       // The tree stays on the server: the browser has no use for it, and shipping it would invite a
       // round-trip that apply would have to distrust anyway.
       return plan.ok
@@ -155,8 +153,8 @@ export async function compareWithSheet(
   return protectedAction<SheetCompareResultT>(
     'compareWithSheet',
     async ({ payload }) => {
-      const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
-      if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
+      const sheet = await getInvestmentSheet(payload, investmentId)
+      if (!sheet) return { success: false, error: MISSING_SHEET }
 
       let grids: Awaited<ReturnType<typeof readImportGrids>>
       // Outside the try on purpose: this one reads the database, and the catch below translates
@@ -164,7 +162,7 @@ export async function compareWithSheet(
       // system and hand the owner retry advice that cannot help.
       const treeBeforeWrite = await serializeKosztorys(investmentId)
       try {
-        grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
+        grids = await readImportGrids(getReadonlySheetsClient(), sheet.googleSheetId)
       } catch (error) {
         return {
           success: true,
@@ -172,7 +170,7 @@ export async function compareWithSheet(
         }
       }
 
-      const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite)
+      const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite, sheet.columnMapping)
       if (!refreshed.ok) return { success: false, error: refreshed.problems.join(' ') }
       const { rows, unmatched } = refreshed.refresh
       const written = await setSheetMeasuredQty(await getDb(payload), investmentId, rows)
@@ -182,7 +180,7 @@ export async function compareWithSheet(
       // the stored reference quantity — but that is an invariant of the current report, not of the
       // action, and the day a figure starts reading it this would go quietly stale.
       const tree = written > 0 ? await serializeKosztorys(investmentId) : treeBeforeWrite
-      const built = buildSheetComparison(grids, tree, spreadsheetId)
+      const built = buildSheetComparison(grids, tree, sheet.googleSheetId, sheet.columnMapping)
       if (!built.ok) return { success: false, error: built.problems.join(' ') }
 
       return {
@@ -210,12 +208,12 @@ export async function applyKosztorysImport(
   return protectedAction<ApplyImportResultT>(
     'applyKosztorysImport',
     async ({ payload, user }) => {
-      const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
-      if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
+      const sheet = await getInvestmentSheet(payload, investmentId)
+      if (!sheet) return { success: false, error: MISSING_SHEET }
 
       let plan: ImportPlanT
       try {
-        plan = await derivePlan(investmentId, spreadsheetId)
+        plan = await derivePlan(investmentId, sheet)
       } catch (error) {
         return { success: false, error: sheetFailureMessage(error) }
       }

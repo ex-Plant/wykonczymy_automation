@@ -11,6 +11,7 @@ import {
   isOptionalField,
   type ColumnFieldT,
   type OptionalFieldT,
+  type SheetColumnMappingT,
 } from './columns'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
@@ -97,8 +98,12 @@ function groupBy<ValueT, KeyT>(
  * investment's current tree. Both actions call this so the two can never disagree about what an
  * import would do — the same reason `buildSyncPlan` exists on the materials side.
  */
-export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloadT): ImportPlanT {
-  const resolvedRobocizna = resolveRobocizna(grids.robocizna)
+export function buildImportPlan(
+  grids: ImportGridsT,
+  currentTree: SnapshotPayloadT,
+  mapping?: SheetColumnMappingT,
+): ImportPlanT {
+  const resolvedRobocizna = resolveRobocizna(grids.robocizna, mapping)
   const { missingFields, candidates } = resolvedRobocizna
   if (!resolvedRobocizna.ok) {
     return { ok: false, problems: resolvedRobocizna.problems, missingFields, candidates }

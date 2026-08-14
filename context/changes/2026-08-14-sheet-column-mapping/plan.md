@@ -508,15 +508,15 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 2.1 Spec rozpoznawania kolumn z próbką Żupniczej i odrzucaniem kandydatów przechodzi — PENDING
-- [x] 2.2 Spec budowania planu importu z kandydatami w raporcie przechodzi — PENDING
+- [x] 2.1 Spec rozpoznawania kolumn z próbką Żupniczej i odrzucaniem kandydatów przechodzi — 1cc33d12
+- [x] 2.2 Spec budowania planu importu z kandydatami w raporcie przechodzi — 1cc33d12
 
 ### Faza 3: Zapis wskazania przy kosztorysie
 
 #### Automated
 
-- [ ] 3.1 Spec awaryjności wskazania przechodzi (nazwa wygrywa, zajęta i spoza zakresu ignorowane)
-- [ ] 3.2 Migracja stosuje się lokalnie, a `generate:types` daje `sheetColumnMapping`
+- [x] 3.1 Spec awaryjności wskazania przechodzi (nazwa wygrywa, zajęta i spoza zakresu ignorowane)
+- [x] 3.2 Migracja stosuje się lokalnie, a `generate:types` daje `sheetColumnMapping`
 
 ### Faza 4: Wskazywanie kolumn w obu oknach
 

@@ -10,6 +10,7 @@ import {
   fold,
   type ColumnFieldT,
   type RateGroupT,
+  type SheetColumnMappingT,
 } from './columns'
 import { columnLetter } from '@/lib/google/sheet-configs'
 
@@ -51,6 +52,8 @@ export type ResolvedRobociznaT = {
   // reading; each absence is data silently missing from the kosztorys.
   missingFields: MissingFieldT[]
   candidates: CandidateColumnT[]
+  // Fields that got their column from the owner's stored pointing rather than from a header name.
+  resolvedFromMapping: ColumnFieldT[]
 }
 
 // No `stages` here on purpose. A rates tab carries its own „wykonano" run and it can be SHORTER
@@ -88,17 +91,19 @@ function findStages(block: unknown[][]): StageColumnsT | null {
   return { firstColumn, count }
 }
 
+// `hits` rides along only until the sentence is written — the count is what tells an ambiguous field
+// „zmień nazwę tej drugiej" from a plain absence.
+type UnresolvedFieldT = MissingFieldT & { hits: number }
+
 function resolveFields(
   block: unknown[][],
   fields: readonly ColumnFieldT[],
 ): {
   columns: Partial<Record<ColumnFieldT, number>>
-  missingFields: MissingFieldT[]
-  problems: string[]
+  unresolved: UnresolvedFieldT[]
 } {
   const columns: Partial<Record<ColumnFieldT, number>> = {}
-  const missingFields: MissingFieldT[] = []
-  const problems: string[] = []
+  const unresolved: UnresolvedFieldT[] = []
 
   for (const field of fields) {
     const hits = findField(block, FIELD_MATCHERS[field])
@@ -106,25 +111,25 @@ function resolveFields(
       columns[field] = hits[0]
       continue
     }
-    const reason: UnresolvedReasonT = hits.length === 0 ? 'absent' : 'ambiguous'
-    missingFields.push({ field, required: !isOptionalField(field), reason })
-    // An optional field is one the import can do without, and that holds for BOTH ways of failing to
-    // pin it down: absent, or matching two headers. Blocking the whole import over an ambiguous
-    // optional column would reject sheets that imported fine before the column existed — but it is
-    // still reported, because a silently dropped column is a hole in the imported kosztorys.
-    if (isOptionalField(field)) continue
-    if (hits.length === 0) {
-      // A required one names itself so the owner knows which cell to fix, rather than getting a
-      // guess written into their kosztorys.
-      problems.push(`Nie znaleziono kolumny „${FIELD_LABELS[field]}".`)
-      continue
-    }
-    problems.push(
-      `Kolumna „${FIELD_LABELS[field]}" pasuje do ${hits.length} kolumn — zmień nazwę dodatkowej.`,
-    )
+    unresolved.push({
+      field,
+      required: !isOptionalField(field),
+      reason: hits.length === 0 ? 'absent' : 'ambiguous',
+      hits: hits.length,
+    })
   }
 
-  return { columns, missingFields, problems }
+  return { columns, unresolved }
+}
+
+// A required field names itself so the owner knows which cell to fix, rather than getting a guess
+// written into their kosztorys. An optional one gets no sentence at all: blocking the whole import
+// over „rabat" would reject sheets that imported fine before the column existed — the report lists
+// the absence instead.
+function problemFor({ field, reason, hits }: UnresolvedFieldT): string {
+  return reason === 'absent'
+    ? `Nie znaleziono kolumny „${FIELD_LABELS[field]}".`
+    : `Kolumna „${FIELD_LABELS[field]}" pasuje do ${hits} kolumn — zmień nazwę dodatkowej.`
 }
 
 // Every header-block column no field claimed and that isn't part of the etapy run — what the owner
@@ -163,9 +168,13 @@ const ROBOCIZNA_FIELDS = [
 
 // Resolve the `kosztorys_robocizny` header block. Total by design — an unresolvable header is a
 // value the preview renders and a confirm button it disables, not an exception.
-export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | RobociznaFailureT {
+export function resolveRobocizna(
+  grid: unknown[][],
+  mapping: SheetColumnMappingT = {},
+): ResolvedRobociznaT | RobociznaFailureT {
   const block = grid.slice(0, HEADER_BLOCK_ROWS)
-  const { columns, missingFields, problems } = resolveFields(block, ROBOCIZNA_FIELDS)
+  const { columns, unresolved } = resolveFields(block, ROBOCIZNA_FIELDS)
+  const problems: string[] = []
 
   const stages = findStages(block)
   if (!stages) {
@@ -187,6 +196,26 @@ export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | Roboci
     for (let offset = 0; offset < stages.count; offset += 1) taken.add(stages.firstColumn + offset)
   }
   for (const column of [description, section]) if (column >= 0) taken.add(column)
+
+  // The stored pointing runs LAST and only over what the header text left unresolved, so a corrected
+  // header in the sheet always beats it. A column outside the block or already spoken for is skipped
+  // in silence — that is a stale pointing, not a decision the owner is making right now.
+  const blockWidth = Math.max(0, ...block.map((row) => row.length))
+  const resolvedFromMapping: ColumnFieldT[] = []
+  const missingFields: MissingFieldT[] = []
+
+  for (const entry of unresolved) {
+    const column = mapping[entry.field]
+    if (column !== undefined && column < blockWidth && !taken.has(column)) {
+      columns[entry.field] = column
+      taken.add(column)
+      resolvedFromMapping.push(entry.field)
+      continue
+    }
+    missingFields.push({ field: entry.field, required: entry.required, reason: entry.reason })
+    if (entry.required) problems.push(problemFor(entry))
+  }
+
   const candidates = findCandidates(block, taken)
 
   const { plannedQty, unit, clientPrice, netValue } = columns
@@ -210,6 +239,7 @@ export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | Roboci
     stages,
     missingFields,
     candidates,
+    resolvedFromMapping,
   }
 }
 
