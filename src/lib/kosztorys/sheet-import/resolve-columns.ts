@@ -9,20 +9,33 @@ import {
   STAGE_MARKER,
   fold,
   type ColumnFieldT,
-  type OptionalFieldT,
   type RateGroupT,
 } from './columns'
+import { columnLetter } from '@/lib/google/sheet-configs'
 
 export type StageColumnsT = { firstColumn: number; count: number }
 
 export type ResolveFailureT = { ok: false; problems: string[] }
 
-// Why an optional column was dropped: it isn't in the header block at all, or its name matches more
-// than one column and the resolver refuses to guess. Different sentences for the owner — one is
-// „dopisz kolumnę", the other „zmień nazwę tej drugiej".
+// Why a column was dropped: it isn't in the header block at all, or its name matches more than one
+// column and the resolver refuses to guess. Different sentences for the owner — one is „dopisz
+// kolumnę", the other „zmień nazwę tej drugiej".
 export type UnresolvedReasonT = 'absent' | 'ambiguous'
 
-export type UnresolvedColumnT = { field: OptionalFieldT; reason: UnresolvedReasonT }
+export type MissingFieldT = { field: ColumnFieldT; required: boolean; reason: UnresolvedReasonT }
+
+// A header-block column no field claimed. Carries the letter and the header texts because the owner
+// picks it in the sheet, not in our column indices — and row 1 and row 3 are two different hints
+// (row 1 is sometimes the client's address, row 3 the actual name).
+export type CandidateColumnT = { column: number; letter: string; labels: string[] }
+
+// Both sides of a failed match. Only the robocizna header offers them: it is the one the owner can
+// repair by pointing at a column, so hanging the pair on the shared failure type would put two
+// permanently empty arrays on every rates failure.
+export type RobociznaFailureT = ResolveFailureT & {
+  missingFields: MissingFieldT[]
+  candidates: CandidateColumnT[]
+}
 
 export type ResolvedRobociznaT = {
   ok: true
@@ -33,10 +46,11 @@ export type ResolvedRobociznaT = {
       netValue: number
     }
   stages: StageColumnsT
-  // Optional columns that did NOT make it in. A resolved import says nothing worth reading — every
-  // required column is resolved or the import is refused outright — so the preview reports the
-  // absences instead: each one is data silently missing from the kosztorys.
-  unresolvedOptional: UnresolvedColumnT[]
+  // Columns that did NOT make it in — on a resolved header these are the optional ones only, since
+  // a missing required column refuses the import outright. The resolved columns say nothing worth
+  // reading; each absence is data silently missing from the kosztorys.
+  missingFields: MissingFieldT[]
+  candidates: CandidateColumnT[]
 }
 
 // No `stages` here on purpose. A rates tab carries its own „wykonano" run and it can be SHORTER
@@ -79,12 +93,11 @@ function resolveFields(
   fields: readonly ColumnFieldT[],
 ): {
   columns: Partial<Record<ColumnFieldT, number>>
-  unresolvedOptional: UnresolvedColumnT[]
-} & {
+  missingFields: MissingFieldT[]
   problems: string[]
 } {
   const columns: Partial<Record<ColumnFieldT, number>> = {}
-  const unresolvedOptional: UnresolvedColumnT[] = []
+  const missingFields: MissingFieldT[] = []
   const problems: string[] = []
 
   for (const field of fields) {
@@ -93,14 +106,13 @@ function resolveFields(
       columns[field] = hits[0]
       continue
     }
+    const reason: UnresolvedReasonT = hits.length === 0 ? 'absent' : 'ambiguous'
+    missingFields.push({ field, required: !isOptionalField(field), reason })
     // An optional field is one the import can do without, and that holds for BOTH ways of failing to
     // pin it down: absent, or matching two headers. Blocking the whole import over an ambiguous
     // optional column would reject sheets that imported fine before the column existed — but it is
     // still reported, because a silently dropped column is a hole in the imported kosztorys.
-    if (isOptionalField(field)) {
-      unresolvedOptional.push({ field, reason: hits.length === 0 ? 'absent' : 'ambiguous' })
-      continue
-    }
+    if (isOptionalField(field)) continue
     if (hits.length === 0) {
       // A required one names itself so the owner knows which cell to fix, rather than getting a
       // guess written into their kosztorys.
@@ -112,7 +124,31 @@ function resolveFields(
     )
   }
 
-  return { columns, unresolvedOptional, problems }
+  return { columns, missingFields, problems }
+}
+
+// Every header-block column no field claimed and that isn't part of the etapy run — what the owner
+// can be offered to pick from. A column with nothing typed in any block row is left out: it names
+// nothing, so it could never be recognised in the sheet.
+function findCandidates(block: unknown[][], taken: ReadonlySet<number>): CandidateColumnT[] {
+  const width = Math.max(0, ...block.map((row) => row.length))
+  const candidates: CandidateColumnT[] = []
+
+  for (let column = 0; column < width; column += 1) {
+    if (taken.has(column)) continue
+
+    const labels: string[] = []
+    for (const row of block) {
+      const label = String(row[column] ?? '').trim()
+      // The same field is usually labelled on two rows with the same wording; one entry is enough.
+      if (label && !labels.includes(label)) labels.push(label)
+    }
+    if (labels.length === 0) continue
+
+    candidates.push({ column, letter: columnLetter(column), labels })
+  }
+
+  return candidates
 }
 
 const ROBOCIZNA_FIELDS = [
@@ -127,9 +163,9 @@ const ROBOCIZNA_FIELDS = [
 
 // Resolve the `kosztorys_robocizny` header block. Total by design — an unresolvable header is a
 // value the preview renders and a confirm button it disables, not an exception.
-export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | ResolveFailureT {
+export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | RobociznaFailureT {
   const block = grid.slice(0, HEADER_BLOCK_ROWS)
-  const { columns, unresolvedOptional, problems } = resolveFields(block, ROBOCIZNA_FIELDS)
+  const { columns, missingFields, problems } = resolveFields(block, ROBOCIZNA_FIELDS)
 
   const stages = findStages(block)
   if (!stages) {
@@ -146,6 +182,13 @@ export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | Resolv
     problems.push('Brak kolumny z nazwą sekcji przed kolumnami etapów.')
   }
 
+  const taken = new Set<number>(Object.values(columns))
+  if (stages) {
+    for (let offset = 0; offset < stages.count; offset += 1) taken.add(stages.firstColumn + offset)
+  }
+  for (const column of [description, section]) if (column >= 0) taken.add(column)
+  const candidates = findCandidates(block, taken)
+
   const { plannedQty, unit, clientPrice, netValue } = columns
   // The four required fields are re-checked here rather than asserted: `resolveFields` already
   // pushed a problem for each missing one, so this narrows the types on the same condition that
@@ -158,14 +201,15 @@ export function resolveRobocizna(grid: unknown[][]): ResolvedRobociznaT | Resolv
     clientPrice === undefined ||
     netValue === undefined
   ) {
-    return { ok: false, problems }
+    return { ok: false, problems, missingFields, candidates }
   }
 
   return {
     ok: true,
     columns: { section, description, ...columns, plannedQty, unit, clientPrice, netValue },
     stages,
-    unresolvedOptional,
+    missingFields,
+    candidates,
   }
 }
 

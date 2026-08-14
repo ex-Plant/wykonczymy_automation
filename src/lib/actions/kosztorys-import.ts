@@ -127,6 +127,7 @@ export async function previewKosztorysImport(
 function emptyReport(): ImportReportT {
   return {
     missingColumns: [],
+    candidates: [],
     counts: { sections: 0, items: 0, stages: 0 },
     rateDecisions: [],
     retained: [],

@@ -5,13 +5,24 @@ import type {
   KosztorysStageT,
   StageProgressT,
 } from '@/lib/kosztorys/types'
-import { FIELD_LABELS, fold, type OptionalFieldT } from './columns'
+import {
+  FIELD_LABELS,
+  fold,
+  isOptionalField,
+  type ColumnFieldT,
+  type OptionalFieldT,
+} from './columns'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
 import { parseRobocizna } from './parse-robocizna'
 import { type ImportGridsT } from './read-sheet'
-import { resolveRobocizna, type UnresolvedReasonT } from './resolve-columns'
+import {
+  resolveRobocizna,
+  type CandidateColumnT,
+  type MissingFieldT,
+  type UnresolvedReasonT,
+} from './resolve-columns'
 import {
   isReported,
   readRateTabs,
@@ -19,7 +30,12 @@ import {
   type ReportedRateResolutionT,
 } from './resolve-rates'
 
-export type MissingColumnT = { label: string; reason: UnresolvedReasonT; consequence: string }
+export type MissingColumnT = {
+  field: ColumnFieldT
+  label: string
+  reason: UnresolvedReasonT
+  consequence: string
+}
 
 // What the kosztorys loses when an optional column can't be read. The report names the loss, not the
 // column: „nie znaleziono kolumny rabat" is a fact about the sheet, „każda praca wejdzie bez rabatu"
@@ -39,6 +55,8 @@ export type ImportReportT = {
   // resolver and say nothing worth reading — every required column is resolved or the import is
   // refused, so a list of them was 14 lines nobody could act on.
   missingColumns: MissingColumnT[]
+  // Header columns no field claimed — what the owner can point a missing field at.
+  candidates: CandidateColumnT[]
   counts: { sections: number; items: number; stages: number }
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
   // overwhelming majority and say nothing — listing them would bury the handful that need an eye.
@@ -50,9 +68,16 @@ export type ImportReportT = {
   warnings: string[]
 }
 
+export type ImportFailureT = {
+  ok: false
+  problems: string[]
+  missingFields: MissingFieldT[]
+  candidates: CandidateColumnT[]
+}
+
 export type ImportPlanT =
   | { ok: true; tree: SnapshotPayloadT; report: ImportReportT }
-  | { ok: false; problems: string[] }
+  | ImportFailureT
 
 function groupBy<ValueT, KeyT>(
   values: readonly ValueT[],
@@ -74,15 +99,22 @@ function groupBy<ValueT, KeyT>(
  */
 export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloadT): ImportPlanT {
   const resolvedRobocizna = resolveRobocizna(grids.robocizna)
-  if (!resolvedRobocizna.ok) return { ok: false, problems: resolvedRobocizna.problems }
+  const { missingFields, candidates } = resolvedRobocizna
+  if (!resolvedRobocizna.ok) {
+    return { ok: false, problems: resolvedRobocizna.problems, missingFields, candidates }
+  }
 
-  const missingColumns: MissingColumnT[] = resolvedRobocizna.unresolvedOptional.map(
-    ({ field, reason }) => ({
+  // A resolved header can only be missing optional fields — a required one refuses the import above.
+  const missingColumns: MissingColumnT[] = missingFields
+    .filter((missing): missing is MissingFieldT & { field: OptionalFieldT } =>
+      isOptionalField(missing.field),
+    )
+    .map(({ field, reason }) => ({
+      field,
       label: FIELD_LABELS[field],
       reason,
       consequence: MISSING_COLUMN_CONSEQUENCES[field],
-    }),
-  )
+    }))
 
   const { tabs: rateTabs, warnings } = readRateTabs(grids.rateTabs)
 
@@ -97,6 +129,8 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
         'Nie odczytałem żadnego cennika („zakres pracy") — wszystkie stawki podwykonawców trafiłyby do kosztorysu jako 0 zł.',
         ...warnings,
       ],
+      missingFields,
+      candidates,
     }
   }
 
@@ -232,6 +266,7 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
     },
     report: {
       missingColumns,
+      candidates,
       counts: {
         sections: parsed.sections.length,
         items: parsed.items.length,

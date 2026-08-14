@@ -5,16 +5,18 @@ import {
   type ResolveFailureT,
   type ResolvedRobociznaT,
   type ResolvedRatesT,
+  type RobociznaFailureT,
 } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import {
   ALTOWA_ROBOCIZNA_HEADER,
   BIALOSTOCKA_RATES_HEADER,
   BIALOSTOCKA_ROBOCIZNA_HEADER,
   PRZEDPOLE_ROBOCIZNA_HEADER,
+  ZUPNICZA_ROBOCIZNA_HEADER,
 } from '@/__tests__/fixtures/kosztorys-sheet/header-blocks'
 
 function expectResolved(
-  result: ResolvedRobociznaT | ResolveFailureT,
+  result: ResolvedRobociznaT | RobociznaFailureT,
 ): asserts result is ResolvedRobociznaT {
   if (!result.ok) expect.fail(`expected a resolved header, got: ${result.problems.join(' | ')}`)
 }
@@ -84,7 +86,7 @@ describe('resolveRobocizna', () => {
     const result = resolveRobocizna(BIALOSTOCKA_ROBOCIZNA_HEADER)
     expectResolved(result)
 
-    expect(result.unresolvedOptional).toEqual([])
+    expect(result.missingFields).toEqual([])
   })
 
   it('finds „Pomiar z natury" beside Przedmiar', () => {
@@ -102,8 +104,9 @@ describe('resolveRobocizna', () => {
     const result = resolveRobocizna(grid)
     expectResolved(result)
     expect(result.columns.measuredQty).toBeUndefined()
-    expect(result.unresolvedOptional).toContainEqual({
+    expect(result.missingFields).toContainEqual({
       field: 'measuredQty',
+      required: false,
       reason: 'absent',
     })
   })
@@ -119,8 +122,9 @@ describe('resolveRobocizna', () => {
     expectResolved(result)
     expect(result.columns.measuredQty).toBeUndefined()
     // The report has to tell the two apart: „dopisz kolumnę" vs „zmień nazwę tej drugiej".
-    expect(result.unresolvedOptional).toContainEqual({
+    expect(result.missingFields).toContainEqual({
       field: 'measuredQty',
+      required: false,
       reason: 'ambiguous',
     })
   })
@@ -153,6 +157,72 @@ describe('resolveRobocizna', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.problems.join(' ')).toContain('Przedmiar')
+  })
+
+  // Both sides of a failed match, because the owner repairs it by pairing them: the field that has no
+  // column, and the columns that have no field.
+  describe('the two sides of a failed match', () => {
+    function expectRefused(
+      result: ResolvedRobociznaT | RobociznaFailureT,
+    ): asserts result is RobociznaFailureT {
+      if (result.ok) expect.fail('expected the header to be refused')
+    }
+
+    it('names the required field it could not place, on a sheet that splits „Wartość netto" in two', () => {
+      const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER)
+      expectRefused(result)
+
+      expect(result.missingFields).toContainEqual({
+        field: 'netValue',
+        required: true,
+        reason: 'absent',
+      })
+    })
+
+    it('offers both split columns as candidates, named the way the sheet names them', () => {
+      const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER)
+      expectRefused(result)
+
+      expect(result.candidates).toContainEqual({
+        column: 18,
+        letter: 'S',
+        labels: ['Wartość netto przedmiar'],
+      })
+      expect(result.candidates).toContainEqual({
+        column: 19,
+        letter: 'T',
+        labels: ['Wartość netto pomiar z natury'],
+      })
+    })
+
+    it('leaves out a column another field already owns', () => {
+      const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER)
+      expectRefused(result)
+
+      // N/Q are Przedmiar and Cena j.m.; U is komentarz. Offering a resolved column would invite the
+      // owner to point two fields at one column.
+      const columns = result.candidates.map((candidate) => candidate.column)
+      expect(columns).not.toContain(13) // N
+      expect(columns).not.toContain(16) // Q
+      expect(columns).not.toContain(20) // U
+    })
+
+    it('leaves out the etapy run and the columns read off its position', () => {
+      const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER)
+      expectRefused(result)
+
+      const columns = result.candidates.map((candidate) => candidate.column)
+      expect(columns.filter((column) => column >= 3 && column <= 12)).toEqual([]) // D–M
+      expect(columns).not.toContain(0) // A — nazwa sekcji
+      expect(columns).not.toContain(2) // C — opis pracy
+    })
+
+    it('leaves out a column with nothing typed in it — it names nothing to point at', () => {
+      const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER)
+      expectRefused(result)
+
+      expect(result.candidates.map((candidate) => candidate.column)).not.toContain(1) // B — blank
+    })
   })
 
   it('fails when no row carries the „wykonano" marker', () => {

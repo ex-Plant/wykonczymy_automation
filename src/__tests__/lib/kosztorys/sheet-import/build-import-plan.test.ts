@@ -228,6 +228,32 @@ describe('buildImportPlan', () => {
     expect(built.ok === false && built.problems.join(' ')).toContain('Przedmiar')
   })
 
+  it('hands the refusal both sides of the failed match, not just the sentence', () => {
+    // The overwritten header cell is exactly the case the owner fixes by pointing at a column, so a
+    // refusal that drops the candidates leaves them nothing to point with.
+    const broken = BIALOSTOCKA_ROWS.map((row, index) =>
+      index < 3
+        ? row.map((cell) => (fold(cell) === 'przedmiar' ? 'Przesyłam wstępny kosztorys.' : cell))
+        : row,
+    )
+
+    const built = buildImportPlan(source({ robocizna: broken }), currentTree())
+    if (built.ok) expect.fail('expected the plan to be refused')
+
+    expect(built.missingFields).toContainEqual({
+      field: 'plannedQty',
+      required: true,
+      reason: 'absent',
+    })
+    expect(built.candidates.map((candidate) => candidate.letter)).toContain('N')
+  })
+
+  it('reports the header columns no field claimed', () => {
+    // Białostocka resolves cleanly, so the candidates are the per-etap wartość band — nothing the
+    // resolver ever looks for, and the only place a missing field could still be hiding.
+    expect(plan().report.candidates.map((candidate) => candidate.letter)).toContain('U')
+  })
+
   it('reports the footer comparison alongside the counts', () => {
     expect(plan().report.totals.map((total) => total.key)).toEqual(['plannedNet', 'executedNet'])
   })

@@ -501,15 +501,15 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 1.1 Spec klasyfikacji błędu odczytu przechodzi (403 / 404 / inny / brak zakładki)
-- [x] 1.2 Spec blokady pobrania rozszerzony o `failure` i przechodzi
+- [x] 1.1 Spec klasyfikacji błędu odczytu przechodzi (403 / 404 / inny / brak zakładki) — 4777a191
+- [x] 1.2 Spec blokady pobrania rozszerzony o `failure` i przechodzi — 4777a191
 
 ### Faza 2: Kandydaci z rozpoznawania kolumn
 
 #### Automated
 
-- [ ] 2.1 Spec rozpoznawania kolumn z próbką Żupniczej i odrzucaniem kandydatów przechodzi
-- [ ] 2.2 Spec budowania planu importu z kandydatami w raporcie przechodzi
+- [x] 2.1 Spec rozpoznawania kolumn z próbką Żupniczej i odrzucaniem kandydatów przechodzi — PENDING
+- [x] 2.2 Spec budowania planu importu z kandydatami w raporcie przechodzi — PENDING
 
 ### Faza 3: Zapis wskazania przy kosztorysie
 
