@@ -40,8 +40,9 @@ const MATCHES = 0.005
  * dialog never fires `onOpenChange`, so it cannot fetch itself).
  *
  * Answers three questions in order — do the two sides agree on the money, do they hold the same
- * prace, and where did our reading of the sheet have to differ from what it shows. The refresh it
- * performs on the way is deliberately not reported: nobody opens this to learn what got written.
+ * prace, and where did our reading of the sheet have to differ from what it shows. It closes on what
+ * the refresh wrote: this window is the only thing that touches the stored Pomiar, so a read-shaped
+ * dialog that writes in silence would leave the owner no way to tell it apart from one that doesn't.
  */
 export function SheetCompareDialog({ open, onOpenChange, result, loaded }: PropsT) {
   return (
@@ -65,6 +66,7 @@ export function SheetCompareDialog({ open, onOpenChange, result, loaded }: Props
               stale={result.comparison.rates.stale}
             />
             <ReadingBlock comparison={result.comparison} />
+            <RefreshLine refresh={result.refresh} />
           </div>
         )}
       </DialogContent>
@@ -86,7 +88,12 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
   // etapy („R netto"). The gap between the two is its own „pozostało do rozliczenia" — work measured
   // but not yet assigned to an etap, a state this app cannot hold, which is why the same subtraction
   // against our executed total is the honest counterpart rather than a second comparison.
-  const sheetMeasured = footer.find((total) => total.key === 'plannedNet')?.sheetValue ?? null
+  // Only when the row turned out to hold the measured total. `matchedAgainst` exists because the
+  // same „wartość netto" row totals the OFFER on some clients' sheets — reading it as measured work
+  // there would print the whole unexecuted scope under a label calling it work already done.
+  const netValueRow = footer.find((total) => total.key === 'plannedNet')
+  const sheetMeasured =
+    netValueRow?.matchedAgainst === 'measuredNet' ? netValueRow.sheetValue : null
   const sheetExecuted = footer.find((total) => total.key === 'executedNet')?.sheetValue ?? null
   const footerDelta = sheetExecuted === null ? null : sheetExecuted - totals.executedNetFromSheet
   const unassignedInSheet =
@@ -215,14 +222,35 @@ function ReadingBlock({ comparison }: { comparison: SheetComparisonT }) {
             samples={health.samples.plannedReadFromStage}
             link={sheetLink}
           />
-          <SampleList
-            summary={`W ${health.measuredCopiedFromPlanned} z ${health.totalRows} prac Pomiar z natury wskazuje na Przedmiar. U nas pomiar to zawsze suma etapów.`}
-            samples={health.samples.measuredCopiedFromPlanned}
-            link={sheetLink}
-          />
+          {health.measuredCopiedFromPlanned > 0 && (
+            // A count, never a list (owner, 2026-08-14): on a blank offer sheet this is the normal
+            // state of every row, so a fold to open would send them hunting through hundreds of
+            // prace that are not wrong.
+            <p className="text-xs text-amber-600">
+              W {health.measuredCopiedFromPlanned} z {health.totalRows} prac Pomiar z natury
+              wskazuje na Przedmiar. U nas pomiar to zawsze suma etapów.
+            </p>
+          )}
         </>
       )}
     </SheetReportBlock>
+  )
+}
+
+// The one line that says this window wrote something. „Już zgodne" is the answer that matters most:
+// it is what tells the owner a second look changed nothing, rather than leaving them to wonder.
+function RefreshLine({ refresh }: { refresh: SheetCompareResultT['refresh'] }) {
+  const { updated, cleared, unmatched } = refresh
+  const skipped =
+    unmatched > 0
+      ? ` Pominięto ${unmatched} ${itemNoun(unmatched)} bez odpowiednika w arkuszu Google.`
+      : ''
+  return (
+    <p className="text-muted-foreground text-xs">
+      {updated === 0 && cleared === 0
+        ? `Zapisany Pomiar z natury był już zgodny z arkuszem Google.${skipped}`
+        : `Zaciągnięto Pomiar z natury: zaktualizowano ${updated}, wyczyszczono ${cleared}.${skipped}`}
+    </p>
   )
 }
 

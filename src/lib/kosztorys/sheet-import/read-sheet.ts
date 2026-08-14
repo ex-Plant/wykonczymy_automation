@@ -8,6 +8,11 @@ const RATE_TAB_PREFIX = 'zakres pracy'
 // bounded so a sheet with junk far to the right doesn't inflate every response.
 const LAST_COLUMN = 'BZ'
 
+// Without this a hung Google request holds the server action open for the platform's whole function
+// timeout, with both sheet dialogs stuck on „Czytam arkusz Google…" and no way to tell the owner
+// anything. Failing at 15s at least reaches `sheetFailureMessage`, which says to retry.
+const SHEET_TIMEOUT = 15_000
+
 export type RateTabGridT = {
   title: string
   grid: unknown[][]
@@ -51,10 +56,13 @@ export async function readImportGrids(
   // Tab titles have to be discovered rather than assumed: the rate tabs are named „zakres pracy z
   // narzędziami   " on one sheet and „zakres pracy bez narzędzi" on the next, trailing spaces
   // included, and asking for a range on a tab that doesn't exist fails the whole batch.
-  const meta = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets.properties(title,sheetId)',
-  })
+  const meta = await sheets.spreadsheets.get(
+    {
+      spreadsheetId,
+      fields: 'sheets.properties(title,sheetId)',
+    },
+    { timeout: SHEET_TIMEOUT },
+  )
   const properties = (meta.data.sheets ?? []).map((sheet) => sheet.properties)
   const titles = properties.map((props) => props?.title ?? '')
 
@@ -66,11 +74,14 @@ export async function readImportGrids(
 
   const range = (title: string) => `'${title}'!A:${LAST_COLUMN}`
   const read = async (titles: string[], valueRenderOption: 'UNFORMATTED_VALUE' | 'FORMULA') => {
-    const response = await sheets.spreadsheets.values.batchGet({
-      spreadsheetId,
-      ranges: titles.map(range),
-      valueRenderOption,
-    })
+    const response = await sheets.spreadsheets.values.batchGet(
+      {
+        spreadsheetId,
+        ranges: titles.map(range),
+        valueRenderOption,
+      },
+      { timeout: SHEET_TIMEOUT },
+    )
     return (response.data.valueRanges ?? []).map((values) => (values.values ?? []) as unknown[][])
   }
 

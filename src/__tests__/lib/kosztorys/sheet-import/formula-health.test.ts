@@ -30,12 +30,12 @@ describe('scanFormulaHealth', () => {
     expect(scan({}).totalRows).toBe(3)
   })
 
-  it('lists a Pomiar copied straight from Przedmiar in its own bucket', () => {
+  // Counted but never sampled (owner, 2026-08-14): on a blank offer sheet this is the normal state
+  // of every row, so a row list would send the owner hunting through prace that are not wrong.
+  it('counts a Pomiar copied straight from Przedmiar without listing the rows', () => {
     const health = scan({ 4: { O: '=N5' } })
 
     expect(health.measuredCopiedFromPlanned).toBe(1)
-    expect(health.samples.measuredCopiedFromPlanned).toHaveLength(1)
-    expect(health.samples.measuredCopiedFromPlanned[0]).toMatchObject({ row: 5, cell: 'O5' })
     expect(health.samples.plannedReadFromStage).toEqual([])
     expect(health.samples.errorValue).toEqual([])
   })

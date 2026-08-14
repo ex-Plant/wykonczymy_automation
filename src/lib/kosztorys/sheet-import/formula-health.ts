@@ -22,13 +22,18 @@ export type FormulaHealthT = {
   // per row, like the two classes above, so the three numbers are read on one scale.
   errorValues: number
   // Per class, so the hundreds of rows one of them can carry never crowd out the handful in another.
+  // `measuredCopiedFromPlanned` keeps no samples on purpose (owner, 2026-08-14): on a blank offer
+  // sheet it is the NORMAL state of every row, so listing them invites a row-by-row hunt through
+  // hundreds of prace that are not wrong. Its count answers the question by itself.
   samples: {
-    measuredCopiedFromPlanned: FormulaSampleT[]
     plannedReadFromStage: FormulaSampleT[]
     errorValue: FormulaSampleT[]
   }
   totalRows: number
 }
+
+// Enough rows to recognise the class, not enough to bury the dialog.
+const SAMPLE_CAP = 50
 
 const ERROR_VALUE = /^#(REF|DIV\/0|VALUE|NAME\?|N\/A|NUM|NULL)!?$/
 
@@ -79,7 +84,7 @@ export function scanFormulaHealth(
     measuredCopiedFromPlanned: 0,
     plannedReadFromStage: 0,
     errorValues: 0,
-    samples: { measuredCopiedFromPlanned: [], plannedReadFromStage: [], errorValue: [] },
+    samples: { plannedReadFromStage: [], errorValue: [] },
     totalRows: 0,
   }
 
@@ -95,7 +100,11 @@ export function scanFormulaHealth(
     health.totalRows++
 
     const rowNumber = rowIndex + 1
+    // Capped: the count beside the fold carries the scale, so the rows are only there to show what
+    // the class looks like. Uncapped, a 1000-row sheet whose every Pomiar is a formula — precisely
+    // the shape this scanner exists to find — ships 1000 objects over the wire to render 1000 lines.
     const sample = (klass: keyof FormulaHealthT['samples'], column: number) => {
+      if (health.samples[klass].length >= SAMPLE_CAP) return
       health.samples[klass].push({
         row: rowNumber,
         description,
@@ -108,7 +117,6 @@ export function scanFormulaHealth(
       ownRowReference(formulaRow[columns.measuredQty], rowNumber) === plannedLetter
     ) {
       health.measuredCopiedFromPlanned++
-      sample('measuredCopiedFromPlanned', columns.measuredQty)
     }
 
     const plannedSource = ownRowReference(formulaRow[columns.plannedQty], rowNumber)

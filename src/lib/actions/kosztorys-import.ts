@@ -119,22 +119,26 @@ export async function compareWithSheet(
       if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
 
       let grids: Awaited<ReturnType<typeof readImportGrids>>
-      let tree: Awaited<ReturnType<typeof serializeKosztorys>>
+      // Outside the try on purpose: this one reads the database, and the catch below translates
+      // every failure into „nie udało się odczytać arkusza Google", which would blame the wrong
+      // system and hand the owner retry advice that cannot help.
+      const treeBeforeWrite = await serializeKosztorys(investmentId)
       try {
         grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
-        tree = await serializeKosztorys(investmentId)
       } catch (error) {
         return { success: false, error: sheetFailureMessage(error) }
       }
 
-      const refreshed = buildMeasuredQtyRefresh(grids, tree)
+      const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite)
       if (!refreshed.ok) return { success: false, error: refreshed.problems.join(' ') }
       const { rows, unmatched } = refreshed.refresh
-      await setSheetMeasuredQty(await getDb(payload), rows)
+      const written = await setSheetMeasuredQty(await getDb(payload), investmentId, rows)
 
-      // Built from the same grids and the same tree the refresh just used. Re-reading the tree after
-      // the write would describe the same state: the stored reference figure feeds „Rozjazd" only,
-      // and no figure this comparison reports is derived from it.
+      // Re-read rather than reuse the pre-write tree, so the comparison describes the state the
+      // write left behind. It happens to be identical today — no figure reported here derives from
+      // the stored reference quantity — but that is an invariant of the current report, not of the
+      // action, and the day a figure starts reading it this would go quietly stale.
+      const tree = written > 0 ? await serializeKosztorys(investmentId) : treeBeforeWrite
       const built = buildSheetComparison(grids, tree, spreadsheetId)
       if (!built.ok) return { success: false, error: built.problems.join(' ') }
 

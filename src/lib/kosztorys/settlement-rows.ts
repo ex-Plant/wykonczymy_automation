@@ -99,9 +99,9 @@ export type MeasureDiscrepancyT = {
  * What the imported sheet claimed as „Pomiar z natury" against what the etapy actually say.
  *
  * `null` — including for a difference under the tolerance — means „nothing to answer for": either
- * the sheet made no claim (never imported, a formula, or dismissed with „etapy są prawdą"), or the
- * two agree. Anything else is a live rozjazd, and it shrinks by itself as quantities are typed into
- * the etapy.
+ * the sheet made no claim (never imported, or a formula rather than a hand-typed measurement), or
+ * the two agree. Anything else is work the sheet says was measured and the etapy have yet to
+ * account for, and it shrinks by itself as quantities are typed into the etapy.
  *
  * Hard-anchored to the client plane like `hasStagesOverPlanned`, for the same reason: the sheet's
  * pomiar has no plane, so measuring one crew's share against it would report a rozjazd on work the
