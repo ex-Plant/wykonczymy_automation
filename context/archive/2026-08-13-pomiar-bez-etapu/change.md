@@ -1,10 +1,10 @@
 ---
 change_id: pomiar-bez-etapu
 title: Rozjazd „Pomiar z natury" vs suma etapów — trwały podgląd i ręczna naprawa w aplikacji
-status: implemented
+status: archived
 created: 2026-08-13
-updated: 2026-08-13
-archived_at: null
+updated: 2026-08-14
+archived_at: 2026-08-14T16:05:00Z
 branch: pomiar-bez-etapu
 worktree: ../wykonczymy-worktrees/pomiar-bez-etapu
 ---

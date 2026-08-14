@@ -562,6 +562,38 @@ w jednym punkcie wyceny — `netForQtyForView` odejmuje rabat wyłącznie przy `
 podsumowania sekcji), zeruje je jednym ruchem. Cztery kolumny rabatowe w ogóle się nie składają w
 widokach Z/Bez narzędzi, bo pokazywałyby zera.
 
+### Ręcznie wpisany „Pomiar z natury" w arkuszu klienta — liczba odniesienia, nie druga prawda (EX-686, 2026-08-13)
+
+W arkuszu kanonicznym „Pomiar z natury" to formuła `=SUM(D:M)`, więc pomiar JEST sumą etapów i import
+niczego nie gubi. W arkuszach klientów bywa **wpisany ręcznie** — wtedy niesie pracę, której właściciel
+nie rozbił na etapy, a import bierze wyłącznie etapy i ta praca znika bez śladu (inwestycja 31:
+41 377 zł w 32 pozycjach).
+
+**Odrzucone: syntetyczny etap-kubełek** wchłaniający różnicę. Właściciel: „zmieniamy w chuj model
+danych, żeby obsłużyć import starych arkuszy". Poza tym kubełek nie dawał się opróżnić — wpisanie
+brakującej ilości w prawdziwy etap **dodaje** do sumy, nie debetuje kubełka, więc suma przeskakuje
+ponad wpisany pomiar. Trzy dalsze konsekwencje wychodziły z tego samego korzenia (`plane: null`):
+kubełek wyciekał do oferty klienta, blokował własne komórki, a `compareFooterTotals` — diagnostyka,
+która ten defekt w ogóle wykryła — stawała się tautologią, bo obie stopki zgadzałyby się z definicji.
+
+**Przyjęte:** import zapisuje obok tego liczbę odniesienia (`sheetMeasuredQty`), która **niczego nie
+liczy** — nie wchodzi do robocizny, marży, rozliczeń z ekipami ani żadnej sumy; służy wyłącznie
+porównaniu. Rozjazd jest wyliczany na żywo (`measureDiscrepancy`), więc lista kurczy się sama w miarę
+wpisywania ilości w etapy — nikt nic nie kasuje, żeby ostrzeżenie zniknęło. Nazwa świadomie nawiązuje
+do skasowanego `measured_qty` (EX-494), bo to **ta sama liczba** z arkusza; różni ją to, że jest
+martwa. To **nie jest** cofnięcie EX-494 — suma etapów pozostaje jedyną prawdą o pracy wykonanej.
+
+Pusta komórka musi dać `null`, nie `0`: dla liczby odniesienia `0` znaczy „arkusz twierdzi, że nic nie
+zrobiono", a to jest twierdzenie, którego pusta komórka nie stawia.
+
+**Formuła w tej komórce = brak odniesienia, nie odniesienie równe jej wynikowi.** Zapisanie wyniku
+`=SUM(D:M)` dałoby porównanie sumy etapów z sumą etapów — funkcję robiącą nic. Dlatego import czyta
+formuły zakładki `kosztorys_robocizny` (wcześniej pobierał ją wyłącznie po wartościach) i zapisuje
+odniesienie tylko tam, gdzie liczba jest wpisana z ręki. Rozkład jest binarny, nie mieszany: arkusz
+kanoniczny 435/435 formuł, inwestycja 31 — 0/245, arkusz testowy — 0/253. Odrzucenie `=N#` (Pomiar
+przepisany z Przedmiaru) idzie tą samą regułą, ale nie po cichu — patrz
+`context/reference/kosztorys-sheet/formula-anomalies.md`, wniosek 2.
+
 ## Otwarte / odłożone
 
 - **A vs B (przechowywanie cen):** 3 sztywne kolumny vs dynamiczna tabela
