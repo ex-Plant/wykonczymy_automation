@@ -91,6 +91,14 @@ describe('diffRow', () => {
     expect(diffRow(prev, next)).toEqual({})
   })
 
+  // Pomiar wczytany z arkusza jest liczbą odniesienia tylko do odczytu — czyści go osobna akcja,
+  // nigdy autozapis komórki. Gdyby przeciekł do `itemPatch`, arkuszowa wartość zapisywałaby się z
+  // powrotem przy każdej edycji wiersza i rozjazd nigdy by nie zniknął.
+  it('nie zapisuje pomiaru z arkusza jako edycji pozycji', () => {
+    const [prev] = treeToRows(tree)
+    expect(diffRow(prev, { ...prev, sheetMeasuredQty: 42 })).toEqual({})
+  })
+
   it('prefiksy etapowe są parami rozłączne', () => {
     const prefixes = [
       STAGE_QTY_PREFIX,
@@ -263,13 +271,14 @@ describe('wartość wiersza idzie za etapami', () => {
       expect(rowRemainingForView(offered({ [stageKey(100)]: 105 }), stages, 'client')).toBe(-250)
     })
 
-    // Bez Przedmiaru nie ma oferty, od której cokolwiek odejmować — 0 kłamałoby, że wiersz jest
-    // domknięty. Wyczyszczona komórka zapisuje null, którego `=== 0` by nie złapał.
-    it('brak Przedmiaru → null, nie zero', () => {
-      expect(rowRemainingForView(offered({ plannedQty: 0 }), stages, 'client')).toBeNull()
+    // Brak Przedmiaru to oferta zerowa, nie brak odpowiedzi: wykonane 95 × 50 nie ma pokrycia
+    // w ofercie, więc „Pozostało" schodzi pod zero. Wyłączenie takiego wiersza z sumy kazało
+    // kolumnie twierdzić, że praca jest wciąż do zrobienia. Wyczyszczona komórka zapisuje null.
+    it('brak Przedmiaru → wartość ujemna, praca ponad ofertę', () => {
+      expect(rowRemainingForView(offered({ plannedQty: 0 }), stages, 'client')).toBe(-4750)
       expect(
         rowRemainingForView(offered({ plannedQty: null as unknown as number }), stages, 'client'),
-      ).toBeNull()
+      ).toBe(-4750)
     })
   })
 

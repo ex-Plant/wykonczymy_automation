@@ -57,8 +57,9 @@ export function KosztorysRowActionsMenu({
 }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
-  // Disabled items are pointer-events-none, so anything disabled is wrapped in a tooltip trigger,
-  // which catches the hover the disabled item would otherwise pass through.
+  // The wrapper div is not decoration: a disabled item is pointer-events-none and would swallow the
+  // hover, and a menu item makes a poor tooltip trigger anyway — both are Radix primitives fighting
+  // over the same ref and props. The div catches the hover for either case.
   const withHint = (items: ReactNode, reason?: string) =>
     reason == null ? (
       items

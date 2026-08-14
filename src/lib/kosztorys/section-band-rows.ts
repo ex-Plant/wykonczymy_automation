@@ -9,10 +9,10 @@ type OptsT = {
   // breaks. Bands are then dropped entirely AND the collapsed set ignored — a collapsed section with
   // no band left to re-expand it would be rows the user can't get back.
   enabled: boolean
-  // A search narrows to the rows that matched, so a fold left over from before the search would hide
+  // Any row filter narrows to the rows that matched, so a fold left over from before it would hide
   // hits behind a band that gives no hint they exist — the grid would read as "no results". The fold
-  // is suppressed while searching and restored when the box clears.
-  searchActive: boolean
+  // is suppressed while a filter is on (search, „tylko rozjechane") and restored when it clears.
+  foldSuppressed: boolean
 }
 
 /**
@@ -24,7 +24,7 @@ type OptsT = {
  */
 export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
-  { collapsedSectionIds, enabled, searchActive }: OptsT,
+  { collapsedSectionIds, enabled, foldSuppressed }: OptsT,
 ): { rows: KosztorysV2RowT[]; ordinalByRowId: Map<number, number> } {
   const ordinalByRowId = new Map<number, number>()
   if (!enabled) {
@@ -32,7 +32,7 @@ export function buildSectionBandRows(
     return { rows: viewRows, ordinalByRowId }
   }
 
-  const collapsed = searchActive ? EMPTY_COLLAPSED : collapsedSectionIds
+  const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
   const rows: KosztorysV2RowT[] = []
   // A band's id is a pure function of its section, so a section appearing in two blocks would emit
   // the same id twice — duplicate keys in dsg's virtualizer. Rows normally arrive section-contiguous;

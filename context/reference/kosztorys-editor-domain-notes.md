@@ -266,6 +266,33 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
   Częściowo zrobiony wiersz (`Σ etapów < Przedmiar`) to normalna praca w toku i czerwony **nie**
   jest — inaczej cała siatka świeciłaby na zdrowym kosztorysie.
 
+  **Rozjazd nie ma wyjścia awaryjnego per wiersz** (właściciel, 2026-08-13). Rozjazd między
+  zaimportowanym Pomiarem z natury a sumą etapów zamyka się **tylko** przez poprawę arkusza albo
+  uzupełnienie etapów — akcja „Etapy są prawdą", która kasowała liczbę odniesienia na jednym
+  wierszu, została usunięta. Przycisk zgadzający dwie liczby przez skasowanie tej niewygodnej
+  udaje, że dane się zgadzają, i zabiera jedyny sygnał, że gdzieś jest błąd.
+
+  **„Porównaj z arkuszem" odpowiada na to, na co zapisana liczba odpowiedzieć nie może.** Liczba
+  odniesienia jest zamrożona w chwili importu i wie tylko o tych pozycjach, które wtedy istniały.
+  Odczyt na żywo dokłada: ile obie strony liczą (oferta i wykonanie, przez te same wejścia
+  `calc.ts`), które pozycje są tylko po jednej stronie, oraz — z siatki formuł, nie z wartości —
+  na ilu wierszach Pomiar jest przepisany z Przedmiaru, czyli na ilu kolumna „Pozostało do
+  rozliczenia" **strukturalnie** milczy. Ten sam odczyt odświeża przy okazji zapisane liczby
+  odniesienia — i **czyści** te, których arkusz przestał podawać ręcznie. Osobnej akcji już nie ma:
+  skoro arkusz właśnie został przeczytany, „zostaw nieaktualną kopię" nie jest odpowiedzią, którą
+  ktokolwiek by wybrał (właściciel, 2026-08-14).
+
+  **„Rozjazd" nazywa się teraz „Pozostało do rozliczenia"** — odejmowanie jest to samo (Pomiar
+  z natury z arkusza minus suma etapów w aplikacji), ale nazwa przestała udawać usterkę. To zwykła
+  linia bilansowa: jedyny sposób, żeby ją wyzerować, to wpisać ilości w etapy, czyli zadeklarować
+  pracę jako wykonaną. Dlatego kolumna pokazuje się przy **każdym** zaimportowanym kosztorysie,
+  a nie tylko tam, gdzie coś się nie zgadza.
+
+  **„Wartość netto" w podsumowaniu arkusza liczy się z Pomiaru, nie z Przedmiaru.** Wcześniej
+  zestawialiśmy ją z wartością przedmiaru — czyli z liczbą, której arkusz nigdzie nie sumuje.
+  U części klientów ten sam wiersz sumuje jednak ofertę, więc porównanie najpierw sprawdza, którą
+  z naszych sum wiersz faktycznie trafia, i dopiero wtedy go opisuje.
+
 - **Lista prac dynamiczna** (wiersze, bez limitu).
 - **Etapy dynamiczne** (wiersze `kosztorys_stages`; kolumny siatki renderowane
   z danych). Usunięcie etapu z wpisanym postępem → **BLOKADA** (najpierw wyczyść).

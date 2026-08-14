@@ -1,4 +1,5 @@
-import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Parity with v1.
 export function filterRows(rows: KosztorysV2RowT[], query: string): KosztorysV2RowT[] {
@@ -10,6 +11,15 @@ export function filterRows(rows: KosztorysV2RowT[], query: string): KosztorysV2R
       r.sectionName.toLowerCase().includes(q) ||
       (r.unit ?? '').toLowerCase().includes(q),
   )
+}
+
+// One function for both the toolbar's counter and the row filter, so the number can never promise
+// rows the filter then declines to show.
+export function divergedRows(
+  rows: KosztorysV2RowT[],
+  stages: KosztorysStageT[],
+): KosztorysV2RowT[] {
+  return rows.filter((r) => measureDiscrepancy(r, stages) != null)
 }
 
 export type SortDirT = 'asc' | 'desc'

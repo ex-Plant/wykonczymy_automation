@@ -7,7 +7,7 @@ import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 function compare(grid: (string | number)[][]) {
   const resolved = resolveRobocizna(grid)
   if (!resolved.ok) expect.fail(`fixture header did not resolve: ${resolved.problems.join(' | ')}`)
-  return compareFooterTotals(grid, resolved, parseRobocizna(grid, resolved))
+  return compareFooterTotals(grid, resolved, parseRobocizna(grid, resolved, []))
 }
 
 const byKey = (grid: (string | number)[][], key: string) =>
@@ -26,9 +26,24 @@ describe('compareFooterTotals', () => {
     expect(byKey(BIALOSTOCKA_ROWS, 'executedNet').sheetValue).not.toBeNull()
   })
 
-  it('computes the app total from the parsed prace, rabat included', () => {
-    // 1×1500 −9% = 1365, 0×15 = 0, 2×120 = 240.
-    expect(byKey(BIALOSTOCKA_ROWS, 'plannedNet').appValue).toBeCloseTo(1605, 6)
+  it('prices „wartość netto" off the sheet\'s own Pomiar, not off Przedmiar', () => {
+    // The row it faces sums the sheet's Pomiar column, so the app side has to sum the same column:
+    // 1×1500 −9% = 1365, 50×15 −9% = 682,50, 2×120 = 240. Przedmiar would give 1605 — a figure the
+    // sheet never totals anywhere, and pairing them reported a difference on a perfect parse.
+    expect(byKey(BIALOSTOCKA_ROWS, 'plannedNet').appValue).toBeCloseTo(2287.5, 6)
+  })
+
+  it('matches a „wartość netto" that only the Pomiar sum can explain', () => {
+    // Pomiar 3 against one etap of 1 — the state the two stored figures cannot reach: neither
+    // Przedmiar (1605) nor the etapy (2287,50) equals what the sheet totals here.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    grid.find((row) => row[2] === 'zakup, transport i wniesienie towaru budowlanego')![14] = 3
+    grid.find((row) => String(row[16]).startsWith('wartość netto'))![18] = 5017.5
+
+    expect(byKey(grid, 'plannedNet')).toMatchObject({
+      matches: true,
+      matchedAgainst: 'measuredNet',
+    })
   })
 
   it('prices the executed total off the etap quantities, not Przedmiar', () => {
@@ -42,7 +57,7 @@ describe('compareFooterTotals', () => {
     const planned = byKey(BIALOSTOCKA_ROWS, 'plannedNet')
 
     expect(planned.matches).toBe(false)
-    expect(planned.delta).toBeCloseTo(143089.489 - 1605, 6)
+    expect(planned.delta).toBeCloseTo(143089.489 - 2287.5, 6)
   })
 
   it('agrees when the sheet total matches to the grosz', () => {

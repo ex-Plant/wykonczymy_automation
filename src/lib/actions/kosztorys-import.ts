@@ -2,6 +2,8 @@
 
 import { protectedAction } from '@/lib/actions/run-action'
 import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
+import { getDb } from '@/lib/db/get-db'
+import { setSheetMeasuredQty } from '@/lib/db/kosztorys-sheet-measured-qty'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
 import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
@@ -10,6 +12,11 @@ import {
   type ImportPlanT,
   type ImportReportT,
 } from '@/lib/kosztorys/sheet-import/build-import-plan'
+import { buildMeasuredQtyRefresh } from '@/lib/kosztorys/sheet-import/build-measured-qty-refresh'
+import {
+  buildSheetComparison,
+  type SheetComparisonT,
+} from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import { MissingRobociznaTabError, readImportGrids } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import type { ActionResultT } from '@/types/action'
@@ -17,6 +24,17 @@ import type { ActionResultT } from '@/types/action'
 const PRE_IMPORT_LABEL = 'Przed importem z arkusza Google'
 
 export type ImportPreviewT = { report: ImportReportT; problems: string[] }
+
+export type RefreshMeasuredQtyResultT = {
+  updated: number
+  cleared: number
+  unmatched: number
+}
+
+export type SheetCompareResultT = {
+  comparison: SheetComparisonT
+  refresh: RefreshMeasuredQtyResultT
+}
 
 export type ApplyImportResultT = {
   sections: number
@@ -69,13 +87,75 @@ export async function previewKosztorysImport(
 // with — the problems list is what the owner reads and the confirm button is what it disables.
 function emptyReport(): ImportReportT {
   return {
-    columns: [],
+    missingColumns: [],
     counts: { sections: 0, items: 0, stages: 0 },
     rateDecisions: [],
     retained: [],
     totals: [],
     warnings: [],
   }
+}
+
+/**
+ * „Porównaj z arkuszem" — a live read that also refreshes the stored reference quantity, in one pass.
+ *
+ * The refresh is not a decision: the stored figure is a copy of the sheet's Pomiar, so once the sheet
+ * has been read live, „keep the stale copy" is not an answer anybody would pick (owner, 2026-08-14).
+ * Folding it in here also keeps it to ONE sheet read — two actions each calling `readImportGrids`
+ * would have doubled the Google round-trip for a single open.
+ *
+ * Lives here rather than in `lib/queries` (where an on-demand client read normally belongs) because
+ * it shares `getInvestmentSheetId`, `readImportGrids` and `sheetFailureMessage` with the import pair
+ * above — splitting them would duplicate the failure-message translation and give the two
+ * sheet-reading dialogs two different error shapes.
+ */
+export async function compareWithSheet(
+  investmentId: number,
+): Promise<ActionResultT<SheetCompareResultT>> {
+  return protectedAction<SheetCompareResultT>(
+    'compareWithSheet',
+    async ({ payload }) => {
+      const spreadsheetId = await getInvestmentSheetId(payload, investmentId)
+      if (!spreadsheetId) return { success: false, error: MISSING_SHEET }
+
+      let grids: Awaited<ReturnType<typeof readImportGrids>>
+      // Outside the try on purpose: this one reads the database, and the catch below translates
+      // every failure into „nie udało się odczytać arkusza Google", which would blame the wrong
+      // system and hand the owner retry advice that cannot help.
+      const treeBeforeWrite = await serializeKosztorys(investmentId)
+      try {
+        grids = await readImportGrids(getReadonlySheetsClient(), spreadsheetId)
+      } catch (error) {
+        return { success: false, error: sheetFailureMessage(error) }
+      }
+
+      const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite)
+      if (!refreshed.ok) return { success: false, error: refreshed.problems.join(' ') }
+      const { rows, unmatched } = refreshed.refresh
+      const written = await setSheetMeasuredQty(await getDb(payload), investmentId, rows)
+
+      // Re-read rather than reuse the pre-write tree, so the comparison describes the state the
+      // write left behind. It happens to be identical today — no figure reported here derives from
+      // the stored reference quantity — but that is an invariant of the current report, not of the
+      // action, and the day a figure starts reading it this would go quietly stale.
+      const tree = written > 0 ? await serializeKosztorys(investmentId) : treeBeforeWrite
+      const built = buildSheetComparison(grids, tree, spreadsheetId)
+      if (!built.ok) return { success: false, error: built.problems.join(' ') }
+
+      return {
+        success: true,
+        data: {
+          comparison: built.comparison,
+          refresh: {
+            updated: rows.filter((row) => row.qty !== null).length,
+            cleared: rows.filter((row) => row.qty === null).length,
+            unmatched,
+          },
+        },
+      }
+    },
+    [...KOSZTORYS_TREE_TAGS],
+  )
 }
 
 // Takes no plan from the client: it re-reads the sheet and rebuilds, so a forged preview payload

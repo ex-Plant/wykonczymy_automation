@@ -6,6 +6,15 @@ import type { ResolvedRobociznaT } from './resolve-columns'
 
 export type { FooterRowKeyT }
 
+/**
+ * The app-side sums a footer row can be checked against. `measuredNet` has no footer row of its own —
+ * it exists because „wartość netto" is not one figure across sheets: some clients compute it from
+ * Przedmiar (the offer), others from Pomiar z natury, and a sheet whose Pomiar is partly hand-typed
+ * puts it somewhere our two stored figures cannot reach at all. Pricing the sheet's own Pomiar column
+ * is the only like-for-like reading of that row.
+ */
+export type AppTotalKeyT = FooterRowKeyT | 'measuredNet'
+
 export type FooterComparisonT = {
   key: FooterRowKeyT
   // The sheet's own wording, so the preview names the row the owner will look for.
@@ -15,10 +24,10 @@ export type FooterComparisonT = {
   delta: number | null
   matches: boolean
   // Which app figure the sheet row turned out to agree with. The owner's labels do NOT reliably say
-  // which of the two a row holds — on sheets where nothing is executed yet both rows carry the same
+  // which figure a row holds — on sheets where nothing is executed yet all of them carry the same
   // number, and on others „wartość netto" sits over the executed figure — so a row is checked
-  // against both and reported against whichever it matches. `null` when it matches neither.
-  matchedAgainst: FooterRowKeyT | null
+  // against every candidate and reported against whichever it matches. `null` when it matches none.
+  matchedAgainst: AppTotalKeyT | null
 }
 
 // Both figures are money, so anything under a grosz is rounding, not disagreement.
@@ -58,7 +67,7 @@ export function compareFooterTotals(
     qtyDoneByItem.set(entry.itemId, (qtyDoneByItem.get(entry.itemId) ?? 0) + entry.qtyDone)
   }
 
-  const appValues: Record<FooterRowKeyT, number> = {
+  const appValues: Record<AppTotalKeyT, number | null> = {
     plannedNet: parsed.items.reduce(
       (total, item) => total + rowPlannedNetForView(asPricing(item), 'client'),
       0,
@@ -68,6 +77,7 @@ export function compareFooterTotals(
         total + netForQtyForView(asPricing(item), qtyDoneByItem.get(item.id) ?? 0, 'client'),
       0,
     ),
+    measuredNet: measuredNetTotal(grid, resolved, parsed),
   }
 
   // Only rows below the last praca are summary rows: „wartość netto" is also a column header, and a
@@ -78,14 +88,15 @@ export function compareFooterTotals(
     const row = footer.find((cells) => cells.some((cell) => matches(fold(cell))))
     const sheetValue = row === undefined ? null : readFooterValue(row, resolved.columns.netValue)
 
-    // Checked against both figures rather than only its namesake — see `matchedAgainst`.
+    // Checked against every figure rather than only its namesake — see `matchedAgainst`.
     const matchedAgainst =
       sheetValue === null
         ? null
-        : (FOOTER_KEYS.find(
-            (candidate) => Math.abs(sheetValue - appValues[candidate]) < TOLERANCE,
-          ) ?? null)
-    const appValue = appValues[matchedAgainst ?? key]
+        : (CANDIDATES.find((candidate) => {
+            const value = appValues[candidate]
+            return value !== null && Math.abs(sheetValue - value) < TOLERANCE
+          }) ?? null)
+    const appValue = appValues[matchedAgainst ?? DEFAULT_CANDIDATE[key]] ?? appValues[key] ?? 0
 
     return {
       key,
@@ -99,7 +110,41 @@ export function compareFooterTotals(
   })
 }
 
-const FOOTER_KEYS = FOOTER_ROWS.map(({ key }) => key)
+const CANDIDATES: AppTotalKeyT[] = [...FOOTER_ROWS.map(({ key }) => key), 'measuredNet']
+
+// Where a row lands when it agrees with nothing. „wartość netto" falls back to the sum of the same
+// column the sheet totals there, never to Przedmiar: a sheet with work in progress prices those two
+// differently by construction, so pairing them reported a five-figure „difference" on a sheet that
+// was parsed perfectly.
+const DEFAULT_CANDIDATE: Record<FooterRowKeyT, AppTotalKeyT> = {
+  plannedNet: 'measuredNet',
+  executedNet: 'executedNet',
+}
+
+/**
+ * The sheet's Pomiar column priced by us — read straight off the grid rather than from the parsed
+ * items, because `sheetMeasuredQty` is deliberately null wherever that cell holds a formula, and this
+ * has to reproduce the sheet's own total whatever is behind the number. `null` with no Pomiar column,
+ * so an absent figure can never masquerade as a matching zero.
+ */
+function measuredNetTotal(
+  grid: unknown[][],
+  resolved: ResolvedRobociznaT,
+  parsed: ParsedRobociznaT,
+): number | null {
+  const column = resolved.columns.measuredQty
+  if (column === undefined) return null
+
+  let total = 0
+  for (const item of parsed.items) {
+    const sheetRow = parsed.sheetRowByItemId.get(item.id)
+    if (sheetRow === undefined) return null
+    const cell = grid[sheetRow - 1]?.[column]
+    const qty = typeof cell === 'number' ? cell : Number(cell)
+    total += netForQtyForView(asPricing(item), Number.isFinite(qty) ? qty : 0, 'client')
+  }
+  return total
+}
 
 // The summary figure normally sits under the „Wartość netto" column, but the owner merges cells in
 // the footer freely and it lands a column or two over. A row with exactly one number in it has no

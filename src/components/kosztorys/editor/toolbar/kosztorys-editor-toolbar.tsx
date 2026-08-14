@@ -1,5 +1,8 @@
 'use client'
 
+import { ListChecks } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CountBadge } from '@/components/ui/count-badge'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
@@ -15,7 +18,8 @@ import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolba
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
-  const { search, setSearch, view, setView } = useKosztorysEditorContext()
+  const { search, setSearch, view, setView, divergedOnly, setDivergedOnly, divergedCount } =
+    useKosztorysEditorContext()
 
   return (
     <div className="border-border shrink-0 border-b">
@@ -42,6 +46,24 @@ export function KosztorysEditorToolbar() {
             />
           </div>
         </SimpleTooltip>
+        {/* Absent, not disabled, at zero: the whole reference figure is scaffolding for entering old
+            sheets, so a kosztorys that never came from one must not carry a permanent dead control.
+            A narrowing tool, not an alarm — the count says how much is left to rozpisać, and typing
+            it away is the normal course of the work, not the clearing of a fault. */}
+        {divergedCount > 0 && (
+          <SimpleTooltip content="Pokaż tylko pozycje, w których został jeszcze pomiar do rozpisania na etapy">
+            <Button
+              variant={divergedOnly ? 'secondary' : 'outline'}
+              size="sm"
+              aria-pressed={divergedOnly}
+              onClick={() => setDivergedOnly(!divergedOnly)}
+            >
+              <ListChecks />
+              Do rozliczenia
+              <CountBadge count={divergedCount} />
+            </Button>
+          </SimpleTooltip>
+        )}
         <div className="ml-auto flex items-center gap-1">
           <KosztorysActionsMenu />
           <KosztorysSectionFilterMenu />

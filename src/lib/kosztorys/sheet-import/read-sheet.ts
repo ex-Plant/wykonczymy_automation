@@ -8,6 +8,11 @@ const RATE_TAB_PREFIX = 'zakres pracy'
 // bounded so a sheet with junk far to the right doesn't inflate every response.
 const LAST_COLUMN = 'BZ'
 
+// Without this a hung Google request holds the server action open for the platform's whole function
+// timeout, with both sheet dialogs stuck on „Czytam arkusz Google…" and no way to tell the owner
+// anything. Failing at 15s at least reaches `sheetFailureMessage`, which says to retry.
+const SHEET_TIMEOUT = 15_000
+
 export type RateTabGridT = {
   title: string
   grid: unknown[][]
@@ -19,6 +24,13 @@ export type RateTabGridT = {
 
 export type ImportGridsT = {
   robocizna: unknown[][]
+  // The tab's numeric sheetId — the `#gid=` a link to a single cell needs. Comes free with the
+  // metadata call the tab titles already require; `undefined` only if Google omits it, in which case
+  // the report degrades to a plain row number rather than a dead link.
+  robociznaGid: number | undefined
+  // The robocizna tab rendered as formulas, aligned cell-for-cell with `robocizna`. See the comment
+  // at the fetch site for why a formula is load-bearing here and not just a cheaper render.
+  robociznaFormulas: unknown[][]
   // Both „zakres pracy" tabs carry both price lists, so either one can supply the rates. They are
   // returned as a list rather than a z-narzędziami/bez-narzędzi pair because the tab TITLES are not
   // a reliable index — a tab titled „z narzędziami" holds the „bez narzędzi" columns too, and the
@@ -44,8 +56,15 @@ export async function readImportGrids(
   // Tab titles have to be discovered rather than assumed: the rate tabs are named „zakres pracy z
   // narzędziami   " on one sheet and „zakres pracy bez narzędzi" on the next, trailing spaces
   // included, and asking for a range on a tab that doesn't exist fails the whole batch.
-  const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties.title' })
-  const titles = (meta.data.sheets ?? []).map((sheet) => sheet.properties?.title ?? '')
+  const meta = await sheets.spreadsheets.get(
+    {
+      spreadsheetId,
+      fields: 'sheets.properties(title,sheetId)',
+    },
+    { timeout: SHEET_TIMEOUT },
+  )
+  const properties = (meta.data.sheets ?? []).map((sheet) => sheet.properties)
+  const titles = properties.map((props) => props?.title ?? '')
 
   const robociznaTitle = titles.find((title) => fold(title) === ROBOCIZNA_TAB)
   if (!robociznaTitle) throw new MissingRobociznaTabError(spreadsheetId)
@@ -55,29 +74,36 @@ export async function readImportGrids(
 
   const range = (title: string) => `'${title}'!A:${LAST_COLUMN}`
   const read = async (titles: string[], valueRenderOption: 'UNFORMATTED_VALUE' | 'FORMULA') => {
-    const response = await sheets.spreadsheets.values.batchGet({
-      spreadsheetId,
-      ranges: titles.map(range),
-      valueRenderOption,
-    })
+    const response = await sheets.spreadsheets.values.batchGet(
+      {
+        spreadsheetId,
+        ranges: titles.map(range),
+        valueRenderOption,
+      },
+      { timeout: SHEET_TIMEOUT },
+    )
     return (response.data.valueRanges ?? []).map((values) => (values.values ?? []) as unknown[][])
   }
 
-  const [grids, rateFormulas] = await Promise.all([
+  const [grids, formulaGrids] = await Promise.all([
     // Numbers must arrive as numbers: formatted values come back as „1 234,56 zł" strings that a
     // locale-naive parseFloat reads as 1.
     read(wanted, 'UNFORMATTED_VALUE'),
-    // Only the rate tabs need the formula render; the robocizna tab's figures are read for their
-    // value alone, so fetching it twice would double the payload for nothing.
-    rateTitles.length > 0 ? read(rateTitles, 'FORMULA') : Promise.resolve([]),
+    // Every tab is fetched twice, values and formulas, because on both a formula is the only
+    // evidence that a figure was NOT typed by a human. On a rate tab that decides which price list
+    // wins; on the robocizna tab it decides whether „Pomiar z natury" is a real measurement or the
+    // blank sheet's own `=SUM(etapy)` — storing the latter would compare Σ etapów against itself.
+    read(wanted, 'FORMULA'),
   ])
 
   return {
     robocizna: grids[0] ?? [],
+    robociznaGid: properties.find((props) => props?.title === robociznaTitle)?.sheetId ?? undefined,
+    robociznaFormulas: formulaGrids[0] ?? [],
     rateTabs: rateTitles.map((title, index) => ({
       title,
       grid: grids[index + 1] ?? [],
-      formulas: rateFormulas[index] ?? [],
+      formulas: formulaGrids[index + 1] ?? [],
     })),
   }
 }

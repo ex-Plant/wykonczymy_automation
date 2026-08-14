@@ -12,6 +12,7 @@ function item(id: number, sectionId: number): KosztorysItemT {
     description: `Pozycja ${id}`,
     unit: 'm2',
     plannedQty: 10,
+    sheetMeasuredQty: null,
     discountType: null,
     discountValue: 0,
     clientPrice: 100,

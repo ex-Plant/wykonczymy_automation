@@ -48,6 +48,7 @@ function presetPayload(): SnapshotPayloadT {
         description: 'Praca z szablonu',
         unit: 'm2',
         plannedQty: 0,
+        sheetMeasuredQty: null,
         discountType: null,
         discountValue: 0,
         clientPrice: 100,

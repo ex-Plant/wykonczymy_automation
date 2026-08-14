@@ -88,13 +88,16 @@ describe('columnTotalsForRows', () => {
     }
   })
 
-  it('skips a row with no przedmiar out of „Pozostało" instead of counting it as settled', () => {
-    // Section B is row 3 (no przedmiar, work recorded) + row 4 (przedmiar 6, 2 executed).
+  // Skipping such a row made „Pozostało" claim work was still owed while the executed value that
+  // cancels it sat outside the sum — inv. 31 read +64 311 zł „left" on a kosztorys 23 602 zł over
+  // its own offer. Brak przedmiaru IS an offer of zero, so the row counts, negatively.
+  it('counts a row with no przedmiar into „Pozostało" as work beyond the offer', () => {
+    // Section B is row 3 (no przedmiar, 1 × 30 executed) + row 4 (przedmiar 6 × 15, 2 executed).
     const sectionB = totals(rowsOf(20))
-    const rowFourOnly = totals(rowsOf(20).filter((row) => row.id === 4))
+    const rowThreeOnly = totals(rowsOf(20).filter((row) => row.id === 3))
 
-    expect(sectionB.get('remaining')).toBeCloseTo(rowFourOnly.get('remaining') ?? 0, 10)
-    expect(sectionB.get('remaining')).not.toBe(0)
+    expect(rowThreeOnly.get('remaining')).toBe(-30)
+    expect(sectionB.get('remaining')).toBeCloseTo(60 - 30, 10)
   })
 
   it('withholds the przedmiar pair outside the client view, where it has no reading', () => {

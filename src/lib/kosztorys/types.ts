@@ -40,6 +40,11 @@ export type KosztorysItemT = {
   description: string | null
   unit: string | null
   plannedQty: number
+  // „Pomiar z natury" exactly as the imported sheet typed it — a reconciliation reference, never an
+  // input to any figure. null = the sheet made no claim (no such column, empty cell, or a formula
+  // that only restates Σ etapów). Overwritten wholesale by a re-import or by „Zaciągnij pomiary
+  // z arkusza" — the app never edits it, so whatever the sheet says today is the answer.
+  sheetMeasuredQty: number | null
   discountType: DiscountTypeT | null
   discountValue: number
   clientPrice: number

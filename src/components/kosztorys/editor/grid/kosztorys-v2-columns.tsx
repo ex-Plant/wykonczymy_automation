@@ -4,12 +4,14 @@ import { type ReactNode } from 'react'
 import { Column, type CellProps, keyColumn, floatColumn } from 'react-datasheet-grid'
 import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
+import { STAGE_HEADER_COPY } from '@/components/kosztorys/editor/grid/stage-header-copy'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
+import { divergenceColumn } from '@/components/kosztorys/editor/grid/cells/divergence-cell'
 import {
   subcontractorCoeffColumn,
   subcontractorModeColumn,
@@ -53,9 +55,10 @@ import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
 import { PROGRESS_DISPLAY_DEFAULT, progressDisplayAllows } from '@/lib/kosztorys/progress-display'
-import { formatPercent } from '@/lib/kosztorys/format'
+import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
+  measureDiscrepancy,
   rowRemainingForView,
   rowTotalQtyDone,
   rowValueForView,
@@ -305,7 +308,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
       // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
       // re-applied to the editor.
-      cellClassName: 'capitalize [&_textarea]:capitalize',
+      // `kosztorys-identity-cell`: the section band paints its whole label here, and globals.css lets
+      // it out over the blank cells to its right (dsg has no colspan).
+      cellClassName: 'kosztorys-identity-cell capitalize [&_textarea]:capitalize',
     }),
   ]
 
@@ -313,18 +318,25 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
   const viewStages = stagesForView(stages, view)
 
+  // Rows are replaced immutably on every edit, so row identity is a self-invalidating cache key — a
+  // stale value can't outlive the row it was computed from.
+  const memoisedByRow = <T,>(compute: (row: KosztorysV2RowT) => T) => {
+    const cache = new WeakMap<KosztorysV2RowT, { value: T }>()
+    return (row: KosztorysV2RowT) => {
+      const hit = cache.get(row)
+      if (hit) return hit.value
+      const value = compute(row)
+      cache.set(row, { value })
+      return value
+    }
+  }
+
   // Σ etapów for the row — the denominator every stage-value cell divides by. There are 2×|etapy| of
   // those cells per row (netto + brutto) and each used to re-run the O(|etapy|) reduce to arrive at
-  // the SAME number, making a row O(|etapy|²). Memoised per row object: rows are replaced immutably
-  // on every edit, so identity is a self-invalidating cache key — a stale total can't outlive its row.
-  const totalQtyDoneByRow = new WeakMap<KosztorysV2RowT, number>()
-  const totalQtyDone = (row: KosztorysV2RowT) => {
-    const cached = totalQtyDoneByRow.get(row)
-    if (cached !== undefined) return cached
-    const total = rowTotalQtyDone(row, viewStages, view)
-    totalQtyDoneByRow.set(row, total)
-    return total
-  }
+  // the SAME number, making a row O(|etapy|²).
+  const totalQtyDone = memoisedByRow((row: KosztorysV2RowT) =>
+    rowTotalQtyDone(row, viewStages, view),
+  )
 
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
@@ -336,13 +348,47 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }),
   ]
 
+  // The imported sheet's „Pomiar z natury" against Σ etapów.
+  //
+  // Owner-only: the reference figure is scaffolding for entering old sheets into the app, and a
+  // client's document must not carry the company's own bookkeeping doubts. Client plane only for a
+  // second reason: `measureDiscrepancy` is hard-anchored to the whole offered scope, so hanging it
+  // on a subcontractor view's cell would put two different „etapy" numbers side by side.
+  const divergenceEnabled = !opts.previewVisible && view === 'client'
+  const divergenceFor = divergenceEnabled
+    ? memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages))
+    : () => null
+
   const measure: Column<KosztorysV2RowT>[] = [
     {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
+        // The two operands, which the „Pozostało do rozliczenia" column beside it does NOT carry — it
+        // shows the difference, and „skąd ta różnica" is still a question the cell has to answer.
+        tip: (r) => {
+          const divergence = divergenceFor(r)
+          if (!divergence) return null
+          return `Pomiar z arkusza Google: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · zostało ${formatNet(divergence.net)} zł`
+        },
+      }),
       minWidth: 170,
     },
     unitColumn(title('unit', opts)),
   ]
+
+  // Leads the whole rozpiska rather than sitting beside „Pomiar", the figure it is derived from — it
+  // is the answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
+  // Present for the whole life of an imported kosztorys, not only while it is non-zero: a column that
+  // appears with a difference and leaves when it is gone reads as an error counter, and the only way
+  // to zero it is to declare unperformed work done.
+  const divergence: Column<KosztorysV2RowT>[] =
+    divergenceEnabled && opts.hasSheetMeasure
+      ? [
+          {
+            ...divergenceColumn(title('divergence', opts), divergenceFor),
+            cellClassName: 'border-border border-r',
+          },
+        ]
+      : []
 
   // Rabat is a client concession, never passed to the subcontractor (calc.ts netForQtyForView), so
   // the four discount columns exist in the client view only — the subcontractor views never assemble
@@ -369,28 +415,49 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...discountCols,
   ]
 
-  const stageCols: Column<KosztorysV2RowT>[] = viewStages.map((st) =>
-    keyCol(stageKey(st.id), floatColumnLeft, {
+  const stageCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+    const header = (
+      <StageHeader
+        stage={st}
+        onRename={opts.onRenameStage}
+        onRemove={opts.onRemoveStage}
+        onSetPlane={opts.onSetStagePlane}
+        workers={opts.workers}
+        onSetWorker={opts.onSetStageWorker}
+        executedValue={opts.executedValueByStage?.get(st.id) ?? 0}
+      />
+    )
+    // Locked until the rozliczenie is picked: qty typed here would be work nobody gets billed for,
+    // and picking one costs a click. Deliberately NOT widened to the worker — a worker-less etap
+    // still has a price and still belongs to the executed total; it just isn't attributed to anyone.
+    //
+    // The lock renders as a COMPUTED cell, not as a `disabled` editable one: dsg's disabled cell is
+    // silent — you type, nothing happens, and the red tint is the only hint that this was deliberate.
+    // The reason already existed as copy (STAGE_HEADER_COPY.planeUnconfirmed) but only on a badge in
+    // the header, which is not where anyone looks after a keystroke goes nowhere. Same string, hung
+    // where the lock is discovered.
+    if (st.plane == null) {
+      const qtyKey = stageKey(st.id)
+      return {
+        ...computedColumn(
+          qtyKey,
+          header,
+          (r) => r[qtyKey] ?? null,
+          { tone: 'danger', tip: () => STAGE_HEADER_COPY.planeUnconfirmed },
+          // Blank, never „0,00": an etap nobody has recorded work in has no quantity, and a zero
+          // would read as one that was measured.
+          (value) => (value == null ? '' : formatQty(value)),
+        ),
+        minWidth: 150,
+        ...PLANE_UNCONFIRMED_CELL,
+      }
+    }
+    return keyCol(stageKey(st.id), floatColumnLeft, {
       id: stageKey(st.id),
-      title: (
-        <StageHeader
-          stage={st}
-          onRename={opts.onRenameStage}
-          onRemove={opts.onRemoveStage}
-          onSetPlane={opts.onSetStagePlane}
-          workers={opts.workers}
-          onSetWorker={opts.onSetStageWorker}
-          executedValue={opts.executedValueByStage?.get(st.id) ?? 0}
-        />
-      ),
+      title: header,
       minWidth: 150,
-      // Locked until the rozliczenie is picked: qty typed here would be work nobody gets billed for,
-      // and picking one costs a click. Deliberately NOT widened to the worker — a worker-less etap
-      // still has a price and still belongs to the executed total; it just isn't attributed to anyone.
-      disabled: st.plane == null,
-      ...planeUnconfirmed(st),
-    }),
-  )
+    })
+  })
 
   // The sheet's V–AE: the value of each stage's recorded qty at the view's price, post-discount.
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
@@ -491,24 +558,19 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     computedColumn('remaining', title('remaining', opts), (r) =>
       rowRemainingForView(r, stages, 'client'),
     ),
-    computedColumn(
-      'remainingGross',
-      title('remainingGross', opts),
-      // The dash must survive the VAT step: toGross(null) would read 0 — "settled" — on a row
-      // that has no przedmiar to settle against.
-      (r) => {
-        const net = rowRemainingForView(r, stages, 'client')
-        return net === null ? null : toGross(net, r.vatRate)
-      },
+    computedColumn('remainingGross', title('remainingGross', opts), (r) =>
+      toGross(rowRemainingForView(r, stages, 'client'), r.vatRate),
     ),
   ]
 
-  // Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
+  // „Rozjazd" first when it exists at all (see above — it is a work list, not a reading of the sheet),
+  // then sheet order proper: Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
   // Komentarz (T) at the work/progress seam, then the value block (U–AE right before AF "pozostało").
   // The row-actions column leads the whole grid when editing is enabled — it rides the same
   // assemble→hide→toggle pipeline as every data column (no special-casing), so the picker can hide it
   // like any other.
   const dataColumns = [
+    ...divergence,
     ...identity,
     ...przedmiar,
     ...stageCols,

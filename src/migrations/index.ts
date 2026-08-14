@@ -65,6 +65,7 @@ import * as migration_20260726_4_add_materials_net_rate_to_investments from './2
 import * as migration_20260728_0_drop_kosztorys_cost_variant from './20260728_0_drop_kosztorys_cost_variant'
 import * as migration_20260728_1_add_worker_to_kosztorys_stages from './20260728_1_add_worker_to_kosztorys_stages'
 import * as migration_20260810_0_invoice_has_many from './20260810_0_invoice_has_many'
+import * as migration_20260813_0_add_sheet_measured_qty_to_kosztorys_items from './20260813_0_add_sheet_measured_qty_to_kosztorys_items'
 
 export const migrations = [
   {
@@ -401,5 +402,10 @@ export const migrations = [
     up: migration_20260810_0_invoice_has_many.up,
     down: migration_20260810_0_invoice_has_many.down,
     name: '20260810_0_invoice_has_many',
+  },
+  {
+    up: migration_20260813_0_add_sheet_measured_qty_to_kosztorys_items.up,
+    down: migration_20260813_0_add_sheet_measured_qty_to_kosztorys_items.down,
+    name: '20260813_0_add_sheet_measured_qty_to_kosztorys_items',
   },
 ]

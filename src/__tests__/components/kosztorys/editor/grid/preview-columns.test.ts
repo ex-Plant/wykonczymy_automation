@@ -4,7 +4,8 @@ import {
   buildV2Grid,
 } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
 import type { BuildV2ColumnsOptsT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
-import type { KosztorysStageT } from '@/lib/kosztorys/types'
+import { stageKey } from '@/lib/kosztorys/stage-keys'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // The client-facing preview: which columns it renders, and what pins the price plane they compute at.
 // Asserted on rendered ids rather than on the constant, because the ids are the document a client
@@ -14,6 +15,20 @@ const STAGES: KosztorysStageT[] = [
   { id: 7, ordinal: 1, label: 'Etap 1', plane: null, workerId: null },
   { id: 9, ordinal: 2, label: 'Etap 2', plane: null, workerId: null },
 ]
+
+// Client price 100 with no rabat, so the rozjazd below prices cleanly.
+const ROW = {
+  id: 1,
+  sectionId: 10,
+  plannedQty: 95,
+  sheetMeasuredQty: null,
+  discountType: null,
+  discountValue: 0,
+  clientPrice: 100,
+  globalDiscountActive: false,
+  [stageKey(7)]: 0,
+  [stageKey(9)]: 0,
+} as unknown as KosztorysV2RowT
 
 function previewIds(extra: Partial<BuildV2ColumnsOptsT> = {}): string[] {
   return buildV2Columns({ view: 'client', previewVisible: true, stages: STAGES, ...extra })
@@ -73,6 +88,21 @@ describe('preview columns', () => {
 
   it('withholds the owner-authored komentarz', () => {
     expect(previewIds()).not.toContain('note')
+  })
+
+  // What the sheet measured against what the etapy carry is the company's own bookkeeping, and the
+  // payload DOES carry the reference figure (preview-kosztorys.ts ships the whole tree by decision),
+  // so the render is the gate — and the gate is the tip, not the column: the client still needs
+  // „Pomiar z natury" itself.
+  it('never surfaces the sheet pomiar to the client', () => {
+    const diverged = { ...ROW, sheetMeasuredQty: 95, [stageKey(7)]: 55 }
+    const columnData = (opts: Partial<BuildV2ColumnsOptsT>) =>
+      buildV2Columns({ view: 'client', stages: STAGES, ...opts }).find(
+        (column) => column.id === 'stageQtySum',
+      )?.columnData as { tip?: (r: typeof diverged) => string }
+
+    expect(columnData({}).tip?.(diverged)).toContain('Pomiar z arkusza Google')
+    expect(columnData({ previewVisible: true }).tip?.(diverged)).toBeNull()
   })
 
   // The picker is the preference selectV2Columns just stopped honouring, so a preview must not carry

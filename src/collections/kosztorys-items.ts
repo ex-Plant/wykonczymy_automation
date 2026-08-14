@@ -6,7 +6,8 @@ import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/re
 // markup coefficient (investment), with a two-state per-item override:
 // *OverrideType ∈ {coeff, amount} | null (null = derive), *OverrideValue. „Pomiar z natury"
 // (the executed quantity) is not stored — it is the stage sum (Σ D:M in the sheet), computed
-// live in the settlement layer.
+// live in the settlement layer. `sheetMeasuredQty` is not a second answer to that: it records what
+// the imported sheet CLAIMED, prices nothing, and exists only to be compared against the stage sum.
 // VAT does not live here — there is a single rate per investment (S-12, not yet implemented).
 export const KosztorysItems: CollectionConfig = {
   slug: 'kosztorys-items',
@@ -36,6 +37,7 @@ export const KosztorysItems: CollectionConfig = {
     { name: 'description', type: 'text', label: { en: 'Description', pl: 'Opis' } },
     { name: 'unit', type: 'text', label: { en: 'Unit', pl: 'Jednostka' } },
     { name: 'plannedQty', type: 'number', required: true, defaultValue: 0 },
+    { name: 'sheetMeasuredQty', type: 'number', admin: { readOnly: true } },
     { name: 'discountType', type: 'text' },
     { name: 'discountValue', type: 'number', required: true, defaultValue: 0 },
     { name: 'clientPrice', type: 'number', required: true, defaultValue: 0 },

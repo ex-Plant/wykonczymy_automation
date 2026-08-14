@@ -3,6 +3,7 @@
 import 'react-datasheet-grid/dist/style.css'
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { SheetIcon } from 'lucide-react'
 // `DynamicDataSheetGrid`, not `DataSheetGrid`: the library aliases the plain name to
 // StaticDataSheetGrid, which snapshots `columns` via useState at mount (EX-422).
 import { DynamicDataSheetGrid } from 'react-datasheet-grid'
@@ -14,6 +15,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
+import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
+import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
@@ -84,6 +87,8 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
+    divergedOnly,
+    setDivergedOnly,
     setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
@@ -93,11 +98,18 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
-  // The count comes off the full-dataset `subtotals`, so a search filter narrows the visible rows
-  // without changing what the section says it holds.
+  const { openImport, importDialogProps } = useSheetImport({ investmentId, onTreeReplaced })
+
+  // Both figures come off the full-dataset `subtotals`, so a search filter narrows the visible rows
+  // without changing what the section says it holds or what it is worth.
   const sectionHeader = useMemo(
     () => ({
-      figures: new Map(subtotals.map((section) => [section.sectionId, section.itemCount])),
+      figures: new Map(
+        subtotals.map((section) => [
+          section.sectionId,
+          { itemCount: section.itemCount, net: section.net },
+        ]),
+      ),
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
@@ -129,9 +141,9 @@ export function KosztorysEditorBody({
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
-        searchActive: search.trim() !== '',
+        foldSuppressed: search.trim() !== '' || divergedOnly,
       }),
-    [viewRows, collapsedSectionIds, sort, search],
+    [viewRows, collapsedSectionIds, sort, search, divergedOnly],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
@@ -164,6 +176,7 @@ export function KosztorysEditorBody({
         tree,
         onOpenVersions,
         onTreeReplaced,
+        openImport: preview ? undefined : openImport,
       }}
     >
       <div
@@ -226,7 +239,21 @@ export function KosztorysEditorBody({
               title="Kosztorys jest pusty"
               // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
               description={preview ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
-            />
+            >
+              {/* Typing a rozpiska by hand is the rarer of the two starts — the sheet already holds
+                  it. Buried in „Opcje" it is the one moment nobody finds it. */}
+              {!preview && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pointer-events-auto"
+                  onClick={openImport}
+                >
+                  <SheetIcon />
+                  Pobierz z arkusza Google…
+                </Button>
+              )}
+            </EmptyState>
           )}
           {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
               rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
@@ -245,6 +272,25 @@ export function KosztorysEditorBody({
                 onClick={() => setSearch('')}
               >
                 Wyczyść wyszukiwanie
+              </Button>
+            </EmptyState>
+          )}
+          {/* The filter emptying itself is not a dead end — the whole pomiar is on the etapy, so say
+              that rather than leave a blank grid. Search takes precedence above: with both on,
+              „nie pasuje do…" is the more specific explanation. */}
+          {viewRows.length === 0 && search.trim() === '' && divergedOnly && (
+            <EmptyState
+              className="pointer-events-none absolute inset-0"
+              title="Nic nie zostało do rozliczenia"
+              description="Cały pomiar z arkusza Google jest rozpisany na etapy."
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto"
+                onClick={() => setDivergedOnly(false)}
+              >
+                Pokaż wszystkie pozycje
               </Button>
             </EmptyState>
           )}
@@ -286,6 +332,8 @@ export function KosztorysEditorBody({
             />,
             document.body,
           )}
+        {/* One instance for both triggers — the „Opcje" menu and the empty-kosztorys screen. */}
+        {!preview && <SheetImportDialog {...importDialogProps} />}
       </div>
     </KosztorysEditorProvider>
   )

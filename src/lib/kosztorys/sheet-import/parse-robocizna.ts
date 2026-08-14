@@ -11,7 +11,7 @@ import type { ResolvedRobociznaT } from './resolve-columns'
 
 // The marker the owner types into Przedmiar + Pomiar on a row that is not a praca. A section header
 // and a footer row are BOTH marked this way — the section name is the only thing separating them.
-const NON_ITEM_MARKER = 'x'
+export const NON_ITEM_MARKER = 'x'
 
 // The praca's own fields. The four subcontractor-override fields are missing on purpose: they come
 // from the „zakres pracy" tabs, so the parser has no honest value for them and refuses to invent
@@ -33,6 +33,9 @@ export type ParsedRobociznaT = {
   // Rows carrying a description above the first section header. They belong to no section, so they
   // cannot be imported — the count exists so the preview says so instead of losing them in silence.
   skippedBeforeFirstSection: number
+  // 1-based sheet row per parsed praca, kept beside the items rather than on them: the items are
+  // spread straight into inserts, and a stray field would ride along into the database.
+  sheetRowByItemId: Map<number, number>
 }
 
 const text = (cell: unknown): string =>
@@ -57,11 +60,37 @@ function findFooterStart(grid: unknown[][], columns: ResolvedRobociznaT['columns
   return -1
 }
 
-export function parseRobocizna(grid: unknown[][], resolved: ResolvedRobociznaT): ParsedRobociznaT {
+// „Pomiar z natury" only means something when the owner TYPED it. On the blank offer sheet the
+// column is `=SUM(D:M)` in every row, so importing its value would store Σ etapów and later compare
+// it against Σ etapów — a reconciliation that can never fire. `number()` is deliberately not used:
+// its `|| 0` would turn an empty cell into a measurement of zero, flagging every row nobody has
+// measured yet.
+function readMeasuredQty(
+  row: unknown[],
+  formulaRow: unknown[],
+  column: number | undefined,
+): number | null {
+  if (column === undefined) return null
+  if (typeof formulaRow[column] === 'string' && formulaRow[column].startsWith('=')) return null
+  const cell = row[column]
+  if (cell == null) return null
+  if (typeof cell === 'string' && cell.trim() === '') return null
+  const value = typeof cell === 'number' ? cell : Number(cell)
+  return Number.isFinite(value) ? value : null
+}
+
+export function parseRobocizna(
+  grid: unknown[][],
+  resolved: ResolvedRobociznaT,
+  // Required rather than defaulted: a caller that forgets it would silently import no measurement
+  // at all, and the whole reconciliation would go quiet without a single failing test.
+  formulas: unknown[][],
+): ParsedRobociznaT {
   const { columns, stages: stageColumns } = resolved
   const sections: KosztorysSectionT[] = []
   const items: ParsedItemT[] = []
   const progress: StageProgressT[] = []
+  const sheetRowByItemId = new Map<number, number>()
 
   const sectionIdByName = new Map<string, number>()
   let currentSectionId: number | undefined
@@ -111,6 +140,7 @@ export function parseRobocizna(grid: unknown[][], resolved: ResolvedRobociznaT):
     // render differently in the editor.
     const discountPercent = rabat >= 1 ? round6(rabat) : round6(rabat * 100)
     const itemId = nextItemId++
+    sheetRowByItemId.set(itemId, rowIndex + 1)
     items.push({
       id: itemId,
       sectionId: currentSectionId,
@@ -121,6 +151,7 @@ export function parseRobocizna(grid: unknown[][], resolved: ResolvedRobociznaT):
       discountType: rabat > 0 ? 'percent' : null,
       discountValue: rabat > 0 ? discountPercent : 0,
       clientPrice: number(row[columns.clientPrice]),
+      sheetMeasuredQty: readMeasuredQty(row, formulas[rowIndex] ?? [], columns.measuredQty),
       hiddenInExport: false,
       note: null,
     })
@@ -143,5 +174,13 @@ export function parseRobocizna(grid: unknown[][], resolved: ResolvedRobociznaT):
     workerId: null,
   }))
 
-  return { sections, items, stages, progress, footerStart, skippedBeforeFirstSection }
+  return {
+    sections,
+    items,
+    stages,
+    progress,
+    footerStart,
+    skippedBeforeFirstSection,
+    sheetRowByItemId,
+  }
 }

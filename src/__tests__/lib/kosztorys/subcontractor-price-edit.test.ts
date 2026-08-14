@@ -16,6 +16,7 @@ const row: ViewPricingT = {
   description: 'Malowanie',
   unit: 'm2',
   plannedQty: 10,
+  sheetMeasuredQty: null,
   discountType: null,
   discountValue: 0,
   clientPrice: 100,
