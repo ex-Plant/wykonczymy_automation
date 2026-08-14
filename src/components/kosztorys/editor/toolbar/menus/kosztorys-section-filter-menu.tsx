@@ -9,8 +9,9 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 // same state a band's own chevron toggles. FilterMultiSelect speaks the URL encoding
 // [] = all / [FILTER_NONE] = none / [ids] = those, so this bridges that to collapsedSectionIds.
 export function KosztorysSectionFilterMenu() {
-  const { subtotals, collapsedSectionIds, setCollapsedSectionIds, emptySections } =
+  const { subtotals, collapsedSectionIds, setCollapsedSectionIds, foldableSectionIds } =
     useKosztorysEditorContext()
+  const emptySections = foldableSectionIds.get('no-measured-qty') ?? new Set<number>()
 
   const options = subtotals.map((s) => ({ value: String(s.sectionId), label: s.sectionName }))
 
@@ -45,11 +46,11 @@ export function KosztorysSectionFilterMenu() {
       selectAllLabel="Rozwiń wszystkie"
       deselectAllLabel="Zwiń wszystkie"
       // Folds by unticking rather than filtering on top: the checkmarks stay the only description of
-      // what the grid shows, so the picker can't disagree with it. "Pusta" = no executed work
-      // (net === 0), not "no positions" — a section with no items is cascade-deleted and never
-      // reaches the grid.
+      // what the grid shows, so the picker can't disagree with it. Qualifies a section only when
+      // EVERY pozycja is unexecuted — a section fully executed but unpriced also sums to zero, and
+      // the old „suma = 0" rule folded away exactly the one that needed attention.
       extraAction={{
-        label: `Zwiń puste sekcje (${emptySections.size})`,
+        label: `Zwiń sekcje bez wykonanych prac (${emptySections.size})`,
         select: (current) => current.filter((v) => !emptySections.has(Number(v))),
       }}
     />

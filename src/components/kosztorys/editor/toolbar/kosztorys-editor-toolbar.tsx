@@ -16,10 +16,12 @@ import {
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
 import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-section-filter-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
+import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
 export function KosztorysEditorToolbar() {
-  const { search, setSearch, view, setView, divergedOnly, setDivergedOnly, divergedCount } =
+  const { search, setSearch, view, setView, activeConditionIds, toggleCondition, conditionCounts } =
     useKosztorysEditorContext()
+  const diagnostics = ROW_CONDITIONS.filter((condition) => condition.kind === 'diagnostic')
 
   return (
     <div className="border-border shrink-0 border-b">
@@ -46,22 +48,30 @@ export function KosztorysEditorToolbar() {
             />
           </div>
         </SimpleTooltip>
-        {/* Absent, not disabled, at zero: the whole reference figure is scaffolding for entering old
-            sheets, so a kosztorys that never came from one must not carry a permanent dead control. */}
-        {divergedCount > 0 && (
-          <SimpleTooltip content="Pokaż tylko pozycje, gdzie pomiar z arkusza nie zgadza się z etapami">
-            <Button
-              variant={divergedOnly ? 'secondary' : 'outline'}
-              size="sm"
-              aria-pressed={divergedOnly}
-              onClick={() => setDivergedOnly(!divergedOnly)}
-            >
-              <TriangleAlert className="text-destructive" />
-              Rozjazdy
-              <CountBadge count={divergedCount} />
-            </Button>
-          </SimpleTooltip>
-        )}
+        {/* A diagnostic is a defect, so its button is absent — not disabled — at zero: once nothing
+            is in that state there is nothing to look at, and a permanent dead control would suggest
+            otherwise. The working filters live in the „Sekcje" menu instead; these sit in the
+            toolbar because they are meant to be noticed without opening anything. */}
+        {diagnostics.map((condition) => {
+          const count = conditionCounts.get(condition.id) ?? 0
+          if (count === 0) return null
+          const active = activeConditionIds.has(condition.id)
+
+          return (
+            <SimpleTooltip key={condition.id} content={`Pokaż tylko pozycje ${condition.label}`}>
+              <Button
+                variant={active ? 'secondary' : 'outline'}
+                size="sm"
+                aria-pressed={active}
+                onClick={() => toggleCondition(condition.id)}
+              >
+                <TriangleAlert className="text-destructive" />
+                {condition.label}
+                <CountBadge count={count} />
+              </Button>
+            </SimpleTooltip>
+          )
+        })}
         <div className="ml-auto flex items-center gap-1">
           <KosztorysActionsMenu />
           <KosztorysSectionFilterMenu />

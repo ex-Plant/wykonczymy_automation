@@ -46,14 +46,17 @@ import {
   type ItemRemovalPlanT,
 } from '@/lib/kosztorys/delete-policy'
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
-import {
-  emptySectionIds,
-  sectionSubtotalsForView,
-  stageAxisForView,
-} from '@/lib/kosztorys/settlement-aggregates'
+import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
-import { divergedRows, filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
+import { filterRows, sortRows, type SortDirT } from '@/lib/kosztorys/row-view'
+import {
+  ROW_CONDITIONS,
+  countMatching,
+  rowsMatchingConditions,
+  sectionIdsWhereAllMatch,
+} from '@/lib/kosztorys/row-conditions'
+import { useActiveConditions } from '@/components/kosztorys/editor/hooks/use-active-conditions'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -125,6 +128,9 @@ const UNDO_COALESCE_MS = 700
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
 const SETTINGS_PENDING_KEY = 'kosztorys-settings'
+// One frozen instance, so the preview's suppressed set is referentially stable across renders and
+// the memos below don't recompute on every keystroke.
+const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -170,13 +176,15 @@ export function useKosztorysEditor({
   // plane would simply render it.
   const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
-  // „Pokaż tylko rozjechane" — a working mode while old sheets are being entered into the app, not a
-  // preference: persisted, it would greet the owner with a near-empty grid and no explanation of what
-  // hid the rows. Same reasoning as the section fold below. Forced off under the preview like `view`
-  // above — the rozjazd is the company's own bookkeeping doubt and has no business in a client's
-  // document.
-  const [divergedOnly, setDivergedOnly] = useState(false)
-  const divergedOnlyActive = !preview && divergedOnly
+  // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
+  // is still on today. Suppressed wholesale under the preview like `view` above: every condition here
+  // is the company's own bookkeeping question and has no business in a client's document.
+  const {
+    activeIds: persistedConditionIds,
+    toggle: toggleCondition,
+    clear: clearConditions,
+  } = useActiveConditions(investmentId)
+  const activeConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
@@ -334,15 +342,20 @@ export function useKosztorysEditor({
   // so the panel and the dialog can never cite different amounts for the same etap.
   const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
-  // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
-  // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
-  // Zero under the preview, like the filter itself — the client's document carries none of this.
-  // Read by the toolbar's counter AND by the „Rozjazd" column's existence gate, so the badge and the
-  // column can never disagree about whether there is anything to fix.
-  const divergedCount = useMemo(
-    () => (preview ? 0 : divergedRows(rows, stages).length),
-    [preview, rows, stages],
-  )
+  // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
+  // survives it is a count of itself, and the number stops being able to reach zero to say the
+  // problem is gone. Zero under the preview, like the filters themselves — the client's document
+  // carries none of this. Read by the toolbar's counters AND by the „Rozjazd" column's existence
+  // gate, so a badge and the column can never disagree about whether there is anything to fix.
+  const conditionCounts = useMemo(() => {
+    const ctx = { stages }
+    return new Map(
+      ROW_CONDITIONS.map((condition) => [
+        condition.id,
+        preview ? 0 : countMatching(rows, condition.id, ctx),
+      ]),
+    )
+  }, [preview, rows, stages])
 
   const columnOpts = {
     view,
@@ -373,7 +386,7 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    hasDivergence: divergedCount > 0,
+    hasDivergence: (conditionCounts.get('measure-diverged') ?? 0) > 0,
     readOnly: preview,
     previewVisible: preview,
   }
@@ -392,12 +405,20 @@ export function useKosztorysEditor({
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
   // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort. Sits above viewRows because „Zwiń puste sekcje" reads its net.
+  // the filter/sort.
   const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
-  // Feeds the filter menu's „Zwiń puste sekcje" row — both its count and the ids it unticks. That
-  // row folds by unticking rather than filtering rows on its own, so the picker's checkmarks stay
-  // the single description of what the grid shows.
-  const emptySections = useMemo(() => emptySectionIds(subtotals), [subtotals])
+  // Sections every one of whose pozycje match a liftable condition — the ids each fold shortcut in
+  // the „Sekcje" menu unticks. „Wszystkie co do jednej", never „suma = 0": a section fully executed
+  // but unpriced sums to zero and is exactly the one nobody wants folded away.
+  const foldableSectionIds = useMemo(() => {
+    const ctx = { stages }
+    return new Map(
+      ROW_CONDITIONS.filter((condition) => condition.sectionLabel !== null).map((condition) => [
+        condition.id,
+        sectionIdsWhereAllMatch(rows, condition.id, ctx),
+      ]),
+    )
+  }, [rows, stages])
 
   function toggleSectionCollapsed(sectionId: number) {
     setCollapsedSectionIds((prev) => {
@@ -407,14 +428,22 @@ export function useKosztorysEditor({
     })
   }
 
-  // View = search + rozjazd + sort. Sections are not filtered here: hiding one is a fold, applied
-  // further down by buildSectionBandRows so the band survives its own collapse.
+  // View = search + active conditions + sort. Sections are not filtered here: hiding one is a fold,
+  // applied further down by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
-    let filtered = filterRows(rows, search)
-    if (divergedOnlyActive) filtered = divergedRows(filtered, stages)
+    const filtered = rowsMatchingConditions(filterRows(rows, search), activeConditionIds, {
+      stages,
+    })
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
-  }, [rows, search, divergedOnlyActive, sort, view, stages])
+  }, [rows, search, activeConditionIds, sort, view, stages])
+  // How many pozycje the conditions took away — the number the toolbar shows next to „wyczyść".
+  // Against the search-narrowed set, not the whole dataset: with a search on, the rows the search
+  // hid were never candidates and counting them would overstate what the filter did.
+  const hiddenRowCount = useMemo(
+    () => filterRows(rows, search).length - viewRows.length,
+    [rows, search, viewRows],
+  )
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -1340,10 +1369,12 @@ export function useKosztorysEditor({
     setView,
     search,
     setSearch,
-    divergedOnly: divergedOnlyActive,
-    setDivergedOnly,
-    divergedCount,
-    emptySections,
+    activeConditionIds,
+    toggleCondition,
+    clearConditions,
+    conditionCounts,
+    hiddenRowCount,
+    foldableSectionIds,
     // handlers
     onChange,
     handleAddItem,

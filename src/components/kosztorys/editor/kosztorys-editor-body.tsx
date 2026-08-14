@@ -84,8 +84,8 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
-    divergedOnly,
-    setDivergedOnly,
+    activeConditionIds,
+    clearConditions,
     setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
@@ -136,9 +136,9 @@ export function KosztorysEditorBody({
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
-        foldSuppressed: search.trim() !== '' || divergedOnly,
+        foldSuppressed: search.trim() !== '' || activeConditionIds.size > 0,
       }),
-    [viewRows, collapsedSectionIds, sort, search, divergedOnly],
+    [viewRows, collapsedSectionIds, sort, search, activeConditionIds],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
@@ -255,20 +255,20 @@ export function KosztorysEditorBody({
               </Button>
             </EmptyState>
           )}
-          {/* The filter emptying itself is the goal state, not a dead end — every rozjazd has been
-              answered, so say that rather than leave a blank grid. Search takes precedence above:
-              with both on, „nie pasuje do…" is the more specific explanation. */}
-          {viewRows.length === 0 && search.trim() === '' && divergedOnly && (
+          {/* A filter emptying itself is the goal state, not a dead end — nothing is left in the
+              state it was looking for, so say that rather than leave a blank grid. Search takes
+              precedence above: with both on, „nie pasuje do…" is the more specific explanation. */}
+          {viewRows.length === 0 && search.trim() === '' && activeConditionIds.size > 0 && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
-              title="Brak rozjazdów"
-              description="Każda pozycja zgadza się z pomiarem z arkusza."
+              title="Nic nie pasuje do filtrów"
+              description="Żadna pozycja nie jest już w tym stanie."
             >
               <Button
                 variant="outline"
                 size="sm"
                 className="pointer-events-auto"
-                onClick={() => setDivergedOnly(false)}
+                onClick={clearConditions}
               >
                 Pokaż wszystkie pozycje
               </Button>

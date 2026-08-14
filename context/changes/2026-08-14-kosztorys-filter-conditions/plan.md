@@ -455,15 +455,15 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 1.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts`
-- [x] 1.2 Rewritten section spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-empty-sections.test.ts`
+- [x] 1.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts` — cd2c1cfb
+- [x] 1.2 Rewritten section spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-empty-sections.test.ts` — cd2c1cfb
 
 ### Phase 2: Active-condition state, persisted per investment
 
 #### Automated
 
-- [ ] 2.1 Editor-hook and body specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
-- [ ] 2.2 Row-view spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-v2-rows.test.ts`
+- [x] 2.1 Editor-hook and body specs still pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
+- [x] 2.2 Row-view spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/kosztorys-v2-rows.test.ts`
 
 ### Phase 3: Make the filter visible — stable numbers, surviving bands
 
