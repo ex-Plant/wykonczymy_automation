@@ -1,7 +1,7 @@
 ---
 change_id: sheet-live-compare
 title: Porównanie z arkuszem na żywo zamiast raportu z importu
-status: implementing
+status: implemented
 created: 2026-08-13
 updated: 2026-08-14
 archived_at: null
@@ -18,6 +18,9 @@ usunięta.
 akcja „Porównaj z arkuszem": czytanie arkusza na żywo, rachunek obu stron, wykrywanie podejrzanych
 formuł (Pomiar przepisany z Przedmiaru, Przedmiar liczony z etapu) i osobna akcja „zaciągnij pomiary
 z arkusza" odświeżająca liczby odniesienia bez pełnego importu
+
+Faza 6 zlała tę osobną akcję z porównaniem — odświeżenie dzieje się przy otwarciu okna, przycisku
+już nie ma.
 
 Skąd to wyszło (dogfooding inwestycji 31, 2026-08-13): arkusz pokazuje „wartość netto 508 196 zł",
 aplikacja 491 519,25 zł. Różnica 16 677,70 zł siedzi w 26 pozycjach, na których arkusz ma Pomiar

@@ -743,8 +743,8 @@ Run once, after the final phase.
 
 #### Automated
 
-- [x] 6.1 Formula-health spec passes, including the punctual-class-survives-the-mass-class case — bb7fce0d
-- [x] 6.2 The refresh spec passes through `compareWithSheet`, incl. the no-op second call — bb7fce0d
+- [x] 6.1 Formula-health spec passes, including the punctual-class-survives-the-mass-class case — efd2d805
+- [x] 6.2 The refresh spec passes through `compareWithSheet`, incl. the no-op second call — efd2d805
 
 ### Whole-tree Gate
 
