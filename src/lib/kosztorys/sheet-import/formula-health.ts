@@ -21,15 +21,14 @@ export type FormulaHealthT = {
   // #REF! / #DIV/0! arriving as strings from UNFORMATTED_VALUE and silently coerced to 0. Counted
   // per row, like the two classes above, so the three numbers are read on one scale.
   errorValues: number
-  // Rows only for the classes fixed one cell at a time. `measuredCopiedFromPlanned` is collective —
-  // it closes by fixing the sheet or filling the etapy, never row by row — so it keeps its count and
-  // gets no list; a shared bucket used to let its 241 rows crowd out the 7 that were actionable.
-  samples: { plannedReadFromStage: FormulaSampleT[]; errorValue: FormulaSampleT[] }
+  // Per class, so the hundreds of rows one of them can carry never crowd out the handful in another.
+  samples: {
+    measuredCopiedFromPlanned: FormulaSampleT[]
+    plannedReadFromStage: FormulaSampleT[]
+    errorValue: FormulaSampleT[]
+  }
   totalRows: number
 }
-
-// Enough to recognise the pattern and go fix it in the sheet; the count above carries the scale.
-const SAMPLE_CAP = 25
 
 const ERROR_VALUE = /^#(REF|DIV\/0|VALUE|NAME\?|N\/A|NUM|NULL)!?$/
 
@@ -80,7 +79,7 @@ export function scanFormulaHealth(
     measuredCopiedFromPlanned: 0,
     plannedReadFromStage: 0,
     errorValues: 0,
-    samples: { plannedReadFromStage: [], errorValue: [] },
+    samples: { measuredCopiedFromPlanned: [], plannedReadFromStage: [], errorValue: [] },
     totalRows: 0,
   }
 
@@ -96,11 +95,12 @@ export function scanFormulaHealth(
     health.totalRows++
 
     const rowNumber = rowIndex + 1
-    const sample = (klass: 'plannedReadFromStage' | 'errorValue', column: number) => {
-      const list = health.samples[klass]
-      if (list.length < SAMPLE_CAP) {
-        list.push({ row: rowNumber, description, cell: `${columnLetter(column)}${rowNumber}` })
-      }
+    const sample = (klass: keyof FormulaHealthT['samples'], column: number) => {
+      health.samples[klass].push({
+        row: rowNumber,
+        description,
+        cell: `${columnLetter(column)}${rowNumber}`,
+      })
     }
 
     if (
@@ -108,6 +108,7 @@ export function scanFormulaHealth(
       ownRowReference(formulaRow[columns.measuredQty], rowNumber) === plannedLetter
     ) {
       health.measuredCopiedFromPlanned++
+      sample('measuredCopiedFromPlanned', columns.measuredQty)
     }
 
     const plannedSource = ownRowReference(formulaRow[columns.plannedQty], rowNumber)

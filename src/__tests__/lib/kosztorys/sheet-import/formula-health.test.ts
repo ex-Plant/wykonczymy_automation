@@ -30,13 +30,14 @@ describe('scanFormulaHealth', () => {
     expect(scan({}).totalRows).toBe(3)
   })
 
-  it('counts a Pomiar copied straight from Przedmiar without listing the row', () => {
-    // The collective class: it closes by fixing the sheet or filling the etapy, never row by row,
-    // and its rows used to crowd the actionable ones out of a shared bucket.
+  it('lists a Pomiar copied straight from Przedmiar in its own bucket', () => {
     const health = scan({ 4: { O: '=N5' } })
 
     expect(health.measuredCopiedFromPlanned).toBe(1)
-    expect(health.samples).toEqual({ plannedReadFromStage: [], errorValue: [] })
+    expect(health.samples.measuredCopiedFromPlanned).toHaveLength(1)
+    expect(health.samples.measuredCopiedFromPlanned[0]).toMatchObject({ row: 5, cell: 'O5' })
+    expect(health.samples.plannedReadFromStage).toEqual([])
+    expect(health.samples.errorValue).toEqual([])
   })
 
   it('leaves the sheet’s own Σ etapów alone', () => {

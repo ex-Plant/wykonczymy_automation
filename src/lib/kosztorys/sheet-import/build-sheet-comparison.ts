@@ -1,3 +1,4 @@
+import { columnLetter } from '@/lib/google/sheet-configs'
 import { netForQtyForView, rowPlannedNetForView } from '@/lib/kosztorys/calc'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT, StageProgressT, ViewPricingT } from '@/lib/kosztorys/types'
@@ -9,6 +10,17 @@ import type { ImportGridsT } from './read-sheet'
 import { resolveRobocizna } from './resolve-columns'
 
 export type ComparedItemT = { section: string; description: string }
+
+// One praca whose executed work is worth a different amount on each side — the whole difference in
+// the money block, itemised, because a total nobody can trace back to a row is a total nobody acts on.
+export type ExecutedDiffT = ComparedItemT & {
+  sheetNet: number
+  appNet: number
+  sheetQty: number
+  appQty: number
+  // A1 reference of the praca's first etap cell, so the report links into the row that explains it.
+  cell: string
+}
 
 export type SheetComparisonT = {
   // Both sides' money, computed through `calc.ts` on each side rather than summed locally — a
@@ -25,6 +37,8 @@ export type SheetComparisonT = {
   counts: { sheetItems: number; appItems: number; matched: number }
   onlyInSheet: ComparedItemT[]
   onlyInApp: ComparedItemT[]
+  // Matched pozycje whose executed value differs, largest gap first.
+  executedDiffs: ExecutedDiffT[]
   // How many matched pozycje would carry a reference quantity after a refresh — the denominator
   // behind „Rozjazd nic o nich nie powie".
   referenceQty: { matched: number; withValue: number }
@@ -51,6 +65,9 @@ const asClientPricing = (item: ParsedItemT | KosztorysItemT): ViewPricingT => ({
   globalWToolsCoeff: 0,
   globalOwnToolsCoeff: 0,
 })
+
+// Half a grosz — below it the two sides differ only by float noise, which is not a finding.
+const MATCHES = 0.005
 
 function sumQtyDone(progress: readonly StageProgressT[]): Map<number, number> {
   const byItem = new Map<number, number>()
@@ -112,11 +129,17 @@ export function buildSheetComparison(
 
   const onlyInSheet: ComparedItemT[] = []
   const onlyInApp: ComparedItemT[] = []
+  const executedDiffs: ExecutedDiffT[] = []
   let matched = 0
   let withValue = 0
 
+  const sheetQtyDone = sumQtyDone(parsed.progress)
+  const appQtyDone = sumQtyDone(currentTree.progress)
+  const stageLetter = columnLetter(resolved.stages.firstColumn)
+
   for (const [key, item] of sheetByKey) {
-    if (!appByKey.has(key)) {
+    const appItem = appByKey.get(key)
+    if (appItem === undefined) {
       onlyInSheet.push(named(item, sheetSectionName))
       continue
     }
@@ -124,7 +147,26 @@ export function buildSheetComparison(
     // The sheet's claim as the parser would import it — a formula or an empty cell is no claim, and
     // those rows are precisely the ones „Rozjazd" cannot speak about.
     if (item.sheetMeasuredQty !== null) withValue++
+
+    const sheetQty = sheetQtyDone.get(item.id) ?? 0
+    const appQty = appQtyDone.get(appItem.id) ?? 0
+    const sheetNet = netForQtyForView(asClientPricing(item), sheetQty, 'client')
+    const appNet = netForQtyForView(asClientPricing(appItem), appQty, 'client')
+    if (Math.abs(sheetNet - appNet) >= MATCHES) {
+      executedDiffs.push({
+        ...named(item, sheetSectionName),
+        sheetNet,
+        appNet,
+        sheetQty,
+        appQty,
+        cell: `${stageLetter}${parsed.sheetRowByItemId.get(item.id) ?? 0}`,
+      })
+    }
   }
+  executedDiffs.sort(
+    (left, right) =>
+      Math.abs(right.sheetNet - right.appNet) - Math.abs(left.sheetNet - left.appNet),
+  )
   for (const [key, item] of appByKey) {
     if (!sheetByKey.has(key)) onlyInApp.push(named(item, appSectionName))
   }
@@ -149,6 +191,7 @@ export function buildSheetComparison(
       },
       onlyInSheet,
       onlyInApp,
+      executedDiffs,
       referenceQty: { matched, withValue },
       health: scanFormulaHealth(
         grids.robocizna,
