@@ -77,7 +77,7 @@ was fixed.
 
 ## Archive gate
 
-Zarchiwizowane 2026-08-14 z **niezaznaczonymi** checkami manualnymi w `context/foundation/manual-checks.md`
-§ `kosztorys-importer (EX-417)` — od 2026-07-28 checki manualne i E2E **nie blokują** archiwizacji.
-EX-417 zostaje `In Progress` z tagiem `[in review]`, dopóki ktoś ich nie przejdzie; to one, nie folder
-zmiany, są otwartym zobowiązaniem.
+Zarchiwizowane 2026-08-14, EX-417 zamknięte jako **Done** decyzją właściciela — z **niezaznaczonymi**
+12 checkami manualnymi w `context/foundation/manual-checks.md` § `kosztorys-importer (EX-417)`. Od
+2026-07-28 checki manualne i E2E nie blokują domknięcia. Zostają w rejestrze jako otwarta robota do
+przejścia, nie jako blokada karty.
