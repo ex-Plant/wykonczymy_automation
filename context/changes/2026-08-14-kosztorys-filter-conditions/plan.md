@@ -469,10 +469,10 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 3.1 Band spec passes, extended for both rules: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-band-rows.test.ts`
+- [x] 3.1 Band spec passes, extended for both rules: `pnpm exec vitest run src/__tests__/lib/kosztorys/section-band-rows.test.ts` — dda94153
 
 ### Phase 4: The „Filtry" menu and the diagnostic buttons
 
 #### Automated
 
-- [ ] 4.1 Menu/toolbar specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
+- [x] 4.1 Menu/toolbar specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys`

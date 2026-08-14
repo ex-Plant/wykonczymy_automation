@@ -18,6 +18,7 @@ import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/c
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
+import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -144,6 +145,11 @@ export function KosztorysEditorBody({
     [viewRows, collapsedSectionIds, sort, search, activeConditionIds, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  // „bez ceny j.m. i z rozjazdem pomiaru" — the AND the filters actually apply, said out loud, so the
+  // empty grid names what emptied it.
+  const activeConditionLabels = ROW_CONDITIONS.filter((c) => activeConditionIds.has(c.id))
+    .map((c) => c.label)
+    .join(' i ')
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
@@ -264,8 +270,8 @@ export function KosztorysEditorBody({
           {viewRows.length === 0 && search.trim() === '' && activeConditionIds.size > 0 && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
-              title="Nic nie pasuje do filtrów"
-              description="Żadna pozycja nie jest już w tym stanie."
+              title={`Brak pozycji ${activeConditionLabels}`}
+              description="Filtr zrobił swoje — nie ma już czego poprawiać."
             >
               <Button
                 variant="outline"

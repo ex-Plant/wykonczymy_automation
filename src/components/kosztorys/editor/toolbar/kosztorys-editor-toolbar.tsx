@@ -14,7 +14,7 @@ import {
   VIEW_LEGEND,
 } from '@/components/kosztorys/editor/toolbar/kosztorys-view-axis-options'
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
-import { KosztorysSectionFilterMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-section-filter-menu'
+import { KosztorysFiltersMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-filters-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
@@ -74,7 +74,7 @@ export function KosztorysEditorToolbar() {
         })}
         <div className="ml-auto flex items-center gap-1">
           <KosztorysActionsMenu />
-          <KosztorysSectionFilterMenu />
+          <KosztorysFiltersMenu />
           <KosztorysViewMenu />
         </div>
       </div>

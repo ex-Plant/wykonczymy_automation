@@ -7,7 +7,8 @@ export type RowConditionKindT = 'filter' | 'diagnostic'
 
 export type RowConditionT = {
   id: string
-  // How the condition reads when it hides pozycje.
+  // How the condition reads when it hides pozycje. A bare noun phrase describing the row, so it also
+  // reads after „Tylko " (the menu) and „Brak pozycji " (the empty state).
   label: string
   // How it reads when it folds sekcje; null = it does not lift to a section.
   sectionLabel: string | null
@@ -52,7 +53,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
   },
   {
     id: 'measure-diverged',
-    label: 'rozjazd pomiaru z arkusza',
+    label: 'z rozjazdem pomiaru',
     sectionLabel: null,
     kind: 'diagnostic',
     matches: (row, ctx) => measureDiscrepancy(row, ctx.stages) != null,

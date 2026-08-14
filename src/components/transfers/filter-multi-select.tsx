@@ -34,10 +34,19 @@ type FilterMultiSelectPropsT = {
   // mechanism — the default suits a plain list filter.
   selectAllLabel?: string
   deselectAllLabel?: string
-  // An extra row beside the select-all one, for a caller-defined bulk selection move
-  // (e.g. "untick every empty section"). `select` maps the current selection to the next one; it
-  // routes through the same local state as the other rows, so the checkmarks move with it.
-  extraAction?: { label: string; select: (current: string[]) => string[] }
+  // Extra rows beside the select-all one, for caller-defined bulk selection moves
+  // (e.g. "untick every section with no executed work"). `select` maps the current selection to the
+  // next one; it routes through the same local state as the other rows, so the checkmarks move with
+  // it.
+  extraActions?: ReadonlyArray<{ label: string; select: (current: string[]) => string[] }>
+  // An independent group of on/off rows above the options, owned entirely by the caller. Lets one
+  // menu answer one question („czego nie widzę") with two mechanisms behind it, instead of splitting
+  // the answer across two triggers the user has to check separately.
+  toggles?: ReadonlyArray<{ id: string; label: string; active: boolean; onToggle: () => void }>
+  // Replaces the trigger's derived "how many options are ticked" count (hidden at 0). For a caller
+  // whose menu hides things by more than the option list, where the ticked count would answer a
+  // question nobody asked.
+  triggerCount?: number
 }
 
 // URL param encoding: [] = all selected (no filter), ['__none__'] = nothing selected
@@ -57,7 +66,9 @@ export function FilterMultiSelect({
   title,
   selectAllLabel = 'Zaznacz wszystkie',
   deselectAllLabel = 'Odznacz wszystkie',
-  extraAction,
+  extraActions,
+  toggles,
+  triggerCount,
 }: FilterMultiSelectPropsT) {
   const [open, setOpen] = useState(false)
   const [localSelected, setLocalSelected] = useState<string[] | null>(null)
@@ -123,9 +134,8 @@ export function FilterMultiSelect({
     scheduleFlush(next)
   }
 
-  function runExtraAction() {
-    if (!extraAction) return
-    const next = extraAction.select(selected)
+  function runExtraAction(select: (current: string[]) => string[]) {
+    const next = select(selected)
     setLocalSelected(next)
     scheduleFlush(next)
   }
@@ -149,7 +159,13 @@ export function FilterMultiSelect({
           {iconOnly ? null : (
             <>
               {label}
-              {allSelected ? '' : ` (${selected.length})`}
+              {triggerCount == null
+                ? allSelected
+                  ? ''
+                  : ` (${selected.length})`
+                : triggerCount > 0
+                  ? ` (${triggerCount})`
+                  : ''}
             </>
           )}
         </FilterTriggerButton>
@@ -158,17 +174,34 @@ export function FilterMultiSelect({
         <Command>
           {searchable && <CommandInput placeholder="Szukaj..." />}
           <CommandList>
+            {toggles && toggles.length > 0 && (
+              <>
+                <CommandGroup>
+                  {toggles.map((toggle) => (
+                    <CommandItem key={toggle.id} value={toggle.label} onSelect={toggle.onToggle}>
+                      <CheckIcon className={cn(!toggle.active && 'opacity-0')} />
+                      {toggle.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
             <CommandGroup>
               <CommandItem onSelect={toggleAll} className="font-medium">
                 <CheckIcon className={cn(!allSelected && 'opacity-0')} />
                 {allSelected ? deselectAllLabel : selectAllLabel}
               </CommandItem>
-              {extraAction && (
-                <CommandItem onSelect={runExtraAction} className="font-medium">
+              {extraActions?.map((action) => (
+                <CommandItem
+                  key={action.label}
+                  onSelect={() => runExtraAction(action.select)}
+                  className="font-medium"
+                >
                   <CheckIcon className="opacity-0" />
-                  {extraAction.label}
+                  {action.label}
                 </CommandItem>
-              )}
+              ))}
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup>
