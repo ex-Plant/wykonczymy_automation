@@ -28,14 +28,8 @@ import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosz
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
-import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-compare-dialog'
-import {
-  compareWithSheet,
-  previewKosztorysImport,
-  type ImportPreviewT,
-  type SheetCompareResultT,
-} from '@/lib/actions/kosztorys-import'
+import { compareWithSheet, type SheetCompareResultT } from '@/lib/actions/kosztorys-import'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { toastMessage } from '@/lib/utils/toast'
@@ -55,13 +49,10 @@ function MenuItemBody({ label, description }: { label: string; description: stri
 // The Save-preset dialog is a controlled sibling of the menu, not a child of DropdownMenuContent —
 // onSelect closes the menu, so opening the dialog from inside it would fight the menu for focus.
 export function KosztorysActionsMenu() {
-  const { investmentId, onOpenVersions, onTreeReplaced, undo, redo, canUndo, canRedo } =
+  const { investmentId, onOpenVersions, onTreeReplaced, openImport, undo, redo, canUndo, canRedo } =
     useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   const [reloadOpen, setReloadOpen] = useState(false)
-  const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
-  const [importLoaded, setImportLoaded] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [compareResult, setCompareResult] = useState<SheetCompareResultT | null>(null)
   const [compareLoaded, setCompareLoaded] = useState(false)
@@ -96,25 +87,7 @@ export function KosztorysActionsMenu() {
       .finally(() => setShareLoaded(true))
   }
 
-  // Fired on the click for the same Radix reason as handleOpenShare: a programmatic `open` never
-  // triggers onOpenChange, so the dialog cannot fetch its own report.
-  function handleOpenImport() {
-    setImportOpen(true)
-    setImportLoaded(false)
-    setImportPreview(null)
-    void previewKosztorysImport(investmentId)
-      .then((res) => {
-        setImportPreview(res.success ? res.data : null)
-        if (!res.success) toastMessage(res.error, 'error', 6000)
-      })
-      .catch(() => {
-        setImportPreview(null)
-        toastMessage('Nie udało się odczytać arkusza', 'error')
-      })
-      .finally(() => setImportLoaded(true))
-  }
-
-  // Same Radix reason as the two above. The refresh rides along with the read, so a successful
+  // Same Radix reason as handleOpenShare. The refresh rides along with the read, so a successful
   // fetch means rows were just written — the grid has to recompute „Rozjazd" against them.
   function handleOpenCompare() {
     setCompareOpen(true)
@@ -182,7 +155,7 @@ export function KosztorysActionsMenu() {
               description="Zastąp całą rozpiskę zapisanym szablonem."
             />
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleOpenImport}>
+          <DropdownMenuItem onSelect={openImport}>
             <SheetIcon />
             <MenuItemBody
               label="Pobierz z arkusza Google…"
@@ -225,17 +198,6 @@ export function KosztorysActionsMenu() {
         open={presetOpen}
         onOpenChange={setPresetOpen}
         existingPresets={existingPresets}
-      />
-      <SheetImportDialog
-        investmentId={investmentId}
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        preview={importPreview}
-        loaded={importLoaded}
-        onImported={() => {
-          setImportPreview(null)
-          onTreeReplaced?.()
-        }}
       />
       <SheetCompareDialog
         open={compareOpen}
