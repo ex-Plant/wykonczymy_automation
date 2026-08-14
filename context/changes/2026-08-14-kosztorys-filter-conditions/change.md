@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-filter-conditions
 title: One condition registry for the kosztorys editor's filters (EX-665)
-status: implementing
+status: implemented
 created: 2026-08-14
 updated: 2026-08-14
 archived_at: null

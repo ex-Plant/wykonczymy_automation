@@ -475,4 +475,4 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 4.1 Menu/toolbar specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys`
+- [x] 4.1 Menu/toolbar specs pass: `pnpm exec vitest run src/__tests__/components/kosztorys` — 45d802ef

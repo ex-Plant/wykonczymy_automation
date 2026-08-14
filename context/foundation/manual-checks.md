@@ -954,3 +954,26 @@ jako formułą `=N`).
 - [ ] Inwestycja bez podpiętego arkusza: jeden toast „Inwestycja nie ma kosztorysu.", nie puste okno
 - [ ] Odebranie kontu serwisowemu dostępu do arkusza daje jeden polski toast, nie surowy błąd Google
 - [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji, z rozjazdem czy bez
+
+## kosztorys-filter-conditions — jeden rejestr warunków filtrowania (EX-665)
+
+**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2193. `pnpm build` **nie przeszedł
+w worktree**: turbopack odmawia na dowiązanym `node_modules` („Symlink node_modules is invalid") —
+ograniczenie środowiska, nie kodu; potwierdzić po scaleniu.
+
+Setup: dev DB (5433), zalogowany jako OWNER, kosztorys z sekcją w całości wykonaną, ale
+niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana.
+
+- [ ] „Filtry" → „Tylko bez przedmiaru" / „Tylko bez pomiaru z natury" zawężają siatkę, a belki sekcji i ich sumy zostają na miejscu
+- [ ] Dwa warunki naraz zawężają do części wspólnej, nie sumy
+- [ ] Trigger „Filtry" pokazuje liczbę aktywnych warunków bez otwierania menu
+- [ ] „Zwiń sekcje bez wykonanych prac" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta
+- [ ] Sekcja, której filtr nie zostawił ani jednej pozycji, nadal pokazuje belkę i sumę
+- [ ] Numery pozycji przeskakują przy filtrze zamiast przenumerowywać się od 1
+- [ ] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami
+- [ ] „Bez ceny j.m." stoi w pasku obok rozjazdów z licznikiem i znika, gdy wszystko jest wycenione
+- [ ] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony
+- [ ] Pusta siatka nazywa filtr, który ją opróżnił, a przycisk wraca do pełnej listy
+- [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję
+- [ ] Podgląd dla klienta (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
+- [ ] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze
