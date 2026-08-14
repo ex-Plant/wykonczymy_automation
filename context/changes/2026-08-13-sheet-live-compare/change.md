@@ -64,6 +64,34 @@ Powód, dla którego lista była bezużyteczna: jeden wspólny 25-elementowy kos
 trzech klas, zapełniany w kolejności wierszy — klasa masowa wyczerpywała go, zanim padł pierwszy
 wiersz klasy punktowej. Efekt: okno wypisywało po prostu górę arkusza, bez podpisu co komu dolega.
 
+## Faza 7 — dopisana wstecz przy bramce review (2026-08-14)
+
+Pięć commitów weszło już po domknięciu planu na fazie 6. Nie były to poprawki fazy 6, tylko druga
+tura decyzji — spisane tutaj, bo dwie z nich są rozstrzygnięciami domenowymi, a nie zmianami kodu.
+
+- **„Rozjazd" → „Pozostało do rozliczenia"** (`0bdea8c9`). Odejmowanie zostaje to samo; zmienia się
+  to, czym ta liczba **jest**. „Rozjazd" nazywał usterką coś, co jest zwykłą linią bilansową:
+  jedyny sposób na wyzerowanie tej kolumny to wpisać ilości w etapy, czyli zadeklarować pracę jako
+  wykonaną. Dlatego kolumna pokazuje się teraz przy każdym zaimportowanym kosztorysie, a nie tylko
+  tam, gdzie coś się rozjeżdża. Trafiło do `kosztorys-editor-domain-notes.md`.
+- **„Wartość netto" w podsumowaniu arkusza liczy się z Pomiaru, nie z Przedmiaru** (`d8c2fdbc`).
+  Zestawialiśmy ją z wartością przedmiaru — czyli z liczbą, której arkusz nigdzie nie sumuje. To była
+  usterka fazy 2. U części klientów ten sam wiersz sumuje jednak ofertę, więc porównanie najpierw
+  sprawdza, którą z naszych sum wiersz faktycznie trafia. Też w notatkach domenowych.
+- **Przepisanie okna porównania** (`0345d520`) — inny model kwot (wykonanie plus „pozostało" po obu
+  stronach) i pełne, nieprzycięte listy różnic per praca. Świadome cofnięcie limitu z fazy 3: suma
+  tej listy **jest** liczbą z tabeli, więc skrócenie listy byłoby kłamstwem o sumie. Limit został
+  natomiast na próbkach formuł, gdzie liczba i tak stoi obok.
+- **Stawki podwykonawców w obu oknach** (`405cdc7a`, `488a3bc9`). Plan zakładał, że porównanie nie
+  woła cennika w ogóle — teraz woła. Właściwość, która za tym stała, żyje: brak cennika nie wywraca
+  porównania (`readRateTabs` oddaje pustą listę zamiast rzucić, `ok: false` nadal wychodzi wyłącznie
+  z `resolveRobocizna`), i jest przypięta specem.
+
+Pożyczony zakres, spoza tej zmiany — odnotowany, żeby równoległa sesja się nie zdziwiła:
+`fe6ccc8c` (przycinanie etykiety w pasku sekcji, usterka CSS bez związku z arkuszem) oraz
+`ff3dc0e6` (`unresolvedOptional` w miejsce listy rozpoznanych kolumn), który wchodzi w
+`columns.ts` / `resolve-columns.ts` — terytorium `context/changes/2026-08-14-sheet-column-mapping/`.
+
 ## Odroczone
 
 E2E dla obu akcji: **EX-687** (`e2e-backlog`) — najpierw trzeba mieć podstawiony klient Sheets,
