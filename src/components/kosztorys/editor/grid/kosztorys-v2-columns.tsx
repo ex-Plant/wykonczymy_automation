@@ -308,7 +308,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
       // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
       // re-applied to the editor.
-      cellClassName: 'capitalize [&_textarea]:capitalize',
+      // `kosztorys-identity-cell`: the section band paints its whole label here, and globals.css lets
+      // it out over the blank cells to its right (dsg has no colspan).
+      cellClassName: 'kosztorys-identity-cell capitalize [&_textarea]:capitalize',
     }),
   ]
 
@@ -360,13 +362,12 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const measure: Column<KosztorysV2RowT>[] = [
     {
       ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
-        tone: (r) => (divergenceFor(r) ? 'danger' : 'muted'),
-        // The two operands, which the „Rozjazd" column beside it does NOT carry — it shows the
-        // difference, and „skąd ta różnica" is still a question the cell has to be able to answer.
+        // The two operands, which the „Pozostało do rozliczenia" column beside it does NOT carry — it
+        // shows the difference, and „skąd ta różnica" is still a question the cell has to answer.
         tip: (r) => {
           const divergence = divergenceFor(r)
           if (!divergence) return null
-          return `Arkusz: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · różnica ${formatNet(divergence.net)} zł`
+          return `Pomiar z arkusza Google: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · zostało ${formatNet(divergence.net)} zł`
         },
       }),
       minWidth: 170,
@@ -374,17 +375,17 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     unitColumn(title('unit', opts)),
   ]
 
-  // Leads the whole rozpiska rather than sitting beside „Pomiar", the figure it is derived from. It is
-  // not a reading of the kosztorys — it is a work list, and a work list that starts 8 columns to the
-  // right is one you have to go looking for. It also has no resting state to blend into: the column
-  // only exists while something is wrong, so it is the one column allowed to shout.
+  // Leads the whole rozpiska rather than sitting beside „Pomiar", the figure it is derived from — it
+  // is the answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
+  // Present for the whole life of an imported kosztorys, not only while it is non-zero: a column that
+  // appears with a difference and leaves when it is gone reads as an error counter, and the only way
+  // to zero it is to declare unperformed work done.
   const divergence: Column<KosztorysV2RowT>[] =
-    divergenceEnabled && opts.hasDivergence
+    divergenceEnabled && opts.hasSheetMeasure
       ? [
           {
             ...divergenceColumn(title('divergence', opts), divergenceFor),
-            headerClassName: 'bg-destructive/15 text-destructive',
-            cellClassName: 'bg-destructive/10 border-r border-destructive/30',
+            cellClassName: 'border-border border-r',
           },
         ]
       : []

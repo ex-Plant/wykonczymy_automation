@@ -1,4 +1,3 @@
-import { columnLetter } from '@/lib/google/sheet-configs'
 import { SNAPSHOT_SCHEMA_VERSION, type SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type {
   KosztorysItemT,
@@ -6,29 +5,40 @@ import type {
   KosztorysStageT,
   StageProgressT,
 } from '@/lib/kosztorys/types'
-import { FIELD_LABELS, HEADER_BLOCK_ROWS, fold, type ColumnFieldT } from './columns'
+import { FIELD_LABELS, fold, type OptionalFieldT } from './columns'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
 import { parseRobocizna } from './parse-robocizna'
-import { ROBOCIZNA_TAB, type ImportGridsT } from './read-sheet'
-import { resolveRates, resolveRobocizna } from './resolve-columns'
+import { type ImportGridsT } from './read-sheet'
+import { resolveRobocizna, type UnresolvedReasonT } from './resolve-columns'
 import {
-  readRateRows,
+  isReported,
+  readRateTabs,
   resolveItemRates,
-  type RateResolutionT,
-  type RateTabT,
-  type ReportedRateKindT,
+  type ReportedRateResolutionT,
 } from './resolve-rates'
 
-export type ColumnReportT = { tab: string; field: string; column: string; header: string }
+export type MissingColumnT = { label: string; reason: UnresolvedReasonT; consequence: string }
+
+// What the kosztorys loses when an optional column can't be read. The report names the loss, not the
+// column: „nie znaleziono kolumny rabat" is a fact about the sheet, „każda praca wejdzie bez rabatu"
+// is what the owner is actually deciding whether to accept.
+const MISSING_COLUMN_CONSEQUENCES: Record<OptionalFieldT, string> = {
+  discount: 'prace wejdą bez rabatu',
+  measuredQty: 'nie będzie z czym porównać etapów przy „Porównaj z arkuszem"',
+  comment: 'komentarze z arkusza nie wejdą',
+}
 
 export type RetainedItemT = { section: string; description: string }
 
-export type ReportedRateResolutionT = RateResolutionT & { kind: ReportedRateKindT }
+export type { ReportedRateResolutionT }
 
 export type ImportReportT = {
-  columns: ColumnReportT[]
+  // Only the columns that did NOT come through. The recognised ones are the whole point of the
+  // resolver and say nothing worth reading — every required column is resolved or the import is
+  // refused, so a list of them was 14 lines nobody could act on.
+  missingColumns: MissingColumnT[]
   counts: { sections: number; items: number; stages: number }
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
   // overwhelming majority and say nothing — listing them would bury the handful that need an eye.
@@ -66,53 +76,15 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
   const resolvedRobocizna = resolveRobocizna(grids.robocizna)
   if (!resolvedRobocizna.ok) return { ok: false, problems: resolvedRobocizna.problems }
 
-  const columns: ColumnReportT[] = Object.entries(resolvedRobocizna.matchedLabels).map(
-    ([field, header]) => ({
-      tab: ROBOCIZNA_TAB,
-      field: FIELD_LABELS[field as ColumnFieldT],
-      column: columnLetter(resolvedRobocizna.columns[field as ColumnFieldT] ?? 0),
-      header,
+  const missingColumns: MissingColumnT[] = resolvedRobocizna.unresolvedOptional.map(
+    ({ field, reason }) => ({
+      label: FIELD_LABELS[field],
+      reason,
+      consequence: MISSING_COLUMN_CONSEQUENCES[field],
     }),
   )
-  // Neither carries a header of its own — they are located by offset from the first etap column, and
-  // that offset is the single most fragile guess in the whole resolver. Showing it lets the owner
-  // catch a misread before it becomes 400 mis-sectioned prace.
-  columns.push(
-    {
-      tab: ROBOCIZNA_TAB,
-      field: 'nazwa sekcji',
-      column: columnLetter(resolvedRobocizna.columns.section),
-      header: '(bez nagłówka)',
-    },
-    {
-      tab: ROBOCIZNA_TAB,
-      field: 'opis pracy',
-      column: columnLetter(resolvedRobocizna.columns.description),
-      header: '(bez nagłówka)',
-    },
-  )
 
-  const warnings: string[] = []
-  const rateTabs: RateTabT[] = []
-  for (const tab of grids.rateTabs) {
-    const resolved = resolveRates(tab.grid)
-    if (!resolved.ok) {
-      warnings.push(`Pominięto zakładkę „${tab.title}": ${resolved.problems.join(' ')}`)
-      continue
-    }
-    rateTabs.push({ title: tab.title, rows: readRateRows(tab.grid, tab.formulas, resolved) })
-    for (const [field, column] of [
-      ['cennik z narzędziami', resolved.columns.wToolsRate],
-      ['cennik bez narzędzi', resolved.columns.ownToolsRate],
-    ] as const) {
-      columns.push({
-        tab: tab.title,
-        field,
-        column: columnLetter(column),
-        header: String(tab.grid[HEADER_BLOCK_ROWS - 1]?.[column] ?? '').trim(),
-      })
-    }
-  }
+  const { tabs: rateTabs, warnings } = readRateTabs(grids.rateTabs)
 
   // Not a degraded import but a wrong one: with no cennik at all, `resolveItemRates` returns
   // `missing` for every praca and `deriveOverride` writes a flat 0 zł subcontractor cost onto each —
@@ -259,15 +231,13 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
       settings: currentTree.settings,
     },
     report: {
-      columns,
+      missingColumns,
       counts: {
         sections: parsed.sections.length,
         items: parsed.items.length,
         stages: stages.length,
       },
-      rateDecisions: rates.filter(
-        (rate): rate is ReportedRateResolutionT => rate.kind !== 'agree' && rate.kind !== 'missing',
-      ),
+      rateDecisions: rates.filter(isReported),
       retained,
       totals: compareFooterTotals(grids.robocizna, resolvedRobocizna, parsed),
       warnings,

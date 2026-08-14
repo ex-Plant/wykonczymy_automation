@@ -354,8 +354,8 @@ export function useKosztorysEditor({
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
-  // carries none of this. Read by the toolbar's counters AND by the „Rozjazd" column's existence
-  // gate, so a badge and the column can never disagree about whether there is anything to fix.
+  // carries none of this. Read by the toolbar's counters, which is why a diagnostic's button can
+  // vanish at zero while the column it points at stays (see `hasSheetMeasure` below).
   const conditionCounts = useMemo(() => {
     const ctx = { stages }
     return new Map(
@@ -365,6 +365,14 @@ export function useKosztorysEditor({
       ]),
     )
   }, [preview, rows, stages])
+
+  // Gates the „Pozostało do rozliczenia" column. Not the rozjazd count: the column has to survive
+  // its own zero, or it becomes a counter the owner clears by typing quantities into etapy — which
+  // is the app declaring work done that nobody did.
+  const hasSheetMeasure = useMemo(
+    () => !preview && rows.some((row) => row.sheetMeasuredQty != null),
+    [preview, rows],
+  )
 
   const columnOpts = {
     view,
@@ -395,7 +403,7 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    hasDivergence: (conditionCounts.get('measure-diverged') ?? 0) > 0,
+    hasSheetMeasure,
     readOnly: preview,
     previewVisible: preview,
   }

@@ -933,9 +933,9 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd", brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
 
-## sheet-live-compare — „Porównaj z arkuszem" + „Zaciągnij pomiary z arkusza" (EX-417)
+## sheet-live-compare — „Porównaj z arkuszem Google" (EX-417)
 
-**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2176, spec odświeżania zielony na 5435.
+**In review** — tsc czysty, eslint 0 błędów, spec odświeżania zielony na 5435.
 `pnpm build` **nie przeszedł w worktree**: turbopack odmawia na dowiązanym `node_modules`
 („Symlink node_modules is invalid") — to ograniczenie środowiska, nie kodu; potwierdzić po scaleniu.
 E2E odroczone do EX-687 (`e2e-backlog`).
@@ -943,17 +943,24 @@ E2E odroczone do EX-687 (`e2e-backlog`).
 Setup: dev DB (5433), zalogowany jako OWNER, inwestycja 31 (arkusz podpięty, 26 pozycji z Pomiarem
 jako formułą `=N`).
 
-- [ ] Opcje → „Porównaj z arkuszem…" otwiera okno, pokazuje „Czytam arkusz…", a potem rachunek obu stron
-- [ ] Różnica „Wartość netto przedmiar" zgadza się z tym, co pokazuje sam arkusz (508 196 zł vs 491 519,25 zł)
-- [ ] Blok „Pomiar z natury a „Rozjazd”" podaje 26 z ~435 pozycji z Pomiarem przepisanym z Przedmiaru
-- [ ] Pozycja przemianowana w arkuszu pojawia się na obu listach „tylko po jednej stronie" — i okno mówi wprost dlaczego
-- [ ] „Zaciągnij pomiary z arkusza" zgłasza niezerową liczbę i licznik „Rozjazdy" w pasku się zmienia
-- [ ] Zmiana jednego Pomiaru w arkuszu i ponowne zaciągnięcie rusza wyłącznie tę pozycję
-- [ ] Wyczyszczenie Pomiaru w arkuszu i ponowne zaciągnięcie zdejmuje odniesienie z tej pozycji (znika z „Rozjazdów")
+Osobnej akcji „Zaciągnij pomiary z arkusza" **już nie ma** — zaciągnięcie jedzie razem z odczytem,
+więc każdy punkt poniżej dotyczy jednego okna.
+
+- [ ] Opcje → „Porównaj z arkuszem Google…" otwiera okno, pokazuje „Czytam arkusz Google…", a potem cztery bloki: Kwoty, Prace, Stawki podwykonawców, Jak odczytaliśmy arkusz Google
+- [ ] Blok „Kwoty" zestawia wartość prac wykonanych obu stron, a „Pozostało do rozliczenia" pokazuje się tylko wtedy, gdy „wartość netto" w arkuszu naprawdę liczy się z Pomiaru
+- [ ] Blok „Jak odczytaliśmy arkusz Google" podaje 26 z ~435 prac z Pomiarem wskazującym na Przedmiar — **samą liczbą, bez listy wierszy do rozwinięcia**
+- [ ] Pozostałe klasy (Przedmiar z etapu, wartość błędu) mają listy do rozwinięcia, a link prowadzi do konkretnej komórki w arkuszu
+- [ ] Praca przemianowana w arkuszu pojawia się na obu listach „tylko po jednej stronie" — i okno mówi wprost dlaczego
+- [ ] Ostatnia linia okna raportuje zaciągnięcie: przy pierwszym otwarciu niezerowe liczby, przy drugim „był już zgodny z arkuszem Google"
+- [ ] Po pierwszym otwarciu kolumna „Pozostało do rozliczenia" w siatce przelicza się od razu, bez odświeżania strony
+- [ ] Drugie otwarcie **nie** przemontowuje siatki: wpisany filtr, sortowanie i zwinięte sekcje zostają na miejscu
+- [ ] Zmiana jednego Pomiaru w arkuszu i ponowne otwarcie rusza wyłącznie tę pracę
+- [ ] Wyczyszczenie Pomiaru w arkuszu i ponowne otwarcie zdejmuje odniesienie z tej pracy
 - [ ] Robocizna, marża i bilans nie drgnęły po zaciągnięciu — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Arkusz z przemianowanym nagłówkiem „Pomiar z natury": okno działa, mówi o nierozpoznanej kolumnie i **nie kasuje** zapisanych Pomiarów
 - [ ] Inwestycja bez podpiętego arkusza: jeden toast „Inwestycja nie ma kosztorysu.", nie puste okno
 - [ ] Odebranie kontu serwisowemu dostępu do arkusza daje jeden polski toast, nie surowy błąd Google
-- [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji, z rozjazdem czy bez
+- [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji
 
 ## kosztorys-filter-conditions — jeden rejestr warunków filtrowania (EX-665)
 
@@ -973,7 +980,7 @@ niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana
 - [ ] „Zresetuj filtry" na górze menu wraca do pełnej listy: zdejmuje i warunki, i zwinięcia; jest klikalny natychmiast po odptaszkowaniu sekcji (nie czeka pół sekundy)
 - [ ] Numery pozycji przeskakują przy filtrze zamiast przenumerowywać się od 1
 - [ ] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami
-- [ ] „Bez ceny j.m." stoi w pasku obok rozjazdów z licznikiem i znika, gdy wszystko jest wycenione
+- [ ] „Bez ceny j.m." stoi w pasku z licznikiem i znika, gdy wszystko jest wycenione
 - [ ] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony
 - [ ] Pusta siatka nazywa filtr, który ją opróżnił, a przycisk wraca do pełnej listy
 - [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję

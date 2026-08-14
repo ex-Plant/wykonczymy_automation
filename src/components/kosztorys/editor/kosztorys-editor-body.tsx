@@ -3,6 +3,7 @@
 import 'react-datasheet-grid/dist/style.css'
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { SheetIcon } from 'lucide-react'
 // `DynamicDataSheetGrid`, not `DataSheetGrid`: the library aliases the plain name to
 // StaticDataSheetGrid, which snapshots `columns` via useState at mount (EX-422).
 import { DynamicDataSheetGrid } from 'react-datasheet-grid'
@@ -14,6 +15,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
+import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
+import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
@@ -98,6 +101,8 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
+  const { openImport, importDialogProps } = useSheetImport({ investmentId, onTreeReplaced })
+
   // Both figures come off the full-dataset `subtotals`, so a search filter narrows the visible rows
   // without changing what the section says it holds or what it is worth.
   const sectionHeader = useMemo(
@@ -180,6 +185,7 @@ export function KosztorysEditorBody({
         tree,
         onOpenVersions,
         onTreeReplaced,
+        openImport: preview ? undefined : openImport,
       }}
     >
       <div
@@ -242,7 +248,21 @@ export function KosztorysEditorBody({
               title="Kosztorys jest pusty"
               // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
               description={preview ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
-            />
+            >
+              {/* Typing a rozpiska by hand is the rarer of the two starts — the sheet already holds
+                  it. Buried in „Opcje" it is the one moment nobody finds it. */}
+              {!preview && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pointer-events-auto"
+                  onClick={openImport}
+                >
+                  <SheetIcon />
+                  Pobierz z arkusza Google…
+                </Button>
+              )}
+            </EmptyState>
           )}
           {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
               rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
@@ -333,6 +353,8 @@ export function KosztorysEditorBody({
             />,
             document.body,
           )}
+        {/* One instance for both triggers — the „Opcje" menu and the empty-kosztorys screen. */}
+        {!preview && <SheetImportDialog {...importDialogProps} />}
       </div>
     </KosztorysEditorProvider>
   )

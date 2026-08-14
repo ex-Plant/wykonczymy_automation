@@ -64,12 +64,11 @@ export type BuildV2ColumnsOptsT = {
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
-  // Does ANY pozycja in the whole dataset diverge from its imported „Pomiar z natury"? Gates the
-  // „Rozjazd" column's existence — a column of dashes down every row would be permanent chrome for a
-  // condition that is normally absent, so it appears with the first rozjazd and leaves with the last.
-  // Dataset-wide on purpose (same figure the toolbar's counter shows): scoped to the visible rows it
-  // would vanish the moment the „Rozjazdy" filter narrowed the list to exactly the rows it explains.
-  hasDivergence?: boolean
+  // Does ANY pozycja in the whole dataset carry an imported „Pomiar z natury"? Gates the „Pozostało do
+  // rozliczenia" column's existence — a kosztorys that never came from a sheet has no pomiar to settle
+  // against, so the column would be permanent dead chrome. Deliberately NOT „does anything diverge":
+  // that made the column an error counter that could be cleared by declaring unperformed work done.
+  hasSheetMeasure?: boolean
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

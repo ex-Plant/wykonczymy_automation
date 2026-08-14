@@ -368,11 +368,12 @@
     0 1px var(--dsg-border-color);
 }
 
-/* The band only LOOKS merged — the label still lives in the „Sekcja" cell alone, so it clipped at that
-   column's width no matter how empty the rest of the row was. The cells beside it are blank, so the
-   label is let out over them: `overflow: visible` to stop the clip, `z-index` because dsg positions
-   cells absolutely and a later sibling's background would otherwise paint over the escaped text. */
-.kosztorys-grid .dsg-row.kosztorys-section-header .dsg-cell.kosztorys-section-name-cell {
+/* The band only LOOKS merged — the label still lives in the „Opis prac" cell alone (that's where
+   sectionHeaderSlot paints it), so it clipped at that column's width no matter how empty the rest of
+   the row was. The cells beside it are blank, so the label is let out over them: `overflow: visible`
+   to stop the clip, `z-index` because dsg positions cells absolutely and a later sibling's background
+   would otherwise paint over the escaped text. */
+.kosztorys-grid .dsg-row.kosztorys-section-header .dsg-cell.kosztorys-identity-cell {
   overflow: visible;
   z-index: 1;
 }

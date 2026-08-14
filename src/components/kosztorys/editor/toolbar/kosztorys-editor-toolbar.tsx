@@ -1,6 +1,6 @@
 'use client'
 
-import { TriangleAlert } from 'lucide-react'
+import { ListChecks, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CountBadge } from '@/components/ui/count-badge'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
@@ -55,24 +55,26 @@ export function KosztorysEditorToolbar() {
             />
           </div>
         </SimpleTooltip>
-        {/* A diagnostic is a defect, so its button is absent — not disabled — at zero: once nothing
-            is in that state there is nothing to look at, and a permanent dead control would suggest
-            otherwise. The working filters live in the „Filtry" menu instead; these sit in the
-            toolbar because they are meant to be noticed without opening anything. */}
+        {/* Absent, not disabled, at zero: once nothing is in that state there is nothing to look at,
+            and a permanent dead control would suggest otherwise. The working filters live in the
+            „Filtry" menu instead; these sit in the toolbar because they are meant to be noticed
+            without opening anything. The tone decides whether the button reads as an alarm — a
+            worklist count falls to zero by doing the job, not by fixing a fault. */}
         {diagnostics.map((condition) => {
           const count = conditionCounts.get(condition.id) ?? 0
           if (count === 0) return null
-          const active = engagedConditionIds.has(condition.id)
+          const engaged = engagedConditionIds.has(condition.id)
+          const Icon = condition.tone === 'defect' ? TriangleAlert : ListChecks
 
           return (
             <SimpleTooltip key={condition.id} content={`Pokaż tylko pozycje ${condition.label}`}>
               <Button
-                variant={active ? 'secondary' : 'outline'}
+                variant={engaged ? 'secondary' : 'outline'}
                 size="sm"
-                aria-pressed={active}
+                aria-pressed={engaged}
                 onClick={() => toggleCondition(condition.id)}
               >
-                <TriangleAlert className="text-destructive" />
+                <Icon className={condition.tone === 'defect' ? 'text-destructive' : undefined} />
                 {condition.label}
                 <CountBadge count={count} />
               </Button>

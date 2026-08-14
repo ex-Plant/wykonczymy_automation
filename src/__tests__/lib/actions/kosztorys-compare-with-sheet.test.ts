@@ -161,6 +161,34 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
     expect(result.success && result.data.comparison.counts.matched).toBe(3)
   })
 
+  // The editor reseeds its grid off the investment's revision token, so a write that moves rows
+  // without moving that token leaves the owner reading pre-write figures — and leaves the reseed
+  // armed to fire on whatever unrelated edit comes next, taking their search and sort with it.
+  async function revisionToken(): Promise<string> {
+    const res = await db.execute(sql`SELECT updated_at FROM investments WHERE id = ${investmentId}`)
+    return String(res.rows[0]?.updated_at)
+  }
+
+  it('leaves the revision token alone when the stored figures were already current', async () => {
+    const before = await revisionToken()
+    await compareWithSheet(investmentId)
+
+    expect(await revisionToken()).toBe(before)
+  })
+
+  it('moves the revision token when it actually writes', async () => {
+    await db.execute(sql`
+      UPDATE kosztorys_items SET sheet_measured_qty = 42
+      WHERE investment_id = ${investmentId} AND description = 'montaż jednostki wewnętrznej'
+    `)
+    const before = await revisionToken()
+
+    const result = await compareWithSheet(investmentId)
+
+    expect(result).toMatchObject({ success: true, data: { refresh: { updated: 1, cleared: 0 } } })
+    expect(await revisionToken()).not.toBe(before)
+  })
+
   it('reports a missing sheet link in Polish instead of clearing every measurement', async () => {
     sheetState.spreadsheetId = undefined
     try {

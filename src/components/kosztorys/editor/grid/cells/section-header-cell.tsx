@@ -72,7 +72,10 @@ export function SectionHeaderCell({
         // `w-max`, not `w-full`: the band hugs its own content and is let out of the cell by the
         // `overflow: visible` rule in globals.css, so the name stops being clipped at the „Sekcja"
         // column's width.
-        className="hover:bg-accent/50 flex h-full w-max cursor-pointer items-center gap-2 px-2 text-lg font-semibold"
+        // `normal-case` undoes the „Opis prac" column's `capitalize` (this band is painted in that
+        // cell): the band is chrome, not an item description, so „(17 poz.)" and „netto … zł" must
+        // read as written.
+        className="hover:bg-accent/50 flex h-full w-max cursor-pointer items-center gap-2 px-2 text-lg font-semibold normal-case"
       >
         <SectionDot />
         {onRename ? (
@@ -82,11 +85,14 @@ export function SectionHeaderCell({
             // `field-sizing-content` (not w-fit) is what makes the input hug its value — an input's
             // fit-content is its ~20-character default width, so w-fit clipped long names and left
             // the chevron floating mid-cell. w-auto is needed to beat the base cell's w-full.
-            className="field-sizing-content w-auto min-w-0 px-0 text-lg font-semibold"
+            // `shrink-0` like every other item on the band: a field-sizing input doesn't report its
+            // content width as a max-content contribution, so the band's `w-max` under-measures and
+            // the flex line shrank the name back down („Prace dodatko") instead of overflowing.
+            className="field-sizing-content w-auto shrink-0 px-0 text-lg font-semibold"
             onClick={(event) => event.stopPropagation()}
           />
         ) : (
-          <span className="whitespace-nowrap">{rowData.sectionName ?? ''}</span>
+          <span className="shrink-0 whitespace-nowrap">{rowData.sectionName ?? ''}</span>
         )}
         <span className="text-muted-foreground shrink-0 text-sm font-normal">
           ({itemCount} poz.)

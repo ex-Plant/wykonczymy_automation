@@ -20,6 +20,10 @@ export type RowConditionT = {
   // engaged keeps ONLY what it matches. It is not a picker row — it answers „pokaż mi wyłącznie to, co
   // jest zepsute" — so it stays off by default and out of the menu.
   kind: RowConditionKindT
+  // How a diagnostic reads, which is not the same question as what it matches. 'defect' = something is
+  // wrong and someone has to fix it. 'worklist' = nothing is broken; the count is work still to do and
+  // typing it away is the normal course of the job, not the clearing of a fault. Ignored by filters.
+  tone?: 'defect' | 'worklist'
   matches: (row: KosztorysV2RowT, ctx: RowConditionCtxT) => boolean
 }
 
@@ -69,14 +73,19 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     // away — that is the bug „Zwiń puste sekcje" had.
     sectionLabel: null,
     kind: 'diagnostic',
+    tone: 'defect',
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
     matches: (row) => !(row.clientPrice > 0),
   },
   {
     id: 'measure-diverged',
-    label: 'z rozjazdem pomiaru',
+    // „do rozpisania", not „z rozjazdem": the reference figure exists only where an old sheet was
+    // imported, and the gap it names is work not yet entered — not a fault. Same wording as the
+    // „Pozostało do rozliczenia" column it points at.
+    label: 'z pomiarem do rozpisania na etapy',
     sectionLabel: null,
     kind: 'diagnostic',
+    tone: 'worklist',
     matches: (row, ctx) => measureDiscrepancy(row, ctx.stages) != null,
   },
 ]

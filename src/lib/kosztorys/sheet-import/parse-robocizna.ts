@@ -33,6 +33,9 @@ export type ParsedRobociznaT = {
   // Rows carrying a description above the first section header. They belong to no section, so they
   // cannot be imported — the count exists so the preview says so instead of losing them in silence.
   skippedBeforeFirstSection: number
+  // 1-based sheet row per parsed praca, kept beside the items rather than on them: the items are
+  // spread straight into inserts, and a stray field would ride along into the database.
+  sheetRowByItemId: Map<number, number>
 }
 
 const text = (cell: unknown): string =>
@@ -87,6 +90,7 @@ export function parseRobocizna(
   const sections: KosztorysSectionT[] = []
   const items: ParsedItemT[] = []
   const progress: StageProgressT[] = []
+  const sheetRowByItemId = new Map<number, number>()
 
   const sectionIdByName = new Map<string, number>()
   let currentSectionId: number | undefined
@@ -136,6 +140,7 @@ export function parseRobocizna(
     // render differently in the editor.
     const discountPercent = rabat >= 1 ? round6(rabat) : round6(rabat * 100)
     const itemId = nextItemId++
+    sheetRowByItemId.set(itemId, rowIndex + 1)
     items.push({
       id: itemId,
       sectionId: currentSectionId,
@@ -169,5 +174,13 @@ export function parseRobocizna(
     workerId: null,
   }))
 
-  return { sections, items, stages, progress, footerStart, skippedBeforeFirstSection }
+  return {
+    sections,
+    items,
+    stages,
+    progress,
+    footerStart,
+    skippedBeforeFirstSection,
+    sheetRowByItemId,
+  }
 }

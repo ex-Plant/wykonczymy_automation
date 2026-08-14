@@ -21,15 +21,19 @@ export type FormulaHealthT = {
   // #REF! / #DIV/0! arriving as strings from UNFORMATTED_VALUE and silently coerced to 0. Counted
   // per row, like the two classes above, so the three numbers are read on one scale.
   errorValues: number
-  // Rows only for the classes fixed one cell at a time. `measuredCopiedFromPlanned` is collective —
-  // it closes by fixing the sheet or filling the etapy, never row by row — so it keeps its count and
-  // gets no list; a shared bucket used to let its 241 rows crowd out the 7 that were actionable.
-  samples: { plannedReadFromStage: FormulaSampleT[]; errorValue: FormulaSampleT[] }
+  // Per class, so the hundreds of rows one of them can carry never crowd out the handful in another.
+  // `measuredCopiedFromPlanned` keeps no samples on purpose (owner, 2026-08-14): on a blank offer
+  // sheet it is the NORMAL state of every row, so listing them invites a row-by-row hunt through
+  // hundreds of prace that are not wrong. Its count answers the question by itself.
+  samples: {
+    plannedReadFromStage: FormulaSampleT[]
+    errorValue: FormulaSampleT[]
+  }
   totalRows: number
 }
 
-// Enough to recognise the pattern and go fix it in the sheet; the count above carries the scale.
-const SAMPLE_CAP = 25
+// Enough rows to recognise the class, not enough to bury the dialog.
+const SAMPLE_CAP = 50
 
 const ERROR_VALUE = /^#(REF|DIV\/0|VALUE|NAME\?|N\/A|NUM|NULL)!?$/
 
@@ -96,11 +100,16 @@ export function scanFormulaHealth(
     health.totalRows++
 
     const rowNumber = rowIndex + 1
-    const sample = (klass: 'plannedReadFromStage' | 'errorValue', column: number) => {
-      const list = health.samples[klass]
-      if (list.length < SAMPLE_CAP) {
-        list.push({ row: rowNumber, description, cell: `${columnLetter(column)}${rowNumber}` })
-      }
+    // Capped: the count beside the fold carries the scale, so the rows are only there to show what
+    // the class looks like. Uncapped, a 1000-row sheet whose every Pomiar is a formula — precisely
+    // the shape this scanner exists to find — ships 1000 objects over the wire to render 1000 lines.
+    const sample = (klass: keyof FormulaHealthT['samples'], column: number) => {
+      if (health.samples[klass].length >= SAMPLE_CAP) return
+      health.samples[klass].push({
+        row: rowNumber,
+        description,
+        cell: `${columnLetter(column)}${rowNumber}`,
+      })
     }
 
     if (

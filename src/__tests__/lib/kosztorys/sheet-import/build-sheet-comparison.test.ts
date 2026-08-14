@@ -128,11 +128,58 @@ describe('buildSheetComparison', () => {
   })
 
   it('still compares a sheet whose cennik cannot be read — the import refuses, this does not', () => {
-    // Rates only ever feed the subcontractor overrides, and the comparison reads none. This is the
-    // sheet that most needs diagnosing, so a refusal here would blank the diagnosis.
-    expect(buildSheetComparison(source({ rateTabs: [] }), currentTree(), SPREADSHEET_ID).ok).toBe(
-      true,
-    )
+    // The sheet that most needs diagnosing is the one whose „zakres pracy" header is broken, so a
+    // refusal here would blank the diagnosis. Stawki then say nothing rather than reporting the
+    // 0 zł every praca would resolve to.
+    const built = buildSheetComparison(source({ rateTabs: [] }), currentTree(), SPREADSHEET_ID)
+
+    expect(built.ok).toBe(true)
+    expect(built.ok && built.comparison.rates).toEqual({
+      decisions: null,
+      stale: [],
+      warnings: [],
+    })
+  })
+
+  it('reports a stawka the cennik has moved past since the import', () => {
+    // No override on the app item, so its crew price is clientPrice × the investment coefficient:
+    // 1500 × 0,71 = 1065 with tools, 1500 × 0,42 = 630 without. The cennik now says 1200.
+    const rateTabs = [
+      ratesTab('zakres pracy z narzędziami', [
+        {
+          description: 'zakup, transport i wniesienie towaru budowlanego',
+          wTools: 1200,
+          ownTools: 630,
+          typed: true,
+        },
+      ]),
+    ]
+
+    expect(compare(source({ rateTabs })).rates.stale).toEqual([
+      {
+        section: 'Prace dodatkowe',
+        description: 'zakup, transport i wniesienie towaru budowlanego',
+        sheetWTools: 1200,
+        appWTools: 1065,
+        sheetOwnTools: 630,
+        appOwnTools: 630,
+      },
+    ])
+  })
+
+  it('stays quiet on a stawka the kosztorys still holds', () => {
+    const rateTabs = [
+      ratesTab('zakres pracy z narzędziami', [
+        {
+          description: 'zakup, transport i wniesienie towaru budowlanego',
+          wTools: 1065,
+          ownTools: 630,
+          typed: true,
+        },
+      ]),
+    ]
+
+    expect(compare(source({ rateTabs })).rates.stale).toEqual([])
   })
 
   it('refuses only when the robocizna columns themselves cannot be located', () => {
