@@ -251,7 +251,7 @@ describe('buildImportPlan', () => {
   it('reports the header columns no field claimed', () => {
     // Białostocka resolves cleanly, so the candidates are the per-etap wartość band — nothing the
     // resolver ever looks for, and the only place a missing field could still be hiding.
-    expect(plan().report.candidates.map((candidate) => candidate.letter)).toContain('U')
+    expect(plan().candidates.map((candidate) => candidate.letter)).toContain('U')
   })
 
   it('reports the footer comparison alongside the counts', () => {

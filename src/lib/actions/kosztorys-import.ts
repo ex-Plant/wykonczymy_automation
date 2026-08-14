@@ -11,12 +11,14 @@ import {
   buildImportPlan,
   type ImportPlanT,
   type ImportReportT,
+  type UnresolvedColumnsT,
 } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import { buildMeasuredQtyRefresh } from '@/lib/kosztorys/sheet-import/build-measured-qty-refresh'
 import {
   buildSheetComparison,
   type SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
+import { resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import {
   classifySheetFailure,
   readImportGrids,
@@ -41,6 +43,9 @@ export type SheetFailureT = {
 export type ImportPreviewT = {
   report: ImportReportT
   problems: string[]
+  // What the owner may point a field at. Filled on a refused read and on a resolved one alike: an
+  // optional column nobody recognised is the same pick, made with the import still available.
+  columns: UnresolvedColumnsT
   failure: SheetFailureT | null
 }
 
@@ -50,12 +55,16 @@ export type RefreshMeasuredQtyResultT = {
   unmatched: number
 }
 
-// Both halves are null exactly when `failure` is set: the comparison describes a read that did not
-// happen, and the refresh is deliberately skipped — writing a figure off an unreadable sheet would
-// be worse than leaving the stored one alone.
+// Both halves are null whenever `failure` is set or `problems` is non-empty: the comparison
+// describes a read that did not happen, and the refresh is deliberately skipped — writing a figure
+// off a sheet we could not read would be worse than leaving the stored one alone.
 export type SheetCompareResultT = {
   comparison: SheetComparisonT | null
   refresh: RefreshMeasuredQtyResultT | null
+  // An unreadable header travels as data here for the same reason a failed read does: this window is
+  // where the owner points at the column, and a red toast has nowhere to put the pick.
+  problems: string[]
+  columns: UnresolvedColumnsT
   failure: SheetFailureT | null
 }
 
@@ -106,26 +115,42 @@ export async function previewKosztorysImport(
 
     try {
       const plan = await derivePlan(investmentId, sheet)
+      const columns = {
+        missingFields: plan.missingFields,
+        candidates: plan.candidates,
+        pointedFields: plan.pointedFields,
+      }
       // The tree stays on the server: the browser has no use for it, and shipping it would invite a
       // round-trip that apply would have to distrust anyway.
       return plan.ok
-        ? { success: true, data: { report: plan.report, problems: [], failure: null } }
-        : { success: true, data: { report: emptyReport(), problems: plan.problems, failure: null } }
+        ? { success: true, data: { report: plan.report, problems: [], columns, failure: null } }
+        : {
+            success: true,
+            data: { report: emptyReport(), problems: plan.problems, columns, failure: null },
+          }
     } catch (error) {
       return {
         success: true,
-        data: { report: emptyReport(), problems: [], failure: toSheetFailure(error) },
+        data: {
+          report: emptyReport(),
+          problems: [],
+          columns: NO_COLUMNS,
+          failure: toSheetFailure(error),
+        },
       }
     }
   })
 }
+
+// A sheet that never arrived says nothing about its columns — no field is missing and no column is a
+// candidate, because there was no header to read.
+const NO_COLUMNS: UnresolvedColumnsT = { missingFields: [], candidates: [], pointedFields: [] }
 
 // A failed resolution still renders a dialog, so the preview needs a report shape to render nothing
 // with — the problems list is what the owner reads and the confirm button is what it disables.
 function emptyReport(): ImportReportT {
   return {
     missingColumns: [],
-    candidates: [],
     counts: { sections: 0, items: 0, stages: 0 },
     rateDecisions: [],
     retained: [],
@@ -166,7 +191,35 @@ export async function compareWithSheet(
       } catch (error) {
         return {
           success: true,
-          data: { comparison: null, refresh: null, failure: toSheetFailure(error) },
+          data: {
+            comparison: null,
+            refresh: null,
+            problems: [],
+            columns: NO_COLUMNS,
+            failure: toSheetFailure(error),
+          },
+        }
+      }
+
+      // Resolved here rather than left to the two builders below: an unreadable header has to reach
+      // the window as a pick, and the refresh must not run on it — writing a Pomiar off a header we
+      // could not read would be worse than leaving the stored figure alone.
+      const resolved = resolveRobocizna(grids.robocizna, sheet.columnMapping)
+      const columns = {
+        missingFields: resolved.missingFields,
+        candidates: resolved.candidates,
+        pointedFields: resolved.resolvedFromMapping,
+      }
+      if (!resolved.ok) {
+        return {
+          success: true,
+          data: {
+            comparison: null,
+            refresh: null,
+            problems: resolved.problems,
+            columns,
+            failure: null,
+          },
         }
       }
 
@@ -187,6 +240,8 @@ export async function compareWithSheet(
         success: true,
         data: {
           comparison: built.comparison,
+          problems: [],
+          columns,
           refresh: {
             updated: rows.filter((row) => row.qty !== null).length,
             cleared: rows.filter((row) => row.qty === null).length,

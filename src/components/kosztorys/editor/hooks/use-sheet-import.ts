@@ -19,8 +19,9 @@ export function useSheetImport({ investmentId, onTreeReplaced }: OptionsT) {
   const [preview, setPreview] = useState<ImportPreviewT | null>(null)
   const [loaded, setLoaded] = useState(false)
 
-  const openImport = useCallback(() => {
-    setOpen(true)
+  // Also the re-read after the owner points a column: the pointing is stored per kosztorys, so the
+  // same preview call answers with it in place and the window updates without being reopened.
+  const readPreview = useCallback(() => {
     setLoaded(false)
     setPreview(null)
     void previewKosztorysImport(investmentId)
@@ -35,6 +36,11 @@ export function useSheetImport({ investmentId, onTreeReplaced }: OptionsT) {
       .finally(() => setLoaded(true))
   }, [investmentId])
 
+  const openImport = useCallback(() => {
+    setOpen(true)
+    readPreview()
+  }, [readPreview])
+
   return {
     openImport,
     importDialogProps: {
@@ -43,6 +49,7 @@ export function useSheetImport({ investmentId, onTreeReplaced }: OptionsT) {
       onOpenChange: setOpen,
       preview,
       loaded,
+      onMappingSaved: readPreview,
       onImported: () => {
         setPreview(null)
         onTreeReplaced?.()

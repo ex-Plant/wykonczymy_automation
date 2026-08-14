@@ -56,8 +56,6 @@ export type ImportReportT = {
   // resolver and say nothing worth reading — every required column is resolved or the import is
   // refused, so a list of them was 14 lines nobody could act on.
   missingColumns: MissingColumnT[]
-  // Header columns no field claimed — what the owner can point a missing field at.
-  candidates: CandidateColumnT[]
   counts: { sections: number; items: number; stages: number }
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
   // overwhelming majority and say nothing — listing them would bury the handful that need an eye.
@@ -69,15 +67,22 @@ export type ImportReportT = {
   warnings: string[]
 }
 
-export type ImportFailureT = {
-  ok: false
-  problems: string[]
+// What the owner can point a field at, on a plan that resolved and on one that refused alike — the
+// window offers the same pick either way, so a shape that existed only on failure would have to be
+// rebuilt for the successful read.
+export type UnresolvedColumnsT = {
   missingFields: MissingFieldT[]
   candidates: CandidateColumnT[]
+  // Fields whose column came from the owner's stored pointing. Only these carry „wskazałeś tę
+  // kolumnę ręcznie" — a pointing the header text overruled, or one aimed at a column that no longer
+  // exists, is not something the owner is being shown a way to undo.
+  pointedFields: ColumnFieldT[]
 }
 
+export type ImportFailureT = { ok: false; problems: string[] } & UnresolvedColumnsT
+
 export type ImportPlanT =
-  | { ok: true; tree: SnapshotPayloadT; report: ImportReportT }
+  | ({ ok: true; tree: SnapshotPayloadT; report: ImportReportT } & UnresolvedColumnsT)
   | ImportFailureT
 
 function groupBy<ValueT, KeyT>(
@@ -104,9 +109,15 @@ export function buildImportPlan(
   mapping?: SheetColumnMappingT,
 ): ImportPlanT {
   const resolvedRobocizna = resolveRobocizna(grids.robocizna, mapping)
-  const { missingFields, candidates } = resolvedRobocizna
+  const { missingFields, candidates, resolvedFromMapping: pointedFields } = resolvedRobocizna
   if (!resolvedRobocizna.ok) {
-    return { ok: false, problems: resolvedRobocizna.problems, missingFields, candidates }
+    return {
+      ok: false,
+      problems: resolvedRobocizna.problems,
+      missingFields,
+      candidates,
+      pointedFields,
+    }
   }
 
   // A resolved header can only be missing optional fields — a required one refuses the import above.
@@ -136,6 +147,7 @@ export function buildImportPlan(
       ],
       missingFields,
       candidates,
+      pointedFields,
     }
   }
 
@@ -269,9 +281,11 @@ export function buildImportPlan(
       // `restoreKosztorys` rewrites whatever it is handed.
       settings: currentTree.settings,
     },
+    missingFields,
+    candidates,
+    pointedFields,
     report: {
       missingColumns,
-      candidates,
       counts: {
         sections: parsed.sections.length,
         items: parsed.items.length,

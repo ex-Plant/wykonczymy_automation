@@ -36,6 +36,7 @@ export type CandidateColumnT = { column: number; letter: string; labels: string[
 export type RobociznaFailureT = ResolveFailureT & {
   missingFields: MissingFieldT[]
   candidates: CandidateColumnT[]
+  resolvedFromMapping: ColumnFieldT[]
 }
 
 export type ResolvedRobociznaT = {
@@ -230,7 +231,7 @@ export function resolveRobocizna(
     clientPrice === undefined ||
     netValue === undefined
   ) {
-    return { ok: false, problems, missingFields, candidates }
+    return { ok: false, problems, missingFields, candidates, resolvedFromMapping }
   }
 
   return {

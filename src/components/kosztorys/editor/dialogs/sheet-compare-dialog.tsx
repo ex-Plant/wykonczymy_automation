@@ -1,6 +1,8 @@
 'use client'
 
 import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
+import { SheetColumnPicker } from '@/components/kosztorys/editor/dialogs/sheet-column-picker'
+import { requiredFields } from '@/components/kosztorys/editor/dialogs/sheet-column-picker-options'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
 import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
@@ -26,10 +28,13 @@ import { formatQty } from '@/lib/kosztorys/format'
 import { formatPLN } from '@/lib/utils/format-currency'
 
 type PropsT = {
+  investmentId: number
   open: boolean
   onOpenChange: (open: boolean) => void
   result: SheetCompareResultT | null
   loaded: boolean
+  // Re-runs the comparison with the new pointing in place — same window, no reopen.
+  onMappingSaved: () => void
 }
 
 const MATCHES = 0.005
@@ -45,7 +50,14 @@ const MATCHES = 0.005
  * the refresh wrote: this window is the only thing that touches the stored Pomiar, so a read-shaped
  * dialog that writes in silence would leave the owner no way to tell it apart from one that doesn't.
  */
-export function SheetCompareDialog({ open, onOpenChange, result, loaded }: PropsT) {
+export function SheetCompareDialog({
+  investmentId,
+  open,
+  onOpenChange,
+  result,
+  loaded,
+  onMappingSaved,
+}: PropsT) {
   return (
     <SheetReportDialog
       open={open}
@@ -55,9 +67,28 @@ export function SheetCompareDialog({ open, onOpenChange, result, loaded }: Props
       loaded={loaded}
       data={result}
     >
-      {({ comparison, refresh, failure }) =>
+      {({ comparison, refresh, problems, columns, failure }) =>
         failure ? (
           <SheetAccessBlock failure={failure} />
+        ) : problems.length > 0 ? (
+          <SheetReportBlock
+            title="Nie mogę odczytać arkusza Google"
+            status="warn"
+            verdict="Wskaż brakującą kolumnę poniżej albo popraw nagłówki w arkuszu — nic nie zostało zmienione."
+          >
+            {problems.map((problem) => (
+              <p key={problem} className="text-destructive">
+                {problem}
+              </p>
+            ))}
+            <SheetColumnPicker
+              investmentId={investmentId}
+              missing={requiredFields(columns)}
+              pointed={columns.pointedFields}
+              candidates={columns.candidates}
+              onSaved={onMappingSaved}
+            />
+          </SheetReportBlock>
         ) : !comparison || !refresh ? null : (
           <>
             <MoneyBlock comparison={comparison} />

@@ -515,12 +515,12 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 3.1 Spec awaryjności wskazania przechodzi (nazwa wygrywa, zajęta i spoza zakresu ignorowane)
-- [x] 3.2 Migracja stosuje się lokalnie, a `generate:types` daje `sheetColumnMapping`
+- [x] 3.1 Spec awaryjności wskazania przechodzi (nazwa wygrywa, zajęta i spoza zakresu ignorowane) — 76c9830d
+- [x] 3.2 Migracja stosuje się lokalnie, a `generate:types` daje `sheetColumnMapping` — 76c9830d
 
 ### Faza 4: Wskazywanie kolumn w obu oknach
 
 #### Automated
 
-- [ ] 4.1 Spec blokady pobrania przechodzi (wymagane blokuje, opcjonalne nie)
-- [ ] 4.2 Spec etykiet kandydatów przechodzi
+- [x] 4.1 Spec blokady pobrania przechodzi (wymagane blokuje, opcjonalne nie)
+- [x] 4.2 Spec etykiet kandydatów przechodzi

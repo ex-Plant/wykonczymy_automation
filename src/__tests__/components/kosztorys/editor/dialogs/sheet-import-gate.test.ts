@@ -16,6 +16,7 @@ const matchingTotal: FooterComparisonT = {
 function preview(overrides: Partial<ImportPreviewT> = {}): ImportPreviewT {
   return {
     problems: [],
+    columns: { missingFields: [], candidates: [], pointedFields: [] },
     failure: null,
     report: {
       missingColumns: [],
@@ -53,6 +54,24 @@ describe('evaluateImportGate', () => {
     )
 
     expect(gate.confirmDisabled).toBe(true)
+  })
+
+  it('lets the import through when only an optional column went unresolved', () => {
+    // An optional column nobody recognised is data quietly missing from the kosztorys, not a refusal
+    // to read the sheet — the pick offered beside it is an improvement, never a gate.
+    const gate = evaluateImportGate(
+      preview({
+        columns: {
+          missingFields: [{ field: 'comment', required: false, reason: 'absent' }],
+          candidates: [],
+          pointedFields: [],
+        },
+      }),
+      true,
+      false,
+    )
+
+    expect(gate.confirmDisabled).toBe(false)
   })
 
   it('blocks the import when the sheet itself could not be reached', () => {

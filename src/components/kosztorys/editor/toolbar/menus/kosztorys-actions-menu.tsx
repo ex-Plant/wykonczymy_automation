@@ -92,8 +92,8 @@ export function KosztorysActionsMenu() {
   // fetch MAY have written rows — only then does the grid need reseeding. Signalling on every open
   // would arm a remount that has nothing to remount for, and it would fire on the next unrelated
   // edit instead, taking the owner's search and sort with it.
-  function handleOpenCompare() {
-    setCompareOpen(true)
+  // Also the re-read after the owner points a column, which is why it does not touch `open`.
+  function readCompare() {
     setCompareLoaded(false)
     setCompareResult(null)
     void compareWithSheet(investmentId)
@@ -108,6 +108,11 @@ export function KosztorysActionsMenu() {
         toastMessage('Nie udało się odczytać arkusza', 'error')
       })
       .finally(() => setCompareLoaded(true))
+  }
+
+  function handleOpenCompare() {
+    setCompareOpen(true)
+    readCompare()
   }
 
   return (
@@ -209,10 +214,12 @@ export function KosztorysActionsMenu() {
         existingPresets={existingPresets}
       />
       <SheetCompareDialog
+        investmentId={investmentId}
         open={compareOpen}
         onOpenChange={setCompareOpen}
         result={compareResult}
         loaded={compareLoaded}
+        onMappingSaved={readCompare}
       />
       <ReloadFromPresetDialog
         investmentId={investmentId}

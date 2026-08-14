@@ -3,6 +3,8 @@
 import { useTransition } from 'react'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
+import { SheetColumnPicker } from '@/components/kosztorys/editor/dialogs/sheet-column-picker'
+import { requiredFields } from '@/components/kosztorys/editor/dialogs/sheet-column-picker-options'
 import { evaluateImportGate } from '@/components/kosztorys/editor/dialogs/sheet-import-gate'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
@@ -17,7 +19,10 @@ import {
 } from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
 import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
-import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
+import type {
+  ImportReportT,
+  UnresolvedColumnsT,
+} from '@/lib/kosztorys/sheet-import/build-import-plan'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
 import type { UnresolvedReasonT } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { formatPLN } from '@/lib/utils/format-currency'
@@ -30,6 +35,9 @@ type PropsT = {
   preview: ImportPreviewT | null
   loaded: boolean
   onImported: () => void
+  // Re-reads the sheet with the new pointing in place, so the window answers in place instead of
+  // asking the owner to close it and try again.
+  onMappingSaved: () => void
 }
 
 const MISSING_COLUMN_REASONS: Record<UnresolvedReasonT, string> = {
@@ -47,6 +55,7 @@ export function SheetImportDialog({
   preview,
   loaded,
   onImported,
+  onMappingSaved,
 }: PropsT) {
   const [pending, startTransition] = useTransition()
 
@@ -85,25 +94,37 @@ export function SheetImportDialog({
         />
       }
     >
-      {({ problems, report, failure }) =>
+      {({ problems, report, columns, failure }) =>
         failure ? (
           <SheetAccessBlock failure={failure} />
         ) : problems.length > 0 ? (
           <SheetReportBlock
             title="Nie mogę odczytać arkusza Google"
             status="warn"
-            verdict="Popraw nagłówki w arkuszu i spróbuj ponownie — nic nie zostanie nadpisane."
+            verdict="Wskaż brakującą kolumnę poniżej albo popraw nagłówki w arkuszu — nic nie zostanie nadpisane."
           >
             {problems.map((problem) => (
               <p key={problem} className="text-destructive">
                 {problem}
               </p>
             ))}
+            <SheetColumnPicker
+              investmentId={investmentId}
+              missing={requiredFields(columns)}
+              pointed={columns.pointedFields}
+              candidates={columns.candidates}
+              onSaved={onMappingSaved}
+            />
           </SheetReportBlock>
         ) : (
           <>
             <ScopeBlock report={report} />
-            <ColumnsBlock missing={report.missingColumns} />
+            <ColumnsBlock
+              investmentId={investmentId}
+              missing={report.missingColumns}
+              columns={columns}
+              onMappingSaved={onMappingSaved}
+            />
             <SheetRatesBlock decisions={report.rateDecisions} />
             <RetainedBlock retained={report.retained} />
             <TotalsBlock totals={report.totals} mismatched={mismatchedTotals} />
@@ -139,19 +160,29 @@ function ScopeBlock({ report }: { report: ImportReportT }) {
  * same on every successful import. An absent optional column is the opposite — it is data quietly
  * missing from the kosztorys, and the only place it is ever stated.
  */
-function ColumnsBlock({ missing }: { missing: ImportReportT['missingColumns'] }) {
-  const clean = missing.length === 0
+function ColumnsBlock({
+  investmentId,
+  missing,
+  columns,
+  onMappingSaved,
+}: {
+  investmentId: number
+  missing: ImportReportT['missingColumns']
+  columns: UnresolvedColumnsT
+  onMappingSaved: () => void
+}) {
+  const clean = missing.length === 0 && columns.pointedFields.length === 0
   return (
     <SheetReportBlock
       title="Czego nie odczytaliśmy z arkusza Google"
       status={clean ? 'ok' : 'warn'}
       verdict={
-        clean
+        missing.length === 0
           ? 'Wszystkie kolumny, których szukamy, są w arkuszu.'
           : `Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`
       }
     >
-      {!clean && (
+      {missing.length > 0 && (
         <ReportTable headers={['Kolumna', 'Dlaczego', 'Skutek']}>
           {missing.map((column) => (
             <ReportRow
@@ -165,6 +196,13 @@ function ColumnsBlock({ missing }: { missing: ImportReportT['missingColumns'] })
           ))}
         </ReportTable>
       )}
+      <SheetColumnPicker
+        investmentId={investmentId}
+        missing={missing.map((column) => column.field)}
+        pointed={columns.pointedFields}
+        candidates={columns.candidates}
+        onSaved={onMappingSaved}
+      />
     </SheetReportBlock>
   )
 }
