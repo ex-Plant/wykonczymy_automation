@@ -84,6 +84,10 @@ i nic się nie psuje, ale wpisanie rabatu w r372 po cichu zmieni dwie kolejne po
    ale nie po cichu — jest raportowane. Ta liczba nie jest pomiarem, tylko ofertą, więc pokazanie jej
    jako „Rozjazd" zamieniłoby tę kolumnę w listę pracy niezrobionej, co jest zadaniem kolumny
    „Pozostało"; raport mówi wprost, na ilu pozycjach „Rozjazd" z tego powodu milczy.
+   **Doprecyzowane (właściciel, 2026-08-14): sama liczba, bez listy wierszy do rozwinięcia.** Na
+   pustym arkuszu ofertowym to normalny stan każdego wiersza, więc lista zaprosiłaby do przeglądania
+   setek pozycji, z którymi nic nie jest nie tak. Pozostałe dwie klasy listy zachowują — tam wiersz
+   naprawdę jest do obejrzenia.
 3. **Wzorzec `S` i `AE` jest w tym arkuszu nienaruszony** — jeśli kiedyś przestanie być, ten skan to
    wychwyci; warto go powtórzyć na każdym nowym arkuszu klienta przed importem.
 

@@ -1,10 +1,10 @@
 ---
 change_id: sheet-live-compare
 title: Porównanie z arkuszem na żywo zamiast raportu z importu
-status: implemented
+status: archived
 created: 2026-08-13
 updated: 2026-08-14
-archived_at: null
+archived_at: 2026-08-14T15:24:52Z
 branch: pomiar-bez-etapu
 worktree: null
 ---
