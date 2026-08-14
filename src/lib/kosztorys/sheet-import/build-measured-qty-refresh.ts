@@ -43,6 +43,14 @@ export function buildMeasuredQtyRefresh(
   const resolved = resolveRobocizna(grids.robocizna)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
 
+  // „Pomiar z natury" is optional, so a sheet that titles it differently still resolves ok — with
+  // the column simply unset. The parser then reads `null` for every praca, which is „the sheet made
+  // no claim", not „the sheet claims zero". Without this guard those nulls flow into the diff below
+  // as a difference against every stored figure and the write clears the lot — silently, since the
+  // dialog reports the unresolved column but not the wipe.
+  if (resolved.columns.measuredQty === undefined)
+    return { ok: true, refresh: { rows: [], unmatched: 0 } }
+
   const parsed = parseRobocizna(grids.robocizna, resolved, grids.robociznaFormulas)
 
   const sheetSectionName = new Map(parsed.sections.map((section) => [section.id, section.name]))

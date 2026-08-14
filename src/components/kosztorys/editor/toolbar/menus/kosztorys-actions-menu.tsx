@@ -88,7 +88,9 @@ export function KosztorysActionsMenu() {
   }
 
   // Same Radix reason as handleOpenShare. The refresh rides along with the read, so a successful
-  // fetch means rows were just written — the grid has to recompute „Rozjazd" against them.
+  // fetch MAY have written rows — only then does the grid need reseeding. Signalling on every open
+  // would arm a remount that has nothing to remount for, and it would fire on the next unrelated
+  // edit instead, taking the owner's search and sort with it.
   function handleOpenCompare() {
     setCompareOpen(true)
     setCompareLoaded(false)
@@ -96,8 +98,8 @@ export function KosztorysActionsMenu() {
     void compareWithSheet(investmentId)
       .then((res) => {
         setCompareResult(res.success ? res.data : null)
-        if (res.success) onTreeReplaced?.()
-        else toastMessage(res.error, 'error', 6000)
+        if (!res.success) toastMessage(res.error, 'error', 6000)
+        else if (res.data.refresh.updated + res.data.refresh.cleared > 0) onTreeReplaced?.()
       })
       .catch(() => {
         setCompareResult(null)
