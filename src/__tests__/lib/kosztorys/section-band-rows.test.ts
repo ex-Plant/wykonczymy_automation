@@ -123,7 +123,7 @@ describe('buildSectionBandRows', () => {
     ])
   })
 
-  // Bands come from the section list now, so rows arriving out of order are regrouped rather than
+  // Bands come from the section list, so rows arriving out of order are regrouped rather than
   // emitting a second band pair (a duplicate key for dsg's virtualizer) or spilling outside a band.
   it('gathers a section arriving in two blocks under one band pair', () => {
     const rows = buildSectionBandRows([row(1, 10), row(4, 20), row(2, 10)], enabled())

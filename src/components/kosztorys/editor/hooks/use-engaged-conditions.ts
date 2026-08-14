@@ -3,8 +3,10 @@
 import { useMemo } from 'react'
 import { createJsonMapStore, useJsonMap, type JsonMapStoreT } from '@/hooks/create-json-map-store'
 
-// Which row conditions are filtering, persisted in localStorage. Sparse: a key is present only while
-// its condition is active, so an absent key is „off" and the unfiltered kosztorys is the default.
+// Which row conditions the user moved off their default, persisted in localStorage. Sparse: a key is
+// present only while its condition is engaged, so an absent key is the default and an untouched
+// kosztorys stores nothing. „Engaged", not „active": a filter's default is ON and engaging it means
+// unticking it, so „active" would name the opposite state for half the registry.
 //
 // Per investment, like usePriceView and unlike the globally-keyed column hooks: a filter describes
 // the state of one budowa, and carrying it to the next one would hide rows nobody chose to hide.
@@ -25,18 +27,21 @@ function storeFor(investmentId: number): JsonMapStoreT<boolean> {
   return store
 }
 
-export function useActiveConditions(investmentId: number): {
-  activeIds: Set<string>
+export function useEngagedConditions(investmentId: number): {
+  engagedIds: Set<string>
   toggle: (id: string) => void
   clear: () => void
 } {
   const store = storeFor(investmentId)
-  const active = useJsonMap<boolean>(store)
+  const engaged = useJsonMap<boolean>(store)
 
   // Ids nobody recognises are carried through untouched rather than pruned here: applyRowConditions
   // already ignores them, and deleting one would drop a filter the user set under a condition that is
   // only temporarily gone.
-  const activeIds = useMemo(() => new Set(Object.keys(active).filter((id) => active[id])), [active])
+  const engagedIds = useMemo(
+    () => new Set(Object.keys(engaged).filter((id) => engaged[id])),
+    [engaged],
+  )
 
   function toggle(id: string) {
     store.update((prev) => {
@@ -51,5 +56,5 @@ export function useActiveConditions(investmentId: number): {
     store.update((prev) => (Object.keys(prev).length === 0 ? prev : {}))
   }
 
-  return { activeIds, toggle, clear }
+  return { engagedIds, toggle, clear }
 }

@@ -247,7 +247,7 @@ export function KosztorysEditorBody({
           {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
               rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
               who never typed anything. Unreachable in the client view, which renders no search field. */}
-          {viewRows.length === 0 && search.trim() !== '' && (
+          {subtotals.length > 0 && viewRows.length === 0 && search.trim() !== '' && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
               title="Brak wyników"
@@ -267,28 +267,34 @@ export function KosztorysEditorBody({
           {/* A filter emptying itself is the goal state, not a dead end — nothing is left in the
               state it was looking for, so say that rather than leave a blank grid. Search takes
               precedence above: with both on, „nie pasuje do…" is the more specific explanation. */}
-          {viewRows.length === 0 && search.trim() === '' && engagedConditionIds.size > 0 && (
-            <EmptyState
-              className="pointer-events-none absolute inset-0"
-              title={
-                emptyByFilter
-                  ? 'Wszystkie pozycje schowane'
-                  : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
-              }
-              description={
-                emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
-              }
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="pointer-events-auto"
-                onClick={resetFilters}
+          {/* Gated on the RECOGNISED conditions, not on the raw persisted set: an id left over from a
+              condition a later release removed is a no-op for the grid, and counting it here would
+              title the overlay „Brak pozycji " with nothing after it. */}
+          {subtotals.length > 0 &&
+            viewRows.length === 0 &&
+            search.trim() === '' &&
+            (emptyByFilter || engagedDiagnostics.length > 0) && (
+              <EmptyState
+                className="pointer-events-none absolute inset-0"
+                title={
+                  emptyByFilter
+                    ? 'Wszystkie pozycje schowane'
+                    : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
+                }
+                description={
+                  emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
+                }
               >
-                Zresetuj filtry
-              </Button>
-            </EmptyState>
-          )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pointer-events-auto"
+                  onClick={resetFilters}
+                >
+                  Zresetuj filtry
+                </Button>
+              </EmptyState>
+            )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel

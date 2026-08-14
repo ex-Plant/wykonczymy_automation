@@ -957,18 +957,20 @@ jako formułą `=N`).
 
 ## kosztorys-filter-conditions — jeden rejestr warunków filtrowania (EX-665)
 
-**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2193. `pnpm build` **nie przeszedł
-w worktree**: turbopack odmawia na dowiązanym `node_modules` („Symlink node_modules is invalid") —
-ograniczenie środowiska, nie kodu; potwierdzić po scaleniu.
+**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2197, `pnpm build` przechodzi w głównym
+katalogu (wcześniejsza porażka dotyczyła worktree z dowiązanym `node_modules` i się nie powtarza).
+Lista poniżej opisuje stan po `c6c32570` — gramatyce „ptaszek znaczy widoczne".
 
 Setup: dev DB (5433), zalogowany jako OWNER, kosztorys z sekcją w całości wykonaną, ale
 niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana.
 
-- [ ] „Filtry" → „Tylko bez przedmiaru" / „Tylko bez pomiaru z natury" zawężają siatkę, a belki sekcji i ich sumy zostają na miejscu
-- [ ] Dwa warunki naraz zawężają do części wspólnej, nie sumy
-- [ ] Trigger „Filtry" pokazuje liczbę aktywnych warunków bez otwierania menu
-- [ ] „Zwiń sekcje bez wykonanych prac" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta
-- [ ] Sekcja, której filtr nie zostawił ani jednej pozycji, nadal pokazuje belkę i sumę
+- [ ] „Filtry" → w grupie „Prace" każdy warunek stoi zaptaszkowany; odptaszkowanie „Pozycje bez przedmiaru" zabiera te pozycje z siatki
+- [ ] Odptaszkowanie obu połówek pary („bez przedmiaru" i „z przedmiarem") opróżnia siatkę — ptaszek znaczy „widoczne", nie „pokaż tylko te"
+- [ ] Odptaszkowanie dwóch różnych warunków naraz zabiera sumę obu zbiorów, a licznik przy każdym z nich się nie rusza
+- [ ] Trigger „Filtry" pokazuje, ile rzeczy menu aktualnie zabiera (odptaszkowane warunki + zwinięte sekcje), i podświetla się razem z tą liczbą; diagnostyki z paska go nie ruszają
+- [ ] „Sekcje bez wykonanych prac (N)" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta; ręczne odptaszkowanie jednej z nich zdejmuje ptaszek z tego wiersza
+- [ ] Sekcja, której filtr nie zostawił ani jednej pozycji, znika w całości — bez pustej belki i sumy
+- [ ] „Zresetuj filtry" na górze menu wraca do pełnej listy: zdejmuje i warunki, i zwinięcia; jest klikalny natychmiast po odptaszkowaniu sekcji (nie czeka pół sekundy)
 - [ ] Numery pozycji przeskakują przy filtrze zamiast przenumerowywać się od 1
 - [ ] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami
 - [ ] „Bez ceny j.m." stoi w pasku obok rozjazdów z licznikiem i znika, gdy wszystko jest wycenione

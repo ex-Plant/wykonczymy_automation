@@ -29,8 +29,8 @@ function item(id: number, sectionId: number, overrides: Partial<KosztorysItemT> 
 
 const STAGES = [{ id: 100, ordinal: 1, label: null, plane: 'w_tools' as const, workerId: null }]
 
-// A: worked and priced. B: nothing executed. C: fully executed but never priced — the case that
-// motivated this change, because its subtotal is zero for a reason that is a defect, not a state.
+// A: worked and priced. B: nothing executed. C: fully executed but never priced — its subtotal is
+// zero for a reason that is a defect, not a state, which is what the cases below separate.
 const tree: KosztorysTreeT = makeTree({
   sections: [
     { id: 10, name: 'Sekcja A', displayOrder: 0, color: null, items: [item(1, 10)] },

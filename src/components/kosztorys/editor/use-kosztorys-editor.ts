@@ -56,7 +56,7 @@ import {
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
-import { useActiveConditions } from '@/components/kosztorys/editor/hooks/use-active-conditions'
+import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
 import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
@@ -181,10 +181,10 @@ export function useKosztorysEditor({
   // is still on today. Suppressed wholesale under the preview like `view` above: every condition here
   // is the company's own bookkeeping question and has no business in a client's document.
   const {
-    activeIds: persistedConditionIds,
+    engagedIds: persistedConditionIds,
     toggle: toggleCondition,
     clear: clearConditions,
-  } = useActiveConditions(investmentId)
+  } = useEngagedConditions(investmentId)
   const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
@@ -439,7 +439,7 @@ export function useKosztorysEditor({
     })
   }
 
-  // View = search + active conditions + sort. Sections are not filtered here: hiding one is a fold,
+  // View = search + engaged conditions + sort. Sections are not filtered here: hiding one is a fold,
   // applied further down by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
     const filtered = applyRowConditions(filterRows(rows, search), engagedConditionIds, {
@@ -448,17 +448,10 @@ export function useKosztorysEditor({
     if (!sort) return filtered
     return sortRows(filtered, (r) => columnSortValue(r, sort.field, view, stages), sort.dir)
   }, [rows, search, engagedConditionIds, sort, view, stages])
-  // Both read the FULL dataset in display order, which is what makes a filter visible: numbers skip
-  // over the rows it hid, and a section it emptied still gets its band.
+  // Both read the FULL dataset in display order, which is what makes a filter visible: the numbers
+  // skip over the rows it hid, and the sections keep their original order however it thinned them.
   const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
-  // How many pozycje the conditions took away — the number the toolbar shows next to „wyczyść".
-  // Against the search-narrowed set, not the whole dataset: with a search on, the rows the search
-  // hid were never candidates and counting them would overstate what the filter did.
-  const hiddenRowCount = useMemo(
-    () => filterRows(rows, search).length - viewRows.length,
-    [rows, search, viewRows],
-  )
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -492,9 +485,9 @@ export function useKosztorysEditor({
   const sectionColumnTotals = useMemo(
     () =>
       new Map(
-        [...groupBySection(rows)].map(([sectionId, sectionRows]) => [
+        [...groupBySection(rows)].map(([sectionId, rowsOfSection]) => [
           sectionId,
-          columnTotalsForRows(sectionRows, stages, view, tree.vatRate),
+          columnTotalsForRows(rowsOfSection, stages, view, tree.vatRate),
         ]),
       ),
     [rows, stages, view, tree.vatRate],
@@ -1388,7 +1381,6 @@ export function useKosztorysEditor({
     toggleCondition,
     resetFilters,
     conditionCounts,
-    hiddenRowCount,
     foldableSectionIds,
     ordinalByRowId,
     sectionRows,

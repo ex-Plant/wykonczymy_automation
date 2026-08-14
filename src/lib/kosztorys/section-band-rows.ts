@@ -1,3 +1,4 @@
+import { groupBySection } from '@/lib/kosztorys/row-ops'
 import { makeSectionFooterRow, makeSectionHeaderRow } from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -9,9 +10,10 @@ type OptsT = {
   // breaks. Bands are then dropped entirely AND the collapsed set ignored — a collapsed section with
   // no band left to re-expand it would be rows the user can't get back.
   enabled: boolean
-  // Any row filter narrows to the rows that matched, so a fold left over from before it would hide
-  // hits behind a band that gives no hint they exist — the grid would read as "no results". The fold
-  // is suppressed while a filter is on (search or a condition) and restored when it clears.
+  // True while a search is on: a fold left over from before it would hide hits behind a band that
+  // gives no hint they exist, and the search field is not where the user would look for the cause.
+  // The conditions do NOT suppress it — they and the folds are ticked in the same „Filtry" menu, so
+  // the fold is visible there and suppressing it would make those checkmarks describe nothing.
   foldSuppressed: boolean
   // Every section in the base dataset, in display order, each represented by one of its rows (the
   // band reads name and colour off it). Taken from the FULL dataset, not the filtered view, so the
@@ -19,7 +21,6 @@ type OptsT = {
   sections: readonly KosztorysV2RowT[]
 }
 
-/** One representative row per section, in the order the sections first appear. */
 export function sectionRepresentatives(rows: readonly KosztorysV2RowT[]): KosztorysV2RowT[] {
   const bySection = new Map<number, KosztorysV2RowT>()
   for (const row of rows) if (!bySection.has(row.sectionId)) bySection.set(row.sectionId, row)
@@ -51,12 +52,7 @@ export function buildSectionBandRows(
   if (!enabled) return viewRows
 
   const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
-  const bySection = new Map<number, KosztorysV2RowT[]>()
-  for (const row of viewRows) {
-    const group = bySection.get(row.sectionId)
-    if (group) group.push(row)
-    else bySection.set(row.sectionId, [row])
-  }
+  const bySection = groupBySection(viewRows)
 
   const rows: KosztorysV2RowT[] = []
   for (const section of sections) {

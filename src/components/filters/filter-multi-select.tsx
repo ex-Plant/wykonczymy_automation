@@ -13,7 +13,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { FilterTriggerButton } from '@/components/transfers/filter-trigger-button'
+import { FilterTriggerButton } from '@/components/filters/filter-trigger-button'
 import { cn } from '@/lib/utils/cn'
 
 type OptionT = { value: string; label: string }
@@ -30,14 +30,8 @@ type FilterMultiSelectPropsT = {
   // Render just the icon (no label / count) — for tight surfaces where a tooltip carries the meaning.
   iconOnly?: boolean
   title?: string
-  // Copy for the select-all row, which flips between the two. Overridable because a caller whose
-  // checkmarks mean "renders in the grid" wants the OUTCOME named („Pokaż/Ukryj wszystkie"), not the
-  // mechanism — the default suits a plain list filter.
-  selectAllLabel?: string
-  deselectAllLabel?: string
-  // Replaces that flipping pair with one fixed sentence that ticks when it has been carried out — the
-  // row stops being a label that rewrites itself under the cursor and becomes a state like every other
-  // row in the menu. Its ON state is "nothing selected", so it reads as the opposite of the list.
+  // Replaces the flipping „Zaznacz/Odznacz wszystkie" pair with one fixed sentence that ticks when it
+  // has been carried out. Its ON state is "nothing selected", so it reads as the opposite of the list.
   bulkToggleLabel?: string
   // Rows that tick a whole SUBSET of the options at once ("every section with no executed work").
   // They obey the same grammar as the options below them — a tick means "selected" — so both hooks
@@ -86,8 +80,6 @@ export function FilterMultiSelect({
   triggerClassName,
   iconOnly = false,
   title,
-  selectAllLabel = 'Zaznacz wszystkie',
-  deselectAllLabel = 'Odznacz wszystkie',
   bulkToggleLabel,
   optionToggles,
   toggles,
@@ -110,7 +102,6 @@ export function FilterMultiSelect({
     return hasNone ? [] : hasNoFilter ? allValues : vals
   }
 
-  // While open, use local state. While closed, use props.
   const selected = localSelected ?? deriveSelected(values)
   const allSelected = selected.length === options.length
 
@@ -137,7 +128,6 @@ export function FilterMultiSelect({
       return
     }
 
-    // If there's a pending debounce, flush immediately on close
     if (debounceRef.current && localSelected) {
       clearTimeout(debounceRef.current)
       debounceRef.current = null
@@ -194,7 +184,9 @@ export function FilterMultiSelect({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <FilterTriggerButton
-          active={!allSelected}
+          // Whatever the trigger counts is what it highlights, or the badge and the highlight would
+          // disagree for a caller whose menu hides more than the option list.
+          active={triggerCount == null ? !allSelected : triggerCount > 0}
           icon={Icon}
           iconPosition={iconPosition}
           className={triggerClassName}
@@ -221,7 +213,10 @@ export function FilterMultiSelect({
               variant="ghost"
               size="sm"
               className="w-full justify-start font-normal"
-              disabled={resetAction.disabled}
+              // `resetAction.disabled` speaks for what the caller owns outside this list; the list's
+              // own half is judged here, on the LOCAL selection. Reading it off the caller too would
+              // leave the button dead for the whole debounce after a click it is meant to undo.
+              disabled={(resetAction.disabled ?? false) && allSelected}
               onClick={handleReset}
             >
               <RotateCcw />
@@ -250,7 +245,7 @@ export function FilterMultiSelect({
                 <CheckIcon
                   className={cn(!(bulkToggleLabel ? bulkActive : allSelected) && 'opacity-0')}
                 />
-                {bulkToggleLabel ?? (allSelected ? deselectAllLabel : selectAllLabel)}
+                {bulkToggleLabel ?? (allSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie')}
               </CommandItem>
               {optionToggles?.map((group) => (
                 <CommandItem

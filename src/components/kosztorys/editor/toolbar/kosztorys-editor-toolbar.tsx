@@ -57,7 +57,7 @@ export function KosztorysEditorToolbar() {
         </SimpleTooltip>
         {/* A diagnostic is a defect, so its button is absent — not disabled — at zero: once nothing
             is in that state there is nothing to look at, and a permanent dead control would suggest
-            otherwise. The working filters live in the „Sekcje" menu instead; these sit in the
+            otherwise. The working filters live in the „Filtry" menu instead; these sit in the
             toolbar because they are meant to be noticed without opening anything. */}
         {diagnostics.map((condition) => {
           const count = conditionCounts.get(condition.id) ?? 0

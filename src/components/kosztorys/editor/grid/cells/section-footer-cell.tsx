@@ -9,7 +9,6 @@ import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 // blank, so covering one later is an entry, not a branch here.
 export type SectionFooterContextT = {
   figures: Map<number, Map<string, number>>
-  // Which column carries „Razem <sekcja>" — see sectionFooterLabelColumnId.
   labelColumnId: string | undefined
 }
 
@@ -34,11 +33,11 @@ export function SectionFooterCell({
   context: SectionFooterContextT
 }) {
   if (columnId != null && columnId === context.labelColumnId)
-    // `z-10` is what lets the overflow show: dsg cells are absolutely positioned siblings, so the
-    // ones to the right would otherwise paint their background over the spill. Stays under the
-    // sticky gutter (dsg gives it z-index 30), which must keep clipping the label on a scroll right.
+    // No spill out of the cell (unlike the opening band's label): „Opis prac" is wide enough to hold
+    // the name, and the footer's own vertical rules are what line its figures up with the columns
+    // above — letting the label cross one would break that alignment for a name it rarely needs.
     return (
-      <div className="text-foreground relative z-10 flex size-full items-center gap-1 px-2 text-sm font-bold whitespace-nowrap">
+      <div className="text-foreground flex size-full items-center gap-1 overflow-hidden px-2 text-sm font-bold whitespace-nowrap">
         <span>Razem</span>
         <span>{rowData.sectionName ?? ''}</span>
       </div>

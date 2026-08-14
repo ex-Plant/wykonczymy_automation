@@ -13,6 +13,29 @@ It also fixes the complaint that started this: „Zwiń puste sekcje" is one num
 (`roundToCents(section.net) === 0`) standing in for several unrelated situations, so nobody can say
 what „pusta" means.
 
+## Reversals after live testing (`c6c32570`) — read before trusting the contracts below
+
+The phases below are the plan as written. Six contracts were reversed at the keyboard with the owner
+and the code is the truth on each:
+
+- **The picker grammar flipped.** Four conditions became **six**, in complementary pairs („bez
+  przedmiaru" / „z przedmiarem"). A filter row is **ticked by default** and the tick means
+  „widoczne" — unticking hides its matches. So filters AND-remove, diagnostics OR-keep, and
+  `rowsMatchingConditions` became `applyRowConditions` with that kind split.
+- **`active*` → `engaged*`** throughout: with a filter's default being ON, „active" named the
+  opposite state for half the registry.
+- **`foldSuppressed` stayed search-only.** §Phase 3 asked conditions to suppress the fold; they don't.
+  Both now live in the same „Filtry" menu, so a suppressed fold would make its own checkmarks
+  describe nothing.
+- **A section the filter emptied disappears whole** — band, sum and all (Phase 3 §2 asked for the
+  opposite). A strict filter otherwise buries five hits under eleven empty frames.
+- **`extraActions` never shipped.** Superseded by `optionToggles` / `toggles` / `resetAction` /
+  `triggerCount` on `FilterMultiSelect`; the fold shortcuts became live ticks that read the current
+  selection instead of one-shot actions.
+- **`clearConditions` → `resetFilters`** — one reset undoes conditions _and_ folds, because the empty
+  state already offered „Zresetuj filtry" and two half-resets would leave the user still facing a
+  short grid.
+
 ## Current State Analysis
 
 **Three hiding mechanisms, three shapes.**

@@ -1,7 +1,7 @@
 'use client'
 
 import { ListFilter } from 'lucide-react'
-import { FilterMultiSelect, FILTER_NONE } from '@/components/transfers/filter-multi-select'
+import { FilterMultiSelect, FILTER_NONE } from '@/components/filters/filter-multi-select'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
