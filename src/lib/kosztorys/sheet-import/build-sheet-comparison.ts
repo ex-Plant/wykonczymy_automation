@@ -1,7 +1,18 @@
 import { columnLetter } from '@/lib/google/sheet-configs'
-import { netForQtyForView, rowPlannedNetForView, subcontractorPrice } from '@/lib/kosztorys/calc'
+import {
+  globalDiscountAmount,
+  isGlobalDiscountActive,
+  netForQtyForView,
+  rowPlannedNetForView,
+  subcontractorPrice,
+} from '@/lib/kosztorys/calc'
 import type { SnapshotPayloadT, SnapshotSettingsT } from '@/lib/kosztorys/snapshot-format'
-import type { KosztorysItemT, StageProgressT, ViewPricingT } from '@/lib/kosztorys/types'
+import type {
+  GlobalDiscountT,
+  KosztorysItemT,
+  StageProgressT,
+  ViewPricingT,
+} from '@/lib/kosztorys/types'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { scanFormulaHealth, type FormulaHealthT } from './formula-health'
 import { keyItems } from './item-key'
@@ -67,6 +78,10 @@ export type SheetComparisonT = {
   // How many matched pozycje would carry a reference quantity after a refresh — the denominator
   // behind „Rozjazd nic o nich nie powie".
   referenceQty: { matched: number; withValue: number }
+  // True when a live global discount makes our column here disagree with the number the editor shows
+  // for the same work — see `executedNetAsEditorShows`. The report does not change what it computes;
+  // it says out loud that these amounts are read row by row and the editor's are not.
+  globalDiscountMismatch: boolean
   health: FormulaHealthT
   // Everything a per-cell deep link needs, or null when the tab's gid didn't come back — the report
   // then prints the cell as text instead of a link that would open the wrong tab.
@@ -111,6 +126,26 @@ function sumQtyDone(progress: readonly StageProgressT[]): Map<number, number> {
   return byItem
 }
 
+/**
+ * The same executed work as the editor prices it: under a live global discount every row goes gross
+ * (its own rabat bypassed) and the discount comes off once at the total. This report cannot do that —
+ * it compares row against row, and a whole-kosztorys amount does not distribute onto rows honestly —
+ * so the two figures legitimately part ways. Computed here only to know WHETHER they do.
+ */
+function executedNetAsEditorShows(
+  items: readonly KosztorysItemT[],
+  progress: readonly StageProgressT[],
+  globalDiscount: GlobalDiscountT,
+): number {
+  const qtyDone = sumQtyDone(progress)
+  let gross = 0
+  for (const item of items) {
+    const pricing = { ...asClientPricing(item), globalDiscountActive: true }
+    gross += netForQtyForView(pricing, qtyDone.get(item.id) ?? 0, 'client')
+  }
+  return gross - globalDiscountAmount(gross, globalDiscount)
+}
+
 function planeTotals(
   items: readonly (ParsedItemT | KosztorysItemT)[],
   progress: readonly StageProgressT[],
@@ -139,6 +174,9 @@ export function buildSheetComparison(
   grids: ImportGridsT,
   currentTree: SnapshotPayloadT,
   spreadsheetId: string,
+  // Not on the tree: `SnapshotSettingsT` leaves the global discount out on purpose, so a restore
+  // cannot reset the live amount. It arrives from the action, which knows the investment anyway.
+  globalDiscount: GlobalDiscountT,
 ): SheetComparisonResultT {
   const resolved = resolveRobocizna(grids.robocizna)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
@@ -264,6 +302,12 @@ export function buildSheetComparison(
         warnings: rateWarnings,
       },
       referenceQty: { matched, withValue },
+      globalDiscountMismatch:
+        isGlobalDiscountActive(globalDiscount) &&
+        Math.abs(
+          executedNetAsEditorShows(currentTree.items, currentTree.progress, globalDiscount) -
+            appTotals.executedNet,
+        ) >= MATCHES,
       health: scanFormulaHealth(
         grids.robocizna,
         grids.robociznaFormulas,
