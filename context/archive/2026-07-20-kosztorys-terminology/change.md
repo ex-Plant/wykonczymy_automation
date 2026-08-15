@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-terminology
 title: Domain terminology cleanup — l5 „język" step; execute EX-548 Polish→English identifier rename
-status: implemented
+status: archived
 created: 2026-07-20
 updated: 2026-08-15
-archived_at: null
+archived_at: 2026-08-15T14:13:53Z
 branch: ex-548-kosztorys-terminology
 worktree: null
 ---

@@ -1089,4 +1089,3 @@ transferami LABOR_COST/RABAT (rekoncyliacja ma co porównywać).
 - [ ] Blok rekoncyliacji na stronie inwestycji pokazuje ten sam werdykt co przed zmianą, i przy zgodności, i przy rozjeździe
 - [ ] Wykres kołowy sekcji przełącza się między „Przedmiar" a „Wykonane" i rysuje te same udziały (unia stringowa zmieniła wartości, etykiety zostały)
 - [ ] Formularz wydatku i transferu wewnętrznego pokazuje saldo kasy źródłowej i przelicza „Saldo po transakcji"
-- [x] Wprowadzenie testowego `const rabatFoo = 1` w `src/` wywala `pnpm lint` — guard faktycznie łapie (2 błędy `local/no-domain-drift` na sondzie)
