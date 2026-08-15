@@ -1,7 +1,7 @@
 import { sectionColorFill } from '@/lib/kosztorys/section-colors'
 import { breakdownRowPair } from '@/lib/kosztorys/summary-economics'
 import type { SectionSubtotalClientT } from '@/lib/kosztorys/types'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 
 // `id` is a stable React key — section names / materiały labels are free-typed and can collide,
 // so keying a Cell/legend row on `name` risks duplicate keys (mis-reconcile on the base toggle).
@@ -71,10 +71,10 @@ export function sectionPieSlices(
 
 // Two-slice cost split — robocizna vs materiały as single totals, no per-category breakdown. Used by
 // the „Struktura kosztów" pie, which reasons in netto totals rather than the per-expense rozpiska.
-export function costTotalsPieSlices(robocizna: number, materialy: number): PieSliceT[] {
+export function costTotalsPieSlices(laborCostsNet: number, materialsBilled: number): PieSliceT[] {
   return paintSlices([
-    { id: 'robocizna', name: 'Robocizna', value: robocizna },
-    { id: 'materialy', name: 'Materiały', value: materialy },
+    { id: 'robocizna', name: 'Robocizna', value: laborCostsNet },
+    { id: 'materialy', name: 'Materiały', value: materialsBilled },
   ])
 }
 
@@ -83,7 +83,7 @@ export function costTotalsPieSlices(robocizna: number, materialy: number): PieSl
 // uses: the two sit side by side, and a `netBilled` row crosses the rate in the opposite direction to
 // a `gross` one, so reading `row.net` raw would draw shares that don't add up to the total beside them.
 export function expensePieSlices(
-  rows: readonly MaterialyBreakdownRowT[],
+  rows: readonly MaterialsBreakdownRowT[],
   netRate: number | null,
 ): PieSliceT[] {
   return paintSlices(

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
 import { breakdownRowPair } from '@/lib/kosztorys/summary-economics'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 
 // The pie sits immediately beside the „Wydatki inwestycyjne" table, so its slices must add up to the
 // „Razem" printed next to them. They fell apart once already: the table started crossing the rate per
 // row while the pie kept reading the raw recorded figure, which on a netto-billed row is a whole rate
 // short — two numbers for the same category, side by side.
 describe('expensePieSlices vs the table it is drawn beside', () => {
-  const rows: MaterialyBreakdownRowT[] = [
+  const rows: MaterialsBreakdownRowT[] = [
     { id: 1, label: 'Płytki', net: 12_300, origin: 'gross' },
     { id: 2, label: 'Farby', net: 1000, origin: 'netBilled' },
     { id: null, label: 'Korekta (bez kategorii)', net: -123, origin: 'gross' },

@@ -4,7 +4,7 @@ import {
   SETTLEMENT_MODES,
   settlementModeToGridAxis,
 } from '@/lib/kosztorys/settlement-mode'
-import { computeDoZaplatyRM } from '@/lib/kosztorys/summary-economics'
+import { computeAmountDue } from '@/lib/kosztorys/summary-economics'
 
 // The stored mode is the only source of the grid's money plane. The panel has no such projection —
 // both columns stand there in every tryb, so it only ever asks whether the mode is MIXED.
@@ -55,8 +55,8 @@ describe('the stored mode still changes the reading at VAT 0%', () => {
     // The panel nulls the materiały netto rate at rozliczenie brutto. That rate is a division on the
     // receipt, not a VAT strip, so switching mode moves „Do zapłaty" even with no VAT in play.
     const materials = { grossBase: 1230, netBilled: 0 }
-    const underNet = computeDoZaplatyRM(1000, 0, materials, VAT_ZERO, 0.23)
-    const underGross = computeDoZaplatyRM(1000, 0, materials, VAT_ZERO, null)
+    const underNet = computeAmountDue(1000, 0, materials, VAT_ZERO, 0.23)
+    const underGross = computeAmountDue(1000, 0, materials, VAT_ZERO, null)
 
     expect(underNet.net).not.toBe(underGross.net)
     // Both columns move: materiały are billed ONCE and enter both planes at that same figure, so the

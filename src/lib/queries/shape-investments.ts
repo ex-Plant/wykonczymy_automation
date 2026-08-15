@@ -59,7 +59,7 @@ export function shapeInvestments(
         balance,
         inv.vatRate,
         financials.totalLaborCosts,
-        financials.totalRabat,
+        financials.totalDiscount,
       ),
       margin: calculateMargin(financials),
       address: inv.address,

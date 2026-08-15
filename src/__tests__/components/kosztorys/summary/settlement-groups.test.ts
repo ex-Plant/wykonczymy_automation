@@ -9,7 +9,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
   it('one two-column table: wpłaty spanning both tracks, then „Pozostało do zapłaty"', () => {
     const groups = buildSettlementGroups({
       mixed: null,
-      doZaplaty: { net: 1000, gross: 1230 },
+      amountDue: { net: 1000, gross: 1230 },
       depositsTotal: 300,
       lossAmount: 0,
       vatRate: 0.23,
@@ -31,7 +31,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
   it('tones each column of „Do zapłaty" from its own figure when the axes differ in sign', () => {
     const groups = buildSettlementGroups({
       mixed: null,
-      doZaplaty: { net: -100, gross: 130 },
+      amountDue: { net: -100, gross: 130 },
       depositsTotal: 1100,
       lossAmount: 0,
       vatRate: 0.23,
@@ -44,7 +44,7 @@ describe('buildSettlementGroups — the non-mixed tryby', () => {
   it('carries no materiały step', () => {
     const groups = buildSettlementGroups({
       mixed: null,
-      doZaplaty: { net: 1000, gross: 1230 },
+      amountDue: { net: 1000, gross: 1230 },
       depositsTotal: 300,
       lossAmount: 0,
       vatRate: 0.23,
@@ -58,7 +58,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
     const mixed = computeMixedSettlement(1000, { grossBase: 0, netBilled: 0 }, 0.23, 400, 123, null)
     const groups = buildSettlementGroups({
       mixed,
-      doZaplaty: { net: 0, gross: 0 },
+      amountDue: { net: 0, gross: 0 },
       depositsTotal: 0,
       lossAmount: 0,
       vatRate: 0.23,
@@ -90,12 +90,12 @@ describe('buildSettlementGroups — tryb mieszany', () => {
     const mixed = computeMixedSettlement(1000, { grossBase: 0, netBilled: 0 }, 0.23, 0, 0, null)
     const groups = buildSettlementGroups({
       mixed,
-      doZaplaty: { net: 0, gross: 0 },
+      amountDue: { net: 0, gross: 0 },
       depositsTotal: 0,
       lossAmount: 0,
       vatRate: 0.23,
     })
-    expect(mixed.doZaplatyNet).toBeGreaterThan(0)
+    expect(mixed.amountDueNet).toBeGreaterThan(0)
     expect(rowNamed(groups, 'Do zapłaty netto')?.danger).toBeUndefined()
     expect(rowNamed(groups, 'Do zapłaty brutto')?.danger).toBe(true)
   })
@@ -113,7 +113,7 @@ describe('buildSettlementGroups — tryb mieszany', () => {
     )
     const groups = buildSettlementGroups({
       mixed,
-      doZaplaty: { net: 0, gross: 0 },
+      amountDue: { net: 0, gross: 0 },
       depositsTotal: 0,
       lossAmount: 0,
       vatRate: 0.23,
@@ -128,7 +128,7 @@ describe('buildSettlementGroups — the strata step', () => {
   it('renders no strata step when nothing was absorbed', () => {
     const groups = buildSettlementGroups({
       mixed: null,
-      doZaplaty: { net: 1000, gross: 1230 },
+      amountDue: { net: 1000, gross: 1230 },
       depositsTotal: 300,
       lossAmount: 0,
       vatRate: 0.23,
@@ -139,7 +139,7 @@ describe('buildSettlementGroups — the strata step', () => {
   it('spans both tracks below the wpłaty in the non-mixed tryby', () => {
     const groups = buildSettlementGroups({
       mixed: null,
-      doZaplaty: { net: 1000, gross: 1230 },
+      amountDue: { net: 1000, gross: 1230 },
       depositsTotal: 300,
       lossAmount: 250,
       vatRate: 0.23,
@@ -167,7 +167,7 @@ describe('buildSettlementGroups — the strata step', () => {
     )
     const groups = buildSettlementGroups({
       mixed,
-      doZaplaty: { net: 0, gross: 0 },
+      amountDue: { net: 0, gross: 0 },
       depositsTotal: 0,
       lossAmount: 250,
       vatRate: 0.23,

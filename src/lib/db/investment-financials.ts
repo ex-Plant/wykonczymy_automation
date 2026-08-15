@@ -79,9 +79,9 @@ export function deriveFinancials(
   settlementMode: SettlementModeT = SETTLEMENT_MODE_DEFAULT,
   netCategoryCosts: CategoryCostT[] = [],
 ): InvestmentFinancialsT {
-  const isBruttoMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materials'
+  const isGrossMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materials'
   const isNetMaterial = (r: TypeSettledTotalT) => financialBucketOf(r.type) === 'materialsNet'
-  const materialsGrossBase = sumRows(rows, (r) => isBruttoMaterial(r) && !r.settled)
+  const materialsGrossBase = sumRows(rows, (r) => isGrossMaterial(r) && !r.settled)
   // Not split on `settled`: the netto type is `settleable: false`, so a settled netto row
   // cannot exist — and if one ever did, dropping it here would hide it from every figure.
   const materialsNetBilled = sumRows(rows, isNetMaterial)
@@ -103,9 +103,9 @@ export function deriveFinancials(
     totalIncome: sumBucket(rows, 'income'),
     totalLaborCosts: sumBucket(rows, 'laborCosts'),
     totalPayouts: sumBucket(rows, 'payouts'),
-    totalRabat: sumBucket(rows, 'discount'),
+    totalDiscount: sumBucket(rows, 'discount'),
     totalLoss: sumBucket(rows, 'loss'),
-    totalSettled: sumRows(rows, (r) => isBruttoMaterial(r) && r.settled),
+    totalSettled: sumRows(rows, (r) => isGrossMaterial(r) && r.settled),
     materialsNetDiscount,
     settledCategoryCosts,
     netCategoryCosts,

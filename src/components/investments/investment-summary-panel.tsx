@@ -48,7 +48,7 @@ export async function InvestmentSummaryPanel({
   ])
   const fetchMs = elapsed()
 
-  const { financials, materialyBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
+  const { financials, materialsBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
     expenseCategories,
@@ -73,7 +73,7 @@ export async function InvestmentSummaryPanel({
       depositTransactions={depositTransactions}
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
-      materialyBreakdown={materialyBreakdown}
+      materialsBreakdown={materialsBreakdown}
       settledBreakdown={settledBreakdown}
       financials={canSeeMargin ? financials : undefined}
       // Its own prop, deliberately outside the `financials` gate above: a strata lowers what the
@@ -87,7 +87,7 @@ export async function InvestmentSummaryPanel({
         sumaPracNet: clientTotals.sumaPracNet,
         rabatClientNet: clientTotals.rabatClientNet,
         laborCostsNetFromTransactions: financials.totalLaborCosts,
-        investmentRabat: financials.totalRabat,
+        investmentRabat: financials.totalDiscount,
       })}
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}

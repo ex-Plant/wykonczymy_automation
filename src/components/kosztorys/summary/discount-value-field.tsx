@@ -34,7 +34,7 @@ type PropsT = {
 // Not DecimalField despite the matching look: the percent mode needs a confirm dialog over a write it
 // cannot undo, and an input that empties once the write lands. Neither belongs in the field every
 // plain number in the app uses.
-export function RabatValueField({
+export function DiscountValueField({
   label,
   suffix,
   value,

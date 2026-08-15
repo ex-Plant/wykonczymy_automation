@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils/cn'
 type PropsT = Omit<ComponentPropsWithoutRef<'input'>, 'type' | 'inputMode'>
 
 // Shared styled decimal text field — the visual primitive behind DecimalField (uncontrolled,
-// commit-on-blur) and controlled callers like the percent-rabat tool. `type=text` + inputMode=decimal
+// commit-on-blur) and controlled callers like the percent-discount tool. `type=text` + inputMode=decimal
 // so parseDecimalInput owns parsing (comma/dot, empty); h-6 lines up with the SimpleSelect family.
 export function DecimalInput({ className, ...props }: PropsT) {
   return (

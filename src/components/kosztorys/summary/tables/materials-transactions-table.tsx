@@ -13,11 +13,11 @@ import { buildInvoiceArchiveName } from '@/lib/invoices/invoice-zip'
 import { firstNoteLine } from '@/lib/utils/invoice-note'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
-  availableWydatkiDatasets,
-  partitionWydatkiRows,
+  availableExpenseDatasets,
+  partitionExpenseRows,
   sumBilled,
-  wydatkiRowHref,
-  type WydatkiDatasetT,
+  expenseRowHref,
+  type ExpenseDatasetT,
 } from '@/lib/kosztorys/wydatki-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { today } from '@/lib/utils/date'
@@ -33,7 +33,7 @@ type PropsT = {
   preview?: boolean
 }
 
-const DATASET_LABELS: Record<WydatkiDatasetT, string> = {
+const DATASET_LABELS: Record<ExpenseDatasetT, string> = {
   gross: 'Materiały brutto',
   net: 'Materiały rozliczane netto',
   settled: 'Materiały wliczone w robociznę',
@@ -151,9 +151,9 @@ export function MaterialsTransactionsTable({
   rows,
   preview = false,
 }: PropsT) {
-  const partition = partitionWydatkiRows(rows)
-  const available = availableWydatkiDatasets(partition)
-  const [dataset, setDataset] = useState<WydatkiDatasetT>('gross')
+  const partition = partitionExpenseRows(rows)
+  const available = availableExpenseDatasets(partition)
+  const [dataset, setDataset] = useState<ExpenseDatasetT>('gross')
   const { download, isPending } = useInvoiceZip()
   // A prop change can empty the picked set (an expense re-categorised away); fall back rather than
   // render a tab with nothing in it.
@@ -165,7 +165,7 @@ export function MaterialsTransactionsTable({
 
   // The count rides in the label because a tab is otherwise silent about its size — „Pobierz faktury"
   // packs the whole active set, so how many rows that is has to be visible before the click.
-  const options: OptionT<WydatkiDatasetT>[] = available.map((set) => ({
+  const options: OptionT<ExpenseDatasetT>[] = available.map((set) => ({
     value: set,
     label: `${DATASET_LABELS[set]} (${partition[set].length})`,
   }))
@@ -215,7 +215,7 @@ export function MaterialsTransactionsTable({
           TABLE_HEIGHT,
         )}
         initialSorting={[{ id: 'date', desc: true }]}
-        getRowHref={preview ? undefined : (row) => wydatkiRowHref(investmentId, row)}
+        getRowHref={preview ? undefined : (row) => expenseRowHref(investmentId, row)}
         footer={(colCount) => (
           <tr>
             {/* The total is of `billed`, which the netto set renders second-to-last — so the label

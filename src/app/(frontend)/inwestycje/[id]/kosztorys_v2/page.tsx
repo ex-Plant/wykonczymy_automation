@@ -67,7 +67,7 @@ export default async function InvestmentKosztorysV2Page({
     `[PERF] kosztorys_v2/${investmentId} 9-fetch fan-out ${elapsed()}ms ` +
       `(tree + financials source + referenceData + payouts + 3 transaction lists + investment)`,
   )
-  const { financials, materialyBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
+  const { financials, materialsBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
     refData.expenseCategories,
@@ -83,13 +83,13 @@ export default async function InvestmentKosztorysV2Page({
       investmentName={investment.name}
       materialsGrossBase={financials.materialsGrossBase}
       materialsNetBilled={financials.materialsNetBilled}
-      materialyBreakdown={materialyBreakdown}
+      materialsBreakdown={materialsBreakdown}
       settledBreakdown={settledBreakdown}
       financials={isAdminOrOwnerRole(user.role) ? financials : undefined}
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation
       // scream — compared against the kosztorys figures during the population/verification transition.
       laborCostsNetFromTransactions={financials.totalLaborCosts}
-      investmentRabat={financials.totalRabat}
+      investmentRabat={financials.totalDiscount}
       investmentLoss={financials.totalLoss}
       payoutsByWorker={payoutsByWorker}
       payoutTransactions={payoutTransactions}

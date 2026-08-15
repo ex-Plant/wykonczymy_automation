@@ -3,7 +3,7 @@ import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { sql } from '@payloadcms/db-vercel-postgres'
 
-// applyPercentRabatToAllItemsAction flattens EVERY item's per-item rabat to `percent X` in one
+// applyPercentDiscountToAllItemsAction flattens EVERY item's per-item rabat to `percent X` in one
 // irreversible UPDATE. Like removeSectionAction, it must capture a pre-overwrite auto snapshot first
 // so the hand-tuned rabaty it overwrites stay recoverable. We run the REAL action against the REAL DB
 // and assert PERSISTED STATE — the snapshot rose AND the rows were overwritten — not the return value.
@@ -17,7 +17,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
-const { applyPercentRabatToAllItemsAction } = await import('@/lib/actions/kosztorys')
+const { applyPercentDiscountToAllItemsAction } = await import('@/lib/actions/kosztorys')
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -112,7 +112,7 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
     const itemId = await createItemWithRabat()
     const before = await latestAutoSnapshotId()
 
-    const res = await applyPercentRabatToAllItemsAction(investmentId, 15)
+    const res = await applyPercentDiscountToAllItemsAction(investmentId, 15)
 
     expect(res.success).toBe(true)
     expect(await latestAutoSnapshotId()).toBeGreaterThan(before)

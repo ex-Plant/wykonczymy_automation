@@ -126,7 +126,7 @@ export function buildKosztorysReconciliation({
   // for the OLD investments, which do carry bookings.
   //
   // Silenced per INVESTMENT, never per figure: a per-figure rule would mute „robocizna zaksięgowana,
-  // rabat nie", which is precisely the gap `showRabat` (settlement-summary.tsx) forces onto the screen.
+  // rabat nie", which is precisely the gap `showDiscount` (settlement-summary.tsx) forces onto the screen.
   // Both verdicts go quiet together or neither does.
   const nothingBooked = laborCostsNetFromTransactions === 0 && investmentRabat === 0
   if (nothingBooked) {

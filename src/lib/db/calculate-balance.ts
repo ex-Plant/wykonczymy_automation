@@ -13,7 +13,7 @@ export function calculateBalance(financials: InvestmentFinancialsT) {
   return (
     financials.totalIncome -
     totalCosts +
-    financials.totalRabat +
+    financials.totalDiscount +
     financials.materialsNetDiscount +
     financials.totalLoss
   )

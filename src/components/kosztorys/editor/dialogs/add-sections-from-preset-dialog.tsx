@@ -15,7 +15,7 @@ import {
   groupPresetSections,
   isGroupFullySelected,
   metaKey,
-  sekcjeNoun,
+  sectionNoun,
 } from './preset-picker-groups'
 import { usePresetSections } from './use-preset-sections'
 
@@ -162,7 +162,7 @@ export function AddSectionsFromPresetDialog({
                         </span>
                       )}
                       <span className="text-muted-foreground text-xs">
-                        {group.metas.length} {sekcjeNoun(group.metas.length)}
+                        {group.metas.length} {sectionNoun(group.metas.length)}
                       </span>
                     </button>
                   ))

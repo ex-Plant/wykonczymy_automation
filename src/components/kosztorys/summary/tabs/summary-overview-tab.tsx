@@ -37,7 +37,7 @@ type PropsT = {
   onSettlementModeChange?: (mode: SettlementModeT) => void
   isSavingSettings?: boolean
   laborCostsNet: number
-  doZaplaty: MoneyPairT
+  amountDue: MoneyPairT
   materials: MaterialsT
   depositsTotal: number
   rabatAmount: number
@@ -69,7 +69,7 @@ export function SummaryOverviewTab({
   onSettlementModeChange,
   isSavingSettings = false,
   laborCostsNet,
-  doZaplaty,
+  amountDue,
   materials,
   depositsTotal,
   rabatAmount,
@@ -103,7 +103,7 @@ export function SummaryOverviewTab({
       : null
   const settlementGroups = buildSettlementGroups({
     mixed,
-    doZaplaty,
+    amountDue,
     depositsTotal,
     lossAmount,
     vatRate,

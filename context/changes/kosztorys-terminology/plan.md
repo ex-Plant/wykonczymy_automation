@@ -481,17 +481,17 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 2.1 `pnpm typecheck`
-- [x] 2.2 specki `sheet-import`
-- [x] 2.3 weryfikacja grepem: zero identyfikatorów `Robocizn`
+- [x] 2.1 `pnpm typecheck` — 45d78dcf
+- [x] 2.2 specki `sheet-import` — 45d78dcf
+- [x] 2.3 weryfikacja grepem: zero identyfikatorów `Robocizn` — 45d78dcf
 
 ### Phase 3: `summary-economics`, aliasy SQL, `wydatki`
 
 #### Automated
 
-- [ ] 3.1 `pnpm typecheck`
-- [ ] 3.2 `summary-economics.test.ts`
-- [ ] 3.3 `pnpm test:integration`
+- [x] 3.1 `pnpm typecheck`
+- [x] 3.2 `summary-economics.test.ts`
+- [x] 3.3 `pnpm test:integration`
 
 ### Phase 4: Szew B2 — rename płaszczyzn
 

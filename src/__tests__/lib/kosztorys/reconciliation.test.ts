@@ -82,7 +82,7 @@ function reconcile(tree: KosztorysTreeT, txns: TypeSettledTotalT[]) {
     sumaPracNet,
     rabatClientNet,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
-    investmentRabat: financials.totalRabat,
+    investmentRabat: financials.totalDiscount,
   })
 }
 
@@ -106,7 +106,7 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
     expect(verdict.rabat.mismatch).toBe(false)
   })
 
-  // The percent-rabat bulk-apply (Phase 1) stamps the same percent into every per-item rabat instead
+  // The percent-discount bulk-apply (Phase 1) stamps the same percent into every per-item rabat instead
   // of storing a global percent. This proves the reconciled RABAT figure is identical to what the old
   // stored global-percent produced: Σ per-item percent rabaty = the same rabatClientNet (14), so the
   // investment-page recon is unchanged by the migration away from a stored percent discount.

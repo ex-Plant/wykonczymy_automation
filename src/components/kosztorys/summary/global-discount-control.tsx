@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { Ban, Banknote, Percent } from 'lucide-react'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import { RabatValueField } from '@/components/kosztorys/summary/rabat-value-field'
+import { DiscountValueField } from '@/components/kosztorys/summary/discount-value-field'
 import { SettingsSection } from '@/components/kosztorys/summary/settings-section'
 import { globalDiscountForMode } from '@/lib/kosztorys/calc'
-import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
+import { applyPercentDiscountSchema } from '@/lib/kosztorys/percent-discount'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import { SimpleSelect, type SelectOptionT } from '@/components/ui/simple-select'
 
@@ -41,7 +41,7 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
     perItemDiscountTotal,
     itemsWithDiscountCount,
     handleGlobalDiscountChange,
-    handleApplyPercentRabat,
+    handleApplyPercentDiscount,
   } = useKosztorysEditorContext()
 
   // Percent is a one-shot bulk-write with no stored footprint, so „off vs percent" can't be told apart
@@ -85,7 +85,7 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
         variant="toolbarSm"
       />
       {mode === 'amount' && (
-        <RabatValueField
+        <DiscountValueField
           suffix="zł"
           // `String` is not a formatter — it prints all 17 digits of whatever is stored, which is
           // how a kwota persisted before the write-side rounding still reads „172024,28000000003".
@@ -97,13 +97,13 @@ export function GlobalDiscountControl({ disabled = false }: { disabled?: boolean
         />
       )}
       {mode === 'percent' && (
-        <RabatValueField
+        <DiscountValueField
           suffix="%"
           value=""
           placeholder="%"
           disabled={disabled}
-          isValid={(percent) => applyPercentRabatSchema.safeParse({ percent }).success}
-          onApply={handleApplyPercentRabat}
+          isValid={(percent) => applyPercentDiscountSchema.safeParse({ percent }).success}
+          onApply={handleApplyPercentDiscount}
           clearOnApply
           // Only asks when there is something to lose. With no rabat anywhere the write is not
           // destructive — it writes the same percent into rows that all read 0 — so a dialog there

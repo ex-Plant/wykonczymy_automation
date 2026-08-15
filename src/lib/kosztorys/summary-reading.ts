@@ -19,8 +19,8 @@ export type SummaryReadingT = {
 /** v1 — Σ LABOR_COST (pre-rabat, like `sumaPracNet`) less Σ RABAT. */
 export function readingFromTransactions(financials: InvestmentFinancialsT): SummaryReadingT {
   return {
-    laborCostsNet: financials.totalLaborCosts - financials.totalRabat,
-    rabatAmount: financials.totalRabat,
+    laborCostsNet: financials.totalLaborCosts - financials.totalDiscount,
+    rabatAmount: financials.totalDiscount,
   }
 }
 
@@ -55,6 +55,6 @@ export function financialsOnReading(
   return {
     ...financials,
     totalLaborCosts: reading.laborCostsNet + reading.rabatAmount,
-    totalRabat: reading.rabatAmount,
+    totalDiscount: reading.rabatAmount,
   }
 }

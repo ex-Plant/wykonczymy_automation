@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
 import { billedAmountFor, TRANSFER_TYPES, type TransferTypeT } from '@/lib/constants/transfers'
-import { partitionWydatkiRows, sumBilled } from '@/lib/kosztorys/wydatki-datasets'
+import { partitionExpenseRows, sumBilled } from '@/lib/kosztorys/wydatki-datasets'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { InvoiceFileT, MaterialTransactionRowT } from '@/types/transfers'
 
@@ -72,7 +72,7 @@ const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
     ['PAYOUT', true],
   ],
   // Fallback rule, same as totalLaborCosts above — the kosztorys branch supplies rabat itself.
-  totalRabat: [
+  totalDiscount: [
     ['RABAT', false],
     ['RABAT', true],
   ],
@@ -323,7 +323,7 @@ describe('the wydatki tabs partition the billed total', () => {
   ]
 
   it('Σ billed over the two expense tabs === totalMaterialCosts', () => {
-    const { gross, net, settled } = partitionWydatkiRows(rows)
+    const { gross, net, settled } = partitionExpenseRows(rows)
     const financials = deriveFinancials(
       rows.map((row) => ({
         type: row.type,

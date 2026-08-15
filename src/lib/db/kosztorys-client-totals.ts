@@ -83,9 +83,9 @@ export async function selectKosztorysClientTotals(
       -- sumaPracNet = doneNet + Σ per-item rabat, and per-item rabat is gross − net by construction,
       -- so the pre-rabat figure is Σ gross. Written as the sum it is, not as the identity it expands
       -- to, because the identity has to hold in both languages.
-      sum(gross) AS suma_prac_net,
-      sum(gross - net) + global_rabat AS rabat_client_net,
-      global_rabat AS global_rabat_net
+      sum(gross) AS labor_costs_net_from_kosztorys,
+      sum(gross - net) + global_rabat AS discount_net_from_kosztorys,
+      global_rabat AS global_discount_net
     FROM priced
     -- global_rabat is per investment, so grouping by it adds no groups — it just makes the column
     -- selectable without wrapping a constant in an aggregate.
@@ -95,8 +95,8 @@ export async function selectKosztorysClientTotals(
   return res.rows.map((row) => ({
     investmentId: Number(row.investment_id),
     doneNet: num(row.done_net),
-    sumaPracNet: num(row.suma_prac_net),
-    rabatClientNet: num(row.rabat_client_net),
-    globalRabatNet: num(row.global_rabat_net),
+    sumaPracNet: num(row.labor_costs_net_from_kosztorys),
+    rabatClientNet: num(row.discount_net_from_kosztorys),
+    globalRabatNet: num(row.global_discount_net),
   }))
 }

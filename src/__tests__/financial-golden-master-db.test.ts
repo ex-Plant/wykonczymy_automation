@@ -40,7 +40,7 @@ type InvestmentSnapshotT = {
   totalIncome: number
   totalLaborCosts: number
   totalPayouts: number
-  totalRabat: number
+  totalDiscount: number
   totalLoss: number
   totalSettled: number
   balance: number
@@ -70,7 +70,7 @@ const ZERO_FINANCIALS: InvestmentFinancialsT = {
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
-  totalRabat: 0,
+  totalDiscount: 0,
   totalLoss: 0,
   totalSettled: 0,
   materialsNetDiscount: 0,
@@ -199,7 +199,7 @@ async function buildSnapshot(payload: Payload): Promise<{
       totalIncome: round2(financials.totalIncome),
       totalLaborCosts: round2(financials.totalLaborCosts),
       totalPayouts: round2(financials.totalPayouts),
-      totalRabat: round2(financials.totalRabat),
+      totalDiscount: round2(financials.totalDiscount),
       totalLoss: round2(financials.totalLoss),
       totalSettled: round2(financials.totalSettled),
       balance: round2(calculateBalance(financials)),

@@ -39,7 +39,7 @@ export function SummaryMarginTab({ financials, laborCostsNet, rabatAmount }: Pro
   const {
     totalLaborCosts,
     totalPayouts,
-    totalRabat,
+    totalDiscount,
     totalLoss,
     totalSettled,
     materialsNetDiscount,
@@ -69,11 +69,11 @@ export function SummaryMarginTab({ financials, laborCostsNet, rabatAmount }: Pro
           discount
         />
       )}
-      {totalRabat !== 0 && (
+      {totalDiscount !== 0 && (
         <SummaryRow
           label="Rabat"
           hint={HINTS.discount}
-          line={faceValue(-totalRabat)}
+          line={faceValue(-totalDiscount)}
           axis="net"
           discount
         />

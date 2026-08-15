@@ -11,7 +11,7 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 // data both readings pass through untouched.
 const financials = {
   totalLaborCosts: 100_000,
-  totalRabat: 8_000,
+  totalDiscount: 8_000,
   materialsGrossBase: 40_000,
   materialsNetBilled: 32_520,
 } as InvestmentFinancialsT
@@ -71,17 +71,17 @@ describe('financialsOnReading', () => {
     const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
 
     expect(swapped.totalLaborCosts).toBe(90_000)
-    expect(swapped.totalRabat).toBe(5_000)
+    expect(swapped.totalDiscount).toBe(5_000)
   })
 
   it('leaves every cash-movement figure alone', () => {
     // The guard against a swap that quietly rebases materiały or wypłaty onto the kosztorys plane,
     // which the kosztorys has no figure for at all.
     const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
-    const { totalLaborCosts: _labor, totalRabat: _rabat, ...untouched } = swapped
+    const { totalLaborCosts: _labor, totalDiscount: _rabat, ...untouched } = swapped
     const {
       totalLaborCosts: _originalLabor,
-      totalRabat: _originalRabat,
+      totalDiscount: _originalRabat,
       ...originalUntouched
     } = financials
 

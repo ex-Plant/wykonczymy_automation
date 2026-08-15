@@ -16,7 +16,7 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 export const calculateMargin = (f: InvestmentFinancialsT) =>
   f.totalLaborCosts -
   f.totalPayouts -
-  f.totalRabat -
+  f.totalDiscount -
   f.totalLoss -
   f.totalSettled -
   f.materialsNetDiscount

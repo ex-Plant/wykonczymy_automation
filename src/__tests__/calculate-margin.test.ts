@@ -11,7 +11,7 @@ const fin = (p: Partial<InvestmentFinancialsT>): InvestmentFinancialsT => ({
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
-  totalRabat: 0,
+  totalDiscount: 0,
   totalLoss: 0,
   totalSettled: 0,
   materialsNetDiscount: 0,
@@ -27,7 +27,7 @@ describe('calculateMargin', () => {
 
   it('subtracts the rabat from the margin', () => {
     expect(
-      calculateMargin(fin({ totalLaborCosts: 5000, totalPayouts: 1000, totalRabat: 800 })),
+      calculateMargin(fin({ totalLaborCosts: 5000, totalPayouts: 1000, totalDiscount: 800 })),
     ).toBe(3200)
   })
 
@@ -40,7 +40,7 @@ describe('calculateMargin', () => {
   it('subtracts both rabat and loss', () => {
     expect(
       calculateMargin(
-        fin({ totalLaborCosts: 5000, totalPayouts: 1000, totalRabat: 800, totalLoss: 700 }),
+        fin({ totalLaborCosts: 5000, totalPayouts: 1000, totalDiscount: 800, totalLoss: 700 }),
       ),
     ).toBe(2500)
   })

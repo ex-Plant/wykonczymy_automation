@@ -5,7 +5,7 @@ import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import {
   bucketDepositsByPlane,
-  computeDoZaplatyRM,
+  computeAmountDue,
   type MaterialsT,
 } from '@/lib/kosztorys/summary-economics'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
@@ -21,7 +21,7 @@ import {
   useSummaryView,
   type SummaryViewT,
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
-import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { InvestmentFinancialsT, MaterialsBreakdownRowT } from '@/types/investment-financials'
 import {
   buildSettlementPlaneVerdict,
   type KosztorysReconciliationT,
@@ -60,10 +60,10 @@ type PropsT = {
   // Σ netAmount of the netto-billed wydatki — frozen: the netto pricing toggle must not touch it.
   materialsNetBilled: number
   // Per-expense-category split of both buckets (v1 parity); Σ === materiały billed total.
-  materialyBreakdown: MaterialyBreakdownRowT[]
+  materialsBreakdown: MaterialsBreakdownRowT[]
   // Company-plane material folded into robocizna, split per category — its own table in the wydatki
   // view. Omitted by the client share, which never builds it.
-  settledBreakdown?: MaterialyBreakdownRowT[]
+  settledBreakdown?: MaterialsBreakdownRowT[]
   rabatAmount: number
   // Σ LOSS — the cost the company absorbed, deducted from the settlement at face value. Its own prop
   // rather than a field of `financials`, which is the marża gate: the client must see their debt come
@@ -135,7 +135,7 @@ export function SummaryPanelContent({
   laborCostsNet,
   materialsGrossBase,
   materialsNetBilled,
-  materialyBreakdown,
+  materialsBreakdown,
   settledBreakdown,
   rabatAmount,
   lossAmount,
@@ -217,7 +217,7 @@ export function SummaryPanelContent({
   // this same lock, so they can never disagree about whether the choice is available.
   const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
-  const doZaplaty = computeDoZaplatyRM(
+  const amountDue = computeAmountDue(
     laborCostsNet,
     depositsTotal,
     materials,
@@ -285,7 +285,7 @@ export function SummaryPanelContent({
                 onSettlementModeChange={preview ? undefined : onSettlementModeChange}
                 isSavingSettings={isSavingSettings}
                 laborCostsNet={laborCostsNet}
-                doZaplaty={doZaplaty}
+                amountDue={amountDue}
                 materials={materials}
                 depositsTotal={depositsTotal}
                 rabatAmount={rabatAmount}
@@ -308,7 +308,7 @@ export function SummaryPanelContent({
                 investmentId={investmentId}
                 investmentName={investmentName}
                 materials={materials}
-                materialyBreakdown={materialyBreakdown}
+                materialsBreakdown={materialsBreakdown}
                 // Owner plane — dropped here too, not only by the client share omitting it upstream:
                 // marża-side spend must fail closed on every path into a client render.
                 settledBreakdown={preview ? undefined : settledBreakdown}
@@ -328,7 +328,7 @@ export function SummaryPanelContent({
               <SummaryStagesTab
                 stages={stages}
                 stageTotals={stageTotals}
-                wykonaneNet={totalNet ?? 0}
+                executedNet={totalNet ?? 0}
                 sectionSubtotals={sectionSubtotals ?? []}
                 vatRate={vatRate}
               />

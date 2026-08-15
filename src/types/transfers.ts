@@ -92,7 +92,7 @@ export type DepositTransactionRowT = {
 // INVESTMENT_EXPENSE / INVESTMENT_EXPENSE_NET / CORRECTION row. Sourced from the existing
 // `findTransfersRaw` fetch; the expense-category `label` is resolved in the shared fetcher, not at
 // either page, so the owner view and the client share view label a row identically. `settled` and
-// `type` together pick the row's tab — see `partitionWydatkiRows`; the list shows exactly one of the
+// `type` together pick the row's tab — see `partitionExpenseRows`; the list shows exactly one of the
 // three sets at a time. `invoices` feeds the list's bulk-ZIP download and its per-row
 // preview, and is empty when no invoice is attached. `invoiceNote` is the transfer's free-text note —
 // written by the AI scan in a known shape, but just as often typed by hand (see `lib/utils/invoice-note`).

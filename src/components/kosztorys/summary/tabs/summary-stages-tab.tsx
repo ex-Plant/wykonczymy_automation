@@ -14,10 +14,10 @@ import type { KosztorysStageT } from '@/lib/kosztorys/types'
 
 type PropsT = {
   stages: KosztorysStageT[]
-  // Per-etap „suma transzy" netto at the active view (stage id → net). Σ equals wykonaneNet.
+  // Per-etap „suma transzy" netto at the active view (stage id → net). Σ equals executedNet.
   stageTotals: Map<number, number>
   // R netto — suma prac wykonanych: the executed total at the active view (Σ of the etap totals).
-  wykonaneNet: number
+  executedNet: number
   // Client-priced, view-invariant per-section subtotals — the „Udział sekcji" pie's structure source.
   sectionSubtotals: SectionSliceInputT[]
   vatRate: number
@@ -33,7 +33,7 @@ const STAGES_AXIS: MoneyAxisT = 'both'
 export function SummaryStagesTab({
   stages,
   stageTotals,
-  wykonaneNet,
+  executedNet,
   sectionSubtotals,
   vatRate,
 }: PropsT) {
@@ -61,7 +61,7 @@ export function SummaryStagesTab({
             ))}
             <SummaryRow
               label="Razem"
-              line={moneyPair(wykonaneNet, vatRate)}
+              line={moneyPair(executedNet, vatRate)}
               axis={STAGES_AXIS}
               bold
             />

@@ -157,7 +157,12 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         [
           'bilans brutto',
           listingRow?.balanceGross ?? 0,
-          grossBalance(detailBilans, inv.vatRate, detailFin.totalLaborCosts, detailFin.totalRabat),
+          grossBalance(
+            detailBilans,
+            inv.vatRate,
+            detailFin.totalLaborCosts,
+            detailFin.totalDiscount,
+          ),
         ],
         ['wliczone w robociznę', listingRow?.totalSettled ?? 0, detailFin.totalSettled],
       ]

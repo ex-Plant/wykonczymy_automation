@@ -11,7 +11,7 @@ import {
   SummaryTable,
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 
 // The per-category „Wydatki inwestycyjne" split — each expense category's recorded brutto, plus a
 // separate frozen „… netto" row per category billed at netto. A non-null `netRate` adds the netto and
@@ -22,7 +22,7 @@ export function MaterialsBreakdownTable({
   netRate,
   caption = 'Wydatki inwestycyjne',
 }: {
-  rows: MaterialyBreakdownRowT[]
+  rows: MaterialsBreakdownRowT[]
   // The rate the Netto column strips, as a fraction — the saved materiały rate, and nothing else.
   // null means materiały settle brutto: the investor is billed the receipt, so a netto column would
   // print an amount nobody owes. That is also how the company-plane („Rozliczone R+M") split renders.
@@ -38,7 +38,7 @@ export function MaterialsBreakdownTable({
   const cols = showNet
     ? `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
     : `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
-  const pairOf = (row: MaterialyBreakdownRowT) => breakdownRowPair(row, netRate)
+  const pairOf = (row: MaterialsBreakdownRowT) => breakdownRowPair(row, netRate)
   const totalGross = shown.reduce((sum, row) => sum + pairOf(row).gross, 0)
   const totalNet = shown.reduce((sum, row) => sum + pairOf(row).net, 0)
 
