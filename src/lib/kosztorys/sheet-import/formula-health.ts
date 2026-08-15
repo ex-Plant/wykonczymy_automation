@@ -14,6 +14,8 @@ export type FormulaSampleT = {
 export type FormulaHealthT = {
   // Pomiar copied from Przedmiar (`=N<own row>`): not a measurement, so no reference quantity is
   // stored — these rows are why zero rozjazdów proves nothing.
+  // NOT a fault in the sheet (owner, 2026-08-15): older sheets were simply built this way, and on a
+  // real one it is the majority of rows (241 of 336). Nobody is being asked to fix these.
   measuredCopiedFromPlanned: number
   // Przedmiar read from an etap column (`=M<own row>`): the offer becomes a derivative of execution,
   // and an empty etap makes it a zero offer.

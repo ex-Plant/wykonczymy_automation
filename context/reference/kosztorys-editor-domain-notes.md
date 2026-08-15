@@ -65,6 +65,29 @@ AF    pozostało do rozliczenia / bilans
   inne ceny (cennik z narzędziami N, bez narzędzi P). Ceny podwykonawcy NIE są
   stałym % klienta (raz 65%, raz 58%) → niezależne.
 
+### Nagłówki się rozjeżdżają między arkuszami — rozpoznawanie po nazwie nie wystarcza (EX-690)
+
+Nie każdy klient nazywa kolumny tak samo. Żupnicza 18/73 (inwestycja 84) rozbija wartość netto na
+dwie kolumny — „Wartość netto przedmiar" (`S`) i „Wartość netto pomiar z natury" (`T`) — więc żadna
+nie trafia w dokładne dopasowanie. To dowód z natury dla całej awaryjnej ścieżki wskazywania kolumn;
+bez niego zmiana opierałaby się na wymyślonej próbce.
+
+**Dlaczego wybór `S` vs `T` jest niegroźny.** Kolumna wartości netto **nie wchodzi do żadnej pracy** —
+czytają ją tylko `footer-totals.ts` (współrzędna liczby w wierszu podsumowania) i skan błędów formuł.
+Wartość każdej pracy liczy `calc.ts` z ilości, ceny i rabatu. Porównanie sum dodatkowo zestawia
+odczytaną liczbę po kolei ze wszystkimi trzema sumami, które umiemy policzyć, i samo raportuje,
+z którą się zgadza. Import odmawiał więc przez kolumnę, która nie wnosi do kosztorysu ani złotówki.
+
+**Czego świadomie nie zrobiliśmy:**
+
+- **Nie poluzowaliśmy dopasowania po nazwie.** Dopasowanie po prefiksie złapałoby na Żupniczej `S`
+  i `T` naraz — odmowa „nie znaleziono kolumny" zamieniłaby się w odmowę „pasuje do 2 kolumn", czyli
+  ten sam ślepy zaułek pod inną nazwą.
+- **Żadnego globalnego słownika nagłówków.** Arkusze należą do klientów i żaden nie jest zbudowany
+  tak samo; słownik z definicji nadążałby za ostatnim arkuszem, który ktoś zgłosił.
+- **Kolumny opcjonalne nie blokują pobrania.** Arkusz bez rabatu ma się wczytywać jak dotąd — brak
+  takiej kolumny to informacja w raporcie, nie odmowa.
+
 ### Formuły (dosłownie z arkusza, wiersz 390)
 
 ```
@@ -82,6 +105,17 @@ Arkusz **nie sumuje osi etapów nigdzie**: 0 formuł `SUM` nad `V`–`AE` w cał
 Sumuje wyłącznie oś sekcji (`T4`) i sekcje w zakładce `Podsumowanie`. Czyli „podsumowanie etapu"
 (ile zapłacić za dany etap) to **nowa figura, nie parytet** — nie ma czego skopiować, wymaga
 decyzji właściciela (cena klienta = faktura vs cena podwykonawcy = wypłata). Roadmap: pytanie 12b.
+
+### `Pomiar z natury` przepisany z `Przedmiaru` — normalne w starych arkuszach (2026-08-15, potwierdzone z właścicielem)
+
+W starszych arkuszach `O` (pomiar) bywa zwykłym `=N<ten sam wiersz>` zamiast `=SUM(D:M)` — tak się je
+wtedy budowało. Na żywym arkuszu wychodzi 241 z 336 prac, więc to **stan normalny, nie awaria arkusza
+i nie błąd odczytu**. U nas pomiar jest zawsze sumą etapów, więc dla takiego wiersza nie ma czego
+zapisać jako pomiar z arkusza — i to jest powód, dla którego zero rozjazdów przy „Porównaj
+z arkuszem" niczego nie dowodzi.
+
+Konsekwencja dla raportu: ta klasa nie jest defektem do poprawienia i nie zasługuje na listę wiersz po
+wierszu (właściciel, 2026-08-14) — sam licznik odpowiada na pytanie.
 
 ## Zakładka `Podsumowanie` (2026-07-15 — wcześniej nieudokumentowana)
 
@@ -593,6 +627,45 @@ odniesienie tylko tam, gdzie liczba jest wpisana z ręki. Rozkład jest binarny,
 kanoniczny 435/435 formuł, inwestycja 31 — 0/245, arkusz testowy — 0/253. Odrzucenie `=N#` (Pomiar
 przepisany z Przedmiaru) idzie tą samą regułą, ale nie po cichu — patrz
 `context/reference/kosztorys-sheet/formula-anomalies.md`, wniosek 2.
+
+## Filtry edytora — gramatyka „ptaszek znaczy widoczne" (2026-08-14, EX-665)
+
+**Skąd to się wzięło:** „Zwiń puste sekcje" chowało sekcje po jednej liczbie —
+`roundToCents(section.net) === 0`. Ta liczba zeruje się z dwóch niezależnych powodów: nic nie
+wykonano **albo** nic nie wyceniono. Drugi przypadek jest szkodliwy — sekcja w całości wykonana, ale
+bez ceny j.m., sumuje się do zera, więc przycisk zwijał dokładnie tę sekcję, która wymagała uwagi.
+Stąd rozbicie jednej liczby na nazwane warunki i stąd zasada, że sekcja lifted się przez **∀** (każdy
+wiersz pasuje), a nie przez sumę: suma dochodzi do zera przypadkiem, „wszystkie" nie. Brak ceny j.m.
+został przy tym **diagnostyką, nie zwinięciem** — to defekt do znalezienia, nie stan do schowania.
+
+Reszta rozstrzygnięta przy kliencie, po przetestowaniu wersji przeciwnej. Warunki chowania pozycji siedzą
+w jednym rejestrze (`ROW_CONDITIONS`), a menu „Filtry" renderuje się z niego — ale kluczowa jest
+**gramatyka ptaszka**, nie rejestr.
+
+- **Ptaszek = widoczne.** Wiersz filtru jest domyślnie **zaznaczony**; odptaszkowanie chowa to, co
+  pasuje. Pierwsza wersja miała odwrotnie („zaznacz, żeby zawęzić") i owner czytał ją źle za każdym
+  razem — menu wyglądało wtedy na puste przy pełnej liście, a zaznaczenie jednej pozycji sprawiało
+  wrażenie, że reszta zniknęła przypadkiem.
+- **Filtry chodzą parami dopełniającymi** („bez przedmiaru" / „z przedmiarem"). Cztery warunki stały
+  się sześcioma. Bez pary odptaszkowanie jednej strony nie ma czym się odwrócić, a użytkownik nie ma
+  jak zapytać o dopełnienie.
+- **Filtry odejmują (AND), diagnostyki zostawiają (OR).** Diagnostyka to przycisk w pasku, domyślnie
+  wyłączony, po włączeniu zostawia **wyłącznie** swoje trafienia. Stąd rozdział `kind` w rejestrze i
+  słowo **„engaged", nie „active"** w kodzie: dla filtru stanem domyślnym jest włączony, więc
+  „aktywny" nazywałby połowie rejestru stan przeciwny.
+- **Liczniki liczą się po całym kosztorysie, nigdy po ocalałych** — licznik ocalałych byłby liczbą
+  samego siebie. To ta sama zasada, co przy sumach: `SUM` w arkuszu liczy ukryte wiersze.
+- **Zwinięcie sekcji tłumi tylko szukanie, nie warunki.** Oba mieszkają w tym samym menu „Filtry",
+  więc stłumione zwinięcie kazałoby własnym ptaszkom opisywać nic. Szukanie jest inne — pole szukania
+  to nie miejsce, w którym ktoś szuka przyczyny schowanego trafienia.
+- **Sekcja, którą filtr opróżnił, znika w całości** — z pasem i sumą. Ostry filtr inaczej zakopuje
+  pięć trafień pod jedenastoma pustymi ramkami.
+- **Jeden „Zresetuj filtry" cofa i warunki, i zwinięcia.** Dwa półresety zostawiają użytkownika
+  dalej przed krótką listą, nie wiedzącego, którego z nich brakuje.
+
+Numery pozycji liczą się po **pełnym, nieposortowanym** zbiorze — dziura w numeracji jest sygnałem,
+że coś jest schowane. Numeracja przeliczana per widok czyniłaby filtr niewidocznym (1…N tak czy
+inaczej).
 
 ## Otwarte / odłożone
 

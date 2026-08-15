@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { FILTER_NONE } from '@/components/transfers/filter-multi-select'
+import { FILTER_NONE } from '@/components/filters/filter-multi-select'
 
 export function useClientMultiFilter<TItem>(data: TItem[], accessor: (item: TItem) => string) {
   const [values, setValues] = useState<string[]>([])

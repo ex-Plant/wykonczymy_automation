@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { Calendar } from 'lucide-react'
 import { FilterGrid } from '@/components/ui/filter-grid'
-import { FilterSelect } from '@/components/transfers/filter-select'
+import { FilterSelect } from '@/components/filters/filter-select'
 import { DateFilterButton } from '@/components/transfers/date-filter-button'
 import { ClearButton } from '@/components/transfers/clear-button'
 import { MONTHS } from '@/lib/constants/months'

@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -55,6 +56,7 @@ export function KosztorysActionsMenu() {
   const [reloadOpen, setReloadOpen] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [compareResult, setCompareResult] = useState<SheetCompareResultT | null>(null)
+  const [compareError, setCompareError] = useState<string | null>(null)
   const [compareLoaded, setCompareLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -91,21 +93,28 @@ export function KosztorysActionsMenu() {
   // fetch MAY have written rows — only then does the grid need reseeding. Signalling on every open
   // would arm a remount that has nothing to remount for, and it would fire on the next unrelated
   // edit instead, taking the owner's search and sort with it.
-  function handleOpenCompare() {
-    setCompareOpen(true)
+  // Also the re-read after the owner points a column, which is why it does not touch `open`.
+  function readCompare() {
     setCompareLoaded(false)
     setCompareResult(null)
+    setCompareError(null)
     void compareWithSheet(investmentId)
       .then((res) => {
         setCompareResult(res.success ? res.data : null)
-        if (!res.success) toastMessage(res.error, 'error', 6000)
-        else if (res.data.refresh.updated + res.data.refresh.cleared > 0) onTreeReplaced?.()
+        setCompareError(res.success ? null : res.error)
+        if (res.success && (res.data.refresh?.updated ?? 0) + (res.data.refresh?.cleared ?? 0) > 0)
+          onTreeReplaced?.()
       })
       .catch(() => {
         setCompareResult(null)
-        toastMessage('Nie udało się odczytać arkusza', 'error')
+        setCompareError('Nie udało się odczytać arkusza Google.')
       })
       .finally(() => setCompareLoaded(true))
+  }
+
+  function handleOpenCompare() {
+    setCompareOpen(true)
+    readCompare()
   }
 
   return (
@@ -118,6 +127,7 @@ export function KosztorysActionsMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel>Edycja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
             <Undo2 />
             <MenuItemBody label="Cofnij" description="Cmd/Ctrl+Z" />
@@ -127,6 +137,7 @@ export function KosztorysActionsMenu() {
             <MenuItemBody label="Ponów" description="Cmd/Ctrl+Shift+Z" />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Wersje</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => setVersionOpen(true)}>
             <Save />
             <MenuItemBody
@@ -142,6 +153,7 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Szablony</DropdownMenuLabel>
           <DropdownMenuItem onSelect={handleOpenPreset}>
             <FileStack />
             <MenuItemBody
@@ -149,7 +161,6 @@ export function KosztorysActionsMenu() {
               description="Zapisz jako wzór do użycia na innych inwestycjach."
             />
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setReloadOpen(true)}>
             <FileDown />
             <MenuItemBody
@@ -157,6 +168,8 @@ export function KosztorysActionsMenu() {
               description="Zastąp całą rozpiskę zapisanym szablonem."
             />
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
           <DropdownMenuItem onSelect={openImport}>
             <SheetIcon />
             <MenuItemBody
@@ -172,6 +185,7 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Klient</DropdownMenuLabel>
           <DropdownMenuItem asChild>
             <Link href={`/podglad-klienta/${investmentId}`} target="_blank">
               <Eye />
@@ -202,10 +216,13 @@ export function KosztorysActionsMenu() {
         existingPresets={existingPresets}
       />
       <SheetCompareDialog
+        investmentId={investmentId}
         open={compareOpen}
         onOpenChange={setCompareOpen}
         result={compareResult}
+        error={compareError}
         loaded={compareLoaded}
+        onMappingSaved={readCompare}
       />
       <ReloadFromPresetDialog
         investmentId={investmentId}

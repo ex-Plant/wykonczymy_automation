@@ -21,6 +21,7 @@ import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/c
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
+import { engagedConditionsOfKind, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -87,8 +88,10 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
-    divergedOnly,
-    setDivergedOnly,
+    engagedConditionIds,
+    resetFilters,
+    ordinalByRowId,
+    sectionRows,
     setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
@@ -136,16 +139,22 @@ export function KosztorysEditorBody({
       ),
     [columns, columnTotals, sectionHeader, sectionFooter],
   )
-  const { rows: bodyRows, ordinalByRowId } = useMemo(
+  const bodyRows = useMemo(
     () =>
       buildSectionBandRows(viewRows, {
         collapsedSectionIds,
         enabled: sort == null,
-        foldSuppressed: search.trim() !== '' || divergedOnly,
+        foldSuppressed: search.trim() !== '',
+        sections: sectionRows,
       }),
-    [viewRows, collapsedSectionIds, sort, search, divergedOnly],
+    [viewRows, collapsedSectionIds, sort, search, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
+  // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
+  // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
+  const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
+  const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
@@ -258,7 +267,7 @@ export function KosztorysEditorBody({
           {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
               rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
               who never typed anything. Unreachable in the client view, which renders no search field. */}
-          {viewRows.length === 0 && search.trim() !== '' && (
+          {subtotals.length > 0 && viewRows.length === 0 && search.trim() !== '' && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
               title="Brak wyników"
@@ -275,25 +284,37 @@ export function KosztorysEditorBody({
               </Button>
             </EmptyState>
           )}
-          {/* The filter emptying itself is not a dead end — the whole pomiar is on the etapy, so say
-              that rather than leave a blank grid. Search takes precedence above: with both on,
-              „nie pasuje do…" is the more specific explanation. */}
-          {viewRows.length === 0 && search.trim() === '' && divergedOnly && (
-            <EmptyState
-              className="pointer-events-none absolute inset-0"
-              title="Nic nie zostało do rozliczenia"
-              description="Cały pomiar z arkusza Google jest rozpisany na etapy."
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="pointer-events-auto"
-                onClick={() => setDivergedOnly(false)}
+          {/* A filter emptying itself is the goal state, not a dead end — nothing is left in the
+              state it was looking for, so say that rather than leave a blank grid. Search takes
+              precedence above: with both on, „nie pasuje do…" is the more specific explanation. */}
+          {/* Gated on the RECOGNISED conditions, not on the raw persisted set: an id left over from a
+              condition a later release removed is a no-op for the grid, and counting it here would
+              title the overlay „Brak pozycji " with nothing after it. */}
+          {subtotals.length > 0 &&
+            viewRows.length === 0 &&
+            search.trim() === '' &&
+            (emptyByFilter || engagedDiagnostics.length > 0) && (
+              <EmptyState
+                className="pointer-events-none absolute inset-0"
+                title={
+                  emptyByFilter
+                    ? 'Wszystkie pozycje schowane'
+                    : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
+                }
+                description={
+                  emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
+                }
               >
-                Pokaż wszystkie pozycje
-              </Button>
-            </EmptyState>
-          )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pointer-events-auto"
+                  onClick={resetFilters}
+                >
+                  Zresetuj filtry
+                </Button>
+              </EmptyState>
+            )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel

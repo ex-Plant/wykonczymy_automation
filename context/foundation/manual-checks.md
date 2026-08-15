@@ -971,3 +971,47 @@ więc każdy punkt poniżej dotyczy jednego okna.
 - [ ] Inwestycja bez podpiętego arkusza: jeden toast „Inwestycja nie ma kosztorysu.", nie puste okno
 - [ ] Odebranie kontu serwisowemu dostępu do arkusza daje jeden polski toast, nie surowy błąd Google
 - [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji
+
+## kosztorys-filter-conditions — jeden rejestr warunków filtrowania (EX-665)
+
+**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2197, `pnpm build` przechodzi w głównym
+katalogu (wcześniejsza porażka dotyczyła worktree z dowiązanym `node_modules` i się nie powtarza).
+Lista poniżej opisuje stan po `c6c32570` — gramatyce „ptaszek znaczy widoczne".
+
+Setup: dev DB (5433), zalogowany jako OWNER, kosztorys z sekcją w całości wykonaną, ale
+niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana.
+
+- [ ] „Filtry" → w grupie „Prace" każdy warunek stoi zaptaszkowany; odptaszkowanie „Pozycje bez przedmiaru" zabiera te pozycje z siatki
+- [ ] Odptaszkowanie obu połówek pary („bez przedmiaru" i „z przedmiarem") opróżnia siatkę — ptaszek znaczy „widoczne", nie „pokaż tylko te"
+- [ ] Odptaszkowanie dwóch różnych warunków naraz zabiera sumę obu zbiorów, a licznik przy każdym z nich się nie rusza
+- [ ] Trigger „Filtry" pokazuje, ile rzeczy menu aktualnie zabiera (odptaszkowane warunki + zwinięte sekcje), i podświetla się razem z tą liczbą; diagnostyki z paska go nie ruszają
+- [ ] „Sekcje bez wykonanych prac (N)" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta; ręczne odptaszkowanie jednej z nich zdejmuje ptaszek z tego wiersza
+- [ ] Sekcja, której filtr nie zostawił ani jednej pozycji, znika w całości — bez pustej belki i sumy
+- [ ] „Zresetuj filtry" na górze menu wraca do pełnej listy: zdejmuje i warunki, i zwinięcia; jest klikalny natychmiast po odptaszkowaniu sekcji (nie czeka pół sekundy)
+- [ ] Numery pozycji przeskakują przy filtrze zamiast przenumerowywać się od 1
+- [ ] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami
+- [ ] „Bez ceny j.m." stoi w pasku z licznikiem i znika, gdy wszystko jest wycenione
+- [ ] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony
+- [ ] Pusta siatka nazywa filtr, który ją opróżnił, a przycisk wraca do pełnej listy
+- [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję
+- [ ] Podgląd dla klienta (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
+- [ ] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze
+
+## sheet-column-mapping — ręczne wskazanie kolumny arkusza (EX-690)
+
+**In review** — tsc czysty, eslint bez nowych błędów, `pnpm test` 2228, `pnpm build` przechodzi.
+Stan po `94ffefd0`.
+
+Setup: dev DB (5433), zalogowany jako OWNER. Inwestycja 84 (Żupnicza) jest dowodem z natury —
+jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po nazwie tam nie działa.
+
+- [ ] Inwestycja 84: „Pobierz z arkusza Google…" mówi wprost, której kolumny nie rozpoznał, i pokazuje listę kandydatów z literami kolumn i nagłówkami
+- [ ] Wskazanie kolumny `S` przelicza podgląd w tym samym oknie i odblokowuje „Pobierz i zastąp"
+- [ ] Po zamknięciu okna bez pobierania „Porównaj z arkuszem" na tej samej inwestycji działa bez ponownego wskazywania
+- [ ] Linijka „Kolumnę „…" wskazałeś ręcznie" jest widoczna, a „Usuń wskazanie" przywraca odmowę odczytu
+- [ ] Po poprawieniu nagłówka w arkuszu na „Wartość netto" odczyt idzie po nazwie, mimo zapisanego wskazania na inną kolumnę
+- [ ] Wskazanie zapisane na jednej inwestycji nie zmienia niczego na drugiej
+- [ ] Brakująca kolumna opcjonalna (np. „komentarz") NIE blokuje pobrania — pick stoi w bloku „Czego nie odczytaliśmy"
+- [ ] Arkusz nieudostępniony kontu serwisowemu: okno mówi, komu go udostępnić, a przycisk kopiuje adres
+- [ ] Śmieciowy identyfikator arkusza: komunikat o nieistniejącym arkuszu, bez rady „spróbuj później"
+- [ ] Arkusz bez zakładki `kosztorys_robocizny`: komunikat mówi o zakładce, nie o nagłówkach

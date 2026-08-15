@@ -5,13 +5,25 @@ import type {
   KosztorysStageT,
   StageProgressT,
 } from '@/lib/kosztorys/types'
-import { FIELD_LABELS, fold, type OptionalFieldT } from './columns'
+import {
+  FIELD_LABELS,
+  fold,
+  isOptionalField,
+  type ColumnFieldT,
+  type OptionalFieldT,
+} from './columns'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
 import { parseRobocizna } from './parse-robocizna'
 import { type ImportGridsT } from './read-sheet'
-import { resolveRobocizna, type UnresolvedReasonT } from './resolve-columns'
+import {
+  resolveRobocizna,
+  type MissingFieldT,
+  type UnresolvedColumnsT,
+  type UnresolvedReasonT,
+} from './resolve-columns'
 import {
   isReported,
   readRateTabs,
@@ -19,7 +31,12 @@ import {
   type ReportedRateResolutionT,
 } from './resolve-rates'
 
-export type MissingColumnT = { label: string; reason: UnresolvedReasonT; consequence: string }
+export type MissingColumnT = {
+  field: ColumnFieldT
+  label: string
+  reason: UnresolvedReasonT
+  consequence: string
+}
 
 // What the kosztorys loses when an optional column can't be read. The report names the loss, not the
 // column: „nie znaleziono kolumny rabat" is a fact about the sheet, „każda praca wejdzie bez rabatu"
@@ -35,9 +52,8 @@ export type RetainedItemT = { section: string; description: string }
 export type { ReportedRateResolutionT }
 
 export type ImportReportT = {
-  // Only the columns that did NOT come through. The recognised ones are the whole point of the
-  // resolver and say nothing worth reading — every required column is resolved or the import is
-  // refused, so a list of them was 14 lines nobody could act on.
+  // Only the columns that did NOT come through — every required column is resolved or the import is
+  // refused, so the recognised ones say nothing worth reading.
   missingColumns: MissingColumnT[]
   counts: { sections: number; items: number; stages: number }
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
@@ -50,9 +66,11 @@ export type ImportReportT = {
   warnings: string[]
 }
 
+export type ImportFailureT = { ok: false; problems: string[] } & UnresolvedColumnsT
+
 export type ImportPlanT =
-  | { ok: true; tree: SnapshotPayloadT; report: ImportReportT }
-  | { ok: false; problems: string[] }
+  | ({ ok: true; tree: SnapshotPayloadT; report: ImportReportT } & UnresolvedColumnsT)
+  | ImportFailureT
 
 function groupBy<ValueT, KeyT>(
   values: readonly ValueT[],
@@ -72,17 +90,34 @@ function groupBy<ValueT, KeyT>(
  * investment's current tree. Both actions call this so the two can never disagree about what an
  * import would do — the same reason `buildSyncPlan` exists on the materials side.
  */
-export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloadT): ImportPlanT {
-  const resolvedRobocizna = resolveRobocizna(grids.robocizna)
-  if (!resolvedRobocizna.ok) return { ok: false, problems: resolvedRobocizna.problems }
+export function buildImportPlan(
+  grids: ImportGridsT,
+  currentTree: SnapshotPayloadT,
+  mapping?: SheetColumnMappingT,
+): ImportPlanT {
+  const resolvedRobocizna = resolveRobocizna(grids.robocizna, mapping)
+  const { missingFields, candidates, pointedFields } = resolvedRobocizna
+  if (!resolvedRobocizna.ok) {
+    return {
+      ok: false,
+      problems: resolvedRobocizna.problems,
+      missingFields,
+      candidates,
+      pointedFields,
+    }
+  }
 
-  const missingColumns: MissingColumnT[] = resolvedRobocizna.unresolvedOptional.map(
-    ({ field, reason }) => ({
+  // A resolved header can only be missing optional fields — a required one refuses the import above.
+  const missingColumns: MissingColumnT[] = missingFields
+    .filter((missing): missing is MissingFieldT & { field: OptionalFieldT } =>
+      isOptionalField(missing.field),
+    )
+    .map(({ field, reason }) => ({
+      field,
       label: FIELD_LABELS[field],
       reason,
       consequence: MISSING_COLUMN_CONSEQUENCES[field],
-    }),
-  )
+    }))
 
   const { tabs: rateTabs, warnings } = readRateTabs(grids.rateTabs)
 
@@ -97,6 +132,9 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
         'Nie odczytałem żadnego cennika („zakres pracy") — wszystkie stawki podwykonawców trafiłyby do kosztorysu jako 0 zł.',
         ...warnings,
       ],
+      missingFields,
+      candidates,
+      pointedFields,
     }
   }
 
@@ -230,6 +268,9 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
       // `restoreKosztorys` rewrites whatever it is handed.
       settings: currentTree.settings,
     },
+    missingFields,
+    candidates,
+    pointedFields,
     report: {
       missingColumns,
       counts: {

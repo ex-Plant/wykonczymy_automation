@@ -8,6 +8,10 @@ const RATE_TAB_PREFIX = 'zakres pracy'
 // bounded so a sheet with junk far to the right doesn't inflate every response.
 const LAST_COLUMN = 'BZ'
 
+// The same bound as a 0-based index, for anything that has to reject a column we would never fetch.
+export const LAST_COLUMN_INDEX =
+  [...LAST_COLUMN].reduce((index, letter) => index * 26 + (letter.charCodeAt(0) - 64), 0) - 1
+
 // Without this a hung Google request holds the server action open for the platform's whole function
 // timeout, with both sheet dialogs stuck on „Czytam arkusz Google…" and no way to tell the owner
 // anything. Failing at 15s at least reaches `sheetFailureMessage`, which says to retry.
