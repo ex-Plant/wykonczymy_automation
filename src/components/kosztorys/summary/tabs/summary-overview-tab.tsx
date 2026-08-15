@@ -5,7 +5,7 @@ import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
   billedMaterials,
   computeMixedSettlement,
-  sumaPracPreRabat,
+  laborCostsNetPreDiscount,
   type MaterialsT,
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
@@ -150,7 +150,7 @@ export function SummaryOverviewTab({
         {showPie && (
           <SlicePie
             slices={costTotalsPieSlices(
-              sumaPracPreRabat(laborCostsNet, discountAmount),
+              laborCostsNetPreDiscount(laborCostsNet, discountAmount),
               materialsBilled,
             )}
             formatValue={formatNet}

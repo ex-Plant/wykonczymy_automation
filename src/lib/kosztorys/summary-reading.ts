@@ -8,7 +8,7 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
  * never enter here.
  *
  * `laborCostsNet` is POST-rabat and `discountAmount` rides alongside it — the panel adds them back
- * where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that same
+ * where it needs the pre-rabat figure (`laborCostsNetPreDiscount`). Both readings must land on that same
  * axis or the „Struktura kosztów" pie and the waterfall disagree between them.
  */
 export type SummaryReadingT = {

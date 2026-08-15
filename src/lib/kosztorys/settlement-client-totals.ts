@@ -76,9 +76,13 @@ export function clientTotalsFromSubtotals(
  * client concession (rabat is absorbed by the company margin, not passed to the subcontractor). Under
  * a global discount `net` is already gross and `discount` is 0, so the identity still holds.
  *
+ * What it deliberately does NOT do: add the global discount back. So it equals
+ * `laborCostsNetPreDiscount` only on the client view — feed it `w_tools`/`no_tools` subtotals and the
+ * two figures legitimately differ.
+ *
  * The subcontractor summary now uses `subcontractorDueByPlane` (per-etap, plane-aware); this remains
  * as the single-plane parity oracle its per-stage sum collapses to.
  */
-export function executedWorkNetPreRabat(subtotals: SectionSubtotalT[]): number {
+export function sumSectionSubtotalsNet(subtotals: SectionSubtotalT[]): number {
   return subtotals.reduce((sum, s) => sum + s.net + s.discount, 0)
 }

@@ -1,6 +1,10 @@
 'use client'
 
-import { combinedPair, moneyPair, sumaPracPreRabat } from '@/lib/kosztorys/summary-economics'
+import {
+  combinedPair,
+  moneyPair,
+  laborCostsNetPreDiscount,
+} from '@/lib/kosztorys/summary-economics'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
@@ -81,7 +85,7 @@ export function SettlementSummary({
   const showDiscount =
     discountAmount > 0 ||
     (reconVisible && (reconciliation.discount.actual > 0 || reconciliation.discount.mismatch))
-  const laborCostsPair = moneyPair(sumaPracPreRabat(laborCostsNet, discountAmount), vatRate)
+  const laborCostsPair = moneyPair(laborCostsNetPreDiscount(laborCostsNet, discountAmount), vatRate)
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
   // figure. It renders negative: it is a deduction step, and a positive figure in a subtracted row
   // reads as if it were being added.

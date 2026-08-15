@@ -497,17 +497,17 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 4.1 `pnpm typecheck`
-- [x] 4.2 specki `lib/kosztorys/`
-- [x] 4.3 `pnpm test:parity`
+- [x] 4.1 `pnpm typecheck` — 01d01408
+- [x] 4.2 specki `lib/kosztorys/` — 01d01408
+- [x] 4.3 `pnpm test:parity` — 01d01408
 
 ### Phase 5: Q4 — ujednolicenie figury pre-rabat
 
 #### Automated
 
-- [ ] 5.1 `pnpm typecheck`
-- [ ] 5.2 trzy pliki oracle'a
-- [ ] 5.3 `pnpm test:parity`
+- [x] 5.1 `pnpm typecheck`
+- [x] 5.2 trzy pliki oracle'a
+- [x] 5.3 `pnpm test:parity`
 
 ### Phase 6: `saldo` → `registerBalance`
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { sectionSubtotalsForView } from '@/lib/kosztorys/settlement-aggregates'
-import { executedWorkNetPreRabat } from '@/lib/kosztorys/settlement-client-totals'
+import { sumSectionSubtotalsNet } from '@/lib/kosztorys/settlement-client-totals'
 import { hasStagesOverPlanned, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import type { KosztorysStageT, KosztorysTreeT } from '@/lib/kosztorys/types'
@@ -59,11 +59,11 @@ const allNull: KosztorysStageT[] = [
 ]
 
 describe('subcontractorDueByPlane', () => {
-  it('single-plane investment matches executedWorkNetPreRabat at that view', () => {
+  it('single-plane investment matches sumSectionSubtotalsNet at that view', () => {
     const tree = makePlaneTree(allWTools)
     const rows = treeToRows(tree)
     const due = subcontractorDueByPlane(rows, tree.stages)
-    const parity = executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, 'w_tools'))
+    const parity = sumSectionSubtotalsNet(sectionSubtotalsForView(rows, tree.stages, 'w_tools'))
     // Row 1: 5 qty @ 12 = 60; row 2: 4 qty @ 12 = 48 → 108, all z narzędziami.
     expect(due.wTools).toBeCloseTo(108)
     expect(due.ownTools).toBeCloseTo(0)
@@ -231,7 +231,7 @@ describe('pomiar liczony po planie etapu', () => {
     const tree = makePlaneTree(mixed)
     const rows = treeToRows(tree)
     const razem = (view: 'w_tools' | 'own_tools') =>
-      executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, view))
+      sumSectionSubtotalsNet(sectionSubtotalsForView(rows, tree.stages, view))
     const due = subcontractorDueByPlane(rows, tree.stages)
 
     expect(razem('w_tools')).toBeCloseTo(due.wTools)
@@ -248,7 +248,7 @@ describe('pomiar liczony po planie etapu', () => {
     ])
     const rows = treeToRows(tree)
     const due = subcontractorDueByPlane(rows, tree.stages)
-    const full = executedWorkNetPreRabat(sectionSubtotalsForView(rows, tree.stages, 'client'))
+    const full = sumSectionSubtotalsNet(sectionSubtotalsForView(rows, tree.stages, 'client'))
 
     expect(due.combined).toBeCloseTo(72) // tylko etap 100: (2 + 4) · 12
     expect(due.combined).toBeLessThan(full)

@@ -12,7 +12,7 @@ import {
   billedMaterials,
   billedMaterialsPair,
   moneyPair,
-  sumaPracPreRabat,
+  laborCostsNetPreDiscount,
 } from '@/lib/kosztorys/summary-economics'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import type { SectionSubtotalT } from '@/lib/kosztorys/types'
@@ -541,7 +541,7 @@ const subtotal = (net: number, discount: number): SectionSubtotalT => ({
   itemCount: 1,
 })
 
-describe('sumaPracPreRabat — one „Robocizna", one number', () => {
+describe('laborCostsNetPreDiscount — one „Robocizna", one number', () => {
   it('matches the suma prac the investment page reconciles against', () => {
     // Inwestycja 31: 18 000 zł wykonane, rabat na cały kosztorys 100 000 zł. The panel used to show
     // „Robocizna −82 000 zł" while „z kosztorysu" showed 18 000 zł — same label, two figures.
@@ -552,7 +552,7 @@ describe('sumaPracPreRabat — one „Robocizna", one number', () => {
     const laborCostsNet = totals.doneNet - totals.globalDiscountNet
     expect(laborCostsNet).toBe(-82_000)
 
-    expect(sumaPracPreRabat(laborCostsNet, totals.discountNetFromKosztorys)).toBe(
+    expect(laborCostsNetPreDiscount(laborCostsNet, totals.discountNetFromKosztorys)).toBe(
       totals.laborCostsNetFromKosztorys,
     )
     expect(totals.laborCostsNetFromKosztorys).toBe(18_000)
@@ -562,7 +562,7 @@ describe('sumaPracPreRabat — one „Robocizna", one number', () => {
     const totals = clientTotalsFromSubtotals([subtotal(9_200, 800)], { type: null, value: 0 })
     const laborCostsNet = totals.doneNet - totals.globalDiscountNet
 
-    expect(sumaPracPreRabat(laborCostsNet, totals.discountNetFromKosztorys)).toBe(
+    expect(laborCostsNetPreDiscount(laborCostsNet, totals.discountNetFromKosztorys)).toBe(
       totals.laborCostsNetFromKosztorys,
     )
     expect(totals.laborCostsNetFromKosztorys).toBe(10_000)
@@ -575,7 +575,7 @@ describe('sumaPracPreRabat — one „Robocizna", one number', () => {
     const combined = combinedPair(laborCostsNet, billedMaterials(materials, 0.23), 0.23)
 
     const rows =
-      sumaPracPreRabat(laborCostsNet, discountAmount) -
+      laborCostsNetPreDiscount(laborCostsNet, discountAmount) -
       discountAmount +
       billedMaterials(materials, 0.23)
 
