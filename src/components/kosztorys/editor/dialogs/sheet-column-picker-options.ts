@@ -1,7 +1,9 @@
 import type { SelectOptionT } from '@/components/ui/simple-select'
 import type { ColumnFieldT } from '@/lib/kosztorys/sheet-import/columns'
-import type { UnresolvedColumnsT } from '@/lib/kosztorys/sheet-import/build-import-plan'
-import type { CandidateColumnT } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import type {
+  CandidateColumnT,
+  UnresolvedColumnsT,
+} from '@/lib/kosztorys/sheet-import/resolve-columns'
 
 // Only the required ones are offered where the read was refused. An optional column nobody
 // recognised is offered beside the report instead, where the import is still available and the pick

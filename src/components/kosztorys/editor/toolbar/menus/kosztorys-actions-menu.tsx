@@ -56,6 +56,7 @@ export function KosztorysActionsMenu() {
   const [reloadOpen, setReloadOpen] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [compareResult, setCompareResult] = useState<SheetCompareResultT | null>(null)
+  const [compareError, setCompareError] = useState<string | null>(null)
   const [compareLoaded, setCompareLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -96,16 +97,17 @@ export function KosztorysActionsMenu() {
   function readCompare() {
     setCompareLoaded(false)
     setCompareResult(null)
+    setCompareError(null)
     void compareWithSheet(investmentId)
       .then((res) => {
         setCompareResult(res.success ? res.data : null)
-        if (!res.success) toastMessage(res.error, 'error', 6000)
-        else if ((res.data.refresh?.updated ?? 0) + (res.data.refresh?.cleared ?? 0) > 0)
+        setCompareError(res.success ? null : res.error)
+        if (res.success && (res.data.refresh?.updated ?? 0) + (res.data.refresh?.cleared ?? 0) > 0)
           onTreeReplaced?.()
       })
       .catch(() => {
         setCompareResult(null)
-        toastMessage('Nie udało się odczytać arkusza', 'error')
+        setCompareError('Nie udało się odczytać arkusza Google.')
       })
       .finally(() => setCompareLoaded(true))
   }
@@ -218,6 +220,7 @@ export function KosztorysActionsMenu() {
         open={compareOpen}
         onOpenChange={setCompareOpen}
         result={compareResult}
+        error={compareError}
         loaded={compareLoaded}
         onMappingSaved={readCompare}
       />

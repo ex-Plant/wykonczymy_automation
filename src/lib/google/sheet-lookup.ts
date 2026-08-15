@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import {
   parseSheetColumnMapping,
   type SheetColumnMappingT,
-} from '@/lib/kosztorys/sheet-import/columns'
+} from '@/lib/kosztorys/sheet-import/sheet-column-mapping'
 
 // What every action that needs the sheet says when the investment has none. One sentence, one home —
 // a second wording would read as a second cause.
@@ -11,7 +11,7 @@ export const MISSING_SHEET = 'Inwestycja nie ma kosztorysu.'
 export type InvestmentSheetT = {
   id: number
   googleSheetId: string
-  columnMapping: SheetColumnMappingT
+  sheetColumnMapping: SheetColumnMappingT
 }
 
 // The import path needs two fields off the same row, so it reads the row rather than the id.
@@ -32,7 +32,7 @@ export async function getInvestmentSheet(
   return {
     id: sheet.id,
     googleSheetId: sheet.googleSheetId,
-    columnMapping: parseSheetColumnMapping(sheet.sheetColumnMapping),
+    sheetColumnMapping: parseSheetColumnMapping(sheet.sheetColumnMapping),
   }
 }
 

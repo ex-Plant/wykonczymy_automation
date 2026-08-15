@@ -6,6 +6,7 @@ import { extractSheetId, serviceAccountEmail, verifySheetAccess } from '@/lib/go
 import { stampAllTabs } from '@/lib/google/app-managed-tabs'
 import { getInvestmentSheet, MISSING_SHEET } from '@/lib/google/sheet-lookup'
 import { isColumnField } from '@/lib/kosztorys/sheet-import/columns'
+import { isPointableColumn } from '@/lib/kosztorys/sheet-import/sheet-column-mapping'
 import { protectedAction } from './run-action'
 import { logError } from '@/lib/utils/log-error'
 
@@ -190,7 +191,7 @@ export async function saveSheetColumnMappingAction(
     async ({ payload }) => {
       // The browser sends both halves, so both are re-checked here — a bad pair would otherwise sit
       // in jsonb until an import silently read the wrong column.
-      if (!isColumnField(field) || !Number.isInteger(column) || column < 0) {
+      if (!isColumnField(field) || !isPointableColumn(column)) {
         return { success: false, error: 'Nieprawidłowe wskazanie kolumny.' }
       }
 
@@ -200,7 +201,7 @@ export async function saveSheetColumnMappingAction(
       await payload.update({
         collection: 'kosztoryses',
         id: sheet.id,
-        data: { sheetColumnMapping: { ...sheet.columnMapping, [field]: column } },
+        data: { sheetColumnMapping: { ...sheet.sheetColumnMapping, [field]: column } },
         overrideAccess: true,
       })
 
@@ -210,25 +211,24 @@ export async function saveSheetColumnMappingAction(
   )
 }
 
-/** Drop one pointing, or all of them when no field is named — the way back out of a wrong pick. */
-export async function clearSheetColumnMappingAction(investmentId: number, field?: string) {
+export async function clearSheetColumnMappingAction(investmentId: number, field: string) {
   return protectedAction(
     'clearSheetColumnMappingAction',
     async ({ payload }) => {
-      if (field !== undefined && !isColumnField(field)) {
+      if (!isColumnField(field)) {
         return { success: false, error: 'Nieprawidłowe wskazanie kolumny.' }
       }
 
       const sheet = await getInvestmentSheet(payload, investmentId)
       if (!sheet) return { success: false, error: MISSING_SHEET }
 
-      const mapping = { ...sheet.columnMapping }
-      if (field !== undefined) delete mapping[field]
+      const mapping = { ...sheet.sheetColumnMapping }
+      delete mapping[field]
 
       await payload.update({
         collection: 'kosztoryses',
         id: sheet.id,
-        data: { sheetColumnMapping: field === undefined ? {} : mapping },
+        data: { sheetColumnMapping: mapping },
         overrideAccess: true,
       })
 

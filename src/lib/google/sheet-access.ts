@@ -4,7 +4,9 @@ import { createServiceAccountJWT, parseServiceAccountCredentials } from './auth'
 // The service-account email — what an owner must share a sheet with for the app
 // to read/sync it. Parsed from the same credential JSON the clients use.
 export function serviceAccountEmail(): string {
-  return parseServiceAccountCredentials().client_email
+  // The credential JSON is cast, not validated, so a malformed one yields `undefined` behind a
+  // `string` type — and the dialog would print „udostępnij arkusz kontu undefined".
+  return parseServiceAccountCredentials().client_email ?? ''
 }
 
 // Pull the spreadsheet id out of a pasted Google Sheets URL, or accept a raw id.

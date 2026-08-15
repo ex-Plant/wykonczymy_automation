@@ -1,8 +1,7 @@
 'use client'
 
 import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
-import { SheetColumnPicker } from '@/components/kosztorys/editor/dialogs/sheet-column-picker'
-import { requiredFields } from '@/components/kosztorys/editor/dialogs/sheet-column-picker-options'
+import { SheetProblemsBlock } from '@/components/kosztorys/editor/dialogs/sheet-problems-block'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
 import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
@@ -32,6 +31,7 @@ type PropsT = {
   open: boolean
   onOpenChange: (open: boolean) => void
   result: SheetCompareResultT | null
+  error: string | null
   loaded: boolean
   // Re-runs the comparison with the new pointing in place — same window, no reopen.
   onMappingSaved: () => void
@@ -55,6 +55,7 @@ export function SheetCompareDialog({
   open,
   onOpenChange,
   result,
+  error,
   loaded,
   onMappingSaved,
 }: PropsT) {
@@ -66,30 +67,24 @@ export function SheetCompareDialog({
       description="Czy arkusz Google i ta aplikacja liczą to samo — i gdzie się rozjeżdżają."
       loaded={loaded}
       data={result}
+      error={error}
     >
       {({ comparison, refresh, problems, columns, failure }) =>
         failure ? (
           <SheetAccessBlock failure={failure} />
         ) : problems.length > 0 ? (
-          <SheetReportBlock
-            title="Nie mogę odczytać arkusza Google"
-            status="warn"
-            verdict="Wskaż brakującą kolumnę poniżej albo popraw nagłówki w arkuszu — nic nie zostało zmienione."
-          >
-            {problems.map((problem) => (
-              <p key={problem} className="text-destructive">
-                {problem}
-              </p>
-            ))}
-            <SheetColumnPicker
-              investmentId={investmentId}
-              missing={requiredFields(columns)}
-              pointed={columns.pointedFields}
-              candidates={columns.candidates}
-              onSaved={onMappingSaved}
-            />
-          </SheetReportBlock>
-        ) : !comparison || !refresh ? null : (
+          <SheetProblemsBlock
+            investmentId={investmentId}
+            problems={problems}
+            columns={columns}
+            consequence="nic nie zostało zmienione"
+            onMappingSaved={onMappingSaved}
+          />
+        ) : !comparison || !refresh ? (
+          <p className="text-muted-foreground text-sm">
+            Arkusz Google odczytany, ale porównanie nie wróciło — spróbuj ponownie.
+          </p>
+        ) : (
           <>
             <MoneyBlock comparison={comparison} />
             <ItemsBlock comparison={comparison} />

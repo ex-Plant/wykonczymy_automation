@@ -4,8 +4,8 @@ import { useTransition } from 'react'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
 import { SheetColumnPicker } from '@/components/kosztorys/editor/dialogs/sheet-column-picker'
-import { requiredFields } from '@/components/kosztorys/editor/dialogs/sheet-column-picker-options'
 import { evaluateImportGate } from '@/components/kosztorys/editor/dialogs/sheet-import-gate'
+import { SheetProblemsBlock } from '@/components/kosztorys/editor/dialogs/sheet-problems-block'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
 import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
@@ -19,12 +19,12 @@ import {
 } from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
 import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
-import type {
-  ImportReportT,
-  UnresolvedColumnsT,
-} from '@/lib/kosztorys/sheet-import/build-import-plan'
+import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
-import type { UnresolvedReasonT } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import type {
+  UnresolvedColumnsT,
+  UnresolvedReasonT,
+} from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { toastMessage } from '@/lib/utils/toast'
 
@@ -33,6 +33,7 @@ type PropsT = {
   open: boolean
   onOpenChange: (open: boolean) => void
   preview: ImportPreviewT | null
+  error: string | null
   loaded: boolean
   onImported: () => void
   // Re-reads the sheet with the new pointing in place, so the window answers in place instead of
@@ -53,6 +54,7 @@ export function SheetImportDialog({
   open,
   onOpenChange,
   preview,
+  error,
   loaded,
   onImported,
   onMappingSaved,
@@ -83,6 +85,7 @@ export function SheetImportDialog({
       description="Kosztorys zostanie zastąpiony danymi z arkusza. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
       loaded={loaded}
       data={preview}
+      error={error}
       actions={
         <DialogActions
           confirmLabel="Pobierz i zastąp"
@@ -98,24 +101,13 @@ export function SheetImportDialog({
         failure ? (
           <SheetAccessBlock failure={failure} />
         ) : problems.length > 0 ? (
-          <SheetReportBlock
-            title="Nie mogę odczytać arkusza Google"
-            status="warn"
-            verdict="Wskaż brakującą kolumnę poniżej albo popraw nagłówki w arkuszu — nic nie zostanie nadpisane."
-          >
-            {problems.map((problem) => (
-              <p key={problem} className="text-destructive">
-                {problem}
-              </p>
-            ))}
-            <SheetColumnPicker
-              investmentId={investmentId}
-              missing={requiredFields(columns)}
-              pointed={columns.pointedFields}
-              candidates={columns.candidates}
-              onSaved={onMappingSaved}
-            />
-          </SheetReportBlock>
+          <SheetProblemsBlock
+            investmentId={investmentId}
+            problems={problems}
+            columns={columns}
+            consequence="nic nie zostanie nadpisane"
+            onMappingSaved={onMappingSaved}
+          />
         ) : (
           <>
             <ScopeBlock report={report} />
@@ -155,10 +147,9 @@ function ScopeBlock({ report }: { report: ImportReportT }) {
 }
 
 /**
- * Only the columns we could NOT read. Listing the recognised ones said nothing: a required column is
- * either resolved or the import is refused outright, so that list was fourteen lines that were the
- * same on every successful import. An absent optional column is the opposite — it is data quietly
- * missing from the kosztorys, and the only place it is ever stated.
+ * Only the columns we could NOT read: a required column is either resolved or the import is refused
+ * outright, so the recognised ones say nothing. An absent optional column is the opposite — it is
+ * data quietly missing from the kosztorys, and this is the only place it is ever stated.
  */
 function ColumnsBlock({
   investmentId,
@@ -171,13 +162,15 @@ function ColumnsBlock({
   columns: UnresolvedColumnsT
   onMappingSaved: () => void
 }) {
-  const clean = missing.length === 0 && columns.pointedFields.length === 0
+  // A column the owner pointed at is not a shortfall — it renders as a note inside this block, so it
+  // must not turn a complete read yellow.
+  const clean = missing.length === 0
   return (
     <SheetReportBlock
       title="Czego nie odczytaliśmy z arkusza Google"
       status={clean ? 'ok' : 'warn'}
       verdict={
-        missing.length === 0
+        clean
           ? 'Wszystkie kolumny, których szukamy, są w arkuszu.'
           : `Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`
       }

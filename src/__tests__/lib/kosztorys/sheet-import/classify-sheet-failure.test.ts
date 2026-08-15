@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  classifySheetFailure,
-  MissingRobociznaTabError,
-} from '@/lib/kosztorys/sheet-import/read-sheet'
+import { classifySheetFailure } from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
+import { MissingRobociznaTabError } from '@/lib/kosztorys/sheet-import/read-sheet'
 
 // Each reason maps to a different thing the owner has to do, so a misclassification is not a cosmetic
 // wording miss — it is advice that can never work („spróbuj później" on a sheet nobody shared).

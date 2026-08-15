@@ -8,6 +8,10 @@ const RATE_TAB_PREFIX = 'zakres pracy'
 // bounded so a sheet with junk far to the right doesn't inflate every response.
 const LAST_COLUMN = 'BZ'
 
+// The same bound as a 0-based index, for anything that has to reject a column we would never fetch.
+export const LAST_COLUMN_INDEX =
+  [...LAST_COLUMN].reduce((index, letter) => index * 26 + (letter.charCodeAt(0) - 64), 0) - 1
+
 // Without this a hung Google request holds the server action open for the platform's whole function
 // timeout, with both sheet dialogs stuck on „Czytam arkusz Google…" and no way to tell the owner
 // anything. Failing at 15s at least reaches `sheetFailureMessage`, which says to retry.
@@ -43,35 +47,6 @@ export class MissingRobociznaTabError extends Error {
   constructor(spreadsheetId: string) {
     super(`Arkusz ${spreadsheetId} nie ma zakładki „${ROBOCIZNA_TAB}".`)
   }
-}
-
-// Why the sheet could not be read, in the owner's terms — each one maps to a DIFFERENT thing to do,
-// which is the whole point: „spróbuj później" is advice that can never work on a sheet nobody shared
-// with the service account.
-export type SheetFailureReasonT = 'forbidden' | 'not-found' | 'missing-tab' | 'unknown'
-
-const PERMISSION_DENIED = 'PERMISSION_DENIED'
-
-// googleapis puts the status in a different place depending on which layer threw: the gaxios error
-// carries `status`, the API error object carries `code` (number or a string enum), and a wrapped
-// response keeps it on `response.status`. Reading only one of them silently degrades every 403 into
-// the catch-all.
-function errorCodes(error: unknown): (number | string)[] {
-  if (typeof error !== 'object' || error === null) return []
-  const candidate = error as { status?: unknown; code?: unknown; response?: { status?: unknown } }
-  return [candidate.status, candidate.code, candidate.response?.status].flatMap((value) => {
-    if (typeof value === 'number') return [value]
-    if (typeof value !== 'string') return []
-    return [/^\d+$/.test(value) ? Number(value) : value]
-  })
-}
-
-export function classifySheetFailure(error: unknown): SheetFailureReasonT {
-  if (error instanceof MissingRobociznaTabError) return 'missing-tab'
-  const codes = errorCodes(error)
-  if (codes.includes(403) || codes.includes(PERMISSION_DENIED)) return 'forbidden'
-  if (codes.includes(404)) return 'not-found'
-  return 'unknown'
 }
 
 // Takes the client rather than building one so this module stays free of the `server-only` env

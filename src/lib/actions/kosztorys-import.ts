@@ -11,34 +11,27 @@ import {
   buildImportPlan,
   type ImportPlanT,
   type ImportReportT,
-  type UnresolvedColumnsT,
 } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import { buildMeasuredQtyRefresh } from '@/lib/kosztorys/sheet-import/build-measured-qty-refresh'
 import {
   buildSheetComparison,
   type SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
-import { resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import {
+  resolveRobocizna,
+  type UnresolvedColumnsT,
+} from '@/lib/kosztorys/sheet-import/resolve-columns'
 import {
   classifySheetFailure,
-  readImportGrids,
-  ROBOCIZNA_TAB,
   type SheetFailureReasonT,
-} from '@/lib/kosztorys/sheet-import/read-sheet'
+  type SheetFailureT,
+} from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
+import { readImportGrids, ROBOCIZNA_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import { serviceAccountEmail } from '@/lib/google/sheet-access'
 import type { ActionResultT } from '@/types/action'
 
 const PRE_IMPORT_LABEL = 'Przed importem z arkusza Google'
-
-// A read that never happened, carried as DATA rather than as a red toast — the dialog needs
-// somewhere to render the address a sheet has to be shared with, and a copy button beside it.
-export type SheetFailureT = {
-  reason: SheetFailureReasonT
-  // Filled only for `forbidden`. Everywhere else the address is not the answer, and showing it would
-  // send the owner off sharing a sheet that is already shared.
-  serviceAccountEmail: string | null
-}
 
 export type ImportPreviewT = {
   report: ImportReportT
@@ -79,7 +72,7 @@ export type ApplyImportResultT = {
 // so the preview can never describe an import different from the one apply performs.
 async function derivePlan(investmentId: number, sheet: InvestmentSheetT): Promise<ImportPlanT> {
   const grids = await readImportGrids(getReadonlySheetsClient(), sheet.googleSheetId)
-  return buildImportPlan(grids, await serializeKosztorys(investmentId), sheet.columnMapping)
+  return buildImportPlan(grids, await serializeKosztorys(investmentId), sheet.sheetColumnMapping)
 }
 
 const FAILURE_MESSAGES: Record<SheetFailureReasonT, string> = {
@@ -204,11 +197,11 @@ export async function compareWithSheet(
       // Resolved here rather than left to the two builders below: an unreadable header has to reach
       // the window as a pick, and the refresh must not run on it — writing a Pomiar off a header we
       // could not read would be worse than leaving the stored figure alone.
-      const resolved = resolveRobocizna(grids.robocizna, sheet.columnMapping)
+      const resolved = resolveRobocizna(grids.robocizna, sheet.sheetColumnMapping)
       const columns = {
         missingFields: resolved.missingFields,
         candidates: resolved.candidates,
-        pointedFields: resolved.resolvedFromMapping,
+        pointedFields: resolved.pointedFields,
       }
       if (!resolved.ok) {
         return {
@@ -223,7 +216,7 @@ export async function compareWithSheet(
         }
       }
 
-      const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite, sheet.columnMapping)
+      const refreshed = buildMeasuredQtyRefresh(grids, treeBeforeWrite, sheet.sheetColumnMapping)
       if (!refreshed.ok) return { success: false, error: refreshed.problems.join(' ') }
       const { rows, unmatched } = refreshed.refresh
       const written = await setSheetMeasuredQty(await getDb(payload), investmentId, rows)
@@ -233,7 +226,7 @@ export async function compareWithSheet(
       // the stored reference quantity — but that is an invariant of the current report, not of the
       // action, and the day a figure starts reading it this would go quietly stale.
       const tree = written > 0 ? await serializeKosztorys(investmentId) : treeBeforeWrite
-      const built = buildSheetComparison(grids, tree, sheet.googleSheetId, sheet.columnMapping)
+      const built = buildSheetComparison(grids, tree, sheet.googleSheetId, sheet.sheetColumnMapping)
       if (!built.ok) return { success: false, error: built.problems.join(' ') }
 
       return {

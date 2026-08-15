@@ -24,7 +24,7 @@ describe('resolveRobocizna with a stored column pointing', () => {
     expectResolved(result)
 
     expect(result.columns.netValue).toBe(col('S'))
-    expect(result.resolvedFromMapping).toEqual(['netValue'])
+    expect(result.pointedFields).toEqual(['netValue'])
     expect(result.missingFields).toEqual([])
   })
 
@@ -33,11 +33,19 @@ describe('resolveRobocizna with a stored column pointing', () => {
     expectResolved(result)
 
     expect(result.columns.netValue).toBe(col('S'))
-    expect(result.resolvedFromMapping).toEqual([])
+    expect(result.pointedFields).toEqual([])
   })
 
   it('ignores a pointing at a column another field already owns', () => {
     const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('Q') })
+
+    expect(result.ok).toBe(false)
+    expect(result.missingFields).toEqual([{ field: 'netValue', required: true, reason: 'absent' }])
+  })
+
+  it('ignores a pointing at a column read off the etapy position', () => {
+    // B is the ordinal between „nazwa sekcji" and „opis pracy" — no field's own, but not free either.
+    const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('B') })
 
     expect(result.ok).toBe(false)
     expect(result.missingFields).toEqual([{ field: 'netValue', required: true, reason: 'absent' }])
@@ -58,7 +66,7 @@ describe('resolveRobocizna with a stored column pointing', () => {
     })
     expectResolved(result)
 
-    expect(result.resolvedFromMapping).toEqual(['netValue'])
+    expect(result.pointedFields).toEqual(['netValue'])
     expect(result.columns.plannedQty).toBe(col('N'))
   })
 })

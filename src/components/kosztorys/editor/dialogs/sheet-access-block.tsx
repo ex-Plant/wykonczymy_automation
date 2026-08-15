@@ -3,8 +3,11 @@
 import { Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
-import type { SheetFailureT } from '@/lib/actions/kosztorys-import'
-import { ROBOCIZNA_TAB, type SheetFailureReasonT } from '@/lib/kosztorys/sheet-import/read-sheet'
+import type {
+  SheetFailureReasonT,
+  SheetFailureT,
+} from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
+import { ROBOCIZNA_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 
 /**

@@ -217,6 +217,16 @@ describe('resolveRobocizna', () => {
       expect(columns).not.toContain(2) // C — opis pracy
     })
 
+    it('leaves out the ordinal column even when it is labelled', () => {
+      const grid = ZUPNICZA_ROBOCIZNA_HEADER.map((row) => [...row])
+      grid[0][1] = 'Lp.' // B, between nazwa sekcji and opis pracy
+
+      const result = resolveRobocizna(grid)
+      expectRefused(result)
+
+      expect(result.candidates.map((candidate) => candidate.column)).not.toContain(1)
+    })
+
     it('leaves out a column with nothing typed in it — it names nothing to point at', () => {
       const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER)
       expectRefused(result)

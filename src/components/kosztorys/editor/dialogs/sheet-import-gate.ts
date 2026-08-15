@@ -2,7 +2,6 @@ import type { ImportPreviewT } from '@/lib/actions/kosztorys-import'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
 
 export type ImportGateT = {
-  // Whether „Pobierz i zastąp" may be pressed.
   confirmDisabled: boolean
   // Footer sums the sheet and the app disagree on — surfaced, never blocking. A row we could not
   // find at all is NOT one of these: it is a sheet with no such summary row, which says nothing

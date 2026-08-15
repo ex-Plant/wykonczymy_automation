@@ -2,7 +2,7 @@ import type { SheetMeasuredQtyRowT } from '@/lib/db/kosztorys-sheet-measured-qty
 import { QTY_TOLERANCE } from '@/lib/kosztorys/settlement-rows'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT } from '@/lib/kosztorys/types'
-import type { SheetColumnMappingT } from './columns'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { keyItems } from './item-key'
 import { parseRobocizna } from './parse-robocizna'
 import type { ImportGridsT } from './read-sheet'

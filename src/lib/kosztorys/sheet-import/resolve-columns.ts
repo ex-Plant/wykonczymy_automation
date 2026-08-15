@@ -10,8 +10,8 @@ import {
   fold,
   type ColumnFieldT,
   type RateGroupT,
-  type SheetColumnMappingT,
 } from './columns'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { columnLetter } from '@/lib/google/sheet-configs'
 
 export type StageColumnsT = { firstColumn: number; count: number }
@@ -30,16 +30,27 @@ export type MissingFieldT = { field: ColumnFieldT; required: boolean; reason: Un
 // (row 1 is sometimes the client's address, row 3 the actual name).
 export type CandidateColumnT = { column: number; letter: string; labels: string[] }
 
-// Both sides of a failed match. Only the robocizna header offers them: it is the one the owner can
-// repair by pointing at a column, so hanging the pair on the shared failure type would put two
-// permanently empty arrays on every rates failure.
-export type RobociznaFailureT = ResolveFailureT & {
+// What the owner can point a field at, on a read that resolved and on one that refused alike — the
+// window offers the same pick either way, so a shape that existed only on failure would have to be
+// rebuilt for the successful read.
+export type UnresolvedColumnsT = {
+  // On a header that resolved these are the optional fields only — a missing required column refuses
+  // the import outright. The resolved columns say nothing worth reading; each absence is data
+  // silently missing from the kosztorys.
   missingFields: MissingFieldT[]
   candidates: CandidateColumnT[]
-  resolvedFromMapping: ColumnFieldT[]
+  // Fields whose column came from the owner's stored pointing. Only these carry „wskazałeś tę
+  // kolumnę ręcznie" — a pointing the header text overruled, or one aimed at a column that no longer
+  // exists, is not something the owner is being shown a way to undo.
+  pointedFields: ColumnFieldT[]
 }
 
-export type ResolvedRobociznaT = {
+// Only the robocizna header carries the trio: it is the one the owner can repair by pointing at a
+// column, so hanging it on the shared failure type would put three permanently empty arrays on every
+// rates failure.
+export type RobociznaFailureT = ResolveFailureT & UnresolvedColumnsT
+
+export type ResolvedRobociznaT = UnresolvedColumnsT & {
   ok: true
   columns: { section: number; description: number } & Partial<Record<ColumnFieldT, number>> & {
       plannedQty: number
@@ -48,13 +59,6 @@ export type ResolvedRobociznaT = {
       netValue: number
     }
   stages: StageColumnsT
-  // Columns that did NOT make it in — on a resolved header these are the optional ones only, since
-  // a missing required column refuses the import outright. The resolved columns say nothing worth
-  // reading; each absence is data silently missing from the kosztorys.
-  missingFields: MissingFieldT[]
-  candidates: CandidateColumnT[]
-  // Fields that got their column from the owner's stored pointing rather than from a header name.
-  resolvedFromMapping: ColumnFieldT[]
 }
 
 // No `stages` here on purpose. A rates tab carries its own „wykonano" run and it can be SHORTER
@@ -136,8 +140,11 @@ function problemFor({ field, reason, hits }: UnresolvedFieldT): string {
 // Every header-block column no field claimed and that isn't part of the etapy run — what the owner
 // can be offered to pick from. A column with nothing typed in any block row is left out: it names
 // nothing, so it could never be recognised in the sheet.
-function findCandidates(block: unknown[][], taken: ReadonlySet<number>): CandidateColumnT[] {
-  const width = Math.max(0, ...block.map((row) => row.length))
+function findCandidates(
+  block: unknown[][],
+  taken: ReadonlySet<number>,
+  width: number,
+): CandidateColumnT[] {
   const candidates: CandidateColumnT[] = []
 
   for (let column = 0; column < width; column += 1) {
@@ -196,13 +203,15 @@ export function resolveRobocizna(
   if (stages) {
     for (let offset = 0; offset < stages.count; offset += 1) taken.add(stages.firstColumn + offset)
   }
-  for (const column of [description, section]) if (column >= 0) taken.add(column)
+  // The ordinal between them is spoken for too — nothing reads it, but it is not free to point at.
+  const ordinal = stages ? stages.firstColumn - 2 : -1
+  for (const column of [description, ordinal, section]) if (column >= 0) taken.add(column)
 
   // The stored pointing runs LAST and only over what the header text left unresolved, so a corrected
   // header in the sheet always beats it. A column outside the block or already spoken for is skipped
   // in silence — that is a stale pointing, not a decision the owner is making right now.
   const blockWidth = Math.max(0, ...block.map((row) => row.length))
-  const resolvedFromMapping: ColumnFieldT[] = []
+  const pointedFields: ColumnFieldT[] = []
   const missingFields: MissingFieldT[] = []
 
   for (const entry of unresolved) {
@@ -210,14 +219,14 @@ export function resolveRobocizna(
     if (column !== undefined && column < blockWidth && !taken.has(column)) {
       columns[entry.field] = column
       taken.add(column)
-      resolvedFromMapping.push(entry.field)
+      pointedFields.push(entry.field)
       continue
     }
     missingFields.push({ field: entry.field, required: entry.required, reason: entry.reason })
     if (entry.required) problems.push(problemFor(entry))
   }
 
-  const candidates = findCandidates(block, taken)
+  const candidates = findCandidates(block, taken, blockWidth)
 
   const { plannedQty, unit, clientPrice, netValue } = columns
   // The four required fields are re-checked here rather than asserted: `resolveFields` already
@@ -231,7 +240,7 @@ export function resolveRobocizna(
     clientPrice === undefined ||
     netValue === undefined
   ) {
-    return { ok: false, problems, missingFields, candidates, resolvedFromMapping }
+    return { ok: false, problems, missingFields, candidates, pointedFields }
   }
 
   return {
@@ -240,7 +249,7 @@ export function resolveRobocizna(
     stages,
     missingFields,
     candidates,
-    resolvedFromMapping,
+    pointedFields,
   }
 }
 

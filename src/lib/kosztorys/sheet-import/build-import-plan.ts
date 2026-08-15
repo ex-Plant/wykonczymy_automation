@@ -11,8 +11,8 @@ import {
   isOptionalField,
   type ColumnFieldT,
   type OptionalFieldT,
-  type SheetColumnMappingT,
 } from './columns'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
@@ -20,8 +20,8 @@ import { parseRobocizna } from './parse-robocizna'
 import { type ImportGridsT } from './read-sheet'
 import {
   resolveRobocizna,
-  type CandidateColumnT,
   type MissingFieldT,
+  type UnresolvedColumnsT,
   type UnresolvedReasonT,
 } from './resolve-columns'
 import {
@@ -52,9 +52,8 @@ export type RetainedItemT = { section: string; description: string }
 export type { ReportedRateResolutionT }
 
 export type ImportReportT = {
-  // Only the columns that did NOT come through. The recognised ones are the whole point of the
-  // resolver and say nothing worth reading — every required column is resolved or the import is
-  // refused, so a list of them was 14 lines nobody could act on.
+  // Only the columns that did NOT come through — every required column is resolved or the import is
+  // refused, so the recognised ones say nothing worth reading.
   missingColumns: MissingColumnT[]
   counts: { sections: number; items: number; stages: number }
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
@@ -65,18 +64,6 @@ export type ImportReportT = {
   // Non-fatal notes, e.g. a „zakres pracy" tab whose own header could not be read: its rates are
   // simply unavailable, which is a degraded import rather than a refused one.
   warnings: string[]
-}
-
-// What the owner can point a field at, on a plan that resolved and on one that refused alike — the
-// window offers the same pick either way, so a shape that existed only on failure would have to be
-// rebuilt for the successful read.
-export type UnresolvedColumnsT = {
-  missingFields: MissingFieldT[]
-  candidates: CandidateColumnT[]
-  // Fields whose column came from the owner's stored pointing. Only these carry „wskazałeś tę
-  // kolumnę ręcznie" — a pointing the header text overruled, or one aimed at a column that no longer
-  // exists, is not something the owner is being shown a way to undo.
-  pointedFields: ColumnFieldT[]
 }
 
 export type ImportFailureT = { ok: false; problems: string[] } & UnresolvedColumnsT
@@ -109,7 +96,7 @@ export function buildImportPlan(
   mapping?: SheetColumnMappingT,
 ): ImportPlanT {
   const resolvedRobocizna = resolveRobocizna(grids.robocizna, mapping)
-  const { missingFields, candidates, resolvedFromMapping: pointedFields } = resolvedRobocizna
+  const { missingFields, candidates, pointedFields } = resolvedRobocizna
   if (!resolvedRobocizna.ok) {
     return {
       ok: false,

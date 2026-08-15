@@ -75,8 +75,8 @@ describe('evaluateImportGate', () => {
   })
 
   it('blocks the import when the sheet itself could not be reached', () => {
-    // The failure now travels as data so the dialog can render the address to share the sheet with —
-    // which means a loaded preview is no longer proof the sheet was read.
+    // The failure travels as data so the dialog can render the address to share the sheet with, so a
+    // loaded preview is not proof the sheet was read.
     const gate = evaluateImportGate(
       preview({ failure: { reason: 'forbidden', serviceAccountEmail: 'sa@example.iam' } }),
       true,

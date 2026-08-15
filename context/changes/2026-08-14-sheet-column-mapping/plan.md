@@ -484,6 +484,36 @@ Uruchamiane **raz**, po ostatniej fazie:
 - `pnpm test`
 - `pnpm build`
 
+## Aneks: kontrakty, które wylądowały inaczej (2026-08-14, bramka przeglądu)
+
+Plan opisuje zamiar, nie kod. Pięć kontraktów zmieniło kształt w trakcie implementacji i bramki
+przeglądu — spisane tutaj, żeby plan nie czytał się później jako opis tego, co stoi w repo.
+
+1. **Pole wiersza `kosztoryses`: `columnMapping` → `sheetColumnMapping`** (linie 305, 346). Kolumna
+   w bazie od początku nazywała się `sheet_column_mapping`; `InvestmentSheetT` niósł drugą nazwę tego
+   samego pojęcia. Ujednolicone na `sheetColumnMapping` w całym łańcuchu (kolekcja → `sheet-lookup`
+   → akcje), zgodnie z „jedno pojęcie, jedna nazwa" z `AGENTS.md`.
+2. **`getInvestmentSheet` zwraca `SheetColumnMappingT`, nie `… | null`** (linia 305). Parsowanie
+   jsonb (`parseSheetColumnMapping`) zawsze daje obiekt — pusty, gdy nic nie zapisano — więc `null`
+   po stronie wywołującego był drugim wariantem tej samej „pustki". Wołający robią `{ ...mapping }`
+   bez sprawdzania.
+3. **`clearSheetColumnMappingAction(investmentId, field)` — `field` obowiązkowe** (linia 333).
+   Gałąź „bez `field` czyści wszystko" nie miała wywołującego: UI kasuje wskazania pojedynczo
+   („Usuń wskazanie" przy konkretnym polu). Usunięta wraz z martwym rozgałęzieniem.
+4. **Kontrakty rozłożone na własne moduły.** Plan zostawiał je tam, gdzie stała reszta:
+   `classifySheetFailure` + `SheetFailureReasonT` + `SheetFailureT` (linie 116, 140) mieszkają teraz
+   w `sheet-import/classify-sheet-failure.ts` (nie w `read-sheet.ts` ani w `'use server'`
+   `kosztorys-import.ts`), a kontrakt zapisu jsonb — `SheetColumnMappingT`, `parseSheetColumnMapping`,
+   `isPointableColumn` — w `sheet-import/sheet-column-mapping.ts` (nie w `columns.ts`).
+   Dodatkowo `UnresolvedColumnsT` stoi w `resolve-columns.ts`, przy słowniku, który go rodzi, a nie
+   w `build-import-plan.ts`.
+
+5. **`resolvedFromMapping` → `pointedFields`** (linie 321, 356). Przez chwilę ten sam zbiór miał dwie
+   nazwy — `resolvedFromMapping` w resolverze, `pointedFields` w UI — i każdy wywołujący przepisywał
+   go po drodze. Jedna nazwa, `pointedFields`, w całym łańcuchu; trójka
+   `missingFields`/`candidates`/`pointedFields` mieszka raz, jako `UnresolvedColumnsT`, i wchodzi
+   przez przecięcie do obu wariantów wyniku `resolveRobocizna`.
+
 ## References
 
 - `context/changes/2026-08-14-sheet-column-mapping/change.md` — dowód z Żupniczej i decyzje

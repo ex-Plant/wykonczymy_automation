@@ -22,8 +22,15 @@ vi.mock('@/lib/auth/require-auth', () => ({
   })),
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
-vi.mock('@/lib/google/sheet-lookup', () => ({
-  getInvestmentSheetId: vi.fn().mockImplementation(async () => sheetState.spreadsheetId),
+vi.mock('@/lib/google/sheet-lookup', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getInvestmentSheet: vi
+    .fn()
+    .mockImplementation(async () =>
+      sheetState.spreadsheetId === undefined
+        ? undefined
+        : { id: 1, googleSheetId: sheetState.spreadsheetId, sheetColumnMapping: {} },
+    ),
 }))
 vi.mock('@/lib/google/readonly-sheets-client', () => ({
   getReadonlySheetsClient: vi.fn().mockResolvedValue({}),
