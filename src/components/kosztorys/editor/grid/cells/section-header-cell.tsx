@@ -100,8 +100,8 @@ export function SectionHeaderCell({
         {/* „netto" spelled out: the grid carries a netto and a brutto reading of every money column,
             so a bare amount on the band leaves the reader guessing which one this is. */}
         <span className="shrink-0 text-sm whitespace-nowrap">
-          <span className="text-muted-foreground font-normal">netto </span>
           <span className="font-medium tabular-nums">{formatNet(net)} zł</span>
+          <span className="text-muted-foreground font-normal"> netto</span>
         </span>
         <Chevron className="text-muted-foreground size-4 shrink-0" />
       </div>
