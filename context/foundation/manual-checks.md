@@ -4,6 +4,16 @@ One living checklist for every slice — the project's QA registry. Each `##` se
 
 **Run against the isolated test DB, not the dev DB.** Manual checks mutate data, so point the app at the `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, `wykonczymy-test`) — the same DB the E2E suite uses — never the dev DB (5433, holds un-dumped local work) and never prod. Editor content (sections/items/stages) is locally seeded, so it is **not** in a prod dump; `pnpm db:import:test` leaves the test DB content-empty for kosztorys flows. Seed it separately: `perf-seed-kosztorys.ts` for a synthetic set (no external deps) or `seed-kosztorys.ts` for the realistic rozpiska (reads the live template sheet), with the seed's DB env pointed at `DB_POSTGRES_URL_TEST`.
 
+## EX-691 — „Porównaj z arkuszem Google" pod aktywnym rabatem globalnym
+
+Setup: inwestycja z podpiętym arkuszem Google, w kosztorysie rozpisana robocizna na etapy,
+w „Rabat" tryb **Kwotowy** z kwotą inną niż suma rabatów pozycyjnych.
+
+- [ ] Przy aktywnym rabacie globalnym okno „Porównaj z arkuszem Google" pokazuje **czerwoną** notkę w bloku „Kwoty", że kwoty rozjeżdżają się z kosztorysem
+- [ ] Same kwoty w oknie nie zmieniły się — notka tłumaczy różnicę, nie przelicza jej
+- [ ] Bez rabatu globalnego (tryb „Wyłączony") notki nie ma, choćby prace miały rabaty pozycyjne
+- [ ] Rabat globalny równy sumie rabatów pozycyjnych na pracach wykonanych — notki nie ma, bo nic się nie rozjeżdża
+
 ## EX-448 — stable per-row ids for expense line-items
 
 **In review** — all automated checks green (tsc 0, eslint 0, unit 10/10). Pure refactor of the

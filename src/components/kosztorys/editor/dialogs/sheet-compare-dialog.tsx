@@ -158,6 +158,14 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
           jeszcze na żaden etap.
         </p>
       )}
+      {comparison.globalDiscountMismatch && (
+        <p className="text-destructive text-xs">
+          Ta inwestycja ma aktywny rabat globalny, więc kwoty w tym oknie rozjeżdżają się z tymi w
+          kosztorysie. Tutaj każda praca liczy się ze swoim własnym rabatem, tak jak w arkuszu
+          Google — rabat globalny nie wchodzi. W kosztorysie jest odwrotnie: prace idą bez rabatu, a
+          rabat globalny schodzi raz od sumy.
+        </p>
+      )}
       {footerDelta !== null && Math.abs(footerDelta) >= MATCHES && (
         <p className="text-xs text-amber-600">
           Podsumowanie na dole arkusza Google, „R netto - suma prac wykonannych", wychodzi{' '}

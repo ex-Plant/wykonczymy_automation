@@ -3,11 +3,12 @@ import { buildSheetComparison } from '@/lib/kosztorys/sheet-import/build-sheet-c
 import { fold } from '@/lib/kosztorys/sheet-import/columns'
 import type { ImportGridsT } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { SNAPSHOT_SCHEMA_VERSION, type SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
-import type { KosztorysItemT } from '@/lib/kosztorys/types'
+import type { GlobalDiscountT, KosztorysItemT } from '@/lib/kosztorys/types'
 import { row } from '@/__tests__/fixtures/kosztorys-sheet/grid'
 import { BIALOSTOCKA_ROWS, ratesTab } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
 const SPREADSHEET_ID = 'sheet-abc'
+const NO_GLOBAL_DISCOUNT: GlobalDiscountT = { type: null, value: 0 }
 
 const source = (overrides: Partial<ImportGridsT> = {}): ImportGridsT => ({
   robocizna: BIALOSTOCKA_ROWS,
@@ -86,8 +87,12 @@ function currentTree(overrides: Partial<SnapshotPayloadT> = {}): SnapshotPayload
   }
 }
 
-function compare(grids: ImportGridsT = source(), current: SnapshotPayloadT = currentTree()) {
-  const built = buildSheetComparison(grids, current, SPREADSHEET_ID)
+function compare(
+  grids: ImportGridsT = source(),
+  current: SnapshotPayloadT = currentTree(),
+  globalDiscount: GlobalDiscountT = NO_GLOBAL_DISCOUNT,
+) {
+  const built = buildSheetComparison(grids, current, SPREADSHEET_ID, globalDiscount)
   if (!built.ok) expect.fail(`comparison did not build: ${built.problems.join(' | ')}`)
   return built.comparison
 }
@@ -131,7 +136,12 @@ describe('buildSheetComparison', () => {
     // The sheet that most needs diagnosing is the one whose „zakres pracy" header is broken, so a
     // refusal here would blank the diagnosis. Stawki then say nothing rather than reporting the
     // 0 zł every praca would resolve to.
-    const built = buildSheetComparison(source({ rateTabs: [] }), currentTree(), SPREADSHEET_ID)
+    const built = buildSheetComparison(
+      source({ rateTabs: [] }),
+      currentTree(),
+      SPREADSHEET_ID,
+      NO_GLOBAL_DISCOUNT,
+    )
 
     expect(built.ok).toBe(true)
     expect(built.ok && built.comparison.rates).toEqual({
@@ -189,7 +199,12 @@ describe('buildSheetComparison', () => {
         : cells,
     )
 
-    const built = buildSheetComparison(source({ robocizna: broken }), currentTree(), SPREADSHEET_ID)
+    const built = buildSheetComparison(
+      source({ robocizna: broken }),
+      currentTree(),
+      SPREADSHEET_ID,
+      NO_GLOBAL_DISCOUNT,
+    )
 
     expect(built.ok).toBe(false)
     expect(built.ok === false && built.problems.join(' ')).toContain('Przedmiar')
@@ -216,5 +231,36 @@ describe('buildSheetComparison', () => {
   it('hands over everything a per-cell link needs, and nothing when the tab’s gid is missing', () => {
     expect(compare().sheetLink).toEqual({ spreadsheetId: SPREADSHEET_ID, gid: 70964819 })
     expect(compare(source({ robociznaGid: undefined })).sheetLink).toBeNull()
+  })
+
+  // A global discount is a whole-kosztorys amount, so the editor prices rows gross and takes it once
+  // off the total, while this report has to price row against row. Both are right; only one of them
+  // is the number on screen behind the dialog, which is the whole point of the flag.
+  describe('global discount', () => {
+    // 1 × 1500 zł at a 9% rabat: this report says 1365 zł, the editor says 1500 − the global amount.
+    const executed = () =>
+      currentTree({
+        progress: [{ itemId: 10, stageId: 1, qtyDone: 1 }],
+      })
+
+    it('flags the disagreement without moving a single figure it reports', () => {
+      const comparison = compare(source(), executed(), { type: 'amount', value: 500 })
+
+      expect(comparison.globalDiscountMismatch).toBe(true)
+      expect(comparison.totals.executedNetFromApp).toBeCloseTo(1365, 6)
+      expect(comparison.executedDiffs).toEqual(compare(source(), executed()).executedDiffs)
+    })
+
+    it('stays quiet when the global amount happens to land on the same number', () => {
+      // 135 zł global against the 135 zł of per-item rabat it replaced — nothing has drifted yet, so
+      // there is nothing to warn about. This is the state right after switching the mode on.
+      expect(
+        compare(source(), executed(), { type: 'amount', value: 135 }).globalDiscountMismatch,
+      ).toBe(false)
+    })
+
+    it('stays quiet when no global discount is active, whatever the per-item rabaty say', () => {
+      expect(compare(source(), executed()).globalDiscountMismatch).toBe(false)
+    })
   })
 })
