@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   buildFinancialFields,
   buildMaterialsBreakdown,
-  DISCOUNT_LABEL,
-} from '@/lib/db/map-category-costs'
+} from '@/lib/queries/investment-financial-fields'
+import { DISCOUNT_LABEL } from '@/lib/constants/financial-field-labels'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 

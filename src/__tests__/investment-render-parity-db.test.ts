@@ -9,7 +9,7 @@ import {
 } from '@/lib/db/sum-transfers'
 import { getDb } from '@/lib/db/get-db'
 import { calculateMargin } from '@/lib/db/calculate-margin'
-import { buildFinancialFields } from '@/lib/db/map-category-costs'
+import { buildFinancialFields } from '@/lib/queries/investment-financial-fields'
 import { computeSummary } from '@/components/ui/toggle-stat-buttons'
 import { round2 } from '@/__tests__/helpers/money'
 import {

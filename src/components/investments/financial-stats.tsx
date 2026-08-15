@@ -17,7 +17,7 @@ import {
   LOSS_LABEL,
   MATERIALS_DISCOUNT_LABEL,
   DISCOUNT_LABEL,
-} from '@/lib/db/map-category-costs'
+} from '@/lib/constants/financial-field-labels'
 
 // The tiles that RAISE the balance — everything else in `fields` is a cost. Routed by label because
 // the field list is flat strings + amounts by the time it reaches here.

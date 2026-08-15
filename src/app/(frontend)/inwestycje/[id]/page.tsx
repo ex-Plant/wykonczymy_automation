@@ -11,7 +11,7 @@ import { InvestmentSummaryPanel } from '@/components/investments/investment-summ
 import { StatsVersionToggle } from '@/components/investments/stats-version-toggle'
 import { parseStatsVersion, STATS_VERSION_PARAM } from '@/lib/constants/stats-version'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
-import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-costs'
+import { buildFinancialFields, buildSettledFields } from '@/lib/queries/investment-financial-fields'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'

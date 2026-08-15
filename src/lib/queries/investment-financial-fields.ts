@@ -4,26 +4,16 @@ import type {
   InvestmentFinancialsT,
   MaterialsBreakdownRowT,
 } from '@/types/investment-financials'
+import {
+  CORRECTION_LABEL,
+  DISCOUNT_LABEL,
+  INCOME_LABEL,
+  LABOR_LABEL,
+  LOSS_LABEL,
+  MATERIALS_DISCOUNT_LABEL,
+} from '@/lib/constants/financial-field-labels'
+import { costForCategory } from '@/lib/utils/category-costs'
 import { formatPLN } from '@/lib/utils/format-currency'
-
-// Material spend not attributed to any expense category — in practice legacy corrections
-// entered before the category became required. It counts toward totalMaterialCosts, so it
-// MUST surface as its own row wherever the category split is shown, or the sum drifts below
-// the listing's bilans.
-const CORRECTION_LABEL = 'Korekta (bez kategorii)'
-
-// The tile labels the investment header matches on to pick a figure out of the field list — exported
-// so the consumer reads the same string this builder writes.
-export const LABOR_LABEL = 'Robocizna netto'
-export const DISCOUNT_LABEL = 'Rabat netto'
-export const INCOME_LABEL = 'Wpłaty'
-export const MATERIALS_DISCOUNT_LABEL = 'Obniżka materiałów'
-export const LOSS_LABEL = 'Strata'
-
-/** Amount booked to a given expense category, 0 when that category has no rows. */
-export function costForCategory(categoryCosts: CategoryCostT[], categoryId: number): number {
-  return categoryCosts.find((c) => c.categoryId === categoryId)?.total ?? 0
-}
 
 function uncategorisedRemainder(financials: InvestmentFinancialsT): number {
   const categorised = financials.categoryCosts.reduce((sum, c) => sum + c.total, 0)
