@@ -47,33 +47,35 @@ export const EXPENSE_INVESTMENT = 'Plac Hellera 3'
 export const EXPENSE_CATEGORY = 'Materiały budowlane'
 
 // Parse a formatPLN string ("224 642,24 zł", spaces are non-breaking) into a number. Keeps a
-// leading minus for negative saldo; strips the thousands spaces and the "zł" suffix.
+// leading minus for negative registerBalance; strips the thousands spaces and the "zł" suffix.
 export function parsePln(text: string): number {
   return Number(text.replace(/[^\d,-]/g, '').replace(',', '.'))
 }
 
-// The SaldoDisplay value on a /kasa/[id] page.
-export async function readSaldo(page: Page): Promise<number> {
-  const saldo = page.getByText(/Saldo:/).first()
-  await saldo.waitFor()
-  return parsePln((await saldo.textContent()) ?? '')
+// The RegisterBalanceDisplay value on a /kasa/[id] page.
+export async function readRegisterBalance(page: Page): Promise<number> {
+  const registerBalance = page.getByText(/Saldo:/).first()
+  await registerBalance.waitFor()
+  return parsePln((await registerBalance.textContent()) ?? '')
 }
 
-// Read the saldo once it has settled. On a cold register load the value can change after the
-// first paint (SSR value → client revalidation), so a single readSaldo captures a stale baseline
+// Read the registerBalance once it has settled. On a cold register load the value can change after the
+// first paint (SSR value → client revalidation), so a single readRegisterBalance captures a stale baseline
 // and a later "did it revert?" comparison fails against a number that was never really current.
 // Poll until two consecutive reads agree.
-export async function readSaldoStable(page: Page): Promise<number> {
+export async function readRegisterBalanceStable(page: Page): Promise<number> {
   let previous = NaN
   for (let attempt = 0; attempt < 20; attempt++) {
-    const current = await readSaldo(page)
-    // NaN never equals itself, so an unparseable saldo can never satisfy the settle
+    const current = await readRegisterBalance(page)
+    // NaN never equals itself, so an unparseable registerBalance can never satisfy the settle
     // check — guard it explicitly rather than looping 20× and returning NaN.
     if (!Number.isNaN(current) && current === previous) return current
     previous = current
     await page.waitForTimeout(150)
   }
-  throw new Error(`readSaldoStable: saldo never settled after 20 reads (last read: ${previous})`)
+  throw new Error(
+    `readRegisterBalanceStable: registerBalance never settled after 20 reads (last read: ${previous})`,
+  )
 }
 
 // Select an option in one of the expense form's Radix/cmdk comboboxes. The trigger's accessible

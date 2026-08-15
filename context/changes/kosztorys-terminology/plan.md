@@ -505,17 +505,17 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 5.1 `pnpm typecheck`
-- [x] 5.2 trzy pliki oracle'a
-- [x] 5.3 `pnpm test:parity`
+- [x] 5.1 `pnpm typecheck` — 33bc7aca
+- [x] 5.2 trzy pliki oracle'a — 33bc7aca
+- [x] 5.3 `pnpm test:parity` — 33bc7aca
 
 ### Phase 6: `saldo` → `registerBalance`
 
 #### Automated
 
-- [ ] 6.1 `pnpm typecheck`
-- [ ] 6.2 `pnpm test:integration`
-- [ ] 6.3 weryfikacja grepem: zero identyfikatorów `aldo`
+- [x] 6.1 `pnpm typecheck`
+- [x] 6.2 `pnpm test:integration`
+- [x] 6.3 weryfikacja grepem: zero identyfikatorów `aldo`
 
 ### Phase 7: Resztki, unie stringowe i włączenie guarda
 

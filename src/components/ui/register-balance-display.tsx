@@ -4,28 +4,31 @@ import { cn } from '@/lib/utils/cn'
 import { Description } from '@/components/ui/description'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
-export const saldoColor = (amount: number) => {
-  // Rounded before the sign test, or a saldo that renders „0,00" gets painted red by a −1e-13 residue.
+export const registerBalanceColor = (amount: number) => {
+  // Rounded before the sign test, or a registerBalance that renders „0,00" gets painted red by a −1e-13 residue.
   const rounded = roundToCents(amount)
   return rounded > 0 ? 'text-chart-green' : rounded < 0 ? 'text-destructive' : 'text-foreground'
 }
 
-type SaldoDisplayPropsT = {
-  saldo: number
+type RegisterBalanceDisplayPropsT = {
+  registerBalance: number
   label?: string
   tooltip?: string
   selectionCount?: { selected: number; total: number }
 }
 
-export function SaldoDisplay({
-  saldo,
+export function RegisterBalanceDisplay({
+  registerBalance,
   label = 'Saldo',
   tooltip,
   selectionCount,
-}: SaldoDisplayPropsT) {
+}: RegisterBalanceDisplayPropsT) {
   return (
     <Description withIcon={false}>
-      {label}: <span className={cn('font-semibold', saldoColor(saldo))}>{formatPLN(saldo)}</span>
+      {label}:{' '}
+      <span className={cn('font-semibold', registerBalanceColor(registerBalance))}>
+        {formatPLN(registerBalance)}
+      </span>
       {tooltip && (
         <InfoTooltip content={tooltip} label={`Jak liczony jest: ${label}`} className="ml-1" />
       )}

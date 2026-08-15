@@ -42,4 +42,4 @@ export async function validateSourceRegister(
 
 // No sufficient-funds guard by design: registers (auxiliary included) may go
 // negative — a deliberate client decision. Do not re-add a balance check here or
-// in the transfer actions; the saldo preview in the form is advisory only.
+// in the transfer actions; the registerBalance preview in the form is advisory only.

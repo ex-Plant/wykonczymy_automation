@@ -10,7 +10,7 @@ import { TransfersSection } from '@/components/transfers/transfers-section'
 import { EditWorkerDialog } from '@/components/dialogs/edit-worker-dialog'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { RegisterBalanceDisplay } from '@/components/ui/register-balance-display'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function UserDetailPage({ params, searchParams }: DynamicPagePropsT) {
@@ -49,13 +49,13 @@ export default async function UserDetailPage({ params, searchParams }: DynamicPa
     ...(registerName ? [{ label: 'Domyślna kasa', value: registerName }] : []),
   ]
 
-  const saldo = typeDistribution.find((row) => row.type === 'PAYOUT')?.total ?? 0
+  const registerBalance = typeDistribution.find((row) => row.type === 'PAYOUT')?.total ?? 0
 
   return (
     <PageWrapper title={worker.name} backHref="/pracownicy" backLabel="Pracownicy">
       <EditWorkerDialog worker={worker} cashRegisters={refData.cashRegisters} />
       <InfoList items={infoFields} />
-      <SaldoDisplay saldo={saldo} label="Wypłaty" />
+      <RegisterBalanceDisplay registerBalance={registerBalance} label="Wypłaty" />
       <TransfersSection
         config={{
           query: { where: transferWhere, page, limit },

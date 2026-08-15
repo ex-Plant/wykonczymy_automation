@@ -5,7 +5,10 @@ import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/button'
 import { FilterGrid } from '@/components/ui/filter-grid'
 import { Description } from '@/components/ui/description'
-import { SaldoDisplay, saldoColor } from '@/components/ui/saldo-display'
+import {
+  RegisterBalanceDisplay,
+  registerBalanceColor,
+} from '@/components/ui/register-balance-display'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 type StatEntryT = {
@@ -94,7 +97,12 @@ export function ToggleStatButtons({
                     className={cn('border-2', entry.borderClassName, isHidden && 'opacity-40')}
                   >
                     <span className="text-muted-foreground">{entry.label}:</span>
-                    <span className={cn('font-medium', colorValues && saldoColor(entry.amount))}>
+                    <span
+                      className={cn(
+                        'font-medium',
+                        colorValues && registerBalanceColor(entry.amount),
+                      )}
+                    >
                       {entry.value}
                     </span>
                   </Button>
@@ -117,8 +125,8 @@ export function ToggleStatButtons({
         )
       })}
 
-      <SaldoDisplay
-        saldo={total}
+      <RegisterBalanceDisplay
+        registerBalance={total}
         label={summaryLabel}
         tooltip={summaryTooltip}
         selectionCount={{ selected: allEntries.length - hidden.size, total: allEntries.length }}

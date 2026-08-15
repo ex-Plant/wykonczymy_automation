@@ -3,7 +3,7 @@
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
 import type { FinancialFieldT } from '@/types/investment-financials'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { RegisterBalanceDisplay } from '@/components/ui/register-balance-display'
 import { StatButton } from '@/components/ui/stat-button'
 import { Description } from '@/components/ui/description'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -142,7 +142,11 @@ export function FinancialStats({
             className="border-chart-red"
             tooltip={TOOLTIPS.payouts}
           />
-          <SaldoDisplay saldo={margin} label="Marża" tooltip={TOOLTIPS.margin} />
+          <RegisterBalanceDisplay
+            registerBalance={margin}
+            label="Marża"
+            tooltip={TOOLTIPS.margin}
+          />
         </div>
       )}
     </div>
