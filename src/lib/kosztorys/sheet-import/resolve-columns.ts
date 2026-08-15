@@ -164,7 +164,7 @@ function findCandidates(
   return candidates
 }
 
-const ROBOCIZNA_FIELDS = [
+const LABOR_FIELDS = [
   'plannedQty',
   'measuredQty',
   'unit',
@@ -181,7 +181,7 @@ export function resolveLaborColumns(
   mapping: SheetColumnMappingT = {},
 ): ResolvedLaborColumnsT | LaborColumnsFailureT {
   const block = grid.slice(0, HEADER_BLOCK_ROWS)
-  const { columns, unresolved } = resolveFields(block, ROBOCIZNA_FIELDS)
+  const { columns, unresolved } = resolveFields(block, LABOR_FIELDS)
   const problems: string[] = []
 
   const stages = findStages(block)

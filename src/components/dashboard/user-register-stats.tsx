@@ -5,7 +5,7 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
 import type { CashRegisterRowT } from '@/types/table-rows'
-import { RegisterBalanceDisplay } from '@/components/ui/register-balance-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 
 type UserRegisterStatsPropsT = {
   cashRegisters: CashRegisterRowT[]
@@ -38,8 +38,8 @@ export function UserRegisterStats({ cashRegisters, showAllRegisters }: UserRegis
         />
       )}
       {totalRegisterBalance !== null && (
-        <RegisterBalanceDisplay
-          registerBalance={totalRegisterBalance}
+        <SignedMoneyDisplay
+          amount={totalRegisterBalance}
           label="Saldo wszystkich kas (bez wirtualnych)"
         />
       )}

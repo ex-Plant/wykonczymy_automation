@@ -133,6 +133,10 @@ export function laborCostsNetPreDiscount(laborCostsNet: number, discountAmount: 
 // A strata is a cost the company swallowed after the fact: the client simply stops owing the amount
 // entered, the same amount on both planes. Grossing it would forgive 1230 zł of debt for 1000 zł
 // absorbed.
+function deductSettled(combined: MoneyPairT, settledNet: number): MoneyPairT {
+  return { net: combined.net - settledNet, gross: combined.gross - settledNet }
+}
+
 export function computeAmountDue(
   laborCostsNet: number,
   depositsTotal: number,
@@ -146,8 +150,7 @@ export function computeAmountDue(
     billedMaterials(materials, materialsNetRate),
     vatRate,
   )
-  const settled = depositsTotal + loss
-  return { net: combined.net - settled, gross: combined.gross - settled }
+  return deductSettled(combined, depositsTotal + loss)
 }
 
 export type MixedSettlementT = {
@@ -190,13 +193,12 @@ export function computeMixedSettlement(
 ): MixedSettlementT {
   const materialsBilled = billedMaterials(materials, materialsNetRate)
   const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
-  const settledNet = paidNet + loss
-  const outstandingNet = combined.net - settledNet
   // VAT rides the prace alone, so the gross-up runs on „Łącznie" — where materiały already sits at
   // face value on both axes — and the wpłaty come off after it. Grossing `outstandingNet` instead
   // put materiały × VAT into this figure, so „Pozostało brutto" and the „Łącznie" brutto printed
-  // directly above it quoted the same debt at two amounts on one screen.
-  const remainderGross = combined.gross - settledNet
+  // directly above it quoted the same debt at two amounts on one screen. Same deduction as
+  // `computeAmountDue`'s, hence the shared helper.
+  const { net: outstandingNet, gross: remainderGross } = deductSettled(combined, paidNet + loss)
   const amountDueGross = remainderGross - paidGross
   return {
     laborCostsNet,

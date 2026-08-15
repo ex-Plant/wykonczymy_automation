@@ -10,12 +10,12 @@ import { formatPLN } from '@/lib/utils/format-currency'
 // entered before the category became required. It counts toward totalMaterialCosts, so it
 // MUST surface as its own row wherever the category split is shown, or the sum drifts below
 // the listing's bilans.
-const KOREKTA_LABEL = 'Korekta (bez kategorii)'
+const CORRECTION_LABEL = 'Korekta (bez kategorii)'
 
 // The tile labels the investment header matches on to pick a figure out of the field list — exported
 // so the consumer reads the same string this builder writes.
 export const LABOR_LABEL = 'Robocizna netto'
-export const RABAT_LABEL = 'Rabat netto'
+export const DISCOUNT_LABEL = 'Rabat netto'
 export const INCOME_LABEL = 'Wpłaty'
 export const MATERIALS_DISCOUNT_LABEL = 'Obniżka materiałów'
 export const LOSS_LABEL = 'Strata'
@@ -56,7 +56,7 @@ export function buildMaterialsBreakdown(
   }))
   const uncategorised = uncategorisedRemainder(financials)
   if (uncategorised !== 0)
-    grossRows.push({ id: null, label: KOREKTA_LABEL, net: uncategorised, origin: 'gross' })
+    grossRows.push({ id: null, label: CORRECTION_LABEL, net: uncategorised, origin: 'gross' })
 
   const netRows: MaterialsBreakdownRowT[] = expenseCategories
     .map((cat) => ({ cat, netBilled: costForCategory(netCategoryCosts, cat.id) }))
@@ -131,7 +131,7 @@ export function buildFinancialFields(
     ...(uncategorised !== 0
       ? [
           {
-            label: KOREKTA_LABEL,
+            label: CORRECTION_LABEL,
             value: formatPLN(uncategorised),
             amount: -uncategorised,
           },
@@ -147,7 +147,7 @@ export function buildFinancialFields(
     // the two readings drift apart. Rabat has a tile for exactly this reason; the materiały
     // concession and the strata raise the balance the same way and need the same seat.
     ...creditFields([
-      [RABAT_LABEL, totalDiscount],
+      [DISCOUNT_LABEL, totalDiscount],
       [MATERIALS_DISCOUNT_LABEL, materialsNetDiscount],
       [LOSS_LABEL, totalLoss],
     ]),

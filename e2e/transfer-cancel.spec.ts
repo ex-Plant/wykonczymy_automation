@@ -10,11 +10,11 @@ test.use({ storageState: 'e2e/.auth/user.json' })
 
 // The cancel flow is a two-write audit operation (mark original cancelled + insert a
 // CANCELLATION row) whose balance effect is reversed by a Payload hook. This asserts the
-// user-facing result: the reason min-length gates the confirm, and after cancelling the registerBalance
+// user-facing result: the reason min-length gates the confirm, and after cancelling the balance
 // returns to its pre-create value and the cancelled row leaves the default (non-cancelled) view.
 // The CANCELLATION audit row itself is filtered out of the register dataset + virtualized away,
 // so it isn't asserted here; the two-write correctness is covered by the unit suite.
-test('cancelling an expense reverts the registerBalance and hides the row, gated by reason length', async ({
+test('cancelling an expense reverts the balance and hides the row, gated by reason length', async ({
   page,
 }) => {
   const registerUrl = `/kasa/${EXPENSE_REGISTER.id}`

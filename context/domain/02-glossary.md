@@ -15,9 +15,9 @@ and what the **code calls it** (English identifier). It does two jobs at once:
 - **Naming map** (right columns) — the **canonical** code identifier per concept, plus the **drift
   variants** that must converge on it. This is the rename spec **EX-548** executes against.
 
-This is the **register** (a descriptive snapshot with proposed canonicals), not yet the completed
-rename. A row's drift is real until its `Drift in code` cell is empty. The renames are tracked work
-(EX-548 + a follow-up whole-app sweep), **not** implied done by listing them here.
+**EX-548 executed the rename**, so every canonical below is the identifier actually in the tree and
+`local/no-domain-drift` (`eslint-rules/no-domain-drift.mjs`) fails the build on a relapse. A
+non-empty `Drift in code` cell now means drift that survived on purpose — read its note.
 
 ## How to read a row
 
@@ -42,25 +42,26 @@ Category B, whatever the sheet calls it.
 
 ## 1. Financial core — cash ledger + investment P&L (whole app)
 
-The mature, code-enforced domain. Canonicals already match transfers/`lib/db` for most rows; the
-drift is where kosztorys code re-typed the same figure in Polish.
+The mature, code-enforced domain. Every canonical below now matches transfers/`lib/db`; EX-548 cleared
+the drift where kosztorys code had re-typed the same figure in Polish, and `local/no-domain-drift`
+keeps it cleared.
 
-| Concept                | App/UI (PL)          | Sheet name  | Canonical code id                | Cat | Drift in code                                        | Lives in                                                 |
-| ---------------------- | -------------------- | ----------- | -------------------------------- | --- | ---------------------------------------------------- | -------------------------------------------------------- |
-| balance                | Bilans inwestora     | —           | `balance`                        | B   | `bilans`                                             | `calculate-balance.ts:6`                                 |
-| register balance       | Saldo kasy           | —           | `registerBalance`                | B   | `saldo`, `useSaldo`, `SaldoDisplay`, `totalSaldo`    | `queries/register-saldo.ts:10`                           |
-| margin                 | Marża                | —           | `margin`                         | B   | `marza`                                              | `calculate-margin.ts:13`                                 |
-| deposit (income)       | Wpłaty               | —           | `deposit`                        | B   | `wplaty`, `wplatyNet`                                | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
-| payout                 | Wypłaty              | —           | `payout` (`PAYOUT`)              | B   | `wyplaty`                                            | `calculate-margin.ts:14`                                 |
-| labor charge           | Robocizna            | „robocizna" | `laborCosts` (`LABOR_COST`)      | B   | — (resolved 2026-07-20)                              | `calculate-margin.ts:14`; `transfer-rules.ts:52`         |
-| discount               | Rabat                | „rabat %"   | `discount` (`RABAT`)             | B   | `rabat`, `rabatNet`, `rabatAmount`, `rabatClientNet` | `calculate-margin.ts:14`; `kosztorys-editor-body.tsx:73` |
-| loss                   | Strata               | —           | `loss` (`LOSS`)                  | B   | `strata`                                             | `calculate-margin.ts:5`                                  |
-| correction             | Korekta              | —           | `correction` (`CORRECTION`)      | B   | —                                                    | `validation.ts:7`                                        |
-| materials              | Materiały            | „materiały" | `materials`                      | B   | (`materiały` in labels only)                         | `investment-financials.ts:41`                            |
-| settled flag           | Wliczone w robociznę | —           | `settled`                        | B   | —                                                    | `transfers.ts:228`                                       |
-| transfer / transaction | Transakcja           | —           | `transfer` (slug `transactions`) | B   | —                                                    | `transfers.ts:52`                                        |
-| cash register          | Kasa                 | —           | `cashRegister`                   | B   | —                                                    | `cash-registers.ts:34`                                   |
-| investment             | Inwestycja           | —           | `investment`                     | B   | —                                                    | `investments.ts:11`                                      |
+| Concept                | App/UI (PL)          | Sheet name  | Canonical code id                | Cat | Drift in code                | Lives in                                                 |
+| ---------------------- | -------------------- | ----------- | -------------------------------- | --- | ---------------------------- | -------------------------------------------------------- |
+| balance                | Bilans inwestora     | —           | `balance`                        | B   | — (resolved EX-548)          | `calculate-balance.ts:6`                                 |
+| register balance       | Saldo kasy           | —           | `registerBalance`                | B   | — (resolved EX-548)          | `lib/queries/register-balance.ts:10`                     |
+| margin                 | Marża                | —           | `margin`                         | B   | — (resolved EX-548)          | `calculate-margin.ts:13`                                 |
+| deposit (income)       | Wpłaty               | —           | `deposit`                        | B   | — (resolved EX-548)          | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
+| payout                 | Wypłaty              | —           | `payout` (`PAYOUT`)              | B   | — (resolved EX-548)          | `calculate-margin.ts:14`                                 |
+| labor charge           | Robocizna            | „robocizna" | `laborCosts` (`LABOR_COST`)      | B   | — (resolved 2026-07-20)      | `calculate-margin.ts:14`; `transfer-rules.ts:52`         |
+| discount               | Rabat                | „rabat %"   | `discount` (`RABAT`)             | B   | — (resolved EX-548)          | `calculate-margin.ts:14`; `kosztorys-editor-body.tsx:73` |
+| loss                   | Strata               | —           | `loss` (`LOSS`)                  | B   | — (resolved EX-548)          | `calculate-margin.ts:5`                                  |
+| correction             | Korekta              | —           | `correction` (`CORRECTION`)      | B   | —                            | `validation.ts:7`                                        |
+| materials              | Materiały            | „materiały" | `materials`                      | B   | (`materiały` in labels only) | `investment-financials.ts:41`                            |
+| settled flag           | Wliczone w robociznę | —           | `settled`                        | B   | —                            | `transfers.ts:228`                                       |
+| transfer / transaction | Transakcja           | —           | `transfer` (slug `transactions`) | B   | —                            | `transfers.ts:52`                                        |
+| cash register          | Kasa                 | —           | `cashRegister`                   | B   | —                            | `cash-registers.ts:34`                                   |
+| investment             | Inwestycja           | —           | `investment`                     | B   | —                            | `investments.ts:11`                                      |
 
 **Robocizna — ruled `laborCosts` (owner, 2026-07-20).** The transfers side already owned an English
 form (`LABOR_COST`, `totalLaborCosts`), and a figure may not carry two names across the recon seam,

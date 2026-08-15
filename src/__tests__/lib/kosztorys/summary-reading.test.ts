@@ -84,7 +84,7 @@ describe('financialsOnReading', () => {
     // The guard against a swap that quietly rebases materiały or wypłaty onto the kosztorys plane,
     // which the kosztorys has no figure for at all.
     const swapped = financialsOnReading(financials, readingFromKosztorys(clientTotals))
-    const { totalLaborCosts: _labor, totalDiscount: _rabat, ...untouched } = swapped
+    const { totalLaborCosts: _labor, totalDiscount: _discount, ...untouched } = swapped
     const {
       totalLaborCosts: _originalLabor,
       totalDiscount: _originalDiscount,

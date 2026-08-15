@@ -8,11 +8,11 @@ import {
   type LaborColumnsFailureT,
 } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import {
-  ALTOWA_ROBOCIZNA_HEADER,
+  ALTOWA_LABOR_HEADER,
   BIALOSTOCKA_RATES_HEADER,
-  BIALOSTOCKA_ROBOCIZNA_HEADER,
-  PRZEDPOLE_ROBOCIZNA_HEADER,
-  ZUPNICZA_ROBOCIZNA_HEADER,
+  BIALOSTOCKA_LABOR_HEADER,
+  PRZEDPOLE_LABOR_HEADER,
+  ZUPNICZA_LABOR_HEADER,
 } from '@/__tests__/fixtures/kosztorys-sheet/header-blocks'
 
 function expectResolved(
@@ -29,7 +29,7 @@ function expectRatesResolved(
 
 describe('resolveLaborColumns', () => {
   it('resolves the wide 10-etap layout', () => {
-    const result = resolveLaborColumns(BIALOSTOCKA_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(BIALOSTOCKA_LABOR_HEADER)
     expectResolved(result)
 
     expect(result.columns).toMatchObject({
@@ -45,7 +45,7 @@ describe('resolveLaborColumns', () => {
   })
 
   it('resolves a narrow layout where Przedmiar sits four columns earlier', () => {
-    const result = resolveLaborColumns(PRZEDPOLE_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(PRZEDPOLE_LABOR_HEADER)
     expectResolved(result)
 
     expect(result.columns).toMatchObject({
@@ -62,20 +62,20 @@ describe('resolveLaborColumns', () => {
 
   it('finds stages by the „wykonano" marker even when row 3 renames them to crews', () => {
     // Row 3 reads „1 etap BRYGADA JEDEN" / „3 etap EKIPA DWA" — no „ilość" anywhere.
-    const result = resolveLaborColumns(PRZEDPOLE_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(PRZEDPOLE_LABOR_HEADER)
     expectResolved(result)
     expect(result.stages.count).toBe(6)
   })
 
   it('does not mistake the wartość block for more etapy', () => {
     // Row 1 labels the money block identically to the qty block (V1 is =D1). Only row 2 differs.
-    const result = resolveLaborColumns(BIALOSTOCKA_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(BIALOSTOCKA_LABOR_HEADER)
     expectResolved(result)
     expect(result.stages.count).toBe(10) // not 20
   })
 
   it('resolves a layout where the money block is not adjacent to Wartość netto', () => {
-    const result = resolveLaborColumns(ALTOWA_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(ALTOWA_LABOR_HEADER)
     expectResolved(result)
 
     expect(result.columns).toMatchObject({ plannedQty: 13, netValue: 18 })
@@ -83,21 +83,21 @@ describe('resolveLaborColumns', () => {
   })
 
   it('reports nothing unresolved when every optional column is there', () => {
-    const result = resolveLaborColumns(BIALOSTOCKA_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(BIALOSTOCKA_LABOR_HEADER)
     expectResolved(result)
 
     expect(result.missingFields).toEqual([])
   })
 
   it('finds „Pomiar z natury" beside Przedmiar', () => {
-    const result = resolveLaborColumns(BIALOSTOCKA_ROBOCIZNA_HEADER)
+    const result = resolveLaborColumns(BIALOSTOCKA_LABOR_HEADER)
     expectResolved(result)
 
     expect(result.columns.measuredQty).toBe(14)
   })
 
   it('imports a sheet with no „Pomiar z natury" column rather than refusing it', () => {
-    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    const grid = BIALOSTOCKA_LABOR_HEADER.map((row) => [...row])
     grid[0][14] = ''
     grid[2][14] = ''
 
@@ -114,7 +114,7 @@ describe('resolveLaborColumns', () => {
   it('imports a sheet whose „Pomiar z natury" matches twice rather than refusing it', () => {
     // An optional column the resolver cannot pin down is dropped, not escalated: refusing here would
     // reject a sheet that imported fine before the column was ever looked for.
-    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    const grid = BIALOSTOCKA_LABOR_HEADER.map((row) => [...row])
     grid[0][20] = grid[0][14]
     grid[2][20] = grid[2][14]
 
@@ -130,7 +130,7 @@ describe('resolveLaborColumns', () => {
   })
 
   it('treats a missing rabat column as fine — some sheets genuinely have none', () => {
-    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    const grid = BIALOSTOCKA_LABOR_HEADER.map((row) => [...row])
     grid[0][17] = '' // blank out „rabat"
 
     const result = resolveLaborColumns(grid)
@@ -139,7 +139,7 @@ describe('resolveLaborColumns', () => {
   })
 
   it('fails by naming the missing column rather than throwing', () => {
-    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    const grid = BIALOSTOCKA_LABOR_HEADER.map((row) => [...row])
     grid[0][16] = '' // „Cena j.m." on row 1
     grid[2][16] = '' // „cena j.m." on row 3
 
@@ -150,7 +150,7 @@ describe('resolveLaborColumns', () => {
   })
 
   it('fails when a required column matches twice, instead of picking the leftmost', () => {
-    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    const grid = BIALOSTOCKA_LABOR_HEADER.map((row) => [...row])
     grid[0][19] = 'Przedmiar' // a second one at T
 
     const result = resolveLaborColumns(grid)
@@ -169,7 +169,7 @@ describe('resolveLaborColumns', () => {
     }
 
     it('names the required field it could not place, on a sheet that splits „Wartość netto" in two', () => {
-      const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER)
+      const result = resolveLaborColumns(ZUPNICZA_LABOR_HEADER)
       expectRefused(result)
 
       expect(result.missingFields).toContainEqual({
@@ -180,7 +180,7 @@ describe('resolveLaborColumns', () => {
     })
 
     it('offers both split columns as candidates, named the way the sheet names them', () => {
-      const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER)
+      const result = resolveLaborColumns(ZUPNICZA_LABOR_HEADER)
       expectRefused(result)
 
       expect(result.candidates).toContainEqual({
@@ -196,7 +196,7 @@ describe('resolveLaborColumns', () => {
     })
 
     it('leaves out a column another field already owns', () => {
-      const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER)
+      const result = resolveLaborColumns(ZUPNICZA_LABOR_HEADER)
       expectRefused(result)
 
       // N/Q are Przedmiar and Cena j.m.; U is komentarz. Offering a resolved column would invite the
@@ -208,7 +208,7 @@ describe('resolveLaborColumns', () => {
     })
 
     it('leaves out the etapy run and the columns read off its position', () => {
-      const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER)
+      const result = resolveLaborColumns(ZUPNICZA_LABOR_HEADER)
       expectRefused(result)
 
       const columns = result.candidates.map((candidate) => candidate.column)
@@ -218,7 +218,7 @@ describe('resolveLaborColumns', () => {
     })
 
     it('leaves out the ordinal column even when it is labelled', () => {
-      const grid = ZUPNICZA_ROBOCIZNA_HEADER.map((row) => [...row])
+      const grid = ZUPNICZA_LABOR_HEADER.map((row) => [...row])
       grid[0][1] = 'Lp.' // B, between nazwa sekcji and opis pracy
 
       const result = resolveLaborColumns(grid)
@@ -228,7 +228,7 @@ describe('resolveLaborColumns', () => {
     })
 
     it('leaves out a column with nothing typed in it — it names nothing to point at', () => {
-      const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER)
+      const result = resolveLaborColumns(ZUPNICZA_LABOR_HEADER)
       expectRefused(result)
 
       expect(result.candidates.map((candidate) => candidate.column)).not.toContain(1) // B — blank
@@ -236,7 +236,7 @@ describe('resolveLaborColumns', () => {
   })
 
   it('fails when no row carries the „wykonano" marker', () => {
-    const grid = BIALOSTOCKA_ROBOCIZNA_HEADER.map((row) => [...row])
+    const grid = BIALOSTOCKA_LABOR_HEADER.map((row) => [...row])
     grid[1] = grid[1].map((cell) => (cell === 'wykonano' ? '' : cell))
 
     const result = resolveLaborColumns(grid)

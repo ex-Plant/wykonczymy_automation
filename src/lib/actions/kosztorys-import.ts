@@ -27,7 +27,7 @@ import {
   type SheetFailureReasonT,
   type SheetFailureT,
 } from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
-import { readImportGrids, ROBOCIZNA_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
+import { readImportGrids, LABOR_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import { serviceAccountEmail } from '@/lib/google/sheet-access'
 import type { ActionResultT } from '@/types/action'
@@ -79,7 +79,7 @@ async function derivePlan(investmentId: number, sheet: InvestmentSheetT): Promis
 const FAILURE_MESSAGES: Record<SheetFailureReasonT, string> = {
   forbidden: 'Arkusz Google nie jest udostępniony kontu usługi tej aplikacji.',
   'not-found': 'Arkusz Google o tym identyfikatorze nie istnieje albo został usunięty.',
-  'missing-tab': `Arkusz Google nie ma zakładki „${ROBOCIZNA_TAB}".`,
+  'missing-tab': `Arkusz Google nie ma zakładki „${LABOR_TAB}".`,
   unknown: 'Nie udało się odczytać arkusza Google. Spróbuj ponownie za chwilę.',
 }
 

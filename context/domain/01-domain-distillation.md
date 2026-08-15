@@ -1,7 +1,7 @@
 ---
 created: 2026-07-20
 updated: 2026-08-15
-verified_at: 37e27b24
+verified_at: 938e0564
 method: m4l5-1 (DDD domain distillation)
 ---
 
@@ -10,7 +10,7 @@ method: m4l5-1 (DDD domain distillation)
 Regeneracja od zera (bramka 3 changeu `kosztorys-terminology`). Poprzednia wersja opisywała kod
 sprzed rozbicia `settlement.ts` na pięć plików (EX-650), sprzed usunięcia `zaliczki.ts` (EX-536)
 i sprzed EX-675, który odwrócił jej tezę o stracie. Każde twierdzenie poniżej ma kotwicę
-`plik:linia` sprawdzoną przy `37e27b24`.
+`plik:linia` sprawdzoną przy `938e0564`.
 
 ---
 
@@ -45,15 +45,15 @@ Ich zderzenie jest świadome i nazwane: `buildKosztorysReconciliation`
 | Płaszczyzna narzędziowa  | `plane` na etapie (`w_tools`/`no_tools`)  | `src/collections/kosztorys-stages.ts:36`    |
 | Wartość wykonana (T)     | `rowValueForView`                         | `settlement-rows.ts:37`                     |
 | Pozostało                | `rowRemainingForView`                     | `settlement-rows.ts:58`                     |
-| Suma prac (pre-rabat)    | `sumaPracNet`                             | `settlement-client-totals.ts:66`            |
-| Rabat kliencki (łącznie) | `rabatClientNet`                          | `settlement-client-totals.ts:67`            |
+| Suma prac (pre-rabat)    | `laborCostsNetFromKosztorys`              | `settlement-client-totals.ts:66`            |
+| Rabat kliencki (łącznie) | `discountNetFromKosztorys`                | `settlement-client-totals.ts:67`            |
 | Robocizna (post-rabat)   | `laborCostsNet`                           | `summary-reading.ts:14`                     |
 | Tryb rozliczenia         | `SettlementModeT` (`NET`/`GROSS`/`MIXED`) | `settlement-mode.ts:15`                     |
-| Marża                    | `calculateMargin`                         | `src/lib/kosztorys/calculate-margin.ts`     |
-| Bilans                   | `calculateBalance`                        | `src/lib/kosztorys/calculate-balance.ts`    |
+| Marża                    | `calculateMargin`                         | `src/lib/db/calculate-margin.ts:16`         |
+| Bilans                   | `calculateBalance`                        | `src/lib/db/calculate-balance.ts:11`        |
 | Rabat na materiałach     | `materialsNetDiscount`                    | `src/lib/db/investment-financials.ts:19`    |
 | Strata                   | `totalLoss`                               | `src/types/investment-financials.ts`        |
-| Saldo kasy               | `saldo` (do zmiany → `registerBalance`)   | `src/lib/queries/register-saldo.ts:10`      |
+| Saldo kasy               | `registerBalance`                         | `src/lib/queries/register-balance.ts:10`    |
 | Rozliczenie podwykonawcy | `subcontractorDueByPlane`                 | `src/lib/kosztorys/subcontractor-due.ts:39` |
 
 **Trzy terminy Category A** (polski zostaje, bo nie ma czystego angielskiego odpowiednika):
@@ -177,17 +177,17 @@ wprowadzenia, nie defekt.
 
 ## KROK 4 — Rozjazdy MODEL vs KOD
 
-| #   | Rozjazd                                                                                 | Status przy `37e27b24`                                                     |
-| --- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1   | Nazwa „Pomiar z natury" sugeruje pomiar w terenie; to formuła `=SUM(D:M)`               | **Żywy.** Rozstrzyga slice „niezmienniki", nie ten.                        |
-| 2   | Polskie identyfikatory dla figur generycznych (`saldo`, `sumaPrac`, `wydatki`)          | **Żywy — to jest przedmiot EX-548.** 84 identyfikatory / 1204 wystąpienia. |
-| 3   | `wplatyNet` / `materialyNet` — hybrydy polsko-angielskie                                | **Zamknięty.** Zero trafień.                                               |
-| 4   | Zaliczki jako osobny moduł                                                              | **Zamknięty.** `zaliczki.ts` usunięty (EX-536).                            |
-| 5   | „Strata nigdy nie dotyka bilansu"                                                       | **Odwrócony.** EX-675 — dotyka obu figur.                                  |
-| 6   | `settlement.ts` jako jeden god-module                                                   | **Zamknięty.** Pięć plików `settlement-*` (EX-650).                        |
-| 7   | `googleSheetId` `required: true, unique: true` — kosztorys nie może istnieć bez arkusza | **Żywy.** `src/collections/sheets.ts:44-50`.                               |
-| 8   | Postęp etapu zapisywany poza agregatem pozycji                                          | **Żywy.** Cel slice'a „agregat".                                           |
-| 9   | `materialsNetDiscount` nieobecny w mapie domeny                                         | **Zamknięty tą regeneracją.**                                              |
+| #   | Rozjazd                                                                                 | Status przy `938e0564`                                         |
+| --- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Nazwa „Pomiar z natury" sugeruje pomiar w terenie; to formuła `=SUM(D:M)`               | **Żywy.** Rozstrzyga slice „niezmienniki", nie ten.            |
+| 2   | Polskie identyfikatory dla figur generycznych (`saldo`, `sumaPrac`, `wydatki`)          | **Zamknięty.** EX-548 przemianował je; guard trzyma 21 rdzeni. |
+| 3   | `wplatyNet` / `materialyNet` — hybrydy polsko-angielskie                                | **Zamknięty.** Zero trafień.                                   |
+| 4   | Zaliczki jako osobny moduł                                                              | **Zamknięty.** `zaliczki.ts` usunięty (EX-536).                |
+| 5   | „Strata nigdy nie dotyka bilansu"                                                       | **Odwrócony.** EX-675 — dotyka obu figur.                      |
+| 6   | `settlement.ts` jako jeden god-module                                                   | **Zamknięty.** Pięć plików `settlement-*` (EX-650).            |
+| 7   | `googleSheetId` `required: true, unique: true` — kosztorys nie może istnieć bez arkusza | **Żywy.** `src/collections/sheets.ts:44-50`.                   |
+| 8   | Postęp etapu zapisywany poza agregatem pozycji                                          | **Żywy.** Cel slice'a „agregat".                               |
+| 9   | `materialsNetDiscount` nieobecny w mapie domeny                                         | **Zamknięty tą regeneracją.**                                  |
 
 ---
 
@@ -218,6 +218,6 @@ wprowadzenia, nie defekt.
 Rdzeń domeny przesunął się od „kosztorys jako import arkusza" do „kosztorys jako druga płaszczyzna
 pieniądza, świadomie porównywana z transakcjami". Trzy rzeczy, które ta regeneracja zmienia
 w obrazie z lipca: strata **dotyka** bilansu, `settlement.ts` już nie istnieje jako jeden plik,
-a `materialsNetDiscount` jest pełnoprawnym modyfikatorem obu figur inwestycji. Najbliższy dług nie
-jest architektoniczny tylko językowy (EX-548) — i to on blokuje włączenie guarda
-`local/no-domain-drift`, który utrzymałby resztę.
+a `materialsNetDiscount` jest pełnoprawnym modyfikatorem obu figur inwestycji. Dług językowy
+(EX-548) jest spłacony, a guard `local/no-domain-drift` pilnuje 21 rdzeni na `'error'` — kolejny
+dług jest już architektoniczny: niezmienniki, agregat, ACL.

@@ -7,8 +7,8 @@ import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 // so keying a Cell/legend row on `name` risks duplicate keys (mis-reconcile on the base toggle).
 export type PieSliceT = { id: string; name: string; value: number; fill: string }
 
-// Positional palette — order preserved from the old conic pie's SLICE_COLORS. recharts fills a slice
-// with the raw CSS var; Tailwind never scans these, so no bg-chart-* utility is needed.
+// recharts fills a slice with the raw CSS var; Tailwind never scans these, so no bg-chart-* utility
+// is needed.
 export const CHART_FILLS = [
   'var(--color-chart-blue)',
   'var(--color-chart-orange)',
@@ -73,8 +73,8 @@ export function sectionPieSlices(
 // the „Struktura kosztów" pie, which reasons in netto totals rather than the per-expense rozpiska.
 export function costTotalsPieSlices(laborCostsNet: number, materialsBilled: number): PieSliceT[] {
   return paintSlices([
-    { id: 'robocizna', name: 'Robocizna', value: laborCostsNet },
-    { id: 'materialy', name: 'Materiały', value: materialsBilled },
+    { id: 'labor', name: 'Robocizna', value: laborCostsNet },
+    { id: 'materials', name: 'Materiały', value: materialsBilled },
   ])
 }
 
@@ -88,7 +88,7 @@ export function expensePieSlices(
 ): PieSliceT[] {
   return paintSlices(
     rows.map((row) => ({
-      id: `${row.origin}-${row.id !== null ? `expense-${row.id}` : 'korekta'}`,
+      id: `${row.origin}-${row.id !== null ? `expense-${row.id}` : 'correction'}`,
       name: row.label,
       value: breakdownRowPair(row, netRate).gross,
     })),
@@ -99,7 +99,7 @@ export function expensePieSlices(
 // distinction exists; the netto slice absorbs the unmarked deposits (they default to netto).
 export function depositPlanePieSlices(paidNet: number, paidGross: number): PieSliceT[] {
   return paintSlices([
-    { id: 'netto', name: 'Wpłaty netto', value: paidNet },
-    { id: 'brutto', name: 'Wpłaty brutto', value: paidGross },
+    { id: 'net', name: 'Wpłaty netto', value: paidNet },
+    { id: 'gross', name: 'Wpłaty brutto', value: paidGross },
   ])
 }

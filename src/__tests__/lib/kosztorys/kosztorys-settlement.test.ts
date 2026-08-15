@@ -169,19 +169,19 @@ describe('sectionSubtotalsForView › plannedNet (przedmiar) is client-only', ()
 describe('sumSectionSubtotalsNet (subcontractor należne)', () => {
   // Executed pre-rabat at client price: row 1 = 5 @ 20 = 100, row 2 = 4 @ 10 = 40 → 140, ignoring
   // item 2's flat-8 rabat (that's a client concession the crew is still owed past).
-  const PRE_RABAT_CLIENT = 140
+  const PRE_DISCOUNT_CLIENT = 140
 
   it('adds the per-item rabat back — Σ(net + discount) is the pre-rabat executed value', () => {
     const rows = treeToRows(tree)
     const subtotals = sectionSubtotalsForView(rows, tree.stages, 'client')
-    expect(sumSectionSubtotalsNet(subtotals)).toBeCloseTo(PRE_RABAT_CLIENT)
+    expect(sumSectionSubtotalsNet(subtotals)).toBeCloseTo(PRE_DISCOUNT_CLIENT)
   })
 
   it('is unaffected by an active global discount (net already gross, discount 0)', () => {
     const globalTree = { ...tree, globalDiscount: { type: 'amount' as const, value: 10 } }
     const rows = treeToRows(globalTree)
     const subtotals = sectionSubtotalsForView(rows, globalTree.stages, 'client')
-    expect(sumSectionSubtotalsNet(subtotals)).toBeCloseTo(PRE_RABAT_CLIENT)
+    expect(sumSectionSubtotalsNet(subtotals)).toBeCloseTo(PRE_DISCOUNT_CLIENT)
   })
 
   it('reprices with the active view — subcontractor price differs from client', () => {

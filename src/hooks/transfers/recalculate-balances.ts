@@ -30,8 +30,6 @@ export const recalcAfterChange: CollectionAfterChangeHook = async ({ doc, previo
   if (prevInvestmentId && prevInvestmentId !== investmentId)
     revalidateTag(entityTag('investment', prevInvestmentId), 'default')
 
-  // Invalidate transfers collection tag — this covers fetchRegisterBalances,
-  // fetchInvestmentFinancials, and fetchWorkerRegisterBalances
   // Payload hooks run in Route Handler context — must use revalidateTag, not updateTag
   revalidateTag(CACHE_TAGS.transfers, 'default')
 

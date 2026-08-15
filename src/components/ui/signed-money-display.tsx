@@ -4,31 +4,32 @@ import { cn } from '@/lib/utils/cn'
 import { Description } from '@/components/ui/description'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
-export const registerBalanceColor = (amount: number) => {
-  // Rounded before the sign test, or a registerBalance that renders „0,00" gets painted red by a −1e-13 residue.
+export const signedMoneyColor = (amount: number) => {
+  // Rounded before the sign test, or a balance that renders „0,00" gets painted red by a −1e-13 residue.
   const rounded = roundToCents(amount)
   return rounded > 0 ? 'text-chart-green' : rounded < 0 ? 'text-destructive' : 'text-foreground'
 }
 
-type RegisterBalanceDisplayPropsT = {
-  registerBalance: number
+type SignedMoneyDisplayPropsT = {
+  amount: number
   label?: string
   tooltip?: string
   selectionCount?: { selected: number; total: number }
 }
 
-export function RegisterBalanceDisplay({
-  registerBalance,
+// One labelled money figure, coloured by sign. The default label is „Saldo" because a register
+// balance is the commonest caller, but nothing here is register-specific — marża, wypłaty and
+// „Saldo po transakcji" render through the same component.
+export function SignedMoneyDisplay({
+  amount,
   label = 'Saldo',
   tooltip,
   selectionCount,
-}: RegisterBalanceDisplayPropsT) {
+}: SignedMoneyDisplayPropsT) {
   return (
     <Description withIcon={false}>
       {label}:{' '}
-      <span className={cn('font-semibold', registerBalanceColor(registerBalance))}>
-        {formatPLN(registerBalance)}
-      </span>
+      <span className={cn('font-semibold', signedMoneyColor(amount))}>{formatPLN(amount)}</span>
       {tooltip && (
         <InfoTooltip content={tooltip} label={`Jak liczony jest: ${label}`} className="ml-1" />
       )}

@@ -1,7 +1,7 @@
 import type { sheets_v4 } from 'googleapis'
 import { fold } from './columns'
 
-export const ROBOCIZNA_TAB = 'kosztorys_robocizny'
+export const LABOR_TAB = 'kosztorys_robocizny'
 const RATE_TAB_PREFIX = 'zakres pracy'
 
 // Wide enough for the widest layout seen (the wartość block ends at AF) with room to spare, and
@@ -45,7 +45,7 @@ export type ImportGridsT = {
 
 export class MissingLaborTabError extends Error {
   constructor(spreadsheetId: string) {
-    super(`Arkusz ${spreadsheetId} nie ma zakładki „${ROBOCIZNA_TAB}".`)
+    super(`Arkusz ${spreadsheetId} nie ma zakładki „${LABOR_TAB}".`)
   }
 }
 
@@ -70,7 +70,7 @@ export async function readImportGrids(
   const properties = (meta.data.sheets ?? []).map((sheet) => sheet.properties)
   const titles = properties.map((props) => props?.title ?? '')
 
-  const laborTabTitle = titles.find((title) => fold(title) === ROBOCIZNA_TAB)
+  const laborTabTitle = titles.find((title) => fold(title) === LABOR_TAB)
   if (!laborTabTitle) throw new MissingLaborTabError(spreadsheetId)
 
   const rateTitles = titles.filter((title) => fold(title).startsWith(RATE_TAB_PREFIX))

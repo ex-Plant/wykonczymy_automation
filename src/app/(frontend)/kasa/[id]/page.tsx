@@ -10,7 +10,7 @@ import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
-import { RegisterBalanceDisplay } from '@/components/ui/register-balance-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import type { Where } from 'payload'
 import type { DynamicPagePropsT } from '@/types/page'
 
@@ -60,7 +60,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
   return (
     <PageWrapper title={register.name}>
       <InfoList items={[{ label: 'Właściciel', value: ownerName }]} />
-      <RegisterBalanceDisplay registerBalance={registerBalance} />
+      <SignedMoneyDisplay amount={registerBalance} />
 
       {/* Transactions table */}
       <TransfersSection

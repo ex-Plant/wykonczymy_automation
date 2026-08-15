@@ -3,7 +3,7 @@
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
 import type { FinancialFieldT } from '@/types/investment-financials'
-import { RegisterBalanceDisplay } from '@/components/ui/register-balance-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import { StatButton } from '@/components/ui/stat-button'
 import { Description } from '@/components/ui/description'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -16,12 +16,12 @@ import {
   LABOR_LABEL,
   LOSS_LABEL,
   MATERIALS_DISCOUNT_LABEL,
-  RABAT_LABEL,
+  DISCOUNT_LABEL,
 } from '@/lib/db/map-category-costs'
 
 // The tiles that RAISE the balance — everything else in `fields` is a cost. Routed by label because
 // the field list is flat strings + amounts by the time it reaches here.
-const CREDIT_LABELS: string[] = [INCOME_LABEL, RABAT_LABEL, MATERIALS_DISCOUNT_LABEL, LOSS_LABEL]
+const CREDIT_LABELS: string[] = [INCOME_LABEL, DISCOUNT_LABEL, MATERIALS_DISCOUNT_LABEL, LOSS_LABEL]
 
 // Both figures render only inside the isAdminOrOwnerRole(...) block below, so this
 // note is shown exclusively to Admin/Owner — flags the figure as owner-level.
@@ -60,7 +60,7 @@ const TOOLTIPS = {
 } as const
 
 const CREDIT_TOOLTIPS: Record<string, string> = {
-  [RABAT_LABEL]: TOOLTIPS.discount,
+  [DISCOUNT_LABEL]: TOOLTIPS.discount,
   [MATERIALS_DISCOUNT_LABEL]: TOOLTIPS.materialsDiscount,
   [LOSS_LABEL]: TOOLTIPS.loss,
 }
@@ -142,11 +142,7 @@ export function FinancialStats({
             className="border-chart-red"
             tooltip={TOOLTIPS.payouts}
           />
-          <RegisterBalanceDisplay
-            registerBalance={margin}
-            label="Marża"
-            tooltip={TOOLTIPS.margin}
-          />
+          <SignedMoneyDisplay amount={margin} label="Marża" tooltip={TOOLTIPS.margin} />
         </div>
       )}
     </div>

@@ -18,7 +18,7 @@ import {
   sumBilled,
   expenseRowHref,
   type ExpenseDatasetT,
-} from '@/lib/kosztorys/wydatki-datasets'
+} from '@/lib/kosztorys/expense-datasets'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { today } from '@/lib/utils/date'
 import type { MaterialTransactionRowT } from '@/types/transfers'

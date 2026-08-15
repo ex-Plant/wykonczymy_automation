@@ -56,7 +56,7 @@ export function MaterialsBreakdownTable({
       {shown.map((row) => {
         const pair = pairOf(row)
         return (
-          <Fragment key={`${row.origin}-${row.id ?? 'korekta'}`}>
+          <Fragment key={`${row.origin}-${row.id ?? 'correction'}`}>
             <SummaryLabelCell>{row.label}</SummaryLabelCell>
             {showNet && <SummaryValueCell>{formatNet(pair.net)}</SummaryValueCell>}
             <SummaryValueCell>{formatNet(pair.gross)}</SummaryValueCell>

@@ -428,10 +428,6 @@ Usunąć znacznik `TODO(EX-548)` z obu komentarzy; zostawić samo uzasadnienie r
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test` + `pnpm test:parity`
 
-#### Manual Verification:
-
-- [ ] Wprowadzenie testowego `const rabatFoo = 1` w `src/` wywala `pnpm lint` — guard faktycznie łapie
-
 ---
 
 ## Testing Strategy

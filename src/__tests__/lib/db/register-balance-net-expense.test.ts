@@ -16,8 +16,8 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
-const BRUTTO = 1230
-const NETTO = 1000
+const GROSS = 1230
+const NET = 1000
 
 describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)', () => {
   let payload: Payload
@@ -59,7 +59,7 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
     await db.execute(sql`
       INSERT INTO transactions
         (description, amount, net_amount, date, type, payment_method, source_register_id, investment_id, cancelled)
-      VALUES ('net expense', ${BRUTTO}, ${NETTO}, now(),
+      VALUES ('net expense', ${GROSS}, ${NET}, now(),
         'INVESTMENT_EXPENSE_NET'::enum_transactions_type, 'TRANSFER',
         ${registerId}, ${investmentId}, false)
     `)
@@ -84,6 +84,6 @@ describe.skipIf(!ENV_READY)('sumRegisterBalance — INVESTMENT_EXPENSE_NET (DB)'
   })
 
   it('subtracts the brutto amount, not the netto one', async () => {
-    expect(await sumRegisterBalance(payload, registerId)).toBe(-BRUTTO)
+    expect(await sumRegisterBalance(payload, registerId)).toBe(-GROSS)
   })
 })

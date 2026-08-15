@@ -39,7 +39,7 @@ import type {
 } from '../lib/kosztorys/types'
 
 const SHEET_ID = process.env.SHEET_ID ?? '1EgNFob2baPlKUMTSQlfbzc2HJI5zmITPZUQsJbkomz4'
-const ROBOCIZNA_TAB = process.env.ROBOCIZNA_TAB ?? 'kosztorys_robocizny'
+const LABOR_TAB = process.env.LABOR_TAB ?? 'kosztorys_robocizny'
 const RATES_TAB = process.env.RATES_TAB ?? 'zakres pracy bez narzędzi'
 const INVESTMENT_ID = Number(process.env.INV ?? 42) // Bialostocka 5
 const FIXTURE = join(
@@ -272,10 +272,10 @@ async function seed(tree: SnapshotPayloadT): Promise<void> {
 async function run() {
   let tree: SnapshotPayloadT
   if (process.env.REFETCH === '1') {
-    const [robRows, rateRows] = await Promise.all([fetchRows(ROBOCIZNA_TAB), fetchRows(RATES_TAB)])
+    const [robRows, rateRows] = await Promise.all([fetchRows(LABOR_TAB), fetchRows(RATES_TAB)])
     tree = buildPayload(robRows, rateRows)
     if (tree.items.length === 0) {
-      throw new Error(`No items parsed from ${ROBOCIZNA_TAB} — check SHEET_ID / TAB / sharing.`)
+      throw new Error(`No items parsed from ${LABOR_TAB} — check SHEET_ID / TAB / sharing.`)
     }
     mkdirSync(dirname(FIXTURE), { recursive: true })
     writeFileSync(FIXTURE, JSON.stringify(tree, null, 2) + '\n')

@@ -3,7 +3,7 @@ import {
   availableExpenseDatasets,
   partitionExpenseRows,
   expenseRowHref,
-} from '@/lib/kosztorys/wydatki-datasets'
+} from '@/lib/kosztorys/expense-datasets'
 import type { InvoiceFileT, MaterialTransactionRowT } from '@/types/transfers'
 
 // The tab split in isolation. The one assertion that couples it to `deriveFinancials` — Σ over the

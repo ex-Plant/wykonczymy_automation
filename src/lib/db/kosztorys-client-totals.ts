@@ -42,14 +42,12 @@ export async function selectKosztorysClientTotals(
         ki.client_price,
         ki.discount_type,
         ki.discount_value,
-        -- „Pomiar z natury" IS the etap sum (EX-494). The join to kosztorys_stages mirrors the TS
-        -- path, which sums over the investment's stage list rather than over progress rows.
+        -- „Pomiar z natury" IS the etap sum (EX-494).
         coalesce(q.qty, 0) AS qty
       FROM kosztorys_items ki
       LEFT JOIN (
         SELECT sp.item_id, sum(sp.qty_done) AS qty
         FROM stage_progress sp
-        JOIN kosztorys_stages ks ON ks.id = sp.stage_id
         GROUP BY sp.item_id
       ) q ON q.item_id = ki.id
     ),
@@ -73,7 +71,7 @@ export async function selectKosztorysClientTotals(
         END AS net,
         -- Fail closed on a legacy 'percent' row, exactly as buildKosztorysTree does.
         CASE WHEN inv.global_discount_type = 'amount' THEN inv.global_discount_value ELSE 0 END
-          AS global_rabat
+          AS global_discount
       FROM item_qty iq
       JOIN investments inv ON inv.id = iq.investment_id
     )
@@ -84,12 +82,12 @@ export async function selectKosztorysClientTotals(
       -- so the pre-rabat figure is Σ gross. Written as the sum it is, not as the identity it expands
       -- to, because the identity has to hold in both languages.
       sum(gross) AS labor_costs_net_from_kosztorys,
-      sum(gross - net) + global_rabat AS discount_net_from_kosztorys,
-      global_rabat AS global_discount_net
+      sum(gross - net) + global_discount AS discount_net_from_kosztorys,
+      global_discount AS global_discount_net
     FROM priced
-    -- global_rabat is per investment, so grouping by it adds no groups — it just makes the column
+    -- global_discount is per investment, so grouping by it adds no groups — it just makes the column
     -- selectable without wrapping a constant in an aggregate.
-    GROUP BY investment_id, global_rabat
+    GROUP BY investment_id, global_discount
   `)
 
   return res.rows.map((row) => ({

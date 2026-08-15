@@ -1,4 +1,4 @@
-// Marża (margin) = company's profit from an investment.
+// Marża = company's profit from an investment.
 // Labor costs are what the investor pays the company for work.
 // Payouts (PAYOUT, paid to a worker) are wages paid out — a cost, so they lower margin.
 // A rabat is a discount on the labour price — the company's own cost — so it lowers margin.

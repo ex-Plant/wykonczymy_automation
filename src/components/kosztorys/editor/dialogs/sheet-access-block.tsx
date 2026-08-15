@@ -7,7 +7,7 @@ import type {
   SheetFailureReasonT,
   SheetFailureT,
 } from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
-import { ROBOCIZNA_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
+import { LABOR_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 
 /**
@@ -20,7 +20,7 @@ const VERDICTS: Record<SheetFailureReasonT, string> = {
     'Ta aplikacja nie ma dostępu do arkusza. Udostępnij go jako Edytujący adresowi poniżej, a potem spróbuj ponownie.',
   'not-found':
     'Arkusz o tym identyfikatorze nie istnieje albo został usunięty. Popraw powiązanie arkusza w ustawieniach inwestycji — czekanie tu nie pomoże.',
-  'missing-tab': `Arkusz nie ma zakładki „${ROBOCIZNA_TAB}", a to z niej czytamy prace. Sprawdź, czy nie została przemianowana.`,
+  'missing-tab': `Arkusz nie ma zakładki „${LABOR_TAB}", a to z niej czytamy prace. Sprawdź, czy nie została przemianowana.`,
   unknown: 'Google nie odpowiedział. Spróbuj za chwilę — nic nie zostało zmienione.',
 }
 

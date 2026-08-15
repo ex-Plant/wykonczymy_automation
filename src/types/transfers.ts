@@ -1,11 +1,5 @@
 import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/transfers'
 
-/**
- * A transfer row as rendered in the transfers table. Cross-cutting: produced by the
- * server query (`lib/queries/transfer-mapping.ts`) and consumed across the UI
- * (tables, forms, dialogs), the export pipeline, and actions — so it lives here
- * rather than in any single module.
- */
 // One page of an invoice, already resolved to something openable. A media row whose `url` is null is
 // dropped upstream rather than carried as a hole — every consumer (preview, ZIP) needs the URL,
 // so a page without one is not a page.
@@ -18,6 +12,12 @@ export type InvoiceFileT = {
   mimeType: string | null
 }
 
+/**
+ * A transfer row as rendered in the transfers table. Cross-cutting: produced by the
+ * server query (`lib/queries/transfer-mapping.ts`) and consumed across the UI
+ * (tables, forms, dialogs), the export pipeline, and actions — so it lives here
+ * rather than in any single module.
+ */
 export type TransferRowT = {
   id: number
   description: string

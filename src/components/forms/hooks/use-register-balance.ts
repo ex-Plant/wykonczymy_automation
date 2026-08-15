@@ -26,7 +26,7 @@ export function useRegisterBalance() {
 
   function resetRegisterBalance() {
     // Bump the id so a fetch still in flight is disowned — otherwise its response repopulates the
-    // registerBalance of the register the user has just cleared. Disowning it also makes that request's own
+    // balance of the register the user has just cleared. Disowning it also makes that request's own
     // `finally` a no-op, so the reset has to clear the loading flag itself or it pins forever.
     requestRef.current++
     setRegisterBalance(null)

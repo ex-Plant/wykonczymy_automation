@@ -10,7 +10,7 @@ const stageQty = (n: number) => `${n} etap ilość`
 
 // --- Białostocka: 10 etapy, Przedmiar at N, the wide layout AGENTS.md describes ---
 
-export const BIALOSTOCKA_ROBOCIZNA_HEADER: (string | number)[][] = [
+export const BIALOSTOCKA_LABOR_HEADER: (string | number)[][] = [
   row({
     A: '2',
     C: '',
@@ -167,7 +167,7 @@ export const BIALOSTOCKA_RATES_HEADER: (string | number)[][] = [
 // --- Altowa: wide like Białostocka, but the wartość block starts at V with a blank column at T,
 // so „Wartość netto" (S) and the money block are NOT adjacent ---
 
-export const ALTOWA_ROBOCIZNA_HEADER: (string | number)[][] = [
+export const ALTOWA_LABOR_HEADER: (string | number)[][] = [
   row({
     C: '',
     D: stageQty(1),
@@ -259,7 +259,7 @@ export const ALTOWA_ROBOCIZNA_HEADER: (string | number)[][] = [
 // --- Żupnicza: the layout that REFUSES to resolve today — „Wartość netto" is split into two
 // columns, one per Przedmiar/Pomiar, so the exact matcher finds neither ---
 
-export const ZUPNICZA_ROBOCIZNA_HEADER: (string | number)[][] = [
+export const ZUPNICZA_LABOR_HEADER: (string | number)[][] = [
   row({
     A: '2',
     C: '',
@@ -352,7 +352,7 @@ export const ZUPNICZA_ROBOCIZNA_HEADER: (string | number)[][] = [
 
 // --- Przedpole: 6 etapy, Przedmiar at J, and row 3 renames stages to crew names ---
 
-export const PRZEDPOLE_ROBOCIZNA_HEADER: (string | number)[][] = [
+export const PRZEDPOLE_LABOR_HEADER: (string | number)[][] = [
   row({
     C: '',
     D: stageQty(1),

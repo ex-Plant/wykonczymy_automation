@@ -58,7 +58,7 @@ const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SEC
 
 // Białostocka's first praca sits at grid index 4 (sheet row 5); its Pomiar reading as a formula is
 // exactly the „przepisany z Przedmiaru" case the refresh must translate into „no measurement".
-const FIRST_PRACA_ROW = 4
+const FIRST_ITEM_ROW = 4
 
 describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
   let payload: Payload
@@ -136,7 +136,7 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
   it('writes the sheet’s hand-typed Pomiar onto matched prace and clears the ones it stopped claiming', async () => {
     await seedTree()
     sheetState.formulas = BIALOSTOCKA_ROWS.map((_, index) =>
-      index === FIRST_PRACA_ROW ? row({ O: '=N5' }) : [],
+      index === FIRST_ITEM_ROW ? row({ O: '=N5' }) : [],
     )
 
     const result = await compareWithSheet(investmentId)
