@@ -849,7 +849,10 @@
 ## Hierarchical visibility is ONE set of leaf exclusions — a parent toggle is a bulk op, not a second set
 
 - **Context**: the export picker had to answer "the whole kosztorys except the Klimatyzacja section, but
-  keep this one item from it" — visibility controllable per section _and_ per item.
+  keep this one item from it" — visibility controllable per section _and_ per item. **The concrete
+  subject was cut (2026-08-15): there is no kosztorys export at all** (EX-400 + EX-666), so the picker
+  below is the worked example, not live code — the rule outlives it and lands next on whatever picker
+  the client view grows.
 - **Problem**: the obvious model is two pieces of state (hidden sections + hidden items), and it
   immediately needs reconciliation rules: does an explicitly-shown item beat its hidden section? What
   happens when you then hide the section again? Every combination is a special case, and the two sets

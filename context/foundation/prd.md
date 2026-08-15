@@ -92,8 +92,13 @@ automated, CI-runnable E2E replaces hand-driven MCP sessions for the financial c
 
 - A newly created investment's kosztorys lives **only in the app**, and the owner
   runs its full lifecycle there — sections, items, three price models, stage
-  progress (etapy), rooms (pokoje), totals, and print/PDF — with no Google Sheet
+  progress (etapy), totals, and the client view — with no Google Sheet
   created and no syncing involved.
+  > **Amended (2026-08-15).** Two originally-listed surfaces are cut: **pokoje**
+  > (owner, POC 2026-06-20) and **print/PDF plus every other export** (owner —
+  > EX-400 CSV, EX-666 PDF + live-formula sheet). The client-facing job they were
+  > for is done by the **client view** (S-13, token link + „Podgląd dla klienta")
+  > — live rather than a file. See roadmap → Cut & folded slices.
 - End-to-end verification of the financial core (sign in → create a transfer →
   register balance and investment figures update) runs automated and CI-runnable,
   replacing manual operator-driven sessions for that flow.
@@ -265,8 +270,8 @@ stage, grand) are derived from that rule rather than persisted.
 
 The rule consumes the quantities the user enters (planned, measured, per-stage done)
 and the per-item price under the selected pricing view. Its output is the live
-row/section/grand totals the owner sees while editing and in the printed/exported
-document. A later change to a catalogue master price affects only items created
+row/section/grand totals the owner sees while editing and the client sees in the
+client view. A later change to a catalogue master price affects only items created
 afterwards — existing kosztorysy are immutable to it.
 
 **Existing rules unchanged:** marża = robocizna − wypłaty − rabat − strata, the

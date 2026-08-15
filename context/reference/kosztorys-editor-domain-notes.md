@@ -249,7 +249,15 @@ liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
 - **bez przycisku „Zapisz"** — feel arkusza + skala (1000+ wierszy: zapisujemy
   tylko zmienione pole, nie cały arkusz).
 
-## Druk / eksport (G) — KONFIGUROWALNY, edytowalny
+## Druk / eksport (G) — CIĘTE (2026-08-15)
+
+> **Cała ta sekcja jest nieaktualna.** Eksport kosztorysu wycięty w całości:
+> CSV (EX-400) oraz PDF + żywy arkusz z formułami (EX-666). Obie role, które
+> wydruk miał pełnić — oferta przy podpisaniu i podgląd postępu dla klienta —
+> przejmuje **widok klienta** (S-13, link tokenowy + „Podgląd dla klienta").
+> Poniższe zostaje jako zapis intencji ownera z POC: reguły „co klient widzi"
+> przenoszą się na widok klienta, mechanizm (`buildPrintHtml`, PDF, plik) nie.
+> Flaga `hidden_in_export` nie ma dziś czytelnika — EX-549.
 
 Wydruk = **oferta dla klienta** (tylko ceny klienta: netto / VAT / brutto; bez
 cen podwykonawcy, marży, postępu, „pozostało"). Mechanizm: `buildPrintHtml` +
@@ -795,9 +803,12 @@ this section is the original phrasing/context for those questions.
   default sekcji, od którego dziedziczą pozycje?~~ **ROZSTRZYGNIĘTE (EX-565):**
   wariant siedzi na **etapie**; defaultu sekcji ani dziedziczenia na pozycji nie ma.
 
-### Druk / eksport
+### Druk / eksport — eksport cięty (2026-08-15), pytania przechodzą na widok klienta
 
-- **P12.** Które pozycje mają być **domyślnie ukryte** w eksporcie dla klienta?
-  (reguła: np. wiersze zerowe/puste, pozycje wewnętrzne, konkretne sekcje?)
-- **P13.** Oferta drukuje ilość z **przedmiaru** (oferta wstępna) czy **pomiaru**
-  (rozliczenie)? Jeden tryb czy przełącznik?
+- **P12.** ~~Które pozycje mają być **domyślnie ukryte** w eksporcie dla klienta?~~
+  Bezprzedmiotowe w tej formie — nie ma eksportu. Wraca tylko wtedy, gdy widok
+  klienta dostanie ukrywanie pozycji (EX-549, sparkowane, czeka na decyzję ownera).
+- **P13.** **Nadal otwarte, przeniesione na widok klienta:** klient widzi ilość
+  z **przedmiaru** (oferta wstępna) czy z **pomiaru** (rozliczenie)? Jeden tryb czy
+  przełącznik? To samo pytanie, inna powierzchnia — widok jest żywy, więc „jeden
+  tryb" znaczy teraz „ten sam ekran przez całą inwestycję".

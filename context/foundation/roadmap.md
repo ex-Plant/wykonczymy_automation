@@ -163,7 +163,7 @@ band is parity polish on top of it.
 
 One row per F-NN / S-NN — the index and the backlog handoff in one place. **Plan-ready** = ready to feed into `/10x-plan` now (prerequisites met and no blocking open decision); `no` means blocked, `—` means n/a (deferred). Run a ready slice with `/10x-plan <change-id>`.
 
-Bands: **editor parity S-01–S-10** → **financial-plane bridge S-11–S-12** (active) → **client share / import S-13, S-15** → **testing + hardening S-16–S-18** → **cutover S-19**.
+Bands: **editor parity S-01–S-10** → **financial-plane bridge S-11–S-12** (active) → **client share / import S-13, S-15** → **testing + hardening S-16–S-18** → **cutover S-19**. S-14 is missing on purpose — `kosztorys-export` was cut whole (2026-08-15) and its number kept as a tombstone; see [Cut & folded slices](#cut--folded-slices).
 
 | ID   | Change ID                       | Outcome (user can …)                                                                    | Prerequisites      | PRD refs                      | Status   | Plan-ready |
 | ---- | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------ | ----------------------------- | -------- | ---------- |
@@ -428,7 +428,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Why this is the hard one:** unlike S-08 (a UX guard), this is **authorization**. The derived prices are computed in `calc.ts` and shipped in the row payload; hiding per-role means splitting what the server _sends_ per role, not toggling a CSS class — a client-only hide leaks the numbers in the network response. Same axis for restricted rows.
 - **Problems to solve at plan time:**
   - **Column half:** MANAGER must not receive the z-narzędziami / bez-narzędzi derived prices at all; the `priceMode` toggle must drop those options for MANAGER.
-  - **Row half:** what marks a section/item as restricted — a per-row `restricted` flag, or a fixed rule? Where and by whom (OWNER/ADMIN) is it set? A restricted row must not appear in a MANAGER's tree, totals, or export.
+  - **Row half:** what marks a section/item as restricted — a per-row `restricted` flag, or a fixed rule? Where and by whom (OWNER/ADMIN) is it set? A restricted row must not appear in a MANAGER's tree, totals, or client view (export is cut).
   - **dsg gotcha:** the column set changes per role → must go through the grid remount `key` (same class as the S-02 view-toggle bug).
   - **Totals under redaction:** do a MANAGER's section/grand totals include the hidden rows/costs, or recompute over the visible set? Decide — it changes what number the MANAGER trusts.
 - **Open (P10 scope, domain-notes:260):** confirm the exact hidden set = subcontractor cost/margin only; client price / przedmiar / pomiar / stage progress stay visible to MANAGER.
@@ -560,6 +560,30 @@ Foundations below assume these are present and do NOT re-scaffold them.
 ### Cut & folded slices
 
 Kept for the record; pulled out of the numbered sequence because they carry no executable work.
+
+#### kosztorys-export — CUT (S-14 tombstone)
+
+- **CUT entirely (2026-08-15, owner).** No kosztorys export in any format. Two decisions on the
+  same day: **CSV** (the slice as scoped, EX-400) and then **PDF + live-formula sheet**
+  (EX-666, the un-scoped remainder that had been parked since the POC). S-14's number stays a
+  tombstone — the table jumps S-13 → S-15 — rather than renumbering the done/archived tail.
+- **Why:** the **client view** (S-13 `kosztorys-client-share`) does both client-facing jobs the
+  export existed for — presenting the offer at signing, and the live progress preview during the
+  work. It beats a file on the axis that made the sheet export hard: the client re-verifies the
+  _current_ math on our surface, so nothing needs re-sending when a figure moves, and the app's
+  SQL-computed figures never have to be translated into spreadsheet formulas. Secondary: the
+  export contract (what to export, how to flatten sekcja → pozycja → etap) was never decided, and
+  EX-672 deleted the transfers CSV/print layer, so there was no infrastructure left to reuse.
+- **Carried forward, not lost — the column-strip requirement.** In the old sheets a hidden column
+  was only _hidden_: anyone could unhide it in Excel and read purchase prices / marża /
+  subcontractor prices. Any future export must make such a column **physically absent** from the
+  file, with no formula referencing it. Recorded on EX-666 for whoever revives an export. The
+  client view satisfies the same requirement its own way — the view is pinned to `view:'client'`
+  and rendered read-only.
+- **Outcome (dropped):** the owner can print/PDF, CSV-export, or hand the client a live formula
+  sheet of a kosztorys.
+- **Change ID:** kosztorys-export. **PRD refs:** FR-008 — **unimplemented**, deliberately, by this cut.
+- **Was:** S-14 (also S-07/S-09/S-10/S-11/S-12 under earlier numberings).
 
 #### kosztorys-rooms — CUT
 
