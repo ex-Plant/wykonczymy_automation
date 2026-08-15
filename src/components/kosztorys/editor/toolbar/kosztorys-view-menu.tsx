@@ -2,12 +2,13 @@
 
 import { useState, type ReactNode } from 'react'
 import { ArrowUpDown, CheckIcon, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
-import { ColumnOrderDialog } from '@/components/kosztorys/editor/dialogs/column-order-dialog'
 import { Button } from '@/components/ui/button'
+import { ColumnOrderDialog } from '@/components/kosztorys/editor/dialogs/column-order-dialog'
 import {
   DropdownMenu,
   DropdownMenuCheckboxRow,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -118,7 +119,7 @@ export function KosztorysViewMenu() {
             <SlidersHorizontal />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent align="start" className="w-72">
           {showMoneyAxis && (
             <>
               <AxisSection
@@ -155,6 +156,12 @@ export function KosztorysViewMenu() {
                 Kolumny
                 <InfoTooltip content={KOLUMNY_HINT} className="shrink-0" />
               </DropdownMenuLabel>
+              {/* Outside the Command below on purpose: it belongs above the search box, and a
+                command that never filters has no business riding cmdk's list. */}
+              <DropdownMenuItem onSelect={() => setOrderOpen(true)}>
+                <ArrowUpDown />
+                Ustaw kolejność kolumn…
+              </DropdownMenuItem>
               {/* cmdk owns the search + arrow-nav for the column list; stop keydowns from reaching the
                 Radix menu so its typeahead/focus-roving doesn't fight cmdk. Escape still passes so
                 the menu stays Escape-closable. */}
@@ -182,12 +189,6 @@ export function KosztorysViewMenu() {
                     >
                       {allColumnsVisible ? <EyeOff /> : <Eye />}
                       {allColumnsVisible ? 'Ukryj wszystkie' : 'Pokaż wszystkie'}
-                    </CommandItem>
-                    {/* forceMount for the same reason as the row above: a command, not a column, so it
-                      must not disappear under the column search. */}
-                    <CommandItem forceMount onSelect={() => setOrderOpen(true)}>
-                      <ArrowUpDown />
-                      Ustaw kolejność kolumn…
                     </CommandItem>
                     <CommandEmpty>Brak kolumn</CommandEmpty>
                     {columnToggleItems.map((item) => (

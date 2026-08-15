@@ -2,6 +2,7 @@ import { DEFAULT_ITEM_DESCRIPTION, DEFAULT_UNIT } from '@/lib/kosztorys/constant
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { groupInOrder, regroupByKeys } from '@/lib/utils/group-in-order'
 
 // Revert a row field to its pre-edit value (revert-on-error autosave), but ONLY
 // if nothing newer was typed since the failed save (current === attempted) —
@@ -151,24 +152,9 @@ export function swapItemInSection(
   return next
 }
 
-// Rows grouped by section, in the order the sections first appear. A Map keeps insertion order, so
-// its keys ARE the section display sequence — both section movers below read the order off this one
-// pass rather than a second stored sequence.
+// Rows grouped by section, in the order the sections first appear.
 export function groupBySection(rows: KosztorysV2RowT[]): Map<number, KosztorysV2RowT[]> {
-  const blocks = new Map<number, KosztorysV2RowT[]>()
-  for (const r of rows) {
-    const block = blocks.get(r.sectionId)
-    if (block) block.push(r)
-    else blocks.set(r.sectionId, [r])
-  }
-  return blocks
-}
-
-// Both section movers work by editing the section SEQUENCE and re-concatenating the blocks, never by
-// splicing array indices: a section's rows are not guaranteed adjacent, and the regroup pulls a stray
-// row back into its block, where an index splice would land past the wrong one.
-function regroup(blocks: Map<number, KosztorysV2RowT[]>, seq: number[]): KosztorysV2RowT[] {
-  return seq.flatMap((id) => blocks.get(id) ?? [])
+  return groupInOrder(rows, (row) => row.sectionId)
 }
 
 // Splice the first row of a newly inserted section into the display sequence, just before or just
@@ -185,7 +171,7 @@ export function applyInsertSectionRow(
   if (pos < 0) return [...rows, row]
   seq.splice(dir === 'above' ? pos : pos + 1, 0, row.sectionId)
   blocks.set(row.sectionId, [row])
-  return regroup(blocks, seq)
+  return regroupByKeys(blocks, seq)
 }
 
 // „Zapisz kolejność": stamp the rows with the display_order just written and re-lay every block in
@@ -208,7 +194,7 @@ export function applyKosztorysOrder(
         .sort((a, b) => a.displayOrder - b.displayOrder),
     )
   }
-  return regroup(blocks, [...blocks.keys()])
+  return regroupByKeys(blocks, [...blocks.keys()])
 }
 
 export function neighborSectionId(
@@ -234,7 +220,7 @@ export function swapSectionBlock(
   const targetPos = dir === 'up' ? pos - 1 : pos + 1
   if (pos < 0 || targetPos < 0 || targetPos >= seq.length) return rows
   ;[seq[pos], seq[targetPos]] = [seq[targetPos], seq[pos]]
-  return regroup(blocks, seq)
+  return regroupByKeys(blocks, seq)
 }
 
 // Neighbor of an item within ITS section in the ▲/▼ direction (same sequence as swapItemInSection).

@@ -1,6 +1,7 @@
 'use client'
 
-import { Reorder } from 'framer-motion'
+import { useState } from 'react'
+import { Reorder, motion } from 'framer-motion'
 import { EyeOff, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,7 +12,13 @@ import {
   DialogHeader,
 } from '@/components/ui/dialog'
 import type { ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
-import { ANCHORED_COLUMN_KEYS, rankForMove, type ColumnRanksT } from '@/lib/kosztorys/column-order'
+import {
+  ANCHORED_COLUMN_KEYS,
+  movableColumnKeys,
+  placeMovables,
+  rankForMove,
+  type ColumnRanksT,
+} from '@/lib/kosztorys/column-order'
 import { cn } from '@/lib/utils/cn'
 
 type PropsT = {
@@ -21,25 +28,13 @@ type PropsT = {
   // they called", so this window can't disagree with the visibility list beside it.
   items: ColumnToggleItemT[]
   ranks: ColumnRanksT
-  baseRanks: Record<string, number>
+  baseRanks: ColumnRanksT
   onSetRank: (key: string, rank: number) => void
   onReset: () => void
 }
 
-// The key that travelled furthest between the two orders — the one the drag moved, as opposed to the
-// neighbours it displaced by one. A swap of two adjacent keys moves both by one; either reading
-// produces the same final order, so the tie needs no resolving.
-function movedKey(before: readonly string[], after: readonly string[]): string | undefined {
-  let moved: string | undefined
-  let furthest = 0
-  after.forEach((key, index) => {
-    const distance = Math.abs(index - before.indexOf(key))
-    if (distance > furthest) {
-      furthest = distance
-      moved = key
-    }
-  })
-  return moved
+function sameKeys(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((key, index) => key === b[index])
 }
 
 // „Ustaw kolejność kolumn…" — a separate surface from the visibility picker on purpose: reordering is
@@ -56,17 +51,30 @@ export function ColumnOrderDialog({
   onSetRank,
   onReset,
 }: PropsT) {
-  const anchored = items.filter((item) => ANCHORED_COLUMN_KEYS.has(item.id))
-  const movable = items.filter((item) => !ANCHORED_COLUMN_KEYS.has(item.id))
-  const movableKeys = movable.map((item) => item.id)
+  const keys = items.map((item) => item.id)
+  const movableKeys = movableColumnKeys(keys)
   const labels = new Map(items.map((item) => [item.id, item]))
 
-  // Writes ONE key: the moved group's new rank. Persisting the whole list would freeze today's
-  // default order in every browser (see use-column-order).
-  function handleReorder(next: string[]) {
-    const key = movedKey(movableKeys, next)
-    if (!key) return
-    onSetRank(key, rankForMove(movableKeys, key, next.indexOf(key), ranks, baseRanks))
+  // The list is driven locally while a drag is in flight and only committed on drop. Writing the
+  // rank on every crossing instead would push a store update through the editor context mid-drag,
+  // rebuilding the whole grid between frames — that is what made dragging crawl.
+  const [order, setOrder] = useState(movableKeys)
+  const [propsOrder, setPropsOrder] = useState(movableKeys)
+  if (!sameKeys(propsOrder, movableKeys)) {
+    setPropsOrder(movableKeys)
+    setOrder(movableKeys)
+  }
+
+  // Anchors sit at their real index (`Opis prac` is NOT at the top — it lives behind „Rozjazd"),
+  // movables fill the slots between them in drag order. Same interleave the grid runs.
+  const slots = placeMovables(keys, order)
+
+  // Writes ONE key: the dragged group's new rank. Persisting the whole list would freeze today's
+  // default order in every browser (see use-column-order). The key comes from the row that was
+  // dragged, so nothing has to be inferred from the two orders.
+  function commitOrder(key: string) {
+    if (sameKeys(movableKeys, order)) return
+    onSetRank(key, rankForMove(movableKeys, key, order.indexOf(key), ranks, baseRanks))
   }
 
   return (
@@ -77,43 +85,48 @@ export function ColumnOrderDialog({
           description="Przeciągnij pozycję, żeby przestawić kolumny w tabeli. Ustawienie zapamiętuje ta przeglądarka i działa we wszystkich kosztorysach."
         />
 
-        <div className="flex flex-col gap-1 overflow-y-auto">
-          {anchored.map((item) => (
-            <div
-              key={item.id}
-              className="text-muted-foreground bg-muted/40 flex items-center gap-2 rounded-md px-2 py-2 text-sm"
-            >
-              <GripVertical className="size-4 opacity-25" />
-              {item.label}
-              <span className="ml-auto text-xs">stała pozycja</span>
-            </div>
-          ))}
-
+        {/* layoutScroll + min-h-0: without the first, framer measures drags against a stale scroll
+            offset once the list is scrolled; without the second the inner box never shrinks in the
+            dialog's flex column, so DialogContent scrolls instead and takes the footer with it. */}
+        <motion.div layoutScroll className="min-h-0 overflow-y-auto">
           <Reorder.Group
             axis="y"
-            values={movableKeys}
-            onReorder={handleReorder}
+            values={order}
+            onReorder={setOrder}
             className="flex list-none flex-col gap-1"
           >
-            {movableKeys.map((key) => {
+            {slots.map((key) => {
               const item = labels.get(key)
+              const label = item?.label ?? key
+              if (ANCHORED_COLUMN_KEYS.has(key)) {
+                return (
+                  <div
+                    key={key}
+                    className="text-muted-foreground bg-muted/40 flex items-center gap-2 rounded-md px-2 py-2 text-sm"
+                  >
+                    {label}
+                    <span className="ml-auto text-xs">stała pozycja</span>
+                  </div>
+                )
+              }
               return (
                 <Reorder.Item
                   key={key}
                   value={key}
+                  onDragEnd={() => commitOrder(key)}
                   className={cn(
                     'bg-background hover:bg-accent flex cursor-grab items-center gap-2 rounded-md border px-2 py-2 text-sm active:cursor-grabbing',
                     item?.visible === false && 'text-muted-foreground',
                   )}
                 >
                   <GripVertical className="text-muted-foreground size-4" />
-                  {item?.label ?? key}
+                  {label}
                   {item?.visible === false && <EyeOff className="ml-auto size-4" />}
                 </Reorder.Item>
               )
             })}
           </Reorder.Group>
-        </div>
+        </motion.div>
 
         <DialogFooter>
           <Button

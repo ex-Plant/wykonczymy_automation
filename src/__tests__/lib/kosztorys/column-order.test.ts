@@ -3,6 +3,7 @@ import {
   baseRanksFromKeys,
   orderColumnKeys,
   orderColumns,
+  placeMovables,
   rankForMove,
 } from '@/lib/kosztorys/column-order'
 
@@ -10,7 +11,6 @@ import {
 const KEYS = ['actions', 'divergence', 'description', 'plannedQty', 'stages', 'price', 'net']
 const MOVABLE = KEYS.filter((key) => key !== 'actions' && key !== 'description')
 
-// Where `key` ends up among the movable keys once `ranks` is applied.
 function movableOrder(ranks: Record<string, number>): string[] {
   return orderColumnKeys(KEYS, ranks).filter((key) => key !== 'actions' && key !== 'description')
 }
@@ -24,7 +24,7 @@ describe('orderColumnKeys', () => {
     const ordered = orderColumnKeys(KEYS, { actions: 99, description: -99, price: -5 })
     expect(ordered.indexOf('actions')).toBe(0)
     expect(ordered.indexOf('description')).toBe(2)
-    // The anchors held; the ranked movable key still took the first movable slot.
+    // The ranked movable key still took the first movable slot.
     expect(ordered[1]).toBe('price')
   })
 
@@ -69,6 +69,28 @@ describe('rankForMove', () => {
 
   it('leaves a single-key list alone', () => {
     expect(rankForMove(['price'], 'price', 0, {}, baseRanks)).toBe(baseRanks.price)
+  })
+})
+
+describe('placeMovables', () => {
+  // The one function the grid and the reorder window share: whatever the window draws, the grid must
+  // build. Anchors hold their assemble slot; the dragged list fills what is left, in its own order.
+  it('drops the movable order into the non-anchored slots', () => {
+    expect(placeMovables(KEYS, ['price', 'net', 'divergence', 'plannedQty', 'stages'])).toEqual([
+      'actions',
+      'price',
+      'description',
+      'net',
+      'divergence',
+      'plannedQty',
+      'stages',
+    ])
+  })
+
+  it('reproduces the grid order it was extracted from', () => {
+    expect(placeMovables(KEYS, movableOrder({ net: 0.5 }))).toEqual(
+      orderColumnKeys(KEYS, { net: 0.5 }),
+    )
   })
 })
 

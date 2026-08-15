@@ -5,9 +5,7 @@ import { STAGES_COLUMN_GROUP, stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 
 // What the pure ordering function (lib/kosztorys/column-order) cannot assert on its own: how the
-// rank map behaves against the REAL column set — that the anchors keep their slots among ~30
-// columns, that a stage group travels as one block, that the trailing gap survives the sort, and
-// that a client's document ignores the owner's ranks entirely.
+// rank map behaves against the REAL column set.
 
 const STAGES: KosztorysStageT[] = [
   { id: 7, ordinal: 1, label: 'Etap 1', plane: 'w_tools', workerId: null },

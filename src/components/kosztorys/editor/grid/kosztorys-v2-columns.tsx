@@ -46,7 +46,12 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { baseRanksFromKeys, orderColumns } from '@/lib/kosztorys/column-order'
+import {
+  baseRanksFromKeys,
+  groupColumns,
+  orderColumns,
+  type ColumnRanksT,
+} from '@/lib/kosztorys/column-order'
 import {
   PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,
@@ -712,20 +717,20 @@ function orderAssembled(
   assembled: Column<KosztorysV2RowT>[],
   opts: BuildV2ColumnsOptsT,
 ): Column<KosztorysV2RowT>[] {
-  if (opts.previewVisible || !opts.columnRanks) return assembled
-  return orderColumns(assembled, opts.columnRanks, (id) => toggleKey(id))
+  // An empty rank map is the assemble order by definition, and it is what every owner who never
+  // reordered anything has — bail before the group→sort→regroup pass instead of reproducing the
+  // input array on each render.
+  if (opts.previewVisible || !opts.columnRanks || Object.keys(opts.columnRanks).length === 0) {
+    return assembled
+  }
+  return orderColumns(assembled, opts.columnRanks, toggleKey)
 }
 
 // Assemble-order rank per group key: the fallback an unranked column sorts at. Read off the list
 // BEFORE ordering — the reorder dialog only ever sees the already-ordered picker list, so it cannot
 // derive this itself.
-function assembleBaseRanks(assembled: Column<KosztorysV2RowT>[]): Record<string, number> {
-  const keys: string[] = []
-  for (const column of assembled) {
-    const key = toggleKey(column.id ?? '')
-    if (!keys.includes(key)) keys.push(key)
-  }
-  return baseRanksFromKeys(keys)
+function assembleBaseRanks(assembled: Column<KosztorysV2RowT>[]): ColumnRanksT {
+  return baseRanksFromKeys([...groupColumns(assembled, toggleKey).keys()])
 }
 
 // Columns-only assemble — the grid path goes through buildV2Grid; kept for the column-set unit specs
@@ -739,7 +744,7 @@ export function buildV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2Row
 export function buildV2Grid(opts: BuildV2ColumnsOptsT): {
   columns: Column<KosztorysV2RowT>[]
   columnToggleItems: ColumnToggleItemT[]
-  columnBaseRanks: Record<string, number>
+  columnBaseRanks: ColumnRanksT
 } {
   const assembled = assembleV2Columns(opts)
   const ordered = orderAssembled(assembled, opts)
