@@ -1109,3 +1109,23 @@ zalogowany jako OWNER. Kolejność siedzi w `localStorage` pod `kosztorys-v2-col
 - [ ] „Przywróć domyślną kolejność" wraca do układu arkusza
 - [ ] Widok klienta (link udostępniony) pokazuje kolejność arkuszową niezależnie od ustawień właściciela
 - [ ] Zmiana kolejności nie psuje przeciągania krawędzi kolumny (szerokości) ani sortowania z nagłówka
+
+## client-preview-settings — ustawienia podglądu klienta (EX-695)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2419, `build`; `lint` bez nowych
+błędów — dwa istniejące dotyczą nieśledzonego `test.js`). Stan po `d50c164a`.
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z wypełnionym kosztorysem, w tym co najmniej
+jedna pozycja bez przedmiaru i bez etapów. Migracja `20260815_0_add_kosztorys_client_view` nałożona
+lokalnie.
+
+- [ ] „Opcje" → sekcja „Klient" ma trzy pozycje: „Widok klienta", „Ustawienia podglądu…", „Udostępnij"
+- [ ] Odznaczenie dwóch kolumn i „Zapisz" — po odświeżeniu linku `/k/<token>` obu nie ma, a kwoty w podsumowaniu się nie zmieniły
+- [ ] Zamknięcie okna bez zapisu nie zmienia nic w linku klienta
+- [ ] Odznaczenie „Ukryj pozycje bez przedmiaru i bez wykonanej pracy" przywraca puste pozycje w linku, kwoty dalej bez zmian
+- [ ] Licznik przy tym polu zgadza się z liczbą takich pozycji w całym kosztorysie (nie tylko widocznych)
+- [ ] „Zapisz jako domyślne" — inna inwestycja, która nie ma własnych ustawień, startuje z tego zestawu
+- [ ] „Udostępnij" otwiera się na kroku ustawień za każdym razem, także gdy link już istnieje; „Dalej" zapisuje i pokazuje ekran linku
+- [ ] Ekran linku działa jak wcześniej: wygeneruj / kopiuj / wygeneruj nowy / wyłącz link, z potwierdzeniem wyłączenia
+- [ ] „Widok klienta" i link tokenowy wyglądają identycznie — żadnej dodatkowej belki ani panelu na `/podglad-klienta/<id>`
+- [ ] MANAGER: zapis ustawień odmawia komunikatem „Tylko właściciel może zmieniać ustawienia podglądu klienta"

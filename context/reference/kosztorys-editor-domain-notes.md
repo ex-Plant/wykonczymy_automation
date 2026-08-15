@@ -275,6 +275,28 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
 (rozliczenie) → P13. Drugi tryb wydruku „raport postępu" (wewnętrzny, z etapami)
 — do rozważenia.
 
+## Co widzi klient — ustawienie, nie stała (EX-695, 2026-08-15)
+
+Zestaw kolumn widoku klienta przestał być stałą w kodzie. Rozstrzygnięcie idzie w kolejności:
+własny wiersz inwestycji (`kosztorys-client-view`) → globalne domyślne firmy
+(`kosztorys-client-view-defaults`) → domyślne z kodu (nic nie ukryte, puste pozycje ukryte).
+Rozwiązywane w `src/lib/queries/kosztorys-client-view.ts`.
+
+Dwie reguły trzymają to razem:
+
+- **`PREVIEW_VISIBLE_COLUMNS` pozostaje sufitem.** Zapisany klucz może tylko _odjąć_ kolumnę,
+  nigdy dodać — sanityzacja przy zapisie i przy odczycie odrzuca klucz spoza allowlisty, więc
+  ustawienie nie staje się drugą, rozjeżdżającą się odpowiedzią na pytanie „co klient może
+  zobaczyć". Klucze są `toggleKey`, więc jeden wpis bierze całą rodzinę per-etap.
+- **Ukrywanie pustych pozycji to jedna reguła, nie dwie** (`client-empty`, `kind: 'client'`):
+  pozycja bez przedmiaru **i** bez wykonanej pracy nie wnosi nic do żadnej z dwóch kwot, które
+  klient czyta, więc jej ukrycie nie rusza podsumowania. Każdy z dwóch filtrów osobno byłby
+  bezpieczny tylko dla jednej z nich.
+
+Ustawienia czytane są **obok** cache'owanego payloadu podglądu (jeden indeksowany odczyt), więc
+zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firmy nie unieważnia drzewa
+żadnej inwestycji.
+
 ## Decyzje zamknięte
 
 - **Dostęp (prosto):** **ADMIN, OWNER, MANAGER** — widzą i edytują wszystko.

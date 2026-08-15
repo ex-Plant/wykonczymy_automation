@@ -486,10 +486,10 @@ only when this ships.
 
 #### Automated
 
-- [x] 4.1 No phase-scoped automated check (dialog composition over the Phase 3 body)
+- [x] 4.1 No phase-scoped automated check (dialog composition over the Phase 3 body) — d50c164a
 
 ### Phase 5: Tests and close-out
 
 #### Automated
 
-- [ ] 5.1 All four specs pass
+- [x] 5.1 All four specs pass — EX-696 filed (e2e-backlog)
