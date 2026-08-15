@@ -83,6 +83,17 @@ Sumuje wyłącznie oś sekcji (`T4`) i sekcje w zakładce `Podsumowanie`. Czyli 
 (ile zapłacić za dany etap) to **nowa figura, nie parytet** — nie ma czego skopiować, wymaga
 decyzji właściciela (cena klienta = faktura vs cena podwykonawcy = wypłata). Roadmap: pytanie 12b.
 
+### `Pomiar z natury` przepisany z `Przedmiaru` — normalne w starych arkuszach (2026-08-15, potwierdzone z właścicielem)
+
+W starszych arkuszach `O` (pomiar) bywa zwykłym `=N<ten sam wiersz>` zamiast `=SUM(D:M)` — tak się je
+wtedy budowało. Na żywym arkuszu wychodzi 241 z 336 prac, więc to **stan normalny, nie awaria arkusza
+i nie błąd odczytu**. U nas pomiar jest zawsze sumą etapów, więc dla takiego wiersza nie ma czego
+zapisać jako pomiar z arkusza — i to jest powód, dla którego zero rozjazdów przy „Porównaj
+z arkuszem" niczego nie dowodzi.
+
+Konsekwencja dla raportu: ta klasa nie jest defektem do poprawienia i nie zasługuje na listę wiersz po
+wierszu (właściciel, 2026-08-14) — sam licznik odpowiada na pytanie.
+
 ## Zakładka `Podsumowanie` (2026-07-15 — wcześniej nieudokumentowana)
 
 Pełna lista zakładek (9, zweryfikowana na żywym arkuszu 2026-07-15 — wcześniej
