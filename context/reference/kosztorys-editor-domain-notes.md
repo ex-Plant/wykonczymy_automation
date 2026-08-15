@@ -667,6 +667,11 @@ Numery pozycji liczą się po **pełnym, nieposortowanym** zbiorze — dziura w 
 że coś jest schowane. Numeracja przeliczana per widok czyniłaby filtr niewidocznym (1…N tak czy
 inaczej).
 
+**Pasy sekcji a zakres sortowania.** Pas presuponuje, że wiersze sekcji stoją obok siebie, więc
+sortowanie „w całym kosztorysie" zdejmuje pasy (i razem z nimi zwinięcia — inaczej zwinięta sekcja
+nie miałaby czym się rozwinąć). Sortowanie „w sekcjach" zostawia wiersze na miejscu, więc pasy,
+sumy i zwinięcia zostają.
+
 ## Otwarte / odłożone
 
 - **A vs B (przechowywanie cen):** 3 sztywne kolumny vs dynamiczna tabela

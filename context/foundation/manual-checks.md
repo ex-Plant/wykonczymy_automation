@@ -953,17 +953,17 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 „Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
 
 - [ ] Po imporcie pozycje z rozjazdem mają czerwoną sumę etapów, a podpowiedź podaje: arkusz, etapy, kwotę różnicy
-- [ ] Kolumna „Rozjazd (arkusz − etapy)" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
-- [ ] Kolumna „Rozjazd" jest widoczna tylko wtedy, gdy jest choć jeden rozjazd: znika po wyczyszczeniu ostatniego (i nie ma jej też w liście „Kolumny")
-- [ ] Kolumna „Rozjazd" zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty
-- [ ] Przycisk „Rozjazdy" w pasku narzędzi pokazuje liczbę pozycji z rozjazdem; kliknięcie zawęża siatkę tylko do nich
+- [ ] Kolumna „Pozostało do rozliczenia" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
+- [ ] Kolumna „Pozostało do rozliczenia" jest widoczna tylko wtedy, gdy jest choć jeden rozjazd: znika po wyczyszczeniu ostatniego (i nie ma jej też w liście „Kolumny")
+- [ ] Kolumna „Pozostało do rozliczenia" zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty
+- [ ] Przycisk „z pomiarem do rozpisania na etapy" w pasku narzędzi pokazuje liczbę takich pozycji; kliknięcie zawęża siatkę tylko do nich
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
-- [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym filtrze widać „Brak rozjazdów" z powrotem do pełnej listy, a sam przycisk znika
-- [ ] Sekcja zwinięta nie chowa pozycji z rozjazdem przy włączonym filtrze
+- [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym warunku widać „Brak pozycji z pomiarem do rozpisania na etapy" z powrotem do pełnej listy, a sam przycisk znika
+- [ ] Sekcja zwinięta **chowa** swoje pozycje także przy włączonym warunku — zwinięcia zdejmuje wyłącznie szukanie (ptaszek i zwinięcie stoją w tym samym menu „Filtry")
 - [ ] Ponowny import tego samego arkusza nadpisuje odniesienie bieżącą treścią arkusza
 - [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
-- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd", brak przycisku „Rozjazdy" i pozycji w menu
-- [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
+- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Pozostało do rozliczenia", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
+- [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „z pomiarem do rozpisania na etapy" w ogóle
 
 ## EX-682 / EX-683 — sortowanie wewnątrz sekcji
 
@@ -992,7 +992,7 @@ zakładka Kosztorys inwestycji.
 
 - [ ] Menu kolumny pokazuje cztery polecenia sortowania (dwa „zachowując sekcje", dwa przez cały kosztorys), „Zapisz kolejność" i „Wyczyść sortowanie"
 - [ ] Sortowanie „w sekcjach" po „Opis" zachowuje pasy sekcji i kolejność samych sekcji
-- [ ] Sortowanie „w całym kosztorysie" daje jedną płaską listę — pasy sekcji znikają, numeracja idzie ciągiem
+- [ ] Sortowanie „w całym kosztorysie" daje jedną płaską listę — pasy sekcji znikają, a numery pozycji jadą z nimi (numeracja liczy się po pełnym, nieposortowanym zbiorze, więc idzie nie po kolei)
 - [ ] „Zapisz kolejność" działa przy każdym sortowaniu, także „w całym kosztorysie" — zapisuje kolejność wewnątrz każdej sekcji
 - [ ] Sortowanie „w sekcjach" → „Zapisz kolejność" → wyczyszczenie sortowania → kolejność została **w każdej** sekcji; po odświeżeniu nadal ta sama
 - [ ] Cmd+Z cofa utrwalenie wszystkich sekcji jednym ruchem; Cmd+Shift+Z je przywraca
