@@ -128,8 +128,8 @@ automated, CI-runnable E2E replaces hand-driven MCP sessions for the financial c
 #### Acceptance Criteria
 
 - No sheet-backed kosztorys record is created for the new investment.
-- All four parity surfaces work: etapy, pokoje, print/PDF + CSV, catalogue
-  autocomplete.
+- The parity surfaces work: etapy. (The other three originally listed here are cut —
+  pokoje, CSV export, catalogue autocomplete.)
 - Totals (row / section / grand) match hand-computed values.
 
 ### US-02: Financial core is regression-protected automatically
@@ -212,12 +212,6 @@ were challenged and resolved as "stands as written."
 
 ### Modified
 
-- **[modified] FR-008** — Owner can print/PDF and CSV-export the kosztorys. _(Was:
-  print/PDF and CSV export exist for transfers only.)_ Reuses the existing export
-  infrastructure; only the kosztorys-shaped render is new.
-  > Considered: "the client-facing doc may need design beyond browser print; the CSV
-  > shape for nested data is its own decision." Stands — reuse is why this is cheap;
-  > polish later if needed.
 - **[modified] FR-009** — New investments get no Google Sheet; their kosztorys exists
   only in the app, nothing synced. _(Was: each new investment provisioned or linked
   a sheet.)_
