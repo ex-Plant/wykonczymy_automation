@@ -1,7 +1,7 @@
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
-import type { DepositTallyT } from '@/lib/kosztorys/summary-economics'
+import type { DepositTallyT } from '@/lib/kosztorys/deposit-planes'
 
 // One figure's reconciliation verdict: the kosztorys client-view NET vs the transaction-sourced
 // figure, and whether they disagree. Shared contract — the editor Podsumowanie and the investment
