@@ -11,6 +11,7 @@ import {
   Redo2,
   Save,
   Scale as ScaleIcon,
+  Settings2,
   Share2,
   SheetIcon,
   Undo2,
@@ -26,6 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-share-dialog'
+import { KosztorysClientViewDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-client-view-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
@@ -33,6 +35,8 @@ import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-
 import { compareWithSheet, type SheetCompareResultT } from '@/lib/actions/kosztorys-import'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
+import { readClientViewSettings } from '@/lib/queries/kosztorys-client-view-read'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { toastMessage } from '@/lib/utils/toast'
 import type { PresetMetaT } from '@/lib/db/presets'
 
@@ -63,6 +67,8 @@ export function KosztorysActionsMenu() {
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [shareLoaded, setShareLoaded] = useState(false)
   const [existingPresets, setExistingPresets] = useState<PresetMetaT[]>([])
+  const [clientViewOpen, setClientViewOpen] = useState(false)
+  const [clientView, setClientView] = useState<ClientViewSettingsT | null>(null)
 
   function handleOpenPreset() {
     setPresetOpen(true)
@@ -87,6 +93,19 @@ export function KosztorysActionsMenu() {
         toastMessage('Nie udało się sprawdzić linku', 'error')
       })
       .finally(() => setShareLoaded(true))
+  }
+
+  // Same Radix reason as handleOpenShare — and re-read on every open, so the window never shows a
+  // set that another session has since changed.
+  function handleOpenClientView() {
+    setClientViewOpen(true)
+    setClientView(null)
+    void readClientViewSettings(investmentId)
+      .then(setClientView)
+      .catch(() => {
+        setClientViewOpen(false)
+        toastMessage('Nie udało się odczytać ustawień podglądu', 'error')
+      })
   }
 
   // Same Radix reason as handleOpenShare. The refresh rides along with the read, so a successful
@@ -195,6 +214,13 @@ export function KosztorysActionsMenu() {
               />
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleOpenClientView}>
+            <Settings2 />
+            <MenuItemBody
+              label="Ustawienia podglądu…"
+              description="Zdecyduj, które kolumny i pozycje widzi klient."
+            />
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleOpenShare}>
             <Share2 />
             <MenuItemBody
@@ -229,6 +255,13 @@ export function KosztorysActionsMenu() {
         open={reloadOpen}
         onOpenChange={setReloadOpen}
         onReloaded={() => onTreeReplaced?.()}
+      />
+      <KosztorysClientViewDialog
+        investmentId={investmentId}
+        open={clientViewOpen}
+        onOpenChange={setClientViewOpen}
+        settings={clientView}
+        onSaved={setClientView}
       />
       <KosztorysShareDialog
         investmentId={investmentId}

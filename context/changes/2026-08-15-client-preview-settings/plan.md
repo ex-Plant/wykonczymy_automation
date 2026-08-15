@@ -473,14 +473,14 @@ only when this ships.
 
 #### Automated
 
-- [x] 2.1 Condition spec passes
-- [x] 2.2 Preview column spec passes (ceiling holds, stored keys subtract)
+- [x] 2.1 Condition spec passes — 9b3a9af2
+- [x] 2.2 Preview column spec passes (ceiling holds, stored keys subtract) — 9b3a9af2
 
 ### Phase 3: „Ustawienia podglądu…" dialog
 
 #### Automated
 
-- [ ] 3.1 Grouping spec passes — every allowlisted column key belongs to exactly one group
+- [x] 3.1 Grouping spec passes — every allowlisted column key belongs to exactly one group
 
 ### Phase 4: „Udostępnij" in two steps
 
