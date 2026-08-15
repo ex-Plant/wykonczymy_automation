@@ -1,6 +1,7 @@
 ---
 title: Domain Glossary — App ↔ Code naming map
 created: 2026-07-20
+updated: 2026-08-15
 type: glossary
 ---
 
@@ -32,6 +33,11 @@ rename. A row's drift is real until its `Drift in code` cell is empty. The renam
 
 Diacritics are the tell: a **code identifier** has none (`marza`), Polish **prose/UI** does (`Marża`).
 
+**Category A is exactly three concepts:** `kosztorys`, `przedmiar`, `pomiar`. The test is **"no clean
+English equivalent"**, not "the sheet says it in Polish" — the sheet also says „etapy" and
+„robocizna", and those are `stage` / `laborCosts` in code. Anything not on that list of three is
+Category B, whatever the sheet calls it.
+
 ---
 
 ## 1. Financial core — cash ledger + investment P&L (whole app)
@@ -42,6 +48,7 @@ drift is where kosztorys code re-typed the same figure in Polish.
 | Concept                | App/UI (PL)          | Sheet name  | Canonical code id                | Cat | Drift in code                                        | Lives in                                                 |
 | ---------------------- | -------------------- | ----------- | -------------------------------- | --- | ---------------------------------------------------- | -------------------------------------------------------- |
 | balance                | Bilans inwestora     | —           | `balance`                        | B   | `bilans`                                             | `calculate-balance.ts:6`                                 |
+| register balance       | Saldo kasy           | —           | `registerBalance`                | B   | `saldo`, `useSaldo`, `SaldoDisplay`, `totalSaldo`    | `queries/register-saldo.ts:10`                           |
 | margin                 | Marża                | —           | `margin`                         | B   | `marza`                                              | `calculate-margin.ts:13`                                 |
 | deposit (income)       | Wpłaty               | —           | `deposit`                        | B   | `wplaty`, `wplatyNet`                                | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
 | payout                 | Wypłaty              | —           | `payout` (`PAYOUT`)              | B   | `wyplaty`                                            | `calculate-margin.ts:14`                                 |
@@ -70,9 +77,18 @@ or migration column carries these names (the canonical functions are already `ca
 
 **`rabat` — ruled `discount` (owner, 2026-07-20).** Same shape as the others: `discount` is a clean
 equivalent and `RABAT` / `totalRabat` already exist on the transfers side. The lowercase Polish code
-forms → `discount*` (`rabat` → `discount`, `rabatNet` → `discountNet`, `rabatAmount` → `discountAmount`,
-`rabatClientNet` → `discountClientNet`). The **uppercase `RABAT`** transfer-type enum value **stays** —
-it's the canonical DB enum constant, not drift. Polish stays in UI labels („rabat %", „Rabat").
+forms → `discount*` (`rabat` → `discount`, `rabatNet` → `discountNet`, `rabatAmount` → `discountAmount`).
+`rabatClientNet` is the one exception — it is a **recon operand**, so it takes a plane suffix
+(`discountNetFromKosztorys`) rather than the bare form the 2026-07-20 note proposed; see the plane-suffix
+section below. The **uppercase `RABAT`** transfer-type enum value **stays** — it's the canonical DB enum
+constant, not drift. Polish stays in UI labels („rabat %", „Rabat").
+
+**`saldo` — ruled `registerBalance` (owner, 2026-08-15).** Polish `saldo` and `bilans` both translate
+to `balance`, so translating them naively would create the very collision this glossary exists to
+prevent. `balance` stays with the **investment** figure, which already owns the name in code
+(`calculateBalance`) and in a DB column; the cash-register family takes the `register*` prefix. The
+inverse choice would have renamed a correct name and split code from schema. The default string
+`label = 'Saldo'` stays.
 
 ### Plane suffixes — the exception to "one concept, one name"
 
@@ -87,6 +103,10 @@ concept; the suffix is the only thing that differs, so a reader can't mistake wh
 | Concept      | kosztorys plane              | transactions plane                               |
 | ------------ | ---------------------------- | ------------------------------------------------ |
 | labor charge | `laborCostsNetFromKosztorys` | `laborCostsNetFromTransactions` (Σ `LABOR_COST`) |
+| discount     | `discountNetFromKosztorys`   | `discountNetFromTransactions` (Σ `RABAT`)        |
+
+**These two pairs are the whole list** (verified 2026-08-15 at `reconciliation.ts:120-121`, which
+compares exactly two figures). Anything else is one-plane and stays bare.
 
 **A figure that exists on only one plane stays bare** (owner, 2026-07-20) — `depositsByStage`, not
 `depositsByStageFromKosztorys`. The suffix is a warning that a twin exists; hanging it on everything
@@ -99,6 +119,17 @@ Two prior passes got this wrong: `robociznaNet` → `laborCostsNet` fixed the la
 plane; `laborFromKosztorysNet` carried the plane but mangled the base name, so the pair no longer
 shared a prefix. **A language ruling does not settle the plane question — check this section before
 renaming anything the reconciliation compares.**
+
+**A type can carry the plane instead of the name (owner, 2026-08-15).** `SummaryReadingT`
+(`summary-reading.ts:14`) is a plane-selection wrapper: two producers build it, one per plane, and
+every consumer holds exactly one. Its fields therefore stay **bare** — `discountAmount`, not
+`discountAmountFromKosztorys` — because the type already answers the question the suffix would
+answer, and a suffix hung where it adds nothing is the noise this section warns about. The rule
+generalises: **suffix the figure only where both planes are in scope at the same time**, which in
+practice means the two operand pairs above and nothing else.
+
+Same reasoning closes the subcontractor figures: `remaining` and `dueNet`
+(`subcontractor-summary.ts:138`) exist on one plane only and stay bare.
 
 ---
 
@@ -146,6 +177,37 @@ total in `use-kosztorys-editor.ts`, and „Łącznie" is the Robocizna+Materiał
 figure. `combined` / `combinedNet` keeps them distinguishable. This row was missing from the glossary
 entirely; it surfaced only because `computeSummary` returned a half-renamed `{ laborCosts, lacznie }`.
 
+**`sumaPrac` / pre-rabat robocizna — ruled `laborCostsNetPreDiscount` (owner, 2026-08-15), with one
+operation split off.** Three code paths produced this figure: `sumaPracPreRabat(laborCostsNet,
+rabatAmount)`, the `sumaPracNet` field, and `executedWorkNetPreRabat(subtotals)`. On the **client
+view** all three yield the same złoty. They are **not** interchangeable elsewhere:
+`executedWorkNetPreRabat` is view-agnostic and deliberately omits the global-discount add-back,
+because the crew is owed its price regardless of a concession made to the client. One name over both
+would assert an equality that is false on `w_tools` / `no_tools`.
+
+So the unification is one name per **figure** plus a separate name for the **operation**:
+`laborCostsNetPreDiscount(laborCostsNet, discountAmount)` is the figure;
+`sumSectionSubtotalsNet(subtotals)` is a sum over sections and says so. Composing them keeps the
+parity oracle honest on every view.
+
+### Kosztorys settlement panel — canonical names (2026-08-15)
+
+| Concept                  | App/UI (PL)          | Canonical code id                           | Drift renamed from                            |
+| ------------------------ | -------------------- | ------------------------------------------- | --------------------------------------------- |
+| amount still owed        | Pozostało do zapłaty | `amountDue` (`computeAmountDue`)            | `doZaplaty*`, `computeDoZaplatyRM`            |
+| outstanding net          | Do rozliczenia       | `outstandingNet`                            | `doRozliczeniaNet`                            |
+| cash remainder           | Reszta               | `remainderGross`                            | `resztaGross`                                 |
+| executed value           | Wykonane             | `executedNet`                               | `wykonaneNet`                                 |
+| labor charge (billed)    | Robocizna            | `laborCostsNet`                             | `robocizna` (field)                           |
+| materials (billed)       | Materiały            | `materialsBilled`                           | `materialy` (field)                           |
+| expense dataset          | Wydatki              | `ExpenseDatasetT`, `partitionExpenseRows`   | `WydatkiDatasetT`, `partitionWydatkiRows`     |
+| labor tab (sheet import) | zakładka robocizny   | `laborGrid`, `parseLaborTab`, `laborTabGid` | `robocizna`, `parseRobocizna`, `robociznaGid` |
+| pie-chart base           | Przedmiar/Wykonane   | `SectionPieBaseT = 'planned' \| 'executed'` | `'przedmiar' \| 'wykonane'`                   |
+
+`SectionPieBaseT` is worth calling out: it is a **string union**, and the `local/no-domain-drift`
+guard matches `Identifier` nodes only, so a Polish union value is invisible to it. This one was found
+by reading, not by the rule, and the next one will be too.
+
 ---
 
 ## 3. DB-column guardrail
@@ -154,6 +216,20 @@ Canonical identifiers that map to a **real shared Postgres column** on prod data
 on transfers/investments) — a **symbol** rename is safe; a **column** rename is a separate, careful
 step and is **out of scope** until explicitly decided. Kosztorys columns are throwaway pre-dogfooding
 (AGENTS.md) so their renames carry no data cost.
+
+**Polish string values that are frozen by a migration** — these look like drift and are not; renaming
+either one is a schema change, so both stay until someone decides otherwise:
+
+| Value         | Where it is frozen                                                             | Also appears as                                                                         |
+| ------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `'RABAT'`     | `enum_transactions_type` (`src/migrations/20260611_add_rabat_enum.ts:7`)       | a URL query-filter value in `transfer-filters.tsx`; key in `constants/transfers.ts:146` |
+| `'planowana'` | `InvestmentStatusT` (`src/types/reference-data.ts:15`), migration `20260718_0` | investment status filters                                                               |
+
+**Verified clean (2026-08-15):** no identifier in the EX-548 drift inventory is a DB column, a Payload
+field, or a key inside persisted JSON. In particular `rabat_client_net` / `suma_prac_net` /
+`global_rabat_net` (`src/lib/db/kosztorys-client-totals.ts:86-88`) are **SQL aliases, not columns** —
+free to rename. The newest persisted surface, `kosztoryses.sheet_column_mapping`, already uses English
+keys (`ColumnFieldT`, `sheet-import/columns.ts:36-43`).
 
 ## Related documents
 

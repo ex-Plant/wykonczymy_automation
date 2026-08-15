@@ -151,9 +151,38 @@ only, so no financial figure depends on it.
 
 ---
 
+## Re-verification 2026-08-15 (HEAD `37e27b24`) — three rulings overtaken
+
+Full evidence in `research.md` §11. Every ruling below was checked against the code it cited.
+
+- **Q1 — conclusion survives, evidence base moved.** The pre-rabat operand still takes the
+  `FromKosztorys` name. But the **two-step hazard is gone**: EX-555 (`f72c68a1`) renamed
+  `laborCostsNetFromKosztorys` → bare `laborCostsNet`, so the target name is free and the two
+  renames are independent. Arithmetic moved to `settlement-client-totals.ts:54`.
+- **Q4 — OVERTAKEN, needs re-ruling.** `settlement.ts:102` no longer exists; the two named
+  consumers (`brutto-netto-summary.tsx`, `mixed-summary.tsx`) never existed at HEAD. More
+  importantly `sumaPracPreRabat` is **no longer deletable by inlining** — with two readings
+  (`summary-reading.ts`) it is the only plane-agnostic reconstruction of the pre-rabat figure.
+  Recommendation: **rename, don't delete** → `laborCostsNetPreDiscount`.
+- **Q5 — OVERTAKEN, needs re-ruling.** The ruling assumes one producer. At HEAD `rabatAmount` has
+  **two**, on two planes: `summary-reading.ts:23` (transactions) and `:36-39` (kosztorys).
+  Collapsing it onto `discountNetFromKosztorys` would mislabel the v1 reading. Recommendation:
+  bare **`discountAmount`** — the type is the plane switch, so no suffix.
+- **Q6 — OVERTAKEN, applies to nothing.** Its one prod site (`print-button.tsx`, `BILANS_LABEL`)
+  does not exist at HEAD; only test-local `bilans` / `marza` / `detailBilans` survive. The
+  substantive hazard moved: `saldo` and `bilans` **both** translate to `balance` (`research.md` §8),
+  so the Q8 fold-in must keep them apart rather than accept the overload.
+- **Q7 — stands**, but its Cat-A-by-association exemption was never recorded in the glossary, and
+  `wykonaneNet` → `executedNet` is unexecuted.
+- **Q8 — stands**, count corrected to **16 identifiers / 144 occurrences**; the mandated
+  `^saldo|Saldo` guard stem was **never added**.
+- **`executedWorkNetPreRabat`** — the prior "delete rather than rename" is now wrong: it is a
+  documented parity oracle for `subcontractorDueByPlane`. Rename to `…PreDiscount`.
+
 ## Status
 
-**Q1, Q3–Q8 RESOLVED. Q2 SUPERSEDED by Q5. One open.**
+**Q1, Q3, Q7, Q8 RESOLVED and current. Q2 SUPERSEDED by Q5. Q4, Q5, Q6 need re-ruling
+(see above). Q9 still open.**
 
 **OPEN — Q9 `remaining` / `dueNet` (`subcontractor-summary.ts:35`).** Agent
 recommendation, not yet an owner ruling: **stay bare, no plane suffix.** `dueNet` is
@@ -165,12 +194,13 @@ codemod.
 
 Feeds `/10x-plan kosztorys-terminology` as the rename spec. Still owed by the plan:
 
-- **Glossary corrections** — rows 116-117 (przedmiar/pomiar not drift), 72-74
-  (`totalRabat` not canonical), 87-89 (labor operand is the pre-rabat figure per Q1),
-  49/71-75 (rabat is B2 not B1), plus the Q4–Q8 rulings and the ~18 missing concepts
-  enumerated in `research.md` §9.
-- **`context/domain/01-domain-distillation.md`** — regenerate from scratch (~25 of
-  ~35 citations stale).
-- **Guard edits before enabling** — stem additions and the `e2e/` glob widening
-  (`research.md` §7), including the `Identifier`-visitor blind spot on Polish
-  string-literal union members.
+- **Glossary corrections** — far wider than previously scoped: 11 of 13 rows in §1 cite a
+  dead line, one cites a nonexistent file, the plane-suffix table describes a pair whose
+  first half has zero hits, and 12 concepts are missing entirely. `research.md` §11.
+- **`context/domain/01-domain-distillation.md`** — regenerate from scratch, but for the
+  reasons in `research.md` §11, not the ones `change.md`'s gate 3 originally gave.
+- **Guard edits before enabling** — 12 missing stems (incl. Q8's `saldo`), the `e2e/` glob
+  widening, and the `Identifier`-visitor blind spot on Polish string-literal union members.
+  Re-enabling is **not** "a pure uncomment".
+- **Out of scope, migration-bearing** — the `'RABAT'` value on `enum_transactions_type` and
+  `'planowana'` on `InvestmentStatusT`. Record both in the glossary's DB guardrail.

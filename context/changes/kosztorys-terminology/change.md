@@ -1,11 +1,11 @@
 ---
 change_id: kosztorys-terminology
 title: Domain terminology cleanup — l5 „język" step; execute EX-548 Polish→English identifier rename
-status: preparing
+status: implementing
 created: 2026-07-20
-updated: 2026-07-26
+updated: 2026-08-15
 archived_at: null
-branch: null
+branch: ex-548-kosztorys-terminology
 worktree: null
 ---
 
@@ -41,10 +41,13 @@ re-typuje drift, więc im później rename, tym więcej site'ów. Rename jest ta
    `.claude/prompts/m4l5-1-domain-distillation.md`, `m4l5-2-invariant-aggregate-refactor.md`,
    `m4l5-3-anti-corruption-layer.md` (źródłowe lekcje: `~/workspace/10x_devs/lessons/m4/m4_l5*.md`,
    machine-local). Zastosować **m4l5-1** (domain distillation) na kodzie, nie tylko przeczytać.
-3. **Zregenerować `context/domain/01-domain-distillation.md` od zera** w ramach researchu. Obecny plik
-   jest datowany **2026-07-08**, sprzed budowy kosztorysu v2 (S-01…S-10 shipped), więc jego KROK 3E
-   („Kosztorys item aggregate — **BRAK w kodzie**") i ranking KROK 5 (#1 = greenfield) są **nieaktualne
-   / fałszywe** — agregat od tamtej pory istnieje w kodzie. **Nie łatać — zregenerować.**
+3. **Zregenerować `context/domain/01-domain-distillation.md` od zera** w ramach researchu.
+   **Uzasadnienie zaktualizowane 2026-08-15** — pierwotne („plik datowany 2026-07-08, sprzed budowy
+   v2") jest już nieaktualne: regeneracja odbyła się 2026-07-20 i to ona jest obecną wersją pliku.
+   Powód, dla którego bramka nadal obowiązuje, jest inny: rozbicie `settlement.ts` na pięć plików
+   (EX-650), usunięcie `zaliczki.ts` (EX-536) i odwrócenie przez EX-675 tezy KROK 3B („strata nigdy
+   nie dotyka bilansu" — dziś `calculate-balance.ts:18` dodaje `totalLoss`). Szczegóły w
+   `research.md` §11. **Nie łatać — zregenerować.**
 
 ### Stan wywiadu (Runda 1 — do przeniesienia do researchu, nie zgubić)
 
