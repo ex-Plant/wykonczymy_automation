@@ -465,9 +465,9 @@ only when this ships.
 
 #### Automated
 
-- [ ] 1.1 Resolver spec passes
-- [ ] 1.2 Types regenerate cleanly
-- [ ] 1.3 Migration applies against the local DB
+- [x] 1.1 Resolver spec passes
+- [x] 1.2 Types regenerate cleanly
+- [x] 1.3 Migration applies against the local DB
 
 ### Phase 2: The render honours the settings
 

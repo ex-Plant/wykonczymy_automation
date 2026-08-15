@@ -1,11 +1,11 @@
 ---
 change_id: client-preview-settings
 title: Client preview settings — per-investment columns, firm-wide defaults, empty-row filter
-status: planned
+status: implementing
 created: 2026-08-15
 updated: 2026-08-15
 archived_at: null
-branch: null
+branch: client-preview-settings
 worktree: null
 ---
 
