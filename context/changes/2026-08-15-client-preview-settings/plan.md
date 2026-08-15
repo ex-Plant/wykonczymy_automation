@@ -480,13 +480,13 @@ only when this ships.
 
 #### Automated
 
-- [x] 3.1 Grouping spec passes — every allowlisted column key belongs to exactly one group
+- [x] 3.1 Grouping spec passes — every allowlisted column key belongs to exactly one group — 1ae01ffd
 
 ### Phase 4: „Udostępnij" in two steps
 
 #### Automated
 
-- [ ] 4.1 No phase-scoped automated check (dialog composition over the Phase 3 body)
+- [x] 4.1 No phase-scoped automated check (dialog composition over the Phase 3 body)
 
 ### Phase 5: Tests and close-out
 

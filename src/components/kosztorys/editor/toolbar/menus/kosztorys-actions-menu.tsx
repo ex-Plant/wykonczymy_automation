@@ -83,6 +83,7 @@ export function KosztorysActionsMenu() {
   function handleOpenShare() {
     setShareOpen(true)
     setShareLoaded(false)
+    readSettings()
     void getShareLinkAction(investmentId)
       .then((res) => {
         setShareToken(res.success ? res.data : null)
@@ -97,15 +98,16 @@ export function KosztorysActionsMenu() {
 
   // Same Radix reason as handleOpenShare — and re-read on every open, so the window never shows a
   // set that another session has since changed.
-  function handleOpenClientView() {
-    setClientViewOpen(true)
+  function readSettings() {
     setClientView(null)
     void readClientViewSettings(investmentId)
       .then(setClientView)
-      .catch(() => {
-        setClientViewOpen(false)
-        toastMessage('Nie udało się odczytać ustawień podglądu', 'error')
-      })
+      .catch(() => toastMessage('Nie udało się odczytać ustawień podglądu', 'error'))
+  }
+
+  function handleOpenClientView() {
+    setClientViewOpen(true)
+    readSettings()
   }
 
   // Same Radix reason as handleOpenShare. The refresh rides along with the read, so a successful
@@ -270,6 +272,8 @@ export function KosztorysActionsMenu() {
         token={shareToken}
         loaded={shareLoaded}
         onTokenChange={setShareToken}
+        settings={clientView}
+        onSettingsChange={setClientView}
       />
     </>
   )
