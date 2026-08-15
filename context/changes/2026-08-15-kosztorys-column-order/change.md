@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-column-order
 title: User-defined column order in the kosztorys editor
-status: implementing
+status: implemented
 created: 2026-08-15
 updated: 2026-08-15
 archived_at: null
