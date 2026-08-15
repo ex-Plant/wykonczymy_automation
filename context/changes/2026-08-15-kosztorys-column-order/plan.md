@@ -380,8 +380,8 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 2.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/v2-columns-order.test.ts`
-- [x] 2.2 Istniejące specy kolumn nadal przechodzą: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/`
+- [x] 2.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/v2-columns-order.test.ts` — 55f3aca4
+- [x] 2.2 Istniejące specy kolumn nadal przechodzą: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/` — 55f3aca4
 
 ### Phase 3: Okno „Ustaw kolejność kolumn"
 

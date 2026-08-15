@@ -1,7 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import { CheckIcon, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ArrowUpDown, CheckIcon, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
+import { ColumnOrderDialog } from '@/components/kosztorys/editor/dialogs/column-order-dialog'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -83,6 +84,7 @@ function AxisSection<T extends string>({
 // One popover replacing four toolbar toggles + the Kolumny picker. Kwoty / Warstwy / Etapy are
 // union filters skinned as checkbox pairs (both checked = show all, both unchecked = hide the axis).
 export function KosztorysViewMenu() {
+  const [orderOpen, setOrderOpen] = useState(false)
   const {
     view,
     moneyAxis,
@@ -94,6 +96,10 @@ export function KosztorysViewMenu() {
     columnToggleItems,
     toggleColumn,
     setAllColumns,
+    columnRanks,
+    columnBaseRanks,
+    setColumnRank,
+    resetColumnOrder,
   } = useKosztorysEditorContext()
 
   // Subcontractors are paid without VAT (EX-558), so the netto/brutto axis is meaningless in the
@@ -104,95 +110,115 @@ export function KosztorysViewMenu() {
   const showColumnSearch = columnToggleItems.length > COLUMN_SEARCH_THRESHOLD
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          Kolumny
-          <SlidersHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        {showMoneyAxis && (
-          <>
-            <AxisSection
-              label="Kwoty"
-              options={MONEY_AXES}
-              value={moneyAxis}
-              config={MONEY_PAIR_CONFIG}
-              onChange={setMoneyAxis}
-            />
-            <DropdownMenuSeparator />
-          </>
-        )}
-        <AxisSection
-          label="Warstwy"
-          options={LAYERS}
-          value={layer}
-          config={LAYER_PAIR_CONFIG}
-          onChange={setLayer}
-        />
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            Kolumny
+            <SlidersHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          {showMoneyAxis && (
+            <>
+              <AxisSection
+                label="Kwoty"
+                options={MONEY_AXES}
+                value={moneyAxis}
+                config={MONEY_PAIR_CONFIG}
+                onChange={setMoneyAxis}
+              />
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <AxisSection
+            label="Warstwy"
+            options={LAYERS}
+            value={layer}
+            config={LAYER_PAIR_CONFIG}
+            onChange={setLayer}
+          />
 
-        <DropdownMenuSeparator />
-        <AxisSection
-          label="Etapy"
-          options={PROGRESS_DISPLAYS}
-          value={progressDisplay}
-          config={PROGRESS_PAIR_CONFIG}
-          onChange={setProgressDisplay}
-        />
+          <DropdownMenuSeparator />
+          <AxisSection
+            label="Etapy"
+            options={PROGRESS_DISPLAYS}
+            value={progressDisplay}
+            config={PROGRESS_PAIR_CONFIG}
+            onChange={setProgressDisplay}
+          />
 
-        {columnToggleItems.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center justify-between gap-2">
-              Kolumny
-              <InfoTooltip content={KOLUMNY_HINT} className="shrink-0" />
-            </DropdownMenuLabel>
-            {/* cmdk owns the search + arrow-nav for the column list; stop keydowns from reaching the
+          {columnToggleItems.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="flex items-center justify-between gap-2">
+                Kolumny
+                <InfoTooltip content={KOLUMNY_HINT} className="shrink-0" />
+              </DropdownMenuLabel>
+              {/* cmdk owns the search + arrow-nav for the column list; stop keydowns from reaching the
                 Radix menu so its typeahead/focus-roving doesn't fight cmdk. Escape still passes so
                 the menu stays Escape-closable. */}
-            <div
-              onKeyDown={(event) => {
-                if (event.key !== 'Escape') event.stopPropagation()
-              }}
-            >
-              <Command>
-                {showColumnSearch && (
-                  <CommandInput placeholder="Szukaj kolumny..." className="h-8" />
-                )}
-                <CommandList>
-                  {/* forceMount keeps the show/hide-all action visible under any search — it's a
+              <div
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape') event.stopPropagation()
+                }}
+              >
+                <Command>
+                  {showColumnSearch && (
+                    <CommandInput placeholder="Szukaj kolumny..." className="h-8" />
+                  )}
+                  <CommandList>
+                    {/* forceMount keeps the show/hide-all action visible under any search — it's a
                       command, not a filterable column. Riding cmdk's selection model (not a Radix
                       item) also means exactly one row is ever highlighted. */}
-                  <CommandItem
-                    forceMount
-                    onSelect={() =>
-                      setAllColumns(
-                        columnToggleItems.map((item) => item.id),
-                        allColumnsVisible,
-                      )
-                    }
-                  >
-                    {allColumnsVisible ? <EyeOff /> : <Eye />}
-                    {allColumnsVisible ? 'Ukryj wszystkie' : 'Pokaż wszystkie'}
-                  </CommandItem>
-                  <CommandEmpty>Brak kolumn</CommandEmpty>
-                  {columnToggleItems.map((item) => (
                     <CommandItem
-                      key={item.id}
-                      value={item.label}
-                      onSelect={() => toggleColumn(item.id)}
+                      forceMount
+                      onSelect={() =>
+                        setAllColumns(
+                          columnToggleItems.map((item) => item.id),
+                          allColumnsVisible,
+                        )
+                      }
                     >
-                      <CheckIcon className={cn(!item.visible && 'opacity-0')} />
-                      {item.label}
+                      {allColumnsVisible ? <EyeOff /> : <Eye />}
+                      {allColumnsVisible ? 'Ukryj wszystkie' : 'Pokaż wszystkie'}
                     </CommandItem>
-                  ))}
-                </CommandList>
-              </Command>
-            </div>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                    {/* forceMount for the same reason as the row above: a command, not a column, so it
+                      must not disappear under the column search. */}
+                    <CommandItem forceMount onSelect={() => setOrderOpen(true)}>
+                      <ArrowUpDown />
+                      Ustaw kolejność kolumn…
+                    </CommandItem>
+                    <CommandEmpty>Brak kolumn</CommandEmpty>
+                    {columnToggleItems.map((item) => (
+                      <CommandItem
+                        key={item.id}
+                        value={item.label}
+                        onSelect={() => toggleColumn(item.id)}
+                      >
+                        <CheckIcon className={cn(!item.visible && 'opacity-0')} />
+                        {item.label}
+                      </CommandItem>
+                    ))}
+                  </CommandList>
+                </Command>
+              </div>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Sibling of the menu, never inside DropdownMenuContent — a dialog mounted in the menu's
+          content unmounts with it on close and loses the focus fight. */}
+      <ColumnOrderDialog
+        open={orderOpen}
+        onOpenChange={setOrderOpen}
+        items={columnToggleItems}
+        ranks={columnRanks}
+        baseRanks={columnBaseRanks}
+        onSetRank={setColumnRank}
+        onReset={resetColumnOrder}
+      />
+    </>
   )
 }

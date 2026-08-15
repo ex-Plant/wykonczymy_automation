@@ -10,8 +10,8 @@ import type { KosztorysStageT } from '@/lib/kosztorys/types'
 // that a client's document ignores the owner's ranks entirely.
 
 const STAGES: KosztorysStageT[] = [
-  { id: 7, ordinal: 1, label: 'Etap 1', plane: 'with_tools', workerId: null },
-  { id: 9, ordinal: 2, label: 'Etap 2', plane: 'with_tools', workerId: null },
+  { id: 7, ordinal: 1, label: 'Etap 1', plane: 'w_tools', workerId: null },
+  { id: 9, ordinal: 2, label: 'Etap 2', plane: 'w_tools', workerId: null },
 ]
 
 const grid = (opts: Partial<BuildV2ColumnsOptsT> = {}) =>
