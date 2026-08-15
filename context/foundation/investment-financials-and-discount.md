@@ -135,7 +135,7 @@ There is no single balance function. Three independent mechanisms produce the sa
 three surfaces, and any modifier that moves the bilans has to be taught to **all three** by hand:
 
 1. `calculateBalance(financials)` (`src/lib/db/calculate-balance.ts`) — the investments listing.
-2. Σ of the tiles from `buildFinancialFields` (`src/lib/db/map-category-costs.ts` →
+2. Σ of the tiles from `buildFinancialFields` (`src/lib/queries/investment-financial-fields.ts` →
    `financial-stats.tsx`) — the investment page (v1) and `/raporty`. The header's bilans is the
    **sum of the tiles**, so a term with no tile makes the two readings disagree on one screen.
 3. `computeDoZaplatyRM` / `computeMixedSettlement` (`src/lib/kosztorys/summary-economics.ts`) —

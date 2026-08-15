@@ -148,7 +148,15 @@ jednostkowo.
   posortowana po `ranks[key] ?? indeksAssemble`, remisy po indeksie assemble.
 - `rankForMove(orderedMovableKeys: readonly string[], key: string, toIndex: number, ranks, baseRanks): number`
   — ranga, jaką trzeba zapisać, żeby `key` wylądował na `toIndex` w liście przesuwalnych: średnia
-  efektywnych rang sąsiadów, a na krańcach `sąsiad ∓ 1`.
+  efektywnych rang sąsiadów, a na krańcach globalne `min − 1` / `max + 1` z całej listy (sąsiad ∓ 1
+  potrafiłby zremisować z rangą leżącą dalej).
+- `baseRanksFromKeys(keys: readonly string[]): ColumnRanksT` — indeks assemble na klucz grupy, czyli
+  ranga zastępcza nieprzestawionego klucza. Okno kolejności widzi wyłącznie listę **już
+  uporządkowaną**, więc samo tego nie wyliczy — `buildV2Grid` oddaje to jako `columnBaseRanks`,
+  a dialog przyjmuje przez propa `baseRanks`.
+- `movableColumnKeys(keys)` i `placeMovables(keys, movableOrder)` — sama reguła kotwic: kotwice
+  trzymają swój slot assemble, reszta wypełnia pozostałe w podanej kolejności. Grid i okno kolejności
+  czytają tę jedną funkcję, więc okno nie może narysować innego przeplotu niż grid, który edytuje.
 - `orderColumns<T extends { id?: string }>(columns: readonly T[], ranks, toKey: (id: string) => string): T[]`
   — wersja nad pełną listą kolumn: sortuje po kluczu grupy, zachowując wewnętrzną kolejność kolumn
   w obrębie jednej grupy (etapy zostają w swojej kolejności).
@@ -272,8 +280,10 @@ Wejście z menu „Kolumny" i lista przeciągana. Po tej fazie funkcja jest komp
 **Contract**: props `{ open, onOpenChange, items: ColumnToggleItemT[], ranks, onSetRank, onReset }`.
 Lista dzieli `items` na kotwice (`ANCHORED_COLUMN_KEYS`) i resztę: kotwice renderują się jako
 statyczny blok na górze, z podpisem że zostają na początku i bez uchwytu; reszta jedzie w jednej
-`Reorder.Group axis="y"` z `framer-motion`. `onReorder` wylicza nową rangę przez `rankForMove`
-i zapisuje **jeden** klucz. Kolumny ukryte w pickerze są na liście, wyszarzone, z ikoną
+`Reorder.Group axis="y"` z `framer-motion`. `onReorder` prowadzi wyłącznie stan lokalny listy;
+dopiero `onDragEnd` liczy `rankForMove` dla przeciągniętego wiersza (klucz przychodzi z domknięcia
+`Reorder.Item`, nic nie trzeba zgadywać z porównania list) i zapisuje **jeden** klucz — zapis przy każdym przecięciu
+przebudowywałby cały grid między klatkami (to właśnie zabijało płynność przeciągania). Kolumny ukryte w pickerze są na liście, wyszarzone, z ikoną
 przekreślonego oka — nadal przeciągalne, żeby dało się ustawić miejsce kolumny zanim się ją pokaże.
 Stopka: „Przywróć domyślną kolejność" (disabled, gdy mapa rang jest pusta) i „Zamknij".
 
@@ -283,9 +293,8 @@ Stopka: „Przywróć domyślną kolejność" (disabled, gdy mapa rang jest pust
 
 **Intent**: Dołożyć jedną pozycję-komendę otwierającą okno, nie ruszając listy widoczności.
 
-**Contract**: `CommandItem` z `forceMount`, tuż obok istniejącego „Pokaż/Ukryj wszystkie" —
-`forceMount` z tego samego powodu co tam: to komenda, nie kolumna, więc nie może znikać pod
-wyszukiwarką. Stan `open` trzymany w `KosztorysViewMenu`; `<ColumnOrderDialog>` renderowany jako
+**Contract**: `DropdownMenuItem` **nad** wyszukiwarką i poza `<Command>` — komenda, która nigdy nie
+filtruje, nie ma czego szukać w liście cmdk, a jej miejsce jest ponad polem wyszukiwania. Stan `open` trzymany w `KosztorysViewMenu`; `<ColumnOrderDialog>` renderowany jako
 **rodzeństwo** `<DropdownMenu>`, poza `DropdownMenuContent` — dialog wewnątrz treści menu zniknąłby
 razem z menu przy zamknięciu i przegrałby walkę o focus (ta sama klasa problemu, którą
 `header-menu.tsx:65` gasi przez `onCloseAutoFocus`).
@@ -294,8 +303,8 @@ razem z menu przy zamknięciu i przegrałby walkę o focus (ta sama klasa proble
 
 #### Automated Verification:
 
-- Ta faza nie ma własnej weryfikacji automatycznej — cały jej ciężar to zachowanie DnD w przeglądarce.
-  Pokrycie idzie do E2E (patrz Testing Strategy), nie do dodatkowego specu jednostkowego pod modal.
+- Ta faza nie ma weryfikacji automatycznej — cały jej ciężar to zachowanie DnD w przeglądarce,
+  sprawdzane ręcznie (`manual-checks.md`). Arytmetykę pod dropem pokrywają specy jednostkowe fazy 1.
 
 #### Manual Verification:
 
@@ -323,10 +332,9 @@ razem z menu przy zamknięciu i przegrałby walkę o focus (ta sama klasa proble
 
 ### E2E
 
-Zmiana jest browser-level (DnD + localStorage + rerender gridu), więc zgodnie z `AGENTS.md` należy
-jej się spec E2E. Autorstwo albo odłożenie zapada na bramce przeglądowej: spec w `e2e/` przeciągający
-pozycję w oknie i sprawdzający kolejność nagłówków gridu po reloadzie, **albo** issue w Linearze
-z labelem `e2e-backlog` w projekcie „Wykonczymy". Nie uruchamiamy `pnpm test:e2e` bez wyraźnej prośby.
+Brak — **decyzja właściciela (2026-08-15)**: ten slice nie dostaje spec E2E ani wpisu w backlogu E2E.
+Ryzyko przeglądarkowe (DnD + localStorage + rerender gridu) pokrywa lista ręczna w
+`context/foundation/manual-checks.md`. Nie uruchamiamy `pnpm test:e2e` bez wyraźnej prośby.
 
 ### Manual Testing Steps
 
@@ -374,17 +382,17 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [ ] 1.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/lib/kosztorys/column-order.test.ts`
+- [x] 1.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/lib/kosztorys/column-order.test.ts` — 39a3856d
 
 ### Phase 2: Wpięcie kolejności w budowę kolumn
 
 #### Automated
 
-- [ ] 2.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/v2-columns-order.test.ts`
-- [ ] 2.2 Istniejące specy kolumn nadal przechodzą: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/`
+- [x] 2.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/v2-columns-order.test.ts` — 55f3aca4
+- [x] 2.2 Istniejące specy kolumn nadal przechodzą: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/` — 55f3aca4
 
 ### Phase 3: Okno „Ustaw kolejność kolumn"
 
 #### Automated
 
-- [ ] 3.1 (brak weryfikacji automatycznej w tej fazie — pokrycie idzie do E2E)
+- [x] 3.1 (brak weryfikacji automatycznej w tej fazie — ryzyko przeglądarkowe idzie na listę ręczną; E2E odpuszczone decyzją właściciela)

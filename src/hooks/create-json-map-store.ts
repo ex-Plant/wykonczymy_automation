@@ -31,6 +31,16 @@ export function parseJsonMap<V>(json: string): Record<string, V> {
   return {}
 }
 
+// The map without `keys`, or the SAME reference when none were present — identity is how update()
+// tells "nothing to drop" from "dropped", so it skips a pointless write, and an unchanged map keeps
+// the memoization of whatever the caller derives from it.
+export function dropKeys<V>(map: Record<string, V>, keys: string[]): Record<string, V> {
+  if (!keys.some((key) => key in map)) return map
+  const next = { ...map }
+  for (const key of keys) delete next[key]
+  return next
+}
+
 export type JsonMapStoreT<V> = {
   subscribe: (callback: () => void) => () => void
   getSnapshot: () => string

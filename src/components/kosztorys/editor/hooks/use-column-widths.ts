@@ -1,20 +1,11 @@
 'use client'
 
-import { createJsonMapStore, useJsonMap } from '@/hooks/create-json-map-store'
+import { createJsonMapStore, dropKeys, useJsonMap } from '@/hooks/create-json-map-store'
 
 // Grid column widths = id→px map, persisted in localStorage. Sparse: only columns the user actually
 // dragged get an entry — the rest stay on flex (grow/minWidth). Store mechanics (subscribe, safe
 // read, updater-based write) live in createJsonMapStore, shared with useHiddenColumns.
 const store = createJsonMapStore<number>('kosztorys-v2-col-widths')
-
-// Returns the map without `ids`, or the SAME reference when none of them were pinned — identity is
-// how the store's update() tells "nothing to drop" from "dropped", so it skips a pointless write.
-export function dropKeys(widths: Record<string, number>, ids: string[]): Record<string, number> {
-  if (!ids.some((id) => id in widths)) return widths
-  const next = { ...widths }
-  for (const id of ids) delete next[id]
-  return next
-}
 
 export function useColumnWidths(): {
   widths: Record<string, number>

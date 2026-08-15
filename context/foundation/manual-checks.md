@@ -1089,3 +1089,23 @@ transferami LABOR_COST/RABAT (rekoncyliacja ma co porównywać).
 - [ ] Blok rekoncyliacji na stronie inwestycji pokazuje ten sam werdykt co przed zmianą, i przy zgodności, i przy rozjeździe
 - [ ] Wykres kołowy sekcji przełącza się między „Przedmiar" a „Wykonane" i rysuje te same udziały (unia stringowa zmieniła wartości, etykiety zostały)
 - [ ] Formularz wydatku i transferu wewnętrznego pokazuje saldo kasy źródłowej i przelicza „Saldo po transakcji"
+
+## kosztorys-column-order — okno „Ustaw kolejność kolumn" (EX-692)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `lint` bez nowych błędów, `test` 2289,
+`build`). Stan po `f5ec376d`.
+
+Setup: dev-owy edytor kosztorysu z rozpisanymi etapami (żeby grupa etapów miała co przenosić),
+zalogowany jako OWNER. Kolejność siedzi w `localStorage` pod `kosztorys-v2-col-order`.
+
+- [ ] Ręczny wpis `{"price": -1}` w localStorage pod `kosztorys-v2-col-order` przestawia „Cena j.m." na początek ruchomej części gridu po odświeżeniu
+- [ ] Link do widoku klienta z tym samym wpisem pokazuje kolejność arkuszową
+- [ ] Menu „Kolumny" → „Ustaw kolejność kolumn…" otwiera okno; menu zamyka się, okno zostaje i ma focus
+- [ ] Przeciągnięcie „Cena j.m." nad „Przedmiar" przestawia kolumny w gridzie po zamknięciu okna
+- [ ] Przeciągnięcie grupy etapów przenosi wszystkie kolumny etapów blokiem
+- [ ] „Opis prac" i kolumna akcji nie mają uchwytu i nie dają się przeciągnąć
+- [ ] Kolumna ukryta w pickerze jest na liście wyszarzona; po przeciągnięciu i pokazaniu jej w pickerze ląduje na ustawionym miejscu
+- [ ] Kolejność przeżywa `F5` i jest ta sama na innym kosztorysie
+- [ ] „Przywróć domyślną kolejność" wraca do układu arkusza
+- [ ] Widok klienta (link udostępniony) pokazuje kolejność arkuszową niezależnie od ustawień właściciela
+- [ ] Zmiana kolejności nie psuje przeciągania krawędzi kolumny (szerokości) ani sortowania z nagłówka

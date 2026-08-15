@@ -1,4 +1,7 @@
-import { buildMaterialsBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
+import {
+  buildMaterialsBreakdown,
+  buildSettledBreakdown,
+} from '@/lib/queries/investment-financial-fields'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'

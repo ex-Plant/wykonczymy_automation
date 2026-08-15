@@ -3,11 +3,8 @@
 import { useState, type ReactNode } from 'react'
 import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
-import {
-  bucketDepositsByPlane,
-  computeAmountDue,
-  type MaterialsT,
-} from '@/lib/kosztorys/summary-economics'
+import { computeAmountDue, type MaterialsT } from '@/lib/kosztorys/summary-economics'
+import { bucketDepositsByPlane } from '@/lib/kosztorys/deposit-planes'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'

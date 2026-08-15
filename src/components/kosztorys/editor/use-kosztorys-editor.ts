@@ -11,6 +11,7 @@ import {
 } from '@/lib/kosztorys/undo-coalesce'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
+import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
@@ -215,6 +216,11 @@ export function useKosztorysEditor({
   // (guideX = cursor X), without touching the grid.
   const { widths, setWidth, dropWidth } = useColumnWidths()
   const { isHidden, toggleColumn, setAllColumns } = useHiddenColumns()
+  const {
+    ranks: columnRanks,
+    setRank: setColumnRank,
+    resetOrder: resetColumnOrder,
+  } = useColumnOrder()
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
@@ -397,6 +403,7 @@ export function useKosztorysEditor({
     progressDisplay,
     layer,
     widths,
+    columnRanks,
     onGuide: setGuideX,
     onCommitColumn: setWidth,
     onRemoveItem: editorOnly(handleRemoveItem),
@@ -415,7 +422,7 @@ export function useKosztorysEditor({
     readOnly: preview,
     previewVisible: preview,
   }
-  const { columns, columnToggleItems } = buildV2Grid(columnOpts)
+  const { columns, columnToggleItems, columnBaseRanks } = buildV2Grid(columnOpts)
   // A column sort must not outlive its column. A money-axis or view toggle can drop the sorted
   // column, taking its SortHeader — the only control that clears the sort — with it, while the sort
   // state lingers: the rows freeze in an unexplained order and the row actions stay disabled with no
@@ -1396,6 +1403,10 @@ export function useKosztorysEditor({
     columnToggleItems,
     toggleColumn,
     setAllColumns,
+    columnRanks,
+    columnBaseRanks,
+    setColumnRank,
+    resetColumnOrder,
     moneyAxis: effectiveMoneyAxis,
     setMoneyAxis,
     progressDisplay,
