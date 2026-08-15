@@ -475,7 +475,7 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 1.1 `pnpm lint`
+- [x] 1.1 `pnpm lint` — 24de9993 (bramka całodrzewowa, uruchomiona raz na końcu)
 
 ### Phase 2: `sheet-import` — rodzina `Robocizna`
 
@@ -521,6 +521,6 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 7.1 `pnpm lint` z aktywną regułą
-- [x] 7.2 `pnpm typecheck`
-- [x] 7.3 `pnpm test` + `pnpm test:parity`
+- [x] 7.1 `pnpm lint` z aktywną regułą — 24de9993
+- [x] 7.2 `pnpm typecheck` — 24de9993
+- [x] 7.3 `pnpm test` + `pnpm test:parity` — 24de9993
