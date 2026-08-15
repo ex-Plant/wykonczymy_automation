@@ -7,7 +7,7 @@ import { pluralize } from '@/lib/utils/polish-plural'
 import { WarningBanner } from '@/components/ui/warning-banner'
 import type { SettlementPlaneVerdictT } from '@/lib/kosztorys/reconciliation'
 
-function wplatyNoun(count: number): string {
+function depositNoun(count: number): string {
   return pluralize(count, ['wpłata', 'wpłaty', 'wpłat'])
 }
 
@@ -34,7 +34,7 @@ export function SettlementPlaneWarning({
   return (
     <WarningBanner className="max-w-lg">
       Ta inwestycja jest rozliczana {settlementModeLabel(verdict.mode).toLocaleLowerCase()} ale{' '}
-      {verdict.offendingCount} {wplatyNoun(verdict.offendingCount)}{' '}
+      {verdict.offendingCount} {depositNoun(verdict.offendingCount)}{' '}
       {oznaczoneVerb(verdict.offendingCount)} jako {plane} ({formatNet(verdict.offendingAmount)}).
       Zmień sposób rozliczenia inwestycji albo edytuj wpłatę.{' '}
       <Link

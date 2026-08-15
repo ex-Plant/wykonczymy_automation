@@ -1,14 +1,14 @@
 import { sectionColorFill } from '@/lib/kosztorys/section-colors'
 import { breakdownRowPair } from '@/lib/kosztorys/summary-economics'
 import type { SectionSubtotalClientT } from '@/lib/kosztorys/types'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 
 // `id` is a stable React key — section names / materiały labels are free-typed and can collide,
 // so keying a Cell/legend row on `name` risks duplicate keys (mis-reconcile on the base toggle).
 export type PieSliceT = { id: string; name: string; value: number; fill: string }
 
-// Positional palette — order preserved from the old conic pie's SLICE_COLORS. recharts fills a slice
-// with the raw CSS var; Tailwind never scans these, so no bg-chart-* utility is needed.
+// recharts fills a slice with the raw CSS var; Tailwind never scans these, so no bg-chart-* utility
+// is needed.
 export const CHART_FILLS = [
   'var(--color-chart-blue)',
   'var(--color-chart-orange)',
@@ -44,7 +44,7 @@ function paintSlices(raw: RawSliceT[]): PieSliceT[] {
   }))
 }
 
-export type SectionPieBaseT = 'przedmiar' | 'wykonane'
+export type SectionPieBaseT = 'planned' | 'executed'
 
 // The section pie only needs each section's two money figures; it takes the client-priced,
 // view-invariant subtotals so a structure chart never moves with the widok cen. Picking off the
@@ -63,7 +63,7 @@ export function sectionPieSlices(
     subtotals.map((section) => ({
       id: `section-${section.sectionId}`,
       name: section.sectionName,
-      value: base === 'przedmiar' ? section.plannedNet : section.net,
+      value: base === 'planned' ? section.plannedNet : section.net,
       fill: sectionColorFill(section.sectionColor),
     })),
   )
@@ -71,10 +71,10 @@ export function sectionPieSlices(
 
 // Two-slice cost split — robocizna vs materiały as single totals, no per-category breakdown. Used by
 // the „Struktura kosztów" pie, which reasons in netto totals rather than the per-expense rozpiska.
-export function costTotalsPieSlices(robocizna: number, materialy: number): PieSliceT[] {
+export function costTotalsPieSlices(laborCostsNet: number, materialsBilled: number): PieSliceT[] {
   return paintSlices([
-    { id: 'robocizna', name: 'Robocizna', value: robocizna },
-    { id: 'materialy', name: 'Materiały', value: materialy },
+    { id: 'labor', name: 'Robocizna', value: laborCostsNet },
+    { id: 'materials', name: 'Materiały', value: materialsBilled },
   ])
 }
 
@@ -83,12 +83,12 @@ export function costTotalsPieSlices(robocizna: number, materialy: number): PieSl
 // uses: the two sit side by side, and a `netBilled` row crosses the rate in the opposite direction to
 // a `gross` one, so reading `row.net` raw would draw shares that don't add up to the total beside them.
 export function expensePieSlices(
-  rows: readonly MaterialyBreakdownRowT[],
+  rows: readonly MaterialsBreakdownRowT[],
   netRate: number | null,
 ): PieSliceT[] {
   return paintSlices(
     rows.map((row) => ({
-      id: `${row.origin}-${row.id !== null ? `expense-${row.id}` : 'korekta'}`,
+      id: `${row.origin}-${row.id !== null ? `expense-${row.id}` : 'correction'}`,
       name: row.label,
       value: breakdownRowPair(row, netRate).gross,
     })),
@@ -99,7 +99,7 @@ export function expensePieSlices(
 // distinction exists; the netto slice absorbs the unmarked deposits (they default to netto).
 export function depositPlanePieSlices(paidNet: number, paidGross: number): PieSliceT[] {
   return paintSlices([
-    { id: 'netto', name: 'Wpłaty netto', value: paidNet },
-    { id: 'brutto', name: 'Wpłaty brutto', value: paidGross },
+    { id: 'net', name: 'Wpłaty netto', value: paidNet },
+    { id: 'gross', name: 'Wpłaty brutto', value: paidGross },
   ])
 }

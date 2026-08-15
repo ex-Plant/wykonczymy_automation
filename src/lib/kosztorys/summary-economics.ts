@@ -110,16 +110,16 @@ export function combinedPair(
   materialsBilled: number,
   vatRate: number,
 ): MoneyPairT {
-  const prace = moneyPair(laborCostsNet, vatRate)
-  return { net: prace.net + materialsBilled, gross: prace.gross + materialsBilled }
+  const labor = moneyPair(laborCostsNet, vatRate)
+  return { net: labor.net + materialsBilled, gross: labor.gross + materialsBilled }
 }
 
 // „Robocizna" is shown PRE-rabat, with the rabat as its own deduction row below it — the same figure
 // the investment page's „z kosztorysu" block labels Robocizna, so one label never means two numbers.
 // Łącznie is unaffected: `laborCostsNet` is already post-rabat, so the row pair adds
 // back and deducts the same amount.
-export function sumaPracPreRabat(laborCostsNet: number, rabatAmount: number): number {
-  return laborCostsNet + rabatAmount
+export function laborCostsNetPreDiscount(laborCostsNet: number, discountAmount: number): number {
+  return laborCostsNet + discountAmount
 }
 
 // „Pozostało do zapłaty" (sheet footer r456–464): the headline still-owed figure — Łącznie less the
@@ -133,7 +133,11 @@ export function sumaPracPreRabat(laborCostsNet: number, rabatAmount: number): nu
 // A strata is a cost the company swallowed after the fact: the client simply stops owing the amount
 // entered, the same amount on both planes. Grossing it would forgive 1230 zł of debt for 1000 zł
 // absorbed.
-export function computeDoZaplatyRM(
+function deductSettled(combined: MoneyPairT, settledNet: number): MoneyPairT {
+  return { net: combined.net - settledNet, gross: combined.gross - settledNet }
+}
+
+export function computeAmountDue(
   laborCostsNet: number,
   depositsTotal: number,
   materials: MaterialsT,
@@ -146,27 +150,26 @@ export function computeDoZaplatyRM(
     billedMaterials(materials, materialsNetRate),
     vatRate,
   )
-  const settled = depositsTotal + loss
-  return { net: combined.net - settled, gross: combined.gross - settled }
+  return deductSettled(combined, depositsTotal + loss)
 }
 
 export type MixedSettlementT = {
   // Netto section: robocizna + materiały = Łącznie, then wpłaty netto → Do rozliczenia netto.
-  robocizna: number
-  materialy: number
+  laborCostsNet: number
+  materialsBilled: number
   combinedNet: number
   paidNet: number
   // combinedNet − paidNet: the still-owed netto that goes onto the invoice.
-  doRozliczeniaNet: number
+  outstandingNet: number
   // Brutto section: Łącznie brutto less the wpłaty netto, then wpłaty brutto → Do zapłaty brutto.
-  resztaGross: number
+  remainderGross: number
   paidGross: number
-  // resztaGross − paidGross: what the client still owes on the invoice.
-  doZaplatyGross: number
+  // remainderGross − paidGross: what the client still owes on the invoice.
+  amountDueGross: number
   // What closes the settlement if the client pays the rest off-invoice (gotówka) instead of brutto:
   // the still-owed netto less every wpłata already made. Not a term of either column — an alternative
   // reading of the same debt.
-  doZaplatyNet: number
+  amountDueNet: number
 }
 
 // Tryb mieszany: the client settles part in cash (no invoice → no VAT) and the rest on an invoice
@@ -190,27 +193,26 @@ export function computeMixedSettlement(
 ): MixedSettlementT {
   const materialsBilled = billedMaterials(materials, materialsNetRate)
   const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
-  const settledNet = paidNet + loss
-  const doRozliczeniaNet = combined.net - settledNet
   // VAT rides the prace alone, so the gross-up runs on „Łącznie" — where materiały already sits at
-  // face value on both axes — and the wpłaty come off after it. Grossing `doRozliczeniaNet` instead
+  // face value on both axes — and the wpłaty come off after it. Grossing `outstandingNet` instead
   // put materiały × VAT into this figure, so „Pozostało brutto" and the „Łącznie" brutto printed
-  // directly above it quoted the same debt at two amounts on one screen.
-  const resztaGross = combined.gross - settledNet
-  const doZaplatyGross = resztaGross - paidGross
+  // directly above it quoted the same debt at two amounts on one screen. Same deduction as
+  // `computeAmountDue`'s, hence the shared helper.
+  const { net: outstandingNet, gross: remainderGross } = deductSettled(combined, paidNet + loss)
+  const amountDueGross = remainderGross - paidGross
   return {
-    robocizna: laborCostsNet,
-    materialy: materialsBilled,
+    laborCostsNet,
+    materialsBilled,
     combinedNet: combined.net,
     paidNet,
-    doRozliczeniaNet,
-    resztaGross,
+    outstandingNet,
+    remainderGross,
     paidGross,
-    doZaplatyGross,
+    amountDueGross,
     // Wpłaty brutto enter at FACE VALUE, not de-grossed. A wpłata is cash, and VAT belongs to the
     // prace alone (context/reference/kosztorys-editor-domain-notes.md, „VAT dotyczy wyłącznie prac") —
     // dividing it by the VAT rate credited the client less than they actually paid (owner, 2026-08-07).
-    doZaplatyNet: doRozliczeniaNet - paidGross,
+    amountDueNet: outstandingNet - paidGross,
   }
 }
 

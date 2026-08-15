@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildFinancialFields,
-  buildMaterialyBreakdown,
-  RABAT_LABEL,
+  buildMaterialsBreakdown,
+  DISCOUNT_LABEL,
 } from '@/lib/db/map-category-costs'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
@@ -15,7 +15,7 @@ const base: InvestmentFinancialsT = {
   totalIncome: 5000,
   totalLaborCosts: 1000,
   totalPayouts: 0,
-  totalRabat: 0,
+  totalDiscount: 0,
   totalLoss: 0,
   totalSettled: 0,
   materialsNetDiscount: 0,
@@ -24,16 +24,16 @@ const base: InvestmentFinancialsT = {
 }
 
 describe('buildFinancialFields — rabat row', () => {
-  it('omits the Rabat field when totalRabat is 0', () => {
+  it('omits the Rabat field when totalDiscount is 0', () => {
     const fields = buildFinancialFields(base, [])
-    expect(fields.find((f) => f.label === RABAT_LABEL)).toBeUndefined()
+    expect(fields.find((f) => f.label === DISCOUNT_LABEL)).toBeUndefined()
   })
 
   it('emits a positive Rabat field when there is a rabat', () => {
-    const fields = buildFinancialFields({ ...base, totalRabat: 800 }, [])
-    const rabat = fields.find((f) => f.label === RABAT_LABEL)
-    expect(rabat).toBeDefined()
-    expect(rabat!.amount).toBe(800)
+    const fields = buildFinancialFields({ ...base, totalDiscount: 800 }, [])
+    const discount = fields.find((f) => f.label === DISCOUNT_LABEL)
+    expect(discount).toBeDefined()
+    expect(discount!.amount).toBe(800)
   })
 })
 
@@ -51,7 +51,7 @@ describe('buildFinancialFields — corrections fold into their type (no separate
   })
 })
 
-describe('buildMaterialyBreakdown', () => {
+describe('buildMaterialsBreakdown', () => {
   const cats = [
     { id: 1, name: 'Materiały budowlane' },
     { id: 2, name: 'Materiały wykończeniowe' },
@@ -67,7 +67,7 @@ describe('buildMaterialyBreakdown', () => {
       ],
       totalMaterialCosts: 950, // 200 not attributed to any category
     }
-    const rows = buildMaterialyBreakdown(financials, cats)
+    const rows = buildMaterialsBreakdown(financials, cats)
     expect(rows.reduce((sum, r) => sum + r.net, 0)).toBe(950)
   })
 
@@ -77,7 +77,7 @@ describe('buildMaterialyBreakdown', () => {
       categoryCosts: [{ categoryId: 1, total: 500 }],
       totalMaterialCosts: 500,
     }
-    expect(buildMaterialyBreakdown(balanced, cats).some((r) => r.id === null)).toBe(false)
+    expect(buildMaterialsBreakdown(balanced, cats).some((r) => r.id === null)).toBe(false)
 
     // A negative correction can drive the remainder below zero — kept signed, not clamped.
     const overCategorised = {
@@ -85,7 +85,7 @@ describe('buildMaterialyBreakdown', () => {
       categoryCosts: [{ categoryId: 1, total: 500 }],
       totalMaterialCosts: 400,
     }
-    const remainder = buildMaterialyBreakdown(overCategorised, cats).find((r) => r.id === null)
+    const remainder = buildMaterialsBreakdown(overCategorised, cats).find((r) => r.id === null)
     expect(remainder).toMatchObject({ id: null, net: -100 })
   })
 
@@ -103,7 +103,7 @@ describe('buildMaterialyBreakdown', () => {
       ],
       totalMaterialCosts: 300,
     }
-    const rows = buildMaterialyBreakdown(financials, dupNames)
+    const rows = buildMaterialsBreakdown(financials, dupNames)
     const ids = rows.map((r) => r.id)
     expect(ids).toEqual([7, 9])
     expect(new Set(ids).size).toBe(ids.length)
@@ -124,7 +124,7 @@ describe('buildMaterialyBreakdown', () => {
     const netCategoryCosts = [{ categoryId: 1, total: 1000 }]
 
     it('splits a mixed category into a brutto row and its own frozen „… netto" row', () => {
-      const rows = buildMaterialyBreakdown(financials, cats, netCategoryCosts)
+      const rows = buildMaterialsBreakdown(financials, cats, netCategoryCosts)
       expect(rows.filter((r) => r.id === 1)).toEqual([
         { id: 1, label: 'Materiały budowlane', net: 500, origin: 'gross' },
         { id: 1, label: 'Materiały budowlane netto', net: 1000, origin: 'netBilled' },
@@ -132,15 +132,15 @@ describe('buildMaterialyBreakdown', () => {
     })
 
     it('leaves a category with nothing billed netto as a single brutto row', () => {
-      const rows = buildMaterialyBreakdown(financials, cats, netCategoryCosts)
+      const rows = buildMaterialsBreakdown(financials, cats, netCategoryCosts)
       expect(rows.filter((r) => r.id === 2)).toEqual([
         { id: 2, label: 'Materiały wykończeniowe', net: 300, origin: 'gross' },
       ])
     })
 
     it('Σ rows is unchanged by the split — value moves rows, it is never added', () => {
-      const withSplit = buildMaterialyBreakdown(financials, cats, netCategoryCosts)
-      const withoutSplit = buildMaterialyBreakdown(financials, cats)
+      const withSplit = buildMaterialsBreakdown(financials, cats, netCategoryCosts)
+      const withoutSplit = buildMaterialsBreakdown(financials, cats)
       const sum = (rows: { net: number }[]) => rows.reduce((total, r) => total + r.net, 0)
       expect(sum(withSplit)).toBe(sum(withoutSplit))
       expect(sum(withSplit)).toBe(1800)
@@ -170,7 +170,7 @@ describe('buildFinancialFields — Σ tiles reconciles with calculateBalance', (
   }
 
   it('reconciles on an investment with rabat and a materiały concession', () => {
-    const financials = { ...withMaterials, totalRabat: 300, materialsNetDiscount: 280.49 }
+    const financials = { ...withMaterials, totalDiscount: 300, materialsNetDiscount: 280.49 }
     expect(sumTiles(financials)).toBeCloseTo(calculateBalance(financials), 2)
   })
 
@@ -181,7 +181,7 @@ describe('buildFinancialFields — Σ tiles reconciles with calculateBalance', (
   it('reconciles with a loss on top of both concessions', () => {
     const financials = {
       ...withMaterials,
-      totalRabat: 300,
+      totalDiscount: 300,
       materialsNetDiscount: 280.49,
       totalLoss: 362.84,
     }

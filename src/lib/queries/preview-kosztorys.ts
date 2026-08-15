@@ -59,7 +59,7 @@ async function buildPreviewKosztorysEditorData(
     fetchMaterialTransactionsForInvestment(investmentId),
     fetchDepositTransactionsForInvestment(investmentId),
   ])
-  const { financials, materialyBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
+  const { financials, materialsBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
     expenseCategories,
@@ -71,11 +71,11 @@ async function buildPreviewKosztorysEditorData(
     investmentName: investment.name,
     materialsGrossBase: financials.materialsGrossBase,
     materialsNetBilled: financials.materialsNetBilled,
-    materialyBreakdown,
+    materialsBreakdown,
     settledBreakdown,
     financials,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
-    investmentRabat: financials.totalRabat,
+    discountNetFromTransactions: financials.totalDiscount,
     investmentLoss: financials.totalLoss,
     materialTransactions,
     depositTransactions,

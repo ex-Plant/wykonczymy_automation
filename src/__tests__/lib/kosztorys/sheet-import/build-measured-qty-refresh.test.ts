@@ -6,10 +6,10 @@ import type { KosztorysItemT } from '@/lib/kosztorys/types'
 import { col } from '@/__tests__/fixtures/kosztorys-sheet/grid'
 import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
-const source = (robocizna: (string | number)[][]): ImportGridsT => ({
-  robocizna,
-  robociznaFormulas: [],
-  robociznaGid: 70964819,
+const source = (laborGrid: (string | number)[][]): ImportGridsT => ({
+  laborGrid,
+  laborGridFormulas: [],
+  laborTabGid: 70964819,
   rateTabs: [],
 })
 

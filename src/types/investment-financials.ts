@@ -16,7 +16,7 @@ export type InvestmentFinancialsT = {
   totalIncome: number
   totalLaborCosts: number
   totalPayouts: number
-  totalRabat: number
+  totalDiscount: number
   totalLoss: number
   totalSettled: number
   /** What the company gives away by billing materiały netto instead of at the brutto receipt:
@@ -42,7 +42,7 @@ export const ZERO_FINANCIALS: InvestmentFinancialsT = {
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
-  totalRabat: 0,
+  totalDiscount: 0,
   totalLoss: 0,
   totalSettled: 0,
   materialsNetDiscount: 0,
@@ -56,7 +56,7 @@ export const ZERO_FINANCIALS: InvestmentFinancialsT = {
  *  bucket the row came from, because the two are valued differently — a `netBilled` row is
  *  already netto and must never be repriced by the toggle. A category with rows in both
  *  buckets yields two rows, so the toggle can't reach the netto half. */
-export type MaterialyBreakdownRowT = {
+export type MaterialsBreakdownRowT = {
   id: number | null
   label: string
   net: number

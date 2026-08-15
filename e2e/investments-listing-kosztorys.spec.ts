@@ -13,7 +13,12 @@ import { parsePln, waitForHydration } from './helpers'
 // forced to be correct, which is not the property in question.
 test.use({ storageState: 'e2e/.auth/user.json' })
 
-type ReconSeed = { mismatch: number; match: number; matchName: string; sumaPracNet: number }
+type ReconSeed = {
+  mismatch: number
+  match: number
+  matchName: string
+  laborCostsNetFromKosztorys: number
+}
 
 let seed: ReconSeed
 

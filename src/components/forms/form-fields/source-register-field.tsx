@@ -1,5 +1,5 @@
 import { CashRegisterField } from './cash-register-field'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import type { ReferenceItemT } from '@/types/reference-data'
 
 type SourceRegisterFieldPropsT = {
@@ -7,18 +7,18 @@ type SourceRegisterFieldPropsT = {
   form: any
   cashRegisters: ReferenceItemT[]
   label?: string
-  saldo: number | null
-  isSaldoLoading: boolean
-  fetchSaldo: (registerId: string) => void
+  registerBalance: number | null
+  isRegisterBalanceLoading: boolean
+  fetchRegisterBalance: (registerId: string) => void
 }
 
 export function SourceRegisterField({
   form,
   cashRegisters,
   label = 'Kasa',
-  saldo,
-  isSaldoLoading,
-  fetchSaldo,
+  registerBalance,
+  isRegisterBalanceLoading,
+  fetchRegisterBalance,
 }: SourceRegisterFieldPropsT) {
   return (
     <>
@@ -26,10 +26,14 @@ export function SourceRegisterField({
         form={form}
         cashRegisters={cashRegisters}
         label={label}
-        listeners={{ onChange: ({ value }: { value: string }) => fetchSaldo(value) }}
+        listeners={{ onChange: ({ value }: { value: string }) => fetchRegisterBalance(value) }}
       />
-      {isSaldoLoading && <p className="text-muted-foreground text-sm">Ładowanie salda...</p>}
-      {saldo !== null && !isSaldoLoading && <SaldoDisplay saldo={saldo} label="Aktualne saldo" />}
+      {isRegisterBalanceLoading && (
+        <p className="text-muted-foreground text-sm">Ładowanie salda...</p>
+      )}
+      {registerBalance !== null && !isRegisterBalanceLoading && (
+        <SignedMoneyDisplay amount={registerBalance} label="Aktualne saldo" />
+      )}
     </>
   )
 }

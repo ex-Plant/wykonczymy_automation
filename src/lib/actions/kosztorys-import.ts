@@ -19,7 +19,7 @@ import {
   type SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import {
-  resolveRobocizna,
+  resolveLaborColumns,
   type UnresolvedColumnsT,
 } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import {
@@ -27,7 +27,7 @@ import {
   type SheetFailureReasonT,
   type SheetFailureT,
 } from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
-import { readImportGrids, ROBOCIZNA_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
+import { readImportGrids, LABOR_TAB } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { getReadonlySheetsClient } from '@/lib/google/readonly-sheets-client'
 import { serviceAccountEmail } from '@/lib/google/sheet-access'
 import type { ActionResultT } from '@/types/action'
@@ -79,7 +79,7 @@ async function derivePlan(investmentId: number, sheet: InvestmentSheetT): Promis
 const FAILURE_MESSAGES: Record<SheetFailureReasonT, string> = {
   forbidden: 'Arkusz Google nie jest udostępniony kontu usługi tej aplikacji.',
   'not-found': 'Arkusz Google o tym identyfikatorze nie istnieje albo został usunięty.',
-  'missing-tab': `Arkusz Google nie ma zakładki „${ROBOCIZNA_TAB}".`,
+  'missing-tab': `Arkusz Google nie ma zakładki „${LABOR_TAB}".`,
   unknown: 'Nie udało się odczytać arkusza Google. Spróbuj ponownie za chwilę.',
 }
 
@@ -198,7 +198,7 @@ export async function compareWithSheet(
       // Resolved here rather than left to the two builders below: an unreadable header has to reach
       // the window as a pick, and the refresh must not run on it — writing a Pomiar off a header we
       // could not read would be worse than leaving the stored figure alone.
-      const resolved = resolveRobocizna(grids.robocizna, sheet.sheetColumnMapping)
+      const resolved = resolveLaborColumns(grids.laborGrid, sheet.sheetColumnMapping)
       const columns = {
         missingFields: resolved.missingFields,
         candidates: resolved.candidates,

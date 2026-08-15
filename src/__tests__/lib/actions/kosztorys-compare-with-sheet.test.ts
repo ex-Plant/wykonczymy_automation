@@ -41,9 +41,9 @@ vi.mock('@/lib/google/readonly-sheets-client', () => ({
 vi.mock('@/lib/kosztorys/sheet-import/read-sheet', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   readImportGrids: vi.fn().mockImplementation(async () => ({
-    robocizna: BIALOSTOCKA_ROWS,
-    robociznaFormulas: sheetState.formulas,
-    robociznaGid: 70964819,
+    laborGrid: BIALOSTOCKA_ROWS,
+    laborGridFormulas: sheetState.formulas,
+    laborTabGid: 70964819,
     rateTabs: [
       ratesTab('zakres pracy z narzędziami', [
         { description: 'montaż jednostki wewnętrznej', wTools: 78, ownTools: 60 },
@@ -58,7 +58,7 @@ const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SEC
 
 // Białostocka's first praca sits at grid index 4 (sheet row 5); its Pomiar reading as a formula is
 // exactly the „przepisany z Przedmiaru" case the refresh must translate into „no measurement".
-const FIRST_PRACA_ROW = 4
+const FIRST_ITEM_ROW = 4
 
 describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
   let payload: Payload
@@ -136,7 +136,7 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
   it('writes the sheet’s hand-typed Pomiar onto matched prace and clears the ones it stopped claiming', async () => {
     await seedTree()
     sheetState.formulas = BIALOSTOCKA_ROWS.map((_, index) =>
-      index === FIRST_PRACA_ROW ? row({ O: '=N5' }) : [],
+      index === FIRST_ITEM_ROW ? row({ O: '=N5' }) : [],
     )
 
     const result = await compareWithSheet(investmentId)

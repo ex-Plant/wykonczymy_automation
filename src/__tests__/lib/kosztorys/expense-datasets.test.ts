@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  availableWydatkiDatasets,
-  partitionWydatkiRows,
-  wydatkiRowHref,
-} from '@/lib/kosztorys/wydatki-datasets'
+  availableExpenseDatasets,
+  partitionExpenseRows,
+  expenseRowHref,
+} from '@/lib/kosztorys/expense-datasets'
 import type { InvoiceFileT, MaterialTransactionRowT } from '@/types/transfers'
 
 // The tab split in isolation. The one assertion that couples it to `deriveFinancials` — Σ over the
@@ -34,9 +34,9 @@ const rows: MaterialTransactionRowT[] = [
   { ...ROW_BASE, id: 4, type: 'INVESTMENT_EXPENSE', amount: 40, billed: 40, settled: true },
 ]
 
-describe('partitionWydatkiRows', () => {
+describe('partitionExpenseRows', () => {
   it('assigns every row to exactly one tab', () => {
-    const { gross, net, settled } = partitionWydatkiRows(rows)
+    const { gross, net, settled } = partitionExpenseRows(rows)
     expect([...gross, ...net, ...settled].map((row) => row.id).sort()).toEqual([1, 2, 3, 4])
   })
 
@@ -52,7 +52,7 @@ describe('partitionWydatkiRows', () => {
       billed: 100,
       settled: false,
     }
-    const { gross, net, settled } = partitionWydatkiRows([stale])
+    const { gross, net, settled } = partitionExpenseRows([stale])
 
     expect(gross).toHaveLength(1)
     expect(net).toHaveLength(0)
@@ -68,36 +68,36 @@ describe('partitionWydatkiRows', () => {
       billed: 1000,
       settled: true,
     }
-    const { net, settled } = partitionWydatkiRows([forged])
+    const { net, settled } = partitionExpenseRows([forged])
 
     expect(net).toHaveLength(1)
     expect(settled).toHaveLength(0)
   })
 })
 
-describe('availableWydatkiDatasets', () => {
+describe('availableExpenseDatasets', () => {
   // The tab strip is built from this list, so an empty set must not reach it: the common investment
   // has neither netto nor settled rows, and a tab that opens onto „brak danych" is a dead end.
   it('offers a tab only for a non-empty set, in reading order', () => {
-    expect(availableWydatkiDatasets(partitionWydatkiRows(rows))).toEqual([
+    expect(availableExpenseDatasets(partitionExpenseRows(rows))).toEqual([
       'gross',
       'net',
       'settled',
     ])
-    expect(availableWydatkiDatasets(partitionWydatkiRows([rows[0]!, rows[3]!]))).toEqual([
+    expect(availableExpenseDatasets(partitionExpenseRows([rows[0]!, rows[3]!]))).toEqual([
       'gross',
       'settled',
     ])
-    expect(availableWydatkiDatasets(partitionWydatkiRows([rows[2]!]))).toEqual(['net'])
-    expect(availableWydatkiDatasets(partitionWydatkiRows([]))).toEqual([])
+    expect(availableExpenseDatasets(partitionExpenseRows([rows[2]!]))).toEqual(['net'])
+    expect(availableExpenseDatasets(partitionExpenseRows([]))).toEqual([])
   })
 })
 
-describe('wydatkiRowHref', () => {
+describe('expenseRowHref', () => {
   // Regression: the href hardcoded `type=INVESTMENT_EXPENSE`, so clicking a netto row or a korekta
   // landed on a list that filtered out the very row clicked (`buildTransferFilters` → where.type).
   it('links each row to a list filtered by its own type', () => {
-    const href = (row: MaterialTransactionRowT) => wydatkiRowHref(42, row)
+    const href = (row: MaterialTransactionRowT) => expenseRowHref(42, row)
 
     expect(href(rows[0]!)).toBe('/inwestycje/42?type=INVESTMENT_EXPENSE&id=1')
     expect(href(rows[1]!)).toBe('/inwestycje/42?type=CORRECTION&id=2')
@@ -113,6 +113,6 @@ describe('wydatkiRowHref', () => {
       billed: 100,
       settled: false,
     }
-    expect(wydatkiRowHref(42, stale)).toBe('/inwestycje/42?id=9')
+    expect(expenseRowHref(42, stale)).toBe('/inwestycje/42?id=9')
   })
 })

@@ -52,7 +52,7 @@ export const COLUMN_LABELS: Record<string, string> = {
  *
  * „Razem": what the client pays (post-rabat) vs what this crew is owed (rabat is a client concession
  * — calc.ts `netForQtyForView`). „Pomiar": the whole scope's executed quantity vs only this crew's
- * etapy (settlement.ts `rowTotalQtyDone`).
+ * etapy (settlement-rows.ts `rowTotalQtyDone`).
  */
 export function columnLabelForView(id: string, view: PriceViewT): string {
   const label = COLUMN_LABELS[id] ?? id

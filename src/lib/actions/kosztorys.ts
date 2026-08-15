@@ -19,7 +19,7 @@ import {
   swapDisplayOrder,
   swapDisplayOrderSchema,
 } from '@/lib/kosztorys/display-order'
-import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
+import { applyPercentDiscountSchema } from '@/lib/kosztorys/percent-discount'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { SETTLEMENT_MODES, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { TOOL_PLANES } from '@/lib/kosztorys/constants'
@@ -88,7 +88,7 @@ const investmentMaterialsNetRateSchema = z.object({
 
 // Per-investment global discount over the whole kosztorys. type null = none (clears the discount).
 // Amount-only: value is netto PLN; never negative. A percent rabat isn't stored here —
-// applyPercentRabatToAllItemsAction stamps it into each per-item rabat instead.
+// applyPercentDiscountToAllItemsAction stamps it into each per-item rabat instead.
 const investmentGlobalDiscountSchema = z.object({
   globalDiscountType: z.enum(['amount']).nullable(),
   globalDiscountValue: z.coerce.number().min(0),
@@ -229,14 +229,14 @@ export async function updateInvestmentGlobalDiscountAction(
 // SQL statement. A kosztorys can hold 1000+ items, so N Payload updates would be O(n) round-trips —
 // raw SQL via the src/lib/db client, like the other financial bulk writes. One-shot tool, not stored
 // state: the percent lands in per-item rabaty and nothing persists the percent itself.
-export async function applyPercentRabatToAllItemsAction(
+export async function applyPercentDiscountToAllItemsAction(
   investmentId: number,
   percent: number,
 ): Promise<ActionResultT> {
   return protectedAction(
-    'applyPercentRabatToAllItemsAction',
+    'applyPercentDiscountToAllItemsAction',
     async ({ payload, user }) => {
-      const parsed = validateAction(applyPercentRabatSchema, { percent })
+      const parsed = validateAction(applyPercentDiscountSchema, { percent })
       if (!parsed.success) return parsed
       const db = await getDb(payload)
       // The overwrite is irrecoverable by in-session undo (owner: recovery = re-typing), and it

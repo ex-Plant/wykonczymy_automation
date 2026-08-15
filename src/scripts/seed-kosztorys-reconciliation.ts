@@ -18,14 +18,14 @@ import config from '../payload.config'
 const SOURCE_REGISTER_ID = 5
 const CLIENT_PRICE = 100
 const QTY_DONE = 5
-const SUMA_PRAC_NET = CLIENT_PRICE * QTY_DONE // 500 — the „Suma prac wykonanych" both surfaces expect
+const LABOR_COSTS_NET = CLIENT_PRICE * QTY_DONE // 500 — the „Suma prac wykonanych" both surfaces expect
 
 const ctx = { context: { skipRevalidation: true } }
 
 type SeededInvestment = { investmentId: number; name: string }
 
 // Create an investment carrying one section / one stage / one no-discount item with recorded
-// progress, so its executed „Suma prac wykonanych" is exactly SUMA_PRAC_NET.
+// progress, so its executed „Suma prac wykonanych" is exactly LABOR_COSTS_NET.
 async function seedKosztorys(
   payload: Awaited<ReturnType<typeof getPayload>>,
   name: string,
@@ -107,10 +107,10 @@ async function main() {
   const stamp = Date.now()
 
   const mismatch = await seedKosztorys(payload, `E2E Recon mismatch ${stamp}`)
-  // LABOR_COST ≠ SUMA_PRAC_NET → robocizna screams; RABAT > 0 while kosztorys rabat is 0 → rabat screams.
+  // LABOR_COST ≠ LABOR_COSTS_NET → robocizna screams; RABAT > 0 while kosztorys rabat is 0 → rabat screams.
   await seedTransaction(payload, {
     type: 'LABOR_COST',
-    amount: SUMA_PRAC_NET - 50,
+    amount: LABOR_COSTS_NET - 50,
     investment: mismatch.investmentId,
     description: 'E2E robocizna (niezgodna)',
   })
@@ -123,10 +123,10 @@ async function main() {
   })
 
   const match = await seedKosztorys(payload, `E2E Recon match ${stamp}`)
-  // LABOR_COST == SUMA_PRAC_NET, and no RABAT (kosztorys rabat also 0) → both figures silent.
+  // LABOR_COST == LABOR_COSTS_NET, and no RABAT (kosztorys rabat also 0) → both figures silent.
   await seedTransaction(payload, {
     type: 'LABOR_COST',
-    amount: SUMA_PRAC_NET,
+    amount: LABOR_COSTS_NET,
     investment: match.investmentId,
     description: 'E2E robocizna (zgodna)',
   })
@@ -137,7 +137,7 @@ async function main() {
       match: match.investmentId,
       matchName: match.name,
       // The „Suma prac wykonanych" both surfaces must display for either investment.
-      sumaPracNet: SUMA_PRAC_NET,
+      laborCostsNetFromKosztorys: LABOR_COSTS_NET,
     })}`,
   )
   process.exit(0)

@@ -1,11 +1,11 @@
-import { buildMaterialyBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
+import { buildMaterialsBreakdown, buildSettledBreakdown } from '@/lib/db/map-category-costs'
 import { deriveFinancials } from '@/lib/db/sum-transfers'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import type {
   CategoryBreakdownsT,
   InvestmentFinancialsT,
-  MaterialyBreakdownRowT,
+  MaterialsBreakdownRowT,
   TypeSettledTotalT,
 } from '@/types/investment-financials'
 
@@ -36,8 +36,8 @@ export async function fetchWholeInvestmentFinancials(
 export type WholeInvestmentFinancialsT = {
   financials: InvestmentFinancialsT
   /** Σ rows === `financials.totalMaterialCosts`. */
-  materialyBreakdown: MaterialyBreakdownRowT[]
-  settledBreakdown: MaterialyBreakdownRowT[]
+  materialsBreakdown: MaterialsBreakdownRowT[]
+  settledBreakdown: MaterialsBreakdownRowT[]
 }
 
 /**
@@ -61,7 +61,7 @@ export function deriveWholeInvestmentFinancials(
   )
   return {
     financials,
-    materialyBreakdown: buildMaterialyBreakdown(
+    materialsBreakdown: buildMaterialsBreakdown(
       financials,
       expenseCategories,
       breakdowns.netCategoryCosts,

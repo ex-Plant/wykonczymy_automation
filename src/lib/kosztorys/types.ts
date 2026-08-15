@@ -5,7 +5,7 @@
 import type { STAGE_QTY_PREFIX } from '@/lib/kosztorys/stage-keys'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
-import type { InvestmentFinancialsT, MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { InvestmentFinancialsT, MaterialsBreakdownRowT } from '@/types/investment-financials'
 import type { WorkerRefT } from '@/types/reference-data'
 import type {
   SubcontractorPayoutRowT,
@@ -18,7 +18,7 @@ export type DiscountTypeT = 'percent' | 'amount'
 // Per-investment global discount over the whole kosztorys. type null = none (per-item discounts
 // apply). When set, per-item discounts are overridden and this is subtracted once from the executed
 // total (PLN netto). Amount-only: a percent rabat isn't stored here — it's a one-shot tool that
-// stamps a percent into every per-item rabat (see applyPercentRabatToAllItemsAction).
+// stamps a percent into every per-item rabat (see applyPercentDiscountToAllItemsAction).
 export type GlobalDiscountT = { type: 'amount' | null; value: number }
 // Per-item subcontractor price override: 'coeff' = client × value (tracks the client
 // price), 'amount' = flat frozen amount, null = derive from the effective coefficient.
@@ -156,12 +156,12 @@ export type KosztorysEditorDataT = {
   // repriced by the global „wszystko netto" toggle. Their sum is the billed materiały total.
   materialsGrossBase: number
   materialsNetBilled: number
-  materialyBreakdown: MaterialyBreakdownRowT[]
+  materialsBreakdown: MaterialsBreakdownRowT[]
   // Company-plane material folded into robocizna, split per category.
-  settledBreakdown: MaterialyBreakdownRowT[]
+  settledBreakdown: MaterialsBreakdownRowT[]
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
   laborCostsNetFromTransactions: number
-  investmentRabat: number
+  discountNetFromTransactions: number
   // Σ LOSS — the cost the company absorbed, which the settlement deducts at face value.
   investmentLoss: number
   // Realized PAYOUTs per worker for the subcontractor summary block. Optional (default []) because the

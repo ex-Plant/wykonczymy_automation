@@ -4,7 +4,7 @@ import { FieldGroup } from '@/components/ui/field'
 import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { FormShell } from '@/components/forms/form-components/form-shell'
-import { useSaldo } from '@/components/forms/hooks/use-saldo'
+import { useRegisterBalance } from '@/components/forms/hooks/use-register-balance'
 import { type PaymentMethodT } from '@/lib/constants/transfers'
 import { createTransferAction } from '@/lib/actions/transfers'
 import { internalTransferFormSchema } from '@/components/forms/internal-transfer-form/internal-transfer-schema'
@@ -21,7 +21,7 @@ import {
   SourceRegisterField,
 } from '@/components/forms/form-fields'
 import FormFooter from '../form-components/form-footer'
-import { SaldoSummary } from '../form-components/saldo-summary'
+import { RegisterBalanceSummary } from '../form-components/register-balance-summary'
 import { useInternalTransferFormStore } from '@/stores/form-stores'
 
 type InternalTransferFormPropsT = {
@@ -46,7 +46,8 @@ export function InternalTransferForm({
   onSubmitSuccess,
   keepOpen,
 }: InternalTransferFormPropsT) {
-  const { saldo, isSaldoLoading, fetchSaldo, resetSaldo } = useSaldo()
+  const { registerBalance, isRegisterBalanceLoading, fetchRegisterBalance, resetRegisterBalance } =
+    useRegisterBalance()
 
   const { form, reset } = useManagedForm<FormValuesT, CreateTransferFormT>({
     formId: FORM_ID,
@@ -64,7 +65,7 @@ export function InternalTransferForm({
     successMessage: 'Transfer między kasami dodany',
     onSubmitSuccess,
     action: createTransferAction,
-    onReset: resetSaldo,
+    onReset: resetRegisterBalance,
     toData: (value) => ({
       description: value.description,
       amount: Number(value.amount),
@@ -85,9 +86,9 @@ export function InternalTransferForm({
           form={form}
           label="Kasa źródłowa"
           cashRegisters={referenceData.cashRegisters}
-          saldo={saldo}
-          isSaldoLoading={isSaldoLoading}
-          fetchSaldo={fetchSaldo}
+          registerBalance={registerBalance}
+          isRegisterBalanceLoading={isRegisterBalanceLoading}
+          fetchRegisterBalance={fetchRegisterBalance}
         />
 
         <CashRegisterField
@@ -108,8 +109,12 @@ export function InternalTransferForm({
         <DescriptionField form={form} />
       </FieldGroup>
 
-      {saldo !== null && (
-        <SaldoSummary saldo={saldo} total={currentAmount} totalLabel="Kwota transferu" />
+      {registerBalance !== null && (
+        <RegisterBalanceSummary
+          registerBalance={registerBalance}
+          total={currentAmount}
+          totalLabel="Kwota transferu"
+        />
       )}
 
       <FormFooter className="mt-6" />

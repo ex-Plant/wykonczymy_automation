@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { compareFooterTotals } from '@/lib/kosztorys/sheet-import/footer-totals'
-import { parseRobocizna } from '@/lib/kosztorys/sheet-import/parse-robocizna'
-import { resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import { parseLaborTab } from '@/lib/kosztorys/sheet-import/parse-labor-tab'
+import { resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
 function compare(grid: (string | number)[][]) {
-  const resolved = resolveRobocizna(grid)
+  const resolved = resolveLaborColumns(grid)
   if (!resolved.ok) expect.fail(`fixture header did not resolve: ${resolved.problems.join(' | ')}`)
-  return compareFooterTotals(grid, resolved, parseRobocizna(grid, resolved, []))
+  return compareFooterTotals(grid, resolved, parseLaborTab(grid, resolved, []))
 }
 
 const byKey = (grid: (string | number)[][], key: string) =>

@@ -1075,3 +1075,17 @@ jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po naz
 - [ ] Arkusz nieudostępniony kontu serwisowemu: okno mówi, komu go udostępnić, a przycisk kopiuje adres
 - [ ] Śmieciowy identyfikator arkusza: komunikat o nieistniejącym arkuszu, bez rady „spróbuj później"
 - [ ] Arkusz bez zakładki `kosztorys_robocizny`: komunikat mówi o zakładce, nie o nagłówkach
+
+## kosztorys-terminology — rename identyfikatorów Polish→English (EX-548)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `lint` z aktywnym guardem, `test` 2268,
+`test:parity`, `test:integration`, `build`). Stan po `24de9993`. Slice nie zmienia zachowania:
+weryfikacja polega na potwierdzeniu, że nic nie drgnęło.
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z wypełnionym kosztorysem i zaksięgowanymi
+transferami LABOR_COST/RABAT (rekoncyliacja ma co porównywać).
+
+- [ ] Panel Podsumowanie renderuje te same złotówki co przed zmianą — wiersze Robocizna / Rabat / Łącznie / Pozostało do zapłaty
+- [ ] Blok rekoncyliacji na stronie inwestycji pokazuje ten sam werdykt co przed zmianą, i przy zgodności, i przy rozjeździe
+- [ ] Wykres kołowy sekcji przełącza się między „Przedmiar" a „Wykonane" i rysuje te same udziały (unia stringowa zmieniła wartości, etykiety zostały)
+- [ ] Formularz wydatku i transferu wewnętrznego pokazuje saldo kasy źródłowej i przelicza „Saldo po transakcji"

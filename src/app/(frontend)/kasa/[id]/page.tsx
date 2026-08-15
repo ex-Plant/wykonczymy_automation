@@ -10,7 +10,7 @@ import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import type { Where } from 'payload'
 import type { DynamicPagePropsT } from '@/types/page'
 
@@ -45,7 +45,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
   const register = refData.cashRegisters.find((cr) => cr.id === registerId)
   if (!register) notFound()
 
-  const saldo = balanceRecord[String(registerId)] ?? 0
+  const registerBalance = balanceRecord[String(registerId)] ?? 0
 
   // only admin or owner can view MAIN registers
   if (!isAdminOrOwnerRole(user.role) && register.type === 'MAIN') notFound()
@@ -60,7 +60,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
   return (
     <PageWrapper title={register.name}>
       <InfoList items={[{ label: 'Właściciel', value: ownerName }]} />
-      <SaldoDisplay saldo={saldo} />
+      <SignedMoneyDisplay amount={registerBalance} />
 
       {/* Transactions table */}
       <TransfersSection

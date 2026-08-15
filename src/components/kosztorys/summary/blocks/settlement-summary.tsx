@@ -1,6 +1,10 @@
 'use client'
 
-import { combinedPair, moneyPair, sumaPracPreRabat } from '@/lib/kosztorys/summary-economics'
+import {
+  combinedPair,
+  moneyPair,
+  laborCostsNetPreDiscount,
+} from '@/lib/kosztorys/summary-economics'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
@@ -43,7 +47,7 @@ type PropsT = {
   settlementGroups: SettlementGroupT[]
   // The rabat actually taken off the executed robocizna (net zł): the global discount when active,
   // else Σ per-item rabat. Unified upstream so this table shows one explicit „Rabat" line. 0 = none.
-  rabatAmount: number
+  discountAmount: number
   // Robocizna/rabat reconciliation verdict — the mismatch scream renders off this. Always supplied
   // (the body computes it unconditionally); preview suppresses the scream via reconVisible, not by
   // withholding the verdict.
@@ -66,7 +70,7 @@ export function SettlementSummary({
   laborCostsNet,
   materialsBilled,
   settlementGroups,
-  rabatAmount,
+  discountAmount,
   reconciliation,
   priceView,
   vatRate,
@@ -78,14 +82,14 @@ export function SettlementSummary({
   // Force-show the „Rabat" row even at kosztorys-rabat 0, so a RABAT transfer with no kosztorys rabat
   // can't hide the mismatch — otherwise the one gap population most needs to catch stays invisible.
   // Only while the scream is visible; otherwise the row follows the normal „rabat > 0" rule.
-  const showRabat =
-    rabatAmount > 0 ||
-    (reconVisible && (reconciliation.rabat.actual > 0 || reconciliation.rabat.mismatch))
-  const sumaPrac = moneyPair(sumaPracPreRabat(laborCostsNet, rabatAmount), vatRate)
+  const showDiscount =
+    discountAmount > 0 ||
+    (reconVisible && (reconciliation.discount.actual > 0 || reconciliation.discount.mismatch))
+  const laborCostsPair = moneyPair(laborCostsNetPreDiscount(laborCostsNet, discountAmount), vatRate)
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
   // figure. It renders negative: it is a deduction step, and a positive figure in a subtracted row
   // reads as if it were being added.
-  const rabat = moneyPair(-rabatAmount, vatRate)
+  const discount = moneyPair(-discountAmount, vatRate)
   const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
 
   const moneyCols = summaryMoneyCols(MONEY_AXIS)
@@ -96,18 +100,18 @@ export function SettlementSummary({
         <SummaryBreakdownTable
           cols={moneyCols}
           moneyAxis={MONEY_AXIS}
-          sumaPrac={sumaPrac}
-          sumaPracMismatch={
+          laborCostsPair={laborCostsPair}
+          laborCostsMismatch={
             reconVisible && reconciliation.laborCosts.mismatch
               ? mismatchTooltip(reconciliation.laborCosts, 'Transakcje robocizny')
               : undefined
           }
-          rabat={showRabat ? rabat : undefined}
+          discount={showDiscount ? discount : undefined}
           materialsBilled={materialsBilled}
           combined={combined}
-          rabatMismatch={
-            reconVisible && reconciliation.rabat.mismatch
-              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
+          discountMismatch={
+            reconVisible && reconciliation.discount.mismatch
+              ? mismatchTooltip(reconciliation.discount, 'Transakcje rabatu')
               : undefined
           }
         />

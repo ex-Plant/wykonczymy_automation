@@ -10,7 +10,7 @@ const base: InvestmentFinancialsT = {
   totalIncome: 0,
   totalLaborCosts: 0,
   totalPayouts: 0,
-  totalRabat: 0,
+  totalDiscount: 0,
   totalLoss: 0,
   totalSettled: 0,
   materialsNetDiscount: 0,
@@ -37,7 +37,7 @@ describe('calculateBalance', () => {
         totalIncome: 10000,
         totalMaterialCosts: 3000,
         totalLaborCosts: 2000,
-        totalRabat: 800,
+        totalDiscount: 800,
       }),
     ).toBe(5800)
   })

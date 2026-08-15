@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { applyPercentRabatSchema } from '@/lib/kosztorys/percent-rabat'
+import { applyPercentDiscountSchema } from '@/lib/kosztorys/percent-discount'
 
-const parse = (percent: unknown) => applyPercentRabatSchema.safeParse({ percent })
+const parse = (percent: unknown) => applyPercentDiscountSchema.safeParse({ percent })
 
-describe('applyPercentRabatSchema', () => {
+describe('applyPercentDiscountSchema', () => {
   it('accepts a percent in [0, 100]', () => {
     for (const percent of [0.5, 10, 99.9, 100]) {
       const res = parse(percent)

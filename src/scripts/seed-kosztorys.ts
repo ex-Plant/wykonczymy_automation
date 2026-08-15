@@ -115,7 +115,7 @@ async function run() {
       const sheetMeasuredQty = str(row[9]) === '' ? null : num(row[9])
       const unit = str(row[10]) || null // K
       const clientPrice = num(row[11]) // L
-      const rabat = num(row[12]) // M (ułamek, 0,05 = 5%)
+      const discountFraction = num(row[12]) // M (ułamek, 0,05 = 5%)
 
       const item = await payload.create({
         collection: 'kosztorys-items',
@@ -127,8 +127,8 @@ async function run() {
           unit,
           plannedQty,
           sheetMeasuredQty,
-          discountType: rabat > 0 ? 'percent' : null,
-          discountValue: rabat > 0 ? rabat * 100 : 0,
+          discountType: discountFraction > 0 ? 'percent' : null,
+          discountValue: discountFraction > 0 ? discountFraction * 100 : 0,
           clientPrice,
           hiddenInExport: false,
         },

@@ -7,7 +7,7 @@ import type {
 } from '@/lib/kosztorys/types'
 import { fold, HEADER_BLOCK_ROWS, isFooterLabel } from './columns'
 import { round6 } from './derive-override'
-import type { ResolvedRobociznaT } from './resolve-columns'
+import type { ResolvedLaborColumnsT } from './resolve-columns'
 
 // The marker the owner types into Przedmiar + Pomiar on a row that is not a praca. A section header
 // and a footer row are BOTH marked this way — the section name is the only thing separating them.
@@ -22,7 +22,7 @@ export type ParsedItemT = Omit<
   'wToolsOverrideType' | 'wToolsOverrideValue' | 'ownToolsOverrideType' | 'ownToolsOverrideValue'
 >
 
-export type ParsedRobociznaT = {
+export type ParsedLaborTabT = {
   sections: KosztorysSectionT[]
   items: ParsedItemT[]
   stages: KosztorysStageT[]
@@ -48,7 +48,7 @@ const number = (cell: unknown): number => (typeof cell === 'number' ? cell : Num
 // unnamed — and stopping at the first one truncates the import at that spacer, silently. Upwards
 // there is no ambiguity: the footer is simply everything below the last praca, and a praca is an
 // unmarked row with a description that isn't one of the summary labels.
-function findFooterStart(grid: unknown[][], columns: ResolvedRobociznaT['columns']): number {
+function findFooterStart(grid: unknown[][], columns: ResolvedLaborColumnsT['columns']): number {
   for (let rowIndex = grid.length - 1; rowIndex >= HEADER_BLOCK_ROWS; rowIndex--) {
     const row = grid[rowIndex] ?? []
     if (fold(row[columns.plannedQty]) === NON_ITEM_MARKER) continue
@@ -79,13 +79,13 @@ function readMeasuredQty(
   return Number.isFinite(value) ? value : null
 }
 
-export function parseRobocizna(
+export function parseLaborTab(
   grid: unknown[][],
-  resolved: ResolvedRobociznaT,
+  resolved: ResolvedLaborColumnsT,
   // Required rather than defaulted: a caller that forgets it would silently import no measurement
   // at all, and the whole reconciliation would go quiet without a single failing test.
   formulas: unknown[][],
-): ParsedRobociznaT {
+): ParsedLaborTabT {
   const { columns, stages: stageColumns } = resolved
   const sections: KosztorysSectionT[] = []
   const items: ParsedItemT[] = []
@@ -133,12 +133,13 @@ export function parseRobocizna(
       continue
     }
 
-    const rabat = columns.discount === undefined ? 0 : number(row[columns.discount])
+    const discountFraction = columns.discount === undefined ? 0 : number(row[columns.discount])
     // The sheet stores rabat as a fraction (0,09); the app stores a percentage. A value of 1 or more
     // is a whole percent typed into the fraction column — 9 meaning 9%, not a 900% discount that
     // would price the praca deeply negative. A missing rabat is „no discount", not 0%: the two
     // render differently in the editor.
-    const discountPercent = rabat >= 1 ? round6(rabat) : round6(rabat * 100)
+    const discountPercent =
+      discountFraction >= 1 ? round6(discountFraction) : round6(discountFraction * 100)
     const itemId = nextItemId++
     sheetRowByItemId.set(itemId, rowIndex + 1)
     items.push({
@@ -148,8 +149,8 @@ export function parseRobocizna(
       description,
       unit: text(row[columns.unit]) || null,
       plannedQty: number(row[columns.plannedQty]),
-      discountType: rabat > 0 ? 'percent' : null,
-      discountValue: rabat > 0 ? discountPercent : 0,
+      discountType: discountFraction > 0 ? 'percent' : null,
+      discountValue: discountFraction > 0 ? discountPercent : 0,
       clientPrice: number(row[columns.clientPrice]),
       sheetMeasuredQty: readMeasuredQty(row, formulas[rowIndex] ?? [], columns.measuredQty),
       hiddenInExport: false,

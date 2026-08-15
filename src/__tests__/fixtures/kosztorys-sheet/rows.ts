@@ -9,8 +9,8 @@
 
 import {
   BIALOSTOCKA_RATES_HEADER,
-  BIALOSTOCKA_ROBOCIZNA_HEADER,
-  PRZEDPOLE_ROBOCIZNA_HEADER,
+  BIALOSTOCKA_LABOR_HEADER,
+  PRZEDPOLE_LABOR_HEADER,
 } from './header-blocks'
 
 import { row } from './grid'
@@ -20,7 +20,7 @@ const sectionHeader = (name: string, netValue: number) =>
 
 // Białostocka's data rows: 10 etapy at D–M, Przedmiar N, j.m. P, Cena j.m. Q, rabat R (a fraction).
 export const BIALOSTOCKA_ROWS: (string | number)[][] = [
-  ...BIALOSTOCKA_ROBOCIZNA_HEADER,
+  ...BIALOSTOCKA_LABOR_HEADER,
   sectionHeader('Prace dodatkowe', 12649),
   row({
     A: 'Prace dodatkowe',
@@ -69,7 +69,7 @@ export const BIALOSTOCKA_ROWS: (string | number)[][] = [
 // Przedpole: 6 etapy at D–I, so Przedmiar is J and „Wartość netto" is O — the footer label lands in
 // M. Nothing but the column indices differs, which is exactly what the parser must not hardcode.
 export const PRZEDPOLE_ROWS: (string | number)[][] = [
-  ...PRZEDPOLE_ROBOCIZNA_HEADER,
+  ...PRZEDPOLE_LABOR_HEADER,
   row({
     A: 'Prace dodatkowe',
     B: 'Prace dodatkowe',

@@ -33,13 +33,13 @@ type PropsT = {
 // this tab is already on that plane, and a tab reading the transactions figures made the same panel
 // report two different robocizny. Everything else below stays `financials`-sourced — wypłaty, strata
 // and materiały are cash movements the kosztorys knows nothing about.
-export function SummaryMarginTab({ financials, laborCostsNet, rabatAmount }: PropsT) {
-  const reading = { laborCostsNet, rabatAmount }
+export function SummaryMarginTab({ financials, laborCostsNet, discountAmount }: PropsT) {
+  const reading = { laborCostsNet, discountAmount }
   const readFinancials = financialsOnReading(financials, reading)
   const {
     totalLaborCosts,
     totalPayouts,
-    totalRabat,
+    totalDiscount,
     totalLoss,
     totalSettled,
     materialsNetDiscount,
@@ -69,11 +69,11 @@ export function SummaryMarginTab({ financials, laborCostsNet, rabatAmount }: Pro
           discount
         />
       )}
-      {totalRabat !== 0 && (
+      {totalDiscount !== 0 && (
         <SummaryRow
           label="Rabat"
           hint={HINTS.discount}
-          line={faceValue(-totalRabat)}
+          line={faceValue(-totalDiscount)}
           axis="net"
           discount
         />

@@ -19,9 +19,9 @@ describe('grossBalance — a strata never widens the VAT base', () => {
   // The contrast that makes the rule visible: a rabat IS a concession on the price, so the złoty
   // it forgives never carried VAT and the brutto reading moves by 1.23×. A strata is not.
   it('unlike a rabat of the same size, which grosses', () => {
-    const withRabat = grossBalance(balanceNoConcession + 1000, 0.23, labor, 1000)
+    const withDiscount = grossBalance(balanceNoConcession + 1000, 0.23, labor, 1000)
     const without = grossBalance(balanceNoConcession, 0.23, labor, 0)
 
-    expect(withRabat - without).toBeCloseTo(1230)
+    expect(withDiscount - without).toBeCloseTo(1230)
   })
 })

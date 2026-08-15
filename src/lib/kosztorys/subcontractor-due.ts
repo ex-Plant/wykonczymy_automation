@@ -31,7 +31,7 @@ export type SubcontractorDueByPlaneT = {
  * `rowDiscountForView` identity: `qty·viewPrice − netForQtyForView = discount`), so no qty-share
  * splitting and no discount handling — rabat is a client concession the crew is still owed past, and
  * a global discount never reaches subcontractors either. For a single-plane investment the per-stage
- * sum collapses to `totalQty × viewPrice`, i.e. exactly `executedWorkNetPreRabat` at that view.
+ * sum collapses to `totalQty × viewPrice`, i.e. exactly `sumSectionSubtotalsNet` at that view.
  *
  * A `null` plane belongs to neither crew — it is skipped and raises `hasUnconfirmedPlane`: the two
  * amounts render short, the warning sits next to them (recon-mismatch pattern).

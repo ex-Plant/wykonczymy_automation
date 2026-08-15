@@ -12,7 +12,7 @@ test.use({ storageState: 'e2e/.auth/user.json' })
 
 const MISMATCH_LABEL = 'Niezgodność z transakcjami'
 
-type ReconSeed = { mismatch: number; match: number; sumaPracNet: number }
+type ReconSeed = { mismatch: number; match: number; laborCostsNetFromKosztorys: number }
 
 let seed: ReconSeed
 
@@ -95,13 +95,13 @@ test('cross-surface parity: kosztorys robocizna equals the seed on both surfaces
     .getByText('Robocizna', { exact: true })
     .locator('xpath=following-sibling::span[1]')
     .textContent()
-  expect(parsePln(pageValue ?? '')).toBe(seed.sumaPracNet)
+  expect(parsePln(pageValue ?? '')).toBe(seed.laborCostsNetFromKosztorys)
 
   // The editor shows the same client-view executed net (formatNet, no „zł"). On the match
   // investment Suma prac / Łącznie / Do zapłaty all equal it, so its presence proves the editor
   // reads the same plane as the page — the parity the prop-plumbing risk would break.
   await gotoEditor(page, seed.match)
-  await expect(page.getByText(formatNet(seed.sumaPracNet)).first()).toBeVisible()
+  await expect(page.getByText(formatNet(seed.laborCostsNetFromKosztorys)).first()).toBeVisible()
 })
 
 test('mismatch scream shows only in the client price view (EX-541)', async ({ page }) => {

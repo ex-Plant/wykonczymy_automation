@@ -1,6 +1,6 @@
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 
-// Bilans inwestora (investor balance) = income - material costs - labor costs + rabat + loss.
+// Bilans inwestora = income - material costs - labor costs + rabat + loss.
 // Material costs already include corrections (negative corrections reduce costs).
 // A rabat is a labour discount: the client owes less, so it RAISES the balance.
 // The materiały netto discount is the same shape on the materiały side — the client is billed the
@@ -13,7 +13,7 @@ export function calculateBalance(financials: InvestmentFinancialsT) {
   return (
     financials.totalIncome -
     totalCosts +
-    financials.totalRabat +
+    financials.totalDiscount +
     financials.materialsNetDiscount +
     financials.totalLoss
   )

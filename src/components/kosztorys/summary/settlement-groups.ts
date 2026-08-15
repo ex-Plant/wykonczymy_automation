@@ -14,7 +14,7 @@ export type SettlementGroupT = { caption?: string; axis: MoneyAxisT; rows: Settl
 
 type ArgsT = {
   mixed: MixedSettlementT | null
-  doZaplaty: MoneyPairT
+  amountDue: MoneyPairT
   depositsTotal: number
   lossAmount: number
   vatRate: number
@@ -45,7 +45,7 @@ function lossRows(lossAmount: number, span: boolean): SettlementRowT[] {
 // positive figure in a subtracted row reads as if it were being added.
 export function buildSettlementGroups({
   mixed,
-  doZaplaty,
+  amountDue,
   depositsTotal,
   lossAmount,
   vatRate,
@@ -69,11 +69,11 @@ export function buildSettlementGroups({
           ...lossRows(lossAmount, true),
           {
             label: 'Pozostało do zapłaty',
-            line: doZaplaty,
+            line: amountDue,
             bold: true,
             // Per cell: netto and brutto cross zero independently, so a slightly overpaid netto can
             // sit beside a real outstanding brutto.
-            danger: { net: doZaplaty.net > 0, gross: doZaplaty.gross > 0 },
+            danger: { net: amountDue.net > 0, gross: amountDue.gross > 0 },
           },
         ],
       },
@@ -104,12 +104,12 @@ export function buildSettlementGroups({
         {
           label: 'Pozostało netto',
           hint: `*Łącznie netto minus ${deducted}`,
-          line: faceValue(mixed.doRozliczeniaNet),
+          line: faceValue(mixed.outstandingNet),
         },
         {
           label: 'Do zapłaty netto',
           hint: '*Pozostało netto minus wpłaty brutto — tyle zostaje do zapłaty w przypadku rozliczenia reszty netto',
-          line: faceValue(mixed.doZaplatyNet),
+          line: faceValue(mixed.amountDueNet),
           bold: true,
           // Deliberately not `danger`, unlike its brutto twin (owner, 2026-08-07): this is the same
           // debt read back without a faktura, not a second one owed on top. Two red closing figures
@@ -131,14 +131,14 @@ export function buildSettlementGroups({
         {
           label: 'Pozostało brutto',
           hint: `*Łącznie brutto (VAT ${vatPercent}% na robociznę) minus ${deducted}`,
-          line: faceValue(mixed.resztaGross),
+          line: faceValue(mixed.remainderGross),
         },
         {
           label: 'Do zapłaty brutto',
           hint: '*Pozostało brutto minus wpłaty brutto — tyle zostaje do zapłaty w przypadku rozliczenia reszty brutto',
-          line: faceValue(mixed.doZaplatyGross),
+          line: faceValue(mixed.amountDueGross),
           bold: true,
-          danger: mixed.doZaplatyGross > 0,
+          danger: mixed.amountDueGross > 0,
         },
       ],
     },

@@ -4,9 +4,9 @@ import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT } from '@/lib/kosztorys/types'
 import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { keyItems } from './item-key'
-import { parseRobocizna } from './parse-robocizna'
+import { parseLaborTab } from './parse-labor-tab'
 import type { ImportGridsT } from './read-sheet'
-import { resolveRobocizna } from './resolve-columns'
+import { resolveLaborColumns } from './resolve-columns'
 
 export type MeasuredQtyRefreshT = {
   // Only pozycje whose stored figure actually differs from the sheet's current claim. Emitting every
@@ -42,7 +42,7 @@ export function buildMeasuredQtyRefresh(
   currentTree: SnapshotPayloadT,
   mapping?: SheetColumnMappingT,
 ): MeasuredQtyRefreshResultT {
-  const resolved = resolveRobocizna(grids.robocizna, mapping)
+  const resolved = resolveLaborColumns(grids.laborGrid, mapping)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
 
   // „Pomiar z natury" is optional, so a sheet that titles it differently still resolves ok — with
@@ -53,7 +53,7 @@ export function buildMeasuredQtyRefresh(
   if (resolved.columns.measuredQty === undefined)
     return { ok: true, refresh: { rows: [], unmatched: 0 } }
 
-  const parsed = parseRobocizna(grids.robocizna, resolved, grids.robociznaFormulas)
+  const parsed = parseLaborTab(grids.laborGrid, resolved, grids.laborGridFormulas)
 
   const sheetSectionName = new Map(parsed.sections.map((section) => [section.id, section.name]))
   const appSectionName = new Map(currentTree.sections.map((section) => [section.id, section.name]))

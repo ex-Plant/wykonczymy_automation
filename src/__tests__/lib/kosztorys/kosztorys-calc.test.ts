@@ -70,7 +70,7 @@ describe('stageValueForView', () => {
 })
 
 // Rabat is a client concession, absorbed by the company margin and never passed to the subcontractor
-// (settlement.ts executedWorkNetPreRabat). So the two subcontractor views price GROSS of any rabat —
+// (settlement-client-totals.ts sumSectionSubtotalsNet). So the two subcontractor views price GROSS of any rabat —
 // per-item percent OR amount — while the client view still subtracts it.
 describe('rabat dotyczy tylko widoku klienta — wykonawca liczy bez rabatu', () => {
   for (const discount of [

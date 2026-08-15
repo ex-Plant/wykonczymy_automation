@@ -5,7 +5,7 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
 import type { CashRegisterRowT } from '@/types/table-rows'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 
 type UserRegisterStatsPropsT = {
   cashRegisters: CashRegisterRowT[]
@@ -23,7 +23,7 @@ export function UserRegisterStats({ cashRegisters, showAllRegisters }: UserRegis
       borderClassName: 'border-chart-turquoise',
     }))
 
-  const totalSaldo = showAllRegisters
+  const totalRegisterBalance = showAllRegisters
     ? cashRegisters.filter((cr) => cr.type !== 'VIRTUAL').reduce((sum, cr) => sum + cr.balance, 0)
     : null
 
@@ -37,8 +37,11 @@ export function UserRegisterStats({ cashRegisters, showAllRegisters }: UserRegis
           colorValues
         />
       )}
-      {totalSaldo !== null && (
-        <SaldoDisplay saldo={totalSaldo} label="Saldo wszystkich kas (bez wirtualnych)" />
+      {totalRegisterBalance !== null && (
+        <SignedMoneyDisplay
+          amount={totalRegisterBalance}
+          label="Saldo wszystkich kas (bez wirtualnych)"
+        />
       )}
     </div>
   )

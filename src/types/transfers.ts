@@ -1,11 +1,5 @@
 import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/transfers'
 
-/**
- * A transfer row as rendered in the transfers table. Cross-cutting: produced by the
- * server query (`lib/queries/transfer-mapping.ts`) and consumed across the UI
- * (tables, forms, dialogs), the export pipeline, and actions — so it lives here
- * rather than in any single module.
- */
 // One page of an invoice, already resolved to something openable. A media row whose `url` is null is
 // dropped upstream rather than carried as a hole — every consumer (preview, ZIP) needs the URL,
 // so a page without one is not a page.
@@ -18,6 +12,12 @@ export type InvoiceFileT = {
   mimeType: string | null
 }
 
+/**
+ * A transfer row as rendered in the transfers table. Cross-cutting: produced by the
+ * server query (`lib/queries/transfer-mapping.ts`) and consumed across the UI
+ * (tables, forms, dialogs), the export pipeline, and actions — so it lives here
+ * rather than in any single module.
+ */
 export type TransferRowT = {
   id: number
   description: string
@@ -92,7 +92,7 @@ export type DepositTransactionRowT = {
 // INVESTMENT_EXPENSE / INVESTMENT_EXPENSE_NET / CORRECTION row. Sourced from the existing
 // `findTransfersRaw` fetch; the expense-category `label` is resolved in the shared fetcher, not at
 // either page, so the owner view and the client share view label a row identically. `settled` and
-// `type` together pick the row's tab — see `partitionWydatkiRows`; the list shows exactly one of the
+// `type` together pick the row's tab — see `partitionExpenseRows`; the list shows exactly one of the
 // three sets at a time. `invoices` feeds the list's bulk-ZIP download and its per-row
 // preview, and is empty when no invoice is attached. `invoiceNote` is the transfer's free-text note —
 // written by the AI scan in a known shape, but just as often typed by hand (see `lib/utils/invoice-note`).

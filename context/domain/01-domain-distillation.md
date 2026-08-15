@@ -1,230 +1,223 @@
 ---
-title: Domain Distillation — Wykonczymy
 created: 2026-07-20
-supersedes: 2026-07-08 revision (pre-kosztorys-v2 build)
-type: domain-distillation
+updated: 2026-08-15
+verified_at: 938e0564
+method: m4l5-1 (DDD domain distillation)
 ---
 
-# Domain Distillation — Wykonczymy
+# Destylacja domeny — Wykończymy
 
-DDD distillation of the business domain from **code first** (source docs are a
-hint, the code is the authority). The product is a **map of the domain**, not
-code. Every claim cites `file:line` that was actually verified on commit
-`2562a2e1` (branch `staging`). Nothing is named that the code doesn't name.
-
-**Why this is a from-scratch regeneration, not a patch.** The 2026-07-08 revision
-predates the kosztorys v2 build (S-01…S-10). Its central claim — "Kosztorys item
-aggregate — **BRAK w kodzie**", ranked #1 refactor as greenfield — is now dead:
-the aggregate is built and its headline invariants are enforced by construction.
-Regenerating rather than patching is gate #3 of the `kosztorys-terminology` slice
-(`context/changes/kosztorys-terminology/change.md`).
-
-**Method (10x_devs M4L5 — DDD legacy modernization):** driven by the course
-prompts in `.claude/prompts/` — `m4l5-1-domain-distillation.md` (this doc),
-`m4l5-2-invariant-aggregate-refactor.md` (the Kosztorys Item aggregate),
-`m4l5-3-anti-corruption-layer.md` (the transfers↔kosztorys recon seam). The three
-map onto the four-slice arc **terminologia → niezmienniki → agregat → ACL**.
-Lesson write-up:
-`~/workspace/10x_devs/lessons/m4/m4_l5_modernizacja-legacy-z-ddd-wydzielaj-domeny-potem-deleguj-agentowi.md`.
+Regeneracja od zera (bramka 3 changeu `kosztorys-terminology`). Poprzednia wersja opisywała kod
+sprzed rozbicia `settlement.ts` na pięć plików (EX-650), sprzed usunięcia `zaliczki.ts` (EX-536)
+i sprzed EX-675, który odwrócił jej tezę o stracie. Każde twierdzenie poniżej ma kotwicę
+`plik:linia` sprawdzoną przy `938e0564`.
 
 ---
 
-## KROK 0 — Project context
+## KROK 0 — Kontekst
 
-Business-management dashboard for a finishing/renovation company (kasy, transfery,
-inwestycje, pracownicy). Stack: **Next.js App Router + Payload CMS on Postgres**
-(Neon prod / docker local). **Polish UI, English code** (`AGENTS.md`).
+Dashboard zarządzania firmą wykończeniową: kasy, transfery, inwestycje, pracownicy, i — od v2 —
+**kosztorys** jako osobna płaszczyzna pieniądza. UI polskie, kod angielski.
 
-Layer map:
+Dwie płaszczyzny liczą tę samą inwestycję **niezależnie**:
 
-- **Domain entities** = Payload collections (`src/collections/*.ts`).
-- **Financial derivation** = raw SQL + pure derive fns (`src/lib/db/*`).
-- **Kosztorys domain logic** = pure-function layer `src/lib/kosztorys/*` — **new
-  since the last distillation**, the phase's differentiator.
-- **Mutations** = server actions via `protectedAction` (`src/lib/actions/*`).
-- **Cross-field transfer invariants** = Payload hook `src/hooks/transfers/validate.ts`.
-- **Editor state** = `src/components/kosztorys/use-kosztorys-editor.ts`.
+- **transakcje** — to, co zaksięgowano na transferach (`src/collections/transfers.ts`),
+- **kosztorys** — to, co wynika z rozpiski pozycji i etapów.
 
-**Headline change vs 2026-07-08:** the kosztorys editor is BUILT. Collections
-`kosztorys-sections.ts`, `kosztorys-items.ts`, `kosztorys-stages.ts`,
-`stage-progress.ts` exist; slices S-01…S-10 mostly `done` (`roadmap.md:279,297,310,322,334,356,360,400,417`);
-S-11 bridge `in review`, S-12 recon `implementing` (`roadmap.md:452,471`).
+Ich zderzenie jest świadome i nazwane: `buildKosztorysReconciliation`
+(`src/lib/kosztorys/reconciliation.ts:114`) porównuje dokładnie dwie figury — robociznę i rabat.
 
 ---
 
-## KROK 1 — Ubiquitous Language
+## KROK 1 — Ubiquitous language (stan faktyczny kodu)
 
-New/changed terms since the last map. The financial-core vocabulary
-(bilans/marża/balance-on-read/no-source-register triple) was re-verified against
-code and is **unchanged** — see KROK 3B/C/D for the citations.
+| Termin (arkusz / biznes) | Kod                                       | Kotwica                                     |
+| ------------------------ | ----------------------------------------- | ------------------------------------------- |
+| Kosztorys                | `sheet` / slug `kosztoryses`              | `src/collections/sheets.ts`                 |
+| Pozycja kosztorysu       | `kosztorys-items`                         | `src/collections/kosztorys-items.ts:13`     |
+| Sekcja / dział           | `kosztorys-sections`                      | `src/collections/kosztorys-sections.ts:8`   |
+| Etap                     | `kosztorys-stages`                        | `src/collections/kosztorys-stages.ts:9`     |
+| Postęp etapu             | `stage-progress.qtyDone`                  | `src/collections/stage-progress.ts:31`      |
+| Przedmiar                | `plannedQty`                              | `src/collections/kosztorys-items.ts:39`     |
+| Pomiar z natury          | Σ `qtyDone` po etapach — **nie kolumna**  | `settlement-rows.ts:14` (`rowTotalQtyDone`) |
+| Cena j.m. (klient)       | `clientPrice`                             | `src/collections/kosztorys-items.ts:43`     |
+| Rabat pozycji            | `discountType` / `discountValue`          | `src/collections/kosztorys-items.ts:41-42`  |
+| Płaszczyzna narzędziowa  | `plane` na etapie (`w_tools`/`no_tools`)  | `src/collections/kosztorys-stages.ts:36`    |
+| Wartość wykonana (T)     | `rowValueForView`                         | `settlement-rows.ts:37`                     |
+| Pozostało                | `rowRemainingForView`                     | `settlement-rows.ts:58`                     |
+| Suma prac (pre-rabat)    | `laborCostsNetFromKosztorys`              | `settlement-client-totals.ts:66`            |
+| Rabat kliencki (łącznie) | `discountNetFromKosztorys`                | `settlement-client-totals.ts:67`            |
+| Robocizna (post-rabat)   | `laborCostsNet`                           | `summary-reading.ts:14`                     |
+| Tryb rozliczenia         | `SettlementModeT` (`NET`/`GROSS`/`MIXED`) | `settlement-mode.ts:15`                     |
+| Marża                    | `calculateMargin`                         | `src/lib/db/calculate-margin.ts:16`         |
+| Bilans                   | `calculateBalance`                        | `src/lib/db/calculate-balance.ts:11`        |
+| Rabat na materiałach     | `materialsNetDiscount`                    | `src/lib/db/investment-financials.ts:19`    |
+| Strata                   | `totalLoss`                               | `src/types/investment-financials.ts`        |
+| Saldo kasy               | `registerBalance`                         | `src/lib/queries/register-balance.ts:10`    |
+| Rozliczenie podwykonawcy | `subcontractorDueByPlane`                 | `src/lib/kosztorys/subcontractor-due.ts:39` |
 
-| Term                                                                         | Definition                                                                                                                                      | Lives in code                                                                                                                |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Kosztorys**                                                                | Per-investment budget; separate row linkable pre-investment, 1:1 via partial unique index                                                       | `src/collections/sheets.ts:12-14` (slug `kosztoryses`, type `Sheets`), cardinality `sheets.ts:10-11`                         |
-| **Sekcja**                                                                   | Renameable, orderable item grouping; name, `displayOrder`, `color`                                                                              | `kosztorys-sections.ts:29-35`                                                                                                |
-| **Pozycja (item)**                                                           | Line: description, unit, `plannedQty`, `discountType/Value`, `clientPrice`, per-item subcontractor override pair, `hiddenInExport`, note        | `kosztorys-items.ts:32-48`                                                                                                   |
-| **Przedmiar** (`plannedQty`)                                                 | Hand-typed offered scope; offer figure = `rowPlannedNetForView` (sheet S = N×Q−rabat)                                                           | `kosztorys-items.ts:38`; `calc.ts:88-90`                                                                                     |
-| **Pomiar z natury**                                                          | **Not stored — IS the stage sum** (sheet O = SUM(D:M)); `rowTotalQtyDone`                                                                       | `settlement.ts:71-74`; item comment `kosztorys-items.ts:7-9`; drop migration `20260716_0_drop_kosztorys_measured_qty.ts:4-8` |
-| **Etap (stage)**                                                             | Dynamic shared column: ordinal + optional label per investment                                                                                  | `kosztorys-stages.ts:29-33`                                                                                                  |
-| **Stage progress**                                                           | Sparse qtyDone per (item, stage); missing row = 0; upsert via SQL ON CONFLICT                                                                   | `stage-progress.ts:5-6,28-32`; `actions/kosztorys.ts:467-472`                                                                |
-| **Price views**                                                              | One dataset → three views: `client` / `w_tools` / `own_tools`; subcontractor price = clientPrice × effective coeff (item override, else global) | `calc.ts:36-56`; global coeffs `investments.ts:80-97`                                                                        |
-| **clientPrice snapshot**                                                     | Stored per item; nothing recomputes it from a catalog — the catalog doesn't exist (autocomplete deferred, `roadmap.md:598`)                     | `kosztorys-items.ts:5,41`                                                                                                    |
-| **Rabat (per-item)**                                                         | `discountType` percent/amount; (type,value) consistency kept by transition fns                                                                  | `calc.ts:25-33`; `discount-edit.ts:14-27`                                                                                    |
-| **Rabat globalny**                                                           | Per-investment; overrides per-item rabat (rows go gross), subtracted once off the executed total; active iff known mode AND value>0             | `investments.ts:109-119`; `calc.ts:21-33,169-173`                                                                            |
-| **VAT**                                                                      | Single per-investment fraction; brutto = render transform on POST-discount net; **prace-only** (materiały/wpłaty at face value)                 | `investments.ts:98-105`; `calc.ts:63-65`; `summary-economics.ts:11-16,52-57`                                                 |
-| **Wartość netto (T)**                                                        | Executed value = `netForQtyForView(row, Σstages, view)` — computed on read, never stored                                                        | `settlement.ts:88-94`                                                                                                        |
-| **Pozostało**                                                                | Anchored to przedmiar (S), not T — deliberate parity break with the sheet's dead AF column; null when no przedmiar; may go negative             | `settlement.ts:97-114`                                                                                                       |
-| **Suma prac wykonanych** (pre-rabat) / doneNet (post-rabat) / rabatClientNet | The client-view triple both recon surfaces share via one code path                                                                              | `settlement.ts:16-69`                                                                                                        |
-| **Reconciliation (the scream)**                                              | Kosztorys client-view net vs Σ LABOR_COST / Σ RABAT; mismatch at ≥1 grosz; read-only verdict, never a write                                     | `reconciliation.ts:34-76`                                                                                                    |
-| **Zaliczka**                                                                 | Etap-tagged deposit; Σ per stage, untagged excluded                                                                                             | `zaliczki.ts:13-20`; SQL feed `sum-transfers.ts:256-275`; tag-validation `hooks/transfers/validate.ts:115-122`               |
-| **Podsumowanie / Łącznie**                                                   | Robocizna + Materiały = Łącznie with udział; „Do zapłaty R+M" = robocizna − wpłaty + materiały (= −Bilans on R+M base)                          | `summary-economics.ts:45-78`                                                                                                 |
-| **Snapshot (auto/manual)**                                                   | Raw `kosztorys_snapshots` table (no Payload collection); auto keep-50/7-day, manual 365-day                                                     | `src/lib/db/snapshots.ts:11-20`                                                                                              |
-| **Delete plan**                                                              | blocked / cascade-section / remove-item + `requiresConfirm`                                                                                     | `delete-policy.ts:28-61`                                                                                                     |
+**Trzy terminy Category A** (polski zostaje, bo nie ma czystego angielskiego odpowiednika):
+`kosztorys`, `przedmiar`, `pomiar`. Wszystko inne jest angielskie — pełne rulingi w
+`context/domain/02-glossary.md`.
 
----
+### Pojęcia, których poprzednia mapa nie znała
 
-## KROK 2 — Subdomains
+- **`materialsNetDiscount`** — rabat udzielony na materiałach. Zachowuje się jak rabat robocizny:
+  **podnosi bilans i obniża marżę** (`calculate-balance.ts`, `calculate-margin.ts`). Wchodzi do
+  `InvestmentFinancialsT` (`src/types/investment-financials.ts:26`) i liczony jest w
+  `src/lib/db/investment-financials.ts:92,109`.
+- **`SettlementModeT`** — jak inwestycja jest rozliczana z klientem (netto / brutto / mieszane).
+  Decyzja o **transakcji handlowej**, trzymana na inwestycji, nie preferencja czytelnika:
+  `settlement-mode.ts:5-9`. Rzutuje na oś pieniądza siatki (`settlementModeToGridAxis:59`)
+  i wyłącza stawkę netto materiałów przy brutto (`effectiveMaterialsNetRate:65`).
+- **`subcontractorDueByPlane`** — należność podwykonawcy liczona **per etap, przy cenie własnej
+  płaszczyzny tego etapu**. Zastępuje wcześniejsze przeliczanie 100% wykonanej pracy przy jednej
+  cenie, które na inwestycji mieszanej podwajało pieniądze (`subcontractor-due.ts:21-27`).
+- **`SummaryReadingT`** — typ-przełącznik płaszczyzny; nie figura (`summary-reading.ts:14`).
 
-| Subdomain                                                   | Class                     | Justification                                                                                      |
-| ----------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
-| Kosztorys editor domain (`lib/kosztorys/*` + 4 collections) | **Core**                  | The phase's differentiator, now BUILT; roadmap bands 2–3 orbit it                                  |
-| Investment P&L (marża/bilans + 4 modifiers)                 | **Core**                  | Decision surface; FR-015 firewall; unchanged since last map                                        |
-| Cash/transfer ledger                                        | **Core**                  | Substrate for the P&L; balances computed on read                                                   |
-| **Recon seam (kosztorys ↔ transactions)**                   | **Core (new)**            | S-11/S-12 — the instrument gating the future source flip of robocizna/rabat (`roadmap.md:456-471`) |
-| Snapshot/undo/version system (S-07)                         | Supporting                | Safety net for the core editor, no business rule of its own                                        |
-| Presets / seed / import scripts                             | Supporting                | Bootstrap convenience                                                                              |
-| Google Sheets sync (v1 mirror)                              | Supporting, **death row** | `roadmap.md:448`: "v1 mechanisms … obsolete and are never rebuilt"                                 |
-| Leads/FB pipeline                                           | Supporting                | Adjacent                                                                                           |
-| Auth/RBAC, E2E harness                                      | Generic                   | Standard                                                                                           |
+### Terminy usunięte z mapy
 
----
-
-## KROK 3 — Aggregates & invariants
-
-### A. Kosztorys Item aggregate (was "BRAK w kodzie" — now built and largely ENFORCED)
-
-- **Worth computed on read, never stored** — no value/worth column on
-  `kosztorys-items.ts:32-49`; all money figures are pure fns over persisted
-  inputs (`calc.ts:4-6` "we persist only the inputs and compute everything live").
-  **ENFORCED by construction.**
-- **Pomiar IS Σ stages (EX-489/EX-494)** — `measured_qty` dropped
-  (`20260716_0_drop_kosztorys_measured_qty.ts:9-13`); `rowTotalQtyDone` = reduce
-  over stage keys (`settlement.ts:72-74`); no other quantity branch
-  (`settlement.ts:78-87`). **ENFORCED.** Intent: **DECISION** (migration cites
-  EX-494/EX-489; commit `c09fbcf1`).
-- **Price snapshot at creation** — `clientPrice` is a stored per-item number
-  (`kosztorys-items.ts:5,41`); nothing links it to a live catalog because **the
-  catalog was never built** (autocomplete deferred, `roadmap.md:598`).
-  Immutability-vs-catalog is **VACUOUSLY ENFORCED** — snapshot semantics exist
-  only as a comment; there is no second price source to drift from. Intent:
-  DECISION (owner deferral), not a gap.
-- **Global discount overrides per-item rabat (never deletes it)** —
-  `calc.ts:26-32` short-circuits before reading `discountType`; per-item fields
-  stay persisted. **ENFORCED**; matches ruling "override≠delete".
-- **Stage values sum to row value** — share-of-net formula (`calc.ts:115-126`),
-  `stageTotalsForView` uses the same primitive (`settlement.ts:138-157`).
-  **ENFORCED by construction** (+ asserted in `kosztorys-calc.test.ts`, `calc.ts:110`).
-- **Item's investment FK = its section's investment** — derived server-side from
-  the section, never caller-passed (`actions/kosztorys.ts:233-242,286-292`).
-  **ENFORCED.**
-- **≥1 item in the kosztorys (floor)** — **CLIENT-ONLY** (`delete-policy.ts:44-45`);
-  `removeItemAction` (`actions/kosztorys.ts:327-345`) has no server floor check.
-  Gap class: weak enforcement → KROK 5 #1.
-- **Populated delete requires confirm + auto-snapshot** — snapshot capture is
-  server-enforced on every item/section/stage delete
-  (`actions/kosztorys.ts:210-218,332-340,433-441`); the confirm is UI-only by
-  design (EX-477, commit `5908fb8a`). Intent: **DECISION** — the old hard-block
-  was deliberately relaxed.
-- **Insert-at-order atomicity** — shift+create in one transaction (EX-464)
-  `actions/kosztorys.ts:293-320`. **ENFORCED.**
-
-### B. Investment financials — all five invariants re-verified unchanged
-
-- Bilans = income − (materials + labor) + rabat: `calculate-balance.ts:6-9`. **ENFORCED.**
-- Marża = laborCosts − payouts − rabat − loss − settled: `calculate-margin.ts:13-14`. **ENFORCED.**
-- strata never touches bilans; settled excluded from materiały, subtracted from
-  marża: `investment-financials.ts:41,50`; loss absent from `calculate-balance.ts`. **ENFORCED.**
-
-### C. Cash Register — balance computed on read (`sum-transfers.ts:30-59,65-106`), cancelled excluded everywhere. **ENFORCED.** Negative balance **allowed** — intentional (git `76dd757`, EX-410 canceled) → non-target.
-
-### D. Transfer cross-field consistency — hook intact
-
-CANCELLATION link `validate.ts:42`; CORRECTION-negative `validate.ts:55`;
-no-source triple `validate.ts:61-68` + `transfer-rules.ts:53`; investment-required
-
-- auto-clear `validate.ts:71-81`; REGISTER_TRANSFER target≠source `validate.ts:84-91`;
-  **new since last map:** `kosztorysStage` tag cleared when the transfer changes
-  investment; deliberately NOT a membership check (read path is investment-scoped,
-  foreign tag renders „Bez etapu") `validate.ts:115-122`. **ENFORCED.**
-
-### E. Recon seam (kosztorys ↔ transactions) — **intentional NON-invariant**
-
-`buildKosztorysReconciliation` only returns `{expected, actual, mismatch}`
-(`reconciliation.ts:66-76`) — it screams, never blocks or writes. Intent confirmed
-in `roadmap.md:456-471`: robocizna=Σ LABOR_COST equality becomes authoritative
-only after an explicit per-investment "verified/populated" flag (not yet built);
-kosztorys is deliberately disconnected from marża (parked P5, `roadmap.md:447`
-FR-015 write firewall). **Do not harden.**
+- **Zaliczka** — `src/lib/kosztorys/zaliczki.ts` nie istnieje (EX-536). Tag cache
+  `kosztorysStage` opisywany przez poprzednią destylację razem z nim jest martwy.
+- **`wplatyNet` / `materialyNet`** — zero trafień w drzewie; hybrydy już wycięte.
+- **`measured_qty`** — dropnięte przez EX-489; został `sheetMeasuredQty`
+  (`kosztorys-items.ts:40`, `readOnly`) jako pole importu z arkusza, nie źródło pomiaru.
 
 ---
 
-## KROK 4 — MODEL-vs-CODE drift
+## KROK 2 — Poddomeny
 
-| #   | Doc/model says                                                                                        | Code does                                                                                                                                                                                                                                                                        | Evidence                                                    | Severity                                                    |
-| --- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
-| 1   | **Old distillation:** "Kosztorys item aggregate — BRAK w kodzie / greenfield"; #1 refactor = build it | Fully built and enforced (KROK 3A)                                                                                                                                                                                                                                               | old doc vs `kosztorys-items.ts`, `calc.ts`, `settlement.ts` | **High — the doc being regenerated is the drift**           |
-| 2   | `kosztorys-stages.ts:6-7`: "Deleting a stage that has recorded progress is **blocked**"               | EX-477: allowed behind confirm + auto-snapshot                                                                                                                                                                                                                                   | `actions/kosztorys.ts:426-446`; commit `5908fb8a`           | Low — stale comment, change intentional                     |
-| 3   | Glossary marks `rabat*`, `zaliczki*`, `wplaty*` drift pending rename (EX-548)                         | Still live: `rabatClientNet` `settlement.ts:28`; `Zaliczka*`/`sumZaliczkiByStage` `zaliczki.ts:5-13`; `wplatyNet`, `materialyNet` params `summary-economics.ts:70-71,48` — latter two are rule-3 "half-translated" violations; `materialyNet` isn't in the glossary drift column | `02-glossary.md:49,113`; AGENTS.md naming rule 3            | Medium — tracked (EX-548), but `materialyNet` untracked     |
-| 4   | Sheet parity: AF = T − Σ(V:AE)                                                                        | „Pozostało" anchors to S (przedmiar) — AF is identically zero under pomiar=Σstages                                                                                                                                                                                               | `settlement.ts:97-105`                                      | None — documented decision                                  |
-| 5   | `delete-policy.ts:5-6`: "Server SQL stays the authority" for the populated pre-check                  | For the **populated** check the server no longer blocks (EX-477); for the **≥1-item floor** there is no server authority — client-only                                                                                                                                           | `delete-policy.ts:44-45`; `actions/kosztorys.ts:327-345`    | Medium — see KROK 5 #1                                      |
-| 6   | S-12 `change.md` says kosztorys recon side read gross                                                 | Code compares netto↔netto                                                                                                                                                                                                                                                        | `reconciliation.ts:4-7`; `roadmap.md:471`                   | Low — already flagged, EX-536/EX-539 open                   |
-| 7   | Old doc: kosztorys = "Google-Sheet-id holder"                                                         | `kosztoryses` still holds `googleSheetId` **required+unique** (`sheets.ts:44-50`) while v1 sync is "obsolete, never rebuilt" (`roadmap.md:448`)                                                                                                                                  | `sheets.ts:44-50`                                           | Medium — legacy field load-bearing for nothing on death row |
+| Poddomena                         | Klasa       | Dlaczego                                                                  |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------- |
+| Kosztorys (rozpiska + etapy)      | **Core**    | Tu żyje przewaga: własny model wyceny, etapów i płaszczyzn narzędziowych. |
+| Rozliczenie klienta (settlement)  | **Core**    | Pięć plików `settlement-*` — reguły, których arkusz nie umie wyrazić.     |
+| Rekoncyliacja kosztorys↔transfery | **Core**    | Instrument weryfikacyjny właściciela; nie ma go w żadnym gotowcu.         |
+| Rozliczenie podwykonawców         | **Core**    | Per-etap, per-płaszczyzna, per-osoba (EX-613).                            |
+| Transfery i kasy                  | **Support** | Zwykła księga gotówki; wartość w integracji, nie w modelu.                |
+| Sync z Google Sheets              | **Support** | ACL do cudzego systemu; kandydat na osobny slice łuku l5.                 |
+| Inwestycje / leady / pracownicy   | **Support** | CRUD nad Payloadem.                                                       |
+| Auth, cache, env                  | **Generic** | Payload JWT, `unstable_cache`, walidowany env.                            |
 
 ---
 
-## KROK 5 — Refactor ranking
+## KROK 3 — Agregaty i niezmienniki
 
-1. **#1 — Server-enforce the Kosztorys-tree structural floor (the "≥1 item"
-   invariant) — coreness high × enforcement weakest.** `REMOVE_BLOCK_LAST_ITEM`
-   lives only in `delete-policy.ts:44-45` (client) + tests;
-   `removeItemAction`/`removeSectionAction` (`actions/kosztorys.ts:205-223,327-345`)
-   will delete the last item or every section from a stale tab / double fire /
-   direct action call, leaving the empty-kosztorys state the seed dialog prevents.
-   Every OTHER kosztorys invariant is pure-function-by-construction or server-side;
-   this one trusts the browser. Cheap fix (one guard per action), no behavior
-   change for honest clients. **Accidental gap** — git shows EX-477 relaxed the
-   _populated_ block, no trace of a decision to leave the _floor_ client-only.
-2. **#2 — Retire/relax `googleSheetId` required+unique on `kosztoryses`** (drift
-   #7): the identity of the core aggregate is still a dead integration's key;
-   blocks nothing today but couples every new kosztorys to a Sheet that S-19
-   cutover deletes. Sequencing question, not urgent.
-3. **#3 — Finish the EX-548 rename tail** (`rabatClientNet`, `Zaliczka*`,
-   `wplatyNet`, + add untracked `materialyNet` to the glossary): pure
-   language-hygiene, already-tracked; low risk, low value per edit, but it is the
-   glossary's cardinal-sin class. **This is the `kosztorys-terminology` slice.**
+### A. Pozycja kosztorysu (`kosztorys-items` + jej `stage-progress`)
 
-**Intentional non-targets** (confirmed, excluded): negative register balance (git
-`76dd757`, EX-410 canceled); kosztorys↔marża disconnect + recon-seam non-invariant
-(`roadmap.md:447,456-471`, P5 parked); populated-delete relaxation (EX-477,
-`5908fb8a`); pomiar-as-stage-sum parity break on „Pozostało" (`settlement.ts:99-105`).
+Kandydat na prawdziwy agregat — **dziś nim nie jest**: `stage-progress` to osobna kolekcja
+zapisywana niezależnie od pozycji.
+
+Niezmienniki dziś **liczone** (nie egzekwowane zapisem):
+
+1. **Pomiar = Σ etapów.** Nie ma kolumny „pomiar"; `rowTotalQtyDone` (`settlement-rows.ts:14`)
+   sumuje etapy widoczne w danym widoku. Parametr `view` jest **wymagany**, nie domyślny —
+   domyślka po cichu przywróciłaby odczyt ślepy na płaszczyznę (`settlement-rows.ts:10-12`).
+2. **„Pozostało" kotwiczy do przedmiaru**, nie do etapów: `rowRemainingForView`
+   (`settlement-rows.ts:58`) = wartość przedmiaru − wartość wykonana.
+3. **Przekroczenie przedmiaru** jest liczone przy pomiarze klienckim, nigdy przy aktywnym widoku —
+   przedmiar nie ma płaszczyzny (`settlement-rows.ts:78` + docblock).
+
+### B. Inwestycja — bilans i marża
+
+```
+bilans = przychody − (materiały + robocizna) + rabat + materialsNetDiscount + strata
+marża  = robocizna − wypłaty − rabat − strata − rozliczone − materialsNetDiscount
+```
+
+`src/lib/kosztorys/calculate-balance.ts`, `calculate-margin.ts`.
+
+**Poprzednia destylacja twierdziła, że strata nigdy nie dotyka bilansu — to już nieprawda.**
+EX-675 wprowadził stratę do obu formuł: obniża marżę i **podnosi** bilans (klient przestaje być
+winien to, co firma wzięła na siebie), po wartości nominalnej, nigdy nie poszerzając bazy VAT
+(AGENTS.md, „Transfer Business Logic").
+
+### C. Rozliczenie klienta — arytmetyka pre/post-rabat
+
+`clientTotalsFromSubtotals` (`settlement-client-totals.ts:54`) produkuje cztery figury:
+
+```
+doneNet         = Σ netto wykonane
+itemRabatNet    = Σ rabatów pozycji
+globalRabatNet  = rabat globalny
+sumaPracNet     = doneNet + itemRabatNet          (:66)
+rabatClientNet  = globalRabatNet + itemRabatNet   (:67)
+```
+
+Stąd `laborCostsNet + rabatClientNet = sumaPracNet` — ale **tylko na widoku klienckim**. Na
+`w_tools`/`no_tools` równość nie zachodzi, dlatego faza 5 changeu `kosztorys-terminology` rozdziela
+nazwę figury od nazwy operacji sumowania zamiast wieszać jedną nazwę nad obiema.
+
+`executedWorkNetPreRabat` (`settlement-client-totals.ts:83`) nie ma **żadnego wywołania
+produkcyjnego** — został jako parity-oracle dla testów (docblock `:79-81`).
+
+### D. Rozliczenie podwykonawcy
+
+Niezmiennik: **per etap relacja jest OR** — jedna ekipa wykonała, przy jednej cenie
+(`subcontractor-due.ts:21-27`). Etap bez płaszczyzny nie kredytuje nikogo i podnosi
+`hasUnconfirmedPlane` — kwoty renderują się krótsze, a ostrzeżenie stoi obok nich.
+Σ `byWorker` === `combined` z konstrukcji; reszta bez przypisania jest własnym wpisem (`null`),
+nigdy rozsmarowanym po przypisanych (`subcontractor-due.ts:16-19`).
+
+### E. Szew rekoncyliacji
+
+`buildKosztorysReconciliation` (`reconciliation.ts:114`) porównuje netto do netto:
+`sumaPracNet` ↔ `laborCostsNetFromTransactions` oraz `rabatClientNet` ↔ `investmentRabat`.
+
+**Wyciszenie jest per INWESTYCJA, nie per figura** (`reconciliation.ts:132`): odkąd EX-555 wyłączył
+księgowanie `LABOR_COST`/`RABAT`, każda nowa inwestycja krzyczałaby bez końca — alarm, który dzwoni
+na wszystkim, nie weryfikuje niczego. Reguła per-figura wyciszyłaby „robocizna zaksięgowana, rabat
+nie", czyli dokładnie tę lukę, którą `showRabat` wypycha na ekran.
+
+**Brak fallbacku jest niezmiennikiem, nie brakiem.** `readingFromKosztorys`
+(`summary-reading.ts:33`) nigdy nie sięga do transferów: pusty kosztorys to odpowiedź „zero", nie
+pytanie przekazane dalej. Legacy robocizna zostaje czytelna na v1 — to jest lista rzeczy do
+wprowadzenia, nie defekt.
+
+---
+
+## KROK 4 — Rozjazdy MODEL vs KOD
+
+| #   | Rozjazd                                                                                 | Status przy `938e0564`                                         |
+| --- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Nazwa „Pomiar z natury" sugeruje pomiar w terenie; to formuła `=SUM(D:M)`               | **Żywy.** Rozstrzyga slice „niezmienniki", nie ten.            |
+| 2   | Polskie identyfikatory dla figur generycznych (`saldo`, `sumaPrac`, `wydatki`)          | **Zamknięty.** EX-548 przemianował je; guard trzyma 21 rdzeni. |
+| 3   | `wplatyNet` / `materialyNet` — hybrydy polsko-angielskie                                | **Zamknięty.** Zero trafień.                                   |
+| 4   | Zaliczki jako osobny moduł                                                              | **Zamknięty.** `zaliczki.ts` usunięty (EX-536).                |
+| 5   | „Strata nigdy nie dotyka bilansu"                                                       | **Odwrócony.** EX-675 — dotyka obu figur.                      |
+| 6   | `settlement.ts` jako jeden god-module                                                   | **Zamknięty.** Pięć plików `settlement-*` (EX-650).            |
+| 7   | `googleSheetId` `required: true, unique: true` — kosztorys nie może istnieć bez arkusza | **Żywy.** `src/collections/sheets.ts:44-50`.                   |
+| 8   | Postęp etapu zapisywany poza agregatem pozycji                                          | **Żywy.** Cel slice'a „agregat".                               |
+| 9   | `materialsNetDiscount` nieobecny w mapie domeny                                         | **Zamknięty tą regeneracją.**                                  |
+
+---
+
+## KROK 5 — Ranking refaktorów
+
+1. **Brak podłogi „≥1 pozycja" przy usuwaniu.** `removeItemAction`
+   (`src/lib/actions/kosztorys.ts:417`) nie sprawdza, czy to ostatnia pozycja; reguła
+   `REMOVE_BLOCK_LAST_ITEM` żyje wyłącznie po stronie klienta
+   (`delete-policy.ts:26,45`). Klasyczny niezmiennik egzekwowany w UI zamiast w agregacie.
+   → slice „niezmienniki".
+2. **Agregat Kosztorys Item.** `stage-progress` zapisywany niezależnie od pozycji, więc niezmiennik
+   „pomiar = Σ etapów" jest liczony przy odczycie, a nie chroniony przy zapisie. → slice „agregat".
+3. **`googleSheetId` wymagany i unikalny** (`sheets.ts:44-50`) — model mówi „kosztorys istnieje sam
+   z siebie", schemat mówi „tylko jako cień arkusza". → slice „ACL".
+4. **Terminologia** — ten slice (EX-548).
+
+### Świadome NIE-cele (nie proponować jako defekty)
+
+- **Ujemne saldo rejestru dozwolone** — decyzja klienta (git `76dd757`, EX-410 canceled).
+- **Kosztorys v2 rozłączony od marży** — parked P5; nie re-litygować linku.
+- **Polskie stringi UI i transkrybowane nagłówki arkusza** — poprawne z polityki.
+- **`'RABAT'` w enumie i `'planowana'` w statusie inwestycji** — wartości zamrożone migracjami.
 
 ---
 
 ## Bottom line
 
-The 2026-07-08 distillation's central claim is dead: the Kosztorys Item aggregate
-is built and its two headline invariants — worth-computed-never-stored and
-pomiar-IS-the-stage-sum — are enforced by construction in a pure-function domain
-layer (`calc.ts` pricing, `settlement.ts` quantities) over four thin Payload
-collections. The financial core (bilans/marża formulas, balance-on-read, the
-transfer validate hook) is byte-for-byte the same enforced core as before, and a
-new Core subdomain has appeared: the read-only reconciliation seam that compares
-kosztorys client-view figures against Σ LABOR_COST/Σ RABAT and deliberately only
-screams, because the source flip is gated on a not-yet-built per-investment
-"verified" flag. The weakest enforcement point in the whole map is now structural,
-not financial: the "kosztorys keeps ≥1 item" floor exists only client-side while
-every server delete action is unguarded — the #1 refactor. Naming drift persists
-exactly where the glossary says (plus one untracked `materialyNet`), and
-`kosztoryses` still requires a `googleSheetId` for an integration on death row.
-Everything else that looks dropped (negative balances, populated deletes, the
-marża disconnect) is a verified owner decision, not a gap.
+Rdzeń domeny przesunął się od „kosztorys jako import arkusza" do „kosztorys jako druga płaszczyzna
+pieniądza, świadomie porównywana z transakcjami". Trzy rzeczy, które ta regeneracja zmienia
+w obrazie z lipca: strata **dotyka** bilansu, `settlement.ts` już nie istnieje jako jeden plik,
+a `materialsNetDiscount` jest pełnoprawnym modyfikatorem obu figur inwestycji. Dług językowy
+(EX-548) jest spłacony, a guard `local/no-domain-drift` pilnuje 21 rdzeni na `'error'` — kolejny
+dług jest już architektoniczny: niezmienniki, agregat, ACL.

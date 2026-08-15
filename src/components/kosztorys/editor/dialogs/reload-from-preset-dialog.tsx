@@ -13,8 +13,8 @@ import { toastMessage } from '@/lib/utils/toast'
 import {
   getPresetName,
   groupPresetSections,
-  praceNoun,
-  sekcjeNoun,
+  itemNoun,
+  sectionNoun,
   type PresetGroupT,
 } from './preset-picker-groups'
 import { usePresetSections } from './use-preset-sections'
@@ -30,7 +30,7 @@ const countItems = (group: PresetGroupT) =>
   group.metas.reduce((total, meta) => total + meta.itemCount, 0)
 
 const summary = (sections: number, items: number) =>
-  `${sections} ${sekcjeNoun(sections)} · ${items} ${praceNoun(items)}`
+  `${sections} ${sectionNoun(sections)} · ${items} ${itemNoun(items)}`
 
 // The counterpart to „Dodaj sekcję z szablonu", which appends; this one replaces, so both counts are
 // stated before the confirm.

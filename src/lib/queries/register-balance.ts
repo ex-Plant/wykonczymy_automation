@@ -7,7 +7,7 @@ import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { sumRegisterBalance } from '@/lib/db/sum-transfers'
 import { perfStart } from '@/lib/perf'
 
-export async function getRegisterSaldo(registerId: number): Promise<{ saldo: number }> {
+export async function getRegisterBalance(registerId: number): Promise<{ registerBalance: number }> {
   const elapsed = perfStart()
 
   const [{ user }, payload] = await Promise.all([
@@ -17,8 +17,8 @@ export async function getRegisterSaldo(registerId: number): Promise<{ saldo: num
   if (!user) throw new Error('Brak uprawnień')
   console.log(`[PERF]   requireAuth + getPayload ${elapsed()}ms`)
 
-  const saldo = await sumRegisterBalance(payload, registerId)
-  console.log(`[PERF] getRegisterSaldo(${registerId}) ${elapsed()}ms`)
+  const registerBalance = await sumRegisterBalance(payload, registerId)
+  console.log(`[PERF] getRegisterBalance(${registerId}) ${elapsed()}ms`)
 
-  return { saldo }
+  return { registerBalance }
 }

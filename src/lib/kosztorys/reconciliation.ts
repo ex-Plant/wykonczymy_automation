@@ -21,18 +21,18 @@ export type ReconT = {
 
 export type KosztorysReconciliationT = {
   laborCosts: ReconT
-  rabat: ReconT
+  discount: ReconT
 }
 
 type InputT = {
   // „Suma prac wykonanych" at client prices, pre-rabat (net) — lines up with Σ LABOR_COST.
-  sumaPracNet: number
+  laborCostsNetFromKosztorys: number
   // The client-view rabat (net) — global discount when active, else Σ per-item rabat.
-  rabatClientNet: number
+  discountNetFromKosztorys: number
   // Transaction-sourced robocizna: Σ LABOR_COST on the investment (netto).
   laborCostsNetFromTransactions: number
   // Transaction-sourced rabat: Σ RABAT on the investment (netto).
-  investmentRabat: number
+  discountNetFromTransactions: number
 }
 
 // Exact grosz equality on rounded values, not a fuzzy epsilon: a hand-entered transfer can differ
@@ -112,13 +112,13 @@ export function buildSettlementPlaneVerdict({
  * surfaces render (`context/foundation/lessons.md`).
  */
 export function buildKosztorysReconciliation({
-  sumaPracNet,
-  rabatClientNet,
+  laborCostsNetFromKosztorys,
+  discountNetFromKosztorys,
   laborCostsNetFromTransactions,
-  investmentRabat,
+  discountNetFromTransactions,
 }: InputT): KosztorysReconciliationT {
-  const laborCosts = reconcile(sumaPracNet, laborCostsNetFromTransactions)
-  const rabat = reconcile(rabatClientNet, investmentRabat)
+  const laborCosts = reconcile(laborCostsNetFromKosztorys, laborCostsNetFromTransactions)
+  const discount = reconcile(discountNetFromKosztorys, discountNetFromTransactions)
 
   // Nothing on the transactions plane at all ⇒ nothing to reconcile against. Since the write-switch
   // (EX-555) no new LABOR_COST or RABAT can be booked, so every investment created from here on would
@@ -126,15 +126,15 @@ export function buildKosztorysReconciliation({
   // for the OLD investments, which do carry bookings.
   //
   // Silenced per INVESTMENT, never per figure: a per-figure rule would mute „robocizna zaksięgowana,
-  // rabat nie", which is precisely the gap `showRabat` (settlement-summary.tsx) forces onto the screen.
+  // rabat nie", which is precisely the gap `showDiscount` (settlement-summary.tsx) forces onto the screen.
   // Both verdicts go quiet together or neither does.
-  const nothingBooked = laborCostsNetFromTransactions === 0 && investmentRabat === 0
+  const nothingBooked = laborCostsNetFromTransactions === 0 && discountNetFromTransactions === 0
   if (nothingBooked) {
     return {
       laborCosts: { ...laborCosts, mismatch: false },
-      rabat: { ...rabat, mismatch: false },
+      discount: { ...discount, mismatch: false },
     }
   }
 
-  return { laborCosts, rabat }
+  return { laborCosts, discount }
 }

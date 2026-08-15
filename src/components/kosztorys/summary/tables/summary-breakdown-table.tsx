@@ -15,21 +15,21 @@ import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 export function SummaryBreakdownTable({
   cols,
   moneyAxis,
-  sumaPrac,
-  sumaPracMismatch,
-  rabat,
-  rabatMismatch,
+  laborCostsPair,
+  laborCostsMismatch,
+  discount,
+  discountMismatch,
   materialsBilled,
   combined,
 }: {
   cols: string
   moneyAxis: MoneyAxisT
-  sumaPrac: MoneyPairT
-  sumaPracMismatch?: string
+  laborCostsPair: MoneyPairT
+  laborCostsMismatch?: string
   // Already negative, built by the caller (it owns the VAT rate). Undefined hides the row. Sits
   // directly under Robocizna because that is the figure it reduces.
-  rabat?: MoneyPairT
-  rabatMismatch?: string
+  discount?: MoneyPairT
+  discountMismatch?: string
   // What the investor is billed for materiały — one figure, on the plane they settle. 0 hides the row.
   materialsBilled: number
   // Robocizna po rabacie + materiały, on both axes.
@@ -43,16 +43,16 @@ export function SummaryBreakdownTable({
           „z kosztorysu" block calls Robocizna, and the Rabat row right below removes any doubt. */}
       <SummaryRow
         label="Robocizna"
-        line={sumaPrac}
+        line={laborCostsPair}
         axis={moneyAxis}
-        mismatch={sumaPracMismatch}
+        mismatch={laborCostsMismatch}
       />
-      {rabat && (
+      {discount && (
         <SummaryRow
           label="Rabat"
-          line={rabat}
+          line={discount}
           axis={moneyAxis}
-          mismatch={rabatMismatch}
+          mismatch={discountMismatch}
           discount
         />
       )}

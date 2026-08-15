@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
 import { billedAmountFor, TRANSFER_TYPES, type TransferTypeT } from '@/lib/constants/transfers'
-import { partitionWydatkiRows, sumBilled } from '@/lib/kosztorys/wydatki-datasets'
+import { partitionExpenseRows, sumBilled } from '@/lib/kosztorys/expense-datasets'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { InvoiceFileT, MaterialTransactionRowT } from '@/types/transfers'
 
@@ -72,7 +72,7 @@ const BUCKET_MEMBERSHIP: Record<BucketNameT, [string, boolean][]> = {
     ['PAYOUT', true],
   ],
   // Fallback rule, same as totalLaborCosts above — the kosztorys branch supplies rabat itself.
-  totalRabat: [
+  totalDiscount: [
     ['RABAT', false],
     ['RABAT', true],
   ],
@@ -305,7 +305,7 @@ describe('per-row billed figure reconciles with the aggregate', () => {
 // The wydatki list splits into three mutually exclusive tabs, so no single tab's Σ equals the
 // breakdown's „Razem" any more — the two expense tabs must add up to it instead. Without this the
 // tab filter could silently drop or double-count a type and no figure on screen would contradict it.
-// (The split's own behaviour is pinned in lib/kosztorys/wydatki-datasets.test.ts; this is the seam.)
+// (The split's own behaviour is pinned in lib/kosztorys/expense-datasets.test.ts; this is the seam.)
 describe('the wydatki tabs partition the billed total', () => {
   // `type` narrowed to required: deriveFinancials has no stale-cache tolerance to exercise here.
   const rows: (MaterialTransactionRowT & { type: TransferTypeT })[] = [
@@ -323,7 +323,7 @@ describe('the wydatki tabs partition the billed total', () => {
   ]
 
   it('Σ billed over the two expense tabs === totalMaterialCosts', () => {
-    const { gross, net, settled } = partitionWydatkiRows(rows)
+    const { gross, net, settled } = partitionExpenseRows(rows)
     const financials = deriveFinancials(
       rows.map((row) => ({
         type: row.type,

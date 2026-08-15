@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { classifySheetFailure } from '@/lib/kosztorys/sheet-import/classify-sheet-failure'
-import { MissingRobociznaTabError } from '@/lib/kosztorys/sheet-import/read-sheet'
+import { MissingLaborTabError } from '@/lib/kosztorys/sheet-import/read-sheet'
 
 // Each reason maps to a different thing the owner has to do, so a misclassification is not a cosmetic
 // wording miss — it is advice that can never work („spróbuj później" on a sheet nobody shared).
@@ -14,7 +14,7 @@ describe('classifySheetFailure', () => {
   })
 
   it('reads a missing robocizna tab off the error the reader throws itself', () => {
-    expect(classifySheetFailure(new MissingRobociznaTabError('abc'))).toBe('missing-tab')
+    expect(classifySheetFailure(new MissingLaborTabError('abc'))).toBe('missing-tab')
   })
 
   it('falls back to an outage for anything else', () => {

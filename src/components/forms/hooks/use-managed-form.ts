@@ -19,7 +19,7 @@ type UseManagedFormArgsT<TValues, TData> = {
   /** Map the string-typed form values to the action's domain payload. */
   toData: (values: TValues) => TData
   action: (data: TData) => Promise<ActionResultT>
-  /** Extra cleanup run alongside clearing the persisted form data (e.g. reset saldo). */
+  /** Extra cleanup run alongside clearing the persisted form data (e.g. reset registerBalance). */
   onReset?: () => void
   /**
    * Last say over the restored draft — lets a form fill a field the draft left empty from context

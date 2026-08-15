@@ -15,7 +15,7 @@ import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { formatNet, ratePercent } from '@/lib/kosztorys/format'
 import type { MaterialsT } from '@/lib/kosztorys/summary-economics'
-import type { MaterialyBreakdownRowT } from '@/types/investment-financials'
+import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 import type { MaterialTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
@@ -24,11 +24,11 @@ type PropsT = {
   investmentName: string
   // Materiały in two buckets — a zero total hides the breakdown.
   materials: MaterialsT
-  materialyBreakdown: MaterialyBreakdownRowT[]
+  materialsBreakdown: MaterialsBreakdownRowT[]
   // Material the company bought and folded into robocizna, split per category. Owner-plane: it lowers
   // marża and never touches the investor's bilans, hence its own table rather than extra rows above
   // „Razem". Absent on a host that doesn't compute it (the editor).
-  settledBreakdown?: MaterialyBreakdownRowT[]
+  settledBreakdown?: MaterialsBreakdownRowT[]
   materialTransactions: MaterialTransactionRowT[]
   // The netto rate already gated by the settlement mode (fraction). null = materiały settle brutto,
   // and the split collapses to the single „Kwota" column.
@@ -52,7 +52,7 @@ export function SummaryExpensesTab({
   investmentId,
   investmentName,
   materials,
-  materialyBreakdown,
+  materialsBreakdown,
   settledBreakdown = [],
   materialTransactions,
   materialsNetRate,
@@ -102,7 +102,7 @@ export function SummaryExpensesTab({
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="flex flex-col gap-6">
           {materials.grossBase + materials.netBilled !== 0 && (
-            <MaterialsBreakdownTable rows={materialyBreakdown} netRate={materialsNetRate} />
+            <MaterialsBreakdownTable rows={materialsBreakdown} netRate={materialsNetRate} />
           )}
           {/* Never rows inside the wydatki table: this spend is the company's, so it must be
               impossible to read as part of „Razem" or of the pie's shares. Its own gate too — an
@@ -119,7 +119,7 @@ export function SummaryExpensesTab({
         </div>
         {showPie && (
           <SlicePie
-            slices={expensePieSlices(materialyBreakdown, materialsNetRate)}
+            slices={expensePieSlices(materialsBreakdown, materialsNetRate)}
             formatValue={formatNet}
           />
         )}

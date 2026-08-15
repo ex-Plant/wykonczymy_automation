@@ -7,7 +7,7 @@ import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useInvoiceIngest } from '@/components/forms/expense-form/use-invoice-ingest'
 import { useReceiptGeneration } from '@/components/forms/expense-form/use-receipt-generation'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
-import { useSaldo } from '@/components/forms/hooks/use-saldo'
+import { useRegisterBalance } from '@/components/forms/hooks/use-register-balance'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
 import {
   TRANSACTION_TRANSFER_TYPES,
@@ -53,7 +53,7 @@ import {
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
 import { FormShell } from '../form-components/form-shell'
-import { SaldoSummary } from '../form-components/saldo-summary'
+import { RegisterBalanceSummary } from '../form-components/register-balance-summary'
 import { useExpenseFormStore } from '@/stores/form-stores'
 
 type TransferFormPropsT = {
@@ -75,7 +75,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const updateFormData = useExpenseFormStore((s) => s.updateFormData)
   const resetFormData = useExpenseFormStore((s) => s.resetFormData)
 
-  const { saldo, isSaldoLoading, fetchSaldo, resetSaldo } = useSaldo()
+  const { registerBalance, isRegisterBalanceLoading, fetchRegisterBalance, resetRegisterBalance } =
+    useRegisterBalance()
 
   const {
     ingestingIds,
@@ -97,7 +98,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   // FileInput — remounts, clearing any native FileList that form.reset() can't reach.
   function handleReset() {
     resetFormData()
-    resetSaldo()
+    resetRegisterBalance()
     resetInvoiceFiles()
     resetGeneration()
     form.setFieldValue('lineItems', [makeLineItem()])
@@ -242,7 +243,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     form.setFieldValue('lineItems', [makeLineItem()])
     resetInvoiceFiles()
     resetGeneration()
-    resetSaldo()
+    resetRegisterBalance()
   }
 
   return (
@@ -290,9 +291,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           <SourceRegisterField
             form={form}
             cashRegisters={referenceData.cashRegisters}
-            saldo={saldo}
-            isSaldoLoading={isSaldoLoading}
-            fetchSaldo={fetchSaldo}
+            registerBalance={registerBalance}
+            isRegisterBalanceLoading={isRegisterBalanceLoading}
+            fetchRegisterBalance={fetchRegisterBalance}
           />
         )}
 
@@ -334,7 +335,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         )}
       </FieldGroup>
 
-      {saldo !== null && <SaldoSummary saldo={saldo} total={total} />}
+      {registerBalance !== null && (
+        <RegisterBalanceSummary registerBalance={registerBalance} total={total} />
+      )}
 
       <FormFooter className="mt-6" label="Zapisz" disabled={isIngesting} />
     </FormShell>

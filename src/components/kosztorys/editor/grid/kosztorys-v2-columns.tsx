@@ -95,7 +95,7 @@ function keyCol(
   return { ...(keyColumn(key, column) as Column<KosztorysV2RowT>), ...rest }
 }
 
-// An etap with no rozliczenie belongs to neither crew's bill (settlement.ts), so its quantities fall
+// An etap with no rozliczenie belongs to neither crew’s bill (subcontractor-due.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
 // So the whole column screams, header and every cell. Reachable in the client view only, which is the
 // one that shows every etap.

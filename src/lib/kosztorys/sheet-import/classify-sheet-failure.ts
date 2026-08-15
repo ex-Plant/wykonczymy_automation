@@ -1,4 +1,4 @@
-import { MissingRobociznaTabError } from './read-sheet'
+import { MissingLaborTabError } from './read-sheet'
 
 // Why the sheet could not be read, in the owner's terms — each one maps to a DIFFERENT thing to do,
 // which is the whole point: „spróbuj później" is advice that can never work on a sheet nobody shared
@@ -31,7 +31,7 @@ function errorCodes(error: unknown): (number | string)[] {
 }
 
 export function classifySheetFailure(error: unknown): SheetFailureReasonT {
-  if (error instanceof MissingRobociznaTabError) return 'missing-tab'
+  if (error instanceof MissingLaborTabError) return 'missing-tab'
   const codes = errorCodes(error)
   if (codes.includes(403) || codes.includes(PERMISSION_DENIED)) return 'forbidden'
   if (codes.includes(404)) return 'not-found'

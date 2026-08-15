@@ -2,7 +2,7 @@
 //   SHEETS="<id>,<id>" node --env-file=.env --import tsx src/scripts/check-column-resolution.ts
 import { google } from 'googleapis'
 import { readImportGrids } from '@/lib/kosztorys/sheet-import/read-sheet'
-import { resolveRates, resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import { resolveRates, resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 
 // Raw `process.env` rather than the validated layer: its `server-only` guard makes anything
 // importing it unusable from a tsx script — the same reason `seed-investment-from-sheet.ts` does it.
@@ -24,9 +24,9 @@ const letter = (index: number): string =>
 
 for (const spreadsheetId of ids) {
   console.log(`\n=== ${spreadsheetId}`)
-  const { robocizna, rateTabs } = await readImportGrids(sheets, spreadsheetId)
+  const { laborGrid, rateTabs } = await readImportGrids(sheets, spreadsheetId)
 
-  const resolved = resolveRobocizna(robocizna)
+  const resolved = resolveLaborColumns(laborGrid)
   if (!resolved.ok) {
     console.log('  kosztorys_robocizny: FAIL —', resolved.problems.join(' | '))
   } else {
@@ -34,7 +34,7 @@ for (const spreadsheetId of ids) {
       .map(([field, index]) => `${field}=${letter(index as number)}`)
       .join(' ')
     console.log(
-      `  kosztorys_robocizny: ${show} stages=${letter(resolved.stages.firstColumn)}×${resolved.stages.count} rows=${robocizna.length}`,
+      `  kosztorys_robocizny: ${show} stages=${letter(resolved.stages.firstColumn)}×${resolved.stages.count} rows=${laborGrid.length}`,
     )
   }
 

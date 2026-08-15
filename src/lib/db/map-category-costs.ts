@@ -2,7 +2,7 @@ import type {
   CategoryCostT,
   FinancialFieldT,
   InvestmentFinancialsT,
-  MaterialyBreakdownRowT,
+  MaterialsBreakdownRowT,
 } from '@/types/investment-financials'
 import { formatPLN } from '@/lib/utils/format-currency'
 
@@ -10,12 +10,12 @@ import { formatPLN } from '@/lib/utils/format-currency'
 // entered before the category became required. It counts toward totalMaterialCosts, so it
 // MUST surface as its own row wherever the category split is shown, or the sum drifts below
 // the listing's bilans.
-const KOREKTA_LABEL = 'Korekta (bez kategorii)'
+const CORRECTION_LABEL = 'Korekta (bez kategorii)'
 
 // The tile labels the investment header matches on to pick a figure out of the field list — exported
 // so the consumer reads the same string this builder writes.
 export const LABOR_LABEL = 'Robocizna netto'
-export const RABAT_LABEL = 'Rabat netto'
+export const DISCOUNT_LABEL = 'Rabat netto'
 export const INCOME_LABEL = 'Wpłaty'
 export const MATERIALS_DISCOUNT_LABEL = 'Obniżka materiałów'
 export const LOSS_LABEL = 'Strata'
@@ -42,12 +42,12 @@ function uncategorisedRemainder(financials: InvestmentFinancialsT): number {
  *  Rows are grouped by origin, not interleaved per category: every brutto row first, then the frozen
  *  netto ones as a block. The netto rows are the exception the reduction can't touch, so they read as
  *  a set — interleaved they look like a per-category sub-row and invite summing the pair. */
-export function buildMaterialyBreakdown(
+export function buildMaterialsBreakdown(
   financials: InvestmentFinancialsT,
   expenseCategories: { id: number; name: string }[],
   netCategoryCosts: CategoryCostT[] = [],
-): MaterialyBreakdownRowT[] {
-  const grossRows: MaterialyBreakdownRowT[] = expenseCategories.map((cat) => ({
+): MaterialsBreakdownRowT[] {
+  const grossRows: MaterialsBreakdownRowT[] = expenseCategories.map((cat) => ({
     id: cat.id,
     label: cat.name,
     net:
@@ -56,9 +56,9 @@ export function buildMaterialyBreakdown(
   }))
   const uncategorised = uncategorisedRemainder(financials)
   if (uncategorised !== 0)
-    grossRows.push({ id: null, label: KOREKTA_LABEL, net: uncategorised, origin: 'gross' })
+    grossRows.push({ id: null, label: CORRECTION_LABEL, net: uncategorised, origin: 'gross' })
 
-  const netRows: MaterialyBreakdownRowT[] = expenseCategories
+  const netRows: MaterialsBreakdownRowT[] = expenseCategories
     .map((cat) => ({ cat, netBilled: costForCategory(netCategoryCosts, cat.id) }))
     .filter(({ netBilled }) => netBilled !== 0)
     .map(({ cat, netBilled }) => ({
@@ -120,7 +120,7 @@ export function buildFinancialFields(
     categoryCosts,
     totalIncome,
     totalLaborCosts,
-    totalRabat,
+    totalDiscount,
     materialsNetDiscount,
     totalLoss,
   } = financials
@@ -131,7 +131,7 @@ export function buildFinancialFields(
     ...(uncategorised !== 0
       ? [
           {
-            label: KOREKTA_LABEL,
+            label: CORRECTION_LABEL,
             value: formatPLN(uncategorised),
             amount: -uncategorised,
           },
@@ -147,7 +147,7 @@ export function buildFinancialFields(
     // the two readings drift apart. Rabat has a tile for exactly this reason; the materiały
     // concession and the strata raise the balance the same way and need the same seat.
     ...creditFields([
-      [RABAT_LABEL, totalRabat],
+      [DISCOUNT_LABEL, totalDiscount],
       [MATERIALS_DISCOUNT_LABEL, materialsNetDiscount],
       [LOSS_LABEL, totalLoss],
     ]),
@@ -155,14 +155,14 @@ export function buildFinancialFields(
 }
 
 /** The same per-category split as `buildSettledFields`, but as numeric breakdown rows for the
- *  summary panel's table. Kept separate from `buildMaterialyBreakdown` because settled material is
+ *  summary panel's table. Kept separate from `buildMaterialsBreakdown` because settled material is
  *  never billed to the investor: it carries no netto bucket, takes no reduction, and its Σ must NOT
  *  join `totalMaterialCosts`. A category with no settled spend is dropped — a zero row here would
  *  read as "the company absorbed nothing in this bucket", which is the same thing as absent. */
 export function buildSettledBreakdown(
   settledCategoryCosts: CategoryCostT[],
   expenseCategories: { id: number; name: string }[],
-): MaterialyBreakdownRowT[] {
+): MaterialsBreakdownRowT[] {
   return expenseCategories
     .map((cat) => ({ cat, total: costForCategory(settledCategoryCosts, cat.id) }))
     .filter(({ total }) => total !== 0)

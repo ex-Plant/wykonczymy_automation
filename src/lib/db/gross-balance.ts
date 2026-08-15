@@ -9,7 +9,7 @@ export function grossBalance(
   balance: number,
   vatRate: number,
   totalLaborCosts: number,
-  totalRabat: number,
+  totalDiscount: number,
 ): number {
-  return balance - vatRate * (totalLaborCosts - totalRabat)
+  return balance - vatRate * (totalLaborCosts - totalDiscount)
 }

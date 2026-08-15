@@ -5,7 +5,7 @@ import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
   billedMaterials,
   computeMixedSettlement,
-  sumaPracPreRabat,
+  laborCostsNetPreDiscount,
   type MaterialsT,
   type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
@@ -37,10 +37,10 @@ type PropsT = {
   onSettlementModeChange?: (mode: SettlementModeT) => void
   isSavingSettings?: boolean
   laborCostsNet: number
-  doZaplaty: MoneyPairT
+  amountDue: MoneyPairT
   materials: MaterialsT
   depositsTotal: number
-  rabatAmount: number
+  discountAmount: number
   // Σ LOSS — the deduction step between the wpłaty and the closing figure. Face value on both axes.
   lossAmount: number
   reconciliation: KosztorysReconciliationT
@@ -69,10 +69,10 @@ export function SummaryOverviewTab({
   onSettlementModeChange,
   isSavingSettings = false,
   laborCostsNet,
-  doZaplaty,
+  amountDue,
   materials,
   depositsTotal,
-  rabatAmount,
+  discountAmount,
   lossAmount,
   reconciliation,
   settlementVerdict,
@@ -103,7 +103,7 @@ export function SummaryOverviewTab({
       : null
   const settlementGroups = buildSettlementGroups({
     mixed,
-    doZaplaty,
+    amountDue,
     depositsTotal,
     lossAmount,
     vatRate,
@@ -140,7 +140,7 @@ export function SummaryOverviewTab({
             laborCostsNet={laborCostsNet}
             materialsBilled={materialsBilled}
             settlementGroups={settlementGroups}
-            rabatAmount={rabatAmount}
+            discountAmount={discountAmount}
             reconciliation={reconciliation}
             priceView={priceView}
             vatRate={vatRate}
@@ -150,7 +150,7 @@ export function SummaryOverviewTab({
         {showPie && (
           <SlicePie
             slices={costTotalsPieSlices(
-              sumaPracPreRabat(laborCostsNet, rabatAmount),
+              laborCostsNetPreDiscount(laborCostsNet, discountAmount),
               materialsBilled,
             )}
             formatValue={formatNet}
