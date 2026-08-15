@@ -68,6 +68,7 @@ const allColumns = [
   col.accessor('investmentName', {
     id: 'investment',
     header: 'Inwestycja',
+    meta: { minWidth: 'min-w-40' },
     cell: (info) => {
       const id = info.row.original.investmentId
       const name = info.getValue()
@@ -178,6 +179,7 @@ const allColumns = [
   col.accessor('createdByName', {
     id: 'createdBy',
     header: 'Dodane przez',
+    meta: { minWidth: 'min-w-40' },
     cell: (info) => info.getValue(),
   }),
   col.accessor('createdAt', {
