@@ -1,10 +1,10 @@
 ---
 change_id: sheet-column-mapping
 title: Ręczne przypisanie kolumn arkusza i czytelne komunikaty, gdy import odmówi
-status: implemented
+status: archived
 created: 2026-08-14
-updated: 2026-08-14
-archived_at: null
+updated: 2026-08-15
+archived_at: 2026-08-15T08:01:27Z
 branch: ex-690-sheet-column-mapping
 worktree: null
 ---

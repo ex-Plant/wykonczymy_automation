@@ -65,6 +65,29 @@ AF    pozostało do rozliczenia / bilans
   inne ceny (cennik z narzędziami N, bez narzędzi P). Ceny podwykonawcy NIE są
   stałym % klienta (raz 65%, raz 58%) → niezależne.
 
+### Nagłówki się rozjeżdżają między arkuszami — rozpoznawanie po nazwie nie wystarcza (EX-690)
+
+Nie każdy klient nazywa kolumny tak samo. Żupnicza 18/73 (inwestycja 84) rozbija wartość netto na
+dwie kolumny — „Wartość netto przedmiar" (`S`) i „Wartość netto pomiar z natury" (`T`) — więc żadna
+nie trafia w dokładne dopasowanie. To dowód z natury dla całej awaryjnej ścieżki wskazywania kolumn;
+bez niego zmiana opierałaby się na wymyślonej próbce.
+
+**Dlaczego wybór `S` vs `T` jest niegroźny.** Kolumna wartości netto **nie wchodzi do żadnej pracy** —
+czytają ją tylko `footer-totals.ts` (współrzędna liczby w wierszu podsumowania) i skan błędów formuł.
+Wartość każdej pracy liczy `calc.ts` z ilości, ceny i rabatu. Porównanie sum dodatkowo zestawia
+odczytaną liczbę po kolei ze wszystkimi trzema sumami, które umiemy policzyć, i samo raportuje,
+z którą się zgadza. Import odmawiał więc przez kolumnę, która nie wnosi do kosztorysu ani złotówki.
+
+**Czego świadomie nie zrobiliśmy:**
+
+- **Nie poluzowaliśmy dopasowania po nazwie.** Dopasowanie po prefiksie złapałoby na Żupniczej `S`
+  i `T` naraz — odmowa „nie znaleziono kolumny" zamieniłaby się w odmowę „pasuje do 2 kolumn", czyli
+  ten sam ślepy zaułek pod inną nazwą.
+- **Żadnego globalnego słownika nagłówków.** Arkusze należą do klientów i żaden nie jest zbudowany
+  tak samo; słownik z definicji nadążałby za ostatnim arkuszem, który ktoś zgłosił.
+- **Kolumny opcjonalne nie blokują pobrania.** Arkusz bez rabatu ma się wczytywać jak dotąd — brak
+  takiej kolumny to informacja w raporcie, nie odmowa.
+
 ### Formuły (dosłownie z arkusza, wiersz 390)
 
 ```
