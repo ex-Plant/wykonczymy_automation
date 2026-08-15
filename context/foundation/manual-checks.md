@@ -4,6 +4,16 @@ One living checklist for every slice — the project's QA registry. Each `##` se
 
 **Run against the isolated test DB, not the dev DB.** Manual checks mutate data, so point the app at the `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, `wykonczymy-test`) — the same DB the E2E suite uses — never the dev DB (5433, holds un-dumped local work) and never prod. Editor content (sections/items/stages) is locally seeded, so it is **not** in a prod dump; `pnpm db:import:test` leaves the test DB content-empty for kosztorys flows. Seed it separately: `perf-seed-kosztorys.ts` for a synthetic set (no external deps) or `seed-kosztorys.ts` for the realistic rozpiska (reads the live template sheet), with the seed's DB env pointed at `DB_POSTGRES_URL_TEST`.
 
+## EX-691 — „Porównaj z arkuszem Google" pod aktywnym rabatem globalnym
+
+Setup: inwestycja z podpiętym arkuszem Google, w kosztorysie rozpisana robocizna na etapy,
+w „Rabat" tryb **Kwotowy** z kwotą inną niż suma rabatów pozycyjnych.
+
+- [ ] Przy aktywnym rabacie globalnym okno „Porównaj z arkuszem Google" pokazuje **czerwoną** notkę w bloku „Kwoty", że kwoty rozjeżdżają się z kosztorysem
+- [ ] Same kwoty w oknie nie zmieniły się — notka tłumaczy różnicę, nie przelicza jej
+- [ ] Bez rabatu globalnego (tryb „Wyłączony") notki nie ma, choćby prace miały rabaty pozycyjne
+- [ ] Rabat globalny równy sumie rabatów pozycyjnych na pracach wykonanych — notki nie ma, bo nic się nie rozjeżdża
+
 ## EX-448 — stable per-row ids for expense line-items
 
 **In review** — all automated checks green (tsc 0, eslint 0, unit 10/10). Pure refactor of the
@@ -943,14 +953,16 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 „Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
 
 - [ ] Po imporcie pozycje z rozjazdem mają czerwoną sumę etapów, a podpowiedź podaje: arkusz, etapy, kwotę różnicy
+- [ ] Kolumna „Rozjazd (arkusz − etapy)" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
+- [ ] Kolumna „Rozjazd" jest widoczna tylko wtedy, gdy jest choć jeden rozjazd: znika po wyczyszczeniu ostatniego (i nie ma jej też w liście „Kolumny")
+- [ ] Kolumna „Rozjazd" zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty
 - [ ] Przycisk „Rozjazdy" w pasku narzędzi pokazuje liczbę pozycji z rozjazdem; kliknięcie zawęża siatkę tylko do nich
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
 - [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym filtrze widać „Brak rozjazdów" z powrotem do pełnej listy, a sam przycisk znika
 - [ ] Sekcja zwinięta nie chowa pozycji z rozjazdem przy włączonym filtrze
-- [ ] Menu wiersza → „Etapy są prawdą" zdejmuje pozycję z listy na stałe; po przeładowaniu strony nie wraca
-- [ ] Ponowny import tego samego arkusza przywraca odniesienie, więc odrzucone pozycje wracają, jeśli arkusz dalej się nie zgadza
-- [ ] Robocizna, marża i bilans nie drgnęły ani po imporcie, ani po „Etapy są prawdą" — odniesienie nie wchodzi do żadnej kwoty
-- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak przycisku „Rozjazdy" i pozycji w menu
+- [ ] Ponowny import tego samego arkusza nadpisuje odniesienie bieżącą treścią arkusza
+- [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd", brak przycisku „Rozjazdy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „Rozjazdy" w ogóle
 
 ## EX-682 / EX-683 — sortowanie wewnątrz sekcji
@@ -990,3 +1002,76 @@ zakładka Kosztorys inwestycji.
 - [ ] Sekcja zwinięta przy sortowaniu „w całym kosztorysie" nie chowa swoich pozycji (bez pasa nie ma czym rozwinąć)
 - [ ] Żadne sortowanie nie przeżywa odświeżenia strony — po reloadzie kosztorys wraca do kolejności zapisanej
 - [ ] Podgląd dla klienta (link publiczny): w menu nagłówka nie ma „Zapisz kolejność"
+
+## sheet-live-compare — „Porównaj z arkuszem Google" (EX-417)
+
+**In review** — tsc czysty, eslint 0 błędów, spec odświeżania zielony na 5435.
+`pnpm build` **nie przeszedł w worktree**: turbopack odmawia na dowiązanym `node_modules`
+(„Symlink node_modules is invalid") — to ograniczenie środowiska, nie kodu; potwierdzić po scaleniu.
+E2E odroczone do EX-687 (`e2e-backlog`).
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja 31 (arkusz podpięty, 26 pozycji z Pomiarem
+jako formułą `=N`).
+
+Osobnej akcji „Zaciągnij pomiary z arkusza" **już nie ma** — zaciągnięcie jedzie razem z odczytem,
+więc każdy punkt poniżej dotyczy jednego okna.
+
+- [ ] Opcje → „Porównaj z arkuszem Google…" otwiera okno, pokazuje „Czytam arkusz Google…", a potem cztery bloki: Kwoty, Prace, Stawki podwykonawców, Jak odczytaliśmy arkusz Google
+- [ ] Blok „Kwoty" zestawia wartość prac wykonanych obu stron, a „Pozostało do rozliczenia" pokazuje się tylko wtedy, gdy „wartość netto" w arkuszu naprawdę liczy się z Pomiaru
+- [ ] Blok „Jak odczytaliśmy arkusz Google" podaje 26 z ~435 prac z Pomiarem wskazującym na Przedmiar — **samą liczbą, bez listy wierszy do rozwinięcia**
+- [ ] Pozostałe klasy (Przedmiar z etapu, wartość błędu) mają listy do rozwinięcia, a link prowadzi do konkretnej komórki w arkuszu
+- [ ] Praca przemianowana w arkuszu pojawia się na obu listach „tylko po jednej stronie" — i okno mówi wprost dlaczego
+- [ ] Ostatnia linia okna raportuje zaciągnięcie: przy pierwszym otwarciu niezerowe liczby, przy drugim „był już zgodny z arkuszem Google"
+- [ ] Po pierwszym otwarciu kolumna „Pozostało do rozliczenia" w siatce przelicza się od razu, bez odświeżania strony
+- [ ] Drugie otwarcie **nie** przemontowuje siatki: wpisany filtr, sortowanie i zwinięte sekcje zostają na miejscu
+- [ ] Zmiana jednego Pomiaru w arkuszu i ponowne otwarcie rusza wyłącznie tę pracę
+- [ ] Wyczyszczenie Pomiaru w arkuszu i ponowne otwarcie zdejmuje odniesienie z tej pracy
+- [ ] Robocizna, marża i bilans nie drgnęły po zaciągnięciu — odniesienie nie wchodzi do żadnej kwoty
+- [ ] Arkusz z przemianowanym nagłówkiem „Pomiar z natury": okno działa, mówi o nierozpoznanej kolumnie i **nie kasuje** zapisanych Pomiarów
+- [ ] Inwestycja bez podpiętego arkusza: jeden toast „Inwestycja nie ma kosztorysu.", nie puste okno
+- [ ] Odebranie kontu serwisowemu dostępu do arkusza daje jeden polski toast, nie surowy błąd Google
+- [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji
+
+## kosztorys-filter-conditions — jeden rejestr warunków filtrowania (EX-665)
+
+**In review** — tsc czysty, eslint 0 błędów, `pnpm test` 2197, `pnpm build` przechodzi w głównym
+katalogu (wcześniejsza porażka dotyczyła worktree z dowiązanym `node_modules` i się nie powtarza).
+Lista poniżej opisuje stan po `c6c32570` — gramatyce „ptaszek znaczy widoczne".
+
+Setup: dev DB (5433), zalogowany jako OWNER, kosztorys z sekcją w całości wykonaną, ale
+niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana.
+
+- [ ] „Filtry" → w grupie „Prace" każdy warunek stoi zaptaszkowany; odptaszkowanie „Pozycje bez przedmiaru" zabiera te pozycje z siatki
+- [ ] Odptaszkowanie obu połówek pary („bez przedmiaru" i „z przedmiarem") opróżnia siatkę — ptaszek znaczy „widoczne", nie „pokaż tylko te"
+- [ ] Odptaszkowanie dwóch różnych warunków naraz zabiera sumę obu zbiorów, a licznik przy każdym z nich się nie rusza
+- [ ] Trigger „Filtry" pokazuje, ile rzeczy menu aktualnie zabiera (odptaszkowane warunki + zwinięte sekcje), i podświetla się razem z tą liczbą; diagnostyki z paska go nie ruszają
+- [ ] „Sekcje bez wykonanych prac (N)" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta; ręczne odptaszkowanie jednej z nich zdejmuje ptaszek z tego wiersza
+- [ ] Sekcja, której filtr nie zostawił ani jednej pozycji, znika w całości — bez pustej belki i sumy
+- [ ] „Zresetuj filtry" na górze menu wraca do pełnej listy: zdejmuje i warunki, i zwinięcia; jest klikalny natychmiast po odptaszkowaniu sekcji (nie czeka pół sekundy)
+- [ ] Numery pozycji przeskakują przy filtrze zamiast przenumerowywać się od 1
+- [ ] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami
+- [ ] „Bez ceny j.m." stoi w pasku z licznikiem i znika, gdy wszystko jest wycenione
+- [ ] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony
+- [ ] Pusta siatka nazywa filtr, który ją opróżnił, a przycisk wraca do pełnej listy
+- [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję
+- [ ] Podgląd dla klienta (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
+- [ ] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze
+
+## sheet-column-mapping — ręczne wskazanie kolumny arkusza (EX-690)
+
+**In review** — tsc czysty, eslint bez nowych błędów, `pnpm test` 2228, `pnpm build` przechodzi.
+Stan po `94ffefd0`.
+
+Setup: dev DB (5433), zalogowany jako OWNER. Inwestycja 84 (Żupnicza) jest dowodem z natury —
+jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po nazwie tam nie działa.
+
+- [ ] Inwestycja 84: „Pobierz z arkusza Google…" mówi wprost, której kolumny nie rozpoznał, i pokazuje listę kandydatów z literami kolumn i nagłówkami
+- [ ] Wskazanie kolumny `S` przelicza podgląd w tym samym oknie i odblokowuje „Pobierz i zastąp"
+- [ ] Po zamknięciu okna bez pobierania „Porównaj z arkuszem" na tej samej inwestycji działa bez ponownego wskazywania
+- [ ] Linijka „Kolumnę „…" wskazałeś ręcznie" jest widoczna, a „Usuń wskazanie" przywraca odmowę odczytu
+- [ ] Po poprawieniu nagłówka w arkuszu na „Wartość netto" odczyt idzie po nazwie, mimo zapisanego wskazania na inną kolumnę
+- [ ] Wskazanie zapisane na jednej inwestycji nie zmienia niczego na drugiej
+- [ ] Brakująca kolumna opcjonalna (np. „komentarz") NIE blokuje pobrania — pick stoi w bloku „Czego nie odczytaliśmy"
+- [ ] Arkusz nieudostępniony kontu serwisowemu: okno mówi, komu go udostępnić, a przycisk kopiuje adres
+- [ ] Śmieciowy identyfikator arkusza: komunikat o nieistniejącym arkuszu, bez rady „spróbuj później"
+- [ ] Arkusz bez zakładki `kosztorys_robocizny`: komunikat mówi o zakładce, nie o nagłówkach

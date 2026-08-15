@@ -55,16 +55,26 @@ export const FIELD_LABELS: Record<ColumnFieldT, string> = {
   comment: 'komentarz',
 }
 
+export const COLUMN_FIELDS = Object.keys(FIELD_LABELS) as ColumnFieldT[]
+
+export const isColumnField = (value: unknown): value is ColumnFieldT =>
+  typeof value === 'string' && (COLUMN_FIELDS as string[]).includes(value)
+
 // Optional fields resolve to `undefined` instead of failing. Rabat is genuinely absent on some
 // sheets (Ryżowa 66/127 has no such column at all) and „komentarz" is never read — it is resolved
 // only so the preview can show the owner that we saw it. „Pomiar z natury" is optional for a
 // stronger reason: it feeds nothing but a reconciliation hint, so a sheet without it must import
 // exactly as before rather than fail on a column nobody's money depends on.
-export const OPTIONAL_FIELDS: ReadonlySet<ColumnFieldT> = new Set<ColumnFieldT>([
-  'discount',
-  'comment',
-  'measuredQty',
-])
+export const OPTIONAL_FIELDS = ['discount', 'comment', 'measuredQty'] as const
+
+// The optional fields as a type, so anything that has to say something per-optional-field (the
+// preview's „czego nie odczytaliśmy" list) is exhaustive by the compiler rather than by review.
+export type OptionalFieldT = (typeof OPTIONAL_FIELDS)[number]
+
+const OPTIONAL_FIELD_SET: ReadonlySet<ColumnFieldT> = new Set(OPTIONAL_FIELDS)
+
+export const isOptionalField = (field: ColumnFieldT): field is OptionalFieldT =>
+  OPTIONAL_FIELD_SET.has(field)
 
 type MatcherT = (folded: string) => boolean
 

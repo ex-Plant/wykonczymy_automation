@@ -1,11 +1,30 @@
 'use client'
 
 import { useTransition } from 'react'
-import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
+import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
+import { SheetColumnPicker } from '@/components/kosztorys/editor/dialogs/sheet-column-picker'
 import { evaluateImportGate } from '@/components/kosztorys/editor/dialogs/sheet-import-gate'
+import { SheetProblemsBlock } from '@/components/kosztorys/editor/dialogs/sheet-problems-block'
+import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
+import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
+import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
+import {
+  ComparisonRow,
+  ComparisonTable,
+  ItemList,
+  ReportFold,
+  ReportRow,
+  ReportTable,
+} from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
+import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
-import type { ReportedRateKindT } from '@/lib/kosztorys/sheet-import/resolve-rates'
+import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
+import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
+import type {
+  UnresolvedColumnsT,
+  UnresolvedReasonT,
+} from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { toastMessage } from '@/lib/utils/toast'
 
@@ -14,25 +33,31 @@ type PropsT = {
   open: boolean
   onOpenChange: (open: boolean) => void
   preview: ImportPreviewT | null
+  error: string | null
   loaded: boolean
   onImported: () => void
+  // Re-reads the sheet with the new pointing in place, so the window answers in place instead of
+  // asking the owner to close it and try again.
+  onMappingSaved: () => void
 }
 
-const RATE_DECISION_LABELS: Record<ReportedRateKindT, string> = {
-  single: 'tylko w jednym cenniku',
-  auto: 'rozbieżność — wzięto wpisaną ręcznie',
-  conflict: 'rozbieżność do sprawdzenia',
+const MISSING_COLUMN_REASONS: Record<UnresolvedReasonT, string> = {
+  absent: 'nie ma jej w arkuszu',
+  ambiguous: 'pasuje do kilku kolumn — zmień nazwę tej drugiej',
 }
 
 // „Pobierz z arkusza Google…" — what the import would do, before it does it. The confirm re-derives
-// everything server-side, so nothing rendered here is trusted on the way back.
+// everything server-side, so nothing rendered here is trusted on the way back. Built from the same
+// blocks as „Porównaj z arkuszem": a verdict per question, and every long list folded behind it.
 export function SheetImportDialog({
   investmentId,
   open,
   onOpenChange,
   preview,
+  error,
   loaded,
   onImported,
+  onMappingSaved,
 }: PropsT) {
   const [pending, startTransition] = useTransition()
 
@@ -53,117 +78,15 @@ export function SheetImportDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader
-          title="Pobierz kosztorys z arkusza Google"
-          description="Kosztorys zostanie zastąpiony danymi z arkusza. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
-        />
-
-        {!loaded ? (
-          <p className="text-muted-foreground text-sm">Czytam arkusz…</p>
-        ) : !preview ? (
-          <p className="text-destructive text-sm">Nie udało się odczytać arkusza.</p>
-        ) : (
-          <div className="space-y-4 text-sm">
-            {preview.problems.length > 0 && (
-              <Block title="Nie mogę odczytać arkusza">
-                {preview.problems.map((problem) => (
-                  <p key={problem} className="text-destructive">
-                    {problem}
-                  </p>
-                ))}
-              </Block>
-            )}
-
-            {preview.report.warnings.map((warning, index) => (
-              <p key={`${index}-${warning}`} className="text-amber-600">
-                {warning}
-              </p>
-            ))}
-
-            {preview.problems.length === 0 && (
-              <>
-                <Block title="Rozpoznane kolumny">
-                  {preview.report.columns.map((column, index) => (
-                    <p key={index} className="text-muted-foreground text-xs">
-                      {column.field} → kolumna {column.column} („{column.header}”) w zakładce{' '}
-                      {column.tab}
-                    </p>
-                  ))}
-                </Block>
-
-                <Block title="Co wejdzie">
-                  <p className="text-muted-foreground">
-                    {preview.report.counts.sections} sekcji · {preview.report.counts.items} prac ·{' '}
-                    {preview.report.counts.stages} etapów
-                  </p>
-                </Block>
-
-                {preview.report.rateDecisions.length > 0 && (
-                  // Listed one by one, never collapsed to a count: each line is a price the two
-                  // cenniki disagreed about, and the owner is the only one who can say which is right.
-                  <Block title={`Rozstrzygnięcia stawek (${preview.report.rateDecisions.length})`}>
-                    {preview.report.rateDecisions.map((rate, index) => (
-                      <p
-                        key={`${index}-${rate.description}`}
-                        className="text-muted-foreground text-xs"
-                      >
-                        {rate.description} — {formatPLN(rate.wToolsRate)} /{' '}
-                        {formatPLN(rate.ownToolsRate)} · {RATE_DECISION_LABELS[rate.kind]}
-                        {rate.rejected
-                          ? ` (pominięto ${formatPLN(rate.rejected.wToolsRate)} z „${rate.rejected.tab}”)`
-                          : ''}
-                      </p>
-                    ))}
-                  </Block>
-                )}
-
-                {preview.report.retained.length > 0 && (
-                  <Block
-                    title={`Prace, których nie ma w arkuszu (${preview.report.retained.length})`}
-                  >
-                    <p className="text-muted-foreground text-xs">
-                      Zostaną zachowane — nic nie jest usuwane. Jeśli jest ich nieoczekiwanie dużo,
-                      sprawdź, czy w arkuszu nie zmieniła się nazwa sekcji.
-                    </p>
-                    {preview.report.retained.map((item, index) => (
-                      <p key={index} className="text-muted-foreground text-xs">
-                        {item.section} · {item.description}
-                      </p>
-                    ))}
-                  </Block>
-                )}
-
-                <Block title="Porównanie sum">
-                  {preview.report.totals.map((total) => (
-                    <p
-                      key={total.key}
-                      className={
-                        total.sheetValue !== null && !total.matches
-                          ? 'text-xs text-amber-600'
-                          : 'text-muted-foreground text-xs'
-                      }
-                    >
-                      {total.label}: arkusz{' '}
-                      {total.sheetValue === null ? 'nie znaleziono' : formatPLN(total.sheetValue)} ·
-                      aplikacja {formatPLN(total.appValue)}
-                      {total.delta === null ? '' : ` · różnica ${formatPLN(total.delta)}`}
-                    </p>
-                  ))}
-                  {mismatchedTotals.length > 0 && (
-                    // A stale SUM in the owner's own footer is common enough that blocking on it
-                    // would make the button useless exactly where it is needed.
-                    <p className="text-amber-600">
-                      Sumy się nie zgadzają — sprawdź arkusz. Pobranie jest nadal możliwe.
-                    </p>
-                  )}
-                </Block>
-              </>
-            )}
-          </div>
-        )}
-
+    <SheetReportDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Pobierz kosztorys z arkusza Google"
+      description="Kosztorys zostanie zastąpiony danymi z arkusza. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
+      loaded={loaded}
+      data={preview}
+      error={error}
+      actions={
         <DialogActions
           confirmLabel="Pobierz i zastąp"
           pending={pending}
@@ -172,16 +95,183 @@ export function SheetImportDialog({
           onCancel={() => onOpenChange(false)}
           confirmDisabled={confirmDisabled}
         />
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      {({ problems, report, columns, failure }) =>
+        failure ? (
+          <SheetAccessBlock failure={failure} />
+        ) : problems.length > 0 ? (
+          <SheetProblemsBlock
+            investmentId={investmentId}
+            problems={problems}
+            columns={columns}
+            consequence="nic nie zostanie nadpisane"
+            onMappingSaved={onMappingSaved}
+          />
+        ) : (
+          <>
+            <ScopeBlock report={report} />
+            <ColumnsBlock
+              investmentId={investmentId}
+              missing={report.missingColumns}
+              columns={columns}
+              onMappingSaved={onMappingSaved}
+            />
+            <SheetRatesBlock decisions={report.rateDecisions} />
+            <RetainedBlock retained={report.retained} />
+            <TotalsBlock totals={report.totals} mismatched={mismatchedTotals} />
+          </>
+        )
+      }
+    </SheetReportDialog>
   )
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+// The warnings ride here rather than at the top of the dialog: every one of them („N prac bez
+// cennika", „pominięto wiersze nad pierwszą sekcją") is a caveat about the very count beside it.
+function ScopeBlock({ report }: { report: ImportReportT }) {
+  const { counts, warnings } = report
   return (
-    <div className="space-y-1">
-      <p className="font-medium">{title}</p>
-      {children}
-    </div>
+    <SheetReportBlock
+      title="Co wejdzie"
+      status={warnings.length === 0 ? 'ok' : 'warn'}
+      verdict={`${counts.sections} sekcji · ${counts.items} prac · ${counts.stages} etapów`}
+    >
+      {warnings.map((warning, index) => (
+        <p key={`${index}-${warning}`} className="text-amber-600">
+          {warning}
+        </p>
+      ))}
+    </SheetReportBlock>
   )
+}
+
+/**
+ * Only the columns we could NOT read: a required column is either resolved or the import is refused
+ * outright, so the recognised ones say nothing. An absent optional column is the opposite — it is
+ * data quietly missing from the kosztorys, and this is the only place it is ever stated.
+ */
+function ColumnsBlock({
+  investmentId,
+  missing,
+  columns,
+  onMappingSaved,
+}: {
+  investmentId: number
+  missing: ImportReportT['missingColumns']
+  columns: UnresolvedColumnsT
+  onMappingSaved: () => void
+}) {
+  // A column the owner pointed at is not a shortfall — it renders as a note inside this block, so it
+  // must not turn a complete read yellow.
+  const clean = missing.length === 0
+  return (
+    <SheetReportBlock
+      title="Czego nie odczytaliśmy z arkusza Google"
+      status={clean ? 'ok' : 'warn'}
+      verdict={
+        clean
+          ? 'Wszystkie kolumny, których szukamy, są w arkuszu.'
+          : `Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`
+      }
+    >
+      {missing.length > 0 && (
+        <ReportTable headers={['Kolumna', 'Dlaczego', 'Skutek']}>
+          {missing.map((column) => (
+            <ReportRow
+              key={column.label}
+              label={`„${column.label}"`}
+              cells={[
+                { content: MISSING_COLUMN_REASONS[column.reason], tone: 'text-muted-foreground' },
+                { content: column.consequence, tone: 'text-amber-600' },
+              ]}
+            />
+          ))}
+        </ReportTable>
+      )}
+      <SheetColumnPicker
+        investmentId={investmentId}
+        missing={missing.map((column) => column.field)}
+        pointed={columns.pointedFields}
+        candidates={columns.candidates}
+        onSaved={onMappingSaved}
+      />
+    </SheetReportBlock>
+  )
+}
+
+function RetainedBlock({ retained }: { retained: ImportReportT['retained'] }) {
+  const clean = retained.length === 0
+  return (
+    <SheetReportBlock
+      title="Prace, których nie ma w arkuszu Google"
+      status={clean ? 'ok' : 'warn'}
+      verdict={
+        clean
+          ? 'Każda praca z kosztorysu jest też w arkuszu.'
+          : `${retained.length} ${itemNoun(retained.length)} zostanie zachowanych — nic nie jest usuwane. Jeśli jest ich nieoczekiwanie dużo, sprawdź, czy w arkuszu nie zmieniła się nazwa sekcji.`
+      }
+    >
+      {!clean && (
+        <ReportFold summary={`Zobacz, które prace zostaną (${retained.length})`}>
+          <ItemList items={retained} />
+        </ReportFold>
+      )}
+    </SheetReportBlock>
+  )
+}
+
+/**
+ * Two summary rows, two different meanings when one of them disagrees — and only the first is a
+ * doubt about the read. „wartość netto" faces our own pricing of the same column, so a difference
+ * there says we misread a cena or a rabat. „R netto" faces the etapy, which the import is about to
+ * replace: a difference there is the two sides holding different progress, not a fault in either.
+ */
+function TotalsBlock({
+  totals,
+  mismatched,
+}: {
+  totals: ImportReportT['totals']
+  mismatched: FooterComparisonT[]
+}) {
+  return (
+    <SheetReportBlock
+      title="Porównanie sum"
+      status={mismatched.length === 0 ? 'ok' : 'warn'}
+      verdict={totalsVerdict(mismatched)}
+    >
+      <ComparisonTable>
+        {totals.map((total) => (
+          <ComparisonRow
+            key={total.key}
+            label={total.label}
+            sheet={
+              total.sheetValue === null ? (
+                <span className="text-muted-foreground">nie znaleziono</span>
+              ) : (
+                formatPLN(total.sheetValue)
+              )
+            }
+            app={formatPLN(total.appValue)}
+            delta={total.delta === null || total.matches ? null : formatPLN(total.delta)}
+          />
+        ))}
+      </ComparisonTable>
+    </SheetReportBlock>
+  )
+}
+
+/**
+ * „wartość netto" first: it is the only one of the two that doubts the read itself, and a wrong cena
+ * makes every other figure in the dialog wrong too. A difference on „R netto" is not a fault at all —
+ * it is the two sides holding different etapy, which is precisely what the import replaces. A stale
+ * SUM in the owner's own footer is common enough that blocking on any of this would make the button
+ * useless exactly where it is needed, so neither line stops the import.
+ */
+function totalsVerdict(mismatched: FooterComparisonT[]): string {
+  if (mismatched.some((total) => total.key === 'plannedNet'))
+    return 'Nasz odczyt prac nie daje sumy, którą arkusz Google ma w podsumowaniu — sprawdź ceny i rabaty. Pobranie jest nadal możliwe.'
+  if (mismatched.some((total) => total.key === 'executedNet'))
+    return 'Arkusz Google i ta aplikacja mają rozpisane różne etapy — to właśnie tę różnicę pobranie zastąpi danymi z arkusza.'
+  return 'Podsumowanie arkusza Google zgadza się z tym, co policzyliśmy z jego prac.'
 }

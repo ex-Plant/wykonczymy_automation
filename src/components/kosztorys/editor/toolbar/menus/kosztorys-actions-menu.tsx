@@ -10,6 +10,7 @@ import {
   History,
   Redo2,
   Save,
+  Scale as ScaleIcon,
   Share2,
   SheetIcon,
   Undo2,
@@ -19,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -27,8 +29,8 @@ import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosz
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
-import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
-import { previewKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
+import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-compare-dialog'
+import { compareWithSheet, type SheetCompareResultT } from '@/lib/actions/kosztorys-import'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { toastMessage } from '@/lib/utils/toast'
@@ -48,13 +50,14 @@ function MenuItemBody({ label, description }: { label: string; description: stri
 // The Save-preset dialog is a controlled sibling of the menu, not a child of DropdownMenuContent —
 // onSelect closes the menu, so opening the dialog from inside it would fight the menu for focus.
 export function KosztorysActionsMenu() {
-  const { investmentId, onOpenVersions, onTreeReplaced, undo, redo, canUndo, canRedo } =
+  const { investmentId, onOpenVersions, onTreeReplaced, openImport, undo, redo, canUndo, canRedo } =
     useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   const [reloadOpen, setReloadOpen] = useState(false)
-  const [importPreview, setImportPreview] = useState<ImportPreviewT | null>(null)
-  const [importLoaded, setImportLoaded] = useState(false)
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [compareResult, setCompareResult] = useState<SheetCompareResultT | null>(null)
+  const [compareError, setCompareError] = useState<string | null>(null)
+  const [compareLoaded, setCompareLoaded] = useState(false)
   const [versionOpen, setVersionOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
@@ -86,22 +89,32 @@ export function KosztorysActionsMenu() {
       .finally(() => setShareLoaded(true))
   }
 
-  // Fired on the click for the same Radix reason as handleOpenShare: a programmatic `open` never
-  // triggers onOpenChange, so the dialog cannot fetch its own report.
-  function handleOpenImport() {
-    setImportOpen(true)
-    setImportLoaded(false)
-    setImportPreview(null)
-    void previewKosztorysImport(investmentId)
+  // Same Radix reason as handleOpenShare. The refresh rides along with the read, so a successful
+  // fetch MAY have written rows — only then does the grid need reseeding. Signalling on every open
+  // would arm a remount that has nothing to remount for, and it would fire on the next unrelated
+  // edit instead, taking the owner's search and sort with it.
+  // Also the re-read after the owner points a column, which is why it does not touch `open`.
+  function readCompare() {
+    setCompareLoaded(false)
+    setCompareResult(null)
+    setCompareError(null)
+    void compareWithSheet(investmentId)
       .then((res) => {
-        setImportPreview(res.success ? res.data : null)
-        if (!res.success) toastMessage(res.error, 'error', 6000)
+        setCompareResult(res.success ? res.data : null)
+        setCompareError(res.success ? null : res.error)
+        if (res.success && (res.data.refresh?.updated ?? 0) + (res.data.refresh?.cleared ?? 0) > 0)
+          onTreeReplaced?.()
       })
       .catch(() => {
-        setImportPreview(null)
-        toastMessage('Nie udało się odczytać arkusza', 'error')
+        setCompareResult(null)
+        setCompareError('Nie udało się odczytać arkusza Google.')
       })
-      .finally(() => setImportLoaded(true))
+      .finally(() => setCompareLoaded(true))
+  }
+
+  function handleOpenCompare() {
+    setCompareOpen(true)
+    readCompare()
   }
 
   return (
@@ -114,6 +127,7 @@ export function KosztorysActionsMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel>Edycja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
             <Undo2 />
             <MenuItemBody label="Cofnij" description="Cmd/Ctrl+Z" />
@@ -123,6 +137,7 @@ export function KosztorysActionsMenu() {
             <MenuItemBody label="Ponów" description="Cmd/Ctrl+Shift+Z" />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Wersje</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => setVersionOpen(true)}>
             <Save />
             <MenuItemBody
@@ -138,6 +153,7 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Szablony</DropdownMenuLabel>
           <DropdownMenuItem onSelect={handleOpenPreset}>
             <FileStack />
             <MenuItemBody
@@ -145,7 +161,6 @@ export function KosztorysActionsMenu() {
               description="Zapisz jako wzór do użycia na innych inwestycjach."
             />
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setReloadOpen(true)}>
             <FileDown />
             <MenuItemBody
@@ -153,14 +168,24 @@ export function KosztorysActionsMenu() {
               description="Zastąp całą rozpiskę zapisanym szablonem."
             />
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleOpenImport}>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
+          <DropdownMenuItem onSelect={openImport}>
             <SheetIcon />
             <MenuItemBody
               label="Pobierz z arkusza Google…"
               description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
             />
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleOpenCompare}>
+            <ScaleIcon />
+            <MenuItemBody
+              label="Porównaj z arkuszem…"
+              description="Sprawdź, czy arkusz i aplikacja liczą to samo, i odśwież zapisane Pomiary z natury."
+            />
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel>Klient</DropdownMenuLabel>
           <DropdownMenuItem asChild>
             <Link href={`/podglad-klienta/${investmentId}`} target="_blank">
               <Eye />
@@ -190,16 +215,14 @@ export function KosztorysActionsMenu() {
         onOpenChange={setPresetOpen}
         existingPresets={existingPresets}
       />
-      <SheetImportDialog
+      <SheetCompareDialog
         investmentId={investmentId}
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        preview={importPreview}
-        loaded={importLoaded}
-        onImported={() => {
-          setImportPreview(null)
-          onTreeReplaced?.()
-        }}
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        result={compareResult}
+        error={compareError}
+        loaded={compareLoaded}
+        onMappingSaved={readCompare}
       />
       <ReloadFromPresetDialog
         investmentId={investmentId}

@@ -16,8 +16,10 @@ const matchingTotal: FooterComparisonT = {
 function preview(overrides: Partial<ImportPreviewT> = {}): ImportPreviewT {
   return {
     problems: [],
+    columns: { missingFields: [], candidates: [], pointedFields: [] },
+    failure: null,
     report: {
-      columns: [],
+      missingColumns: [],
       counts: { sections: 2, items: 9, stages: 3 },
       rateDecisions: [],
       retained: [],
@@ -47,6 +49,36 @@ describe('evaluateImportGate', () => {
   it('blocks the import when a column could not be resolved', () => {
     const gate = evaluateImportGate(
       preview({ problems: ['Nie znalazłem kolumny „Cena j.m." w zakładce kosztorys_robocizny.'] }),
+      true,
+      false,
+    )
+
+    expect(gate.confirmDisabled).toBe(true)
+  })
+
+  it('lets the import through when only an optional column went unresolved', () => {
+    // An optional column nobody recognised is data quietly missing from the kosztorys, not a refusal
+    // to read the sheet — the pick offered beside it is an improvement, never a gate.
+    const gate = evaluateImportGate(
+      preview({
+        columns: {
+          missingFields: [{ field: 'comment', required: false, reason: 'absent' }],
+          candidates: [],
+          pointedFields: [],
+        },
+      }),
+      true,
+      false,
+    )
+
+    expect(gate.confirmDisabled).toBe(false)
+  })
+
+  it('blocks the import when the sheet itself could not be reached', () => {
+    // The failure travels as data so the dialog can render the address to share the sheet with, so a
+    // loaded preview is not proof the sheet was read.
+    const gate = evaluateImportGate(
+      preview({ failure: { reason: 'forbidden', serviceAccountEmail: 'sa@example.iam' } }),
       true,
       false,
     )

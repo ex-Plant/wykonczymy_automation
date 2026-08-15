@@ -7,7 +7,6 @@ import {
 import { rowTotalQtyDone, rowValueForView } from '@/lib/kosztorys/settlement-rows'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
-import { roundToCents } from '@/lib/utils/round-to-cents'
 import type {
   KosztorysStageT,
   KosztorysV2RowT,
@@ -134,19 +133,4 @@ export function sectionSubtotalsForView(
   if (grandClientNet > 0)
     for (const s of result) s.share = clientBySection.get(s.sectionId)!.executed / grandClientNet
   return result
-}
-
-/**
- * Sections with nothing executed yet — the ones the filter menu's „Zwiń puste sekcje" row unticks,
- * and the count it shows.
- *
- * "Pusta" is no WORK DONE, not no positions: a section with no items is cascade-deleted, so that
- * state never reaches the grid.
- *
- * Rounded before the test, not compared raw: `net` is a summed float, and a section that cancels to
- * zero (a kwota rabat equal to its own gross) lands on ±1e-15 rather than 0 — which strict equality
- * reads as "not empty", so the section stays expanded and the menu's count is short by one.
- */
-export function emptySectionIds(subtotals: SectionSubtotalT[]): Set<number> {
-  return new Set(subtotals.filter((s) => roundToCents(s.net) === 0).map((s) => s.sectionId))
 }

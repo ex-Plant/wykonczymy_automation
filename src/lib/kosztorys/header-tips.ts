@@ -18,6 +18,8 @@ export const HEADER_TIPS: Record<string, string> = {
   note: 'Naciśnij enter lub kliknij dwukrotnie aby otworzyć.\n\nShift+Enter — nowa linia\nEnter — zapisz i przejdź niżej\nEscape — cofnij zmiany\nTab — zakończ edycję',
   stageQtySum:
     'Pomiar — ilość faktycznie wykonana.\nSuma ilości z etapów widocznych w tym widoku: w „Kliencie" ze wszystkich, w widoku ekipy tylko z etapów rozliczanych z tą ekipą.',
+  divergence:
+    'Różnica między „Pomiarem z natury" z arkusza Google a sumą etapów rozpisanych w tej aplikacji.\nNa plusie = arkusz Google pokazuje więcej, niż rozpisano tutaj na etapy.',
   priceCoeff:
     '1 = tyle co Cena klienta \n 0.65 = 65% ceny klienta · 1.2 = 120% ceny klienta.\n\nSzary kursywą = dziedziczony (z sekcji lub domyślny z inwestycji). Wpisanie własnego przestawia wiersz na „własny mnożnik".\n„—" Kwota stała, mnożnik się nie stosuje',
   priceMode: 'Auto = mnożnik dziedziczony - domyślny z inwestycji lub ustawiony dla danej sekcji.',

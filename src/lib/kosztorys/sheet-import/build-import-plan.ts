@@ -1,4 +1,3 @@
-import { columnLetter } from '@/lib/google/sheet-configs'
 import { SNAPSHOT_SCHEMA_VERSION, type SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type {
   KosztorysItemT,
@@ -6,28 +5,56 @@ import type {
   KosztorysStageT,
   StageProgressT,
 } from '@/lib/kosztorys/types'
-import { FIELD_LABELS, HEADER_BLOCK_ROWS, fold, type ColumnFieldT } from './columns'
+import {
+  FIELD_LABELS,
+  fold,
+  isOptionalField,
+  type ColumnFieldT,
+  type OptionalFieldT,
+} from './columns'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
+import { keyItems } from './item-key'
 import { parseRobocizna } from './parse-robocizna'
-import { ROBOCIZNA_TAB, type ImportGridsT } from './read-sheet'
-import { resolveRates, resolveRobocizna } from './resolve-columns'
+import { type ImportGridsT } from './read-sheet'
 import {
-  readRateRows,
+  resolveRobocizna,
+  type MissingFieldT,
+  type UnresolvedColumnsT,
+  type UnresolvedReasonT,
+} from './resolve-columns'
+import {
+  isReported,
+  readRateTabs,
   resolveItemRates,
-  type RateResolutionT,
-  type RateTabT,
-  type ReportedRateKindT,
+  type ReportedRateResolutionT,
 } from './resolve-rates'
 
-export type ColumnReportT = { tab: string; field: string; column: string; header: string }
+export type MissingColumnT = {
+  field: ColumnFieldT
+  label: string
+  reason: UnresolvedReasonT
+  consequence: string
+}
+
+// What the kosztorys loses when an optional column can't be read. The report names the loss, not the
+// column: „nie znaleziono kolumny rabat" is a fact about the sheet, „każda praca wejdzie bez rabatu"
+// is what the owner is actually deciding whether to accept.
+const MISSING_COLUMN_CONSEQUENCES: Record<OptionalFieldT, string> = {
+  discount: 'prace wejdą bez rabatu',
+  measuredQty: 'nie będzie z czym porównać etapów przy „Porównaj z arkuszem"',
+  comment: 'komentarze z arkusza nie wejdą',
+}
 
 export type RetainedItemT = { section: string; description: string }
 
-export type ReportedRateResolutionT = RateResolutionT & { kind: ReportedRateKindT }
+export type { ReportedRateResolutionT }
 
 export type ImportReportT = {
-  columns: ColumnReportT[]
+  // Only the columns that did NOT come through — every required column is resolved or the import is
+  // refused, so the recognised ones say nothing worth reading.
+  missingColumns: MissingColumnT[]
   counts: { sections: number; items: number; stages: number }
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
   // overwhelming majority and say nothing — listing them would bury the handful that need an eye.
@@ -39,15 +66,11 @@ export type ImportReportT = {
   warnings: string[]
 }
 
-export type ImportPlanT =
-  | { ok: true; tree: SnapshotPayloadT; report: ImportReportT }
-  | { ok: false; problems: string[] }
+export type ImportFailureT = { ok: false; problems: string[] } & UnresolvedColumnsT
 
-// The praca's identity across a re-import: which section it sits in, what it is called, and which
-// repetition of that name it is. Ids can't do this job — the sheet has none — and the row number
-// can't either, since inserting one praca would re-key every praca below it.
-const itemKey = (section: string, description: string | null, occurrence: number): string =>
-  `${fold(section)}|${fold(description)}#${occurrence}`
+export type ImportPlanT =
+  | ({ ok: true; tree: SnapshotPayloadT; report: ImportReportT } & UnresolvedColumnsT)
+  | ImportFailureT
 
 function groupBy<ValueT, KeyT>(
   values: readonly ValueT[],
@@ -62,78 +85,41 @@ function groupBy<ValueT, KeyT>(
   return grouped
 }
 
-function keyItems(
-  items: readonly KosztorysItemT[],
-  sectionName: (item: KosztorysItemT) => string,
-): Map<string, KosztorysItemT> {
-  const seen = new Map<string, number>()
-  const byKey = new Map<string, KosztorysItemT>()
-  for (const item of items) {
-    const section = sectionName(item)
-    const base = `${fold(section)}|${fold(item.description)}`
-    const occurrence = seen.get(base) ?? 0
-    seen.set(base, occurrence + 1)
-    byKey.set(itemKey(section, item.description, occurrence), item)
-  }
-  return byKey
-}
-
 /**
  * Everything the preview shows and everything apply writes, from the sheet grids plus the
  * investment's current tree. Both actions call this so the two can never disagree about what an
  * import would do — the same reason `buildSyncPlan` exists on the materials side.
  */
-export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloadT): ImportPlanT {
-  const resolvedRobocizna = resolveRobocizna(grids.robocizna)
-  if (!resolvedRobocizna.ok) return { ok: false, problems: resolvedRobocizna.problems }
-
-  const columns: ColumnReportT[] = Object.entries(resolvedRobocizna.matchedLabels).map(
-    ([field, header]) => ({
-      tab: ROBOCIZNA_TAB,
-      field: FIELD_LABELS[field as ColumnFieldT],
-      column: columnLetter(resolvedRobocizna.columns[field as ColumnFieldT] ?? 0),
-      header,
-    }),
-  )
-  // Neither carries a header of its own — they are located by offset from the first etap column, and
-  // that offset is the single most fragile guess in the whole resolver. Showing it lets the owner
-  // catch a misread before it becomes 400 mis-sectioned prace.
-  columns.push(
-    {
-      tab: ROBOCIZNA_TAB,
-      field: 'nazwa sekcji',
-      column: columnLetter(resolvedRobocizna.columns.section),
-      header: '(bez nagłówka)',
-    },
-    {
-      tab: ROBOCIZNA_TAB,
-      field: 'opis pracy',
-      column: columnLetter(resolvedRobocizna.columns.description),
-      header: '(bez nagłówka)',
-    },
-  )
-
-  const warnings: string[] = []
-  const rateTabs: RateTabT[] = []
-  for (const tab of grids.rateTabs) {
-    const resolved = resolveRates(tab.grid)
-    if (!resolved.ok) {
-      warnings.push(`Pominięto zakładkę „${tab.title}": ${resolved.problems.join(' ')}`)
-      continue
-    }
-    rateTabs.push({ title: tab.title, rows: readRateRows(tab.grid, tab.formulas, resolved) })
-    for (const [field, column] of [
-      ['cennik z narzędziami', resolved.columns.wToolsRate],
-      ['cennik bez narzędzi', resolved.columns.ownToolsRate],
-    ] as const) {
-      columns.push({
-        tab: tab.title,
-        field,
-        column: columnLetter(column),
-        header: String(tab.grid[HEADER_BLOCK_ROWS - 1]?.[column] ?? '').trim(),
-      })
+export function buildImportPlan(
+  grids: ImportGridsT,
+  currentTree: SnapshotPayloadT,
+  mapping?: SheetColumnMappingT,
+): ImportPlanT {
+  const resolvedRobocizna = resolveRobocizna(grids.robocizna, mapping)
+  const { missingFields, candidates, pointedFields } = resolvedRobocizna
+  if (!resolvedRobocizna.ok) {
+    return {
+      ok: false,
+      problems: resolvedRobocizna.problems,
+      missingFields,
+      candidates,
+      pointedFields,
     }
   }
+
+  // A resolved header can only be missing optional fields — a required one refuses the import above.
+  const missingColumns: MissingColumnT[] = missingFields
+    .filter((missing): missing is MissingFieldT & { field: OptionalFieldT } =>
+      isOptionalField(missing.field),
+    )
+    .map(({ field, reason }) => ({
+      field,
+      label: FIELD_LABELS[field],
+      reason,
+      consequence: MISSING_COLUMN_CONSEQUENCES[field],
+    }))
+
+  const { tabs: rateTabs, warnings } = readRateTabs(grids.rateTabs)
 
   // Not a degraded import but a wrong one: with no cennik at all, `resolveItemRates` returns
   // `missing` for every praca and `deriveOverride` writes a flat 0 zł subcontractor cost onto each —
@@ -146,6 +132,9 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
         'Nie odczytałem żadnego cennika („zakres pracy") — wszystkie stawki podwykonawców trafiłyby do kosztorysu jako 0 zł.',
         ...warnings,
       ],
+      missingFields,
+      candidates,
+      pointedFields,
     }
   }
 
@@ -218,8 +207,8 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
         // The sheet has no column for either, so a matched praca keeps what the app holds rather
         // than having it blanked by an import that never had an opinion. `sheetMeasuredQty` gets
         // the opposite treatment on purpose — it rides the spread above and OVERWRITES, because it
-        // is the sheet's own claim: a re-import must revive a row the owner dismissed with „etapy
-        // są prawdą" if the sheet still disagrees.
+        // is the sheet's own claim and the app never edits it: whatever the sheet says today is the
+        // answer, including „nothing typed here any more".
         note: current?.note ?? null,
         hiddenInExport: current?.hiddenInExport ?? false,
       })
@@ -279,16 +268,17 @@ export function buildImportPlan(grids: ImportGridsT, currentTree: SnapshotPayloa
       // `restoreKosztorys` rewrites whatever it is handed.
       settings: currentTree.settings,
     },
+    missingFields,
+    candidates,
+    pointedFields,
     report: {
-      columns,
+      missingColumns,
       counts: {
         sections: parsed.sections.length,
         items: parsed.items.length,
         stages: stages.length,
       },
-      rateDecisions: rates.filter(
-        (rate): rate is ReportedRateResolutionT => rate.kind !== 'agree' && rate.kind !== 'missing',
-      ),
+      rateDecisions: rates.filter(isReported),
       retained,
       totals: compareFooterTotals(grids.robocizna, resolvedRobocizna, parsed),
       warnings,

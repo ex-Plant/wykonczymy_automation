@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { FilterTriggerButton } from '@/components/transfers/filter-trigger-button'
+import { FilterTriggerButton } from '@/components/filters/filter-trigger-button'
 import { cn } from '@/lib/utils/cn'
 
 type FilterOptionT = { value: string; label: string }

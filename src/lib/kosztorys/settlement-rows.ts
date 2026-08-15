@@ -50,16 +50,17 @@ export function rowValueForView(
  * instead, the figure says something ("how much of the offer is left") and can go negative, which is
  * also information: more was executed than was offered.
  *
- * `null`, not 0, when there is no przedmiar — 0 would claim the row is settled. The guard is `> 0`
- * rather than `=== 0` because a cleared cell writes null, which strict equality walks past.
+ * A row with no przedmiar is an offer of ZERO, not an absent answer, so it reads −wykonane rather
+ * than being withheld. Withholding it made the total claim work was still owed while the executed
+ * value that cancels it sat outside the sum: inv. 31 read +64 311 zł „left" on a kosztorys already
+ * 23 602 zł past its own offer. `?? 0` because a cleared cell writes null.
  */
 export function rowRemainingForView(
   row: KosztorysV2RowT,
   stages: KosztorysStageT[],
   view: PriceViewT,
-): number | null {
-  if (!(row.plannedQty > 0)) return null
-  return rowPlannedNetForView(row, view) - rowValueForView(row, stages, view)
+): number {
+  return netForQtyForView(row, row.plannedQty ?? 0, view) - rowValueForView(row, stages, view)
 }
 
 /**
@@ -82,7 +83,7 @@ export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStag
 // half the kosztorys on float noise alone (0.1 + 0.2 ≠ 0.3). Half a hundredth of a unit is below
 // what anyone types and worth pennies at any real price — the money reconciliation's grosz-exact
 // tolerance is a different axis and does not transfer here.
-const QTY_TOLERANCE = 0.005
+export const QTY_TOLERANCE = 0.005
 
 export type MeasureDiscrepancyT = {
   sheetQty: number
@@ -98,9 +99,9 @@ export type MeasureDiscrepancyT = {
  * What the imported sheet claimed as „Pomiar z natury" against what the etapy actually say.
  *
  * `null` — including for a difference under the tolerance — means „nothing to answer for": either
- * the sheet made no claim (never imported, a formula, or dismissed with „etapy są prawdą"), or the
- * two agree. Anything else is a live rozjazd, and it shrinks by itself as quantities are typed into
- * the etapy.
+ * the sheet made no claim (never imported, or a formula rather than a hand-typed measurement), or
+ * the two agree. Anything else is work the sheet says was measured and the etapy have yet to
+ * account for, and it shrinks by itself as quantities are typed into the etapy.
  *
  * Hard-anchored to the client plane like `hasStagesOverPlanned`, for the same reason: the sheet's
  * pomiar has no plane, so measuring one crew's share against it would report a rozjazd on work the

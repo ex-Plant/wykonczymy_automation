@@ -1137,3 +1137,37 @@ makes the two definitions coincide, not the coincidence.
 **Do not "fix" the aggregate's definition to match.** `totalIncome` is a **company-level** figure —
 `/raporty` needs both legacy deposit types inside bucket `income`. It is only correct per-investment
 because of the EX-557 invariant, and its name says none of that.
+
+## This codebase assumes "money may be signed, quantities may not" — a negative quantity fails to ZERO instead of propagating
+
+Scoping a design that would have carried a difference as a negative stage quantity (EX-686) turned up
+the same shape everywhere: the kosztorys layer has clamps on money, and on quantities it has **`> 0`
+truthiness tests**. `netForQtyForView` returns `0` for a non-positive total qty, so an item whose stages
+carry real work prices at 0 zł; `stageValueForView` is a qty _share_ of the row net rather than
+`qty × price`, so one negative contributor inflates every sibling stage above what it delivered; and
+`stageAxisForView` zeroes each stage's net while still accumulating its qty, breaking the
+Σ-per-stage == row-net invariant its own comment declares. The SQL twins clamp identically, so
+`test:parity` stays green with both planes wrong the same way.
+
+**The rule.** Before introducing a signed quantity anywhere, grep the consumers for `> 0` rather than
+for clamps. A clamp is a decision someone made; a truthiness test is an assumption nobody wrote down,
+and it converts your new state into a plausible zero instead of an error. Negative _money_ is already
+a normal rendered state here, deliberately unclamped and explained to the owner in Polish — that
+precedent does not transfer.
+
+**The tell that this is worth checking:** a golden-master spec whose per-investment fingerprint
+includes `sum(sp.qty)` **skips silently** when the input hash moves. Green-but-blind is the loud
+failure; no-signal-at-all is the quiet one.
+
+## A snapshot taken "inside the transaction, before the wipe" is not a transaction-consistent read
+
+`captureAutoSnapshot` → `serializeKosztorys` → `getKosztorysTree` goes through the cached query layer,
+which opens its own connection. So calling it from inside a `withPayloadTransaction` block — with that
+block's `txDb` handle threaded through every write around it — still reads whatever the query layer
+currently returns, not the rows the transaction is about to destroy. Nothing at the call site says so;
+the handle you passed for the writes simply isn't the one the read used.
+
+Every caller that reuses the snapshot-before-write pattern inherits this: import, restore, presets.
+In practice the tags are fresh at click time so it hasn't produced a wrong undo yet, which is exactly
+why it will stay unnoticed. **If a restore or an import ever comes back subtly wrong — the right shape,
+stale contents — start here**, not in the write path.

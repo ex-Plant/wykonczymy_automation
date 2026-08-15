@@ -3,7 +3,7 @@ project: 'Wykonczymy — off-sheets phase 1'
 version: 1
 status: draft
 created: 2026-06-12
-updated: 2026-07-26
+updated: 2026-08-14
 prd_version: 1
 main_goal: quality
 top_blocker: none
@@ -183,7 +183,7 @@ Bands: **editor parity S-01–S-10** → **financial-plane bridge S-11–S-12** 
 | S-12 | robocizna-from-kosztorys        | see investment robocizna + rabat derived from the kosztorys, not manual transfers       | S-11               | — (owner request)             | done     | —          |
 | S-13 | kosztorys-client-share          | share a live, read-only client view of a kosztorys via a token link (EX-532)            | S-01, S-02, S-04   | — (owner request)             | done     | —          |
 | S-14 | kosztorys-export                | CSV-export the kosztorys (WYSIWYG snapshot; no print/PDF)                               | S-01               | FR-008                        | deferred | —          |
-| S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | ready    | —          |
+| S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | done     | —          |
 | S-16 | editor-e2e-coverage             | (gate) rely on automated E2E over the editor before release                             | F-01, S-01…S-15    | FR-013                        | deferred | —          |
 | S-17 | financial-core-smoke            | trust an automated smoke that transfers update balances/figures                         | F-01               | FR-012, FR-011, FR-015, US-02 | deferred | —          |
 | S-18 | kosztorys-hardening             | quality / perf / a11y hardening pass before cutover                                     | S-16               | — (POC)                       | deferred | —          |
@@ -520,7 +520,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Unknowns:**
   - ~~Importer trigger (PRD Q8).~~ **Resolved (2026-08-11):** a button in the editor's "Opcje" menu, invoked per investment on demand — not a one-shot migration.
 - **Risk:** Reads sheets, writes only new tables (additive). Guardrail: live sheet data must survive untouched until safely imported (FR-016). **Note (2026-07-10):** no longer depends on the cutover (S-19) — moved ahead of it into the import/export band per the reorder; import now happens before, not after, new investments go sheet-less.
-- **Status:** ready — shaped 2026-08-11, `context/changes/2026-08-11-kosztorys-importer/`. Column resolution is by header label, validated across all 45 real sheets; 2 need an owner header fix.
+- **Status:** done (EX-417) — shaped 2026-08-11, archived 2026-08-14 → `context/archive/2026-08-11-kosztorys-importer/`. Column resolution is by header label, validated across all 45 real sheets; 2 need an owner header fix. **Follow-up shipped 2026-08-13**, `context/archive/2026-08-13-sheet-live-compare/`: „Porównaj z arkuszem Google" — one live read that reports both sides' totals, the prace only one side holds, the stale stawki, and the classes of formula our reading has to refuse — **and refreshes the stored Pomiar z natury on the way**, since „keep the stale copy" is not an answer anyone would pick once the sheet has just been read. The separate „Zaciągnij pomiary z arkusza" action was folded into it and deleted, as was the per-row „Etapy są prawdą" escape hatch, both on the owner's ruling. The „Rozjazd" column became **„Pozostało do rozliczenia"** — the same subtraction, reframed from a defect to a balance line. E2E deferred to EX-687 (`e2e-backlog`).
 
 ### S-16: Editor E2E coverage (release gate)
 
@@ -679,3 +679,4 @@ Lifted from PRD `## Non-Goals` — explicitly out of scope for this arc.
 - **S-04: Subcontractor pricing (markup coefficient + override)** (was S-11) — Absorbed by S-01 (`kosztorys-sections-items`), which ported the POC's final `calc.ts` derivation verbatim; marked done here (no separate change folder). Lesson: —.
 - **S-05: VAT per investment (netto entry, brutto computed)** — Archived 2026-07-10 → `context/archive/2026-07-10-kosztorys-vat/`. Lesson: a migration is "verified" only when the running app reads the new column — `payload migrate` "Done." is necessary, not sufficient.
 - **S-12: Robocizna + rabat derived from the kosztorys** — Archived 2026-07-26 → `context/archive/2026-07-19-robocizna-from-kosztorys/`. Lesson: —.
+- **S-15: Importer for existing sheet kosztorysy** — EX-417 Done. Archived 2026-08-14 → `context/archive/2026-08-11-kosztorys-importer/`. Follow-up „Porównaj z arkuszem Google" archived alongside → `context/archive/2026-08-13-sheet-live-compare/` and `context/archive/2026-08-13-pomiar-bez-etapu/`. Deferred E2E → EX-671 + EX-687 (`e2e-backlog`); comparison blind to a global rabat → EX-691; 12 manual checks left unticked in `manual-checks.md`. Lesson: column resolution must key on the **header label**, never an offset — across 45 real sheets „Przedmiar" lives in six different columns and stage headers get renamed to crew names.

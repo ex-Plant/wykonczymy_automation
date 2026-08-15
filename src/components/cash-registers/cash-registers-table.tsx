@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ActiveFilterButton } from '@/components/ui/active-filter-button'
-import { FilterMultiSelect } from '@/components/transfers/filter-multi-select'
+import { FilterMultiSelect } from '@/components/filters/filter-multi-select'
 import { Tags, User } from 'lucide-react'
 import { ColumnToggle } from '@/components/ui/column-toggle'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'

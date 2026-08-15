@@ -3,6 +3,7 @@
 import 'react-datasheet-grid/dist/style.css'
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { SheetIcon } from 'lucide-react'
 // `DynamicDataSheetGrid`, not `DataSheetGrid`: the library aliases the plain name to
 // StaticDataSheetGrid, which snapshots `columns` via useState at mount (EX-422).
 import { DynamicDataSheetGrid } from 'react-datasheet-grid'
@@ -14,10 +15,13 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
+import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
+import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
+import { engagedConditionsOfKind, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -85,8 +89,10 @@ export function KosztorysEditorBody({
     subcontractorDue,
     sort,
     search,
-    divergedOnly,
-    setDivergedOnly,
+    engagedConditionIds,
+    resetFilters,
+    ordinalByRowId,
+    sectionRows,
     setSearch,
     collapsedSectionIds,
     toggleSectionCollapsed,
@@ -96,11 +102,18 @@ export function KosztorysEditorBody({
 
   useUndoKeyboard(editor.undo, editor.redo)
 
-  // The count comes off the full-dataset `subtotals`, so a search filter narrows the visible rows
-  // without changing what the section says it holds.
+  const { openImport, importDialogProps } = useSheetImport({ investmentId, onTreeReplaced })
+
+  // Both figures come off the full-dataset `subtotals`, so a search filter narrows the visible rows
+  // without changing what the section says it holds or what it is worth.
   const sectionHeader = useMemo(
     () => ({
-      figures: new Map(subtotals.map((section) => [section.sectionId, section.itemCount])),
+      figures: new Map(
+        subtotals.map((section) => [
+          section.sectionId,
+          { itemCount: section.itemCount, net: section.net },
+        ]),
+      ),
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
@@ -127,16 +140,22 @@ export function KosztorysEditorBody({
       ),
     [columns, columnTotals, sectionHeader, sectionFooter],
   )
-  const { rows: bodyRows, ordinalByRowId } = useMemo(
+  const bodyRows = useMemo(
     () =>
       buildSectionBandRows(viewRows, {
         enabled: sort?.scope !== 'global',
         collapsedSectionIds,
-        foldSuppressed: search.trim() !== '' || divergedOnly,
+        foldSuppressed: search.trim() !== '',
+        sections: sectionRows,
       }),
-    [viewRows, sort, collapsedSectionIds, search, divergedOnly],
+    [viewRows, collapsedSectionIds, sort, search, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
+  // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
+  // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
+  const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
+  const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
@@ -167,6 +186,7 @@ export function KosztorysEditorBody({
         tree,
         onOpenVersions,
         onTreeReplaced,
+        openImport: preview ? undefined : openImport,
       }}
     >
       <div
@@ -229,12 +249,26 @@ export function KosztorysEditorBody({
               title="Kosztorys jest pusty"
               // The client view renders no toolbar, so it has no „Dodaj" menu to point at.
               description={preview ? undefined : 'Dodaj sekcję lub etap z menu „Dodaj" powyżej.'}
-            />
+            >
+              {/* Typing a rozpiska by hand is the rarer of the two starts — the sheet already holds
+                  it. Buried in „Opcje" it is the one moment nobody finds it. */}
+              {!preview && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pointer-events-auto"
+                  onClick={openImport}
+                >
+                  <SheetIcon />
+                  Pobierz z arkusza Google…
+                </Button>
+              )}
+            </EmptyState>
           )}
           {/* The sibling state: rows exist, the search matched none of them. Gated on the search term
               rather than on `viewRows` alone so the „Wyczyść" advice can never be offered to someone
               who never typed anything. Unreachable in the client view, which renders no search field. */}
-          {viewRows.length === 0 && search.trim() !== '' && (
+          {subtotals.length > 0 && viewRows.length === 0 && search.trim() !== '' && (
             <EmptyState
               className="pointer-events-none absolute inset-0"
               title="Brak wyników"
@@ -251,25 +285,37 @@ export function KosztorysEditorBody({
               </Button>
             </EmptyState>
           )}
-          {/* The filter emptying itself is the goal state, not a dead end — every rozjazd has been
-              answered, so say that rather than leave a blank grid. Search takes precedence above:
-              with both on, „nie pasuje do…" is the more specific explanation. */}
-          {viewRows.length === 0 && search.trim() === '' && divergedOnly && (
-            <EmptyState
-              className="pointer-events-none absolute inset-0"
-              title="Brak rozjazdów"
-              description="Każda pozycja zgadza się z pomiarem z arkusza."
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="pointer-events-auto"
-                onClick={() => setDivergedOnly(false)}
+          {/* A filter emptying itself is the goal state, not a dead end — nothing is left in the
+              state it was looking for, so say that rather than leave a blank grid. Search takes
+              precedence above: with both on, „nie pasuje do…" is the more specific explanation. */}
+          {/* Gated on the RECOGNISED conditions, not on the raw persisted set: an id left over from a
+              condition a later release removed is a no-op for the grid, and counting it here would
+              title the overlay „Brak pozycji " with nothing after it. */}
+          {subtotals.length > 0 &&
+            viewRows.length === 0 &&
+            search.trim() === '' &&
+            (emptyByFilter || engagedDiagnostics.length > 0) && (
+              <EmptyState
+                className="pointer-events-none absolute inset-0"
+                title={
+                  emptyByFilter
+                    ? 'Wszystkie pozycje schowane'
+                    : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
+                }
+                description={
+                  emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
+                }
               >
-                Pokaż wszystkie pozycje
-              </Button>
-            </EmptyState>
-          )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="pointer-events-auto"
+                  onClick={resetFilters}
+                >
+                  Zresetuj filtry
+                </Button>
+              </EmptyState>
+            )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
               full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
           <KosztorysTotalsPanel
@@ -309,6 +355,8 @@ export function KosztorysEditorBody({
             />,
             document.body,
           )}
+        {/* One instance for both triggers — the „Opcje" menu and the empty-kosztorys screen. */}
+        {!preview && <SheetImportDialog {...importDialogProps} />}
       </div>
     </KosztorysEditorProvider>
   )

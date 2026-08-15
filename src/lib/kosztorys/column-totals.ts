@@ -39,8 +39,6 @@ export function columnTotalsForRows(
   let plannedNet = 0
   let discount = 0
   let plannedQty = 0
-  // „Pozostało": rows with no przedmiar read `null` — no offer to subtract from — and are skipped, so
-  // the total sums what the column actually shows rather than a 0 it never claimed.
   let remaining = 0
   for (const row of rows) {
     // One pomiar per row, priced twice: the value and the rabat taken on it must stand on the same
@@ -50,9 +48,7 @@ export function columnTotalsForRows(
     plannedNet += rowPlannedNetForView(row, view)
     discount += rowDiscountForView(row, qtyDone, view)
     plannedQty += row.plannedQty ?? 0
-    const rowRemaining = rowRemainingForView(row, stages, view)
-    if (rowRemaining === null) continue
-    remaining += rowRemaining
+    remaining += rowRemainingForView(row, stages, view)
   }
 
   totals.set('net', net)

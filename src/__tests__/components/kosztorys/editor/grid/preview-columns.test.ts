@@ -90,27 +90,19 @@ describe('preview columns', () => {
     expect(previewIds()).not.toContain('note')
   })
 
-  // The rozjazd between the imported sheet pomiar and the etapy is the company's own bookkeeping
-  // doubt about its own numbers. The payload DOES carry the reference figure (preview-kosztorys.ts
-  // ships the whole tree by decision), so the render is the gate — and the gate is the tone plus the
-  // tip, not the column: the client still needs „Pomiar z natury" itself.
-  it('never surfaces the sheet rozjazd to the client', () => {
+  // What the sheet measured against what the etapy carry is the company's own bookkeeping, and the
+  // payload DOES carry the reference figure (preview-kosztorys.ts ships the whole tree by decision),
+  // so the render is the gate — and the gate is the tip, not the column: the client still needs
+  // „Pomiar z natury" itself.
+  it('never surfaces the sheet pomiar to the client', () => {
     const diverged = { ...ROW, sheetMeasuredQty: 95, [stageKey(7)]: 55 }
     const columnData = (opts: Partial<BuildV2ColumnsOptsT>) =>
       buildV2Columns({ view: 'client', stages: STAGES, ...opts }).find(
         (column) => column.id === 'stageQtySum',
-      )?.columnData as {
-        tone: (r: typeof diverged) => string
-        tip?: (r: typeof diverged) => string
-      }
+      )?.columnData as { tip?: (r: typeof diverged) => string }
 
-    const owner = columnData({})
-    expect(owner.tone(diverged)).toBe('danger')
-    expect(owner.tip?.(diverged)).toContain('Arkusz')
-
-    const client = columnData({ previewVisible: true })
-    expect(client.tone(diverged)).toBe('muted')
-    expect(client.tip?.(diverged)).toBeNull()
+    expect(columnData({}).tip?.(diverged)).toContain('Pomiar z arkusza Google')
+    expect(columnData({ previewVisible: true }).tip?.(diverged)).toBeNull()
   })
 
   // The picker is the preference selectV2Columns just stopped honouring, so a preview must not carry

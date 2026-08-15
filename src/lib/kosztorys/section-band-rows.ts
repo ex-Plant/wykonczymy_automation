@@ -1,71 +1,73 @@
+import { groupBySection } from '@/lib/kosztorys/row-ops'
 import { makeSectionFooterRow, makeSectionHeaderRow } from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 const EMPTY_COLLAPSED: ReadonlySet<number> = new Set()
 
 type OptsT = {
-  // Off under a whole-kosztorys sort: that order interleaves sections, and a band presumes its
-  // section's rows are contiguous — so the rows pass through bandless rather than mis-bracketed.
-  enabled: boolean
   collapsedSectionIds: ReadonlySet<number>
-  // Any row filter narrows to the rows that matched, so a fold left over from before it would hide
-  // hits behind a band that gives no hint they exist — the grid would read as "no results". The fold
-  // is suppressed while a filter is on (search, „tylko rozjechane") and restored when it clears.
+  // False under a sort scoped to the whole kosztorys: grouping presumes section-contiguous rows,
+  // which such a sort breaks. Bands are then dropped entirely AND the collapsed set ignored — a
+  // collapsed section with no band left to re-expand it would be rows the user can't get back.
+  // A sort scoped to the sections keeps the rows contiguous, so the bands stay.
+  enabled: boolean
+  // True while a search is on: a fold left over from before it would hide hits behind a band that
+  // gives no hint they exist, and the search field is not where the user would look for the cause.
+  // The conditions do NOT suppress it — they and the folds are ticked in the same „Filtry" menu, so
+  // the fold is visible there and suppressing it would make those checkmarks describe nothing.
   foldSuppressed: boolean
+  // Every section in the base dataset, in display order, each represented by one of its rows (the
+  // band reads name and colour off it). Taken from the FULL dataset, not the filtered view, so the
+  // sections keep their original order regardless of which ones the filter thinned out.
+  sections: readonly KosztorysV2RowT[]
+}
+
+export function sectionRepresentatives(rows: readonly KosztorysV2RowT[]): KosztorysV2RowT[] {
+  const bySection = new Map<number, KosztorysV2RowT>()
+  for (const row of rows) if (!bySection.has(row.sectionId)) bySection.set(row.sectionId, row)
+  return [...bySection.values()]
 }
 
 /**
- * The grid's row list with one band opening each section and a totals band closing it, plus the
- * gutter's item ordinals.
+ * A pozycja's number: its rank among ALL item rows in display order.
  *
- * Ordinals number the rows actually rendered, so the visible column reads 1…N with no gaps; bands
- * carry no ordinal at all (a band is not a position).
+ * Computed over the unfiltered, unsorted dataset on purpose — a number that renumbered itself per
+ * view would make a filter invisible (1…N either way) and a sort would silently reassign every
+ * position. Numbers skipping is the signal that something is hidden.
+ */
+export function baseOrdinals(rows: readonly KosztorysV2RowT[]): Map<number, number> {
+  return new Map(rows.map((row, index) => [row.id, index + 1]))
+}
+
+/**
+ * The grid's row list with one band opening each section and a totals band closing it.
+ *
+ * A section the filter emptied is dropped whole — band, sum and all. A header over a footer with
+ * nothing between says only „tu nic nie ma", and a strict filter (five hits across a dozen sections)
+ * would bury its own results under eleven such frames.
  */
 export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
-  { enabled, collapsedSectionIds, foldSuppressed }: OptsT,
-): { rows: KosztorysV2RowT[]; ordinalByRowId: Map<number, number> } {
-  const ordinalByRowId = new Map<number, number>()
-  // With no bands there is no control left to expand a folded section, so a fold would hide rows
-  // for good — every row renders, numbered straight through.
-  if (!enabled) {
-    for (const row of viewRows) ordinalByRowId.set(row.id, ordinalByRowId.size + 1)
-    return { rows: viewRows, ordinalByRowId }
-  }
-  const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
-  const rows: KosztorysV2RowT[] = []
-  // A band's id is a pure function of its section, so a section appearing in two blocks would emit
-  // the same id twice — duplicate keys in dsg's virtualizer. Rows normally arrive section-contiguous;
-  // these keep the failure to a mis-grouped block rather than a corrupt render if one ever doesn't.
-  const headered = new Set<number>()
-  const footered = new Set<number>()
-  // A whole row, not a sectionId: the footer reads the section's name and colour off it.
-  let openRow: KosztorysV2RowT | null = null
+  { collapsedSectionIds, enabled, foldSuppressed, sections }: OptsT,
+): KosztorysV2RowT[] {
+  if (!enabled) return viewRows
 
-  function closeOpenSection() {
-    if (openRow == null) return
-    const section = openRow
-    openRow = null
+  const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
+  const bySection = groupBySection(viewRows)
+
+  const rows: KosztorysV2RowT[] = []
+  for (const section of sections) {
+    const group = bySection.get(section.sectionId)
+    if (!group) continue
+    bySection.delete(section.sectionId)
+    rows.push(makeSectionHeaderRow(section))
     // A collapsed section shows its header alone: the footer sums the rows it hides, so it goes
     // with them.
-    if (collapsed.has(section.sectionId) || footered.has(section.sectionId)) return
-    footered.add(section.sectionId)
-    rows.push(makeSectionFooterRow(section))
+    if (collapsed.has(section.sectionId)) continue
+    rows.push(...group, makeSectionFooterRow(section))
   }
-
-  for (const row of viewRows) {
-    if (openRow != null && openRow.sectionId !== row.sectionId) closeOpenSection()
-    if (!headered.has(row.sectionId)) {
-      headered.add(row.sectionId)
-      // Emitted from the first row that survived the filter, so a section whose rows were all
-      // filtered away contributes no band — footer included, since the block never opens.
-      rows.push(makeSectionHeaderRow(row))
-    }
-    openRow = row
-    if (collapsed.has(row.sectionId)) continue
-    ordinalByRowId.set(row.id, ordinalByRowId.size + 1)
-    rows.push(row)
-  }
-  closeOpenSection()
-  return { rows, ordinalByRowId }
+  // A row whose section the list never named would otherwise vanish from the grid — render it
+  // bandless rather than drop it.
+  for (const orphans of bySection.values()) rows.push(...orphans)
+  return rows
 }

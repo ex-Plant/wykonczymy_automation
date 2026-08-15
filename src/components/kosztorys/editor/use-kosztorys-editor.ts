@@ -50,19 +50,18 @@ import {
   type ItemRemovalPlanT,
 } from '@/lib/kosztorys/delete-policy'
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
-import {
-  emptySectionIds,
-  sectionSubtotalsForView,
-  stageAxisForView,
-} from '@/lib/kosztorys/settlement-aggregates'
+import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
+import { filterRows, sortRows, sortRowsWithinSections } from '@/lib/kosztorys/row-view'
 import {
-  divergedRows,
-  filterRows,
-  sortRows,
-  sortRowsWithinSections,
-} from '@/lib/kosztorys/row-view'
+  ROW_CONDITIONS,
+  applyRowConditions,
+  countMatching,
+  sectionIdsWhereAllMatch,
+} from '@/lib/kosztorys/row-conditions'
+import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
+import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
@@ -81,7 +80,6 @@ import {
   addSectionAction,
   addStageAction,
   applyPercentRabatToAllItemsAction,
-  clearSheetMeasuredQtyAction,
   insertItemAction,
   insertSectionAction,
   removeItemAction,
@@ -138,6 +136,9 @@ const UNDO_COALESCE_MS = 700
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
 const SETTINGS_PENDING_KEY = 'kosztorys-settings'
+// One frozen instance, so the preview's suppressed set is referentially stable across renders and
+// the memos below don't recompute on every keystroke.
+const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -183,13 +184,15 @@ export function useKosztorysEditor({
   // plane would simply render it.
   const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
-  // „Pokaż tylko rozjechane" — a working mode while old sheets are being entered into the app, not a
-  // preference: persisted, it would greet the owner with a near-empty grid and no explanation of what
-  // hid the rows. Same reasoning as the section fold below. Forced off under the preview like `view`
-  // above — the rozjazd is the company's own bookkeeping doubt and has no business in a client's
-  // document.
-  const [divergedOnly, setDivergedOnly] = useState(false)
-  const divergedOnlyActive = !preview && divergedOnly
+  // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
+  // is still on today. Suppressed wholesale under the preview like `view` above: every condition here
+  // is the company's own bookkeeping question and has no business in a client's document.
+  const {
+    engagedIds: persistedConditionIds,
+    toggle: toggleCondition,
+    clear: clearConditions,
+  } = useEngagedConditions(investmentId)
+  const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
@@ -199,6 +202,14 @@ export function useKosztorysEditor({
   const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
+  // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
+  // the conditions and the folds alike. Two half-resets would leave the user clicking one and still
+  // facing a short grid.
+  function resetFilters() {
+    clearConditions()
+    setCollapsedSectionIds(new Set())
+  }
+
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel). During the drag we only show a vertical guide
   // (guideX = cursor X), without touching the grid.
@@ -347,6 +358,29 @@ export function useKosztorysEditor({
   // so the panel and the dialog can never cite different amounts for the same etap.
   const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
+  // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
+  // survives it is a count of itself, and the number stops being able to reach zero to say the
+  // problem is gone. Zero under the preview, like the filters themselves — the client's document
+  // carries none of this. Read by the toolbar's counters, which is why a diagnostic's button can
+  // vanish at zero while the column it points at stays (see `hasSheetMeasure` below).
+  const conditionCounts = useMemo(() => {
+    const ctx = { stages }
+    return new Map(
+      ROW_CONDITIONS.map((condition) => [
+        condition.id,
+        preview ? 0 : countMatching(rows, condition.id, ctx),
+      ]),
+    )
+  }, [preview, rows, stages])
+
+  // Gates the „Pozostało do rozliczenia" column. Not the rozjazd count: the column has to survive
+  // its own zero, or it becomes a counter the owner clears by typing quantities into etapy — which
+  // is the app declaring work done that nobody did.
+  const hasSheetMeasure = useMemo(
+    () => !preview && rows.some((row) => row.sheetMeasuredQty != null),
+    [preview, rows],
+  )
+
   const columnOpts = {
     view,
     stages,
@@ -374,10 +408,10 @@ export function useKosztorysEditor({
     onInsertSection: editorOnly(handleInsertSection),
     onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
-    onClearSheetMeasuredQty: editorOnly(handleClearSheetMeasuredQty),
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
+    hasSheetMeasure,
     readOnly: preview,
     previewVisible: preview,
   }
@@ -396,12 +430,22 @@ export function useKosztorysEditor({
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
   // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort. Sits above viewRows because „Zwiń puste sekcje" reads its net.
+  // the filter/sort.
   const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
-  // Feeds the filter menu's „Zwiń puste sekcje" row — both its count and the ids it unticks. That
-  // row folds by unticking rather than filtering rows on its own, so the picker's checkmarks stay
-  // the single description of what the grid shows.
-  const emptySections = useMemo(() => emptySectionIds(subtotals), [subtotals])
+  // Sections every one of whose pozycje match a liftable condition — the ids each „Sekcje …" row in
+  // the menu ticks and unticks as a block. „Wszystkie co do jednej", never „suma = 0": a section fully
+  // executed but unpriced sums to zero and is exactly the one nobody wants folded away. A mixed
+  // section belongs to neither half of a pair and so stays visible under both — by design, since
+  // „sekcje bez przedmiaru" cannot honestly name a section that has some.
+  const foldableSectionIds = useMemo(() => {
+    const ctx = { stages }
+    return new Map(
+      ROW_CONDITIONS.filter((condition) => condition.sectionLabel !== null).map((condition) => [
+        condition.id,
+        sectionIdsWhereAllMatch(rows, condition.id, ctx),
+      ]),
+    )
+  }, [rows, stages])
 
   function toggleSectionCollapsed(sectionId: number) {
     setCollapsedSectionIds((prev) => {
@@ -411,24 +455,22 @@ export function useKosztorysEditor({
     })
   }
 
-  // View = search + rozjazd + sort. Sections are not filtered here: hiding one is a fold, applied
-  // further down by buildSectionBandRows so the band survives its own collapse.
+  // View = search + engaged conditions + sort. Sections are not filtered here: hiding one is a fold,
+  // applied further down by buildSectionBandRows so the band survives its own collapse.
   const viewRows = useMemo(() => {
-    let filtered = filterRows(rows, search)
-    if (divergedOnlyActive) filtered = divergedRows(filtered, stages)
+    const filtered = applyRowConditions(filterRows(rows, search), engagedConditionIds, {
+      stages,
+    })
     if (!sort) return filtered
     const getValue = (r: KosztorysV2RowT) => columnSortValue(r, sort.field, view, stages)
     return sort.scope === 'global'
       ? sortRows(filtered, getValue, sort.dir)
       : sortRowsWithinSections(filtered, getValue, sort.dir)
-  }, [rows, search, divergedOnlyActive, sort, view, stages])
-  // Counted over the whole dataset, not over `viewRows`: once the filter is on, a count of what
-  // survives it is a count of itself, and the number stops being able to say the rozjazd is gone.
-  // Zero under the preview, like the filter above — the client's document carries none of this.
-  const divergedCount = useMemo(
-    () => (preview ? 0 : divergedRows(rows, stages).length),
-    [preview, rows, stages],
-  )
+  }, [rows, search, engagedConditionIds, sort, view, stages])
+  // Both read the FULL dataset in display order, which is what makes a filter visible: the numbers
+  // skip over the rows it hid, and the sections keep their original order however it thinned them.
+  const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
+  const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
   const totalNet = useMemo(() => subtotals.reduce((s, x) => s + x.net, 0), [subtotals])
@@ -462,9 +504,9 @@ export function useKosztorysEditor({
   const sectionColumnTotals = useMemo(
     () =>
       new Map(
-        [...groupBySection(rows)].map(([sectionId, sectionRows]) => [
+        [...groupBySection(rows)].map(([sectionId, rowsOfSection]) => [
           sectionId,
-          columnTotalsForRows(sectionRows, stages, view, tree.vatRate),
+          columnTotalsForRows(rowsOfSection, stages, view, tree.vatRate),
         ]),
       ),
     [rows, stages, view, tree.vatRate],
@@ -1039,27 +1081,6 @@ export function useKosztorysEditor({
     handleSetSectionField(sectionId, 'sectionColor', color, 'Zmiana koloru sekcji')
   }
 
-  // „Etapy są prawdą" — the escape hatch from the rozjazd list for a pozycja whose sheet pomiar is
-  // simply wrong. Reverted on a server rejection, unlike the cosmetic section fields above: the row
-  // vanishing from the list is the whole feedback, so a silently failed write would read as done.
-  // No undo push — a re-import brings the reference back, which is the documented way out.
-  async function handleClearSheetMeasuredQty(row: KosztorysV2RowT) {
-    const before = row.sheetMeasuredQty
-    if (before == null) return
-    patchRows(
-      (r) => r.id === row.id,
-      (r) => ({ ...r, sheetMeasuredQty: null }),
-    )
-    const res = await clearSheetMeasuredQtyAction(row.id)
-    if (!res.success) {
-      patchRows(
-        (r) => r.id === row.id,
-        (r) => ({ ...r, sheetMeasuredQty: before }),
-      )
-      toastMessage(res.error ?? 'Nie udało się usunąć pomiaru z arkusza', 'warning', 4000)
-    }
-  }
-
   function handleRenameSection(sectionId: number, name: string) {
     handleSetSectionField(sectionId, 'sectionName', name, 'Zmiana nazwy sekcji')
   }
@@ -1414,10 +1435,13 @@ export function useKosztorysEditor({
     setView,
     search,
     setSearch,
-    divergedOnly: divergedOnlyActive,
-    setDivergedOnly,
-    divergedCount,
-    emptySections,
+    engagedConditionIds,
+    toggleCondition,
+    resetFilters,
+    conditionCounts,
+    foldableSectionIds,
+    ordinalByRowId,
+    sectionRows,
     // handlers
     onChange,
     handleAddItem,

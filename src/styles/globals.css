@@ -368,6 +368,16 @@
     0 1px var(--dsg-border-color);
 }
 
+/* The band only LOOKS merged — the label still lives in the „Opis prac" cell alone (that's where
+   sectionHeaderSlot paints it), so it clipped at that column's width no matter how empty the rest of
+   the row was. The cells beside it are blank, so the label is let out over them: `overflow: visible`
+   to stop the clip, `z-index` because dsg positions cells absolutely and a later sibling's background
+   would otherwise paint over the escaped text. */
+.kosztorys-grid .dsg-row.kosztorys-section-header .dsg-cell.kosztorys-identity-cell {
+  overflow: visible;
+  z-index: 1;
+}
+
 /* Same specificity as the rule above, so it must stay after it to keep the gutter's rail. */
 .kosztorys-grid .dsg-row.kosztorys-section-header .dsg-cell-gutter {
   box-shadow:
@@ -396,15 +406,6 @@
     inset calc(-1 * var(--section-rail-width)) 0 0 var(--section-rail, transparent),
     inset 0 var(--section-footer-divider-width) 0 var(--section-rail, var(--color-border)),
     1px 0 var(--dsg-border-color);
-}
-
-/* „Sekcja" gives up its right edge so it and „Opis prac" read as the one cell holding „Razem …" —
-   dsg has no colspan, and suppressing that edge is how a merged cell is spelled. Only the horizontal
-   rule survives. */
-.kosztorys-grid .dsg-row.kosztorys-section-footer .dsg-cell.kosztorys-section-name-cell {
-  box-shadow:
-    inset 0 var(--section-footer-divider-width) 0 var(--section-rail, var(--color-border)),
-    0 1px var(--dsg-border-color);
 }
 
 /*https://tailwindcss.com/docs/adding-custom-styles/*

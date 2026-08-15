@@ -9,16 +9,13 @@ import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 // blank, so covering one later is an entry, not a branch here.
 export type SectionFooterContextT = {
   figures: Map<number, Map<string, number>>
-  // Which column carries „Razem <sekcja>" — see sectionFooterLabelColumnId.
   labelColumnId: string | undefined
 }
 
-// The label starts under „Sekcja" rather than „Opis prac", so it opens right where the section's own
-// name reads in the rows above. dsg has no colspan, so the span is spelled the only way it can be:
-// „Sekcja" prints the label and simply overflows „Opis prac" (which renders blank and, per
-// globals.css, drops its vertical rule) — the two read as one merged cell, „Akcje" stays its own.
-// „Sekcja" can be hidden by the picker, hence a candidate list rather than a fixed id.
-const LABEL_COLUMN_CANDIDATES = ['sectionName', IDENTITY_COLUMN_ID]
+// The label sits under „Opis prac", where the eye already reads what each row is, and that column is
+// wide enough (min 360px) to hold it without spilling into its neighbour. It can be hidden by the
+// picker, hence a candidate list rather than a fixed id — „Sekcja" then takes over.
+const LABEL_COLUMN_CANDIDATES = [IDENTITY_COLUMN_ID, 'sectionName']
 
 export function sectionFooterLabelColumnId(
   columnIds: readonly (string | undefined)[],
@@ -36,11 +33,11 @@ export function SectionFooterCell({
   context: SectionFooterContextT
 }) {
   if (columnId != null && columnId === context.labelColumnId)
-    // `z-10` is what lets the overflow show: dsg cells are absolutely positioned siblings, so the
-    // ones to the right would otherwise paint their background over the spill. Stays under the
-    // sticky gutter (dsg gives it z-index 30), which must keep clipping the label on a scroll right.
+    // No spill out of the cell (unlike the opening band's label): „Opis prac" is wide enough to hold
+    // the name, and the footer's own vertical rules are what line its figures up with the columns
+    // above — letting the label cross one would break that alignment for a name it rarely needs.
     return (
-      <div className="text-foreground relative z-10 flex size-full items-center gap-1 px-2 text-sm font-bold whitespace-nowrap">
+      <div className="text-foreground flex size-full items-center gap-1 overflow-hidden px-2 text-sm font-bold whitespace-nowrap">
         <span>Razem</span>
         <span>{rowData.sectionName ?? ''}</span>
       </div>
