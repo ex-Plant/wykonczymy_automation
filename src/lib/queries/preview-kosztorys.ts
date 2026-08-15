@@ -6,6 +6,8 @@ import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
+import { getClientViewSettings } from '@/lib/queries/kosztorys-client-view'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
 import {
@@ -100,9 +102,22 @@ const cachedPreviewKosztorysEditorData = unstable_cache(
  * The token→investment lookup stays uncached (one indexed query) so revoking a link takes effect on
  * the next request rather than when a cache tag happens to be busted.
  */
+export type PreviewKosztorysDataT = KosztorysEditorDataT & { clientView: ClientViewSettingsT }
+
+// Beside the cached payload, never inside it: one indexed read means a settings save is live on the
+// next request with no cache tag to bust, and changing the firm-wide default does not invalidate
+// every investment's tree payload.
+async function withClientView(investmentId: number): Promise<PreviewKosztorysDataT> {
+  const [data, clientView] = await Promise.all([
+    cachedPreviewKosztorysEditorData(investmentId),
+    getClientViewSettings(investmentId),
+  ])
+  return { ...data, clientView }
+}
+
 export async function getPreviewKosztorysByToken(
   token: string,
-): Promise<KosztorysEditorDataT | null> {
+): Promise<PreviewKosztorysDataT | null> {
   const payload = await getPayload({ config })
   const shares = await payload.find({
     collection: 'kosztorys-shares',
@@ -118,7 +133,7 @@ export async function getPreviewKosztorysByToken(
 
   const investmentId =
     typeof share.investment === 'object' ? share.investment.id : Number(share.investment)
-  return cachedPreviewKosztorysEditorData(investmentId)
+  return withClientView(investmentId)
 }
 
 /**
@@ -126,9 +141,11 @@ export async function getPreviewKosztorysByToken(
  * would serve, without a link having to exist yet. The projection beneath is identical, which is what
  * makes the preview trustworthy as a check.
  */
-export async function getPreviewKosztorysById(investmentId: number): Promise<KosztorysEditorDataT> {
+export async function getPreviewKosztorysById(
+  investmentId: number,
+): Promise<PreviewKosztorysDataT> {
   const session = await requireAuth(MANAGEMENT_ROLES)
   if (!session.success) throw new Error(session.error)
 
-  return cachedPreviewKosztorysEditorData(investmentId)
+  return withClientView(investmentId)
 }

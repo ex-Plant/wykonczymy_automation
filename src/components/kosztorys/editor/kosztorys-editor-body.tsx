@@ -37,6 +37,7 @@ import {
   type UndoRedoApiT,
 } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 
 const ITEM_ROW_HEIGHT = 32
 const SECTION_BAND_ROW_HEIGHT = 52
@@ -45,6 +46,8 @@ type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim header,
   // kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
   preview?: boolean
+  // Arrives with the preview payload only; the owner's editor renders the full grid regardless.
+  clientView?: ClientViewSettingsT
   // Optional because the read-only client body omits it and falls back to NOOP_UNDO_REDO.
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
@@ -63,13 +66,14 @@ export function KosztorysEditorBody({
   investmentLoss,
   depositTransactions,
   preview = false,
+  clientView,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
   onTreeReplaced,
   workers,
   ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
+  const editor = useKosztorysEditor({ investmentId, tree, preview, clientView, undoRedo, workers })
   const {
     gridRef,
     gridHeight,

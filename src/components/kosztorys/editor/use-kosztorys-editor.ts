@@ -10,6 +10,7 @@ import {
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
@@ -119,6 +120,9 @@ type ArgsT = {
   // PRICE PLANE (client prices vs a subcontractor's); the render mode is what pins that plane, so the
   // two must not share the word (owner ruling 2026-07-28).
   preview?: boolean
+  // The investment's stored client-view settings, resolved server-side. Only consumed under
+  // `preview` — on the owner's editor it is absent, and the settings dialog reads its own copy.
+  clientView?: ClientViewSettingsT
   undoRedo: UndoRedoApiT
   // Roster for the etap header's worker picker. Absent on the client share path, which never renders
   // a menu at all.
@@ -140,6 +144,8 @@ const SETTINGS_PENDING_KEY = 'kosztorys-settings'
 // One frozen instance, so the preview's suppressed set is referentially stable across renders and
 // the memos below don't recompute on every keystroke.
 const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
+// The one condition a client's document may engage, frozen for the same reason.
+const CLIENT_EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set(['client-empty'])
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -148,6 +154,7 @@ export function useKosztorysEditor({
   investmentId,
   tree,
   preview = false,
+  clientView,
   undoRedo,
   workers,
 }: ArgsT) {
@@ -193,7 +200,13 @@ export function useKosztorysEditor({
     toggle: toggleCondition,
     clear: clearConditions,
   } = useEngagedConditions(investmentId)
-  const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
+  // The one exception is the client condition, which is not a filter the client chose but the
+  // owner's stored decision about what this document contains.
+  const engagedConditionIds = preview
+    ? clientView?.hideEmptyRows
+      ? CLIENT_EMPTY_CONDITION_IDS
+      : EMPTY_CONDITION_IDS
+    : persistedConditionIds
   const [sort, setSort] = useState<V2SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
@@ -387,6 +400,12 @@ export function useKosztorysEditor({
     [preview, rows],
   )
 
+  // Subtracts from the allowlist, never adds to it — the ceiling stays `PREVIEW_VISIBLE_COLUMNS`.
+  const previewHiddenColumns = useMemo(
+    () => (preview && clientView ? new Set(clientView.hiddenColumns) : undefined),
+    [preview, clientView],
+  )
+
   const columnOpts = {
     view,
     stages,
@@ -421,6 +440,7 @@ export function useKosztorysEditor({
     hasSheetMeasure,
     readOnly: preview,
     previewVisible: preview,
+    previewHiddenColumns,
   }
   const { columns, columnToggleItems, columnBaseRanks } = buildV2Grid(columnOpts)
   // A column sort must not outlive its column. A money-axis or view toggle can drop the sorted

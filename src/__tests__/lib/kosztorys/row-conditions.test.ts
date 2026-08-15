@@ -3,6 +3,7 @@ import {
   ROW_CONDITIONS,
   countMatching,
   applyRowConditions,
+  engagedConditionsOfKind,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
@@ -81,6 +82,14 @@ describe('the conditions, each on its boundary', () => {
     )
   })
 
+  it('„bez przedmiaru i bez wykonanej pracy" needs BOTH axes empty', () => {
+    expect(matches('client-empty', row({ plannedQty: 0 }))).toBe(true)
+    // Priced-but-unstarted: the przedmiar total still counts it, so it must stay.
+    expect(matches('client-empty', row({ plannedQty: 5 }))).toBe(false)
+    // No przedmiar but etap work entered: the executed total still counts it.
+    expect(matches('client-empty', row({ plannedQty: 0, [stageKey(2)]: 3 }))).toBe(false)
+  })
+
   it('splits into working filters and diagnostics, and only filters lift to a section', () => {
     for (const condition of ROW_CONDITIONS) {
       expect(condition.sectionLabel === null).toBe(condition.kind === 'diagnostic')
@@ -141,6 +150,24 @@ describe('applyRowConditions — each kind pulls the direction its wording promi
     expect(
       ids(applyRowConditions(divergedRows, ['no-client-price', 'measure-diverged'], CTX)),
     ).toEqual([5, 6])
+  })
+
+  it('hides what the client condition matches, like a filter', () => {
+    const clientRows = [
+      row({ id: 1, plannedQty: 0 }),
+      row({ id: 2, plannedQty: 0, [stageKey(1)]: 4 }),
+      row({ id: 3, plannedQty: 10 }),
+    ]
+
+    expect(ids(applyRowConditions(clientRows, ['client-empty'], CTX))).toEqual([2, 3])
+  })
+
+  // The owner cannot untick it for themselves, and a client never sees a menu at all.
+  it('keeps the client condition out of the „Filtry" menu', () => {
+    expect(engagedConditionsOfKind(new Set(['client-empty']), 'filter')).toEqual([])
+    expect(engagedConditionsOfKind(new Set(['client-empty']), 'client').map((c) => c.id)).toEqual([
+      'client-empty',
+    ])
   })
 
   it('is a no-op with nothing active — and hands back the same array, not a copy', () => {

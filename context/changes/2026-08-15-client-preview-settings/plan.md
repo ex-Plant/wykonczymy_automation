@@ -465,16 +465,16 @@ only when this ships.
 
 #### Automated
 
-- [x] 1.1 Resolver spec passes
-- [x] 1.2 Types regenerate cleanly
-- [x] 1.3 Migration applies against the local DB
+- [x] 1.1 Resolver spec passes — 1301267f
+- [x] 1.2 Types regenerate cleanly — 1301267f
+- [x] 1.3 Migration applies against the local DB — 1301267f
 
 ### Phase 2: The render honours the settings
 
 #### Automated
 
-- [ ] 2.1 Condition spec passes
-- [ ] 2.2 Preview column spec passes (ceiling holds, stored keys subtract)
+- [x] 2.1 Condition spec passes
+- [x] 2.2 Preview column spec passes (ceiling holds, stored keys subtract)
 
 ### Phase 3: „Ustawienia podglądu…" dialog
 

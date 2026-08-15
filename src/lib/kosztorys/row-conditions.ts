@@ -3,7 +3,10 @@ import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 export type RowConditionCtxT = { stages: KosztorysStageT[] }
 
-export type RowConditionKindT = 'filter' | 'diagnostic'
+// 'client' is a third kind, not a third mechanism: it hides like a filter, but it is engaged by the
+// investment's stored client-view settings rather than by a reading gesture, so the „Filtry" menu
+// (which lists `kind === 'filter'`) cannot show it and the owner cannot untick it for themselves.
+export type RowConditionKindT = 'filter' | 'diagnostic' | 'client'
 
 export type RowConditionT = {
   id: string
@@ -67,6 +70,19 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     matches: (row, ctx) => rowTotalQtyDone(row, ctx.stages, 'client') > 0,
   },
   {
+    id: 'client-empty',
+    label: 'bez przedmiaru i bez wykonanej pracy',
+    sectionLabel: 'Sekcje bez przedmiaru i bez wykonanej pracy',
+    kind: 'client',
+    // One rule rather than the two filters above, because each of those is safe for only one of the
+    // two figures a client reads: hiding no-work rows drops a priced-but-unstarted pozycja while the
+    // przedmiar total still counts it, and hiding no-przedmiar rows drops a pozycja carrying etap work
+    // while the executed total still counts it. A row empty on BOTH axes adds zero to both totals, so
+    // hiding it moves no figure and needs no warning.
+    matches: (row, ctx) =>
+      !(row.plannedQty > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
+  },
+  {
     id: 'no-client-price',
     label: 'bez ceny j.m.',
     // A defect, not a state: a section fully executed but unpriced is exactly what must not be folded
@@ -114,8 +130,10 @@ export function applyRowConditions(
 ): KosztorysV2RowT[] {
   const active = [...engagedIds].map((id) => BY_ID.get(id)).filter((c) => c !== undefined)
   if (active.length === 0) return rows
-  const hiders = active.filter((condition) => condition.kind === 'filter')
+  // Keepers are named explicitly and everything else hides: a fourth kind added later must not fall
+  // through into „keep only what it matches", which would blank the grid rather than hide a row.
   const keepers = active.filter((condition) => condition.kind === 'diagnostic')
+  const hiders = active.filter((condition) => condition.kind !== 'diagnostic')
 
   return rows.filter(
     (row) =>

@@ -1,21 +1,14 @@
 'use server'
 
 import { ownerOnlyAction } from '@/lib/actions/owner-only-action'
-import { PREVIEW_VISIBLE_COLUMNS } from '@/lib/kosztorys/column-config'
-import type { ClientViewSettingsT } from '@/lib/queries/kosztorys-client-view'
+import {
+  sanitizeClientViewSettings as sanitize,
+  type ClientViewSettingsT,
+} from '@/lib/kosztorys/client-view-settings'
 import type { ActionResultT } from '@/types/action'
 
 // Same narrowing as the share actions, for the same reason: this decides what a client is served.
 const FORBIDDEN = 'Tylko właściciel może zmieniać ustawienia podglądu klienta'
-
-// The ceiling is enforced on write as well as on read, so a stored row never carries a key that
-// would start meaning something if the allowlist later grew.
-function sanitize(settings: ClientViewSettingsT): ClientViewSettingsT {
-  return {
-    hiddenColumns: settings.hiddenColumns.filter((key) => PREVIEW_VISIBLE_COLUMNS.has(key)),
-    hideEmptyRows: settings.hideEmptyRows,
-  }
-}
 
 export async function saveClientViewSettingsAction(
   investmentId: number,

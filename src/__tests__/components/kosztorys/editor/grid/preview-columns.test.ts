@@ -105,6 +105,41 @@ describe('preview columns', () => {
     expect(columnData({ previewVisible: true }).tip?.(diverged)).toBeNull()
   })
 
+  // The owner's stored choice subtracts from the allowlist; it can never add to it.
+  it('drops the columns the owner hid, and only those', () => {
+    const baseline = previewIds()
+    const visible = previewIds({ previewHiddenColumns: new Set(['unit']) })
+
+    expect(visible).not.toContain('unit')
+    expect(visible).toEqual(baseline.filter((id) => id !== 'unit'))
+  })
+
+  // Keyed by toggleKey like every other gate, so one stored key takes the whole per-etap family —
+  // hiding „Wartość brutto" for etap 1 only would print a grid whose columns disagree per etap.
+  it('takes a per-etap family whole, from its group key', () => {
+    const visible = previewIds({ previewHiddenColumns: new Set(['stageValueGross']) })
+
+    expect(visible).not.toContain('stageValueGross_7')
+    expect(visible).not.toContain('stageValueGross_9')
+    expect(visible).toContain('stageValueNet_7')
+  })
+
+  it('cannot let a stored key add a column outside the allowlist', () => {
+    // A key the client may not see is not a key the settings can flip back on — `keep` only ever
+    // subtracts, so naming `note` here is inert rather than a way in.
+    expect(previewIds({ previewHiddenColumns: new Set(['note']) })).not.toContain('note')
+  })
+
+  it('ignores the hidden set outside the preview', () => {
+    const editorIds = buildV2Columns({
+      view: 'client',
+      stages: STAGES,
+      previewHiddenColumns: new Set(['unit']),
+    }).map((column) => column.id)
+
+    expect(editorIds).toContain('unit')
+  })
+
   // The picker is the preference selectV2Columns just stopped honouring, so a preview must not carry
   // one — an allowlist-filtered list would describe a grid whose columns no longer answer to it.
   it('offers no column picker', () => {

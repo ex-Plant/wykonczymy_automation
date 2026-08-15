@@ -97,4 +97,8 @@ export type BuildV2ColumnsOptsT = {
   // to `view`, which must be 'client' whenever this is set — selectV2Columns throws on the mismatch,
   // and `assertDisclosurePair` says why.
   previewVisible?: boolean
+  // The owner's stored choice of what THIS investment's client does not see. It only ever subtracts
+  // from PREVIEW_VISIBLE_COLUMNS — a key here that the allowlist never allowed cannot reveal
+  // anything, which is what keeps the allowlist a ceiling rather than one of two competing answers.
+  previewHiddenColumns?: ReadonlySet<string>
 }
