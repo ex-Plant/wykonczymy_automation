@@ -283,19 +283,19 @@ describe('strata enters the settlement at face value', () => {
 describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () => {
   it('Łącznie − Rabat − Wpłaty === Do zapłaty on BOTH axes', () => {
     const laborCostsNet = 800 // do zapłaty, po rabacie
-    const rabatNet = 200
+    const discountNet = 200
     const materialsGross = 123 // → 100 netto at 23%
     const depositsTotal = 300
     const vat = 0.23
 
-    const laborCostsNetFromKosztorys = laborCostsNet + rabatNet // 1000, pre-rabat
+    const laborCostsNetFromKosztorys = laborCostsNet + discountNet // 1000, pre-rabat
     const combined = combinedPair(
       laborCostsNetFromKosztorys,
       billedMaterials(justGross(materialsGross), vat),
       vat,
     )
-    const rabat = moneyPair(rabatNet, vat)
-    const wplaty = faceValue(depositsTotal)
+    const discount = moneyPair(discountNet, vat)
+    const deposits = faceValue(depositsTotal)
     const amountDue = computeAmountDue(
       laborCostsNet,
       depositsTotal,
@@ -304,8 +304,8 @@ describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () 
       vat,
     )
 
-    expect(combined.net - rabat.net - wplaty.net).toBeCloseTo(amountDue.net)
-    expect(combined.gross - rabat.gross - wplaty.gross).toBeCloseTo(amountDue.gross)
+    expect(combined.net - discount.net - deposits.net).toBeCloseTo(amountDue.net)
+    expect(combined.gross - discount.gross - deposits.gross).toBeCloseTo(amountDue.gross)
     // Concretely on the brutto axis: Łącznie (1000→1230 + 100) − rabat (200→246) − wpłaty 300.
     expect(amountDue.gross).toBeCloseTo(1230 + 100 - 246 - 300)
   })
@@ -473,19 +473,19 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
   const NET_BILLED = 1000
   const GROSS_BASE = 123
 
-  const lacznie = (materials: { grossBase: number; netBilled: number }, rate: number | null) =>
+  const combined = (materials: { grossBase: number; netBilled: number }, rate: number | null) =>
     combinedPair(1000, billedMaterials(materials, rate), VAT)
 
   it('B1: at a −8% toggle the netto bucket contributes its full amount, not ×0.92', () => {
-    const base = lacznie(justGross(GROSS_BASE), REDUCTION)
-    const withNet = lacznie({ grossBase: GROSS_BASE, netBilled: NET_BILLED }, REDUCTION)
+    const base = combined(justGross(GROSS_BASE), REDUCTION)
+    const withNet = combined({ grossBase: GROSS_BASE, netBilled: NET_BILLED }, REDUCTION)
     expect(withNet.net - base.net).toBeCloseTo(NET_BILLED)
     expect(withNet.net - base.net).not.toBeCloseTo(NET_BILLED / (1 + REDUCTION))
   })
 
   it('the VAT-strip default cannot reach it either', () => {
-    const base = lacznie(justGross(GROSS_BASE), VAT)
-    const withNet = lacznie({ grossBase: GROSS_BASE, netBilled: NET_BILLED }, VAT)
+    const base = combined(justGross(GROSS_BASE), VAT)
+    const withNet = combined({ grossBase: GROSS_BASE, netBilled: NET_BILLED }, VAT)
     expect(withNet.net - base.net).toBeCloseTo(NET_BILLED)
   })
 

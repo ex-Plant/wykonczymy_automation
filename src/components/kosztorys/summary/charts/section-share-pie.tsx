@@ -11,14 +11,14 @@ import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { formatNet } from '@/lib/kosztorys/format'
 
 const BASES: OptionT<SectionPieBaseT>[] = [
-  { value: 'przedmiar', label: 'Przedmiar' },
-  { value: 'wykonane', label: 'Wykonane' },
+  { value: 'planned', label: 'Przedmiar' },
+  { value: 'executed', label: 'Wykonane' },
 ]
 
 // Sekcje as a share-of-whole pie, with a live Przedmiar ↔ Wykonane base toggle. Fed the client-priced,
 // view-invariant subtotals so switching base is a source-selection, never a re-calculation.
 export function SectionSharePie({ subtotals }: { subtotals: SectionSliceInputT[] }) {
-  const [base, setBase] = useState<SectionPieBaseT>('przedmiar')
+  const [base, setBase] = useState<SectionPieBaseT>('planned')
 
   return (
     <SlicePie

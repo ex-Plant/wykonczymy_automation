@@ -52,14 +52,14 @@ const FIXTURE = join(
 const ROB = {
   section: 0, // A — section name, repeated on member rows; authoritative on header rows
   description: 2, // C
-  etapFirst: 3, // D — „1 etap ilość”; ten contiguous columns D–M
+  stageFirst: 3, // D — „1 etap ilość”; ten contiguous columns D–M
   headerMarkPrzedmiar: 13, // N = „x” on a section header (else the Przedmiar quantity)
   headerMarkPomiar: 14, // O = „x” on a section header (else Pomiar z natury)
   unit: 15, // P — j.m.
   clientPrice: 16, // Q — Cena j.m.
-  rabat: 17, // R — rabat as a fraction (0,09 = 9%)
+  discount: 17, // R — rabat as a fraction (0,09 = 9%)
 } as const
-const ETAP_COUNT = 10 // D–M
+const STAGE_COUNT = 10 // D–M
 
 // zakres-pracy-bez-narzędzi column offsets (same A4 origin) — only the two rate columns are read here.
 const RATE = {
@@ -95,7 +95,7 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
   let currentSection = ''
   let nextSectionId = 1
   let nextItemId = 1
-  let maxEtap = 0 // highest 1-based etap index carrying any executed qty — trims empty trailing stages
+  let maxStage = 0 // highest 1-based etap index carrying any executed qty — trims empty trailing stages
 
   robRows.forEach((rob, i) => {
     // A section header marks N or O with „x” and carries the section name in A.
@@ -126,7 +126,7 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
     const rate = rateRows[i] ?? []
     const wTools = deriveOverride(num(rate[RATE.wToolsRate]), clientPrice)
     const ownTools = deriveOverride(num(rate[RATE.ownToolsRate]), clientPrice)
-    const rabat = num(rob[ROB.rabat])
+    const discountFraction = num(rob[ROB.discount])
 
     const itemId = nextItemId++
     items.push({
@@ -137,8 +137,8 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
       unit: str(rob[ROB.unit]) || null,
       plannedQty: num(rob[ROB.headerMarkPrzedmiar]), // N — Przedmiar (a number on data rows)
       sheetMeasuredQty: null,
-      discountType: rabat > 0 ? 'percent' : null,
-      discountValue: rabat > 0 ? round6(rabat * 100) : 0,
+      discountType: discountFraction > 0 ? 'percent' : null,
+      discountValue: discountFraction > 0 ? round6(discountFraction * 100) : 0,
       clientPrice,
       wToolsOverrideType: wTools.type,
       wToolsOverrideValue: wTools.value,
@@ -149,16 +149,16 @@ function buildPayload(robRows: unknown[][], rateRows: unknown[][]): SnapshotPayl
     })
 
     // Per-etap wykonano → stage_progress. Stage id == 1-based etap ordinal (remapped on seed).
-    for (let k = 0; k < ETAP_COUNT; k++) {
-      const qty = num(rob[ROB.etapFirst + k])
+    for (let k = 0; k < STAGE_COUNT; k++) {
+      const qty = num(rob[ROB.stageFirst + k])
       if (qty !== 0) {
         progress.push({ itemId, stageId: k + 1, qtyDone: qty })
-        if (k + 1 > maxEtap) maxEtap = k + 1
+        if (k + 1 > maxStage) maxStage = k + 1
       }
     }
   })
 
-  const stageCount = Math.max(1, maxEtap)
+  const stageCount = Math.max(1, maxStage)
   const stages: KosztorysStageT[] = Array.from({ length: stageCount }, (_, k) => ({
     id: k + 1,
     ordinal: k + 1,

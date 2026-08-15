@@ -475,7 +475,7 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [ ] 1.1 `pnpm lint`
+- [x] 1.1 `pnpm lint`
 
 ### Phase 2: `sheet-import` — rodzina `Robocizna`
 
@@ -513,14 +513,14 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 6.1 `pnpm typecheck`
-- [x] 6.2 `pnpm test:integration`
-- [x] 6.3 weryfikacja grepem: zero identyfikatorów `aldo`
+- [x] 6.1 `pnpm typecheck` — f4086127
+- [x] 6.2 `pnpm test:integration` — f4086127
+- [x] 6.3 weryfikacja grepem: zero identyfikatorów `aldo` — f4086127
 
 ### Phase 7: Resztki, unie stringowe i włączenie guarda
 
 #### Automated
 
-- [ ] 7.1 `pnpm lint` z aktywną regułą
-- [ ] 7.2 `pnpm typecheck`
-- [ ] 7.3 `pnpm test` + `pnpm test:parity`
+- [x] 7.1 `pnpm lint` z aktywną regułą
+- [x] 7.2 `pnpm typecheck`
+- [x] 7.3 `pnpm test` + `pnpm test:parity`

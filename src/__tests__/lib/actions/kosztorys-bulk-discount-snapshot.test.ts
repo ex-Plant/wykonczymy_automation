@@ -61,7 +61,7 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
 
   const ctx = { context: { skipRevalidation: true } }
 
-  async function createItemWithRabat(): Promise<number> {
+  async function createItemWithDiscount(): Promise<number> {
     const section = await payload.create({
       collection: 'kosztorys-sections',
       data: {
@@ -101,7 +101,7 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
     return Number(res.rows[0].id)
   }
 
-  async function itemRabat(id: number): Promise<{ type: string | null; value: number }> {
+  async function itemDiscount(id: number): Promise<{ type: string | null; value: number }> {
     const res = await db.execute(sql`
       SELECT discount_type AS type, discount_value AS value FROM kosztorys_items WHERE id = ${id}
     `)
@@ -109,13 +109,13 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
   }
 
   it('captures a pre-overwrite auto snapshot and stamps percent X on the items', async () => {
-    const itemId = await createItemWithRabat()
+    const itemId = await createItemWithDiscount()
     const before = await latestAutoSnapshotId()
 
     const res = await applyPercentDiscountToAllItemsAction(investmentId, 15)
 
     expect(res.success).toBe(true)
     expect(await latestAutoSnapshotId()).toBeGreaterThan(before)
-    expect(await itemRabat(itemId)).toEqual({ type: 'percent', value: 15 })
+    expect(await itemDiscount(itemId)).toEqual({ type: 'percent', value: 15 })
   })
 })

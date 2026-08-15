@@ -44,7 +44,7 @@ function paintSlices(raw: RawSliceT[]): PieSliceT[] {
   }))
 }
 
-export type SectionPieBaseT = 'przedmiar' | 'wykonane'
+export type SectionPieBaseT = 'planned' | 'executed'
 
 // The section pie only needs each section's two money figures; it takes the client-priced,
 // view-invariant subtotals so a structure chart never moves with the widok cen. Picking off the
@@ -63,7 +63,7 @@ export function sectionPieSlices(
     subtotals.map((section) => ({
       id: `section-${section.sectionId}`,
       name: section.sectionName,
-      value: base === 'przedmiar' ? section.plannedNet : section.net,
+      value: base === 'planned' ? section.plannedNet : section.net,
       fill: sectionColorFill(section.sectionColor),
     })),
   )

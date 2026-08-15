@@ -12,15 +12,15 @@ const sections: SectionSliceInputT[] = [
 
 describe('sectionPieSlices', () => {
   it('selects plannedNet (offer) under the przedmiar base', () => {
-    expect(sectionPieSlices(sections, 'przedmiar').map((s) => s.value)).toEqual([1000, 500])
+    expect(sectionPieSlices(sections, 'planned').map((s) => s.value)).toEqual([1000, 500])
   })
 
   it('selects net (executed) under the wykonane base', () => {
-    expect(sectionPieSlices(sections, 'wykonane').map((s) => s.value)).toEqual([400, 600])
+    expect(sectionPieSlices(sections, 'executed').map((s) => s.value)).toEqual([400, 600])
   })
 
   it('emits one slice per section, named by section', () => {
-    const slices = sectionPieSlices(sections, 'przedmiar')
+    const slices = sectionPieSlices(sections, 'planned')
     expect(slices).toHaveLength(sections.length)
     expect(slices.map((s) => s.name)).toEqual(['Łazienka', 'Podłogi'])
   })
@@ -30,7 +30,7 @@ describe('sectionPieSlices', () => {
       { sectionId: 7, sectionName: 'Łazienka', sectionColor: null, plannedNet: 100, net: 0 },
       { sectionId: 9, sectionName: 'Łazienka', sectionColor: null, plannedNet: 200, net: 0 },
     ]
-    const ids = sectionPieSlices(collide, 'przedmiar').map((s) => s.id)
+    const ids = sectionPieSlices(collide, 'planned').map((s) => s.id)
     expect(new Set(ids).size).toBe(2)
     expect(ids).toEqual(['section-7', 'section-9'])
   })
@@ -43,7 +43,7 @@ describe('sectionPieSlices', () => {
       plannedNet: 1,
       net: 1,
     }))
-    const slices = sectionPieSlices(many, 'przedmiar')
+    const slices = sectionPieSlices(many, 'planned')
     expect(slices[0].fill).toBe(CHART_FILLS[0])
     // Wraps around after the palette is exhausted.
     expect(slices[CHART_FILLS.length].fill).toBe(CHART_FILLS[0])
@@ -55,7 +55,7 @@ describe('sectionPieSlices', () => {
       { sectionId: 1, sectionName: 'A', sectionColor: null, plannedNet: 1, net: 1 },
       { sectionId: 2, sectionName: 'B', sectionColor: 'blue', plannedNet: 1, net: 1 },
     ]
-    const fills = sectionPieSlices(pinned, 'przedmiar').map((s) => s.fill)
+    const fills = sectionPieSlices(pinned, 'planned').map((s) => s.fill)
     expect(fills[1]).toBe('var(--color-chart-blue)')
     expect(fills[0]).not.toBe(fills[1])
   })

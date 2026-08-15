@@ -31,9 +31,9 @@ describe('buildFinancialFields — rabat row', () => {
 
   it('emits a positive Rabat field when there is a rabat', () => {
     const fields = buildFinancialFields({ ...base, totalDiscount: 800 }, [])
-    const rabat = fields.find((f) => f.label === RABAT_LABEL)
-    expect(rabat).toBeDefined()
-    expect(rabat!.amount).toBe(800)
+    const discount = fields.find((f) => f.label === RABAT_LABEL)
+    expect(discount).toBeDefined()
+    expect(discount!.amount).toBe(800)
   })
 })
 

@@ -87,7 +87,7 @@ describe('financialsOnReading', () => {
     const { totalLaborCosts: _labor, totalDiscount: _rabat, ...untouched } = swapped
     const {
       totalLaborCosts: _originalLabor,
-      totalDiscount: _originalRabat,
+      totalDiscount: _originalDiscount,
       ...originalUntouched
     } = financials
 

@@ -212,9 +212,9 @@ describe('robocizna compares the PRE-rabat suma prac (EX-535 regression)', () =>
     // The old code's basis (post-rabat executed net = 132) is a different number from the pre-rabat
     // 140, so a correctly-populated LABOR_COST (the pre-rabat 140) must NOT equal it — proving the two
     // are genuinely different and the pre/post choice is load-bearing.
-    const postRabatNet = laborCostsNetFromKosztorys - discountNetFromKosztorys
-    expect(postRabatNet).toBeCloseTo(132)
-    expect(postRabatNet).not.toBeCloseTo(laborCostsNetFromKosztorys)
+    const postDiscountNet = laborCostsNetFromKosztorys - discountNetFromKosztorys
+    expect(postDiscountNet).toBeCloseTo(132)
+    expect(postDiscountNet).not.toBeCloseTo(laborCostsNetFromKosztorys)
   })
 })
 

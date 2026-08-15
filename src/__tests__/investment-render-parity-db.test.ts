@@ -139,11 +139,11 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       const fields = buildFinancialFields(detailFin, expenseCategories)
       // The formula ToggleStatButtons renders, over every card (nothing hidden) — FinancialStats
       // partitions `fields` into rows without dropping any, so rows.flat() is `fields`.
-      const detailBilans = computeSummary(fields, new Set())
+      const detailBalance = computeSummary(fields, new Set())
       const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
 
       const compare: [string, number, number][] = [
-        ['bilans', listingRow?.balance ?? 0, detailBilans],
+        ['bilans', listingRow?.balance ?? 0, detailBalance],
         ['marża', listingRow?.margin ?? 0, calculateMargin(detailFin)],
         [
           // The plane the defect lived on — bilans and marża both looked healthy while this drifted.
@@ -158,7 +158,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
           'bilans brutto',
           listingRow?.balanceGross ?? 0,
           grossBalance(
-            detailBilans,
+            detailBalance,
             inv.vatRate,
             detailFin.totalLaborCosts,
             detailFin.totalDiscount,

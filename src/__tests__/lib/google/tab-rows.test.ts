@@ -328,7 +328,7 @@ describe('settledExpenseRow (rozliczone tab)', () => {
 // sheet, putting the company's VAT reclaim on the client's invoice and pushing the sheet's
 // SUM(E:E) above the app's materiały total.
 describe('expenseRow — netto type bills the netto figure', () => {
-  const nettoDoc: TxDocT = {
+  const netDoc: TxDocT = {
     ...base,
     id: 900,
     type: 'INVESTMENT_EXPENSE_NET',
@@ -338,16 +338,16 @@ describe('expenseRow — netto type bills the netto figure', () => {
   }
 
   it('mirrors netAmount, not the brutto that left the register', () => {
-    expect(expenseRow(nettoDoc)?.amount).toBe(1000)
+    expect(expenseRow(netDoc)?.amount).toBe(1000)
   })
 
   it('skips the row rather than falling back to brutto when netAmount is missing', () => {
-    expect(expenseRow({ ...nettoDoc, netAmount: null })).toBeUndefined()
+    expect(expenseRow({ ...netDoc, netAmount: null })).toBeUndefined()
   })
 
   it('leaves the brutto-billed type on amount', () => {
-    expect(
-      expenseRow({ ...nettoDoc, type: 'INVESTMENT_EXPENSE', netAmount: null })?.amount,
-    ).toBe(1230)
+    expect(expenseRow({ ...netDoc, type: 'INVESTMENT_EXPENSE', netAmount: null })?.amount).toBe(
+      1230,
+    )
   })
 })
