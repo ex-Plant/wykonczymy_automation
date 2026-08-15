@@ -986,3 +986,22 @@ niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana
 - [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję
 - [ ] Podgląd dla klienta (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
 - [ ] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze
+
+## sheet-column-mapping — ręczne wskazanie kolumny arkusza (EX-690)
+
+**In review** — tsc czysty, eslint bez nowych błędów, `pnpm test` 2228, `pnpm build` przechodzi.
+Stan po `94ffefd0`.
+
+Setup: dev DB (5433), zalogowany jako OWNER. Inwestycja 84 (Żupnicza) jest dowodem z natury —
+jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po nazwie tam nie działa.
+
+- [ ] Inwestycja 84: „Pobierz z arkusza Google…" mówi wprost, której kolumny nie rozpoznał, i pokazuje listę kandydatów z literami kolumn i nagłówkami
+- [ ] Wskazanie kolumny `S` przelicza podgląd w tym samym oknie i odblokowuje „Pobierz i zastąp"
+- [ ] Po zamknięciu okna bez pobierania „Porównaj z arkuszem" na tej samej inwestycji działa bez ponownego wskazywania
+- [ ] Linijka „Kolumnę „…" wskazałeś ręcznie" jest widoczna, a „Usuń wskazanie" przywraca odmowę odczytu
+- [ ] Po poprawieniu nagłówka w arkuszu na „Wartość netto" odczyt idzie po nazwie, mimo zapisanego wskazania na inną kolumnę
+- [ ] Wskazanie zapisane na jednej inwestycji nie zmienia niczego na drugiej
+- [ ] Brakująca kolumna opcjonalna (np. „komentarz") NIE blokuje pobrania — pick stoi w bloku „Czego nie odczytaliśmy"
+- [ ] Arkusz nieudostępniony kontu serwisowemu: okno mówi, komu go udostępnić, a przycisk kopiuje adres
+- [ ] Śmieciowy identyfikator arkusza: komunikat o nieistniejącym arkuszu, bez rady „spróbuj później"
+- [ ] Arkusz bez zakładki `kosztorys_robocizny`: komunikat mówi o zakładce, nie o nagłówkach

@@ -65,6 +65,29 @@ AF    pozostało do rozliczenia / bilans
   inne ceny (cennik z narzędziami N, bez narzędzi P). Ceny podwykonawcy NIE są
   stałym % klienta (raz 65%, raz 58%) → niezależne.
 
+### Nagłówki się rozjeżdżają między arkuszami — rozpoznawanie po nazwie nie wystarcza (EX-690)
+
+Nie każdy klient nazywa kolumny tak samo. Żupnicza 18/73 (inwestycja 84) rozbija wartość netto na
+dwie kolumny — „Wartość netto przedmiar" (`S`) i „Wartość netto pomiar z natury" (`T`) — więc żadna
+nie trafia w dokładne dopasowanie. To dowód z natury dla całej awaryjnej ścieżki wskazywania kolumn;
+bez niego zmiana opierałaby się na wymyślonej próbce.
+
+**Dlaczego wybór `S` vs `T` jest niegroźny.** Kolumna wartości netto **nie wchodzi do żadnej pracy** —
+czytają ją tylko `footer-totals.ts` (współrzędna liczby w wierszu podsumowania) i skan błędów formuł.
+Wartość każdej pracy liczy `calc.ts` z ilości, ceny i rabatu. Porównanie sum dodatkowo zestawia
+odczytaną liczbę po kolei ze wszystkimi trzema sumami, które umiemy policzyć, i samo raportuje,
+z którą się zgadza. Import odmawiał więc przez kolumnę, która nie wnosi do kosztorysu ani złotówki.
+
+**Czego świadomie nie zrobiliśmy:**
+
+- **Nie poluzowaliśmy dopasowania po nazwie.** Dopasowanie po prefiksie złapałoby na Żupniczej `S`
+  i `T` naraz — odmowa „nie znaleziono kolumny" zamieniłaby się w odmowę „pasuje do 2 kolumn", czyli
+  ten sam ślepy zaułek pod inną nazwą.
+- **Żadnego globalnego słownika nagłówków.** Arkusze należą do klientów i żaden nie jest zbudowany
+  tak samo; słownik z definicji nadążałby za ostatnim arkuszem, który ktoś zgłosił.
+- **Kolumny opcjonalne nie blokują pobrania.** Arkusz bez rabatu ma się wczytywać jak dotąd — brak
+  takiej kolumny to informacja w raporcie, nie odmowa.
+
 ### Formuły (dosłownie z arkusza, wiersz 390)
 
 ```
@@ -82,6 +105,17 @@ Arkusz **nie sumuje osi etapów nigdzie**: 0 formuł `SUM` nad `V`–`AE` w cał
 Sumuje wyłącznie oś sekcji (`T4`) i sekcje w zakładce `Podsumowanie`. Czyli „podsumowanie etapu"
 (ile zapłacić za dany etap) to **nowa figura, nie parytet** — nie ma czego skopiować, wymaga
 decyzji właściciela (cena klienta = faktura vs cena podwykonawcy = wypłata). Roadmap: pytanie 12b.
+
+### `Pomiar z natury` przepisany z `Przedmiaru` — normalne w starych arkuszach (2026-08-15, potwierdzone z właścicielem)
+
+W starszych arkuszach `O` (pomiar) bywa zwykłym `=N<ten sam wiersz>` zamiast `=SUM(D:M)` — tak się je
+wtedy budowało. Na żywym arkuszu wychodzi 241 z 336 prac, więc to **stan normalny, nie awaria arkusza
+i nie błąd odczytu**. U nas pomiar jest zawsze sumą etapów, więc dla takiego wiersza nie ma czego
+zapisać jako pomiar z arkusza — i to jest powód, dla którego zero rozjazdów przy „Porównaj
+z arkuszem" niczego nie dowodzi.
+
+Konsekwencja dla raportu: ta klasa nie jest defektem do poprawienia i nie zasługuje na listę wiersz po
+wierszu (właściciel, 2026-08-14) — sam licznik odpowiada na pytanie.
 
 ## Zakładka `Podsumowanie` (2026-07-15 — wcześniej nieudokumentowana)
 

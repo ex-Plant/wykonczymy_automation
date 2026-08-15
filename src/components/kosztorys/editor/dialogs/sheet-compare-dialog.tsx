@@ -1,5 +1,7 @@
 'use client'
 
+import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
+import { SheetProblemsBlock } from '@/components/kosztorys/editor/dialogs/sheet-problems-block'
 import { SheetRatesBlock } from '@/components/kosztorys/editor/dialogs/sheet-rates-block'
 import { SheetReportBlock } from '@/components/kosztorys/editor/dialogs/sheet-report-block'
 import { SheetReportDialog } from '@/components/kosztorys/editor/dialogs/sheet-report-dialog'
@@ -25,10 +27,14 @@ import { formatQty } from '@/lib/kosztorys/format'
 import { formatPLN } from '@/lib/utils/format-currency'
 
 type PropsT = {
+  investmentId: number
   open: boolean
   onOpenChange: (open: boolean) => void
   result: SheetCompareResultT | null
+  error: string | null
   loaded: boolean
+  // Re-runs the comparison with the new pointing in place — same window, no reopen.
+  onMappingSaved: () => void
 }
 
 const MATCHES = 0.005
@@ -44,7 +50,15 @@ const MATCHES = 0.005
  * the refresh wrote: this window is the only thing that touches the stored Pomiar, so a read-shaped
  * dialog that writes in silence would leave the owner no way to tell it apart from one that doesn't.
  */
-export function SheetCompareDialog({ open, onOpenChange, result, loaded }: PropsT) {
+export function SheetCompareDialog({
+  investmentId,
+  open,
+  onOpenChange,
+  result,
+  error,
+  loaded,
+  onMappingSaved,
+}: PropsT) {
   return (
     <SheetReportDialog
       open={open}
@@ -53,16 +67,36 @@ export function SheetCompareDialog({ open, onOpenChange, result, loaded }: Props
       description="Czy arkusz Google i ta aplikacja liczą to samo — i gdzie się rozjeżdżają."
       loaded={loaded}
       data={result}
+      error={error}
     >
-      {({ comparison, refresh }) => (
-        <>
-          <MoneyBlock comparison={comparison} />
-          <ItemsBlock comparison={comparison} />
-          <SheetRatesBlock decisions={comparison.rates.decisions} stale={comparison.rates.stale} />
-          <ReadingBlock comparison={comparison} />
-          <RefreshLine refresh={refresh} />
-        </>
-      )}
+      {({ comparison, refresh, problems, columns, failure }) =>
+        failure ? (
+          <SheetAccessBlock failure={failure} />
+        ) : problems.length > 0 ? (
+          <SheetProblemsBlock
+            investmentId={investmentId}
+            problems={problems}
+            columns={columns}
+            consequence="nic nie zostało zmienione"
+            onMappingSaved={onMappingSaved}
+          />
+        ) : !comparison || !refresh ? (
+          <p className="text-muted-foreground text-sm">
+            Arkusz Google odczytany, ale porównanie nie wróciło — spróbuj ponownie.
+          </p>
+        ) : (
+          <>
+            <MoneyBlock comparison={comparison} />
+            <ItemsBlock comparison={comparison} />
+            <SheetRatesBlock
+              decisions={comparison.rates.decisions}
+              stale={comparison.rates.stale}
+            />
+            <ReadingBlock comparison={comparison} />
+            <RefreshLine refresh={refresh} />
+          </>
+        )
+      }
     </SheetReportDialog>
   )
 }
@@ -235,7 +269,7 @@ function ReadingBlock({ comparison }: { comparison: SheetComparisonT }) {
 
 // The one line that says this window wrote something. „Już zgodne" is the answer that matters most:
 // it is what tells the owner a second look changed nothing, rather than leaving them to wonder.
-function RefreshLine({ refresh }: { refresh: SheetCompareResultT['refresh'] }) {
+function RefreshLine({ refresh }: { refresh: NonNullable<SheetCompareResultT['refresh']> }) {
   const { updated, cleared, unmatched } = refresh
   const skipped =
     unmatched > 0

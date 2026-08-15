@@ -25,8 +25,15 @@ vi.mock('@/lib/auth/require-auth', () => ({
   })),
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
-vi.mock('@/lib/google/sheet-lookup', () => ({
-  getInvestmentSheetId: vi.fn().mockImplementation(async () => sheetState.spreadsheetId),
+vi.mock('@/lib/google/sheet-lookup', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getInvestmentSheet: vi
+    .fn()
+    .mockImplementation(async () =>
+      sheetState.spreadsheetId === undefined
+        ? undefined
+        : { id: 1, googleSheetId: sheetState.spreadsheetId, sheetColumnMapping: {} },
+    ),
 }))
 vi.mock('@/lib/google/readonly-sheets-client', () => ({
   getReadonlySheetsClient: vi.fn().mockResolvedValue({}),
@@ -158,7 +165,7 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
       success: true,
       data: { refresh: { updated: 0, cleared: 0, unmatched: 1 } },
     })
-    expect(result.success && result.data.comparison.counts.matched).toBe(3)
+    expect(result.success && result.data.comparison?.counts.matched).toBe(3)
   })
 
   // The editor reseeds its grid off the investment's revision token, so a write that moves rows

@@ -55,6 +55,11 @@ export const FIELD_LABELS: Record<ColumnFieldT, string> = {
   comment: 'komentarz',
 }
 
+export const COLUMN_FIELDS = Object.keys(FIELD_LABELS) as ColumnFieldT[]
+
+export const isColumnField = (value: unknown): value is ColumnFieldT =>
+  typeof value === 'string' && (COLUMN_FIELDS as string[]).includes(value)
+
 // Optional fields resolve to `undefined` instead of failing. Rabat is genuinely absent on some
 // sheets (Ryżowa 66/127 has no such column at all) and „komentarz" is never read — it is resolved
 // only so the preview can show the owner that we saw it. „Pomiar z natury" is optional for a

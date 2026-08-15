@@ -4,6 +4,9 @@ import { applyMaterialSync } from '@/lib/actions/sheets-sync'
 import { ADMIN_OR_OWNER_ROLES } from '@/lib/auth/roles'
 import { extractSheetId, serviceAccountEmail, verifySheetAccess } from '@/lib/google/sheet-access'
 import { stampAllTabs } from '@/lib/google/app-managed-tabs'
+import { getInvestmentSheet, MISSING_SHEET } from '@/lib/google/sheet-lookup'
+import { isColumnField } from '@/lib/kosztorys/sheet-import/columns'
+import { isPointableColumn } from '@/lib/kosztorys/sheet-import/sheet-column-mapping'
 import { protectedAction } from './run-action'
 import { logError } from '@/lib/utils/log-error'
 
@@ -160,6 +163,72 @@ export async function unlinkSheetFromInvestmentAction(sheetId: number) {
         collection: 'kosztoryses',
         id: sheetId,
         data: { investment: null },
+        overrideAccess: true,
+      })
+
+      return { success: true }
+    },
+    ['kosztoryses', 'investments'],
+  )
+}
+
+/**
+ * Point a field at a sheet column by hand, for a header our matchers cannot read (Żupnicza splits
+ * „Wartość netto" into two columns). Saved the moment the owner picks, not as a side effect of the
+ * import: „Porównaj z arkuszem" has to read the same pointing without anyone opening the import
+ * window first.
+ *
+ * Merged into whatever is stored rather than replacing it, so pointing at a second field doesn't
+ * quietly drop the first.
+ */
+export async function saveSheetColumnMappingAction(
+  investmentId: number,
+  field: string,
+  column: number,
+) {
+  return protectedAction(
+    'saveSheetColumnMappingAction',
+    async ({ payload }) => {
+      // The browser sends both halves, so both are re-checked here — a bad pair would otherwise sit
+      // in jsonb until an import silently read the wrong column.
+      if (!isColumnField(field) || !isPointableColumn(column)) {
+        return { success: false, error: 'Nieprawidłowe wskazanie kolumny.' }
+      }
+
+      const sheet = await getInvestmentSheet(payload, investmentId)
+      if (!sheet) return { success: false, error: MISSING_SHEET }
+
+      await payload.update({
+        collection: 'kosztoryses',
+        id: sheet.id,
+        data: { sheetColumnMapping: { ...sheet.sheetColumnMapping, [field]: column } },
+        overrideAccess: true,
+      })
+
+      return { success: true }
+    },
+    ['kosztoryses', 'investments'],
+  )
+}
+
+export async function clearSheetColumnMappingAction(investmentId: number, field: string) {
+  return protectedAction(
+    'clearSheetColumnMappingAction',
+    async ({ payload }) => {
+      if (!isColumnField(field)) {
+        return { success: false, error: 'Nieprawidłowe wskazanie kolumny.' }
+      }
+
+      const sheet = await getInvestmentSheet(payload, investmentId)
+      if (!sheet) return { success: false, error: MISSING_SHEET }
+
+      const mapping = { ...sheet.sheetColumnMapping }
+      delete mapping[field]
+
+      await payload.update({
+        collection: 'kosztoryses',
+        id: sheet.id,
+        data: { sheetColumnMapping: mapping },
         overrideAccess: true,
       })
 

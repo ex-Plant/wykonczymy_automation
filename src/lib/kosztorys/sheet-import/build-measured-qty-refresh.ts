@@ -2,6 +2,7 @@ import type { SheetMeasuredQtyRowT } from '@/lib/db/kosztorys-sheet-measured-qty
 import { QTY_TOLERANCE } from '@/lib/kosztorys/settlement-rows'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT } from '@/lib/kosztorys/types'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { keyItems } from './item-key'
 import { parseRobocizna } from './parse-robocizna'
 import type { ImportGridsT } from './read-sheet'
@@ -39,8 +40,9 @@ const sameQty = (stored: number | null, fromSheet: number | null): boolean =>
 export function buildMeasuredQtyRefresh(
   grids: ImportGridsT,
   currentTree: SnapshotPayloadT,
+  mapping?: SheetColumnMappingT,
 ): MeasuredQtyRefreshResultT {
-  const resolved = resolveRobocizna(grids.robocizna)
+  const resolved = resolveRobocizna(grids.robocizna, mapping)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
 
   // „Pomiar z natury" is optional, so a sheet that titles it differently still resolves ok — with

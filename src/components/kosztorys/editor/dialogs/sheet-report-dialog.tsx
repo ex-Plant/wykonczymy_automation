@@ -5,9 +5,9 @@ import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 
 /**
  * The frame both sheet windows sit in. Shared for the two sentences it owns rather than for the
- * markup: „Czytam arkusz Google…" and „Nie udało się odczytać arkusza Google." are the only thing
- * the owner sees when a read is slow or a sheet is unreachable, and written twice they would have
- * drifted into two different accounts of the same failure.
+ * markup: „Czytam arkusz Google…" and the refusal are the only thing the owner sees when a read is
+ * slow or a sheet is unreachable, and written twice they would have drifted into two different
+ * accounts of the same failure.
  *
  * `data` renders through a callback because the blocks below read it unconditionally — passed as
  * plain children they would be built before the null check that guards them.
@@ -19,6 +19,7 @@ export function SheetReportDialog<DataT>({
   description,
   loaded,
   data,
+  error,
   actions,
   children,
 }: {
@@ -28,6 +29,10 @@ export function SheetReportDialog<DataT>({
   description: string
   loaded: boolean
   data: DataT | null
+  // Why the read produced nothing. Rendered here rather than toasted: a refusal the owner has to act
+  // on („udostępnij arkusz", „powiąż arkusz w ustawieniach") outlives a toast, and the window is
+  // already open saying the read failed.
+  error: string | null
   actions?: ReactNode
   children: (data: DataT) => ReactNode
 }) {
@@ -39,7 +44,9 @@ export function SheetReportDialog<DataT>({
         {!loaded ? (
           <p className="text-muted-foreground text-sm">Czytam arkusz Google…</p>
         ) : !data ? (
-          <p className="text-destructive text-sm">Nie udało się odczytać arkusza Google.</p>
+          <p className="text-destructive text-sm">
+            {error ?? 'Nie udało się odczytać arkusza Google.'}
+          </p>
         ) : (
           <div className="space-y-5 text-sm">{children(data)}</div>
         )}

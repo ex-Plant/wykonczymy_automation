@@ -2,6 +2,7 @@ import { columnLetter } from '@/lib/google/sheet-configs'
 import { netForQtyForView, rowPlannedNetForView, subcontractorPrice } from '@/lib/kosztorys/calc'
 import type { SnapshotPayloadT, SnapshotSettingsT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT, StageProgressT, ViewPricingT } from '@/lib/kosztorys/types'
+import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { scanFormulaHealth, type FormulaHealthT } from './formula-health'
 import { keyItems } from './item-key'
@@ -139,8 +140,9 @@ export function buildSheetComparison(
   grids: ImportGridsT,
   currentTree: SnapshotPayloadT,
   spreadsheetId: string,
+  mapping?: SheetColumnMappingT,
 ): SheetComparisonResultT {
-  const resolved = resolveRobocizna(grids.robocizna)
+  const resolved = resolveRobocizna(grids.robocizna, mapping)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
 
   const parsed = parseRobocizna(grids.robocizna, resolved, grids.robociznaFormulas)
