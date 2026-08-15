@@ -46,6 +46,7 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
+import { baseRanksFromKeys, orderColumns } from '@/lib/kosztorys/column-order'
 import {
   PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,
@@ -700,10 +701,37 @@ function selectV2ToggleItems(
   return items
 }
 
+// The owner's stored column order, applied to the assembled list — BEFORE the filter, since the
+// filter preserves relative order: one sort then serves both the grid and the picker, and the
+// trailing gap (appended post-filter) stays last.
+//
+// A preview skips it whole: the order is one owner's reading preference, exactly like the axis, the
+// layer and the picker tick, and none of those may shape what a client is served (ruling
+// 2026-07-28). Skipping is not merely cosmetic here — a client's localStorage is client-writable.
+function orderAssembled(
+  assembled: Column<KosztorysV2RowT>[],
+  opts: BuildV2ColumnsOptsT,
+): Column<KosztorysV2RowT>[] {
+  if (opts.previewVisible || !opts.columnRanks) return assembled
+  return orderColumns(assembled, opts.columnRanks, (id) => toggleKey(id))
+}
+
+// Assemble-order rank per group key: the fallback an unranked column sorts at. Read off the list
+// BEFORE ordering — the reorder dialog only ever sees the already-ordered picker list, so it cannot
+// derive this itself.
+function assembleBaseRanks(assembled: Column<KosztorysV2RowT>[]): Record<string, number> {
+  const keys: string[] = []
+  for (const column of assembled) {
+    const key = toggleKey(column.id ?? '')
+    if (!keys.includes(key)) keys.push(key)
+  }
+  return baseRanksFromKeys(keys)
+}
+
 // Columns-only assemble — the grid path goes through buildV2Grid; kept for the column-set unit specs
 // (money-axis / layer), which assert which ids survive a predicate without the picker.
 export function buildV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[] {
-  return selectV2Columns(assembleV2Columns(opts), opts)
+  return selectV2Columns(orderAssembled(assembleV2Columns(opts), opts), opts)
 }
 
 // The grid + its picker in one assembly pass — assembleV2Columns is the O(columns·stages) build, so
@@ -711,10 +739,13 @@ export function buildV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2Row
 export function buildV2Grid(opts: BuildV2ColumnsOptsT): {
   columns: Column<KosztorysV2RowT>[]
   columnToggleItems: ColumnToggleItemT[]
+  columnBaseRanks: Record<string, number>
 } {
   const assembled = assembleV2Columns(opts)
+  const ordered = orderAssembled(assembled, opts)
   return {
-    columns: selectV2Columns(assembled, opts),
-    columnToggleItems: selectV2ToggleItems(assembled, opts),
+    columns: selectV2Columns(ordered, opts),
+    columnToggleItems: selectV2ToggleItems(ordered, opts),
+    columnBaseRanks: assembleBaseRanks(assembled),
   }
 }

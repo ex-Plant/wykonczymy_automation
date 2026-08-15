@@ -1,4 +1,5 @@
 import type { PriceViewT } from '@/lib/kosztorys/calc'
+import type { ColumnRanksT } from '@/lib/kosztorys/column-order'
 import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
@@ -42,6 +43,10 @@ export type BuildV2ColumnsOptsT = {
   // Resize: pinned column widths (id→px) + drag callbacks. When provided, every column
   // gets a handle; pinned ones get basis/grow:0 (the rest stay on flex).
   widths?: Record<string, number>
+  // User-defined column order: group key → rank (lib/kosztorys/column-order). Sparse — an absent key
+  // ranks at its assemble position, so an empty map is the sheet's own order. Keyed like `isHidden`,
+  // i.e. stage columns answer to their group, never to a per-stage id.
+  columnRanks?: ColumnRanksT
   onGuide?: (x: number | null) => void
   onCommitColumn?: (id: string, width: number) => void
   // Row actions: removing an item + reading a section's item count (to enforce the
