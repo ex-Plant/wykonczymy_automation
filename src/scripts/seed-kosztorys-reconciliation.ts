@@ -137,7 +137,7 @@ async function main() {
       match: match.investmentId,
       matchName: match.name,
       // The „Suma prac wykonanych" both surfaces must display for either investment.
-      sumaPracNet: SUMA_PRAC_NET,
+      laborCostsNetFromKosztorys: SUMA_PRAC_NET,
     })}`,
   )
   process.exit(0)

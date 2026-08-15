@@ -45,7 +45,12 @@ describe('shapeInvestments', () => {
       },
     }
     const [row] = shapeInvestments([baseInv], financials, {
-      '5': { doneNet: 3900, sumaPracNet: 3900, rabatClientNet: 0, globalRabatNet: 0 },
+      '5': {
+        doneNet: 3900,
+        laborCostsNetFromKosztorys: 3900,
+        discountNetFromKosztorys: 0,
+        globalDiscountNet: 0,
+      },
     })
     expect(row.totalCosts).toBe(4900) // 1000 + 3900
     expect(row.balance).toBe(4647) // 9547 - (1000 + 3900)
@@ -169,7 +174,12 @@ describe('shapeInvestments', () => {
       },
     }
     const [row] = shapeInvestments([{ ...baseInv, vatRate: 0.23 }], financials, {
-      '5': { doneNet: 3900, sumaPracNet: 3900, rabatClientNet: 0, globalRabatNet: 0 },
+      '5': {
+        doneNet: 3900,
+        laborCostsNetFromKosztorys: 3900,
+        discountNetFromKosztorys: 0,
+        globalDiscountNet: 0,
+      },
     })
     expect(row.totalSettled).toBe(250)
     // VAT is another charge on the client, so it DEDUCTS from a balance where negative = owed.
@@ -200,9 +210,9 @@ describe('shapeInvestments', () => {
       {
         '5': {
           doneNet: 170951,
-          sumaPracNet: 270951,
-          rabatClientNet: 100000,
-          globalRabatNet: 100000,
+          laborCostsNetFromKosztorys: 270951,
+          discountNetFromKosztorys: 100000,
+          globalDiscountNet: 100000,
         },
       },
     )
@@ -232,7 +242,12 @@ describe('shapeInvestments', () => {
         },
       },
       {
-        '5': { doneNet: 1000, sumaPracNet: 1000, rabatClientNet: 0, globalRabatNet: 0 },
+        '5': {
+          doneNet: 1000,
+          laborCostsNetFromKosztorys: 1000,
+          discountNetFromKosztorys: 0,
+          globalDiscountNet: 0,
+        },
       },
     )
     expect(row.balanceGross).toBeCloseTo(row.balance - DEFAULT_VAT * 1000, 10)
@@ -296,7 +311,12 @@ describe('shapeInvestments robocizna source', () => {
   }
 
   const kosztorysTotals: KosztorysClientTotalsMapT = {
-    '5': { doneNet: 4500, sumaPracNet: 5000, rabatClientNet: 500, globalRabatNet: 0 },
+    '5': {
+      doneNet: 4500,
+      laborCostsNetFromKosztorys: 5000,
+      discountNetFromKosztorys: 500,
+      globalDiscountNet: 0,
+    },
   }
 
   it('builds bilans, marża and koszty from the kosztorys pair', () => {
@@ -337,7 +357,12 @@ describe('shapeInvestments robocizna source', () => {
 
   it('cannot tell an absent kosztorys from one that sums to zero', () => {
     const [zeroProgress] = shapeInvestments([baseInv], transactionFinancials, {
-      '5': { doneNet: 0, sumaPracNet: 0, rabatClientNet: 0, globalRabatNet: 0 },
+      '5': {
+        doneNet: 0,
+        laborCostsNetFromKosztorys: 0,
+        discountNetFromKosztorys: 0,
+        globalDiscountNet: 0,
+      },
     })
 
     expect(zeroProgress).toEqual(shapeInvestments([baseInv], transactionFinancials, {})[0])

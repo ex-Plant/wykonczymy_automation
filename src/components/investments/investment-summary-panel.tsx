@@ -63,7 +63,7 @@ export async function InvestmentSummaryPanel({
   const deriveMs = elapsed()
   console.log(
     `[PERF] InvestmentSummaryPanel ${fetchMs + deriveMs}ms ` +
-      `(fetch ${fetchMs}ms, derive ${deriveMs}ms) [${rows.length} rows → sumaPracNet + rabatClientNet]`,
+      `(fetch ${fetchMs}ms, derive ${deriveMs}ms) [${rows.length} rows → laborCostsNetFromKosztorys + discountNetFromKosztorys]`,
   )
 
   return (
@@ -84,10 +84,10 @@ export async function InvestmentSummaryPanel({
       // An empty kosztorys against booked transfers is a REAL gap, not noise: it is legacy robocizna
       // nobody has entered here yet. It screams until someone does.
       reconciliation={buildKosztorysReconciliation({
-        sumaPracNet: clientTotals.sumaPracNet,
-        rabatClientNet: clientTotals.rabatClientNet,
+        laborCostsNetFromKosztorys: clientTotals.laborCostsNetFromKosztorys,
+        discountNetFromKosztorys: clientTotals.discountNetFromKosztorys,
         laborCostsNetFromTransactions: financials.totalLaborCosts,
-        investmentRabat: financials.totalDiscount,
+        discountNetFromTransactions: financials.totalDiscount,
       })}
       vatRate={tree.vatRate}
       settlementMode={tree.settlementMode}

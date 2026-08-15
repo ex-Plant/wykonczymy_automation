@@ -43,7 +43,7 @@ type PropsT = {
   settlementGroups: SettlementGroupT[]
   // The rabat actually taken off the executed robocizna (net zł): the global discount when active,
   // else Σ per-item rabat. Unified upstream so this table shows one explicit „Rabat" line. 0 = none.
-  rabatAmount: number
+  discountAmount: number
   // Robocizna/rabat reconciliation verdict — the mismatch scream renders off this. Always supplied
   // (the body computes it unconditionally); preview suppresses the scream via reconVisible, not by
   // withholding the verdict.
@@ -66,7 +66,7 @@ export function SettlementSummary({
   laborCostsNet,
   materialsBilled,
   settlementGroups,
-  rabatAmount,
+  discountAmount,
   reconciliation,
   priceView,
   vatRate,
@@ -79,13 +79,13 @@ export function SettlementSummary({
   // can't hide the mismatch — otherwise the one gap population most needs to catch stays invisible.
   // Only while the scream is visible; otherwise the row follows the normal „rabat > 0" rule.
   const showDiscount =
-    rabatAmount > 0 ||
-    (reconVisible && (reconciliation.rabat.actual > 0 || reconciliation.rabat.mismatch))
-  const laborCostsPair = moneyPair(sumaPracPreRabat(laborCostsNet, rabatAmount), vatRate)
+    discountAmount > 0 ||
+    (reconVisible && (reconciliation.discount.actual > 0 || reconciliation.discount.mismatch))
+  const laborCostsPair = moneyPair(sumaPracPreRabat(laborCostsNet, discountAmount), vatRate)
   // Rabat lives on the prace plane and grosses — brutto = rabat×(1+VAT) — so both axes read a real
   // figure. It renders negative: it is a deduction step, and a positive figure in a subtracted row
   // reads as if it were being added.
-  const discount = moneyPair(-rabatAmount, vatRate)
+  const discount = moneyPair(-discountAmount, vatRate)
   const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
 
   const moneyCols = summaryMoneyCols(MONEY_AXIS)
@@ -106,8 +106,8 @@ export function SettlementSummary({
           materialsBilled={materialsBilled}
           combined={combined}
           discountMismatch={
-            reconVisible && reconciliation.rabat.mismatch
-              ? mismatchTooltip(reconciliation.rabat, 'Transakcje rabatu')
+            reconVisible && reconciliation.discount.mismatch
+              ? mismatchTooltip(reconciliation.discount, 'Transakcje rabatu')
               : undefined
           }
         />

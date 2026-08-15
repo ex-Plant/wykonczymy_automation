@@ -89,7 +89,7 @@ export default async function InvestmentKosztorysV2Page({
       // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) for the in-editor reconciliation
       // scream — compared against the kosztorys figures during the population/verification transition.
       laborCostsNetFromTransactions={financials.totalLaborCosts}
-      investmentRabat={financials.totalDiscount}
+      discountNetFromTransactions={financials.totalDiscount}
       investmentLoss={financials.totalLoss}
       payoutsByWorker={payoutsByWorker}
       payoutTransactions={payoutTransactions}

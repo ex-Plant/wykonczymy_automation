@@ -40,8 +40,20 @@ describe.skipIf(!ENV_READY)('selectKosztorysClientTotals (DB)', () => {
         {
           name: 'Sekcja A',
           items: [
-            { description: 'percent', plannedQty: 10, clientPrice: 100, discountType: 'percent', discountValue: 15 },
-            { description: 'amount', plannedQty: 10, clientPrice: 250, discountType: 'amount', discountValue: 300 },
+            {
+              description: 'percent',
+              plannedQty: 10,
+              clientPrice: 100,
+              discountType: 'percent',
+              discountValue: 15,
+            },
+            {
+              description: 'amount',
+              plannedQty: 10,
+              clientPrice: 250,
+              discountType: 'amount',
+              discountValue: 300,
+            },
             { description: 'brak rabatu', plannedQty: 10, clientPrice: 80 },
           ],
         },
@@ -50,7 +62,13 @@ describe.skipIf(!ENV_READY)('selectKosztorysClientTotals (DB)', () => {
           items: [
             // Zero progress: netForQtyForView returns 0 for it, so an 'amount' rabat must NOT turn
             // this row into −discountValue.
-            { description: 'bez postępu', plannedQty: 5, clientPrice: 400, discountType: 'amount', discountValue: 120 },
+            {
+              description: 'bez postępu',
+              plannedQty: 5,
+              clientPrice: 400,
+              discountType: 'amount',
+              discountValue: 120,
+            },
           ],
         },
       ],
@@ -105,9 +123,9 @@ describe.skipIf(!ENV_READY)('selectKosztorysClientTotals (DB)', () => {
 
     expect(sqlRow).toBeDefined()
     expect(sqlRow!.doneNet).toBeCloseTo(ts.doneNet, CENT)
-    expect(sqlRow!.sumaPracNet).toBeCloseTo(ts.sumaPracNet, CENT)
-    expect(sqlRow!.rabatClientNet).toBeCloseTo(ts.rabatClientNet, CENT)
-    expect(sqlRow!.globalRabatNet).toBeCloseTo(ts.globalRabatNet, CENT)
+    expect(sqlRow!.laborCostsNetFromKosztorys).toBeCloseTo(ts.laborCostsNetFromKosztorys, CENT)
+    expect(sqlRow!.discountNetFromKosztorys).toBeCloseTo(ts.discountNetFromKosztorys, CENT)
+    expect(sqlRow!.globalDiscountNet).toBeCloseTo(ts.globalDiscountNet, CENT)
   })
 
   it('agrees with the TS formula under an active global rabat', async () => {
@@ -117,23 +135,23 @@ describe.skipIf(!ENV_READY)('selectKosztorysClientTotals (DB)', () => {
 
     expect(sqlRow).toBeDefined()
     expect(sqlRow!.doneNet).toBeCloseTo(ts.doneNet, CENT)
-    expect(sqlRow!.sumaPracNet).toBeCloseTo(ts.sumaPracNet, CENT)
-    expect(sqlRow!.rabatClientNet).toBeCloseTo(ts.rabatClientNet, CENT)
-    expect(sqlRow!.globalRabatNet).toBeCloseTo(ts.globalRabatNet, CENT)
+    expect(sqlRow!.laborCostsNetFromKosztorys).toBeCloseTo(ts.laborCostsNetFromKosztorys, CENT)
+    expect(sqlRow!.discountNetFromKosztorys).toBeCloseTo(ts.discountNetFromKosztorys, CENT)
+    expect(sqlRow!.globalDiscountNet).toBeCloseTo(ts.globalDiscountNet, CENT)
   })
 
   it('suppresses per-item rabat only under the global one, and vice versa', async () => {
     // Guards the two figures against a SQL copy that agrees on the totals by accident — under a
-    // global rabat the per-item discounts must contribute nothing, so sumaPracNet === doneNet.
+    // global rabat the per-item discounts must contribute nothing, so laborCostsNetFromKosztorys === doneNet.
     const [perItem, global] = await Promise.all([
       sqlTotalsFor(created.perItem),
       sqlTotalsFor(created.global),
     ])
 
-    expect(global!.doneNet).toBeCloseTo(global!.sumaPracNet, CENT)
-    expect(global!.rabatClientNet).toBeCloseTo(global!.globalRabatNet, CENT)
-    expect(perItem!.globalRabatNet).toBe(0)
-    expect(perItem!.rabatClientNet).toBeGreaterThan(0)
+    expect(global!.doneNet).toBeCloseTo(global!.laborCostsNetFromKosztorys, CENT)
+    expect(global!.discountNetFromKosztorys).toBeCloseTo(global!.globalDiscountNet, CENT)
+    expect(perItem!.globalDiscountNet).toBe(0)
+    expect(perItem!.discountNetFromKosztorys).toBeGreaterThan(0)
   })
 
   it('omits an investment with no kosztorys items rather than reporting zeros', async () => {

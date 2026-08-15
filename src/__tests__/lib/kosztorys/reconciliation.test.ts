@@ -66,23 +66,23 @@ function clientTotals(tree: KosztorysTreeT) {
 // NETS. VAT is a client-pricing concept only — the ledger plane (LABOR_COST/RABAT) is netto, so the
 // synced transactions equal the client nets directly, with no grossing.
 function syncedTransactions(tree: KosztorysTreeT): TypeSettledTotalT[] {
-  const { sumaPracNet, rabatClientNet } = clientTotals(tree)
+  const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
   return [
-    { type: 'LABOR_COST', settled: false, total: sumaPracNet },
-    { type: 'RABAT', settled: false, total: rabatClientNet },
+    { type: 'LABOR_COST', settled: false, total: laborCostsNetFromKosztorys },
+    { type: 'RABAT', settled: false, total: discountNetFromKosztorys },
   ]
 }
 
 // The full cross-boundary chain end to end: editor side (kosztorysClientTotals) vs investment side
 // (deriveFinancials), compared by the shared reconciler — the one call that catches drift.
 function reconcile(tree: KosztorysTreeT, txns: TypeSettledTotalT[]) {
-  const { sumaPracNet, rabatClientNet } = clientTotals(tree)
+  const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
   const financials = deriveFinancials(txns)
   return buildKosztorysReconciliation({
-    sumaPracNet,
-    rabatClientNet,
+    laborCostsNetFromKosztorys,
+    discountNetFromKosztorys,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
-    investmentRabat: financials.totalDiscount,
+    discountNetFromTransactions: financials.totalDiscount,
   })
 }
 
@@ -91,26 +91,26 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
     const tree = makeReconTree()
     const verdict = reconcile(tree, syncedTransactions(tree))
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
   })
 
   it('global amount discount (per-item rabat suppressed): matching transfers reconcile silently', () => {
     const tree = makeReconTree({ globalDiscount: { type: 'amount', value: 14 } })
     // Sanity: a live global discount zeroes per-item rabat, so the rabat figure is the flat amount.
-    const { sumaPracNet, rabatClientNet } = clientTotals(tree)
-    expect(sumaPracNet).toBeCloseTo(140) // rows go gross → no per-item rabat added back
-    expect(rabatClientNet).toBeCloseTo(14) // the flat amount
+    const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
+    expect(laborCostsNetFromKosztorys).toBeCloseTo(140) // rows go gross → no per-item rabat added back
+    expect(discountNetFromKosztorys).toBeCloseTo(14) // the flat amount
 
     const verdict = reconcile(tree, syncedTransactions(tree))
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
   })
 
   // The percent-discount bulk-apply (Phase 1) stamps the same percent into every per-item rabat instead
   // of storing a global percent. This proves the reconciled RABAT figure is identical to what the old
-  // stored global-percent produced: Σ per-item percent rabaty = the same rabatClientNet (14), so the
+  // stored global-percent produced: Σ per-item percent rabaty = the same discountNetFromKosztorys (14), so the
   // investment-page recon is unchanged by the migration away from a stored percent discount.
-  it('per-item percent (bulk-apply): Σ rabaty feed rabatClientNet like the old global percent', () => {
+  it('per-item percent (bulk-apply): Σ rabaty feed discountNetFromKosztorys like the old global percent', () => {
     const base = makeReconTree()
     const tree: KosztorysTreeT = {
       ...base,
@@ -123,30 +123,30 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
         })),
       })),
     }
-    const { sumaPracNet, rabatClientNet } = clientTotals(tree)
-    expect(sumaPracNet).toBeCloseTo(140) // pre-rabat basis (doneNet + itemRabatNet) — unchanged
-    expect(rabatClientNet).toBeCloseTo(14) // Σ per-item rabat: row1 10 + row2 4 — = old global 10%
+    const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
+    expect(laborCostsNetFromKosztorys).toBeCloseTo(140) // pre-rabat basis (doneNet + itemDiscountNet) — unchanged
+    expect(discountNetFromKosztorys).toBeCloseTo(14) // Σ per-item rabat: row1 10 + row2 4 — = old global 10%
 
     const verdict = reconcile(tree, syncedTransactions(tree))
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
   })
 
   it('vatRate 0: gross equals net, matching transfers still reconcile', () => {
     const tree = makeReconTree({ vatRate: 0 })
     const verdict = reconcile(tree, syncedTransactions(tree))
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
   })
 
   it('empty progress + no transfers: zero vs zero is silent', () => {
     const tree = makeReconTree({ progress: [] })
-    const { sumaPracNet, rabatClientNet } = clientTotals(tree)
-    expect(sumaPracNet).toBe(0)
-    expect(rabatClientNet).toBe(0)
+    const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
+    expect(laborCostsNetFromKosztorys).toBe(0)
+    expect(discountNetFromKosztorys).toBe(0)
     const verdict = reconcile(tree, [])
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
   })
 
   it('a de-synced LABOR_COST fires robocizna and leaves rabat silent', () => {
@@ -157,20 +157,20 @@ describe('cross-boundary parity: kosztorys client totals vs transaction sums', (
     laborRow.total += 0.01
     const verdict = reconcile(tree, txns)
     expect(verdict.laborCosts.mismatch).toBe(true)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
   })
 })
 
 describe('nothing booked on the transactions plane silences BOTH verdicts (EX-555)', () => {
   it('a populated kosztorys with no LABOR_COST and no RABAT stays silent', () => {
     const tree = makeReconTree()
-    const { sumaPracNet, rabatClientNet } = clientTotals(tree)
-    expect(sumaPracNet).toBeCloseTo(140)
-    expect(rabatClientNet).toBeCloseTo(8)
+    const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
+    expect(laborCostsNetFromKosztorys).toBeCloseTo(140)
+    expect(discountNetFromKosztorys).toBeCloseTo(8)
 
     const verdict = reconcile(tree, [])
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.mismatch).toBe(false)
     // Silenced, not erased — the figures stay readable so the surface can still show both sides.
     expect(verdict.laborCosts.expected).toBeCloseTo(140)
     expect(verdict.laborCosts.actual).toBe(0)
@@ -180,10 +180,12 @@ describe('nothing booked on the transactions plane silences BOTH verdicts (EX-55
     // The gap the per-investment rule protects: „robocizna zaksięgowana, rabat nie" is exactly the
     // half-migrated legacy investment the alert exists for. A per-figure silence would hide it.
     const tree = makeReconTree()
-    const { sumaPracNet } = clientTotals(tree)
-    const verdict = reconcile(tree, [{ type: 'LABOR_COST', settled: false, total: sumaPracNet }])
+    const { laborCostsNetFromKosztorys } = clientTotals(tree)
+    const verdict = reconcile(tree, [
+      { type: 'LABOR_COST', settled: false, total: laborCostsNetFromKosztorys },
+    ])
     expect(verdict.laborCosts.mismatch).toBe(false)
-    expect(verdict.rabat.mismatch).toBe(true)
+    expect(verdict.discount.mismatch).toBe(true)
   })
 })
 
@@ -195,24 +197,24 @@ describe('robocizna compares the PRE-rabat suma prac (EX-535 regression)', () =>
   // value is pre-rabat — so the verdict must be about that same number.
   it('pre-rabat basis is silent; the old post-rabat basis would scream', () => {
     const tree = makeReconTree()
-    const { sumaPracNet, rabatClientNet } = clientTotals(tree)
-    expect(sumaPracNet).toBeCloseTo(140) // pre-rabat: 132 executed + 8 rabat taken
-    expect(rabatClientNet).toBeCloseTo(8)
+    const { laborCostsNetFromKosztorys, discountNetFromKosztorys } = clientTotals(tree)
+    expect(laborCostsNetFromKosztorys).toBeCloseTo(140) // pre-rabat: 132 executed + 8 rabat taken
+    expect(discountNetFromKosztorys).toBeCloseTo(8)
 
     const silent = buildKosztorysReconciliation({
-      sumaPracNet,
-      rabatClientNet,
-      laborCostsNetFromTransactions: sumaPracNet,
-      investmentRabat: rabatClientNet,
+      laborCostsNetFromKosztorys,
+      discountNetFromKosztorys,
+      laborCostsNetFromTransactions: laborCostsNetFromKosztorys,
+      discountNetFromTransactions: discountNetFromKosztorys,
     })
     expect(silent.laborCosts.mismatch).toBe(false)
 
     // The old code's basis (post-rabat executed net = 132) is a different number from the pre-rabat
     // 140, so a correctly-populated LABOR_COST (the pre-rabat 140) must NOT equal it — proving the two
     // are genuinely different and the pre/post choice is load-bearing.
-    const postRabatNet = sumaPracNet - rabatClientNet
+    const postRabatNet = laborCostsNetFromKosztorys - discountNetFromKosztorys
     expect(postRabatNet).toBeCloseTo(132)
-    expect(postRabatNet).not.toBeCloseTo(sumaPracNet)
+    expect(postRabatNet).not.toBeCloseTo(laborCostsNetFromKosztorys)
   })
 })
 
@@ -223,34 +225,34 @@ describe('reconciliation compares netto ↔ netto — the ledger plane carries n
   // (context/reference/kosztorys-editor-domain-notes.md, „VAT dotyczy wyłącznie prac".)
   it('rabat 100 reconciles against a netto RABAT of 100, and robocizna net-to-net is silent', () => {
     const verdict = buildKosztorysReconciliation({
-      sumaPracNet: 5000,
-      rabatClientNet: 100,
+      laborCostsNetFromKosztorys: 5000,
+      discountNetFromKosztorys: 100,
       laborCostsNetFromTransactions: 5000,
-      investmentRabat: 100,
+      discountNetFromTransactions: 100,
     })
-    expect(verdict.rabat.expected).toBeCloseTo(100)
-    expect(verdict.rabat.mismatch).toBe(false)
+    expect(verdict.discount.expected).toBeCloseTo(100)
+    expect(verdict.discount.mismatch).toBe(false)
     expect(verdict.laborCosts.mismatch).toBe(false)
   })
 
   it('a grossed RABAT (102) now FALSE-fires — proving the kosztorys side is no longer grossed', () => {
     const verdict = buildKosztorysReconciliation({
-      sumaPracNet: 5000,
-      rabatClientNet: 100,
+      laborCostsNetFromKosztorys: 5000,
+      discountNetFromKosztorys: 100,
       laborCostsNetFromTransactions: 5000,
-      investmentRabat: 102,
+      discountNetFromTransactions: 102,
     })
-    expect(verdict.rabat.mismatch).toBe(true)
+    expect(verdict.discount.mismatch).toBe(true)
   })
 })
 
 describe('grosz-exact tolerance (no fuzzy epsilon)', () => {
-  const base = { rabatClientNet: 0, investmentRabat: 0 }
+  const base = { discountNetFromKosztorys: 0, discountNetFromTransactions: 0 }
 
   it('equal to the grosz → no mismatch', () => {
     const verdict = buildKosztorysReconciliation({
       ...base,
-      sumaPracNet: 100,
+      laborCostsNetFromKosztorys: 100,
       laborCostsNetFromTransactions: 100,
     })
     expect(verdict.laborCosts.mismatch).toBe(false)
@@ -259,7 +261,7 @@ describe('grosz-exact tolerance (no fuzzy epsilon)', () => {
   it('a full grosz apart → mismatch', () => {
     const verdict = buildKosztorysReconciliation({
       ...base,
-      sumaPracNet: 100,
+      laborCostsNetFromKosztorys: 100,
       laborCostsNetFromTransactions: 100.01,
     })
     expect(verdict.laborCosts.mismatch).toBe(true)
@@ -268,7 +270,7 @@ describe('grosz-exact tolerance (no fuzzy epsilon)', () => {
   it('sub-grosz apart (rounds to the same grosz) → no mismatch', () => {
     const verdict = buildKosztorysReconciliation({
       ...base,
-      sumaPracNet: 100.002,
+      laborCostsNetFromKosztorys: 100.002,
       laborCostsNetFromTransactions: 100.001,
     })
     expect(verdict.laborCosts.mismatch).toBe(false)

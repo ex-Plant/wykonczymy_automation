@@ -489,17 +489,17 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [x] 3.1 `pnpm typecheck`
-- [x] 3.2 `summary-economics.test.ts`
-- [x] 3.3 `pnpm test:integration`
+- [x] 3.1 `pnpm typecheck` — f1a429c3
+- [x] 3.2 `summary-economics.test.ts` — f1a429c3
+- [x] 3.3 `pnpm test:integration` — f1a429c3
 
 ### Phase 4: Szew B2 — rename płaszczyzn
 
 #### Automated
 
-- [ ] 4.1 `pnpm typecheck`
-- [ ] 4.2 specki `lib/kosztorys/`
-- [ ] 4.3 `pnpm test:parity`
+- [x] 4.1 `pnpm typecheck`
+- [x] 4.2 specki `lib/kosztorys/`
+- [x] 4.3 `pnpm test:parity`
 
 ### Phase 5: Q4 — ujednolicenie figury pre-rabat
 

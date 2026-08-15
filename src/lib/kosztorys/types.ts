@@ -161,7 +161,7 @@ export type KosztorysEditorDataT = {
   settledBreakdown: MaterialsBreakdownRowT[]
   // Transaction-sourced robocizna/rabat (Σ LABOR_COST / Σ RABAT) — the reconciliation "actual" side.
   laborCostsNetFromTransactions: number
-  investmentRabat: number
+  discountNetFromTransactions: number
   // Σ LOSS — the cost the company absorbed, which the settlement deducts at face value.
   investmentLoss: number
   // Realized PAYOUTs per worker for the subcontractor summary block. Optional (default []) because the

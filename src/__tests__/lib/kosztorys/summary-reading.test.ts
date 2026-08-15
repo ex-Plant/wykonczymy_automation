@@ -17,19 +17,19 @@ const financials = {
 } as InvestmentFinancialsT
 
 const clientTotals = {
-  sumaPracNet: 90_000,
-  rabatClientNet: 5_000,
+  laborCostsNetFromKosztorys: 90_000,
+  discountNetFromKosztorys: 5_000,
 } as KosztorysClientTotalsT
 
 describe('summary reading projection', () => {
   it('lands both readings on the same POST-rabat axis', () => {
     expect(readingFromTransactions(financials)).toEqual({
       laborCostsNet: 92_000,
-      rabatAmount: 8_000,
+      discountAmount: 8_000,
     })
     expect(readingFromKosztorys(clientTotals)).toEqual({
       laborCostsNet: 85_000,
-      rabatAmount: 5_000,
+      discountAmount: 5_000,
     })
   })
 
@@ -37,14 +37,17 @@ describe('summary reading projection', () => {
     const v1 = readingFromTransactions(financials)
     const v2 = readingFromKosztorys(clientTotals)
 
-    expect(v1.laborCostsNet + v1.rabatAmount).toBe(financials.totalLaborCosts)
-    expect(v2.laborCostsNet + v2.rabatAmount).toBe(clientTotals.sumaPracNet)
+    expect(v1.laborCostsNet + v1.discountAmount).toBe(financials.totalLaborCosts)
+    expect(v2.laborCostsNet + v2.discountAmount).toBe(clientTotals.laborCostsNetFromKosztorys)
   })
 
   it('reports no rabat when there is none to report', () => {
     expect(
-      readingFromKosztorys({ sumaPracNet: 90_000, rabatClientNet: 0 } as KosztorysClientTotalsT),
-    ).toEqual({ laborCostsNet: 90_000, rabatAmount: 0 })
+      readingFromKosztorys({
+        laborCostsNetFromKosztorys: 90_000,
+        discountNetFromKosztorys: 0,
+      } as KosztorysClientTotalsT),
+    ).toEqual({ laborCostsNet: 90_000, discountAmount: 0 })
   })
 })
 
@@ -53,12 +56,15 @@ describe('summary reading projection', () => {
 // robocizna the investment still carries as legacy LABOR_COST rows. v1 is where those are read.
 describe('readingFromKosztorys without a kosztorys', () => {
   it('reads zero rather than the transactions plane', () => {
-    expect(readingFromKosztorys(null)).toEqual({ laborCostsNet: 0, rabatAmount: 0 })
-    expect(readingFromKosztorys(undefined)).toEqual({ laborCostsNet: 0, rabatAmount: 0 })
+    expect(readingFromKosztorys(null)).toEqual({ laborCostsNet: 0, discountAmount: 0 })
+    expect(readingFromKosztorys(undefined)).toEqual({ laborCostsNet: 0, discountAmount: 0 })
   })
 
   it('cannot be told apart from a kosztorys that sums to zero', () => {
-    const nothingExecuted = { sumaPracNet: 0, rabatClientNet: 0 } as KosztorysClientTotalsT
+    const nothingExecuted = {
+      laborCostsNetFromKosztorys: 0,
+      discountNetFromKosztorys: 0,
+    } as KosztorysClientTotalsT
 
     expect(readingFromKosztorys(nothingExecuted)).toEqual(readingFromKosztorys(null))
   })

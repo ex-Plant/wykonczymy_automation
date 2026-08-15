@@ -118,8 +118,8 @@ export function combinedPair(
 // the investment page's „z kosztorysu" block labels Robocizna, so one label never means two numbers.
 // Łącznie is unaffected: `laborCostsNet` is already post-rabat, so the row pair adds
 // back and deducts the same amount.
-export function sumaPracPreRabat(laborCostsNet: number, rabatAmount: number): number {
-  return laborCostsNet + rabatAmount
+export function sumaPracPreRabat(laborCostsNet: number, discountAmount: number): number {
+  return laborCostsNet + discountAmount
 }
 
 // „Pozostało do zapłaty" (sheet footer r456–464): the headline still-owed figure — Łącznie less the

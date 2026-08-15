@@ -59,7 +59,7 @@ export function KosztorysEditorBody({
   tree,
   investmentName,
   laborCostsNetFromTransactions,
-  investmentRabat,
+  discountNetFromTransactions,
   investmentLoss,
   depositTransactions,
   preview = false,
@@ -83,8 +83,8 @@ export function KosztorysEditorBody({
     stageTotals,
     stages,
     totalNet,
-    sumaPracNet,
-    rabatClientNet,
+    laborCostsNetFromKosztorys,
+    discountNetFromKosztorys,
     laborCostsNet,
     subcontractorDue,
     sort,
@@ -158,19 +158,24 @@ export function KosztorysEditorBody({
   const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
-  // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (sumaPracNet /
-  // rabatClientNet, view-independent) vs the investment's transaction sums — net to net, since the
+  // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (laborCostsNetFromKosztorys /
+  // discountNetFromKosztorys, view-independent) vs the investment's transaction sums — net to net, since the
   // ledger carries no VAT. Built via the shared lib fn — the same one the investment page calls — so
   // the two surfaces can't disagree.
   const reconciliation = useMemo(
     () =>
       buildKosztorysReconciliation({
-        sumaPracNet,
-        rabatClientNet,
+        laborCostsNetFromKosztorys,
+        discountNetFromKosztorys,
         laborCostsNetFromTransactions,
-        investmentRabat,
+        discountNetFromTransactions,
       }),
-    [sumaPracNet, rabatClientNet, laborCostsNetFromTransactions, investmentRabat],
+    [
+      laborCostsNetFromKosztorys,
+      discountNetFromKosztorys,
+      laborCostsNetFromTransactions,
+      discountNetFromTransactions,
+    ],
   )
 
   // Viewport minus the shell's chrome: the h-14 TopNav always, plus the h-14 AppFooter, which only
@@ -330,7 +335,7 @@ export function KosztorysEditorBody({
             totalNet={totalNet}
             laborCostsNet={laborCostsNet}
             sectionSubtotals={progressSubtotals}
-            rabatAmount={rabatClientNet}
+            discountAmount={discountNetFromKosztorys}
             lossAmount={investmentLoss}
             reconciliation={reconciliation}
             vatRate={tree.vatRate}

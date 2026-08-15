@@ -15,16 +15,16 @@ export type KosztorysClientTotalsT = {
   // it lines up with Σ LABOR_COST (a pre-rabat billing figure; rabat is a separate transfer). Under a
   // global discount the rows are already gross, so this is Σ net; under per-item rabat it adds the
   // taken discount back (Σ net + Σ discount) — the same figure the Podsumowanie „Suma prac" row shows.
-  sumaPracNet: number
+  laborCostsNetFromKosztorys: number
   // The client-view rabat: the global discount when active, else Σ per-item rabat. The two are
   // mutually exclusive (a live global discount forces every row gross, zeroing its per-item rabat),
   // so their sum is whichever mode is active.
-  rabatClientNet: number
-  // The global half of `rabatClientNet` on its own — robocizna is `doneNet − this`, and the per-item
-  // rabat is already inside `doneNet`, so subtracting the whole `rabatClientNet` would take it twice.
+  discountNetFromKosztorys: number
+  // The global half of `discountNetFromKosztorys` on its own — robocizna is `doneNet − this`, and the per-item
+  // rabat is already inside `doneNet`, so subtracting the whole `discountNetFromKosztorys` would take it twice.
   // Returned rather than recomputed by the caller: the base a global discount is taken against is one
   // decision, and the argument for it is written once, here.
-  globalRabatNet: number
+  globalDiscountNet: number
 }
 
 /**
@@ -59,19 +59,19 @@ export function clientTotalsFromSubtotals(
   // global discount comes off the executed work, so its base is the post-item-rabat net (which under a
   // global discount is the full gross, per-item rabat being zeroed).
   const doneNet = clientSubtotals.reduce((sum, s) => sum + s.net, 0)
-  const itemRabatNet = clientSubtotals.reduce((sum, s) => sum + s.discount, 0)
-  const globalRabatNet = globalDiscountAmount(doneNet, globalDiscount)
+  const itemDiscountNet = clientSubtotals.reduce((sum, s) => sum + s.discount, 0)
+  const globalDiscountNet = globalDiscountAmount(doneNet, globalDiscount)
   return {
     doneNet,
-    sumaPracNet: doneNet + itemRabatNet,
-    rabatClientNet: globalRabatNet + itemRabatNet,
-    globalRabatNet,
+    laborCostsNetFromKosztorys: doneNet + itemDiscountNet,
+    discountNetFromKosztorys: globalDiscountNet + itemDiscountNet,
+    globalDiscountNet,
   }
 }
 
 /**
  * Executed value at the ACTIVE view's price, PRE-rabat — `Σ(net + discount)` over that view's
- * subtotals. Same net+discount construction as `clientTotalsFromSubtotals`'s `sumaPracNet`, but
+ * subtotals. Same net+discount construction as `clientTotalsFromSubtotals`'s `laborCostsNetFromKosztorys`, but
  * view-agnostic and with no global-discount add-back: the crew is owed its price regardless of any
  * client concession (rabat is absorbed by the company margin, not passed to the subcontractor). Under
  * a global discount `net` is already gross and `discount` is 0, so the identity still holds.

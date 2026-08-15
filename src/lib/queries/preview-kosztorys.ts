@@ -75,7 +75,7 @@ async function buildPreviewKosztorysEditorData(
     settledBreakdown,
     financials,
     laborCostsNetFromTransactions: financials.totalLaborCosts,
-    investmentRabat: financials.totalDiscount,
+    discountNetFromTransactions: financials.totalDiscount,
     investmentLoss: financials.totalLoss,
     materialTransactions,
     depositTransactions,

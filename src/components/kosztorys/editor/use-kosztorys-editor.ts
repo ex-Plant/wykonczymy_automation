@@ -518,15 +518,16 @@ export function useKosztorysEditor({
     () => sectionSubtotalsForView(rows, stages, 'client'),
     [rows, stages],
   )
-  // doneNet feeds the progress counter (÷ plannedNet, both post-rabat); sumaPracNet + rabatClientNet
+  // doneNet feeds the progress counter (÷ plannedNet, both post-rabat); laborCostsNetFromKosztorys + discountNetFromKosztorys
   // feed the reconciliation and route through the shared helper the investment page also calls, so the
   // two verification surfaces can't drift (reconciliation, lessons.md). All three are client-view and
   // view-independent — the progress ratio and the robocizna/rabat comparison must not move with the
   // price-view toggle.
-  const { doneNet, sumaPracNet, rabatClientNet, globalRabatNet } = useMemo(
-    () => clientTotalsFromSubtotals(progressSubtotals, globalDiscount),
-    [progressSubtotals, globalDiscount],
-  )
+  const { doneNet, laborCostsNetFromKosztorys, discountNetFromKosztorys, globalDiscountNet } =
+    useMemo(
+      () => clientTotalsFromSubtotals(progressSubtotals, globalDiscount),
+      [progressSubtotals, globalDiscount],
+    )
   const plannedNet = useMemo(
     () => progressSubtotals.reduce((s, x) => s + x.plannedNet, 0),
     [progressSubtotals],
@@ -535,7 +536,7 @@ export function useKosztorysEditor({
   // NOT the „Do zapłaty" the UI shows — that one adds materiały and subtracts wpłaty
   // (computeAmountDue). This is robocizna alone, after rabat. Both total surfaces (the Sekcje Suma
   // block and the totals bar) read this one prop, so they can never disagree.
-  const laborCostsNet = doneNet - globalRabatNet
+  const laborCostsNet = doneNet - globalDiscountNet
 
   // revert-on-error: roll an optimistic field edit back to its pre-save value
   // (rows + diff snapshot) when the server rejects it. The "current === attempted" guard lives
@@ -1422,8 +1423,8 @@ export function useKosztorysEditor({
     stageTotals,
     stages,
     doneNet,
-    sumaPracNet,
-    rabatClientNet,
+    laborCostsNetFromKosztorys,
+    discountNetFromKosztorys,
     plannedNet,
     globalDiscount,
     perItemDiscountTotal,

@@ -7,20 +7,20 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
  * transfers even though no cash moves — so all four stay transaction-sourced in both readings and
  * never enter here.
  *
- * `laborCostsNet` is POST-rabat and `rabatAmount` rides alongside it — the panel adds them back
+ * `laborCostsNet` is POST-rabat and `discountAmount` rides alongside it — the panel adds them back
  * where it needs the pre-rabat figure (`sumaPracPreRabat`). Both readings must land on that same
  * axis or the „Struktura kosztów" pie and the waterfall disagree between them.
  */
 export type SummaryReadingT = {
   laborCostsNet: number
-  rabatAmount: number
+  discountAmount: number
 }
 
-/** v1 — Σ LABOR_COST (pre-rabat, like `sumaPracNet`) less Σ RABAT. */
+/** v1 — Σ LABOR_COST (pre-rabat, like `laborCostsNetFromKosztorys`) less Σ RABAT. */
 export function readingFromTransactions(financials: InvestmentFinancialsT): SummaryReadingT {
   return {
     laborCostsNet: financials.totalLaborCosts - financials.totalDiscount,
-    rabatAmount: financials.totalDiscount,
+    discountAmount: financials.totalDiscount,
   }
 }
 
@@ -33,10 +33,10 @@ export function readingFromTransactions(financials: InvestmentFinancialsT): Summ
 export function readingFromKosztorys(
   clientTotals: KosztorysClientTotalsT | null | undefined,
 ): SummaryReadingT {
-  const rabatAmount = clientTotals?.rabatClientNet ?? 0
+  const discountAmount = clientTotals?.discountNetFromKosztorys ?? 0
   return {
-    laborCostsNet: (clientTotals?.sumaPracNet ?? 0) - rabatAmount,
-    rabatAmount,
+    laborCostsNet: (clientTotals?.laborCostsNetFromKosztorys ?? 0) - discountAmount,
+    discountAmount,
   }
 }
 
@@ -54,7 +54,7 @@ export function financialsOnReading(
 ): InvestmentFinancialsT {
   return {
     ...financials,
-    totalLaborCosts: reading.laborCostsNet + reading.rabatAmount,
-    totalDiscount: reading.rabatAmount,
+    totalLaborCosts: reading.laborCostsNet + reading.discountAmount,
+    totalDiscount: reading.discountAmount,
   }
 }

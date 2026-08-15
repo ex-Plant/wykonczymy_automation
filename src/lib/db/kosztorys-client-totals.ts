@@ -80,7 +80,7 @@ export async function selectKosztorysClientTotals(
     SELECT
       investment_id,
       sum(net) AS done_net,
-      -- sumaPracNet = doneNet + Σ per-item rabat, and per-item rabat is gross − net by construction,
+      -- laborCostsNetFromKosztorys = doneNet + Σ per-item rabat, and per-item rabat is gross − net by construction,
       -- so the pre-rabat figure is Σ gross. Written as the sum it is, not as the identity it expands
       -- to, because the identity has to hold in both languages.
       sum(gross) AS labor_costs_net_from_kosztorys,
@@ -95,8 +95,8 @@ export async function selectKosztorysClientTotals(
   return res.rows.map((row) => ({
     investmentId: Number(row.investment_id),
     doneNet: num(row.done_net),
-    sumaPracNet: num(row.labor_costs_net_from_kosztorys),
-    rabatClientNet: num(row.discount_net_from_kosztorys),
-    globalRabatNet: num(row.global_discount_net),
+    laborCostsNetFromKosztorys: num(row.labor_costs_net_from_kosztorys),
+    discountNetFromKosztorys: num(row.discount_net_from_kosztorys),
+    globalDiscountNet: num(row.global_discount_net),
   }))
 }

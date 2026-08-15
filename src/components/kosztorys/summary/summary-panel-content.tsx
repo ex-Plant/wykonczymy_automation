@@ -64,7 +64,7 @@ type PropsT = {
   // Company-plane material folded into robocizna, split per category — its own table in the wydatki
   // view. Omitted by the client share, which never builds it.
   settledBreakdown?: MaterialsBreakdownRowT[]
-  rabatAmount: number
+  discountAmount: number
   // Σ LOSS — the cost the company absorbed, deducted from the settlement at face value. Its own prop
   // rather than a field of `financials`, which is the marża gate: the client must see their debt come
   // down without seeing wypłaty or marża. Defaults to 0, so a host with no strata says nothing.
@@ -137,7 +137,7 @@ export function SummaryPanelContent({
   materialsNetBilled,
   materialsBreakdown,
   settledBreakdown,
-  rabatAmount,
+  discountAmount,
   lossAmount,
   reconciliation,
   vatRate,
@@ -288,7 +288,7 @@ export function SummaryPanelContent({
                 amountDue={amountDue}
                 materials={materials}
                 depositsTotal={depositsTotal}
-                rabatAmount={rabatAmount}
+                discountAmount={discountAmount}
                 lossAmount={lossAmount}
                 reconciliation={reconciliation}
                 settlementVerdict={settlementVerdict}
@@ -337,7 +337,7 @@ export function SummaryPanelContent({
               <SummaryMarginTab
                 financials={financials}
                 laborCostsNet={laborCostsNet}
-                rabatAmount={rabatAmount}
+                discountAmount={discountAmount}
               />
             )}
           </div>
