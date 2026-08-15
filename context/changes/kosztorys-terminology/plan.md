@@ -481,9 +481,9 @@ Przed archiwizacją: `pnpm typecheck && pnpm lint && pnpm test && pnpm test:pari
 
 #### Automated
 
-- [ ] 2.1 `pnpm typecheck`
-- [ ] 2.2 specki `sheet-import`
-- [ ] 2.3 weryfikacja grepem: zero identyfikatorów `Robocizn`
+- [x] 2.1 `pnpm typecheck`
+- [x] 2.2 specki `sheet-import`
+- [x] 2.3 weryfikacja grepem: zero identyfikatorów `Robocizn`
 
 ### Phase 3: `summary-economics`, aliasy SQL, `wydatki`
 

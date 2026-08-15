@@ -1,8 +1,8 @@
 import { netForQtyForView, rowPlannedNetForView } from '@/lib/kosztorys/calc'
 import type { ViewPricingT } from '@/lib/kosztorys/types'
 import { FOOTER_ROWS, fold, type FooterRowKeyT } from './columns'
-import type { ParsedItemT, ParsedRobociznaT } from './parse-robocizna'
-import type { ResolvedRobociznaT } from './resolve-columns'
+import type { ParsedItemT, ParsedLaborTabT } from './parse-labor-tab'
+import type { ResolvedLaborColumnsT } from './resolve-columns'
 
 export type { FooterRowKeyT }
 
@@ -59,8 +59,8 @@ const asPricing = (item: ParsedItemT): ViewPricingT => ({
  */
 export function compareFooterTotals(
   grid: unknown[][],
-  resolved: ResolvedRobociznaT,
-  parsed: ParsedRobociznaT,
+  resolved: ResolvedLaborColumnsT,
+  parsed: ParsedLaborTabT,
 ): FooterComparisonT[] {
   const qtyDoneByItem = new Map<number, number>()
   for (const entry of parsed.progress) {
@@ -129,8 +129,8 @@ const DEFAULT_CANDIDATE: Record<FooterRowKeyT, AppTotalKeyT> = {
  */
 function measuredNetTotal(
   grid: unknown[][],
-  resolved: ResolvedRobociznaT,
-  parsed: ParsedRobociznaT,
+  resolved: ResolvedLaborColumnsT,
+  parsed: ParsedLaborTabT,
 ): number | null {
   const column = resolved.columns.measuredQty
   if (column === undefined) return null

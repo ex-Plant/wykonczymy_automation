@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { scanFormulaHealth } from '@/lib/kosztorys/sheet-import/formula-health'
-import { parseRobocizna } from '@/lib/kosztorys/sheet-import/parse-robocizna'
-import { resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import { parseLaborTab } from '@/lib/kosztorys/sheet-import/parse-labor-tab'
+import { resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { col, row } from '@/__tests__/fixtures/kosztorys-sheet/grid'
 import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
 // Białostocka's three prace sit at grid indices 4, 5 and 7 — sheet rows 5, 6 and 8. Przedmiar is N,
 // Pomiar z natury is O, the etapy run D–M.
 const resolved = () => {
-  const outcome = resolveRobocizna(BIALOSTOCKA_ROWS)
+  const outcome = resolveLaborColumns(BIALOSTOCKA_ROWS)
   if (!outcome.ok) expect.fail(`header did not resolve: ${outcome.problems.join(' | ')}`)
   return outcome
 }
@@ -21,7 +21,7 @@ function scan(
   const formulas = BIALOSTOCKA_ROWS.map((_, index) =>
     formulasByIndex[index] ? row(formulasByIndex[index]) : [],
   )
-  const { footerStart } = parseRobocizna(BIALOSTOCKA_ROWS, columns, formulas)
+  const { footerStart } = parseLaborTab(BIALOSTOCKA_ROWS, columns, formulas)
   return scanFormulaHealth(grid, formulas, columns, footerStart)
 }
 

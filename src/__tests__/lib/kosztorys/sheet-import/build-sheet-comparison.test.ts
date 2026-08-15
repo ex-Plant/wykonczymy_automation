@@ -11,9 +11,9 @@ const SPREADSHEET_ID = 'sheet-abc'
 const NO_GLOBAL_DISCOUNT: GlobalDiscountT = { type: null, value: 0 }
 
 const source = (overrides: Partial<ImportGridsT> = {}): ImportGridsT => ({
-  robocizna: BIALOSTOCKA_ROWS,
-  robociznaFormulas: [],
-  robociznaGid: 70964819,
+  laborGrid: BIALOSTOCKA_ROWS,
+  laborGridFormulas: [],
+  laborTabGid: 70964819,
   rateTabs: [ratesTab('zakres pracy z narzędziami', [])],
   ...overrides,
 })
@@ -200,7 +200,7 @@ describe('buildSheetComparison', () => {
     )
 
     const built = buildSheetComparison(
-      source({ robocizna: broken }),
+      source({ laborGrid: broken }),
       currentTree(),
       SPREADSHEET_ID,
       NO_GLOBAL_DISCOUNT,
@@ -215,7 +215,7 @@ describe('buildSheetComparison', () => {
     // nothing to say about that praca.
     const formulas = BIALOSTOCKA_ROWS.map((_, index) => (index === 4 ? row({ O: '=N5' }) : []))
 
-    expect(compare(source({ robociznaFormulas: formulas })).referenceQty).toEqual({
+    expect(compare(source({ laborGridFormulas: formulas })).referenceQty).toEqual({
       matched: 3,
       withValue: 2,
     })
@@ -230,7 +230,7 @@ describe('buildSheetComparison', () => {
 
   it('hands over everything a per-cell link needs, and nothing when the tab’s gid is missing', () => {
     expect(compare().sheetLink).toEqual({ spreadsheetId: SPREADSHEET_ID, gid: 70964819 })
-    expect(compare(source({ robociznaGid: undefined })).sheetLink).toBeNull()
+    expect(compare(source({ laborTabGid: undefined })).sheetLink).toBeNull()
   })
 
   // A global discount is a whole-kosztorys amount, so the editor prices rows gross and takes it once

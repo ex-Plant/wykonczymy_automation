@@ -12,9 +12,9 @@ const RATES = [
 ]
 
 const source = (overrides: Partial<ImportGridsT> = {}): ImportGridsT => ({
-  robocizna: BIALOSTOCKA_ROWS,
-  robociznaFormulas: [],
-  robociznaGid: 70964819,
+  laborGrid: BIALOSTOCKA_ROWS,
+  laborGridFormulas: [],
+  laborTabGid: 70964819,
   rateTabs: [ratesTab('zakres pracy z narzędziami', RATES)],
   ...overrides,
 })
@@ -222,7 +222,7 @@ describe('buildImportPlan', () => {
         : row,
     )
 
-    const built = buildImportPlan(source({ robocizna: broken }), currentTree())
+    const built = buildImportPlan(source({ laborGrid: broken }), currentTree())
 
     expect(built.ok).toBe(false)
     expect(built.ok === false && built.problems.join(' ')).toContain('Przedmiar')
@@ -237,7 +237,7 @@ describe('buildImportPlan', () => {
         : row,
     )
 
-    const built = buildImportPlan(source({ robocizna: broken }), currentTree())
+    const built = buildImportPlan(source({ laborGrid: broken }), currentTree())
     if (built.ok) expect.fail('expected the plan to be refused')
 
     expect(built.missingFields).toContainEqual({

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  resolveRobocizna,
-  type ResolvedRobociznaT,
-  type RobociznaFailureT,
+  resolveLaborColumns,
+  type ResolvedLaborColumnsT,
+  type LaborColumnsFailureT,
 } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { col } from '@/__tests__/fixtures/kosztorys-sheet/grid'
 import {
@@ -11,16 +11,16 @@ import {
 } from '@/__tests__/fixtures/kosztorys-sheet/header-blocks'
 
 function expectResolved(
-  result: ResolvedRobociznaT | RobociznaFailureT,
-): asserts result is ResolvedRobociznaT {
+  result: ResolvedLaborColumnsT | LaborColumnsFailureT,
+): asserts result is ResolvedLaborColumnsT {
   if (!result.ok) expect.fail(`expected a resolved header, got: ${result.problems.join(' | ')}`)
 }
 
 // Żupnicza splits „Wartość netto" into S and T, so no name matches and the header refuses — the one
 // layout the stored pointing exists for.
-describe('resolveRobocizna with a stored column pointing', () => {
+describe('resolveLaborColumns with a stored column pointing', () => {
   it('resolves a column the header name could not', () => {
-    const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('S') })
+    const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('S') })
     expectResolved(result)
 
     expect(result.columns.netValue).toBe(col('S'))
@@ -29,7 +29,7 @@ describe('resolveRobocizna with a stored column pointing', () => {
   })
 
   it('lets a corrected header name win over a pointing at another column', () => {
-    const result = resolveRobocizna(BIALOSTOCKA_ROBOCIZNA_HEADER, { netValue: col('AE') })
+    const result = resolveLaborColumns(BIALOSTOCKA_ROBOCIZNA_HEADER, { netValue: col('AE') })
     expectResolved(result)
 
     expect(result.columns.netValue).toBe(col('S'))
@@ -37,7 +37,7 @@ describe('resolveRobocizna with a stored column pointing', () => {
   })
 
   it('ignores a pointing at a column another field already owns', () => {
-    const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('Q') })
+    const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('Q') })
 
     expect(result.ok).toBe(false)
     expect(result.missingFields).toEqual([{ field: 'netValue', required: true, reason: 'absent' }])
@@ -45,21 +45,21 @@ describe('resolveRobocizna with a stored column pointing', () => {
 
   it('ignores a pointing at a column read off the etapy position', () => {
     // B is the ordinal between „nazwa sekcji" and „opis pracy" — no field's own, but not free either.
-    const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('B') })
+    const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('B') })
 
     expect(result.ok).toBe(false)
     expect(result.missingFields).toEqual([{ field: 'netValue', required: true, reason: 'absent' }])
   })
 
   it('ignores a pointing past the header block', () => {
-    const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('S') + 500 })
+    const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER, { netValue: col('S') + 500 })
 
     expect(result.ok).toBe(false)
     expect(result.missingFields).toEqual([{ field: 'netValue', required: true, reason: 'absent' }])
   })
 
   it('names only the fields that came from the pointing', () => {
-    const result = resolveRobocizna(ZUPNICZA_ROBOCIZNA_HEADER, {
+    const result = resolveLaborColumns(ZUPNICZA_ROBOCIZNA_HEADER, {
       netValue: col('S'),
       // Already matched by name — riding along in the pointing changes nothing.
       plannedQty: col('T'),

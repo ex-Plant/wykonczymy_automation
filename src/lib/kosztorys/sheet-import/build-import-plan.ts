@@ -16,10 +16,10 @@ import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { deriveOverride } from './derive-override'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
-import { parseRobocizna } from './parse-robocizna'
+import { parseLaborTab } from './parse-labor-tab'
 import { type ImportGridsT } from './read-sheet'
 import {
-  resolveRobocizna,
+  resolveLaborColumns,
   type MissingFieldT,
   type UnresolvedColumnsT,
   type UnresolvedReasonT,
@@ -95,12 +95,12 @@ export function buildImportPlan(
   currentTree: SnapshotPayloadT,
   mapping?: SheetColumnMappingT,
 ): ImportPlanT {
-  const resolvedRobocizna = resolveRobocizna(grids.robocizna, mapping)
-  const { missingFields, candidates, pointedFields } = resolvedRobocizna
-  if (!resolvedRobocizna.ok) {
+  const resolvedLaborColumns = resolveLaborColumns(grids.laborGrid, mapping)
+  const { missingFields, candidates, pointedFields } = resolvedLaborColumns
+  if (!resolvedLaborColumns.ok) {
     return {
       ok: false,
-      problems: resolvedRobocizna.problems,
+      problems: resolvedLaborColumns.problems,
       missingFields,
       candidates,
       pointedFields,
@@ -138,7 +138,7 @@ export function buildImportPlan(
     }
   }
 
-  const parsed = parseRobocizna(grids.robocizna, resolvedRobocizna, grids.robociznaFormulas)
+  const parsed = parseLaborTab(grids.laborGrid, resolvedLaborColumns, grids.laborGridFormulas)
   const rates = resolveItemRates(
     parsed.items.map((item) => ({ description: item.description ?? '' })),
     rateTabs,
@@ -280,7 +280,7 @@ export function buildImportPlan(
       },
       rateDecisions: rates.filter(isReported),
       retained,
-      totals: compareFooterTotals(grids.robocizna, resolvedRobocizna, parsed),
+      totals: compareFooterTotals(grids.laborGrid, resolvedLaborColumns, parsed),
       warnings,
     },
   }

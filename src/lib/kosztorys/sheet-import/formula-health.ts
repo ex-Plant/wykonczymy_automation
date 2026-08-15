@@ -1,7 +1,7 @@
 import { columnLetter } from '@/lib/google/sheet-configs'
 import { fold, HEADER_BLOCK_ROWS } from './columns'
-import { NON_ITEM_MARKER } from './parse-robocizna'
-import type { ResolvedRobociznaT } from './resolve-columns'
+import { NON_ITEM_MARKER } from './parse-labor-tab'
+import type { ResolvedLaborColumnsT } from './resolve-columns'
 
 export type FormulaSampleT = {
   row: number
@@ -63,7 +63,7 @@ function ownRowReference(formula: unknown, rowNumber: number): string | null {
 export function scanFormulaHealth(
   grid: unknown[][],
   formulas: unknown[][],
-  resolved: ResolvedRobociznaT,
+  resolved: ResolvedLaborColumnsT,
   footerStart: number,
 ): FormulaHealthT {
   const { columns, stages } = resolved

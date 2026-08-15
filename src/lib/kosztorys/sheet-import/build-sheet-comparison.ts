@@ -17,9 +17,9 @@ import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { scanFormulaHealth, type FormulaHealthT } from './formula-health'
 import { keyItems } from './item-key'
-import { parseRobocizna, type ParsedItemT } from './parse-robocizna'
+import { parseLaborTab, type ParsedItemT } from './parse-labor-tab'
 import type { ImportGridsT } from './read-sheet'
-import { resolveRobocizna } from './resolve-columns'
+import { resolveLaborColumns } from './resolve-columns'
 import {
   isReported,
   readRateTabs,
@@ -180,10 +180,10 @@ export function buildSheetComparison(
   globalDiscount: GlobalDiscountT,
   mapping?: SheetColumnMappingT,
 ): SheetComparisonResultT {
-  const resolved = resolveRobocizna(grids.robocizna, mapping)
+  const resolved = resolveLaborColumns(grids.laborGrid, mapping)
   if (!resolved.ok) return { ok: false, problems: resolved.problems }
 
-  const parsed = parseRobocizna(grids.robocizna, resolved, grids.robociznaFormulas)
+  const parsed = parseLaborTab(grids.laborGrid, resolved, grids.laborGridFormulas)
 
   const sheetSectionName = new Map(parsed.sections.map((section) => [section.id, section.name]))
   const appSectionName = new Map(currentTree.sections.map((section) => [section.id, section.name]))
@@ -289,7 +289,7 @@ export function buildSheetComparison(
         executedNetFromSheet: sheetTotals.executedNet,
         executedNetFromApp: appTotals.executedNet,
       },
-      footer: compareFooterTotals(grids.robocizna, resolved, parsed),
+      footer: compareFooterTotals(grids.laborGrid, resolved, parsed),
       counts: {
         sheetItems: parsed.items.length,
         appItems: currentTree.items.length,
@@ -311,13 +311,12 @@ export function buildSheetComparison(
             appTotals.executedNet,
         ) >= MATCHES,
       health: scanFormulaHealth(
-        grids.robocizna,
-        grids.robociznaFormulas,
+        grids.laborGrid,
+        grids.laborGridFormulas,
         resolved,
         parsed.footerStart,
       ),
-      sheetLink:
-        grids.robociznaGid === undefined ? null : { spreadsheetId, gid: grids.robociznaGid },
+      sheetLink: grids.laborTabGid === undefined ? null : { spreadsheetId, gid: grids.laborTabGid },
     },
   }
 }

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { parseRobocizna } from '@/lib/kosztorys/sheet-import/parse-robocizna'
-import { resolveRobocizna } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import { parseLaborTab } from '@/lib/kosztorys/sheet-import/parse-labor-tab'
+import { resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { fold } from '@/lib/kosztorys/sheet-import/columns'
 import { BIALOSTOCKA_ROWS, PRZEDPOLE_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
 
 function parse(grid: (string | number)[][], formulas: (string | number)[][] = []) {
-  const resolved = resolveRobocizna(grid)
+  const resolved = resolveLaborColumns(grid)
   if (!resolved.ok) expect.fail(`fixture header did not resolve: ${resolved.problems.join(' | ')}`)
-  return parseRobocizna(grid, resolved, formulas)
+  return parseLaborTab(grid, resolved, formulas)
 }
 
 const POMIAR_COLUMN = 14 // O on Białostocka
 
-describe('parseRobocizna', () => {
+describe('parseLaborTab', () => {
   it('groups prace under the section header that precedes them', () => {
     const { sections, items } = parse(BIALOSTOCKA_ROWS)
 
@@ -157,8 +157,9 @@ describe('parseRobocizna', () => {
       return blank
     })
 
-    expect(parse(BIALOSTOCKA_ROWS, formulas).items.every((item) => item.sheetMeasuredQty === null))
-      .toBe(true)
+    expect(
+      parse(BIALOSTOCKA_ROWS, formulas).items.every((item) => item.sheetMeasuredQty === null),
+    ).toBe(true)
   })
 
   it('reads an empty „Pomiar z natury" as no claim, not as a measurement of zero', () => {

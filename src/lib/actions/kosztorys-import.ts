@@ -19,7 +19,7 @@ import {
   type SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import {
-  resolveRobocizna,
+  resolveLaborColumns,
   type UnresolvedColumnsT,
 } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import {
@@ -198,7 +198,7 @@ export async function compareWithSheet(
       // Resolved here rather than left to the two builders below: an unreadable header has to reach
       // the window as a pick, and the refresh must not run on it — writing a Pomiar off a header we
       // could not read would be worse than leaving the stored figure alone.
-      const resolved = resolveRobocizna(grids.robocizna, sheet.sheetColumnMapping)
+      const resolved = resolveLaborColumns(grids.laborGrid, sheet.sheetColumnMapping)
       const columns = {
         missingFields: resolved.missingFields,
         candidates: resolved.candidates,

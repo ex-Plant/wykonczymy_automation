@@ -48,9 +48,9 @@ export type UnresolvedColumnsT = {
 // Only the robocizna header carries the trio: it is the one the owner can repair by pointing at a
 // column, so hanging it on the shared failure type would put three permanently empty arrays on every
 // rates failure.
-export type RobociznaFailureT = ResolveFailureT & UnresolvedColumnsT
+export type LaborColumnsFailureT = ResolveFailureT & UnresolvedColumnsT
 
-export type ResolvedRobociznaT = UnresolvedColumnsT & {
+export type ResolvedLaborColumnsT = UnresolvedColumnsT & {
   ok: true
   columns: { section: number; description: number } & Partial<Record<ColumnFieldT, number>> & {
       plannedQty: number
@@ -176,10 +176,10 @@ const ROBOCIZNA_FIELDS = [
 
 // Resolve the `kosztorys_robocizny` header block. Total by design — an unresolvable header is a
 // value the preview renders and a confirm button it disables, not an exception.
-export function resolveRobocizna(
+export function resolveLaborColumns(
   grid: unknown[][],
   mapping: SheetColumnMappingT = {},
-): ResolvedRobociznaT | RobociznaFailureT {
+): ResolvedLaborColumnsT | LaborColumnsFailureT {
   const block = grid.slice(0, HEADER_BLOCK_ROWS)
   const { columns, unresolved } = resolveFields(block, ROBOCIZNA_FIELDS)
   const problems: string[] = []
