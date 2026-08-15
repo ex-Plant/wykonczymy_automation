@@ -374,7 +374,7 @@ Uruchamiane **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [ ] 1.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/lib/kosztorys/column-order.test.ts`
+- [x] 1.1 Nowy spec przechodzi: `pnpm exec vitest run src/__tests__/lib/kosztorys/column-order.test.ts`
 
 ### Phase 2: Wpięcie kolejności w budowę kolumn
 

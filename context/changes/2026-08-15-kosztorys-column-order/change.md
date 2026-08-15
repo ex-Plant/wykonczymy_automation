@@ -1,11 +1,11 @@
 ---
 change_id: kosztorys-column-order
 title: User-defined column order in the kosztorys editor
-status: planned
+status: implementing
 created: 2026-08-15
 updated: 2026-08-15
 archived_at: null
-branch: null
+branch: ex-692-kosztorys-column-order
 worktree: null
 ---
 
