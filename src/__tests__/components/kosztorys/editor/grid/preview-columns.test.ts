@@ -105,7 +105,6 @@ describe('preview columns', () => {
     expect(columnData({ previewVisible: true }).tip?.(diverged)).toBeNull()
   })
 
-  // The owner's stored choice subtracts from the allowlist; it can never add to it.
   it('drops the columns the owner hid, and only those', () => {
     const baseline = previewIds()
     const visible = previewIds({ previewHiddenColumns: new Set(['unit']) })
@@ -125,8 +124,7 @@ describe('preview columns', () => {
   })
 
   it('cannot let a stored key add a column outside the allowlist', () => {
-    // A key the client may not see is not a key the settings can flip back on — `keep` only ever
-    // subtracts, so naming `note` here is inert rather than a way in.
+    // `note` is inert here rather than a way in — naming it is the point of the fixture.
     expect(previewIds({ previewHiddenColumns: new Set(['note']) })).not.toContain('note')
   })
 

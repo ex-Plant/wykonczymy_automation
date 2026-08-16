@@ -19,6 +19,9 @@ import {
   fetchWholeInvestmentFinancials,
 } from '@/lib/queries/whole-investment-financials'
 
+// The tree payload plus the one thing that is per-investment and uncached: what its client sees.
+export type PreviewKosztorysDataT = KosztorysEditorDataT & { clientView: ClientViewSettingsT }
+
 // No projection/stripping anywhere below: the owner accepted the leak, so the full payload ships —
 // tree AND figures — and the render side alone decides what a client sees. That is not laziness, it
 // is the anti-drift rule: the moment this path hands the panel a different set of inputs than the
@@ -94,19 +97,7 @@ const cachedPreviewKosztorysEditorData = unstable_cache(
   { tags: KOSZTORYS_TAGS },
 )
 
-/**
- * The public share read: token in, client payload out, no session anywhere. The token IS the
- * credential, so an unknown one is indistinguishable from a revoked one — both return null and the
- * route 404s, leaking nothing about which investments exist.
- *
- * The token→investment lookup stays uncached (one indexed query) so revoking a link takes effect on
- * the next request rather than when a cache tag happens to be busted.
- */
-export type PreviewKosztorysDataT = KosztorysEditorDataT & { clientView: ClientViewSettingsT }
-
-// Beside the cached payload, never inside it: one indexed read means a settings save is live on the
-// next request with no cache tag to bust, and changing the firm-wide default does not invalidate
-// every investment's tree payload.
+// Beside the cached payload, never inside it — see the resolver's own docblock for why.
 async function withClientView(investmentId: number): Promise<PreviewKosztorysDataT> {
   const [data, clientView] = await Promise.all([
     cachedPreviewKosztorysEditorData(investmentId),
@@ -115,6 +106,14 @@ async function withClientView(investmentId: number): Promise<PreviewKosztorysDat
   return { ...data, clientView }
 }
 
+/**
+ * The public share read: token in, client payload out, no session anywhere. The token IS the
+ * credential, so an unknown one is indistinguishable from a revoked one — both return null and the
+ * route 404s, leaking nothing about which investments exist.
+ *
+ * The token→investment lookup stays uncached (one indexed query) so revoking a link takes effect on
+ * the next request rather than when a cache tag happens to be busted.
+ */
 export async function getPreviewKosztorysByToken(
   token: string,
 ): Promise<PreviewKosztorysDataT | null> {

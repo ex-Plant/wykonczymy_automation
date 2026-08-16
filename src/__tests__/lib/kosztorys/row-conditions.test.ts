@@ -92,7 +92,7 @@ describe('the conditions, each on its boundary', () => {
 
   it('splits into working filters and diagnostics, and only filters lift to a section', () => {
     for (const condition of ROW_CONDITIONS) {
-      expect(condition.sectionLabel === null).toBe(condition.kind === 'diagnostic')
+      expect(condition.sectionLabel === null).toBe(condition.kind !== 'filter')
     }
   })
 

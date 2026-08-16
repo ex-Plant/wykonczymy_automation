@@ -21,7 +21,7 @@ import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/c
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
-import { engagedConditionsOfKind, listLabels } from '@/lib/kosztorys/row-conditions'
+import { engagedConditionsOfKind, engagedHiders, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -159,7 +159,9 @@ export function KosztorysEditorBody({
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
   const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
-  const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
+  // The client's own hider counts here too: with „ukryj puste pozycje" on and every pozycja empty,
+  // the client would otherwise get a grid with nothing in it and no word about why.
+  const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (laborCostsNetFromKosztorys /
@@ -307,22 +309,31 @@ export function KosztorysEditorBody({
               <EmptyState
                 className="pointer-events-none absolute inset-0"
                 title={
-                  emptyByFilter
-                    ? 'Wszystkie pozycje schowane'
-                    : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
+                  preview
+                    ? 'Brak pozycji do pokazania'
+                    : emptyByFilter
+                      ? 'Wszystkie pozycje schowane'
+                      : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
                 }
                 description={
-                  emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
+                  preview
+                    ? 'Żadna pozycja nie ma jeszcze przedmiaru ani wykonanej pracy.'
+                    : emptyByFilter
+                      ? undefined
+                      : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
                 }
               >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="pointer-events-auto"
-                  onClick={resetFilters}
-                >
-                  Zresetuj filtry
-                </Button>
+                {/* The client has no „Filtry" menu, so nothing there is theirs to reset. */}
+                {!preview && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="pointer-events-auto"
+                    onClick={resetFilters}
+                  >
+                    Zresetuj filtry
+                  </Button>
+                )}
               </EmptyState>
             )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its

@@ -163,32 +163,52 @@ export const AXIS_EXEMPT_COLUMNS: ReadonlySet<string> = new Set(['price'])
 // It is half a lock — the other half pins the plane, see `assertDisclosurePair`. (The subcontractor-
 // only `priceMode`/`priceCoeff` are absent here too, but that is defence in depth; they are never
 // assembled at the client plane in the first place.)
-export const PREVIEW_VISIBLE_COLUMNS: ReadonlySet<string> = new Set([
-  'sectionName',
-  'description',
-  'plannedQty',
-  'stageQtySum',
-  'unit',
-  'price',
-  'priceGross',
-  'discountType',
-  'discountValue',
-  'discountAmount',
-  'discountAmountGross',
-  'plannedNet',
-  'plannedGross',
-  'net',
-  'gross',
-  'remaining',
-  'remainingGross',
-  // No `note`: the sheet's „komentarz" is owner-authored internal free text (owner ruling,
-  // 2026-07-20) — the client DTO drops it too, so this is the matching half of that decision.
-  STAGES_COLUMN_GROUP,
-  STAGE_VALUE_NET_COLUMN_GROUP,
-  STAGE_VALUE_GROSS_COLUMN_GROUP,
-  STAGE_VALUE_PERCENT_COLUMN_GROUP,
-  'donePercent',
-])
+//
+// Written as groups because the settings dialog offers the same columns as ticks and needs headings
+// for them; the allowlist below is their flattening, so a column cannot be offerable-but-barred (or
+// visible-but-unhideable) — there is only one list.
+export type ClientViewGroupT = {
+  label: string
+  keys: readonly string[]
+}
+
+export const CLIENT_VIEW_GROUPS: readonly ClientViewGroupT[] = [
+  {
+    label: 'Opis i ilości',
+    keys: ['sectionName', 'description', 'plannedQty', 'stageQtySum', 'unit'],
+  },
+  {
+    label: 'Ceny i rabat',
+    keys: [
+      'price',
+      'priceGross',
+      'discountType',
+      'discountValue',
+      'discountAmount',
+      'discountAmountGross',
+    ],
+  },
+  {
+    label: 'Wartości',
+    // No `note`: the sheet's „komentarz" is owner-authored internal free text (owner ruling,
+    // 2026-07-20) — the client DTO drops it too, so this is the matching half of that decision.
+    keys: ['plannedNet', 'plannedGross', 'net', 'gross', 'remaining', 'remainingGross'],
+  },
+  {
+    label: 'Etapy i postęp',
+    keys: [
+      STAGES_COLUMN_GROUP,
+      STAGE_VALUE_NET_COLUMN_GROUP,
+      STAGE_VALUE_GROSS_COLUMN_GROUP,
+      STAGE_VALUE_PERCENT_COLUMN_GROUP,
+      'donePercent',
+    ],
+  },
+]
+
+export const PREVIEW_VISIBLE_COLUMNS: ReadonlySet<string> = new Set(
+  CLIENT_VIEW_GROUPS.flatMap((group) => group.keys),
+)
 
 // The stage axis triples the grid's stage block, and brutto per stage is the least-read of the three
 // — derivable from the netto beside it at a fixed rate. „Sekcja" repeats one name down every row of

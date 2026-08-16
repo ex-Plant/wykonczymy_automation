@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
-import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/kosztorys-client-view-dialog'
+import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
 import { generateShareLinkAction, revokeShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { saveClientViewSettingsAction } from '@/lib/actions/kosztorys-client-view'
-import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
+import {
+  sameClientViewSettings,
+  type ClientViewSettingsT,
+} from '@/lib/kosztorys/client-view-settings'
 import { FRONTEND_URL } from '@/lib/env'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 import { toastMessage } from '@/lib/utils/toast'
@@ -67,6 +70,10 @@ export function KosztorysShareDialog({
   const saveAndContinue = () =>
     startTransition(async () => {
       if (!draft) return
+      // „Dalej" on an untouched step writes nothing. A saved row overrides the firm-wide default
+      // forever after, so clicking through the review must not silently opt this investment out of
+      // a default the owner may change later.
+      if (settings && sameClientViewSettings(draft, settings)) return setStep('link')
       const res = await saveClientViewSettingsAction(investmentId, draft)
       if (!res.success) return toastMessage(res.error, 'error')
       onSettingsChange(draft)
@@ -91,6 +98,13 @@ export function KosztorysShareDialog({
     })
 
   const copy = () => copyToClipboard(url, 'Skopiowano link.')
+
+  const backToSettings = (
+    <Button variant="ghost" size="sm" className="self-start" onClick={() => setStep('settings')}>
+      <ArrowLeft />
+      Wróć do ustawień
+    </Button>
+  )
 
   return (
     <>
@@ -143,30 +157,14 @@ export function KosztorysShareDialog({
               <Description size="xs">
                 „Wygeneruj nowy" unieważnia obecny link — stary adres przestaje działać.
               </Description>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="self-start"
-                onClick={() => setStep('settings')}
-              >
-                <ArrowLeft />
-                Wróć do ustawień
-              </Button>
+              {backToSettings}
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               <Button size="sm" onClick={generate} disabled={pending} className="self-start">
                 Wygeneruj link
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="self-start"
-                onClick={() => setStep('settings')}
-              >
-                <ArrowLeft />
-                Wróć do ustawień
-              </Button>
+              {backToSettings}
             </div>
           )}
         </DialogContent>

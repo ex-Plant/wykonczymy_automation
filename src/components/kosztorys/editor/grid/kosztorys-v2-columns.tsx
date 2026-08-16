@@ -643,8 +643,6 @@ function selectV2Columns(
   // columns would print „Rabat 10 %" beside „Kwota rabatu 0,00" on the offer itself.
   const keep = (key: string): boolean => {
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(key)) return false
-    // The allowlist first, the owner's stored choice second: the owner may subtract from what the
-    // client sees, never add to it.
     if (opts.previewVisible) {
       return PREVIEW_VISIBLE_COLUMNS.has(key) && !opts.previewHiddenColumns?.has(key)
     }

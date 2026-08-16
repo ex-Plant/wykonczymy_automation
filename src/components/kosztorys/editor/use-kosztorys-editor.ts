@@ -467,7 +467,7 @@ export function useKosztorysEditor({
   const foldableSectionIds = useMemo(() => {
     const ctx = { stages }
     return new Map(
-      ROW_CONDITIONS.filter((condition) => condition.sectionLabel !== null).map((condition) => [
+      ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
         condition.id,
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),

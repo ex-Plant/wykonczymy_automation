@@ -1,103 +1,15 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Description } from '@/components/ui/description'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
-import { CLIENT_VIEW_GROUPS } from '@/components/kosztorys/editor/dialogs/client-view-groups'
-import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
+import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
 import {
   saveClientViewDefaultsAction,
   saveClientViewSettingsAction,
 } from '@/lib/actions/kosztorys-client-view'
-import { COLUMN_LABELS } from '@/lib/kosztorys/column-config'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { toastMessage } from '@/lib/utils/toast'
-
-type FormPropsT = {
-  value: ClientViewSettingsT
-  onChange: (value: ClientViewSettingsT) => void
-  disabled?: boolean
-}
-
-function CheckboxRow({
-  checked,
-  onCheckedChange,
-  disabled,
-  children,
-}: {
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-  disabled?: boolean
-  children: ReactNode
-}) {
-  return (
-    <label className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm">
-      <Checkbox
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={(state) => onCheckedChange(state === true)}
-      />
-      {children}
-    </label>
-  )
-}
-
-/**
- * The settings body on its own, so „Udostępnij" can render it as its first step rather than growing
- * a second copy that could drift from this one. It owns no persistence and no buttons — the caller
- * supplies both, which is what makes it reusable as a step.
- *
- * A tick means „klient to widzi", like every other picker in the editor; the stored shape is the
- * inverse (hidden keys), so the client's document is defined by what was taken away from the
- * allowlist and a column added to the allowlist later shows up on its own.
- */
-export function ClientViewSettingsForm({ value, onChange, disabled }: FormPropsT) {
-  const { conditionCounts } = useKosztorysEditorContext()
-  const emptyCount = conditionCounts.get('client-empty') ?? 0
-  const hidden = new Set(value.hiddenColumns)
-
-  const toggleColumn = (key: string, visible: boolean) => {
-    const next = new Set(hidden)
-    if (visible) next.delete(key)
-    else next.add(key)
-    onChange({ ...value, hiddenColumns: [...next] })
-  }
-
-  return (
-    <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
-      {CLIENT_VIEW_GROUPS.map((group) => (
-        <div key={group.label} className="flex flex-col gap-0.5">
-          <p className="text-muted-foreground px-2 text-xs font-medium">{group.label}</p>
-          {group.keys.map((key) => (
-            <CheckboxRow
-              key={key}
-              checked={!hidden.has(key)}
-              disabled={disabled}
-              onCheckedChange={(visible) => toggleColumn(key, visible)}
-            >
-              {COLUMN_LABELS[key] ?? key}
-            </CheckboxRow>
-          ))}
-        </div>
-      ))}
-      <div className="flex flex-col gap-0.5 border-t pt-3">
-        <p className="text-muted-foreground px-2 text-xs font-medium">Pozycje</p>
-        <CheckboxRow
-          checked={value.hideEmptyRows}
-          disabled={disabled}
-          onCheckedChange={(checked) => onChange({ ...value, hideEmptyRows: checked })}
-        >
-          Ukryj pozycje bez przedmiaru i bez wykonanej pracy ({emptyCount})
-        </CheckboxRow>
-        <Description size="xs">
-          Takie pozycje nie wnoszą nic do żadnej kwoty, więc ukrycie ich nie zmienia podsumowania.
-        </Description>
-      </div>
-    </div>
-  )
-}
 
 type PropsT = {
   investmentId: number
@@ -134,11 +46,18 @@ export function KosztorysClientViewDialog({
       // leave the kosztorys the owner is looking at unchanged by the button they just pressed.
       const res = await saveClientViewSettingsAction(investmentId, draft)
       if (!res.success) return toastMessage(res.error, 'error')
+      // Published before the second write is attempted: that row IS saved, so leaving the parent on
+      // the old value after a failed defaults write would make the editor and the DB disagree.
+      onSaved(draft)
       if (asDefaults) {
         const defaults = await saveClientViewDefaultsAction(draft)
-        if (!defaults.success) return toastMessage(defaults.error, 'error')
+        if (!defaults.success) {
+          return toastMessage(
+            `Zapisano dla tej inwestycji, ale nie jako domyślne: ${defaults.error}`,
+            'error',
+          )
+        }
       }
-      onSaved(draft)
       toastMessage(
         asDefaults ? 'Zapisano — te ustawienia są teraz domyślne.' : 'Zapisano ustawienia.',
         'success',
@@ -151,7 +70,9 @@ export function KosztorysClientViewDialog({
       <DialogContent className="max-w-md">
         <DialogHeader
           title="Ustawienia podglądu klienta"
-          description="Zaznacz, co klient widzi w udostępnionym kosztorysie. Ceny podwykonawców nie pojawiają się w nim nigdy."
+          // Scoped to the rozpiska on purpose: the setting reaches the grid's columns and pozycje,
+          // while the podsumowanie below it keeps its own client projection.
+          description="Zaznacz, które kolumny i pozycje klient widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
         />
         {!draft ? (
           <p className="text-muted-foreground text-sm">Wczytywanie…</p>

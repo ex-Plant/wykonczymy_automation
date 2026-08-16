@@ -21,14 +21,8 @@ describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
 
     investmentWithRow = await createTestInvestment(payload, 'EX-695 client view spec (row)')
     investmentWithoutRow = await createTestInvestment(payload, 'EX-695 client view spec (fallback)')
-  })
-
-  afterAll(async () => {
-    if (investmentWithRow) await deleteTestInvestment(payload, investmentWithRow)
-    if (investmentWithoutRow) await deleteTestInvestment(payload, investmentWithoutRow)
-  })
-
-  it('serves the investment’s own row when it has one', async () => {
+    // The row is a fixture, not the first test's side effect — the specs below share one DB and
+    // must not depend on each other's order to find it.
     await payload.create({
       collection: 'kosztorys-client-view',
       data: {
@@ -37,7 +31,20 @@ describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
         hideEmptyRows: false,
       },
     })
+  })
 
+  afterAll(async () => {
+    if (investmentWithRow) await deleteTestInvestment(payload, investmentWithRow)
+    if (investmentWithoutRow) await deleteTestInvestment(payload, investmentWithoutRow)
+    // The global is firm-wide state, not this spec's own row: left mutated, it would decide what a
+    // later spec's investment serves.
+    await payload.updateGlobal({
+      slug: 'kosztorys-client-view-defaults',
+      data: { hiddenColumns: [], hideEmptyRows: true },
+    })
+  })
+
+  it('serves the investment’s own row when it has one', async () => {
     const settings = await getClientViewSettings(investmentWithRow)
     expect(settings).toEqual({ hiddenColumns: ['discountValue'], hideEmptyRows: false })
   })

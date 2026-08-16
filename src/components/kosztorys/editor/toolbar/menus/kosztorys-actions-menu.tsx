@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
+import { useLatestRequest } from '@/hooks/use-latest-request'
 import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-share-dialog'
 import { KosztorysClientViewDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-client-view-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
@@ -35,7 +36,7 @@ import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-
 import { compareWithSheet, type SheetCompareResultT } from '@/lib/actions/kosztorys-import'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
-import { readClientViewSettings } from '@/lib/queries/kosztorys-client-view-read'
+import { readClientViewSettings } from '@/lib/queries/client-view-settings-endpoint'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { toastMessage } from '@/lib/utils/toast'
 import type { PresetMetaT } from '@/lib/db/presets'
@@ -69,6 +70,7 @@ export function KosztorysActionsMenu() {
   const [existingPresets, setExistingPresets] = useState<PresetMetaT[]>([])
   const [clientViewOpen, setClientViewOpen] = useState(false)
   const [clientView, setClientView] = useState<ClientViewSettingsT | null>(null)
+  const settingsRequest = useLatestRequest()
 
   function handleOpenPreset() {
     setPresetOpen(true)
@@ -98,11 +100,19 @@ export function KosztorysActionsMenu() {
 
   // Same Radix reason as handleOpenShare — and re-read on every open, so the window never shows a
   // set that another session has since changed.
+  // Latest-wins: both „Udostępnij" and „Ustawienia podglądu…" feed this one state, so a slow first
+  // read landing after a second one would put a stale set back into the dialog — and the next
+  // „Zapisz" would write that stale set over what the owner had just saved.
   function readSettings() {
+    const isCurrent = settingsRequest.start()
     setClientView(null)
     void readClientViewSettings(investmentId)
-      .then(setClientView)
-      .catch(() => toastMessage('Nie udało się odczytać ustawień podglądu', 'error'))
+      .then((settings) => {
+        if (isCurrent()) setClientView(settings)
+      })
+      .catch(() => {
+        if (isCurrent()) toastMessage('Nie udało się odczytać ustawień podglądu', 'error')
+      })
   }
 
   function handleOpenClientView() {

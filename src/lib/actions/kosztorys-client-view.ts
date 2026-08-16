@@ -5,6 +5,7 @@ import {
   sanitizeClientViewSettings as sanitize,
   type ClientViewSettingsT,
 } from '@/lib/kosztorys/client-view-settings'
+import { findClientViewRow } from '@/lib/queries/kosztorys-client-view'
 import type { ActionResultT } from '@/types/action'
 
 // Same narrowing as the share actions, for the same reason: this decides what a client is served.
@@ -16,13 +17,7 @@ export async function saveClientViewSettingsAction(
 ): Promise<ActionResultT> {
   return ownerOnlyAction('saveClientViewSettingsAction', FORBIDDEN, async ({ payload }) => {
     const data = sanitize(settings)
-    const existing = await payload.find({
-      collection: 'kosztorys-client-view',
-      where: { investment: { equals: investmentId } },
-      depth: 0,
-      limit: 1,
-    })
-    const row = existing.docs[0]
+    const row = await findClientViewRow(payload, investmentId)
 
     if (row) {
       await payload.update({ collection: 'kosztorys-client-view', id: row.id, data })
@@ -34,22 +29,19 @@ export async function saveClientViewSettingsAction(
         collection: 'kosztorys-client-view',
         data: { ...data, investment: investmentId },
       })
-    } catch {
+    } catch (error) {
       // find-then-create is not atomic and `investment` is unique — two saves at once race here.
-      // The loser re-reads and updates rather than surfacing a raw constraint error.
-      const raced = await payload.find({
-        collection: 'kosztorys-client-view',
-        where: { investment: { equals: investmentId } },
-        depth: 0,
-        limit: 1,
-      })
-      const rowAfterRace = raced.docs[0]
+      // The loser re-reads and updates rather than surfacing a raw constraint error. Logged because
+      // a validation or FK failure lands here too and is indistinguishable from the race otherwise.
+      // TODO(EX-449) SENTRY-REQUIRED:
+      console.error('saveClientViewSettingsAction: create failed, retrying as update', error)
+      const rowAfterRace = await findClientViewRow(payload, investmentId)
       if (!rowAfterRace) return { success: false, error: 'Nie udało się zapisać ustawień' }
       await payload.update({ collection: 'kosztorys-client-view', id: rowAfterRace.id, data })
     }
-    return { success: true }
     // No revalidation: the settings are read outside the preview's cached payload, so the next
     // request already sees them.
+    return { success: true }
   })
 }
 
