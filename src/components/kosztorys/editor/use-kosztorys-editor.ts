@@ -62,6 +62,8 @@ import {
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
+import { STAGE_CONDITIONS, countMatchingStages } from '@/lib/kosztorys/stage-conditions'
+import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
@@ -328,13 +330,36 @@ export function useKosztorysEditor({
   // carries none of this. Read by the toolbar's counters.
   const conditionCounts = useMemo(() => {
     const ctx = { stages }
-    return new Map(
-      ROW_CONDITIONS.map((condition) => [
-        condition.id,
-        preview ? 0 : countMatching(rows, condition.id, ctx),
-      ]),
-    )
-  }, [preview, rows, stages])
+    // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
+    // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
+    // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
+    // for every pozycja, whereas an etap belongs to one.
+    const viewStages = stagesForView(stages, view)
+    return new Map([
+      ...ROW_CONDITIONS.map(
+        (condition) =>
+          [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
+      ),
+      ...STAGE_CONDITIONS.map(
+        (condition) =>
+          [condition.id, preview ? 0 : countMatchingStages(viewStages, condition.id)] as const,
+      ),
+    ])
+  }, [preview, rows, stages, view])
+
+  // Which etap problems are narrowing the stage columns. Empty under the preview like every other
+  // filter, so a client's share can never be narrowed by an owner's leftover gesture.
+  const engagedStageConditionIds = useMemo(
+    () =>
+      new Set(
+        preview
+          ? []
+          : STAGE_CONDITIONS.map((condition) => condition.id).filter((id) =>
+              engagedConditionIds.has(id),
+            ),
+      ),
+    [preview, engagedConditionIds],
+  )
 
   // Gates the „Pozostało do rozliczenia" column: it is the answer to the diagnostic beside it, so it
   // rides that button rather than the column picker. With the filter off the grid holds every pozycja
@@ -1013,6 +1038,7 @@ export function useKosztorysEditor({
     search,
     setSearch,
     engagedConditionIds,
+    engagedStageConditionIds,
     toggleCondition,
     resetFilters,
     conditionCounts,

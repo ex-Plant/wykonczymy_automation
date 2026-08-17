@@ -91,6 +91,25 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('client-empty', row({ plannedQty: 0, [stageKey(2)]: 3 }))).toBe(false)
   })
 
+  // The same guard that reddens the cell, so the filter and the colour can never disagree.
+  it('„z nieprawidłową ceną wykonawcy" reads the guard, per plane', () => {
+    const overridden = (type: 'amount', value: number) =>
+      row({ wToolsOverrideType: type, wToolsOverrideValue: value })
+
+    // clientPrice 100 → the ceiling is 80; typed at exactly the ceiling it must stand.
+    expect(matches('overpriced-w-tools', overridden('amount', 80))).toBe(false)
+    expect(matches('overpriced-w-tools', overridden('amount', 80.01))).toBe(true)
+    expect(matches('overpriced-w-tools', overridden('amount', -1))).toBe(true)
+    // An unpriced pozycja is „bez ceny j.m." — a different problem, and the ceiling collapses to zero.
+    expect(matches('overpriced-w-tools', row({ clientPrice: 0 }))).toBe(false)
+  })
+
+  it('keeps the two planes apart — a fault on one is silent on the other', () => {
+    const subject = row({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 95 })
+    expect(matches('overpriced-own-tools', subject)).toBe(true)
+    expect(matches('overpriced-w-tools', subject)).toBe(false)
+  })
+
   it('splits into working filters and diagnostics, and only filters lift to a section', () => {
     for (const condition of ROW_CONDITIONS) {
       expect(condition.sectionLabel === null).toBe(condition.kind !== 'filter')

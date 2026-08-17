@@ -1,4 +1,6 @@
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
+import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 export type RowConditionCtxT = { stages: KosztorysStageT[] }
@@ -111,6 +113,27 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'worklist',
     matches: (row, ctx) => measureDiscrepancy(row, ctx.stages) != null,
+  },
+  // One entry per plane rather than one asking about the active view: a price exists on both planes for
+  // every row, so a problem on the plane you are not looking at is still a problem — and in the client
+  // view, where no subcontractor price renders at all, neither would ever surface.
+  // „nieprawidłową", not „zawyżoną": the same guard also refuses a negative price.
+  {
+    id: 'overpriced-w-tools',
+    label: `z nieprawidłową ceną wykonawcy — ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    // The guard, not a restatement of the 80% rule: the filter and the red cell must never disagree.
+    matches: (row) => checkSubcontractorPrice(row, 'w_tools') != null,
+  },
+  {
+    id: 'overpriced-own-tools',
+    label: `z nieprawidłową ceną wykonawcy — ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    matches: (row) => checkSubcontractorPrice(row, 'own_tools') != null,
   },
 ]
 
