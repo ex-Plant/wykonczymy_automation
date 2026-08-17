@@ -440,6 +440,165 @@ label is what closes the gap.
 
 ---
 
+## Phase 5: Fixing a problem from inside the filter that found it
+
+### Overview
+
+Phase 4 made a problem reveal the columns needed to fix it, which turned narrowing into a working
+mode — and that exposed three defects that only bite once someone actually repairs a row in place.
+All three are about the same seam: the grid treats the narrowed set and the cells inside it as
+read-only surfaces.
+
+### Changes Required
+
+#### 1. A row must not vanish under the hands fixing it
+
+`src/components/kosztorys/editor/hooks/use-condition-row-latch.ts` (new), consumed by
+`use-kosztorys-editor.ts` and threaded through `buildViewRows` → `applyRowConditions`.
+
+A condition stops matching the instant its problem is fixed, so the first digit of a cena drops the
+row out of „bez ceny j.m." mid-keystroke — with the „Mnożnik" the same filter had just revealed.
+The latch is add-only and keyed on the engaged set: while it holds, a shown pozycja stays shown and
+newly broken ones still arrive; changing what is engaged empties it, and so does „Odśwież — ukryj
+poprawione" at the top of the „Problemy" menu — the explicit release, added because toggling the
+problem off and on to get the same effect is a workaround, not a gesture. It bypasses the conditions
+only — the search still applies, because a search is a question being asked right now.
+
+#### 2. „Cena j.m." and „Mnożnik" join the grid's keyboard model
+
+`editable-cell-input.tsx` gains an optional `focus`; the two subcontractor cells pass the grid's flag
+through and drop `keepFocus`.
+
+These cells render a permanently live input that ignores the grid's editing flag, so the grid never
+places the caret: one click selects, a second is needed to reach the input, and Enter or typing do
+nothing. The stock columns implement the flag, which is why the same cena behaves differently in the
+Inwestor view. The fix mirrors `textColumn`: inert to the pointer at rest, caret + selection on focus,
+blur on the way out (which is what the existing settle path hangs off).
+
+#### 3. „Źródło ceny wykonawcy" opens from the keyboard
+
+`cell-select-menu.tsx` gains optional `open`/`onOpenChange`; `SubcontractorModeCell` drives them from
+the grid's flag and reports the close back through `stopEditing`; the column takes `disableKeys`.
+
+A dropdown only a click can open is a cell no keyboard reaches. The local „opened by click" flag is
+what keeps the existing single click working, since Radix's own trigger fires where the grid can't
+see it.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Extended spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts`
+  — a latched row survives both a diagnostic that stopped matching it and a filter that would hide it.
+- Extended spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-view.test.ts`
+  — the latch reaches the conditions and does **not** override the search.
+
+#### Manual Verification
+
+- Engage „Pokaż pozycje bez ceny j.m.", type `22` into one — the row stays, both digits land, and
+  „Mnożnik" is still reachable next to it.
+- Disengage and re-engage — the fixed pozycja is gone, the remaining ones are not.
+- In a subcontractor view, walk to „Cena j.m." with the arrows: Enter opens it, typing replaces the
+  value, Escape restores it, one click selects the cell and a second enters it.
+- On „Źródło ceny wykonawcy": Enter opens the list, arrows walk it, Enter picks, Escape closes — and
+  a single click still opens it as before.
+
+---
+
+## Phase 6: „Problemy" leaves „Filtry" and becomes a single choice
+
+### Overview
+
+Owner ruling after using phases 3–5: the problems belong on their own trigger, and only one at a time.
+A filter says what the reader wants to see; a problem says what the kosztorys is waiting on — folding
+the second into the first buried a warning one heading down a menu about something else. And once a
+problem also narrows the grid and reveals its own columns (phase 4), two engaged at once showed the
+union of two unrelated sets with nothing on screen to say which row belonged to which.
+
+### Changes Required
+
+#### 1. An exclusive engage, scoped to a named group
+
+`use-engaged-conditions.ts` gains `toggleExclusive(id, within)`, surfaced through
+`use-kosztorys-view-state.ts` and the editor context as `toggleConditionExclusive`.
+
+The group is the caller's to name because one store holds both kinds: „Problemy" is exclusive,
+„Prace" stacks, and an exclusivity that swept the whole store would untick those too. Picking the
+engaged one again turns it off — there is no „wszystkie problemy" row, because the union is exactly
+what makes no sense here.
+
+#### 2. The model splits out of the filters menu
+
+`filters-menu-model.ts` → `problems-menu-model.ts`: it now returns `problemToggles` + `hasProblems`
+only, plus `allProblemIds()` — the list an exclusive pick has to clear to stay exclusive, and the one
+thing that would silently break exclusivity if a problem went missing from it.
+
+#### 3. Its own trigger
+
+`kosztorys-problems-menu.tsx` (new), rendered before „Filtry" in the toolbar. The button exists only
+while something is wrong: a permanent „Problemy (0)" would be chrome to skip past, whereas a button
+that appears IS the alarm — hence the triangle and the destructive tone instead of a neutral icon and
+a badge. A dot marks that one is engaged, not how many exist.
+
+„Filtry" loses the triangle, the problem group, and the problems from its trigger count.
+
+### Success Criteria
+
+#### Automated Verification
+
+- New spec passes: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/toolbar/menus/problems-menu-model.test.ts`
+  — including that `allProblemIds()` covers every row the list can ever offer.
+
+#### Manual Verification
+
+- With a clean kosztorys the „Problemy" button is absent; break one pozycja and it appears.
+- Picking a second problem drops the first — never both at once — and picking the engaged one clears it.
+- „Filtry" no longer shows a triangle, and its count reacts only to „Prace" and zwinięte sekcje.
+
+---
+
+## Phase 7: A picked problem takes the reader to its view
+
+### Overview
+
+The accepted cost of phase 4 — narrowing to a stawka problem from „Inwestor" showed the right pozycje
+with the client's price in the column the problem had just revealed — stops being necessary once the
+list is single-choice: with one problem engaged there IS a „the" view to switch to.
+
+### Changes Required
+
+#### 1. `conditionPlane(id)` in the registry
+
+The plane already sits on each condition; this only reads it, so no second table can drift from it.
+
+#### 2. A transient view override in `use-kosztorys-view-state.ts`
+
+Engaging a problem sets the override to its plane and nothing is written to the stored view — the same
+rule as the revealed columns, so switching the problem off puts the reader back where they were. Four
+conditions carry a plane (zbyt wysoka stawka ×2, brak stawki ×2); „bez ceny j.m.", „z pomiarem do
+rozpisania" and both etap problems carry none and move nobody (owner: cena j.m. is typed in „Inwestor"
+but repaired in the subcontractor views, so no single view is the right one).
+
+An explicit view switch drops the override and leaves the problem engaged — the reader wins over the
+problem that moved them, or the toolbar's most visible control would be dead while a filter is on.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Extended spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts`
+  — each stawka problem reports its plane; the planeless ones and an unknown id report none.
+
+#### Manual Verification
+
+- From „Inwestor", pick „ze zbyt wysoką stawką wykonawcy w widoku bez narzędzi" — the grid switches to
+  that view and the revealed cena is the stawka being judged.
+- Switch the view by hand: it holds, the problem stays engaged.
+- Turn the problem off — the view goes back to the one before the pick, and a reload still opens on the
+  stored view, not the one a problem borrowed.
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -525,12 +684,34 @@ Run once, after the last phase. It ran clean after phase 3; phase 4 re-runs it.
 
 #### Automated
 
-- [x] 4.1 Extended registry spec passes: row-conditions.test.ts (`columnsRevealedBy`)
-- [x] 4.2 Extended column spec passes: stage-column-filter.test.ts (reveal beats a stored hide tick)
-- [x] 4.3 Extended menu-model spec passes: filters-menu-model.test.ts (plane + „w widoku …")
+- [x] 4.1 Extended registry spec passes: row-conditions.test.ts (`columnsRevealedBy`) — c09a275d
+- [x] 4.2 Extended column spec passes: stage-column-filter.test.ts (reveal beats a stored hide tick) — c09a275d
+- [x] 4.3 Extended menu-model spec passes: filters-menu-model.test.ts (plane + „w widoku …") — c09a275d
+
+### Phase 5: Fixing a problem from inside the filter that found it
+
+#### Automated
+
+- [x] 5.1 Extended registry spec passes: row-conditions.test.ts (a latched row survives both kinds) — 650aecd2
+- [x] 5.2 Extended view spec passes: row-view.test.ts (latch reaches the conditions, not the search) — 650aecd2
+
+### Phase 6: „Problemy" leaves „Filtry" and becomes a single choice
+
+#### Automated
+
+- [x] 6.1 New spec passes: problems-menu-model.test.ts (replaces filters-menu-model.test.ts) — 20da355d
+- [x] 6.2 Typecheck clean across the moved model, the context, and both menus — 20da355d
+
+### Phase 7: A picked problem takes the reader to its view
+
+#### Automated
+
+- [x] 7.1 Extended registry spec passes: row-conditions.test.ts (`conditionPlane`) — 650aecd2
 
 ### Whole-tree gate
 
 - [x] typecheck / lint / test / build — lint's 3 errors are pre-existing and outside this change
       (`test.js`, `hooks/use-latest-request.ts`)
-- [ ] re-run after phase 4
+- [x] re-run after phase 6 — typecheck / test (2379) / build clean; lint's 3 errors are the same
+      pre-existing ones (`test.js`, `hooks/use-latest-request.ts`). The build first failed on a
+      5-day-stale `.next-e2e/types` referencing a since-moved route; removed, it regenerates.
