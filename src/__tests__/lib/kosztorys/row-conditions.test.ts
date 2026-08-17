@@ -5,6 +5,7 @@ import {
   applyRowConditions,
   clientConditionIds,
   columnsRevealedBy,
+  conditionPlane,
   engagedConditionsOfKind,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -111,6 +112,24 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('overpriced-w-tools', subject)).toBe(false)
   })
 
+  // What an import writes onto a praca whose two cenniki disagreed: a deliberate 0 zł that looks
+  // exactly like a priced one in the grid, so without this it is findable only by scrolling.
+  it('„bez ceny wykonawcy" finds a stawka explicitly set to zero, per plane', () => {
+    const blank = row({
+      wToolsOverrideType: 'amount',
+      wToolsOverrideValue: 0,
+      ownToolsOverrideType: 'amount',
+      ownToolsOverrideValue: 0,
+    })
+    expect(matches('no-w-tools-price', blank)).toBe(true)
+    expect(matches('no-own-tools-price', blank)).toBe(true)
+
+    // Inheriting the global multiplier is a stawka like any other — 100 × 0,65.
+    expect(matches('no-w-tools-price', row())).toBe(false)
+    // „bez ceny j.m." owns this row; here the crew price is zero only because the client's is.
+    expect(matches('no-w-tools-price', row({ clientPrice: 0 }))).toBe(false)
+  })
+
   it('splits into working filters and diagnostics, and only filters lift to a section', () => {
     for (const condition of ROW_CONDITIONS) {
       expect(condition.sectionLabel === null).toBe(condition.kind !== 'filter')
@@ -153,6 +172,16 @@ describe('applyRowConditions — each kind pulls the direction its wording promi
 
   it('keeps only what a diagnostic matches — „Pokaż tylko pozycje bez ceny j.m."', () => {
     expect(ids(applyRowConditions(rows, ['no-client-price'], CTX))).toEqual([1, 3])
+  })
+
+  // The vanish-under-your-hands bug: the first digit of a cena makes „bez ceny j.m." false, and the
+  // row it was typed into left the grid mid-keystroke.
+  it('keeps a latched row a diagnostic has stopped matching', () => {
+    expect(ids(applyRowConditions(rows, ['no-client-price'], CTX, new Set([4])))).toEqual([1, 3, 4])
+  })
+
+  it('keeps a latched row a filter would hide', () => {
+    expect(ids(applyRowConditions(rows, ['no-planned-qty'], CTX, new Set([1])))).toEqual([1, 3, 4])
   })
 
   it('applies the hiders first, then keeps only what a diagnostic still matches', () => {
@@ -282,9 +311,36 @@ describe('columnsRevealedBy', () => {
     expect([...revealed].sort()).toEqual(['price', 'priceCoeff', 'priceMode'])
   })
 
+  // The subcontractor stawki derive from the client price, so a missing cena j.m. is a missing stawka
+  // too and gets the same three cells rather than „Cena j.m." alone.
+  it('gives a missing cena j.m. the same three cells as a bad stawka', () => {
+    expect([...columnsRevealedBy(['no-client-price'])].sort()).toEqual([
+      'price',
+      'priceCoeff',
+      'priceMode',
+    ])
+  })
+
   // Same rule as the rest of the registry: an id persisted under a condition since removed must be
   // inert, never a reveal of something nobody asked for.
   it('ignores an unknown id and a condition that reveals nothing', () => {
     expect([...columnsRevealedBy(['nie-ma-takiego', 'no-planned-qty'])]).toEqual([])
+  })
+})
+
+// What the „Problemy" pick switches the grid to. Only meaningful because the list is single-choice —
+// with two engaged there is no „the" view to switch to.
+describe('conditionPlane', () => {
+  it('sends each stawka problem to the plane it judges', () => {
+    expect(conditionPlane('overpriced-w-tools')).toBe('w_tools')
+    expect(conditionPlane('no-own-tools-price')).toBe('own_tools')
+  })
+
+  // Owner: cena j.m. is typed in the Inwestor view but the cells that repair it assemble in the
+  // subcontractor ones, so there is no single view this problem is fixed in — it moves nobody.
+  it('leaves the view alone for a problem about no plane in particular', () => {
+    expect(conditionPlane('no-client-price')).toBeUndefined()
+    expect(conditionPlane('measure-diverged')).toBeUndefined()
+    expect(conditionPlane('nie-ma-takiego')).toBeUndefined()
   })
 })

@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
+import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
-import { clientConditionIds } from '@/lib/kosztorys/row-conditions'
+import { clientConditionIds, conditionPlane } from '@/lib/kosztorys/row-conditions'
 import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
 
 type ArgsT = {
@@ -23,7 +24,11 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   // it HERE is also what closes the attack where a client sets localStorage['kosztorys-view:<id>'] to
   // a subcontractor view: the public page ships the full tree, coefficients included, so an unpinned
   // plane would simply render it.
-  const view = preview ? 'client' : persistedView
+  // Where an engaged problem has taken the reader, on top of the stored plane and never written to it
+  // — the same rule as the columns a problem reveals: it rides the gesture, and switching the problem
+  // off puts back the view the reader was working in.
+  const [viewOverride, setViewOverride] = useState<PriceViewT | null>(null)
+  const view = preview ? 'client' : (viewOverride ?? persistedView)
   const [search, setSearch] = useState('')
   // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
   // is still on today. Under the preview the owner's own picks are dropped wholesale like `view`
@@ -31,6 +36,7 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   const {
     engagedIds: persistedConditionIds,
     toggle: toggleCondition,
+    toggleExclusive: toggleConditionExclusive,
     clear: clearConditions,
   } = useEngagedConditions(investmentId)
   const engagedConditionIds = preview
@@ -52,8 +58,28 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
   // the conditions and the folds alike. Two half-resets would leave the user clicking one and still
   // facing a short grid.
+  // The reader wins over the problem that moved them: an explicit switch drops the override and stands
+  // on its own, with the problem left engaged. Refusing it, or bouncing back, would make the toolbar's
+  // most visible control dead while a filter is on.
+  function pickView(next: PriceViewT) {
+    setViewOverride(null)
+    setView(next)
+  }
+
+  // Engaging a problem takes the reader to the plane it judges, because a stawka wykonawcy renders on
+  // one plane only — narrowing to „ze zbyt wysoką stawką … bez narzędzi" while sitting in „Inwestor"
+  // showed the right pozycje with the wrong number in the column the problem had just revealed. A
+  // problem about no particular plane (bez ceny j.m., etapy) leaves the view where it is, and so does
+  // switching a problem off.
+  function pickProblem(id: string, within: Iterable<string>) {
+    const engaging = !engagedConditionIds.has(id)
+    toggleConditionExclusive(id, within)
+    setViewOverride(engaging ? (conditionPlane(id) ?? null) : null)
+  }
+
   function resetFilters() {
     clearConditions()
+    setViewOverride(null)
     setCollapsedSectionIds(new Set())
   }
 
@@ -82,11 +108,12 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
 
   return {
     view,
-    setView,
+    setView: pickView,
     search,
     setSearch,
     engagedConditionIds,
     toggleCondition,
+    toggleConditionExclusive: pickProblem,
     sort,
     setSort,
     setSortField,

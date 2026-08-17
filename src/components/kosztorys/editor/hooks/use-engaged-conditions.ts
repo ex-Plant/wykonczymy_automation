@@ -30,6 +30,7 @@ function storeFor(investmentId: number): JsonMapStoreT<boolean> {
 export function useEngagedConditions(investmentId: number): {
   engagedIds: Set<string>
   toggle: (id: string) => void
+  toggleExclusive: (id: string, within: Iterable<string>) => void
   clear: () => void
 } {
   const store = storeFor(investmentId)
@@ -52,9 +53,22 @@ export function useEngagedConditions(investmentId: number): {
     })
   }
 
+  // Engages `id` and drops every other id in `within` — one member of a group at a time. The group is
+  // the caller's to name because this store holds two kinds at once: the „Problemy" list is exclusive,
+  // the „Prace" filters stack, and an exclusivity that swept the whole store would untick those too.
+  function toggleExclusive(id: string, within: Iterable<string>) {
+    store.update((prev) => {
+      const engaging = !prev[id]
+      const next = { ...prev }
+      for (const other of within) delete next[other]
+      if (engaging) next[id] = true
+      return next
+    })
+  }
+
   function clear() {
     store.update((prev) => (Object.keys(prev).length === 0 ? prev : {}))
   }
 
-  return { engagedIds, toggle, clear }
+  return { engagedIds, toggle, toggleExclusive, clear }
 }

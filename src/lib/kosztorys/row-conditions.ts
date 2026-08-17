@@ -1,3 +1,4 @@
+import { subcontractorPrice } from '@/lib/kosztorys/calc'
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
@@ -47,7 +48,11 @@ export type RowConditionT = {
 // wykonawcy" and „Mnożnik" are the only way to make it right, so revealing the first alone shows a
 // number nobody can act on (owner, explicit). The latter two only assemble in a subcontractor view, so
 // naming them from the client view is a harmless no-op and needs no view check.
-const SUBCONTRACTOR_PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
+//
+// Every price problem gets all three, „bez ceny j.m." included: the subcontractor stawki derive from
+// the client price, so a pozycja missing that price is missing them too, and the fix is made in the
+// same three cells whichever of the two the reader noticed first.
+const PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
 
 // Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
@@ -116,9 +121,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
-    // One picker entry serves all three views („Cena j.m." here, the stawka wykonawcy there), so every
-    // price problem points at the same target.
-    revealsColumns: ['price'],
+    revealsColumns: PRICE_COLUMNS,
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
     matches: (row) => !(row.clientPrice > 0),
   },
@@ -136,31 +139,61 @@ export const ROW_CONDITIONS: RowConditionT[] = [
   // One entry per plane rather than one asking about the active view: a price exists on both planes for
   // every row, so a problem on the plane you are not looking at is still a problem — and in the client
   // view, where no subcontractor price renders at all, neither would ever surface.
-  // „nieprawidłową", not „zawyżoną": the same guard also refuses a negative price.
+  // „zbyt wysoką", naming the direction the guard actually refuses (owner, 2026-08-17): a stawka above
+  // 80% of the client price. The guard's other branch — a negative stawka — is not that, but it is
+  // typo-shaped rather than a real state of the kosztorys, so it rides along unnamed instead of
+  // costing the label its one clear meaning.
   //
   // „w widoku …", not „— …": the plane IS a view here, and the reader has to switch to it to see the
   // stawka being judged. Engaged from „Inwestor" the row still narrows correctly, but the price on
   // screen is then the client's — the accepted cost of not switching the view out from under a click.
   {
     id: 'overpriced-w-tools',
-    label: `z nieprawidłową ceną wykonawcy w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    label: `ze zbyt wysoką stawką wykonawcy w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'w_tools',
-    revealsColumns: SUBCONTRACTOR_PRICE_COLUMNS,
+    revealsColumns: PRICE_COLUMNS,
     // The guard, not a restatement of the 80% rule: the filter and the red cell must never disagree.
     matches: (row) => checkSubcontractorPrice(row, 'w_tools') != null,
   },
   {
     id: 'overpriced-own-tools',
-    label: `z nieprawidłową ceną wykonawcy w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    label: `ze zbyt wysoką stawką wykonawcy w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'own_tools',
-    revealsColumns: SUBCONTRACTOR_PRICE_COLUMNS,
+    revealsColumns: PRICE_COLUMNS,
     matches: (row) => checkSubcontractorPrice(row, 'own_tools') != null,
+  },
+  // The other half of the same question, and the one an import creates: a praca whose cenniki
+  // disagreed enters with an explicit 0 zł for the crew, and nothing else on screen says so — the cell
+  // reads „0,00 zł" exactly like a deliberate one. `> 0` is the whole rule; the guard above judges a
+  // price that exists, this one judges its absence.
+  //
+  // Gated on the client price so it never fires where „bez ceny j.m." already has: with no Cena j.m.
+  // an auto row computes 0 zł by arithmetic, and on a fresh kosztorys that would flag every pozycja.
+  {
+    id: 'no-w-tools-price',
+    label: `bez ceny wykonawcy w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    plane: 'w_tools',
+    revealsColumns: PRICE_COLUMNS,
+    matches: (row) => row.clientPrice > 0 && !(subcontractorPrice(row, 'w_tools') > 0),
+  },
+  {
+    id: 'no-own-tools-price',
+    label: `bez ceny wykonawcy w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    plane: 'own_tools',
+    revealsColumns: PRICE_COLUMNS,
+    matches: (row) => row.clientPrice > 0 && !(subcontractorPrice(row, 'own_tools') > 0),
   },
 ]
 
@@ -209,6 +242,11 @@ export function applyRowConditions(
   rows: KosztorysV2RowT[],
   engagedIds: Iterable<string>,
   ctx: RowConditionCtxT,
+  // Row ids the conditions may no longer remove — see `useConditionRowLatch`, which owns when a row
+  // enters this set. Here it is deliberately a blunt bypass rather than a per-condition exemption:
+  // the reason a row is held is that the user is working on it, and that reason is indifferent to
+  // which of the engaged conditions stopped matching.
+  latchedRowIds?: ReadonlySet<number>,
 ): KosztorysV2RowT[] {
   const active = [...engagedIds].map((id) => BY_ID.get(id)).filter((c) => c !== undefined)
   if (active.length === 0) return rows
@@ -217,8 +255,9 @@ export function applyRowConditions(
 
   return rows.filter(
     (row) =>
-      !hiders.some((condition) => condition.matches(row, ctx)) &&
-      (keepers.length === 0 || keepers.some((condition) => condition.matches(row, ctx))),
+      latchedRowIds?.has(row.id) ||
+      (!hiders.some((condition) => condition.matches(row, ctx)) &&
+        (keepers.length === 0 || keepers.some((condition) => condition.matches(row, ctx)))),
   )
 }
 
@@ -258,6 +297,17 @@ export function columnsRevealedBy(engagedIds: Iterable<string>): ReadonlySet<str
     for (const column of BY_ID.get(id)?.revealsColumns ?? []) revealed.add(column)
   }
   return revealed
+}
+
+/**
+ * The price view a condition is about, or undefined for the ones that are about no view in particular.
+ *
+ * Picking a problem switches the grid to it, which only became answerable once the „Problemy" list went
+ * single-choice: with two engaged there was no such thing as „the" view. Until then the narrowing was
+ * half a gesture — the right pozycje, with the wrong plane's prices in the column it had just revealed.
+ */
+export function conditionPlane(id: string): ToolPlaneT | undefined {
+  return BY_ID.get(id)?.plane
 }
 
 /** The engaged conditions that REMOVE rows — what an empty grid has to explain. */

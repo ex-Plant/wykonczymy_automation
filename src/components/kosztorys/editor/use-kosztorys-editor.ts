@@ -16,6 +16,7 @@ import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-r
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
+import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
 import { useKosztorysStageOps } from '@/components/kosztorys/editor/hooks/use-kosztorys-stage-ops'
 import { useKosztorysViewState } from '@/components/kosztorys/editor/hooks/use-kosztorys-view-state'
@@ -145,6 +146,7 @@ export function useKosztorysEditor({
     setSearch,
     engagedConditionIds,
     toggleCondition,
+    toggleConditionExclusive,
     sort,
     setSort,
     setSortField,
@@ -452,10 +454,22 @@ export function useKosztorysEditor({
     )
   }, [rows, stages])
 
-  const viewRows = useMemo(
-    () => buildViewRows({ rows, search, engagedConditionIds, sort, view, stages }),
-    [rows, search, engagedConditionIds, sort, view, stages],
-  )
+  // Never under the preview: the client's document is not a working grid, so nothing is being fixed
+  // in it and a held-open row would only be a row the owner chose to hide.
+  const { latch, refresh: refreshProblemRows } = useConditionRowLatch(engagedConditionIds, !preview)
+  const viewRows = useMemo(() => {
+    const next = buildViewRows({
+      rows,
+      search,
+      engagedConditionIds,
+      sort,
+      view,
+      stages,
+      latchedRowIds: latch.ids,
+    })
+    for (const row of next) latch.ids.add(row.id)
+    return next
+  }, [rows, search, engagedConditionIds, sort, view, stages, latch])
   // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
   // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
   // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
@@ -1053,6 +1067,8 @@ export function useKosztorysEditor({
     engagedConditionIds,
     engagedStageConditionIds,
     toggleCondition,
+    toggleConditionExclusive,
+    refreshProblemRows,
     resetFilters,
     conditionCounts,
     foldableSectionIds,

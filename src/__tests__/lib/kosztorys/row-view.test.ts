@@ -59,6 +59,24 @@ describe('buildViewRows', () => {
     expect(view.map((r) => r.id)).toEqual([1, 4])
   })
 
+  it('holds a latched row against the condition that would hide it', () => {
+    const view = buildViewRows({
+      ...base,
+      engagedConditionIds: new Set(['no-planned-qty']),
+      latchedRowIds: new Set([2]),
+    })
+
+    expect(view.map((r) => r.id)).toEqual([1, 2, 3, 4])
+  })
+
+  // The latch answers „nie zabieraj mi wiersza, który poprawiam" — it says nothing about a question
+  // the user is asking right now, and a search box that kept showing non-matches would be broken.
+  it('does not hold a latched row against the search', () => {
+    const view = buildViewRows({ ...base, search: 'aneks', latchedRowIds: new Set([1]) })
+
+    expect(view.map((r) => r.id)).toEqual([3])
+  })
+
   // Search first, then sort: the comparator must only ever see the rows that survived, and the
   // surviving set must be identical whichever way round it runs — this pins the set AND the order.
   it('sorts what the search left, within sections', () => {
