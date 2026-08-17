@@ -5,7 +5,7 @@ import { readImportGrids } from '@/lib/kosztorys/sheet-import/read-sheet'
 import { resolveRates, resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 
 // Raw `process.env` rather than the validated layer: its `server-only` guard makes anything
-// importing it unusable from a tsx script — the same reason `seed-investment-from-sheet.ts` does it.
+// importing it unusable from a tsx script.
 const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON as string)
 const ids = (process.env.SHEETS ?? '').split(',').filter(Boolean)
 

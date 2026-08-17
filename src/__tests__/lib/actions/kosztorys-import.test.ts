@@ -102,6 +102,31 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
     expect(await sectionNames()).toEqual(['Prace dodatkowe', 'Klimatyzacja'])
   })
 
+  // The bug this pins cost 151 stawki half a percent each and looked deliberate in the editor: the
+  // import hands a praca running at the cennik's own markup to the global coefficient („auto"), but
+  // `replaceTreeWithSnapshot` overwrote the plan's settings with the investment's live ones — so
+  // those prace repriced at whatever the investment held (0,55) instead of the sheet's (0,5525).
+  // Asserted on the persisted investment row, since the action's success result hid the whole thing.
+  it('adopts the cennik’s markup as the investment’s multipliers, so „auto" prices at the sheet', async () => {
+    await applyKosztorysImport(investmentId)
+
+    const investment = await db.execute(sql`
+      SELECT w_tools_coeff, own_tools_coeff FROM investments WHERE id = ${investmentId}
+    `)
+    // 78 / 120 and 60 / 120 in the mocked cennik above.
+    expect(Number(investment.rows[0].w_tools_coeff)).toBeCloseTo(0.65, 6)
+    expect(Number(investment.rows[0].own_tools_coeff)).toBeCloseTo(0.5, 6)
+
+    const item = await db.execute(sql`
+      SELECT w_tools_override_type, own_tools_override_type FROM kosztorys_items
+      WHERE investment_id = ${investmentId} AND description = 'montaż jednostki wewnętrznej'
+    `)
+    expect(item.rows[0]).toMatchObject({
+      w_tools_override_type: null,
+      own_tools_override_type: null,
+    })
+  })
+
   // Found by LABEL, not by „newest auto": the whole point of the pre-import row being `manual` is
   // that it survives the auto count cap + 7-day GC and stays identifiable among the periodic
   // autosaves. Querying it the way the „Wersje" panel presents it is what pins that.

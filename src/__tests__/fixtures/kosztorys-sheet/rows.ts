@@ -98,6 +98,9 @@ export const PRZEDPOLE_ROWS: (string | number)[][] = [
 // A „zakres pracy" tab: the real header block plus rate rows. Description at B, z-narzędziami at R,
 // bez-narzędzi at T — the columns `resolveRates` finds on Białostocka. The formula render is built
 // alongside the values, since `typed` (hand-entered vs computed) is only visible there.
+// `ownToolsFormula` spells out the tab's OTHER real shape: bez-narzędzi computed off the
+// z-narzędziami cell („=R4-R4*0,15") rather than off Cena j.m., which on a hand-typed R makes it a
+// frozen amount too.
 export function ratesTab(
   title: string,
   rates: ReadonlyArray<{
@@ -105,6 +108,7 @@ export function ratesTab(
     wTools: number | ''
     ownTools: number | ''
     typed?: boolean
+    ownToolsFormula?: string
   }>,
 ): { title: string; grid: (string | number)[][]; formulas: (string | number)[][] } {
   return {
@@ -117,11 +121,11 @@ export function ratesTab(
     ],
     formulas: [
       ...BIALOSTOCKA_RATES_HEADER,
-      ...rates.map(({ description, wTools, ownTools, typed = false }) =>
+      ...rates.map(({ description, wTools, ownTools, typed = false, ownToolsFormula }) =>
         row({
           B: description,
           R: typed ? wTools : '=Q4*0,65',
-          T: typed ? ownTools : '=Q4*0,85',
+          T: ownToolsFormula ?? (typed ? ownTools : '=Q4*0,85'),
         }),
       ),
     ],

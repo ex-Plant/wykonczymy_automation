@@ -192,6 +192,33 @@ describe('buildSheetComparison', () => {
     expect(compare(source({ rateTabs })).rates.stale).toEqual([])
   })
 
+  it('stays quiet on a praca whose cenniki disagree — there is no sheet figure to differ from', () => {
+    // Both tabs hand-typed and neither one the answer: „w arkuszu jest X" is precisely what cannot be
+    // said here, so reporting a rozjazd would invent a side. It surfaces as a conflict instead.
+    const rateTabs = [
+      ratesTab('zakres pracy z narzędziami', [
+        {
+          description: 'zakup, transport i wniesienie towaru budowlanego',
+          wTools: 1200,
+          ownTools: 630,
+          typed: true,
+        },
+      ]),
+      ratesTab('zakres pracy bez narzędzi', [
+        {
+          description: 'zakup, transport i wniesienie towaru budowlanego',
+          wTools: 900,
+          ownTools: 500,
+          typed: true,
+        },
+      ]),
+    ]
+    const { rates } = compare(source({ rateTabs }))
+
+    expect(rates.stale).toEqual([])
+    expect(rates.decisions?.map((rate) => rate.kind)).toContain('conflict')
+  })
+
   it('refuses only when the robocizna columns themselves cannot be located', () => {
     const broken = BIALOSTOCKA_ROWS.map((cells, index) =>
       index < 3

@@ -19,6 +19,8 @@ const tab = (
     ownToolsRate: ownTools,
     wToolsTyped: typed,
     ownToolsTyped: typed,
+    wToolsTracksPrice: !typed,
+    ownToolsTracksPrice: !typed,
   })),
 })
 
@@ -85,7 +87,9 @@ describe('resolveItemRates', () => {
     })
   })
 
-  it('reports a disagreement between two hand-typed tabs as a conflict for the owner', () => {
+  // Picking the first tab here wrote a stawka nobody approved and left no trace of the other kwota in
+  // the kosztorys. The praca now enters blank and the owner arbitrates in the sheet.
+  it('leaves a praca whose hand-typed tabs disagree without any stawka', () => {
     const resolved = resolveItemRates(items('akrylowanie'), [
       tab('bez narzędzi', [{ description: 'akrylowanie', wTools: 12, ownTools: 9, typed: true }]),
       tab('z narzędziami', [{ description: 'akrylowanie', wTools: 15, ownTools: 11, typed: true }]),
@@ -93,9 +97,38 @@ describe('resolveItemRates', () => {
 
     expect(resolved[0]).toMatchObject({
       kind: 'conflict',
-      wToolsRate: 12,
-      sourceTab: 'bez narzędzi',
+      wToolsRate: 0,
+      ownToolsRate: 0,
+      sourceTab: null,
     })
+    expect(resolved[0].candidates).toEqual([
+      {
+        tab: 'bez narzędzi',
+        wToolsRate: 12,
+        ownToolsRate: 9,
+        wToolsTyped: true,
+        ownToolsTyped: true,
+      },
+      {
+        tab: 'z narzędziami',
+        wToolsRate: 15,
+        ownToolsRate: 11,
+        wToolsTyped: true,
+        ownToolsTyped: true,
+      },
+    ])
+  })
+
+  // The sheet renders an unfilled cell as 0, so „za darmo" and „niewypełnione" are the same figure —
+  // and the hand-typed rule would otherwise hand the whole praca to whichever tab was filled in.
+  it('treats an empty pair against a filled one as a conflict rather than taking the filled one', () => {
+    const resolved = resolveItemRates(items('demontaż'), [
+      tab('bez narzędzi', [{ description: 'demontaż', wTools: 0, ownTools: 0 }]),
+      tab('z narzędziami', [{ description: 'demontaż', wTools: 40, ownTools: 30, typed: true }]),
+    ])
+
+    expect(resolved[0]).toMatchObject({ kind: 'conflict', wToolsRate: 0, ownToolsRate: 0 })
+    expect(resolved[0].candidates).toHaveLength(2)
   })
 
   it('reports a praca missing from every tab instead of guessing a rate', () => {

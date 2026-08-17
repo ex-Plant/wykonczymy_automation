@@ -147,6 +147,7 @@ function emptyReport(): ImportReportT {
     missingColumns: [],
     counts: { sections: 0, items: 0, stages: 0 },
     rateDecisions: [],
+    coeffs: { wTools: null, ownTools: null },
     retained: [],
     totals: [],
     warnings: [],
@@ -281,6 +282,7 @@ export async function applyKosztorysImport(
         label: PRE_IMPORT_LABEL,
         takenBy: user.id,
         tree: plan.tree,
+        takeSettingsFromTree: true,
       })
 
       return {

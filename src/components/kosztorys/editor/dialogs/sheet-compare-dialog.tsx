@@ -207,7 +207,14 @@ function ItemsBlock({ comparison }: { comparison: SheetComparisonT }) {
               label="Ile prac w ogóle"
               sheet={`${counts.sheetItems}`}
               app={`${counts.appItems}`}
-              delta={null}
+              // Equal counts with different names is the ordinary case (one praca on each side), so
+              // „zgadza się" is true here — but only then. It was hardcoded, and the row read
+              // „402 / 403 / zgadza się".
+              delta={
+                counts.sheetItems === counts.appItems
+                  ? null
+                  : `${counts.sheetItems - counts.appItems}`
+              }
             />
           </ComparisonTable>
           <SideOnlyList

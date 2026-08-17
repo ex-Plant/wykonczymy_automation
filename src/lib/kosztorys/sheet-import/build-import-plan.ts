@@ -14,6 +14,7 @@ import {
 } from './columns'
 import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { deriveOverride } from './derive-override'
+import { sheetCoeffs, type SheetCoeffsT } from './sheet-coeffs'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
 import { parseLaborTab } from './parse-labor-tab'
@@ -59,6 +60,9 @@ export type ImportReportT = {
   // Every decision that was NOT a plain agreement between the two price lists. Agreements are the
   // overwhelming majority and say nothing — listing them would bury the handful that need an eye.
   rateDecisions: ReportedRateResolutionT[]
+  // The multipliers read out of the cennik's formulas, `null` where it stated none. Shown because
+  // applying them overwrites a figure the owner may have set by hand in „Ustawienia".
+  coeffs: SheetCoeffsT
   retained: RetainedItemT[]
   totals: FooterComparisonT[]
   // Non-fatal notes, e.g. a „zakres pracy" tab whose own header could not be read: its rates are
@@ -180,6 +184,22 @@ export function buildImportPlan(
   for (const [key, item] of parsedKeys) keyByParsedId.set(item.id, key)
 
   const rateByItemId = new Map(parsed.items.map((item, index) => [item.id, rates[index]]))
+
+  // Read before the items are built: whether a praca enters as „auto" depends on the markup the
+  // WHOLE cennik uses, which only exists once every row has been looked at.
+  const coeffs = sheetCoeffs(
+    parsed.items.map((item, index) => ({
+      rate: rates[index]?.wToolsRate ?? 0,
+      clientPrice: item.clientPrice,
+      tracksClientPrice: rates[index]?.wToolsTracksPrice ?? false,
+    })),
+    parsed.items.map((item, index) => ({
+      rate: rates[index]?.ownToolsRate ?? 0,
+      clientPrice: item.clientPrice,
+      tracksClientPrice: rates[index]?.ownToolsTracksPrice ?? false,
+    })),
+  )
+
   const parsedProgressByItem = groupBy(parsed.progress, (entry) => entry.itemId)
   const parsedItemsBySection = groupBy(parsed.items, (item) => item.sectionId)
 
@@ -192,8 +212,14 @@ export function buildImportPlan(
       const current = currentByKey.get(keyByParsedId.get(sheetItem.id) ?? '')
       if (current) matchedCurrentIds.add(current.id)
 
-      const wTools = deriveOverride(rate?.wToolsRate ?? 0, sheetItem.clientPrice)
-      const ownTools = deriveOverride(rate?.ownToolsRate ?? 0, sheetItem.clientPrice)
+      const wTools = deriveOverride(rate?.wToolsRate ?? 0, sheetItem.clientPrice, {
+        tracksClientPrice: rate?.wToolsTracksPrice ?? false,
+        planeCoeff: coeffs.wTools,
+      })
+      const ownTools = deriveOverride(rate?.ownToolsRate ?? 0, sheetItem.clientPrice, {
+        tracksClientPrice: rate?.ownToolsTracksPrice ?? false,
+        planeCoeff: coeffs.ownTools,
+      })
       const itemId = nextItemId++
       items.push({
         ...sheetItem,
@@ -264,9 +290,15 @@ export function buildImportPlan(
       items,
       stages,
       progress,
-      // Import has no opinion on VAT or the global coefficients — the sheet doesn't carry them, and
-      // `restoreKosztorys` rewrites whatever it is handed.
-      settings: currentTree.settings,
+      // VAT has no cell in the sheet, and `restoreKosztorys` rewrites whatever it is handed — so the
+      // investment's own must be carried through or an import silently resets it. The multipliers
+      // the sheet DOES state (in its cennik formulas) are adopted; a cennik that states none leaves
+      // the investment's alone.
+      settings: {
+        ...currentTree.settings,
+        wToolsCoeff: coeffs.wTools ?? currentTree.settings.wToolsCoeff,
+        ownToolsCoeff: coeffs.ownTools ?? currentTree.settings.ownToolsCoeff,
+      },
     },
     missingFields,
     candidates,
@@ -279,6 +311,7 @@ export function buildImportPlan(
         stages: stages.length,
       },
       rateDecisions: rates.filter(isReported),
+      coeffs,
       retained,
       totals: compareFooterTotals(grids.laborGrid, resolvedLaborColumns, parsed),
       warnings,

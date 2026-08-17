@@ -19,6 +19,8 @@ import {
 } from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
 import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { formatQty } from '@/lib/kosztorys/format'
 import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
 import type {
@@ -130,13 +132,25 @@ export function SheetImportDialog({
 // The warnings ride here rather than at the top of the dialog: every one of them („N prac bez
 // cennika", „pominięto wiersze nad pierwszą sekcją") is a caveat about the very count beside it.
 function ScopeBlock({ report }: { report: ImportReportT }) {
-  const { counts, warnings } = report
+  const { counts, warnings, coeffs } = report
+  const adopted = [
+    coeffs.wTools === null
+      ? null
+      : `${PLANE_LABELS.w_tools.toLowerCase()} ${formatQty(coeffs.wTools)}`,
+    coeffs.ownTools === null
+      ? null
+      : `${PLANE_LABELS.own_tools.toLowerCase()} ${formatQty(coeffs.ownTools)}`,
+  ].filter(Boolean)
+
   return (
     <SheetReportBlock
       title="Co wejdzie"
       status={warnings.length === 0 ? 'ok' : 'warn'}
       verdict={`${counts.sections} sekcji · ${counts.items} prac · ${counts.stages} etapów`}
     >
+      {adopted.length > 0 && (
+        <p>{`Mnożnik ceny z cennika: ${adopted.join(' · ')} — zastąpi ustawienie inwestycji.`}</p>
+      )}
       {warnings.map((warning, index) => (
         <p key={`${index}-${warning}`} className="text-amber-600">
           {warning}

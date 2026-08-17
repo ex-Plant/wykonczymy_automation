@@ -72,19 +72,106 @@ describe('buildImportPlan', () => {
     expect(report.counts).toMatchObject({ sections: 2, items: 3, stages: 10 })
   })
 
-  it('carries the investment’s own settings through instead of the defaults', () => {
-    // `restoreKosztorys` rewrites VAT and both coefficients from whatever payload it is handed, so
-    // anything but a copy here silently resets figures the sheet has no opinion about.
-    expect(plan().tree.settings).toEqual({ wToolsCoeff: 0.71, ownToolsCoeff: 0.42, vatRate: 8 })
+  it('takes the global multipliers from the cennik’s own formulas, leaving VAT alone', () => {
+    // The sheet marks up every praca by the same 0,65 / 0,5 — that IS the investment's multiplier,
+    // and adopting it is what lets those prace enter as „auto". VAT has no cell in the sheet, so
+    // `restoreKosztorys` must be handed the investment's own back or it silently resets it.
+    expect(plan().tree.settings).toEqual({ wToolsCoeff: 0.65, ownToolsCoeff: 0.5, vatRate: 8 })
   })
 
-  it('turns each praca’s resolved rates into per-item overrides', () => {
+  it('leaves a praca marked up like every other one on the global multiplier', () => {
     const { tree } = plan()
     const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    // 78 / 120 = 0,65 — a coefficient, so the rate tracks a later client-price edit.
-    expect(item).toMatchObject({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.65 })
-    expect(item).toMatchObject({ ownToolsOverrideType: 'coeff', ownToolsOverrideValue: 0.5 })
+    // 78 / 120 = 0,65, i.e. the multiplier the whole cennik uses. A per-row „własny mnożnik" here
+    // would read as a decision about this praca and would stop following the global narzutka.
+    expect(item).toMatchObject({ wToolsOverrideType: null, wToolsOverrideValue: 0 })
+    expect(item).toMatchObject({ ownToolsOverrideType: null, ownToolsOverrideValue: 0 })
+  })
+
+  it('keeps a praca marked up differently as an explicit multiplier', () => {
+    const { tree } = plan(
+      source({
+        rateTabs: [
+          ratesTab('zakres pracy z narzędziami', [
+            ...RATES.slice(0, 2),
+            { description: 'montaż jednostki wewnętrznej', wTools: 84, ownTools: 60 },
+          ]),
+        ],
+      }),
+    )
+    const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
+
+    // 84 / 120 = 0,7 against a cennik that otherwise runs at 0,65 — an exception, and the only kind
+    // of row the „Mnożnik" column should ever show.
+    expect(item).toMatchObject({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.7 })
+    expect(item).toMatchObject({ ownToolsOverrideType: null })
+  })
+
+  it('keeps the investment’s multipliers when no cennik formula follows Cena j.m.', () => {
+    const { tree } = plan(
+      source({
+        rateTabs: [
+          ratesTab(
+            'zakres pracy z narzędziami',
+            RATES.map((rate) => ({ ...rate, typed: true })),
+          ),
+        ],
+      }),
+    )
+
+    // Every stawka typed by hand: the sheet says nothing about a global markup, so inventing one
+    // from the average of hand-made decisions would reprice whatever the owner later sets to „auto".
+    expect(tree.settings).toEqual({ wToolsCoeff: 0.71, ownToolsCoeff: 0.42, vatRate: 8 })
+  })
+
+  it('imports a hand-typed rate as a flat amount, never as a back-computed coefficient', () => {
+    // The owner typed 55 zł against a 120 zł Cena j.m. Dividing the two invents a multiplier
+    // (0,458333) the sheet never had: it renders as „własny mnożnik" in a column the owner reads as
+    // a decision they made, it re-multiplies to 55,00001 zł, and it silently moves the stawka the
+    // next time anyone edits Cena j.m. — none of which the typed cell does.
+    const { tree } = plan(
+      source({
+        rateTabs: [
+          ratesTab('zakres pracy z narzędziami', [
+            {
+              description: 'montaż jednostki wewnętrznej',
+              wTools: 55,
+              ownTools: 46.75,
+              typed: true,
+            },
+          ]),
+        ],
+      }),
+    )
+    const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
+
+    expect(item).toMatchObject({ wToolsOverrideType: 'amount', wToolsOverrideValue: 55 })
+    expect(item).toMatchObject({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 46.75 })
+  })
+
+  it('freezes bez-narzędzi too when it is computed off a hand-typed z-narzędziami cell', () => {
+    // „=R4-R4*0,15" tracks the z-narzędziami stawka, not Cena j.m. — so with R typed by hand the
+    // whole row is frozen, and reading T as a coefficient of the client price would make it drift
+    // the moment that price is edited.
+    const { tree } = plan(
+      source({
+        rateTabs: [
+          ratesTab('zakres pracy z narzędziami', [
+            {
+              description: 'montaż jednostki wewnętrznej',
+              wTools: 55,
+              ownTools: 46.75,
+              typed: true,
+              ownToolsFormula: '=R4-R4*0,15',
+            },
+          ]),
+        ],
+      }),
+    )
+    const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
+
+    expect(item).toMatchObject({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 46.75 })
   })
 
   it('freezes a praca absent from the rate tabs at a flat zero, never at the global coefficient', () => {
@@ -97,6 +184,36 @@ describe('buildImportPlan', () => {
     // Reported as a count, not per praca: on a sheet whose cenniki fail to resolve every praca is
     // missing, and the per-praca list would drown the real disagreements it exists to show.
     expect(report.warnings).toContain('1 prac nie ma w żadnym cenniku — wejdą ze stawką 0 zł.')
+  })
+
+  it('imports a praca whose cenniki disagree with no stawka at all, and reports every kwota', () => {
+    const { tree, report } = plan(
+      source({
+        rateTabs: [
+          ratesTab('zakres pracy z narzędziami', [
+            { description: 'montaż jednostki wewnętrznej', wTools: 78, ownTools: 60, typed: true },
+          ]),
+          ratesTab('zakres pracy bez narzędzi', [
+            { description: 'montaż jednostki wewnętrznej', wTools: 90, ownTools: 70, typed: true },
+          ]),
+        ],
+      }),
+    )
+    const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
+
+    // `amount` 0, never `null`: „auto" would price the praca at the investment's global multiplier —
+    // a stawka nobody chose, on the one row where the sheet failed to state one.
+    expect(item).toMatchObject({
+      wToolsOverrideType: 'amount',
+      wToolsOverrideValue: 0,
+      ownToolsOverrideType: 'amount',
+      ownToolsOverrideValue: 0,
+    })
+    const conflict = report.rateDecisions.find((rate) => rate.kind === 'conflict')!
+    expect(conflict.candidates).toMatchObject([
+      { tab: 'zakres pracy z narzędziami', wToolsRate: 78, ownToolsRate: 60 },
+      { tab: 'zakres pracy bez narzędzi', wToolsRate: 90, ownToolsRate: 70 },
+    ])
   })
 
   it('refuses the import outright when no cennik could be read', () => {

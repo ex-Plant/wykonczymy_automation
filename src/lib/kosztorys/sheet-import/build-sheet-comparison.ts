@@ -249,9 +249,11 @@ export function buildSheetComparison(
     }
 
     // A praca the cennik no longer lists is skipped rather than reported as „stawka 0 zł" — that is
-    // a fact about the cennik, and the import already refuses to guess on it.
+    // a fact about the cennik, and the import already refuses to guess on it. A praca whose cenniki
+    // disagree is skipped for the same reason: „the sheet says X" is exactly what is not true there,
+    // so every one of them would report a rozjazd against a figure the sheet never stated.
     const rate = rateByItemId.get(item.id)
-    if (rate !== undefined && rate.kind !== 'missing') {
+    if (rate !== undefined && rate.kind !== 'missing' && rate.kind !== 'conflict') {
       const pricing = asPlanePricing(appItem, currentTree.settings)
       const appWTools = subcontractorPrice(pricing, 'w_tools')
       const appOwnTools = subcontractorPrice(pricing, 'own_tools')

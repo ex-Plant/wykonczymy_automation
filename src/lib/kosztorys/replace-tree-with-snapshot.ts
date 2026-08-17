@@ -21,6 +21,8 @@ type OptionsT = {
   // discount would price the fresh rozpiska below nothing (`globalDiscountAmount` is deliberately
   // unclamped — see calc.ts). Every other replacement keeps the live discount.
   clearGlobalDiscount?: boolean
+  // The sheet import alone passes this — see the note below on why every other caller must not.
+  takeSettingsFromTree?: boolean
 }
 
 // Swap an investment's whole rozpiska for `tree`, reversibly. In ONE transaction: a forced pre-wipe
@@ -28,11 +30,21 @@ type OptionsT = {
 // leave the snapshot behind; after the wipe it would snapshot nothing) and the replacement itself.
 // Any throw rolls both back and the live kosztorys is untouched.
 //
-// The investment's own editor-settings (VAT, coefficients) are never taken from `tree`: they are
-// per-job pricing config, so a preset or a sheet must not carry one job's config onto another.
+// The investment's own editor-settings (VAT, coefficients) are not taken from `tree` by default:
+// they are per-job pricing config, and a preset built for one job must not carry its config onto
+// another.
+//
+// `takeSettingsFromTree` is the sheet import's exception, and it is load-bearing rather than a
+// convenience: the import reads the markup out of the cennik's own formulas and, on the strength of
+// that, hands every praca running at exactly that markup to the global coefficient („auto") instead
+// of stamping it with a per-row multiplier. Drop the settings and those prace silently reprice at
+// whatever the investment happened to hold — 0,55 against the sheet's 0,5525 is 151 stawki wrong by
+// half a percent, each of them looking perfectly deliberate. `buildImportPlan` already merges VAT
+// and any coefficient the sheet had no opinion about from the live investment, so what arrives here
+// is the sheet's answer where it has one and the job's own everywhere else.
 export async function replaceTreeWithSnapshot(
   payload: Payload,
-  { investmentId, label, takenBy, tree, clearGlobalDiscount }: OptionsT,
+  { investmentId, label, takenBy, tree, clearGlobalDiscount, takeSettingsFromTree }: OptionsT,
 ): Promise<InsertKosztorysTreeResultT> {
   return withPayloadTransaction(
     payload,
@@ -49,7 +61,7 @@ export async function replaceTreeWithSnapshot(
         payload,
         req,
         investmentId,
-        { ...tree, settings: current.settings },
+        { ...tree, settings: takeSettingsFromTree ? tree.settings : current.settings },
         { clearGlobalDiscount },
       )
     },

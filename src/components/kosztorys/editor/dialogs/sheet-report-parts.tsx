@@ -9,7 +9,7 @@ import { ChevronDown } from 'lucide-react'
 // arkusza" and „Porównaj z arkuszem") are built from these, so a reader who has learned one has
 // learned the other.
 
-export function ReportTable({ headers, children }: { headers: string[]; children: ReactNode }) {
+export function ReportTable({ headers, children }: { headers: ReactNode[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -17,7 +17,7 @@ export function ReportTable({ headers, children }: { headers: string[]; children
           <tr className="text-muted-foreground text-xs">
             {headers.map((header, index) => (
               <th
-                key={header || index}
+                key={index}
                 // The first column carries the name of the thing, the rest carry its figures — one
                 // left edge to scan down, one right edge to compare numbers along.
                 className={`py-1 font-normal ${index === 0 ? 'text-left' : 'pl-3 text-right'}`}
@@ -40,7 +40,7 @@ export type ReportCellT = { content: ReactNode; tone?: string }
 
 export function ReportRow({ label, cells }: { label: ReactNode; cells: ReportCellT[] }) {
   return (
-    <tr className="border-border/60 border-t align-top">
+    <tr className="border-border/60 border-t align-middle">
       <td className="py-1">{label}</td>
       {cells.map((cell, index) => (
         <td

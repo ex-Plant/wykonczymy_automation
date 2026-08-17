@@ -1,3 +1,4 @@
+import { columnLetter } from '@/lib/google/sheet-configs'
 import { fold, HEADER_BLOCK_ROWS } from './columns'
 import type { RateTabGridT } from './read-sheet'
 import { resolveRates, type ResolvedRatesT } from './resolve-columns'
@@ -11,6 +12,12 @@ export type RateRowT = {
   // a typed value outranks a derived one when the tabs disagree.
   wToolsTyped: boolean
   ownToolsTyped: boolean
+  // Whether the cell MOVES when Cena j.m. moves. Only a rate that does may be imported as a
+  // multiplier; everything else is a frozen amount. Not the negation of `*Typed`: bez-narzędzi is
+  // usually „=R−R*0,15", a formula that follows the z-narzędziami cell rather than the client price,
+  // so a hand-typed z-narzędziami freezes it too.
+  wToolsTracksPrice: boolean
+  ownToolsTracksPrice: boolean
 }
 
 export type RateTabT = { title: string; rows: RateRowT[] }
@@ -21,7 +28,7 @@ export type RateDecisionKindT =
   | 'agree' // both tabs, same pair
   | 'single' // only one tab has this praca
   | 'auto' // tabs disagreed, one was hand-typed — resolved without asking
-  | 'conflict' // both hand-typed and different — resolved, but the owner should look
+  | 'conflict' // the cenniki disagree with nothing to break the tie: NOT resolved, imports blank
   | 'missing' // no tab has it: the praca imports at 0 zł
 
 // The kinds the preview lists one by one. `agree` says nothing, and `missing` is reported as a count
@@ -29,14 +36,32 @@ export type RateDecisionKindT =
 // would bury the handful of real disagreements this list exists to surface.
 export type ReportedRateKindT = Exclude<RateDecisionKindT, 'agree' | 'missing'>
 
+// One tab's answer for a praca nobody could resolve — every figure that was in play, with the tab it
+// came from and whether it was typed or computed. The owner decides from this table; the import does
+// not decide for them.
+export type RateCandidateT = {
+  tab: string
+  wToolsRate: number
+  ownToolsRate: number
+  wToolsTyped: boolean
+  ownToolsTyped: boolean
+}
+
 export type RateResolutionT = {
   description: string
   wToolsRate: number
   ownToolsRate: number
   kind: RateDecisionKindT
+  // Carried from the row that won, because only that row's formulas say whether these two figures
+  // follow Cena j.m. — see `RateRowT`.
+  wToolsTracksPrice: boolean
+  ownToolsTracksPrice: boolean
   sourceTab: string | null
-  // What the tab that lost said, for the preview. Only set on `auto` and `conflict`.
+  // What the tab that lost said, for the preview. Only set on `auto`.
   rejected?: { tab: string; wToolsRate: number; ownToolsRate: number }
+  // Only set on `conflict`, where there is no winner and no rejected side — just the cenniki's
+  // answers, all of them, for the owner to arbitrate in the sheet.
+  candidates?: RateCandidateT[]
 }
 
 // A resolution worth showing to the owner — the two silent kinds are already filtered out.
@@ -70,18 +95,66 @@ function indexByOccurrence(rows: readonly RateRowT[]): Map<string, RateRowT> {
   return byKey
 }
 
+// Does this formula read the given column of its own row? The lookbehind is what keeps „R" from
+// matching inside „AR12" — a false hit there would mistake an unrelated formula for one chained off
+// the z-narzędziami cell.
+function references(formula: unknown, column: number): boolean {
+  if (typeof formula !== 'string' || !formula.startsWith('=')) return false
+  return new RegExp(`(?<![A-Z])\\$?${columnLetter(column)}\\$?\\d`).test(formula.toUpperCase())
+}
+
 // A pair where the subcontractor who brings their own tools costs MORE than one we equip is
 // arithmetically impossible — the tools are the difference. Such a pair means the two rate columns
 // were read from a row that doesn't belong to this praca, so it is dropped before any comparison
 // rather than scored against the other tab.
 const isCoherent = (row: RateRowT): boolean => row.ownToolsRate <= row.wToolsRate
 
+// A pair with no money in it. The sheet renders an unfilled cell and a deliberate „za darmo" as the
+// same 0, so a blank pair may not lose to a filled one on its own — see `decide`.
+const isBlank = (row: RateRowT): boolean => !(row.wToolsRate > 0) && !(row.ownToolsRate > 0)
+
+/**
+ * The cenniki disagree and nothing breaks the tie, so the import stops choosing: the praca enters with
+ * NO stawka (0 zł, an explicit amount — never „auto", which would invent money at the investment's
+ * global multiplier) and the owner fills it in. Every figure that was in play rides along, so the
+ * report can name all of them and where each came from.
+ */
+function unresolved(
+  description: string,
+  pool: ReadonlyArray<{ tab: string; row: RateRowT }>,
+): RateResolutionT {
+  return {
+    description,
+    wToolsRate: 0,
+    ownToolsRate: 0,
+    kind: 'conflict',
+    wToolsTracksPrice: false,
+    ownToolsTracksPrice: false,
+    sourceTab: null,
+    candidates: pool.map(({ tab, row }) => ({
+      tab,
+      wToolsRate: row.wToolsRate,
+      ownToolsRate: row.ownToolsRate,
+      wToolsTyped: row.wToolsTyped,
+      ownToolsTyped: row.ownToolsTyped,
+    })),
+  }
+}
+
 function decide(
   description: string,
   candidates: ReadonlyArray<{ tab: string; row: RateRowT }>,
 ): RateResolutionT {
   if (candidates.length === 0) {
-    return { description, wToolsRate: 0, ownToolsRate: 0, kind: 'missing', sourceTab: null }
+    return {
+      description,
+      wToolsRate: 0,
+      ownToolsRate: 0,
+      kind: 'missing',
+      wToolsTracksPrice: false,
+      ownToolsTracksPrice: false,
+      sourceTab: null,
+    }
   }
 
   const coherent = candidates.filter(({ row }) => isCoherent(row))
@@ -93,6 +166,8 @@ function decide(
     description,
     wToolsRate: winner.row.wToolsRate,
     ownToolsRate: winner.row.ownToolsRate,
+    wToolsTracksPrice: winner.row.wToolsTracksPrice,
+    ownToolsTracksPrice: winner.row.ownToolsTracksPrice,
     sourceTab: winner.tab,
   }
 
@@ -129,6 +204,11 @@ function decide(
   const winnerTyped = winner.row.wToolsTyped || winner.row.ownToolsTyped
   const otherTyped = other.row.wToolsTyped || other.row.ownToolsTyped
 
+  // An empty pair against a filled one is a conflict even when the filled side was typed by hand: an
+  // unfilled cennik cell renders as 0, so „nikt tego nie wypełnił" and „ta praca jest za darmo" are
+  // the same figure and only the owner can tell them apart (owner, 2026-08-17).
+  if (isBlank(winner.row) !== isBlank(other.row)) return unresolved(description, pool)
+
   // One side hand-typed: that side is the owner's decision about this praca and wins outright.
   if (otherTyped && !winnerTyped) {
     return {
@@ -136,6 +216,8 @@ function decide(
       wToolsRate: other.row.wToolsRate,
       ownToolsRate: other.row.ownToolsRate,
       kind: 'auto',
+      wToolsTracksPrice: other.row.wToolsTracksPrice,
+      ownToolsTracksPrice: other.row.ownToolsTracksPrice,
       sourceTab: other.tab,
       rejected: {
         tab: winner.tab,
@@ -146,8 +228,9 @@ function decide(
   }
   if (winnerTyped && !otherTyped) return { ...base, kind: 'auto', rejected }
 
-  // Both typed and different, or both derived and different: pick the authoritative tab and say so.
-  return { ...base, kind: 'conflict', rejected }
+  // Both typed and different, or both derived and different: nothing here says which one is the
+  // truth, and picking the first tab would have written a stawka the owner never approved.
+  return unresolved(description, pool)
 }
 
 /**
@@ -176,8 +259,9 @@ export function readRateTabs(grids: readonly RateTabGridT[]): {
 }
 
 // Resolve one rate pair per praca. `tabs` is in PRIORITY order — the first tab supplies the value
-// whenever the decision is otherwise a coin flip (a conflict between two hand-typed figures). The
-// caller orders them; see `build-import-plan`.
+// whenever the tabs say the same thing and one of them had to be named as the source. It does NOT
+// break a tie: cenniki that disagree resolve to no stawka at all. The caller orders them; see
+// `build-import-plan`.
 export function resolveItemRates(
   items: readonly RateItemT[],
   tabs: readonly RateTabT[],
@@ -223,12 +307,21 @@ export function readRateRows(
     const value = (column: number): number =>
       typeof row[column] === 'number' ? row[column] : Number(row[column]) || 0
 
+    // Bez-narzędzi is „=R−R*0,15" far more often than it is a markup on Cena j.m., so it is only as
+    // free as the cell it points at. Anything else computed is taken to follow the client price.
+    const wToolsTracksPrice = !isTyped(wToolsRate)
+    const ownToolsTracksPrice =
+      !isTyped(ownToolsRate) &&
+      (references(formulaRow[ownToolsRate], wToolsRate) ? wToolsTracksPrice : true)
+
     rows.push({
       description: label,
       wToolsRate: value(wToolsRate),
       ownToolsRate: value(ownToolsRate),
       wToolsTyped: isTyped(wToolsRate),
       ownToolsTyped: isTyped(ownToolsRate),
+      wToolsTracksPrice,
+      ownToolsTracksPrice,
     })
   }
 

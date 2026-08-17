@@ -373,13 +373,54 @@ zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firm
   Podpowiadarka przyjdzie z szablonami.
 - **Import cennika podwykonawcy z arkusza: pusta stawka = 0, nie default** (Białostocka 5,
   blueprint EX-554). Zakładki `zakres pracy z/bez narzędzi` mają stawkę per pozycja albo jako
-  formułę (`P×0,65`, `P×0,5525`), albo **pustą — a pusta w arkuszu znaczy 0**: `suma wykonanej
+  formułę (`P×0,65`, a bez narzędzi `R−R×0,15`), albo **pustą — a pusta w arkuszu znaczy 0**: `suma wykonanej
 pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „dziedzicz
   domyślny współczynnik"** — każda stawka jest jawna. Wniosek dla seeda: importuj **każdą
   jawną wartość** (override `coeff`/`amount`), **nigdy `null`** — `null` w `calc.ts` znaczy
   „dziedzicz sekcyjny/globalny współczynnik" i wymyśliłby koszt, którego arkusz nie ma
   (dawało +~9 000 na `suma wykonanej pracy`, plan „bez narzędzi": 65 638 zamiast ~57 114 ≈
   56 431 z arkusza). Pusta stawka → `{ type: 'amount', value: 0 }`.
+- **Import: o rodzaju override'u decyduje FORMUŁA komórki, nie jej liczba** (zweryfikowane na
+  Białostockiej 2026-08-17, EX-554). W arkuszu stawka jest albo policzona (`=P×0,65`), albo
+  **wpisana z palca** — i to drugie jest w cenniku `z narzędziami` **większością** (229 z 336
+  wierszy, `bez narzędzi` 63). Odczyt `UNFORMATTED_VALUE` zwraca w obu wypadkach samą liczbę, więc
+  dzielenie jej przez cenę klienta robiło z każdej ręcznej stawki „własny mnożnik" typu `0,294118`:
+  mnożnik, którego właściciel nigdy nie wybrał, mnożący się z powrotem do wartości rozjechanej
+  o ogon zaokrąglenia i **wędrujący przy każdej edycji „Cena j.m."**. Reguła: **policzona → `coeff`,
+  wpisana → `amount` w wartości nominalnej**. Dlatego import czyta zakładkę cennika **drugi raz pod
+  renderem `FORMULA`** (`readRateRows`).
+- **`bez narzędzi` nie jest niezależną stawką — to `z narzędziami` minus 15%** (`=R−R*0,15`, 309
+  z 309 formuł w Białostockiej; `z narzędziami` to `=P×0,65`, 138 z 138 — żadnego innego wariantu).
+  Stąd domyślne `0,65 × 0,85 = 0,5525` względem ceny klienta (`DEFAULT_COEFFS`), i stąd **konsekwencja
+  dla importu**: gdy `R` jest wpisane z palca, `T` też jest kwotą zamrożoną, mimo że samo jest
+  formułą — śledzi `R`, nie cenę klienta.
+- **Import wyjmuje globalny mnożnik z formuł cennika i przestawia nim inwestycję**
+  (`sheet-coeffs.ts`). Arkusz nie ma komórki z narzutką — jest ona powielona w setkach kopii tej
+  samej formuły, więc jedyny sposób jej odczytania to **policzyć dominujący iloraz `stawka / Cena
+j.m.` wśród wierszy policzonych** (wpisane z palca są wykluczone: to decyzje o jednej pracy).
+  Dopiero to pozwala wierszom zgodnym z tą narzutką wejść jako **`null` = „auto"** zamiast jako
+  „własny mnożnik" — kolumna „Mnożnik" pokazuje wtedy wyłącznie prawdziwe wyjątki, a globalna zmiana
+  narzutki działa jak w arkuszu. To **jedyny** przypadek, w którym `null` jest bezpieczny mimo reguły
+  z EX-554 wyżej: znaczy dokładnie tę samą liczbę, bo globalny mnożnik został właśnie ustawiony na
+  arkuszowy. Cennik bez ani jednej formuły śledzącej cenę → mnożniki inwestycji zostają nietknięte.
+  VAT nie ma w arkuszu odpowiednika i zawsze przechodzi z inwestycji.
+  **Pułapka (znaleziona na żywym imporcie):** `replaceTreeWithSnapshot` domyślnie **nadpisuje**
+  `tree.settings` ustawieniami inwestycji (żeby preset jednej roboty nie przeniósł konfiguracji na
+  drugą) — więc import musi jawnie podać `takeSettingsFromTree: true`. Bez tego pozycje wchodzą jako
+  „auto", ale mnożnik zostaje stary i **151 stawek po cichu przelicza się o pół procenta** (0,55
+  zamiast 0,5525) wyglądając na w pełni świadomą decyzję.
+- **Gdy oba cenniki podają inną kwotę, import NIE wybiera — praca wchodzi bez stawki** (właściciel,
+  2026-08-17). Wcześniej wygrywała zakładka pierwsza w arkuszu, a druga kwota lądowała w raporcie jako
+  „pominięto": kosztorys dostawał wtedy stawkę, której nikt nie zatwierdził, i po imporcie nie było już
+  po niej śladu. Teraz `decide()` zwraca `kind: 'conflict'` z **zerową** stawką i listą `candidates`
+  (wszystkie kwoty + zakładka + „wpisana ręcznie / z formuły"), a `deriveOverride` zapisuje
+  `amount 0` — nigdy `null`, bo „auto" wymyśliłoby kwotę z globalnego mnożnika dokładnie tam, gdzie
+  arkusz żadnej nie podał. Trzy konsekwencje: raport pokazuje **tabelkę per zakładka** (przy dwóch
+  cennikach to cztery kwoty), „Porównaj z arkuszem" **pomija** te prace przy „Stawki inne niż w
+  cenniku" (nie ma z czym porównywać), a w kosztorysie znajduje się je diagnostyką **„bez ceny
+  wykonawcy"** (per widok, jak `overpriced-*`). **Pusta para vs wypełniona to też konflikt**: arkusz
+  renderuje niewypełnioną komórkę jako 0, więc „za darmo" i „nikt nie wypełnił" to ta sama liczba i
+  tylko właściciel je rozróżni.
 - **Wypłaty podwykonawcy w arkuszu = ręczny rejestr, NIE wyliczenie** (Białostocka 5, zweryfikowane
   na formułach zakładki `zakres pracy bez narzędzi`, wiersze 396–400). Po stronie podwykonawcy arkusz
   liczy **tylko jedno**: „suma wykonanej pracy" (r398 `=SUM(W396:AF396)` = Σ etapów × stawka „bez
@@ -773,10 +814,10 @@ this section is the original phrasing/context for those questions.
   prace, PO RABACIE.** Model marży spinający kosztorys z inwestycją:
   - **robocizna** = Σ ceny klienta wykonanych prac, **po rabacie** (widok „Klient").
   - **wypłaty** = cena podwykonawcy = cena klienta × współczynnik (domyślnie `0,65`
-    z narzędziami / `0,55` bez; override na sekcji / pozycji) = to, co właściciel
+    z narzędziami / `0,5525` bez; override na sekcji / pozycji) = to, co właściciel
     płaci ekipie.
   - **marża** = robocizna − wypłaty (przy domyślnym współczynniku strukturalnie
-    35% / 45% wartości oferty — nigdy 0).
+    35% / 44,75% wartości oferty — nigdy 0).
 
   **POTWIERDZONE (właściciel, 2026-07-21): wypłaty należne = ceny podwykonawcy z
   kosztorysu; realne wypłaty (`PAYOUT`) zmniejszają „kwotę do zapłaty
