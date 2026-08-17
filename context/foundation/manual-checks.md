@@ -1109,3 +1109,34 @@ zalogowany jako OWNER. Kolejność siedzi w `localStorage` pod `kosztorys-v2-col
 - [ ] „Przywróć domyślną kolejność" wraca do układu arkusza
 - [ ] Widok klienta (link udostępniony) pokazuje kolejność arkuszową niezależnie od ustawień właściciela
 - [ ] Zmiana kolejności nie psuje przeciągania krawędzi kolumny (szerokości) ani sortowania z nagłówka
+
+## kosztorys-editor-hook-split — rozbicie hooka edytora (EX-521)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `lint` bez nowych błędów, `test` 2313,
+`test:integration` 118, `test:parity`, `build`). Stan po `5b72e785`. Slice nie zmienia zachowania:
+weryfikacja polega na potwierdzeniu, że nic nie drgnęło. Kolejność sekcji i pozycji przeszła na
+serwer (fazy 1–2), reszta to przeprowadzka logiki bez zmiany działania.
+
+Setup: baza testowa (5435) z zasianym kosztorysem (`pnpm seed:kosztorys:test`), zalogowany jako
+OWNER. Do A/B wydajności drugie okno na `staging`.
+
+- [ ] ▲▼ na sekcji przestawia ją i przeżywa odświeżenie
+- [ ] „Wstaw sekcję powyżej/poniżej" ląduje w dobrym miejscu i przeżywa odświeżenie
+- [ ] Wstawienie sekcji w środku, potem ▲▼ na późniejszej — zamieniają się właściwe dwie sekcje
+- [ ] Cofnięcie przestawienia sekcji przywraca poprzednią kolejność
+- [ ] ▲▼ na pozycji przestawia ją w obrębie sekcji i przeżywa odświeżenie
+- [ ] „Wstaw pozycję powyżej/poniżej" ląduje w dobrym miejscu i przeżywa odświeżenie
+- [ ] Sortowanie po kolumnie → „Zapisz kolejność" → odświeżenie: kolejność zapisana
+- [ ] Cofnięcie po zapisie kolejności przywraca poprzednią, ponowienie ją przywraca
+- [ ] Pisanie po kilku komórkach i jedno cofnięcie zwija się w jeden krok, jak wcześniej
+- [ ] Cofnięcie przywraca wszystkie pola edycji obejmującej kilka kolumn
+- [ ] Szukanie + filtr warunkiem + sortowanie kolumną składają się jak wcześniej
+- [ ] Zmiana współczynnika globalnego przelicza grid i sumy, i przeżywa odświeżenie
+- [ ] Zmiana VAT, trybu rozliczenia i stawki materiałów działa jak wcześniej
+- [ ] Rabat globalny i rabat procentowy działają jak wcześniej, razem z cofnięciem
+- [ ] Dodanie etapu, zmiana nazwy, planu narzędziowego i pracownika, usunięcie — jak wcześniej
+- [ ] Usunięcie etapu z zapisanym postępem nadal ostrzega/blokuje jak wcześniej
+- [ ] Szukanie, sortowanie, zwijanie sekcji i „Zresetuj filtry" działają jak wcześniej
+- [ ] Prowadnica przy zmianie szerokości kolumny nadal chodzi za kursorem
+- [ ] Podgląd dla klienta pokazuje ceny klienta bez kolumn współczynników, niezależnie od `localStorage`
+- [ ] A/B wydajności: kosztorys 1000+ pozycji na tej gałęzi i na `staging`, ciągłe pisanie w komórce — bez dodatkowych zacięć

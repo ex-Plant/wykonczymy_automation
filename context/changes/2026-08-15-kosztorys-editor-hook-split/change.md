@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-editor-hook-split
 title: Split the use-kosztorys-editor god hook (EX-521)
-status: implementing
+status: implemented
 created: 2026-08-15
 updated: 2026-08-17
 archived_at: null
