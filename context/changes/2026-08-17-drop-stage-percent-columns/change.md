@@ -1,11 +1,11 @@
 ---
 change_id: drop-stage-percent-columns
 title: Drop the per-etap „% wykonania" columns and their wiring
-status: planned
+status: implemented
 created: 2026-08-17
 updated: 2026-08-17
 archived_at: null
-branch: null
+branch: client-preview-settings
 worktree: null
 ---
 
