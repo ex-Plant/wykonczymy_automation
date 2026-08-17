@@ -11,6 +11,7 @@ import {
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
 import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
+import { itemFieldLane, stageLane } from '@/lib/kosztorys/save-lanes'
 import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
@@ -135,6 +136,7 @@ export function useKosztorysEditor({
     collapsedSectionIds,
     setCollapsedSectionIds,
     toggleSectionCollapsed,
+    unfoldSection,
     resetFilters,
     guideX,
     setGuideX,
@@ -169,15 +171,13 @@ export function useKosztorysEditor({
   // still load-bearing is EX-422's own follow-up, not a freebie to delete alongside it.
   const rowsRef = useRef(rows)
 
-  // Both disables: react-hooks/refs forbids a render-time ref write outright. This is the deliberate
-  // latest-value pattern described above, and the rule started firing on it only once this hook grew
-  // small enough for the compiler-backed lint to analyse it — the code itself is unchanged.
+  // react-hooks/refs forbids a render-time ref write outright; this is the deliberate latest-value
+  // pattern described above.
   // eslint-disable-next-line react-hooks/refs
   rowsRef.current = rows
 
   const {
     stages,
-    stagesRef,
     handleAddStage,
     handleRemoveStage,
     handleRenameStage,
@@ -506,15 +506,10 @@ export function useKosztorysEditor({
   ) {
     const patchById = buildReversalPatches(fields, stages, dir)
 
-    setRows((rs) =>
-      rs.map((r) =>
-        patchById.has(r.id) ? ({ ...r, ...patchById.get(r.id) } as KosztorysV2RowT) : r,
-      ),
+    patchRows(
+      (r) => patchById.has(r.id),
+      (r) => ({ ...r, ...patchById.get(r.id) }) as KosztorysV2RowT,
     )
-    for (const [id, patch] of patchById) {
-      const snap = prevById.current.get(id)
-      if (snap) prevById.current.set(id, { ...snap, ...patch } as KosztorysV2RowT)
-    }
     // Each inverse goes through its cell's lane. On failure the lane toasts AND we roll the optimistic
     // apply back to its pre-reversal value via `revertOne` — the trailing `router.refresh()` can't do it
     // (`rows` is the mount-frozen useState seed, EX-441, so refresh reseeds the prop surfaces but not the
@@ -543,15 +538,13 @@ export function useKosztorysEditor({
   // the given direction — the inverse of „w górę" is „w dół", so undo and redo are the same call with
   // the direction flipped. Matches handleReorderItem: no prevById touch (display_order isn't a diffed
   // field) and no totals refresh (a reorder doesn't change any figure).
-  function runReorderReversal(itemId: number, neighborId: number, dir: 'up' | 'down') {
-    setRows((rs) => {
-      const ia = rs.findIndex((r) => r.id === itemId)
-      const ib = rs.findIndex((r) => r.id === neighborId)
-      if (ia < 0 || ib < 0) return rs
-      const next = [...rs]
-      ;[next[ia], next[ib]] = [next[ib], next[ia]]
-      return next
-    })
+  //
+  // The neighbour is re-derived here rather than replayed from the one captured at push time: the
+  // server exchanges with whatever is rank-adjacent NOW, so replaying a stale id would diverge the
+  // moment a row landed between the pair (insert between A and X, then undo). `swapItemInSection` is
+  // the same primitive the forward gesture uses, which is what makes both halves one operation.
+  function runReorderReversal(itemId: number, dir: 'up' | 'down') {
+    setRows((rs) => swapItemInSection(rs, itemId, dir))
     void swapItemOrderAction(itemId, dir)
   }
 
@@ -586,13 +579,7 @@ export function useKosztorysEditor({
     })
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
-    // A row added to a folded section would be invisible — unfold it so the add is visible.
-    setCollapsedSectionIds((prev) => {
-      if (!prev.has(sectionId)) return prev
-      const next = new Set(prev)
-      next.delete(sectionId)
-      return next
-    })
+    unfoldSection(sectionId)
   }
 
   // ⋯ menu → Wstaw pozycję powyżej/poniżej. Inserts a blank row at the anchor's display slot
@@ -619,7 +606,7 @@ export function useKosztorysEditor({
   // What deleting a row does — read at event time from the full dataset (prevById), not the view,
   // so the handler decides on accurate counts. The render-hot per-cell path uses getRemovePlan.
   function removalPlan(row: KosztorysV2RowT) {
-    return planItemRemoval([...prevById.current.values()], row, stagesRef.current)
+    return planItemRemoval([...prevById.current.values()], row, stages)
   }
 
   // Render-hot: called per cell. Counts are precomputed once per render (removalCounts below), so this
@@ -630,7 +617,7 @@ export function useKosztorysEditor({
       rows.length,
       removalCounts.get(row.sectionId) ?? 0,
       row,
-      stagesRef.current,
+      stages,
     )
   }
 
@@ -680,8 +667,8 @@ export function useKosztorysEditor({
     const back = dir === 'up' ? 'down' : 'up'
     pushCommand({
       label: 'Zmiana kolejności',
-      undo: () => runReorderReversal(row.id, neighbor.id, back),
-      redo: () => runReorderReversal(row.id, neighbor.id, dir),
+      undo: () => runReorderReversal(row.id, back),
+      redo: () => runReorderReversal(row.id, dir),
       touchedIds: [row.id, neighbor.id],
     })
   }
@@ -903,15 +890,12 @@ export function useKosztorysEditor({
     // The load-bearing persistence kill-switch: a preview grid is read-only, but this guards the
     // one path that could still POST — so no save, undo capture, or refresh ever fires on the public page.
     if (preview) return
-    const { fieldChanges, stageChanges, changedRows, seenRows } = planGridChanges(
-      next,
-      prevById.current,
-    )
+    const { fieldChanges, stageChanges, changedById } = planGridChanges(next, prevById.current)
     for (const c of fieldChanges) {
       const key = c.field as keyof KosztorysV2RowT
       save(
-        `item:${c.id}:${String(c.field)}`,
-        () => updateItemFieldAction(c.id, { [c.field]: c.value } as ItemPatchT),
+        itemFieldLane(c.id, c.field),
+        () => updateItemFieldAction(c.id, { [c.field]: c.after } as ItemPatchT),
         () => {
           revertOne(c.id, key, c.before, c.after)
           dropPendingField(c.id, c.field)
@@ -922,7 +906,7 @@ export function useKosztorysEditor({
     for (const c of stageChanges) {
       const key = stageKey(c.stageId) as keyof KosztorysV2RowT
       save(
-        `progress:${c.id}:${c.stageId}`,
+        stageLane(c.id, c.stageId),
         () => setStageProgressAction(c.id, c.stageId, c.after),
         () => {
           revertOne(c.id, key, c.before, c.after)
@@ -930,7 +914,10 @@ export function useKosztorysEditor({
         },
       )
     }
-    for (const row of seenRows) prevById.current.set(row.id, row)
+    // Advance the snapshot over the array the grid already handed us, rather than a copy of it the
+    // plan would have to allocate per keystroke. Rows absent from the snapshot stay absent — that is
+    // the same "never seen, nothing to diff" skip planGridChanges applies.
+    for (const row of next) if (prevById.current.has(row.id)) prevById.current.set(row.id, row)
     // One onChange batch (incl. a multi-cell paste) = one composite undo entry: buffer them all and
     // let the timer collapse the burst into a single coalesced command.
     if (fieldChanges.length > 0 || stageChanges.length > 0) {
@@ -940,9 +927,8 @@ export function useKosztorysEditor({
       if (flushTimer.current) clearTimeout(flushTimer.current)
       flushTimer.current = setTimeout(flushUndoBuffer, UNDO_COALESCE_MS)
     }
-    if (changedRows.length > 0) {
+    if (changedById.size > 0) {
       // Merge the view's changes into the full dataset by id (so filter/sort don't lose hidden rows).
-      const changedById = new Map(changedRows.map((r) => [r.id, r]))
       setRows((master) => master.map((r) => changedById.get(r.id) ?? r))
       // Pull the recomputed totals from the server after the save quiets down (only when
       // something actually changed — an unconditional refresh on a spurious onChange could loop the render).

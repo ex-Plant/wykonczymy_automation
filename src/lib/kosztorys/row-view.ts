@@ -22,6 +22,12 @@ export type SortDirT = 'asc' | 'desc'
 // Chosen per sort in the column header menu — the two scopes are separate commands, never a mode.
 export type SortScopeT = 'section' | 'global'
 
+// The scope rides inside the sort rather than as a separate editor toggle, so clearing the sort
+// cannot leave a stale scope behind. `SortPickT` is what a header menu hands back (which field it
+// belongs to is the caller's), `SortStateT` is the editor's whole answer to „how is this sorted".
+export type SortPickT = { dir: SortDirT; scope: SortScopeT }
+export type SortStateT = ({ field: string } & SortPickT) | null
+
 // Sort by the accessor's value; strings by locale (pl), numbers numerically. Returns a new array.
 // Decorate-sort-undecorate: getValue can be an O(stages) reduce (the "remaining" key), and calling
 // it inside the comparator would re-evaluate it ~2·n·log(n) times — compute it once per row instead.
@@ -77,7 +83,7 @@ export function buildViewRows(input: {
   rows: KosztorysV2RowT[]
   search: string
   engagedConditionIds: ReadonlySet<string>
-  sort: { field: string; dir: SortDirT; scope: SortScopeT } | null
+  sort: SortStateT
   view: PriceViewT
   stages: KosztorysStageT[]
 }): KosztorysV2RowT[] {

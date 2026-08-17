@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-// The editor's central decision, previously reachable only by typing in a browser: given the grid's
-// new array and the snapshot of what it held before, which writes fire and what the undo buffer
-// records. Everything imperative (the saves, setRows, the coalesce timer) stays in the hook.
+// The editor's central decision: given the grid's new array and the snapshot of what it held before,
+// which writes fire and what the undo buffer records. Everything imperative (the saves, setRows, the
+// coalesce timer) stays in the hook.
 
 function row(over: Partial<KosztorysV2RowT> & { id: number }): KosztorysV2RowT {
   return {
@@ -30,9 +30,7 @@ describe('planGridChanges', () => {
 
     expect(plan.fieldChanges).toEqual([])
     expect(plan.stageChanges).toEqual([])
-    expect(plan.changedRows).toEqual([])
-    // Still seen: the snapshot advances for every row the diff could read, changed or not.
-    expect(plan.seenRows).toEqual([before])
+    expect(plan.changedById.size).toBe(0)
   })
 
   it('emits one change per edited field of a row, each carrying its before/after', () => {
@@ -42,16 +40,10 @@ describe('planGridChanges', () => {
     const plan = planGridChanges([after], snapshotOf(before))
 
     expect(plan.fieldChanges).toEqual([
-      {
-        id: 1,
-        field: 'description',
-        before: 'Malowanie',
-        after: 'Gruntowanie',
-        value: 'Gruntowanie',
-      },
-      { id: 1, field: 'clientPrice', before: 100, after: 120, value: 120 },
+      { id: 1, field: 'description', before: 'Malowanie', after: 'Gruntowanie' },
+      { id: 1, field: 'clientPrice', before: 100, after: 120 },
     ])
-    expect(plan.changedRows).toEqual([after])
+    expect([...plan.changedById.values()]).toEqual([after])
   })
 
   it('reports a stage cell as a stage change, not a field change', () => {
@@ -73,7 +65,7 @@ describe('planGridChanges', () => {
     const plan = planGridChanges([known, stranger], snapshotOf(known))
 
     expect(plan.fieldChanges).toEqual([])
-    expect(plan.seenRows).toEqual([known])
+    expect(plan.changedById.size).toBe(0)
   })
 
   it('keeps each edited row separate across a multi-row batch', () => {
@@ -83,7 +75,6 @@ describe('planGridChanges', () => {
     const plan = planGridChanges([row({ id: 1, unit: 'mb' }), b], snapshotOf(a, b))
 
     expect(plan.fieldChanges.map((c) => c.id)).toEqual([1])
-    expect(plan.changedRows.map((r) => r.id)).toEqual([1])
-    expect(plan.seenRows.map((r) => r.id)).toEqual([1, 2])
+    expect([...plan.changedById.keys()]).toEqual([1])
   })
 })

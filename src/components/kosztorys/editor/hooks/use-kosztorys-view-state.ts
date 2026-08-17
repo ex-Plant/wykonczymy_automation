@@ -3,10 +3,7 @@
 import { useState } from 'react'
 import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
-import type {
-  SortPickT,
-  V2SortStateT,
-} from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
+import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
 
 // One frozen instance, so the preview's suppressed set is referentially stable across renders and
 // the editor's memos don't recompute on every keystroke.
@@ -37,7 +34,7 @@ export function useKosztorysViewState({ investmentId, preview }: ArgsT) {
     clear: clearConditions,
   } = useEngagedConditions(investmentId)
   const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
-  const [sort, setSort] = useState<V2SortStateT>(null)
+  const [sort, setSort] = useState<SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
   // filtering the rows away, so a hidden section still announces itself and its total). Deliberately
@@ -62,6 +59,17 @@ export function useKosztorysViewState({ investmentId, preview }: ArgsT) {
     setSort(pick ? { field, ...pick } : null)
   }
 
+  // A row added into a folded section would be invisible, so the add unfolds it. Same reference back
+  // when the section is already open, so an add elsewhere doesn't re-render the grid.
+  function unfoldSection(sectionId: number) {
+    setCollapsedSectionIds((prev) => {
+      if (!prev.has(sectionId)) return prev
+      const next = new Set(prev)
+      next.delete(sectionId)
+      return next
+    })
+  }
+
   function toggleSectionCollapsed(sectionId: number) {
     setCollapsedSectionIds((prev) => {
       const next = new Set(prev)
@@ -83,6 +91,7 @@ export function useKosztorysViewState({ investmentId, preview }: ArgsT) {
     collapsedSectionIds,
     setCollapsedSectionIds,
     toggleSectionCollapsed,
+    unfoldSection,
     resetFilters,
     guideX,
     setGuideX,

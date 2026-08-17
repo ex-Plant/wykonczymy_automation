@@ -134,7 +134,6 @@ export function useKosztorysStageOps({
 
   return {
     stages,
-    stagesRef,
     handleAddStage,
     handleRemoveStage,
     handleRenameStage,

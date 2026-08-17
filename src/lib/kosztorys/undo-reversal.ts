@@ -1,3 +1,4 @@
+import { itemFieldLane, stageLane } from '@/lib/kosztorys/save-lanes'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { FieldChangeT, StageChangeT } from '@/lib/kosztorys/undo-coalesce'
 import type { ItemPatchT } from '@/lib/kosztorys/types'
@@ -67,7 +68,7 @@ export function planReversalWrites(
     ...fields.map(
       (c): ReversalWriteT => ({
         kind: 'field',
-        lane: `item:${c.id}:${String(c.field)}`,
+        lane: itemFieldLane(c.id, c.field),
         id: c.id,
         field: c.field,
         value: pick(c, dir),
@@ -77,7 +78,7 @@ export function planReversalWrites(
     ...stages.map(
       (c): ReversalWriteT => ({
         kind: 'stage',
-        lane: `progress:${c.id}:${c.stageId}`,
+        lane: stageLane(c.id, c.stageId),
         id: c.id,
         stageId: c.stageId,
         value: pick(c, dir),

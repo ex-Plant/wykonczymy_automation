@@ -97,9 +97,8 @@ export function applyRestoreItem(
 }
 
 // Splice a blank row into the display sequence just before or just after the anchor. Array position
-// (not display_order) drives the unsorted grid render, so the row lands at the anchor's array index;
-// the server's tail shift needs no client mirror, because no client code does arithmetic on
-// display_order any more.
+// (not display_order) drives the unsorted grid render, so the row lands at the anchor's array index.
+// The server's tail shift needs no client mirror: no client code does arithmetic on display_order.
 export function applyInsertItem(
   rows: KosztorysV2RowT[],
   anchorId: number,
@@ -171,13 +170,14 @@ export function applyKosztorysOrder(
   const rank = new Map(orderedIds.map((id, index) => [id, index]))
   const blocks = groupBySection(rows)
   for (const [sectionId, block] of blocks) {
-    const slots = block.flatMap((row, index) => (rank.has(row.id) ? [index] : []))
-    const ordered = slots
-      .map((index) => block[index])
+    const ordered = block
+      .filter((row) => rank.has(row.id))
       .sort((a, b) => (rank.get(a.id) as number) - (rank.get(b.id) as number))
-    const next = [...block]
-    slots.forEach((index, i) => (next[index] = ordered[i]))
-    blocks.set(sectionId, next)
+    let taken = 0
+    blocks.set(
+      sectionId,
+      block.map((row) => (rank.has(row.id) ? ordered[taken++] : row)),
+    )
   }
   return regroupByKeys(blocks, [...blocks.keys()])
 }

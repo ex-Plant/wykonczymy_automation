@@ -10,6 +10,17 @@ import type { ActionResultT } from '@/types/action'
 // stop an in-flight action — serialization can.
 export type LaneRunT = () => Promise<ActionResultT>
 
+// The lane key IS the ordering contract: a forward save and the undo that inverts it must land on the
+// same string or they stop serializing — silently, with no type error and no failing test. So neither
+// side spells the literal out; both ask here.
+export function itemFieldLane(id: number, field: string | number | symbol): string {
+  return `item:${id}:${String(field)}`
+}
+
+export function stageLane(id: number, stageId: number): string {
+  return `progress:${id}:${stageId}`
+}
+
 export function createSaveLanes() {
   // A settled tail is dropped from this map so it can't grow unbounded across a session.
   const tails = new Map<string, Promise<void>>()

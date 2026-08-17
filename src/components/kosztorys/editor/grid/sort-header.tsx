@@ -6,7 +6,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdow
 import { cn } from '@/lib/utils/cn'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
-import type { SortPickT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
+import type { SortPickT } from '@/lib/kosztorys/row-view'
 import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
 
 type PropsT = {

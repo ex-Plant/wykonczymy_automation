@@ -7,20 +7,16 @@ import type { ItemPatchT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 // cells actually changed, and which rows the editor must carry forward. The hook keeps the
 // imperative half — firing the saves, merging into `rows`, arming the coalesce timer.
 
-// A field change plus the value the write sends. `after` is the row's value and `value` the diffed
-// patch's — the same thing today, but the write and the undo entry ask different questions of it, so
-// the plan answers both rather than making the caller assume they stay equal.
-export type PlannedFieldChangeT = FieldChangeT & { value: ItemPatchT[keyof ItemPatchT] }
-
 export type GridChangePlanT = {
-  fieldChanges: PlannedFieldChangeT[]
+  fieldChanges: FieldChangeT[]
   stageChanges: StageChangeT[]
-  // Rows with at least one change — merged into the full dataset by id, so a filter or sort can't
-  // lose the rows the view didn't render.
-  changedRows: KosztorysV2RowT[]
-  // Every row the diff could read, changed or not: the snapshot advances for all of them, exactly as
-  // the pre-extraction loop did.
-  seenRows: KosztorysV2RowT[]
+  // Rows with at least one change, keyed by id — merged into the full dataset by id, so a filter or
+  // sort can't lose the rows the view didn't render.
+  //
+  // Deliberately NOT a list of every row the diff read: `next` is the whole visible grid, so
+  // returning that would allocate a 1000-element array per keystroke for a snapshot advance the
+  // caller can do by walking the array it already holds.
+  changedById: Map<number, KosztorysV2RowT>
 }
 
 // A row absent from `prevById` is skipped entirely: with no snapshot there is nothing to diff
@@ -33,22 +29,21 @@ export function planGridChanges(
   const plan: GridChangePlanT = {
     fieldChanges: [],
     stageChanges: [],
-    changedRows: [],
-    seenRows: [],
+    changedById: new Map(),
   }
   for (const row of next) {
     const prev = prevById.get(row.id)
     if (!prev) continue
     const diff = diffRow(prev, row)
     if (diff.itemPatch) {
-      const patch = diff.itemPatch
-      for (const field of Object.keys(patch) as (keyof ItemPatchT)[]) {
+      // `after` IS the value the write sends: diffRow builds the patch as `patch[f] = next[f]`, so a
+      // separate patch-value field would only be a second copy of the same read.
+      for (const field of Object.keys(diff.itemPatch) as (keyof ItemPatchT)[]) {
         plan.fieldChanges.push({
           id: row.id,
           field,
           before: prev[field as keyof KosztorysV2RowT],
           after: row[field as keyof KosztorysV2RowT],
-          value: patch[field],
         })
       }
     }
@@ -60,8 +55,7 @@ export function planGridChanges(
         after: sc.qty,
       })
     }
-    if (diff.itemPatch || diff.stageChanges) plan.changedRows.push(row)
-    plan.seenRows.push(row)
+    if (diff.itemPatch || diff.stageChanges) plan.changedById.set(row.id, row)
   }
   return plan
 }
