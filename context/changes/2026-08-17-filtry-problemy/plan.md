@@ -395,16 +395,16 @@ Run once, after phase 3.
 
 #### Automated
 
-- [x] 1.1 New spec passes: stage-conditions.test.ts
-- [x] 1.2 Extended registry spec passes: row-conditions.test.ts
-- [x] 1.3 Price-guard spec still passes: subcontractor-price-guard.test.ts
+- [x] 1.1 New spec passes: stage-conditions.test.ts — 1ddcfb18
+- [x] 1.2 Extended registry spec passes: row-conditions.test.ts — 1ddcfb18
+- [x] 1.3 Price-guard spec still passes: subcontractor-price-guard.test.ts — 1ddcfb18
 
 ### Phase 2: Stage-column narrowing in the grid
 
 #### Automated
 
-- [ ] 2.1 New spec passes: stage-column-filter.test.ts
-- [ ] 2.2 Existing column specs still pass
+- [x] 2.1 New spec passes: stage-column-filter.test.ts
+- [x] 2.2 Existing column specs still pass
 
 ### Phase 3: The „Problemy" group, the triangle, and the toolbar removal
 

@@ -67,6 +67,7 @@ import {
   rowValueForView,
 } from '@/lib/kosztorys/settlement-rows'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
+import { stagesMatchingEngaged } from '@/lib/kosztorys/stage-conditions'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // floatColumn right-aligns by default; the grid reads cleaner with every cell left-aligned under
@@ -314,6 +315,12 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
   const viewStages = stagesForView(stages, view)
 
+  // Which of those actually get columns, once the „Problemy" filters have their say. Narrowed HERE and
+  // nowhere else, so the three stage axes below cannot drift apart — and deliberately NOT fed to
+  // `totalQtyDone`: the share each etap's wartość is computed against is Σ etapów of the whole view, so
+  // hiding columns would otherwise silently reprice the ones left standing.
+  const shownStages = stagesMatchingEngaged(viewStages, opts.engagedStageConditionIds ?? [])
+
   // Rows are replaced immutably on every edit, so row identity is a self-invalidating cache key — a
   // stale value can't outlive the row it was computed from.
   const memoisedByRow = <T,>(compute: (row: KosztorysV2RowT) => T) => {
@@ -402,7 +409,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...discountCols,
   ]
 
-  const stageCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+  const stageCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const header = (
       <StageHeader
         stage={st}
@@ -448,7 +455,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   // The sheet's V–AE: the value of each stage's recorded qty at the view's price, post-discount.
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
-  const stageValueNetCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+  const stageValueNetCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
     return computedColumn(stageValueNetKey(st.id), header, (r) =>
@@ -456,7 +463,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     )
   })
 
-  const stageValueGrossCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+  const stageValueGrossCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
     return computedColumn(stageValueGrossKey(st.id), header, (r) =>

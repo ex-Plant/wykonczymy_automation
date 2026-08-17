@@ -72,6 +72,10 @@ export type BuildV2ColumnsOptsT = {
   // what announces the rozjazd; the column is where you read it. It rides the filter rather than the
   // picker, hence UNPICKABLE_COLUMNS: no stored tick may contradict the button.
   divergenceFilterEngaged?: boolean
+  // Engaged etap problems (stage-conditions.ts), narrowing which etapy get columns at all. Transient
+  // like the flag above — it never reaches the persisted visibility map, which is what the ghost-id
+  // ban in stage-keys.ts actually forbids. Empty/absent → every etap of the view keeps its columns.
+  engagedStageConditionIds?: Iterable<string>
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

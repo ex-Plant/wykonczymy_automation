@@ -404,6 +404,7 @@ export function useKosztorysEditor({
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
     divergenceFilterEngaged,
+    engagedStageConditionIds,
     readOnly: preview,
     previewVisible: preview,
     previewHiddenColumns,
