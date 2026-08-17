@@ -1,5 +1,8 @@
+import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { groupBySection } from '@/lib/kosztorys/row-ops'
-import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { applyRowConditions } from '@/lib/kosztorys/row-conditions'
+import { columnSortValue } from '@/lib/kosztorys/sort-value'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // Parity with v1.
 export function filterRows(rows: KosztorysV2RowT[], query: string): KosztorysV2RowT[] {
@@ -62,4 +65,27 @@ export function sortRowsWithinSections(
   // groupBySection's Map iterates in insertion order, so the sections come back in the order they
   // first appeared.
   return [...groupBySection(rows).values()].flatMap((group) => sortRows(group, getValue, dir))
+}
+
+// The rows the grid shows: search, then the engaged conditions, then the sort. The order is the
+// contract — searching after a sort would still yield the same set, but the sort's comparator runs
+// over every row instead of the handful that survived, and a condition applied after the sort would
+// leave the section blocks it thins in a different order than the fold logic downstream expects.
+// Sections themselves are never filtered here: hiding one is a fold, applied later by
+// buildSectionBandRows so the band survives its own collapse.
+export function buildViewRows(input: {
+  rows: KosztorysV2RowT[]
+  search: string
+  engagedConditionIds: ReadonlySet<string>
+  sort: { field: string; dir: SortDirT; scope: SortScopeT } | null
+  view: PriceViewT
+  stages: KosztorysStageT[]
+}): KosztorysV2RowT[] {
+  const { rows, search, engagedConditionIds, sort, view, stages } = input
+  const filtered = applyRowConditions(filterRows(rows, search), engagedConditionIds, { stages })
+  if (!sort) return filtered
+  const getValue = (row: KosztorysV2RowT) => columnSortValue(row, sort.field, view, stages)
+  return sort.scope === 'global'
+    ? sortRows(filtered, getValue, sort.dir)
+    : sortRowsWithinSections(filtered, getValue, sort.dir)
 }

@@ -563,11 +563,11 @@ Run **once**, after phase 6.
 
 #### Automated
 
-- [ ] 3.1 grid-change-plan specs pass
-- [ ] 3.2 undo-reversal specs pass
-- [ ] 3.3 money-axis specs pass
-- [ ] 3.4 row-view specs pass
-- [ ] 3.5 undo-coalesce extended with pending-burst availability
+- [x] 3.1 grid-change-plan specs pass — 510833f4
+- [x] 3.2 undo-reversal specs pass — 510833f4
+- [x] 3.3 money-axis specs pass — 510833f4
+- [x] 3.4 row-view specs pass — 510833f4
+- [x] 3.5 undo-coalesce extended with pending-burst availability — 510833f4
 
 ### Phase 4: Extract the settlement-settings cluster
 

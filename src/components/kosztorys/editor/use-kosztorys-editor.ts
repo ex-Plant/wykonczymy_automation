@@ -6,16 +6,19 @@ import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-deboun
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
+  undoAvailability,
   type FieldChangeT,
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
+import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
+import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
@@ -26,7 +29,7 @@ import {
   type SortPickT,
   type V2SortStateT,
 } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
-import { diffRow, inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2-rows'
+import { inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   applyAddItem,
   applyInsertItem,
@@ -53,10 +56,9 @@ import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
-import { filterRows, sortRows, sortRowsWithinSections } from '@/lib/kosztorys/row-view'
+import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
   ROW_CONDITIONS,
-  applyRowConditions,
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -216,13 +218,10 @@ export function useKosztorysEditor({
     resetOrder: resetColumnOrder,
   } = useColumnOrder()
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
-  // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
-  // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. Nothing here is pinned for a preview: selectV2Columns drops every gate but the
-  // allowlist under `previewVisible`, so the axis — like the layer, the progress display and the
-  // picker below — never reaches the client's grid in the first place.
-  const effectiveMoneyAxis: MoneyAxisT =
-    view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
+  // Nothing here is pinned for a preview: selectV2Columns drops every gate but the allowlist under
+  // `previewVisible`, so the axis — like the layer, the progress display and the picker below — never
+  // reaches the client's grid in the first place.
+  const axis = effectiveMoneyAxis(view, moneyAxis)
   const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
   const [guideX, setGuideX] = useState<number | null>(null)
@@ -389,7 +388,7 @@ export function useKosztorysEditor({
     sort,
     onSetSort: editorOnly(setSortField),
     isHidden,
-    moneyAxis: effectiveMoneyAxis,
+    moneyAxis: axis,
     progressDisplay,
     layer,
     widths,
@@ -452,18 +451,10 @@ export function useKosztorysEditor({
     })
   }
 
-  // View = search + engaged conditions + sort. Sections are not filtered here: hiding one is a fold,
-  // applied further down by buildSectionBandRows so the band survives its own collapse.
-  const viewRows = useMemo(() => {
-    const filtered = applyRowConditions(filterRows(rows, search), engagedConditionIds, {
-      stages,
-    })
-    if (!sort) return filtered
-    const getValue = (r: KosztorysV2RowT) => columnSortValue(r, sort.field, view, stages)
-    return sort.scope === 'global'
-      ? sortRows(filtered, getValue, sort.dir)
-      : sortRowsWithinSections(filtered, getValue, sort.dir)
-  }, [rows, search, engagedConditionIds, sort, view, stages])
+  const viewRows = useMemo(
+    () => buildViewRows({ rows, search, engagedConditionIds, sort, view, stages }),
+    [rows, search, engagedConditionIds, sort, view, stages],
+  )
   // Both read the FULL dataset in display order, which is what makes a filter visible: the numbers
   // skip over the rows it hid, and the sections keep their original order however it thinned them.
   const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
@@ -563,18 +554,8 @@ export function useKosztorysEditor({
     stages: StageChangeT[],
     dir: 'undo' | 'redo',
   ) {
-    // Merge every change of one row into a single patch so multi-field/-stage rows apply at once.
-    const patchById = new Map<number, Record<string, unknown>>()
-    for (const c of fields) {
-      const patch = patchById.get(c.id) ?? {}
-      patch[c.field as string] = dir === 'undo' ? c.before : c.after
-      patchById.set(c.id, patch)
-    }
-    for (const c of stages) {
-      const patch = patchById.get(c.id) ?? {}
-      patch[stageKey(c.stageId)] = dir === 'undo' ? c.before : c.after
-      patchById.set(c.id, patch)
-    }
+    const patchById = buildReversalPatches(fields, stages, dir)
+
     setRows((rs) =>
       rs.map((r) =>
         patchById.has(r.id) ? ({ ...r, ...patchById.get(r.id) } as KosztorysV2RowT) : r,
@@ -588,30 +569,22 @@ export function useKosztorysEditor({
     // apply back to its pre-reversal value via `revertOne` — the trailing `router.refresh()` can't do it
     // (`rows` is the mount-frozen useState seed, EX-441, so refresh reseeds the prop surfaces but not the
     // grid), so without this a rejected inverse would leave the grid diverged from the DB behind a toast.
-    const writes: Promise<void>[] = []
-    for (const c of fields) {
-      const value = dir === 'undo' ? c.before : c.after
-      const restore = dir === 'undo' ? c.after : c.before
-      writes.push(
-        runNow(
-          `item:${c.id}:${String(c.field)}`,
-          () => updateItemFieldAction(c.id, { [c.field]: value } as ItemPatchT),
-          () => revertOne(c.id, c.field as keyof KosztorysV2RowT, restore, value),
-        ),
-      )
-    }
-    for (const c of stages) {
-      const value = dir === 'undo' ? c.before : c.after
-      const restore = dir === 'undo' ? c.after : c.before
-      writes.push(
-        runNow(
-          `progress:${c.id}:${c.stageId}`,
-          () => setStageProgressAction(c.id, c.stageId, value),
-          () => revertOne(c.id, stageKey(c.stageId) as keyof KosztorysV2RowT, restore, value),
-        ),
-      )
-    }
-    await Promise.all(writes)
+    await Promise.all(
+      planReversalWrites(fields, stages, dir).map((w) =>
+        w.kind === 'field'
+          ? runNow(
+              w.lane,
+              () => updateItemFieldAction(w.id, { [w.field]: w.value } as ItemPatchT),
+              () => revertOne(w.id, w.field as keyof KosztorysV2RowT, w.restore, w.value),
+            )
+          : runNow(
+              w.lane,
+              () => setStageProgressAction(w.id, w.stageId, w.value),
+              () =>
+                revertOne(w.id, stageKey(w.stageId) as keyof KosztorysV2RowT, w.restore, w.value),
+            ),
+      ),
+    )
     // Pull recomputed section/stage totals once the inverse writes have committed.
     router.refresh()
   }
@@ -1277,59 +1250,36 @@ export function useKosztorysEditor({
     // The load-bearing persistence kill-switch: a preview grid is read-only, but this guards the
     // one path that could still POST — so no save, undo capture, or refresh ever fires on the public page.
     if (preview) return
-    const changedById = new Map<number, KosztorysV2RowT>()
-    // One onChange batch (incl. a multi-cell paste) = one composite undo entry; accumulate every
-    // field/stage change here and buffer a single coalesced command after the loop.
-    const fieldChanges: FieldChangeT[] = []
-    const stageChanges: StageChangeT[] = []
-    for (const row of next) {
-      const prev = prevById.current.get(row.id)
-      if (!prev) continue
-      const diff = diffRow(prev, row)
-      if (diff.itemPatch) {
-        const patch = diff.itemPatch
-        for (const field of Object.keys(patch)) {
-          const key = field as keyof KosztorysV2RowT
-          const prevVal = prev[key]
-          const attempted = row[key]
-          save(
-            `item:${row.id}:${field}`,
-            () => updateItemFieldAction(row.id, { [field]: patch[field as keyof ItemPatchT] }),
-            () => {
-              revertOne(row.id, key, prevVal, attempted)
-              dropPendingField(row.id, field as keyof ItemPatchT)
-            },
-          )
-          fieldChanges.push({
-            id: row.id,
-            field: field as keyof ItemPatchT,
-            before: prevVal,
-            after: attempted,
-          })
-        }
-      }
-      // Stage progress is a distinct save dimension (sparse upsert), keyed per item×stage.
-      for (const sc of diff.stageChanges ?? []) {
-        const key = stageKey(sc.stageId)
-        const prevVal = prev[key]
-        save(
-          `progress:${row.id}:${sc.stageId}`,
-          () => setStageProgressAction(row.id, sc.stageId, sc.qty),
-          () => {
-            revertOne(row.id, key, prevVal, sc.qty)
-            dropPendingStage(row.id, sc.stageId)
-          },
-        )
-        stageChanges.push({
-          id: row.id,
-          stageId: sc.stageId,
-          before: Number(prevVal) || 0,
-          after: sc.qty,
-        })
-      }
-      if (diff.itemPatch || diff.stageChanges) changedById.set(row.id, row)
-      prevById.current.set(row.id, row)
+    const { fieldChanges, stageChanges, changedRows, seenRows } = planGridChanges(
+      next,
+      prevById.current,
+    )
+    for (const c of fieldChanges) {
+      const key = c.field as keyof KosztorysV2RowT
+      save(
+        `item:${c.id}:${String(c.field)}`,
+        () => updateItemFieldAction(c.id, { [c.field]: c.value } as ItemPatchT),
+        () => {
+          revertOne(c.id, key, c.before, c.after)
+          dropPendingField(c.id, c.field)
+        },
+      )
     }
+    // Stage progress is a distinct save dimension (sparse upsert), keyed per item×stage.
+    for (const c of stageChanges) {
+      const key = stageKey(c.stageId) as keyof KosztorysV2RowT
+      save(
+        `progress:${c.id}:${c.stageId}`,
+        () => setStageProgressAction(c.id, c.stageId, c.after),
+        () => {
+          revertOne(c.id, key, c.before, c.after)
+          dropPendingStage(c.id, c.stageId)
+        },
+      )
+    }
+    for (const row of seenRows) prevById.current.set(row.id, row)
+    // One onChange batch (incl. a multi-cell paste) = one composite undo entry: buffer them all and
+    // let the timer collapse the burst into a single coalesced command.
     if (fieldChanges.length > 0 || stageChanges.length > 0) {
       pendingFields.current.push(...fieldChanges)
       pendingStages.current.push(...stageChanges)
@@ -1337,8 +1287,9 @@ export function useKosztorysEditor({
       if (flushTimer.current) clearTimeout(flushTimer.current)
       flushTimer.current = setTimeout(flushUndoBuffer, UNDO_COALESCE_MS)
     }
-    if (changedById.size > 0) {
+    if (changedRows.length > 0) {
       // Merge the view's changes into the full dataset by id (so filter/sort don't lose hidden rows).
+      const changedById = new Map(changedRows.map((r) => [r.id, r]))
       setRows((master) => master.map((r) => changedById.get(r.id) ?? r))
       // Pull the recomputed totals from the server after the save quiets down (only when
       // something actually changed — an unconditional refresh on a spurious onChange could loop the render).
@@ -1361,7 +1312,7 @@ export function useKosztorysEditor({
     columnBaseRanks,
     setColumnRank,
     resetColumnOrder,
-    moneyAxis: effectiveMoneyAxis,
+    moneyAxis: axis,
     setMoneyAxis,
     progressDisplay,
     setProgressDisplay,
@@ -1431,9 +1382,6 @@ export function useKosztorysEditor({
       flushUndoBuffer()
       redo()
     },
-    // A buffering burst counts as undoable (it flushes to a command on undo) and, being a fresh edit,
-    // will clear the redo path on flush — so surface it as "can undo, can't redo" during the window.
-    canUndo: canUndo || hasPendingBurst,
-    canRedo: canRedo && !hasPendingBurst,
+    ...undoAvailability(canUndo, canRedo, hasPendingBurst),
   }
 }
