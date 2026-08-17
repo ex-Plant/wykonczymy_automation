@@ -1175,3 +1175,36 @@ Every caller that reuses the snapshot-before-write pattern inherits this: import
 In practice the tags are fresh at click time so it hasn't produced a wrong undo yet, which is exactly
 why it will stay unnoticed. **If a restore or an import ever comes back subtly wrong — the right shape,
 stale contents — start here**, not in the write path.
+
+## A review finding names a mechanism; it does not measure one — three from EX-521 died on the numbers
+
+The EX-521 gate filed three "structural" findings against the kosztorys editor. All three described a
+**real mechanism** and all three were closed unfixed, because the magnitude nobody had checked turned
+out to be the whole question:
+
+- **The whole-owner `FOR UPDATE` in `display-order.ts`.** Filed as blocking autosaves on "a 1000-item
+  section". The owner block is one _section_, and the modelled sheet is 10 × 100
+  (`perf-seed-kosztorys.ts`) — so ~100 row locks, never the sheet. Benchmarked with a throwaway spec:
+  autosave p50 6.7 → 7.9 ms, p95 9.8 → 12.1 ms under a continuous ▲▼ burst. **+1 ms**, against a
+  redesign that would have to re-establish EX-632's ascending-id discipline from scratch. The spec was
+  deleted with the finding — an opt-in benchmark nothing runs is a maintenance tax on a settled
+  decision; the numbers belong here and at `display-order.ts:84`, not in the test tree.
+- **The undo burst buffer outside `useUndoRedo`.** `undoRedo.revision` really does under-report for
+  ≤700 ms. Its one consumer is a **10-minute** snapshot interval whose marker only advances when a
+  snapshot is taken, so a skipped tick self-heals on the next one — and the edit is already persisted
+  by the autosave, which never went through the undo stack. Worst case: one snapshot delayed.
+- **"Extract the row store — six members that only move together."** They move with _everything_: 47
+  references across ~30 handlers. The extraction relocates five declarations and leaves all 47 call
+  sites reaching in. Cohesion is measured by the **width of the seam**, not by how related the names
+  sound.
+
+**The rule.** A finding earns a plan once someone has put a number on it: how many rows, how wide the
+window, how many call sites, how often the path runs. Do that arithmetic **before** the plan, not
+inside it — each of these three would have been a multi-day restructure of the editor's hottest path,
+and each collapsed to a two-hour verification. The corollary for whoever files: a finding that names a
+mechanism without a magnitude is a **question**, and it should be worded as one.
+
+Two recurring distortions to check for by name, because both showed up here: a whole-sheet figure
+(1000+) quoted for a **per-owner** scope, and "concurrent users" invoked where the app has no editing
+lock and **one** operator already races themselves — ▲▼ is `void`-called and autosaves are
+fire-and-forget, so contention needs no second person.

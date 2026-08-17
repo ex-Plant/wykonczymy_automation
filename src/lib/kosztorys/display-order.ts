@@ -83,6 +83,12 @@ export const moveOrderSchema = z.object({
 // acquire in ascending id order too, so no pair of them can form a cycle (EX-632). The lock is
 // bounded by ONE owner — an investment's sections or a section's items — never the whole sheet.
 //
+// Its width was questioned and measured (EX-700, 2026-08-17): on a 100-item section — the modelled
+// shape, 10 sections × 100 — a continuous ▲▼ burst moved a concurrent autosave from p50 6.7 → 7.9 ms
+// and p95 9.8 → 12.1 ms. Narrowing it to the anchor + its rank-adjacent neighbour buys that
+// millisecond and costs the property below, so don't. If a section's row count ever grows by an order
+// of magnitude, re-measure with a throwaway spec before believing these numbers still hold.
+//
 // Lock and read are ONE statement on purpose: the owner is resolved inside the lock's own predicate,
 // so there is no window between learning which block to hold and reading a position out of it. A row
 // missing from the locked set (deleted, or reparented by something that doesn't exist today) simply

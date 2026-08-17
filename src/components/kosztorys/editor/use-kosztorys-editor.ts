@@ -122,6 +122,12 @@ export function useKosztorysEditor({
   // here; the toolbar + keyboard call undo/redo (re-exported below).
   const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
   const [gridRef, gridHeight] = useElementHeight()
+  // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
+  // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
+  // each had a narrow seam, while the store has ~47 references across ~30 handlers below. Pulling it
+  // into a useKosztorysRows would relocate five declarations and leave every one of those call sites
+  // reaching in — an indirection layer on the hottest path EX-496 was reverted over. Settle EX-422
+  // first: if rowsRef/prevById are no longer load-bearing, the thing left to extract is a smaller one.
   const [rows, setRows] = useState<KosztorysV2RowT[]>(() => treeToRows(tree))
   const {
     view,

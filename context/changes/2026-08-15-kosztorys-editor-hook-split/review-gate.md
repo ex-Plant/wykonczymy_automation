@@ -30,12 +30,15 @@ path's transactionality and cost — which is where most of the fix effort goes.
 - [x] 🟡 WARNING · fixed · `code-review` + `impl-review` · `src/lib/actions/kosztorys.ts:24`,
       `src/lib/kosztorys/display-order.ts:26-29` · `swapDisplayOrderSchema` and its import are dead
       since both call sites moved to `moveOrderSchema` — the only new lint warning in the diff.
-- [x] 🟡 WARNING · filed EX-700 · `impl-review` + `code-review` ·
+- [x] 🟡 WARNING · closed unfixed (was EX-700) · `impl-review` + `code-review` ·
       `src/lib/kosztorys/display-order.ts:90-104` · The locked position read widens every ▲▼ and every
-      insert from a tail-only lock to a whole-owner `FOR UPDATE` — on a 1000-item section that blocks
-      concurrent cell autosaves to the same section for the window. **Not fixed:** the lock is what
-      makes the plain neighbour SELECTs safe, so narrowing it is a correctness-sensitive redesign, and
-      the magnitude is unmeasured. EX-700 owes a benchmark before anyone touches it.
+      insert from a tail-only lock to a whole-owner `FOR UPDATE`, blocking cell autosaves into the same
+      section for the window. **Not fixed:** the lock is what makes the plain neighbour SELECTs safe, so
+      narrowing it is a correctness-sensitive redesign. **Since measured** — the reviewers' "1000-item
+      section" was wrong (the owner block is one section, 10 × 100 per `perf-seed-kosztorys.ts`), and the
+      throwaway benchmark put autosave at p50 6.7 → 7.9 ms / p95 9.8 → 12.1 ms under
+      a continuous ▲▼ burst. +1 ms is not worth re-deriving EX-632's lock discipline, so the issue was
+      closed; the numbers now live on `display-order.ts:84` and in `lessons.md`.
       test: no automated test — a lock-contention budget needs a benchmark, not an assertion
 - [x] 🔵 OBSERVATION · fixed · `code-review` · `src/lib/kosztorys/display-order.ts:90-104` ·
       Both resolvers read the owner id _before_ taking the lock and never re-validated it after — if a
@@ -98,7 +101,7 @@ path's transactionality and cost — which is where most of the fix effort goes.
 - [x] fixed · `simplify` · `src/lib/kosztorys/display-order.ts:191-212`,
       `src/lib/actions/kosztorys.ts` · Both swap actions each spelled out the display_order crossing
       for themselves — the exact drift EX-578 was filed for. New `moveRowOneStep(db, scope, rowId,
-    dir)` owns it; `resolveOrderSwap` and `swapDisplayOrder` are now private.
+  dir)` owns it; `resolveOrderSwap` and `swapDisplayOrder` are now private.
 - [x] fixed · `simplify` · `src/lib/kosztorys/display-order.ts:69` · `moveDirectionSchema` was
       exported with no external consumer; only `MoveDirectionT` is used outside the module.
 - [x] fixed · `simplify` · `src/lib/actions/kosztorys.ts` · `removeSectionAction` hand-rolled its own
@@ -119,14 +122,22 @@ path's transactionality and cost — which is where most of the fix effort goes.
 - [x] fixed · `simplify` · `src/components/kosztorys/editor/use-kosztorys-editor.ts` ·
       `runGridReversal` merged its patches with a hand-written map/spread over all rows instead of
       `patchRows`, the predicate-based primitive the file already owns.
-- [x] filed EX-702 · `simplify` (altitude) · `use-kosztorys-editor.ts` · `rows`/`setRows`/`rowsRef`/
-      `prevById`/`patchRows`/`revertOne` are the most cohesive unit left in the hook, and the
-      parent → child → parent's-internals cycle plus the `:277-290` hoisting caveat both trace to it.
-      A fourth extraction on the hottest path deserves its own review (EX-496 is the warning).
-- [x] filed EX-701 · `simplify` (altitude) · `use-kosztorys-editor.ts`,
+- [x] closed unfixed (was EX-702) · `simplify` (altitude) · `use-kosztorys-editor.ts` ·
+      `rows`/`setRows`/`rowsRef`/`prevById`/`patchRows`/`revertOne` called the most cohesive unit left
+      in the hook. **Since counted and rejected** — 47 references across ~30 handlers, so the extraction
+      relocates five declarations and leaves every call site reaching in. The claimed
+      parent → child → parent's-internals "cycle" is plain parameter passing (`useKosztorysSettings`
+      takes `rowsRef`/`patchRows` as args) and survives the extraction unchanged; the `:277-290`
+      "hoisting caveat" is a correct three-line note that function declarations hoist. Rationale now
+      pinned at `use-kosztorys-editor.ts:125`. Revisit only after EX-422 settles whether
+      `rowsRef`/`prevById` are still load-bearing at all.
+- [x] closed unfixed (was EX-701) · `simplify` (altitude) · `use-kosztorys-editor.ts`,
       `kosztorys-editor-v2.tsx:30` · The undo coalescing buffer lives outside `useUndoRedo`, so
       `undoRedo.revision` under-reports for up to 700ms and the snapshot dirty gate reads "clean"
-      mid-burst. Narrow window, no report; a `useCoalescedUndoRedo` wrapper is the right shape.
+      mid-burst. **Since verified and closed unfixed** — the snapshot interval is 10 min, a skipped tick
+      doesn't poison `lastSnapshotRevision` so the next tick catches up, and the edit is already
+      persisted by the independent autosave. Worst case is one snapshot delayed; nothing is lost.
+      Rationale now pinned at `hooks/use-auto-snapshot.ts:20`.
 - [x] skipped · `simplify` (efficiency) · `src/lib/kosztorys/display-order.ts:90-104` · The item-scope
       read could also carry `investment_id`, saving one round trip in `insertItemAction`. Not applied:
       it would introduce the module's first `scope === …` branch, and "zero scope-specific branches"
@@ -136,7 +147,7 @@ path's transactionality and cost — which is where most of the fix effort goes.
       computes a next order at all (see the `insertItemAction` fix above), so the generalisation would
       have exactly one caller.
 - [x] dropped · `simplify` · `src/lib/actions/kosztorys.ts` · A `captureSnapshotBefore(db, scope,
-    rowId, userId)` wrapper over the three "which investment owns this row" + snapshot lookups.
+  rowId, userId)` wrapper over the three "which investment owns this row" + snapshot lookups.
       Pre-existing, and one of the three was already collapsed by the `sectionInvestmentId` fix; the
       remaining two differ enough that the wrapper's parameters would restate its body.
 - [x] dropped · `simplify` · `use-kosztorys-editor.ts` · The two `applyX` wrappers around
