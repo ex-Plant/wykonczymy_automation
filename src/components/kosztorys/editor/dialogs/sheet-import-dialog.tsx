@@ -165,30 +165,27 @@ function ColumnsBlock({
   // A column the owner pointed at is not a shortfall — it renders as a note inside this block, so it
   // must not turn a complete read yellow.
   const clean = missing.length === 0
+  if (clean) {
+    return null
+  }
   return (
     <SheetReportBlock
       title="Czego nie odczytaliśmy z arkusza Google"
-      status={clean ? 'ok' : 'warn'}
-      verdict={
-        clean
-          ? 'Wszystkie kolumny, których szukamy, są w arkuszu.'
-          : `Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`
-      }
+      status="warn"
+      verdict={`Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`}
     >
-      {missing.length > 0 && (
-        <ReportTable headers={['Kolumna', 'Dlaczego', 'Skutek']}>
-          {missing.map((column) => (
-            <ReportRow
-              key={column.label}
-              label={`„${column.label}"`}
-              cells={[
-                { content: MISSING_COLUMN_REASONS[column.reason], tone: 'text-muted-foreground' },
-                { content: column.consequence, tone: 'text-amber-600' },
-              ]}
-            />
-          ))}
-        </ReportTable>
-      )}
+      <ReportTable headers={['Kolumna', 'Dlaczego', 'Skutek']}>
+        {missing.map((column) => (
+          <ReportRow
+            key={column.label}
+            label={`„${column.label}"`}
+            cells={[
+              { content: MISSING_COLUMN_REASONS[column.reason], tone: 'text-muted-foreground' },
+              { content: column.consequence, tone: 'text-amber-600' },
+            ]}
+          />
+        ))}
+      </ReportTable>
       <SheetColumnPicker
         investmentId={investmentId}
         missing={missing.map((column) => column.field)}
