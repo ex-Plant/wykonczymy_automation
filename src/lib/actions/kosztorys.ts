@@ -12,12 +12,18 @@ import {
 } from '@/lib/kosztorys/create-section'
 import { createBlankItem, sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import {
+  insertDirectionSchema,
+  moveOrderSchema,
   nextSectionDisplayOrder,
   renumberDisplayOrder,
   renumberDisplayOrderSchema,
+  resolveInsertSlot,
+  resolveOrderSwap,
   shiftDisplayOrderFrom,
   swapDisplayOrder,
   swapDisplayOrderSchema,
+  type InsertDirectionT,
+  type MoveDirectionT,
 } from '@/lib/kosztorys/display-order'
 import { applyPercentDiscountSchema } from '@/lib/kosztorys/percent-discount'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -298,52 +304,85 @@ export async function removeSectionAction(sectionId: number) {
 }
 
 const insertSectionSchema = z.object({
-  investmentId: z.number(),
-  atDisplayOrder: z.coerce.number().int().min(0),
+  anchorSectionId: z.number(),
+  dir: insertDirectionSchema,
 })
 
 // Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej): opens the slot, then
 // creates the section and its first item there — all three inside one transaction.
+//
+// The caller names the anchor and a direction, not a display_order: resolving the slot inside the
+// transaction is what makes it correct under a concurrent insert, and it drops the investment id
+// from the wire (it is the anchor's, so a caller can no longer pair the two wrong).
 export async function insertSectionAction(
-  investmentId: number,
-  atDisplayOrder: number,
+  anchorSectionId: number,
+  dir: InsertDirectionT,
 ): Promise<ActionResultT<CreatedSectionWithItemT>> {
   return protectedAction(
     'insertSectionAction',
     async ({ payload }) => {
-      const parsed = validateAction(insertSectionSchema, { investmentId, atDisplayOrder })
+      const parsed = validateAction(insertSectionSchema, { anchorSectionId, dir })
       if (!parsed.success) return parsed
-      const at = parsed.data.atDisplayOrder
       const created = await withPayloadTransaction(
         payload,
         async (req) => {
           const txDb = await getDb(payload, req)
-          await shiftDisplayOrderFrom(txDb, 'kosztorys-sections', parsed.data.investmentId, at)
+          const slot = await resolveInsertSlot(
+            txDb,
+            'kosztorys-sections',
+            parsed.data.anchorSectionId,
+            parsed.data.dir,
+          )
+          if (!slot) return null
+          await shiftDisplayOrderFrom(txDb, 'kosztorys-sections', slot.ownerId, slot.at)
           return createSectionWithFirstItem(payload, {
-            investmentId: parsed.data.investmentId,
-            displayOrder: at,
+            investmentId: slot.ownerId,
+            displayOrder: slot.at,
             req,
           })
         },
         { skipRevalidation: true },
       )
+      if (!created) return { success: false, error: SECTION_MISSING }
       return { success: true, data: created }
     },
     ['kosztorysSections', 'kosztorysItems'],
   )
 }
 
-// ⋯ → Przesuń sekcję w górę/dół.
+// ⋯ → Przesuń sekcję w górę/dół. The neighbour is resolved inside the transaction that writes the
+// swap, so the client never has to carry a copy of anybody's display_order.
 export async function swapSectionOrderAction(
-  first: { id: number; displayOrder: number },
-  second: { id: number; displayOrder: number },
+  sectionId: number,
+  dir: MoveDirectionT,
 ): Promise<ActionResultT> {
   return protectedAction(
     'swapSectionOrderAction',
     async ({ payload }) => {
-      const parsed = validateAction(swapDisplayOrderSchema, { first, second })
+      const parsed = validateAction(moveOrderSchema, { rowId: sectionId, dir })
       if (!parsed.success) return parsed
-      await swapDisplayOrder(payload, 'kosztorys-sections', parsed.data.first, parsed.data.second)
+      await withPayloadTransaction(
+        payload,
+        async (req) => {
+          const txDb = await getDb(payload, req)
+          const pair = await resolveOrderSwap(
+            txDb,
+            'kosztorys-sections',
+            parsed.data.rowId,
+            parsed.data.dir,
+          )
+          // No neighbour = the section is already at the edge. A no-op, not a failure — the UI
+          // disables the arrow, and a race that removed the neighbour meanwhile is not an error.
+          if (!pair) return
+          await swapDisplayOrder(
+            txDb,
+            'kosztorys-sections',
+            { id: pair.anchor.id, displayOrder: pair.neighbor.displayOrder },
+            { id: pair.neighbor.id, displayOrder: pair.anchor.displayOrder },
+          )
+        },
+        { skipRevalidation: true },
+      )
       return { success: true }
     },
     ['kosztorysSections'],
@@ -444,7 +483,8 @@ export async function swapItemOrderAction(
     async ({ payload }) => {
       const parsed = validateAction(swapDisplayOrderSchema, { first, second })
       if (!parsed.success) return parsed
-      await swapDisplayOrder(payload, 'kosztorys-items', parsed.data.first, parsed.data.second)
+      const db = await getDb(payload)
+      await swapDisplayOrder(db, 'kosztorys-items', parsed.data.first, parsed.data.second)
       return { success: true }
     },
     ['kosztorysItems'],

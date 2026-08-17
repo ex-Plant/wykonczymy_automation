@@ -32,6 +32,7 @@ const {
   addSectionAction,
   insertItemAction,
   insertSectionAction,
+  removeSectionAction,
   swapItemOrderAction,
   swapSectionOrderAction,
 } = await import('@/lib/actions/kosztorys')
@@ -167,7 +168,9 @@ describe.skipIf(!ENV_READY)('kosztorys display_order mechanics (DB)', () => {
       const before = await sectionIdsInOrder(investmentId)
       expect(await sectionOrders(investmentId)).toEqual([0, 1, 2])
 
-      const inserted = await insertSectionAction(investmentId, 1)
+      // Anchor + direction, not an index: „poniżej" the first section IS slot 1, and the server is
+      // the only party that knows that.
+      const inserted = await insertSectionAction(before[0], 'below')
       expect(inserted.success).toBe(true)
       if (!inserted.success) return
 
@@ -239,16 +242,64 @@ describe.skipIf(!ENV_READY)('kosztorys display_order mechanics (DB)', () => {
       expect([first.success, second.success]).toEqual([true, true])
       if (!first.success || !second.success) return
 
-      const swapped = await swapSectionOrderAction(
-        { id: first.data.section.id, displayOrder: 1 },
-        { id: second.data.section.id, displayOrder: 0 },
-      )
+      const swapped = await swapSectionOrderAction(first.data.section.id, 'down')
       expect(swapped.success).toBe(true)
 
       expect(await sectionOrderById(first.data.section.id)).toBe(1)
       expect(await sectionOrderById(second.data.section.id)).toBe(0)
       const orders = await sectionOrders(investmentId)
       expect(new Set(orders).size).toBe(orders.length)
+    })
+
+    // The client used to send both absolute display_order values from a mount-seeded cache; now it
+    // sends a direction, so the neighbour is whatever the DB currently says it is — including after a
+    // gap-leaving delete, where „w górę" is NOT `display_order − 1`.
+    it('resolves the neighbour across a gap left by a delete', async () => {
+      const investmentId = await freshInvestment()
+      const first = await addSectionAction(investmentId)
+      const middle = await addSectionAction(investmentId)
+      const last = await addSectionAction(investmentId)
+      expect([first.success, middle.success, last.success]).toEqual([true, true, true])
+      if (!first.success || !middle.success || !last.success) return
+
+      await removeSectionAction(middle.data.section.id)
+      expect(await sectionOrders(investmentId)).toEqual([0, 2])
+
+      const swapped = await swapSectionOrderAction(last.data.section.id, 'up')
+      expect(swapped.success).toBe(true)
+
+      expect(await sectionOrderById(last.data.section.id)).toBe(0)
+      expect(await sectionOrderById(first.data.section.id)).toBe(2)
+    })
+
+    // Moving the top section up is not an error — the arrow is disabled in the UI, and a race that
+    // removed the neighbour meanwhile must not surface as a failed write.
+    it('is a successful no-op at either edge', async () => {
+      const investmentId = await freshInvestment()
+      const first = await addSectionAction(investmentId)
+      const second = await addSectionAction(investmentId)
+      expect([first.success, second.success]).toEqual([true, true])
+      if (!first.success || !second.success) return
+
+      const up = await swapSectionOrderAction(first.data.section.id, 'up')
+      const down = await swapSectionOrderAction(second.data.section.id, 'down')
+      expect([up.success, down.success]).toEqual([true, true])
+
+      expect(await sectionOrderById(first.data.section.id)).toBe(0)
+      expect(await sectionOrderById(second.data.section.id)).toBe(1)
+    })
+
+    it('refuses an insert against a section that no longer exists', async () => {
+      const investmentId = await freshInvestment()
+      const section = await addSectionAction(investmentId)
+      expect(section.success).toBe(true)
+      if (!section.success) return
+      const sectionId = section.data.section.id
+      await removeSectionAction(sectionId)
+
+      const inserted = await insertSectionAction(sectionId, 'below')
+      expect(inserted.success).toBe(false)
+      expect(await sectionOrders(investmentId)).toEqual([])
     })
   })
 

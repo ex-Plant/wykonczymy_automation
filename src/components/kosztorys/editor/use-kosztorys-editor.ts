@@ -246,11 +246,7 @@ export function useKosztorysEditor({
   const rowsRef = useRef(rows)
 
   rowsRef.current = rows
-  // Persisted display_order per section, seeded at mount like `rows` and kept current on
-  // add/append/move. The grid rows carry no section order (the array's block sequence IS the order),
-  // so a section move needs this to know which two numbers to exchange in the DB.
-  const sectionOrderRef = useRef(new Map(tree.sections.map((s) => [s.id, s.displayOrder])))
-  // Same, for the stage-rename handler's no-op guard (compares against the fresh label).
+  // For the stage-rename handler's no-op guard (compares against the fresh label).
   const stagesRef = useRef(stages)
 
   stagesRef.current = stages
@@ -829,19 +825,9 @@ export function useKosztorysEditor({
   // Mirrors handleReorderItem one level up: the grid regroups its blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
   // false at the edge so the undo command isn't pushed for a no-op.
   function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
-    const neighborId = neighborSectionId(rowsRef.current, sectionId, dir)
-    if (neighborId == null) return false
-    const orders = sectionOrderRef.current
-    const order = orders.get(sectionId)
-    const neighborOrder = orders.get(neighborId)
-    if (order == null || neighborOrder == null) return false
+    if (neighborSectionId(rowsRef.current, sectionId, dir) == null) return false
     setRows((rs) => swapSectionBlock(rs, sectionId, dir))
-    orders.set(sectionId, neighborOrder)
-    orders.set(neighborId, order)
-    void swapSectionOrderAction(
-      { id: sectionId, displayOrder: neighborOrder },
-      { id: neighborId, displayOrder: order },
-    )
+    void swapSectionOrderAction(sectionId, dir)
     return true
   }
 
@@ -878,18 +864,8 @@ export function useKosztorysEditor({
   // anchor section instead of at the end.
   async function handleInsertSection(anchorSectionId: number, dir: 'above' | 'below') {
     if (sort) return
-    const anchorOrder = sectionOrderRef.current.get(anchorSectionId)
-    if (anchorOrder == null) return
-    const at = dir === 'above' ? anchorOrder : anchorOrder + 1
-    const res = await insertSectionAction(investmentId, at)
+    const res = await insertSectionAction(anchorSectionId, dir)
     if (!res.success) return
-    // Mirror the committed tail shift — unlike an item insert (where order is relative within a
-    // section), the client caches these absolute numbers and a missed shift makes every later
-    // section move exchange the wrong ones.
-    for (const [id, order] of sectionOrderRef.current) {
-      if (order >= at) sectionOrderRef.current.set(id, order + 1)
-    }
-    sectionOrderRef.current.set(res.data.section.id, at)
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
@@ -899,7 +875,6 @@ export function useKosztorysEditor({
     const res = await addSectionAction(investmentId)
     if (!res.success) return
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
-    sectionOrderRef.current.set(res.data.section.id, res.data.section.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
   }
@@ -921,7 +896,6 @@ export function useKosztorysEditor({
       globalDiscount,
       revision: tree.revision,
     })
-    for (const section of slice) sectionOrderRef.current.set(section.id, section.displayOrder)
     for (const row of appended) prevById.current.set(row.id, row)
     setRows((rs) => [...rs, ...appended])
     router.refresh()
