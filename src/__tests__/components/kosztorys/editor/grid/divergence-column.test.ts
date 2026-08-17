@@ -39,13 +39,17 @@ describe('the „Pozostało do rozliczenia" column', () => {
     expect(ids({ hasSheetMeasure: false })).not.toContain('divergence')
   })
 
-  // First, ahead of „Sekcja" — „ile jeszcze zostało" is not an answer you should have to scroll to.
-  it('leads the rozpiska once a pomiar is imported', () => {
-    expect(ids({ hasSheetMeasure: true })[0]).toBe('divergence')
+  // Right behind „Opis prac" — „ile jeszcze zostało" is not an answer you should have to scroll to,
+  // but it is not what identifies the row either.
+  it('follows the identity block once a pomiar is imported', () => {
+    expect(ids({ hasSheetMeasure: true }).slice(0, 3)).toEqual([
+      'sectionName',
+      'description',
+      'divergence',
+    ])
   })
 
-  // The row-actions column is chrome, not a reading of the kosztorys, so it keeps the far left edge —
-  // „first" means first among the data columns.
+  // The row-actions column is chrome, not a reading of the kosztorys, so it opens the grid by default.
   it('sits behind the row-actions column when editing is enabled', () => {
     expect(ids({ hasSheetMeasure: true, onRemoveItem: () => {} })).toEqual([
       'actions',

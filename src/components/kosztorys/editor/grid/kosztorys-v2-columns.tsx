@@ -312,9 +312,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
       // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
       // re-applied to the editor.
-      // `kosztorys-identity-cell`: the section band paints its whole label here, and globals.css lets
-      // it out over the blank cells to its right (dsg has no colspan).
-      cellClassName: 'kosztorys-identity-cell capitalize [&_textarea]:capitalize',
+      cellClassName: 'capitalize [&_textarea]:capitalize',
     }),
   ]
 
@@ -379,8 +377,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     unitColumn(title('unit', opts)),
   ]
 
-  // Leads the whole rozpiska rather than sitting beside „Pomiar", the figure it is derived from — it
-  // is the answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
+  // Right behind „Opis prac" rather than beside „Pomiar", the figure it is derived from — it is the
+  // answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
   // Present for the whole life of an imported kosztorys, not only while it is non-zero: a column that
   // appears with a difference and leaves when it is gone reads as an error counter, and the only way
   // to zero it is to declare unperformed work done.
@@ -567,15 +565,16 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ),
   ]
 
-  // „Rozjazd" first when it exists at all (see above — it is a work list, not a reading of the sheet),
+  // „Rozjazd" right behind the identity block when it exists at all (see above — it is a work list,
+  // not a reading of the sheet),
   // then sheet order proper: Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
   // Komentarz (T) at the work/progress seam, then the value block (U–AE right before AF "pozostało").
   // The row-actions column leads the whole grid when editing is enabled — it rides the same
   // assemble→hide→toggle pipeline as every data column (no special-casing), so the picker can hide it
   // like any other.
   const dataColumns = [
-    ...divergence,
     ...identity,
+    ...divergence,
     ...przedmiar,
     ...stageCols,
     ...measure,
