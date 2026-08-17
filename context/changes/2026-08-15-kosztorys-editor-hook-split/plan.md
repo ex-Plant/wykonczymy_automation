@@ -573,8 +573,8 @@ Run **once**, after phase 6.
 
 #### Automated
 
-- [ ] 4.1 Existing kosztorys specs still pass
-- [ ] 4.2 Hook return type unchanged (tsc against untouched consumers)
+- [x] 4.1 Existing kosztorys specs still pass — c2678845
+- [x] 4.2 Hook return type unchanged (tsc against untouched consumers) — c2678845
 
 ### Phase 5: Extract stage operations
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-debounced-save'
 import {
@@ -14,12 +14,12 @@ import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
 import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
+import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
 import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
@@ -29,7 +29,7 @@ import {
   type SortPickT,
   type V2SortStateT,
 } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
-import { inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2-rows'
+import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   applyAddItem,
   applyInsertItem,
@@ -74,13 +74,11 @@ import {
   stageValueNetKey,
   stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
-import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
   addSectionAction,
   addStageAction,
-  applyPercentDiscountToAllItemsAction,
   insertItemAction,
   insertSectionAction,
   removeItemAction,
@@ -90,17 +88,11 @@ import {
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
-  updateInvestmentCoeffsAction,
-  updateInvestmentGlobalDiscountAction,
-  updateInvestmentMaterialsNetRateAction,
-  updateInvestmentSettlementModeAction,
-  updateInvestmentVatAction,
   updateItemFieldAction,
   updateSectionFieldAction,
   updateStageAction,
 } from '@/lib/actions/kosztorys'
 import type {
-  GlobalDiscountT,
   ItemPatchT,
   KosztorysStageT,
   KosztorysTreeT,
@@ -109,7 +101,6 @@ import type {
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
-import { usePendingStore } from '@/stores/pending-store'
 
 type ArgsT = {
   investmentId: number
@@ -132,7 +123,6 @@ const UNDO_COALESCE_MS = 700
 // Separate knob from UNDO_COALESCE_MS despite the matching value — one decides when a burst becomes
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
-const SETTINGS_PENDING_KEY = 'kosztorys-settings'
 // One frozen instance, so the preview's suppressed set is referentially stable across renders and
 // the memos below don't recompute on every keystroke.
 const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
@@ -156,23 +146,6 @@ export function useKosztorysEditor({
   const [rows, setRows] = useState<KosztorysV2RowT[]>(() => treeToRows(tree))
   // Stages live in local state (like `rows`): add/remove optimistically add/drop a column.
   const [stages, setStages] = useState<KosztorysStageT[]>(tree.stages)
-  // Global discount in local state (like `rows`/`stages`): the toggle patches it optimistically so
-  // the derived total, column visibility, and per-item suppression all move in one render. Reading
-  // `tree.globalDiscount` instead would leave the total + columns lagging the row flag until
-  // router.refresh() lands — the transient the "never disagree" invariant below forbids.
-  const [globalDiscount, setGlobalDiscount] = useState<GlobalDiscountT>(tree.globalDiscount)
-  const globalDiscountActive = isGlobalDiscountActive(globalDiscount)
-  // Undo/redo call applyGlobalDiscount through a closure captured when the entry was pushed, where
-  // `globalDiscount` is already stale — so its failure rollback reads the live value from here.
-  // Same latest-value ref pattern as `rowsRef` below, for the same reason.
-  const globalDiscountRef = useRef(globalDiscount)
-
-  globalDiscountRef.current = globalDiscount
-  // „Opcje rozliczenia" writes nothing optimistically — every figure the four settings move is
-  // recomputed on the server, so the panel can only change once the write lands. One shared flag for
-  // the block (they are set-once decisions about the deal; nobody edits two at a time) disables it
-  // meanwhile, so the click stops reading as inert.
-  const [isSavingSettings, startSettingsSave] = useTransition()
   const [persistedView, setView] = usePriceView(investmentId)
   // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
   // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
@@ -238,10 +211,15 @@ export function useKosztorysEditor({
   // still load-bearing is EX-422's own follow-up, not a freebie to delete alongside it.
   const rowsRef = useRef(rows)
 
+  // Both disables: react-hooks/refs forbids a render-time ref write outright. This is the deliberate
+  // latest-value pattern described above, and the rule started firing on it only once this hook grew
+  // small enough for the compiler-backed lint to analyse it — the code itself is unchanged.
+  // eslint-disable-next-line react-hooks/refs
   rowsRef.current = rows
   // For the stage-rename handler's no-op guard (compares against the fresh label).
   const stagesRef = useRef(stages)
 
+  // eslint-disable-next-line react-hooks/refs
   stagesRef.current = stages
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
@@ -327,6 +305,21 @@ export function useKosztorysEditor({
   function pushReversible<T>(label: string, apply: (state: T) => void, before: T, after: T) {
     pushCommand({ label, undo: () => apply(before), redo: () => apply(after) })
   }
+
+  // Called above the column build: `columnOpts` reads globalDiscountActive and the settings handlers.
+  // `patchRows` and `pushReversible` are function declarations, so passing them here is safe despite
+  // patchRows being written further down.
+  const {
+    globalDiscount,
+    globalDiscountActive,
+    isSavingSettings,
+    handleGlobalCoeffChange,
+    handleVatChange,
+    handleSettlementModeChange,
+    handleMaterialsNetRateChange,
+    handleGlobalDiscountChange,
+    handleApplyPercentDiscount,
+  } = useKosztorysSettings({ investmentId, tree, rowsRef, patchRows, pushReversible })
 
   function setSortField(field: string, pick: SortPickT | null) {
     setSort(pick ? { field, ...pick } : null)
@@ -1034,216 +1027,6 @@ export function useKosztorysEditor({
     for (const [id, r] of prevById.current) {
       if (match(r)) prevById.current.set(id, patch(r))
     }
-  }
-
-  // Shared tail of every optimistic settings write (global coeff / VAT / discount / section coeff).
-  // The caller has already applied its optimistic patch and captured whatever `revert` needs; this
-  // persists, then on failure runs `revert` and surfaces the error. Tail-only on purpose: the
-  // optimistic apply and the pre-patch capture differ per setting and stay at the call site — only
-  // this success-or-rollback tail was identical.
-  //
-  // No router.refresh() on success: the action's `updateTag` already re-renders the route and
-  // streams the fresh `tree` back in the action response, so the refresh was a second full render
-  // of the same page per click (EX-597 baseline).
-  async function optimisticSettingSave(
-    persist: () => Promise<{ success: boolean; error?: string }>,
-    revert: () => void,
-    errorMessage: string,
-  ) {
-    const res = await persist()
-    if (res.success) return true
-    revert()
-    toastMessage(res.error ?? errorMessage, 'warning', 4000)
-    return false
-  }
-
-  // Changing the global coefficient recomputes the derived prices of all non-overridden items.
-  // Optimistic patch on the rows; the panel (which reads from `tree`) is reseeded by the action's
-  // own re-render. Extracted so undo/redo can re-run it with a before/after patch of the same keys.
-  async function applyGlobalCoeff(patch: { wToolsCoeff?: number; ownToolsCoeff?: number }) {
-    // patchRows builds fresh row objects, so `sample` still holds the pre-patch coefficients for the
-    // revert. Only the coefficients present in `patch` map to their denormalized row fields.
-    const sample = rowsRef.current[0]
-    const applied: { globalWToolsCoeff?: number; globalOwnToolsCoeff?: number } = {}
-    if (patch.wToolsCoeff != null) applied.globalWToolsCoeff = patch.wToolsCoeff
-    if (patch.ownToolsCoeff != null) applied.globalOwnToolsCoeff = patch.ownToolsCoeff
-    patchRows(
-      () => true,
-      (r) => ({ ...r, ...applied }),
-    )
-    await optimisticSettingSave(
-      () => updateInvestmentCoeffsAction(investmentId, patch),
-      () => {
-        // Roll the optimistic coefficients back so the grid doesn't show an unsaved price (the
-        // once-only useState seed means a plain refresh can't reseed it). No-op on an empty kosztorys.
-        if (!sample) return
-        const restored: { globalWToolsCoeff?: number; globalOwnToolsCoeff?: number } = {}
-        if (patch.wToolsCoeff != null) restored.globalWToolsCoeff = sample.globalWToolsCoeff
-        if (patch.ownToolsCoeff != null) restored.globalOwnToolsCoeff = sample.globalOwnToolsCoeff
-        patchRows(
-          () => true,
-          (r) => ({ ...r, ...restored }),
-        )
-      },
-      'Nie udało się zapisać współczynnika',
-    )
-  }
-
-  async function handleGlobalCoeffChange(patch: { wToolsCoeff?: number; ownToolsCoeff?: number }) {
-    const before = inverseGlobalCoeffPatch(patch, rowsRef.current[0])
-    await applyGlobalCoeff(patch)
-    pushReversible('Zmiana współczynnika', applyGlobalCoeff, before, patch)
-  }
-
-  // Changing the per-investment VAT rate recomputes every brutto figure. vatRate is denormalized
-  // on every row, so patch them all optimistically (router.refresh alone won't reseed `rows` — the
-  // useState initializer runs once at mount); then persist + refresh for the panel. `vatRate` is a
-  // fraction (0.08), converted from the panel's percent input at the commit site.
-  async function applyVat(vatRate: number) {
-    const prevVatRate = rowsRef.current[0]?.vatRate
-    patchRows(
-      () => true,
-      (r) => ({ ...r, vatRate }),
-    )
-    await optimisticSettingSave(
-      () => updateInvestmentVatAction(investmentId, vatRate),
-      () => {
-        // Roll the optimistic VAT back (no-op when there were no rows to patch). The toast still fires
-        // regardless — it lives in optimisticSettingSave, so an empty kosztorys can't swallow the failure.
-        if (prevVatRate === undefined) return
-        patchRows(
-          () => true,
-          (r) => ({ ...r, vatRate: prevVatRate }),
-        )
-      },
-      'Nie udało się zapisać stawki VAT',
-    )
-  }
-
-  // Persist a single „Opcje rozliczenia" setting and put it on the undo stack. The three settings that
-  // share this shape differ only in where their `before` is read from — VAT off the denormalized rows,
-  // the other two off `tree` — so that stays the caller's job.
-  function saveSetting<T>(label: string, apply: (value: T) => Promise<void>, before: T, next: T) {
-    // Keyed per setting, not per subsystem: nothing serialises these transitions, so changing VAT
-    // and then tryb before the first lands would otherwise have the first `finally` clear the one
-    // shared key while the second write is still on the wire — the pill vanishing mid-save is the
-    // exact failure the store is keyed rather than boolean to prevent.
-    const pendingKey = `${SETTINGS_PENDING_KEY}:${label}`
-    startSettingsSave(async () => {
-      // The popover can close mid-save, so the progress signal has to live outside this subtree —
-      // hence the global store rather than a pill rendered by „Opcje rozliczenia" itself.
-      usePendingStore.getState().start(pendingKey, 'Zapisywanie…')
-      try {
-        await apply(next)
-        if (before !== next) pushReversible(label, apply, before, next)
-      } finally {
-        usePendingStore.getState().stop(pendingKey)
-      }
-    })
-  }
-
-  function handleVatChange(vatRate: number) {
-    saveSetting('Zmiana stawki VAT', applyVat, rowsRef.current[0]?.vatRate ?? tree.vatRate, vatRate)
-  }
-
-  // The settlement mode isn't denormalized onto the rows, so there's nothing to patch optimistically:
-  // persist, then let the refresh reseed `tree` for the panel that reads it.
-  async function applySettlementMode(mode: SettlementModeT) {
-    await optimisticSettingSave(
-      () => updateInvestmentSettlementModeAction(investmentId, mode),
-      () => {},
-      'Nie udało się zapisać sposobu rozliczenia',
-    )
-  }
-
-  function handleSettlementModeChange(mode: SettlementModeT) {
-    // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
-    // silently reverts whatever unrelated edit preceded it.
-    saveSetting('Zmiana sposobu rozliczenia', applySettlementMode, tree.settlementMode, mode)
-  }
-
-  // Same shape as the settlement mode: not denormalized onto the rows, so there is nothing to patch
-  // optimistically — persist, then let the refresh reseed `tree` for the panel that reads it.
-  async function applyMaterialsNetRate(rate: number | null) {
-    await optimisticSettingSave(
-      () => updateInvestmentMaterialsNetRateAction(investmentId, rate),
-      () => {},
-      'Nie udało się zapisać stawki netto wydatków',
-    )
-  }
-
-  function handleMaterialsNetRateChange(rate: number | null) {
-    saveSetting('Zmiana stawki netto wydatków', applyMaterialsNetRate, tree.materialsNetRate, rate)
-  }
-
-  // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
-  // local discount (drives the derived totals + column visibility) and patch the denormalized active
-  // flag on every row in the same render, so all three surfaces move together; then persist.
-  // Extracted like applyVat so undo/redo replays the whole move — reverting only the stored value
-  // would leave the row flag disagreeing with it.
-  async function applyGlobalDiscount(discount: GlobalDiscountT) {
-    const prevDiscount = globalDiscountRef.current
-    setGlobalDiscount(discount)
-    patchRows(
-      () => true,
-      (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(discount) }),
-    )
-    await optimisticSettingSave(
-      () =>
-        updateInvestmentGlobalDiscountAction(investmentId, {
-          globalDiscountType: discount.type,
-          globalDiscountValue: discount.value,
-        }),
-      () => {
-        // Roll all three surfaces back so they don't disagree on an unsaved discount.
-        setGlobalDiscount(prevDiscount)
-        patchRows(
-          () => true,
-          (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(prevDiscount) }),
-        )
-      },
-      'Nie udało się zapisać rabatu',
-    )
-  }
-
-  function handleGlobalDiscountChange(next: GlobalDiscountT) {
-    // Quantized on the way in, so nothing sub-grosz is ever persisted: the kwota is stored money the
-    // field mirrors back as text, and a seeded Σ rabatów carries float residue from the products it
-    // sums. Rounded BEFORE the no-op check, or a dirty stored value never matches its clean twin.
-    const clean = { ...next, value: roundToCents(next.value) }
-    // saveSetting's own guard is identity-based, which never fires on a fresh object — so the
-    // no-op check is here, by field. Without it every „Kwotowy" re-pick and every re-commit of an
-    // unchanged kwota would put a do-nothing entry on the undo stack.
-    if (globalDiscount.type === clean.type && globalDiscount.value === clean.value) return
-    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, clean)
-  }
-
-  // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
-  // Overwrites every item's per-item rabat with `percent X` — optimistically on the rows, then one
-  // bulk SQL update. No undo entry (owner: recovery = re-typing). Returns success so the settings
-  // control clears its input only when the write landed.
-  async function handleApplyPercentDiscount(percent: number): Promise<boolean> {
-    const prev = new Map(
-      rowsRef.current.map((r) => [
-        r.id,
-        { discountType: r.discountType, discountValue: r.discountValue },
-      ]),
-    )
-    patchRows(
-      () => true,
-      (r) => ({ ...r, discountType: 'percent', discountValue: percent }),
-    )
-    // Roll each row's rabat back to its pre-apply value on failure — the once-only useState seed means
-    // a refresh can't reseed it.
-    return optimisticSettingSave(
-      () => applyPercentDiscountToAllItemsAction(investmentId, percent),
-      () =>
-        patchRows(
-          () => true,
-          (r) => ({ ...r, ...(prev.get(r.id) ?? {}) }),
-        ),
-      'Nie udało się zastosować rabatu',
-    )
   }
 
   function onChange(next: KosztorysV2RowT[]) {
