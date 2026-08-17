@@ -3,6 +3,7 @@
 import { useRef, type KeyboardEvent, type SyntheticEvent } from 'react'
 import { textColumn, type CellProps } from 'react-datasheet-grid'
 import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
+import { ReadOnlyLongText } from '@/components/ui/datasheet-grid/read-only-long-text'
 import { Textarea } from '@/components/ui/textarea'
 
 type PropsT = {
@@ -14,10 +15,14 @@ type PropsT = {
 }
 
 // A grid cell for text too long for a 32px row: a truncated one-liner at rest, a textarea floating
-// over the cell (and over the rows beneath it) while editing — the Sheets behaviour. Knows nothing
-// about the domain: the caller supplies the commit path.
+// over the cell (and over the rows beneath it) while editing — the Sheets behaviour. Where editing
+// is off the popover stands in for that overlay. Knows nothing about the domain: the caller supplies
+// the commit path.
 export function LongTextCell({ value, focus, disabled, onCommit, stopEditing }: PropsT) {
-  if (disabled || !focus) return <ReadOnlyCellText>{value ?? ''}</ReadOnlyCellText>
+  // Disabled and merely-unfocused split here: an unfocused cell in an editable grid must keep its
+  // click for starting the edit, so only the disabled one becomes a popover trigger.
+  if (disabled) return <ReadOnlyLongText value={value} />
+  if (!focus) return <ReadOnlyCellText>{value ?? ''}</ReadOnlyCellText>
 
   return <LongTextOverlay value={value} onCommit={onCommit} stopEditing={stopEditing} />
 }
