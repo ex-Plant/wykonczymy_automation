@@ -384,18 +384,20 @@ describe('wartość wiersza idzie za etapami', () => {
       expect(hasStagesOverPlanned(offered({ [stageKey(100)]: 11 }), stages)).toBe(true)
     })
 
-    // „Robota bez oferty" nie jest osobną gałęzią — to po prostu Przedmiar 0, czyli każdy etap go
-    // przekracza. Wyczyszczona komórka zapisuje null, którego gałąź `> 0` musi złapać tak samo.
-    it('robota bez Przedmiaru → czerwień', () => {
+    // Bez Przedmiaru komórka „% wykonania" pokazuje „—", bo nie ma czego dzielić. Czerwone „—" to
+    // alarm bez czytelnej przyczyny, więc robota bez oferty się tu NIE świeci — to osobny problem i
+    // należy do diagnostyk „Problemy". Wyczyszczona komórka zapisuje null, którego gałąź `> 0` musi
+    // złapać tak samo.
+    it('robota bez Przedmiaru się nie świeci', () => {
       expect(hasStagesOverPlanned(offered({ plannedQty: 0, [stageKey(100)]: 5 }), stages)).toBe(
-        true,
+        false,
       )
       expect(
         hasStagesOverPlanned(
           offered({ plannedQty: null as unknown as number, [stageKey(100)]: 5 }),
           stages,
         ),
-      ).toBe(true)
+      ).toBe(false)
     })
 
     it('pusty wiersz nie świeci się na czerwono', () => {
