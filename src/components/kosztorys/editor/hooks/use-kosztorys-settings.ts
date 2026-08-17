@@ -10,6 +10,7 @@ import {
   updateInvestmentVatAction,
 } from '@/lib/actions/kosztorys'
 import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
+import { pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type { GlobalDiscountT, KosztorysTreeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 import { inverseGlobalCoeffPatch } from '@/lib/kosztorys/v2-rows'
@@ -18,6 +19,16 @@ import { toastMessage } from '@/lib/utils/toast'
 import { usePendingStore } from '@/stores/pending-store'
 
 const SETTINGS_PENDING_KEY = 'kosztorys-settings'
+
+// The two trybs are the only settings whose flip reprices the document the investor already has open
+// — the rest move figures nobody outside the firm reads. One dialog stands in front of both, from
+// whichever of the four controls fired it, because the mistake it catches is the same: a misclick in
+// a picker whose consequence isn't on the screen the picker sits on.
+const INVESTOR_IMPACT_TITLE = 'Uwaga — zmiana widoczna dla inwestora!'
+const SETTLEMENT_MODE_IMPACT =
+  'Sposób rozliczenia robocizny zmienia kwoty, które inwestor widzi w podglądzie.'
+const MATERIALS_PRICING_IMPACT =
+  'Sposób rozliczenia materiałów zmienia kwoty, które inwestor widzi w podglądzie.'
 
 type ArgsT = {
   investmentId: number
@@ -60,6 +71,13 @@ export function useKosztorysSettings({
   // set-once decisions about the deal; nobody edits two at a time) disables it meanwhile, so the click
   // stops reading as inert.
   const [isSavingSettings, startSettingsSave] = useTransition()
+  // The switch the owner picked, held until it is confirmed. Undo/redo replay `applySettlementMode`
+  // / `applyMaterialsNetRate` directly, so a Ctrl+Z never lands here — the dialog guards the deliberate
+  // change, not its reversal.
+  const [investorImpact, setInvestorImpact] = useState<{
+    description: string
+    apply: () => void
+  } | null>(null)
 
   // Shared tail of every optimistic settings write. The caller has already applied its optimistic
   // patch and captured whatever `revert` needs; this persists, then on failure runs `revert` and
@@ -181,9 +199,14 @@ export function useKosztorysSettings({
   }
 
   function handleSettlementModeChange(mode: SettlementModeT) {
-    // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
-    // silently reverts whatever unrelated edit preceded it.
-    saveSetting('Zmiana sposobu rozliczenia', applySettlementMode, tree.settlementMode, mode)
+    if (mode === tree.settlementMode) return
+    setInvestorImpact({
+      description: SETTLEMENT_MODE_IMPACT,
+      // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
+      // silently reverts whatever unrelated edit preceded it.
+      apply: () =>
+        saveSetting('Zmiana sposobu rozliczenia', applySettlementMode, tree.settlementMode, mode),
+    })
   }
 
   // Same shape as the settlement mode: not denormalized onto the rows, so there is nothing to patch
@@ -197,7 +220,21 @@ export function useKosztorysSettings({
   }
 
   function handleMaterialsNetRateChange(rate: number | null) {
-    saveSetting('Zmiana stawki netto wydatków', applyMaterialsNetRate, tree.materialsNetRate, rate)
+    const save = () =>
+      saveSetting(
+        'Zmiana stawki netto wydatków',
+        applyMaterialsNetRate,
+        tree.materialsNetRate,
+        rate,
+      )
+    // Only the brutto↔netto switch is confirmed. Correcting the stawka inside tryb netto doesn't
+    // change which plane the investor is billed on, and it commits from a field with its own save
+    // button — a dialog on every correction would train the owner to click through it.
+    if (pricingModeOf(rate) === pricingModeOf(tree.materialsNetRate)) {
+      save()
+      return
+    }
+    setInvestorImpact({ description: MATERIALS_PRICING_IMPACT, apply: save })
   }
 
   // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
@@ -274,6 +311,16 @@ export function useKosztorysSettings({
     globalDiscount,
     globalDiscountActive,
     isSavingSettings,
+    investorImpactConfirm: {
+      open: investorImpact !== null,
+      title: INVESTOR_IMPACT_TITLE,
+      description: investorImpact?.description,
+      onConfirm: () => {
+        investorImpact?.apply()
+        setInvestorImpact(null)
+      },
+      onCancel: () => setInvestorImpact(null),
+    },
     handleGlobalCoeffChange,
     handleVatChange,
     handleSettlementModeChange,

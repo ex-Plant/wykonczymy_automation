@@ -124,6 +124,7 @@ export function KosztorysVersionsDrawer({
         }
         description="Obecny stan zostanie zapisany jako punkt przywracania."
         confirmLabel="Przywróć"
+        variant="neutral"
         pending={restoringId != null}
         pendingLabel="Przywracanie…"
         onConfirm={() => pendingRestore && handleRestore(pendingRestore)}

@@ -93,7 +93,7 @@ type ArgsT = {
   investmentId: number
   tree: KosztorysTreeT
   // The read-only client-facing render — BOTH the public share link and the owner's „Podgląd dla
-  // klienta", which are deliberately the same render. Distinct from `view === 'client'`, which is a
+  // inwestora", which are deliberately the same render. Distinct from `view === 'client'`, which is a
   // PRICE PLANE (client prices vs a subcontractor's); the render mode is what pins that plane, so the
   // two must not share the word (owner ruling 2026-07-28).
   preview?: boolean
@@ -296,6 +296,7 @@ export function useKosztorysEditor({
     globalDiscount,
     globalDiscountActive,
     isSavingSettings,
+    investorImpactConfirm,
     handleGlobalCoeffChange,
     handleVatChange,
     handleSettlementModeChange,
@@ -1042,6 +1043,7 @@ export function useKosztorysEditor({
     perItemDiscountTotal,
     itemsWithDiscountCount,
     isSavingSettings,
+    investorImpactConfirm,
     subcontractorDue,
     laborCostsNet,
     // toolbar / panel state

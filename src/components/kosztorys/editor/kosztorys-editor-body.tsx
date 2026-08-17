@@ -17,6 +17,7 @@ import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-koszt
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { sectionBandLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
@@ -379,6 +380,9 @@ export function KosztorysEditorBody({
           )}
         {/* One instance for both triggers — the „Opcje" menu and the empty-kosztorys screen. */}
         {!preview && <SheetImportDialog {...importDialogProps} />}
+        {/* Rendered here, not next to the pickers: the same confirm stands in front of the inline
+            controls in „Podsumowanie"/„Materiały" and of their twins in „Opcje rozliczenia". */}
+        {!preview && <ConfirmDialog {...editor.investorImpactConfirm} />}
       </div>
     </KosztorysEditorProvider>
   )

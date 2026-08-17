@@ -82,6 +82,7 @@ export function LinkedSheetActions({ sheetId, investmentId, investmentName }: Pr
         title="Odłączyć kosztorys od inwestycji?"
         description="Arkusz Google nie zostanie usunięty — pozostanie na liście jako kosztorys bez inwestycji i można go później powiązać ponownie."
         confirmLabel="Odłącz"
+        variant="neutral"
         pending={pending}
         pendingLabel="Odłączam…"
         onConfirm={onUnlink}

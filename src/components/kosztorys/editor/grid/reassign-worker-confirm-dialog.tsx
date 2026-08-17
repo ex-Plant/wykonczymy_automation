@@ -49,6 +49,7 @@ export function ReassignWorkerConfirmDialog({
         targetName,
       )}
       confirmLabel={COPY.reassignConfirm.confirmLabel}
+      variant="neutral"
       onConfirm={() => onConfirm(targetWorkerId)}
       onCancel={onCancel}
     />
