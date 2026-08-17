@@ -4,13 +4,8 @@ import { useState } from 'react'
 import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
+import { clientConditionIds } from '@/lib/kosztorys/row-conditions'
 import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
-
-// One frozen instance, so the preview's suppressed set is referentially stable across renders and
-// the editor's memos don't recompute on every keystroke.
-const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
-// The one condition a client's document may engage, frozen for the same reason.
-const CLIENT_EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set(['client-empty'])
 
 type ArgsT = {
   investmentId: number
@@ -31,19 +26,15 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   const view = preview ? 'client' : persistedView
   const [search, setSearch] = useState('')
   // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
-  // is still on today. Suppressed wholesale under the preview like `view` above: every condition here
-  // is the company's own bookkeeping question and has no business in a client's document.
+  // is still on today. Under the preview the owner's own picks are dropped wholesale like `view`
+  // above and `clientConditionIds` answers instead — it owns which conditions may reach a client.
   const {
     engagedIds: persistedConditionIds,
     toggle: toggleCondition,
     clear: clearConditions,
   } = useEngagedConditions(investmentId)
-  // The one exception is the client condition, which is not a filter the client chose but the
-  // owner's stored decision about what this document contains.
   const engagedConditionIds = preview
-    ? clientView?.hideEmptyRows
-      ? CLIENT_EMPTY_CONDITION_IDS
-      : EMPTY_CONDITION_IDS
+    ? clientConditionIds(clientView?.hideEmptyRows)
     : persistedConditionIds
   const [sort, setSort] = useState<SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,

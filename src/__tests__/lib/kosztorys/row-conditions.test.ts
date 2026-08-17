@@ -3,6 +3,7 @@ import {
   ROW_CONDITIONS,
   countMatching,
   applyRowConditions,
+  clientConditionIds,
   engagedConditionsOfKind,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -215,5 +216,26 @@ describe('sectionIdsWhereAllMatch — „wszystkie co do jednej", not „suma = 
     expect([
       ...sectionIdsWhereAllMatch([row({ plannedQty: 0 })], 'no-such-condition', CTX),
     ]).toEqual([])
+  })
+})
+
+// The owner's „Ukryj pozycje bez przedmiaru i bez wykonanej pracy" reaching the client's document is
+// a two-step wiring — stored flag → engaged condition → rows removed — and only the storage half had
+// a guard. A hook refactor deleted the middle step once without a single test going red.
+describe('clientConditionIds', () => {
+  it('engages the client condition only when the owner stored the decision', () => {
+    expect([...clientConditionIds(true)]).toEqual(['client-empty'])
+    expect([...clientConditionIds(false)]).toEqual([])
+    expect([...clientConditionIds(undefined)]).toEqual([])
+  })
+
+  it('names a condition the registry actually has — a typo here would hide nothing, silently', () => {
+    const rows = [row({ id: 1, plannedQty: 0 }), row({ id: 2, plannedQty: 5 })]
+    expect(applyRowConditions(rows, clientConditionIds(true), CTX).map((r) => r.id)).toEqual([2])
+  })
+
+  it('hands back the same instance every call, so the editor memos do not churn', () => {
+    expect(clientConditionIds(true)).toBe(clientConditionIds(true))
+    expect(clientConditionIds(false)).toBe(clientConditionIds(undefined))
   })
 })

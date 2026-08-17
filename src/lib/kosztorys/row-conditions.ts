@@ -116,6 +116,25 @@ export const ROW_CONDITIONS: RowConditionT[] = [
 
 const BY_ID = new Map(ROW_CONDITIONS.map((condition) => [condition.id, condition]))
 
+// Frozen module-level instances, so the sets below are referentially stable and the editor's memos
+// don't recompute on every render.
+const CLIENT_EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set(['client-empty'])
+const NO_CONDITION_IDS: ReadonlySet<string> = new Set()
+
+/**
+ * What a client's document engages. Every 'filter' and 'diagnostic' here is the company's own
+ * bookkeeping question and is suppressed wholesale under the preview — the sole exception is the
+ * 'client' condition, which the client did not choose either: it is the owner's stored decision
+ * about what this document contains.
+ *
+ * Lives beside the registry rather than inside the editor hook that reads it, because the mapping is
+ * the domain fact „which conditions may reach a client" — invisible to anyone refactoring the hook,
+ * and it has been silently dropped by exactly that kind of refactor once already.
+ */
+export function clientConditionIds(hideEmptyRows: boolean | undefined): ReadonlySet<string> {
+  return hideEmptyRows ? CLIENT_EMPTY_CONDITION_IDS : NO_CONDITION_IDS
+}
+
 /**
  * The rows left on screen once the engaged conditions apply. „Engaged" is the non-default state, and
  * it means opposite things per kind because the two are asked differently — a filter is a picker row
