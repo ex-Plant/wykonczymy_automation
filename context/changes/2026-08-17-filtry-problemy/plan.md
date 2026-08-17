@@ -410,8 +410,8 @@ Run once, after phase 3.
 
 #### Automated
 
-- [x] 3.1 New spec passes: filters-menu-model.test.ts
-- [x] 3.2 Existing kosztorys specs pass
+- [x] 3.1 New spec passes: filters-menu-model.test.ts — 5ab77de4
+- [x] 3.2 Existing kosztorys specs pass — 5ab77de4
 
 ### Whole-tree gate
 
