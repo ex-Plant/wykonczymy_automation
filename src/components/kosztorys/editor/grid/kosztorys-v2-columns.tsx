@@ -100,19 +100,16 @@ function keyCol(
 
 // An etap with no rozliczenie belongs to neither crew’s bill (subcontractor-due.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
-// So the whole column screams, header and every cell. Reachable in the client view only, which is the
+// So the ilość column screams, header and every cell. Reachable in the client view only, which is the
 // one that shows every etap.
 //
-// Colour only: the qty column adds its own lock (the three value columns are already read-only, so a
-// `disabled` here would say nothing about them).
+// Only the ilość column: its wartość columns are derived from it and sit right beside it, so tinting
+// them repeats one etap's warning three times — and their red totals row reads as a figure being
+// wrong rather than an etap being unassigned.
 const PLANE_UNCONFIRMED_CELL = {
   headerClassName: 'bg-destructive/15',
   cellClassName: 'bg-destructive/10 text-destructive',
 } as const
-
-function planeUnconfirmed(stage: KosztorysStageT): Partial<Column<KosztorysV2RowT>> {
-  return stage.plane == null ? PLANE_UNCONFIRMED_CELL : {}
-}
 
 function withTip(node: ReactNode, tip: string): ReactNode {
   return (
@@ -454,23 +451,17 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const stageValueNetCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
-    return {
-      ...computedColumn(stageValueNetKey(st.id), header, (r) =>
-        stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view),
-      ),
-      ...planeUnconfirmed(st),
-    }
+    return computedColumn(stageValueNetKey(st.id), header, (r) =>
+      stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view),
+    )
   })
 
   const stageValueGrossCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
     const qtyKey = stageKey(st.id)
     const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
-    return {
-      ...computedColumn(stageValueGrossKey(st.id), header, (r) =>
-        toGross(stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view), r.vatRate),
-      ),
-      ...planeUnconfirmed(st),
-    }
+    return computedColumn(stageValueGrossKey(st.id), header, (r) =>
+      toGross(stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view), r.vatRate),
+    )
   })
 
   // The przedmiar-anchored columns here and below compute at `'client'` outright, not at `view`:
