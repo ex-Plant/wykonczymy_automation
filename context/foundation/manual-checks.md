@@ -1222,3 +1222,22 @@ Setup: dev-owy edytor kosztorysu jako OWNER, panel „Podsumowanie" otwarty.
 - [ ] Poprawienie „Stawki VAT na materiały" wewnątrz trybu netto zapisuje się BEZ pytania
 - [ ] Ctrl+Z po potwierdzonej zmianie trybu cofa ją bez pytania
 - [ ] Podgląd inwestora nie pokazuje żadnego z tych przełączników ani okna
+
+## filtry-problemy — osobny przycisk „Problemy" (fazy 5–7)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2379, `build`; `lint` bez nowych
+błędów — te same trzy istniejące). Domyka zmianę powyżej: zatrzask poprawianych pozycji z jawnym
+odświeżeniem, wyjście „Problemów" z „Filtrów" na własny przycisk z pojedynczym wyborem i przejście
+do widoku, którego problem dotyczy.
+
+Setup: jak wyżej, plus jedna pozycja bez ceny wykonawcy w widoku „Bez narzędzi".
+
+- [ ] Pasek narzędzi ma osobny przycisk „Problemy" z czerwonym trójkątem; przy czystym kosztorysie przycisku nie ma wcale, a „Filtry" nie ma już grupy „Problemy"
+- [ ] Włączony problem robi z przycisku „Problemy (1)" w czerwieni; drugi wybór zastępuje pierwszy, ten sam wybrany ponownie wyłącza
+- [ ] Wybór „ze zbyt wysoką stawką wykonawcy w widoku bez narzędzi" przełącza siatkę na „Bez narzędzi" i odsłania kolumny wykonawcy
+- [ ] Ręczne przełączenie osi cen po takim wyborze zostaje — problem dalej zawęża, widok się nie cofa
+- [ ] Wyłączenie problemu przywraca widok sprzed wyboru; „Zresetuj filtry" też
+- [ ] Problem bez planu („bez ceny j.m.", etapowe) zostawia widok tam, gdzie był
+- [ ] Poprawiona pozycja zostaje na ekranie do czasu kliknięcia „Odśwież — ukryj poprawione"; pozycja ta znika dopiero wtedy
+- [ ] „Odśwież" widać w menu wyłącznie przy włączonym problemie
+- [ ] Stawka i mnożnik wykonawcy słuchają klawiatury siatki — Enter zatwierdza i schodzi niżej, Escape porzuca, strzałki wychodzą z komórki
