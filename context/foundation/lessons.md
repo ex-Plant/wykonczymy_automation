@@ -1208,6 +1208,7 @@ Two recurring distortions to check for by name, because both showed up here: a w
 (1000+) quoted for a **per-owner** scope, and "concurrent users" invoked where the app has no editing
 lock and **one** operator already races themselves — ▲▼ is `void`-called and autosaves are
 fire-and-forget, so contention needs no second person.
+
 ## A stored preference records the DEVIATION, never a snapshot of today's defaults
 
 Two settings landed a day apart and both hit the same fork. Column visibility for the client
@@ -1252,3 +1253,43 @@ carries two gestures (a Radix trigger filling `h-full w-full`, and the resize ha
 `framer-motion` `Reorder` list bought the same capability in hours with no regression risk to resize
 or header sort. If header drag comes back as a request, the estimate is the virtualization work, not
 the drag.
+
+## A deferral rationale written into an issue ages into a dependency — re-verify the blocker before planning around it
+
+EX-521 sat parked for four weeks reading "split the editor hook **(behind a `renderHook` harness)**".
+Nothing about that clause was ever true: two entries in this file already rule that the repo extracts
+the logic instead of installing a hook renderer, three in-tree modules implement exactly that shape
+(`createUndoRedoStack`, `createSaveLanes`, `createJsonMapStore`), and the fallback objection — "the
+logic lives in a `.tsx` file, so it needs a DOM" — was refuted by a spec that already imports a `.tsx`
+module. The clause was a **reason for not starting today**, written in the grammar of a prerequisite,
+and every later reader took it as a fact about the codebase. Three review findings were then filed
+against the same hook, each carrying "waits on the same harness", which turned one unverified sentence
+into a queue.
+
+**The rule.** When an issue names a prerequisite, the first research step is to check the prerequisite,
+not to plan around it. Cheap tell: a blocker phrased as infrastructure we lack, where nobody links the
+attempt that established we need it. And when _writing_ the deferral, say which it is — "declined, see
+X" reads differently from "blocked on Y" a month later.
+
+The payoff here was structural, not just scheduling: the harness would have made the god hook testable
+**as it is**, and the reason no harness exists is that the logic is welded to the hook body. Extracting
+it is the fix and the testability in one move — so the missing infrastructure was the design signal, and
+installing it would have preserved what needed removing.
+
+## An invariant enforced in two planes — deleting the second plane beats testing the bridge
+
+`display_order`'s shift rule lived three times: once as the server `UPDATE … WHERE display_order >= at`,
+and twice as hand-written client loops that transliterated it. Each plane was tested in isolation;
+their **agreement** was not, and the client cache behind it was seeded at mount and never re-seeded
+after `router.refresh()`, so "insert a section mid-sheet, then move a later one" was untested at every
+layer. The standing rule for that shape is to test the bridge — but the better answer is available
+whenever one plane exists only to predict the other: make the actions **intent-based**
+(`'up' | 'down'`, `'above' | 'below'`, an id sequence for the bake), resolve position inside the
+transaction that writes it, and the client plane has nothing left to mirror. No absolute integers reach
+the client at all, so the numbering becomes a server implementation detail and the bridge test is moot.
+
+**How to spot it:** the duplicate is a _transliteration_ — same predicate, same delta, same scope, in a
+second language. That is different from two planes that genuinely compute different things and must
+agree, which still needs the bridge test. Worth doing with no live victim: here every path that changed
+stored order happened to go through the client or remount, so nothing was broken — the defect was the
+triplicated rule, and the fix deleted code the following refactor would otherwise have relocated first.

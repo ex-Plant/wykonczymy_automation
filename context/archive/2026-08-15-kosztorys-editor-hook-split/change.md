@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-editor-hook-split
 title: Split the use-kosztorys-editor god hook (EX-521)
-status: implemented
+status: archived
 created: 2026-08-15
 updated: 2026-08-17
-archived_at: null
+archived_at: 2026-08-17T12:34:24Z
 branch: kosztorys-editor-hook-split
 worktree: /Users/konradantonik/workspace/yolo/wykonczymy-worktrees/kosztorys-editor-hook-split
 ---
