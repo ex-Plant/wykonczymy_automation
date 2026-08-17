@@ -16,20 +16,16 @@ import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
 import { useKosztorysStageOps } from '@/components/kosztorys/editor/hooks/use-kosztorys-stage-ops'
+import { useKosztorysViewState } from '@/components/kosztorys/editor/hooks/use-kosztorys-view-state'
 import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
-import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
-import {
-  type SortPickT,
-  type V2SortStateT,
-} from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   applyAddItem,
@@ -63,7 +59,6 @@ import {
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
-import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
 import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
@@ -109,9 +104,6 @@ const UNDO_COALESCE_MS = 700
 // Separate knob from UNDO_COALESCE_MS despite the matching value — one decides when a burst becomes
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
-// One frozen instance, so the preview's suppressed set is referentially stable across renders and
-// the memos below don't recompute on every keystroke.
-const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -130,43 +122,26 @@ export function useKosztorysEditor({
   const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
   const [gridRef, gridHeight] = useElementHeight()
   const [rows, setRows] = useState<KosztorysV2RowT[]>(() => treeToRows(tree))
-  const [persistedView, setView] = usePriceView(investmentId)
-  // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
-  // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
-  // it HERE is also what closes the attack where a client sets localStorage['kosztorys-view:<id>'] to
-  // a subcontractor view: the public page ships the full tree, coefficients included, so an unpinned
-  // plane would simply render it.
-  const view = preview ? 'client' : persistedView
-  const [search, setSearch] = useState('')
-  // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
-  // is still on today. Suppressed wholesale under the preview like `view` above: every condition here
-  // is the company's own bookkeeping question and has no business in a client's document.
   const {
-    engagedIds: persistedConditionIds,
-    toggle: toggleCondition,
-    clear: clearConditions,
-  } = useEngagedConditions(investmentId)
-  const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
-  const [sort, setSort] = useState<V2SortStateT>(null)
-  // Which sections are folded shut under their band — the single description of what the grid shows,
-  // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
-  // filtering the rows away, so a hidden section still announces itself and its total). Deliberately
-  // NOT persisted: a fold is a reading gesture for the current session, and a remembered one would
-  // greet the next visit with rows the user can't see and doesn't remember hiding.
-  const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
-    () => new Set(),
-  )
-  // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
-  // the conditions and the folds alike. Two half-resets would leave the user clicking one and still
-  // facing a short grid.
-  function resetFilters() {
-    clearConditions()
-    setCollapsedSectionIds(new Set())
-  }
+    view,
+    setView,
+    search,
+    setSearch,
+    engagedConditionIds,
+    toggleCondition,
+    sort,
+    setSort,
+    setSortField,
+    collapsedSectionIds,
+    setCollapsedSectionIds,
+    toggleSectionCollapsed,
+    resetFilters,
+    guideX,
+    setGuideX,
+  } = useKosztorysViewState({ investmentId, preview })
 
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
-  // that would be a write per pixel). During the drag we only show a vertical guide
-  // (guideX = cursor X), without touching the grid.
+  // that would be a write per pixel).
   const { widths, setWidth, dropWidth } = useColumnWidths()
   const { isHidden, toggleColumn, setAllColumns } = useHiddenColumns()
   const {
@@ -181,7 +156,6 @@ export function useKosztorysEditor({
   const axis = effectiveMoneyAxis(view, moneyAxis)
   const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
-  const [guideX, setGuideX] = useState<number | null>(null)
   // Snapshot of the previous rows for diffing (keyed by item id) — the full dataset, not the view.
   // It also serves as the "fresh dataset" read by structural event handlers (section count):
   // kept in sync on every add/remove/edit, so no separate ref for rows is needed.
@@ -316,10 +290,6 @@ export function useKosztorysEditor({
     handleApplyPercentDiscount,
   } = useKosztorysSettings({ investmentId, tree, rowsRef, patchRows, pushReversible })
 
-  function setSortField(field: string, pick: SortPickT | null) {
-    setSort(pick ? { field, ...pick } : null)
-  }
-
   // One O(n) pass feeding the render-hot getRemovePlan (see below) an O(1) per-row lookup.
   const removalCounts = sectionItemCounts(rows)
 
@@ -430,14 +400,6 @@ export function useKosztorysEditor({
       ]),
     )
   }, [rows, stages])
-
-  function toggleSectionCollapsed(sectionId: number) {
-    setCollapsedSectionIds((prev) => {
-      const next = new Set(prev)
-      if (!next.delete(sectionId)) next.add(sectionId)
-      return next
-    })
-  }
 
   const viewRows = useMemo(
     () => buildViewRows({ rows, search, engagedConditionIds, sort, view, stages }),

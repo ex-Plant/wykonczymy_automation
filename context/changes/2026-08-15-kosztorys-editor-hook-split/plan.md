@@ -587,6 +587,6 @@ Run **once**, after phase 6.
 
 #### Automated
 
-- [ ] 6.1 Existing disclosure/preview specs pass
-- [ ] 6.2 Hook return type unchanged (tsc)
-- [ ] 6.3 use-kosztorys-editor.ts under 900 lines
+- [x] 6.1 Existing disclosure/preview specs pass — a8761abc
+- [x] 6.2 Hook return type unchanged (tsc) — a8761abc
+- [ ] 6.3 use-kosztorys-editor.ts under 900 lines — MISSED: 1439 → 1040. The four carved groups do not add up to 540 lines; the remainder is ~330 lines of row/section ops (deliberately out of the carve) plus ~170 lines of derived-figure memos. Owner accepted 1040 rather than widen the carve.
