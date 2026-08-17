@@ -494,9 +494,18 @@ export function useKosztorysEditor({
       ? sortRows(filtered, getValue, sort.dir)
       : sortRowsWithinSections(filtered, getValue, sort.dir)
   }, [rows, search, engagedConditionIds, sort, view, stages])
-  // Both read the FULL dataset in display order, which is what makes a filter visible: the numbers
-  // skip over the rows it hid, and the sections keep their original order however it thinned them.
-  const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
+  // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
+  // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
+  // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
+  // from it, so under the preview the owner's stored hide decision is applied first and the offer runs
+  // 1…N. Search and sort are deliberately left out of both: a number that moved as the reader typed
+  // would name a different pozycja every keystroke.
+  const numberedRows = useMemo(
+    () => (preview ? applyRowConditions(rows, engagedConditionIds, { stages }) : rows),
+    [preview, rows, engagedConditionIds, stages],
+  )
+  const ordinalByRowId = useMemo(() => baseOrdinals(numberedRows), [numberedRows])
+  // Sections keep their original order however the filter thinned them.
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
