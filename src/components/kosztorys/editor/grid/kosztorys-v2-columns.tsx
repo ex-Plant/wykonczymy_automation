@@ -52,12 +52,13 @@ import {
 import {
   PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,
+  UNPICKABLE_COLUMNS,
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
-import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
+import { formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
   measureDiscrepancy,
@@ -352,41 +353,32 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // client's document must not carry the company's own bookkeeping doubts. Client plane only for a
   // second reason: `measureDiscrepancy` is hard-anchored to the whole offered scope, so hanging it
   // on a subcontractor view's cell would put two different „etapy" numbers side by side.
-  const divergenceEnabled = !opts.previewVisible && view === 'client'
-  const divergenceFor = divergenceEnabled
-    ? memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages))
-    : () => null
-
-  const measure: Column<KosztorysV2RowT>[] = [
-    {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
-        // The two operands, which the „Pozostało do rozliczenia" column beside it does NOT carry — it
-        // shows the difference, and „skąd ta różnica" is still a question the cell has to answer.
-        tip: (r) => {
-          const divergence = divergenceFor(r)
-          if (!divergence) return null
-          return `Pomiar z arkusza Google: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · zostało ${formatNet(divergence.net)} zł`
-        },
-      }),
-      minWidth: 170,
-    },
-    unitColumn(title('unit', opts)),
-  ]
-
+  //
   // Right behind „Opis prac" rather than beside „Pomiar", the figure it is derived from — it is the
   // answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
-  // Present for the whole life of an imported kosztorys, not only while it is non-zero: a column that
-  // appears with a difference and leaves when it is gone reads as an error counter, and the only way
-  // to zero it is to declare unperformed work done.
+  // Tied to the diagnostic filter, not to the presence of an imported pomiar: while the filter is off
+  // the grid holds every pozycja and this column would be „—" down almost all of it. The button's own
+  // count is what says the rozjazd exists; the column is where you read it.
   const divergence: Column<KosztorysV2RowT>[] =
-    divergenceEnabled && opts.hasSheetMeasure
+    !opts.previewVisible && view === 'client' && opts.divergenceFilterEngaged
       ? [
           {
-            ...divergenceColumn(title('divergence', opts), divergenceFor),
+            ...divergenceColumn(
+              title('divergence', opts),
+              memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages)),
+            ),
             cellClassName: 'border-border border-r',
           },
         ]
       : []
+
+  const measure: Column<KosztorysV2RowT>[] = [
+    {
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
+      minWidth: 170,
+    },
+    unitColumn(title('unit', opts)),
+  ]
 
   // Rabat is a client concession, never passed to the subcontractor (calc.ts netForQtyForView), so
   // the four discount columns exist in the client view only — the subcontractor views never assemble
@@ -481,9 +473,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }
   })
 
-  // The row's headline figure: it answers "how far along is this position", which the money columns
-  // never say outright.
-  //
   // The przedmiar-anchored columns here and below compute at `'client'` outright, not at `view`:
   // PRZEDMIAR_ANCHORED_COLUMNS drops them outside the client view, so a `view`-reactive formula would
   // be false generality — it reads as if a subcontractor reading existed, and there isn't one.
@@ -559,7 +548,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...measure,
     ...pricing,
     ...computed,
-    // Komentarz at the work/progress seam — it is the visual divider now (see the trailing gap column).
     ...komentarz,
     ...stageValueNetCols,
     ...stageValueGrossCols,
@@ -621,7 +609,7 @@ function selectV2Columns(
     }
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
     return (
-      !opts.isHidden?.(key) &&
+      (UNPICKABLE_COLUMNS.has(key) || !opts.isHidden?.(key)) &&
       axisAllows(key, axis) &&
       layerAllows(key, layer)
     )
@@ -674,6 +662,7 @@ function selectV2ToggleItems(
     const id = toggleKey(col.id ?? '')
     if (items.some((i) => i.id === id)) continue
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
+    if (UNPICKABLE_COLUMNS.has(id)) continue
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(id)) continue
     items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })
   }

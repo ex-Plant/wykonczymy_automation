@@ -56,6 +56,7 @@ import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-tot
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { filterRows, sortRows, sortRowsWithinSections } from '@/lib/kosztorys/row-view'
 import {
+  MEASURE_DIVERGED_CONDITION_ID,
   ROW_CONDITIONS,
   applyRowConditions,
   countMatching,
@@ -68,11 +69,7 @@ import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
-import {
-  stageKey,
-  stageValueGrossKey,
-  stageValueNetKey,
-} from '@/lib/kosztorys/stage-keys'
+import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
@@ -236,8 +233,8 @@ export function useKosztorysEditor({
   // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
   // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
   // Kwoty control. Nothing here is pinned for a preview: selectV2Columns drops every gate but the
-  // allowlist under `previewVisible`, so the axis — like the layer, the progress display and the
-  // picker below — never reaches the client's grid in the first place.
+  // allowlist under `previewVisible`, so the axis — like the layer and the picker below — never
+  // reaches the client's grid in the first place.
   const effectiveMoneyAxis: MoneyAxisT =
     view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
   const [layer, setLayer] = useLayer()
@@ -377,8 +374,7 @@ export function useKosztorysEditor({
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
-  // carries none of this. Read by the toolbar's counters, which is why a diagnostic's button can
-  // vanish at zero while the column it points at stays (see `hasSheetMeasure` below).
+  // carries none of this. Read by the toolbar's counters.
   const conditionCounts = useMemo(() => {
     const ctx = { stages }
     return new Map(
@@ -389,13 +385,11 @@ export function useKosztorysEditor({
     )
   }, [preview, rows, stages])
 
-  // Gates the „Pozostało do rozliczenia" column. Not the rozjazd count: the column has to survive
-  // its own zero, or it becomes a counter the owner clears by typing quantities into etapy — which
-  // is the app declaring work done that nobody did.
-  const hasSheetMeasure = useMemo(
-    () => !preview && rows.some((row) => row.sheetMeasuredQty != null),
-    [preview, rows],
-  )
+  // Gates the „Pozostało do rozliczenia" column: it is the answer to the diagnostic beside it, so it
+  // rides that button rather than the column picker. With the filter off the grid holds every pozycja
+  // and the column would read „—" down nearly all of them — the button's own count is what says the
+  // rozjazd is there.
+  const divergenceFilterEngaged = !preview && engagedConditionIds.has(MEASURE_DIVERGED_CONDITION_ID)
 
   // Subtracts from the allowlist, never adds to it — the ceiling stays `PREVIEW_VISIBLE_COLUMNS`.
   const previewHiddenColumns = useMemo(
@@ -433,7 +427,7 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    hasSheetMeasure,
+    divergenceFilterEngaged,
     readOnly: preview,
     previewVisible: preview,
     previewHiddenColumns,

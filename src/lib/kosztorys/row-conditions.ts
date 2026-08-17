@@ -31,6 +31,10 @@ export type RowConditionT = {
   matches: (row: KosztorysV2RowT, ctx: RowConditionCtxT) => boolean
 }
 
+// Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
+// diagnostic is pressed, so the id is shared between the registry and the column assembly.
+export const MEASURE_DIVERGED_CONDITION_ID = 'measure-diverged'
+
 /**
  * Every rule-based way the editor hides a row, in display order. Text search is deliberately not
  * here: it takes an argument, so it is not a named condition anyone can tick.
@@ -98,7 +102,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     matches: (row) => !(row.clientPrice > 0),
   },
   {
-    id: 'measure-diverged',
+    id: MEASURE_DIVERGED_CONDITION_ID,
     // „do rozpisania", not „z rozjazdem": the reference figure exists only where an old sheet was
     // imported, and the gap it names is work not yet entered — not a fault. Same wording as the
     // „Pozostało do rozliczenia" column it points at.

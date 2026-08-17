@@ -85,7 +85,7 @@ export const PRZEDMIAR_ANCHORED_COLUMNS: ReadonlySet<string> = new Set([
 
 // Which side of the netto/brutto pair a money column reports, keyed by the picker's toggleKey
 // (`stageValueNet`, never `stageValueNet_7`) so the per-stage namespace collapses to one entry and no
-// stage id enters the map — the same ghost-id reasoning as the picker groups (constants.ts). A column
+// stage id enters the map — the same ghost-id reasoning as the picker groups (stage-keys.ts). A column
 // absent from this map is neutral: axisAllows fails open, so a forgotten tag shows a column, never hides one.
 // The per-row `donePercent` is untagged on purpose: a percentage is the same number netto or brutto.
 export const COLUMN_MONEY_AXIS: Record<string, 'net' | 'gross'> = {
@@ -133,6 +133,12 @@ export const LAYER_NEUTRAL_COLUMNS: ReadonlySet<string> = new Set([
   // must not drop it — same reasoning as `description`.
   'note',
 ])
+
+// Columns the picker never offers, and which therefore never answer to a hide tick. „Pozostało do
+// rozliczenia" is assembled only while its own diagnostic („z pomiarem do rozpisania na etapy") is
+// pressed — its visibility already IS the answer to the gesture the user just made, so a tick could
+// only contradict it, and a „hidden" stored before would silently gut the filter it belongs to.
+export const UNPICKABLE_COLUMNS: ReadonlySet<string> = new Set(['divergence'])
 
 // `price` is the only editable money cell — the owner types prices while reading brutto, so the mode
 // must never take it away. It stays tagged `net` above because it IS a netto figure; the exemption is
@@ -194,7 +200,7 @@ export const PREVIEW_VISIBLE_COLUMNS: ReadonlySet<string> = new Set(
   CLIENT_VIEW_GROUPS.flatMap((group) => group.keys),
 )
 
-// The stage axis multiplies the grid's stage block, and brutto per stage is the least-read of them
+// The stage axis multiplies the grid's stage block, and brutto per stage is the less-read of the pair
 // — derivable from the netto beside it at a fixed rate. „Sekcja" repeats one name down every row of
 // its section, which the band above the section now says once; the column stays available for
 // copy/paste and sorting. Declared here rather than seeded into the stored map; useHiddenColumns
