@@ -1,7 +1,7 @@
 ---
 title: Domain Glossary — App ↔ Code naming map
 created: 2026-07-20
-updated: 2026-08-15
+updated: 2026-08-17
 type: glossary
 ---
 
@@ -153,12 +153,27 @@ Same reasoning closes the subcontractor figures: `remaining` and `dueNet`
 | cash settlement        | Rozliczenie mieszane | —                     | `computeCashSettlement` (`CashSettlementT`: `combinedNet`/`remainderNet`/`remainderGross`/`invoice`/`cash`/`total`) | B   | — (EX-536)                                                 | `summary-economics.ts:125`   |
 | deposits split         | Rozliczenie wpłat    | —                     | `depositsSplit` / `bucketDepositsByPlane` (`DepositsSplitT`: `paidNet`/`paidGross`/`remainingNet`/`remainingGross`) | B   | — (EX-536)                                                 | `summary-economics.ts:144`   |
 | deposit row            | Wpłata (wiersz)      | —                     | `DepositTransactionRowT`                                                                                            | B   | — (EX-536)                                                 | `types/reference-data.ts:63` |
+| the paying party       | Inwestor             | —                     | `client*` (see note)                                                                                                | B   | `clientView`, `clientPrice`, `view === 'client'` — on hold | `client-view-settings.ts`    |
 
 **`stage deposit` / `zaliczki` — retired (EX-536).** The deposit→etap tagging bridge is gone:
 `lib/kosztorys/zaliczki.ts` deleted, the `kosztorys_stage_id` column dropped from `transactions`
 (migration `20260721_0`), and `zaliczkiByStage` removed from the editor data. Deposits are no longer
 tagged to a stage — the concept has no code referent to name. (It was EX-548's canonical worst-offender
 example: `Zaliczka*` exports importing `isDepositType`; the example is retired with the code.)
+
+**„Inwestor" in the UI is `client*` in code (2026-08-17) — one concept, two registers.** The person
+paying for the job is „Inwestor" everywhere the owner can read it: the view axis, „Widok inwestora",
+„Udostępnij inwestorowi", the Payload labels, and the route `/podglad-inwestora`. The code below it
+still says `client` — `clientView` / `ClientViewSettingsT`, `clientPrice`, the `view === 'client'`
+price plane, `collections/kosztorys-client-view.ts`, `lib/actions/kosztorys-client-view.ts`. **Reading
+either word, mean the same person.** „Klient" survives in the UI in exactly one unrelated place: a CRM
+lead (`components/tables/leads.tsx`), which is a prospect, not a payer.
+
+The identifier rename is deliberately deferred, not forgotten: `clientPrice` is a Payload scalar field,
+and scalars take no `dbName`, so renaming it is a migration rather than a symbol change. When it is
+taken, the target is **`investor*`** — never `investment*`, which already denotes the **project**
+(`investmentId`), a different thing standing one word away. The confirm gate added with the rename
+already reads that way (`investorImpactConfirm`, `use-kosztorys-settings.ts`).
 
 **`etap` — ruled `stage` (2026-07-20), NOT a proper noun.** It was listed `A` on the "the sheet says
 etapy" reflex, but `stage` is already the code's dominant word (`stage*` outnumbers `etap`-identifiers
