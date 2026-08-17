@@ -1,10 +1,10 @@
 ---
 change_id: client-preview-settings
 title: Client preview settings — per-investment columns, firm-wide defaults, empty-row filter
-status: implemented
+status: archived
 created: 2026-08-15
-updated: 2026-08-15
-archived_at: null
+updated: 2026-08-17
+archived_at: 2026-08-17T10:57:38Z
 branch: client-preview-settings
 worktree: null
 ---
@@ -32,3 +32,9 @@ no warning is needed. Full rationale on EX-695; don't re-derive it.
 Out: hiding a section that has przedmiar; hand-hiding a single row (EX-549, cancelled). P13 (does
 the client read Przedmiar or Pomiar z natury) stays open in
 `context/reference/kosztorys-editor-domain-notes.md`.
+
+**Archive note (2026-08-17):** `plan.md` was deleted at archive — its phase choreography is now the
+shipped code, and its durable rationale (store the deviation, not a snapshot of the defaults; the
+allowlist as a ceiling that fails closed) moved into `context/foundation/lessons.md`. `plan-brief.md`
+stays: its decision table is the record of what the owner ruled and why. `git show <sha>^:<path>`
+still reaches the deleted plan.
