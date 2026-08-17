@@ -18,6 +18,7 @@ import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-ke
 import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
+import { sectionBandLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
@@ -121,8 +122,9 @@ export function KosztorysEditorBody({
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
+      labelColumnId: sectionBandLabelColumnId(columns.map((column) => column.id)),
     }),
-    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection],
+    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection, columns],
   )
 
   const sectionFooter = useMemo(

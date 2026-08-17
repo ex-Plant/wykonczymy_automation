@@ -3,7 +3,6 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
-import { IDENTITY_COLUMN_ID } from '@/lib/kosztorys/constants'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -20,14 +19,33 @@ export type SectionHeaderContextT = {
   collapsedSectionIds: ReadonlySet<number>
   onToggleCollapsed: (sectionId: number) => void
   onRename?: (sectionId: number, name: string) => void
+  // Which column paints the label — resolved per render off the visible order, never a fixed id.
+  labelColumnId?: string
 }
 
 // dsg has no colspan, so the band is painted per column: one column carries the whole label, the
 // rest paint blank.
 export type SectionHeaderSlotT = 'label' | 'blank'
 
-export function sectionHeaderSlot(columnId: string | undefined): SectionHeaderSlotT {
-  return columnId === IDENTITY_COLUMN_ID ? 'label' : 'blank'
+// Chrome, not a reading of the kosztorys: „Akcje" is 64px of row menu and the trailing gap is empty
+// by definition, so neither can host a label that has to be legible. Literals rather than an import
+// from the column assembly, which imports this file.
+const CHROME_COLUMN_IDS: ReadonlySet<string> = new Set(['actions', 'layerGap'])
+
+// The band follows the grid instead of a named column: no column holds a fixed slot any more
+// (lib/kosztorys/column-order), so „Opis prac" can be dragged to the far right or hidden from the
+// client entirely — either of which used to paint the band off-screen or not at all.
+export function sectionBandLabelColumnId(
+  columnIds: readonly (string | undefined)[],
+): string | undefined {
+  return columnIds.find((id): id is string => id != null && !CHROME_COLUMN_IDS.has(id))
+}
+
+export function sectionHeaderSlot(
+  columnId: string | undefined,
+  labelColumnId: string | undefined,
+): SectionHeaderSlotT {
+  return columnId != null && columnId === labelColumnId ? 'label' : 'blank'
 }
 
 // The dot reads `--section-rail` off the row (set by rowClassName from the section's palette entry),
@@ -72,9 +90,8 @@ export function SectionHeaderCell({
         // `w-max`, not `w-full`: the band hugs its own content and is let out of the cell by the
         // `overflow: visible` rule in globals.css, so the name stops being clipped at the „Sekcja"
         // column's width.
-        // `normal-case` undoes the „Opis prac" column's `capitalize` (this band is painted in that
-        // cell): the band is chrome, not an item description, so „(17 poz.)" and „netto … zł" must
-        // read as written.
+        // `normal-case` undoes the `capitalize` the host cell may carry („Opis prac" does): the band
+        // is chrome, not an item description, so „(17 poz.)" and „netto … zł" must read as written.
         className="hover:bg-accent/50 flex h-full w-max cursor-pointer items-center gap-2 px-2 text-lg font-semibold normal-case"
       >
         <SectionDot />
