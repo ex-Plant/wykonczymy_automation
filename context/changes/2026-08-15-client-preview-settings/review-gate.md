@@ -9,6 +9,9 @@ install → Step 0.5 skipped; the browser pass stays the human's, in `manual-che
 
 ## Findings
 
+- [x] 🔴 CRITICAL · fixed · `verify` (owner, post-commit) · `lib/queries/kosztorys-client-view.ts:18` · „Zapisz" w oknie ustawień padało na „Nie możesz wykonać tej akcji." — regresja z dedupu wyżej: `findClientViewRow` dostał `overrideAccess = false` jako domyślne, a trzy wyinlineowane `payload.find` nie podawały tego pola wcale i brały `true` z Local API. Żaden z callerów nie niesie sesji na kliencie payloada (token wchodzi bez logowania, akcja ma własną bramkę `ownerOnlyAction`), więc access control odpowiadał „brak usera, brak wiersza". Parametr usunięty — `overrideAccess: true` przybite w środku, docblock mówi dlaczego to nie jest bramka.
+      test: test-driven-debugging · integration — czerwony repro (`finds the row without a session`) w `__tests__/lib/queries/kosztorys-client-view.test.ts`, teraz zielony; 5/5 na `db-test`.
+
 - [x] 🟡 WARNING · fixed · `code-review` · `toolbar/menus/kosztorys-actions-menu.tsx:101` · `readSettings` had no latest-wins guard — a slow read from one dialog could land after a newer one and put a stale set back, which the next „Zapisz" would then write over the owner's save. Request-id counter added.
       test: test-driven-debugging · no automated test — the race needs two overlapping in-flight RPCs from one component; the guard is 3 lines and a spec for it would assert the counter, not the behaviour. Covered at the browser layer by EX-696.
 - [x] 🟡 WARNING · fixed · `code-review` + `impl-review` (F2) · `dialogs/kosztorys-share-dialog.tsx:71` · „Dalej" wrote a per-investment row even when nothing was ticked, permanently detaching that investment from the firm-wide default. Now writes only when the draft differs (`sameClientViewSettings`, order-insensitive).

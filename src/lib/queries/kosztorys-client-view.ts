@@ -8,14 +8,14 @@ import {
 
 /**
  * `investment` is unique, so this is the row-or-nothing lookup every caller wants — the resolver
- * below, and both branches of the save action. `overrideAccess` stays the caller's call: the token
- * entrance has no session to check, while the save runs under an already owner-gated payload.
+ * below, and both branches of the save action.
+ *
+ * `overrideAccess` is NOT the gate here and must stay on: neither caller carries a session on its
+ * payload client, so evaluating collection access would answer „no user, no row" and fail the save
+ * with a generic Forbidden. The token entrance has nobody to authenticate by design, and the save
+ * already ran `ownerOnlyAction` before reaching this line.
  */
-export async function findClientViewRow(
-  payload: Payload,
-  investmentId: number,
-  overrideAccess = false,
-) {
+export async function findClientViewRow(payload: Payload, investmentId: number) {
   const rows = await payload.find({
     collection: 'kosztorys-client-view',
     where: { investment: { equals: investmentId } },
@@ -23,7 +23,7 @@ export async function findClientViewRow(
     limit: 1,
     // No COUNT query for a unique-indexed lookup that already stops at one row.
     pagination: false,
-    overrideAccess,
+    overrideAccess: true,
   })
   return rows.docs[0] ?? null
 }
@@ -47,7 +47,7 @@ export async function getClientViewSettings(investmentId: number): Promise<Clien
   const payload = await getPayload({ config })
 
   const [row, defaults] = await Promise.all([
-    findClientViewRow(payload, investmentId, true),
+    findClientViewRow(payload, investmentId),
     payload.findGlobal({
       slug: 'kosztorys-client-view-defaults',
       depth: 0,

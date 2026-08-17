@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
-import { getClientViewSettings } from '@/lib/queries/kosztorys-client-view'
+import { findClientViewRow, getClientViewSettings } from '@/lib/queries/kosztorys-client-view'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The resolution chain decides what a client is served, so it runs against the REAL DB: a `where`
@@ -42,6 +42,14 @@ describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
       slug: 'kosztorys-client-view-defaults',
       data: { hiddenColumns: [], hideEmptyRows: true },
     })
+  })
+
+  // The save action calls this with no session on the payload client — its own gate already ran, and
+  // the collection's access control answers „no user, no row". A lookup that quietly evaluates that
+  // access instead of bypassing it fails the save with a generic „Nie możesz wykonać tej akcji".
+  it('finds the row without a session', async () => {
+    const row = await findClientViewRow(payload, investmentWithRow)
+    expect(row).not.toBeNull()
   })
 
   it('serves the investment’s own row when it has one', async () => {
