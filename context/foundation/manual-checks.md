@@ -1129,3 +1129,19 @@ lokalnie.
 - [ ] Ekran linku działa jak wcześniej: wygeneruj / kopiuj / wygeneruj nowy / wyłącz link, z potwierdzeniem wyłączenia
 - [ ] „Widok klienta" i link tokenowy wyglądają identycznie — żadnej dodatkowej belki ani panelu na `/podglad-klienta/<id>`
 - [ ] MANAGER: zapis ustawień odmawia komunikatem „Tylko właściciel może zmieniać ustawienia podglądu klienta"
+
+## drop-stage-percent-columns — usunięcie kolumn „% wykonania" per etap (EX-703)
+
+Setup: dev-owy edytor kosztorysu z rozpisanymi etapami, zalogowany jako OWNER. Do ostatniego punktu
+wpisz ręcznie `table-columns:kosztorys-progress-display` = `"percent"` w `localStorage` (klucz po
+usuniętej osi — sprawdzamy, że nie wywraca edytora).
+
+- [ ] Menu „Kolumny" ma tylko sekcje „Kwoty", „Warstwy" i „Kolumny" — żadnej sekcji „Etapy"
+- [ ] Przełączanie „Kwoty" (Netto/Brutto) i „Warstwy" (Praca/Postęp) działa jak wcześniej
+- [ ] Nigdzie nie ma kolumny „Etap N %" — ani w widoku klienta, ani „Z narzędziami", ani „Bez narzędzi"
+- [ ] „Etapy — kwota netto" dalej widoczne domyślnie, „…brutto" dalej domyślnie ukryte; oba dają się przełączać w pickerze, a „Praca" dalej je chowa
+- [ ] Kolumna „% wykonania (względem przedmiaru)" dalej się renderuje i dalej świeci na czerwono, gdy suma etapów przekracza Przedmiar
+- [ ] Usunięcie etapu czyści jego kolumny bez zostawiania pustej szerokości
+- [ ] Podgląd klienta (`/podglad-klienta/<id>`) renderuje się bez kolumny procentowej, a okno ustawień podglądu nie oferuje już „Etapy — % wykonania"
+- [ ] Kosztorys z zapisanym ptaszkiem przy tej kolumnie otwiera się bez błędu
+- [ ] Ze starym wpisem `"percent"` w localStorage edytor ładuje się normalnie i pokazuje kolumny kwot etapów

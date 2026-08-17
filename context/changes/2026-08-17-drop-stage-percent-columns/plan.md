@@ -372,4 +372,4 @@ Run **once**, after the final phase.
 
 #### Automated
 
-- [ ] 2.1 No living doc still names the deleted symbols as behaviour
+- [x] 2.1 No living doc still names the deleted symbols as behaviour
