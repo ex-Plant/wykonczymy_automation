@@ -1,8 +1,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import type { Payload } from 'payload'
-import { getDb, type DbExecutorT } from '@/lib/db/get-db'
+import type { DbExecutorT } from '@/lib/db/get-db'
 
 // Sections and items each had their own copy of the insert-shift and the ▲▼ swap, and the copies
 // drifted on transaction policy alone (EX-578) — one scope-parameterised home is what stops that.
@@ -17,17 +16,10 @@ const ORDER_SCOPES = {
 
 export type OrderScopeT = keyof typeof ORDER_SCOPES
 
-const displayOrderRefSchema = z.object({
-  id: z.number().int(),
-  // `.int()` is load-bearing, not cosmetic: a fractional value would round on the way into the
-  // integer column and then miss its own natural key when restore joins RETURNING back to input.
-  displayOrder: z.number().int().min(0),
-})
-export const swapDisplayOrderSchema = z.object({
-  first: displayOrderRefSchema,
-  second: displayOrderRefSchema,
-})
-
+// A row and the display_order it should take. No schema: every ref is derived server-side inside a
+// transaction (from `resolveOrderSwap` or the bake's own per-section numbering), so nothing here
+// ever crosses the wire to be validated.
+export type DisplayOrderRefT = { id: number; displayOrder: number }
 // The bake's payload: the ids in the order the sheet should store them. The numbers themselves are
 // the server's business — it groups the ids by their own section and assigns 0…n-1 within each, so
 // no caller can invent an index that collides inside a section.
@@ -38,8 +30,6 @@ export const renumberDisplayOrderSchema = z
   .array(z.number().int())
   .min(1)
   .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate id' })
-
-export type DisplayOrderRefT = z.infer<typeof displayOrderRefSchema>
 
 // Append slot for a new row = MAX(display_order)+1, not COUNT — a delete leaves a gap, so counting
 // would collide with a surviving row.
@@ -76,7 +66,7 @@ export async function shiftDisplayOrderFrom(
   `)
 }
 
-export const moveDirectionSchema = z.enum(['up', 'down'])
+const moveDirectionSchema = z.enum(['up', 'down'])
 export const insertDirectionSchema = z.enum(['above', 'below'])
 
 export type MoveDirectionT = z.infer<typeof moveDirectionSchema>
@@ -87,50 +77,45 @@ export const moveOrderSchema = z.object({
   dir: moveDirectionSchema,
 })
 
-// Locks every row of one owner in id order, which is what lets the neighbour/slot reads below be
-// plain SELECTs and still be atomic with the UPDATE that follows them: `shiftDisplayOrderFrom`,
-// `swapDisplayOrder` and `renumberDisplayOrder` all acquire in ascending id order too, so no pair of
-// them can form a cycle (EX-632). The lock is bounded by ONE owner — an investment's sections or a
-// section's items — never the whole sheet.
-async function lockOwnerRows(db: DbExecutorT, scope: OrderScopeT, ownerId: number): Promise<void> {
-  const { table, owner } = ORDER_SCOPES[scope]
-  await db.execute(sql`
-    SELECT id FROM ${table} WHERE ${owner} = ${ownerId} ORDER BY id FOR UPDATE
-  `)
-}
-
-async function ownerAndOrderOf(
+// Where a row sits, read UNDER the lock on its whole owner block — the position both resolvers below
+// start from, and what lets their neighbour/slot reads be plain SELECTs and still be atomic with the
+// UPDATE that follows: `shiftDisplayOrderFrom`, `swapDisplayOrder` and `renumberDisplayOrder` all
+// acquire in ascending id order too, so no pair of them can form a cycle (EX-632). The lock is
+// bounded by ONE owner — an investment's sections or a section's items — never the whole sheet.
+//
+// Lock and read are ONE statement on purpose: the owner is resolved inside the lock's own predicate,
+// so there is no window between learning which block to hold and reading a position out of it. A row
+// missing from the locked set (deleted, or reparented by something that doesn't exist today) simply
+// yields null — the resolvers fail closed rather than act on a block they don't hold.
+async function lockedPositionOf(
   db: DbExecutorT,
   scope: OrderScopeT,
   rowId: number,
 ): Promise<{ ownerId: number; displayOrder: number } | null> {
   const { table, owner } = ORDER_SCOPES[scope]
   const res = await db.execute(sql`
-    SELECT ${owner} AS owner_id, display_order FROM ${table} WHERE id = ${rowId}
+    SELECT id, ${owner} AS owner_id, display_order FROM ${table}
+    WHERE ${owner} = (SELECT ${owner} FROM ${table} WHERE id = ${rowId})
+    ORDER BY id FOR UPDATE
   `)
-  const row = res.rows[0]
+  const row = res.rows.find((r) => Number(r.id) === rowId)
   if (!row) return null
   return { ownerId: Number(row.owner_id), displayOrder: Number(row.display_order) }
 }
 
-// Resolves a ▲▼ gesture into the two rows that must exchange places. The client used to do this from
-// a mount-seeded copy of every row's display_order; here the neighbour is read from the same
-// transaction that writes the swap, so no cached integer can go stale between the two.
+// Resolves a ▲▼ gesture into the two rows that must exchange places, reading the neighbour from the
+// same transaction that writes the swap so no cached integer can go stale between the two.
 //
 // Returns null at the edge (top row moved up, bottom row moved down) — a no-op, not an error — and
 // null for an id the caller doesn't own a row for.
-export async function resolveOrderSwap(
+async function resolveOrderSwap(
   db: DbExecutorT,
   scope: OrderScopeT,
   rowId: number,
   dir: MoveDirectionT,
 ): Promise<{ anchor: DisplayOrderRefT; neighbor: DisplayOrderRefT } | null> {
   const { table, owner } = ORDER_SCOPES[scope]
-  const anchor = await ownerAndOrderOf(db, scope, rowId)
-  if (!anchor) return null
-  await lockOwnerRows(db, scope, anchor.ownerId)
-  // Re-read after the lock: a concurrent swap may have moved this row while we waited for it.
-  const fresh = await ownerAndOrderOf(db, scope, rowId)
+  const fresh = await lockedPositionOf(db, scope, rowId)
   if (!fresh) return null
   // Adjacency is by display_order rank, not by arithmetic — a delete leaves gaps, so "the next one
   // up" is the greatest order strictly below, not `display_order − 1`.
@@ -163,10 +148,7 @@ export async function resolveInsertSlot(
   anchorId: number,
   dir: InsertDirectionT,
 ): Promise<{ ownerId: number; at: number } | null> {
-  const anchor = await ownerAndOrderOf(db, scope, anchorId)
-  if (!anchor) return null
-  await lockOwnerRows(db, scope, anchor.ownerId)
-  const fresh = await ownerAndOrderOf(db, scope, anchorId)
+  const fresh = await lockedPositionOf(db, scope, anchorId)
   if (!fresh) return null
   return {
     ownerId: fresh.ownerId,
@@ -186,7 +168,7 @@ export async function resolveInsertSlot(
 // heap-order scan and this statement's id-order scan diverge as soon as MVCC moves an updated row to
 // the back of the heap, and one side aborts with 40P01 — silently, because ▲▼ fires this WITHOUT
 // awaiting and with no error handling, leaving the grid showing an order the DB never stored.
-export async function swapDisplayOrder(
+async function swapDisplayOrder(
   db: DbExecutorT,
   scope: OrderScopeT,
   first: DisplayOrderRefT,
@@ -206,6 +188,29 @@ export async function swapDisplayOrder(
   `)
 }
 
+// ▲▼ end to end: find the rank-adjacent row and exchange places with it. The crossing of the two
+// display_orders (each row takes the other's) lives here rather than at the call sites, so a caller
+// only names a row and a direction — sections and items had already drifted apart once by each
+// spelling the same exchange out for itself (EX-578).
+//
+// Returns false at the edge — no neighbour, nothing written. A no-op, not a failure.
+export async function moveRowOneStep(
+  db: DbExecutorT,
+  scope: OrderScopeT,
+  rowId: number,
+  dir: MoveDirectionT,
+): Promise<boolean> {
+  const pair = await resolveOrderSwap(db, scope, rowId, dir)
+  if (!pair) return false
+  await swapDisplayOrder(
+    db,
+    scope,
+    { id: pair.anchor.id, displayOrder: pair.neighbor.displayOrder },
+    { id: pair.neighbor.id, displayOrder: pair.anchor.displayOrder },
+  )
+  return true
+}
+
 // Rewrites a whole block's display_order in ONE statement — what „Zapisz kolejność" needs, where the
 // ▲▼ swap would take O(n²) neighbour exchanges to reach the same order.
 //
@@ -213,12 +218,11 @@ export async function swapDisplayOrder(
 // a display_order and the reloaded order goes non-deterministic. And it locks through the same
 // `ORDER BY id FOR UPDATE` subquery, so it cannot deadlock against shiftDisplayOrderFrom (EX-632).
 export async function renumberDisplayOrder(
-  payload: Payload,
+  db: DbExecutorT,
   scope: OrderScopeT,
   refs: DisplayOrderRefT[],
 ): Promise<void> {
   const { table } = ORDER_SCOPES[scope]
-  const db = await getDb(payload)
   const ids = sql.join(
     refs.map((r) => sql`${r.id}`),
     sql.raw(', '),

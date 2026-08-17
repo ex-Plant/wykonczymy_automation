@@ -8,9 +8,19 @@ import { DEFAULT_ITEM_DESCRIPTION, DEFAULT_UNIT } from '@/lib/kosztorys/constant
 export type NewRowT = { id: number; displayOrder: number }
 
 // The section is the single source of investment ownership: derived here rather than trusted from a
-// caller-passed id, so an item's investment and section FKs can never disagree. The append slot rides
-// along in the same statement because the append path needs both and they share the section lookup —
-// a caller that only wants the owner discards `nextDisplayOrder`.
+// caller-passed id, so an item's investment and section FKs can never disagree.
+export async function sectionInvestmentId(
+  db: DbExecutorT,
+  sectionId: number,
+): Promise<number | undefined> {
+  const res = await db.execute(sql`
+    SELECT investment_id FROM kosztorys_sections WHERE id = ${sectionId}
+  `)
+  const row = res.rows[0]
+  return row ? Number(row.investment_id) : undefined
+}
+
+// The append path needs the owner AND the slot to append at, and they share one section lookup.
 //
 // Append slot = MAX(display_order)+1, not COUNT: removeItemAction leaves gaps, so counting would
 // collide with a surviving row after any middle delete.
