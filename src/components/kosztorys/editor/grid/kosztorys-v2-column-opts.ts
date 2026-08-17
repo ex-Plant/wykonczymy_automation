@@ -76,6 +76,11 @@ export type BuildV2ColumnsOptsT = {
   // like the flag above — it never reaches the persisted visibility map, which is what the ghost-id
   // ban in stage-keys.ts actually forbids. Empty/absent → every etap of the view keeps its columns.
   engagedStageConditionIds?: Iterable<string>
+  // Columns the engaged problems are about (row-conditions.ts `columnsRevealedBy`). Overrides the
+  // column picker's stored tick while the gesture lasts, and nothing else — never the money axis, the
+  // layer or the preview allowlist. Transient like the two flags above; the tick itself is untouched,
+  // so disengaging restores exactly what the user had chosen.
+  revealedColumnIds?: ReadonlySet<string>
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

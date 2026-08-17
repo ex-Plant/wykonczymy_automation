@@ -334,6 +334,112 @@ but remove them from the toolbar's own destructure if nothing else there uses th
 
 ---
 
+## Phase 4: A problem reveals the column it is about
+
+### Overview
+
+A problem filter that narrows to „pozycje bez ceny j.m." while the „Cena j.m." column is unticked in
+the column picker shows you the right rows with the wrong thing missing. Each problem gains the set of
+columns it is about, engaging it forces them present regardless of the stored tick, and disengaging
+hands them back. Plus the two price rows say which **view** they belong to, since the price they judge
+only renders there.
+
+### Changes Required
+
+#### 1. Each condition names the columns it is about
+
+**File**: `src/lib/kosztorys/row-conditions.ts`
+
+**Intent**: The link problem → column belongs on the condition, next to its predicate and its label —
+not in a second lookup table in the grid, which is exactly how the label/header drift that
+`column-config.ts` exists to prevent gets reintroduced.
+
+**Contract**: `RowConditionT` gains `revealsColumns?: readonly string[]` and, on the two price rows,
+`plane: ToolPlaneT`. Assignments:
+
+- `no-client-price` → `['price']`
+- `overpriced-w-tools` / `overpriced-own-tools` → `['price', 'priceMode', 'priceCoeff']` — the price is
+  the symptom, „Źródło ceny wykonawcy" and „Mnożnik" are what compute it, so revealing the first
+  without the other two shows a number nobody can act on (owner, explicit).
+
+New export `columnsRevealedBy(engagedIds: Iterable<string>): ReadonlySet<string>` — the union over
+engaged conditions, unknown ids ignored, empty set when nothing is engaged.
+
+**Note**: „Cena j.m." and „cena wykonawcy" are one picker entry (`price`), relabelled per view, so all
+three price problems point at the same target. `priceMode` / `priceCoeff` are only assembled in a
+subcontractor view, so naming them from the client view is a harmless no-op — no view check needed.
+
+#### 2. The grid honours the reveal
+
+**File**: `src/components/kosztorys/editor/grid/kosztorys-v2-column-opts.ts` — add
+`revealedColumnIds?: ReadonlySet<string>`, transient like `engagedStageConditionIds`.
+
+**File**: `src/components/kosztorys/editor/grid/kosztorys-v2-columns.tsx`
+
+**Contract**: one clause in `keep()` (`:603`), beside the existing `UNPICKABLE_COLUMNS` escape:
+`(UNPICKABLE_COLUMNS.has(key) || opts.revealedColumnIds?.has(key) || !opts.isHidden?.(key))`. It
+overrides **the picker tick only** — never `axisAllows` / `layerAllows` / the przedmiar and preview
+gates, which answer different questions. (`price` is in `AXIS_EXEMPT_COLUMNS` anyway, so the axis
+question never arises for the main target.)
+
+The picker list is untouched: a revealed column keeps listing its **stored** tick, so unticking it
+while the problem is engaged is a no-op that takes effect on disengage. Deliberate — showing it ticked
+would be a lie about what is stored, and disabling it would need a third state nobody asked for.
+
+„Pozostało do rozliczenia" stays as it is: it is gated at **assembly**, not at the picker, because the
+column reads „—" down almost every row while its filter is off. That is a stronger rule than this one,
+not the same one.
+
+**File**: `src/components/kosztorys/editor/use-kosztorys-editor.ts` — derive `revealedColumnIds` from
+the engaged set (empty under `preview`) and pass it into `columnOpts`.
+
+#### 3. The price rows name their view
+
+**File**: `src/lib/kosztorys/row-conditions.ts` — label becomes
+`z nieprawidłową ceną wykonawcy w widoku ${PLANE_LABELS[plane].toLowerCase()}`. The old „— z
+narzędziami" read as a kind of price rather than as a place to look.
+
+**File**: `src/components/kosztorys/editor/toolbar/menus/filters-menu-model.ts` — `ProblemToggleT`
+carries `plane?: ToolPlaneT`. The **id**, not a rendered icon: the module stays React-free.
+
+**File**: `src/components/filters/filter-multi-select.tsx` — toggle items accept `icon?: ReactNode`,
+rendered after the checkmark.
+
+**File**: `src/components/kosztorys/editor/toolbar/menus/kosztorys-filters-menu.tsx` — maps
+`toggle.plane` through `planeIcon`, the same glyph the view switcher and the etap header use, so the
+row and the view it points at cannot drift apart.
+
+**Accepted consequence**: engaged from the „Inwestor" view, a price problem narrows to the offending
+pozycje but the revealed „Cena j.m." holds the client price — not the stawka that is wrong. The
+alternative was switching the view out from under the click, which is a gesture nobody asked for. The
+label is what closes the gap.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Extended spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/row-conditions.test.ts`
+  — `columnsRevealedBy` is empty with nothing engaged, unions two engaged problems, ignores an unknown
+  id, and returns all three price columns for a plane condition.
+- Extended spec passes: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/grid/stage-column-filter.test.ts`
+  — a revealed column survives a stored hide tick, is gone again once the problem is disengaged, and a
+  reveal never overrides the axis/layer/preview gates.
+- Extended spec passes: `pnpm exec vitest run src/__tests__/components/kosztorys/editor/toolbar/menus/filters-menu-model.test.ts`
+  — the price rows carry their plane and the „w widoku …" wording.
+
+#### Manual Verification
+
+- Untick „Cena j.m." in the column picker, engage „Pokaż pozycje bez ceny j.m." — the column comes
+  back; disengage — it goes away again, still unticked in the picker.
+- In a subcontractor view, a price problem brings back „Cena j.m.", „Źródło ceny wykonawcy" and
+  „Mnożnik" together.
+- Each price row shows its plane's glyph and reads „w widoku z narzędziami" / „bez narzędzi".
+- Engaged from „Inwestor", the price row narrows the rows and reveals „Cena j.m." without switching
+  the view.
+- Nothing about the reveal survives a reload with the problem off — the picker tick is what persists.
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -346,6 +452,8 @@ but remove them from the toolbar's own destructure if nothing else there uses th
   different problem).
 - Column narrowing: the three stage axes stay in step; preview is identity.
 - Menu model: conditional rows, trigger count, warning-on-data-not-gesture.
+- Column reveal: the union over engaged conditions; a reveal beats a stored hide tick but not the
+  axis/layer/preview gates; disengaging restores the stored tick.
 
 ### Integration Tests
 
@@ -373,7 +481,7 @@ engaged id that no longer resolves is already ignored by both registries.
 
 ## Whole-tree Gate
 
-Run once, after phase 3.
+Run once, after the last phase. It ran clean after phase 3; phase 4 re-runs it.
 
 - Type checking passes: `pnpm typecheck`
 - Linting passes: `pnpm lint`
@@ -413,7 +521,16 @@ Run once, after phase 3.
 - [x] 3.1 New spec passes: filters-menu-model.test.ts — 5ab77de4
 - [x] 3.2 Existing kosztorys specs pass — 5ab77de4
 
+### Phase 4: A problem reveals the column it is about
+
+#### Automated
+
+- [x] 4.1 Extended registry spec passes: row-conditions.test.ts (`columnsRevealedBy`)
+- [x] 4.2 Extended column spec passes: stage-column-filter.test.ts (reveal beats a stored hide tick)
+- [x] 4.3 Extended menu-model spec passes: filters-menu-model.test.ts (plane + „w widoku …")
+
 ### Whole-tree gate
 
 - [x] typecheck / lint / test / build — lint's 3 errors are pre-existing and outside this change
       (`test.js`, `hooks/use-latest-request.ts`)
+- [ ] re-run after phase 4

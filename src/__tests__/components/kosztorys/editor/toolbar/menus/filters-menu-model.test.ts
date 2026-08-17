@@ -34,6 +34,17 @@ describe('the „Problemy" group', () => {
     ])
   })
 
+  // The plane IS a view, and the stawka it judges only renders there — so the row has to send the
+  // reader somewhere, and it carries the plane id so the menu can mark it with that view's own glyph.
+  it('names the view a price problem belongs to, and carries its plane', () => {
+    const { problemToggles } = model({ 'overpriced-w-tools': 1, 'stage-no-plane': 2 })
+    expect(problemToggles[0].label).toBe(
+      'Pokaż pozycje z nieprawidłową ceną wykonawcy w widoku z narzędziami (1)',
+    )
+    expect(problemToggles[0].plane).toBe('w_tools')
+    expect(problemToggles[1].plane).toBeUndefined()
+  })
+
   it('ticks a row only while its condition is engaged', () => {
     const { problemToggles } = model({ 'no-client-price': 9 }, ['no-client-price'])
     expect(problemToggles[0].active).toBe(true)

@@ -54,7 +54,15 @@ type FilterMultiSelectPropsT = {
     // A node, not a string: a group whose rows are defects says so in its caption, and the icon +
     // colour belong to the caption rather than being repeated down every row.
     heading?: ReactNode
-    items: ReadonlyArray<{ id: string; label: string; active: boolean; onToggle: () => void }>
+    // `icon` marks what a row points at when the label alone can't — a row naming a view carries that
+    // view's own glyph, so the row and the switcher it sends you to cannot drift apart.
+    items: ReadonlyArray<{
+      id: string
+      label: string
+      active: boolean
+      onToggle: () => void
+      icon?: ReactNode
+    }>
   }>
   // Group captions for the two groups this component owns: the bulk actions and the option list. The
   // toggle groups above carry their own. Worth setting once a menu mixes rows that act on different
@@ -251,6 +259,7 @@ export function FilterMultiSelect({
                     {group.items.map((toggle) => (
                       <CommandItem key={toggle.id} value={toggle.label} onSelect={toggle.onToggle}>
                         <CheckIcon className={cn(!toggle.active && 'opacity-0')} />
+                        {toggle.icon}
                         {toggle.label}
                       </CommandItem>
                     ))}

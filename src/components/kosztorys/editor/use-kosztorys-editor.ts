@@ -59,6 +59,7 @@ import {
   MEASURE_DIVERGED_CONDITION_ID,
   ROW_CONDITIONS,
   applyRowConditions,
+  columnsRevealedBy,
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -361,6 +362,14 @@ export function useKosztorysEditor({
     [preview, engagedConditionIds],
   )
 
+  // The columns the engaged problems are about, forced past the column picker for as long as the
+  // gesture lasts. Empty under the preview: a client's document answers to its own allowlist, and an
+  // owner's leftover gesture must not widen it.
+  const revealedColumnIds = useMemo(
+    () => columnsRevealedBy(preview ? [] : engagedConditionIds),
+    [preview, engagedConditionIds],
+  )
+
   // Gates the „Pozostało do rozliczenia" column: it is the answer to the diagnostic beside it, so it
   // rides that button rather than the column picker. With the filter off the grid holds every pozycja
   // and the column would read „—" down nearly all of them — the button's own count is what says the
@@ -405,6 +414,7 @@ export function useKosztorysEditor({
     globalDiscountActive,
     divergenceFilterEngaged,
     engagedStageConditionIds,
+    revealedColumnIds,
     readOnly: preview,
     previewVisible: preview,
     previewHiddenColumns,

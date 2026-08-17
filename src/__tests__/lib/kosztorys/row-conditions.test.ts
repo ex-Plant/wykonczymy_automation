@@ -4,6 +4,7 @@ import {
   countMatching,
   applyRowConditions,
   clientConditionIds,
+  columnsRevealedBy,
   engagedConditionsOfKind,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -256,5 +257,34 @@ describe('clientConditionIds', () => {
   it('hands back the same instance every call, so the editor memos do not churn', () => {
     expect(clientConditionIds(true)).toBe(clientConditionIds(true))
     expect(clientConditionIds(false)).toBe(clientConditionIds(undefined))
+  })
+})
+
+// Narrowing to „pozycje bez ceny j.m." while „Cena j.m." is unticked in the column picker shows the
+// right rows with the missing thing still missing — the whole point of the reveal.
+describe('columnsRevealedBy', () => {
+  it('reveals nothing while nothing is engaged', () => {
+    expect([...columnsRevealedBy([])]).toEqual([])
+  })
+
+  // The price is the symptom; „Źródło ceny wykonawcy" and „Mnożnik" are the only way to change it, so
+  // revealing the first alone would show a number nobody can act on.
+  it('brings the two cells that compute a stawka along with the stawka', () => {
+    expect([...columnsRevealedBy(['overpriced-w-tools'])].sort()).toEqual([
+      'price',
+      'priceCoeff',
+      'priceMode',
+    ])
+  })
+
+  it('unions two engaged problems without repeating their shared column', () => {
+    const revealed = columnsRevealedBy(['no-client-price', 'overpriced-own-tools'])
+    expect([...revealed].sort()).toEqual(['price', 'priceCoeff', 'priceMode'])
+  })
+
+  // Same rule as the rest of the registry: an id persisted under a condition since removed must be
+  // inert, never a reveal of something nobody asked for.
+  it('ignores an unknown id and a condition that reveals nothing', () => {
+    expect([...columnsRevealedBy(['nie-ma-takiego', 'no-planned-qty'])]).toEqual([])
   })
 })

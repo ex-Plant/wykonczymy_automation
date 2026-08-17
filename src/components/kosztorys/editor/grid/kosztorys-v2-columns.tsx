@@ -606,8 +606,11 @@ function selectV2Columns(
       return PREVIEW_VISIBLE_COLUMNS.has(key) && !opts.previewHiddenColumns?.has(key)
     }
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
+    // The reveal sits beside UNPICKABLE_COLUMNS because it answers the same question — „may a stored
+    // tick hide this right now" — and pointedly NOT beside the two gates after it: a problem filter
+    // gets to overrule one owner's picker, never their money axis or layer.
     return (
-      (UNPICKABLE_COLUMNS.has(key) || !opts.isHidden?.(key)) &&
+      (UNPICKABLE_COLUMNS.has(key) || opts.revealedColumnIds?.has(key) || !opts.isHidden?.(key)) &&
       axisAllows(key, axis) &&
       layerAllows(key, layer)
     )
@@ -662,6 +665,10 @@ function selectV2ToggleItems(
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
     if (UNPICKABLE_COLUMNS.has(id)) continue
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(id)) continue
+    // `visible` is the STORED tick, never the reveal: a column a problem is currently forcing on
+    // screen still reports what the picker holds. Unticking it then is a no-op that takes effect on
+    // disengage — accepted, because showing it ticked would lie about what is saved and disabling it
+    // would need a third state nobody asked for.
     items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })
   }
   return items

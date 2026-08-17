@@ -85,3 +85,37 @@ describe('stage-column narrowing', () => {
     })
   })
 })
+
+// The other half of the same gesture: a problem forces the column it is about past the picker, so
+// „pokaż pozycje bez ceny j.m." can't land on a grid with „Cena j.m." switched off.
+describe('column reveal', () => {
+  const hiding = (...hidden: string[]) => ({ isHidden: (id: string) => hidden.includes(id) })
+
+  it('overrides a stored hide tick only while the problem is engaged', () => {
+    expect(columnIds(hiding('price'))).not.toContain('price')
+    expect(columnIds({ ...hiding('price'), revealedColumnIds: new Set(['price']) })).toContain(
+      'price',
+    )
+    // Disengaged, the tick is back in charge — nothing about the reveal was written down.
+    expect(columnIds({ ...hiding('price'), revealedColumnIds: new Set() })).not.toContain('price')
+  })
+
+  it('leaves an unrevealed hidden column hidden', () => {
+    const ids = columnIds({ ...hiding('price', 'unit'), revealedColumnIds: new Set(['price']) })
+    expect(ids).toContain('price')
+    expect(ids).not.toContain('unit')
+  })
+
+  // The reveal answers „may a stored tick hide this", not „which reading is on screen". Forcing a
+  // brutto column onto someone reading netto would answer a question they had already answered.
+  it('never overrides the money axis', () => {
+    const ids = columnIds({ moneyAxis: 'net', revealedColumnIds: new Set(['gross']) })
+    expect(ids).not.toContain('gross')
+  })
+
+  // A client's document answers to its own allowlist; an owner's gesture may not widen it.
+  it('never widens a client preview', () => {
+    const ids = columnIds({ previewVisible: true, revealedColumnIds: new Set(['priceMode']) })
+    expect(ids).not.toContain('priceMode')
+  })
+})

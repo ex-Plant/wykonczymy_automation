@@ -1,7 +1,7 @@
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
-import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 
 export type RowConditionCtxT = { stages: KosztorysStageT[] }
 
@@ -30,8 +30,24 @@ export type RowConditionT = {
   // wrong and someone has to fix it. 'worklist' = nothing is broken; the count is work still to do and
   // typing it away is the normal course of the job, not the clearing of a fault. Ignored by filters.
   tone?: 'defect' | 'worklist'
+  // Which price plane the condition judges, for the rows that judge one at all. The id rather than a
+  // glyph, so the menu can mark the row with the same icon the view switcher uses without this module
+  // — or the model above it — importing React.
+  plane?: ToolPlaneT
+  // Columns the condition is ABOUT. While it is engaged the grid shows them even if the column picker
+  // has them unticked, because narrowing to „pozycje bez ceny j.m." with „Cena j.m." hidden is the
+  // right rows with the missing thing still missing. It rides the gesture, so nothing here reaches the
+  // stored visibility map. Lives on the condition rather than in a lookup beside the grid: a second
+  // table is exactly how the header/picker drift that column-config.ts exists to prevent comes back.
+  revealsColumns?: readonly string[]
   matches: (row: KosztorysV2RowT, ctx: RowConditionCtxT) => boolean
 }
+
+// Both the symptom and the two cells that compute it: the price is what is wrong, „Źródło ceny
+// wykonawcy" and „Mnożnik" are the only way to make it right, so revealing the first alone shows a
+// number nobody can act on (owner, explicit). The latter two only assemble in a subcontractor view, so
+// naming them from the client view is a harmless no-op and needs no view check.
+const SUBCONTRACTOR_PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
 
 // Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
@@ -100,6 +116,9 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
+    // One picker entry serves all three views („Cena j.m." here, the stawka wykonawcy there), so every
+    // price problem points at the same target.
+    revealsColumns: ['price'],
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
     matches: (row) => !(row.clientPrice > 0),
   },
@@ -118,21 +137,29 @@ export const ROW_CONDITIONS: RowConditionT[] = [
   // every row, so a problem on the plane you are not looking at is still a problem — and in the client
   // view, where no subcontractor price renders at all, neither would ever surface.
   // „nieprawidłową", not „zawyżoną": the same guard also refuses a negative price.
+  //
+  // „w widoku …", not „— …": the plane IS a view here, and the reader has to switch to it to see the
+  // stawka being judged. Engaged from „Inwestor" the row still narrows correctly, but the price on
+  // screen is then the client's — the accepted cost of not switching the view out from under a click.
   {
     id: 'overpriced-w-tools',
-    label: `z nieprawidłową ceną wykonawcy — ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    label: `z nieprawidłową ceną wykonawcy w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
+    plane: 'w_tools',
+    revealsColumns: SUBCONTRACTOR_PRICE_COLUMNS,
     // The guard, not a restatement of the 80% rule: the filter and the red cell must never disagree.
     matches: (row) => checkSubcontractorPrice(row, 'w_tools') != null,
   },
   {
     id: 'overpriced-own-tools',
-    label: `z nieprawidłową ceną wykonawcy — ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    label: `z nieprawidłową ceną wykonawcy w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
+    plane: 'own_tools',
+    revealsColumns: SUBCONTRACTOR_PRICE_COLUMNS,
     matches: (row) => checkSubcontractorPrice(row, 'own_tools') != null,
   },
 ]
@@ -214,6 +241,23 @@ export function engagedConditionsOfKind(
   return ROW_CONDITIONS.filter(
     (condition) => condition.kind === kind && engagedIds.has(condition.id),
   )
+}
+
+/**
+ * The columns the engaged conditions are about, unioned. The grid shows these regardless of the column
+ * picker's stored tick for as long as the gesture lasts; disengaging hands them straight back to
+ * whatever the user had chosen, because nothing here is ever written down.
+ *
+ * It overrides the PICKER only. The money axis, the layer, the przedmiar gate and the client preview
+ * answer different questions, and a filter that forced a brutto column onto someone reading netto
+ * would be answering one of them on their behalf.
+ */
+export function columnsRevealedBy(engagedIds: Iterable<string>): ReadonlySet<string> {
+  const revealed = new Set<string>()
+  for (const id of engagedIds) {
+    for (const column of BY_ID.get(id)?.revealsColumns ?? []) revealed.add(column)
+  }
+  return revealed
 }
 
 /** The engaged conditions that REMOVE rows — what an empty grid has to explain. */

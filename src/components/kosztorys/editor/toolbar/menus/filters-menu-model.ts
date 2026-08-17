@@ -1,10 +1,15 @@
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 import { STAGE_CONDITIONS } from '@/lib/kosztorys/stage-conditions'
+import type { ToolPlaneT } from '@/lib/kosztorys/types'
 
 export type ProblemToggleT = {
   id: string
   label: string
   active: boolean
+  // Which price view the row points at, for the rows that point at one. The id, not a glyph — the
+  // caller renders it with the same `planeIcon` the view switcher and the etap header use, and this
+  // module stays React-free.
+  plane?: ToolPlaneT
 }
 
 type ArgsT = {
@@ -36,12 +41,18 @@ export function filtersMenuModel({
   hasProblems: boolean
 } {
   const rowProblems = ROW_CONDITIONS.filter((condition) => condition.kind === 'diagnostic').map(
-    (condition) => ({ id: condition.id, noun: 'pozycje', label: condition.label }),
+    (condition) => ({
+      id: condition.id,
+      noun: 'pozycje',
+      label: condition.label,
+      plane: condition.plane,
+    }),
   )
   const stageProblems = STAGE_CONDITIONS.map((condition) => ({
     id: condition.id,
     noun: 'etapy',
     label: condition.label,
+    plane: undefined,
   }))
 
   const problems = [...rowProblems, ...stageProblems].map((problem) => ({
@@ -60,6 +71,7 @@ export function filtersMenuModel({
         id: problem.id,
         label: `Pokaż ${problem.noun} ${problem.label} (${problem.count})`,
         active: engagedIds.has(problem.id),
+        plane: problem.plane,
       })),
     // Engaged problems count too: once the diagnostics moved off the toolbar, nothing outside this
     // menu says a problem filter is on, and a narrowed grid with an unremarkable trigger reads as a

@@ -2,6 +2,7 @@
 
 import { ListFilter, TriangleAlert } from 'lucide-react'
 import { FilterMultiSelect, FILTER_NONE } from '@/components/filters/filter-multi-select'
+import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { filtersMenuModel } from '@/components/kosztorys/editor/toolbar/menus/filters-menu-model'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
@@ -101,7 +102,7 @@ export function KosztorysFiltersMenu() {
       searchable
       title="Co widać: pozycje i sekcje"
       triggerClassName="w-fit min-w-0"
-      // „Pokaż pozycje z nieprawidłową ceną wykonawcy — z narzędziami (1)" is a sentence, not a label:
+      // „Pokaż pozycje z nieprawidłową ceną wykonawcy w widoku z narzędziami (1)" is a sentence, not a label:
       // at the default width every problem row wrapped to three or four lines.
       contentClassName="w-80"
       resetAction={{
@@ -127,6 +128,9 @@ export function KosztorysFiltersMenu() {
           ),
           items: problemToggles.map((toggle) => ({
             ...toggle,
+            // The glyph the price-view toggle and the etap header already use, so „w widoku
+            // z narzędziami" and the switcher it names are visibly the same thing.
+            icon: toggle.plane ? planeIcon(toggle.plane, 'size-3.5') : undefined,
             onToggle: () => toggleCondition(toggle.id),
           })),
         },
