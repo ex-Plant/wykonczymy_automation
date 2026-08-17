@@ -99,4 +99,10 @@ describe('COLUMN_MONEY_AXIS', () => {
   it('każda kolumna zwolniona z trybu jest mimo to otagowana', () => {
     for (const key of AXIS_EXEMPT_COLUMNS) expect(COLUMN_MONEY_AXIS).toHaveProperty(key)
   })
+
+  // A percentage is the same number on either side of the pair, so tagging it would drop the column
+  // from a mode it has no business being filtered by.
+  it('„% wykonania" nie ma osi netto/brutto', () => {
+    expect(COLUMN_MONEY_AXIS).not.toHaveProperty('donePercent')
+  })
 })

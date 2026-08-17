@@ -4,7 +4,6 @@ import {
   STAGES_COLUMN_GROUP,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   STAGE_VALUE_NET_COLUMN_GROUP,
-  STAGE_VALUE_PERCENT_COLUMN_GROUP,
 } from '@/lib/kosztorys/stage-keys'
 
 // Grid column labels — the single source for both the header and the column picker, so a rename
@@ -39,7 +38,6 @@ export const COLUMN_LABELS: Record<string, string> = {
   stages: 'Etapy — ilość',
   stageValueNet: 'Etapy — kwota netto',
   stageValueGross: 'Etapy — kwota brutto',
-  stageValuePercent: 'Etapy — % wykonania',
   donePercent: '% wykonania (względem przedmiaru)',
   note: 'Komentarz',
 }
@@ -75,9 +73,6 @@ export function columnLabelForView(id: string, view: PriceViewT): string {
  * assembly: this way there is a list you can read to answer "which columns are przedmiar-anchored",
  * and a przedmiar-derived column added later is opted in here rather than silently shipping the
  * nonsense comparison because someone missed the wrapping idiom.
- *
- * Per-etap „% wykonania" (STAGE_VALUE_PERCENT_COLUMN_GROUP) is deliberately absent — owner ruling
- * 2026-07-25: it stays in every view, and its tip names the przedmiar base instead (header-tips.ts).
  */
 export const PRZEDMIAR_ANCHORED_COLUMNS: ReadonlySet<string> = new Set([
   'plannedQty',
@@ -92,6 +87,7 @@ export const PRZEDMIAR_ANCHORED_COLUMNS: ReadonlySet<string> = new Set([
 // (`stageValueNet`, never `stageValueNet_7`) so the per-stage namespace collapses to one entry and no
 // stage id enters the map — the same ghost-id reasoning as the picker groups (constants.ts). A column
 // absent from this map is neutral: axisAllows fails open, so a forgotten tag shows a column, never hides one.
+// The per-row `donePercent` is untagged on purpose: a percentage is the same number netto or brutto.
 export const COLUMN_MONEY_AXIS: Record<string, 'net' | 'gross'> = {
   price: 'net',
   priceGross: 'gross',
@@ -107,17 +103,7 @@ export const COLUMN_MONEY_AXIS: Record<string, 'net' | 'gross'> = {
   [STAGE_VALUE_GROSS_COLUMN_GROUP]: 'gross',
 }
 
-// Which reading of stage progress a column is — money or percentage. Same toggleKey keying and
-// fail-open contract as COLUMN_MONEY_AXIS above. `stageValuePercent` is deliberately absent from
-// COLUMN_MONEY_AXIS: a percentage is the same number netto or brutto, so it survives every axis.
-// The per-row `donePercent` is untagged too — it is the headline figure, not a mode's alternative.
-export const COLUMN_PROGRESS_DISPLAY: Record<string, 'values' | 'percent'> = {
-  [STAGE_VALUE_NET_COLUMN_GROUP]: 'values',
-  [STAGE_VALUE_GROSS_COLUMN_GROUP]: 'values',
-  [STAGE_VALUE_PERCENT_COLUMN_GROUP]: 'percent',
-}
-
-// The grid's fourth reading axis: which layer of the table a column belongs to — the working columns
+// The grid's third reading axis: which layer of the table a column belongs to — the working columns
 // (the offer: Przedmiar, ceny, rabat, Wartość przedmiar, Netto/Brutto, etapy-ilość) or the progress
 // tracker (per-etap wartości, % wykonania, Pozostało). Only the progress side is tagged; every
 // untagged column that isn't in LAYER_NEUTRAL_COLUMNS counts as "work" — that split is what lets the
@@ -125,7 +111,6 @@ export const COLUMN_PROGRESS_DISPLAY: Record<string, 'values' | 'percent'> = {
 export const COLUMN_LAYER: Record<string, 'work' | 'progress'> = {
   [STAGE_VALUE_NET_COLUMN_GROUP]: 'progress',
   [STAGE_VALUE_GROSS_COLUMN_GROUP]: 'progress',
-  [STAGE_VALUE_PERCENT_COLUMN_GROUP]: 'progress',
   donePercent: 'progress',
   remaining: 'progress',
   remainingGross: 'progress',
@@ -200,7 +185,6 @@ export const CLIENT_VIEW_GROUPS: readonly ClientViewGroupT[] = [
       STAGES_COLUMN_GROUP,
       STAGE_VALUE_NET_COLUMN_GROUP,
       STAGE_VALUE_GROSS_COLUMN_GROUP,
-      STAGE_VALUE_PERCENT_COLUMN_GROUP,
       'donePercent',
     ],
   },
@@ -210,7 +194,7 @@ export const PREVIEW_VISIBLE_COLUMNS: ReadonlySet<string> = new Set(
   CLIENT_VIEW_GROUPS.flatMap((group) => group.keys),
 )
 
-// The stage axis triples the grid's stage block, and brutto per stage is the least-read of the three
+// The stage axis multiplies the grid's stage block, and brutto per stage is the least-read of them
 // — derivable from the netto beside it at a fixed rate. „Sekcja" repeats one name down every row of
 // its section, which the band above the section now says once; the column stays available for
 // copy/paste and sorting. Declared here rather than seeded into the stored map; useHiddenColumns

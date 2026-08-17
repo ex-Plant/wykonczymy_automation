@@ -20,9 +20,7 @@ function ids(layer: LayerT, isHidden?: (id: string) => boolean): string[] {
     .filter((id): id is string => id != null)
 }
 
-// The tracker columns visible under the DEFAULT progress-display ('values'): the per-etap
-// netto/brutto pair plus the row-level readouts. The percent columns belong to the progress axis and
-// are covered separately below, so the layer axis is tested without the two axes fighting.
+// The tracker columns: the per-etap netto/brutto pair plus the row-level readouts.
 const PROGRESS_IDS = [
   'stageValueNet_7',
   'stageValueNet_9',
@@ -88,26 +86,6 @@ describe('buildV2Columns — oś praca/postęp', () => {
     expect(visible).toContain('stageValueNet_7')
     expect(visible).toContain('stageValueNet_9')
     expect(ids('work')).not.toContain('stageValueNet_7')
-  })
-
-  // Percent kolumny należą do trackera (oś postępu je pokazuje), więc „praca" musi je zdjąć nawet w
-  // trybie procentowym — sprawdzamy złożenie z osią progress-display, gdzie percent jest widoczny.
-  it('„praca" chowa kolumny „% etapu" też w trybie procentowym', () => {
-    const percentVisible = buildV2Columns({
-      view: 'client',
-      stages: STAGES,
-      layer: 'progress',
-      progressDisplay: 'percent',
-    }).map((c) => c.id)
-    expect(percentVisible).toContain('stageValuePercent_7')
-
-    const percentUnderWork = buildV2Columns({
-      view: 'client',
-      stages: STAGES,
-      layer: 'work',
-      progressDisplay: 'percent',
-    }).map((c) => c.id)
-    expect(percentUnderWork).not.toContain('stageValuePercent_7')
   })
 })
 

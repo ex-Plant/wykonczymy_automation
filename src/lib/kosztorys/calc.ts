@@ -151,12 +151,10 @@ export function stageValueForView(
 }
 
 /**
- * How much of the OFFER this stage has delivered, as a fraction (0.75 = 75%) — `null` when there is
+ * How much of the OFFER this row has delivered, as a fraction (0.75 = 75%) — `null` when there is
  * no denominator to divide by, so render code never divides and never fakes a 0%.
  *
- * The denominator is the przedmiar, not the stage sum. Against the stage sum the stages' percentages
- * would always add up to 100% — they would say "what share of the work fell to this stage" instead
- * of "how much of the offer this stage delivered", and the row's own percentage would read 100%
+ * The denominator is the przedmiar, not the stage sum: against the stage sum the row would read 100%
  * everywhere, being a number divided by itself.
  *
  * View-independent because it is a ratio of QUANTITIES — nothing here reads a price, so no view and
@@ -165,11 +163,6 @@ export function stageValueForView(
  * Deliberately unclamped: stages routinely overshoot the przedmiar, and a >100% reading is the row
  * saying so. The grid pairs it with a red cell (hasStagesOverPlanned); clamping would erase both.
  */
-export function stageDoneFraction(row: ViewPricingT, qtyDoneInStage: number): number | null {
-  return doneFraction(row, qtyDoneInStage)
-}
-
-/** The row's overall completion, same shape and same reasoning as stageDoneFraction. */
 export function rowDoneFraction(row: ViewPricingT, totalQtyDone: number): number | null {
   return doneFraction(row, totalQtyDone)
 }

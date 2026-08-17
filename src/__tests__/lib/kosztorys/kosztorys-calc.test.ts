@@ -7,7 +7,6 @@ import {
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
-  stageDoneFraction,
   stageValueForView,
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
@@ -123,19 +122,14 @@ describe('netForQtyForView / stageValueForView — share of the stage sum', () =
   })
 })
 
-describe('stageDoneFraction / rowDoneFraction', () => {
-  // The denominator is the Przedmiar; the stage qty passed in is the numerator. They must differ, or
-  // the fraction would pass even if it divided by the wrong one.
+describe('rowDoneFraction', () => {
+  // The denominator is the Przedmiar; the executed qty passed in is the numerator. They must differ,
+  // or the fraction would pass even if it divided by the wrong one.
   const planned20 = { ...item, plannedQty: 20 }
 
   it('ułamek liczy się z Przedmiaru, nie z sumy etapów', () => {
     expect(rowDoneFraction(planned20, 19)).toBe(0.95) // 19 / 20
-    expect(stageDoneFraction(planned20, 5)).toBe(0.25) // 5 / 20
-  })
-
-  it('fraction = stage qty / planned qty', () => {
-    expect(stageDoneFraction(item, 3)).toBe(0.3) // 3 / 10
-    expect(rowDoneFraction(item, 7)).toBe(0.7)
+    expect(rowDoneFraction(item, 7)).toBe(0.7) // 7 / 10
   })
 
   // The percent is a ratio of QUANTITIES, so neither the price view nor the rabat can move it —
@@ -146,14 +140,12 @@ describe('stageDoneFraction / rowDoneFraction', () => {
       { ...item, discountType: 'percent' as const, discountValue: 10 },
       { ...item, discountType: 'amount' as const, discountValue: 40 },
     ]) {
-      expect(stageDoneFraction(discounted, 3)).toBe(0.3)
       expect(rowDoneFraction(discounted, 7)).toBe(0.7)
     }
   })
 
   it('no planned qty → null (no denominator), never zero and never Infinity', () => {
     const noPlan = { ...item, plannedQty: 0 }
-    expect(stageDoneFraction(noPlan, 3)).toBeNull()
     expect(rowDoneFraction(noPlan, 3)).toBeNull()
   })
 
@@ -163,14 +155,12 @@ describe('stageDoneFraction / rowDoneFraction', () => {
   it('a cleared planned qty is a missing denominator too, not a divisor', () => {
     for (const empty of [null, undefined]) {
       const cleared = { ...item, plannedQty: empty as unknown as number }
-      expect(stageDoneFraction(cleared, 3)).toBeNull()
-      expect(stageDoneFraction(cleared, 0)).toBeNull()
       expect(rowDoneFraction(cleared, 3)).toBeNull()
+      expect(rowDoneFraction(cleared, 0)).toBeNull()
     }
   })
 
   it('overshooting the planned qty passes through unclamped — it signals bad data', () => {
-    expect(stageDoneFraction(item, 12)).toBe(1.2)
     expect(rowDoneFraction(item, 15)).toBe(1.5)
   })
 })

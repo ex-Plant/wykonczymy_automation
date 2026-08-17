@@ -22,7 +22,6 @@ import {
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
-  stageDoneFraction,
   stageValueForView,
   toGross,
   viewPrice,
@@ -39,12 +38,10 @@ import {
   STAGE_QTY_PREFIX,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   STAGE_VALUE_NET_COLUMN_GROUP,
-  STAGE_VALUE_PERCENT_COLUMN_GROUP,
   STAGES_COLUMN_GROUP,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
-  stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
 import {
   baseRanksFromKeys,
@@ -60,7 +57,6 @@ import {
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
-import { PROGRESS_DISPLAY_DEFAULT, progressDisplayAllows } from '@/lib/kosztorys/progress-display'
 import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
@@ -485,25 +481,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }
   })
 
-  // The percent reading of the same stage block: one column per stage instead of the netto/brutto
-  // pair, since a percentage is the same figure on either side of the VAT.
-  const stageValuePercentCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
-    const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    return {
-      ...computedColumn(
-        stageValuePercentKey(st.id),
-        header,
-        (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
-        {},
-        formatPercent,
-      ),
-      ...planeUnconfirmed(st),
-    }
-  })
-
-  // The row's headline figure — available in both display modes, hence untagged: it answers "how far
-  // along is this position", which the money columns never say outright.
+  // The row's headline figure: it answers "how far along is this position", which the money columns
+  // never say outright.
   //
   // The przedmiar-anchored columns here and below compute at `'client'` outright, not at `view`:
   // PRZEDMIAR_ANCHORED_COLUMNS drops them outside the client view, so a `view`-reactive formula would
@@ -584,7 +563,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...komentarz,
     ...stageValueNetCols,
     ...stageValueGrossCols,
-    ...stageValuePercentCols,
     ...donePercent,
     ...remaining,
   ]
@@ -594,16 +572,13 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     : dataColumns
 }
 
-// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id. The three
+// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id. The
 // prefixes are mutually exclusive (none is a prefix of another), so the order of these tests carries
 // no meaning — the qty prefix last is not load-bearing.
 function toggleKey(columnId: string): string {
   if (columnId.startsWith(`${STAGE_VALUE_NET_COLUMN_GROUP}_`)) return STAGE_VALUE_NET_COLUMN_GROUP
   if (columnId.startsWith(`${STAGE_VALUE_GROSS_COLUMN_GROUP}_`)) {
     return STAGE_VALUE_GROSS_COLUMN_GROUP
-  }
-  if (columnId.startsWith(`${STAGE_VALUE_PERCENT_COLUMN_GROUP}_`)) {
-    return STAGE_VALUE_PERCENT_COLUMN_GROUP
   }
   return columnId.startsWith(STAGE_QTY_PREFIX) ? STAGES_COLUMN_GROUP : columnId
 }
@@ -631,11 +606,10 @@ function selectV2Columns(
 ): Column<KosztorysV2RowT>[] {
   assertDisclosurePair(opts)
   const axis = opts.moneyAxis ?? MONEY_AXIS_DEFAULT
-  const display = opts.progressDisplay ?? PROGRESS_DISPLAY_DEFAULT
   const layer = opts.layer ?? LAYER_DEFAULT
   // Two kinds of gate live in this filter, and only one of them may touch a client's document.
-  // PREFERENCE gates — the axis, the layer, the progress display, the picker tick — say what ONE
-  // owner wants to read right now, so a preview skips them entirely and takes the allowlist as its
+  // PREFERENCE gates — the axis, the layer, the picker tick — say what ONE owner wants to read
+  // right now, so a preview skips them entirely and takes the allowlist as its
   // whole answer (owner ruling 2026-07-28). The discount gate is not one of them: `globalDiscount`
   // is a property of the investment, identical for every reader, and while it is on, the per-item
   // rabat fields are bypassed rather than cleared (calc.ts `applyDiscount`) — so showing those
@@ -649,7 +623,6 @@ function selectV2Columns(
     return (
       !opts.isHidden?.(key) &&
       axisAllows(key, axis) &&
-      progressDisplayAllows(key, display) &&
       layerAllows(key, layer)
     )
   }

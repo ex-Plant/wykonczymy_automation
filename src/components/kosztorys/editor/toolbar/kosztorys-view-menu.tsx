@@ -29,8 +29,6 @@ import {
   LAYER_PAIR_CONFIG,
   MONEY_AXES,
   MONEY_PAIR_CONFIG,
-  PROGRESS_DISPLAYS,
-  PROGRESS_PAIR_CONFIG,
 } from '@/components/kosztorys/editor/toolbar/kosztorys-view-axis-options'
 import {
   derivePairChecks,
@@ -46,7 +44,7 @@ const keepOpen = (event: Event) => event.preventDefault()
 // column count toward ~50) filtering earns its place.
 const COLUMN_SEARCH_THRESHOLD = 8
 
-// One axis (Kwoty / Warstwy / Etapy) as a labelled checkbox pair over its four-state union: each box
+// One axis (Kwoty / Warstwy) as a labelled checkbox pair over its four-state union: each box
 // flips its side via togglePairAxis, both checked = show all, both unchecked = hide the axis.
 function AxisSection<T extends string>({
   label,
@@ -82,16 +80,14 @@ function AxisSection<T extends string>({
   )
 }
 
-// One popover replacing four toolbar toggles + the Kolumny picker. Kwoty / Warstwy / Etapy are
-// union filters skinned as checkbox pairs (both checked = show all, both unchecked = hide the axis).
+// One popover replacing the toolbar toggles + the Kolumny picker. Kwoty / Warstwy are union filters
+// skinned as checkbox pairs (both checked = show all, both unchecked = hide the axis).
 export function KosztorysViewMenu() {
   const [orderOpen, setOrderOpen] = useState(false)
   const {
     view,
     moneyAxis,
     setMoneyAxis,
-    progressDisplay,
-    setProgressDisplay,
     layer,
     setLayer,
     columnToggleItems,
@@ -138,15 +134,6 @@ export function KosztorysViewMenu() {
             value={layer}
             config={LAYER_PAIR_CONFIG}
             onChange={setLayer}
-          />
-
-          <DropdownMenuSeparator />
-          <AxisSection
-            label="Etapy"
-            options={PROGRESS_DISPLAYS}
-            value={progressDisplay}
-            config={PROGRESS_PAIR_CONFIG}
-            onChange={setProgressDisplay}
           />
 
           {columnToggleItems.length > 0 && (

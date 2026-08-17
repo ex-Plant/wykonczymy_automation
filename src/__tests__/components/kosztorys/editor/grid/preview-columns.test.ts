@@ -38,9 +38,9 @@ function previewIds(extra: Partial<BuildV2ColumnsOptsT> = {}): string[] {
 
 describe('preview columns', () => {
   // The core of EX-591: each of these is ONE person's reading preference — the owner's picker, his
-  // money axis, layer, progress display — and none may shape a client's document. Each could
-  // individually take something away: 'progress' stripped the whole offer, the axis stripped the
-  // stage amounts, the picker hides stageValueGross by default. Here none of them changes anything.
+  // money axis, his layer — and none may shape a client's document. Each could individually take
+  // something away: 'progress' stripped the whole offer, the axis stripped the stage amounts, the
+  // picker hides stageValueGross by default. Here none of them changes anything.
   it('is not narrowed by any owner reading preference', () => {
     const baseline = previewIds()
     const narrowed: Partial<BuildV2ColumnsOptsT>[] = [
@@ -48,9 +48,6 @@ describe('preview columns', () => {
       { moneyAxis: 'gross' },
       { layer: 'progress' },
       { layer: 'work' },
-      { progressDisplay: 'values' },
-      { progressDisplay: 'percent' },
-      { progressDisplay: 'none' },
       { isHidden: () => true },
     ]
     for (const opts of narrowed) expect(previewIds(opts)).toEqual(baseline)
@@ -81,7 +78,6 @@ describe('preview columns', () => {
       expect(visible).toContain(id)
     }
     expect(visible).toContain('stageValueNet_7')
-    expect(visible).toContain('stageValuePercent_7')
     // Netto and brutto side by side — the preview is not pinned to the investment's settlement mode.
     expect(visible).toContain('stageValueGross_7')
   })

@@ -19,7 +19,6 @@ import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
-import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
@@ -73,7 +72,6 @@ import {
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
-  stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
 import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
 import { roundToCents } from '@/lib/utils/round-to-cents'
@@ -242,7 +240,6 @@ export function useKosztorysEditor({
   // picker below — never reaches the client's grid in the first place.
   const effectiveMoneyAxis: MoneyAxisT =
     view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
-  const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
   const [guideX, setGuideX] = useState<number | null>(null)
   // Snapshot of the previous rows for diffing (keyed by item id) — the full dataset, not the view.
@@ -419,7 +416,6 @@ export function useKosztorysEditor({
     onSetSort: editorOnly(setSortField),
     isHidden,
     moneyAxis: effectiveMoneyAxis,
-    progressDisplay,
     layer,
     widths,
     columnRanks,
@@ -979,12 +975,7 @@ export function useKosztorysEditor({
     }
     setStages((s) => s.filter((st) => st.id !== stageId))
     const key = stageKey(stageId)
-    dropWidth(
-      key,
-      stageValueNetKey(stageId),
-      stageValueGrossKey(stageId),
-      stageValuePercentKey(stageId),
-    )
+    dropWidth(key, stageValueNetKey(stageId), stageValueGrossKey(stageId))
     patchRows(
       () => true,
       (r) => {
@@ -1438,8 +1429,6 @@ export function useKosztorysEditor({
     resetColumnOrder,
     moneyAxis: effectiveMoneyAxis,
     setMoneyAxis,
-    progressDisplay,
-    setProgressDisplay,
     layer,
     setLayer,
     viewRows,

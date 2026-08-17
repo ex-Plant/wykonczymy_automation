@@ -2,7 +2,6 @@ import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { ColumnRanksT } from '@/lib/kosztorys/column-order'
 import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
 import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -30,14 +29,11 @@ export type BuildV2ColumnsOptsT = {
   onSetSort?: (field: string, pick: SortPickT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by
   // DEFAULT_HIDDEN_COLUMNS, which the caller resolves; the two are indistinguishable here. Keyed by
-  // column id, except stage columns, which answer to one of the three stage groups (constants.ts).
+  // column id, except stage columns, which answer to one of the stage groups (constants.ts).
   isHidden?: (id: string) => boolean
   // Money axis: narrows the picker's answer further, never widens it. Omitted = 'both' = every
   // column the picker allows, which is what buildV2ToggleItems (axis-blind by design) assumes.
   moneyAxis?: MoneyAxisT
-  // Progress display: narrows the same way the money axis does, on the other axis — a stage's
-  // progress reads either as money or as a percentage, never as both at once.
-  progressDisplay?: ProgressDisplayT
   // Layer: narrows to the working columns or the progress tracker. Omitted = 'both' = no narrowing.
   layer?: LayerT
   // Resize: pinned column widths (id→px) + drag callbacks. When provided, every column
@@ -90,7 +86,7 @@ export type BuildV2ColumnsOptsT = {
   // enters edit mode, so a client-facing grid would look editable and swallow keystrokes.
   readOnly?: boolean
   // The client's document: exactly PREVIEW_VISIBLE_COLUMNS, and it OVERRIDES every option above that
-  // describes one owner's reading preferences (isHidden / moneyAxis / progressDisplay / layer), since
+  // describes one owner's reading preferences (isHidden / moneyAxis / layer), since
   // none of those may shape what a client is served. `globalDiscountActive` still applies — it is the
   // investment's own state, not a preference; selectV2Columns spells the split out.
   // Orthogonal to `readOnly`: read-only is about interaction, this is about disclosure. NOT orthogonal
