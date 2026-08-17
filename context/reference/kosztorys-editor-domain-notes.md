@@ -349,8 +349,12 @@ zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firm
   **„Rozjazd" nazywa się teraz „Pozostało do rozliczenia"** — odejmowanie jest to samo (Pomiar
   z natury z arkusza minus suma etapów w aplikacji), ale nazwa przestała udawać usterkę. To zwykła
   linia bilansowa: jedyny sposób, żeby ją wyzerować, to wpisać ilości w etapy, czyli zadeklarować
-  pracę jako wykonaną. Dlatego kolumna pokazuje się przy **każdym** zaimportowanym kosztorysie,
-  a nie tylko tam, gdzie coś się nie zgadza.
+  pracę jako wykonaną. Kolumna jest **odpowiedzią na przycisk „z pomiarem do rozpisania na etapy"**
+  — pojawia się razem z nim i znika, gdy się go odciśnie. Poza tym gestem siatka pokazuje wszystkie
+  pozycje, więc kolumna byłaby pasem „—"; o istnieniu rozjazdu mówi licznik na samym przycisku.
+  Z tego samego powodu nie ma jej w liście „Kolumny": widoczność należy do filtra, więc zapisany
+  ptaszek nie może go zawetować. Komórka „Pomiar (razem etapy)" nie ma już podpowiedzi
+  z rozbiciem arkusz/etapy — liczby czyta się w kolumnie, nie z dymka.
 
   **„Wartość netto" w podsumowaniu arkusza liczy się z Pomiaru, nie z Przedmiaru.** Wcześniej
   zestawialiśmy ją z wartością przedmiaru — czyli z liczbą, której arkusz nigdzie nie sumuje.
