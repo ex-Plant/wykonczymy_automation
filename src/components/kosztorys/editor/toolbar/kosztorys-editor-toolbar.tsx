@@ -1,8 +1,5 @@
 'use client'
 
-import { ListChecks, TriangleAlert } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { CountBadge } from '@/components/ui/count-badge'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
@@ -16,19 +13,9 @@ import {
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
 import { KosztorysFiltersMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-filters-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
 export function KosztorysEditorToolbar() {
-  const {
-    search,
-    setSearch,
-    view,
-    setView,
-    engagedConditionIds,
-    toggleCondition,
-    conditionCounts,
-  } = useKosztorysEditorContext()
-  const diagnostics = ROW_CONDITIONS.filter((condition) => condition.kind === 'diagnostic')
+  const { search, setSearch, view, setView } = useKosztorysEditorContext()
 
   return (
     <div className="border-border shrink-0 border-b">
@@ -55,32 +42,6 @@ export function KosztorysEditorToolbar() {
             />
           </div>
         </SimpleTooltip>
-        {/* Absent, not disabled, at zero: once nothing is in that state there is nothing to look at,
-            and a permanent dead control would suggest otherwise. The working filters live in the
-            „Filtry" menu instead; these sit in the toolbar because they are meant to be noticed
-            without opening anything. The tone decides whether the button reads as an alarm — a
-            worklist count falls to zero by doing the job, not by fixing a fault. */}
-        {diagnostics.map((condition) => {
-          const count = conditionCounts.get(condition.id) ?? 0
-          if (count === 0) return null
-          const engaged = engagedConditionIds.has(condition.id)
-          const Icon = condition.tone === 'defect' ? TriangleAlert : ListChecks
-
-          return (
-            <SimpleTooltip key={condition.id} content={`Pokaż tylko pozycje ${condition.label}`}>
-              <Button
-                variant={engaged ? 'secondary' : 'outline'}
-                size="sm"
-                aria-pressed={engaged}
-                onClick={() => toggleCondition(condition.id)}
-              >
-                <Icon className={condition.tone === 'defect' ? 'text-destructive' : undefined} />
-                {condition.label}
-                <CountBadge count={count} />
-              </Button>
-            </SimpleTooltip>
-          )
-        })}
         <div className="ml-auto flex items-center gap-1">
           <KosztorysActionsMenu />
           <KosztorysFiltersMenu />

@@ -9,12 +9,13 @@ type FilterTriggerButtonPropsT = {
   iconPosition?: 'left' | 'right'
   children?: React.ReactNode
   className?: string
+  iconClassName?: string
   title?: string
 }
 
 export const FilterTriggerButton = forwardRef<HTMLButtonElement, FilterTriggerButtonPropsT>(
   function FilterTriggerButton(
-    { active, icon: Icon, iconPosition = 'left', children, className, ...props },
+    { active, icon: Icon, iconPosition = 'left', children, className, iconClassName, ...props },
     ref,
   ) {
     return (
@@ -26,9 +27,9 @@ export const FilterTriggerButton = forwardRef<HTMLButtonElement, FilterTriggerBu
         className={cn('min-w-40', className)}
         {...props}
       >
-        {Icon && iconPosition === 'left' && <Icon />}
+        {Icon && iconPosition === 'left' && <Icon className={iconClassName} />}
         {children}
-        {Icon && iconPosition === 'right' && <Icon />}
+        {Icon && iconPosition === 'right' && <Icon className={iconClassName} />}
       </Button>
     )
   },

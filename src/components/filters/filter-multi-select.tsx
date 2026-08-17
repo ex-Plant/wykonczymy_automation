@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { CheckIcon, RotateCcw, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -43,14 +43,22 @@ type FilterMultiSelectPropsT = {
     isActive: (current: string[]) => boolean
     select: (current: string[]) => string[]
   }>
-  // An independent group of on/off rows above the options, owned entirely by the caller. Lets one
-  // menu answer one question („czego nie widzę") with two mechanisms behind it, instead of splitting
-  // the answer across two triggers the user has to check separately.
-  toggles?: ReadonlyArray<{ id: string; label: string; active: boolean; onToggle: () => void }>
-  // Group captions, one per group in render order: the toggles, the bulk actions, the option list.
-  // Worth setting once a menu mixes rows that act on different things — unlabelled, a separator only
-  // says "these are different", never what each group is about.
-  togglesHeading?: string
+  // Independent groups of on/off rows above the options, owned entirely by the caller, each under its
+  // own caption. Lets one menu answer one question („czego nie widzę") with several mechanisms behind
+  // it, instead of splitting the answer across triggers the user has to check separately. Several
+  // groups rather than one because a tick can mean opposite things: in the kosztorys menu „Prace" ticks
+  // what stays visible while „Problemy" ticks what the grid narrows TO, and one undivided list would
+  // read as a single grammar.
+  toggleGroups?: ReadonlyArray<{
+    id: string
+    // A node, not a string: a group whose rows are defects says so in its caption, and the icon +
+    // colour belong to the caption rather than being repeated down every row.
+    heading?: ReactNode
+    items: ReadonlyArray<{ id: string; label: string; active: boolean; onToggle: () => void }>
+  }>
+  // Group captions for the two groups this component owns: the bulk actions and the option list. The
+  // toggle groups above carry their own. Worth setting once a menu mixes rows that act on different
+  // things — unlabelled, a separator only says "these are different", never what each group is about.
   actionsHeading?: string
   optionsHeading?: string
   // A one-click way back to "wszystko widać". It sits above the list as a Button rather than a row
@@ -63,6 +71,11 @@ type FilterMultiSelectPropsT = {
   // whose menu hides things by more than the option list, where the ticked count would answer a
   // question nobody asked.
   triggerCount?: number
+  // Lets the caller colour the trigger icon — a menu whose icon swaps to a warning needs the warning
+  // colour with it, and the trigger's own variant is decided by `active`, not by severity.
+  iconClassName?: string
+  // Widens the dropdown past its default for a menu whose rows are whole sentences.
+  contentClassName?: string
 }
 
 // URL param encoding: [] = all selected (no filter), ['__none__'] = nothing selected
@@ -82,12 +95,13 @@ export function FilterMultiSelect({
   title,
   bulkToggleLabel,
   optionToggles,
-  toggles,
+  toggleGroups,
   resetAction,
-  togglesHeading,
   actionsHeading,
   optionsHeading,
   triggerCount,
+  iconClassName,
+  contentClassName,
 }: FilterMultiSelectPropsT) {
   const [open, setOpen] = useState(false)
   const [localSelected, setLocalSelected] = useState<string[] | null>(null)
@@ -188,6 +202,7 @@ export function FilterMultiSelect({
           // disagree for a caller whose menu hides more than the option list.
           active={triggerCount == null ? !allSelected : triggerCount > 0}
           icon={Icon}
+          iconClassName={iconClassName}
           iconPosition={iconPosition}
           className={triggerClassName}
           title={title}
@@ -206,7 +221,7 @@ export function FilterMultiSelect({
           )}
         </FilterTriggerButton>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
+      <PopoverContent className={cn('w-56 p-0', contentClassName)} align="start">
         {resetAction && (
           <div className="border-border border-b p-1">
             <Button
@@ -227,18 +242,22 @@ export function FilterMultiSelect({
         <Command>
           {searchable && <CommandInput placeholder="Szukaj..." />}
           <CommandList>
-            {toggles && toggles.length > 0 && (
-              <>
-                <CommandGroup heading={togglesHeading}>
-                  {toggles.map((toggle) => (
-                    <CommandItem key={toggle.id} value={toggle.label} onSelect={toggle.onToggle}>
-                      <CheckIcon className={cn(!toggle.active && 'opacity-0')} />
-                      {toggle.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <CommandSeparator />
-              </>
+            {toggleGroups?.map((group) =>
+              group.items.length === 0 ? null : (
+                // A Fragment, not a wrapper element: cmdk walks the DOM to decide what is a group and
+                // what is selectable, and an extra box between the list and its groups breaks that.
+                <Fragment key={group.id}>
+                  <CommandGroup heading={group.heading}>
+                    {group.items.map((toggle) => (
+                      <CommandItem key={toggle.id} value={toggle.label} onSelect={toggle.onToggle}>
+                        <CheckIcon className={cn(!toggle.active && 'opacity-0')} />
+                        {toggle.label}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  <CommandSeparator />
+                </Fragment>
+              ),
             )}
             <CommandGroup heading={actionsHeading}>
               <CommandItem onSelect={toggleAll}>

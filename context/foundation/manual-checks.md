@@ -1140,6 +1140,7 @@ OWNER. Do A/B wydajności drugie okno na `staging`.
 - [ ] Prowadnica przy zmianie szerokości kolumny nadal chodzi za kursorem
 - [ ] Podgląd dla klienta pokazuje ceny klienta bez kolumn współczynników, niezależnie od `localStorage`
 - [ ] A/B wydajności: kosztorys 1000+ pozycji na tej gałęzi i na `staging`, ciągłe pisanie w komórce — bez dodatkowych zacięć
+
 ## client-preview-settings — ustawienia podglądu klienta (EX-695)
 
 **In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2419, `build`; `lint` bez nowych
@@ -1179,3 +1180,27 @@ usuniętej osi — sprawdzamy, że nie wywraca edytora).
 - [ ] Podgląd klienta (`/podglad-klienta/<id>`) renderuje się bez kolumny procentowej, a okno ustawień podglądu nie oferuje już „Etapy — % wykonania"
 - [ ] Kosztorys z zapisanym ptaszkiem przy tej kolumnie otwiera się bez błędu
 - [ ] Ze starym wpisem `"percent"` w localStorage edytor ładuje się normalnie i pokazuje kolumny kwot etapów
+
+## filtry-problemy — grupa „Problemy" w menu Filtry
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2362, `build`; `lint` bez nowych
+błędów — trzy istniejące dotyczą nieśledzonego `test.js` i `use-latest-request.ts`).
+
+Setup: dev-owy edytor kosztorysu (`INV=6 node --env-file=.env --import tsx src/scripts/seed-kosztorys.ts`),
+zalogowany jako OWNER. Przed sprawdzaniem wyczyść jedną „Cena j.m.", zawyż jedną cenę wykonawcy
+powyżej 80% ceny klienta i dodaj etap bez wybranego sposobu rozliczenia.
+
+- [ ] Na pasku narzędzi nie ma już żadnego przycisku diagnostyki — „bez ceny j.m." i „z pomiarem do rozpisania na etapy" są wyłącznie w „Filtry"
+- [ ] Menu „Filtry" ma dwie grupy przełączników: „Prace" (ptaszek = widoczne) i „Problemy" (ptaszek = zostaw wyłącznie te)
+- [ ] W „Problemy" widać wyłącznie wiersze z licznikiem > 0; przy czystym kosztorysie całej grupy nie ma
+- [ ] Przycisk „Filtry" ma czerwony trójkąt, zanim cokolwiek kliknięto — świeci go każdy z sześciu problemów, „z pomiarem do rozpisania na etapy" włącznie
+- [ ] Na czystym kosztorysie przycisk ma zwykłą ikonę filtra
+- [ ] Dwa włączone problemy pozycji dają sumę trafień, nie część wspólną
+- [ ] „Pokaż etapy bez wybranego sposobu rozliczenia" zostawia wyłącznie kolumny tego etapu — ilość, wartość netto i brutto naraz; wyłączenie przywraca resztę
+- [ ] Zawężone kolumny etapu zachowują czerwień i zablokowaną komórkę ilości
+- [ ] Sumy wierszy i podsumowanie nie zmieniają się przy zawężeniu — to gest czytania, nie filtr danych
+- [ ] Licznik przy „Filtry" rośnie po włączeniu problemu i wraca po „Zresetuj filtry", które czyści też zawężenie etapów
+- [ ] Przełączanie „Klient" / „Z narzędziami" / „Bez narzędzi": wiersze ceny wykonawcy zostają na obu planach, a wiersze etapowe liczą tylko etapy danego widoku
+- [ ] „Pozostało do rozliczenia" dalej wchodzi wyłącznie razem ze swoim wierszem, teraz włączanym z menu
+- [ ] Podgląd klienta (`/podglad-klienta/<id>` i link tokenowy) nie pokazuje grupy „Problemy" ani trójkąta
+- [ ] Menu filtrów na przelewach i w kasach działa jak wcześniej

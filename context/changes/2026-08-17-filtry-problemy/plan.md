@@ -403,12 +403,17 @@ Run once, after phase 3.
 
 #### Automated
 
-- [x] 2.1 New spec passes: stage-column-filter.test.ts
-- [x] 2.2 Existing column specs still pass
+- [x] 2.1 New spec passes: stage-column-filter.test.ts — b3e15c3b
+- [x] 2.2 Existing column specs still pass — b3e15c3b
 
 ### Phase 3: The „Problemy" group, the triangle, and the toolbar removal
 
 #### Automated
 
-- [ ] 3.1 New spec passes: filters-menu-model.test.ts
-- [ ] 3.2 Existing kosztorys specs pass
+- [x] 3.1 New spec passes: filters-menu-model.test.ts
+- [x] 3.2 Existing kosztorys specs pass
+
+### Whole-tree gate
+
+- [x] typecheck / lint / test / build — lint's 3 errors are pre-existing and outside this change
+      (`test.js`, `hooks/use-latest-request.ts`)

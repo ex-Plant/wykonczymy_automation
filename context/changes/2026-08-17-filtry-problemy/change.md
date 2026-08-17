@@ -1,7 +1,7 @@
 ---
 change_id: filtry-problemy
 title: Grupa „Problemy" w menu Filtry — diagnostyki pozycji i etapów pod jednym trójkątem
-status: implementing
+status: implemented
 created: 2026-08-17
 updated: 2026-08-17
 archived_at: null
