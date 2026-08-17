@@ -36,7 +36,6 @@ import {
   applyKosztorysOrder,
   buildBlankRow,
   groupBySection,
-  insertDisplayOrder,
   neighborSectionId,
   revertField,
   sectionNeighbor,
@@ -65,7 +64,6 @@ import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-en
 import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
-import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import {
@@ -124,10 +122,6 @@ type ArgsT = {
   // a menu at all.
   workers?: WorkerRefT[]
 }
-
-// A reorder command records the two rows' ids and pre-swap orders. FieldChangeT/StageChangeT (the
-// per-field / per-stage before+after a grid batch records) live with the burst-coalescing reducer.
-type OrderRefT = { id: number; order: number }
 
 // Grace period after the last keystroke before a grid edit burst becomes one undo entry. Longer
 // than the debounced save (500ms) so a command is captured only once the writes for the burst have
@@ -622,23 +616,20 @@ export function useKosztorysEditor({
     router.refresh()
   }
 
-  // Reverse (or replay) a ▲▼ swap: exchange the two rows' array positions and re-issue the
-  // display_order swap. Self-inverse — undo restores each row's pre-swap order, redo re-applies the
-  // original. Matches handleReorderItem: no prevById touch (display_order isn't a diffed field) and
-  // no totals refresh (a reorder doesn't change any figure).
-  function runReorderReversal(a: OrderRefT, b: OrderRefT, dir: 'undo' | 'redo') {
+  // Reverse (or replay) a ▲▼ swap: exchange the two rows' array positions and re-issue the move in
+  // the given direction — the inverse of „w górę" is „w dół", so undo and redo are the same call with
+  // the direction flipped. Matches handleReorderItem: no prevById touch (display_order isn't a diffed
+  // field) and no totals refresh (a reorder doesn't change any figure).
+  function runReorderReversal(itemId: number, neighborId: number, dir: 'up' | 'down') {
     setRows((rs) => {
-      const ia = rs.findIndex((r) => r.id === a.id)
-      const ib = rs.findIndex((r) => r.id === b.id)
+      const ia = rs.findIndex((r) => r.id === itemId)
+      const ib = rs.findIndex((r) => r.id === neighborId)
       if (ia < 0 || ib < 0) return rs
       const next = [...rs]
       ;[next[ia], next[ib]] = [next[ib], next[ia]]
       return next
     })
-    void swapItemOrderAction(
-      { id: a.id, displayOrder: dir === 'undo' ? a.order : b.order },
-      { id: b.id, displayOrder: dir === 'undo' ? b.order : a.order },
-    )
+    void swapItemOrderAction(itemId, dir)
   }
 
   // The tree-level half of a blank row (VAT, global coefficients, the stage axis) is identical at
@@ -687,8 +678,7 @@ export function useKosztorysEditor({
   // fields come from any existing row of that section (as in handleAddItem).
   async function handleInsertItem(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
     if (sort) return
-    const at = insertDisplayOrder(anchorRow, dir)
-    const res = await insertItemAction(anchorRow.sectionId, at)
+    const res = await insertItemAction(anchorRow.id, dir)
     if (!res.success) return
     const sample =
       [...prevById.current.values()].find((r) => r.sectionId === anchorRow.sectionId) ?? anchorRow
@@ -699,12 +689,6 @@ export function useKosztorysEditor({
       sectionName: sample.sectionName,
       sectionColor: sample.sectionColor,
     })
-    // Mirror the section-tail display_order bump in prevById so a later insert/▲▼ diffs correctly.
-    for (const [id, r] of prevById.current) {
-      if (r.sectionId === row.sectionId && r.displayOrder >= at) {
-        prevById.current.set(id, { ...r, displayOrder: r.displayOrder + 1 })
-      }
-    }
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertItem(rs, anchorRow.id, row, dir))
   }
@@ -766,20 +750,16 @@ export function useKosztorysEditor({
     const neighbor = sectionNeighbor(rs, row.id, dir)
     if (!neighbor) return // edge of the block → no-op
     setRows(swapItemInSection(rs, row.id, dir))
-    // ▲▼ is a swap of two neighbors → we only exchange their display_order (2 updates, not a
+    // ▲▼ is a swap of two neighbors → the server exchanges just their display_order (2 updates, not a
     // renumbering of the whole section — that choked with 1000+ rows). The action fires from the
     // event handler, not from the setRows updater (there its cache revalidation would move the Router during render).
-    void swapItemOrderAction(
-      { id: row.id, displayOrder: neighbor.displayOrder },
-      { id: neighbor.id, displayOrder: row.displayOrder },
-    )
-    const a: OrderRefT = { id: row.id, order: row.displayOrder }
-    const b: OrderRefT = { id: neighbor.id, order: neighbor.displayOrder }
+    void swapItemOrderAction(row.id, dir)
+    const back = dir === 'up' ? 'down' : 'up'
     pushCommand({
       label: 'Zmiana kolejności',
-      undo: () => runReorderReversal(a, b, 'undo'),
-      redo: () => runReorderReversal(a, b, 'redo'),
-      touchedIds: [a.id, b.id],
+      undo: () => runReorderReversal(row.id, neighbor.id, back),
+      redo: () => runReorderReversal(row.id, neighbor.id, dir),
+      touchedIds: [row.id, neighbor.id],
     })
   }
 
@@ -790,12 +770,12 @@ export function useKosztorysEditor({
   //
   // One server call for the whole sheet, so a half-applied bake can't leave some sections renumbered
   // and others not.
-  // `revertTo` is the order to fall back to when the server refuses the whole write — one stale id
+  // `revertTo` is the sequence to fall back to when the server refuses the whole write — one stale id
   // (a row deleted in another tab) rejects the entire bake, and without the rollback the grid would
   // keep showing an order no reload can reproduce.
-  async function runKosztorysRenumber(refs: DisplayOrderRefT[], revertTo: DisplayOrderRefT[]) {
-    setRows((rs) => applyKosztorysOrder(rs, refs))
-    const res = await renumberKosztorysOrderAction(investmentId, refs)
+  async function runKosztorysRenumber(next: number[], revertTo: number[]) {
+    setRows((rs) => applyKosztorysOrder(rs, next))
+    const res = await renumberKosztorysOrderAction(investmentId, next)
     if (!res.success) {
       setRows((rs) => applyKosztorysOrder(rs, revertTo))
       toastMessage(res.error ?? 'Nie udało się zapisać kolejności', 'warning', 4000)
@@ -818,7 +798,7 @@ export function useKosztorysEditor({
       label: 'Zapisanie kolejności',
       undo: () => void runKosztorysRenumber(before, after),
       redo: () => void runKosztorysRenumber(after, before),
-      touchedIds: after.map((ref) => ref.id),
+      touchedIds: after,
     })
   }
 

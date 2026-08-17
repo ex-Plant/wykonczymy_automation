@@ -140,6 +140,12 @@ rows it names.
 `lessons.md`) whether any client code still reads it. If nothing does, remove it from the row type;
 if the bake or a sort still needs it, keep it and say why in a comment.
 
+**Resolved (phase 2): kept — it is not a row-type field.** `KosztorysV2RowT` inherits it from
+`KosztorysItemT`, the persisted item entity that `insert-kosztorys-tree` / `serialize-kosztorys` /
+`kosztorys-tree` all write and read; removing it there is a server change with nothing to do with the
+editor. The client side of it is gone regardless — no component computes on it any more (the comment
+on `applyInsertItem` records that), the grid renders array position, and the bake sends ids only.
+
 ---
 
 ## Phase 1: Sections — the server owns section order
@@ -539,19 +545,19 @@ Run **once**, after phase 6.
 
 #### Automated
 
-- [x] 1.1 Section neighbour + anchor-slot resolver specs pass
-- [x] 1.2 Existing display-order specs updated to new signatures and passing
-- [x] 1.3 Edge no-op spec (first section up, last section down) passes
+- [x] 1.1 Section neighbour + anchor-slot resolver specs pass — bf352988
+- [x] 1.2 Existing display-order specs updated to new signatures and passing — bf352988
+- [x] 1.3 Edge no-op spec (first section up, last section down) passes — bf352988
 
 ### Phase 2: Items — server-owned order and a sequence-based bake
 
 #### Automated
 
-- [ ] 2.1 Item-scope resolver specs pass
-- [ ] 2.2 Sequence bake assigns per-section 0…n-1 from a flat id list
-- [ ] 2.3 Stale id refuses the entire bake atomically
-- [ ] 2.4 planKosztorysRenumber specs updated to the sequence return
-- [ ] 2.5 No client-side displayOrder arithmetic remains
+- [x] 2.1 Item-scope resolver specs pass — b1a7cce1
+- [x] 2.2 Sequence bake assigns per-section 0…n-1 from a flat id list — b1a7cce1
+- [x] 2.3 Stale id refuses the entire bake atomically — b1a7cce1
+- [x] 2.4 planKosztorysRenumber specs updated to the sequence return — b1a7cce1
+- [x] 2.5 No client-side displayOrder arithmetic remains — b1a7cce1
 
 ### Phase 3: Extract the untested core logic
 

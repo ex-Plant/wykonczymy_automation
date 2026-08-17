@@ -28,18 +28,16 @@ export const swapDisplayOrderSchema = z.object({
   second: displayOrderRefSchema,
 })
 
-// A duplicate id makes the VALUES join ambiguous — two rows claim one target.
+// The bake's payload: the ids in the order the sheet should store them. The numbers themselves are
+// the server's business — it groups the ids by their own section and assigns 0…n-1 within each, so
+// no caller can invent an index that collides inside a section.
 //
-// A duplicate displayOrder is NOT rejected here: one renumber spans every section at once, and
-// display_order is only ever compared within a section, so each one legitimately starts again at 0
-// and the index repeats once per section. Uniqueness within a section is asserted by the planner that
-// builds the refs — it cannot be seen from the flat list.
+// A duplicate id is still refused: it makes the VALUES join ambiguous (two rows claim one target) and
+// it makes the sequence itself meaningless.
 export const renumberDisplayOrderSchema = z
-  .array(displayOrderRefSchema)
+  .array(z.number().int())
   .min(1)
-  .refine((refs) => new Set(refs.map((r) => r.id)).size === refs.length, {
-    message: 'Duplicate id',
-  })
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate id' })
 
 export type DisplayOrderRefT = z.infer<typeof displayOrderRefSchema>
 
