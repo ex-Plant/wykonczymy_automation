@@ -11,7 +11,7 @@ const TOKEN_BYTES = 24
 
 // All three share actions are owner-only, not just MANAGEMENT_ROLES: the token is a bearer credential,
 // so a role that cannot rotate or revoke a link must not be able to read one and hand it out either.
-const FORBIDDEN = 'Tylko właściciel może udostępniać kosztorys klientowi'
+const FORBIDDEN = 'Tylko właściciel może udostępniać kosztorys inwestorowi'
 
 async function findShare(payload: Payload, investmentId: number) {
   const shares = await payload.find({

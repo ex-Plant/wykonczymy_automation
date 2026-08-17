@@ -106,7 +106,7 @@ test('cross-surface parity: kosztorys robocizna equals the seed on both surfaces
 
 test('mismatch scream shows only in the client price view (EX-541)', async ({ page }) => {
   await gotoEditor(page, seed.mismatch)
-  // Default view is „Klient" — the scream compares client-view nets, so it renders here.
+  // Default view is „Inwestor" — the scream compares client-view nets, so it renders here.
   await expect(page.getByLabel(MISMATCH_LABEL).first()).toBeVisible()
 
   // Switching to the subcontractor „Z narzędziami" price reprices the displayed „Suma prac"/„Rabat"
@@ -117,6 +117,6 @@ test('mismatch scream shows only in the client price view (EX-541)', async ({ pa
   await expect(page.getByLabel(MISMATCH_LABEL)).toHaveCount(0)
 
   // Back in the client view it returns — the verdict itself never changed, only its visibility.
-  await page.getByRole('radio', { name: 'Klient' }).click()
+  await page.getByRole('radio', { name: 'Inwestor' }).click()
   await expect(page.getByLabel(MISMATCH_LABEL).first()).toBeVisible()
 })

@@ -9,7 +9,7 @@ import { findClientViewRow } from '@/lib/queries/kosztorys-client-view'
 import type { ActionResultT } from '@/types/action'
 
 // Same narrowing as the share actions, for the same reason: this decides what a client is served.
-const FORBIDDEN = 'Tylko właściciel może zmieniać ustawienia podglądu klienta'
+const FORBIDDEN = 'Tylko właściciel może zmieniać ustawienia podglądu inwestora'
 
 export async function saveClientViewSettingsAction(
   investmentId: number,

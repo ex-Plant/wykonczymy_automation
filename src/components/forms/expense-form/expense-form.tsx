@@ -269,7 +269,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           </div>
           {billsNetAmount(currentType) && (
             <FieldDescription>
-              Z kasy schodzi kwota brutto, a klienta obciąża kwota netto — dlatego przy każdej
+              Z kasy schodzi kwota brutto, a inwestora obciąża kwota netto — dlatego przy każdej
               pozycji podajesz obie.
             </FieldDescription>
           )}
@@ -282,7 +282,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
         {canBeSettled(currentType) && (
           <form.AppField name="settled">
             {(field) => (
-              <field.Checkbox label="Wliczone w robociznę (materiał w cenie robocizny — nie obciąża klienta)" />
+              <field.Checkbox label="Wliczone w robociznę (materiał w cenie robocizny — nie obciąża inwestora)" />
             )}
           </form.AppField>
         )}

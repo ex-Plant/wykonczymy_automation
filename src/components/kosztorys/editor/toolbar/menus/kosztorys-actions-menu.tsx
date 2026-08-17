@@ -216,13 +216,13 @@ export function KosztorysActionsMenu() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel>Klient</DropdownMenuLabel>
+          <DropdownMenuLabel>Inwestor</DropdownMenuLabel>
           <DropdownMenuItem asChild>
-            <Link href={`/podglad-klienta/${investmentId}`} target="_blank">
+            <Link href={`/podglad-inwestora/${investmentId}`} target="_blank">
               <Eye />
               <MenuItemBody
-                label="Widok klienta"
-                description="Zobacz kosztorys tak, jak widzi go klient."
+                label="Widok inwestora"
+                description="Zobacz kosztorys tak, jak widzi go inwestor."
               />
             </Link>
           </DropdownMenuItem>
@@ -230,14 +230,14 @@ export function KosztorysActionsMenu() {
             <Settings2 />
             <MenuItemBody
               label="Ustawienia podglądu…"
-              description="Zdecyduj, które kolumny i pozycje widzi klient."
+              description="Zdecyduj, które kolumny i pozycje widzi inwestor."
             />
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleOpenShare}>
             <Share2 />
             <MenuItemBody
               label="Udostępnij"
-              description="Wygeneruj link, którym klient otworzy kosztorys bez logowania."
+              description="Wygeneruj link, którym inwestor otworzy kosztorys bez logowania."
             />
           </DropdownMenuItem>
         </DropdownMenuContent>

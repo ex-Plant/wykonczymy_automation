@@ -41,7 +41,7 @@ function CheckboxRow({
  * rather than growing a second copy that could drift. It owns no persistence and no buttons — the
  * caller supplies both, which is what makes it reusable as a step.
  *
- * A tick means „klient to widzi", like every other picker in the editor; the stored shape is the
+ * A tick means „inwestor to widzi", like every other picker in the editor; the stored shape is the
  * inverse (hidden keys), so the client's document is defined by what was taken away from the
  * allowlist and a column added to the allowlist later shows up on its own.
  */

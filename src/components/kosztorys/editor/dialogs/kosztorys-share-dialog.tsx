@@ -111,10 +111,10 @@ export function KosztorysShareDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader
-            title="Udostępnij klientowi"
+            title="Udostępnij inwestorowi"
             description={
               step === 'settings'
-                ? 'Najpierw sprawdź, co klient zobaczy. Ceny podwykonawców nigdy się w kosztorysie nie pojawiają.'
+                ? 'Najpierw sprawdź, co inwestor zobaczy. Ceny podwykonawców nigdy się w kosztorysie nie pojawiają.'
                 : 'Kto ma link, ten widzi kosztorys — bez logowania. Ceny podwykonawców nigdy się w nim nie pojawiają.'
             }
           />
@@ -171,8 +171,8 @@ export function KosztorysShareDialog({
       </Dialog>
       <ConfirmDialog
         open={confirmingRevoke}
-        title="Wyłączyć link dla klienta?"
-        description="Klient natychmiast straci dostęp do kosztorysu. Tej akcji nie da się cofnąć — aby przywrócić dostęp, musisz wygenerować nowy link (stary adres już nie zadziała)."
+        title="Wyłączyć link dla inwestora?"
+        description="Inwestor natychmiast straci dostęp do kosztorysu. Tej akcji nie da się cofnąć — aby przywrócić dostęp, musisz wygenerować nowy link (stary adres już nie zadziała)."
         confirmLabel="Wyłącz link"
         pending={pending}
         pendingLabel="Wyłączanie…"

@@ -136,7 +136,7 @@ export async function getPreviewKosztorysByToken(
 }
 
 /**
- * The owner's preview of that same payload — so „Podgląd dla klienta" shows exactly what a share link
+ * The owner's preview of that same payload — so „Podgląd dla inwestora" shows exactly what a share link
  * would serve, without a link having to exist yet. The projection beneath is identical, which is what
  * makes the preview trustworthy as a check.
  */

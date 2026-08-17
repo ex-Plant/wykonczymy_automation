@@ -28,7 +28,7 @@ export function orderColumnKeys(keys: readonly string[], ranks: ColumnRanksT): s
 // drop happened in: a midpoint of a gap that holds no other rank can't collide, and a global extreme
 // can't either. Ties would fall through to the assemble index, which no scalar rank can then override.
 //
-// Only within that view, though — the rank map is global while the assemble index is per-view („Klient"
+// Only within that view, though — the rank map is global while the assemble index is per-view („Inwestor"
 // assembles one price column, the subcontractor views three), so a rank set in one view can tie an
 // unranked key in another. That resolves deterministically by assemble index; it is a weaker guarantee,
 // not a broken one. Same reason a midpoint can straddle a group the picker filters out (the rabat

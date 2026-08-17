@@ -12,7 +12,7 @@ const ICON_CLASS = 'size-4'
 // Three views over one dataset: they only change the active price and its derived values. The two
 // subcontractor views share their glyphs with the etap header via planeIcon (can't drift).
 export const VIEWS: { value: PriceViewT; label: string; icon: ReactNode }[] = [
-  { value: 'client', label: 'Klient', icon: <User className={ICON_CLASS} /> },
+  { value: 'client', label: 'Inwestor', icon: <User className={ICON_CLASS} /> },
   ...TOOL_PLANES.map((plane) => ({
     value: plane,
     label: PLANE_LABELS[plane],
@@ -22,7 +22,7 @@ export const VIEWS: { value: PriceViewT; label: string; icon: ReactNode }[] = [
 
 export const VIEW_LEGEND = [
   'Widoki cen:',
-  '👤 Klient — cena dla klienta.',
+  '👤 Inwestor — cena dla inwestora.',
   '🔧 Stawka wykonawcy z narzędziami.',
   '🚫 Stawka wykonawcy bez narzędzi.',
 ].join('\n')

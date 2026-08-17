@@ -54,7 +54,7 @@ export function reconciliationTooltip(
   format: (value: number) => string,
 ): string {
   return [
-    `Kosztorys (netto, ceny klienta): ${format(recon.expected)}`,
+    `Kosztorys (netto, ceny dla inwestora): ${format(recon.expected)}`,
     `${transactionSubject} (netto): ${format(recon.actual)}`,
     `Różnica: ${format(recon.actual - recon.expected)}`,
     'Zweryfikuj przed oznaczeniem inwestycji jako rozliczonej.',

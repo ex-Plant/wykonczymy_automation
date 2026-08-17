@@ -312,7 +312,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   ]
 
   // A subcontractor view is one crew's bill: only that plane's etapy get columns at all. Nothing
-  // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
+  // becomes uneditable — quantities are typed in the Inwestor view, which shows every etap.
   const viewStages = stagesForView(stages, view)
 
   // Which of those actually get columns, once the „Problemy" filters have their say. Narrowed HERE and

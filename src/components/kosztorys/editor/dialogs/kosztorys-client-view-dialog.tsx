@@ -69,10 +69,10 @@ export function KosztorysClientViewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader
-          title="Ustawienia podglądu klienta"
+          title="Ustawienia podglądu inwestora"
           // Scoped to the rozpiska on purpose: the setting reaches the grid's columns and pozycje,
           // while the podsumowanie below it keeps its own client projection.
-          description="Zaznacz, które kolumny i pozycje klient widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
+          description="Zaznacz, które kolumny i pozycje inwestor widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
         />
         {!draft ? (
           <p className="text-muted-foreground text-sm">Wczytywanie…</p>

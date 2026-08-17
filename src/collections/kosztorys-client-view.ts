@@ -10,8 +10,8 @@ import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 export const KosztorysClientView: CollectionConfig = {
   slug: 'kosztorys-client-view',
   labels: {
-    singular: { en: 'Kosztorys Client View', pl: 'Ustawienia podglądu klienta' },
-    plural: { en: 'Kosztorys Client Views', pl: 'Ustawienia podglądu klienta' },
+    singular: { en: 'Kosztorys Client View', pl: 'Ustawienia podglądu inwestora' },
+    plural: { en: 'Kosztorys Client Views', pl: 'Ustawienia podglądu inwestora' },
   },
   admin: {
     useAsTitle: 'investment',

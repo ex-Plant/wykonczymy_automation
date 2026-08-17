@@ -6,7 +6,7 @@ import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 // the fact, and a seeded copy would freeze each investment at whatever the default was that day.
 export const KosztorysClientViewDefaults: GlobalConfig = {
   slug: 'kosztorys-client-view-defaults',
-  label: { en: 'Client View Defaults', pl: 'Domyślne ustawienia podglądu klienta' },
+  label: { en: 'Client View Defaults', pl: 'Domyślne ustawienia podglądu inwestora' },
   admin: { group: { en: 'Kosztorys', pl: 'Kosztorys' } },
   access: {
     read: isAdminOrOwnerOrManager,

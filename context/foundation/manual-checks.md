@@ -121,8 +121,8 @@ Setup: run the app against the **5435 test DB** (see intro — seed a kosztorys 
 
 ### Phase 0: Subcontractor views are rabat-free
 
-- [ ] **Discount columns hidden in subcontractor views.** In **Klient** view the per-item rabat columns render; switch to **Z narzędziami** / **Bez narzędzi** → the rabat columns disappear entirely.
-- [ ] **Subcontractor prices are gross of rabat.** A row carrying a per-item rabat prices at full net in the two subcontractor views (no rabat subtracted); the same row in Klient view shows the discounted net. Section subtotals and „Suma" match (subcontractor total ignores rabat).
+- [ ] **Discount columns hidden in subcontractor views.** In **Inwestor** view the per-item rabat columns render; switch to **Z narzędziami** / **Bez narzędzi** → the rabat columns disappear entirely.
+- [ ] **Subcontractor prices are gross of rabat.** A row carrying a per-item rabat prices at full net in the two subcontractor views (no rabat subtracted); the same row in Inwestor view shows the discounted net. Section subtotals and „Suma" match (subcontractor total ignores rabat).
 - [ ] **Percent tool disabled while an amount „Rabat całościowy" is active.** Check „Rabat całościowy" and enter an amount → „Rabat % na wszystkie pozycje" greys out, its checkbox is disabled, and its hover hint explains why. Uncheck „Rabat całościowy" → the percent checkbox re-enables.
 
 ### Phase 1: Percent bulk-apply tool
@@ -138,7 +138,7 @@ Setup: run the app against the **5435 test DB** (see intro — seed a kosztorys 
 
 ## etap-tool-plane (EX-565) — per-etap rozliczenie plane + view-independent subcontractor settlement
 
-**In review** — automated checks green (tsc, full unit suite, lint, webpack build; Turbopack build is blocked only by the worktree's symlinked `node_modules`). Manual boxes below **not yet driven**. Gives each etap a `plane` (z/bez narzędzi, `null` = defaulted-to-z-narzędziami + warned) and rebuilds „Podsumowanie podwykonawców" as ONE view-independent settlement — each etap valued at its own plane's price, split + razem, one shared wypłaty pool. Klient view + client share must stay byte-for-byte unchanged.
+**In review** — automated checks green (tsc, full unit suite, lint, webpack build; Turbopack build is blocked only by the worktree's symlinked `node_modules`). Manual boxes below **not yet driven**. Gives each etap a `plane` (z/bez narzędzi, `null` = defaulted-to-z-narzędziami + warned) and rebuilds „Podsumowanie podwykonawców" as ONE view-independent settlement — each etap valued at its own plane's price, split + razem, one shared wypłaty pool. Inwestor view + client share must stay byte-for-byte unchanged.
 
 Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2_add_plane_to_kosztorys_stages` there first, then seed a kosztorys into it; the dump carries none). Log in as **OWNER/MANAGER** (stage controls need MANAGEMENT_ROLES; `ADMIN`/`PASS` env is stale — mint a temp OWNER via the Local API script). Open an investment's **Kosztorys** tab with ≥1 section and etapy across both planes.
 
@@ -166,7 +166,7 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 
 - [ ] In Bez narzędzi view, a z-narzędziami etap's value cells and footer read „nie dotyczy"; its qty cells still accept input
 - [ ] A null-plane etap shows values in Z narzędziami view (it defaults there) and „nie dotyczy" in Bez narzędzi
-- [ ] Klient view shows every etap's values as before
+- [ ] Inwestor view shows every etap's values as before
 - [ ] No cell-remount symptoms while typing in qty cells (characters don't drop)
 
 ### Phase 5: Subcontractor summary
@@ -186,7 +186,7 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 view (Z narzędziami / Bez narzędzi) now counts **only its own etapy**: „Pomiar z natury" is Σ of that
 plane's etapy, so every figure standing on it (wartość, podsumy sekcji, „Razem") is that crew's bill
 alone. Columns anchored in Przedmiar („Wartość netto/brutto przedmiar", „Pozostało", „% wykonania")
-render only in Klient, because Przedmiar has no plane. Klient is unchanged. Supersedes EX-565's
+render only in Inwestor, because Przedmiar has no plane. Inwestor is unchanged. Supersedes EX-565's
 Phase 4 boxes above.
 
 Setup: **5435 test DB** (see intro), OWNER login, a kosztorys with ≥2 etapy on different planes plus
@@ -197,22 +197,22 @@ one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
 - [ ] In Z narzędziami, „Pomiar razem" in the „Razem" row equals the hand-summed ilości of the z-narzędziami etapy only; same for Bez narzędzi
 - [ ] „Razem Netto" in Z + „Razem Netto" in Bez equals „Suma wykonanej pracy" (razem) from „Podsumowanie podwykonawców"
 - [ ] Each side's „Razem Netto" equals its own row in „Podsumowanie podwykonawców" (Z / Bez) to the grosz
-- [ ] Klient view's Pomiar and Razem are unchanged from before the change (compare against Przedmiar-based figures)
+- [ ] Inwestor view's Pomiar and Razem are unchanged from before the change (compare against Przedmiar-based figures)
 
 ### Phase 2: Grid pokazuje tylko rachunek jednej ekipy
 
 - [ ] In a subcontractor view the out-of-plane etapy have **no** columns at all (no „nie dotyczy" cells)
 - [ ] An etap with no rozliczenie picked appears in **neither** subcontractor view and shows no wrench icon in its header
-- [ ] In Klient, an etap with no rozliczenie has its ilość cells **locked** (typing does nothing) and unlocks the moment a rozliczenie is picked
-- [ ] In Klient, an etap with no rozliczenie has its **whole** block on a red tint — header plus every cell of its ilość / netto / brutto columns; picking a rozliczenie clears the tint instantly
+- [ ] In Inwestor, an etap with no rozliczenie has its ilość cells **locked** (typing does nothing) and unlocks the moment a rozliczenie is picked
+- [ ] In Inwestor, an etap with no rozliczenie has its **whole** block on a red tint — header plus every cell of its ilość / netto / brutto columns; picking a rozliczenie clears the tint instantly
 - [ ] The red tint does not bleed into the neighbouring etapy's columns and does not fight the „Razem" row's own styling
-- [ ] „Wartość netto/brutto przedmiar", „Pozostało", „% wykonania" are absent in both subcontractor views and present in Klient
-- [ ] „Razem Netto/Brutto" header reads „— po rabacie" in Klient and „— do zapłaty ekipie" in a subcontractor view
+- [ ] „Wartość netto/brutto przedmiar", „Pozostało", „% wykonania" are absent in both subcontractor views and present in Inwestor
+- [ ] „Razem Netto/Brutto" header reads „— po rabacie" in Inwestor and „— do zapłaty ekipie" in a subcontractor view
 - [ ] Typing into an etap ilość cell drops no characters (no cell remount after the column rebuild)
 
 ### Phase 3: Rabat i podpowiedzi
 
-- [ ] Klient Podsumowanie's robocizna figure is identical whether the panel was opened from Klient directly or after switching from a subcontractor view and back
+- [ ] Inwestor Podsumowanie's robocizna figure is identical whether the panel was opened from Inwestor directly or after switching from a subcontractor view and back
 - [ ] With a global rabat set, „Rabat" in the totals equals the rabat computed off the client-priced executed work (unchanged from before the change)
 - [ ] With an unassigned etap present, the badge in „Podsumowanie podwykonawców" says the sum is **lower** than the executed work (no „liczone jako z narzędziami")
 - [ ] The rabat tooltips („Rabat", „Rabat kwota netto", „Razem Netto", „Razem Brutto", „Etap — kwota netto") state that rabat never lowers the crews' prices
@@ -365,7 +365,7 @@ per-browser `localStorage` axis (`use-summary-axis`) and the client header's Net
 gone. All automated checks green (tsc 0, eslint 0 errors, unit 1707/1707).
 
 Setup: run against the **5435 test DB** (see intro) with a seeded kosztorys, log in as OWNER, and have
-a share token for the same investment so `/podglad-klienta/<id>` (or `/k/<token>`) can be opened in a
+a share token for the same investment so `/podglad-inwestora/<id>` (or `/k/<token>`) can be opened in a
 **second browser profile with its own `localStorage`** — that second profile is the whole point of
 several boxes below. Needs ≥1 `INVESTOR_DEPOSIT` tagged `GROSS` for the mismatch checks.
 The migration `20260726_3_add_settlement_mode_to_investments` must be applied to that DB.
@@ -571,22 +571,22 @@ Setup: DevTools → Network, wejście na `/inwestycje/<id>/kosztorys_v2`.
 
 ## EX-609 — subcontractor-price-guard
 
-Cena wykonawcy nie może przekroczyć 80% ceny klienta — zapis jest blokowany, komórka czerwienieje.
+Cena wykonawcy nie może przekroczyć 80% ceny dla inwestora — zapis jest blokowany, komórka czerwienieje.
 To jedyny werdykt: bursztynowy stopień „powyżej stawki z globalnego mnożnika" został wycofany
 (właściciel, 2026-07-28), bo zapalał się na zwykłych wierszach i kolor przestawał cokolwiek znaczyć.
-Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędziami" wyraźnie poniżej 0,8
+Setup: kosztorys z wypełnionymi cenami dla inwestora, globalny mnożnik „z narzędziami" wyraźnie poniżej 0,8
 (np. 0,65), oba widoki wykonawcy dostępne z przełącznika.
 
 **Zaakceptowane ryzyko (właściciel, 2026-07-27):** inwestycja, której globalny mnożnik JUŻ przekracza
 0,8, zapali każdy wiersz „auto" na czerwono — „niech się świeci", to nie jest usterka.
 
-- [ ] Widok „z narzędziami", tryb „kwota stała": kwota powyżej 80% ceny klienta nie zmienia wiersza — komórka czerwienieje i pokazuje tooltip z maksymalną kwotą; poprawna kwota kasuje czerwień
+- [ ] Widok „z narzędziami", tryb „kwota stała": kwota powyżej 80% ceny dla inwestora nie zmienia wiersza — komórka czerwienieje i pokazuje tooltip z maksymalną kwotą; poprawna kwota kasuje czerwień
 - [ ] Kolumna „Mnożnik" w trybie „własny mnożnik": mnożnik powyżej 0,8 zostaje odrzucony tak samo
 - [ ] Wyjście z komórki (blur) po odrzuconym wpisie gasi czerwień i tooltip, a wiersz wraca do poprzedniej wartości — i mówi o tym toast „Cena odrzucona — przywrócono …"
 - [ ] Niedokończony wpis („1e") cofa się po wyjściu BEZ toasta — ogłaszamy odrzucenie, nie każdą literówkę
 - [ ] Kwota stała powyżej stawki z globalnego mnożnika, ale poniżej 80%, wpisuje się normalnie i NIE zostawia po sobie żadnego koloru ani wykrzyknika — nigdzie w tabeli nie ma już żółtego
 - [ ] Sumy w „Podsumowaniu" wykonawcy są identyczne jak przed zmianą
-- [ ] Obniżenie „Cena j.m." klienta na tyle, by istniejąca kwota stała przekroczyła 80%, zapala „Cenę" na czerwono po powrocie do widoku wykonawcy — mimo że nikt nie tknął kolumn wykonawcy
+- [ ] Obniżenie „Cena j.m." dla inwestora na tyle, by istniejąca kwota stała przekroczyła 80%, zapala „Cenę" na czerwono po powrocie do widoku wykonawcy — mimo że nikt nie tknął kolumn wykonawcy
 - [ ] To samo zachowanie w widoku „bez narzędzi", mierzone względem JEGO mnożnika
 - [ ] „Ustawienia": mnożnik powyżej 0,8 cofa pole do poprzedniej wartości i nie zapisuje; 0,8 przechodzi; opis pod polami mówi o suficie
 - [ ] Wpisywanie w komórce „Cena" nie gubi znaków ANI kursora — długa kwota wchodzi w całości, także w momencie przekroczenia progu, kiedy komórka zmienia kolor
@@ -598,7 +598,7 @@ Setup: kosztorys z wypełnionymi cenami klienta, globalny mnożnik „z narzędz
 - [ ] Przełączenie „Źródła" nie rusza ceny: „kwota stała" 60 zł → „własny mnożnik" pokazuje 0,6 i tę samą cenę; z powrotem na „kwotę stałą" znów 60 zł
 - [ ] Rozpoczęcie edycji, przewinięcie tabeli tak, by wiersz zszedł z ekranu, i wyjście z komórki NIE zapisuje wpisu na innym wierszu
 - [ ] Tabulatorem (bez myszy) do odrzuconej komórki — tooltip z powodem pokazuje się sam, nie trzeba najeżdżać
-- [ ] Ujemna kwota („-50") jest odrzucana tak samo jak przekroczenie sufitu, również w wierszu bez ceny klienta
+- [ ] Ujemna kwota („-50") jest odrzucana tak samo jak przekroczenie sufitu, również w wierszu bez ceny dla inwestora
 - [ ] „Ustawienia": ujemny globalny mnożnik nie przechodzi (pole ma dolną granicę 0)
 - [ ] **Wydajność** — na kosztorysie ~1000 pozycji (`INV=7 node --env-file=.env --import tsx src/scripts/perf-seed-kosztorys.ts`) przewijanie i pisanie w widoku wykonawcy są tak samo płynne jak przed zmianą; każda komórka montuje własny tooltip, więc to jest miejsce, gdzie regres byłby widoczny
 
@@ -729,7 +729,7 @@ exists — read them as superseded by this section, not as owed.
 - [ ] Czerwony przypis „Pola oznaczone gwiazdką…" zniknął.
 - [ ] Na inwestycji, gdzie robocizna z kosztorysu rozjeżdża się z transakcjami LABOR_COST, ostrzeżenie o rozbieżności pokazuje się **także** przy aktywnym filtrze.
 - [ ] `SettlementPlaneWarning` pokazuje się na rozjeżdżającej się inwestycji przy aktywnym filtrze.
-- [ ] Podgląd klienta (`preview`) nadal wycisza oba werdykty.
+- [ ] Podgląd inwestora (`preview`) nadal wycisza oba werdykty.
 
 ### Phase 3: Delete the dead filter plumbing
 
@@ -839,7 +839,7 @@ with its materiały rate lives on the dev DB (5433), which is where the defect w
 ### Phase 3: Trzy nowe kolumny
 
 - [ ] Wiersz inwestycji 31: „Wydatki wliczone w robociznę" = 1 004 421,85
-- [ ] „Bilans brutto" inwestycji 31 = −28 764,67, czyli co do grosza „Pozostało do zapłaty" brutto z „Podsumowania" tej inwestycji (ze znakiem: minus = klient winien)
+- [ ] „Bilans brutto" inwestycji 31 = −28 764,67, czyli co do grosza „Pozostało do zapłaty" brutto z „Podsumowania" tej inwestycji (ze znakiem: minus = inwestor winien)
 - [ ] „Bilans brutto" w wierszu z rabatem liczy VAT od robocizny **po rabacie** — kwota rabatu nie jest oVAT-owana
 - [ ] Przełącznik kolumn wymienia wszystkie trzy nowe kolumny, a ukrycie/pokazanie przeżywa odświeżenie strony
 - [ ] Konto MANAGERA widzi „Korektę" i „Wydatki wliczone w robociznę", a nadal nie widzi „Marży" ani „Wypłat"
@@ -920,7 +920,7 @@ Setup: aplikacja na dev DB (5433), potrzebne dwa konta — MANAGER i ADMIN/OWNER
 - [ ] Wybierz „Wpłata od inwestora", ustaw inwestycję i netto/brutto, przełącz typ na „Zasilenie" i zapisz — żadna z tych dwóch wartości nie ląduje na wierszu
 - [ ] Edycja istniejącego wiersza `COMPANY_FUNDING` z tabeli transakcji nie oferuje pola inwestycji, a zapis niepowiązanego pola (opis) przechodzi bez błędu
 
-## EX-675 — strata obniża dług klienta jak rabat
+## EX-675 — strata obniża dług inwestora jak rabat
 
 **In review** — cała bramka zielona (tsc, eslint, `pnpm test` 2153, `pnpm test:parity` 3). Strata
 wchodzi teraz w bilans **nominalnie**: 1000 zł wchłonięte to dokładnie 1000 zł mniej długu na
@@ -936,11 +936,11 @@ ADMIN/OWNER). Inwestycja **62** jest wzorcem: 362,84 zł materiału pokryte stra
 - [ ] Podsumowanie v2 inwestycji ze stratą: krok **„Strata"** stoi pod „Wpłatami", na minusie, spięty przez oba tory kwotowe; „Pozostało do zapłaty" schodzi o tę samą kwotę na netto i na brutto
 - [ ] Inwestycja **bez** straty nie pokazuje kroku „Strata" w ogóle (żadnego 0 zł)
 - [ ] Tryb **mieszany**: „Strata" pojawia się raz, w torze netto (jak „Wpłaty netto"), a podpowiedź przy „Pozostało brutto" wymienia stratę wśród odjętych pozycji
-- [ ] Podgląd klienta (link do kosztorysu) pokazuje ten sam obniżony dług — bez ujawniania marży i wypłat
+- [ ] Podgląd inwestora (link do kosztorysu) pokazuje ten sam obniżony dług — bez ujawniania marży i wypłat
 - [ ] Okno „Nowa transakcja" → „Strata": pole inwestycji jest **wymagane**, zapis bez niej odrzucony
 - [ ] Do istniejącej straty da się dopiąć fakturę (edycja tylko tego pola) — zapis przechodzi, nie żąda ponownie inwestycji
 - [ ] Wyczyszczenie inwestycji na istniejącej stracie (panel Payloada) jest **odrzucone** — wcześniej przechodziło po cichu, zostawiając stratę bez właściciela
-- [ ] Krok „Strata" nie ma żadnej podpowiedzi pod kwotą — ani w panelu, ani w podglądzie klienta
+- [ ] Krok „Strata" nie ma żadnej podpowiedzi pod kwotą — ani w panelu, ani w podglądzie inwestora
 
 ## EX-686 — rozjazd „Pomiar z natury" vs suma etapów po imporcie
 
@@ -962,7 +962,7 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Sekcja zwinięta **chowa** swoje pozycje także przy włączonym warunku — zwinięcia zdejmuje wyłącznie szukanie (ptaszek i zwinięcie stoją w tym samym menu „Filtry")
 - [ ] Ponowny import tego samego arkusza nadpisuje odniesienie bieżącą treścią arkusza
 - [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
-- [ ] Podgląd dla klienta (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Pozostało do rozliczenia", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
+- [ ] Podgląd dla inwestora (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Pozostało do rozliczenia", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „z pomiarem do rozpisania na etapy" w ogóle
 
 ## EX-682 / EX-683 — sortowanie wewnątrz sekcji
@@ -980,7 +980,7 @@ Kosztorys inwestycji.
 - [ ] Pas nagłówka i pas podsumowania sekcji są widoczne przy aktywnym sortowaniu
 - [ ] Zwijanie sekcji działa przy aktywnym sortowaniu; wyszukiwarka nadal chwilowo rozwija sekcje
 - [ ] Sortowanie po kolumnie z „—" (np. „Pozostało") spycha te wiersze na koniec **swojej** sekcji
-- [ ] Podgląd dla klienta (link publiczny): grupa „Sekcja" w ogóle się nie pokazuje
+- [ ] Podgląd dla inwestora (link publiczny): grupa „Sekcja" w ogóle się nie pokazuje
 
 ## EX-688 — zakres sortowania kolumny + „Zapisz kolejność" w menu nagłówka
 
@@ -1001,7 +1001,7 @@ zakładka Kosztorys inwestycji.
 - [ ] W menu wiersza (grupa „Sekcja") nie ma już żadnego utrwalania kolejności
 - [ ] Sekcja zwinięta przy sortowaniu „w całym kosztorysie" nie chowa swoich pozycji (bez pasa nie ma czym rozwinąć)
 - [ ] Żadne sortowanie nie przeżywa odświeżenia strony — po reloadzie kosztorys wraca do kolejności zapisanej
-- [ ] Podgląd dla klienta (link publiczny): w menu nagłówka nie ma „Zapisz kolejność"
+- [ ] Podgląd dla inwestora (link publiczny): w menu nagłówka nie ma „Zapisz kolejność"
 
 ## sheet-live-compare — „Porównaj z arkuszem Google" (EX-417)
 
@@ -1054,7 +1054,7 @@ niewycenioną (cena j.m. = 0) — to przypadek, przez który powstała ta zmiana
 - [ ] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony
 - [ ] Pusta siatka nazywa filtr, który ją opróżnił, a przycisk wraca do pełnej listy
 - [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję
-- [ ] Podgląd dla klienta (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
+- [ ] Podgląd dla inwestora (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
 - [ ] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze
 
 ## sheet-column-mapping — ręczne wskazanie kolumny arkusza (EX-690)
@@ -1099,7 +1099,7 @@ Setup: dev-owy edytor kosztorysu z rozpisanymi etapami (żeby grupa etapów mia�
 zalogowany jako OWNER. Kolejność siedzi w `localStorage` pod `kosztorys-v2-col-order`.
 
 - [ ] Ręczny wpis `{"price": -1}` w localStorage pod `kosztorys-v2-col-order` przestawia „Cena j.m." na początek ruchomej części gridu po odświeżeniu
-- [ ] Link do widoku klienta z tym samym wpisem pokazuje kolejność arkuszową
+- [ ] Link do widoku inwestora z tym samym wpisem pokazuje kolejność arkuszową
 - [ ] Menu „Kolumny" → „Ustaw kolejność kolumn…" otwiera okno; menu zamyka się, okno zostaje i ma focus
 - [ ] Przeciągnięcie „Cena j.m." nad „Przedmiar" przestawia kolumny w gridzie po zamknięciu okna
 - [ ] Przeciągnięcie grupy etapów przenosi wszystkie kolumny etapów blokiem
@@ -1107,7 +1107,7 @@ zalogowany jako OWNER. Kolejność siedzi w `localStorage` pod `kosztorys-v2-col
 - [ ] Kolumna ukryta w pickerze jest na liście wyszarzona; po przeciągnięciu i pokazaniu jej w pickerze ląduje na ustawionym miejscu
 - [ ] Kolejność przeżywa `F5` i jest ta sama na innym kosztorysie
 - [ ] „Przywróć domyślną kolejność" wraca do układu arkusza
-- [ ] Widok klienta (link udostępniony) pokazuje kolejność arkuszową niezależnie od ustawień właściciela
+- [ ] Widok inwestora (link udostępniony) pokazuje kolejność arkuszową niezależnie od ustawień właściciela
 - [ ] Zmiana kolejności nie psuje przeciągania krawędzi kolumny (szerokości) ani sortowania z nagłówka
 
 ## kosztorys-editor-hook-split — rozbicie hooka edytora (EX-521)
@@ -1138,10 +1138,10 @@ OWNER. Do A/B wydajności drugie okno na `staging`.
 - [ ] Usunięcie etapu z zapisanym postępem nadal ostrzega/blokuje jak wcześniej
 - [ ] Szukanie, sortowanie, zwijanie sekcji i „Zresetuj filtry" działają jak wcześniej
 - [ ] Prowadnica przy zmianie szerokości kolumny nadal chodzi za kursorem
-- [ ] Podgląd dla klienta pokazuje ceny klienta bez kolumn współczynników, niezależnie od `localStorage`
+- [ ] Podgląd dla inwestora pokazuje ceny dla inwestora bez kolumn współczynników, niezależnie od `localStorage`
 - [ ] A/B wydajności: kosztorys 1000+ pozycji na tej gałęzi i na `staging`, ciągłe pisanie w komórce — bez dodatkowych zacięć
 
-## client-preview-settings — ustawienia podglądu klienta (EX-695)
+## client-preview-settings — ustawienia podglądu inwestora (EX-695)
 
 **In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2419, `build`; `lint` bez nowych
 błędów — dwa istniejące dotyczą nieśledzonego `test.js`). Stan po `d50c164a`.
@@ -1150,16 +1150,16 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z wypełnionym kosztorys
 jedna pozycja bez przedmiaru i bez etapów. Migracja `20260815_0_add_kosztorys_client_view` nałożona
 lokalnie.
 
-- [ ] „Opcje" → sekcja „Klient" ma trzy pozycje: „Widok klienta", „Ustawienia podglądu…", „Udostępnij"
+- [ ] „Opcje" → sekcja „Inwestor" ma trzy pozycje: „Widok inwestora", „Ustawienia podglądu…", „Udostępnij"
 - [ ] Odznaczenie dwóch kolumn i „Zapisz" — po odświeżeniu linku `/k/<token>` obu nie ma, a kwoty w podsumowaniu się nie zmieniły
-- [ ] Zamknięcie okna bez zapisu nie zmienia nic w linku klienta
+- [ ] Zamknięcie okna bez zapisu nie zmienia nic w linku inwestora
 - [ ] Odznaczenie „Ukryj pozycje bez przedmiaru i bez wykonanej pracy" przywraca puste pozycje w linku, kwoty dalej bez zmian
 - [ ] Licznik przy tym polu zgadza się z liczbą takich pozycji w całym kosztorysie (nie tylko widocznych)
 - [ ] „Zapisz jako domyślne" — inna inwestycja, która nie ma własnych ustawień, startuje z tego zestawu
 - [ ] „Udostępnij" otwiera się na kroku ustawień za każdym razem, także gdy link już istnieje; „Dalej" zapisuje i pokazuje ekran linku
 - [ ] Ekran linku działa jak wcześniej: wygeneruj / kopiuj / wygeneruj nowy / wyłącz link, z potwierdzeniem wyłączenia
-- [ ] „Widok klienta" i link tokenowy wyglądają identycznie — żadnej dodatkowej belki ani panelu na `/podglad-klienta/<id>`
-- [ ] MANAGER: zapis ustawień odmawia komunikatem „Tylko właściciel może zmieniać ustawienia podglądu klienta"
+- [ ] „Widok inwestora" i link tokenowy wyglądają identycznie — żadnej dodatkowej belki ani panelu na `/podglad-inwestora/<id>`
+- [ ] MANAGER: zapis ustawień odmawia komunikatem „Tylko właściciel może zmieniać ustawienia podglądu inwestora"
 
 ## drop-stage-percent-columns — usunięcie kolumn „% wykonania" per etap (EX-703)
 
@@ -1173,11 +1173,11 @@ usuniętej osi — sprawdzamy, że nie wywraca edytora).
 
 - [ ] Menu „Kolumny" ma tylko sekcje „Kwoty", „Warstwy" i „Kolumny" — żadnej sekcji „Etapy"
 - [ ] Przełączanie „Kwoty" (Netto/Brutto) i „Warstwy" (Praca/Postęp) działa jak wcześniej
-- [ ] Nigdzie nie ma kolumny „Etap N %" — ani w widoku klienta, ani „Z narzędziami", ani „Bez narzędzi"
+- [ ] Nigdzie nie ma kolumny „Etap N %" — ani w widoku inwestora, ani „Z narzędziami", ani „Bez narzędzi"
 - [ ] „Etapy — kwota netto" dalej widoczne domyślnie, „…brutto" dalej domyślnie ukryte; oba dają się przełączać w pickerze, a „Praca" dalej je chowa
 - [ ] Kolumna „% wykonania (względem przedmiaru)" dalej się renderuje i dalej świeci na czerwono, gdy suma etapów przekracza Przedmiar
 - [ ] Usunięcie etapu czyści jego kolumny bez zostawiania pustej szerokości
-- [ ] Podgląd klienta (`/podglad-klienta/<id>`) renderuje się bez kolumny procentowej, a okno ustawień podglądu nie oferuje już „Etapy — % wykonania"
+- [ ] Podgląd inwestora (`/podglad-inwestora/<id>`) renderuje się bez kolumny procentowej, a okno ustawień podglądu nie oferuje już „Etapy — % wykonania"
 - [ ] Kosztorys z zapisanym ptaszkiem przy tej kolumnie otwiera się bez błędu
 - [ ] Ze starym wpisem `"percent"` w localStorage edytor ładuje się normalnie i pokazuje kolumny kwot etapów
 
@@ -1188,7 +1188,7 @@ błędów — trzy istniejące dotyczą nieśledzonego `test.js` i `use-latest-r
 
 Setup: dev-owy edytor kosztorysu (`INV=6 node --env-file=.env --import tsx src/scripts/seed-kosztorys.ts`),
 zalogowany jako OWNER. Przed sprawdzaniem wyczyść jedną „Cena j.m.", zawyż jedną cenę wykonawcy
-powyżej 80% ceny klienta i dodaj etap bez wybranego sposobu rozliczenia.
+powyżej 80% ceny dla inwestora i dodaj etap bez wybranego sposobu rozliczenia.
 
 - [ ] Na pasku narzędzi nie ma już żadnego przycisku diagnostyki — „bez ceny j.m." i „z pomiarem do rozpisania na etapy" są wyłącznie w „Filtry"
 - [ ] Menu „Filtry" ma dwie grupy przełączników: „Prace" (ptaszek = widoczne) i „Problemy" (ptaszek = zostaw wyłącznie te)
@@ -1200,7 +1200,25 @@ powyżej 80% ceny klienta i dodaj etap bez wybranego sposobu rozliczenia.
 - [ ] Zawężone kolumny etapu zachowują czerwień i zablokowaną komórkę ilości
 - [ ] Sumy wierszy i podsumowanie nie zmieniają się przy zawężeniu — to gest czytania, nie filtr danych
 - [ ] Licznik przy „Filtry" rośnie po włączeniu problemu i wraca po „Zresetuj filtry", które czyści też zawężenie etapów
-- [ ] Przełączanie „Klient" / „Z narzędziami" / „Bez narzędzi": wiersze ceny wykonawcy zostają na obu planach, a wiersze etapowe liczą tylko etapy danego widoku
+- [ ] Przełączanie „Inwestor" / „Z narzędziami" / „Bez narzędzi": wiersze ceny wykonawcy zostają na obu planach, a wiersze etapowe liczą tylko etapy danego widoku
 - [ ] „Pozostało do rozliczenia" dalej wchodzi wyłącznie razem ze swoim wierszem, teraz włączanym z menu
-- [ ] Podgląd klienta (`/podglad-klienta/<id>` i link tokenowy) nie pokazuje grupy „Problemy" ani trójkąta
+- [ ] Podgląd inwestora (`/podglad-inwestora/<id>` i link tokenowy) nie pokazuje grupy „Problemy" ani trójkąta
 - [ ] Menu filtrów na przelewach i w kasach działa jak wcześniej
+
+## nomenklatura inwestora + potwierdzenie zmiany trybu
+
+**In review** — `typecheck` i `lint` na dotkniętych plikach zielone; punkty poniżej niesprawdzone
+ręcznie. Zmienia nazewnictwo UI („klient" → „inwestor", `/podglad-klienta` → `/podglad-inwestora`)
+i stawia jedno potwierdzenie przed obiema zmianami trybu rozliczenia.
+
+Setup: dev-owy edytor kosztorysu jako OWNER, panel „Podsumowanie" otwarty.
+
+- [ ] „Opcje" → sekcja nazywa się „Inwestor" i ma pozycje „Widok inwestora", „Ustawienia podglądu…", „Udostępnij"
+- [ ] „Widok inwestora" otwiera `/podglad-inwestora/<id>` i renderuje się tak jak przedtem
+- [ ] Oś cen w siatce ma pozycję „Inwestor"; legenda i tipy nagłówków nie mówią już o kliencie
+- [ ] Zmiana „Rozliczenie robocizny" w „Podsumowaniu" pyta „Uwaga — zmiana widoczna dla inwestora"; „Anuluj" zostawia stary tryb, „Potwierdź" zapisuje
+- [ ] To samo potwierdzenie wyskakuje z „Opcji rozliczenia" — z obu miejsc jedno okno
+- [ ] Zmiana „Sposób rozliczenia materiałów" (brutto ↔ netto) pyta tak samo, z obu miejsc
+- [ ] Poprawienie „Stawki VAT na materiały" wewnątrz trybu netto zapisuje się BEZ pytania
+- [ ] Ctrl+Z po potwierdzonej zmianie trybu cofa ją bez pytania
+- [ ] Podgląd inwestora nie pokazuje żadnego z tych przełączników ani okna

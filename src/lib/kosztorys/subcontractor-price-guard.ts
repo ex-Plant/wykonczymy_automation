@@ -52,7 +52,7 @@ export function checkSubcontractorPrice(row: ViewPricingT, view: ToolPlaneT): st
 
   const ceiling = maxSubcontractorPrice(row)
   if (price > ceiling + TOLERANCE) {
-    return `Cena wykonawcy nie może przekroczyć ${MAX_CLIENT_SHARE * 100}% ceny klienta (maks. ${formatNet(ceiling)}).`
+    return `Cena wykonawcy nie może przekroczyć ${MAX_CLIENT_SHARE * 100}% ceny dla inwestora (maks. ${formatNet(ceiling)}).`
   }
 
   return null
