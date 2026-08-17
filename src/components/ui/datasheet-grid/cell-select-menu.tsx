@@ -18,13 +18,25 @@ type PropsT = {
   onChange: (value: string) => void
   // Drop the chevron for very narrow columns (e.g. Rabat) where it crowds the value.
   hideChevron?: boolean
+  // Forces the menu open — how a caller hands the cell to the keyboard, since a dropdown that only
+  // a click can open is a cell no keyboard reaches. Left undefined the menu governs itself, exactly
+  // as before, so a caller that doesn't wire the grid's editing flag is unaffected.
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function CellSelectMenu({ value, options, onChange, hideChevron }: PropsT) {
+export function CellSelectMenu({
+  value,
+  options,
+  onChange,
+  hideChevron,
+  open,
+  onOpenChange,
+}: PropsT) {
   const active = options.find((option) => option.value === value)
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       {/* size-full: whole cell is the click target, else dsg selects the dead space around the text. */}
       <DropdownMenuTrigger className="hover:bg-accent flex size-full cursor-pointer items-center justify-between gap-1 px-2 text-sm outline-none">
         <span className="truncate">{active?.label}</span>
