@@ -20,7 +20,6 @@ function ids(layer: LayerT, isHidden?: (id: string) => boolean): string[] {
     .filter((id): id is string => id != null)
 }
 
-// The tracker columns: the per-etap netto/brutto pair plus the row-level readouts.
 const PROGRESS_IDS = [
   'stageValueNet_7',
   'stageValueNet_9',

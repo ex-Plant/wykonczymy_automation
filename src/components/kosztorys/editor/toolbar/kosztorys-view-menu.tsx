@@ -80,8 +80,6 @@ function AxisSection<T extends string>({
   )
 }
 
-// One popover replacing the toolbar toggles + the Kolumny picker. Kwoty / Warstwy are union filters
-// skinned as checkbox pairs (both checked = show all, both unchecked = hide the axis).
 export function KosztorysViewMenu() {
   const [orderOpen, setOrderOpen] = useState(false)
   const {

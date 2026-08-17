@@ -48,7 +48,7 @@ green, and a repo-wide grep for `stageValuePercent` returns nothing outside `con
 - `formatPercent` / `formatPercentPrecise` (`src/lib/kosztorys/format.ts`) must stay — `donePercent`
   and the summary counter render through them.
 - All four persisted stores self-heal. The DB one
-  (`kosztorys_client_view.hiddenColumns`) is filtered through `PREVIEW_VISIBLE_COLUMNS` on read *and*
+  (`kosztorys_client_view.hiddenColumns`) is filtered through `PREVIEW_VISIBLE_COLUMNS` on read _and_
   write (`src/lib/kosztorys/client-view-settings.ts:16-27`), so a stored `stageValuePercent` drops
   itself; the three localStorage maps are sparse and read only via keys the assembly produced.
   `usePersistedEnum` validates against `VALID_DISPLAYS`, so a stored `'percent'` falls back to the
@@ -362,14 +362,14 @@ Run **once**, after the final phase.
 
 #### Automated
 
-- [x] 1.1 Rescued formatter specs run in their new home (`format.test.ts`)
-- [x] 1.2 Grid/column specs pass (`src/__tests__/components/kosztorys/editor/grid/`)
-- [x] 1.3 Calc and client-view specs pass
-- [x] 1.4 No production reference survives (grep over `src` and `e2e`)
-- [x] 1.5 `progress-display.ts` and `use-progress-display.ts` no longer exist
+- [x] 1.1 Rescued formatter specs run in their new home (`format.test.ts`) — afeff70c
+- [x] 1.2 Grid/column specs pass (`src/__tests__/components/kosztorys/editor/grid/`) — afeff70c
+- [x] 1.3 Calc and client-view specs pass — afeff70c
+- [x] 1.4 No production reference survives (grep over `src` and `e2e`) — afeff70c
+- [x] 1.5 `progress-display.ts` and `use-progress-display.ts` no longer exist — afeff70c
 
 ### Phase 2: Documentation
 
 #### Automated
 
-- [x] 2.1 No living doc still names the deleted symbols as behaviour
+- [x] 2.1 No living doc still names the deleted symbols as behaviour — 98b6c03a

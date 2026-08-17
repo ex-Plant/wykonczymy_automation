@@ -25,7 +25,9 @@ function ids(axis: MoneyAxisT, isHidden?: (id: string) => boolean): string[] {
 
 const GROSS_IDS = ['priceGross', 'discountAmountGross', 'plannedGross', 'gross', 'remainingGross']
 const NET_IDS = ['discountAmount', 'plannedNet', 'net', 'remaining']
-const NEUTRAL_IDS = ['plannedQty', 'unit', 'discountType', 'stage_7', 'stage_9']
+// `donePercent` among them: a percentage is the same number on either side of the pair, so tagging it
+// would drop the column from a mode it has no business being filtered by.
+const NEUTRAL_IDS = ['plannedQty', 'unit', 'discountType', 'stage_7', 'stage_9', 'donePercent']
 
 describe('buildV2Columns — oś netto/brutto', () => {
   it('„oba" renderuje dokładnie to co grid bez trybu — tryb jest opt-out', () => {
@@ -98,11 +100,5 @@ describe('COLUMN_MONEY_AXIS', () => {
 
   it('każda kolumna zwolniona z trybu jest mimo to otagowana', () => {
     for (const key of AXIS_EXEMPT_COLUMNS) expect(COLUMN_MONEY_AXIS).toHaveProperty(key)
-  })
-
-  // A percentage is the same number on either side of the pair, so tagging it would drop the column
-  // from a mode it has no business being filtered by.
-  it('„% wykonania" nie ma osi netto/brutto', () => {
-    expect(COLUMN_MONEY_AXIS).not.toHaveProperty('donePercent')
   })
 })

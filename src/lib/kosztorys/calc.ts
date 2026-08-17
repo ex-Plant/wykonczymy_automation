@@ -162,20 +162,15 @@ export function stageValueForView(
  *
  * Deliberately unclamped: stages routinely overshoot the przedmiar, and a >100% reading is the row
  * saying so. The grid pairs it with a red cell (hasStagesOverPlanned); clamping would erase both.
- */
-export function rowDoneFraction(row: ViewPricingT, totalQtyDone: number): number | null {
-  return doneFraction(row, totalQtyDone)
-}
-
-/**
+ *
  * The guard is `> 0`, not `=== 0`: clearing the Przedmiar cell writes `null` (the grid's float
  * column is `Column<number|null>`), which a strict-equality check walks straight past into
  * `qty / null` — NaN or Infinity rendered verbatim in the cell. Also covers `undefined` and a
  * negative przedmiar.
  */
-function doneFraction(row: ViewPricingT, qtyDone: number): number | null {
+export function rowDoneFraction(row: ViewPricingT, totalQtyDone: number): number | null {
   if (!(row.plannedQty > 0)) return null
-  return qtyDone / row.plannedQty
+  return totalQtyDone / row.plannedQty
 }
 
 /**
