@@ -12,6 +12,7 @@ import {
 } from '@/components/kosztorys/editor/toolbar/kosztorys-view-axis-options'
 import { KosztorysViewMenu } from '@/components/kosztorys/editor/toolbar/kosztorys-view-menu'
 import { KosztorysFiltersMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-filters-menu'
+import { KosztorysProblemsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-problems-menu'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
@@ -44,6 +45,9 @@ export function KosztorysEditorToolbar() {
         </SimpleTooltip>
         <div className="ml-auto flex items-center gap-1">
           <KosztorysActionsMenu />
+          {/* Before „Filtry", and absent when nothing is wrong — the one control here that appears on
+              its own has to be where the eye lands first, not tucked between two permanent ones. */}
+          <KosztorysProblemsMenu />
           <KosztorysFiltersMenu />
           <KosztorysViewMenu />
         </div>

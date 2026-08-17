@@ -5,6 +5,10 @@ import { cn } from '@/lib/utils/cn'
 
 type FilterTriggerButtonPropsT = {
   active: boolean
+  // What the filter is about, not what it does: „destructive" is for a trigger whose subject is
+  // a defect (the kosztorys „Problemy"), so both of its states are red instead of the neutral
+  // outline / green-active pair every ordinary filter wears.
+  tone?: 'default' | 'destructive'
   icon?: LucideIcon
   iconPosition?: 'left' | 'right'
   children?: React.ReactNode
@@ -15,13 +19,31 @@ type FilterTriggerButtonPropsT = {
 
 export const FilterTriggerButton = forwardRef<HTMLButtonElement, FilterTriggerButtonPropsT>(
   function FilterTriggerButton(
-    { active, icon: Icon, iconPosition = 'left', children, className, iconClassName, ...props },
+    {
+      active,
+      tone = 'default',
+      icon: Icon,
+      iconPosition = 'left',
+      children,
+      className,
+      iconClassName,
+      ...props
+    },
     ref,
   ) {
+    const variant =
+      tone === 'destructive'
+        ? active
+          ? 'destructive'
+          : 'outlineDestructive'
+        : active
+          ? 'activeFilter'
+          : 'outline'
+
     return (
       <Button
         ref={ref}
-        variant={active ? 'activeFilter' : 'outline'}
+        variant={variant}
         size="sm"
         align="start"
         className={cn('min-w-40', className)}

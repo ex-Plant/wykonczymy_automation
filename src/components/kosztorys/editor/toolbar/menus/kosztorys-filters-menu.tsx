@@ -1,9 +1,7 @@
 'use client'
 
-import { ListFilter, TriangleAlert } from 'lucide-react'
+import { ListFilter } from 'lucide-react'
 import { FilterMultiSelect, FILTER_NONE } from '@/components/filters/filter-multi-select'
-import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
-import { filtersMenuModel } from '@/components/kosztorys/editor/toolbar/menus/filters-menu-model'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
 
@@ -59,12 +57,10 @@ export function KosztorysFiltersMenu() {
     onToggle: () => toggleCondition(condition.id),
   }))
 
-  const { problemToggles, triggerCount, hasProblems } = filtersMenuModel({
-    engagedIds: engagedConditionIds,
-    counts: conditionCounts,
-    collapsedSectionCount: collapsedSectionIds.size,
-    untickedFilterCount: workToggles.filter((toggle) => !toggle.active).length,
-  })
+  // Only what this menu itself hides. Engaged problems are deliberately absent: they have their own
+  // trigger, which says so on its own.
+  const triggerCount =
+    workToggles.filter((toggle) => !toggle.active).length + collapsedSectionIds.size
 
   // Folds by unticking sections rather than filtering on top of them: the checkmarks below stay the
   // only description of what the grid shows, so this row and the list can never disagree. Both its
@@ -93,18 +89,11 @@ export function KosztorysFiltersMenu() {
       options={options}
       label="Filtry"
       triggerCount={triggerCount}
-      // The triangle answers „czy coś jest tu zepsute" off the data alone, so it is lit before anyone
-      // opens the menu — that is the whole point of moving the diagnostics in here, where an unopened
-      // dropdown would otherwise hide them.
-      icon={hasProblems ? TriangleAlert : ListFilter}
-      iconClassName={hasProblems ? 'text-destructive' : undefined}
+      icon={ListFilter}
       iconPosition="right"
       searchable
       title="Co widać: pozycje i sekcje"
       triggerClassName="w-fit min-w-0"
-      // „Pokaż pozycje z nieprawidłową ceną wykonawcy w widoku z narzędziami (1)" is a sentence, not a label:
-      // at the default width every problem row wrapped to three or four lines.
-      contentClassName="w-80"
       resetAction={{
         label: 'Zresetuj filtry',
         // The same reset the empty state offers — one way back to „pokaż wszystko", not a second one
@@ -113,29 +102,7 @@ export function KosztorysFiltersMenu() {
         disabled: engagedConditionIds.size === 0 && collapsedSectionIds.size === 0,
       }}
       bulkToggleLabel="Zwiń wszystkie sekcje"
-      toggleGroups={[
-        // Problems first: they are the reason the menu carries a warning at all, and a reader who
-        // opened it because of the triangle should not have to scroll past the ordinary filters to
-        // reach what the triangle was about. Nothing wrong → no group at all, rather than a heading
-        // over an empty list announcing a section of the menu that has nothing to say.
-        {
-          id: 'problems',
-          heading: (
-            <span className="text-destructive flex items-center gap-1.5">
-              <TriangleAlert className="size-3.5" />
-              Problemy
-            </span>
-          ),
-          items: problemToggles.map((toggle) => ({
-            ...toggle,
-            // The glyph the price-view toggle and the etap header already use, so „w widoku
-            // z narzędziami" and the switcher it names are visibly the same thing.
-            icon: toggle.plane ? planeIcon(toggle.plane, 'size-3.5') : undefined,
-            onToggle: () => toggleCondition(toggle.id),
-          })),
-        },
-        { id: 'work', heading: 'Prace', items: workToggles },
-      ]}
+      toggleGroups={[{ id: 'work', heading: 'Prace', items: workToggles }]}
       actionsHeading="Sekcje"
       optionsHeading="Widoczne sekcje"
       optionToggles={sectionToggles}
