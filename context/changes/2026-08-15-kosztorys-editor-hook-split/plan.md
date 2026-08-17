@@ -580,8 +580,8 @@ Run **once**, after phase 6.
 
 #### Automated
 
-- [ ] 5.1 Existing stage specs pass
-- [ ] 5.2 Hook return type unchanged (tsc)
+- [x] 5.1 Existing stage specs pass — 1f1044f9
+- [x] 5.2 Hook return type unchanged (tsc) — 1f1044f9
 
 ### Phase 6: Extract view state
 

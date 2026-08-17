@@ -15,6 +15,7 @@ import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-r
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
+import { useKosztorysStageOps } from '@/components/kosztorys/editor/hooks/use-kosztorys-stage-ops'
 import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
@@ -68,38 +69,23 @@ import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
-import {
-  stageKey,
-  stageValueGrossKey,
-  stageValueNetKey,
-  stageValuePercentKey,
-} from '@/lib/kosztorys/stage-keys'
+import { stageKey } from '@/lib/kosztorys/stage-keys'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
   addSectionAction,
-  addStageAction,
   insertItemAction,
   insertSectionAction,
   removeItemAction,
   removeSectionAction,
-  removeStageAction,
   renumberKosztorysOrderAction,
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
   updateItemFieldAction,
   updateSectionFieldAction,
-  updateStageAction,
 } from '@/lib/actions/kosztorys'
-import type {
-  ItemPatchT,
-  KosztorysStageT,
-  KosztorysTreeT,
-  KosztorysV2RowT,
-  StagePatchT,
-  ToolPlaneT,
-} from '@/lib/kosztorys/types'
+import type { ItemPatchT, KosztorysTreeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 
 type ArgsT = {
@@ -144,8 +130,6 @@ export function useKosztorysEditor({
   const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
   const [gridRef, gridHeight] = useElementHeight()
   const [rows, setRows] = useState<KosztorysV2RowT[]>(() => treeToRows(tree))
-  // Stages live in local state (like `rows`): add/remove optimistically add/drop a column.
-  const [stages, setStages] = useState<KosztorysStageT[]>(tree.stages)
   const [persistedView, setView] = usePriceView(investmentId)
   // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
   // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
@@ -216,11 +200,22 @@ export function useKosztorysEditor({
   // small enough for the compiler-backed lint to analyse it — the code itself is unchanged.
   // eslint-disable-next-line react-hooks/refs
   rowsRef.current = rows
-  // For the stage-rename handler's no-op guard (compares against the fresh label).
-  const stagesRef = useRef(stages)
 
-  // eslint-disable-next-line react-hooks/refs
-  stagesRef.current = stages
+  const {
+    stages,
+    stagesRef,
+    handleAddStage,
+    handleRemoveStage,
+    handleRenameStage,
+    handleSetStagePlane,
+    handleSetStageWorker,
+  } = useKosztorysStageOps({
+    investmentId,
+    initialStages: tree.stages,
+    patchRows,
+    dropWidth,
+    save,
+  })
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
   // keystroke's changes here; the flush timer collapses them into a single command once typing stops.
@@ -845,93 +840,6 @@ export function useKosztorysEditor({
     for (const row of appended) prevById.current.set(row.id, row)
     setRows((rs) => [...rs, ...appended])
     router.refresh()
-  }
-
-  // --- Stages (etapy) ---
-
-  // A new stage adds a `stage_<id>: 0` key to every current row + snapshot (like patchRows for
-  // coeffs), so the column renders 0s (not blanks) and the first progress entry diffs correctly.
-  async function handleAddStage(plane: ToolPlaneT) {
-    const res = await addStageAction(investmentId, plane)
-    if (!res.success) return
-    const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null, plane, workerId: null }])
-    patchRows(
-      () => true,
-      (r) => ({ ...r, [stageKey(id)]: 0 }),
-    )
-  }
-
-  async function handleRemoveStage(stageId: number) {
-    const res = await removeStageAction(stageId)
-    if (!res.success) {
-      toastMessage(res.error ?? 'Nie udało się usunąć etapu', 'warning', 4000)
-      return
-    }
-    setStages((s) => s.filter((st) => st.id !== stageId))
-    const key = stageKey(stageId)
-    dropWidth(
-      key,
-      stageValueNetKey(stageId),
-      stageValueGrossKey(stageId),
-      stageValuePercentKey(stageId),
-    )
-    patchRows(
-      () => true,
-      (r) => {
-        const next = { ...r }
-        delete next[key]
-        return next
-      },
-    )
-  }
-
-  // Shared by all three header edits so they inherit the cell edits' revert-on-error discipline.
-  // The revert restores the prior value only if nothing newer landed on the field meanwhile (it
-  // still reads `value`) — which is what makes a slow rejected write safe to roll back.
-  //
-  // `saveKey` is passed rather than derived from `field`: it is the debounce identity, so renaming a
-  // field must not silently re-bucket in-flight saves.
-  function patchStageField<K extends keyof StagePatchT & keyof KosztorysStageT>(
-    stageId: number,
-    field: K,
-    value: StagePatchT[K],
-    saveKey: string,
-  ) {
-    const current = stagesRef.current.find((st) => st.id === stageId)
-    if (current && current[field] === value) return
-    const prev = current?.[field] ?? null
-    const withField = (stage: KosztorysStageT, next: unknown) =>
-      ({ ...stage, [field]: next }) as KosztorysStageT
-    setStages((s) => s.map((st) => (st.id === stageId ? withField(st, value) : st)))
-    save(
-      `${saveKey}:${stageId}`,
-      () => updateStageAction(stageId, { [field]: value } as StagePatchT),
-      () =>
-        setStages((s) =>
-          s.map((st) => (st.id === stageId && st[field] === value ? withField(st, prev) : st)),
-        ),
-    )
-  }
-
-  // An empty label reverts to null (the header shows the "Etap N" placeholder). The no-op guard in
-  // patchStageField earns its keep here: the header's onBlur fires on every focus-out, and it has no
-  // diff of its own, unlike item cells via diffRow.
-  function handleRenameStage(stageId: number, label: string) {
-    const trimmed = label.trim()
-    patchStageField(stageId, 'label', trimmed === '' ? null : trimmed, 'stage-label')
-  }
-
-  // Fired from the header's onValueChange (an event handler, never inside a state updater). Picking
-  // any plane (even the default w_tools) writes it, which is what clears the unconfirmed warning.
-  function handleSetStagePlane(stageId: number, plane: ToolPlaneT) {
-    patchStageField(stageId, 'plane', plane, 'stage-plane')
-  }
-
-  // `null` is a legal target here („Bez przypisania"), unlike plane. No undo push — matching plane,
-  // and reassigning back is the exact inverse.
-  function handleSetStageWorker(stageId: number, workerId: number | null) {
-    patchStageField(stageId, 'workerId', workerId, 'stage-worker')
   }
 
   async function handleRemoveSection(sectionId: number) {
