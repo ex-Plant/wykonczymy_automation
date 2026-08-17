@@ -1162,9 +1162,9 @@ lokalnie.
 
 ## drop-stage-percent-columns — usunięcie kolumn „% wykonania" per etap (EX-703)
 
-**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2302, `build`; `lint` bez nowych
-błędów — trzy istniejące dotyczą nieśledzonego `test.js` i `use-latest-request.ts`). Stan po
-`98b6c03a`.
+**Done** (EX-703 zamknięty 2026-08-17) — bramka całodrzewowa zielona (`typecheck`, `test` 2302,
+`build`; `lint` bez nowych błędów — trzy istniejące dotyczą nieśledzonego `test.js` i
+`use-latest-request.ts`). Stan po `98b6c03a`; od `f7ac3163` scalone z `kosztorys-editor-hook-split`.
 
 Setup: dev-owy edytor kosztorysu z rozpisanymi etapami, zalogowany jako OWNER. Do ostatniego punktu
 wpisz ręcznie `table-columns:kosztorys-progress-display` = `"percent"` w `localStorage` (klucz po
