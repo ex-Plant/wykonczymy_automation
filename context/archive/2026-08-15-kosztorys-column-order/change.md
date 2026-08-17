@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-column-order
 title: User-defined column order in the kosztorys editor
-status: implemented
+status: archived
 created: 2026-08-15
-updated: 2026-08-15
-archived_at: null
+updated: 2026-08-17
+archived_at: 2026-08-17T10:57:38Z
 branch: ex-692-kosztorys-column-order
 worktree: null
 ---
@@ -34,3 +34,9 @@ Ustalenia z rozmowy przed planem:
   sortable DnD — tylko dropzone'y plików.
 - Pułapka: dialog otwierany z wnętrza Radix `DropdownMenu` musi żyć poza menu, sterowany stanem
   w toolbarze.
+
+**Archive note (2026-08-17):** `plan.md` was deleted at archive — its phase choreography is now the
+shipped code, and its durable rationale (sparse fractional ranks over a dense order; anchors as fixed
+slots; why header drag is a 2–3 day job under dsg's horizontal virtualization) moved into
+`context/foundation/lessons.md`. `plan-brief.md` stays: its decision table is the record of what the
+owner ruled and why. `git show <sha>^:<path>` still reaches the deleted plan.

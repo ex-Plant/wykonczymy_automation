@@ -2,12 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { addStageAction, removeStageAction, updateStageAction } from '@/lib/actions/kosztorys'
-import {
-  stageKey,
-  stageValueGrossKey,
-  stageValueNetKey,
-  stageValuePercentKey,
-} from '@/lib/kosztorys/stage-keys'
+import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { toastMessage } from '@/lib/utils/toast'
 import type {
   KosztorysStageT,
@@ -68,12 +63,7 @@ export function useKosztorysStageOps({
     }
     setStages((s) => s.filter((st) => st.id !== stageId))
     const key = stageKey(stageId)
-    dropWidth(
-      key,
-      stageValueNetKey(stageId),
-      stageValueGrossKey(stageId),
-      stageValuePercentKey(stageId),
-    )
+    dropWidth(key, stageValueNetKey(stageId), stageValueGrossKey(stageId))
     patchRows(
       () => true,
       (r) => {

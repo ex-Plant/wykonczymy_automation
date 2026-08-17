@@ -3,14 +3,18 @@ import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 export type RowConditionCtxT = { stages: KosztorysStageT[] }
 
-export type RowConditionKindT = 'filter' | 'diagnostic'
+// 'client' is a third kind, not a third mechanism: it hides like a filter, but it is engaged by the
+// investment's stored client-view settings rather than by a reading gesture, so the „Filtry" menu
+// (which lists `kind === 'filter'`) cannot show it and the owner cannot untick it for themselves.
+export type RowConditionKindT = 'filter' | 'diagnostic' | 'client'
 
 export type RowConditionT = {
   id: string
   // A bare noun phrase describing the row, so it reads after „Pozycje " (the menu) and „Brak pozycji "
   // (the empty state).
   label: string
-  // How it reads when it lifts to whole sekcje; null = it does not lift.
+  // How it reads when it lifts to whole sekcje in the „Filtry" menu; null = it does not lift, which
+  // is every kind but 'filter' — the menu is the only thing that folds sections.
   sectionLabel: string | null
   // 'filter' = a visibility toggle in the „Filtry" menu, ticked by default: the tick means „widoczne",
   // exactly like the column and section pickers, and UNticking it hides what it matches. That is why
@@ -26,6 +30,10 @@ export type RowConditionT = {
   tone?: 'defect' | 'worklist'
   matches: (row: KosztorysV2RowT, ctx: RowConditionCtxT) => boolean
 }
+
+// Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
+// diagnostic is pressed, so the id is shared between the registry and the column assembly.
+export const MEASURE_DIVERGED_CONDITION_ID = 'measure-diverged'
 
 /**
  * Every rule-based way the editor hides a row, in display order. Text search is deliberately not
@@ -67,6 +75,22 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     matches: (row, ctx) => rowTotalQtyDone(row, ctx.stages, 'client') > 0,
   },
   {
+    id: 'client-empty',
+    label: 'bez przedmiaru i bez wykonanej pracy',
+    // Never lifts to sekcje: „Zwiń puste sekcje" is a reading gesture in a menu the client view does
+    // not render, so a label here would only buy a per-render pass over the whole dataset for a set
+    // nothing reads.
+    sectionLabel: null,
+    kind: 'client',
+    // One rule rather than the two filters above, because each of those is safe for only one of the
+    // two figures a client reads: hiding no-work rows drops a priced-but-unstarted pozycja while the
+    // przedmiar total still counts it, and hiding no-przedmiar rows drops a pozycja carrying etap work
+    // while the executed total still counts it. A row empty on BOTH axes adds zero to both totals, so
+    // hiding it moves no figure and needs no warning.
+    matches: (row, ctx) =>
+      !(row.plannedQty > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
+  },
+  {
     id: 'no-client-price',
     label: 'bez ceny j.m.',
     // A defect, not a state: a section fully executed but unpriced is exactly what must not be folded
@@ -78,7 +102,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     matches: (row) => !(row.clientPrice > 0),
   },
   {
-    id: 'measure-diverged',
+    id: MEASURE_DIVERGED_CONDITION_ID,
     // „do rozpisania", not „z rozjazdem": the reference figure exists only where an old sheet was
     // imported, and the gap it names is work not yet entered — not a fault. Same wording as the
     // „Pozostało do rozliczenia" column it points at.
@@ -107,6 +131,11 @@ const BY_ID = new Map(ROW_CONDITIONS.map((condition) => [condition.id, condition
  * An empty set is a no-op, and an id nobody knows is ignored rather than matching nothing — a filter
  * persisted under a condition that has since been removed must not hide the whole kosztorys.
  */
+// Keepers are named explicitly and everything else hides: a fourth kind added later must not fall
+// through into „keep only what it matches", which would blank the grid rather than hide a row. The
+// empty state asks the same question through `engagedHiders`, so both sides gain that kind at once.
+const isHider = (condition: RowConditionT) => condition.kind !== 'diagnostic'
+
 export function applyRowConditions(
   rows: KosztorysV2RowT[],
   engagedIds: Iterable<string>,
@@ -114,8 +143,8 @@ export function applyRowConditions(
 ): KosztorysV2RowT[] {
   const active = [...engagedIds].map((id) => BY_ID.get(id)).filter((c) => c !== undefined)
   if (active.length === 0) return rows
-  const hiders = active.filter((condition) => condition.kind === 'filter')
-  const keepers = active.filter((condition) => condition.kind === 'diagnostic')
+  const keepers = active.filter((condition) => !isHider(condition))
+  const hiders = active.filter(isHider)
 
   return rows.filter(
     (row) =>
@@ -143,6 +172,11 @@ export function engagedConditionsOfKind(
   return ROW_CONDITIONS.filter(
     (condition) => condition.kind === kind && engagedIds.has(condition.id),
   )
+}
+
+/** The engaged conditions that REMOVE rows — what an empty grid has to explain. */
+export function engagedHiders(engagedIds: ReadonlySet<string>): RowConditionT[] {
+  return ROW_CONDITIONS.filter((condition) => isHider(condition) && engagedIds.has(condition.id))
 }
 
 // Counts run over the full dataset, never over what survived the filter — a count of the survivors

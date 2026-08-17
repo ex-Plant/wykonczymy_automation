@@ -3,8 +3,8 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
 // Shared localStorage-backed enum store for the kosztorys column-preference hooks (layer, money axis,
-// progress display, price view). Each was a hand-rolled copy of the same useSyncExternalStore + Set of
-// listeners; this is the one primitive they now delegate to.
+// price view). Each was a hand-rolled copy of the same useSyncExternalStore + Set of listeners; this
+// is the one primitive they now delegate to.
 //
 // One module-level listener set fans a write out to every mounted usePersistedEnum. A write notifies
 // all subscribers regardless of key, but useSyncExternalStore drops the re-render for any hook whose

@@ -7,11 +7,10 @@ import type { StageKeyT } from '@/lib/kosztorys/types'
 // Each stage axis hides under ONE picker entry rather than one per `stage_<id>`: a row per stage is
 // noise, and it keeps stage ids out of the visibility map — Postgres can reissue a deleted stage's
 // id, and a new stage inheriting the dead one's hidden state would be a ghost. Three groups, so the
-// qty axis and each value axis hide independently.
+// qty axis and both value axes hide independently.
 export const STAGES_COLUMN_GROUP = 'stages'
 export const STAGE_VALUE_NET_COLUMN_GROUP = 'stageValueNet'
 export const STAGE_VALUE_GROSS_COLUMN_GROUP = 'stageValueGross'
-export const STAGE_VALUE_PERCENT_COLUMN_GROUP = 'stageValuePercent'
 
 // The qty axis's prefix — the one axis whose key IS a row field. diffRow (v2-rows.ts) classifies
 // every key on the row by it, so it decides what gets saved as stage progress; the two value
@@ -32,8 +31,4 @@ export function stageValueNetKey(stageId: number): string {
 
 export function stageValueGrossKey(stageId: number): string {
   return `${STAGE_VALUE_GROSS_COLUMN_GROUP}_${stageId}`
-}
-
-export function stageValuePercentKey(stageId: number): string {
-  return `${STAGE_VALUE_PERCENT_COLUMN_GROUP}_${stageId}`
 }

@@ -1208,3 +1208,47 @@ Two recurring distortions to check for by name, because both showed up here: a w
 (1000+) quoted for a **per-owner** scope, and "concurrent users" invoked where the app has no editing
 lock and **one** operator already races themselves — ▲▼ is `void`-called and autosaves are
 fire-and-forget, so contention needs no second person.
+## A stored preference records the DEVIATION, never a snapshot of today's defaults
+
+Two settings landed a day apart and both hit the same fork. Column visibility for the client
+(`client-preview-settings`) could store the visible keys or the hidden ones; column order
+(`kosztorys-column-order`) could store a dense `0..n` list or a sparse `key → rank` map with
+fractional ranks and one written key per drag. In both, the dense/positive form is the one that reads
+more naturally and is the wrong choice.
+
+The reason is the same both times: **a dense snapshot freezes the current default into every stored
+row**. Add a 23rd column to the client allowlist and every investment that stored "the 22 visible
+keys" keeps hiding it forever — silently, because the row looks complete. Ship a new grid column and
+every user who ever reordered anything gets it appended at the end rather than in the slot the code
+declares, because their localStorage holds a full ordering that predates it. Store exclusions and
+overrides instead, and an addition flows to everyone who never expressed an opinion about it — which
+is the whole population that didn't touch the setting.
+
+The corollary is that the default has to stay live in code, not be copied into storage at first save.
+`useHiddenColumns` and `useColumnWidths` already argued this for themselves; `useColumnOrder` is the
+third, and the pattern is now the repo's answer. Related: „Hierarchical visibility is ONE set of leaf
+exclusions" above — same instinct, applied to a parent/child toggle.
+
+## A disclosure setting subtracts from a code ceiling, and fails CLOSED
+
+`PREVIEW_VISIBLE_COLUMNS` decides what a client at `/k/<token>` may ever see (no subcontractor prices,
+no marża, no „komentarz"). The owner's per-investment settings hide more on top of it. The filter must
+therefore read `allowed.has(key) && !hidden.has(key)` — never "the stored list decides", which would
+let a stored key outside the allowlist _reveal_ a barred column. The reuse pass went further and
+derived the allowlist from the dialog's own groups, so a column can no longer be offerable-but-barred
+or barred-but-offerable; the illegal pairing stopped being representable.
+
+The same asymmetry governs the failure path: when the settings read throws, `/k/<token>` 500s instead
+of rendering. That looks user-hostile until you name the only available fallback — the code default,
+i.e. **wider** disclosure than the owner configured. For a disclosure setting, a page that fails to
+load beats a page that shows a client the columns someone hid from them.
+
+## Header drag in `react-datasheet-grid` is a 2–3 day job, not an afternoon
+
+Considered and rejected for `kosztorys-column-order`. Columns are virtualized **horizontally**
+(`useVirtualizer` with `horizontal: true`, dsg's `Grid.js`), so computing a drop index means
+reconstructing dsg's own layout against `scrollLeft` plus edge auto-scroll — and the header already
+carries two gestures (a Radix trigger filling `h-full w-full`, and the resize handle). A modal with a
+`framer-motion` `Reorder` list bought the same capability in hours with no regression risk to resize
+or header sort. If header drag comes back as a request, the estimate is the virtualization work, not
+the drag.

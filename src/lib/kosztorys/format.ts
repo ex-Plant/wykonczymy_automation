@@ -11,7 +11,7 @@ export const formatNet = (n: number) =>
 export const formatQty = (n: number) =>
   (n + 0).toLocaleString('pl-PL', { maximumFractionDigits: 3 })
 
-// A fraction (0.746) as a percentage; `null` (no denominator — see stageDoneFraction) renders as a
+// A fraction (0.746) as a percentage; `null` (no denominator — see rowDoneFraction) renders as a
 // dash. Two precisions: integer for the dense grid cells, one decimal for the headline figures where
 // the whole kosztorys hangs on a single number.
 const percentFormat = (fraction: number | null, fractionDigits: number) =>

@@ -3,20 +3,25 @@
 import { useState } from 'react'
 import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
 
 // One frozen instance, so the preview's suppressed set is referentially stable across renders and
 // the editor's memos don't recompute on every keystroke.
 const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
+// The one condition a client's document may engage, frozen for the same reason.
+const CLIENT_EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set(['client-empty'])
 
 type ArgsT = {
   investmentId: number
   preview: boolean
+  // The investment's stored client-view settings. Only consumed under `preview`.
+  clientView?: ClientViewSettingsT
 }
 
 // How the grid is being read — plane, search, sort, folds, the resize guide. Depends on nothing in
 // the data plane: no rows, no stages, no actions.
-export function useKosztorysViewState({ investmentId, preview }: ArgsT) {
+export function useKosztorysViewState({ investmentId, preview, clientView }: ArgsT) {
   const [persistedView, setView] = usePriceView(investmentId)
   // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
   // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
@@ -33,7 +38,13 @@ export function useKosztorysViewState({ investmentId, preview }: ArgsT) {
     toggle: toggleCondition,
     clear: clearConditions,
   } = useEngagedConditions(investmentId)
-  const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
+  // The one exception is the client condition, which is not a filter the client chose but the
+  // owner's stored decision about what this document contains.
+  const engagedConditionIds = preview
+    ? clientView?.hideEmptyRows
+      ? CLIENT_EMPTY_CONDITION_IDS
+      : EMPTY_CONDITION_IDS
+    : persistedConditionIds
   const [sort, setSort] = useState<SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
   // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than

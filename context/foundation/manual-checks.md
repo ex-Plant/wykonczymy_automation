@@ -204,7 +204,7 @@ one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
 - [ ] In a subcontractor view the out-of-plane etapy have **no** columns at all (no „nie dotyczy" cells)
 - [ ] An etap with no rozliczenie picked appears in **neither** subcontractor view and shows no wrench icon in its header
 - [ ] In Klient, an etap with no rozliczenie has its ilość cells **locked** (typing does nothing) and unlocks the moment a rozliczenie is picked
-- [ ] In Klient, an etap with no rozliczenie has its **whole** block on a red tint — header plus every cell of its ilość / netto / brutto / % columns; picking a rozliczenie clears the tint instantly
+- [ ] In Klient, an etap with no rozliczenie has its **whole** block on a red tint — header plus every cell of its ilość / netto / brutto columns; picking a rozliczenie clears the tint instantly
 - [ ] The red tint does not bleed into the neighbouring etapy's columns and does not fight the „Razem" row's own styling
 - [ ] „Wartość netto/brutto przedmiar", „Pozostało", „% wykonania" are absent in both subcontractor views and present in Klient
 - [ ] „Razem Netto/Brutto" header reads „— po rabacie" in Klient and „— do zapłaty ekipie" in a subcontractor view
@@ -952,10 +952,10 @@ E2E odroczone (patrz bramka przeglądu).
 Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkuszem, w którym
 „Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
 
-- [ ] Po imporcie pozycje z rozjazdem mają czerwoną sumę etapów, a podpowiedź podaje: arkusz, etapy, kwotę różnicy
+- [ ] Najechanie na komórkę „Pomiar (razem etapy)" **nie** pokazuje żadnej podpowiedzi z rozbiciem arkusz/etapy — rozjazd czyta się wyłącznie z kolumny „Pozostało do rozliczenia"
 - [ ] Kolumna „Pozostało do rozliczenia" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
-- [ ] Kolumna „Pozostało do rozliczenia" jest widoczna tylko wtedy, gdy jest choć jeden rozjazd: znika po wyczyszczeniu ostatniego (i nie ma jej też w liście „Kolumny")
-- [ ] Kolumna „Pozostało do rozliczenia" zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty
+- [ ] Kolumna „Pozostało do rozliczenia" pojawia się dopiero po wciśnięciu przycisku „z pomiarem do rozpisania na etapy" i znika po jego odciśnięciu; nie ma jej w liście „Kolumny" i nie da się jej stamtąd ani schować, ani wywołać
+- [ ] Przy wciśniętym przycisku kolumna zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty; po odciśnięciu przycisku sortowanie samo się czyści (nie zostaje kolejność bez nagłówka do wyłączenia)
 - [ ] Przycisk „z pomiarem do rozpisania na etapy" w pasku narzędzi pokazuje liczbę takich pozycji; kliknięcie zawęża siatkę tylko do nich
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
 - [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym warunku widać „Brak pozycji z pomiarem do rozpisania na etapy" z powrotem do pełnej listy, a sam przycisk znika
@@ -1140,3 +1140,42 @@ OWNER. Do A/B wydajności drugie okno na `staging`.
 - [ ] Prowadnica przy zmianie szerokości kolumny nadal chodzi za kursorem
 - [ ] Podgląd dla klienta pokazuje ceny klienta bez kolumn współczynników, niezależnie od `localStorage`
 - [ ] A/B wydajności: kosztorys 1000+ pozycji na tej gałęzi i na `staging`, ciągłe pisanie w komórce — bez dodatkowych zacięć
+## client-preview-settings — ustawienia podglądu klienta (EX-695)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2419, `build`; `lint` bez nowych
+błędów — dwa istniejące dotyczą nieśledzonego `test.js`). Stan po `d50c164a`.
+
+Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z wypełnionym kosztorysem, w tym co najmniej
+jedna pozycja bez przedmiaru i bez etapów. Migracja `20260815_0_add_kosztorys_client_view` nałożona
+lokalnie.
+
+- [ ] „Opcje" → sekcja „Klient" ma trzy pozycje: „Widok klienta", „Ustawienia podglądu…", „Udostępnij"
+- [ ] Odznaczenie dwóch kolumn i „Zapisz" — po odświeżeniu linku `/k/<token>` obu nie ma, a kwoty w podsumowaniu się nie zmieniły
+- [ ] Zamknięcie okna bez zapisu nie zmienia nic w linku klienta
+- [ ] Odznaczenie „Ukryj pozycje bez przedmiaru i bez wykonanej pracy" przywraca puste pozycje w linku, kwoty dalej bez zmian
+- [ ] Licznik przy tym polu zgadza się z liczbą takich pozycji w całym kosztorysie (nie tylko widocznych)
+- [ ] „Zapisz jako domyślne" — inna inwestycja, która nie ma własnych ustawień, startuje z tego zestawu
+- [ ] „Udostępnij" otwiera się na kroku ustawień za każdym razem, także gdy link już istnieje; „Dalej" zapisuje i pokazuje ekran linku
+- [ ] Ekran linku działa jak wcześniej: wygeneruj / kopiuj / wygeneruj nowy / wyłącz link, z potwierdzeniem wyłączenia
+- [ ] „Widok klienta" i link tokenowy wyglądają identycznie — żadnej dodatkowej belki ani panelu na `/podglad-klienta/<id>`
+- [ ] MANAGER: zapis ustawień odmawia komunikatem „Tylko właściciel może zmieniać ustawienia podglądu klienta"
+
+## drop-stage-percent-columns — usunięcie kolumn „% wykonania" per etap (EX-703)
+
+**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2302, `build`; `lint` bez nowych
+błędów — trzy istniejące dotyczą nieśledzonego `test.js` i `use-latest-request.ts`). Stan po
+`98b6c03a`.
+
+Setup: dev-owy edytor kosztorysu z rozpisanymi etapami, zalogowany jako OWNER. Do ostatniego punktu
+wpisz ręcznie `table-columns:kosztorys-progress-display` = `"percent"` w `localStorage` (klucz po
+usuniętej osi — sprawdzamy, że nie wywraca edytora).
+
+- [ ] Menu „Kolumny" ma tylko sekcje „Kwoty", „Warstwy" i „Kolumny" — żadnej sekcji „Etapy"
+- [ ] Przełączanie „Kwoty" (Netto/Brutto) i „Warstwy" (Praca/Postęp) działa jak wcześniej
+- [ ] Nigdzie nie ma kolumny „Etap N %" — ani w widoku klienta, ani „Z narzędziami", ani „Bez narzędzi"
+- [ ] „Etapy — kwota netto" dalej widoczne domyślnie, „…brutto" dalej domyślnie ukryte; oba dają się przełączać w pickerze, a „Praca" dalej je chowa
+- [ ] Kolumna „% wykonania (względem przedmiaru)" dalej się renderuje i dalej świeci na czerwono, gdy suma etapów przekracza Przedmiar
+- [ ] Usunięcie etapu czyści jego kolumny bez zostawiania pustej szerokości
+- [ ] Podgląd klienta (`/podglad-klienta/<id>`) renderuje się bez kolumny procentowej, a okno ustawień podglądu nie oferuje już „Etapy — % wykonania"
+- [ ] Kosztorys z zapisanym ptaszkiem przy tej kolumnie otwiera się bez błędu
+- [ ] Ze starym wpisem `"percent"` w localStorage edytor ładuje się normalnie i pokazuje kolumny kwot etapów

@@ -22,7 +22,6 @@ import {
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
-  stageDoneFraction,
   stageValueForView,
   toGross,
   viewPrice,
@@ -39,12 +38,10 @@ import {
   STAGE_QTY_PREFIX,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   STAGE_VALUE_NET_COLUMN_GROUP,
-  STAGE_VALUE_PERCENT_COLUMN_GROUP,
   STAGES_COLUMN_GROUP,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
-  stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
 import {
   baseRanksFromKeys,
@@ -55,13 +52,13 @@ import {
 import {
   PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,
+  UNPICKABLE_COLUMNS,
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
-import { PROGRESS_DISPLAY_DEFAULT, progressDisplayAllows } from '@/lib/kosztorys/progress-display'
-import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
+import { formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
   measureDiscrepancy,
@@ -312,9 +309,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
       // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
       // re-applied to the editor.
-      // `kosztorys-identity-cell`: the section band paints its whole label here, and globals.css lets
-      // it out over the blank cells to its right (dsg has no colspan).
-      cellClassName: 'kosztorys-identity-cell capitalize [&_textarea]:capitalize',
+      cellClassName: 'capitalize [&_textarea]:capitalize',
     }),
   ]
 
@@ -358,41 +353,32 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // client's document must not carry the company's own bookkeeping doubts. Client plane only for a
   // second reason: `measureDiscrepancy` is hard-anchored to the whole offered scope, so hanging it
   // on a subcontractor view's cell would put two different „etapy" numbers side by side.
-  const divergenceEnabled = !opts.previewVisible && view === 'client'
-  const divergenceFor = divergenceEnabled
-    ? memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages))
-    : () => null
-
-  const measure: Column<KosztorysV2RowT>[] = [
-    {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
-        // The two operands, which the „Pozostało do rozliczenia" column beside it does NOT carry — it
-        // shows the difference, and „skąd ta różnica" is still a question the cell has to answer.
-        tip: (r) => {
-          const divergence = divergenceFor(r)
-          if (!divergence) return null
-          return `Pomiar z arkusza Google: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · zostało ${formatNet(divergence.net)} zł`
-        },
-      }),
-      minWidth: 170,
-    },
-    unitColumn(title('unit', opts)),
-  ]
-
-  // Leads the whole rozpiska rather than sitting beside „Pomiar", the figure it is derived from — it
-  // is the answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
-  // Present for the whole life of an imported kosztorys, not only while it is non-zero: a column that
-  // appears with a difference and leaves when it is gone reads as an error counter, and the only way
-  // to zero it is to declare unperformed work done.
+  //
+  // Right behind „Opis prac" rather than beside „Pomiar", the figure it is derived from — it is the
+  // answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
+  // Tied to the diagnostic filter, not to the presence of an imported pomiar: while the filter is off
+  // the grid holds every pozycja and this column would be „—" down almost all of it. The button's own
+  // count is what says the rozjazd exists; the column is where you read it.
   const divergence: Column<KosztorysV2RowT>[] =
-    divergenceEnabled && opts.hasSheetMeasure
+    !opts.previewVisible && view === 'client' && opts.divergenceFilterEngaged
       ? [
           {
-            ...divergenceColumn(title('divergence', opts), divergenceFor),
+            ...divergenceColumn(
+              title('divergence', opts),
+              memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages)),
+            ),
             cellClassName: 'border-border border-r',
           },
         ]
       : []
+
+  const measure: Column<KosztorysV2RowT>[] = [
+    {
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
+      minWidth: 170,
+    },
+    unitColumn(title('unit', opts)),
+  ]
 
   // Rabat is a client concession, never passed to the subcontractor (calc.ts netForQtyForView), so
   // the four discount columns exist in the client view only — the subcontractor views never assemble
@@ -487,26 +473,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     }
   })
 
-  // The percent reading of the same stage block: one column per stage instead of the netto/brutto
-  // pair, since a percentage is the same figure on either side of the VAT.
-  const stageValuePercentCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
-    const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    return {
-      ...computedColumn(
-        stageValuePercentKey(st.id),
-        header,
-        (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
-        {},
-        formatPercent,
-      ),
-      ...planeUnconfirmed(st),
-    }
-  })
-
-  // The row's headline figure — available in both display modes, hence untagged: it answers "how far
-  // along is this position", which the money columns never say outright.
-  //
   // The przedmiar-anchored columns here and below compute at `'client'` outright, not at `view`:
   // PRZEDMIAR_ANCHORED_COLUMNS drops them outside the client view, so a `view`-reactive formula would
   // be false generality — it reads as if a subcontractor reading existed, and there isn't one.
@@ -567,25 +533,24 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ),
   ]
 
-  // „Rozjazd" first when it exists at all (see above — it is a work list, not a reading of the sheet),
+  // „Rozjazd" right behind the identity block when it exists at all (see above — it is a work list,
+  // not a reading of the sheet),
   // then sheet order proper: Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
   // Komentarz (T) at the work/progress seam, then the value block (U–AE right before AF "pozostało").
   // The row-actions column leads the whole grid when editing is enabled — it rides the same
   // assemble→hide→toggle pipeline as every data column (no special-casing), so the picker can hide it
   // like any other.
   const dataColumns = [
-    ...divergence,
     ...identity,
+    ...divergence,
     ...przedmiar,
     ...stageCols,
     ...measure,
     ...pricing,
     ...computed,
-    // Komentarz at the work/progress seam — it is the visual divider now (see the trailing gap column).
     ...komentarz,
     ...stageValueNetCols,
     ...stageValueGrossCols,
-    ...stageValuePercentCols,
     ...donePercent,
     ...remaining,
   ]
@@ -595,16 +560,13 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     : dataColumns
 }
 
-// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id. The three
+// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id. The
 // prefixes are mutually exclusive (none is a prefix of another), so the order of these tests carries
 // no meaning — the qty prefix last is not load-bearing.
 function toggleKey(columnId: string): string {
   if (columnId.startsWith(`${STAGE_VALUE_NET_COLUMN_GROUP}_`)) return STAGE_VALUE_NET_COLUMN_GROUP
   if (columnId.startsWith(`${STAGE_VALUE_GROSS_COLUMN_GROUP}_`)) {
     return STAGE_VALUE_GROSS_COLUMN_GROUP
-  }
-  if (columnId.startsWith(`${STAGE_VALUE_PERCENT_COLUMN_GROUP}_`)) {
-    return STAGE_VALUE_PERCENT_COLUMN_GROUP
   }
   return columnId.startsWith(STAGE_QTY_PREFIX) ? STAGES_COLUMN_GROUP : columnId
 }
@@ -632,23 +594,23 @@ function selectV2Columns(
 ): Column<KosztorysV2RowT>[] {
   assertDisclosurePair(opts)
   const axis = opts.moneyAxis ?? MONEY_AXIS_DEFAULT
-  const display = opts.progressDisplay ?? PROGRESS_DISPLAY_DEFAULT
   const layer = opts.layer ?? LAYER_DEFAULT
   // Two kinds of gate live in this filter, and only one of them may touch a client's document.
-  // PREFERENCE gates — the axis, the layer, the progress display, the picker tick — say what ONE
-  // owner wants to read right now, so a preview skips them entirely and takes the allowlist as its
+  // PREFERENCE gates — the axis, the layer, the picker tick — say what ONE owner wants to read
+  // right now, so a preview skips them entirely and takes the allowlist as its
   // whole answer (owner ruling 2026-07-28). The discount gate is not one of them: `globalDiscount`
   // is a property of the investment, identical for every reader, and while it is on, the per-item
   // rabat fields are bypassed rather than cleared (calc.ts `applyDiscount`) — so showing those
   // columns would print „Rabat 10 %" beside „Kwota rabatu 0,00" on the offer itself.
   const keep = (key: string): boolean => {
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(key)) return false
-    if (opts.previewVisible) return PREVIEW_VISIBLE_COLUMNS.has(key)
+    if (opts.previewVisible) {
+      return PREVIEW_VISIBLE_COLUMNS.has(key) && !opts.previewHiddenColumns?.has(key)
+    }
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
     return (
-      !opts.isHidden?.(key) &&
+      (UNPICKABLE_COLUMNS.has(key) || !opts.isHidden?.(key)) &&
       axisAllows(key, axis) &&
-      progressDisplayAllows(key, display) &&
       layerAllows(key, layer)
     )
   }
@@ -700,6 +662,7 @@ function selectV2ToggleItems(
     const id = toggleKey(col.id ?? '')
     if (items.some((i) => i.id === id)) continue
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
+    if (UNPICKABLE_COLUMNS.has(id)) continue
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(id)) continue
     items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })
   }

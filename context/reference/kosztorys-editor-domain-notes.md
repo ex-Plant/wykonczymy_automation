@@ -275,6 +275,28 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
 (rozliczenie) → P13. Drugi tryb wydruku „raport postępu" (wewnętrzny, z etapami)
 — do rozważenia.
 
+## Co widzi klient — ustawienie, nie stała (EX-695, 2026-08-15)
+
+Zestaw kolumn widoku klienta przestał być stałą w kodzie. Rozstrzygnięcie idzie w kolejności:
+własny wiersz inwestycji (`kosztorys-client-view`) → globalne domyślne firmy
+(`kosztorys-client-view-defaults`) → domyślne z kodu (nic nie ukryte, puste pozycje ukryte).
+Rozwiązywane w `src/lib/queries/kosztorys-client-view.ts`.
+
+Dwie reguły trzymają to razem:
+
+- **`PREVIEW_VISIBLE_COLUMNS` pozostaje sufitem.** Zapisany klucz może tylko _odjąć_ kolumnę,
+  nigdy dodać — sanityzacja przy zapisie i przy odczycie odrzuca klucz spoza allowlisty, więc
+  ustawienie nie staje się drugą, rozjeżdżającą się odpowiedzią na pytanie „co klient może
+  zobaczyć". Klucze są `toggleKey`, więc jeden wpis bierze całą rodzinę per-etap.
+- **Ukrywanie pustych pozycji to jedna reguła, nie dwie** (`client-empty`, `kind: 'client'`):
+  pozycja bez przedmiaru **i** bez wykonanej pracy nie wnosi nic do żadnej z dwóch kwot, które
+  klient czyta, więc jej ukrycie nie rusza podsumowania. Każdy z dwóch filtrów osobno byłby
+  bezpieczny tylko dla jednej z nich.
+
+Ustawienia czytane są **obok** cache'owanego payloadu podglądu (jeden indeksowany odczyt), więc
+zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firmy nie unieważnia drzewa
+żadnej inwestycji.
+
 ## Decyzje zamknięte
 
 - **Dostęp (prosto):** **ADMIN, OWNER, MANAGER** — widzą i edytują wszystko.
@@ -327,8 +349,12 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
   **„Rozjazd" nazywa się teraz „Pozostało do rozliczenia"** — odejmowanie jest to samo (Pomiar
   z natury z arkusza minus suma etapów w aplikacji), ale nazwa przestała udawać usterkę. To zwykła
   linia bilansowa: jedyny sposób, żeby ją wyzerować, to wpisać ilości w etapy, czyli zadeklarować
-  pracę jako wykonaną. Dlatego kolumna pokazuje się przy **każdym** zaimportowanym kosztorysie,
-  a nie tylko tam, gdzie coś się nie zgadza.
+  pracę jako wykonaną. Kolumna jest **odpowiedzią na przycisk „z pomiarem do rozpisania na etapy"**
+  — pojawia się razem z nim i znika, gdy się go odciśnie. Poza tym gestem siatka pokazuje wszystkie
+  pozycje, więc kolumna byłaby pasem „—"; o istnieniu rozjazdu mówi licznik na samym przycisku.
+  Z tego samego powodu nie ma jej w liście „Kolumny": widoczność należy do filtra, więc zapisany
+  ptaszek nie może go zawetować. Komórka „Pomiar (razem etapy)" nie ma już podpowiedzi
+  z rozbiciem arkusz/etapy — liczby czyta się w kolumnie, nie z dymka.
 
   **„Wartość netto" w podsumowaniu arkusza liczy się z Pomiaru, nie z Przedmiaru.** Wcześniej
   zestawialiśmy ją z wartością przedmiaru — czyli z liczbą, której arkusz nigdzie nie sumuje.

@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url'
 import { AmountEdits } from '@/collections/amount-edits'
 import { CashRegisters } from '@/collections/cash-registers'
 import { Investments } from '@/collections/investments'
+import { KosztorysClientView } from '@/collections/kosztorys-client-view'
 import { KosztorysItems } from '@/collections/kosztorys-items'
 import { KosztorysSections } from '@/collections/kosztorys-sections'
 import { KosztorysShares } from '@/collections/kosztorys-shares'
@@ -26,6 +27,7 @@ import { Sheets } from '@/collections/sheets'
 import { OtherCategories } from '@/collections/other-categories'
 import { Transfers } from '@/collections/transfers'
 import { Users } from '@/collections/users'
+import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-defaults'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -71,6 +73,7 @@ export default buildConfig({
     KosztorysItems,
     KosztorysStages,
     KosztorysShares,
+    KosztorysClientView,
     StageProgress,
     Transfers,
     OtherCategories,
@@ -79,6 +82,7 @@ export default buildConfig({
     Leads,
     Media,
   ],
+  globals: [KosztorysClientViewDefaults],
   plugins: [
     vercelBlobStorage({
       collections: { media: true },

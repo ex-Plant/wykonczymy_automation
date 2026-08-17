@@ -14,6 +14,7 @@ import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
 import { itemFieldLane, stageLane } from '@/lib/kosztorys/save-lanes'
 import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
 import { useKosztorysStageOps } from '@/components/kosztorys/editor/hooks/use-kosztorys-stage-ops'
@@ -23,7 +24,6 @@ import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
-import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
@@ -56,7 +56,9 @@ import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-tot
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
+  MEASURE_DIVERGED_CONDITION_ID,
   ROW_CONDITIONS,
+  applyRowConditions,
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -92,6 +94,9 @@ type ArgsT = {
   // PRICE PLANE (client prices vs a subcontractor's); the render mode is what pins that plane, so the
   // two must not share the word (owner ruling 2026-07-28).
   preview?: boolean
+  // The investment's stored client-view settings, resolved server-side. Only consumed under
+  // `preview` — on the owner's editor it is absent, and the settings dialog reads its own copy.
+  clientView?: ClientViewSettingsT
   undoRedo: UndoRedoApiT
   // Roster for the etap header's worker picker. Absent on the client share path, which never renders
   // a menu at all.
@@ -113,6 +118,7 @@ export function useKosztorysEditor({
   investmentId,
   tree,
   preview = false,
+  clientView,
   undoRedo,
   workers,
 }: ArgsT) {
@@ -146,7 +152,7 @@ export function useKosztorysEditor({
     resetFilters,
     guideX,
     setGuideX,
-  } = useKosztorysViewState({ investmentId, preview })
+  } = useKosztorysViewState({ investmentId, preview, clientView })
 
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel).
@@ -159,10 +165,9 @@ export function useKosztorysEditor({
   } = useColumnOrder()
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
   // Nothing here is pinned for a preview: selectV2Columns drops every gate but the allowlist under
-  // `previewVisible`, so the axis — like the layer, the progress display and the picker below — never
-  // reaches the client's grid in the first place.
+  // `previewVisible`, so the axis — like the layer and the picker below — never reaches the client's
+  // grid in the first place.
   const axis = effectiveMoneyAxis(view, moneyAxis)
-  const [progressDisplay, setProgressDisplay] = useProgressDisplay()
   const [layer, setLayer] = useLayer()
   // Snapshot of the previous rows for diffing (keyed by item id) — the full dataset, not the view.
   // It also serves as the "fresh dataset" read by structural event handlers (section count):
@@ -320,8 +325,7 @@ export function useKosztorysEditor({
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
-  // carries none of this. Read by the toolbar's counters, which is why a diagnostic's button can
-  // vanish at zero while the column it points at stays (see `hasSheetMeasure` below).
+  // carries none of this. Read by the toolbar's counters.
   const conditionCounts = useMemo(() => {
     const ctx = { stages }
     return new Map(
@@ -332,12 +336,16 @@ export function useKosztorysEditor({
     )
   }, [preview, rows, stages])
 
-  // Gates the „Pozostało do rozliczenia" column. Not the rozjazd count: the column has to survive
-  // its own zero, or it becomes a counter the owner clears by typing quantities into etapy — which
-  // is the app declaring work done that nobody did.
-  const hasSheetMeasure = useMemo(
-    () => !preview && rows.some((row) => row.sheetMeasuredQty != null),
-    [preview, rows],
+  // Gates the „Pozostało do rozliczenia" column: it is the answer to the diagnostic beside it, so it
+  // rides that button rather than the column picker. With the filter off the grid holds every pozycja
+  // and the column would read „—" down nearly all of them — the button's own count is what says the
+  // rozjazd is there.
+  const divergenceFilterEngaged = !preview && engagedConditionIds.has(MEASURE_DIVERGED_CONDITION_ID)
+
+  // Subtracts from the allowlist, never adds to it — the ceiling stays `PREVIEW_VISIBLE_COLUMNS`.
+  const previewHiddenColumns = useMemo(
+    () => (preview && clientView ? new Set(clientView.hiddenColumns) : undefined),
+    [preview, clientView],
   )
 
   const columnOpts = {
@@ -353,7 +361,6 @@ export function useKosztorysEditor({
     onSetSort: editorOnly(setSortField),
     isHidden,
     moneyAxis: axis,
-    progressDisplay,
     layer,
     widths,
     columnRanks,
@@ -371,9 +378,10 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    hasSheetMeasure,
+    divergenceFilterEngaged,
     readOnly: preview,
     previewVisible: preview,
+    previewHiddenColumns,
   }
   const { columns, columnToggleItems, columnBaseRanks } = buildV2Grid(columnOpts)
   // A column sort must not outlive its column. A money-axis or view toggle can drop the sorted
@@ -400,7 +408,7 @@ export function useKosztorysEditor({
   const foldableSectionIds = useMemo(() => {
     const ctx = { stages }
     return new Map(
-      ROW_CONDITIONS.filter((condition) => condition.sectionLabel !== null).map((condition) => [
+      ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
         condition.id,
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
@@ -411,9 +419,18 @@ export function useKosztorysEditor({
     () => buildViewRows({ rows, search, engagedConditionIds, sort, view, stages }),
     [rows, search, engagedConditionIds, sort, view, stages],
   )
-  // Both read the FULL dataset in display order, which is what makes a filter visible: the numbers
-  // skip over the rows it hid, and the sections keep their original order however it thinned them.
-  const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
+  // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
+  // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
+  // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
+  // from it, so under the preview the owner's stored hide decision is applied first and the offer runs
+  // 1…N. Search and sort are deliberately left out of both: a number that moved as the reader typed
+  // would name a different pozycja every keystroke.
+  const numberedRows = useMemo(
+    () => (preview ? applyRowConditions(rows, engagedConditionIds, { stages }) : rows),
+    [preview, rows, engagedConditionIds, stages],
+  )
+  const ordinalByRowId = useMemo(() => baseOrdinals(numberedRows), [numberedRows])
+  // Sections keep their original order however the filter thinned them.
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
@@ -959,8 +976,6 @@ export function useKosztorysEditor({
     resetColumnOrder,
     moneyAxis: axis,
     setMoneyAxis,
-    progressDisplay,
-    setProgressDisplay,
     layer,
     setLayer,
     viewRows,

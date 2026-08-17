@@ -1,34 +1,33 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import { useLatestRequest } from '@/hooks/use-latest-request'
 import { toastMessage } from '@/lib/utils/toast'
 import { getRegisterBalance } from '@/lib/queries/register-balance'
 
 export function useRegisterBalance() {
   const [registerBalance, setRegisterBalance] = useState<number | null>(null)
   const [isRegisterBalanceLoading, setIsRegisterBalanceLoading] = useState(false)
-  const requestRef = useRef(0)
+  const request = useLatestRequest()
 
   async function fetchRegisterBalance(registerId: string) {
     if (!registerId) return resetRegisterBalance()
 
-    const requestId = ++requestRef.current
+    const isCurrent = request.start()
     setRegisterBalance(null)
     setIsRegisterBalanceLoading(true)
     try {
       const result = await getRegisterBalance(Number(registerId))
-      if (requestRef.current === requestId) setRegisterBalance(result.registerBalance)
+      if (isCurrent()) setRegisterBalance(result.registerBalance)
     } catch {
-      // A superseded request stays silent — its failure would toast over a newer successful load.
-      if (requestRef.current === requestId) toastMessage('Nie udało się pobrać salda', 'error')
+      if (isCurrent()) toastMessage('Nie udało się pobrać salda', 'error')
     } finally {
-      if (requestRef.current === requestId) setIsRegisterBalanceLoading(false)
+      if (isCurrent()) setIsRegisterBalanceLoading(false)
     }
   }
 
   function resetRegisterBalance() {
-    // Bump the id so a fetch still in flight is disowned — otherwise its response repopulates the
-    // balance of the register the user has just cleared. Disowning it also makes that request's own
-    // `finally` a no-op, so the reset has to clear the loading flag itself or it pins forever.
-    requestRef.current++
+    // Disowning the in-flight fetch also makes its own `finally` a no-op, so the reset has to clear
+    // the loading flag itself or it pins forever.
+    request.disown()
     setRegisterBalance(null)
     setIsRegisterBalanceLoading(false)
   }

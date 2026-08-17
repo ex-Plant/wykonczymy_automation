@@ -18,10 +18,11 @@ import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-ke
 import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
+import { sectionBandLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
-import { engagedConditionsOfKind, listLabels } from '@/lib/kosztorys/row-conditions'
+import { engagedConditionsOfKind, engagedHiders, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -37,6 +38,7 @@ import {
   type UndoRedoApiT,
 } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 
 const ITEM_ROW_HEIGHT = 32
 const SECTION_BAND_ROW_HEIGHT = 52
@@ -45,6 +47,8 @@ type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim header,
   // kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
   preview?: boolean
+  // Arrives with the preview payload only; the owner's editor renders the full grid regardless.
+  clientView?: ClientViewSettingsT
   // Optional because the read-only client body omits it and falls back to NOOP_UNDO_REDO.
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
@@ -63,13 +67,14 @@ export function KosztorysEditorBody({
   investmentLoss,
   depositTransactions,
   preview = false,
+  clientView,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
   onTreeReplaced,
   workers,
   ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
+  const editor = useKosztorysEditor({ investmentId, tree, preview, clientView, undoRedo, workers })
   const {
     gridRef,
     gridHeight,
@@ -117,8 +122,9 @@ export function KosztorysEditorBody({
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
+      labelColumnId: sectionBandLabelColumnId(columns.map((column) => column.id)),
     }),
-    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection],
+    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection, columns],
   )
 
   const sectionFooter = useMemo(
@@ -155,7 +161,9 @@ export function KosztorysEditorBody({
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
   const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
-  const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
+  // The client's own hider counts here too: with „ukryj puste pozycje" on and every pozycja empty,
+  // the client would otherwise get a grid with nothing in it and no word about why.
+  const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (laborCostsNetFromKosztorys /
@@ -303,22 +311,31 @@ export function KosztorysEditorBody({
               <EmptyState
                 className="pointer-events-none absolute inset-0"
                 title={
-                  emptyByFilter
-                    ? 'Wszystkie pozycje schowane'
-                    : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
+                  preview
+                    ? 'Brak pozycji do pokazania'
+                    : emptyByFilter
+                      ? 'Wszystkie pozycje schowane'
+                      : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
                 }
                 description={
-                  emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
+                  preview
+                    ? 'Żadna pozycja nie ma jeszcze przedmiaru ani wykonanej pracy.'
+                    : emptyByFilter
+                      ? undefined
+                      : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
                 }
               >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="pointer-events-auto"
-                  onClick={resetFilters}
-                >
-                  Zresetuj filtry
-                </Button>
+                {/* The client has no „Filtry" menu, so nothing there is theirs to reset. */}
+                {!preview && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="pointer-events-auto"
+                    onClick={resetFilters}
+                  >
+                    Zresetuj filtry
+                  </Button>
+                )}
               </EmptyState>
             )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
