@@ -169,8 +169,10 @@ caller-owned transaction handle so they are atomic with the write they inform.
 ownerId: number, …)`; a neighbour resolver returning the adjacent row's `{ id, displayOrder }` or
 `null` at the edge, and an anchor-relative slot resolver returning the `at` integer.
 `swapDisplayOrder` changes from `(payload, …)` to a `DbExecutorT`-taking signature.
-**Every statement keeps `ORDER BY id FOR UPDATE`** — the neighbour SELECT included, since it now
-participates in the same lock ordering as the UPDATE that follows it.
+**Every statement keeps `ORDER BY id FOR UPDATE`** — but NOT the neighbour SELECT itself. Locking
+`LIMIT 1`-of-a-rank acquires out of id order, which is exactly the EX-632 cycle the discipline
+exists to prevent. Implemented instead as: lock the whole owner's rows in ascending id order first,
+then read the neighbour with a plain SELECT under that lock. Same guarantee, same acquisition order.
 
 #### 2. Section ordering actions
 
@@ -319,7 +321,8 @@ EX-526 undo↔autosave ordering guarantee depends on it.
 
 #### 3. Small pure helpers
 
-**Files**: `src/lib/kosztorys/money-axis.ts`, `src/lib/kosztorys/row-view.ts` (both new)
+**Files**: `src/lib/kosztorys/money-axis.ts` (new), `src/lib/kosztorys/row-view.ts` (existing —
+`buildViewRows` joins the sort/filter helpers already there)
 
 **Intent**: The effective-money-axis choice (`:239`, a three-branch conditional over view/preview/
 persisted state) and the view-row pipeline (filter → conditions → sort, `:467-476`) are pure and

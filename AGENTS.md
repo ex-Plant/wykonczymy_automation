@@ -165,6 +165,15 @@ component itself lives in `src/components/nav/` — and the slot needs a `defaul
 don't match. `@investmentCrumb` (the investment name + back arrow in the top bar) is the first and
 currently only instance; mirror its shape rather than inventing a second arrangement.
 
+**Editor hooks (EX-521).** `use-kosztorys-editor.ts` at the editor root is the **composition entry**
+— it wires sub-hooks together and owns the return shape components read. Each cohesive cluster it
+delegates to (stage ops, settlement settings, view state, …) is one leaf hook under
+`editor/hooks/`. A new cluster goes there, not into a second root-level hook, and **nothing moves
+into `KosztorysEditorProvider`** — context value-identity churn is the EX-496 perf regression that
+was reverted once already. Logic that is genuinely React-free belongs one layer further out in
+`src/lib/kosztorys/`, where it is testable without a hook renderer; that split is why this codebase
+has never needed `renderHook`.
+
 ### Important Directories
 
 Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). The non-obvious ones:
