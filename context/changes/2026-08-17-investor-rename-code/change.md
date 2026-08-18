@@ -11,6 +11,8 @@ worktree: null
 
 ## Notes
 
+Linear: **EX-704**. Prior art: EX-548 (the kosztorys terminology rename).
+
 Tier C of the „Klient" → „Inwestor" rename. The UI half shipped 2026-08-17 (`f4fa21fb`): every
 label, the view axis, the share dialog and the route `/podglad-inwestora` now say „Inwestor", while
 the code underneath still says `client`. The glossary records the split as deliberate
@@ -36,9 +38,10 @@ the code underneath still says `client`. The glossary records the split as delib
 **Measured blast radius** — see `research.md`; the pre-research figures below were wrong on three
 counts and are kept only to mark what changed.
 
-- ~~~89 files, ~500 occurrences~~ → **123 files, ~880 occurrences** in the paying-party bucket, plus
+- ```89 files, ~500 occurrences~~ → **123 files, ~880 occurrences** in the paying-party bucket, plus
   **14 files to `git mv`**. Two clusters were missing from the count: `client-totals` (which reaches
   past the kosztorys onto the investments listing) and the `RowConditionKindT` union.
+  ```
 - ~~Zero persisted `'client'` values~~ → **five persistence surfaces**: three JSONB
   (`kosztorys_snapshots.payload`, `kosztorys_presets.payload`, `kosztoryses.sheet_column_mapping`)
   and two `localStorage` keys (`kosztorys-view:<id>`, `kosztorys-filters:<id>`). Every one has a
