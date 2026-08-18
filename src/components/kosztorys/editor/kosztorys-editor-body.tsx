@@ -160,24 +160,23 @@ export function KosztorysEditorBody({
       ),
     [columns, columnTotals, sectionHeader, sectionFooter],
   )
+  const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
   const bodyRows = useMemo(
     () =>
       buildSectionBandRows(viewRows, {
         enabled: sort?.scope !== 'global',
         collapsedSectionIds,
-        foldSuppressed: search.trim() !== '',
         sections: sectionRows,
       }),
-    [viewRows, collapsedSectionIds, sort, search, sectionRows],
+    [viewRows, collapsedSectionIds, sort, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
-  const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
   // The client's own hider counts here too: with „ukryj puste pozycje" on and every pozycja empty,
   // the client would otherwise get a grid with nothing in it and no word about why.
-  const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
+  const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
   // One decision, not two: the title and the description always come from the same branch, so
   // splitting them into parallel ternaries only invites the two to drift apart.
   const emptyCopy = preview

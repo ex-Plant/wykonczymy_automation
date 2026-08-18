@@ -2,8 +2,6 @@ import { groupBySection } from '@/lib/kosztorys/row-ops'
 import { makeSectionFooterRow, makeSectionHeaderRow } from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-const EMPTY_COLLAPSED: ReadonlySet<number> = new Set()
-
 type OptsT = {
   collapsedSectionIds: ReadonlySet<number>
   // False under a sort scoped to the whole kosztorys: grouping presumes section-contiguous rows,
@@ -11,11 +9,6 @@ type OptsT = {
   // collapsed section with no band left to re-expand it would be rows the user can't get back.
   // A sort scoped to the sections keeps the rows contiguous, so the bands stay.
   enabled: boolean
-  // True while a search is on: a fold left over from before it would hide hits behind a band that
-  // gives no hint they exist, and the search field is not where the user would look for the cause.
-  // The conditions do NOT suppress it — they and the folds are ticked in the same „Filtry" menu, so
-  // the fold is visible there and suppressing it would make those checkmarks describe nothing.
-  foldSuppressed: boolean
   // Every section in the base dataset, in display order, each represented by one of its rows (the
   // band reads name and colour off it). Taken from the FULL dataset, not the filtered view, so the
   // sections keep their original order regardless of which ones the filter thinned out.
@@ -49,11 +42,10 @@ export function baseOrdinals(rows: readonly KosztorysV2RowT[]): Map<number, numb
  */
 export function buildSectionBandRows(
   viewRows: KosztorysV2RowT[],
-  { collapsedSectionIds, enabled, foldSuppressed, sections }: OptsT,
+  { collapsedSectionIds, enabled, sections }: OptsT,
 ): KosztorysV2RowT[] {
   if (!enabled) return viewRows
 
-  const collapsed = foldSuppressed ? EMPTY_COLLAPSED : collapsedSectionIds
   const bySection = groupBySection(viewRows)
 
   const rows: KosztorysV2RowT[] = []
@@ -64,7 +56,7 @@ export function buildSectionBandRows(
     rows.push(makeSectionHeaderRow(section))
     // A collapsed section shows its header alone: the footer sums the rows it hides, so it goes
     // with them.
-    if (collapsed.has(section.sectionId)) continue
+    if (collapsedSectionIds.has(section.sectionId)) continue
     rows.push(...group, makeSectionFooterRow(section))
   }
   // A row whose section the list never named would otherwise vanish from the grid — render it

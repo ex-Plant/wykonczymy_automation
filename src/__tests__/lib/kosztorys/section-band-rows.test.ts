@@ -28,10 +28,9 @@ function row(id: number, sectionId: number): KosztorysV2RowT {
 const VIEW_ROWS = [row(1, 10), row(2, 10), row(3, 10), row(4, 20), row(5, 20)]
 
 // The section list always comes off the FULL dataset, whatever subset the view is showing.
-const enabled = (collapsed: number[] = [], foldSuppressed = false) => ({
+const enabled = (collapsed: number[] = []) => ({
   collapsedSectionIds: new Set(collapsed),
   enabled: true,
-  foldSuppressed,
   sections: sectionRepresentatives(VIEW_ROWS),
 })
 
@@ -107,22 +106,6 @@ describe('buildSectionBandRows', () => {
     expect(buildSectionBandRows([], enabled())).toEqual([])
   })
 
-  it('ignores a collapsed section while a row filter is active', () => {
-    const rows = buildSectionBandRows(VIEW_ROWS, enabled([10], true))
-
-    expect(rows.map((r) => r.id)).toEqual([
-      sectionHeaderRowId(10),
-      1,
-      2,
-      3,
-      sectionFooterRowId(10),
-      sectionHeaderRowId(20),
-      4,
-      5,
-      sectionFooterRowId(20),
-    ])
-  })
-
   // Bands come from the section list, so rows arriving out of order are regrouped rather than
   // emitting a second band pair (a duplicate key for dsg's virtualizer) or spilling outside a band.
   it('gathers a section arriving in two blocks under one band pair', () => {
@@ -150,7 +133,6 @@ describe('buildSectionBandRows', () => {
       // Even a collapsed section stays visible: with no band there would be nothing to re-expand it.
       collapsedSectionIds: new Set([10]),
       enabled: false,
-      foldSuppressed: false,
       sections: sectionRepresentatives(VIEW_ROWS),
     })
 

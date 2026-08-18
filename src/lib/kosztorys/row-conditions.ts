@@ -66,11 +66,20 @@ export type RowConditionT = {
 // Every price problem gets all three, „bez ceny j.m." included: the subcontractor stawki derive from
 // the client price, so a pozycja missing that price is missing them too, and the fix is made in the
 // same three cells whichever of the two the reader noticed first.
+// Named once so the pair below cannot be edited apart — „bez rabatu" is „ma rabat" negated, and two
+// hand-written copies of a three-term test are two chances to change only one of them.
+const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && row.discountValue > 0
+
 const PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
 
 // Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
 export const MEASURE_DIVERGED_CONDITION_ID = 'measure-diverged'
+
+// The rabat pair, named because the menu drops it under a global rabat — the same call the grid makes
+// for the rabat COLUMNS (kosztorys-v2-columns' DISCOUNT_COLUMN_IDS). Kept beside the entries rather
+// than restated in the menu, so adding a third rabat condition cannot leave the two lists disagreeing.
+export const DISCOUNT_CONDITION_IDS: ReadonlySet<string> = new Set(['has-discount', 'no-discount'])
 
 /**
  * The overpaid-crew guard (EX-708): on this plane, is the pozycja's executed work being settled at a
@@ -145,6 +154,84 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: 'Sekcje z wykonaną pracą',
     kind: 'filter',
     matches: (row, ctx) => rowTotalQtyDone(row, ctx.stages, 'client') > 0,
+  },
+  // Read through `discountType`, not `discountValue` alone: under a null type the value is stored but
+  // inert (`applyDiscount` walks past it), so a leftover „5" in a row whose type was cleared is not a
+  // rabat. Both halves go dead under the global rabat rather than reading the raw fields, because
+  // there the per-item rabat applies to nothing AND its two columns are pulled from the grid entirely
+  // — narrowing on an axis with no visible cause is the trap the price diagnostics avoid by revealing
+  // their columns. Dead means BOTH return false, so neither half can hide anything: a filter persisted
+  // from before the global rabat was switched on must not blank the kosztorys.
+  {
+    id: 'has-discount',
+    label: 'z rabatem',
+    sectionLabel: 'Sekcje z rabatem',
+    kind: 'filter',
+    matches: (row) => !row.globalDiscountActive && hasItemDiscount(row),
+  },
+  {
+    id: 'no-discount',
+    label: 'bez rabatu',
+    sectionLabel: 'Sekcje bez rabatu',
+    kind: 'filter',
+    matches: (row) => !row.globalDiscountActive && !hasItemDiscount(row),
+  },
+  // Split per plane for the same reason the price diagnostics are: a pozycja carries a stawka on both
+  // planes at once, so one entry asking about „the active view" would answer for half the kosztorys and
+  // silently leave the other half unaskable. `null` = derived from the effective coefficient, which is
+  // the state „nikt tego nie tknął" — the pair exists to separate what was decided by hand from what
+  // the formula produced.
+  //
+  // `sectionLabel: null` on all four: a whole section folded away by where its stawki came from hides
+  // pricing, which is exactly the mistake „Zwiń puste sekcje" made with unpriced sections.
+  {
+    id: 'manual-rate-w-tools',
+    label: `ze stawką wykonawcy wpisaną ręcznie w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'filter',
+    plane: 'w_tools',
+    matches: (row) => row.wToolsOverrideType !== null,
+  },
+  {
+    id: 'formula-rate-w-tools',
+    label: `ze stawką wykonawcy z formuły w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'filter',
+    plane: 'w_tools',
+    matches: (row) => row.wToolsOverrideType === null,
+  },
+  {
+    id: 'manual-rate-own-tools',
+    label: `ze stawką wykonawcy wpisaną ręcznie w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'filter',
+    plane: 'own_tools',
+    matches: (row) => row.ownToolsOverrideType !== null,
+  },
+  {
+    id: 'formula-rate-own-tools',
+    label: `ze stawką wykonawcy z formuły w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'filter',
+    plane: 'own_tools',
+    matches: (row) => row.ownToolsOverrideType === null,
+  },
+  // Trimmed before testing: the grid writes '' into a cleared cell on some paths and null on others,
+  // and a komentarz of three spaces is not one. `sectionLabel: null` — „every pozycja in this section
+  // lacks a comment" is true of nearly every section and names nothing worth folding.
+  {
+    id: 'has-note',
+    label: 'z komentarzem',
+    sectionLabel: null,
+    kind: 'filter',
+    matches: (row) => (row.note?.trim() ?? '') !== '',
+  },
+  {
+    id: 'no-note',
+    label: 'bez komentarza',
+    sectionLabel: null,
+    kind: 'filter',
+    matches: (row) => (row.note?.trim() ?? '') === '',
   },
   {
     id: 'client-empty',
@@ -395,25 +482,20 @@ export function columnsRevealedBy(engagedIds: Iterable<string>): ReadonlySet<str
 }
 
 /**
- * The price view a condition is about, or undefined for the ones that are about no view in particular.
- *
- * Picking a problem switches the grid to it, which only became answerable once the „Problemy" list went
- * single-choice: with two engaged there was no such thing as „the" view. Until then the narrowing was
- * half a gesture — the right pozycje, with the wrong plane's prices in the column it had just revealed.
- */
-export function conditionPlane(id: string): ToolPlaneT | undefined {
-  return BY_ID.get(id)?.plane
-}
-
-/**
  * The plane the engaged set is being read on, or undefined when nothing engaged names one. Answerable
  * only because the „Problemy" list is single-choice; the first match wins rather than the set being
  * asserted to hold one, since a stale id from an older registry must not make the grid unreadable.
+ *
+ * Diagnostics ONLY, even though filters can name a plane too. A problem is a gesture — you press it,
+ * it takes you where the fault is, you press it again and you are back. A filter is a picker row that
+ * happens to be about one plane, and several can be unticked at once: letting those move the view
+ * would switch the grid out from under a tick and then leave it there, since unticking the other half
+ * of the pair names the same plane and cannot undo the move.
  */
 export function engagedPlane(engagedIds: Iterable<string>): ToolPlaneT | undefined {
   for (const id of engagedIds) {
-    const plane = conditionPlane(id)
-    if (plane) return plane
+    const condition = BY_ID.get(id)
+    if (condition?.kind === 'diagnostic' && condition.plane) return condition.plane
   }
   return undefined
 }
@@ -421,6 +503,28 @@ export function engagedPlane(engagedIds: Iterable<string>): ToolPlaneT | undefin
 /** The engaged conditions that REMOVE rows — what an empty grid has to explain. */
 export function engagedHiders(engagedIds: ReadonlySet<string>): RowConditionT[] {
   return ROW_CONDITIONS.filter((condition) => isHider(condition) && engagedIds.has(condition.id))
+}
+
+/**
+ * Whether the folds have to stand down for now — the reader is narrowing, and a fold left over from
+ * before would hide the very pozycje the narrowing was asked to find, behind a band that gives no
+ * hint they are there.
+ *
+ * Both of the reader's narrowings count, because both fail the same way: a hit inside a folded sekcja
+ * is a hit the user is told does not exist.
+ *
+ * Two hiders are left out on purpose. A diagnostic comes with its own count on its own trigger, so
+ * the reader is checking off a number they were given rather than hunting for a pozycja they believe
+ * is in there. And the client's own hider is not a gesture at all — it is the owner's stored setting
+ * on the shared document, on for the client's whole visit, so counting it would stand the folds down
+ * permanently and leave the client clicking a band that never moves.
+ */
+export function isFoldSuppressed(search: string, engagedIds: ReadonlySet<string>): boolean {
+  if (search.trim() !== '') return true
+  // Walks the engaged ids (0–2 of them), not the registry — the question is about what the reader
+  // switched on, and asking it the other way round grows with every condition ever added.
+  for (const id of engagedIds) if (BY_ID.get(id)?.kind === 'filter') return true
+  return false
 }
 
 // Counts run over the full dataset, never over what survived the filter — a count of the survivors
@@ -441,6 +545,17 @@ export function countMatching(
  *
  * A section with no rows cannot qualify vacuously; it simply never appears in `rows`.
  */
+/**
+ * The conditions the „Sekcje …" half of the „Filtry" menu offers, and so exactly the ones worth
+ * computing a `sectionIdsWhereAllMatch` set for. `sectionLabel === null` is the registry entry saying
+ * „this one does not lift" — a diagnostic never lifts either, since it keeps rows rather than hiding
+ * them and a section-wide keep is not a fold.
+ */
+export const liftsToSections = (
+  condition: RowConditionT,
+): condition is RowConditionT & { sectionLabel: string } =>
+  condition.kind === 'filter' && condition.sectionLabel !== null
+
 export function sectionIdsWhereAllMatch(
   rows: KosztorysV2RowT[],
   conditionId: string,

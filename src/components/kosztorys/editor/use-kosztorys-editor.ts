@@ -64,6 +64,7 @@ import {
   applyRowConditions,
   columnsRevealedBy,
   countMatching,
+  liftsToSections,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { STAGE_CONDITIONS, countMatchingStages } from '@/lib/kosztorys/stage-conditions'
@@ -158,6 +159,7 @@ export function useKosztorysEditor({
     setSort,
     setSortField,
     collapsedSectionIds,
+    storedCollapsedSectionIds,
     setCollapsedSectionIds,
     toggleSectionCollapsed,
     unfoldSection,
@@ -352,8 +354,9 @@ export function useKosztorysEditor({
   // carries none of this. Read by the toolbar's counters.
   //
   // The two halves are counted separately because only one of them depends on the view, and the row
-  // half is the expensive one: eleven passes over every pozycja. Counted together, switching the plane
-  // — which picking a problem now does on its own — re-ran all of them to reach the same numbers.
+  // half is the expensive one: one pass over every pozycja per registry entry. Counted together,
+  // switching the plane — which picking a problem now does on its own — re-ran all of them to reach
+  // the same numbers.
   const rowConditionCounts = useMemo(() => {
     const ctx = { stages, hasSettledMaterial }
     return ROW_CONDITIONS.map(
@@ -465,7 +468,10 @@ export function useKosztorysEditor({
     if (preview) return new Map<string, Set<number>>()
     const ctx = { stages, hasSettledMaterial }
     return new Map(
-      ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
+      // Skipping a condition that does not lift saves a full pass over every row for a `Map` entry the
+      // menu would never read — and this memo recomputes on `rows`, i.e. on every edit. The menu
+      // falls back to an empty set for a missing id, so a skipped one simply renders no „Sekcje …" row.
+      ROW_CONDITIONS.filter(liftsToSections).map((condition) => [
         condition.id,
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
@@ -1053,6 +1059,7 @@ export function useKosztorysEditor({
     gridHeight,
     columns,
     columnToggleItems,
+    revealedColumnIds,
     toggleColumn,
     setAllColumns,
     columnRanks,
@@ -1068,6 +1075,7 @@ export function useKosztorysEditor({
     sort,
     guideX,
     collapsedSectionIds,
+    storedCollapsedSectionIds,
     toggleSectionCollapsed,
     setCollapsedSectionIds,
     // The band's only mutation — every other section command lives in the row „…" menu. Reused from

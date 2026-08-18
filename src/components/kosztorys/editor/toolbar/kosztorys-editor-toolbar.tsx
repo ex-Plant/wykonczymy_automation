@@ -2,6 +2,7 @@
 
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
+import { KosztorysActiveFiltersBar } from '@/components/kosztorys/editor/toolbar/kosztorys-active-filters-bar'
 import { KosztorysAddMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-add-menu'
 import { KosztorysActionsMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
@@ -52,6 +53,10 @@ export function KosztorysEditorToolbar() {
           <KosztorysViewMenu />
         </div>
       </div>
+      {/* Inside the toolbar's own bordered block, under the controls that set them — a second line
+          rather than a strip of its own, so the border still reads as one edge between chrome and
+          grid however many chips are on. */}
+      <KosztorysActiveFiltersBar />
     </div>
   )
 }

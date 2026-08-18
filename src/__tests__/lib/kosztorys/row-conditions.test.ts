@@ -5,9 +5,9 @@ import {
   applyRowConditions,
   clientConditionIds,
   columnsRevealedBy,
-  conditionPlane,
   engagedPlane,
   engagedConditionsOfKind,
+  isFoldSuppressed,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
@@ -149,10 +149,16 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('no-w-tools-price', row({ clientPrice: 0 }))).toBe(false)
   })
 
-  it('splits into working filters and diagnostics, and only filters lift to a section', () => {
+  // One direction only: the „Sekcje" list is built from filters, so nothing else may carry a label.
+  // The converse does NOT hold — a filter opts OUT of lifting by declaring `sectionLabel: null`, which
+  // is what „ze stawką … z formuły" and „bez komentarza" do: folding a whole section away by either
+  // would hide pricing, the mistake „Zwiń puste sekcje" made. That opt-out is also what
+  // `foldableSectionIds` reads to skip a full pass over the dataset per edit.
+  it('lets only a filter lift to a section, and lets a filter decline to', () => {
     for (const condition of ROW_CONDITIONS) {
-      expect(condition.sectionLabel === null).toBe(condition.kind !== 'filter')
+      if (condition.kind !== 'filter') expect(condition.sectionLabel).toBeNull()
     }
+    expect(ROW_CONDITIONS.some((c) => c.kind === 'filter' && c.sectionLabel === null)).toBe(true)
   })
 
   // The picker grammar rests on this: untick one half and you are left with exactly the other half.
@@ -163,16 +169,70 @@ describe('the conditions, each on its boundary', () => {
       row({ plannedQty: 5 }),
       row({ [stageKey(1)]: 0, [stageKey(2)]: 0 }),
       row({ [stageKey(2)]: 3 }),
+      row({ discountType: 'percent', discountValue: 10 }),
+      row({ discountType: null, discountValue: 10 }),
+      row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 80 }),
+      row({ ownToolsOverrideType: 'coeff', ownToolsOverrideValue: 0.4 }),
+      row({ note: 'do potwierdzenia z klientem' }),
+      row({ note: '   ' }),
     ]
 
     for (const [negative, positive] of [
       ['no-planned-qty', 'has-planned-qty'],
       ['no-measured-qty', 'has-measured-qty'],
+      ['no-discount', 'has-discount'],
+      ['formula-rate-w-tools', 'manual-rate-w-tools'],
+      ['formula-rate-own-tools', 'manual-rate-own-tools'],
+      ['no-note', 'has-note'],
     ]) {
       for (const subject of subjects) {
         expect(matches(positive, subject)).toBe(!matches(negative, subject))
       }
     }
+  })
+
+  it('„z rabatem" asks the type, because a value under a null type buys nothing', () => {
+    expect(matches('has-discount', row({ discountType: 'percent', discountValue: 10 }))).toBe(true)
+    expect(matches('has-discount', row({ discountType: 'amount', discountValue: 250 }))).toBe(true)
+    // A type typed and then given no value takes nothing off the row.
+    expect(matches('has-discount', row({ discountType: 'percent', discountValue: 0 }))).toBe(false)
+    // The mirror case: a value left behind after the type was cleared is inert (applyDiscount walks
+    // past it), so it is not a rabat either.
+    expect(matches('has-discount', row({ discountType: null, discountValue: 10 }))).toBe(false)
+  })
+
+  // Under a global rabat the per-item fields apply to nothing and their columns leave the grid, so the
+  // axis is gone — not inverted. BOTH halves must go quiet: if „bez rabatu" still matched everything,
+  // a filter persisted from before the switch would hide the entire kosztorys on the next load.
+  it('kills the whole rabat axis under the global rabat, rather than flipping it', () => {
+    const withDiscount = row({
+      discountType: 'percent',
+      discountValue: 10,
+      globalDiscountActive: true,
+    })
+    const withoutDiscount = row({ globalDiscountActive: true })
+
+    for (const subject of [withDiscount, withoutDiscount]) {
+      expect(matches('has-discount', subject)).toBe(false)
+      expect(matches('no-discount', subject)).toBe(false)
+    }
+  })
+
+  it('judges each rate source on its own plane, never the other one', () => {
+    const manualWithTools = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 80 })
+    expect(matches('manual-rate-w-tools', manualWithTools)).toBe(true)
+    // The same row is still on the formula for the plane it says nothing about.
+    expect(matches('manual-rate-own-tools', manualWithTools)).toBe(false)
+    expect(matches('formula-rate-own-tools', manualWithTools)).toBe(true)
+    // 'coeff' is a hand-typed multiplier, not the derived one — still „wpisana ręcznie".
+    expect(matches('manual-rate-own-tools', row({ ownToolsOverrideType: 'coeff' }))).toBe(true)
+  })
+
+  it('„bez komentarza" reads a blank as no comment, and null and empty alike', () => {
+    expect(matches('no-note', row({ note: null }))).toBe(true)
+    expect(matches('no-note', row({ note: '' }))).toBe(true)
+    expect(matches('no-note', row({ note: '  \n ' }))).toBe(true)
+    expect(matches('no-note', row({ note: 'zmiana zakresu' }))).toBe(false)
   })
 })
 
@@ -260,8 +320,8 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
   })
 
   it('sends each half to the plane it judges, and reveals the cells that repair it', () => {
-    expect(conditionPlane('material-percent-rate-w-tools')).toBe('w_tools')
-    expect(conditionPlane('material-percent-rate-own-tools')).toBe('own_tools')
+    expect(engagedPlane(['material-percent-rate-w-tools'])).toBe('w_tools')
+    expect(engagedPlane(['material-percent-rate-own-tools'])).toBe('own_tools')
     expect([...columnsRevealedBy(['material-percent-rate-w-tools'])].sort()).toEqual([
       'price',
       'priceCoeff',
@@ -441,23 +501,6 @@ describe('columnsRevealedBy', () => {
   })
 })
 
-// What the „Problemy" pick switches the grid to. Only meaningful because the list is single-choice —
-// with two engaged there is no „the" view to switch to.
-describe('conditionPlane', () => {
-  it('sends each stawka problem to the plane it judges', () => {
-    expect(conditionPlane('overpriced-w-tools')).toBe('w_tools')
-    expect(conditionPlane('no-own-tools-price')).toBe('own_tools')
-  })
-
-  // Owner: cena j.m. is typed in the Inwestor view but the cells that repair it assemble in the
-  // subcontractor ones, so there is no single view this problem is fixed in — it moves nobody.
-  it('leaves the view alone for a problem about no plane in particular', () => {
-    expect(conditionPlane('no-client-price')).toBeUndefined()
-    expect(conditionPlane('measure-diverged')).toBeUndefined()
-    expect(conditionPlane('nie-ma-takiego')).toBeUndefined()
-  })
-})
-
 // The engaged set is what SURVIVES a reload, so the plane has to be readable from it. Remembered
 // separately it was lost on refresh, and the narrowing came back judged on a view the grid was no
 // longer showing.
@@ -471,8 +514,46 @@ describe('engagedPlane', () => {
     expect(engagedPlane(['no-client-price', 'stage-no-plane'])).toBeUndefined()
   })
 
+  // A filter may name a plane too, but it must not move the view: it is a picker row, not a gesture,
+  // and unticking the other half of its pair names the same plane and so could never undo the move.
+  it('ignores a filter’s plane, and answers for the problem beside it', () => {
+    expect(engagedPlane(['manual-rate-w-tools'])).toBeUndefined()
+    expect(engagedPlane(['manual-rate-w-tools', 'overpriced-own-tools'])).toBe('own_tools')
+  })
+
   // A stale id from an older registry must not make the grid unreadable — it is skipped, not fatal.
   it('skips an id it does not recognise', () => {
     expect(engagedPlane(['nie-ma-takiego', 'overpriced-w-tools'])).toBe('w_tools')
+  })
+})
+
+describe('isFoldSuppressed', () => {
+  const NOTHING = new Set<string>()
+
+  it('leaves the folds standing while the reader is not narrowing', () => {
+    expect(isFoldSuppressed('', NOTHING)).toBe(false)
+    expect(isFoldSuppressed('   ', NOTHING)).toBe(false)
+  })
+
+  it('stands the folds down under a search phrase', () => {
+    expect(isFoldSuppressed('gładź', NOTHING)).toBe(true)
+  })
+
+  // The rule the archived instalment recorded and only search actually kept: a hit inside a folded
+  // sekcja is a hit the user is told does not exist, and an unticked filter buries one exactly like a
+  // search does.
+  it('stands them down under an engaged filter too', () => {
+    expect(isFoldSuppressed('', new Set(['no-planned-qty']))).toBe(true)
+  })
+
+  // The client's hider is engaged by the investment's stored share settings, not by a reading
+  // gesture — and it defaults on. Suppressing folds for it would mean no shared kosztorys could ever
+  // arrive folded, which is the whole point of the owner folding sekcje before sharing.
+  it('leaves the folds standing under the client‘s own hider, which is a stored setting', () => {
+    expect(isFoldSuppressed('', new Set(['client-empty']))).toBe(false)
+  })
+
+  it('leaves them alone under a problem, which reports its own count instead', () => {
+    expect(isFoldSuppressed('', new Set(['no-client-price']))).toBe(false)
   })
 })

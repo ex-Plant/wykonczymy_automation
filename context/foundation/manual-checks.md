@@ -1294,3 +1294,30 @@ komentarza).
 - [ ] Przy rabacie kwotowym posortowana kolejność zgadza się z kwotami wypisanymi w komórkach
 - [ ] Nagłówek etapu wartościowo dalej zawija nazwę i pokazuje podpowiedź, a przełącznik osi kwot dalej chowa grupę
 - [ ] W podglądzie inwestora nagłówki etapów (i wartości etapów) to zwykłe etykiety, bez menu
+
+## EX-713 / EX-714 — pasek aktywnych filtrów i trzy nowe pary warunków
+
+**In review** — automaty zielone (tsc 0, eslint 0 na zmienionych plikach, `pnpm test` bez nowych
+błędów: dwa istniejące pady dotyczą `LABOR_COST` / `RABAT` w dialogu transferów i są sprzed tej
+zmiany). Wszystko, co skraca siatkę, dostaje swój chip pod paskiem narzędzi; rejestr rośnie o rabat,
+źródło stawki wykonawcy i komentarz.
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`), w nim co najmniej
+jedna pozycja z rabatem, jedna z ręczną stawką wykonawcy, jedna z komentarzem i kilka bez.
+Zalogowany jako OWNER.
+
+- [ ] Przy czystym kosztorysie paska chipów nie ma wcale; odznaczenie czegokolwiek w „Filtrach" wywołuje go pod paskiem narzędzi
+- [ ] Chip filtra mówi „Ukryto: …", chip problemu „Tylko: …", a X przy każdym zdejmuje dokładnie jego
+- [ ] Zwinięte sekcje to **jeden** chip z liczbą, a jego X rozwija wszystkie
+- [ ] Wpisana fraza ma swój chip; jego X czyści też pole „Szukaj"
+- [ ] „Wyczyść wszystko" pojawia się od dwóch chipów i zdejmuje wszystko naraz — łącznie z frazą; sortowanie zostaje
+- [ ] Filtry ustawione wczoraj wracają po przeładowaniu i pasek mówi o nich od razu, bez otwierania menu
+- [ ] Przy kilkunastu chipach pasek zawija się na kolejne linie — żaden chip nie ucieka za prawą krawędź
+- [ ] Przy włączonym filtrze zwinięta sekcja rozwija się sama, a po zdjęciu filtra znów jest zwinięta
+- [ ] „Filtry" mają nowe pary: rabat, źródło stawki wykonawcy, komentarz — każda po dwie pozycje
+- [ ] Para rabatowa znika z menu po włączeniu rabatu globalnego, a pozycja z rabatem 0 zł liczy się jako „bez rabatu"
+- [ ] Pary o stawce wykonawcy widać tylko na widoku, którego dotyczą; przełączenie osi cen **nie** zabiera już włączonego filtra z menu ani z paska
+- [ ] „Sekcje z rabatem" / „bez rabatu" zwijają sekcje, a pary o stawce i komentarzu nie mają w tej liście własnego wiersza
+- [ ] Pojawienie się paska spycha siatkę w dół — nie przelicza jej wysokości, więc ostatni wiersz może wymagać przewinięcia (świadoma decyzja, nie usterka)
+- [ ] Przycisk „Kolumny” pokazuje licznik ukrytych kolumn; kolumna wyciągnięta na wierzch przez włączony problem **nie** jest w nim liczona
+- [ ] Na linku dla inwestora sekcje zwinięte przed udostępnieniem przychodzą zwinięte — strzałka na belce działa i zgadza się z tym, co widać

@@ -738,9 +738,13 @@ w jednym rejestrze (`ROW_CONDITIONS`), a menu „Filtry" renderuje się z niego 
   „aktywny" nazywałby połowie rejestru stan przeciwny.
 - **Liczniki liczą się po całym kosztorysie, nigdy po ocalałych** — licznik ocalałych byłby liczbą
   samego siebie. To ta sama zasada, co przy sumach: `SUM` w arkuszu liczy ukryte wiersze.
-- **Zwinięcie sekcji tłumi tylko szukanie, nie warunki.** Oba mieszkają w tym samym menu „Filtry",
-  więc stłumione zwinięcie kazałoby własnym ptaszkom opisywać nic. Szukanie jest inne — pole szukania
-  to nie miejsce, w którym ktoś szuka przyczyny schowanego trafienia.
+- **Zwinięcie sekcji tłumi szukanie i zawężający filtr — nie ustawienie widoku klienta**
+  (uzupełnione 2026-08-18, EX-713). Pierwotnie tłumiło **tylko** szukanie, choć notatka twierdziła
+  inaczej; rozbieżność była niewidoczna, dopóki pasek chipów nie postawił obu stanów obok siebie.
+  Zrównanie musiało jednak minąć „ukryj puste pozycje" z widoku klienta: to ustawienie jest domyślnie
+  włączone i nie jest gestem czytelnika, więc liczone jako zawężenie rozwijało klientowi wszystkie
+  sekcje — właściciel nie mógł wysłać zwiniętej oferty. Tłumi **kind: 'filter'** i szukanie, nic
+  więcej.
 - **Sekcja, którą filtr opróżnił, znika w całości** — z pasem i sumą. Ostry filtr inaczej zakopuje
   pięć trafień pod jedenastoma pustymi ramkami.
 - **Jeden „Zresetuj filtry" cofa i warunki, i zwinięcia.** Dwa półresety zostawiają użytkownika
@@ -749,6 +753,26 @@ w jednym rejestrze (`ROW_CONDITIONS`), a menu „Filtry" renderuje się z niego 
 Numery pozycji liczą się po **pełnym, nieposortowanym** zbiorze — dziura w numeracji jest sygnałem,
 że coś jest schowane. Numeracja przeliczana per widok czyniłaby filtr niewidocznym (1…N tak czy
 inaczej).
+
+**Pasek aktywnych filtrów — co go kształtuje (2026-08-18, EX-713/EX-714).** Pasek nazywa każde
+źródło, które właśnie skraca siatkę, i każde zdejmuje się jednym kliknięciem. Dwie decyzje warto
+znać, zanim ktoś je odkręci:
+
+- **Pasek zawija się, a siatka nie przelicza wysokości.** Wysokość siatki mierzy się przy montażu i
+  przy zmianie okna — **bez ResizeObserver**, bo ten zapętlał się z detektorem
+  react-datasheet-grid (wpis o migotaniu w `lessons.md`). Pasek nad siatką przesuwa `rect.top` nie
+  wyzwalając żadnego z dwóch pomiarów, więc dolna krawędź siatki siedzi niżej, gdy filtry są
+  włączone. Przeliczanie **było** zbudowane i zostało wycofane decyzją właściciela razem z wersją
+  jednoliniową: chip za prawą krawędzią to dokładnie ten filtr, o którym nikt nie wie, a to
+  przekreśla sens paska.
+- **„Wyczyść wszystko" zdejmuje wszystko, co pasek pokazuje** — warunki, problem, zwinięcia i frazę —
+  ale **nie sortowanie**, bo sortowanie niczego nie chowa.
+
+**Filtry wartościowe (wykonawca / etap) odrzucone na merit, nie z braku czasu** (2026-08-18). Jeden
+etap niesie dokładnie jednego wykonawcę, więc kolumna etapu **jest już** osią ekipy. Co gorsza, przy
+najczęstszej pracy na tym ekranie — wpisywaniu tygodniowego postępu ekipy — filtr „wiersze, gdzie
+ekipa X ma ilość > 0" chowa dokładnie te wiersze, w które nowa ilość ma trafić. Nie ma dla nich
+issue i nie powinno powstać.
 
 **Pasy sekcji a zakres sortowania.** Pas presuponuje, że wiersze sekcji stoją obok siebie, więc
 sortowanie „w całym kosztorysie" zdejmuje pasy (i razem z nimi zwinięcia — inaczej zwinięta sekcja
