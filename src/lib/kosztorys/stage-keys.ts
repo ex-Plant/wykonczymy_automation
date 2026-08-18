@@ -32,3 +32,24 @@ export function stageValueNetKey(stageId: number): string {
 export function stageValueGrossKey(stageId: number): string {
   return `${STAGE_VALUE_GROSS_COLUMN_GROUP}_${stageId}`
 }
+
+// The inverses of the two value builders, for code that receives a column id and has to recover the
+// etap it belongs to (sort-value.ts). Only the value namespaces need one: `stage_<id>` is a real row
+// field, so its consumers read the key rather than parse it.
+//
+// A key from the WRONG namespace must resolve to null, not to a number — `Number('Gross_7')` is NaN
+// but `Number('')` is 0, so a bare Number() on a mis-routed key would silently name etap 0.
+function stageIdFromKey(key: string, group: string): number | null {
+  const prefix = `${group}_`
+  if (!key.startsWith(prefix)) return null
+  const rest = key.slice(prefix.length)
+  return /^\d+$/.test(rest) ? Number(rest) : null
+}
+
+export function stageIdFromValueNetKey(key: string): number | null {
+  return stageIdFromKey(key, STAGE_VALUE_NET_COLUMN_GROUP)
+}
+
+export function stageIdFromValueGrossKey(key: string): number | null {
+  return stageIdFromKey(key, STAGE_VALUE_GROSS_COLUMN_GROUP)
+}

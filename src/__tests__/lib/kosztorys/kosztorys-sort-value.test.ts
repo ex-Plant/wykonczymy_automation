@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { sortRows } from '@/lib/kosztorys/row-view'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
+import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
+import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
-import { makeTree } from '@/__tests__/helpers/kosztorys-tree'
+import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
 
 // Two rows whose COMPUTED figures order differently from their raw fields, so a test that passes
 // can only pass because the computed value was actually resolved — not because input order survived.
@@ -106,5 +108,148 @@ describe('reconcileSort — a sort whose column has left the grid is dropped (EX
 
   it('passes null through', () => {
     expect(reconcileSort(null, rendered)).toBeNull()
+  })
+})
+
+// A second fixture for the keys the EX-487 rows cannot reach: two PLANED etapy (the one above has
+// `plane: null`, which belongs to neither subcontractor view), both override modes on both planes,
+// a comment on some rows only, and a cleared „Przedmiar".
+//
+// The subcontractor rows are deliberately ordered OPPOSITELY across the two planes — reading the
+// wrong plane is the one mistake here that a same-order fixture would let pass.
+const planeTree: KosztorysTreeT = makeTree({
+  sections: [
+    {
+      id: 10,
+      name: 'Sekcja A',
+      displayOrder: 0,
+      color: null,
+      items: [
+        {
+          ...baseItem,
+          id: 1,
+          description: 'A',
+          plannedQty: 10,
+          clientPrice: 100,
+          discountType: 'amount',
+          discountValue: 100,
+          wToolsOverrideType: null, // auto → 0.65
+          wToolsOverrideValue: 0,
+          ownToolsOverrideType: 'coeff',
+          ownToolsOverrideValue: 2,
+          note: 'zzz',
+        },
+        {
+          ...baseItem,
+          id: 2,
+          description: 'B',
+          // A cleared numeric cell writes null through the grid's Column<number|null>, which the row
+          // type still calls a number.
+          plannedQty: null as unknown as number,
+          clientPrice: 50,
+          wToolsOverrideType: 'coeff',
+          wToolsOverrideValue: 3,
+          ownToolsOverrideType: null, // auto → 0.55
+          ownToolsOverrideValue: 0,
+        },
+        {
+          ...baseItem,
+          id: 3,
+          description: 'C',
+          plannedQty: 9,
+          clientPrice: 10,
+          wToolsOverrideType: 'amount',
+          wToolsOverrideValue: 500,
+          ownToolsOverrideType: 'amount',
+          ownToolsOverrideValue: 400,
+          note: 'aaa',
+        },
+      ],
+    },
+  ],
+  stages: [
+    { id: 100, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+    { id: 200, ordinal: 2, label: null, plane: 'own_tools', workerId: null },
+  ],
+  progress: [
+    { itemId: 1, stageId: 100, qtyDone: 1 },
+    { itemId: 1, stageId: 200, qtyDone: 4 },
+    { itemId: 2, stageId: 100, qtyDone: 6 },
+    { itemId: 3, stageId: 100, qtyDone: 2 },
+    { itemId: 3, stageId: 200, qtyDone: 2 },
+  ],
+})
+
+const planeRows = treeToRows(planeTree)
+const planeIdsSortedBy = (field: string, view: PriceViewT, dir: 'asc' | 'desc' = 'desc') =>
+  sortRows(planeRows, (r) => columnSortValue(r, field, view, planeTree.stages), dir).map(
+    (r) => r.id,
+  )
+const planeRow = (id: number) => planeRows.find((r) => r.id === id)!
+
+describe('columnSortValue — the columns that used to opt out of sorting', () => {
+  it('sorts by a stage qty column, which is a real row field', () => {
+    expect(planeIdsSortedBy(stageKey(100), 'client')).toEqual([2, 3, 1]) // 6 > 2 > 1
+  })
+
+  it('sorts by a stage value column at the client price', () => {
+    // Every etap counts in the client view, so the denominator is 5/6/4 — A's „amount" rabat is
+    // spread across its etapy, not charged to each.
+    expect(columnSortValue(planeRow(1), stageValueNetKey(100), 'client', planeTree.stages)).toBe(80)
+    expect(planeIdsSortedBy(stageValueNetKey(100), 'client')).toEqual([2, 1, 3]) // 300 > 80 > 20
+  })
+
+  it('prices a stage value column against the SUBCONTRACTOR plane, not the client one', () => {
+    // In `w_tools` only etap 100 is that crew's, so both the price and the denominator change —
+    // which flips the order the client view gives.
+    expect(planeIdsSortedBy(stageValueNetKey(100), 'w_tools')).toEqual([3, 2, 1]) // 1000 > 900 > 65
+  })
+
+  it('sorts a stage value brutto column like its netto twin', () => {
+    expect(
+      columnSortValue(planeRow(1), stageValueGrossKey(100), 'client', planeTree.stages),
+    ).toBeCloseTo(98.4)
+    expect(planeIdsSortedBy(stageValueGrossKey(100), 'client')).toEqual([2, 1, 3])
+  })
+
+  it('has no value for an etap that is gone', () => {
+    expect(
+      columnSortValue(planeRow(1), stageValueNetKey(999), 'client', planeTree.stages),
+    ).toBeNull()
+  })
+
+  it('sorts „Mnożnik" by the multiplier the cell SHOWS, per plane', () => {
+    // w_tools: B's own 3 > A's inherited 0.65. own_tools: A's own 2 > B's inherited 0.55 — the
+    // reversal that catches a plane-blind read.
+    expect(planeIdsSortedBy('priceCoeff', 'w_tools')).toEqual([2, 1, 3])
+    expect(planeIdsSortedBy('priceCoeff', 'own_tools')).toEqual([1, 2, 3])
+  })
+
+  it('sinks a flat-amount row in „Mnożnik" under BOTH directions (its cell shows „—")', () => {
+    expect(planeIdsSortedBy('priceCoeff', 'w_tools', 'asc').at(-1)).toBe(3)
+    expect(planeIdsSortedBy('priceCoeff', 'w_tools', 'desc').at(-1)).toBe(3)
+  })
+
+  it('sorts „Źródło ceny" inherited → hand-overridden, per plane', () => {
+    expect(planeIdsSortedBy('priceMode', 'w_tools', 'asc')).toEqual([1, 2, 3]) // auto, coeff, amount
+    expect(planeIdsSortedBy('priceMode', 'own_tools', 'asc')).toEqual([2, 1, 3])
+  })
+
+  it('has no subcontractor pricing to sort by in the client view', () => {
+    expect(columnSortValue(planeRow(1), 'priceCoeff', 'client', planeTree.stages)).toBeNull()
+    expect(columnSortValue(planeRow(1), 'priceMode', 'client', planeTree.stages)).toBeNull()
+  })
+})
+
+describe('columnSortValue — an empty cell is an absence, not a key', () => {
+  it('sinks a commentless pozycja under both directions', () => {
+    expect(planeIdsSortedBy('note', 'client', 'asc')).toEqual([3, 1, 2]) // aaa, zzz, (none)
+    expect(planeIdsSortedBy('note', 'client', 'desc')).toEqual([1, 3, 2])
+  })
+
+  it('keeps a numeric column numeric when one of its cells is cleared', () => {
+    // With `?? ''` the empty cell put a string next to numbers, dropping the WHOLE column into
+    // localeCompare — „9" then sorted above „10".
+    expect(planeIdsSortedBy('plannedQty', 'client')).toEqual([1, 3, 2])
   })
 })

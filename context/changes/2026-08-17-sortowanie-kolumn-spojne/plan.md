@@ -36,14 +36,22 @@ their column ids (`priceMode`, `priceCoeff`) are **not row fields**. The fields 
 `wToolsOverrideType`/`wToolsOverrideValue` and `own_tools` → the `ownTools*` pair. So flipping the
 flag alone would render a sort caret over a `default` branch reading `undefined`.
 
-Two facts remove work that would otherwise be in scope:
+Three facts remove work that would otherwise be in scope:
 
-- Stage qty fields are **always present as numbers**: `treeToRows` seeds
-  `stageFields[stageKey(st.id)] = qty[st.id] ?? 0` (`src/lib/kosztorys/v2-rows.ts:36`). Rows with no
-  work in a stage cluster at 0 — there is no null-vs-zero decision to make for that axis.
+- **Stage qty columns already have a working sort key** (research, 2026-08-18). `stage_<id>` is a real
+  row field — `treeToRows` seeds `stageFields[stageKey(st.id)] = qty[st.id] ?? 0`
+  (`src/lib/kosztorys/v2-rows.ts:36`) and `KosztorysV2RowT` carries the index signature
+  `{ [stageKey: StageKeyT]: number }` (`types.ts:207-211`) — so the `default` branch resolves it
+  correctly and always as a number. Rows with no work in a stage cluster at 0; there is no
+  null-vs-zero decision for that axis. The comment at `kosztorys-v2-columns.tsx:157-159` claiming
+  `columnSortValue` "has no case" for per-stage ids is true of the two **value** namespaces and false
+  of the qty one. That axis needs a header affordance only, no key work.
 - `renderedFieldIds` (`use-kosztorys-editor.ts:435`) is built from **column ids**, so stage columns
   are already in it. `reconcileSort` therefore drops a stage sort automatically when the stage is
   deleted or filtered out — no extra handling needed.
+- The sort is **persisted nowhere** — not localStorage, URL, DB, preset or snapshot — so a stage id
+  can never outlive its stage across a session. (Do not persist it as part of this change: the
+  ghost-id reasoning at `stage-keys.ts:7-10` would reopen for `stage_<id>` if anyone did.)
 
 „Zapisz kolejność" also comes for free: `display-order-plan.ts` renumbers each section by the active
 sort's key (`use-kosztorys-editor.ts:789`), so any column that gains a key gains persistable order.
@@ -80,8 +88,13 @@ Only two columns remain unsortable, and both are structural rather than exceptio
 ## What We're NOT Doing
 
 - No completeness/guard test asserting every assembled column has a sort key, and no change to
-  `columnSortValue`'s contract to distinguish "field absent" from "field empty" (owner call — the
-  guard would only check _presence_ of a key, never its correctness).
+  `columnSortValue`'s contract to distinguish "field absent" from "field empty" — both keep resolving
+  the same way (owner call — the guard would only check _presence_ of a key, never its correctness).
+  Step 3 changes what that shared resolution _is_ (`null` instead of `''`), not the fact that the two
+  are indistinguishable.
+- No UI signal when a sort dies because its column stopped rendering. `reconcileSort` already clears
+  it silently (EX-486), and per-stage keys make that reachable from a „Problemy" filter click as well
+  as from an axis toggle. Accepted as-is; if it bites in use it is its own change.
 - No sorting for `actions` or `layerGap` — neither holds a comparable value.
 - No change to `sortRows` / `sortRowsWithinSections`, the sort scopes, or the `null`-sinking rule.
 - No change to filtering („Problemy" conditions, stage narrowing) — this change is sorting only.
@@ -120,33 +133,58 @@ Give every currently-keyless column a value in `columnSortValue`, including the 
 
 ### Changes Required:
 
-#### 1. Reverse parsers for the stage key namespaces
+#### 1. Reverse parsers for the stage value namespaces
 
 **File**: `src/lib/kosztorys/stage-keys.ts`
 
-**Intent**: The key builders have no inverse, so nothing can turn `stage_7` / `stageValueNet_7` back
-into stage id 7. Add the parsers next to the prefixes they must stay consistent with — splitting them
-into another module is how the prefix and its parser drift apart.
+**Intent**: The key builders have no inverse, so nothing can turn `stageValueNet_7` back into stage id 7. Add the parsers next to the prefixes they must stay consistent with — splitting them into another
+module is how the prefix and its parser drift apart.
 
-**Contract**: Three parsers, one per namespace, each returning the stage id or `null` for a
-non-matching key. They must reject a key belonging to a _different_ namespace rather than
-`Number()`-ing garbage into `NaN` — the same trap the file's existing comment about `diffRow` warns
-about.
+**Contract**: One parser per **value** namespace, each returning the stage id or `null` for a
+non-matching key. The qty namespace needs none (its key resolves as a plain row field). They must
+reject a key belonging to a _different_ namespace rather than `Number()`-ing garbage into `NaN` — the
+same trap the file's existing comment about `diffRow` warns about.
 
-#### 2. Stage qty and stage value keys
+#### 2. Stage value keys
 
 **File**: `src/lib/kosztorys/sort-value.ts`
 
 **Intent**: `columnSortValue`'s `switch` matches exact field names, so per-stage ids never reach a
-case. Add prefix-matched resolution ahead of the `switch`'s `default`: a qty key reads the row field
-directly, a value key recomputes the figure the cell renders.
+case. The qty axis needs nothing — it falls through to the `default` branch as a real row field. The
+two value axes are computed at render, so they resolve to `''` today; add prefix-matched resolution
+ahead of the `switch`'s `default` that recomputes the figure the cell renders.
 
-**Contract**: Stage qty → the row's `stage_<id>` numeric field (always present, see Current State).
-Stage value netto → `stageValueForView(row, row[stageKey(id)] ?? 0, rowTotalQtyDone(row, stages,
-view), view)`; brutto → the same passed through `toGross(..., row.vatRate)`. A key naming a stage id
-absent from `stages` returns `null`.
+**Contract**: Stage value netto → `stageValueForView(row, row[stageKey(id)] ?? 0,
+rowTotalQtyDone(row, stages, view), view)`; brutto → the same passed through
+`toGross(..., row.vatRate)`. A key naming a stage id absent from `stages` returns `null`.
 
-#### 3. Per-plane subcontractor keys
+#### 3. An empty value is an absence, not a key
+
+**File**: `src/lib/kosztorys/sort-value.ts`
+
+**Intent**: The `default` branch coerces anything non-numeric to `''` (`sort-value.ts:63`), and that
+one line does two incompatible jobs. Two consequences, both found by research on 2026-08-18:
+
+- **„Komentarz" would read as broken.** `note` is `string | null`; ascending, every row without a
+  comment sorts to the **top** — most of the grid — before the first real comment appears. The cell
+  renders nothing there, and `sortRows` already sinks `null` under both directions
+  (`row-view.ts:34-37`). This is the same ruling the plan makes for „Mnożnik" under „kwota stała".
+- **A cleared numeric cell corrupts an existing sort.** `KosztorysItemT` types `plannedQty` and
+  `discountValue` as `number`, but the grid's float column is `Column<number|null>` and clearing a
+  cell writes `null` (stated in-code at `kosztorys-v2-columns.tsx:92-98` and in `calc.ts`
+  `rowDoneFraction`). That row's key becomes `''`, and `sortRows` compares a **string against a
+  number**, so the whole column falls back to `localeCompare` — „10" sorts before „9" across every
+  row. Reachable today on „Przedmiar" and „Rabat wart.".
+
+Fixed here rather than filed: it is one line inside the function this phase already rewrites, and
+leaving it would make the new „Komentarz" sort ship with the defect it was warned about.
+
+**Contract**: the `default` branch returns `null` for `null`, `undefined` and `''`; a number passes
+through as a number; any other string passes through as a string. Every empty-valued row then sinks
+to the bottom under both directions, consistently with the „—" its cell renders — this also changes
+„Opis prac", „j.m." and „Rabat typ", which is the intended consistency, not collateral.
+
+#### 4. Per-plane subcontractor keys
 
 **File**: `src/lib/kosztorys/sort-value.ts`
 
@@ -156,22 +194,30 @@ the two subcontractor views sort by their own numbers.
 
 **Contract**: Both return `null` when `view === 'client'` (the columns are never assembled there, and
 `effectiveCoeff` does not accept the client plane). `priceCoeff` → `null` under the `'amount'`
-override type (the cell renders „—"), otherwise `effectiveCoeff(row, view)`, which already resolves
-the inherited investment default for `auto`. `priceMode` → an explicit rank: `auto` (0) < `coeff` (1)
+override type (the cell renders „—"); under `'coeff'` → the row's OWN override value, and only under
+`auto` → `effectiveCoeff(row, view)`, the inherited investment default. (Corrected during
+implementation: the cell reads the own value under `'coeff'` and treats `effectiveCoeff` as the auto
+placeholder only, so an unconditional `effectiveCoeff` would have sorted every hand-set row by the
+default it overrode.) `priceMode` → an explicit rank: `auto` (0) < `coeff` (1)
 < `amount` (2), so ascending runs from inherited to most hand-overridden.
 
-#### 4. Unit specs for every new key
+#### 5. Unit specs for every new key
 
 **File**: `src/__tests__/lib/kosztorys/kosztorys-sort-value.test.ts`
 
 **Intent**: Extend the existing EX-487 harness rather than starting a new file — its fixture is built
 so a sort that silently no-ops leaves input order, which is the exact failure being guarded.
 
-**Contract**: Cases for stage qty, stage value netto and brutto, `priceCoeff` and `priceMode`. Two
-assertions the row-field cases don't need: the subcontractor keys must be exercised at **both**
-planes with rows whose `wTools*` and `ownTools*` values order oppositely (reading the wrong plane is
-the one mistake here that would otherwise pass), and `priceCoeff` must place an `'amount'` row last
-under both directions.
+**Contract**: Cases for stage qty (the axis that already worked — a guard, since nothing asserted it),
+stage value netto and brutto, `priceCoeff`, `priceMode`, and the empty-sinks rule from step 3
+(an empty `note`, and a cleared `plannedQty` on a row alongside numeric ones — the case that
+currently degrades the whole column to string comparison). Two assertions the row-field cases don't
+need: the subcontractor keys must be exercised at **both** planes with rows whose `wTools*` and
+`ownTools*` values order oppositely (reading the wrong plane is the one mistake here that would
+otherwise pass), and `priceCoeff` must place an `'amount'` row last under both directions.
+
+**Note**: the existing fixture's single stage has `plane: null`, which belongs to neither
+subcontractor view — the per-plane cases need stages with a plane assigned.
 
 ### Success Criteria:
 
@@ -244,7 +290,7 @@ so this is one wiring site, not two.
 
 #### Manual Verification:
 
-- „Komentarz" sorts both directions and groups the empty notes at one end.
+- „Komentarz" sorts both directions, and rows without a comment sit at the bottom in both.
 - „Źródło ceny wykonawcy" ascending runs auto → własny mnożnik → kwota stała, on both subcontractor
   views.
 - „Mnożnik" sorts numerically, and rows showing „—" land at the bottom in both directions.
@@ -363,8 +409,8 @@ widths and ranks are untouched.
 
 #### Automated
 
-- [ ] 1.1 New and existing sort-key specs pass
-- [ ] 1.2 Sort-scope specs still pass
+- [x] 1.1 New and existing sort-key specs pass
+- [x] 1.2 Sort-scope specs still pass
 
 ### Phase 2: Headers that already have a menu
 
