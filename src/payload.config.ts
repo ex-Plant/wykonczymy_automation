@@ -27,6 +27,8 @@ import { Sheets } from '@/collections/sheets'
 import { OtherCategories } from '@/collections/other-categories'
 import { Transfers } from '@/collections/transfers'
 import { Users } from '@/collections/users'
+import { VehicleInspections } from '@/collections/vehicle-inspections'
+import { Vehicles } from '@/collections/vehicles'
 import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-defaults'
 
 const filename = fileURLToPath(import.meta.url)
@@ -80,6 +82,8 @@ export default buildConfig({
     ExpenseCategories,
     AmountEdits,
     Leads,
+    Vehicles,
+    VehicleInspections,
     Media,
   ],
   globals: [KosztorysClientViewDefaults],

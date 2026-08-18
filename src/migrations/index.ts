@@ -69,6 +69,7 @@ import * as migration_20260813_0_add_sheet_measured_qty_to_kosztorys_items from 
 import * as migration_20260814_0_add_sheet_column_mapping_to_kosztoryses from './20260814_0_add_sheet_column_mapping_to_kosztoryses'
 import * as migration_20260815_0_add_kosztorys_client_view from './20260815_0_add_kosztorys_client_view'
 import * as migration_20260818_0_drop_kosztorys_hidden_in_export from './20260818_0_drop_kosztorys_hidden_in_export'
+import * as migration_20260818_1_add_fleet from './20260818_1_add_fleet'
 
 export const migrations = [
   {
@@ -425,5 +426,10 @@ export const migrations = [
     up: migration_20260818_0_drop_kosztorys_hidden_in_export.up,
     down: migration_20260818_0_drop_kosztorys_hidden_in_export.down,
     name: '20260818_0_drop_kosztorys_hidden_in_export',
+  },
+  {
+    up: migration_20260818_1_add_fleet.up,
+    down: migration_20260818_1_add_fleet.down,
+    name: '20260818_1_add_fleet',
   },
 ]

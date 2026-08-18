@@ -22,8 +22,8 @@ waiting for a second stream. The change is composition, not plumbing.
 
 `/flota` lists every car with five deadline columns coloured by urgency. Opening a car shows its full
 history; one short form records a new inspection, with the next-due date prefilled from the type's
-interval and freely overwritable. Each morning a single digest reaches `FLEET_NOTIFY_EMAIL` listing
-only what needs attention — and nothing at all on a quiet day.
+interval and freely overwritable. Each morning a single digest reaches `FLEET_NOTIFICATION_EMAIL` and
+`ADMIN_EMAIL` listing only what needs attention — and nothing at all on a quiet day.
 
 ## Key Decisions Made
 
@@ -36,7 +36,7 @@ only what needs attention — and nothing at all on a quiet day.
 | Tyres            | Bare date, no interval, no seasonal logic                                | The ask was literally "wpisać termin, żeby szło przypomnienie" — anything more is invented scope                                                      | Plan       |
 | Oil change       | Date target **and** kilometre target                                     | It genuinely runs on mileage; the km leg is evaluated whenever any inspection contributes a fresh odometer reading, so it costs nobody any extra work | Plan       |
 | Email cadence    | One digest per day, nothing on empty days                                | Per-event mail at ~10 cars × 5 types is spam that stops being read; a mail that always arrives stops being read too                                   | Brainstorm |
-| Recipient        | `FLEET_NOTIFY_EMAIL` from env                                            | Mirrors `LEADS_NOTIFY_EMAIL`; immune to someone adding an account and suddenly receiving fleet mail                                                   | Brainstorm |
+| Recipients       | `FLEET_NOTIFICATION_EMAIL` + `ADMIN_EMAIL` from env, one send            | Mirrors `LEADS_NOTIFY_EMAIL`; immune to someone adding an account and suddenly receiving fleet mail. Two addresses on one mail, not two sends         | Owner      |
 | Dedupe           | `notifiedThreshold` + `notifiedAt`, plus a separate `odometerNotifiedAt` | Without it one deadline sends thirty mails; the two legs fire independently so they cannot share a column                                             | Plan       |
 | Access           | Read/write OWNER/ADMIN/MANAGER, delete OWNER/ADMIN                       | Same posture as cash registers                                                                                                                        | Brainstorm |
 | Tests            | Unit on the arithmetic, no Playwright spec                               | The risk is threshold/dedupe maths, not clicking; a CRUD E2E would cost an hour per run to re-verify existing patterns                                | Plan       |
@@ -70,8 +70,9 @@ drift would only surface as an email contradicting the screen.
 | 4. Daily digest   | Sweep, email template, cron route, schedule                                 | Stamping the bookkeeping columns before a send succeeds would silence a deadline for a week |
 | 5. Nav badge      | Second `fleet` stream on `notification_reads`                               | Widening the helpers must not disturb the existing leads badge                              |
 
-**Prerequisites:** `FLEET_NOTIFY_EMAIL` set locally, and on Vercel before Phase 4 ships. The migration
-is additive, so a human applies it to prod **before** the code is pushed.
+**Prerequisites:** `FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL` — done 2026-08-18, locally and on
+Vercel (Production + Preview). The migration is additive, so a human applies it to prod **before** the
+code is pushed.
 **Estimated effort:** ~2-3 sessions across the five phases.
 
 ## Open Risks & Assumptions
