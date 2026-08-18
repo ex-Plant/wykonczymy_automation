@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, RefreshCw, TriangleAlert } from 'lucide-react'
+import { Check, RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react'
 import { FilterTriggerButton } from '@/components/filters/filter-trigger-button'
 import {
   DropdownMenu,
@@ -69,6 +69,18 @@ export function KosztorysProblemsMenu() {
             with nothing narrowed there is nothing being held to release. */}
         {engaged && (
           <>
+            {/* The engaged problem is turned off by picking it again, which is a gesture you have to
+                already know; this says it out loud. Scoped to the problems — the sekcje folds and the
+                „Filtry" toggles are that menu's to undo, and a reset here that reached them would
+                undo things this menu never did. */}
+            <DropdownMenuItem
+              onSelect={() => toggleConditionExclusive(engaged.id, PROBLEM_IDS)}
+              className="text-muted-foreground"
+            >
+              <RotateCcw />
+              Zresetuj filtry
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={refreshProblemRows}>
               <RefreshCw />
               Odśwież — ukryj poprawione
