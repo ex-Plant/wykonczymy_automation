@@ -365,12 +365,12 @@ Run once, after Phase 2.
 
 #### Automated
 
-- [x] 1.1 New condition predicates covered in `row-conditions.test.ts` (zero-value rabat, blank komentarz, per-plane rate source)
-- [x] 1.2 Complementarity holds for every new pair
+- [x] 1.1 New condition predicates covered in `row-conditions.test.ts` (zero-value rabat, blank komentarz, per-plane rate source) — acf21753
+- [x] 1.2 Complementarity holds for every new pair — acf21753
 
 ### Phase 2: The active-filter chip bar
 
 #### Automated
 
-- [ ] 2.1 `active-filters-model.test.ts` — every source represented, sections aggregated, client conditions excluded
-- [ ] 2.2 Fold suppression under an engaged hider covered by a spec
+- [x] 2.1 `active-filters-model.test.ts` — every source represented, sections aggregated, client conditions excluded
+- [x] 2.2 Fold suppression under an engaged hider covered by a spec

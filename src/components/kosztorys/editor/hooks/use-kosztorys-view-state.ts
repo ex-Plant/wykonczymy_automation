@@ -79,12 +79,17 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   }
 
   // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
-  // the conditions and the folds alike. Two half-resets would leave the user clicking one and still
-  // facing a short grid.
+  // the conditions, the folds and the search phrase alike. Two half-resets would leave the user
+  // clicking one and still facing a short grid — which is exactly what search did until the chip bar
+  // put it on the same line as the rest and made the omission visible.
+  //
+  // Sort is deliberately untouched: it reorders pozycje, it never removes one, so clearing it would
+  // undo something the button doesn't claim to.
   function resetFilters() {
     clearConditions()
     setViewPickedManually(false)
     setCollapsedSectionIds(new Set())
+    setSearch('')
   }
 
   function setSortField(field: string, pick: SortPickT | null) {

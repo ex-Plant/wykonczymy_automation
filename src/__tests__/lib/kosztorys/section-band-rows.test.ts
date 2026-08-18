@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   baseOrdinals,
   buildSectionBandRows,
+  isFoldSuppressed,
   sectionRepresentatives,
 } from '@/lib/kosztorys/section-band-rows'
 import {
@@ -186,5 +187,33 @@ describe('sectionRepresentatives', () => {
     const reps = sectionRepresentatives([row(4, 20), row(1, 10), row(5, 20)])
 
     expect(reps.map((r) => r.id)).toEqual([4, 1])
+  })
+})
+
+describe('isFoldSuppressed', () => {
+  const NOTHING = new Set<string>()
+
+  it('leaves the folds standing while the reader is not narrowing', () => {
+    expect(isFoldSuppressed('', NOTHING)).toBe(false)
+    expect(isFoldSuppressed('   ', NOTHING)).toBe(false)
+  })
+
+  it('stands the folds down under a search phrase', () => {
+    expect(isFoldSuppressed('gładź', NOTHING)).toBe(true)
+  })
+
+  // The rule the archived instalment recorded and only search actually kept: a hit inside a folded
+  // sekcja is a hit the user is told does not exist, and an unticked filter buries one exactly like a
+  // search does.
+  it('stands them down under an engaged filter too', () => {
+    expect(isFoldSuppressed('', new Set(['no-planned-qty']))).toBe(true)
+  })
+
+  it('stands them down for the client‘s own hider, so a shared kosztorys folds the same way', () => {
+    expect(isFoldSuppressed('', new Set(['client-empty']))).toBe(true)
+  })
+
+  it('leaves them alone under a problem, which reports its own count instead', () => {
+    expect(isFoldSuppressed('', new Set(['no-client-price']))).toBe(false)
   })
 })

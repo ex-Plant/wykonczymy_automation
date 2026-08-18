@@ -9,10 +9,14 @@ import { useCallback, useRef, useState } from 'react'
 // fell into a loop with react-datasheet-grid's internal resize detector (constant "flickering",
 // thousands of Issues/s in DevTools). Measure only on mount and window resize; floor + gap so
 // the grid is slightly shorter than the available space → no ancestor scrollbar → no oscillation.
+// Anything that changes the element's top edge WITHOUT a mount or a window resize — chrome appearing
+// above it — has to say so by calling the third return value. That is the whole reason it is exposed:
+// the caller knows the discrete moment its own layout flipped, where a ResizeObserver would only know
+// that something, continuously, moved.
 export function useElementHeight(
   gap = 8,
   fallback = 600,
-): [(node: HTMLElement | null) => void, number] {
+): [(node: HTMLElement | null) => void, number, () => void] {
   const [height, setHeight] = useState(fallback)
   const nodeRef = useRef<HTMLElement | null>(null)
 
@@ -36,5 +40,5 @@ export function useElementHeight(
     [measure],
   )
 
-  return [ref, height]
+  return [ref, height, measure]
 }
