@@ -20,7 +20,7 @@ import {
 import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
-import { formatQty } from '@/lib/kosztorys/format'
+import { formatCoeff } from '@/lib/kosztorys/format'
 import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
 import type {
@@ -119,7 +119,7 @@ export function SheetImportDialog({
               columns={columns}
               onMappingSaved={onMappingSaved}
             />
-            <SheetRatesBlock decisions={report.rateDecisions} />
+            <SheetRatesBlock mode="import" decisions={report.rateDecisions} />
             <RetainedBlock retained={report.retained} />
             <TotalsBlock totals={report.totals} mismatched={mismatchedTotals} />
           </>
@@ -136,10 +136,10 @@ function ScopeBlock({ report }: { report: ImportReportT }) {
   const adopted = [
     coeffs.wTools === null
       ? null
-      : `${PLANE_LABELS.w_tools.toLowerCase()} ${formatQty(coeffs.wTools)}`,
+      : `${PLANE_LABELS.w_tools.toLowerCase()} ${formatCoeff(coeffs.wTools)}`,
     coeffs.ownTools === null
       ? null
-      : `${PLANE_LABELS.own_tools.toLowerCase()} ${formatQty(coeffs.ownTools)}`,
+      : `${PLANE_LABELS.own_tools.toLowerCase()} ${formatCoeff(coeffs.ownTools)}`,
   ].filter(Boolean)
 
   return (

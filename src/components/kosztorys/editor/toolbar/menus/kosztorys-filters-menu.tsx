@@ -102,7 +102,8 @@ export function KosztorysFiltersMenu() {
         disabled: engagedConditionIds.size === 0 && collapsedSectionIds.size === 0,
       }}
       bulkToggleLabel="Zwiń wszystkie sekcje"
-      toggleGroups={[{ id: 'work', heading: 'Prace', items: workToggles }]}
+      toggles={workToggles}
+      togglesHeading="Prace"
       actionsHeading="Sekcje"
       optionsHeading="Widoczne sekcje"
       optionToggles={sectionToggles}

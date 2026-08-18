@@ -89,6 +89,7 @@ export function SheetCompareDialog({
             <MoneyBlock comparison={comparison} />
             <ItemsBlock comparison={comparison} />
             <SheetRatesBlock
+              mode="compare"
               decisions={comparison.rates.decisions}
               stale={comparison.rates.stale}
             />

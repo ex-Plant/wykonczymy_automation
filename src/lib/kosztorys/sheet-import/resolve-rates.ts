@@ -95,12 +95,14 @@ function indexByOccurrence(rows: readonly RateRowT[]): Map<string, RateRowT> {
   return byKey
 }
 
-// Does this formula read the given column of its own row? The lookbehind is what keeps „R" from
-// matching inside „AR12" — a false hit there would mistake an unrelated formula for one chained off
-// the z-narzędziami cell.
-function references(formula: unknown, column: number): boolean {
-  if (typeof formula !== 'string' || !formula.startsWith('=')) return false
-  return new RegExp(`(?<![A-Z])\\$?${columnLetter(column)}\\$?\\d`).test(formula.toUpperCase())
+// Does a formula read the given column of its own row? The lookbehind is what keeps „R" from matching
+// inside „AR12" — a false hit there would mistake an unrelated formula for one chained off the
+// z-narzędziami cell. Compiled once per column rather than per row: the column is fixed for a whole
+// tab, and a fresh RegExp per row is one compile per praca in the cennik.
+const referencesColumn = (column: number) => {
+  const pattern = new RegExp(`(?<![A-Z])\\$?${columnLetter(column)}\\$?\\d`)
+  return (formula: unknown): boolean =>
+    typeof formula === 'string' && formula.startsWith('=') && pattern.test(formula.toUpperCase())
 }
 
 // A pair where the subcontractor who brings their own tools costs MORE than one we equip is
@@ -292,6 +294,7 @@ export function readRateRows(
   resolved: ResolvedRatesT,
 ): RateRowT[] {
   const { description, wToolsRate, ownToolsRate } = resolved.columns
+  const referencesWTools = referencesColumn(wToolsRate)
   const rows: RateRowT[] = []
 
   for (let rowIndex = HEADER_BLOCK_ROWS; rowIndex < grid.length; rowIndex++) {
@@ -309,17 +312,18 @@ export function readRateRows(
 
     // Bez-narzędzi is „=R−R*0,15" far more often than it is a markup on Cena j.m., so it is only as
     // free as the cell it points at. Anything else computed is taken to follow the client price.
-    const wToolsTracksPrice = !isTyped(wToolsRate)
+    const wToolsTyped = isTyped(wToolsRate)
+    const ownToolsTyped = isTyped(ownToolsRate)
+    const wToolsTracksPrice = !wToolsTyped
     const ownToolsTracksPrice =
-      !isTyped(ownToolsRate) &&
-      (references(formulaRow[ownToolsRate], wToolsRate) ? wToolsTracksPrice : true)
+      !ownToolsTyped && (referencesWTools(formulaRow[ownToolsRate]) ? wToolsTracksPrice : true)
 
     rows.push({
       description: label,
       wToolsRate: value(wToolsRate),
       ownToolsRate: value(ownToolsRate),
-      wToolsTyped: isTyped(wToolsRate),
-      ownToolsTyped: isTyped(ownToolsRate),
+      wToolsTyped,
+      ownToolsTyped,
       wToolsTracksPrice,
       ownToolsTracksPrice,
     })

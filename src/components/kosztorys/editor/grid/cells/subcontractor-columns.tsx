@@ -120,6 +120,7 @@ function useOverrideEdit(
   setRowData: (row: KosztorysV2RowT) => void,
   view: ToolPlaneT,
   mode: SubcontractorOverrideTypeT,
+  stopEditing: CellProps<KosztorysV2RowT, SubcontractorCellDataT>['stopEditing'],
 ) {
   const [blockReason, setBlockReason] = useState<string | null>(null)
   // The text as typed, the override it started from, and the row it belongs to. Bound straight to
@@ -164,9 +165,10 @@ function useOverrideEdit(
     }
   }
 
-  // Escape abandons the edit without a word — the user said so themselves. It does NOT blur: the
-  // rollback has to be the last write, and a synchronous blur would settle the draft this render
-  // still holds.
+  // Escape abandons the edit without a word — the user said so themselves. It does NOT blur itself:
+  // the rollback has to be the last write, and a synchronous blur would settle the draft this render
+  // still holds. Handing the cell back to the grid blurs it a render later, by which time the draft
+  // is gone and `settle` no-ops on its own row guard.
   const cancel = () => {
     setBlockReason(null)
     setEdit(null)
@@ -178,9 +180,18 @@ function useOverrideEdit(
     blockReason,
     onChange: change,
     onBlur: settle,
-    // Enter hands over to blur rather than settling itself, so there is exactly one settle path.
-    onEnter: (event: KeyboardEvent<HTMLInputElement>) => event.currentTarget.blur(),
-    onEscape: cancel,
+    // Enter hands over to blur rather than settling itself, so there is exactly one settle path, then
+    // hands the cell back to the grid — without that the grid stays in edit mode on a cell whose input
+    // has already blurred, and the keyboard model the rest of the columns follow (Enter commits and
+    // steps down, Escape returns to selection) simply stops at these two.
+    onEnter: (event: KeyboardEvent<HTMLInputElement>) => {
+      event.currentTarget.blur()
+      stopEditing({ nextRow: true })
+    },
+    onEscape: () => {
+      cancel()
+      stopEditing({ nextRow: false })
+    },
   }
 }
 
@@ -194,11 +205,12 @@ function SubcontractorCoeffCell({
   setRowData,
   columnData,
   focus,
+  stopEditing,
 }: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
   const { view, typeField, valueField } = columnData
   // „Mnożnik" carries no STANDING verdict — the rule is about the price, and a red multiplier would
   // point at the wrong cell when the client price is what moved.
-  const edit = useOverrideEdit(rowData, setRowData, view, 'coeff')
+  const edit = useOverrideEdit(rowData, setRowData, view, 'coeff', stopEditing)
 
   const type = rowData[typeField] as SubcontractorOverrideTypeT | null
   if (type === 'amount') {
@@ -238,9 +250,10 @@ function SubcontractorPriceCell({
   setRowData,
   columnData,
   focus,
+  stopEditing,
 }: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
   const { view, typeField } = columnData
-  const edit = useOverrideEdit(rowData, setRowData, view, 'amount')
+  const edit = useOverrideEdit(rowData, setRowData, view, 'amount', stopEditing)
 
   const inherited = rowData[typeField] == null
   // A live rejection outranks the standing verdict: it describes the value on screen, which the row

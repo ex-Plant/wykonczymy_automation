@@ -75,7 +75,19 @@ export function KosztorysEditorBody({
   workers,
   ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, preview, clientView, undoRedo, workers })
+  // Any rozliczony wydatek means some material was folded into robocizna, which is what makes a
+  // pozycja priced off a coefficient hand the crew a cut of that material — the gate on EX-708's
+  // guard. The breakdown carries no link back to a pozycja, so this is all the kosztorys can know.
+  const hasSettledMaterial = panelData.settledBreakdown.length > 0
+  const editor = useKosztorysEditor({
+    investmentId,
+    tree,
+    preview,
+    clientView,
+    undoRedo,
+    workers,
+    hasSettledMaterial,
+  })
   const {
     gridRef,
     gridHeight,

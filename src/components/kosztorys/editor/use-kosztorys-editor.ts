@@ -17,6 +17,7 @@ import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
+import { engagedProblemIds, engagedStageProblemIds } from '@/lib/kosztorys/problem-conditions'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
 import { useKosztorysStageOps } from '@/components/kosztorys/editor/hooks/use-kosztorys-stage-ops'
 import { useKosztorysViewState } from '@/components/kosztorys/editor/hooks/use-kosztorys-view-state'
@@ -105,6 +106,10 @@ type ArgsT = {
   // Roster for the etap header's worker picker. Absent on the client share path, which never renders
   // a menu at all.
   workers?: WorkerRefT[]
+  // Whether the investment has any wydatek folded into robocizna — the gate on the overpaid-crew
+  // problem (EX-708). Optional with a `false` default for the client-share entry points, which count
+  // no problems at all; on the owner's editor it is always supplied.
+  hasSettledMaterial?: boolean
 }
 
 // Grace period after the last keystroke before a grid edit burst becomes one undo entry. Longer
@@ -125,6 +130,7 @@ export function useKosztorysEditor({
   clientView,
   undoRedo,
   workers,
+  hasSettledMaterial = false,
 }: ArgsT) {
   const router = useRouter()
   const { save, runNow } = useDebouncedSave(500)
@@ -332,36 +338,36 @@ export function useKosztorysEditor({
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
   // carries none of this. Read by the toolbar's counters.
-  const conditionCounts = useMemo(() => {
-    const ctx = { stages }
-    // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
-    // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
-    // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
-    // for every pozycja, whereas an etap belongs to one.
+  //
+  // The two halves are counted separately because only one of them depends on the view, and the row
+  // half is the expensive one: eleven passes over every pozycja. Counted together, switching the plane
+  // — which picking a problem now does on its own — re-ran all of them to reach the same numbers.
+  const rowConditionCounts = useMemo(() => {
+    const ctx = { stages, hasSettledMaterial }
+    return ROW_CONDITIONS.map(
+      (condition) => [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
+    )
+  }, [preview, rows, stages, hasSettledMaterial])
+  // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
+  // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
+  // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
+  // for every pozycja, whereas an etap belongs to one.
+  const stageConditionCounts = useMemo(() => {
     const viewStages = stagesForView(stages, view)
-    return new Map([
-      ...ROW_CONDITIONS.map(
-        (condition) =>
-          [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
-      ),
-      ...STAGE_CONDITIONS.map(
-        (condition) =>
-          [condition.id, preview ? 0 : countMatchingStages(viewStages, condition.id)] as const,
-      ),
-    ])
-  }, [preview, rows, stages, view])
+    return STAGE_CONDITIONS.map(
+      (condition) =>
+        [condition.id, preview ? 0 : countMatchingStages(viewStages, condition.id)] as const,
+    )
+  }, [preview, stages, view])
+  const conditionCounts = useMemo(
+    () => new Map([...rowConditionCounts, ...stageConditionCounts]),
+    [rowConditionCounts, stageConditionCounts],
+  )
 
   // Which etap problems are narrowing the stage columns. Empty under the preview like every other
   // filter, so a client's share can never be narrowed by an owner's leftover gesture.
   const engagedStageConditionIds = useMemo(
-    () =>
-      new Set(
-        preview
-          ? []
-          : STAGE_CONDITIONS.map((condition) => condition.id).filter((id) =>
-              engagedConditionIds.has(id),
-            ),
-      ),
+    () => (preview ? new Set<string>() : engagedStageProblemIds(engagedConditionIds)),
     [preview, engagedConditionIds],
   )
 
@@ -445,18 +451,30 @@ export function useKosztorysEditor({
   // section belongs to neither half of a pair and so stays visible under both — by design, since
   // „sekcje bez przedmiaru" cannot honestly name a section that has some.
   const foldableSectionIds = useMemo(() => {
-    const ctx = { stages }
+    const ctx = { stages, hasSettledMaterial }
     return new Map(
       ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
         condition.id,
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
     )
-  }, [rows, stages])
+  }, [rows, stages, hasSettledMaterial])
 
-  // Never under the preview: the client's document is not a working grid, so nothing is being fixed
-  // in it and a held-open row would only be a row the owner chose to hide.
-  const { latch, refresh: refreshProblemRows } = useConditionRowLatch(engagedConditionIds, !preview)
+  // Problems only, and never under the preview. The latch is half of a two-part gesture whose other
+  // half — „Odśwież — ukryj poprawione" — lives in the „Problemy" menu and is rendered only while a
+  // problem is engaged, so latching under a „Prace" filter would hold rows with no way to let them
+  // go: untick „z przedmiarem", type a przedmiar, and the row that should leave stays put while the
+  // menu's own counter moves without it. The preview is out for a different reason — the client's
+  // document is not a working grid, so nothing is being fixed in it and a held-open row would only
+  // be a row the owner chose to hide.
+  const engagedProblems = useMemo(
+    () => (preview ? new Set<string>() : engagedProblemIds(engagedConditionIds)),
+    [preview, engagedConditionIds],
+  )
+  const { latch, refresh: refreshProblemRows } = useConditionRowLatch(
+    engagedProblems,
+    engagedProblems.size > 0,
+  )
   const viewRows = useMemo(() => {
     const next = buildViewRows({
       rows,
@@ -465,11 +483,12 @@ export function useKosztorysEditor({
       sort,
       view,
       stages,
-      latchedRowIds: latch.ids,
+      hasSettledMaterial,
+      latchedRowIds: latch?.ids,
     })
-    for (const row of next) latch.ids.add(row.id)
+    if (latch) for (const row of next) latch.ids.add(row.id)
     return next
-  }, [rows, search, engagedConditionIds, sort, view, stages, latch])
+  }, [rows, search, engagedConditionIds, sort, view, stages, hasSettledMaterial, latch])
   // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
   // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
   // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
@@ -477,8 +496,11 @@ export function useKosztorysEditor({
   // 1…N. Search and sort are deliberately left out of both: a number that moved as the reader typed
   // would name a different pozycja every keystroke.
   const numberedRows = useMemo(
-    () => (preview ? applyRowConditions(rows, engagedConditionIds, { stages }) : rows),
-    [preview, rows, engagedConditionIds, stages],
+    () =>
+      preview
+        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
+        : rows,
+    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
   )
   const ordinalByRowId = useMemo(() => baseOrdinals(numberedRows), [numberedRows])
   // Sections keep their original order however the filter thinned them.

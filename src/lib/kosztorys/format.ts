@@ -11,6 +11,12 @@ export const formatNet = (n: number) =>
 export const formatQty = (n: number) =>
   (n + 0).toLocaleString('pl-PL', { maximumFractionDigits: 3 })
 
+// A mnożnik as prose, to as many places as one is stored in (`round6`). Through `formatQty` above a
+// derived 0,5525 showed as „0,553" — a number the import then did not adopt, and the reader's only
+// preview of what the cennik decided.
+export const formatCoeff = (n: number) =>
+  (n + 0).toLocaleString('pl-PL', { maximumFractionDigits: 6 })
+
 // A fraction (0.746) as a percentage; `null` (no denominator — see rowDoneFraction) renders as a
 // dash. Two precisions: integer for the dense grid cells, one decimal for the headline figures where
 // the whole kosztorys hangs on a single number.

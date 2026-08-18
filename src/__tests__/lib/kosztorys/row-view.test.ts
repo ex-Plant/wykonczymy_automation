@@ -37,6 +37,7 @@ const base = {
   sort: null,
   view: 'client' as const,
   stages: [],
+  hasSettledMaterial: false,
 }
 
 describe('buildViewRows', () => {

@@ -1,8 +1,5 @@
 import type { SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
-
-// Six places is what the editor's own coefficient field stores (`subcontractor-price-edit`), so a
-// derived coefficient survives a round-trip through it unchanged.
-export const round6 = (value: number): number => Math.round(value * 1e6) / 1e6
+import { round6 } from '@/lib/utils/round'
 
 // One view's per-item subcontractor override, mirroring what the cell does in the sheet rather than
 // what its number happens to equal. A rate the sheet DERIVES from Cena j.m. becomes a `'coeff'`, so

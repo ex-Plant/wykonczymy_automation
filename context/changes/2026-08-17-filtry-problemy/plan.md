@@ -715,3 +715,19 @@ Run once, after the last phase. It ran clean after phase 3; phase 4 re-runs it.
 - [x] re-run after phase 6 — typecheck / test (2379) / build clean; lint's 3 errors are the same
       pre-existing ones (`test.js`, `hooks/use-latest-request.ts`). The build first failed on a
       5-day-stale `.next-e2e/types` referencing a since-moved route; removed, it regenerates.
+
+## Deviations from the plan (owner-approved, during phases 5–7)
+
+- **The trigger counts instead of dotting.** Phase 6 specified „a dot marks that one is engaged, not
+  how many exist". Shipped: „Problemy (1)" / „Problemy", the same grammar every other filter trigger
+  in the toolbar uses — a dot was a second vocabulary for the same fact, on the one button that had to
+  read as an alarm at a glance.
+- **Releasing a held pozycja is its own gesture.** Phase 5 verified the latch by disengaging and
+  re-engaging the problem. Shipped: „Odśwież — ukryj poprawione" inside the „Problemy" menu, rendered
+  only while one is engaged. Toggling the problem off and on again reached the same state sideways,
+  through a gesture that also throws away the view the problem had taken the reader to.
+- **The problem's view is derived, not remembered.** Phase 7 specified a transient view override held
+  in component state. Shipped: the plane is read from the engaged problem on every render, and only
+  the reader's own override is remembered. The engaged set is persisted while a remembered plane is
+  not, so a reload restored the narrowing without the view it is judged on. (Review-gate fix, not an
+  owner ruling — recorded here so the phase text and the code stop disagreeing.)

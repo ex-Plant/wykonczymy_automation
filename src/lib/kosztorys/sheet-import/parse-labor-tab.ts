@@ -6,7 +6,7 @@ import type {
   StageProgressT,
 } from '@/lib/kosztorys/types'
 import { fold, HEADER_BLOCK_ROWS, isFooterLabel } from './columns'
-import { round6 } from './derive-override'
+import { round6 } from '@/lib/utils/round'
 import type { ResolvedLaborColumnsT } from './resolve-columns'
 
 // The marker the owner types into Przedmiar + Pomiar on a row that is not a praca. A section header

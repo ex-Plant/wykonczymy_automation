@@ -86,15 +86,25 @@ export function buildViewRows(input: {
   sort: SortStateT
   view: PriceViewT
   stages: KosztorysStageT[]
+  hasSettledMaterial: boolean
   latchedRowIds?: ReadonlySet<number>
 }): KosztorysV2RowT[] {
-  const { rows, search, engagedConditionIds, sort, view, stages, latchedRowIds } = input
+  const {
+    rows,
+    search,
+    engagedConditionIds,
+    sort,
+    view,
+    stages,
+    hasSettledMaterial,
+    latchedRowIds,
+  } = input
   // The latch bypasses the conditions only — a pozycja held open for editing still leaves the grid
   // when the search stops matching it, because a search is a question being asked right now.
   const filtered = applyRowConditions(
     filterRows(rows, search),
     engagedConditionIds,
-    { stages },
+    { stages, hasSettledMaterial },
     latchedRowIds,
   )
   if (!sort) return filtered

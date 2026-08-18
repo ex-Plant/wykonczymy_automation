@@ -6,6 +6,7 @@ import {
   clientConditionIds,
   columnsRevealedBy,
   conditionPlane,
+  engagedPlane,
   engagedConditionsOfKind,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
@@ -16,7 +17,7 @@ const STAGES: KosztorysStageT[] = [
   { id: 1, ordinal: 1, label: null, plane: null, workerId: null },
   { id: 2, ordinal: 2, label: null, plane: 'w_tools', workerId: 5 },
 ]
-const CTX = { stages: STAGES }
+const CTX = { stages: STAGES, hasSettledMaterial: false }
 
 function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
   return {
@@ -85,6 +86,19 @@ describe('the conditions, each on its boundary', () => {
     )
   })
 
+  // EX-707. „Pozostało do rozliczenia" stays silent here on purpose — with no przedmiar its percentage
+  // cell is a „—", and a red dash names nothing. The problem is real, so it is named here instead.
+  it('„z wykonaną pracą bez przedmiaru" needs work entered AND no offer', () => {
+    expect(matches('work-without-planned-qty', row({ plannedQty: 0, [stageKey(2)]: 3 }))).toBe(true)
+    // Nothing executed: an unpriced-but-empty pozycja is not work booked against no offer.
+    expect(matches('work-without-planned-qty', row({ plannedQty: 0 }))).toBe(false)
+    // The offer exists — whether the etapy overshoot it is the rozliczenie's question, not this one's.
+    expect(matches('work-without-planned-qty', row({ plannedQty: 1, [stageKey(2)]: 3 }))).toBe(
+      false,
+    )
+    expect([...columnsRevealedBy(['work-without-planned-qty'])]).toEqual(['plannedQty'])
+  })
+
   it('„bez przedmiaru i bez wykonanej pracy" needs BOTH axes empty', () => {
     expect(matches('client-empty', row({ plannedQty: 0 }))).toBe(true)
     // Priced-but-unstarted: the przedmiar total still counts it, so it must stay.
@@ -124,6 +138,12 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('no-w-tools-price', blank)).toBe(true)
     expect(matches('no-own-tools-price', blank)).toBe(true)
 
+    // An ujemna stawka is the guard's row, not this one's — counted by both it would show up twice in
+    // the „Problemy" list and be chased twice in the grid.
+    const negative = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: -1 })
+    expect(matches('no-w-tools-price', negative)).toBe(false)
+    expect(matches('overpriced-w-tools', negative)).toBe(true)
+
     // Inheriting the global multiplier is a stawka like any other — 100 × 0,65.
     expect(matches('no-w-tools-price', row())).toBe(false)
     // „bez ceny j.m." owns this row; here the crew price is zero only because the client's is.
@@ -154,6 +174,100 @@ describe('the conditions, each on its boundary', () => {
         expect(matches(positive, subject)).toBe(!matches(negative, subject))
       }
     }
+  })
+})
+
+// EX-708. Found in the owner's sheets: a pozycja whose cena zawiera materiał was left on the derived
+// coefficient, so the crew took 65% of the material too. The kosztorys cannot know which pozycje carry
+// material, so the detector fires on the combination it CAN see — the investment has material folded
+// into robocizna, the pozycja has executed work, and the stawka for the plane that work was done at is
+// a percentage of a client price that contains the material.
+describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew guard', () => {
+  const STAGES_BOTH_PLANES: KosztorysStageT[] = [
+    { id: 1, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
+    { id: 2, ordinal: 2, label: null, plane: 'own_tools', workerId: null },
+    { id: 3, ordinal: 3, label: null, plane: null, workerId: null },
+  ]
+  const settled = { stages: STAGES_BOTH_PLANES, hasSettledMaterial: true }
+  const noSettled = { stages: STAGES_BOTH_PLANES, hasSettledMaterial: false }
+  const fires = (conditionId: string, subject: KosztorysV2RowT, ctx = settled) =>
+    countMatching([subject], conditionId, ctx) === 1
+
+  // The derived stawka: no override at all, so it is globalWToolsCoeff × cena j.m.
+  const executedWTools = row({ [stageKey(1)]: 4 })
+
+  it('fires on a derived stawka once the investment has material in robocizna', () => {
+    expect(fires('material-percent-rate-w-tools', executedWTools)).toBe(true)
+  })
+
+  it('stays silent on an investment with no material folded into robocizna', () => {
+    expect(fires('material-percent-rate-w-tools', executedWTools, noSettled)).toBe(false)
+  })
+
+  // Nothing has been executed, so nothing is owed yet and there is no overpayment to catch. Without
+  // this the whole kosztorys would light up the moment one wydatek is marked „wliczony w robociznę".
+  it('stays silent on a pozycja with przedmiar but no executed work', () => {
+    expect(fires('material-percent-rate-w-tools', row({ plannedQty: 20 }))).toBe(false)
+  })
+
+  // The convention the owner confirmed: on such pozycje the stawka is typed as a fixed amount.
+  it('accepts a stawka typed as a fixed amount', () => {
+    const typed = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 40 })
+    expect(
+      fires('material-percent-rate-w-tools', { ...typed, [stageKey(1)]: 4 } as KosztorysV2RowT),
+    ).toBe(false)
+  })
+
+  // A hand-typed multiplier is still a multiplier: 0,6 × a price that contains material hands the crew
+  // a cut of the material just like the default 0,65 does. Only a flat amount escapes.
+  it('fires on a hand-typed multiplier too, not just the inherited one', () => {
+    const multiplied = row({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.6 })
+    expect(
+      fires('material-percent-rate-w-tools', {
+        ...multiplied,
+        [stageKey(1)]: 4,
+      } as KosztorysV2RowT),
+    ).toBe(true)
+  })
+
+  // The case that decides the whole design: one plane typed by hand, the other left on a multiplier.
+  // Which one is a fault depends on where the work was actually executed.
+  it('judges the plane the work was executed at, not both', () => {
+    const halfTyped = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 40 })
+
+    const doneWTools = { ...halfTyped, [stageKey(1)]: 4 } as KosztorysV2RowT
+    expect(fires('material-percent-rate-w-tools', doneWTools)).toBe(false)
+    expect(fires('material-percent-rate-own-tools', doneWTools)).toBe(false)
+
+    const doneOwnTools = { ...halfTyped, [stageKey(2)]: 4 } as KosztorysV2RowT
+    expect(fires('material-percent-rate-own-tools', doneOwnTools)).toBe(true)
+    expect(fires('material-percent-rate-w-tools', doneOwnTools)).toBe(false)
+  })
+
+  // An etap with no rozliczenie is where most kosztorysy sit while the work is happening — the crew
+  // is decided at settlement, long after the stawka was set. Whichever it turns out to be gets a cut
+  // of the material, so the etap counts toward both planes rather than toward neither.
+  it('judges work on an etap with no rozliczenie against both planes', () => {
+    expect(fires('material-percent-rate-w-tools', row({ [stageKey(3)]: 9 }))).toBe(true)
+    expect(fires('material-percent-rate-own-tools', row({ [stageKey(3)]: 9 }))).toBe(true)
+  })
+
+  it('still lets a fixed amount clear the plane it was typed on', () => {
+    const halfTyped = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 40 })
+    const undecided = { ...halfTyped, [stageKey(3)]: 9 } as KosztorysV2RowT
+
+    expect(fires('material-percent-rate-w-tools', undecided)).toBe(false)
+    expect(fires('material-percent-rate-own-tools', undecided)).toBe(true)
+  })
+
+  it('sends each half to the plane it judges, and reveals the cells that repair it', () => {
+    expect(conditionPlane('material-percent-rate-w-tools')).toBe('w_tools')
+    expect(conditionPlane('material-percent-rate-own-tools')).toBe('own_tools')
+    expect([...columnsRevealedBy(['material-percent-rate-w-tools'])].sort()).toEqual([
+      'price',
+      'priceCoeff',
+      'priceMode',
+    ])
   })
 })
 
@@ -342,5 +456,24 @@ describe('conditionPlane', () => {
     expect(conditionPlane('no-client-price')).toBeUndefined()
     expect(conditionPlane('measure-diverged')).toBeUndefined()
     expect(conditionPlane('nie-ma-takiego')).toBeUndefined()
+  })
+})
+
+// The engaged set is what SURVIVES a reload, so the plane has to be readable from it. Remembered
+// separately it was lost on refresh, and the narrowing came back judged on a view the grid was no
+// longer showing.
+describe('engagedPlane', () => {
+  it('reads the plane straight off whatever is engaged', () => {
+    expect(engagedPlane(['overpriced-own-tools'])).toBe('own_tools')
+  })
+
+  it('answers nothing when nothing engaged names a plane', () => {
+    expect(engagedPlane([])).toBeUndefined()
+    expect(engagedPlane(['no-client-price', 'stage-no-plane'])).toBeUndefined()
+  })
+
+  // A stale id from an older registry must not make the grid unreadable — it is skipped, not fatal.
+  it('skips an id it does not recognise', () => {
+    expect(engagedPlane(['nie-ma-takiego', 'overpriced-w-tools'])).toBe('w_tools')
   })
 })

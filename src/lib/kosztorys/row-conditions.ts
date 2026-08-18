@@ -1,10 +1,19 @@
 import { subcontractorPrice } from '@/lib/kosztorys/calc'
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
+import { stageKey } from '@/lib/kosztorys/stage-keys'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 
-export type RowConditionCtxT = { stages: KosztorysStageT[] }
+export type RowConditionCtxT = {
+  stages: KosztorysStageT[]
+  // Whether the INVESTMENT has any material folded into robocizna (a „wliczony w robociznę" wydatek).
+  // The one fact here that the kosztorys itself cannot answer — it lives on the wydatki side, with no
+  // per-pozycja link — and the gate the overpaid-crew guard below hangs on. Required rather than
+  // optional on purpose: a money guard that silently never fires because a host forgot to pass it is
+  // worth less than no guard at all.
+  hasSettledMaterial: boolean
+}
 
 // 'client' is a third kind, not a third mechanism: it hides like a filter, but it is engaged by the
 // investment's stored client-view settings rather than by a reading gesture, so the „Filtry" menu
@@ -41,6 +50,11 @@ export type RowConditionT = {
   // stored visibility map. Lives on the condition rather than in a lookup beside the grid: a second
   // table is exactly how the header/picker drift that column-config.ts exists to prevent comes back.
   revealsColumns?: readonly string[]
+  // A whole sentence for the „Problemy" row, replacing the „Pozycje … (n)" phrasing built from
+  // `label`. Opens by naming the thing like every other row, then says WHY — a problem caused by an
+  // investment-wide fact is unreadable as a bare noun phrase. Takes the count because it owns the
+  // whole row: the plane rides in the same parentheses, and a second pair after it read as a typo.
+  problemLabel?: (count: number) => string
   matches: (row: KosztorysV2RowT, ctx: RowConditionCtxT) => boolean
 }
 
@@ -57,6 +71,41 @@ const PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
 // Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
 export const MEASURE_DIVERGED_CONDITION_ID = 'measure-diverged'
+
+/**
+ * The overpaid-crew guard (EX-708): on this plane, is the pozycja's executed work being settled at a
+ * stawka that is a PERCENTAGE of the cena j.m.?
+ *
+ * Where material is priced into the cena j.m., a percentage hands the crew a cut of material they
+ * never buy — the sheet-side incident this exists to stop. Only a flat 'amount' escapes: an inherited
+ * multiplier and a hand-typed one are the same fault, so the test is „not 'amount'" rather than „no
+ * override". The convention it enforces is the owner's — on such pozycje the stawka is typed as a
+ * fixed kwota.
+ *
+ * Gated on work actually executed, and read through the etap that carries it: a pozycja holds a
+ * stawka on both planes at once, and the etap is what says which one will really be paid. An etap
+ * with no crew assigned counts toward BOTH — whichever crew turns out to have done it gets a cut of
+ * the material, and undecided is the state most kosztorysy sit in while the work is happening, so
+ * treating it as „nobody is paid" would silence the guard exactly when it still could be acted on.
+ */
+function settledAtPercentRate(
+  row: KosztorysV2RowT,
+  ctx: RowConditionCtxT,
+  plane: ToolPlaneT,
+): boolean {
+  if (!ctx.hasSettledMaterial) return false
+  const overrideType = plane === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
+  if (overrideType === 'amount') return false
+  return ctx.stages.some(
+    (stage) =>
+      (stage.plane === plane || stage.plane === null) && (row[stageKey(stage.id)] ?? 0) > 0,
+  )
+}
+
+const percentRateProblemLabel = (plane: ToolPlaneT, count: number) =>
+  `Stawki wykonawców liczone według formuły — ta inwestycja ma materiały wliczone w robociznę, ` +
+  `więc stawki liczone ze współczynnika będą zawyżone i powinny być wpisane ręcznie ` +
+  `(widok ${PLANE_LABELS[plane].toLowerCase()}, ${count})`
 
 /**
  * Every rule-based way the editor hides a row, in display order. Text search is deliberately not
@@ -136,6 +185,19 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     tone: 'worklist',
     matches: (row, ctx) => measureDiscrepancy(row, ctx.stages) != null,
   },
+  // Work booked against no offer. „Pozostało do rozliczenia" cannot report it — with a przedmiar of
+  // zero the percentage cell renders „—", and reddening a dash is an alarm with no legible cause — so
+  // the case surfaces here instead, where the row says in words what is wrong.
+  {
+    id: 'work-without-planned-qty',
+    label: 'z wykonaną pracą bez przedmiaru',
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    // The przedmiar alone: it is the missing cell, and it is where the fix is typed.
+    revealsColumns: ['plannedQty'],
+    matches: (row, ctx) => !(row.plannedQty > 0) && rowTotalQtyDone(row, ctx.stages, 'client') > 0,
+  },
   // One entry per plane rather than one asking about the active view: a price exists on both planes for
   // every row, so a problem on the plane you are not looking at is still a problem — and in the client
   // view, where no subcontractor price renders at all, neither would ever surface.
@@ -175,6 +237,8 @@ export const ROW_CONDITIONS: RowConditionT[] = [
   //
   // Gated on the client price so it never fires where „bez ceny j.m." already has: with no Cena j.m.
   // an auto row computes 0 zł by arithmetic, and on a fresh kosztorys that would flag every pozycja.
+  // Exactly zero rather than „nie dodatnia", so a negative stawka belongs to the guard alone — read as
+  // absence too it would be counted twice in the „Problemy" list and chased twice in the grid.
   {
     id: 'no-w-tools-price',
     label: `bez ceny wykonawcy w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
@@ -183,7 +247,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     tone: 'defect',
     plane: 'w_tools',
     revealsColumns: PRICE_COLUMNS,
-    matches: (row) => row.clientPrice > 0 && !(subcontractorPrice(row, 'w_tools') > 0),
+    matches: (row) => row.clientPrice > 0 && subcontractorPrice(row, 'w_tools') === 0,
   },
   {
     id: 'no-own-tools-price',
@@ -193,7 +257,38 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     tone: 'defect',
     plane: 'own_tools',
     revealsColumns: PRICE_COLUMNS,
-    matches: (row) => row.clientPrice > 0 && !(subcontractorPrice(row, 'own_tools') > 0),
+    matches: (row) => row.clientPrice > 0 && subcontractorPrice(row, 'own_tools') === 0,
+  },
+  // Split per plane like the two above, but for a different reason: there the stawka exists on both
+  // planes whether you look or not, here the etap decides which stawka is the one being paid. So a
+  // pozycja executed only „z narzędziami" appears under that half alone, and the pick switches the grid
+  // to the view whose stawka is at fault.
+  //
+  // Named after the fault rather than the fix („od ceny z materiałem", not „nie kwotowa"): the stawka
+  // is fine in itself, what is wrong is the price it is a percentage OF. Only ever counted on an
+  // investment that has material folded into robocizna, so the name needs no further qualifier —
+  // everywhere else the count is zero and the row never renders.
+  {
+    id: 'material-percent-rate-w-tools',
+    label: `ze stawką wykonawcy od ceny z materiałem w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    plane: 'w_tools',
+    revealsColumns: PRICE_COLUMNS,
+    problemLabel: (count) => percentRateProblemLabel('w_tools', count),
+    matches: (row, ctx) => settledAtPercentRate(row, ctx, 'w_tools'),
+  },
+  {
+    id: 'material-percent-rate-own-tools',
+    label: `ze stawką wykonawcy od ceny z materiałem w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
+    plane: 'own_tools',
+    revealsColumns: PRICE_COLUMNS,
+    problemLabel: (count) => percentRateProblemLabel('own_tools', count),
+    matches: (row, ctx) => settledAtPercentRate(row, ctx, 'own_tools'),
   },
 ]
 
@@ -308,6 +403,19 @@ export function columnsRevealedBy(engagedIds: Iterable<string>): ReadonlySet<str
  */
 export function conditionPlane(id: string): ToolPlaneT | undefined {
   return BY_ID.get(id)?.plane
+}
+
+/**
+ * The plane the engaged set is being read on, or undefined when nothing engaged names one. Answerable
+ * only because the „Problemy" list is single-choice; the first match wins rather than the set being
+ * asserted to hold one, since a stale id from an older registry must not make the grid unreadable.
+ */
+export function engagedPlane(engagedIds: Iterable<string>): ToolPlaneT | undefined {
+  for (const id of engagedIds) {
+    const plane = conditionPlane(id)
+    if (plane) return plane
+  }
+  return undefined
 }
 
 /** The engaged conditions that REMOVE rows — what an empty grid has to explain. */

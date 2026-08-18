@@ -10,7 +10,7 @@ import type { KosztorysStageT } from '@/lib/kosztorys/types'
  */
 export type StageConditionT = {
   id: string
-  // A bare noun phrase, so it reads after „Pokaż etapy ".
+  // A bare noun phrase, so it reads after „Etapy ".
   label: string
   matches: (stage: KosztorysStageT) => boolean
 }

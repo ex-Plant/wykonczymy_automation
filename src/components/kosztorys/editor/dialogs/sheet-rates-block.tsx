@@ -6,19 +6,27 @@ import {
   ReportRow,
   ReportTable,
 } from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
-import { rateNoun, rateNounDiffers } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
+import {
+  ratesVerdict,
+  type RatesReportModeT,
+} from '@/components/kosztorys/editor/dialogs/sheet-rates-verdict'
 import type { StaleRateT } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import type { ReportedRateResolutionT } from '@/lib/kosztorys/sheet-import/resolve-rates'
+import { cn } from '@/lib/utils/cn'
 import { formatPLN } from '@/lib/utils/format-currency'
 
 // Why this kwota won, under the kwota itself rather than in a column of its own: the reason is only
 // ever read about the figure that went into the kosztorys, and a whole column repeated it per row.
+// No „wzięto —" prefix: green already says which kwota entered, on every one of these rows.
 const TAKEN_NOTES: Record<'single' | 'auto', string> = {
-  single: 'wzięto — jedyny cennik',
-  auto: 'wzięto — wpisana ręcznie',
+  single: 'jedyny cennik',
+  auto: 'wpisana ręcznie',
 }
 
 type PropsT = {
+  // Which dialog is rendering this. The comparison writes nothing, so it must not speak about what
+  // „wejdzie" — the same sentence there promises a save the dialog has no button for.
+  mode: RatesReportModeT
   // Every resolution that was not a plain agreement between the two cenniki. `null` says no cennik
   // could be read at all — a different statement from „the cenniki agreed", and the only honest one
   // on a sheet whose „zakres pracy" header is broken.
@@ -34,7 +42,7 @@ type PropsT = {
  * write, the comparison asks whether the one already written still matches the cennik. A second
  * implementation would have drifted on the wording of the very column that decides a crew's bill.
  */
-export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
+export function SheetRatesBlock({ mode, decisions, stale = [] }: PropsT) {
   const conflicts = decisions?.filter((rate) => rate.kind === 'conflict') ?? []
   const resolved =
     decisions?.filter(
@@ -46,7 +54,7 @@ export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
     <SheetReportBlock
       title="Stawki podwykonawców"
       status={decisions === null || conflicts.length > 0 || stale.length > 0 ? 'warn' : 'ok'}
-      verdict={ratesVerdict(decisions, stale, conflicts.length)}
+      verdict={ratesVerdict(mode, decisions, stale, conflicts.length)}
     >
       {stale.length > 0 && (
         <ReportFold summary={`Stawki inne niż w cenniku (${stale.length}) — zobacz które`}>
@@ -72,7 +80,11 @@ export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
 
       {conflicts.length > 0 && (
         <ReportFold
-          summary={`Stawki bez rozstrzygnięcia (${conflicts.length}) — wejdą puste, do uzupełnienia ręcznie`}
+          summary={
+            mode === 'import'
+              ? `Stawki bez rozstrzygnięcia (${conflicts.length}) — wejdą puste, do uzupełnienia ręcznie`
+              : `Stawki bez rozstrzygnięcia (${conflicts.length}) — arkusz nie mówi, która kwota jest właściwa`
+          }
         >
           <RatesByTabTable rows={conflicts.map(conflictRow)} />
           {/* The one thing nobody guesses from the table: „zakres pracy z narzędziami" and „zakres
@@ -81,10 +93,13 @@ export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
           <p className="text-muted-foreground text-xs">
             Obie zakładki „zakres pracy" mają obie kolumny — i „z narzędziami", i „bez narzędzi" —
             więc każda z nich sama w sobie wystarczy. Gdy podają różne kwoty, nie wybieramy za
-            Ciebie: te prace wejdą bez stawki wykonawcy (0 zł) i czekają na uzupełnienie. Znajdziesz
-            je w kosztorysie przez „Problemy → bez ceny wykonawcy". Pusta komórka w cenniku też
-            liczy się jako rozbieżność — arkusz pokazuje ją jako 0 zł i nie da się jej odróżnić od
-            pracy faktycznie za darmo.
+            Ciebie:{' '}
+            {mode === 'import'
+              ? 'te prace wejdą bez stawki wykonawcy (0 zł) i czekają na uzupełnienie.'
+              : 'dla tych prac arkusz nie podaje jednej stawki wykonawcy, więc nie ma z czym porównać kosztorysu.'}{' '}
+            Znajdziesz je w kosztorysie przez „Problemy → bez ceny wykonawcy". Pusta komórka w
+            cenniku też liczy się jako rozbieżność — arkusz pokazuje ją jako 0 zł i nie da się jej
+            odróżnić od pracy faktycznie za darmo.
           </p>
         </ReportFold>
       )}
@@ -92,38 +107,15 @@ export function SheetRatesBlock({ decisions, stale = [] }: PropsT) {
       {resolved.length > 0 && (
         <ReportFold
           tone="text-muted-foreground"
-          summary={`Stawki do sprawdzenia (${resolved.length}) — rozstrzygnięte, ale cenniki nie mówiły tego samego`}
+          // Not „cenniki nie mówiły tego samego": the list also holds prace that appear in ONE cennik,
+          // which have nothing to disagree with. The fold says what is true of every row in it.
+          summary={`Stawki do sprawdzenia (${resolved.length}) — rozstrzygnięte automatycznie`}
         >
           <RatesByTabTable rows={resolved.map(resolvedRow)} />
         </ReportFold>
       )}
     </SheetReportBlock>
   )
-}
-
-/**
- * One line, and the order is the point: this is a precedence chain, not a list of things that are
- * true. „Żadnego cennika nie odczytaliśmy" outranks the rest because nothing below it is even
- * knowable; a stawka that has drifted from the cennik outranks one we merely had to choose between,
- * because the drifted one is already billing somebody. „Zgodne" is what is left when nothing above
- * fired.
- */
-function ratesVerdict(
-  decisions: ReportedRateResolutionT[] | null,
-  stale: StaleRateT[],
-  conflicts: number,
-): string {
-  if (decisions === null)
-    return 'Nie odczytaliśmy żadnego cennika („zakres pracy") — o stawkach podwykonawców nic tu nie powiemy.'
-  if (stale.length > 0)
-    return `${stale.length} ${rateNounDiffers(stale.length)} od cennika w arkuszu Google — kosztorys trzyma to, co było przy pobraniu.`
-  // Everything in the fold is worth a look — the sentence counts the whole list and then singles out
-  // the hardest kind. A bare „7" read as a claim about the whole table, so a row labelled „wzięto
-  // wpisaną ręcznie" contradicted the sentence above it.
-  if (decisions.length === 0) return 'Oba cenniki podały te same stawki.'
-  if (conflicts > 0)
-    return `Bez stawki wykonawcy wejdzie ${conflicts} ${rateNoun(conflicts)} — cenniki podają różne kwoty, więc nie wybieramy za Ciebie. Do uzupełnienia ręcznie w kosztorysie.`
-  return `${decisions.length} ${rateNoun(decisions.length)} do sprawdzenia — cenniki nie powiedziały tego samego, ale każdą dało się rozstrzygnąć.`
 }
 
 // One praca as the table renders it: what each zakładka said, keyed by the zakładka's own name. The
@@ -263,11 +255,12 @@ function RateCell({ rate, note, taken }: { rate?: number; note?: string; taken?:
   if (rate === undefined) return <span className="text-muted-foreground">—</span>
   return (
     <>
-      <span className={`whitespace-nowrap ${taken ? 'text-green-600' : ''}`}>
-        {formatPLN(rate)}
-      </span>
+      <span className={cn('whitespace-nowrap', taken && 'text-green-600')}>{formatPLN(rate)}</span>
       <span
-        className={`block text-xs whitespace-nowrap ${taken ? 'text-green-600' : 'text-muted-foreground'}`}
+        className={cn(
+          'block text-xs whitespace-nowrap',
+          taken ? 'text-green-600' : 'text-muted-foreground',
+        )}
       >
         {note}
       </span>

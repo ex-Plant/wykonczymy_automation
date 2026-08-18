@@ -104,7 +104,7 @@ describe('measureDiscrepancy', () => {
 
 describe('the „rozjazd" condition over a set of rows', () => {
   const diverged = (rows: KosztorysV2RowT[]) =>
-    applyRowConditions(rows, ['measure-diverged'], { stages: STAGES })
+    applyRowConditions(rows, ['measure-diverged'], { stages: STAGES, hasSettledMaterial: false })
 
   it('keeps only the pozycje whose sheet pomiar still disagrees with the etapy', () => {
     const rows = [

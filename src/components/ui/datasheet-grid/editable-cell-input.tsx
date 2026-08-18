@@ -43,11 +43,15 @@ export const EditableCellInput = forwardRef<HTMLInputElement, PropsT>(function E
         if (typeof ref === 'function') ref(node)
         else if (ref) ref.current = node
       }}
-      className={cn('size-full bg-transparent px-2 text-left text-sm outline-none', className)}
+      className={cn(
+        'size-full bg-transparent px-2 text-left text-sm outline-none',
+        focus === false && 'pointer-events-none',
+        className,
+      )}
       // Never a tab stop of its own: the grid moves between cells with Tab itself, and a natively
       // tabbable input would let focus wander out of the grid mid-edit.
       tabIndex={focus === undefined ? undefined : -1}
-      style={focus === undefined ? style : { pointerEvents: focus ? 'auto' : 'none', ...style }}
+      style={style}
       onKeyDown={enterEscapeKeyDown({ onEnter, onEscape })}
       {...props}
     />

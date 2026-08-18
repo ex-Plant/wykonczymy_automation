@@ -384,10 +384,10 @@ describe('wartość wiersza idzie za etapami', () => {
       expect(hasStagesOverPlanned(offered({ [stageKey(100)]: 11 }), stages)).toBe(true)
     })
 
-    // Bez Przedmiaru komórka „% wykonania" pokazuje „—", bo nie ma czego dzielić. Czerwone „—" to
-    // alarm bez czytelnej przyczyny, więc robota bez oferty się tu NIE świeci — to osobny problem i
-    // należy do diagnostyk „Problemy". Wyczyszczona komórka zapisuje null, którego gałąź `> 0` musi
-    // złapać tak samo.
+    // With no Przedmiar there is nothing to divide by, so the „% wykonania" cell reads „—". Reddening
+    // a dash is an alarm with no legible cause, so work entered against no offer stays quiet here —
+    // that is a separate problem and belongs to the „Problemy" diagnostics. A cleared cell stores null,
+    // which the `> 0` branch has to catch the same way.
     it('robota bez Przedmiaru się nie świeci', () => {
       expect(hasStagesOverPlanned(offered({ plannedQty: 0, [stageKey(100)]: 5 }), stages)).toBe(
         false,

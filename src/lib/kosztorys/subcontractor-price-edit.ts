@@ -2,6 +2,7 @@ import { effectiveCoeff, subcontractorPrice } from '@/lib/kosztorys/calc'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
+import { round6 } from '@/lib/utils/round'
 import type { SubcontractorOverrideTypeT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
 /** What the override looked like when the user entered the cell — what a rejected edit rolls back to. */
@@ -26,10 +27,6 @@ export type PriceSettleT<RowT> =
 export type PriceKeystrokeT<RowT> =
   /** Text stands on screen, the row is untouched — a cleared field or half-typed garbage. */
   { kind: 'hold' } | { kind: 'blocked'; message: string } | { kind: 'commit'; row: RowT }
-
-// A back-computed multiplier carries the float tail of price ÷ client price; six places is finer than
-// any multiplier the owner types and keeps 0,65 from surfacing as 0,6500000000000001.
-const COEFF_PLACES = 1e6
 
 export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): OverrideSnapshotT {
   const { type, value } = OVERRIDE_FIELDS[view]
@@ -141,8 +138,9 @@ export function modeChange<RowT extends ViewPricingT>(
   if (next === 'amount') return withOverride(rowData, view, { type: 'amount', value: price })
 
   const coeff =
-    rowData.clientPrice > 0
-      ? Math.round((price / rowData.clientPrice) * COEFF_PLACES) / COEFF_PLACES
-      : effectiveCoeff(rowData, view)
+    // A back-computed multiplier carries the float tail of price ÷ client price, and it has to land on
+    // the same places the import rounds to — `deriveOverride` decides „auto" by an exact comparison
+    // against the investment's mnożnik, so two precisions would re-save an auto row as an override.
+    rowData.clientPrice > 0 ? round6(price / rowData.clientPrice) : effectiveCoeff(rowData, view)
   return withOverride(rowData, view, { type: 'coeff', value: coeff })
 }

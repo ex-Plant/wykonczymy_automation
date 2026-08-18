@@ -10,11 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  allProblemIds,
-  problemsMenuModel,
-} from '@/components/kosztorys/editor/toolbar/menus/problems-menu-model'
+import { problemsMenuModel } from '@/components/kosztorys/editor/toolbar/menus/problems-menu-model'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
+import { PROBLEM_IDS } from '@/lib/kosztorys/problem-conditions'
 import { cn } from '@/lib/utils/cn'
 
 /**
@@ -36,12 +34,12 @@ export function KosztorysProblemsMenu() {
   const { engagedConditionIds, toggleConditionExclusive, conditionCounts, refreshProblemRows } =
     useKosztorysEditorContext()
 
-  const { problemToggles, hasProblems } = problemsMenuModel({
+  const problemToggles = problemsMenuModel({
     engagedIds: engagedConditionIds,
     counts: conditionCounts,
   })
 
-  if (!hasProblems) return null
+  if (problemToggles.length === 0) return null
 
   const engaged = problemToggles.find((toggle) => toggle.active)
 
@@ -62,7 +60,7 @@ export function KosztorysProblemsMenu() {
           {engaged ? 'Problemy (1)' : 'Problemy'}
         </FilterTriggerButton>
       </DropdownMenuTrigger>
-      {/* „Pokaż pozycje ze zbyt wysoką stawką wykonawcy w widoku z narzędziami (1)" is a sentence, not
+      {/* „Pozycje ze zbyt wysoką stawką wykonawcy w widoku z narzędziami (1)" is a sentence, not
           a label: at the default width every row wrapped to three or four lines. */}
       <DropdownMenuContent align="end" className="w-80">
         {/* A poprawiona pozycja is held in place while it is being fixed, so something has to say
@@ -82,7 +80,7 @@ export function KosztorysProblemsMenu() {
         {problemToggles.map((toggle) => (
           <DropdownMenuItem
             key={toggle.id}
-            onSelect={() => toggleConditionExclusive(toggle.id, allProblemIds())}
+            onSelect={() => toggleConditionExclusive(toggle.id, PROBLEM_IDS)}
           >
             <Check className={cn('shrink-0', toggle.active ? 'opacity-100' : 'opacity-0')} />
             <span className="whitespace-normal">{toggle.label}</span>
