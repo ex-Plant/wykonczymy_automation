@@ -29,7 +29,7 @@ Decisions taken in brainstorming (2026-08-18):
   event; "distance since last inspection" is the delta between two consecutive events of
   the same type, and reads "—" when either reading is missing.
 - **Exception, added after the owner pushed back: the oil change genuinely runs on
-  mileage.** It keeps a date target *and* a `nextDueOdometer` target. The kilometre leg
+  mileage.** It keeps a date target _and_ a `nextDueOdometer` target. The kilometre leg
   cannot be polled — we never know the current mileage — so it is edge-triggered: every
   inspection of any type contributes a fresh odometer reading, and that reading is compared
   against the pending oil target (fires at <= 1000 km remaining, or once passed). One to
