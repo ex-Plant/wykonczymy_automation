@@ -409,18 +409,18 @@ widths and ranks are untouched.
 
 #### Automated
 
-- [x] 1.1 New and existing sort-key specs pass
-- [x] 1.2 Sort-scope specs still pass
+- [x] 1.1 New and existing sort-key specs pass — aeaf755f
+- [x] 1.2 Sort-scope specs still pass — aeaf755f
 
 ### Phase 2: Headers that already have a menu
 
 #### Automated
 
-- [x] 2.1 Grid column specs still pass
-- [x] 2.2 Preview/read-only column specs still pass
+- [x] 2.1 Grid column specs still pass — e5a12767
+- [x] 2.2 Preview/read-only column specs still pass — e5a12767
 
 ### Phase 3: Headers for the per-stage value columns
 
 #### Automated
 
-- [x] 3.1 Existing grid column specs still pass (no new phase-scoped spec — see phase body)
+- [x] 3.1 Existing grid column specs still pass (no new phase-scoped spec — see phase body) — 2b0d9aee

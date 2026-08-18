@@ -1,7 +1,7 @@
 ---
 change_id: sortowanie-kolumn-spojne
 title: Spójne sortowanie w nagłówkach wszystkich kolumn siatki kosztorysu
-status: implemented
+status: done
 created: 2026-08-17
 updated: 2026-08-18
 archived_at: null
