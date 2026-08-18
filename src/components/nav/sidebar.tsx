@@ -5,6 +5,7 @@ import { logoutAction } from '@/lib/actions/auth'
 import { refreshDataAction } from '@/lib/actions/refresh'
 import { isAdminOrOwnerRole, isManagementRole } from '@/lib/auth/roles'
 import { SECTION_LINKS } from '@/lib/constants/sections'
+import { UnreadFleetBadge } from '@/components/nav/unread-fleet-badge'
 import { toastMessage } from '@/lib/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import {
@@ -73,6 +74,7 @@ export function Sidebar() {
             <Link href="/flota">
               <Car />
               Flota
+              <UnreadFleetBadge />
             </Link>
           </Button>
         )}

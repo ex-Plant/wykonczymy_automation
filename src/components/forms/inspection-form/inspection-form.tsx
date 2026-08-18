@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { FileInput } from '@/components/ui/file-input'
+import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import FormFooter from '@/components/forms/form-components/form-footer'
@@ -88,6 +89,8 @@ export function InspectionForm({
     }),
   })
 
+  const currentType = useStore(form.store, (state) => state.values.type)
+
   /**
    * Suggest the next due date from the type's interval. The real date is printed on the document, so
    * this is a suggestion, never an answer — and once the user has touched the field it is theirs:
@@ -153,22 +156,18 @@ export function InspectionForm({
           )}
         </form.AppField>
 
-        <form.Subscribe selector={(state) => state.values.type}>
-          {(type: InspectionTypeT) =>
-            type === 'OIL_CHANGE' ? (
-              <form.AppField name="nextDueOdometer">
-                {(field: AppFieldComponentsT) => (
-                  <field.Input
-                    label="Następna wymiana przy (km)"
-                    type="number"
-                    placeholder="135000"
-                    showError
-                  />
-                )}
-              </form.AppField>
-            ) : null
-          }
-        </form.Subscribe>
+        {currentType === 'OIL_CHANGE' && (
+          <form.AppField name="nextDueOdometer">
+            {(field: AppFieldComponentsT) => (
+              <field.Input
+                label="Następna wymiana przy (km)"
+                type="number"
+                placeholder="135000"
+                showError
+              />
+            )}
+          </form.AppField>
+        )}
 
         <form.AppField name="cost">
           {(field: AppFieldComponentsT) => (

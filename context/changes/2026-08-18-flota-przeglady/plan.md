@@ -573,10 +573,10 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 4.1 Sweep spec passes
+- [x] 4.1 Sweep spec passes — a9db0a6b
 
 ### Phase 5: Nav Badge
 
 #### Automated
 
-- [ ] 5.1 Notification specs still pass after the widening
+- [x] 5.1 Notification specs still pass after the widening

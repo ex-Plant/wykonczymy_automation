@@ -2,7 +2,7 @@
 
 import type { ActionResultT } from '@/types/action'
 import { protectedAction } from './run-action'
-import { countUnreadLeads } from '@/lib/db/notifications'
+import { countUnreadFleetDeadlines, countUnreadLeads } from '@/lib/db/notifications'
 
 /**
  * Unread new-lead count for the nav badge. Wraps protectedAction (auth + payload +
@@ -13,5 +13,13 @@ export async function getUnreadLeadsCount(): Promise<ActionResultT<number>> {
   return protectedAction('getUnreadLeadsCount', async ({ payload, user }) => ({
     success: true,
     data: await countUnreadLeads(payload, user.id),
+  }))
+}
+
+/** Same posture as above, for the Flota nav badge. */
+export async function getUnreadFleetCount(): Promise<ActionResultT<number>> {
+  return protectedAction('getUnreadFleetCount', async ({ payload, user }) => ({
+    success: true,
+    data: await countUnreadFleetDeadlines(payload, user.id),
   }))
 }

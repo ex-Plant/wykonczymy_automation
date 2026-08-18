@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
-import { markLeadsSeen } from '@/lib/db/notifications'
+import { STREAMS, markSeen } from '@/lib/db/notifications'
 import { fetchAllLeads } from '@/lib/queries/leads'
 import { LeadsDataTable } from '@/components/leads/leads-data-table'
 import { Description } from '@/components/ui/description'
@@ -17,7 +17,10 @@ export default async function LeadsPage() {
   // Independent of the leads fetch, so overlap them rather than paying the write
   // round-trip before the (cached) read.
   const payload = await getPayload({ config })
-  const [, leads] = await Promise.all([markLeadsSeen(payload, session.user.id), fetchAllLeads()])
+  const [, leads] = await Promise.all([
+    markSeen(payload, session.user.id, STREAMS.leads),
+    fetchAllLeads(),
+  ])
   const newCount = leads.filter((lead) => lead.contactStatus === 'new').length
 
   return (
