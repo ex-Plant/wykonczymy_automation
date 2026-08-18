@@ -92,15 +92,16 @@ reset scope). Phase 1 first, so the bar has the full set of things to show on th
 
 ## Critical Implementation Details
 
-**Grid height re-measure (Phase 2, load-bearing).** `useElementHeight` must expose a way to re-measure
-on demand, and the editor must call it when the chip bar's presence changes — after layout, not during
-commit. This is a discrete, state-driven re-measure, not an observer, so it does not reopen the
-flicker loop the hook's comment forbids. Without it the grid is silently the wrong height until the
-next window resize.
+**Grid height re-measure — dropped (owner, po implementacji).** It was built and then taken back out
+together with the one-line bar. The trade it assumed ran the wrong way: the point of the bar is that a
+filter cannot be on without being seen, and a chip past the right edge of a single scrolling line is
+exactly the filter nobody knows about. So the bar **wraps**, its height follows the chip count, and
+the grid keeps measuring on mount and window resize only — its bottom simply sits lower while filters
+are on. `useElementHeight` stays as it was, single-consumer and observer-free.
 
-**Chip bar is one line, horizontally scrollable, never wrapping.** Wrapping makes the bar's height a
-function of the chip count, which turns adding a seventh filter into another grid re-measure mid-work.
-One line means the grid loses a constant once, when the bar appears.
+**Chip bar wraps.** Superseded the original "one line, horizontally scrollable, never wrapping" —
+which existed only to keep the grid's re-measure to a single flip, and stopped having a purpose once
+the re-measure went.
 
 **Reset scope changes an existing control.** Widening `resetFilters` to also clear `search` changes
 what the „Zresetuj filtry" item in the „Filtry" menu does, and what the empty-state's reset button

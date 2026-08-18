@@ -138,7 +138,7 @@ export function useKosztorysEditor({
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
   // here; the toolbar + keyboard call undo/redo (re-exported below).
   const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
-  const [gridRef, gridHeight, measureGrid] = useElementHeight()
+  const [gridRef, gridHeight] = useElementHeight()
   // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
   // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
   // each had a narrow seam, while the store has ~47 references across ~30 handlers below. Pulling it
@@ -165,19 +165,6 @@ export function useKosztorysEditor({
     guideX,
     setGuideX,
   } = useKosztorysViewState({ investmentId, preview, clientView })
-
-  // The active-filters bar appears and disappears ABOVE the grid, which moves the grid's top edge
-  // without a mount and without a window resize — the only two things `useElementHeight` listens to.
-  // Left alone, the grid keeps the height it measured when the bar wasn't there and its bottom rows
-  // fall outside the shell's `overflow-hidden`. A ResizeObserver is deliberately not the fix (it
-  // looped with react-datasheet-grid's own resize detector, see the hook); the bar's presence is a
-  // discrete, knowable flip, so it re-measures on exactly that.
-  const activeFiltersBarShown =
-    !preview &&
-    (engagedConditionIds.size > 0 || collapsedSectionIds.size > 0 || search.trim() !== '')
-  useEffect(() => {
-    measureGrid()
-  }, [activeFiltersBarShown, measureGrid])
 
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel).

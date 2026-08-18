@@ -14,10 +14,10 @@ sections — and today none of them is legible without opening a menu. Two chang
 
 ## Phases
 
-| #   | Phase                                     | Shape                                                                                                                                                                                                                           |
-| --- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Three new condition pairs in the registry | Pure logic — `row-conditions.ts` + a guard so `foldableSectionIds` skips conditions that can't fold a section + a plane gate so the „Prace" list stays ~8-10 rows instead of 12                                                 |
-| 2   | The active-filter chip bar                | New `FilterChip` primitive, a pure `active-filters-model.ts`, the bar itself as a second line in the toolbar, an on-demand grid re-measure, fold suppression equalized with search, `resetFilters` widened to also clear search |
+| #   | Phase                                     | Shape                                                                                                                                                                                                       |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Three new condition pairs in the registry | Pure logic — `row-conditions.ts` + a guard so `foldableSectionIds` skips conditions that can't fold a section + a plane gate so the „Prace" list stays ~8-10 rows instead of 12                             |
+| 2   | The active-filter chip bar                | New `FilterChip` primitive, a pure `active-filters-model.ts`, the bar itself as a second, wrapping line in the toolbar, fold suppression equalized with search, `resetFilters` widened to also clear search |
 
 ## The three decisions that shape it
 
@@ -28,14 +28,14 @@ sections — and today none of them is legible without opening a menu. Two chang
   not sort, which hides nothing. This widens the existing „Zresetuj filtry" and the empty-state reset.
 - **Chips coexist with the trigger counters.** The counts on „Filtry" / „Problemy" stay.
 
-## The trap
+## The trap (resolved by dropping it)
 
 `useElementHeight` measures the grid on mount and on window resize only — **no ResizeObserver, on
 purpose** (one looped with react-datasheet-grid's own resize detector). A chip bar appearing above the
-grid moves `rect.top` without either trigger, so the grid silently keeps a too-tall height and its
-bottom rows get clipped. Phase 2 owes an explicit, state-driven re-measure — and that is also why the
-bar is one line with horizontal scroll rather than wrapping: a wrapping bar would re-measure the grid
-every Nth chip.
+grid moves `rect.top` without either trigger, so the grid keeps a too-tall height. The plan owed an
+explicit re-measure and a non-wrapping bar; both were built and then **removed on the owner's call** —
+the bar wraps, and the grid's bottom edge is simply allowed to sit lower while filters are on. A chip
+scrolled off the right edge is a filter the reader cannot see, which defeats the bar.
 
 ## Dropped during planning
 

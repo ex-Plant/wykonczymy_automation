@@ -1300,7 +1300,7 @@ Zalogowany jako OWNER.
 - [ ] Wpisana fraza ma swój chip; jego X czyści też pole „Szukaj"
 - [ ] „Wyczyść wszystko" pojawia się od dwóch chipów i zdejmuje wszystko naraz — łącznie z frazą; sortowanie zostaje
 - [ ] Filtry ustawione wczoraj wracają po przeładowaniu i pasek mówi o nich od razu, bez otwierania menu
-- [ ] Dolna krawędź siatki trzyma się dołu okna zarówno gdy pasek jest, jak i gdy znika (bez ucinania ostatnich wierszy i bez migotania)
+- [ ] Przy kilkunastu chipach pasek zawija się na kolejne linie — żaden chip nie ucieka za prawą krawędź
 - [ ] Przy włączonym filtrze zwinięta sekcja rozwija się sama, a po zdjęciu filtra znów jest zwinięta
 - [ ] „Filtry" mają nowe pary: rabat, źródło stawki wykonawcy, komentarz — każda po dwie pozycje
 - [ ] Para rabatowa znika z menu po włączeniu rabatu globalnego, a pozycja z rabatem 0 zł liczy się jako „bez rabatu"

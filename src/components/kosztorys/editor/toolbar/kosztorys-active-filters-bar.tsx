@@ -20,9 +20,10 @@ import { PROBLEM_IDS } from '@/lib/kosztorys/problem-conditions'
  * Absent when nothing is engaged, not rendered empty: a permanent strip is a line of chrome the eye
  * learns to skip, and its whole job is to be noticed the moment something is on.
  *
- * One line with horizontal scroll rather than wrapping — a wrapping bar changes the grid's top edge
- * every Nth chip, and the grid's height is measured, not flowed (see the re-measure at
- * `use-kosztorys-editor`). One row keeps that to a single flip.
+ * Wraps rather than scrolling sideways: a chip past the right edge is a filter the reader does not
+ * know is on, which is the whole thing this bar exists to stop. The grid's height is measured on
+ * mount and window resize only, so extra rows push its bottom out of view — accepted (owner), since
+ * a filter set is read at the top of the screen and a row or two of grid is the cheap half.
  */
 export function KosztorysActiveFiltersBar() {
   const {
@@ -64,7 +65,7 @@ export function KosztorysActiveFiltersBar() {
   }
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto px-4 pb-2">
+    <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
       {chips.map((chip) => (
         <FilterChip
           key={chip.id}
