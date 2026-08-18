@@ -4,6 +4,23 @@ One living checklist for every slice — the project's QA registry. Each `##` se
 
 **Run against the isolated test DB, not the dev DB.** Manual checks mutate data, so point the app at the `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, `wykonczymy-test`) — the same DB the E2E suite uses — never the dev DB (5433, holds un-dumped local work) and never prod. Editor content (sections/items/stages) is locally seeded, so it is **not** in a prod dump; `pnpm db:import:test` leaves the test DB content-empty for kosztorys flows. Seed it separately: `perf-seed-kosztorys.ts` for a synthetic set (no external deps) or `seed-kosztorys.ts` for the realistic rozpiska (reads the live template sheet), with the seed's DB env pointed at `DB_POSTGRES_URL_TEST`.
 
+## EX-649 — zakładka „Marża": prognoza i marża rzeczywista
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`), co najmniej dwa
+etapy z przypisanym rozliczeniem i jeden **bez**, kilka pozycji z rabatem, a na inwestycji
+zaksięgowane wypłaty i strata. Zalogowany jako OWNER.
+
+- [ ] W podsumowaniu kosztorysu jest zakładka „Marża" obok „Podwykonawcy"
+- [ ] Przełącznik „Prognoza / Marża rzeczywista" przełącza dwie różne tabele, a wybór scenariusza („z narzędziami / bez narzędzi") widać **tylko** pod prognozą
+- [ ] Prognoza w obu scenariuszach różni się wyłącznie wierszem „Należne podwykonawcom (przedmiar)"; „Wartość przedmiaru" stoi w miejscu
+- [ ] Rabat na pozycji nie rusza prognozy, a marżę rzeczywistą obniża
+- [ ] Marża rzeczywista pokazuje „Ustaw rozliczenie etapów" (nie zero), dopóki etap z wykonaną pracą nie ma rozliczenia; po ustawieniu pojawia się kwota
+- [ ] W podglądzie inwestora nie ma ani „Marży", ani „Podwykonawców"
+- [ ] Na `/inwestycje` kolumny „Marża" i „Marża v2" stoją obok siebie i **różnią się** na inwestycji, która ma i zaksięgowane wypłaty, i kosztorys
+- [ ] Inwestycja z nierozliczonym etapem pokazuje „ustaw etapy" w „Marża v2", a w „Marża" niezmienioną kwotę
+- [ ] Jako MANAGER nie ma na liście żadnej z dwóch kolumn marży
+- [ ] „Marża v2" na liście równa się „Marży rzeczywistej" w panelu kosztorysu tej samej inwestycji
+
 ## EX-691 — „Porównaj z arkuszem Google" pod aktywnym rabatem globalnym
 
 Setup: inwestycja z podpiętym arkuszem Google, w kosztorysie rozpisana robocizna na etapy,

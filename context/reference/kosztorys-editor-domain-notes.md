@@ -207,6 +207,13 @@ powierzchnia malowania = Σ ścian − ściany pomieszczeń mokrych (łazienki/W
 
 ## Panel plan-vs-actual (F) — PEŁNY, z marżą planowaną
 
+> **Nieaktualne od EX-649 (2026-08-18).** Ten szkic zastąpiła zakładka „Marża" w podsumowaniu
+> kosztorysu. Zrealizowane inaczej niż tu opisano: „marża planowana" to **prognoza** liczona z
+> **przedmiaru** (nie z pomiaru) po pełnej cenie, jako scenariusz „z narzędziami / bez narzędzi";
+> „marża rzeczywista" wycenia ekipę z kosztorysu (należne za wykonane etapy), a nie z wypłat, i
+> odmawia podania kwoty, gdy któryś etap z pracą nie ma rozliczenia. Wierszy „Zafakturowano" i
+> „Wypłacono ekipie" w niej nie ma. Tabela niżej zostaje jako zapis pierwotnego pomysłu.
+
 Czysto na odczyt, per inwestycja. Niezależny od P5 (linkage LABOR_COST).
 
 | Wiersz                   | Źródło                                                      |
@@ -841,10 +848,19 @@ this section is the original phrasing/context for those questions.
   materiały (`INVESTMENT_EXPENSE`) i robocizna (`LABOR_COST`).
 
   **Oderwany jest edytor v2 — nie V1**, gdzie lustro `INVESTMENT_EXPENSE` (PRD
-  FR-014, `prd.md:30`) już te koszty wnosi. Skutek dla v2, ważny przy każdej
+  FR-014, `prd.md:30`) już te koszty wnosi.
+
+  > **Nieaktualne od EX-555 i EX-649.** Akapit niżej opisywał stan, w którym kosztorys
+  > nie wchodził do żadnej marży. Dziś robocizna i rabat na liście inwestycji czytane są
+  > **z kosztorysu** (EX-555), a obok starej marży stoi marża rzeczywista liczona z
+  > kosztorysu razem z prognozą z przedmiaru (EX-649). Stara marża transferowa została
+  > nietknięta i dalej jest tym, co widać na v1 i `/raporty` — dwie figury obok siebie,
+  > nie zamiana jednej na drugą.
+
+  ~~Skutek dla v2, ważny przy każdej
   figurze pieniężnej w edytorze: **marża liczy się wyłącznie z transferów**
   (`robocizna − wypłaty − rabat − strata`), a kosztorys v2 w nią nie wchodzi —
-  rabat wpisany w edytorze obniża tylko wartość kosztorysu. To nie bug edytora,
+  rabat wpisany w edytorze obniża tylko wartość kosztorysu.~~ To nie bug edytora,
   to nieodtworzone połączenie. Pierwszy kawałek = parytet `Podsumowania`
   (roadmap 12a); slice'a na samo łączenie brak.
 

@@ -209,6 +209,13 @@ Inserting it cascaded the tail by two: client-share S-11→S-13, export S-12→S
 e2e S-14→S-16, smoke S-15→S-17, hardening S-16→S-18, cutover S-17→S-19. Change-ids are the stable
 key (pure relabel).
 
+**Band 2 reopened 2026-08-18 (EX-649, `marza-prognoza-rzeczywista`).** `S-11`/`S-12` joined the
+kosztorys to the financial plane; this change adds the figure that plane was missing — a marża that
+prices the crew from the kosztorys instead of from wypłaty, plus a przedmiar-based prognoza. It rides
+on the same seam, so it is band-2 work rather than a new slice: no roadmap row, tracked in Linear as
+EX-649. What it changes structurally is that `marginV2` stands **beside** `calculateMargin`; nothing
+in bands 1–5 is redirected by it.
+
 Within band 1, `S-01` (north star) heads the track; `S-02`–`S-09` all build on it and run in parallel (`S-04` also needs `S-02`). `F-01` (harness) is independent and can run any time; it unblocks the band-4 test slices. `O-01` (Sentry observability) is likewise standalone infra — no dependency on any slice, ships any time.
 
 ## Baseline
@@ -562,6 +569,14 @@ Kept for the record; pulled out of the numbered sequence because they carry no e
   slice would have consumed — was written on every insert and read by nothing; dropped 2026-08-18
   (change `2026-08-18-drop-hidden-in-export`, migration
   `20260818_0_drop_kosztorys_hidden_in_export`). EX-549, which owned that deletion, was cancelled.
+- **Its one test obligation resolved with it (EX-603).** This slice's Risk line demanded that
+  redaction be asserted at the **server boundary**, by a test reading a MANAGER's payload rather than
+  the DOM. That assertion was **loosened to the UI plane** (owner, 2026-08-18): the bundle gate
+  withholds `financials`, but every term of `marża = robocizna − wypłaty − rabat − strata` still
+  reaches a MANAGER as its own prop, because `laborCostsNetFromTransactions` feeds the reconciliation
+  scream a MANAGER is meant to see. What remains is extraction from the serialized payload, not a
+  leak in the UI, and that is accepted. The guard now asserts no `financials` bundle and no „Marża"
+  tab — already covered by `allowedSummaryViews`. See EX-603.
 - **Outcome (dropped):** subcontractor cost/margin columns and restricted rows are withheld from a
   MANAGER server-side.
 - **Change ID:** kosztorys-column-rbac. **PRD refs:** — (POC follow-on P10, now resolved).

@@ -46,22 +46,25 @@ The mature, code-enforced domain. Every canonical below now matches transfers/`l
 the drift where kosztorys code had re-typed the same figure in Polish, and `local/no-domain-drift`
 keeps it cleared.
 
-| Concept                | App/UI (PL)          | Sheet name  | Canonical code id                | Cat | Drift in code                | Lives in                                                 |
-| ---------------------- | -------------------- | ----------- | -------------------------------- | --- | ---------------------------- | -------------------------------------------------------- |
-| balance                | Bilans inwestora     | —           | `balance`                        | B   | — (resolved EX-548)          | `calculate-balance.ts:6`                                 |
-| register balance       | Saldo kasy           | —           | `registerBalance`                | B   | — (resolved EX-548)          | `lib/queries/register-balance.ts:10`                     |
-| margin                 | Marża                | —           | `margin`                         | B   | — (resolved EX-548)          | `calculate-margin.ts:13`                                 |
-| deposit (income)       | Wpłaty               | —           | `deposit`                        | B   | — (resolved EX-548)          | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
-| payout                 | Wypłaty              | —           | `payout` (`PAYOUT`)              | B   | — (resolved EX-548)          | `calculate-margin.ts:14`                                 |
-| labor charge           | Robocizna            | „robocizna" | `laborCosts` (`LABOR_COST`)      | B   | — (resolved 2026-07-20)      | `calculate-margin.ts:14`; `transfer-rules.ts:52`         |
-| discount               | Rabat                | „rabat %"   | `discount` (`RABAT`)             | B   | — (resolved EX-548)          | `calculate-margin.ts:14`; `kosztorys-editor-body.tsx:73` |
-| loss                   | Strata               | —           | `loss` (`LOSS`)                  | B   | — (resolved EX-548)          | `calculate-margin.ts:5`                                  |
-| correction             | Korekta              | —           | `correction` (`CORRECTION`)      | B   | —                            | `validation.ts:7`                                        |
-| materials              | Materiały            | „materiały" | `materials`                      | B   | (`materiały` in labels only) | `investment-financials.ts:41`                            |
-| settled flag           | Wliczone w robociznę | —           | `settled`                        | B   | —                            | `transfers.ts:228`                                       |
-| transfer / transaction | Transakcja           | —           | `transfer` (slug `transactions`) | B   | —                            | `transfers.ts:52`                                        |
-| cash register          | Kasa                 | —           | `cashRegister`                   | B   | —                            | `cash-registers.ts:34`                                   |
-| investment             | Inwestycja           | —           | `investment`                     | B   | —                            | `investments.ts:11`                                      |
+| Concept                | App/UI (PL)           | Sheet name  | Canonical code id                | Cat | Drift in code                | Lives in                                                 |
+| ---------------------- | --------------------- | ----------- | -------------------------------- | --- | ---------------------------- | -------------------------------------------------------- |
+| balance                | Bilans inwestora      | —           | `balance`                        | B   | — (resolved EX-548)          | `calculate-balance.ts:6`                                 |
+| register balance       | Saldo kasy            | —           | `registerBalance`                | B   | — (resolved EX-548)          | `lib/queries/register-balance.ts:10`                     |
+| margin                 | Marża                 | —           | `margin`                         | B   | — (resolved EX-548)          | `calculate-margin.ts:13`                                 |
+| actual margin          | Marża rzeczywista     | —           | `marginV2`                       | B   | — (new, EX-649)              | `kosztorys/margin-v2.ts`                                 |
+| margin forecast        | Prognoza              | —           | `marginForecast`                 | B   | — (new, EX-649)              | `kosztorys/margin-forecast.ts`                           |
+| subcontractor due      | Należne podwykonawcom | —           | `subcontractorDue`               | B   | — (new, EX-649)              | `kosztorys/subcontractor-due.ts`                         |
+| deposit (income)       | Wpłaty                | —           | `deposit`                        | B   | — (resolved EX-548)          | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
+| payout                 | Wypłaty               | —           | `payout` (`PAYOUT`)              | B   | — (resolved EX-548)          | `calculate-margin.ts:14`                                 |
+| labor charge           | Robocizna             | „robocizna" | `laborCosts` (`LABOR_COST`)      | B   | — (resolved 2026-07-20)      | `calculate-margin.ts:14`; `transfer-rules.ts:52`         |
+| discount               | Rabat                 | „rabat %"   | `discount` (`RABAT`)             | B   | — (resolved EX-548)          | `calculate-margin.ts:14`; `kosztorys-editor-body.tsx:73` |
+| loss                   | Strata                | —           | `loss` (`LOSS`)                  | B   | — (resolved EX-548)          | `calculate-margin.ts:5`                                  |
+| correction             | Korekta               | —           | `correction` (`CORRECTION`)      | B   | —                            | `validation.ts:7`                                        |
+| materials              | Materiały             | „materiały" | `materials`                      | B   | (`materiały` in labels only) | `investment-financials.ts:41`                            |
+| settled flag           | Wliczone w robociznę  | —           | `settled`                        | B   | —                            | `transfers.ts:228`                                       |
+| transfer / transaction | Transakcja            | —           | `transfer` (slug `transactions`) | B   | —                            | `transfers.ts:52`                                        |
+| cash register          | Kasa                  | —           | `cashRegister`                   | B   | —                            | `cash-registers.ts:34`                                   |
+| investment             | Inwestycja            | —           | `investment`                     | B   | —                            | `investments.ts:11`                                      |
 
 **Robocizna — ruled `laborCosts` (owner, 2026-07-20).** The transfers side already owned an English
 form (`LABOR_COST`, `totalLaborCosts`), and a figure may not carry two names across the recon seam,

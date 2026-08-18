@@ -529,11 +529,11 @@ figure here.
 
 #### Automated
 
-- [x] 4.1 `shape-investments.test.ts` passes — three new cases: crew priced from the kosztorys (not wypłaty), the withheld `null`, and no kosztorys at all
-- [x] 4.2 `investment-render-parity-db.test.ts` passes with the new `marża v2` row (fails red when the fold reads the other plane's coefficient; needed `pnpm seed:kosztorys:test` + planes on the seeded etapy — the perf seed left every etap unrozliczony, so the row compared null with null)
+- [x] 4.1 `shape-investments.test.ts` passes — three new cases: crew priced from the kosztorys (not wypłaty), the withheld `null`, and no kosztorys at all — e42befed
+- [x] 4.2 `investment-render-parity-db.test.ts` passes with the new `marża v2` row (fails red when the fold reads the other plane's coefficient; needed `pnpm seed:kosztorys:test` + planes on the seeded etapy — the perf seed left every etap unrozliczony, so the row compared null with null) — e42befed
 
 ### Phase 5: Guards and living docs
 
 #### Automated
 
-- [ ] 5.1 `pnpm test:parity` passes after golden-master regeneration
+- [x] 5.1 `pnpm test:parity` passes after golden-master regeneration — sygnatura wejścia dostała plane/worker + cztery kolumny stawek, a sam snapshot dostał `marginV2` (bez tego rozszerzenie sygnatury nie strzegłoby niczego, bo żadna figura w snapshocie nie zależała od osi podwykonawcy)
