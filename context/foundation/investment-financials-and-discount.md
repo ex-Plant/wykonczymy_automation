@@ -40,8 +40,15 @@ to the transfers.
 - The kosztorys pair is folded in Postgres for every investment at once
   (`src/lib/db/kosztorys-client-totals.ts`), pinned against the TS reference formula by a
   DB-backed parity spec.
-- `LABOR_COST` / `RABAT` are **no longer offered by the transfer dialog** — nothing new can be
-  booked on the plane we stopped reading. Existing rows keep working everywhere else.
+- `LABOR_COST` / `RABAT` are **offered by the transfer dialog again, temporarily** (EX-649,
+  reversing that half of EX-555; EX-712 closes it). Removing them assumed the kosztorys was
+  already in the app — for an investment whose kosztorys is still a spreadsheet, the reading
+  returns 0 zł and the dialog refusing the booking left no way to settle it at all. Both are
+  offered for every investment with no gating: the resulting double-counting is made **visible**
+  by the „Robocizna v1 / v2" columns on the listing (rozjazd jako ikona przy v2) and by the v2
+  reconciliation,
+  rather than prevented. v2 itself is structurally immune — `readingFromKosztorys` **replaces**
+  rather than adds, so a hand-booked `LABOR_COST` moves the v1 figures only.
 - The **reconciliation** on the investment page screams for an investment with booked transfers
   and an empty kosztorys. That is correct: it is the list of work still to be entered.
 - Every other figure here — wpłaty, materiały, wypłaty, korekty, strata — is a cash movement
@@ -102,7 +109,40 @@ the owner has rejected it twice, in his own words: „materiał to koszt, który
 brutto", „nie zapisujemy tych 230 zł jako zysk". Pass-through means pass-through on both axes. The
 consequence that matters downstream: a materiały concession (billing the client netto instead of
 brutto) is a straight give-away that lowers marża, not the return of an earn that was never
-booked.
+booked. **That consequence is stated for the v1 marża** — the figure `calculate-margin.ts` computes;
+the second figure below drops the term for an unrelated reason.
+
+---
+
+## The second marża — prognoza and marża rzeczywista (EX-649, 2026-08-18)
+
+The formula above is untouched and still live on v1, `/raporty` and the `Marża` column. Beside it the
+kosztorys panel and the listing now carry a second reading, because the first one answers a question
+the owner was not asking: it prices the crew from **wypłaty**, so a crew paid late reads as profit
+and a crew paid ahead as a loss.
+
+- **Prognoza** (`margin-forecast.ts`): the whole przedmiar at the client price, less the same
+  przedmiar at one crew's stawka. A scenario — z narzędziami or bez narzędzi — not a figure that
+  moves with progress. It knows nothing of rabat (nobody grants one up front), strata, or material
+  priced into robocizna. On rows where material sits inside cena j.m. the przedmiar carries the
+  material's revenue and none of its cost, so the prognoza stands structurally above the marża
+  rzeczywista and the two never converge; the gap is the material.
+- **Marża rzeczywista** (`margin-v2.ts`):
+  `robocizna − rabat − należne podwykonawcom − materiał wliczony w robociznę − strata`.
+  Two deliberate departures from the v1 formula:
+  - `wypłaty` out, **należne podwykonawcom** in — executed etapy valued at the plane each etap
+    carries. What is owed moves with the work; cash moves on its own rhythm.
+  - `materialsNetDiscount` out. **This is the removal of a term, not the booking of reclaimed VAT as
+    profit** — the ruling above stands and stays binding. Billing materiały netto rather than at the
+    brutto receipt is a concession on a pass-through; it belongs in the bilans, not in a figure about
+    robocizna.
+- **It can refuse to be a number.** An etap holding executed work with no rozliczenie contributes
+  nothing to należne while its robocizna still counts, so the figure would read high by an unknown
+  amount. `marginV2` returns `null` there and every surface renders a call to action. Zero would
+  assert the crew worked for free.
+
+Guarded by `investment-render-parity-db.test.ts` (listing's `marża v2` vs the same figure computed
+from the tree) and by the SQL↔TS parity of the listing fold in `kosztorys-subcontractor-due.test.ts`.
 
 ---
 

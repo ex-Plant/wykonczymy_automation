@@ -2,8 +2,10 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
-import { getDb } from '@/lib/db/get-db'
+import { getDb, type DbExecutorT } from '@/lib/db/get-db'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
+import type { SubcontractorSettlementT } from '@/lib/kosztorys/subcontractor-due'
 import {
   sumAllRegisterBalances,
   sumAllWorkerBalances,
@@ -58,8 +60,8 @@ export const fetchInvestmentFinancials = unstable_cache(
     return record
   },
   // Versioned key — see the note on `reference-data-v2`. Bumped when `InvestmentFinancialsT` gained
-  // `netCategoryCosts`: an entry written before that lacks the array, and `billedCategoryCosts`
-  // dereferences it, so the listing throws rather than merely showing an old number.
+  // `netCategoryCosts`: an entry written before that lacks the array, and a reader dereferencing it
+  // throws rather than merely showing an old number.
   ['investment-financials-v2'],
   // Two tags, not one: the figures are summed from transfers, but the materiały concession and the
   // settlement mode that gates it are columns on `investments`. Tagged on transfers alone, saving a
@@ -86,21 +88,48 @@ export const KOSZTORYS_CLIENT_TOTALS_TAGS = [
   CACHE_TAGS.investments,
 ]
 
-export const fetchKosztorysClientTotals = unstable_cache(
-  async (): Promise<KosztorysClientTotalsMapT> => {
-    const elapsed = perfStart()
-    const payload = await getPayload({ config })
-    const db = await getDb(payload)
-    const rows = await selectKosztorysClientTotals(db)
-    const record: KosztorysClientTotalsMapT = {}
-    for (const { investmentId, ...totals } of rows) {
-      record[String(investmentId)] = totals
-    }
-    console.log(
-      `[PERF] query.fetchKosztorysClientTotals ${elapsed()}ms (${rows.length} investments)`,
-    )
-    return record
-  },
-  ['kosztorys-client-totals-v1'],
-  { tags: KOSZTORYS_CLIENT_TOTALS_TAGS },
+/** A per-investment aggregate keyed by id, cached under `cacheKey`. The two kosztorys folds below are
+ *  the same query-fold-log shape down to the last line, so it lives here once — a third aggregate
+ *  gets it for free instead of copying the `String(investmentId)` keying a third time. */
+function cachedInvestmentMap<RowT extends { investmentId: number }>(
+  cacheKey: string,
+  label: string,
+  select: (db: DbExecutorT) => Promise<RowT[]>,
+  tags: string[],
+) {
+  return unstable_cache(
+    async (): Promise<Record<string, Omit<RowT, 'investmentId'>>> => {
+      const elapsed = perfStart()
+      const payload = await getPayload({ config })
+      const db = await getDb(payload)
+      const rows = await select(db)
+      const record: Record<string, Omit<RowT, 'investmentId'>> = {}
+      for (const { investmentId, ...figures } of rows) {
+        record[String(investmentId)] = figures
+      }
+      console.log(`[PERF] query.${label} ${elapsed()}ms (${rows.length} investments)`)
+      return record
+    },
+    [cacheKey],
+    { tags },
+  )
+}
+
+export const fetchKosztorysClientTotals = cachedInvestmentMap(
+  'kosztorys-client-totals-v1',
+  'fetchKosztorysClientTotals',
+  selectKosztorysClientTotals,
+  KOSZTORYS_CLIENT_TOTALS_TAGS,
+)
+
+export type KosztorysSubcontractorDueMapT = Record<string, SubcontractorSettlementT>
+
+// Same tag set as the client pair above, deliberately not a narrower one: every table this fold
+// reads (items, stages, progress, and the investment's coefficients) is already in it, and a second
+// list would be a second thing to keep in step.
+export const fetchKosztorysSubcontractorDue = cachedInvestmentMap(
+  'kosztorys-subcontractor-due-v1',
+  'fetchKosztorysSubcontractorDue',
+  selectKosztorysSubcontractorDue,
+  KOSZTORYS_CLIENT_TOTALS_TAGS,
 )

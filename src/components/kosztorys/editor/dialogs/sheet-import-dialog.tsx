@@ -19,6 +19,8 @@ import {
 } from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
 import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { formatCoeff } from '@/lib/kosztorys/format'
 import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
 import type {
@@ -117,7 +119,7 @@ export function SheetImportDialog({
               columns={columns}
               onMappingSaved={onMappingSaved}
             />
-            <SheetRatesBlock decisions={report.rateDecisions} />
+            <SheetRatesBlock mode="import" decisions={report.rateDecisions} />
             <RetainedBlock retained={report.retained} />
             <TotalsBlock totals={report.totals} mismatched={mismatchedTotals} />
           </>
@@ -130,13 +132,25 @@ export function SheetImportDialog({
 // The warnings ride here rather than at the top of the dialog: every one of them („N prac bez
 // cennika", „pominięto wiersze nad pierwszą sekcją") is a caveat about the very count beside it.
 function ScopeBlock({ report }: { report: ImportReportT }) {
-  const { counts, warnings } = report
+  const { counts, warnings, coeffs } = report
+  const adopted = [
+    coeffs.wTools === null
+      ? null
+      : `${PLANE_LABELS.w_tools.toLowerCase()} ${formatCoeff(coeffs.wTools)}`,
+    coeffs.ownTools === null
+      ? null
+      : `${PLANE_LABELS.own_tools.toLowerCase()} ${formatCoeff(coeffs.ownTools)}`,
+  ].filter(Boolean)
+
   return (
     <SheetReportBlock
       title="Co wejdzie"
       status={warnings.length === 0 ? 'ok' : 'warn'}
       verdict={`${counts.sections} sekcji · ${counts.items} prac · ${counts.stages} etapów`}
     >
+      {adopted.length > 0 && (
+        <p>{`Mnożnik ceny z cennika: ${adopted.join(' · ')} — zastąpi ustawienie inwestycji.`}</p>
+      )}
       {warnings.map((warning, index) => (
         <p key={`${index}-${warning}`} className="text-amber-600">
           {warning}
@@ -165,30 +179,27 @@ function ColumnsBlock({
   // A column the owner pointed at is not a shortfall — it renders as a note inside this block, so it
   // must not turn a complete read yellow.
   const clean = missing.length === 0
+  if (clean) {
+    return null
+  }
   return (
     <SheetReportBlock
       title="Czego nie odczytaliśmy z arkusza Google"
-      status={clean ? 'ok' : 'warn'}
-      verdict={
-        clean
-          ? 'Wszystkie kolumny, których szukamy, są w arkuszu.'
-          : `Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`
-      }
+      status="warn"
+      verdict={`Brakuje ${missing.length} ${columnNoun(missing.length)}. Pobranie jest nadal możliwe — poniżej, czego zabraknie w kosztorysie.`}
     >
-      {missing.length > 0 && (
-        <ReportTable headers={['Kolumna', 'Dlaczego', 'Skutek']}>
-          {missing.map((column) => (
-            <ReportRow
-              key={column.label}
-              label={`„${column.label}"`}
-              cells={[
-                { content: MISSING_COLUMN_REASONS[column.reason], tone: 'text-muted-foreground' },
-                { content: column.consequence, tone: 'text-amber-600' },
-              ]}
-            />
-          ))}
-        </ReportTable>
-      )}
+      <ReportTable headers={['Kolumna', 'Dlaczego', 'Skutek']}>
+        {missing.map((column) => (
+          <ReportRow
+            key={column.label}
+            label={`„${column.label}"`}
+            cells={[
+              { content: MISSING_COLUMN_REASONS[column.reason], tone: 'text-muted-foreground' },
+              { content: column.consequence, tone: 'text-amber-600' },
+            ]}
+          />
+        ))}
+      </ReportTable>
       <SheetColumnPicker
         investmentId={investmentId}
         missing={missing.map((column) => column.field)}

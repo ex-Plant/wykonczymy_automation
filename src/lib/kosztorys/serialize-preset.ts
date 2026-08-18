@@ -17,7 +17,6 @@ export async function serializeKosztorysAsPreset(investmentId: number): Promise<
       sheetMeasuredQty: null,
       discountType: null,
       discountValue: 0,
-      hiddenInExport: false,
       note: null,
     })),
     // Etapy (stages + their recorded progress) are per-job execution structure, not reusable scope —

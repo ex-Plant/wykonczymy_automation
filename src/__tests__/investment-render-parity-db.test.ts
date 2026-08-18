@@ -22,8 +22,16 @@ import { grossBalance } from '@/lib/db/gross-balance'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
+import { marginV2 } from '@/lib/kosztorys/margin-v2'
+import { subcontractorDueByPlane, toSettlement } from '@/lib/kosztorys/subcontractor-due'
+import { treeToRows } from '@/lib/kosztorys/v2-rows'
+import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
-import type { KosztorysClientTotalsMapT } from '@/lib/queries/balances'
+import type {
+  KosztorysClientTotalsMapT,
+  KosztorysSubcontractorDueMapT,
+} from '@/lib/queries/balances'
 import type { InvestmentRefT, InvestmentStatusT } from '@/types/reference-data'
 
 // REAL-PATH parity: assemble each figure exactly the way each PAGE assembles it, over
@@ -103,6 +111,12 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       kosztorysTotals[String(investmentId)] = totals
     }
 
+    const subcontractorDue: KosztorysSubcontractorDueMapT = {}
+    for (const row of await selectKosztorysSubcontractorDue(await getDb(payload))) {
+      const { investmentId, ...settlement } = row
+      subcontractorDue[String(investmentId)] = settlement
+    }
+
     const mismatches: string[] = []
     for (const inv of investments) {
       const where = { investment: { equals: inv.id } }
@@ -111,15 +125,21 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         sumCategoryByTypeSettled(payload, where),
       ])
       const breakdowns = deriveCategoryBreakdowns(catRows)
+      // Two planes, because the listing now renders both and they are NOT interchangeable: the v1
+      // columns („Bilans netto v1", „Marża v1") are the raw transactions, which is exactly what
+      // inwestycje/[id]/page.tsx feeds v1; the v2 columns are the same figures rebased onto the
+      // kosztorys reading. Comparing a v1 column against the rebased object is what let the listing
+      // marża drift 235 908,25 zl from the detail page while this spec stayed green.
+      const transactionFin = deriveFinancials(
+        byType,
+        breakdowns.categoryCosts,
+        breakdowns.settledCategoryCosts,
+        inv.materialsNetRate,
+        inv.settlementMode,
+        breakdowns.netCategoryCosts,
+      )
       const detailFin = financialsOnReading(
-        deriveFinancials(
-          byType,
-          breakdowns.categoryCosts,
-          breakdowns.settledCategoryCosts,
-          inv.materialsNetRate,
-          inv.settlementMode,
-          breakdowns.netCategoryCosts,
-        ),
+        transactionFin,
         readingFromKosztorys(kosztorysTotals[String(inv.id)]),
       )
 
@@ -133,18 +153,33 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         [inv],
         listingFin ? { [String(inv.id)]: listingFin } : {},
         kosztorysTotals,
+        subcontractorDue,
       )
+
+      // Every investment fed in comes back out, so a `?? 0` below can only ever mask a dropped row —
+      // which would then compare as 0 against a detail side that happens to be 0 and pass green.
+      expect(listingRow, `#${inv.id} ${inv.name} is missing from the listing`).toBeDefined()
 
       // DETAIL assembly (mirrors inwestycje/[id]/page.tsx + financial-stats.tsx)
       const fields = buildFinancialFields(detailFin, expenseCategories)
       // The formula ToggleStatButtons renders, over every card (nothing hidden) — FinancialStats
       // partitions `fields` into rows without dropping any, so rows.flat() is `fields`.
       const detailBalance = computeSummary(fields, new Set())
+      const detailBalanceFromTransactions = computeSummary(
+        buildFinancialFields(transactionFin, expenseCategories),
+        new Set(),
+      )
       const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
 
       const compare: [string, number, number][] = [
         ['bilans', listingRow?.balance ?? 0, detailBalance],
-        ['marża', listingRow?.margin ?? 0, calculateMargin(detailFin)],
+        ['bilans v1', listingRow?.balanceFromTransactions ?? 0, detailBalanceFromTransactions],
+        ['marża v1', listingRow?.margin ?? 0, calculateMargin(transactionFin)],
+        [
+          'robocizna v1',
+          listingRow?.totalLaborCostsFromTransactions ?? 0,
+          transactionFin.totalLaborCosts,
+        ],
         [
           // The plane the defect lived on — bilans and marża both looked healthy while this drifted.
           'wydatki inwestycyjne',
@@ -166,6 +201,25 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         ],
         ['wliczone w robociznę', listingRow?.totalSettled ?? 0, detailFin.totalSettled],
       ]
+
+      // Deliberately NOT the SQL fold on the right: the listing already reads it, so feeding it to
+      // both sides would compare the fold with itself. The tree is the reference the panel renders.
+      const tree = await buildKosztorysTree(inv.id)
+      const byPlane = subcontractorDueByPlane(treeToRows(tree), tree.stages)
+      const detailMarginV2 = marginV2(detailFin, toSettlement(byPlane))
+      const listingMarginV2 = listingRow?.marginV2 ?? null
+      // Compared before rounding because `null` is a third state, not a number: an investment whose
+      // etapy are unsettled must be withheld on BOTH sides, and 0 vs null is exactly the confusion
+      // this figure exists to avoid.
+      const v2Agrees =
+        detailMarginV2 === null || listingMarginV2 === null
+          ? detailMarginV2 === listingMarginV2
+          : round2(detailMarginV2) === round2(listingMarginV2)
+      if (!v2Agrees) {
+        mismatches.push(
+          `#${inv.id} ${inv.name} · marża v2: listing=${listingMarginV2} detail=${detailMarginV2}`,
+        )
+      }
       for (const [label, listing, detail] of compare) {
         if (round2(listing) !== round2(detail)) {
           mismatches.push(

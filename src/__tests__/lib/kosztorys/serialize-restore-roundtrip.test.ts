@@ -120,7 +120,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               unit: 'm2',
               plannedQty: 20,
               clientPrice: 250,
-              hiddenInExport: true,
             },
           ],
         },
@@ -142,7 +141,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               wToolsOverrideValue: 0,
               ownToolsOverrideType: null,
               ownToolsOverrideValue: 0,
-              hiddenInExport: false,
               note: null,
             },
             {
@@ -159,7 +157,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               wToolsOverrideValue: 0.62,
               ownToolsOverrideType: 'amount',
               ownToolsOverrideValue: 88.5,
-              hiddenInExport: true,
               note: 'Uwaga: różnica ±5 cm\nDrugi wiersz — ćwierć „cudzysłów"',
             },
             // The mirrored override combo. Per plane each of the two legal types must appear

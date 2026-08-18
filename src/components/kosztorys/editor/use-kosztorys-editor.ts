@@ -1,32 +1,35 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-debounced-save'
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
+  undoAvailability,
   type FieldChangeT,
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
+import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
+import { itemFieldLane, stageLane } from '@/lib/kosztorys/save-lanes'
+import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
 import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
+import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
+import { engagedProblemIds, engagedStageProblemIds } from '@/lib/kosztorys/problem-conditions'
+import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
+import { useKosztorysStageOps } from '@/components/kosztorys/editor/hooks/use-kosztorys-stage-ops'
+import { useKosztorysViewState } from '@/components/kosztorys/editor/hooks/use-kosztorys-view-state'
 import { useColumnOrder } from '@/components/kosztorys/editor/hooks/use-column-order'
 import { useHiddenColumns } from '@/components/kosztorys/editor/hooks/use-hidden-columns'
 import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
-import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
-import { useProgressDisplay } from '@/components/kosztorys/editor/hooks/use-progress-display'
+import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
 import { useElementHeight } from '@/hooks/use-element-height'
 import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
-import {
-  type SortPickT,
-  type V2SortStateT,
-} from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
-import { diffRow, inverseGlobalCoeffPatch, treeToRows } from '@/lib/kosztorys/v2-rows'
+import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
   applyAddItem,
   applyInsertItem,
@@ -36,7 +39,6 @@ import {
   applyKosztorysOrder,
   buildBlankRow,
   groupBySection,
-  insertDisplayOrder,
   neighborSectionId,
   revertField,
   sectionNeighbor,
@@ -54,80 +56,62 @@ import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
-import { filterRows, sortRows, sortRowsWithinSections } from '@/lib/kosztorys/row-view'
+import { marginForecastByPlane as forecastByPlane } from '@/lib/kosztorys/margin-forecast'
+import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
+  MEASURE_DIVERGED_CONDITION_ID,
   ROW_CONDITIONS,
   applyRowConditions,
+  columnsRevealedBy,
   countMatching,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
-import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-engaged-conditions'
+import { STAGE_CONDITIONS, countMatchingStages } from '@/lib/kosztorys/stage-conditions'
+import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
-import type { DisplayOrderRefT } from '@/lib/kosztorys/display-order'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
-import {
-  stageKey,
-  stageValueGrossKey,
-  stageValueNetKey,
-  stageValuePercentKey,
-} from '@/lib/kosztorys/stage-keys'
-import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
+import { stageKey } from '@/lib/kosztorys/stage-keys'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
   addSectionAction,
-  addStageAction,
-  applyPercentDiscountToAllItemsAction,
   insertItemAction,
   insertSectionAction,
   removeItemAction,
   removeSectionAction,
-  removeStageAction,
   renumberKosztorysOrderAction,
   setStageProgressAction,
   swapItemOrderAction,
   swapSectionOrderAction,
-  updateInvestmentCoeffsAction,
-  updateInvestmentGlobalDiscountAction,
-  updateInvestmentMaterialsNetRateAction,
-  updateInvestmentSettlementModeAction,
-  updateInvestmentVatAction,
   updateItemFieldAction,
   updateSectionFieldAction,
-  updateStageAction,
 } from '@/lib/actions/kosztorys'
-import type {
-  GlobalDiscountT,
-  ItemPatchT,
-  KosztorysStageT,
-  KosztorysTreeT,
-  KosztorysV2RowT,
-  StagePatchT,
-  ToolPlaneT,
-} from '@/lib/kosztorys/types'
+import type { ItemPatchT, KosztorysTreeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
-import { usePendingStore } from '@/stores/pending-store'
 
 type ArgsT = {
   investmentId: number
   tree: KosztorysTreeT
   // The read-only client-facing render — BOTH the public share link and the owner's „Podgląd dla
-  // klienta", which are deliberately the same render. Distinct from `view === 'client'`, which is a
+  // inwestora", which are deliberately the same render. Distinct from `view === 'client'`, which is a
   // PRICE PLANE (client prices vs a subcontractor's); the render mode is what pins that plane, so the
   // two must not share the word (owner ruling 2026-07-28).
   preview?: boolean
+  // The investment's stored client-view settings, resolved server-side. Only consumed under
+  // `preview` — on the owner's editor it is absent, and the settings dialog reads its own copy.
+  clientView?: ClientViewSettingsT
   undoRedo: UndoRedoApiT
   // Roster for the etap header's worker picker. Absent on the client share path, which never renders
   // a menu at all.
   workers?: WorkerRefT[]
+  // Whether the investment has any wydatek folded into robocizna — the gate on the overpaid-crew
+  // problem (EX-708). Optional with a `false` default for the client-share entry points, which count
+  // no problems at all; on the owner's editor it is always supplied.
+  hasSettledMaterial?: boolean
 }
-
-// A reorder command records the two rows' ids and pre-swap orders. FieldChangeT/StageChangeT (the
-// per-field / per-stage before+after a grid batch records) live with the burst-coalescing reducer.
-type OrderRefT = { id: number; order: number }
 
 // Grace period after the last keystroke before a grid edit burst becomes one undo entry. Longer
 // than the debounced save (500ms) so a command is captured only once the writes for the burst have
@@ -136,10 +120,6 @@ const UNDO_COALESCE_MS = 700
 // Separate knob from UNDO_COALESCE_MS despite the matching value — one decides when a burst becomes
 // one undo entry, the other when the server's recomputed totals are worth a round trip.
 const TOTALS_REFRESH_DEBOUNCE_MS = 700
-const SETTINGS_PENDING_KEY = 'kosztorys-settings'
-// One frozen instance, so the preview's suppressed set is referentially stable across renders and
-// the memos below don't recompute on every keystroke.
-const EMPTY_CONDITION_IDS: ReadonlySet<string> = new Set()
 
 // All editor state, derived data, and handlers for the in-app kosztorys grid. Kept out of the
 // component so the component is only composition + markup. Handlers never fire an action from
@@ -148,8 +128,10 @@ export function useKosztorysEditor({
   investmentId,
   tree,
   preview = false,
+  clientView,
   undoRedo,
   workers,
+  hasSettledMaterial = false,
 }: ArgsT) {
   const router = useRouter()
   const { save, runNow } = useDebouncedSave(500)
@@ -157,63 +139,35 @@ export function useKosztorysEditor({
   // here; the toolbar + keyboard call undo/redo (re-exported below).
   const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
   const [gridRef, gridHeight] = useElementHeight()
+  // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
+  // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
+  // each had a narrow seam, while the store has ~47 references across ~30 handlers below. Pulling it
+  // into a useKosztorysRows would relocate five declarations and leave every one of those call sites
+  // reaching in — an indirection layer on the hottest path EX-496 was reverted over. Settle EX-422
+  // first: if rowsRef/prevById are no longer load-bearing, the thing left to extract is a smaller one.
   const [rows, setRows] = useState<KosztorysV2RowT[]>(() => treeToRows(tree))
-  // Stages live in local state (like `rows`): add/remove optimistically add/drop a column.
-  const [stages, setStages] = useState<KosztorysStageT[]>(tree.stages)
-  // Global discount in local state (like `rows`/`stages`): the toggle patches it optimistically so
-  // the derived total, column visibility, and per-item suppression all move in one render. Reading
-  // `tree.globalDiscount` instead would leave the total + columns lagging the row flag until
-  // router.refresh() lands — the transient the "never disagree" invariant below forbids.
-  const [globalDiscount, setGlobalDiscount] = useState<GlobalDiscountT>(tree.globalDiscount)
-  const globalDiscountActive = isGlobalDiscountActive(globalDiscount)
-  // Undo/redo call applyGlobalDiscount through a closure captured when the entry was pushed, where
-  // `globalDiscount` is already stale — so its failure rollback reads the live value from here.
-  // Same latest-value ref pattern as `rowsRef` below, for the same reason.
-  const globalDiscountRef = useRef(globalDiscount)
-
-  globalDiscountRef.current = globalDiscount
-  // „Opcje rozliczenia" writes nothing optimistically — every figure the four settings move is
-  // recomputed on the server, so the panel can only change once the write lands. One shared flag for
-  // the block (they are set-once decisions about the deal; nobody edits two at a time) disables it
-  // meanwhile, so the click stops reading as inert.
-  const [isSavingSettings, startSettingsSave] = useTransition()
-  const [persistedView, setView] = usePriceView(investmentId)
-  // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
-  // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
-  // it HERE is also what closes the attack where a client sets localStorage['kosztorys-view:<id>'] to
-  // a subcontractor view: the public page ships the full tree, coefficients included, so an unpinned
-  // plane would simply render it.
-  const view = preview ? 'client' : persistedView
-  const [search, setSearch] = useState('')
-  // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
-  // is still on today. Suppressed wholesale under the preview like `view` above: every condition here
-  // is the company's own bookkeeping question and has no business in a client's document.
   const {
-    engagedIds: persistedConditionIds,
-    toggle: toggleCondition,
-    clear: clearConditions,
-  } = useEngagedConditions(investmentId)
-  const engagedConditionIds = preview ? EMPTY_CONDITION_IDS : persistedConditionIds
-  const [sort, setSort] = useState<V2SortStateT>(null)
-  // Which sections are folded shut under their band — the single description of what the grid shows,
-  // driven both by a band's own chevron and by the „Sekcje" menu (unticking folds rather than
-  // filtering the rows away, so a hidden section still announces itself and its total). Deliberately
-  // NOT persisted: a fold is a reading gesture for the current session, and a remembered one would
-  // greet the next visit with rows the user can't see and doesn't remember hiding.
-  const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
-    () => new Set(),
-  )
-  // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
-  // the conditions and the folds alike. Two half-resets would leave the user clicking one and still
-  // facing a short grid.
-  function resetFilters() {
-    clearConditions()
-    setCollapsedSectionIds(new Set())
-  }
+    view,
+    setView,
+    search,
+    setSearch,
+    engagedConditionIds,
+    toggleCondition,
+    toggleConditionExclusive,
+    sort,
+    setSort,
+    setSortField,
+    collapsedSectionIds,
+    setCollapsedSectionIds,
+    toggleSectionCollapsed,
+    unfoldSection,
+    resetFilters,
+    guideX,
+    setGuideX,
+  } = useKosztorysViewState({ investmentId, preview, clientView })
 
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
-  // that would be a write per pixel). During the drag we only show a vertical guide
-  // (guideX = cursor X), without touching the grid.
+  // that would be a write per pixel).
   const { widths, setWidth, dropWidth } = useColumnWidths()
   const { isHidden, toggleColumn, setAllColumns } = useHiddenColumns()
   const {
@@ -222,16 +176,11 @@ export function useKosztorysEditor({
     resetOrder: resetColumnOrder,
   } = useColumnOrder()
   const [moneyAxis, setMoneyAxis] = useMoneyAxis()
-  // Subcontractor views (Z narzędziami / Bez narzędzi) are paid without VAT (EX-558), so brutto is
-  // meaningless there — lock the axis to net regardless of the persisted value, matching the hidden
-  // Kwoty control. Nothing here is pinned for a preview: selectV2Columns drops every gate but the
-  // allowlist under `previewVisible`, so the axis — like the layer, the progress display and the
-  // picker below — never reaches the client's grid in the first place.
-  const effectiveMoneyAxis: MoneyAxisT =
-    view !== 'client' ? 'net' : moneyAxis === 'none' ? 'both' : moneyAxis
-  const [progressDisplay, setProgressDisplay] = useProgressDisplay()
+  // Nothing here is pinned for a preview: selectV2Columns drops every gate but the allowlist under
+  // `previewVisible`, so the axis — like the layer and the picker below — never reaches the client's
+  // grid in the first place.
+  const axis = effectiveMoneyAxis(view, moneyAxis)
   const [layer, setLayer] = useLayer()
-  const [guideX, setGuideX] = useState<number | null>(null)
   // Snapshot of the previous rows for diffing (keyed by item id) — the full dataset, not the view.
   // It also serves as the "fresh dataset" read by structural event handlers (section count):
   // kept in sync on every add/remove/edit, so no separate ref for rows is needed.
@@ -245,15 +194,25 @@ export function useKosztorysEditor({
   // still load-bearing is EX-422's own follow-up, not a freebie to delete alongside it.
   const rowsRef = useRef(rows)
 
+  // react-hooks/refs forbids a render-time ref write outright; this is the deliberate latest-value
+  // pattern described above.
+  // eslint-disable-next-line react-hooks/refs
   rowsRef.current = rows
-  // Persisted display_order per section, seeded at mount like `rows` and kept current on
-  // add/append/move. The grid rows carry no section order (the array's block sequence IS the order),
-  // so a section move needs this to know which two numbers to exchange in the DB.
-  const sectionOrderRef = useRef(new Map(tree.sections.map((s) => [s.id, s.displayOrder])))
-  // Same, for the stage-rename handler's no-op guard (compares against the fresh label).
-  const stagesRef = useRef(stages)
 
-  stagesRef.current = stages
+  const {
+    stages,
+    handleAddStage,
+    handleRemoveStage,
+    handleRenameStage,
+    handleSetStagePlane,
+    handleSetStageWorker,
+  } = useKosztorysStageOps({
+    investmentId,
+    initialStages: tree.stages,
+    patchRows,
+    dropWidth,
+    save,
+  })
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
   // keystroke's changes here; the flush timer collapses them into a single command once typing stops.
@@ -339,9 +298,21 @@ export function useKosztorysEditor({
     pushCommand({ label, undo: () => apply(before), redo: () => apply(after) })
   }
 
-  function setSortField(field: string, pick: SortPickT | null) {
-    setSort(pick ? { field, ...pick } : null)
-  }
+  // Called above the column build: `columnOpts` reads globalDiscountActive and the settings handlers.
+  // `patchRows` and `pushReversible` are function declarations, so passing them here is safe despite
+  // patchRows being written further down.
+  const {
+    globalDiscount,
+    globalDiscountActive,
+    isSavingSettings,
+    investorImpactConfirm,
+    handleGlobalCoeffChange,
+    handleVatChange,
+    handleSettlementModeChange,
+    handleMaterialsNetRateChange,
+    handleGlobalDiscountChange,
+    handleApplyPercentDiscount,
+  } = useKosztorysSettings({ investmentId, tree, rowsRef, patchRows, pushReversible })
 
   // One O(n) pass feeding the render-hot getRemovePlan (see below) an O(1) per-row lookup.
   const removalCounts = sectionItemCounts(rows)
@@ -364,28 +335,70 @@ export function useKosztorysEditor({
   // so the panel and the dialog can never cite different amounts for the same etap.
   const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
 
+  // Both scenarios of the „Marża" prognoza, priced up front. The tab's plane toggle is local UI
+  // state, so handing the panel one of them would force the whole row set down there to price the
+  // other. Stage-blind by construction — the przedmiar is what was offered, so no `stages` dep.
+  // Skipped under the preview like every other whole-row fold here: `allowedSummaryViews` drops the
+  // „Marża" tab there, so this would be three passes over every pozycja for a figure no reader of the
+  // client's document can reach.
+  const marginForecastByPlane = useMemo(
+    () => (preview ? undefined : forecastByPlane(rows)),
+    [preview, rows],
+  )
+
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
-  // carries none of this. Read by the toolbar's counters, which is why a diagnostic's button can
-  // vanish at zero while the column it points at stays (see `hasSheetMeasure` below).
-  const conditionCounts = useMemo(() => {
-    const ctx = { stages }
-    return new Map(
-      ROW_CONDITIONS.map((condition) => [
-        condition.id,
-        preview ? 0 : countMatching(rows, condition.id, ctx),
-      ]),
+  // carries none of this. Read by the toolbar's counters.
+  //
+  // The two halves are counted separately because only one of them depends on the view, and the row
+  // half is the expensive one: eleven passes over every pozycja. Counted together, switching the plane
+  // — which picking a problem now does on its own — re-ran all of them to reach the same numbers.
+  const rowConditionCounts = useMemo(() => {
+    const ctx = { stages, hasSettledMaterial }
+    return ROW_CONDITIONS.map(
+      (condition) => [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
     )
-  }, [preview, rows, stages])
-
-  // Gates the „Pozostało do rozliczenia" column. Not the rozjazd count: the column has to survive
-  // its own zero, or it becomes a counter the owner clears by typing quantities into etapy — which
-  // is the app declaring work done that nobody did.
-  const hasSheetMeasure = useMemo(
-    () => !preview && rows.some((row) => row.sheetMeasuredQty != null),
-    [preview, rows],
+  }, [preview, rows, stages, hasSettledMaterial])
+  // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
+  // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
+  // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
+  // for every pozycja, whereas an etap belongs to one.
+  const stageConditionCounts = useMemo(() => {
+    const viewStages = stagesForView(stages, view)
+    return STAGE_CONDITIONS.map(
+      (condition) =>
+        [condition.id, preview ? 0 : countMatchingStages(viewStages, condition.id)] as const,
+    )
+  }, [preview, stages, view])
+  const conditionCounts = useMemo(
+    () => new Map([...rowConditionCounts, ...stageConditionCounts]),
+    [rowConditionCounts, stageConditionCounts],
   )
+
+  // Which etap problems are narrowing the stage columns. Empty under the preview like every other
+  // filter, so a client's share can never be narrowed by an owner's leftover gesture.
+  const engagedStageConditionIds = useMemo(
+    () => (preview ? new Set<string>() : engagedStageProblemIds(engagedConditionIds)),
+    [preview, engagedConditionIds],
+  )
+
+  // The columns the engaged problems are about, forced past the column picker for as long as the
+  // gesture lasts. Empty under the preview: a client's document answers to its own allowlist, and an
+  // owner's leftover gesture must not widen it.
+  const revealedColumnIds = useMemo(
+    () => columnsRevealedBy(preview ? [] : engagedConditionIds),
+    [preview, engagedConditionIds],
+  )
+
+  // Gates the „Pozostało do rozliczenia" column: it is the answer to the diagnostic beside it, so it
+  // rides that button rather than the column picker. With the filter off the grid holds every pozycja
+  // and the column would read „—" down nearly all of them — the button's own count is what says the
+  // rozjazd is there.
+  const divergenceFilterEngaged = !preview && engagedConditionIds.has(MEASURE_DIVERGED_CONDITION_ID)
+
+  // Subtracts from the allowlist, never adds to it — the ceiling stays `PREVIEW_VISIBLE_COLUMNS`.
+  const previewHiddenColumns = preview && clientView ? new Set(clientView.hiddenColumns) : undefined
 
   const columnOpts = {
     view,
@@ -399,8 +412,7 @@ export function useKosztorysEditor({
     sort,
     onSetSort: editorOnly(setSortField),
     isHidden,
-    moneyAxis: effectiveMoneyAxis,
-    progressDisplay,
+    moneyAxis: axis,
     layer,
     widths,
     columnRanks,
@@ -418,9 +430,12 @@ export function useKosztorysEditor({
     getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
     getRemovePlan: editorOnly(getRemovePlan),
     globalDiscountActive,
-    hasSheetMeasure,
+    divergenceFilterEngaged,
+    engagedStageConditionIds,
+    revealedColumnIds,
     readOnly: preview,
     previewVisible: preview,
+    previewHiddenColumns,
   }
   const { columns, columnToggleItems, columnBaseRanks } = buildV2Grid(columnOpts)
   // A column sort must not outlive its column. A money-axis or view toggle can drop the sorted
@@ -444,39 +459,63 @@ export function useKosztorysEditor({
   // executed but unpriced sums to zero and is exactly the one nobody wants folded away. A mixed
   // section belongs to neither half of a pair and so stays visible under both — by design, since
   // „sekcje bez przedmiaru" cannot honestly name a section that has some.
+  // Empty under the preview like every other filter input: the „Filtry" menu that reads this lives in
+  // the owner's toolbar, so on a client's share there is nothing to tick.
   const foldableSectionIds = useMemo(() => {
-    const ctx = { stages }
+    if (preview) return new Map<string, Set<number>>()
+    const ctx = { stages, hasSettledMaterial }
     return new Map(
-      ROW_CONDITIONS.filter((condition) => condition.sectionLabel !== null).map((condition) => [
+      ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
         condition.id,
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
     )
-  }, [rows, stages])
+  }, [preview, rows, stages, hasSettledMaterial])
 
-  function toggleSectionCollapsed(sectionId: number) {
-    setCollapsedSectionIds((prev) => {
-      const next = new Set(prev)
-      if (!next.delete(sectionId)) next.add(sectionId)
-      return next
-    })
-  }
-
-  // View = search + engaged conditions + sort. Sections are not filtered here: hiding one is a fold,
-  // applied further down by buildSectionBandRows so the band survives its own collapse.
+  // Problems only, and never under the preview. The latch is half of a two-part gesture whose other
+  // half — „Odśwież — ukryj poprawione" — lives in the „Problemy" menu and is rendered only while a
+  // problem is engaged, so latching under a „Prace" filter would hold rows with no way to let them
+  // go: untick „z przedmiarem", type a przedmiar, and the row that should leave stays put while the
+  // menu's own counter moves without it. The preview is out for a different reason — the client's
+  // document is not a working grid, so nothing is being fixed in it and a held-open row would only
+  // be a row the owner chose to hide.
+  const engagedProblems = useMemo(
+    () => (preview ? new Set<string>() : engagedProblemIds(engagedConditionIds)),
+    [preview, engagedConditionIds],
+  )
+  const { latch, refresh: refreshProblemRows } = useConditionRowLatch(
+    engagedProblems,
+    engagedProblems.size > 0,
+  )
   const viewRows = useMemo(() => {
-    const filtered = applyRowConditions(filterRows(rows, search), engagedConditionIds, {
+    const next = buildViewRows({
+      rows,
+      search,
+      engagedConditionIds,
+      sort,
+      view,
       stages,
+      hasSettledMaterial,
+      latchedRowIds: latch?.ids,
     })
-    if (!sort) return filtered
-    const getValue = (r: KosztorysV2RowT) => columnSortValue(r, sort.field, view, stages)
-    return sort.scope === 'global'
-      ? sortRows(filtered, getValue, sort.dir)
-      : sortRowsWithinSections(filtered, getValue, sort.dir)
-  }, [rows, search, engagedConditionIds, sort, view, stages])
-  // Both read the FULL dataset in display order, which is what makes a filter visible: the numbers
-  // skip over the rows it hid, and the sections keep their original order however it thinned them.
-  const ordinalByRowId = useMemo(() => baseOrdinals(rows), [rows])
+    if (latch) for (const row of next) latch.ids.add(row.id)
+    return next
+  }, [rows, search, engagedConditionIds, sort, view, stages, hasSettledMaterial, latch])
+  // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
+  // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
+  // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
+  // from it, so under the preview the owner's stored hide decision is applied first and the offer runs
+  // 1…N. Search and sort are deliberately left out of both: a number that moved as the reader typed
+  // would name a different pozycja every keystroke.
+  const numberedRows = useMemo(
+    () =>
+      preview
+        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
+        : rows,
+    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
+  )
+  const ordinalByRowId = useMemo(() => baseOrdinals(numberedRows), [numberedRows])
+  // Sections keep their original order however the filter thinned them.
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // Executed total at the active view — the money the totals bar shows and the base the global
   // discount comes off. Full-dataset (like the subtotals): a search or section filter must not move it.
@@ -573,76 +612,48 @@ export function useKosztorysEditor({
     stages: StageChangeT[],
     dir: 'undo' | 'redo',
   ) {
-    // Merge every change of one row into a single patch so multi-field/-stage rows apply at once.
-    const patchById = new Map<number, Record<string, unknown>>()
-    for (const c of fields) {
-      const patch = patchById.get(c.id) ?? {}
-      patch[c.field as string] = dir === 'undo' ? c.before : c.after
-      patchById.set(c.id, patch)
-    }
-    for (const c of stages) {
-      const patch = patchById.get(c.id) ?? {}
-      patch[stageKey(c.stageId)] = dir === 'undo' ? c.before : c.after
-      patchById.set(c.id, patch)
-    }
-    setRows((rs) =>
-      rs.map((r) =>
-        patchById.has(r.id) ? ({ ...r, ...patchById.get(r.id) } as KosztorysV2RowT) : r,
-      ),
+    const patchById = buildReversalPatches(fields, stages, dir)
+
+    patchRows(
+      (r) => patchById.has(r.id),
+      (r) => ({ ...r, ...patchById.get(r.id) }) as KosztorysV2RowT,
     )
-    for (const [id, patch] of patchById) {
-      const snap = prevById.current.get(id)
-      if (snap) prevById.current.set(id, { ...snap, ...patch } as KosztorysV2RowT)
-    }
     // Each inverse goes through its cell's lane. On failure the lane toasts AND we roll the optimistic
     // apply back to its pre-reversal value via `revertOne` — the trailing `router.refresh()` can't do it
     // (`rows` is the mount-frozen useState seed, EX-441, so refresh reseeds the prop surfaces but not the
     // grid), so without this a rejected inverse would leave the grid diverged from the DB behind a toast.
-    const writes: Promise<void>[] = []
-    for (const c of fields) {
-      const value = dir === 'undo' ? c.before : c.after
-      const restore = dir === 'undo' ? c.after : c.before
-      writes.push(
-        runNow(
-          `item:${c.id}:${String(c.field)}`,
-          () => updateItemFieldAction(c.id, { [c.field]: value } as ItemPatchT),
-          () => revertOne(c.id, c.field as keyof KosztorysV2RowT, restore, value),
-        ),
-      )
-    }
-    for (const c of stages) {
-      const value = dir === 'undo' ? c.before : c.after
-      const restore = dir === 'undo' ? c.after : c.before
-      writes.push(
-        runNow(
-          `progress:${c.id}:${c.stageId}`,
-          () => setStageProgressAction(c.id, c.stageId, value),
-          () => revertOne(c.id, stageKey(c.stageId) as keyof KosztorysV2RowT, restore, value),
-        ),
-      )
-    }
-    await Promise.all(writes)
+    await Promise.all(
+      planReversalWrites(fields, stages, dir).map((w) =>
+        w.kind === 'field'
+          ? runNow(
+              w.lane,
+              () => updateItemFieldAction(w.id, { [w.field]: w.value } as ItemPatchT),
+              () => revertOne(w.id, w.field as keyof KosztorysV2RowT, w.restore, w.value),
+            )
+          : runNow(
+              w.lane,
+              () => setStageProgressAction(w.id, w.stageId, w.value),
+              () =>
+                revertOne(w.id, stageKey(w.stageId) as keyof KosztorysV2RowT, w.restore, w.value),
+            ),
+      ),
+    )
     // Pull recomputed section/stage totals once the inverse writes have committed.
     router.refresh()
   }
 
-  // Reverse (or replay) a ▲▼ swap: exchange the two rows' array positions and re-issue the
-  // display_order swap. Self-inverse — undo restores each row's pre-swap order, redo re-applies the
-  // original. Matches handleReorderItem: no prevById touch (display_order isn't a diffed field) and
-  // no totals refresh (a reorder doesn't change any figure).
-  function runReorderReversal(a: OrderRefT, b: OrderRefT, dir: 'undo' | 'redo') {
-    setRows((rs) => {
-      const ia = rs.findIndex((r) => r.id === a.id)
-      const ib = rs.findIndex((r) => r.id === b.id)
-      if (ia < 0 || ib < 0) return rs
-      const next = [...rs]
-      ;[next[ia], next[ib]] = [next[ib], next[ia]]
-      return next
-    })
-    void swapItemOrderAction(
-      { id: a.id, displayOrder: dir === 'undo' ? a.order : b.order },
-      { id: b.id, displayOrder: dir === 'undo' ? b.order : a.order },
-    )
+  // Reverse (or replay) a ▲▼ swap: exchange the two rows' array positions and re-issue the move in
+  // the given direction — the inverse of „w górę" is „w dół", so undo and redo are the same call with
+  // the direction flipped. Matches handleReorderItem: no prevById touch (display_order isn't a diffed
+  // field) and no totals refresh (a reorder doesn't change any figure).
+  //
+  // The neighbour is re-derived here rather than replayed from the one captured at push time: the
+  // server exchanges with whatever is rank-adjacent NOW, so replaying a stale id would diverge the
+  // moment a row landed between the pair (insert between A and X, then undo). `swapItemInSection` is
+  // the same primitive the forward gesture uses, which is what makes both halves one operation.
+  function runReorderReversal(itemId: number, dir: 'up' | 'down') {
+    setRows((rs) => swapItemInSection(rs, itemId, dir))
+    void swapItemOrderAction(itemId, dir)
   }
 
   // The tree-level half of a blank row (VAT, global coefficients, the stage axis) is identical at
@@ -676,13 +687,7 @@ export function useKosztorysEditor({
     })
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
-    // A row added to a folded section would be invisible — unfold it so the add is visible.
-    setCollapsedSectionIds((prev) => {
-      if (!prev.has(sectionId)) return prev
-      const next = new Set(prev)
-      next.delete(sectionId)
-      return next
-    })
+    unfoldSection(sectionId)
   }
 
   // ⋯ menu → Wstaw pozycję powyżej/poniżej. Inserts a blank row at the anchor's display slot
@@ -691,8 +696,7 @@ export function useKosztorysEditor({
   // fields come from any existing row of that section (as in handleAddItem).
   async function handleInsertItem(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
     if (sort) return
-    const at = insertDisplayOrder(anchorRow, dir)
-    const res = await insertItemAction(anchorRow.sectionId, at)
+    const res = await insertItemAction(anchorRow.id, dir)
     if (!res.success) return
     const sample =
       [...prevById.current.values()].find((r) => r.sectionId === anchorRow.sectionId) ?? anchorRow
@@ -703,12 +707,6 @@ export function useKosztorysEditor({
       sectionName: sample.sectionName,
       sectionColor: sample.sectionColor,
     })
-    // Mirror the section-tail display_order bump in prevById so a later insert/▲▼ diffs correctly.
-    for (const [id, r] of prevById.current) {
-      if (r.sectionId === row.sectionId && r.displayOrder >= at) {
-        prevById.current.set(id, { ...r, displayOrder: r.displayOrder + 1 })
-      }
-    }
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertItem(rs, anchorRow.id, row, dir))
   }
@@ -716,7 +714,7 @@ export function useKosztorysEditor({
   // What deleting a row does — read at event time from the full dataset (prevById), not the view,
   // so the handler decides on accurate counts. The render-hot per-cell path uses getRemovePlan.
   function removalPlan(row: KosztorysV2RowT) {
-    return planItemRemoval([...prevById.current.values()], row, stagesRef.current)
+    return planItemRemoval([...prevById.current.values()], row, stages)
   }
 
   // Render-hot: called per cell. Counts are precomputed once per render (removalCounts below), so this
@@ -727,7 +725,7 @@ export function useKosztorysEditor({
       rows.length,
       removalCounts.get(row.sectionId) ?? 0,
       row,
-      stagesRef.current,
+      stages,
     )
   }
 
@@ -770,20 +768,16 @@ export function useKosztorysEditor({
     const neighbor = sectionNeighbor(rs, row.id, dir)
     if (!neighbor) return // edge of the block → no-op
     setRows(swapItemInSection(rs, row.id, dir))
-    // ▲▼ is a swap of two neighbors → we only exchange their display_order (2 updates, not a
+    // ▲▼ is a swap of two neighbors → the server exchanges just their display_order (2 updates, not a
     // renumbering of the whole section — that choked with 1000+ rows). The action fires from the
     // event handler, not from the setRows updater (there its cache revalidation would move the Router during render).
-    void swapItemOrderAction(
-      { id: row.id, displayOrder: neighbor.displayOrder },
-      { id: neighbor.id, displayOrder: row.displayOrder },
-    )
-    const a: OrderRefT = { id: row.id, order: row.displayOrder }
-    const b: OrderRefT = { id: neighbor.id, order: neighbor.displayOrder }
+    void swapItemOrderAction(row.id, dir)
+    const back = dir === 'up' ? 'down' : 'up'
     pushCommand({
       label: 'Zmiana kolejności',
-      undo: () => runReorderReversal(a, b, 'undo'),
-      redo: () => runReorderReversal(a, b, 'redo'),
-      touchedIds: [a.id, b.id],
+      undo: () => runReorderReversal(row.id, back),
+      redo: () => runReorderReversal(row.id, dir),
+      touchedIds: [row.id, neighbor.id],
     })
   }
 
@@ -794,12 +788,12 @@ export function useKosztorysEditor({
   //
   // One server call for the whole sheet, so a half-applied bake can't leave some sections renumbered
   // and others not.
-  // `revertTo` is the order to fall back to when the server refuses the whole write — one stale id
+  // `revertTo` is the sequence to fall back to when the server refuses the whole write — one stale id
   // (a row deleted in another tab) rejects the entire bake, and without the rollback the grid would
   // keep showing an order no reload can reproduce.
-  async function runKosztorysRenumber(refs: DisplayOrderRefT[], revertTo: DisplayOrderRefT[]) {
-    setRows((rs) => applyKosztorysOrder(rs, refs))
-    const res = await renumberKosztorysOrderAction(investmentId, refs)
+  async function runKosztorysRenumber(next: number[], revertTo: number[]) {
+    setRows((rs) => applyKosztorysOrder(rs, next))
+    const res = await renumberKosztorysOrderAction(investmentId, next)
     if (!res.success) {
       setRows((rs) => applyKosztorysOrder(rs, revertTo))
       toastMessage(res.error ?? 'Nie udało się zapisać kolejności', 'warning', 4000)
@@ -822,26 +816,16 @@ export function useKosztorysEditor({
       label: 'Zapisanie kolejności',
       undo: () => void runKosztorysRenumber(before, after),
       redo: () => void runKosztorysRenumber(after, before),
-      touchedIds: after.map((ref) => ref.id),
+      touchedIds: after,
     })
   }
 
   // Mirrors handleReorderItem one level up: the grid regroups its blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
   // false at the edge so the undo command isn't pushed for a no-op.
   function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
-    const neighborId = neighborSectionId(rowsRef.current, sectionId, dir)
-    if (neighborId == null) return false
-    const orders = sectionOrderRef.current
-    const order = orders.get(sectionId)
-    const neighborOrder = orders.get(neighborId)
-    if (order == null || neighborOrder == null) return false
+    if (neighborSectionId(rowsRef.current, sectionId, dir) == null) return false
     setRows((rs) => swapSectionBlock(rs, sectionId, dir))
-    orders.set(sectionId, neighborOrder)
-    orders.set(neighborId, order)
-    void swapSectionOrderAction(
-      { id: sectionId, displayOrder: neighborOrder },
-      { id: neighborId, displayOrder: order },
-    )
+    void swapSectionOrderAction(sectionId, dir)
     return true
   }
 
@@ -878,18 +862,8 @@ export function useKosztorysEditor({
   // anchor section instead of at the end.
   async function handleInsertSection(anchorSectionId: number, dir: 'above' | 'below') {
     if (sort) return
-    const anchorOrder = sectionOrderRef.current.get(anchorSectionId)
-    if (anchorOrder == null) return
-    const at = dir === 'above' ? anchorOrder : anchorOrder + 1
-    const res = await insertSectionAction(investmentId, at)
+    const res = await insertSectionAction(anchorSectionId, dir)
     if (!res.success) return
-    // Mirror the committed tail shift — unlike an item insert (where order is relative within a
-    // section), the client caches these absolute numbers and a missed shift makes every later
-    // section move exchange the wrong ones.
-    for (const [id, order] of sectionOrderRef.current) {
-      if (order >= at) sectionOrderRef.current.set(id, order + 1)
-    }
-    sectionOrderRef.current.set(res.data.section.id, at)
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
@@ -899,7 +873,6 @@ export function useKosztorysEditor({
     const res = await addSectionAction(investmentId)
     if (!res.success) return
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
-    sectionOrderRef.current.set(res.data.section.id, res.data.section.displayOrder)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
   }
@@ -921,97 +894,9 @@ export function useKosztorysEditor({
       globalDiscount,
       revision: tree.revision,
     })
-    for (const section of slice) sectionOrderRef.current.set(section.id, section.displayOrder)
     for (const row of appended) prevById.current.set(row.id, row)
     setRows((rs) => [...rs, ...appended])
     router.refresh()
-  }
-
-  // --- Stages (etapy) ---
-
-  // A new stage adds a `stage_<id>: 0` key to every current row + snapshot (like patchRows for
-  // coeffs), so the column renders 0s (not blanks) and the first progress entry diffs correctly.
-  async function handleAddStage(plane: ToolPlaneT) {
-    const res = await addStageAction(investmentId, plane)
-    if (!res.success) return
-    const { id, ordinal } = res.data
-    setStages((s) => [...s, { id, ordinal, label: null, plane, workerId: null }])
-    patchRows(
-      () => true,
-      (r) => ({ ...r, [stageKey(id)]: 0 }),
-    )
-  }
-
-  async function handleRemoveStage(stageId: number) {
-    const res = await removeStageAction(stageId)
-    if (!res.success) {
-      toastMessage(res.error ?? 'Nie udało się usunąć etapu', 'warning', 4000)
-      return
-    }
-    setStages((s) => s.filter((st) => st.id !== stageId))
-    const key = stageKey(stageId)
-    dropWidth(
-      key,
-      stageValueNetKey(stageId),
-      stageValueGrossKey(stageId),
-      stageValuePercentKey(stageId),
-    )
-    patchRows(
-      () => true,
-      (r) => {
-        const next = { ...r }
-        delete next[key]
-        return next
-      },
-    )
-  }
-
-  // Shared by all three header edits so they inherit the cell edits' revert-on-error discipline.
-  // The revert restores the prior value only if nothing newer landed on the field meanwhile (it
-  // still reads `value`) — which is what makes a slow rejected write safe to roll back.
-  //
-  // `saveKey` is passed rather than derived from `field`: it is the debounce identity, so renaming a
-  // field must not silently re-bucket in-flight saves.
-  function patchStageField<K extends keyof StagePatchT & keyof KosztorysStageT>(
-    stageId: number,
-    field: K,
-    value: StagePatchT[K],
-    saveKey: string,
-  ) {
-    const current = stagesRef.current.find((st) => st.id === stageId)
-    if (current && current[field] === value) return
-    const prev = current?.[field] ?? null
-    const withField = (stage: KosztorysStageT, next: unknown) =>
-      ({ ...stage, [field]: next }) as KosztorysStageT
-    setStages((s) => s.map((st) => (st.id === stageId ? withField(st, value) : st)))
-    save(
-      `${saveKey}:${stageId}`,
-      () => updateStageAction(stageId, { [field]: value } as StagePatchT),
-      () =>
-        setStages((s) =>
-          s.map((st) => (st.id === stageId && st[field] === value ? withField(st, prev) : st)),
-        ),
-    )
-  }
-
-  // An empty label reverts to null (the header shows the "Etap N" placeholder). The no-op guard in
-  // patchStageField earns its keep here: the header's onBlur fires on every focus-out, and it has no
-  // diff of its own, unlike item cells via diffRow.
-  function handleRenameStage(stageId: number, label: string) {
-    const trimmed = label.trim()
-    patchStageField(stageId, 'label', trimmed === '' ? null : trimmed, 'stage-label')
-  }
-
-  // Fired from the header's onValueChange (an event handler, never inside a state updater). Picking
-  // any plane (even the default w_tools) writes it, which is what clears the unconfirmed warning.
-  function handleSetStagePlane(stageId: number, plane: ToolPlaneT) {
-    patchStageField(stageId, 'plane', plane, 'stage-plane')
-  }
-
-  // `null` is a legal target here („Bez przypisania"), unlike plane. No undo push — matching plane,
-  // and reassigning back is the exact inverse.
-  function handleSetStageWorker(stageId: number, workerId: number | null) {
-    patchStageField(stageId, 'workerId', workerId, 'stage-worker')
   }
 
   async function handleRemoveSection(sectionId: number) {
@@ -1109,273 +994,40 @@ export function useKosztorysEditor({
     }
   }
 
-  // Shared tail of every optimistic settings write (global coeff / VAT / discount / section coeff).
-  // The caller has already applied its optimistic patch and captured whatever `revert` needs; this
-  // persists, then on failure runs `revert` and surfaces the error. Tail-only on purpose: the
-  // optimistic apply and the pre-patch capture differ per setting and stay at the call site — only
-  // this success-or-rollback tail was identical.
-  //
-  // No router.refresh() on success: the action's `updateTag` already re-renders the route and
-  // streams the fresh `tree` back in the action response, so the refresh was a second full render
-  // of the same page per click (EX-597 baseline).
-  async function optimisticSettingSave(
-    persist: () => Promise<{ success: boolean; error?: string }>,
-    revert: () => void,
-    errorMessage: string,
-  ) {
-    const res = await persist()
-    if (res.success) return true
-    revert()
-    toastMessage(res.error ?? errorMessage, 'warning', 4000)
-    return false
-  }
-
-  // Changing the global coefficient recomputes the derived prices of all non-overridden items.
-  // Optimistic patch on the rows; the panel (which reads from `tree`) is reseeded by the action's
-  // own re-render. Extracted so undo/redo can re-run it with a before/after patch of the same keys.
-  async function applyGlobalCoeff(patch: { wToolsCoeff?: number; ownToolsCoeff?: number }) {
-    // patchRows builds fresh row objects, so `sample` still holds the pre-patch coefficients for the
-    // revert. Only the coefficients present in `patch` map to their denormalized row fields.
-    const sample = rowsRef.current[0]
-    const applied: { globalWToolsCoeff?: number; globalOwnToolsCoeff?: number } = {}
-    if (patch.wToolsCoeff != null) applied.globalWToolsCoeff = patch.wToolsCoeff
-    if (patch.ownToolsCoeff != null) applied.globalOwnToolsCoeff = patch.ownToolsCoeff
-    patchRows(
-      () => true,
-      (r) => ({ ...r, ...applied }),
-    )
-    await optimisticSettingSave(
-      () => updateInvestmentCoeffsAction(investmentId, patch),
-      () => {
-        // Roll the optimistic coefficients back so the grid doesn't show an unsaved price (the
-        // once-only useState seed means a plain refresh can't reseed it). No-op on an empty kosztorys.
-        if (!sample) return
-        const restored: { globalWToolsCoeff?: number; globalOwnToolsCoeff?: number } = {}
-        if (patch.wToolsCoeff != null) restored.globalWToolsCoeff = sample.globalWToolsCoeff
-        if (patch.ownToolsCoeff != null) restored.globalOwnToolsCoeff = sample.globalOwnToolsCoeff
-        patchRows(
-          () => true,
-          (r) => ({ ...r, ...restored }),
-        )
-      },
-      'Nie udało się zapisać współczynnika',
-    )
-  }
-
-  async function handleGlobalCoeffChange(patch: { wToolsCoeff?: number; ownToolsCoeff?: number }) {
-    const before = inverseGlobalCoeffPatch(patch, rowsRef.current[0])
-    await applyGlobalCoeff(patch)
-    pushReversible('Zmiana współczynnika', applyGlobalCoeff, before, patch)
-  }
-
-  // Changing the per-investment VAT rate recomputes every brutto figure. vatRate is denormalized
-  // on every row, so patch them all optimistically (router.refresh alone won't reseed `rows` — the
-  // useState initializer runs once at mount); then persist + refresh for the panel. `vatRate` is a
-  // fraction (0.08), converted from the panel's percent input at the commit site.
-  async function applyVat(vatRate: number) {
-    const prevVatRate = rowsRef.current[0]?.vatRate
-    patchRows(
-      () => true,
-      (r) => ({ ...r, vatRate }),
-    )
-    await optimisticSettingSave(
-      () => updateInvestmentVatAction(investmentId, vatRate),
-      () => {
-        // Roll the optimistic VAT back (no-op when there were no rows to patch). The toast still fires
-        // regardless — it lives in optimisticSettingSave, so an empty kosztorys can't swallow the failure.
-        if (prevVatRate === undefined) return
-        patchRows(
-          () => true,
-          (r) => ({ ...r, vatRate: prevVatRate }),
-        )
-      },
-      'Nie udało się zapisać stawki VAT',
-    )
-  }
-
-  // Persist a single „Opcje rozliczenia" setting and put it on the undo stack. The three settings that
-  // share this shape differ only in where their `before` is read from — VAT off the denormalized rows,
-  // the other two off `tree` — so that stays the caller's job.
-  function saveSetting<T>(label: string, apply: (value: T) => Promise<void>, before: T, next: T) {
-    // Keyed per setting, not per subsystem: nothing serialises these transitions, so changing VAT
-    // and then tryb before the first lands would otherwise have the first `finally` clear the one
-    // shared key while the second write is still on the wire — the pill vanishing mid-save is the
-    // exact failure the store is keyed rather than boolean to prevent.
-    const pendingKey = `${SETTINGS_PENDING_KEY}:${label}`
-    startSettingsSave(async () => {
-      // The popover can close mid-save, so the progress signal has to live outside this subtree —
-      // hence the global store rather than a pill rendered by „Opcje rozliczenia" itself.
-      usePendingStore.getState().start(pendingKey, 'Zapisywanie…')
-      try {
-        await apply(next)
-        if (before !== next) pushReversible(label, apply, before, next)
-      } finally {
-        usePendingStore.getState().stop(pendingKey)
-      }
-    })
-  }
-
-  function handleVatChange(vatRate: number) {
-    saveSetting('Zmiana stawki VAT', applyVat, rowsRef.current[0]?.vatRate ?? tree.vatRate, vatRate)
-  }
-
-  // The settlement mode isn't denormalized onto the rows, so there's nothing to patch optimistically:
-  // persist, then let the refresh reseed `tree` for the panel that reads it.
-  async function applySettlementMode(mode: SettlementModeT) {
-    await optimisticSettingSave(
-      () => updateInvestmentSettlementModeAction(investmentId, mode),
-      () => {},
-      'Nie udało się zapisać sposobu rozliczenia',
-    )
-  }
-
-  function handleSettlementModeChange(mode: SettlementModeT) {
-    // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
-    // silently reverts whatever unrelated edit preceded it.
-    saveSetting('Zmiana sposobu rozliczenia', applySettlementMode, tree.settlementMode, mode)
-  }
-
-  // Same shape as the settlement mode: not denormalized onto the rows, so there is nothing to patch
-  // optimistically — persist, then let the refresh reseed `tree` for the panel that reads it.
-  async function applyMaterialsNetRate(rate: number | null) {
-    await optimisticSettingSave(
-      () => updateInvestmentMaterialsNetRateAction(investmentId, rate),
-      () => {},
-      'Nie udało się zapisać stawki netto wydatków',
-    )
-  }
-
-  function handleMaterialsNetRateChange(rate: number | null) {
-    saveSetting('Zmiana stawki netto wydatków', applyMaterialsNetRate, tree.materialsNetRate, rate)
-  }
-
-  // Setting/clearing the global discount flips per-item rabat on or off for every row. Update the
-  // local discount (drives the derived totals + column visibility) and patch the denormalized active
-  // flag on every row in the same render, so all three surfaces move together; then persist.
-  // Extracted like applyVat so undo/redo replays the whole move — reverting only the stored value
-  // would leave the row flag disagreeing with it.
-  async function applyGlobalDiscount(discount: GlobalDiscountT) {
-    const prevDiscount = globalDiscountRef.current
-    setGlobalDiscount(discount)
-    patchRows(
-      () => true,
-      (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(discount) }),
-    )
-    await optimisticSettingSave(
-      () =>
-        updateInvestmentGlobalDiscountAction(investmentId, {
-          globalDiscountType: discount.type,
-          globalDiscountValue: discount.value,
-        }),
-      () => {
-        // Roll all three surfaces back so they don't disagree on an unsaved discount.
-        setGlobalDiscount(prevDiscount)
-        patchRows(
-          () => true,
-          (r) => ({ ...r, globalDiscountActive: isGlobalDiscountActive(prevDiscount) }),
-        )
-      },
-      'Nie udało się zapisać rabatu',
-    )
-  }
-
-  function handleGlobalDiscountChange(next: GlobalDiscountT) {
-    // Quantized on the way in, so nothing sub-grosz is ever persisted: the kwota is stored money the
-    // field mirrors back as text, and a seeded Σ rabatów carries float residue from the products it
-    // sums. Rounded BEFORE the no-op check, or a dirty stored value never matches its clean twin.
-    const clean = { ...next, value: roundToCents(next.value) }
-    // saveSetting's own guard is identity-based, which never fires on a fresh object — so the
-    // no-op check is here, by field. Without it every „Kwotowy" re-pick and every re-commit of an
-    // unchanged kwota would put a do-nothing entry on the undo stack.
-    if (globalDiscount.type === clean.type && globalDiscount.value === clean.value) return
-    saveSetting('Zmiana rabatu globalnego', applyGlobalDiscount, globalDiscount, clean)
-  }
-
-  // Percent rabat bulk-apply: a one-shot tool, not stored state (unlike handleGlobalDiscountChange).
-  // Overwrites every item's per-item rabat with `percent X` — optimistically on the rows, then one
-  // bulk SQL update. No undo entry (owner: recovery = re-typing). Returns success so the settings
-  // control clears its input only when the write landed.
-  async function handleApplyPercentDiscount(percent: number): Promise<boolean> {
-    const prev = new Map(
-      rowsRef.current.map((r) => [
-        r.id,
-        { discountType: r.discountType, discountValue: r.discountValue },
-      ]),
-    )
-    patchRows(
-      () => true,
-      (r) => ({ ...r, discountType: 'percent', discountValue: percent }),
-    )
-    // Roll each row's rabat back to its pre-apply value on failure — the once-only useState seed means
-    // a refresh can't reseed it.
-    return optimisticSettingSave(
-      () => applyPercentDiscountToAllItemsAction(investmentId, percent),
-      () =>
-        patchRows(
-          () => true,
-          (r) => ({ ...r, ...(prev.get(r.id) ?? {}) }),
-        ),
-      'Nie udało się zastosować rabatu',
-    )
-  }
-
   function onChange(next: KosztorysV2RowT[]) {
     // The load-bearing persistence kill-switch: a preview grid is read-only, but this guards the
     // one path that could still POST — so no save, undo capture, or refresh ever fires on the public page.
     if (preview) return
-    const changedById = new Map<number, KosztorysV2RowT>()
-    // One onChange batch (incl. a multi-cell paste) = one composite undo entry; accumulate every
-    // field/stage change here and buffer a single coalesced command after the loop.
-    const fieldChanges: FieldChangeT[] = []
-    const stageChanges: StageChangeT[] = []
-    for (const row of next) {
-      const prev = prevById.current.get(row.id)
-      if (!prev) continue
-      const diff = diffRow(prev, row)
-      if (diff.itemPatch) {
-        const patch = diff.itemPatch
-        for (const field of Object.keys(patch)) {
-          const key = field as keyof KosztorysV2RowT
-          const prevVal = prev[key]
-          const attempted = row[key]
-          save(
-            `item:${row.id}:${field}`,
-            () => updateItemFieldAction(row.id, { [field]: patch[field as keyof ItemPatchT] }),
-            () => {
-              revertOne(row.id, key, prevVal, attempted)
-              dropPendingField(row.id, field as keyof ItemPatchT)
-            },
-          )
-          fieldChanges.push({
-            id: row.id,
-            field: field as keyof ItemPatchT,
-            before: prevVal,
-            after: attempted,
-          })
-        }
-      }
-      // Stage progress is a distinct save dimension (sparse upsert), keyed per item×stage.
-      for (const sc of diff.stageChanges ?? []) {
-        const key = stageKey(sc.stageId)
-        const prevVal = prev[key]
-        save(
-          `progress:${row.id}:${sc.stageId}`,
-          () => setStageProgressAction(row.id, sc.stageId, sc.qty),
-          () => {
-            revertOne(row.id, key, prevVal, sc.qty)
-            dropPendingStage(row.id, sc.stageId)
-          },
-        )
-        stageChanges.push({
-          id: row.id,
-          stageId: sc.stageId,
-          before: Number(prevVal) || 0,
-          after: sc.qty,
-        })
-      }
-      if (diff.itemPatch || diff.stageChanges) changedById.set(row.id, row)
-      prevById.current.set(row.id, row)
+    const { fieldChanges, stageChanges, changedById } = planGridChanges(next, prevById.current)
+    for (const c of fieldChanges) {
+      const key = c.field as keyof KosztorysV2RowT
+      save(
+        itemFieldLane(c.id, c.field),
+        () => updateItemFieldAction(c.id, { [c.field]: c.after } as ItemPatchT),
+        () => {
+          revertOne(c.id, key, c.before, c.after)
+          dropPendingField(c.id, c.field)
+        },
+      )
     }
+    // Stage progress is a distinct save dimension (sparse upsert), keyed per item×stage.
+    for (const c of stageChanges) {
+      const key = stageKey(c.stageId) as keyof KosztorysV2RowT
+      save(
+        stageLane(c.id, c.stageId),
+        () => setStageProgressAction(c.id, c.stageId, c.after),
+        () => {
+          revertOne(c.id, key, c.before, c.after)
+          dropPendingStage(c.id, c.stageId)
+        },
+      )
+    }
+    // Advance the snapshot over the array the grid already handed us, rather than a copy of it the
+    // plan would have to allocate per keystroke. Rows absent from the snapshot stay absent — that is
+    // the same "never seen, nothing to diff" skip planGridChanges applies.
+    for (const row of next) if (prevById.current.has(row.id)) prevById.current.set(row.id, row)
+    // One onChange batch (incl. a multi-cell paste) = one composite undo entry: buffer them all and
+    // let the timer collapse the burst into a single coalesced command.
     if (fieldChanges.length > 0 || stageChanges.length > 0) {
       pendingFields.current.push(...fieldChanges)
       pendingStages.current.push(...stageChanges)
@@ -1407,10 +1059,8 @@ export function useKosztorysEditor({
     columnBaseRanks,
     setColumnRank,
     resetColumnOrder,
-    moneyAxis: effectiveMoneyAxis,
+    moneyAxis: axis,
     setMoneyAxis,
-    progressDisplay,
-    setProgressDisplay,
     layer,
     setLayer,
     viewRows,
@@ -1441,14 +1091,19 @@ export function useKosztorysEditor({
     perItemDiscountTotal,
     itemsWithDiscountCount,
     isSavingSettings,
+    investorImpactConfirm,
     subcontractorDue,
+    marginForecastByPlane,
     laborCostsNet,
     // toolbar / panel state
     setView,
     search,
     setSearch,
     engagedConditionIds,
+    engagedStageConditionIds,
     toggleCondition,
+    toggleConditionExclusive,
+    refreshProblemRows,
     resetFilters,
     conditionCounts,
     foldableSectionIds,
@@ -1477,9 +1132,6 @@ export function useKosztorysEditor({
       flushUndoBuffer()
       redo()
     },
-    // A buffering burst counts as undoable (it flushes to a command on undo) and, being a fresh edit,
-    // will clear the redo path on flush — so surface it as "can undo, can't redo" during the window.
-    canUndo: canUndo || hasPendingBurst,
-    canRedo: canRedo && !hasPendingBurst,
+    ...undoAvailability(canUndo, canRedo, hasPendingBurst),
   }
 }

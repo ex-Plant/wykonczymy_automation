@@ -7,7 +7,6 @@ import { StatusFilter } from '@/components/investments/status-filter'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
 import { getInvestmentColumns } from '@/components/tables/investments'
 import type { InvestmentRowT } from '@/types/table-rows'
-import type { ExpenseCategoryRefT } from '@/types/reference-data'
 import { useStatusFilter } from '@/hooks/use-status-filter'
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -18,15 +17,10 @@ const getStatus = (row: InvestmentRowT) => row.status
 
 type InvestmentDataTablePropsT = {
   data: InvestmentRowT[]
-  expenseCategories: ExpenseCategoryRefT[]
   presets: PresetMetaT[]
 }
 
-export function InvestmentDataTable({
-  data,
-  expenseCategories,
-  presets,
-}: InvestmentDataTablePropsT) {
+export function InvestmentDataTable({ data, presets }: InvestmentDataTablePropsT) {
   const { role: userRole } = useCurrentUser()
 
   const {
@@ -44,10 +38,7 @@ export function InvestmentDataTable({
     getSearchableText,
   )
 
-  const columns = useMemo(
-    () => getInvestmentColumns({ userRole, expenseCategories }),
-    [userRole, expenseCategories],
-  )
+  const columns = useMemo(() => getInvestmentColumns({ userRole }), [userRole])
 
   return (
     <DataTable

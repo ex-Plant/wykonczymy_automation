@@ -2,17 +2,11 @@ import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { ColumnRanksT } from '@/lib/kosztorys/column-order'
 import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
-import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
+import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
-
-// The scope rides inside the sort rather than as a separate editor toggle, so clearing the sort
-// cannot leave a stale scope behind.
-export type SortPickT = { dir: SortDirT; scope: SortScopeT }
-export type V2SortStateT = ({ field: string } & SortPickT) | null
 
 export type BuildV2ColumnsOptsT = {
   view: PriceViewT
@@ -26,18 +20,15 @@ export type BuildV2ColumnsOptsT = {
   onSetStageWorker?: (stageId: number, workerId: number | null) => void
   // Only so the reassignment confirm can quote the amount being moved.
   executedValueByStage?: Map<number, number>
-  sort?: V2SortStateT
+  sort?: SortStateT
   onSetSort?: (field: string, pick: SortPickT | null) => void
   // Column picker: true = this column is off — by the user's stored choice OR by
   // DEFAULT_HIDDEN_COLUMNS, which the caller resolves; the two are indistinguishable here. Keyed by
-  // column id, except stage columns, which answer to one of the three stage groups (constants.ts).
+  // column id, except stage columns, which answer to one of the stage groups (stage-keys.ts).
   isHidden?: (id: string) => boolean
   // Money axis: narrows the picker's answer further, never widens it. Omitted = 'both' = every
   // column the picker allows, which is what buildV2ToggleItems (axis-blind by design) assumes.
   moneyAxis?: MoneyAxisT
-  // Progress display: narrows the same way the money axis does, on the other axis — a stage's
-  // progress reads either as money or as a percentage, never as both at once.
-  progressDisplay?: ProgressDisplayT
   // Layer: narrows to the working columns or the progress tracker. Omitted = 'both' = no narrowing.
   layer?: LayerT
   // Resize: pinned column widths (id→px) + drag callbacks. When provided, every column
@@ -75,11 +66,21 @@ export type BuildV2ColumnsOptsT = {
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
-  // Does ANY pozycja in the whole dataset carry an imported „Pomiar z natury"? Gates the „Pozostało do
-  // rozliczenia" column's existence — a kosztorys that never came from a sheet has no pomiar to settle
-  // against, so the column would be permanent dead chrome. Deliberately NOT „does anything diverge":
-  // that made the column an error counter that could be cleared by declaring unperformed work done.
-  hasSheetMeasure?: boolean
+  // Is the „z pomiarem do rozpisania na etapy" diagnostic pressed? Gates the „Pozostało do rozliczenia"
+  // column's existence: the column answers exactly that one question, and outside the gesture that
+  // asks it the grid shows every pozycja — so it would be a near-empty stripe. The button's count is
+  // what announces the rozjazd; the column is where you read it. It rides the filter rather than the
+  // picker, hence UNPICKABLE_COLUMNS: no stored tick may contradict the button.
+  divergenceFilterEngaged?: boolean
+  // Engaged etap problems (stage-conditions.ts), narrowing which etapy get columns at all. Transient
+  // like the flag above — it never reaches the persisted visibility map, which is what the ghost-id
+  // ban in stage-keys.ts actually forbids. Empty/absent → every etap of the view keeps its columns.
+  engagedStageConditionIds?: Iterable<string>
+  // Columns the engaged problems are about (row-conditions.ts `columnsRevealedBy`). Overrides the
+  // column picker's stored tick while the gesture lasts, and nothing else — never the money axis, the
+  // layer or the preview allowlist. Transient like the two flags above; the tick itself is untouched,
+  // so disengaging restores exactly what the user had chosen.
+  revealedColumnIds?: ReadonlySet<string>
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from
@@ -90,11 +91,15 @@ export type BuildV2ColumnsOptsT = {
   // enters edit mode, so a client-facing grid would look editable and swallow keystrokes.
   readOnly?: boolean
   // The client's document: exactly PREVIEW_VISIBLE_COLUMNS, and it OVERRIDES every option above that
-  // describes one owner's reading preferences (isHidden / moneyAxis / progressDisplay / layer), since
+  // describes one owner's reading preferences (isHidden / moneyAxis / layer), since
   // none of those may shape what a client is served. `globalDiscountActive` still applies — it is the
   // investment's own state, not a preference; selectV2Columns spells the split out.
   // Orthogonal to `readOnly`: read-only is about interaction, this is about disclosure. NOT orthogonal
   // to `view`, which must be 'client' whenever this is set — selectV2Columns throws on the mismatch,
   // and `assertDisclosurePair` says why.
   previewVisible?: boolean
+  // The owner's stored choice of what THIS investment's client does not see. It only ever subtracts
+  // from PREVIEW_VISIBLE_COLUMNS — a key here that the allowlist never allowed cannot reveal
+  // anything, which is what keeps the allowlist a ceiling rather than one of two competing answers.
+  previewHiddenColumns?: ReadonlySet<string>
 }

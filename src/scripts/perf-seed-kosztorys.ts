@@ -34,7 +34,14 @@ async function run() {
   for (let ord = 1; ord <= STAGE_COUNT; ord++) {
     const s = await payload.create({
       collection: 'kosztorys-stages',
-      data: { investment: INVESTMENT_ID, ordinal: ord },
+      // Alternating planes rather than none: with every etap unsettled the whole kosztorys reads as
+      // „marża rzeczywista nieznana", and the parity guard would compare null with null on the only
+      // investment in the test DB that has a kosztorys at all (EX-649).
+      data: {
+        investment: INVESTMENT_ID,
+        ordinal: ord,
+        plane: ord % 2 === 0 ? 'own_tools' : 'w_tools',
+      },
       ...ctx,
     })
     stageIds.push(s.id)
@@ -77,7 +84,6 @@ async function run() {
               wToolsOverrideValue: i % 5 === 0 ? 700 : 0,
               ownToolsOverrideType: null,
               ownToolsOverrideValue: 0,
-              hiddenInExport: false,
             },
             ...ctx,
           }),

@@ -45,7 +45,6 @@ export const KosztorysItems: CollectionConfig = {
     { name: 'wToolsOverrideValue', type: 'number', defaultValue: 0 },
     { name: 'ownToolsOverrideType', type: 'text' },
     { name: 'ownToolsOverrideValue', type: 'number', defaultValue: 0 },
-    { name: 'hiddenInExport', type: 'checkbox', required: true, defaultValue: false },
     { name: 'note', type: 'text', label: { en: 'Note', pl: 'Komentarz' } },
   ],
 }

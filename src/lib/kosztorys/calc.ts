@@ -115,6 +115,22 @@ export function rowPlannedNetForView(row: ViewPricingT, view: PriceViewT): numbe
 }
 
 /**
+ * The przedmiar at the view's price, PRE-rabat — the forecast's basis (EX-649).
+ *
+ * Sits beside rowPlannedNetForView rather than reusing it because the two differ by exactly the
+ * rabat, and the forecast must not carry one: a rabat is not granted up front (owner, 2026-08-18),
+ * so a prognoza is the przedmiar at full price. Routing the forecast through the offer figure would
+ * discount only its client half — the rabat never reaches a subcontractor plane — and inflate the
+ * forecast margin by the whole rabat.
+ *
+ * On either subcontractor plane the two agree by construction; the client view is the only place
+ * the choice between them is observable.
+ */
+export function rowPlannedNetPreDiscountForView(row: ViewPricingT, view: PriceViewT): number {
+  return row.plannedQty > 0 ? row.plannedQty * viewPrice(row, view) : 0
+}
+
+/**
  * Discount actually taken off the row, in PLN at the view's price. Derived rather than read from
  * discountValue, which is only the raw input: under 'percent' it holds percentage points, and under
  * either type it says nothing until it meets a price — which changes per view.
@@ -151,12 +167,10 @@ export function stageValueForView(
 }
 
 /**
- * How much of the OFFER this stage has delivered, as a fraction (0.75 = 75%) — `null` when there is
+ * How much of the OFFER this row has delivered, as a fraction (0.75 = 75%) — `null` when there is
  * no denominator to divide by, so render code never divides and never fakes a 0%.
  *
- * The denominator is the przedmiar, not the stage sum. Against the stage sum the stages' percentages
- * would always add up to 100% — they would say "what share of the work fell to this stage" instead
- * of "how much of the offer this stage delivered", and the row's own percentage would read 100%
+ * The denominator is the przedmiar, not the stage sum: against the stage sum the row would read 100%
  * everywhere, being a number divided by itself.
  *
  * View-independent because it is a ratio of QUANTITIES — nothing here reads a price, so no view and
@@ -164,25 +178,15 @@ export function stageValueForView(
  *
  * Deliberately unclamped: stages routinely overshoot the przedmiar, and a >100% reading is the row
  * saying so. The grid pairs it with a red cell (hasStagesOverPlanned); clamping would erase both.
- */
-export function stageDoneFraction(row: ViewPricingT, qtyDoneInStage: number): number | null {
-  return doneFraction(row, qtyDoneInStage)
-}
-
-/** The row's overall completion, same shape and same reasoning as stageDoneFraction. */
-export function rowDoneFraction(row: ViewPricingT, totalQtyDone: number): number | null {
-  return doneFraction(row, totalQtyDone)
-}
-
-/**
+ *
  * The guard is `> 0`, not `=== 0`: clearing the Przedmiar cell writes `null` (the grid's float
  * column is `Column<number|null>`), which a strict-equality check walks straight past into
  * `qty / null` — NaN or Infinity rendered verbatim in the cell. Also covers `undefined` and a
  * negative przedmiar.
  */
-function doneFraction(row: ViewPricingT, qtyDone: number): number | null {
+export function rowDoneFraction(row: ViewPricingT, totalQtyDone: number): number | null {
   if (!(row.plannedQty > 0)) return null
-  return qtyDone / row.plannedQty
+  return totalQtyDone / row.plannedQty
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { cn } from '@/lib/utils/cn'
 
 // `muted` covers the derived-value case: a subcontractor cell showing a value it isn't editable in
@@ -12,15 +12,20 @@ export function ReadOnlyCellText({
   danger,
   emphasize,
   className,
+  ref,
 }: {
   children: ReactNode
   muted?: boolean
   danger?: boolean
   emphasize?: boolean
   className?: string
+  // Truncation is only observable from the DOM (`scrollWidth > clientWidth`), so a caller that has
+  // to react to it — the read-only long-text cell — needs the node this span renders.
+  ref?: Ref<HTMLSpanElement>
 }) {
   return (
     <span
+      ref={ref}
       className={cn(
         'block w-full truncate px-2 text-left text-sm',
         muted && 'text-muted-foreground',

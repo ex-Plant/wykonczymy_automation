@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Reorder, motion } from 'framer-motion'
 import { EyeOff, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,13 +11,8 @@ import {
   DialogHeader,
 } from '@/components/ui/dialog'
 import type { ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
-import {
-  ANCHORED_COLUMN_KEYS,
-  movableColumnKeys,
-  placeMovables,
-  rankForMove,
-  type ColumnRanksT,
-} from '@/lib/kosztorys/column-order'
+import { rankForMove, type ColumnRanksT } from '@/lib/kosztorys/column-order'
+import { useDraft } from '@/hooks/use-draft'
 import { cn } from '@/lib/utils/cn'
 
 type PropsT = {
@@ -52,29 +46,19 @@ export function ColumnOrderDialog({
   onReset,
 }: PropsT) {
   const keys = items.map((item) => item.id)
-  const movableKeys = movableColumnKeys(keys)
   const labels = new Map(items.map((item) => [item.id, item]))
 
   // The list is driven locally while a drag is in flight and only committed on drop. Writing the
   // rank on every crossing instead would push a store update through the editor context mid-drag,
   // rebuilding the whole grid between frames — that is what made dragging crawl.
-  const [order, setOrder] = useState(movableKeys)
-  const [propsOrder, setPropsOrder] = useState(movableKeys)
-  if (!sameKeys(propsOrder, movableKeys)) {
-    setPropsOrder(movableKeys)
-    setOrder(movableKeys)
-  }
-
-  // Anchors sit at their real index (`Opis prac` is NOT at the top — it lives behind „Rozjazd"),
-  // movables fill the slots between them in drag order. Same interleave the grid runs.
-  const slots = placeMovables(keys, order)
+  const [order, setOrder] = useDraft(keys, sameKeys)
 
   // Writes ONE key: the dragged group's new rank. Persisting the whole list would freeze today's
   // default order in every browser (see use-column-order). The key comes from the row that was
   // dragged, so nothing has to be inferred from the two orders.
   function commitOrder(key: string) {
-    if (sameKeys(movableKeys, order)) return
-    onSetRank(key, rankForMove(movableKeys, key, order.indexOf(key), ranks, baseRanks))
+    if (sameKeys(keys, order)) return
+    onSetRank(key, rankForMove(keys, key, order.indexOf(key), ranks, baseRanks))
   }
 
   return (
@@ -95,20 +79,9 @@ export function ColumnOrderDialog({
             onReorder={setOrder}
             className="flex list-none flex-col gap-1"
           >
-            {slots.map((key) => {
+            {order.map((key) => {
               const item = labels.get(key)
               const label = item?.label ?? key
-              if (ANCHORED_COLUMN_KEYS.has(key)) {
-                return (
-                  <div
-                    key={key}
-                    className="text-muted-foreground bg-muted/40 flex items-center gap-2 rounded-md px-2 py-2 text-sm"
-                  >
-                    {label}
-                    <span className="ml-auto text-xs">stała pozycja</span>
-                  </div>
-                )
-              }
               return (
                 <Reorder.Item
                   key={key}

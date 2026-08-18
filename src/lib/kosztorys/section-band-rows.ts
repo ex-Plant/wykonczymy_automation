@@ -29,11 +29,12 @@ export function sectionRepresentatives(rows: readonly KosztorysV2RowT[]): Koszto
 }
 
 /**
- * A pozycja's number: its rank among ALL item rows in display order.
+ * A pozycja's number: its rank among the rows passed in, in display order.
  *
- * Computed over the unfiltered, unsorted dataset on purpose — a number that renumbered itself per
- * view would make a filter invisible (1…N either way) and a sort would silently reassign every
- * position. Numbers skipping is the signal that something is hidden.
+ * Never over a searched or sorted list — a number that renumbered itself as the reader typed would
+ * name a different pozycja every keystroke. Which rows count is the caller's call: the owner's grid
+ * passes the full dataset so a skipped number announces what a filter hid, the client's document
+ * passes the rows it actually contains so the offer runs 1…N.
  */
 export function baseOrdinals(rows: readonly KosztorysV2RowT[]): Map<number, number> {
   return new Map(rows.map((row, index) => [row.id, index + 1]))

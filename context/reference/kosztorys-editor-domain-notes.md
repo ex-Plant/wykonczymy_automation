@@ -207,6 +207,13 @@ powierzchnia malowania = Σ ścian − ściany pomieszczeń mokrych (łazienki/W
 
 ## Panel plan-vs-actual (F) — PEŁNY, z marżą planowaną
 
+> **Nieaktualne od EX-649 (2026-08-18).** Ten szkic zastąpiła zakładka „Marża" w podsumowaniu
+> kosztorysu. Zrealizowane inaczej niż tu opisano: „marża planowana" to **prognoza** liczona z
+> **przedmiaru** (nie z pomiaru) po pełnej cenie, jako scenariusz „z narzędziami / bez narzędzi";
+> „marża rzeczywista" wycenia ekipę z kosztorysu (należne za wykonane etapy), a nie z wypłat, i
+> odmawia podania kwoty, gdy któryś etap z pracą nie ma rozliczenia. Wierszy „Zafakturowano" i
+> „Wypłacono ekipie" w niej nie ma. Tabela niżej zostaje jako zapis pierwotnego pomysłu.
+
 Czysto na odczyt, per inwestycja. Niezależny od P5 (linkage LABOR_COST).
 
 | Wiersz                   | Źródło                                                      |
@@ -234,7 +241,7 @@ UX siatki = zwykła tabela (TanStack); sednem nie jest wygląd, tylko zapis.
 
 ```
 inputy: pozycja (opis, jednostka, przedmiar, pomiar, 3 ceny, discount_type+value,
-        note, hidden_in_export, display_order);
+        note, display_order);
         sekcja (nazwa, display_order, vat_rate);
         etap (ordinal, label, plane); stage_progress (item, stage → ilość)
 liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
@@ -249,7 +256,17 @@ liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
 - **bez przycisku „Zapisz"** — feel arkusza + skala (1000+ wierszy: zapisujemy
   tylko zmienione pole, nie cały arkusz).
 
-## Druk / eksport (G) — KONFIGUROWALNY, edytowalny
+## Druk / eksport (G) — CIĘTE (2026-08-15)
+
+> **Cała ta sekcja jest nieaktualna.** Eksport kosztorysu wycięty w całości:
+> CSV (EX-400) oraz PDF + żywy arkusz z formułami (EX-666). Obie role, które
+> wydruk miał pełnić — oferta przy podpisaniu i podgląd postępu dla klienta —
+> przejmuje **widok klienta** (S-13, link tokenowy + „Podgląd dla klienta").
+> Poniższe zostaje jako zapis intencji ownera z POC: reguły „co klient widzi"
+> przenoszą się na widok klienta, mechanizm (`buildPrintHtml`, PDF, plik) nie.
+> Flaga `hidden_in_export` nigdy nie dostała czytelnika — kolumna skasowana 2026-08-18,
+> EX-549 anulowane; ukrywanie pozycji przed klientem weszło jako reguła („ukryj puste pozycje",
+> EX-695), nie jako flaga per wiersz.
 
 Wydruk = **oferta dla klienta** (tylko ceny klienta: netto / VAT / brutto; bez
 cen podwykonawcy, marży, postępu, „pozostało"). Mechanizm: `buildPrintHtml` +
@@ -258,7 +275,7 @@ cen podwykonawcy, marży, postępu, „pozostało"). Mechanizm: `buildPrintHtml`
 **Eksport jest EDYTOWALNY (krok „przygotuj eksport"):** dziś owner bierze
 kosztorys i ręcznie ukrywa wybrane pozycje przed klientem. Odwzorowanie:
 
-- każda pozycja ma flagę widoczności w eksporcie (`hidden_in_export`),
+- każda pozycja ma flagę widoczności w eksporcie,
 - krok „przygotuj eksport" pokazuje kosztorys z togglami widoczności per pozycja,
 - **część pozycji domyślnie ukryta** (reguła default → P12),
 - owner odkrywa / ukrywa więcej, potem generuje PDF (tylko widoczne).
@@ -267,12 +284,33 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
 (rozliczenie) → P13. Drugi tryb wydruku „raport postępu" (wewnętrzny, z etapami)
 — do rozważenia.
 
+## Co widzi klient — ustawienie, nie stała (EX-695, 2026-08-15)
+
+Zestaw kolumn widoku klienta przestał być stałą w kodzie. Rozstrzygnięcie idzie w kolejności:
+własny wiersz inwestycji (`kosztorys-client-view`) → globalne domyślne firmy
+(`kosztorys-client-view-defaults`) → domyślne z kodu (nic nie ukryte, puste pozycje ukryte).
+Rozwiązywane w `src/lib/queries/kosztorys-client-view.ts`.
+
+Dwie reguły trzymają to razem:
+
+- **`PREVIEW_VISIBLE_COLUMNS` pozostaje sufitem.** Zapisany klucz może tylko _odjąć_ kolumnę,
+  nigdy dodać — sanityzacja przy zapisie i przy odczycie odrzuca klucz spoza allowlisty, więc
+  ustawienie nie staje się drugą, rozjeżdżającą się odpowiedzią na pytanie „co klient może
+  zobaczyć". Klucze są `toggleKey`, więc jeden wpis bierze całą rodzinę per-etap.
+- **Ukrywanie pustych pozycji to jedna reguła, nie dwie** (`client-empty`, `kind: 'client'`):
+  pozycja bez przedmiaru **i** bez wykonanej pracy nie wnosi nic do żadnej z dwóch kwot, które
+  klient czyta, więc jej ukrycie nie rusza podsumowania. Każdy z dwóch filtrów osobno byłby
+  bezpieczny tylko dla jednej z nich.
+
+Ustawienia czytane są **obok** cache'owanego payloadu podglądu (jeden indeksowany odczyt), więc
+zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firmy nie unieważnia drzewa
+żadnej inwestycji.
+
 ## Decyzje zamknięte
 
 - **Dostęp (prosto):** **ADMIN, OWNER, MANAGER** — widzą i edytują wszystko.
-  **EMPLOYEE — zero dostępu, nie widzi kosztorysu w ogóle.** **Follow-on:**
-  ukrycie wrażliwych komórek (najpewniej ceny podwykonawcy = koszt/marża) przed
-  MANAGEREM — tylko OWNER/ADMIN (P10).
+  **EMPLOYEE — zero dostępu, nie widzi kosztorysu w ogóle.** Rozważany follow-on
+  (ukrycie cen podwykonawcy przed MANAGEREM) **odpadł** — P10.
 - **Sekcje w pełni edytowalne:** dodawanie, zmiana nazwy, zmiana kolejności
   (`display_order`); nagłówek + suma sekcji (liczona). Dowolna liczba pozycji
   w sekcji (bez limitu).
@@ -319,8 +357,12 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
   **„Rozjazd" nazywa się teraz „Pozostało do rozliczenia"** — odejmowanie jest to samo (Pomiar
   z natury z arkusza minus suma etapów w aplikacji), ale nazwa przestała udawać usterkę. To zwykła
   linia bilansowa: jedyny sposób, żeby ją wyzerować, to wpisać ilości w etapy, czyli zadeklarować
-  pracę jako wykonaną. Dlatego kolumna pokazuje się przy **każdym** zaimportowanym kosztorysie,
-  a nie tylko tam, gdzie coś się nie zgadza.
+  pracę jako wykonaną. Kolumna jest **odpowiedzią na przycisk „z pomiarem do rozpisania na etapy"**
+  — pojawia się razem z nim i znika, gdy się go odciśnie. Poza tym gestem siatka pokazuje wszystkie
+  pozycje, więc kolumna byłaby pasem „—"; o istnieniu rozjazdu mówi licznik na samym przycisku.
+  Z tego samego powodu nie ma jej w liście „Kolumny": widoczność należy do filtra, więc zapisany
+  ptaszek nie może go zawetować. Komórka „Pomiar (razem etapy)" nie ma już podpowiedzi
+  z rozbiciem arkusz/etapy — liczby czyta się w kolumnie, nie z dymka.
 
   **„Wartość netto" w podsumowaniu arkusza liczy się z Pomiaru, nie z Przedmiaru.** Wcześniej
   zestawialiśmy ją z wartością przedmiaru — czyli z liczbą, której arkusz nigdzie nie sumuje.
@@ -339,13 +381,54 @@ Otwarte: która ilość na ofercie — przedmiar (oferta wstępna) czy pomiar
   Podpowiadarka przyjdzie z szablonami.
 - **Import cennika podwykonawcy z arkusza: pusta stawka = 0, nie default** (Białostocka 5,
   blueprint EX-554). Zakładki `zakres pracy z/bez narzędzi` mają stawkę per pozycja albo jako
-  formułę (`P×0,65`, `P×0,5525`), albo **pustą — a pusta w arkuszu znaczy 0**: `suma wykonanej
+  formułę (`P×0,65`, a bez narzędzi `R−R×0,15`), albo **pustą — a pusta w arkuszu znaczy 0**: `suma wykonanej
 pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „dziedzicz
   domyślny współczynnik"** — każda stawka jest jawna. Wniosek dla seeda: importuj **każdą
   jawną wartość** (override `coeff`/`amount`), **nigdy `null`** — `null` w `calc.ts` znaczy
   „dziedzicz sekcyjny/globalny współczynnik" i wymyśliłby koszt, którego arkusz nie ma
   (dawało +~9 000 na `suma wykonanej pracy`, plan „bez narzędzi": 65 638 zamiast ~57 114 ≈
   56 431 z arkusza). Pusta stawka → `{ type: 'amount', value: 0 }`.
+- **Import: o rodzaju override'u decyduje FORMUŁA komórki, nie jej liczba** (zweryfikowane na
+  Białostockiej 2026-08-17, EX-554). W arkuszu stawka jest albo policzona (`=P×0,65`), albo
+  **wpisana z palca** — i to drugie jest w cenniku `z narzędziami` **większością** (229 z 336
+  wierszy, `bez narzędzi` 63). Odczyt `UNFORMATTED_VALUE` zwraca w obu wypadkach samą liczbę, więc
+  dzielenie jej przez cenę klienta robiło z każdej ręcznej stawki „własny mnożnik" typu `0,294118`:
+  mnożnik, którego właściciel nigdy nie wybrał, mnożący się z powrotem do wartości rozjechanej
+  o ogon zaokrąglenia i **wędrujący przy każdej edycji „Cena j.m."**. Reguła: **policzona → `coeff`,
+  wpisana → `amount` w wartości nominalnej**. Dlatego import czyta zakładkę cennika **drugi raz pod
+  renderem `FORMULA`** (`readRateRows`).
+- **`bez narzędzi` nie jest niezależną stawką — to `z narzędziami` minus 15%** (`=R−R*0,15`, 309
+  z 309 formuł w Białostockiej; `z narzędziami` to `=P×0,65`, 138 z 138 — żadnego innego wariantu).
+  Stąd domyślne `0,65 × 0,85 = 0,5525` względem ceny klienta (`DEFAULT_COEFFS`), i stąd **konsekwencja
+  dla importu**: gdy `R` jest wpisane z palca, `T` też jest kwotą zamrożoną, mimo że samo jest
+  formułą — śledzi `R`, nie cenę klienta.
+- **Import wyjmuje globalny mnożnik z formuł cennika i przestawia nim inwestycję**
+  (`sheet-coeffs.ts`). Arkusz nie ma komórki z narzutką — jest ona powielona w setkach kopii tej
+  samej formuły, więc jedyny sposób jej odczytania to **policzyć dominujący iloraz `stawka / Cena
+j.m.` wśród wierszy policzonych** (wpisane z palca są wykluczone: to decyzje o jednej pracy).
+  Dopiero to pozwala wierszom zgodnym z tą narzutką wejść jako **`null` = „auto"** zamiast jako
+  „własny mnożnik" — kolumna „Mnożnik" pokazuje wtedy wyłącznie prawdziwe wyjątki, a globalna zmiana
+  narzutki działa jak w arkuszu. To **jedyny** przypadek, w którym `null` jest bezpieczny mimo reguły
+  z EX-554 wyżej: znaczy dokładnie tę samą liczbę, bo globalny mnożnik został właśnie ustawiony na
+  arkuszowy. Cennik bez ani jednej formuły śledzącej cenę → mnożniki inwestycji zostają nietknięte.
+  VAT nie ma w arkuszu odpowiednika i zawsze przechodzi z inwestycji.
+  **Pułapka (znaleziona na żywym imporcie):** `replaceTreeWithSnapshot` domyślnie **nadpisuje**
+  `tree.settings` ustawieniami inwestycji (żeby preset jednej roboty nie przeniósł konfiguracji na
+  drugą) — więc import musi jawnie podać `takeSettingsFromTree: true`. Bez tego pozycje wchodzą jako
+  „auto", ale mnożnik zostaje stary i **151 stawek po cichu przelicza się o pół procenta** (0,55
+  zamiast 0,5525) wyglądając na w pełni świadomą decyzję.
+- **Gdy oba cenniki podają inną kwotę, import NIE wybiera — praca wchodzi bez stawki** (właściciel,
+  2026-08-17). Wcześniej wygrywała zakładka pierwsza w arkuszu, a druga kwota lądowała w raporcie jako
+  „pominięto": kosztorys dostawał wtedy stawkę, której nikt nie zatwierdził, i po imporcie nie było już
+  po niej śladu. Teraz `decide()` zwraca `kind: 'conflict'` z **zerową** stawką i listą `candidates`
+  (wszystkie kwoty + zakładka + „wpisana ręcznie / z formuły"), a `deriveOverride` zapisuje
+  `amount 0` — nigdy `null`, bo „auto" wymyśliłoby kwotę z globalnego mnożnika dokładnie tam, gdzie
+  arkusz żadnej nie podał. Trzy konsekwencje: raport pokazuje **tabelkę per zakładka** (przy dwóch
+  cennikach to cztery kwoty), „Porównaj z arkuszem" **pomija** te prace przy „Stawki inne niż w
+  cenniku" (nie ma z czym porównywać), a w kosztorysie znajduje się je diagnostyką **„bez ceny
+  wykonawcy"** (per widok, jak `overpriced-*`). **Pusta para vs wypełniona to też konflikt**: arkusz
+  renderuje niewypełnioną komórkę jako 0, więc „za darmo" i „nikt nie wypełnił" to ta sama liczba i
+  tylko właściciel je rozróżni.
 - **Wypłaty podwykonawcy w arkuszu = ręczny rejestr, NIE wyliczenie** (Białostocka 5, zweryfikowane
   na formułach zakładki `zakres pracy bez narzędzi`, wiersze 396–400). Po stronie podwykonawcy arkusz
   liczy **tylko jedno**: „suma wykonanej pracy" (r398 `=SUM(W396:AF396)` = Σ etapów × stawka „bez
@@ -739,10 +822,10 @@ this section is the original phrasing/context for those questions.
   prace, PO RABACIE.** Model marży spinający kosztorys z inwestycją:
   - **robocizna** = Σ ceny klienta wykonanych prac, **po rabacie** (widok „Klient").
   - **wypłaty** = cena podwykonawcy = cena klienta × współczynnik (domyślnie `0,65`
-    z narzędziami / `0,55` bez; override na sekcji / pozycji) = to, co właściciel
+    z narzędziami / `0,5525` bez; override na sekcji / pozycji) = to, co właściciel
     płaci ekipie.
   - **marża** = robocizna − wypłaty (przy domyślnym współczynniku strukturalnie
-    35% / 45% wartości oferty — nigdy 0).
+    35% / 44,75% wartości oferty — nigdy 0).
 
   **POTWIERDZONE (właściciel, 2026-07-21): wypłaty należne = ceny podwykonawcy z
   kosztorysu; realne wypłaty (`PAYOUT`) zmniejszają „kwotę do zapłaty
@@ -765,10 +848,19 @@ this section is the original phrasing/context for those questions.
   materiały (`INVESTMENT_EXPENSE`) i robocizna (`LABOR_COST`).
 
   **Oderwany jest edytor v2 — nie V1**, gdzie lustro `INVESTMENT_EXPENSE` (PRD
-  FR-014, `prd.md:30`) już te koszty wnosi. Skutek dla v2, ważny przy każdej
+  FR-014, `prd.md:30`) już te koszty wnosi.
+
+  > **Nieaktualne od EX-555 i EX-649.** Akapit niżej opisywał stan, w którym kosztorys
+  > nie wchodził do żadnej marży. Dziś robocizna i rabat na liście inwestycji czytane są
+  > **z kosztorysu** (EX-555), a obok starej marży stoi marża rzeczywista liczona z
+  > kosztorysu razem z prognozą z przedmiaru (EX-649). Stara marża transferowa została
+  > nietknięta i dalej jest tym, co widać na v1 i `/raporty` — dwie figury obok siebie,
+  > nie zamiana jednej na drugą.
+
+  ~~Skutek dla v2, ważny przy każdej
   figurze pieniężnej w edytorze: **marża liczy się wyłącznie z transferów**
   (`robocizna − wypłaty − rabat − strata`), a kosztorys v2 w nią nie wchodzi —
-  rabat wpisany w edytorze obniża tylko wartość kosztorysu. To nie bug edytora,
+  rabat wpisany w edytorze obniża tylko wartość kosztorysu.~~ To nie bug edytora,
   to nieodtworzone połączenie. Pierwszy kawałek = parytet `Podsumowania`
   (roadmap 12a); slice'a na samo łączenie brak.
 
@@ -785,9 +877,15 @@ this section is the original phrasing/context for those questions.
 
 ### Dostęp / widoczność
 
-- **P10.** Które dokładnie komórki/kolumny ukryć przed MANAGEREM (follow-on)?
+- **P10.** ~~Które dokładnie komórki/kolumny ukryć przed MANAGEREM (follow-on)?
   Hipoteza: ceny podwykonawcy (z narzędziami / bez) = koszt i marża. Cena
-  klienta, przedmiar/pomiar, postęp etapów — widoczne dla MANAGERA?
+  klienta, przedmiar/pomiar, postęp etapów — widoczne dla MANAGERA?~~
+  **ROZSTRZYGNIĘTE (owner, 2026-08-18): żadnych — MANAGER widzi wszystko.**
+  Jedyne, czego nie widzi, to zakładka Marża, i to już działa (gate po roli na
+  stronie inwestycji i w Podsumowaniu v2). Ukrywanie kolumn dotyczy **klienta**,
+  nie roli — weszło jako per-inwestycyjne ustawienia widoku klienta (EX-695).
+  Slice S-10 `kosztorys-column-rbac` wycięty w całości; pytanie o wiersze nigdy
+  nie było tu zadane — dopisano je przez symetrię do kolumn.
 
 ### Plan-vs-actual
 
@@ -795,9 +893,12 @@ this section is the original phrasing/context for those questions.
   default sekcji, od którego dziedziczą pozycje?~~ **ROZSTRZYGNIĘTE (EX-565):**
   wariant siedzi na **etapie**; defaultu sekcji ani dziedziczenia na pozycji nie ma.
 
-### Druk / eksport
+### Druk / eksport — eksport cięty (2026-08-15), pytania przechodzą na widok klienta
 
-- **P12.** Które pozycje mają być **domyślnie ukryte** w eksporcie dla klienta?
-  (reguła: np. wiersze zerowe/puste, pozycje wewnętrzne, konkretne sekcje?)
-- **P13.** Oferta drukuje ilość z **przedmiaru** (oferta wstępna) czy **pomiaru**
-  (rozliczenie)? Jeden tryb czy przełącznik?
+- **P12.** ~~Które pozycje mają być **domyślnie ukryte** w eksporcie dla klienta?~~
+  Bezprzedmiotowe w tej formie — nie ma eksportu. Wraca tylko wtedy, gdy widok
+  klienta dostanie ukrywanie pozycji (EX-549, sparkowane, czeka na decyzję ownera).
+- **P13.** **Nadal otwarte, przeniesione na widok klienta:** klient widzi ilość
+  z **przedmiaru** (oferta wstępna) czy z **pomiaru** (rozliczenie)? Jeden tryb czy
+  przełącznik? To samo pytanie, inna powierzchnia — widok jest żywy, więc „jeden
+  tryb" znaczy teraz „ten sam ekran przez całą inwestycję".

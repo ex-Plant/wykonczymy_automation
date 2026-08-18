@@ -60,7 +60,6 @@ async function seedKosztorys(
       plannedQty: 10,
       discountValue: 0,
       clientPrice: CLIENT_PRICE,
-      hiddenInExport: false,
     },
     ...ctx,
   })

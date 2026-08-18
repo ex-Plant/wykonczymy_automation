@@ -31,3 +31,15 @@ export const coalesceFieldChanges = (seq: readonly FieldChangeT[]): FieldChangeT
 
 export const coalesceStageChanges = (seq: readonly StageChangeT[]): StageChangeT[] =>
   coalesceBy(seq, (c) => `${c.id}:${c.stageId}`)
+
+// What the toolbar's two buttons may do while a burst is still buffering. The burst is undoable — an
+// undo flushes it to a command first — and, being a fresh edit, it will clear the redo path on that
+// flush, so redo must go dark now rather than offering a future the flush is about to delete
+// (EX-526 #5).
+export function undoAvailability(
+  canUndo: boolean,
+  canRedo: boolean,
+  hasPendingBurst: boolean,
+): { canUndo: boolean; canRedo: boolean } {
+  return { canUndo: canUndo || hasPendingBurst, canRedo: canRedo && !hasPendingBurst }
+}

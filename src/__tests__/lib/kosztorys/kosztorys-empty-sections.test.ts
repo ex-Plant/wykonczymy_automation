@@ -21,7 +21,6 @@ function item(id: number, sectionId: number, overrides: Partial<KosztorysItemT> 
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    hiddenInExport: false,
     note: null,
     ...overrides,
   } satisfies KosztorysItemT
@@ -51,7 +50,7 @@ const tree: KosztorysTreeT = makeTree({
 })
 
 const rows = treeToRows(tree)
-const ctx = { stages: tree.stages }
+const ctx = { stages: tree.stages, hasSettledMaterial: false }
 
 describe('a section fully executed but unpriced', () => {
   it('sums to zero — which is why the old net-is-zero rule folded it away', () => {

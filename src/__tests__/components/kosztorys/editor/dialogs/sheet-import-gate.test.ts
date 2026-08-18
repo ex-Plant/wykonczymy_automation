@@ -22,6 +22,7 @@ function preview(overrides: Partial<ImportPreviewT> = {}): ImportPreviewT {
       missingColumns: [],
       counts: { sections: 2, items: 9, stages: 3 },
       rateDecisions: [],
+      coeffs: { wTools: null, ownTools: null },
       retained: [],
       totals: [matchingTotal],
       warnings: [],

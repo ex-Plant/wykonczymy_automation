@@ -26,7 +26,6 @@ function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    hiddenInExport: false,
     note: null,
     sectionName: 'Podłogi',
     sectionColor: null,
@@ -104,7 +103,7 @@ describe('measureDiscrepancy', () => {
 
 describe('the „rozjazd" condition over a set of rows', () => {
   const diverged = (rows: KosztorysV2RowT[]) =>
-    applyRowConditions(rows, ['measure-diverged'], { stages: STAGES })
+    applyRowConditions(rows, ['measure-diverged'], { stages: STAGES, hasSettledMaterial: false })
 
   it('keeps only the pozycje whose sheet pomiar still disagrees with the etapy', () => {
     const rows = [

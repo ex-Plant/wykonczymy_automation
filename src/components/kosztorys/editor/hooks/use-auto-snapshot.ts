@@ -18,6 +18,12 @@ type AutoSnapshotT = {
 // disrupt editing. `revisionRef` carries the live undo-stack revision (the interval closure captures
 // values at setup, so it can't read a render-fresh value directly). A tick snapshots only when that
 // revision moved since the last one — an untouched editor writes nothing.
+//
+// The revision lags a live edit by up to the ≤700ms undo-coalescing window (the burst buffer lives in
+// use-kosztorys-editor.ts, outside the stack), so a tick landing inside a burst reads "clean" and skips.
+// Harmless, and deliberately not designed around (EX-701): the marker below only advances when a
+// snapshot is actually taken, so the next tick catches up, and the edit itself was persisted by the
+// autosave, which never goes through the undo stack. Worst case is one snapshot delayed by an interval.
 export function useAutoSnapshot(
   investmentId: number,
   revisionRef: RefObject<number>,

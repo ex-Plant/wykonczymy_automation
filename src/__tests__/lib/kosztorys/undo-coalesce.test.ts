@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
+  undoAvailability,
   type FieldChangeT,
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
@@ -90,5 +91,23 @@ describe('coalesceStageChanges', () => {
   it('drops a net-zero stage burst', () => {
     const burst = [stage({ before: 0, after: 5 }), stage({ before: 5, after: 0 })]
     expect(coalesceStageChanges(burst)).toEqual([])
+  })
+})
+
+// The toolbar buttons during the ≤700ms coalesce window, where the burst is buffered but not yet a
+// command (EX-526 #5): the keyboard shortcut already flushes-then-undoes, so the button must not sit
+// greyed out while Cmd+Z works.
+describe('undoAvailability', () => {
+  it('reports a buffering burst as undoable even on an empty stack', () => {
+    expect(undoAvailability(false, false, true)).toEqual({ canUndo: true, canRedo: false })
+  })
+
+  it('withdraws redo while a burst buffers, because flushing it will clear the redo path', () => {
+    expect(undoAvailability(true, true, true)).toEqual({ canUndo: true, canRedo: false })
+  })
+
+  it('passes the stack through once nothing is buffering', () => {
+    expect(undoAvailability(true, true, false)).toEqual({ canUndo: true, canRedo: true })
+    expect(undoAvailability(false, false, false)).toEqual({ canUndo: false, canRedo: false })
   })
 })

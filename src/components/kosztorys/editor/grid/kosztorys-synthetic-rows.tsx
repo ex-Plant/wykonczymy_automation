@@ -11,7 +11,6 @@ import {
   SectionFooterCell,
   type SectionFooterContextT,
 } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
-import { IDENTITY_COLUMN_ID } from '@/lib/kosztorys/constants'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
   isSectionFooterRow,
@@ -20,11 +19,23 @@ import {
   TOTALS_ROW_ID,
 } from '@/lib/kosztorys/synthetic-rows'
 import type { KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { cn } from '@/lib/utils/cn'
+
+// globals.css lets the band's label out of this cell — the class marks which cell that is.
+export const BAND_LABEL_CELL_CLASS = 'kosztorys-band-label-cell'
 
 // „Razem" rides the grid's own layout, so column alignment and horizontal scroll come for free; the
 // price of that is that dsg renders EVERY column's cell against it, so `withSyntheticRows` wraps each
 // column to render a baked total on this row (and its normal cell on every real row). The section
 // bands are the same mechanism, one branch further.
+
+// dsg takes `cellClassName` as a string OR a per-row function, and a wrapped column may use either.
+function withBandLabelClass(
+  base: Column<KosztorysV2RowT>['cellClassName'],
+): Column<KosztorysV2RowT>['cellClassName'] {
+  if (typeof base === 'function') return (opts) => cn(base(opts), BAND_LABEL_CELL_CLASS)
+  return cn(base, BAND_LABEL_CELL_CLASS)
+}
 
 // Left-aligned like the data cells (computed-cell.tsx / floatColumnLeft are `text-left px-2`), so a
 // column's total sits directly under its values.
@@ -92,16 +103,23 @@ export function withSyntheticRows(
   },
 ): Column<KosztorysV2RowT> {
   const total = column.id != null ? totals.get(column.id) : undefined
-  const content = column.id === IDENTITY_COLUMN_ID ? 'Razem' : total != null ? formatNet(total) : ''
+  const slot = sectionHeaderSlot(column.id, sectionHeader.labelColumnId)
+  // „Razem" rides the same column as the band's label — both are the row's own name, and neither has
+  // a fixed home now that every column is rankable. A total wins the cell when the label column has
+  // one of its own: a missing word beats a missing figure.
+  const content = total != null ? formatNet(total) : slot === 'label' ? 'Razem' : ''
   return {
     ...column,
     component: SyntheticAwareCell as Column<KosztorysV2RowT>['component'],
+    // The label is let out of its cell by a globals.css rule, which has to find it wherever it landed.
+    cellClassName:
+      slot === 'label' ? withBandLabelClass(column.cellClassName) : column.cellClassName,
     // Merge over the wrapped column's own columnData so a delegated base cell (e.g. keyColumn's
     // KeyComponent, which reads columnData.key/original) still finds what it needs.
     columnData: {
       ...column.columnData,
       content,
-      slot: sectionHeaderSlot(column.id),
+      slot,
       columnId: column.id,
       sectionHeader,
       sectionFooter,

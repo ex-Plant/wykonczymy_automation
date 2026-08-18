@@ -39,7 +39,6 @@ const item = (overrides: Partial<KosztorysItemT> & { id: number }): KosztorysIte
   wToolsOverrideValue: 0,
   ownToolsOverrideType: null,
   ownToolsOverrideValue: 0,
-  hiddenInExport: false,
   note: null,
   ...overrides,
 })

@@ -19,4 +19,4 @@ export const PRICING_MODE_DESCRIPTIONS: Record<PricingModeT, string> = {
 // there would persist, print a discount and move no figure. Shared by both surfaces that offer the
 // choice, so neither can explain the lock differently.
 export const MATERIALS_GROSS_LOCK_REASON =
-  'Przy rozliczeniu brutto klient płaci pełne kwoty z faktur — nie ma czego odliczyć, więc stawka nie ruszyłaby żadnej kwoty. Zmień rozliczenie robocizny na netto lub mieszane, żeby ją ustawić.'
+  'Przy rozliczeniu brutto inwestor płaci pełne kwoty z faktur — nie ma czego odliczyć, więc stawka nie ruszyłaby żadnej kwoty. Zmień rozliczenie robocizny na netto lub mieszane, żeby ją ustawić.'

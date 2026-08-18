@@ -91,6 +91,13 @@ describe('diffRow', () => {
     expect(diffRow(prev, next)).toEqual({})
   })
 
+  // Prefiks ilości niesie id etapu, więc klucz z nieliczbowym ogonem nie jest etapem. Bez tego
+  // Number('x') → NaN pojechałoby do zapisu jako id etapu.
+  it('nie bierze klucza z prefiksem ilości, ale bez id etapu, za postęp', () => {
+    const [prev] = treeToRows(tree)
+    expect(diffRow(prev, { ...prev, stage_x: 5 } as typeof prev)).toEqual({})
+  })
+
   // Pomiar wczytany z arkusza jest liczbą odniesienia tylko do odczytu — czyści go osobna akcja,
   // nigdy autozapis komórki. Gdyby przeciekł do `itemPatch`, arkuszowa wartość zapisywałaby się z
   // powrotem przy każdej edycji wiersza i rozjazd nigdy by nie zniknął.
@@ -384,18 +391,20 @@ describe('wartość wiersza idzie za etapami', () => {
       expect(hasStagesOverPlanned(offered({ [stageKey(100)]: 11 }), stages)).toBe(true)
     })
 
-    // „Robota bez oferty" nie jest osobną gałęzią — to po prostu Przedmiar 0, czyli każdy etap go
-    // przekracza. Wyczyszczona komórka zapisuje null, którego gałąź `> 0` musi złapać tak samo.
-    it('robota bez Przedmiaru → czerwień', () => {
+    // With no Przedmiar there is nothing to divide by, so the „% wykonania" cell reads „—". Reddening
+    // a dash is an alarm with no legible cause, so work entered against no offer stays quiet here —
+    // that is a separate problem and belongs to the „Problemy" diagnostics. A cleared cell stores null,
+    // which the `> 0` branch has to catch the same way.
+    it('robota bez Przedmiaru się nie świeci', () => {
       expect(hasStagesOverPlanned(offered({ plannedQty: 0, [stageKey(100)]: 5 }), stages)).toBe(
-        true,
+        false,
       )
       expect(
         hasStagesOverPlanned(
           offered({ plannedQty: null as unknown as number, [stageKey(100)]: 5 }),
           stages,
         ),
-      ).toBe(true)
+      ).toBe(false)
     })
 
     it('pusty wiersz nie świeci się na czerwono', () => {

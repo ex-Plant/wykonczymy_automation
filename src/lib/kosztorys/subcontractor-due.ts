@@ -2,6 +2,20 @@ import { viewPrice } from '@/lib/kosztorys/calc'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
+/** The crew side of the margin, as `subcontractorDueByPlane` reports it — the amount and the reason
+ *  it may be short. Taken as one object so a caller cannot pass the amount and drop the caveat. */
+export type SubcontractorSettlementT = {
+  /** Executed work valued pre-rabat, each etap at its own plane. */
+  due: number
+  /** Some etap holds executed work with no settlement plane, so `due` is short by an unknown amount. */
+  hasUnconfirmedPlane: boolean
+}
+
+/** No kosztorys, or one nobody has executed anything in. A fact, not a missing input — nothing is
+ *  owed to a crew for work nobody entered. Shared so the listing, the golden master and the specs
+ *  cannot disagree about what "nothing" looks like. */
+export const NOTHING_DUE: SubcontractorSettlementT = { due: 0, hasUnconfirmedPlane: false }
+
 export type SubcontractorDueByPlaneT = {
   wTools: number
   ownTools: number
@@ -66,4 +80,11 @@ export function subcontractorDueByPlane(
     byWorker.set(st.workerId, (byWorker.get(st.workerId) ?? 0) + planeTotal)
   }
   return { wTools, ownTools, combined: wTools + ownTools, hasUnconfirmedPlane, byStage, byWorker }
+}
+
+/** The per-plane fold narrowed to what a margin reader needs. One projection instead of a literal
+ *  rewritten at each call site, so a future field on `SubcontractorSettlementT` cannot be missed by
+ *  one of them. */
+export function toSettlement(byPlane: SubcontractorDueByPlaneT): SubcontractorSettlementT {
+  return { due: byPlane.combined, hasUnconfirmedPlane: byPlane.hasUnconfirmedPlane }
 }

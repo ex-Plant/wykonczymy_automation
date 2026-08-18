@@ -67,16 +67,21 @@ export function rowRemainingForView(
  * Was more executed than was offered? Drives the row's red highlight.
  *
  * Deliberately NOT "przedmiar ≠ Σ etapów": a half-finished row is normal work in progress, and
- * flagging it would paint the whole grid red on a healthy kosztorys. Work recorded against no
- * przedmiar at all is not a separate branch — it is the przedmiar-is-0 case, which every stage
- * overshoots.
+ * flagging it would paint the whole grid red on a healthy kosztorys.
+ *
+ * A row with no przedmiar is excluded — the same `> 0` guard `rowDoneFraction` uses, and for the
+ * same reason. Its cell has no percentage to render, so it shows „—", and reddening a dash says
+ * „przekroczono" over a figure that isn't there: the reader sees an alarm with no legible cause.
+ * Work booked against no offer is a real problem, but it is a different one, and it belongs to the
+ * „Problemy" diagnostics, which can name it.
  *
  * Hard-anchored to the client pomiar, not the active view: the przedmiar has no plane (it is typed
  * once per row for the whole offered scope), so comparing one crew's share against it would flag
  * „under-plan" on work the other crew finished.
  */
 export function hasStagesOverPlanned(row: KosztorysV2RowT, stages: KosztorysStageT[]): boolean {
-  return rowTotalQtyDone(row, stages, 'client') > (row.plannedQty ?? 0)
+  if (!(row.plannedQty > 0)) return false
+  return rowTotalQtyDone(row, stages, 'client') > row.plannedQty
 }
 
 // Quantities are typed in m², mb and kpl, often to two decimals, so an exact `!==` would light up

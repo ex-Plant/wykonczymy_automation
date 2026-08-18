@@ -10,14 +10,22 @@ import {
   createSectionWithFirstItem,
   type CreatedSectionWithItemT,
 } from '@/lib/kosztorys/create-section'
-import { createBlankItem, sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import {
+  createBlankItem,
+  sectionInvestmentId,
+  sectionOwnerAndNextItemOrder,
+} from '@/lib/kosztorys/create-item'
+import {
+  insertDirectionSchema,
+  moveOrderSchema,
+  moveRowOneStep,
   nextSectionDisplayOrder,
   renumberDisplayOrder,
   renumberDisplayOrderSchema,
+  resolveInsertSlot,
   shiftDisplayOrderFrom,
-  swapDisplayOrder,
-  swapDisplayOrderSchema,
+  type InsertDirectionT,
+  type MoveDirectionT,
 } from '@/lib/kosztorys/display-order'
 import { applyPercentDiscountSchema } from '@/lib/kosztorys/percent-discount'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
@@ -32,6 +40,7 @@ const stagePlaneSchema = z.enum(TOOL_PLANES)
 const overrideTypeSchema = z.enum(['coeff', 'amount'])
 
 const SECTION_MISSING = 'Sekcja nie istnieje.'
+const ITEM_MISSING = 'Pozycja nie istnieje.'
 
 // --- Patch schemas (all fields optional — autosave sends one field at a time) ---
 // itemPatchSchema is shaped to match ItemPatchT (a single source of the type in lib/kosztorys/types.ts).
@@ -48,7 +57,6 @@ const itemPatchSchema = z
     wToolsOverrideValue: z.coerce.number(),
     ownToolsOverrideType: overrideTypeSchema.nullable(),
     ownToolsOverrideValue: z.coerce.number(),
-    hiddenInExport: z.boolean(),
     note: z.string().nullable(),
   })
   .partial()
@@ -285,11 +293,8 @@ export async function removeSectionAction(sectionId: number) {
       // Deleting a populated section is allowed (EX-477) — the UI gates it behind a confirm. A
       // section delete FK-cascades through its items into stage_progress, irrecoverable by in-session
       // undo (S-07), so capture the exact current state as a snapshot first, every time.
-      const res = await db.execute(sql`
-        SELECT investment_id FROM kosztorys_sections WHERE id = ${sectionId}
-      `)
-      const investmentId = res.rows[0]?.investment_id
-      if (investmentId != null) await captureAutoSnapshot(db, Number(investmentId), user.id)
+      const investmentId = await sectionInvestmentId(db, sectionId)
+      if (investmentId != null) await captureAutoSnapshot(db, investmentId, user.id)
       await payload.delete({ collection: 'kosztorys-sections', id: sectionId })
       return { success: true }
     },
@@ -298,52 +303,77 @@ export async function removeSectionAction(sectionId: number) {
 }
 
 const insertSectionSchema = z.object({
-  investmentId: z.number(),
-  atDisplayOrder: z.coerce.number().int().min(0),
+  anchorSectionId: z.number(),
+  dir: insertDirectionSchema,
 })
 
 // Section-level twin of insertItemAction (⋯ → Wstaw sekcję powyżej/poniżej): opens the slot, then
 // creates the section and its first item there — all three inside one transaction.
+//
+// The caller names the anchor and a direction, not a display_order: resolving the slot inside the
+// transaction is what makes it correct under a concurrent insert, and it drops the investment id
+// from the wire (it is the anchor's, so a caller can no longer pair the two wrong).
 export async function insertSectionAction(
-  investmentId: number,
-  atDisplayOrder: number,
+  anchorSectionId: number,
+  dir: InsertDirectionT,
 ): Promise<ActionResultT<CreatedSectionWithItemT>> {
   return protectedAction(
     'insertSectionAction',
     async ({ payload }) => {
-      const parsed = validateAction(insertSectionSchema, { investmentId, atDisplayOrder })
+      const parsed = validateAction(insertSectionSchema, { anchorSectionId, dir })
       if (!parsed.success) return parsed
-      const at = parsed.data.atDisplayOrder
       const created = await withPayloadTransaction(
         payload,
         async (req) => {
           const txDb = await getDb(payload, req)
-          await shiftDisplayOrderFrom(txDb, 'kosztorys-sections', parsed.data.investmentId, at)
+          const slot = await resolveInsertSlot(
+            txDb,
+            'kosztorys-sections',
+            parsed.data.anchorSectionId,
+            parsed.data.dir,
+          )
+          if (!slot) return null
+          await shiftDisplayOrderFrom(txDb, 'kosztorys-sections', slot.ownerId, slot.at)
           return createSectionWithFirstItem(payload, {
-            investmentId: parsed.data.investmentId,
-            displayOrder: at,
+            investmentId: slot.ownerId,
+            displayOrder: slot.at,
             req,
           })
         },
         { skipRevalidation: true },
       )
+      if (!created) return { success: false, error: SECTION_MISSING }
       return { success: true, data: created }
     },
     ['kosztorysSections', 'kosztorysItems'],
   )
 }
 
-// ⋯ → Przesuń sekcję w górę/dół.
+// ⋯ → Przesuń sekcję w górę/dół. The neighbour is resolved inside the transaction that writes the
+// swap, so the client never has to carry a copy of anybody's display_order.
 export async function swapSectionOrderAction(
-  first: { id: number; displayOrder: number },
-  second: { id: number; displayOrder: number },
+  sectionId: number,
+  dir: MoveDirectionT,
 ): Promise<ActionResultT> {
   return protectedAction(
     'swapSectionOrderAction',
     async ({ payload }) => {
-      const parsed = validateAction(swapDisplayOrderSchema, { first, second })
+      const parsed = validateAction(moveOrderSchema, { rowId: sectionId, dir })
       if (!parsed.success) return parsed
-      await swapDisplayOrder(payload, 'kosztorys-sections', parsed.data.first, parsed.data.second)
+      await withPayloadTransaction(
+        payload,
+        async (req) => {
+          // An edge row writes nothing and still succeeds — the UI disables the arrow, and a race
+          // that removed the neighbour meanwhile is not an error.
+          await moveRowOneStep(
+            await getDb(payload, req),
+            'kosztorys-sections',
+            parsed.data.rowId,
+            parsed.data.dir,
+          )
+        },
+        { skipRevalidation: true },
+      )
       return { success: true }
     },
     ['kosztorysSections'],
@@ -371,44 +401,49 @@ export async function addItemAction(
 }
 
 const insertItemSchema = z.object({
-  sectionId: z.number(),
-  atDisplayOrder: z.coerce.number().int().min(0),
+  anchorItemId: z.number(),
+  dir: insertDirectionSchema,
 })
 
-// Insert a blank item at a specific display_order within a section (right-click → Wstaw pozycję
-// powyżej/poniżej).
+// Insert a blank item just above or below an existing one (right-click → Wstaw pozycję
+// powyżej/poniżej). The anchor's section — and the slot within it — are resolved server-side, inside
+// the transaction that then shifts the tail and creates the row.
 export async function insertItemAction(
-  sectionId: number,
-  atDisplayOrder: number,
+  anchorItemId: number,
+  dir: InsertDirectionT,
 ): Promise<ActionResultT<{ id: number; displayOrder: number }>> {
   return protectedAction(
     'insertItemAction',
     async ({ payload }) => {
-      const parsed = validateAction(insertItemSchema, { sectionId, atDisplayOrder })
+      const parsed = validateAction(insertItemSchema, { anchorItemId, dir })
       if (!parsed.success) return parsed
-      const db = await getDb(payload)
-      const owner = await sectionOwnerAndNextItemOrder(db, parsed.data.sectionId)
-      if (!owner) return { success: false, error: SECTION_MISSING }
-      const created = await withPayloadTransaction(
+      return withPayloadTransaction(
         payload,
-        async (req) => {
+        async (req): Promise<ActionResultT<{ id: number; displayOrder: number }>> => {
           const txDb = await getDb(payload, req)
-          await shiftDisplayOrderFrom(
+          const slot = await resolveInsertSlot(
             txDb,
             'kosztorys-items',
-            parsed.data.sectionId,
-            parsed.data.atDisplayOrder,
+            parsed.data.anchorItemId,
+            parsed.data.dir,
           )
-          return createBlankItem(payload, {
-            investmentId: owner.investmentId,
-            sectionId: parsed.data.sectionId,
-            displayOrder: parsed.data.atDisplayOrder,
+          if (!slot) return { success: false, error: ITEM_MISSING }
+          // Only the investment is needed here — the slot is already resolved, so the append-position
+          // aggregate `sectionOwnerAndNextItemOrder` would compute is dead weight held under the
+          // section-wide lock.
+          const owner = await sectionInvestmentId(txDb, slot.ownerId)
+          if (owner == null) return { success: false, error: SECTION_MISSING }
+          await shiftDisplayOrderFrom(txDb, 'kosztorys-items', slot.ownerId, slot.at)
+          const created = await createBlankItem(payload, {
+            investmentId: owner,
+            sectionId: slot.ownerId,
+            displayOrder: slot.at,
             req,
           })
+          return { success: true, data: created }
         },
         { skipRevalidation: true },
       )
-      return { success: true, data: created }
     },
     ['kosztorysItems'],
   )
@@ -434,17 +469,28 @@ export async function removeItemAction(itemId: number) {
   )
 }
 
-// ▲▼ move within a section.
+// ▲▼ move within a section — the item twin of swapSectionOrderAction, neighbour and all.
 export async function swapItemOrderAction(
-  first: { id: number; displayOrder: number },
-  second: { id: number; displayOrder: number },
+  itemId: number,
+  dir: MoveDirectionT,
 ): Promise<ActionResultT> {
   return protectedAction(
     'swapItemOrderAction',
     async ({ payload }) => {
-      const parsed = validateAction(swapDisplayOrderSchema, { first, second })
+      const parsed = validateAction(moveOrderSchema, { rowId: itemId, dir })
       if (!parsed.success) return parsed
-      await swapDisplayOrder(payload, 'kosztorys-items', parsed.data.first, parsed.data.second)
+      await withPayloadTransaction(
+        payload,
+        async (req) => {
+          await moveRowOneStep(
+            await getDb(payload, req),
+            'kosztorys-items',
+            parsed.data.rowId,
+            parsed.data.dir,
+          )
+        },
+        { skipRevalidation: true },
+      )
       return { success: true }
     },
     ['kosztorysItems'],
@@ -452,44 +498,63 @@ export async function swapItemOrderAction(
 }
 
 const ITEMS_NOT_IN_KOSZTORYS = 'Pozycje spoza tego kosztorysu.'
-const DUPLICATE_ORDER_IN_SECTION = 'Dwie pozycje jednej sekcji na tej samej pozycji w kolejności.'
 
 // „Zapisz kolejność" (menu nagłówka kolumny) — writes the grid's current order into display_order
 // across every section, in one statement so a half-applied renumber can't leave sections sharing
 // indices.
+//
+// The client sends the ids in the order it wants them, for the WHOLE sheet; the numbering is derived
+// here. That is the whole point of the sequence payload: display_order is only ever compared within a
+// section, so the index has to restart per section, and that rule belongs on one side of the wire.
 export async function renumberKosztorysOrderAction(
   investmentId: number,
-  refs: { id: number; displayOrder: number }[],
+  orderedItemIds: number[],
 ): Promise<ActionResultT> {
   return protectedAction(
     'renumberKosztorysOrderAction',
     async ({ payload }) => {
-      const parsed = validateAction(renumberDisplayOrderSchema, refs)
+      const parsed = validateAction(renumberDisplayOrderSchema, orderedItemIds)
       if (!parsed.success) return parsed
-      const db = await getDb(payload)
-      // The ids come from the client and renumberDisplayOrder joins on id alone, so this read is the
-      // only thing standing between a caller and another investment's rows. It also carries
-      // `section_id`, because that is the one invariant the schema cannot see: display_order is
-      // compared within a section, so an index may repeat across sections but never inside one —
-      // two rows on the same index would make the reloaded order non-deterministic (no unique
-      // constraint backs the column).
-      const res = await db.execute(sql`
-        SELECT id, section_id FROM kosztorys_items
-        WHERE investment_id = ${investmentId} AND id IN (${sql.join(
-          parsed.data.map((r) => sql`${r.id}`),
-          sql.raw(', '),
-        )})
-      `)
-      if (res.rows.length !== parsed.data.length) {
-        return { success: false, error: ITEMS_NOT_IN_KOSZTORYS }
-      }
-      const sectionById = new Map(res.rows.map((row) => [Number(row.id), Number(row.section_id)]))
-      const slots = parsed.data.map((ref) => `${sectionById.get(ref.id)}:${ref.displayOrder}`)
-      if (new Set(slots).size !== slots.length) {
-        return { success: false, error: DUPLICATE_ORDER_IN_SECTION }
-      }
-      await renumberDisplayOrder(payload, 'kosztorys-items', parsed.data)
-      return { success: true }
+      return withPayloadTransaction(
+        payload,
+        async (req): Promise<ActionResultT> => {
+          const txDb = await getDb(payload, req)
+          // Reads the guard's answer and takes the bake's lock in one statement. The scope is the
+          // WHOLE sheet, not just the ids sent: the guard and the bake are one decision — which ids
+          // exist, and what index each one takes — so a „Wstaw pozycję" into any section has to be
+          // frozen out, not only into the ones being renumbered. Otherwise the insert takes an index
+          // the bake then hands to a different row, and two rows share a display_order in one section
+          // with no unique constraint to catch it. Ascending id like every other acquisition in
+          // display-order.ts, so it cannot cycle against them (EX-632).
+          //
+          // The ids come from the client and renumberDisplayOrder joins on id alone, so this read is
+          // also the only thing standing between a caller and another investment's rows. It carries
+          // `section_id`, which is what the per-section numbering below is grouped by. All-or-nothing:
+          // one stale id (a row deleted in another tab) refuses the entire bake, and the client's
+          // rollback depends on that.
+          const res = await txDb.execute(sql`
+            SELECT id, section_id FROM kosztorys_items
+            WHERE investment_id = ${investmentId}
+            ORDER BY id FOR UPDATE
+          `)
+          const sectionById = new Map(
+            res.rows.map((row) => [Number(row.id), Number(row.section_id)]),
+          )
+          if (parsed.data.some((id) => !sectionById.has(id))) {
+            return { success: false, error: ITEMS_NOT_IN_KOSZTORYS }
+          }
+          const nextIndex = new Map<number, number>()
+          const refs = parsed.data.map((id) => {
+            const sectionId = sectionById.get(id) as number
+            const index = nextIndex.get(sectionId) ?? 0
+            nextIndex.set(sectionId, index + 1)
+            return { id, displayOrder: index }
+          })
+          await renumberDisplayOrder(txDb, 'kosztorys-items', refs)
+          return { success: true }
+        },
+        { skipRevalidation: true },
+      )
     },
     ['kosztorysItems'],
   )

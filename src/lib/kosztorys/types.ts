@@ -52,7 +52,6 @@ export type KosztorysItemT = {
   wToolsOverrideValue: number
   ownToolsOverrideType: SubcontractorOverrideTypeT | null
   ownToolsOverrideValue: number
-  hiddenInExport: boolean
   note: string | null
 }
 
@@ -72,7 +71,6 @@ export type ItemPatchT = Partial<
     | 'wToolsOverrideValue'
     | 'ownToolsOverrideType'
     | 'ownToolsOverrideValue'
-    | 'hiddenInExport'
     | 'note'
   >
 >

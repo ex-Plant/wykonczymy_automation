@@ -270,7 +270,7 @@ export const Transfers: CollectionConfig = {
         condition: (data) => canBeSettled(data?.type),
         description: {
           en: 'Material already priced into robocizna: leaves the register, reduces margin, NOT billed to the client.',
-          pl: 'Materiał już zawarty w cenie robocizny: schodzi z kasy, obniża marżę, klient NIE płaci za niego osobno.',
+          pl: 'Materiał już zawarty w cenie robocizny: schodzi z kasy, obniża marżę, inwestor NIE płaci za niego osobno.',
         },
       },
     },

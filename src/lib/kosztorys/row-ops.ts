@@ -53,7 +53,6 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    hiddenInExport: false,
     note: null,
     sectionName: input.sectionName,
     sectionColor: input.sectionColor,
@@ -96,18 +95,9 @@ export function applyRestoreItem(
   return [...rows.slice(0, at), row, ...rows.slice(at)]
 }
 
-// display_order the inserted row takes: "above" claims the anchor's slot, "below" the next one.
-// Mirrors insertItemAction's server-side insert point.
-export function insertDisplayOrder(anchor: KosztorysV2RowT, dir: 'above' | 'below'): number {
-  return dir === 'above' ? anchor.displayOrder : anchor.displayOrder + 1
-}
-
-// Splice a blank row into the display sequence at the anchor (±1) and bump the local display_order
-// of same-section rows at/after the insert point — the client mirror of insertItemAction's
-// section-tail shift, so a later ▲▼/insert stays consistent with the server without a refresh.
-// Array position (not display_order) drives the unsorted grid render, so the row lands at the
-// anchor's array index; the display_order bump only keeps the persisted-order mirror correct.
-// `newRow.displayOrder` MUST be the insert point (from insertDisplayOrder) before calling.
+// Splice a blank row into the display sequence just before or just after the anchor. Array position
+// (not display_order) drives the unsorted grid render, so the row lands at the anchor's array index.
+// The server's tail shift needs no client mirror: no client code does arithmetic on display_order.
 export function applyInsertItem(
   rows: KosztorysV2RowT[],
   anchorId: number,
@@ -116,14 +106,8 @@ export function applyInsertItem(
 ): KosztorysV2RowT[] {
   const anchorIdx = rows.findIndex((r) => r.id === anchorId)
   if (anchorIdx < 0) return rows
-  const at = newRow.displayOrder
-  const bumped = rows.map((r) =>
-    r.sectionId === newRow.sectionId && r.displayOrder >= at
-      ? { ...r, displayOrder: r.displayOrder + 1 }
-      : r,
-  )
   const insertIdx = dir === 'above' ? anchorIdx : anchorIdx + 1
-  return [...bumped.slice(0, insertIdx), newRow, ...bumped.slice(insertIdx)]
+  return [...rows.slice(0, insertIdx), newRow, ...rows.slice(insertIdx)]
 }
 
 // Move an item one place within ITS section (▲/▼). Operates on the display sequence
@@ -174,24 +158,24 @@ export function applyInsertSectionRow(
   return regroupByKeys(blocks, seq)
 }
 
-// „Zapisz kolejność": stamp the rows with the display_order just written and re-lay every block in
-// that order. A row the refs don't mention stays where it is, so a stale ref set degrades to a
-// partial reorder rather than a scramble. One pass over the sheet, not one per section.
+// „Zapisz kolejność": re-lay every block in the id sequence just sent to the server. A row the
+// sequence doesn't mention keeps the slot it occupies, so a stale sequence degrades to a partial
+// reorder rather than a scramble — the mentioned rows are sorted into the positions they already
+// hold between them.
 export function applyKosztorysOrder(
   rows: KosztorysV2RowT[],
-  refs: { id: number; displayOrder: number }[],
+  orderedIds: number[],
 ): KosztorysV2RowT[] {
-  const orderById = new Map(refs.map((ref) => [ref.id, ref.displayOrder]))
+  const rank = new Map(orderedIds.map((id, index) => [id, index]))
   const blocks = groupBySection(rows)
   for (const [sectionId, block] of blocks) {
+    const ordered = block
+      .filter((row) => rank.has(row.id))
+      .sort((a, b) => (rank.get(a.id) as number) - (rank.get(b.id) as number))
+    let taken = 0
     blocks.set(
       sectionId,
-      block
-        .map((row) => {
-          const displayOrder = orderById.get(row.id)
-          return displayOrder == null ? row : { ...row, displayOrder }
-        })
-        .sort((a, b) => a.displayOrder - b.displayOrder),
+      block.map((row) => (rank.has(row.id) ? ordered[taken++] : row)),
     )
   }
   return regroupByKeys(blocks, [...blocks.keys()])

@@ -126,6 +126,18 @@ marża  = robocizna − wypłaty − rabat − strata − rozliczone − materia
 
 `src/lib/kosztorys/calculate-balance.ts`, `calculate-margin.ts`.
 
+Od EX-649 obok tej marży stoi druga — nie zamiast niej. Powyższa zostaje żywa na v1, `/raporty`
+i w kolumnie „Marża":
+
+```
+prognoza          = przedmiar × cena − przedmiar × stawka ekipy   (scenariusz: z narzędziami / bez)
+marża rzeczywista = robocizna − rabat − należne podwykonawcom − rozliczone − strata
+```
+
+`src/lib/kosztorys/margin-forecast.ts`, `margin-v2.ts`. Prognoza nie zna rabatu, straty ani
+materiału wliczonego w robociznę; marża rzeczywista wycenia ekipę z kosztorysu, nie z wypłat, i
+zwraca `null` (a nie zero), gdy któryś etap ma wykonaną pracę bez rozliczenia.
+
 **Poprzednia destylacja twierdziła, że strata nigdy nie dotyka bilansu — to już nieprawda.**
 EX-675 wprowadził stratę do obu formuł: obniża marżę i **podnosi** bilans (klient przestaje być
 winien to, co firma wzięła na siebie), po wartości nominalnej, nigdy nie poszerzając bazy VAT
@@ -207,7 +219,7 @@ wprowadzenia, nie defekt.
 ### Świadome NIE-cele (nie proponować jako defekty)
 
 - **Ujemne saldo rejestru dozwolone** — decyzja klienta (git `76dd757`, EX-410 canceled).
-- **Kosztorys v2 rozłączony od marży** — parked P5; nie re-litygować linku.
+- ~~**Kosztorys v2 rozłączony od marży**~~ — nieaktualne od EX-555 (robocizna i rabat na liście czytane z kosztorysu) i EX-649 (marża rzeczywista i prognoza w panelu oraz na liście).
 - **Polskie stringi UI i transkrybowane nagłówki arkusza** — poprawne z polityki.
 - **`'RABAT'` w enumie i `'planowana'` w statusie inwestycji** — wartości zamrożone migracjami.
 

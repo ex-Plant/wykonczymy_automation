@@ -35,16 +35,16 @@ const TOOLTIPS = {
     'Obniża bilans inwestora i jest podstawą marży.',
   deposits: 'Wpłaty inwestora, finansowanie firmy i inne wpłaty. Podnoszą bilans inwestora.',
   discount:
-    'Rabat na robociznę — obniża dług klienta, więc podnosi bilans inwestora. ' +
+    'Rabat na robociznę — obniża dług inwestora, więc podnosi jego bilans. ' +
     'Jednocześnie obniża marżę firmy.',
   materialsDiscount:
-    'Wydatki rozliczane po kwocie netto — klient zwraca mniej, niż firma wydała. ' +
+    'Wydatki rozliczane po kwocie netto — inwestor zwraca mniej, niż firma wydała. ' +
     'Podnosi bilans inwestora i obniża marżę firmy.',
   payouts:
     'Kwoty wypłacone pracownikom. Obniżają marżę. Nie wchodzą do bilansu inwestora.' +
     RESTRICTED_NOTE,
   loss:
-    'Koszt, którego firma nie przerzuciła na klienta — obniża jego dług, więc podnosi bilans ' +
+    'Koszt, którego firma nie przerzuciła na inwestora — obniża jego dług, więc podnosi bilans ' +
     'inwestora. Jednocześnie obniża marżę firmy.',
   settledMaterials:
     'Materiały kupione przez firmę, wliczone w robociznę. ' +

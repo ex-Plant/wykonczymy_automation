@@ -6,12 +6,13 @@ import { createTestInvestment } from '@/__tests__/helpers/investment'
 
 // „Zapisz kolejność" — the multi-section write, driven against the REAL DB and
 // asserting the PERSISTED sequence (a success result can hide a failed write).
-//   RK1 — every section takes its new order in one call, each restarting at 0.
+//   RK1 — every section takes its new order in one call, each restarting at 0. The caller sends one
+//         flat id sequence for the whole sheet; splitting it per section and numbering 0…n-1 is the
+//         server's job, which is the invariant no client-side numbering could be trusted with.
 //   RK2 — ids from another investment are refused outright; nothing is written.
 //   RK3 — a duplicate id is refused (it would make the VALUES join ambiguous).
-//   RK4 — two rows of ONE section on the same index are refused: display_order is only compared
-//         within a section, so repeating an index across sections is legal (RK1) and repeating it
-//         inside one is not — and no unique constraint backs the column.
+//   RK4 — one stale id (a row deleted in another tab) refuses the ENTIRE bake: the client's rollback
+//         to the previous sequence assumes all-or-nothing.
 //
 // Same mock surface as the sibling action specs.
 const authState = vi.hoisted(() => ({ userId: 0 }))
@@ -24,7 +25,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
-const { addItemAction, addSectionAction, renumberKosztorysOrderAction } =
+const { addItemAction, addSectionAction, removeItemAction, renumberKosztorysOrderAction } =
   await import('@/lib/actions/kosztorys')
 
 // Gated like the sibling specs: skips with no DB env, FAILS if env is set but the DB is unreachable.
@@ -104,12 +105,7 @@ describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
     const [a, b] = await itemIdsInOrder(first)
     const [c, d] = await itemIdsInOrder(second)
 
-    const res = await renumberKosztorysOrderAction(investmentId, [
-      { id: b, displayOrder: 0 },
-      { id: a, displayOrder: 1 },
-      { id: d, displayOrder: 0 },
-      { id: c, displayOrder: 1 },
-    ])
+    const res = await renumberKosztorysOrderAction(investmentId, [b, a, d, c])
     expect(res.success).toBe(true)
 
     expect(await itemIdsInOrder(first)).toEqual([b, a])
@@ -127,11 +123,7 @@ describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
     const [foreign] = await itemIdsInOrder(theirs)
     const theirsBefore = await itemIdsInOrder(theirs)
 
-    const res = await renumberKosztorysOrderAction(investmentId, [
-      { id: b, displayOrder: 0 },
-      { id: a, displayOrder: 1 },
-      { id: foreign, displayOrder: 0 },
-    ])
+    const res = await renumberKosztorysOrderAction(investmentId, [b, a, foreign])
     expect(res.success).toBe(false)
 
     expect(await itemIdsInOrder(mine)).toEqual([a, b])
@@ -143,27 +135,22 @@ describe.skipIf(!ENV_READY)('renumberKosztorysOrderAction (DB)', () => {
     const sectionId = await sectionWithItems(investmentId, 1)
     const [a, b] = await itemIdsInOrder(sectionId)
 
-    const res = await renumberKosztorysOrderAction(investmentId, [
-      { id: a, displayOrder: 0 },
-      { id: a, displayOrder: 1 },
-      { id: b, displayOrder: 1 },
-    ])
+    const res = await renumberKosztorysOrderAction(investmentId, [a, a, b])
     expect(res.success).toBe(false)
 
     expect(await itemIdsInOrder(sectionId)).toEqual([a, b])
   })
 
-  it('refuses two rows of one section on the same index (RK4)', async () => {
+  it('refuses the whole bake when one id is stale (RK4)', async () => {
     const investmentId = await freshInvestment()
-    const sectionId = await sectionWithItems(investmentId, 1)
-    const [a, b] = await itemIdsInOrder(sectionId)
+    const sectionId = await sectionWithItems(investmentId, 2)
+    const [a, b, c] = await itemIdsInOrder(sectionId)
+    await removeItemAction(c)
 
-    const res = await renumberKosztorysOrderAction(investmentId, [
-      { id: a, displayOrder: 0 },
-      { id: b, displayOrder: 0 },
-    ])
+    const res = await renumberKosztorysOrderAction(investmentId, [b, a, c])
     expect(res.success).toBe(false)
 
+    expect(await itemIdsInOrder(sectionId)).toEqual([a, b])
     expect(await itemOrders(sectionId)).toEqual([0, 1])
   })
 })

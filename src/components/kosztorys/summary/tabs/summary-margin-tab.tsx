@@ -1,28 +1,26 @@
 'use client'
 
-import { faceValue } from '@/lib/kosztorys/summary-economics'
-import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
-import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
-import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
+import {
+  FIGURE_OPTIONS,
+  useMarginFigure,
+  useMarginPlane,
+} from '@/components/kosztorys/summary/hooks/use-margin-reading'
+import { MarginActualTable } from '@/components/kosztorys/summary/tabs/margin-actual-table'
+import { MarginForecastTable } from '@/components/kosztorys/summary/tabs/margin-forecast-table'
+import { ToggleGroup } from '@/components/ui/toggle-group'
+import type { SubcontractorSettlementT } from '@/lib/kosztorys/subcontractor-due'
+import type { MarginForecastT } from '@/lib/kosztorys/margin-forecast'
+import { financialsOnReading, type SummaryReadingT } from '@/lib/kosztorys/summary-reading'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
-import { financialsOnReading } from '@/lib/kosztorys/summary-reading'
-import type { SummaryReadingT } from '@/lib/kosztorys/summary-reading'
-import { calculateMargin } from '@/lib/db/calculate-margin'
-
-const HINTS = {
-  laborCosts: 'Kwota, którą inwestor płaci firmie za pracę. Podstawa marży.',
-  payouts: 'Kwoty wypłacone pracownikom.',
-  discount: 'Rabat na robociznę — firma rezygnuje z części ceny.',
-  settled: 'Materiały kupione przez firmę, wliczone w cenę robocizny. Nie obciążają inwestora.',
-  materialsDiscount:
-    'Wydatki rozliczane po kwocie netto zamiast po kwocie z paragonu — inwestor zwraca mniej, ' +
-    'niż firma wydała.',
-  loss: 'Koszt pokrywany przez firmę — obniża jej marżę i dług inwestora.',
-  margin: 'Ile firma zarabia na inwestycji.\nWidoczność — właściciel.',
-} as const
+import type { ToolPlaneT } from '@/lib/kosztorys/types'
 
 type PropsT = {
   financials: InvestmentFinancialsT
+  subcontractor: SubcontractorSettlementT
+  // Both scenarios priced up front, because the plane toggle below is local UI state: handing the
+  // panel one forecast would make the toggle need the whole row set to price the other half. A host
+  // with no rows (the investment page) omits this entirely and renders the actual margin alone.
+  forecastByPlane?: Record<ToolPlaneT, MarginForecastT>
 } & SummaryReadingT
 
 // Company-plane figures. Visibility is enforced upstream by the host omitting `financials` for anyone
@@ -31,88 +29,43 @@ type PropsT = {
 //
 // Robocizna and rabat arrive as the reading the host resolved, not off `financials`: the block above
 // this tab is already on that plane, and a tab reading the transactions figures made the same panel
-// report two different robocizny. Everything else below stays `financials`-sourced — wypłaty, strata
-// and materiały are cash movements the kosztorys knows nothing about.
-export function SummaryMarginTab({ financials, laborCostsNet, discountAmount }: PropsT) {
-  const reading = { laborCostsNet, discountAmount }
-  const readFinancials = financialsOnReading(financials, reading)
-  const {
-    totalLaborCosts,
-    totalPayouts,
-    totalDiscount,
-    totalLoss,
-    totalSettled,
-    materialsNetDiscount,
-  } = readFinancials
-  const margin = calculateMargin(readFinancials)
+// report two different robocizny. Materiały wliczone w robociznę and strata stay `financials`-sourced
+// — the kosztorys knows about neither.
+export function SummaryMarginTab({
+  financials,
+  laborCostsNet,
+  discountAmount,
+  subcontractor,
+  forecastByPlane,
+}: PropsT) {
+  const [figure, setFigure] = useMarginFigure()
+  const [plane, setPlane] = useMarginPlane()
 
-  // No VAT plane: marża sums net transfer amounts, so there is one „Kwota" track.
-  const cols = summaryMoneyCols('net')
+  const forecast = forecastByPlane?.[plane]
 
   return (
-    <SummaryTable cols={cols} className="w-fit">
-      <SummaryHeaderCell variant="label">Marża</SummaryHeaderCell>
-      <SummaryHeaderCell>Kwota</SummaryHeaderCell>
+    <div className="flex w-full flex-col gap-4">
+      {/* Only offered where both figures exist — a one-option toggle would suggest a second reading
+          this host does not have. */}
+      {forecastByPlane && (
+        <div className="w-fit">
+          <ToggleGroup
+            options={FIGURE_OPTIONS}
+            value={figure}
+            onChange={setFigure}
+            aria-label="Która marża"
+          />
+        </div>
+      )}
 
-      <SummaryRow
-        label="Robocizna"
-        hint={HINTS.laborCosts}
-        line={faceValue(totalLaborCosts)}
-        axis="net"
-      />
-      {totalPayouts !== 0 && (
-        <SummaryRow
-          label="Wypłaty"
-          hint={HINTS.payouts}
-          line={faceValue(-totalPayouts)}
-          axis="net"
-          discount
+      {figure === 'forecast' && forecast ? (
+        <MarginForecastTable forecast={forecast} plane={plane} onPlaneChange={setPlane} />
+      ) : (
+        <MarginActualTable
+          financials={financialsOnReading(financials, { laborCostsNet, discountAmount })}
+          subcontractor={subcontractor}
         />
       )}
-      {totalDiscount !== 0 && (
-        <SummaryRow
-          label="Rabat"
-          hint={HINTS.discount}
-          line={faceValue(-totalDiscount)}
-          axis="net"
-          discount
-        />
-      )}
-      {totalSettled !== 0 && (
-        <SummaryRow
-          label="Materiały wliczone w robociznę"
-          hint={HINTS.settled}
-          line={faceValue(-totalSettled)}
-          axis="net"
-          discount
-        />
-      )}
-      {materialsNetDiscount !== 0 && (
-        <SummaryRow
-          label="Obniżka materiałów"
-          hint={HINTS.materialsDiscount}
-          line={faceValue(-materialsNetDiscount)}
-          axis="net"
-          discount
-        />
-      )}
-      {totalLoss !== 0 && (
-        <SummaryRow
-          label="Strata"
-          hint={HINTS.loss}
-          line={faceValue(-totalLoss)}
-          axis="net"
-          discount
-        />
-      )}
-      <SummaryRow
-        label="Marża"
-        hint={HINTS.margin}
-        line={faceValue(margin)}
-        axis="net"
-        bold
-        danger={margin < 0}
-      />
-    </SummaryTable>
+    </div>
   )
 }

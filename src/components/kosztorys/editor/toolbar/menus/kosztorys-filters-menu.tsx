@@ -47,10 +47,8 @@ export function KosztorysFiltersMenu() {
     )
   }
 
-  // Only the working filters: a diagnostic is a defect, and its button lives in the toolbar where it
-  // can be noticed without opening anything.
   const filters = ROW_CONDITIONS.filter((condition) => condition.kind === 'filter')
-  const toggles = filters.map((condition) => ({
+  const workToggles = filters.map((condition) => ({
     id: condition.id,
     // The count is how many pozycje are in that state, not how many the row is currently showing —
     // a count of the survivors would be a count of itself and would jump on every click.
@@ -58,6 +56,11 @@ export function KosztorysFiltersMenu() {
     active: !engagedConditionIds.has(condition.id),
     onToggle: () => toggleCondition(condition.id),
   }))
+
+  // Only what this menu itself hides. Engaged problems are deliberately absent: they have their own
+  // trigger, which says so on its own.
+  const triggerCount =
+    workToggles.filter((toggle) => !toggle.active).length + collapsedSectionIds.size
 
   // Folds by unticking sections rather than filtering on top of them: the checkmarks below stay the
   // only description of what the grid shows, so this row and the list can never disagree. Both its
@@ -85,10 +88,7 @@ export function KosztorysFiltersMenu() {
       onValuesChange={onValuesChange}
       options={options}
       label="Filtry"
-      // Everything this menu is currently taking away: the unticked filters plus the folded sections.
-      // Only the toolbar's diagnostics stay out — nothing inside is ticked for them, so counting them
-      // produced „Filtry (2)" over an untouched list.
-      triggerCount={toggles.filter((toggle) => !toggle.active).length + collapsedSectionIds.size}
+      triggerCount={triggerCount}
       icon={ListFilter}
       iconPosition="right"
       searchable
@@ -102,7 +102,7 @@ export function KosztorysFiltersMenu() {
         disabled: engagedConditionIds.size === 0 && collapsedSectionIds.size === 0,
       }}
       bulkToggleLabel="Zwiń wszystkie sekcje"
-      toggles={toggles}
+      toggles={workToggles}
       togglesHeading="Prace"
       actionsHeading="Sekcje"
       optionsHeading="Widoczne sekcje"

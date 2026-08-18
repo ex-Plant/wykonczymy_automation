@@ -41,7 +41,6 @@ describe.skipIf(!ENV_READY)('listPresetSections (DB)', () => {
       wToolsOverrideValue: 0,
       ownToolsOverrideType: null,
       ownToolsOverrideValue: 0,
-      hiddenInExport: false,
       note: null,
     }
   }

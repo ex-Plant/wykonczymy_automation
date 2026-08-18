@@ -130,7 +130,6 @@ async function run() {
           discountType: discountFraction > 0 ? 'percent' : null,
           discountValue: discountFraction > 0 ? discountFraction * 100 : 0,
           clientPrice,
-          hiddenInExport: false,
         },
         ...ctx,
       })

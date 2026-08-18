@@ -1,10 +1,10 @@
 import { COLUMN_LAYER, LAYER_NEUTRAL_COLUMNS } from '@/lib/kosztorys/column-config'
 
-// The grid's fourth reading axis: a column belongs either to the work layer (the offer + its execution
+// The grid's third reading axis: a column belongs either to the work layer (the offer + its execution
 // value, plus the etapy-ilość inputs) or to the progress tracker (per-etap wartości, % wykonania,
-// Pozostało). Composes like the money and progress-display axes rather than replacing anything —
-// visible(col) = pickerAllows(col) AND axisAllows(col) AND progressDisplayAllows(col) AND
-// layerAllows(col) — so the picker still wins over any mode that would show a column.
+// Pozostało). Composes like the money axis rather than replacing anything —
+// visible(col) = pickerAllows(col) AND axisAllows(col) AND layerAllows(col) — so the picker still
+// wins over any mode that would show a column.
 //
 // Only the progress side is tagged in COLUMN_LAYER, so the three buckets are derived: `both` shows
 // everything; `progress` shows the neutral context plus the tagged columns; `work` shows the neutral

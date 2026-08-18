@@ -30,11 +30,12 @@ describe('column ranks in the assembled grid', () => {
     expect(ids.indexOf('price')).toBeLessThan(ids.indexOf('plannedQty'))
   })
 
-  it('keeps the anchors on their slots and the trailing gap last', () => {
-    const base = columnIds({ onRemoveItem: () => {} })
-    const ids = columnIds({ onRemoveItem: () => {}, columnRanks: { price: -1, net: -2 } })
-    expect(ids.indexOf('actions')).toBe(base.indexOf('actions'))
-    expect(ids.indexOf('description')).toBe(base.indexOf('description'))
+  // No column holds a slot the owner cannot drag it out of — „Akcje" and „Opis prac" answer to a rank
+  // like the rest. Only the trailing gap stays last, and it is appended after the ordering.
+  it('reorders the chrome and identity columns too, keeping the trailing gap last', () => {
+    const ids = columnIds({ onRemoveItem: () => {}, columnRanks: { actions: 99, description: -1 } })
+    expect(ids[0]).toBe('description')
+    expect(ids.at(-2)).toBe('actions')
     expect(ids.at(-1)).toBe('layerGap')
   })
 

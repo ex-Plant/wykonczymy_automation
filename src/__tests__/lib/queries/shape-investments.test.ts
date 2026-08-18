@@ -54,7 +54,9 @@ describe('shapeInvestments', () => {
     })
     expect(row.totalCosts).toBe(4900) // 1000 + 3900
     expect(row.balance).toBe(4647) // 9547 - (1000 + 3900)
-    expect(row.margin).toBe(2900) // 3900 - 1000
+    // Bilans is on the kosztorys plane, marża v1 on the transactions one — here the 3900 exists
+    // ONLY in the kosztorys, so v1 sees wypłaty with no robocizna behind them.
+    expect(row.margin).toBe(-1000)
     expect(row).toMatchObject({ id: 5, name: 'Grojecka', status: 'active', hasSheet: false })
   })
 
@@ -67,7 +69,6 @@ describe('shapeInvestments', () => {
       totalLaborCosts: 0,
       totalPayouts: 0,
       totalInvestmentExpense: 0,
-      categoryCosts: [],
       balance: 0,
       margin: 0,
     })
@@ -98,13 +99,9 @@ describe('shapeInvestments', () => {
     }
     const [row] = shapeInvestments([baseInv], financials)
     expect(row.totalInvestmentExpense).toBe(1150)
-    expect(row.categoryCosts).toEqual([
-      { categoryId: 1, total: 800 },
-      { categoryId: 2, total: 400 },
-    ])
   })
 
-  it('prices each category on the plane it was recorded on when a rate is set', () => {
+  it('prices each bucket on the plane it was recorded on when a rate is set', () => {
     const financials: InvestmentFinancialsMapT = {
       '5': {
         // Category 1 mixes planes: 1150 brutto receipts + 100 already billed netto.
@@ -125,7 +122,6 @@ describe('shapeInvestments', () => {
     }
     const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
     // 1150 ÷ 1,25 = 920, plus the 100 netto at face value — the netto part is NOT divided again.
-    expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1020 }])
     expect(row.totalInvestmentExpense).toBe(1020)
   })
 
@@ -151,7 +147,6 @@ describe('shapeInvestments', () => {
       [{ ...baseInv, materialsNetRate: 0.25, settlementMode: 'GROSS' }],
       financials,
     )
-    expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1250 }])
     expect(row.totalInvestmentExpense).toBe(1250)
   })
 
@@ -275,16 +270,9 @@ describe('shapeInvestments', () => {
       },
     }
     const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
-    // Absolute figures first — the Σ identity alone is satisfied by any wrong pair, because the
-    // korekta is DERIVED as total − Σ columns and would silently absorb a mispriced column.
-    expect(row.totalInvestmentExpense).toBeCloseTo(1612, 10) // 1890/1.25 + 100
-    expect(row.categoryCosts).toEqual([
-      { categoryId: 1, total: 1020 }, // (1250 − 100)/1.25 + 100
-      { categoryId: 2, total: 400 }, // 500/1.25
-    ])
-    // 1612 − (1020 + 400): the 192 with no category is inside the total and shown by no column.
-    const columnSum = row.categoryCosts.reduce((sum, c) => sum + c.total, 0)
-    expect(row.totalInvestmentExpense - columnSum).toBeCloseTo(192, 10)
+    // 1890/1.25 + 100. The 240 booked to no category is in there — priced through the same rate,
+    // it contributes the 192 that separates this from the two categories' 1420.
+    expect(row.totalInvestmentExpense).toBeCloseTo(1612, 10)
   })
 })
 
@@ -325,7 +313,18 @@ describe('shapeInvestments robocizna source', () => {
     expect(row.totalLaborCosts).toBe(5000)
     expect(row.totalCosts).toBe(6000) // 1000 materiały + 5000 robocizny z kosztorysu
     expect(row.balance).toBe(4047) // 9547 − 6000 + 500 rabatu
-    expect(row.margin).toBe(3500) // 5000 − 1000 wypłat − 500 rabatu
+  })
+
+  // EX-649: the same two figures on the transactions plane ride along beside them, because during
+  // the move off the spreadsheets an investment carries robocizna on both and neither is derivable
+  // from the other. `margin` is the v1 figure and v1 IS the transactions plane — fed the kosztorys
+  // robocizna it matched no other surface in the app.
+  it('carries the transactions plane beside the kosztorys one', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
+
+    expect(row.totalLaborCostsFromTransactions).toBe(3900)
+    expect(row.balanceFromTransactions).toBe(4647) // 9547 − (1000 + 3900), no rabat on this plane
+    expect(row.margin).toBe(2900) // 3900 − 1000 wypłat
   })
 
   it('grosses the bilans on the kosztorys pair, not the transactions one', () => {
@@ -348,7 +347,10 @@ describe('shapeInvestments robocizna source', () => {
 
     expect(emptyMap).toEqual(missingMap)
     expect(emptyMap.totalLaborCosts).toBe(0)
-    expect(emptyMap.margin).toBe(-1000) // wypłaty with no robocizna to cover them
+    // The transactions plane is untouched by the absence — that is the whole point of showing it:
+    // this investment's robocizna is readable ONLY here until someone enters it into the kosztorys.
+    expect(emptyMap.totalLaborCostsFromTransactions).toBe(3900)
+    expect(emptyMap.margin).toBe(2900) // 3900 − 1000 wypłat, same as with a kosztorys
     // Same map, different investment: the lookup must key on the id, not merely on the map existing.
     expect(shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals)[0].totalLaborCosts).toBe(
       0,
@@ -366,5 +368,67 @@ describe('shapeInvestments robocizna source', () => {
     })
 
     expect(zeroProgress).toEqual(shapeInvestments([baseInv], transactionFinancials, {})[0])
+  })
+})
+
+// EX-649: the second margin rides on the same row. The transactions plane sets 1000 zł of wypłat and
+// the kosztorys says 800 zł is owed for the work actually done — the two figures must NOT coincide,
+// or a column that kept reading `totalPayouts` would pass.
+describe('shapeInvestments marża v2', () => {
+  const transactionFinancials: InvestmentFinancialsMapT = {
+    '5': {
+      categoryCosts: [],
+      netCategoryCosts: [],
+      totalMaterialCosts: 1000,
+      materialsGrossBase: 1000,
+      materialsNetBilled: 0,
+      totalIncome: 9547,
+      totalLaborCosts: 3900,
+      totalPayouts: 1000,
+      totalDiscount: 0,
+      totalLoss: 200,
+      totalSettled: 300,
+      materialsNetDiscount: 400,
+      settledCategoryCosts: [],
+    },
+  }
+
+  const kosztorysTotals: KosztorysClientTotalsMapT = {
+    '5': {
+      doneNet: 4500,
+      laborCostsNetFromKosztorys: 5000,
+      discountNetFromKosztorys: 500,
+      globalDiscountNet: 0,
+    },
+  }
+
+  it('prices the crew from the kosztorys, not from the wypłaty', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals, {
+      '5': { due: 800, hasUnconfirmedPlane: false },
+    })
+
+    expect(row.marginV2).toBe(3200) // 5000 − 500 rabatu − 800 ekipie − 300 wliczonych − 200 straty
+    // The v1 column reads the other plane entirely — wypłaty instead of należne, and the obniżka
+    // materiałów the kosztorys knows nothing about. The two legitimately disagree.
+    expect(row.margin).toBe(2000) // 3900 − 1000 wypłat − 200 straty − 300 wliczonych − 400 obniżki
+  })
+
+  it('withholds the figure when an etap carries work with no rozliczenie', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals, {
+      '5': { due: 800, hasUnconfirmedPlane: true },
+    })
+
+    // `undefined`, not `null` — the row type carries the absence that way because TanStack's
+    // `sortUndefined` is what keeps a withheld row out of the numeric comparator.
+    expect(row.marginV2).toBeUndefined()
+    // Only the kosztorys figure is withheld; the transactions plane has no rozliczenie to miss.
+    expect(row.margin).toBe(2000)
+  })
+
+  it('owes nothing to a crew for an investment with no kosztorys', () => {
+    // No kosztorys means no robocizna either, so the figure is what the company absorbed on its own.
+    const [row] = shapeInvestments([baseInv], transactionFinancials)
+
+    expect(row.marginV2).toBe(-500) // 0 robocizny − 300 wliczonych − 200 straty
   })
 })

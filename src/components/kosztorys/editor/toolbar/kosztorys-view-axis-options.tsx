@@ -1,4 +1,4 @@
-import { Activity, Banknote, Coins, Hammer, Percent, Receipt, User } from 'lucide-react'
+import { Activity, Coins, Hammer, Receipt, User } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
@@ -6,14 +6,13 @@ import type { PairAxisConfigT } from '@/lib/kosztorys/axis-checkboxes'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import type { ProgressDisplayT } from '@/lib/kosztorys/progress-display'
 
 const ICON_CLASS = 'size-4'
 
 // Three views over one dataset: they only change the active price and its derived values. The two
 // subcontractor views share their glyphs with the etap header via planeIcon (can't drift).
 export const VIEWS: { value: PriceViewT; label: string; icon: ReactNode }[] = [
-  { value: 'client', label: 'Klient', icon: <User className={ICON_CLASS} /> },
+  { value: 'client', label: 'Inwestor', icon: <User className={ICON_CLASS} /> },
   ...TOOL_PLANES.map((plane) => ({
     value: plane,
     label: PLANE_LABELS[plane],
@@ -23,7 +22,7 @@ export const VIEWS: { value: PriceViewT; label: string; icon: ReactNode }[] = [
 
 export const VIEW_LEGEND = [
   'Widoki cen:',
-  '👤 Klient — cena dla klienta.',
+  '👤 Inwestor — cena dla inwestora.',
   '🔧 Stawka wykonawcy z narzędziami.',
   '🚫 Stawka wykonawcy bez narzędzi.',
 ].join('\n')
@@ -45,26 +44,9 @@ export const MONEY_PAIR_CONFIG: PairAxisConfigT<MoneyAxisT> = {
 }
 
 // The Kolumny toggle is the strictest gate: an unchecked column is ANDed out in buildV2Columns
-// before any axis predicate runs, so it stays hidden regardless of the Kwoty/Warstwy/Etapy options.
+// before any axis predicate runs, so it stays hidden regardless of the Kwoty/Warstwy options.
 export const KOLUMNY_HINT =
   'Jeśli odznaczysz którąś kolumnę, nie będzie widoczna niezależnie od wybranych opcji powyżej.'
-
-// Governs the stage-value block (kwoty + % columns), unlike the other axes.
-export const PROGRESS_DISPLAYS: {
-  value: ProgressDisplayT
-  label: string
-  icon: ReactNode
-}[] = [
-  { value: 'values', label: 'PLN', icon: <Banknote className={ICON_CLASS} /> },
-  { value: 'percent', label: 'Procent', icon: <Percent className={ICON_CLASS} /> },
-]
-
-export const PROGRESS_PAIR_CONFIG: PairAxisConfigT<ProgressDisplayT> = {
-  a: 'values',
-  b: 'percent',
-  both: 'both',
-  none: 'none',
-}
 
 export const LAYERS: {
   value: LayerT

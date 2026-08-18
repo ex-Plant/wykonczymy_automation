@@ -28,11 +28,9 @@ type PropsT = {
   // read the editor context, which only exists inside the editor.
   showGlobalSettings?: boolean
   // Off on a host that already lists every transaction next to the panel (the investment page's
-  // transfers table): only the headline + per-worker totals remain.
+  // transfers table). One signal, not two: the host that drops the lists is the compact host, so the
+  // per-plane split rows and the per-worker table go with them, leaving the three totals that matter.
   showTransactions?: boolean
-  // Off where the tab is a quick readout rather than the settlement workbench (the investment page):
-  // drops the per-plane split rows and the per-worker table, leaving the three totals that matter.
-  showBreakdown?: boolean
 }
 
 // The subcontractor-plane footer, shown in the Z narzędziami / Bez narzędzi views in place of the
@@ -46,7 +44,6 @@ export function SubcontractorSummary({
   workers,
   showGlobalSettings = true,
   showTransactions = true,
-  showBreakdown = true,
 }: PropsT) {
   const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts, {
     byWorker: subcontractorDue.byWorker,
@@ -55,20 +52,20 @@ export function SubcontractorSummary({
   })
 
   return (
-    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
+    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-4 pb-4 text-sm">
       {/* The multiplier controls lead the block, like the rozliczenie selects on the other tabs: they
           price every figure below them, so they read as the setting the tables answer to rather than
           a footnote to one of them. Above the row, not inside its left column — nested there they
           pushed the headline table down and the two tables stopped lining up. */}
       {showGlobalSettings && <EditorGlobalSettings />}
       <div className="flex flex-wrap items-start gap-x-6 gap-y-4">
-        {showBreakdown && summary.rows.length > 0 && (
+        {showTransactions && summary.rows.length > 0 && (
           <SubcontractorWorkerTotals investmentId={investmentId} rows={summary.rows} />
         )}
         <SubcontractorHeadlineSummary
           summary={summary}
           due={subcontractorDue}
-          showPlanes={showBreakdown}
+          showPlanes={showTransactions}
         />
       </div>
 

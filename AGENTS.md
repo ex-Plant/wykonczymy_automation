@@ -100,7 +100,7 @@ Domain background (prose, may lag the sheet — verify against it): `context/ref
 
 ## Backlog & Task Tracking
 
-- **Slices:** `context/foundation/roadmap.md` is the source of truth — the v2 arc (`F-01`, `S-01`…`S-10`) in dependency order, each with a `Status` field (`ready` / `proposed` / `blocked` / `done`). Start here for what to build next. Built from `context/foundation/prd.md` via `/10x-roadmap`; per-change plans land in `context/changes/<change-id>/` via `/10x-plan`.
+- **Slices:** `context/foundation/roadmap.md` is the source of truth — the v2 arc (`F-01`, `S-01`…`S-19`) in dependency order, each with a `Status` field (`ready` / `proposed` / `blocked` / `done`). Start here for what to build next. Built from `context/foundation/prd.md` via `/10x-roadmap`; per-change plans land in `context/changes/<change-id>/` via `/10x-plan`.
 - **Todos & live status:** Linear project **"Wykonczymy"** (team Ex-plant) only — the slice-status mirror plus every smaller / ad-hoc task. No second todo file. The moment you start work that has a Linear issue — any slice, task, or ad-hoc item, not just slices — flip that issue to In Progress (agents routinely forget this), and to Done when complete. **Reality-check Linear access first** — if the Linear MCP isn't connected, update the slice's `Status` in `roadmap.md` rather than claim a Linear change you can't make.
 - **All prose docs live under `context/`** (`foundation/` durable, `changes/` in-flight, `archive/` done, `reference/` standalone references) — never create a top-level `docs/` dir.
 - **Doc lifecycle:** a one-off design/plan doc is not current truth — verify its claims against code before trusting or quoting it. When a change ships, extract the durable rationale into the right living doc (`lessons.md` / a `foundation/` or `context/reference/` doc), then **archive** the raw doc under `context/archive/<slug>/`. Delete only pure scaffolds with zero unique rationale.
@@ -135,7 +135,7 @@ shape tracks the sheet's current state. Domain background: `context/reference/ko
 
 `pnpm migrate:create` has emitted phantom drift since ~March 2026 (missing `.json` snapshots), so **hand-write migrations**: copy the structure of the latest file in `src/migrations/` and adjust FK constraints / internal Payload tables by hand. Don't trust an auto-generated migration blindly.
 
-**Migrations are NO LONGER run by the build.** `payload migrate` was removed from `pnpm build` so a Vercel deploy (incl. previews) can never touch the schema — code and schema are separate planes. Apply migrations to prod deliberately with **`pnpm db:migrate:prod`** (dumps Neon prod first, then `payload migrate` against `DB_POSTGRES_URL_PROD`), run by a **human**, never the agent. A `.husky/pre-push` gate reminds you on a push to `main` that adds `src/migrations/*.ts`. Order: migrate prod **before** pushing the code that needs it. This is a **deploy-time** gate, not a phase gate — writing the migration and the local code that reads the column is one continuous local task; do not stop implementation or mark a plan phase "blocked on prod" while nothing is being pushed. The prod step is owed only when the code actually ships. Pattern owned by the `payload-prod-migrate` skill.
+**Migrations are NO LONGER run by the build.** `payload migrate` was removed from `pnpm build` so a Vercel deploy (incl. previews) can never touch the schema — code and schema are separate planes. Apply migrations to prod deliberately with **`pnpm db:migrate:prod`** (dumps Neon prod first, then `payload migrate` against `DB_POSTGRES_URL_PROD`), run by a **human**, never the agent. A `.husky/pre-push` gate reminds you on a push to `main` that adds `src/migrations/*.ts`. **Order follows the direction of the migration.** Additive (the new code needs a column that isn't there yet) → migrate prod **before** pushing. Destructive (a `DROP COLUMN`) → the reverse, because the column is what the _old_ code needs: push first, migrate once the new deploy is live, or every request in between hits a live SELECT naming a dropped column (Postgres 42703). This is a **deploy-time** gate, not a phase gate — writing the migration and the local code that reads the column is one continuous local task; do not stop implementation or mark a plan phase "blocked on prod" while nothing is being pushed. The prod step is owed only when the code actually ships. Pattern owned by the `payload-prod-migrate` skill.
 
 ### Dependencies
 
@@ -164,6 +164,15 @@ gets a `@slot` directory under `(frontend)/`. The slot's `page.tsx` is a **re-ex
 component itself lives in `src/components/nav/` — and the slot needs a `default.tsx` for routes that
 don't match. `@investmentCrumb` (the investment name + back arrow in the top bar) is the first and
 currently only instance; mirror its shape rather than inventing a second arrangement.
+
+**Editor hooks (EX-521).** `use-kosztorys-editor.ts` at the editor root is the **composition entry**
+— it wires sub-hooks together and owns the return shape components read. Each cohesive cluster it
+delegates to (stage ops, settlement settings, view state, …) is one leaf hook under
+`editor/hooks/`. A new cluster goes there, not into a second root-level hook, and **nothing moves
+into `KosztorysEditorProvider`** — context value-identity churn is the EX-496 perf regression that
+was reverted once already. Logic that is genuinely React-free belongs one layer further out in
+`src/lib/kosztorys/`, where it is testable without a hook renderer; that split is why this codebase
+has never needed `renderHook`.
 
 ### Important Directories
 
@@ -217,7 +226,7 @@ Non-obvious rules:
 - Cancellation is an audit trail: the original is marked `cancelled: true`, a new `CANCELLATION` row links back to it.
 - Cash register balances are **not** stored — they are computed on read by cached functions. The transfer hooks (`hooks/transfers/recalculate-balances.ts`) only revalidate cache tags; nothing is written back.
 
-**`LABOR_COST` and `RABAT` are no longer bookable (EX-555).** The transfer dialog stopped offering them: robocizna and rabat come from the **kosztorys**, on the investments listing and in the v2 Podsumowanie/Marża alike. Both types stay live in every other respect — the enum, existing rows, history, filters, cancellation and sheet sync are untouched.
+**`LABOR_COST` and `RABAT` are bookable again, temporarily (EX-649, reversing EX-555 — EX-712 closes it).** EX-555 took both out of the transfer dialog because robocizna and rabat come from the **kosztorys**. That holds only once an investment's kosztorys is IN the app: while it is still a spreadsheet the reading returns 0 zł and, with the dialog also refusing the booking, the investment could be settled by no route at all. So both are offered again for **every** investment, with no gating — double-counting is made **visible** rather than prevented, by the „Robocizna v1 / v2" columns on the investments listing and by the v2 reconciliation. **EX-712 removes both entries, and those columns, once the rozjazd between the two is zero everywhere.** Everything else about the two types was never touched: the enum, existing rows, history, filters, cancellation and sheet sync.
 
 **There is no fallback, and no figure declares its source.** No kosztorys means robocizna 0 zł and rabat 0 zł on v2 and on the listing — an empty kosztorys is an answer, not a question forwarded to the transfers. **v1 vs v2 IS the source choice**: v1 renders the transactions plane and is where legacy robocizna booked as `LABOR_COST`/`RABAT` stays readable until someone enters that work into the kosztorys. So v1 and the listing legitimately disagree for such an investment — that gap is the to-do list, not a defect, and it is not backfilled. On the investment page the reconciliation says the same thing out loud: an empty kosztorys against booked transfers screams a mismatch until the work is entered.
 

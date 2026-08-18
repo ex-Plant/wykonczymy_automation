@@ -43,14 +43,19 @@ type FilterMultiSelectPropsT = {
     isActive: (current: string[]) => boolean
     select: (current: string[]) => string[]
   }>
-  // An independent group of on/off rows above the options, owned entirely by the caller. Lets one
-  // menu answer one question („czego nie widzę") with two mechanisms behind it, instead of splitting
-  // the answer across two triggers the user has to check separately.
-  toggles?: ReadonlyArray<{ id: string; label: string; active: boolean; onToggle: () => void }>
-  // Group captions, one per group in render order: the toggles, the bulk actions, the option list.
-  // Worth setting once a menu mixes rows that act on different things — unlabelled, a separator only
-  // says "these are different", never what each group is about.
+  // On/off rows above the options, owned entirely by the caller, under their own caption. Lets one
+  // menu answer one question („czego nie widzę") with more than the option list behind it, instead of
+  // splitting the answer across triggers the user has to check separately.
+  toggles?: ReadonlyArray<{
+    id: string
+    label: string
+    active: boolean
+    onToggle: () => void
+  }>
   togglesHeading?: string
+  // Group captions for the two groups this component owns: the bulk actions and the option list. The
+  // toggle groups above carry their own. Worth setting once a menu mixes rows that act on different
+  // things — unlabelled, a separator only says "these are different", never what each group is about.
   actionsHeading?: string
   optionsHeading?: string
   // A one-click way back to "wszystko widać". It sits above the list as a Button rather than a row
@@ -83,8 +88,8 @@ export function FilterMultiSelect({
   bulkToggleLabel,
   optionToggles,
   toggles,
-  resetAction,
   togglesHeading,
+  resetAction,
   actionsHeading,
   optionsHeading,
   triggerCount,

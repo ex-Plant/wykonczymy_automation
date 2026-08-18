@@ -1,7 +1,9 @@
 import {
+  effectiveCoeff,
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
+  stageValueForView,
   toGross,
   viewPrice,
   type PriceViewT,
@@ -12,21 +14,73 @@ import {
   rowTotalQtyDone,
   rowValueForView,
 } from '@/lib/kosztorys/settlement-rows'
-import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import { stagesForView } from '@/lib/kosztorys/settlement-view'
+import {
+  stageIdFromValueGrossKey,
+  stageIdFromValueNetKey,
+  stageKey,
+} from '@/lib/kosztorys/stage-keys'
+import { overrideSnapshot } from '@/lib/kosztorys/subcontractor-price-edit'
+import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
+
+// The wartość of one etap, as its cell computes it. The denominator is Σ etapów of the whole VIEW,
+// never a narrowed list (kosztorys-v2-columns.tsx) — `rowTotalQtyDone` applies that filter itself, so
+// this is handed the full `stages` array and must stay that way. An etap the view does not price has
+// no value to show: null, which sortRows sinks — same answer as an id that is gone entirely.
+function stageValueNetSortValue(
+  row: KosztorysV2RowT,
+  stageId: number,
+  stages: KosztorysStageT[],
+  view: PriceViewT,
+): number | null {
+  if (!stagesForView(stages, view).some((st) => st.id === stageId)) return null
+  return stageValueForView(
+    row,
+    row[stageKey(stageId)] ?? 0,
+    rowTotalQtyDone(row, stages, view),
+    view,
+  )
+}
+
+// The multiplier „Mnożnik" actually SHOWS, which is not one field: own under 'coeff', the inherited
+// investment/section default under auto, and nothing at all under 'amount' (the cell renders „—").
+// Reading `effectiveCoeff` unconditionally would sort every hand-set row by the default it overrode.
+function viewCoeffSortValue(row: KosztorysV2RowT, view: ToolPlaneT): number | null {
+  const { type, value } = overrideSnapshot(row, view)
+  if (type === 'amount') return null
+  if (type === 'coeff') return value ?? null
+  return effectiveCoeff(row, view)
+}
+
+// „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
+// asked of that column. Alphabetical would split the two override modes around „auto".
+const PRICE_MODE_RANK = { auto: 0, coeff: 1, amount: 2 } as const
 
 // The sort key for a grid column. Most columns in kosztorys-v2-columns.tsx are COMPUTED — their
 // value is derived at render from calc/settlement, never stored on the row — so a `row[field]` read
 // returns undefined for them and the sort silently no-ops (EX-487). Each computed case here composes
 // the figure the same way its column renderer does; the arithmetic stays in calc/settlement, this
 // only picks which composition, so the two cannot drift on the maths. A real row field falls through
-// to the default. `null` (a figure with no denominator, e.g. remaining with no przedmiar) is returned
-// verbatim — sortRows sinks nulls to the bottom in both directions.
+// to the default. `null` — a figure with no denominator (remaining with no przedmiar), a key whose
+// etap is gone, or simply an empty cell — is returned verbatim, and sortRows sinks it to the bottom
+// in both directions.
 export function columnSortValue(
   row: KosztorysV2RowT,
   field: string,
   view: PriceViewT,
   stages: KosztorysStageT[],
 ): string | number | null {
+  // Ahead of the switch: the two per-etap value namespaces carry a stage id inside the key, so no
+  // exact-match case can name them. The qty axis needs nothing here — `stage_<id>` IS a row field
+  // (v2-rows.ts seeds every one of them as a number), so it resolves through the default below.
+  const valueNetStageId = stageIdFromValueNetKey(field)
+  if (valueNetStageId !== null) return stageValueNetSortValue(row, valueNetStageId, stages, view)
+  const valueGrossStageId = stageIdFromValueGrossKey(field)
+  if (valueGrossStageId !== null) {
+    const net = stageValueNetSortValue(row, valueGrossStageId, stages, view)
+    return net === null ? null : toGross(net, row.vatRate)
+  }
+
   switch (field) {
     // Editable (client) / subcontractor price column: the value is the view's price, not a stored field.
     case 'price':
@@ -58,9 +112,22 @@ export function columnSortValue(
       return rowRemainingForView(row, stages, view)
     case 'remainingGross':
       return toGross(rowRemainingForView(row, stages, view), row.vatRate)
+    // The two subcontractor columns are the other shape no exact-match case could reach: their ids
+    // are not row fields — the fields are per-plane (OVERRIDE_FIELDS). Neither column is assembled in
+    // the client view, and `effectiveCoeff` has no client plane to read.
+    case 'priceCoeff':
+      return view === 'client' ? null : viewCoeffSortValue(row, view)
+    case 'priceMode':
+      return view === 'client' ? null : PRICE_MODE_RANK[overrideSnapshot(row, view).type ?? 'auto']
     default: {
       const value = row[field as keyof KosztorysV2RowT]
-      return (typeof value === 'number' ? value : (value ?? '')) as string | number
+      if (typeof value === 'number') return value
+      // An empty cell is an absence, not a key: null, which sortRows sinks under both directions,
+      // matching the „—" these cells render. Coercing it to `''` instead would do two kinds of
+      // damage — commentless pozycje at the TOP of „Komentarz" (asc), and, since a cleared numeric
+      // cell writes null through the grid's `Column<number|null>`, a string standing next to numbers
+      // drops the WHOLE column into localeCompare, ordering „Przedmiar" as text („10" before „9").
+      return value == null || value === '' ? null : String(value)
     }
   }
 }

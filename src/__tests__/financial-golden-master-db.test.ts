@@ -11,6 +11,11 @@ import {
 import { getDb } from '@/lib/db/get-db'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
+import { marginV2 } from '@/lib/kosztorys/margin-v2'
+import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
+import { NOTHING_DUE } from '@/lib/kosztorys/subcontractor-due'
+import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import { round2 } from '@/__tests__/helpers/money'
 
@@ -35,6 +40,10 @@ const FIXTURE_PATH = join(process.cwd(), 'src/__tests__/fixtures/financial-golde
 
 type CategoryPairT = [categoryId: number, total: number]
 
+// `null` is a value the withheld margin carries on purpose, so it must survive the rounding that
+// every other figure goes through rather than collapsing to 0.
+const roundOrNull = (value: number | null) => (value === null ? null : round2(value))
+
 type InvestmentSnapshotT = {
   totalMaterialCosts: number
   totalIncome: number
@@ -45,6 +54,10 @@ type InvestmentSnapshotT = {
   totalSettled: number
   balance: number
   margin: number
+  /** The EX-649 reading, and the only field here that is NOT on the transactions plane: robocizna
+   *  and rabat come from the kosztorys and the crew from its etapy, which is what the listing shows.
+   *  `null` where an etap holds work with no rozliczenie. */
+  marginV2: number | null
   categoryCosts: CategoryPairT[]
   settledCategoryCosts: CategoryPairT[]
 }
@@ -136,13 +149,36 @@ async function readInputHashes(payload: Payload) {
   // so the kosztorys rows are an INPUT to the figures below and belong in the per-investment
   // signature. Without them a kosztorys edit would read as code drift (the figure moved, the hash
   // didn't) and — worse — a read that stopped seeing the kosztorys at all would read as nothing.
+  //
+  // The subcontractor axis (EX-649) is here for the same reason and was the blind spot the second
+  // margin exposed: an etap's rozliczenie and a row's stawka move `marginV2` while item count, qty
+  // and rabat all stand still, so without them a data edit arrives dressed as code drift.
   const kosztorys = await db.execute(sql`
     SELECT
       ki.investment_id AS key,
       count(*)::int AS item_count,
       coalesce(sum(sp.qty), 0)::text AS qty_done,
       coalesce(inv.global_discount_type, '') || ':' ||
-        coalesce(inv.global_discount_value::text, '') AS global_discount
+        coalesce(inv.global_discount_value::text, '') AS global_discount,
+      md5(
+        string_agg(
+          coalesce(ki.w_tools_override_type::text, '') || ':' ||
+            coalesce(ki.w_tools_override_value::text, '') || ':' ||
+            coalesce(ki.own_tools_override_type::text, '') || ':' ||
+            coalesce(ki.own_tools_override_value::text, ''),
+          ',' ORDER BY ki.id
+        )
+      ) AS overrides,
+      (
+        SELECT md5(
+          string_agg(
+            coalesce(ks.plane::text, '') || ':' || coalesce(ks.worker_id::text, ''),
+            ',' ORDER BY ks.id
+          )
+        )
+        FROM kosztorys_stages ks
+        WHERE ks.investment_id = ki.investment_id
+      ) AS stages
     FROM kosztorys_items ki
     JOIN investments inv ON inv.id = ki.investment_id
     LEFT JOIN (
@@ -155,7 +191,7 @@ async function readInputHashes(payload: Payload) {
   for (const row of kosztorys.rows) {
     const key = String(row.key)
     kosztorysItemCount += Number(row.item_count)
-    const sig = `k:${row.item_count}|${row.qty_done}|${row.global_discount}`
+    const sig = `k:${row.item_count}|${row.qty_done}|${row.global_discount}|${row.overrides}|${row.stages ?? ''}`
     hashes.investments[key] = `${hashes.investments[key] ?? ''}/${sig}`
   }
 
@@ -186,6 +222,14 @@ async function buildSnapshot(payload: Payload): Promise<{
       sumAllWorkerBalances(payload),
     ])
 
+  const db = await getDb(payload)
+  const clientTotals = new Map(
+    (await selectKosztorysClientTotals(db)).map((row) => [row.investmentId, row]),
+  )
+  const subcontractorDue = new Map(
+    (await selectKosztorysSubcontractorDue(db)).map((row) => [row.investmentId, row]),
+  )
+
   const investments: Record<string, InvestmentSnapshotT> = {}
   const names = new Map<string, string>()
   for (const doc of investmentsPage.docs) {
@@ -204,6 +248,12 @@ async function buildSnapshot(payload: Payload): Promise<{
       totalSettled: round2(financials.totalSettled),
       balance: round2(calculateBalance(financials)),
       margin: round2(calculateMargin(financials)),
+      marginV2: roundOrNull(
+        marginV2(
+          financialsOnReading(financials, readingFromKosztorys(clientTotals.get(id))),
+          subcontractorDue.get(id) ?? NOTHING_DUE,
+        ),
+      ),
       categoryCosts: toPairs(financials.categoryCosts),
       settledCategoryCosts: toPairs(financials.settledCategoryCosts),
     }

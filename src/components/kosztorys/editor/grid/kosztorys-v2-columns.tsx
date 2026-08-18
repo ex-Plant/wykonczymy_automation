@@ -22,7 +22,6 @@ import {
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
-  stageDoneFraction,
   stageValueForView,
   toGross,
   viewPrice,
@@ -36,15 +35,12 @@ import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/sectio
 import { longTextColumn } from '@/components/ui/datasheet-grid/long-text-cell'
 import { type ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
 import {
-  STAGE_QTY_PREFIX,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   STAGE_VALUE_NET_COLUMN_GROUP,
-  STAGE_VALUE_PERCENT_COLUMN_GROUP,
-  STAGES_COLUMN_GROUP,
+  stageGroupOfKey,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
-  stageValuePercentKey,
 } from '@/lib/kosztorys/stage-keys'
 import {
   baseRanksFromKeys,
@@ -55,13 +51,13 @@ import {
 import {
   PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,
+  UNPICKABLE_COLUMNS,
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
-import { PROGRESS_DISPLAY_DEFAULT, progressDisplayAllows } from '@/lib/kosztorys/progress-display'
-import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
+import { formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
   measureDiscrepancy,
@@ -69,7 +65,10 @@ import {
   rowTotalQtyDone,
   rowValueForView,
 } from '@/lib/kosztorys/settlement-rows'
+import { activeSortPick } from '@/lib/kosztorys/row-view'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
+import { stagesMatchingEngaged } from '@/lib/kosztorys/stage-conditions'
+import { stageLabel } from '@/lib/kosztorys/stage-label'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // floatColumn right-aligns by default; the grid reads cleaner with every cell left-aligned under
@@ -103,19 +102,16 @@ function keyCol(
 
 // An etap with no rozliczenie belongs to neither crew’s bill (subcontractor-due.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
-// So the whole column screams, header and every cell. Reachable in the client view only, which is the
+// So the ilość column screams, header and every cell. Reachable in the client view only, which is the
 // one that shows every etap.
 //
-// Colour only: the qty column adds its own lock (the three value columns are already read-only, so a
-// `disabled` here would say nothing about them).
+// Only the ilość column: its wartość columns are derived from it and sit right beside it, so tinting
+// them repeats one etap's warning three times — and their red totals row reads as a figure being
+// wrong rather than an etap being unassigned.
 const PLANE_UNCONFIRMED_CELL = {
   headerClassName: 'bg-destructive/15',
   cellClassName: 'bg-destructive/10 text-destructive',
 } as const
-
-function planeUnconfirmed(stage: KosztorysStageT): Partial<Column<KosztorysV2RowT>> {
-  return stage.plane == null ? PLANE_UNCONFIRMED_CELL : {}
-}
 
 function withTip(node: ReactNode, tip: string): ReactNode {
   return (
@@ -125,30 +121,24 @@ function withTip(node: ReactNode, tip: string): ReactNode {
   )
 }
 
-// Column title as a sort-menu header (when onSetSort is provided), wrapped in an explanatory
-// tooltip when the field has one in HEADER_TIPS.
-// `sortable: false` for columns whose value is categorical or dash-laden (the subcontractor
-// „źródło ceny" pair) — a sort trigger there would render a caret over a sort nothing can resolve.
-//
-// The label is resolved from `field`, never passed in: every header and the column picker then read
-// the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
-function title(
+// A column header that offers the sort menu, or — with no `onSetSort`, i.e. a preview — the bare
+// label. The tip goes ONTO the sort trigger (same element), not around it: a second wrapping trigger
+// would fight the dropdown for the click. Plain labels have no trigger, so they wrap directly, and
+// they wrap (no truncate) into the fixed, taller header row (KosztorysEditorBody).
+function sortableHeader(
+  label: string,
   field: string,
-  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
-  sortable = true,
+  tip: string | undefined,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
 ): ReactNode {
-  const label = columnLabelForView(field, opts.view)
-  const active = opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null
-  const tip = HEADER_TIPS[field]
-  // The tip goes ONTO the sort trigger (same element), not around it — a second wrapping trigger
-  // would fight the dropdown for the click. Plain-label columns have no trigger, so wrap directly.
-  if (opts.onSetSort && sortable) {
+  const { onSetSort } = opts
+  if (onSetSort) {
     return (
       <SortHeader
         label={label}
-        active={active}
+        active={activeSortPick(opts.sort, field)}
         tip={tip}
-        onSort={(pick) => opts.onSetSort?.(field, pick)}
+        onSort={(pick) => onSetSort(field, pick)}
         onPersistOrder={opts.onPersistKosztorysOrder}
       />
     )
@@ -157,17 +147,28 @@ function title(
   return tip ? withTip(node, tip) : node
 }
 
+// The label is resolved from `field`, never passed in: every header and the column picker then read
+// the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
+function title(
+  field: string,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
+): ReactNode {
+  return sortableHeader(columnLabelForView(field, opts.view), field, HEADER_TIPS[field], opts)
+}
+
 // Header of a per-stage value column: a read-only mirror of the stage's name. One source for the
 // name, so a rename moves all three of the stage's headers and a delete takes all three columns.
-// Deliberately not `title(...)` — these columns carry per-stage dynamic ids that columnSortValue
-// (lib/kosztorys/sort-value) has no case for, so a sort trigger here would render an arrow that does
-// nothing. Deliberately not `StageHeader` — a mirror carries no rename/delete affordance of its own.
-function stageValueHeader(stage: KosztorysStageT, suffix: string, tip: string): ReactNode {
-  // Wraps (no truncate) into the fixed, taller header row (KosztorysEditorBody).
-  return withTip(
-    <HeaderLabel>{`${stage.label || `Etap ${stage.ordinal}`} ${suffix}`}</HeaderLabel>,
-    tip,
-  )
+// Deliberately not `StageHeader` — a mirror carries no rename/delete affordance of its own; its
+// label is simply one the column-label resolver cannot produce, the stage's name being data rather
+// than a static column label.
+function stageValueHeader(
+  stage: KosztorysStageT,
+  suffix: string,
+  tip: string,
+  field: string,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
+): ReactNode {
+  return sortableHeader(`${stageLabel(stage)} ${suffix}`, field, tip, opts)
 }
 
 const DEFAULT_COLUMN_MIN_WIDTH = 140
@@ -285,8 +286,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           }),
         ]
       : [
-          subcontractorModeColumn(view, title('priceMode', opts, false)),
-          subcontractorCoeffColumn(view, title('priceCoeff', opts, false)),
+          subcontractorModeColumn(view, title('priceMode', opts)),
+          subcontractorCoeffColumn(view, title('priceCoeff', opts)),
           subcontractorPriceColumn(view, title('price', opts)),
         ]
   const identity: Column<KosztorysV2RowT>[] = [
@@ -312,15 +313,19 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
       // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
       // re-applied to the editor.
-      // `kosztorys-identity-cell`: the section band paints its whole label here, and globals.css lets
-      // it out over the blank cells to its right (dsg has no colspan).
-      cellClassName: 'kosztorys-identity-cell capitalize [&_textarea]:capitalize',
+      cellClassName: 'capitalize [&_textarea]:capitalize',
     }),
   ]
 
   // A subcontractor view is one crew's bill: only that plane's etapy get columns at all. Nothing
-  // becomes uneditable — quantities are typed in the Klient view, which shows every etap.
+  // becomes uneditable — quantities are typed in the Inwestor view, which shows every etap.
   const viewStages = stagesForView(stages, view)
+
+  // Which of those actually get columns, once the „Problemy" filters have their say. Narrowed HERE and
+  // nowhere else, so the three stage axes below cannot drift apart — and deliberately NOT fed to
+  // `totalQtyDone`: the share each etap's wartość is computed against is Σ etapów of the whole view, so
+  // hiding columns would otherwise silently reprice the ones left standing.
+  const shownStages = stagesMatchingEngaged(viewStages, opts.engagedStageConditionIds ?? [])
 
   // Rows are replaced immutably on every edit, so row identity is a self-invalidating cache key — a
   // stale value can't outlive the row it was computed from.
@@ -358,41 +363,32 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // client's document must not carry the company's own bookkeeping doubts. Client plane only for a
   // second reason: `measureDiscrepancy` is hard-anchored to the whole offered scope, so hanging it
   // on a subcontractor view's cell would put two different „etapy" numbers side by side.
-  const divergenceEnabled = !opts.previewVisible && view === 'client'
-  const divergenceFor = divergenceEnabled
-    ? memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages))
-    : () => null
-
-  const measure: Column<KosztorysV2RowT>[] = [
-    {
-      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r), {
-        // The two operands, which the „Pozostało do rozliczenia" column beside it does NOT carry — it
-        // shows the difference, and „skąd ta różnica" is still a question the cell has to answer.
-        tip: (r) => {
-          const divergence = divergenceFor(r)
-          if (!divergence) return null
-          return `Pomiar z arkusza Google: ${formatQty(divergence.sheetQty)} · etapy: ${formatQty(divergence.stageQty)} · zostało ${formatNet(divergence.net)} zł`
-        },
-      }),
-      minWidth: 170,
-    },
-    unitColumn(title('unit', opts)),
-  ]
-
-  // Leads the whole rozpiska rather than sitting beside „Pomiar", the figure it is derived from — it
-  // is the answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
-  // Present for the whole life of an imported kosztorys, not only while it is non-zero: a column that
-  // appears with a difference and leaves when it is gone reads as an error counter, and the only way
-  // to zero it is to declare unperformed work done.
+  //
+  // Right behind „Opis prac" rather than beside „Pomiar", the figure it is derived from — it is the
+  // answer to „ile jeszcze zostało", which nobody should have to scroll 8 columns to read.
+  // Tied to the diagnostic filter, not to the presence of an imported pomiar: while the filter is off
+  // the grid holds every pozycja and this column would be „—" down almost all of it. The button's own
+  // count is what says the rozjazd exists; the column is where you read it.
   const divergence: Column<KosztorysV2RowT>[] =
-    divergenceEnabled && opts.hasSheetMeasure
+    !opts.previewVisible && view === 'client' && opts.divergenceFilterEngaged
       ? [
           {
-            ...divergenceColumn(title('divergence', opts), divergenceFor),
+            ...divergenceColumn(
+              title('divergence', opts),
+              memoisedByRow((row: KosztorysV2RowT) => measureDiscrepancy(row, stages)),
+            ),
             cellClassName: 'border-border border-r',
           },
         ]
       : []
+
+  const measure: Column<KosztorysV2RowT>[] = [
+    {
+      ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
+      minWidth: 170,
+    },
+    unitColumn(title('unit', opts)),
+  ]
 
   // Rabat is a client concession, never passed to the subcontractor (calc.ts netForQtyForView), so
   // the four discount columns exist in the client view only — the subcontractor views never assemble
@@ -419,7 +415,10 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ...discountCols,
   ]
 
-  const stageCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+  const stageCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
+    // The qty field IS the column id, so the sort wiring is the same shape `title()` builds — the
+    // etap menu just hosts it alongside rename/plane/roster instead of owning the whole menu.
+    const qtyField = stageKey(st.id)
     const header = (
       <StageHeader
         stage={st}
@@ -428,6 +427,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         onSetPlane={opts.onSetStagePlane}
         workers={opts.workers}
         onSetWorker={opts.onSetStageWorker}
+        sort={activeSortPick(opts.sort, qtyField)}
+        onSort={opts.onSetSort && ((pick) => opts.onSetSort?.(qtyField, pick))}
+        onPersistOrder={opts.onPersistKosztorysOrder}
         executedValue={opts.executedValueByStage?.get(st.id) ?? 0}
       />
     )
@@ -441,12 +443,11 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     // the header, which is not where anyone looks after a keystroke goes nowhere. Same string, hung
     // where the lock is discovered.
     if (st.plane == null) {
-      const qtyKey = stageKey(st.id)
       return {
         ...computedColumn(
-          qtyKey,
+          qtyField,
           header,
-          (r) => r[qtyKey] ?? null,
+          (r) => r[qtyField] ?? null,
           { tone: 'danger', tip: () => STAGE_HEADER_COPY.planeUnconfirmed },
           // Blank, never „0,00": an etap nobody has recorded work in has no quantity, and a zero
           // would read as one that was measured.
@@ -456,8 +457,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
-    return keyCol(stageKey(st.id), floatColumnLeft, {
-      id: stageKey(st.id),
+    return keyCol(qtyField, floatColumnLeft, {
+      id: qtyField,
       title: header,
       minWidth: 150,
     })
@@ -465,48 +466,36 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
 
   // The sheet's V–AE: the value of each stage's recorded qty at the view's price, post-discount.
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
-  const stageValueNetCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+  const stageValueNetCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
-    return {
-      ...computedColumn(stageValueNetKey(st.id), header, (r) =>
-        stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view),
-      ),
-      ...planeUnconfirmed(st),
-    }
+    const field = stageValueNetKey(st.id)
+    const header = stageValueHeader(
+      st,
+      'netto',
+      HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP],
+      field,
+      opts,
+    )
+    return computedColumn(field, header, (r) =>
+      stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view),
+    )
   })
 
-  const stageValueGrossCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
+  const stageValueGrossCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
-    return {
-      ...computedColumn(stageValueGrossKey(st.id), header, (r) =>
-        toGross(stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view), r.vatRate),
-      ),
-      ...planeUnconfirmed(st),
-    }
+    const field = stageValueGrossKey(st.id)
+    const header = stageValueHeader(
+      st,
+      'brutto',
+      HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP],
+      field,
+      opts,
+    )
+    return computedColumn(field, header, (r) =>
+      toGross(stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view), r.vatRate),
+    )
   })
 
-  // The percent reading of the same stage block: one column per stage instead of the netto/brutto
-  // pair, since a percentage is the same figure on either side of the VAT.
-  const stageValuePercentCols: Column<KosztorysV2RowT>[] = viewStages.map((st) => {
-    const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, '%', HEADER_TIPS[STAGE_VALUE_PERCENT_COLUMN_GROUP])
-    return {
-      ...computedColumn(
-        stageValuePercentKey(st.id),
-        header,
-        (r) => stageDoneFraction(r, r[qtyKey] ?? 0),
-        {},
-        formatPercent,
-      ),
-      ...planeUnconfirmed(st),
-    }
-  })
-
-  // The row's headline figure — available in both display modes, hence untagged: it answers "how far
-  // along is this position", which the money columns never say outright.
-  //
   // The przedmiar-anchored columns here and below compute at `'client'` outright, not at `view`:
   // PRZEDMIAR_ANCHORED_COLUMNS drops them outside the client view, so a `view`-reactive formula would
   // be false generality — it reads as if a subcontractor reading existed, and there isn't one.
@@ -550,7 +539,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const komentarz: Column<KosztorysV2RowT>[] = [
     keyCol('note', longTextColumn, {
       id: 'note',
-      title: title('note', opts, false),
+      title: title('note', opts),
       minWidth: 200,
       grow: 1,
       headerClassName: 'border-l border-border',
@@ -567,25 +556,24 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     ),
   ]
 
-  // „Rozjazd" first when it exists at all (see above — it is a work list, not a reading of the sheet),
+  // „Rozjazd" right behind the identity block when it exists at all (see above — it is a work list,
+  // not a reading of the sheet),
   // then sheet order proper: Przedmiar (N) leads the stage qty columns (the sheet's D–M), then Pomiar z natury (O), then
   // Komentarz (T) at the work/progress seam, then the value block (U–AE right before AF "pozostało").
   // The row-actions column leads the whole grid when editing is enabled — it rides the same
   // assemble→hide→toggle pipeline as every data column (no special-casing), so the picker can hide it
   // like any other.
   const dataColumns = [
-    ...divergence,
     ...identity,
+    ...divergence,
     ...przedmiar,
     ...stageCols,
     ...measure,
     ...pricing,
     ...computed,
-    // Komentarz at the work/progress seam — it is the visual divider now (see the trailing gap column).
     ...komentarz,
     ...stageValueNetCols,
     ...stageValueGrossCols,
-    ...stageValuePercentCols,
     ...donePercent,
     ...remaining,
   ]
@@ -595,18 +583,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     : dataColumns
 }
 
-// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id. The three
-// prefixes are mutually exclusive (none is a prefix of another), so the order of these tests carries
-// no meaning — the qty prefix last is not load-bearing.
+// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id.
 function toggleKey(columnId: string): string {
-  if (columnId.startsWith(`${STAGE_VALUE_NET_COLUMN_GROUP}_`)) return STAGE_VALUE_NET_COLUMN_GROUP
-  if (columnId.startsWith(`${STAGE_VALUE_GROSS_COLUMN_GROUP}_`)) {
-    return STAGE_VALUE_GROSS_COLUMN_GROUP
-  }
-  if (columnId.startsWith(`${STAGE_VALUE_PERCENT_COLUMN_GROUP}_`)) {
-    return STAGE_VALUE_PERCENT_COLUMN_GROUP
-  }
-  return columnId.startsWith(STAGE_QTY_PREFIX) ? STAGES_COLUMN_GROUP : columnId
+  return stageGroupOfKey(columnId) ?? columnId
 }
 
 // The column allowlist and the client price plane are one disclosure decision (useKosztorysEditor
@@ -632,23 +611,26 @@ function selectV2Columns(
 ): Column<KosztorysV2RowT>[] {
   assertDisclosurePair(opts)
   const axis = opts.moneyAxis ?? MONEY_AXIS_DEFAULT
-  const display = opts.progressDisplay ?? PROGRESS_DISPLAY_DEFAULT
   const layer = opts.layer ?? LAYER_DEFAULT
   // Two kinds of gate live in this filter, and only one of them may touch a client's document.
-  // PREFERENCE gates — the axis, the layer, the progress display, the picker tick — say what ONE
-  // owner wants to read right now, so a preview skips them entirely and takes the allowlist as its
+  // PREFERENCE gates — the axis, the layer, the picker tick — say what ONE owner wants to read
+  // right now, so a preview skips them entirely and takes the allowlist as its
   // whole answer (owner ruling 2026-07-28). The discount gate is not one of them: `globalDiscount`
   // is a property of the investment, identical for every reader, and while it is on, the per-item
   // rabat fields are bypassed rather than cleared (calc.ts `applyDiscount`) — so showing those
   // columns would print „Rabat 10 %" beside „Kwota rabatu 0,00" on the offer itself.
   const keep = (key: string): boolean => {
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(key)) return false
-    if (opts.previewVisible) return PREVIEW_VISIBLE_COLUMNS.has(key)
+    if (opts.previewVisible) {
+      return PREVIEW_VISIBLE_COLUMNS.has(key) && !opts.previewHiddenColumns?.has(key)
+    }
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(key)) return false
+    // The reveal sits beside UNPICKABLE_COLUMNS because it answers the same question — „may a stored
+    // tick hide this right now" — and pointedly NOT beside the two gates after it: a problem filter
+    // gets to overrule one owner's picker, never their money axis or layer.
     return (
-      !opts.isHidden?.(key) &&
+      (UNPICKABLE_COLUMNS.has(key) || opts.revealedColumnIds?.has(key) || !opts.isHidden?.(key)) &&
       axisAllows(key, axis) &&
-      progressDisplayAllows(key, display) &&
       layerAllows(key, layer)
     )
   }
@@ -700,7 +682,12 @@ function selectV2ToggleItems(
     const id = toggleKey(col.id ?? '')
     if (items.some((i) => i.id === id)) continue
     if (opts.globalDiscountActive && DISCOUNT_COLUMN_IDS.has(id)) continue
+    if (UNPICKABLE_COLUMNS.has(id)) continue
     if (opts.view !== 'client' && PRZEDMIAR_ANCHORED_COLUMNS.has(id)) continue
+    // `visible` is the STORED tick, never the reveal: a column a problem is currently forcing on
+    // screen still reports what the picker holds. Unticking it then is a no-op that takes effect on
+    // disengage — accepted, because showing it ticked would lie about what is saved and disabling it
+    // would need a third state nobody asked for.
     items.push({ id, label: columnLabelForView(id, opts.view), visible: !opts.isHidden?.(id) })
   }
   return items

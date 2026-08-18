@@ -104,6 +104,7 @@ export function SyncButton({ investmentId }: { investmentId: number }) {
           </>
         }
         confirmLabel="Zresetuj zakładkę"
+        variant="neutral"
         pending={pending}
         pendingLabel="Pracuję…"
         onConfirm={onSetupConfirm}

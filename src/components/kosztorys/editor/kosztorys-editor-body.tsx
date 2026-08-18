@@ -17,11 +17,13 @@ import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-koszt
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
+import { sectionBandLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
-import { engagedConditionsOfKind, listLabels } from '@/lib/kosztorys/row-conditions'
+import { engagedConditionsOfKind, engagedHiders, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,
@@ -37,6 +39,7 @@ import {
   type UndoRedoApiT,
 } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
+import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 
 const ITEM_ROW_HEIGHT = 32
 const SECTION_BAND_ROW_HEIGHT = 52
@@ -45,6 +48,8 @@ type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim header,
   // kills persistence, and gates the footer's owner-only bits. The owner path leaves it unset.
   preview?: boolean
+  // Arrives with the preview payload only; the owner's editor renders the full grid regardless.
+  clientView?: ClientViewSettingsT
   // Optional because the read-only client body omits it and falls back to NOOP_UNDO_REDO.
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
@@ -63,13 +68,26 @@ export function KosztorysEditorBody({
   investmentLoss,
   depositTransactions,
   preview = false,
+  clientView,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
   onTreeReplaced,
   workers,
   ...panelData
 }: PropsT) {
-  const editor = useKosztorysEditor({ investmentId, tree, preview, undoRedo, workers })
+  // Any rozliczony wydatek means some material was folded into robocizna, which is what makes a
+  // pozycja priced off a coefficient hand the crew a cut of that material — the gate on EX-708's
+  // guard. The breakdown carries no link back to a pozycja, so this is all the kosztorys can know.
+  const hasSettledMaterial = panelData.settledBreakdown.length > 0
+  const editor = useKosztorysEditor({
+    investmentId,
+    tree,
+    preview,
+    clientView,
+    undoRedo,
+    workers,
+    hasSettledMaterial,
+  })
   const {
     gridRef,
     gridHeight,
@@ -87,6 +105,7 @@ export function KosztorysEditorBody({
     discountNetFromKosztorys,
     laborCostsNet,
     subcontractorDue,
+    marginForecastByPlane,
     sort,
     search,
     engagedConditionIds,
@@ -117,8 +136,9 @@ export function KosztorysEditorBody({
       collapsedSectionIds,
       onToggleCollapsed: toggleSectionCollapsed,
       onRename: onRenameSection,
+      labelColumnId: sectionBandLabelColumnId(columns.map((column) => column.id)),
     }),
-    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection],
+    [subtotals, collapsedSectionIds, toggleSectionCollapsed, onRenameSection, columns],
   )
 
   const sectionFooter = useMemo(
@@ -155,7 +175,22 @@ export function KosztorysEditorBody({
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
   const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
-  const emptyByFilter = engagedConditionsOfKind(engagedConditionIds, 'filter').length > 0
+  // The client's own hider counts here too: with „ukryj puste pozycje" on and every pozycja empty,
+  // the client would otherwise get a grid with nothing in it and no word about why.
+  const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
+  // One decision, not two: the title and the description always come from the same branch, so
+  // splitting them into parallel ternaries only invites the two to drift apart.
+  const emptyCopy = preview
+    ? {
+        title: 'Brak pozycji do pokazania',
+        description: 'Żadna pozycja nie ma jeszcze przedmiaru ani wykonanej pracy.',
+      }
+    : emptyByFilter
+      ? { title: 'Wszystkie pozycje schowane', description: undefined }
+      : {
+          title: `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`,
+          description: 'Filtr zrobił swoje — nie ma już czego poprawiać.',
+        }
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (laborCostsNetFromKosztorys /
@@ -302,23 +337,20 @@ export function KosztorysEditorBody({
             (emptyByFilter || engagedDiagnostics.length > 0) && (
               <EmptyState
                 className="pointer-events-none absolute inset-0"
-                title={
-                  emptyByFilter
-                    ? 'Wszystkie pozycje schowane'
-                    : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
-                }
-                description={
-                  emptyByFilter ? undefined : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
-                }
+                title={emptyCopy.title}
+                description={emptyCopy.description}
               >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="pointer-events-auto"
-                  onClick={resetFilters}
-                >
-                  Zresetuj filtry
-                </Button>
+                {/* The client has no „Filtry" menu, so nothing there is theirs to reset. */}
+                {!preview && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="pointer-events-auto"
+                    onClick={resetFilters}
+                  >
+                    Zresetuj filtry
+                  </Button>
+                )}
               </EmptyState>
             )}
           {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
@@ -332,6 +364,7 @@ export function KosztorysEditorBody({
             stageTotals={stageTotals}
             workers={workers}
             subcontractorDue={subcontractorDue}
+            marginForecastByPlane={marginForecastByPlane}
             totalNet={totalNet}
             laborCostsNet={laborCostsNet}
             sectionSubtotals={progressSubtotals}
@@ -362,6 +395,9 @@ export function KosztorysEditorBody({
           )}
         {/* One instance for both triggers — the „Opcje" menu and the empty-kosztorys screen. */}
         {!preview && <SheetImportDialog {...importDialogProps} />}
+        {/* Rendered here, not next to the pickers: the same confirm stands in front of the inline
+            controls in „Podsumowanie"/„Materiały" and of their twins in „Opcje rozliczenia". */}
+        {!preview && <ConfirmDialog {...editor.investorImpactConfirm} />}
       </div>
     </KosztorysEditorProvider>
   )

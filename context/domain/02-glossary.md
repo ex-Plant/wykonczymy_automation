@@ -1,7 +1,7 @@
 ---
 title: Domain Glossary — App ↔ Code naming map
 created: 2026-07-20
-updated: 2026-08-15
+updated: 2026-08-17
 type: glossary
 ---
 
@@ -46,22 +46,25 @@ The mature, code-enforced domain. Every canonical below now matches transfers/`l
 the drift where kosztorys code had re-typed the same figure in Polish, and `local/no-domain-drift`
 keeps it cleared.
 
-| Concept                | App/UI (PL)          | Sheet name  | Canonical code id                | Cat | Drift in code                | Lives in                                                 |
-| ---------------------- | -------------------- | ----------- | -------------------------------- | --- | ---------------------------- | -------------------------------------------------------- |
-| balance                | Bilans inwestora     | —           | `balance`                        | B   | — (resolved EX-548)          | `calculate-balance.ts:6`                                 |
-| register balance       | Saldo kasy           | —           | `registerBalance`                | B   | — (resolved EX-548)          | `lib/queries/register-balance.ts:10`                     |
-| margin                 | Marża                | —           | `margin`                         | B   | — (resolved EX-548)          | `calculate-margin.ts:13`                                 |
-| deposit (income)       | Wpłaty               | —           | `deposit`                        | B   | — (resolved EX-548)          | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
-| payout                 | Wypłaty              | —           | `payout` (`PAYOUT`)              | B   | — (resolved EX-548)          | `calculate-margin.ts:14`                                 |
-| labor charge           | Robocizna            | „robocizna" | `laborCosts` (`LABOR_COST`)      | B   | — (resolved 2026-07-20)      | `calculate-margin.ts:14`; `transfer-rules.ts:52`         |
-| discount               | Rabat                | „rabat %"   | `discount` (`RABAT`)             | B   | — (resolved EX-548)          | `calculate-margin.ts:14`; `kosztorys-editor-body.tsx:73` |
-| loss                   | Strata               | —           | `loss` (`LOSS`)                  | B   | — (resolved EX-548)          | `calculate-margin.ts:5`                                  |
-| correction             | Korekta              | —           | `correction` (`CORRECTION`)      | B   | —                            | `validation.ts:7`                                        |
-| materials              | Materiały            | „materiały" | `materials`                      | B   | (`materiały` in labels only) | `investment-financials.ts:41`                            |
-| settled flag           | Wliczone w robociznę | —           | `settled`                        | B   | —                            | `transfers.ts:228`                                       |
-| transfer / transaction | Transakcja           | —           | `transfer` (slug `transactions`) | B   | —                            | `transfers.ts:52`                                        |
-| cash register          | Kasa                 | —           | `cashRegister`                   | B   | —                            | `cash-registers.ts:34`                                   |
-| investment             | Inwestycja           | —           | `investment`                     | B   | —                            | `investments.ts:11`                                      |
+| Concept                | App/UI (PL)           | Sheet name  | Canonical code id                | Cat | Drift in code                | Lives in                                                 |
+| ---------------------- | --------------------- | ----------- | -------------------------------- | --- | ---------------------------- | -------------------------------------------------------- |
+| balance                | Bilans inwestora      | —           | `balance`                        | B   | — (resolved EX-548)          | `calculate-balance.ts:6`                                 |
+| register balance       | Saldo kasy            | —           | `registerBalance`                | B   | — (resolved EX-548)          | `lib/queries/register-balance.ts:10`                     |
+| margin                 | Marża                 | —           | `margin`                         | B   | — (resolved EX-548)          | `calculate-margin.ts:13`                                 |
+| actual margin          | Marża rzeczywista     | —           | `marginV2`                       | B   | — (new, EX-649)              | `kosztorys/margin-v2.ts`                                 |
+| margin forecast        | Prognoza              | —           | `marginForecast`                 | B   | — (new, EX-649)              | `kosztorys/margin-forecast.ts`                           |
+| subcontractor due      | Należne podwykonawcom | —           | `subcontractorDue`               | B   | — (new, EX-649)              | `kosztorys/subcontractor-due.ts`                         |
+| deposit (income)       | Wpłaty                | —           | `deposit`                        | B   | — (resolved EX-548)          | `transfers.ts:58` (`DEPOSIT_TYPES`)                      |
+| payout                 | Wypłaty               | —           | `payout` (`PAYOUT`)              | B   | — (resolved EX-548)          | `calculate-margin.ts:14`                                 |
+| labor charge           | Robocizna             | „robocizna" | `laborCosts` (`LABOR_COST`)      | B   | — (resolved 2026-07-20)      | `calculate-margin.ts:14`; `transfer-rules.ts:52`         |
+| discount               | Rabat                 | „rabat %"   | `discount` (`RABAT`)             | B   | — (resolved EX-548)          | `calculate-margin.ts:14`; `kosztorys-editor-body.tsx:73` |
+| loss                   | Strata                | —           | `loss` (`LOSS`)                  | B   | — (resolved EX-548)          | `calculate-margin.ts:5`                                  |
+| correction             | Korekta               | —           | `correction` (`CORRECTION`)      | B   | —                            | `validation.ts:7`                                        |
+| materials              | Materiały             | „materiały" | `materials`                      | B   | (`materiały` in labels only) | `investment-financials.ts:41`                            |
+| settled flag           | Wliczone w robociznę  | —           | `settled`                        | B   | —                            | `transfers.ts:228`                                       |
+| transfer / transaction | Transakcja            | —           | `transfer` (slug `transactions`) | B   | —                            | `transfers.ts:52`                                        |
+| cash register          | Kasa                  | —           | `cashRegister`                   | B   | —                            | `cash-registers.ts:34`                                   |
+| investment             | Inwestycja            | —           | `investment`                     | B   | —                            | `investments.ts:11`                                      |
 
 **Robocizna — ruled `laborCosts` (owner, 2026-07-20).** The transfers side already owned an English
 form (`LABOR_COST`, `totalLaborCosts`), and a figure may not carry two names across the recon seam,
@@ -153,12 +156,27 @@ Same reasoning closes the subcontractor figures: `remaining` and `dueNet`
 | cash settlement        | Rozliczenie mieszane | —                     | `computeCashSettlement` (`CashSettlementT`: `combinedNet`/`remainderNet`/`remainderGross`/`invoice`/`cash`/`total`) | B   | — (EX-536)                                                 | `summary-economics.ts:125`   |
 | deposits split         | Rozliczenie wpłat    | —                     | `depositsSplit` / `bucketDepositsByPlane` (`DepositsSplitT`: `paidNet`/`paidGross`/`remainingNet`/`remainingGross`) | B   | — (EX-536)                                                 | `summary-economics.ts:144`   |
 | deposit row            | Wpłata (wiersz)      | —                     | `DepositTransactionRowT`                                                                                            | B   | — (EX-536)                                                 | `types/reference-data.ts:63` |
+| the paying party       | Inwestor             | —                     | `client*` (see note)                                                                                                | B   | `clientView`, `clientPrice`, `view === 'client'` — on hold | `client-view-settings.ts`    |
 
 **`stage deposit` / `zaliczki` — retired (EX-536).** The deposit→etap tagging bridge is gone:
 `lib/kosztorys/zaliczki.ts` deleted, the `kosztorys_stage_id` column dropped from `transactions`
 (migration `20260721_0`), and `zaliczkiByStage` removed from the editor data. Deposits are no longer
 tagged to a stage — the concept has no code referent to name. (It was EX-548's canonical worst-offender
 example: `Zaliczka*` exports importing `isDepositType`; the example is retired with the code.)
+
+**„Inwestor" in the UI is `client*` in code (2026-08-17) — one concept, two registers.** The person
+paying for the job is „Inwestor" everywhere the owner can read it: the view axis, „Widok inwestora",
+„Udostępnij inwestorowi", the Payload labels, and the route `/podglad-inwestora`. The code below it
+still says `client` — `clientView` / `ClientViewSettingsT`, `clientPrice`, the `view === 'client'`
+price plane, `collections/kosztorys-client-view.ts`, `lib/actions/kosztorys-client-view.ts`. **Reading
+either word, mean the same person.** „Klient" survives in the UI in exactly one unrelated place: a CRM
+lead (`components/tables/leads.tsx`), which is a prospect, not a payer.
+
+The identifier rename is deliberately deferred, not forgotten: `clientPrice` is a Payload scalar field,
+and scalars take no `dbName`, so renaming it is a migration rather than a symbol change. When it is
+taken, the target is **`investor*`** — never `investment*`, which already denotes the **project**
+(`investmentId`), a different thing standing one word away. The confirm gate added with the rename
+already reads that way (`investorImpactConfirm`, `use-kosztorys-settings.ts`).
 
 **`etap` — ruled `stage` (2026-07-20), NOT a proper noun.** It was listed `A` on the "the sheet says
 etapy" reflex, but `stage` is already the code's dominant word (`stage*` outnumbers `etap`-identifiers

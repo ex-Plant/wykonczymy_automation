@@ -849,7 +849,10 @@
 ## Hierarchical visibility is ONE set of leaf exclusions — a parent toggle is a bulk op, not a second set
 
 - **Context**: the export picker had to answer "the whole kosztorys except the Klimatyzacja section, but
-  keep this one item from it" — visibility controllable per section _and_ per item.
+  keep this one item from it" — visibility controllable per section _and_ per item. **The concrete
+  subject was cut (2026-08-15): there is no kosztorys export at all** (EX-400 + EX-666), so the picker
+  below is the worked example, not live code — the rule outlives it and lands next on whatever picker
+  the client view grows.
 - **Problem**: the obvious model is two pieces of state (hidden sections + hidden items), and it
   immediately needs reconciliation rules: does an explicitly-shown item beat its hidden section? What
   happens when you then hide the section again? Every combination is a special case, and the two sets
@@ -1172,3 +1175,186 @@ Every caller that reuses the snapshot-before-write pattern inherits this: import
 In practice the tags are fresh at click time so it hasn't produced a wrong undo yet, which is exactly
 why it will stay unnoticed. **If a restore or an import ever comes back subtly wrong — the right shape,
 stale contents — start here**, not in the write path.
+
+## A review finding names a mechanism; it does not measure one — three from EX-521 died on the numbers
+
+The EX-521 gate filed three "structural" findings against the kosztorys editor. All three described a
+**real mechanism** and all three were closed unfixed, because the magnitude nobody had checked turned
+out to be the whole question:
+
+- **The whole-owner `FOR UPDATE` in `display-order.ts`.** Filed as blocking autosaves on "a 1000-item
+  section". The owner block is one _section_, and the modelled sheet is 10 × 100
+  (`perf-seed-kosztorys.ts`) — so ~100 row locks, never the sheet. Benchmarked with a throwaway spec:
+  autosave p50 6.7 → 7.9 ms, p95 9.8 → 12.1 ms under a continuous ▲▼ burst. **+1 ms**, against a
+  redesign that would have to re-establish EX-632's ascending-id discipline from scratch. The spec was
+  deleted with the finding — an opt-in benchmark nothing runs is a maintenance tax on a settled
+  decision; the numbers belong here and at `display-order.ts:84`, not in the test tree.
+- **The undo burst buffer outside `useUndoRedo`.** `undoRedo.revision` really does under-report for
+  ≤700 ms. Its one consumer is a **10-minute** snapshot interval whose marker only advances when a
+  snapshot is taken, so a skipped tick self-heals on the next one — and the edit is already persisted
+  by the autosave, which never went through the undo stack. Worst case: one snapshot delayed.
+- **"Extract the row store — six members that only move together."** They move with _everything_: 47
+  references across ~30 handlers. The extraction relocates five declarations and leaves all 47 call
+  sites reaching in. Cohesion is measured by the **width of the seam**, not by how related the names
+  sound.
+
+**The rule.** A finding earns a plan once someone has put a number on it: how many rows, how wide the
+window, how many call sites, how often the path runs. Do that arithmetic **before** the plan, not
+inside it — each of these three would have been a multi-day restructure of the editor's hottest path,
+and each collapsed to a two-hour verification. The corollary for whoever files: a finding that names a
+mechanism without a magnitude is a **question**, and it should be worded as one.
+
+Two recurring distortions to check for by name, because both showed up here: a whole-sheet figure
+(1000+) quoted for a **per-owner** scope, and "concurrent users" invoked where the app has no editing
+lock and **one** operator already races themselves — ▲▼ is `void`-called and autosaves are
+fire-and-forget, so contention needs no second person.
+
+## A stored preference records the DEVIATION, never a snapshot of today's defaults
+
+Two settings landed a day apart and both hit the same fork. Column visibility for the client
+(`client-preview-settings`) could store the visible keys or the hidden ones; column order
+(`kosztorys-column-order`) could store a dense `0..n` list or a sparse `key → rank` map with
+fractional ranks and one written key per drag. In both, the dense/positive form is the one that reads
+more naturally and is the wrong choice.
+
+The reason is the same both times: **a dense snapshot freezes the current default into every stored
+row**. Add a 23rd column to the client allowlist and every investment that stored "the 22 visible
+keys" keeps hiding it forever — silently, because the row looks complete. Ship a new grid column and
+every user who ever reordered anything gets it appended at the end rather than in the slot the code
+declares, because their localStorage holds a full ordering that predates it. Store exclusions and
+overrides instead, and an addition flows to everyone who never expressed an opinion about it — which
+is the whole population that didn't touch the setting.
+
+The corollary is that the default has to stay live in code, not be copied into storage at first save.
+`useHiddenColumns` and `useColumnWidths` already argued this for themselves; `useColumnOrder` is the
+third, and the pattern is now the repo's answer. Related: „Hierarchical visibility is ONE set of leaf
+exclusions" above — same instinct, applied to a parent/child toggle.
+
+## A disclosure setting subtracts from a code ceiling, and fails CLOSED
+
+`PREVIEW_VISIBLE_COLUMNS` decides what a client at `/k/<token>` may ever see (no subcontractor prices,
+no marża, no „komentarz"). The owner's per-investment settings hide more on top of it. The filter must
+therefore read `allowed.has(key) && !hidden.has(key)` — never "the stored list decides", which would
+let a stored key outside the allowlist _reveal_ a barred column. The reuse pass went further and
+derived the allowlist from the dialog's own groups, so a column can no longer be offerable-but-barred
+or barred-but-offerable; the illegal pairing stopped being representable.
+
+The same asymmetry governs the failure path: when the settings read throws, `/k/<token>` 500s instead
+of rendering. That looks user-hostile until you name the only available fallback — the code default,
+i.e. **wider** disclosure than the owner configured. For a disclosure setting, a page that fails to
+load beats a page that shows a client the columns someone hid from them.
+
+## Header drag in `react-datasheet-grid` is a 2–3 day job, not an afternoon
+
+Considered and rejected for `kosztorys-column-order`. Columns are virtualized **horizontally**
+(`useVirtualizer` with `horizontal: true`, dsg's `Grid.js`), so computing a drop index means
+reconstructing dsg's own layout against `scrollLeft` plus edge auto-scroll — and the header already
+carries two gestures (a Radix trigger filling `h-full w-full`, and the resize handle). A modal with a
+`framer-motion` `Reorder` list bought the same capability in hours with no regression risk to resize
+or header sort. If header drag comes back as a request, the estimate is the virtualization work, not
+the drag.
+
+## A deferral rationale written into an issue ages into a dependency — re-verify the blocker before planning around it
+
+EX-521 sat parked for four weeks reading "split the editor hook **(behind a `renderHook` harness)**".
+Nothing about that clause was ever true: two entries in this file already rule that the repo extracts
+the logic instead of installing a hook renderer, three in-tree modules implement exactly that shape
+(`createUndoRedoStack`, `createSaveLanes`, `createJsonMapStore`), and the fallback objection — "the
+logic lives in a `.tsx` file, so it needs a DOM" — was refuted by a spec that already imports a `.tsx`
+module. The clause was a **reason for not starting today**, written in the grammar of a prerequisite,
+and every later reader took it as a fact about the codebase. Three review findings were then filed
+against the same hook, each carrying "waits on the same harness", which turned one unverified sentence
+into a queue.
+
+**The rule.** When an issue names a prerequisite, the first research step is to check the prerequisite,
+not to plan around it. Cheap tell: a blocker phrased as infrastructure we lack, where nobody links the
+attempt that established we need it. And when _writing_ the deferral, say which it is — "declined, see
+X" reads differently from "blocked on Y" a month later.
+
+The payoff here was structural, not just scheduling: the harness would have made the god hook testable
+**as it is**, and the reason no harness exists is that the logic is welded to the hook body. Extracting
+it is the fix and the testability in one move — so the missing infrastructure was the design signal, and
+installing it would have preserved what needed removing.
+
+## An invariant enforced in two planes — deleting the second plane beats testing the bridge
+
+`display_order`'s shift rule lived three times: once as the server `UPDATE … WHERE display_order >= at`,
+and twice as hand-written client loops that transliterated it. Each plane was tested in isolation;
+their **agreement** was not, and the client cache behind it was seeded at mount and never re-seeded
+after `router.refresh()`, so "insert a section mid-sheet, then move a later one" was untested at every
+layer. The standing rule for that shape is to test the bridge — but the better answer is available
+whenever one plane exists only to predict the other: make the actions **intent-based**
+(`'up' | 'down'`, `'above' | 'below'`, an id sequence for the bake), resolve position inside the
+transaction that writes it, and the client plane has nothing left to mirror. No absolute integers reach
+the client at all, so the numbering becomes a server implementation detail and the bridge test is moot.
+
+**How to spot it:** the duplicate is a _transliteration_ — same predicate, same delta, same scope, in a
+second language. That is different from two planes that genuinely compute different things and must
+agree, which still needs the bridge test. Worth doing with no live victim: here every path that changed
+stored order happened to go through the client or remount, so nothing was broken — the defect was the
+triplicated rule, and the fix deleted code the following refactor would otherwise have relocated first.
+
+## A capability offered by a helper, not declared by a column, gets its coverage decided by accident
+
+Sorting in the kosztorys grid looked like a per-column product decision and was nothing of the kind:
+`title()` was the only helper that constructed a `SortHeader`, so every column built by a different
+header component (`StageHeader`, the stage-value header) shipped unsortable without anyone choosing
+that. Nothing in the repo ever recorded a decision to exclude them; the one written justification was
+a limitation note about two columns whose keys genuinely could not resolve, and a third column's
+opt-out arrived as an unremarked third argument in an unrelated feature commit.
+
+**The tell:** a capability whose presence is a side effect of _which constructor a call site reached
+for_ rather than a property the column declares. When you find one, the fix is the rule, not the
+patches — decide what the capability's universal predicate is („every column carrying data"), then
+make the exceptions the ones that fail it, so the next column added inherits the right answer instead
+of the nearest helper's.
+
+The corollary is what makes it worth writing down: a limitation note in a commit message ages into a
+believed constraint. Here the note said `columnSortValue` had no case for per-stage ids — true of the
+two **value** namespaces it was written about, and false of the **quantity** namespace it was later
+read as covering, since `stage_<id>` is a real always-numeric row field the default branch already
+resolved. That is the second instance in this file of a deferral rationale hardening into a
+dependency; both times, checking the stated blocker took minutes and dissolved most of the work.
+
+**Two constraints this change leaves standing, for whoever touches grid sorting next.** First,
+`reconcileSort` derives a sort's validity from the rendered column ids, so _anything_ that removes a
+column silently cancels the user's sort — cheap and correct while only deliberate axis toggles could
+do it, considerably less obvious now that a stage-scoped „Problemy" filter narrows the stage columns
+too. Second, the sort is a pure lens: it is persisted nowhere — not in localStorage, presets,
+snapshots, URL params or the DB — which is the only reason `stage_<id>` is safe as a sort field at
+all. Postgres reissues a deleted stage's id, which is exactly why stage ids are kept out of the
+persisted hidden-columns map. If anyone ever proposes persisting the sort, that question reopens on
+day one.
+
+## A render throw in a streamed RSC page still answers 200 — an E2E status assertion cannot see it
+
+`e2e/kosztorys-share-link.spec.ts` guards a hazard the authed app cannot show: `(share)/layout.tsx`
+mounts no `CurrentUserProvider` (the share token is the whole credential), `useCurrentUser` throws on
+a null context, and `KosztorysTotalsPanel` is `forceMount`ed — so a session read added anywhere under
+`SummaryPanelContent` breaks every investor link while typecheck, units and every other spec stay
+green. The spec was written with `expect(response.status()).toBe(200)` as its headline assertion, on
+the reasoning that a hard render throw is served as a 500 and so cannot slip past.
+
+It cannot slip past **a page Next renders in one shot**. Break-verifying the spec (planting a
+`useCurrentUser()` inside `SummaryPanelContent`, rebuilding, re-running) produced this:
+
+```
+[WebServer] ⨯ Error: useCurrentUser must be used within CurrentUserProvider
+✘ a generated share link renders ... — expect(getByText('Fundamenty …')).toBeVisible() failed
+```
+
+The server logged the throw and **still answered 200**. The status line ships with the first chunk;
+by the time the component throws, the headers are long gone and the failure is delivered inside the
+stream, to the client error boundary. Status codes only describe what was known before the first byte.
+
+**The rule:** on a streamed route, assert what the page _shows_, never what it _returned_. A status
+assertion is worth keeping for the pre-render failures it does catch (a 404 from a rejected token),
+but it must never be the load-bearing one, and it must never be traded for the content assertions —
+a spec asserting only the status would have passed a share link that renders nothing but an error.
+
+**The generalisation is about method, not Next.js.** The spec was authored, typechecked, run green,
+and reported as protecting the risk — and its headline assertion protected nothing. The only step
+that surfaced that was deliberately breaking the production behaviour and watching _which_ assertion
+went red. Green proves the test runs; it says nothing about what the test would catch. On a guard
+written for a specific failure — where the whole point is the day someone breaks it — the break check
+is the test of the test, and skipping it is how a decorative assertion gets committed with confidence.

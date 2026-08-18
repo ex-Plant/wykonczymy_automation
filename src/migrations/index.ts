@@ -67,6 +67,8 @@ import * as migration_20260728_1_add_worker_to_kosztorys_stages from './20260728
 import * as migration_20260810_0_invoice_has_many from './20260810_0_invoice_has_many'
 import * as migration_20260813_0_add_sheet_measured_qty_to_kosztorys_items from './20260813_0_add_sheet_measured_qty_to_kosztorys_items'
 import * as migration_20260814_0_add_sheet_column_mapping_to_kosztoryses from './20260814_0_add_sheet_column_mapping_to_kosztoryses'
+import * as migration_20260815_0_add_kosztorys_client_view from './20260815_0_add_kosztorys_client_view'
+import * as migration_20260818_0_drop_kosztorys_hidden_in_export from './20260818_0_drop_kosztorys_hidden_in_export'
 
 export const migrations = [
   {
@@ -413,5 +415,15 @@ export const migrations = [
     up: migration_20260814_0_add_sheet_column_mapping_to_kosztoryses.up,
     down: migration_20260814_0_add_sheet_column_mapping_to_kosztoryses.down,
     name: '20260814_0_add_sheet_column_mapping_to_kosztoryses',
+  },
+  {
+    up: migration_20260815_0_add_kosztorys_client_view.up,
+    down: migration_20260815_0_add_kosztorys_client_view.down,
+    name: '20260815_0_add_kosztorys_client_view',
+  },
+  {
+    up: migration_20260818_0_drop_kosztorys_hidden_in_export.up,
+    down: migration_20260818_0_drop_kosztorys_hidden_in_export.down,
+    name: '20260818_0_drop_kosztorys_hidden_in_export',
   },
 ]
