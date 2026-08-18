@@ -16,7 +16,11 @@ export type InvestmentRowT = {
   totalCosts: number
   totalMaterialCosts: number
   totalIncome: number
+  /** Kosztorys plane, pre-rabat. Its twin below is pre-rabat too, so the two subtract cleanly.
+   *  `totalLaborCosts` keeps the bare name because the parity fixture is keyed by it; the suffix on
+   *  the twin is what warns that a second plane exists. */
   totalLaborCosts: number
+  totalLaborCostsFromTransactions: number
   totalPayouts: number
   totalInvestmentExpense: number
   totalSettled: number
@@ -25,6 +29,13 @@ export type InvestmentRowT = {
   categoryCosts: CategoryCostT[]
   balance: number
   balanceGross: number
+  /** The same bilans on the transactions plane. Both are shown while investments are still being
+   *  moved off the sheets: for one that has no kosztorys in the app yet, this is the only reading
+   *  that carries its robocizna at all. */
+  balanceFromTransactions: number
+  /** The v1 formula on the transactions plane — the figure the investment page's v1 shows. It reads
+   *  the raw transfers on purpose: fed the kosztorys robocizna it was neither reading, and matched
+   *  no other surface in the app. */
   margin: number
   /** The EX-649 reading, beside `margin` rather than instead of it. `null` where an etap holds
    *  executed work with no rozliczenie — the figure is unknowable, not zero. */

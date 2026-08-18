@@ -242,12 +242,14 @@ describe('membership arrays — exact contents and order', () => {
   })
 
   it('TRANSACTION_TRANSFER_TYPES', () => {
-    // LABOR_COST and RABAT are absent by design (EX-555): both figures are read off the kosztorys,
-    // so the dialog must not offer a second way to book them. They remain in TRANSFER_TYPES and in
-    // every other list here — this array alone governs what the dialog offers.
+    // LABOR_COST and RABAT are back (EX-649) and leave again under EX-712. Reading both figures off
+    // the kosztorys only works once the kosztorys is IN the app; while it is still a spreadsheet the
+    // dialog was the only way to settle the investment at all.
     expect(TRANSACTION_TRANSFER_TYPES).toEqual([
       'OTHER',
+      'LABOR_COST',
       'CORRECTION',
+      'RABAT',
       'LOSS',
       'INVESTMENT_EXPENSE',
       'INVESTMENT_EXPENSE_NET',

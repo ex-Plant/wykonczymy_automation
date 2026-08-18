@@ -54,7 +54,9 @@ describe('shapeInvestments', () => {
     })
     expect(row.totalCosts).toBe(4900) // 1000 + 3900
     expect(row.balance).toBe(4647) // 9547 - (1000 + 3900)
-    expect(row.margin).toBe(2900) // 3900 - 1000
+    // Bilans is on the kosztorys plane, marża v1 on the transactions one — here the 3900 exists
+    // ONLY in the kosztorys, so v1 sees wypłaty with no robocizna behind them.
+    expect(row.margin).toBe(-1000)
     expect(row).toMatchObject({ id: 5, name: 'Grojecka', status: 'active', hasSheet: false })
   })
 
@@ -325,7 +327,18 @@ describe('shapeInvestments robocizna source', () => {
     expect(row.totalLaborCosts).toBe(5000)
     expect(row.totalCosts).toBe(6000) // 1000 materiały + 5000 robocizny z kosztorysu
     expect(row.balance).toBe(4047) // 9547 − 6000 + 500 rabatu
-    expect(row.margin).toBe(3500) // 5000 − 1000 wypłat − 500 rabatu
+  })
+
+  // EX-649: the same two figures on the transactions plane ride along beside them, because during
+  // the move off the spreadsheets an investment carries robocizna on both and neither is derivable
+  // from the other. `margin` is the v1 figure and v1 IS the transactions plane — fed the kosztorys
+  // robocizna it matched no other surface in the app.
+  it('carries the transactions plane beside the kosztorys one', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
+
+    expect(row.totalLaborCostsFromTransactions).toBe(3900)
+    expect(row.balanceFromTransactions).toBe(4647) // 9547 − (1000 + 3900), no rabat on this plane
+    expect(row.margin).toBe(2900) // 3900 − 1000 wypłat
   })
 
   it('grosses the bilans on the kosztorys pair, not the transactions one', () => {
@@ -348,7 +361,10 @@ describe('shapeInvestments robocizna source', () => {
 
     expect(emptyMap).toEqual(missingMap)
     expect(emptyMap.totalLaborCosts).toBe(0)
-    expect(emptyMap.margin).toBe(-1000) // wypłaty with no robocizna to cover them
+    // The transactions plane is untouched by the absence — that is the whole point of showing it:
+    // this investment's robocizna is readable ONLY here until someone enters it into the kosztorys.
+    expect(emptyMap.totalLaborCostsFromTransactions).toBe(3900)
+    expect(emptyMap.margin).toBe(2900) // 3900 − 1000 wypłat, same as with a kosztorys
     // Same map, different investment: the lookup must key on the id, not merely on the map existing.
     expect(shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals)[0].totalLaborCosts).toBe(
       0,
@@ -406,9 +422,9 @@ describe('shapeInvestments marża v2', () => {
     })
 
     expect(row.marginV2).toBe(3200) // 5000 − 500 rabatu − 800 ekipie − 300 wliczonych − 200 straty
-    // The old column is untouched — it still reads wypłaty AND still subtracts the obniżka
-    // materiałów, so the two legitimately disagree.
-    expect(row.margin).toBe(2600)
+    // The v1 column reads the other plane entirely — wypłaty instead of należne, and the obniżka
+    // materiałów the kosztorys knows nothing about. The two legitimately disagree.
+    expect(row.margin).toBe(2000) // 3900 − 1000 wypłat − 200 straty − 300 wliczonych − 400 obniżki
   })
 
   it('withholds the figure when an etap carries work with no rozliczenie', () => {
@@ -417,8 +433,8 @@ describe('shapeInvestments marża v2', () => {
     })
 
     expect(row.marginV2).toBeNull()
-    // Only the new figure is withheld; the old one is unaffected by the missing rozliczenie.
-    expect(row.margin).toBe(2600)
+    // Only the kosztorys figure is withheld; the transactions plane has no rozliczenie to miss.
+    expect(row.margin).toBe(2000)
   })
 
   it('owes nothing to a crew for an investment with no kosztorys', () => {

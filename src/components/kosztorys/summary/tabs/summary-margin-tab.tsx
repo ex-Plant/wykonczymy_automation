@@ -35,6 +35,8 @@ const HINTS = {
   // loss: 'Koszt pokrywany przez firmę — obniża jej marżę i dług inwestora.',
   // plannedNet: 'Przedmiar w cenie dla inwestora, przed rabatem.',
   plannedDue: 'Prognozowana kwota do zapłaty podwykonawcom.',
+  overpaid:
+    'Ekipa dostała więcej, niż jest warta wykonana praca — zaliczka przed robotą albo nieodhaczone etapy.',
 } as const
 
 // The two descriptions below are the only place in the app that says what separates these figures,
@@ -51,6 +53,13 @@ const ACTUAL_DESCRIPTION =
 // width the row reads as a long label with a stub pinned to it. The withheld state also puts a
 // sentence where a number normally goes.
 const COLS = `${SUMMARY_LABEL_COL} 17rem`
+
+// The crew block stands next to the margin, not in it: the margin costs the work the kosztorys
+// credits, wypłaty are cash timing. Without this the two numbers look like a contradiction.
+const PAYOUT_GAP_DESCRIPTION =
+  'Poza marżą — ile ekipa dostała względem wykonanej pracy. Marża liczy wykonaną pracę, nie wypłaty.'
+
+const OVERPAID_LABEL = 'Nadpłata'
 
 const WITHHELD_LABEL = 'Ustaw rozliczenie etapów'
 
@@ -86,10 +95,12 @@ export function SummaryMarginTab({
   const [plane, setPlane] = useMarginPlane()
 
   const readFinancials = financialsOnReading(financials, { laborCostsNet, discountAmount })
-  const { totalLaborCosts, totalDiscount, totalLoss, totalSettled } = readFinancials
+  const { totalLaborCosts, totalDiscount, totalLoss, totalSettled, totalPayouts } = readFinancials
   const margin = marginV2(readFinancials, subcontractor)
 
   const forecast = forecastByPlane?.[plane]
+  // Negative = the crew has been paid past the work the kosztorys credits them for.
+  const remaining = subcontractor.due - totalPayouts
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -156,13 +167,7 @@ export function SummaryMarginTab({
 
             <SummaryRow label="Robocizna" line={faceValue(totalLaborCosts)} axis="net" />
             {totalDiscount !== 0 && (
-              <SummaryRow
-                label="Rabat"
-                hint={HINTS.discount}
-                line={faceValue(-totalDiscount)}
-                axis="net"
-                discount
-              />
+              <SummaryRow label="Rabat" line={faceValue(-totalDiscount)} axis="net" discount />
             )}
             {/* Named from the shared labels rather than a fresh string, so this row and the
                 „Podwykonawcy" tab can never call one amount two things. */}
@@ -201,6 +206,37 @@ export function SummaryMarginTab({
               />
             )}
           </SummaryTable>
+          {(subcontractor.due !== 0 || totalPayouts !== 0) && (
+            <>
+              <Description className="max-w-xl" size="xs">
+                {PAYOUT_GAP_DESCRIPTION}
+              </Description>
+              <SummaryTable cols={COLS} className="w-fit">
+                <SummaryHeaderCell variant="label">Rozliczenie z ekipą</SummaryHeaderCell>
+                <SummaryHeaderCell>Kwota</SummaryHeaderCell>
+
+                <SummaryRow
+                  label={SUBCONTRACTOR_FIGURE_LABELS.due}
+                  line={faceValue(subcontractor.due)}
+                  axis="net"
+                />
+                <SummaryRow
+                  label={SUBCONTRACTOR_FIGURE_LABELS.payouts}
+                  line={faceValue(-totalPayouts)}
+                  axis="net"
+                  discount
+                />
+                <SummaryRow
+                  label={remaining < 0 ? OVERPAID_LABEL : SUBCONTRACTOR_FIGURE_LABELS.remaining}
+                  hint={remaining < 0 ? HINTS.overpaid : undefined}
+                  line={faceValue(remaining < 0 ? -remaining : remaining)}
+                  axis="net"
+                  bold
+                  danger={remaining < 0}
+                />
+              </SummaryTable>
+            </>
+          )}
         </>
       )}
     </div>

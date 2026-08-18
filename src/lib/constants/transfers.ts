@@ -276,13 +276,23 @@ export const DEPOSIT_UI_TYPES: TransferTypeT[] = [
 ]
 
 // Transfer types visible in the transaction transfer dialog (sorted by Polish label).
-// „Koszty robocizny" and „Rabat" are gone (EX-555): both figures are now read off the kosztorys, so
-// booking either by hand would double-count against it. Neither type is retired — existing rows still
-// render, filter, edit, cancel and travel to the sheet, and both keep their places in every other list
-// in this file. This array is the „offerable in the dialog" list, nothing more.
+//
+// „Koszty robocizny" and „Rabat" left this list in EX-555 (read them off the kosztorys, booking one
+// by hand double-counts) and came back in EX-649, because that reasoning holds only once an
+// investment's kosztorys is IN the app. While it is still a spreadsheet there is no third option:
+// the dialog refuses the booking and `readingFromKosztorys` returns 0 zl, so the investment cannot
+// be settled at all and its bilans renders as if no robocizna existed.
+//
+// So both are offerable again for EVERY investment, with no gating — double-counting is made VISIBLE
+// rather than prevented, by the „Robocizna v1 / v2 / Różnica" columns on the
+// listing and by the v2 reconciliation, which now has something to reconcile against.
+//
+// TEMPORARY — EX-712 removes both entries again once the „Różnica" column is zero everywhere.
 export const TRANSACTION_TRANSFER_TYPES: TransferTypeT[] = [
   'OTHER', // Inny wydatek
+  'LABOR_COST', // Koszty robocizny
   'CORRECTION', // Korekta
+  'RABAT', // Rabat
   'LOSS', // Strata
   'INVESTMENT_EXPENSE', // Wydatek inwestycyjny
   'INVESTMENT_EXPENSE_NET', // Wydatek inwestycyjny netto
