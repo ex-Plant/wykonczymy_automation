@@ -554,14 +554,14 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 1.1 Migration applies against the local DB
-- [x] 1.2 Types regenerate without error
+- [x] 1.1 Migration applies against the local DB — 28d6923f
+- [x] 1.2 Types regenerate without error — 28d6923f
 
 ### Phase 2: Deadline Logic
 
 #### Automated
 
-- [ ] 2.1 Fleet unit specs pass
+- [x] 2.1 Fleet unit specs pass
 
 ### Phase 3: UI
 
