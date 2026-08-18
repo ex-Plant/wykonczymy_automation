@@ -151,15 +151,30 @@ function title(
 
 // Header of a per-stage value column: a read-only mirror of the stage's name. One source for the
 // name, so a rename moves all three of the stage's headers and a delete takes all three columns.
-// Deliberately not `title(...)` — these columns carry per-stage dynamic ids that columnSortValue
-// (lib/kosztorys/sort-value) has no case for, so a sort trigger here would render an arrow that does
-// nothing. Deliberately not `StageHeader` — a mirror carries no rename/delete affordance of its own.
-function stageValueHeader(stage: KosztorysStageT, suffix: string, tip: string): ReactNode {
+// Deliberately not `StageHeader` — a mirror carries no rename/delete affordance of its own; it is
+// `title()`'s shape with a label the column-label resolver cannot produce, the stage's name being
+// data rather than a static column label.
+function stageValueHeader(
+  stage: KosztorysStageT,
+  suffix: string,
+  tip: string,
+  field: string,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
+): ReactNode {
+  const label = `${stage.label || `Etap ${stage.ordinal}`} ${suffix}`
+  if (opts.onSetSort) {
+    return (
+      <SortHeader
+        label={label}
+        active={opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null}
+        tip={tip}
+        onSort={(pick) => opts.onSetSort?.(field, pick)}
+        onPersistOrder={opts.onPersistKosztorysOrder}
+      />
+    )
+  }
   // Wraps (no truncate) into the fixed, taller header row (KosztorysEditorBody).
-  return withTip(
-    <HeaderLabel>{`${stage.label || `Etap ${stage.ordinal}`} ${suffix}`}</HeaderLabel>,
-    tip,
-  )
+  return withTip(<HeaderLabel>{label}</HeaderLabel>, tip)
 }
 
 const DEFAULT_COLUMN_MIN_WIDTH = 140
@@ -459,16 +474,30 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // Computed at render, never a row field — hence the separate id namespace (constants.ts).
   const stageValueNetCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, 'netto', HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP])
-    return computedColumn(stageValueNetKey(st.id), header, (r) =>
+    const field = stageValueNetKey(st.id)
+    const header = stageValueHeader(
+      st,
+      'netto',
+      HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP],
+      field,
+      opts,
+    )
+    return computedColumn(field, header, (r) =>
       stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view),
     )
   })
 
   const stageValueGrossCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
     const qtyKey = stageKey(st.id)
-    const header = stageValueHeader(st, 'brutto', HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP])
-    return computedColumn(stageValueGrossKey(st.id), header, (r) =>
+    const field = stageValueGrossKey(st.id)
+    const header = stageValueHeader(
+      st,
+      'brutto',
+      HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP],
+      field,
+      opts,
+    )
+    return computedColumn(field, header, (r) =>
       toGross(stageValueForView(r, r[qtyKey] ?? 0, totalQtyDone(r), view), r.vatRate),
     )
   })

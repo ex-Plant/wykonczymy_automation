@@ -423,4 +423,4 @@ widths and ranks are untouched.
 
 #### Automated
 
-- [ ] 3.1 Existing grid column specs still pass (no new phase-scoped spec — see phase body)
+- [x] 3.1 Existing grid column specs still pass (no new phase-scoped spec — see phase body)

@@ -1241,3 +1241,26 @@ Setup: jak wyżej, plus jedna pozycja bez ceny wykonawcy w widoku „Bez narzęd
 - [ ] Poprawiona pozycja zostaje na ekranie do czasu kliknięcia „Odśwież — ukryj poprawione"; pozycja ta znika dopiero wtedy
 - [ ] „Odśwież" widać w menu wyłącznie przy włączonym problemie
 - [ ] Stawka i mnożnik wykonawcy słuchają klawiatury siatki — Enter zatwierdza i schodzi niżej, Escape porzuca, strzałki wychodzą z komórki
+
+## sortowanie-kolumn-spojne — sortowanie w każdej kolumnie z danymi
+
+**In review** — wszystko zautomatyzowane zielone (tsc 0, eslint 0 na zmienionych plikach, 2419
+testów). Sortowanie przestaje zależeć od tego, którego nagłówka kolumna użyła: klucze dostają etapy
+(ilościowo i wartościowo netto/brutto), „Komentarz", „Źródło ceny wykonawcy" i „Mnożnik". Bez
+sortowania zostają tylko „akcje" i przerwa między warstwami — nie ma w nich czego porównywać.
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (co najmniej dwa etapy, oba z przypisanym
+rozliczeniem, oraz jedna pozycja z rabatem kwotowym, jedna z pustym „Przedmiarem" i kilka bez
+komentarza).
+
+- [ ] „Komentarz" sortuje w obie strony, a pozycje bez komentarza siedzą **na dole** w obu
+- [ ] „Przedmiar" z jedną wyczyszczoną komórką nadal sortuje liczbowo (9 poniżej 10, nie odwrotnie)
+- [ ] „Źródło ceny wykonawcy" rosnąco: automatyczne → własny mnożnik → kwota stała, na obu widokach wykonawcy
+- [ ] „Mnożnik" sortuje liczbowo, a wiersze z „—" lądują na dole w obu kierunkach
+- [ ] Menu etapu sortuje po jego ilości, a zmiana nazwy / usunięcie / rozliczenie / pracownik dalej działają
+- [ ] „Zapisz kolejność" pod sortowaniem etapu zapisuje tę kolejność i przeżywa wyczyszczenie sortowania
+- [ ] Usunięcie sortowanego etapu czyści sortowanie zamiast zamrozić wiersze
+- [ ] Kolumna „netto" etapu sortuje po jego wartości, a „brutto" układa wiersze tak samo
+- [ ] Przy rabacie kwotowym posortowana kolejność zgadza się z kwotami wypisanymi w komórkach
+- [ ] Nagłówek etapu wartościowo dalej zawija nazwę i pokazuje podpowiedź, a przełącznik osi kwot dalej chowa grupę
+- [ ] W podglądzie inwestora nagłówki etapów (i wartości etapów) to zwykłe etykiety, bez menu
