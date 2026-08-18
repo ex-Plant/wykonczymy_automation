@@ -1,10 +1,10 @@
 ---
 change_id: marza-prognoza-rzeczywista
 title: Zakładka „Marża" — prognoza z przedmiaru obok marży rzeczywistej, obie z kosztorysu
-status: implemented
+status: archived
 created: 2026-08-18
 updated: 2026-08-18
-archived_at: null
+archived_at: 2026-08-18T12:18:40Z
 branch: marza-prognoza-rzeczywista
 worktree: null
 ---
