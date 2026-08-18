@@ -56,6 +56,7 @@ import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
+import { marginForecast } from '@/lib/kosztorys/margin-forecast'
 import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
   MEASURE_DIVERGED_CONDITION_ID,
@@ -333,6 +334,17 @@ export function useKosztorysEditor({
   // Computed above the columns because the stage header's reassignment confirm quotes `byStage`,
   // so the panel and the dialog can never cite different amounts for the same etap.
   const subcontractorDue = useMemo(() => subcontractorDueByPlane(rows, stages), [rows, stages])
+
+  // Both scenarios of the „Marża" prognoza, priced up front. The tab's plane toggle is local UI
+  // state, so handing the panel one of them would force the whole row set down there to price the
+  // other. Stage-blind by construction — the przedmiar is what was offered, so no `stages` dep.
+  const marginForecastByPlane = useMemo(
+    () => ({
+      w_tools: marginForecast(rows, 'w_tools'),
+      own_tools: marginForecast(rows, 'own_tools'),
+    }),
+    [rows],
+  )
 
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
@@ -1081,6 +1093,7 @@ export function useKosztorysEditor({
     isSavingSettings,
     investorImpactConfirm,
     subcontractorDue,
+    marginForecastByPlane,
     laborCostsNet,
     // toolbar / panel state
     setView,

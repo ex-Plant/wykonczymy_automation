@@ -506,17 +506,17 @@ figure here.
 
 #### Automated
 
-- [x] 1.1 `margin-forecast.test.ts` passes
-- [x] 1.2 `margin-v2.test.ts` passes
-- [x] 1.3 `calc.test.ts` covers `rowPlannedForView`
-- [x] 1.4 Existing `calculate-margin.test.ts` passes untouched
+- [x] 1.1 `margin-forecast.test.ts` passes — 3d3710cf
+- [x] 1.2 `margin-v2.test.ts` passes — 3d3710cf
+- [x] 1.3 `calc.test.ts` covers `rowPlannedForView` — 3d3710cf
+- [x] 1.4 Existing `calculate-margin.test.ts` passes untouched — 3d3710cf
 
 ### Phase 2: The „Marża" tab
 
 #### Automated
 
-- [ ] 2.1 `summary-panel-content.test.ts` covers the now-visible tab
-- [ ] 2.2 Phase-1 specs still pass
+- [x] 2.1 `allowed-summary-views.test.ts` covers the now-visible tab (the gate was extracted from `summary-panel-content.tsx` to make it testable without a renderer)
+- [x] 2.2 Phase-1 specs still pass
 
 ### Phase 3: The listing fold
 

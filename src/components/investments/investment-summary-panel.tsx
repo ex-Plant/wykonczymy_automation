@@ -7,6 +7,7 @@ import {
 } from '@/lib/queries/whole-investment-financials'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
+import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import { SummaryPanelContent } from '@/components/kosztorys/summary/summary-panel-content'
@@ -57,6 +58,11 @@ export async function InvestmentSummaryPanel({
   const rows = treeToRows(tree)
   const clientTotals = kosztorysClientTotals(rows, tree.stages, tree.globalDiscount)
   const reading = readingFromKosztorys(clientTotals)
+  // The crew side of „Marża rzeczywista". Computed from the tree already in hand rather than fetched
+  // — the listing's SQL fold exists because 1000 investments cannot each ship their rows, which is
+  // not this page's problem. „Prognoza" is deliberately not built here (decision 3): it is read where
+  // the kosztorys is edited.
+  const subcontractorDue = subcontractorDueByPlane(rows, tree.stages)
 
   // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
   // next to the row count it consumed, because that ratio is the argument for aggregating in SQL.
@@ -95,6 +101,7 @@ export async function InvestmentSummaryPanel({
       // No writers passed on purpose: these settings are edited in the kosztorys editor only, so
       // this panel renders no settings trigger at all. That also keeps every write off the one
       // route that renders the transfers table, which a route-wide re-render would rebuild.
+      subcontractorDue={subcontractorDue}
       views={INVESTMENT_PANEL_VIEWS}
       showTransactionLists={false}
       showPies={false}

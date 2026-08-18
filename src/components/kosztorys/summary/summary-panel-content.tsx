@@ -11,6 +11,7 @@ import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
 import { SubcontractorSummary } from '@/components/kosztorys/summary/blocks/subcontractor-summary'
 import { SummaryMarginTab } from '@/components/kosztorys/summary/tabs/summary-margin-tab'
+import { allowedSummaryViews } from '@/components/kosztorys/summary/allowed-summary-views'
 import { SummaryScrollRegion } from '@/components/ui/summary-grid'
 import { SummaryInvestmentSettings } from '@/components/kosztorys/summary/summary-investment-settings'
 import { MATERIALS_GROSS_LOCK_REASON } from '@/components/kosztorys/summary/materials-pricing-options'
@@ -23,7 +24,8 @@ import {
   buildSettlementPlaneVerdict,
   type KosztorysReconciliationT,
 } from '@/lib/kosztorys/reconciliation'
-import type { KosztorysStageT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { MarginForecastT } from '@/lib/kosztorys/margin-forecast'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
 import type { WorkerRefT } from '@/types/reference-data'
 import type {
@@ -116,6 +118,10 @@ type PropsT = {
   totalNet?: number
   // Client-priced, view-invariant per-section subtotals — the section pie's structure source.
   sectionSubtotals?: SectionSliceInputT[]
+  // Both „Marża" scenarios, priced from the przedmiar by whichever host holds the rows. Absent on the
+  // investment page, which renders the actual margin alone (it has no rows to price and no reason to
+  // ship 1000 of them into the RSC payload for a figure read where the kosztorys is).
+  marginForecastByPlane?: Record<ToolPlaneT, MarginForecastT>
   // Company-plane transfer aggregates — feeds the „Marża" tab. Absent only where the reader's ROLE
   // says so (a MANAGER gets no marża); the client share passes it like every other host, and the
   // tab is kept off the client by `preview` below, on the render side where every other client/owner
@@ -158,6 +164,7 @@ export function SummaryPanelContent({
   subcontractorDue,
   totalNet,
   sectionSubtotals,
+  marginForecastByPlane,
   financials,
 }: PropsT) {
   // Which view the panel shows — driven solely by the top toggle, fully independent of the grid's
@@ -176,15 +183,9 @@ export function SummaryPanelContent({
   // This component reads no session on purpose: it also renders under (share), which mounts no
   // CurrentUserProvider — so who may see „Marża" arrives as `preview` plus the presence of
   // `financials`, both decided by the host.
-  const allowedViews = views.filter((value) => {
-    if (value === 'subcontractors') return !preview
-    // TODO(EX-649): „Marża" is hidden until we agree what it measures — the tab sources the
-    // transactions plane while sitting inside the kosztorys panel, which v2 is disconnected from, so
-    // its „Robocizna" row is a different figure from the one edited two tabs over. Un-hiding is
-    // deleting this line; the tab, calculateMargin and the `financials` plumbing are all untouched.
-    // Restore with: return !preview && financials !== undefined
-    if (value === 'margin') return false
-    return true
+  const allowedViews = allowedSummaryViews(views, {
+    preview,
+    hasMarginInputs: financials !== undefined && subcontractorDue !== undefined,
   })
   const viewOptions = SUMMARY_VIEW_OPTIONS.filter((option) => allowedViews.includes(option.value))
   const view: SummaryViewT = allowedViews.includes(summaryView)
@@ -330,11 +331,18 @@ export function SummaryPanelContent({
                 vatRate={vatRate}
               />
             )}
-            {view === 'margin' && financials && (
+            {view === 'margin' && financials && subcontractorDue && (
               <SummaryMarginTab
                 financials={financials}
                 laborCostsNet={laborCostsNet}
                 discountAmount={discountAmount}
+                // `combined`, not one plane: each etap is already valued at the plane it carries,
+                // so the two halves are one bill.
+                subcontractor={{
+                  due: subcontractorDue.combined,
+                  hasUnconfirmedPlane: subcontractorDue.hasUnconfirmedPlane,
+                }}
+                forecastByPlane={marginForecastByPlane}
               />
             )}
           </div>

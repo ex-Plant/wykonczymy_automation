@@ -105,6 +105,7 @@ export function KosztorysEditorBody({
     discountNetFromKosztorys,
     laborCostsNet,
     subcontractorDue,
+    marginForecastByPlane,
     sort,
     search,
     engagedConditionIds,
@@ -362,6 +363,7 @@ export function KosztorysEditorBody({
             stageTotals={stageTotals}
             workers={workers}
             subcontractorDue={subcontractorDue}
+            marginForecastByPlane={marginForecastByPlane}
             totalNet={totalNet}
             laborCostsNet={laborCostsNet}
             sectionSubtotals={progressSubtotals}
