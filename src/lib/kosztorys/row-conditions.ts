@@ -66,6 +66,10 @@ export type RowConditionT = {
 // Every price problem gets all three, „bez ceny j.m." included: the subcontractor stawki derive from
 // the client price, so a pozycja missing that price is missing them too, and the fix is made in the
 // same three cells whichever of the two the reader noticed first.
+// Named once so the pair below cannot be edited apart — „bez rabatu" is „ma rabat" negated, and two
+// hand-written copies of a three-term test are two chances to change only one of them.
+const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && row.discountValue > 0
+
 const PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
 
 // Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
@@ -163,16 +167,14 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     label: 'z rabatem',
     sectionLabel: 'Sekcje z rabatem',
     kind: 'filter',
-    matches: (row) =>
-      !row.globalDiscountActive && row.discountType !== null && row.discountValue > 0,
+    matches: (row) => !row.globalDiscountActive && hasItemDiscount(row),
   },
   {
     id: 'no-discount',
     label: 'bez rabatu',
     sectionLabel: 'Sekcje bez rabatu',
     kind: 'filter',
-    matches: (row) =>
-      !row.globalDiscountActive && !(row.discountType !== null && row.discountValue > 0),
+    matches: (row) => !row.globalDiscountActive && !hasItemDiscount(row),
   },
   // Split per plane for the same reason the price diagnostics are: a pozycja carries a stawka on both
   // planes at once, so one entry asking about „the active view" would answer for half the kosztorys and
@@ -480,17 +482,6 @@ export function columnsRevealedBy(engagedIds: Iterable<string>): ReadonlySet<str
 }
 
 /**
- * The price view a condition is about, or undefined for the ones that are about no view in particular.
- *
- * Picking a problem switches the grid to it, which only became answerable once the „Problemy" list went
- * single-choice: with two engaged there was no such thing as „the" view. Until then the narrowing was
- * half a gesture — the right pozycje, with the wrong plane's prices in the column it had just revealed.
- */
-export function conditionPlane(id: string): ToolPlaneT | undefined {
-  return BY_ID.get(id)?.plane
-}
-
-/**
  * The plane the engaged set is being read on, or undefined when nothing engaged names one. Answerable
  * only because the „Problemy" list is single-choice; the first match wins rather than the set being
  * asserted to hold one, since a stale id from an older registry must not make the grid unreadable.
@@ -514,6 +505,28 @@ export function engagedHiders(engagedIds: ReadonlySet<string>): RowConditionT[] 
   return ROW_CONDITIONS.filter((condition) => isHider(condition) && engagedIds.has(condition.id))
 }
 
+/**
+ * Whether the folds have to stand down for now — the reader is narrowing, and a fold left over from
+ * before would hide the very pozycje the narrowing was asked to find, behind a band that gives no
+ * hint they are there.
+ *
+ * Both of the reader's narrowings count, because both fail the same way: a hit inside a folded sekcja
+ * is a hit the user is told does not exist.
+ *
+ * Two hiders are left out on purpose. A diagnostic comes with its own count on its own trigger, so
+ * the reader is checking off a number they were given rather than hunting for a pozycja they believe
+ * is in there. And the client's own hider is not a gesture at all — it is the owner's stored setting
+ * on the shared document, on for the client's whole visit, so counting it would stand the folds down
+ * permanently and leave the client clicking a band that never moves.
+ */
+export function isFoldSuppressed(search: string, engagedIds: ReadonlySet<string>): boolean {
+  if (search.trim() !== '') return true
+  // Walks the engaged ids (0–2 of them), not the registry — the question is about what the reader
+  // switched on, and asking it the other way round grows with every condition ever added.
+  for (const id of engagedIds) if (BY_ID.get(id)?.kind === 'filter') return true
+  return false
+}
+
 // Counts run over the full dataset, never over what survived the filter — a count of the survivors
 // would be a count of itself and could never reach zero to say the problem is gone.
 export function countMatching(
@@ -532,6 +545,17 @@ export function countMatching(
  *
  * A section with no rows cannot qualify vacuously; it simply never appears in `rows`.
  */
+/**
+ * The conditions the „Sekcje …" half of the „Filtry" menu offers, and so exactly the ones worth
+ * computing a `sectionIdsWhereAllMatch` set for. `sectionLabel === null` is the registry entry saying
+ * „this one does not lift" — a diagnostic never lifts either, since it keeps rows rather than hiding
+ * them and a section-wide keep is not a fold.
+ */
+export const liftsToSections = (
+  condition: RowConditionT,
+): condition is RowConditionT & { sectionLabel: string } =>
+  condition.kind === 'filter' && condition.sectionLabel !== null
+
 export function sectionIdsWhereAllMatch(
   rows: KosztorysV2RowT[],
   conditionId: string,

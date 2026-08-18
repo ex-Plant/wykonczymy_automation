@@ -13,14 +13,12 @@ type FilterChipPropsT = {
 }
 
 /**
- * A named thing with a way to take it off — one active filter, one collapsed-sections group, one
- * search phrase.
- *
  * Only the X removes, never the chip body: a chip sits next to text people read and lean on to read
  * it, and a whole-chip click target turns „which filter was that again" into an accidental undo.
  *
- * Sized off the `badge` scale so it reads as a peer of the pills already on screen rather than a
- * second, larger vocabulary of rounded things.
+ * Fully rounded and at badge type size so it reads as a peer of the pills already on screen rather
+ * than a second, larger vocabulary of rounded things. Not built on `BADGE_BASE`: that one is
+ * `rounded-md` with symmetric padding and leaves no room for an inline X.
  */
 export function FilterChip({ label, onRemove, count, removeLabel, className }: FilterChipPropsT) {
   return (

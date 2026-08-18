@@ -1306,3 +1306,6 @@ Zalogowany jako OWNER.
 - [ ] Para rabatowa znika z menu po włączeniu rabatu globalnego, a pozycja z rabatem 0 zł liczy się jako „bez rabatu"
 - [ ] Pary o stawce wykonawcy widać tylko na widoku, którego dotyczą; przełączenie osi cen **nie** zabiera już włączonego filtra z menu ani z paska
 - [ ] „Sekcje z rabatem" / „bez rabatu" zwijają sekcje, a pary o stawce i komentarzu nie mają w tej liście własnego wiersza
+- [ ] Pojawienie się paska spycha siatkę w dół — nie przelicza jej wysokości, więc ostatni wiersz może wymagać przewinięcia (świadoma decyzja, nie usterka)
+- [ ] Przycisk „Kolumny” pokazuje licznik ukrytych kolumn; kolumna wyciągnięta na wierzch przez włączony problem **nie** jest w nim liczona
+- [ ] Na linku dla inwestora sekcje zwinięte przed udostępnieniem przychodzą zwinięte — strzałka na belce działa i zgadza się z tym, co widać

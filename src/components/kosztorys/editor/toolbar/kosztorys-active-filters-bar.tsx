@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { FilterChip } from '@/components/ui/filter-chip'
+import { FilterChip } from '@/components/filters/filter-chip'
 import {
   activeFiltersModel,
   type ActiveFilterChipT,
@@ -11,11 +11,6 @@ import { PROBLEM_IDS } from '@/lib/kosztorys/problem-conditions'
 
 /**
  * What is hiding pozycje right now, on screen, each removable in one click.
- *
- * Before this the four sources — szukaj, „Filtry", „Problemy", zwinięte sekcje — were legible only
- * from inside the menu that set them, and only one at a time. A grid short for two reasons therefore
- * read as a grid short for whichever reason the reader happened to open, and the way back out was
- * three menus deep.
  *
  * Absent when nothing is engaged, not rendered empty: a permanent strip is a line of chrome the eye
  * learns to skip, and its whole job is to be noticed the moment something is on.
@@ -71,7 +66,7 @@ export function KosztorysActiveFiltersBar() {
           key={chip.id}
           label={chip.label}
           count={chip.count}
-          removeLabel={`Usuń: ${chip.label}`}
+          removeLabel={chip.removeLabel}
           onRemove={() => remove(chip)}
         />
       ))}

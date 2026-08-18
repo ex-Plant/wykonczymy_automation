@@ -89,6 +89,7 @@ export function KosztorysViewMenu() {
     layer,
     setLayer,
     columnToggleItems,
+    revealedColumnIds,
     toggleColumn,
     setAllColumns,
     columnRanks,
@@ -104,8 +105,11 @@ export function KosztorysViewMenu() {
   const allColumnsVisible = columnToggleItems.every((item) => item.visible)
   // A hidden column is the one piece of „co widzę" that leaves no trace on the grid — a filter at
   // least shortens it, while a column that is gone looks exactly like a column that never existed.
-  // The number on the trigger is what says otherwise, the same way „Filtry (n)" does.
-  const hiddenColumnCount = columnToggleItems.filter((item) => !item.visible).length
+  // A column an engaged problem reveals is on screen whatever its tick says, so it is not hidden and
+  // must not be counted: the number has to answer „czego nie widzę", not „co odznaczyłem".
+  const hiddenColumnCount = columnToggleItems.filter(
+    (item) => !item.visible && !revealedColumnIds.has(item.id),
+  ).length
   const showColumnSearch = columnToggleItems.length > COLUMN_SEARCH_THRESHOLD
 
   return (

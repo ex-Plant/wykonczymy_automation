@@ -22,7 +22,7 @@ import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/c
 import { sectionBandLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
 import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
-import { buildSectionBandRows, isFoldSuppressed } from '@/lib/kosztorys/section-band-rows'
+import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
 import { engagedConditionsOfKind, engagedHiders, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
   isSectionFooterRow,
@@ -160,26 +160,22 @@ export function KosztorysEditorBody({
       ),
     [columns, columnTotals, sectionHeader, sectionFooter],
   )
-  // Anything currently removing pozycje outright — the unticked „Filtry", the client's own „ukryj
-  // puste pozycje".
   const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
   const bodyRows = useMemo(
     () =>
       buildSectionBandRows(viewRows, {
         enabled: sort?.scope !== 'global',
         collapsedSectionIds,
-        foldSuppressed: isFoldSuppressed(search, engagedConditionIds),
         sections: sectionRows,
       }),
-    [viewRows, collapsedSectionIds, sort, search, engagedConditionIds, sectionRows],
+    [viewRows, collapsedSectionIds, sort, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
   // The client's own hider counts here too: with „ukryj puste pozycje" on and every pozycja empty,
-  // the client would otherwise get a grid with nothing in it and no word about why — which is why
-  // `emptyByFilter` above is asked of every hider, not just the owner's.
+  // the client would otherwise get a grid with nothing in it and no word about why.
   const engagedDiagnostics = engagedConditionsOfKind(engagedConditionIds, 'diagnostic')
   // One decision, not two: the title and the description always come from the same branch, so
   // splitting them into parallel ternaries only invites the two to drift apart.

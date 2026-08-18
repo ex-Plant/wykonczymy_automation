@@ -5,7 +5,7 @@ import { useEngagedConditions } from '@/components/kosztorys/editor/hooks/use-en
 import { usePriceView } from '@/components/kosztorys/editor/hooks/use-price-view'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
-import { clientConditionIds, engagedPlane } from '@/lib/kosztorys/row-conditions'
+import { clientConditionIds, engagedPlane, isFoldSuppressed } from '@/lib/kosztorys/row-conditions'
 import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
 
 type ArgsT = {
@@ -17,6 +17,8 @@ type ArgsT = {
 
 // How the grid is being read — plane, search, sort, folds, the resize guide. Depends on nothing in
 // the data plane: no rows, no stages, no actions.
+const EMPTY_COLLAPSED: ReadonlySet<number> = new Set()
+
 export function useKosztorysViewState({ investmentId, preview, clientView }: ArgsT) {
   const [persistedView, setView] = usePriceView(investmentId)
   // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
@@ -56,9 +58,19 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   // filtering the rows away, so a hidden section still announces itself and its total). Deliberately
   // NOT persisted: a fold is a reading gesture for the current session, and a remembered one would
   // greet the next visit with rows the user can't see and doesn't remember hiding.
-  const [collapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
+  const [storedCollapsedSectionIds, setCollapsedSectionIds] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
+  // Suppressed folds fold nothing, so what the grid and its controls answer to is this set, not the
+  // stored one — a consumer reading the stored set while a narrowing is on says „zwinięte" over a
+  // section whose rows are all on screen. It therefore takes the plain name and the stored set takes
+  // the qualified one: a new consumer that reaches for the obvious identifier gets the safe answer.
+  // `storedCollapsedSectionIds` has exactly one legitimate reader — the „Widoczne sekcje" ticks,
+  // which EDIT the selection and so must show what will apply once the narrowing comes off.
+  const collapsedSectionIds = isFoldSuppressed(search, engagedConditionIds)
+    ? EMPTY_COLLAPSED
+    : storedCollapsedSectionIds
+
   // During a column resize we only show a vertical guide (guideX = cursor X), without touching the
   // grid — a re-layout per pointermove would be a re-render per pixel.
   const [guideX, setGuideX] = useState<number | null>(null)
@@ -80,8 +92,7 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
 
   // „Zresetuj filtry" is one button wherever it appears, so it undoes everything that hides pozycje:
   // the conditions, the folds and the search phrase alike. Two half-resets would leave the user
-  // clicking one and still facing a short grid — which is exactly what search did until the chip bar
-  // put it on the same line as the rest and made the omission visible.
+  // clicking one and still facing a short grid.
   //
   // Sort is deliberately untouched: it reorders pozycje, it never removes one, so clearing it would
   // undo something the button doesn't claim to.
@@ -127,6 +138,7 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
     setSort,
     setSortField,
     collapsedSectionIds,
+    storedCollapsedSectionIds,
     setCollapsedSectionIds,
     toggleSectionCollapsed,
     unfoldSection,

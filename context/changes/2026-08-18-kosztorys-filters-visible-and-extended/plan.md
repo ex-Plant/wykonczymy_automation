@@ -341,6 +341,21 @@ this is on the order of a few thousand extra predicate calls per edit; negligibl
 already there, and the guard removes more work than the new entries add for the four
 non-folding conditions.
 
+## Deviations from the plan (recorded at the review gate)
+
+Three of Phase 2's contracts were overridden by owner decisions during implementation; the phase
+blocks above still describe the planned shape, so read them against this list.
+
+1. **The bar wraps, it does not scroll.** The plan specified one line with `overflow-x-auto`. Owner's
+   call: chips beyond the first line must stay readable, so the bar wraps and grows downward.
+2. **The grid does not re-measure when the bar appears.** The plan promised the grid's bottom edge
+   stays at the window bottom. Dropped by owner decision — the height hook measures on mount and
+   window resize only (no ResizeObserver, see `context/foundation/lessons.md`), and reintroducing one
+   here is the flicker that lesson is about. The bar pushes the grid down by its own height instead.
+3. **A hidden-columns counter was added to the „Kolumny" trigger** — not in the plan. Same question as
+   the chip bar („co jest przede mną ukryte"), and a hidden column is the one narrowing that leaves no
+   trace on the grid at all.
+
 ## Whole-tree Gate
 
 Run once, after Phase 2.
@@ -373,5 +388,5 @@ Run once, after Phase 2.
 
 #### Automated
 
-- [x] 2.1 `active-filters-model.test.ts` — every source represented, sections aggregated, client conditions excluded
-- [x] 2.2 Fold suppression under an engaged hider covered by a spec
+- [x] 2.1 `active-filters-model.test.ts` — every source represented, sections aggregated, client conditions excluded — cc2eb594
+- [x] 2.2 Fold suppression under an engaged hider covered by a spec — 76ed97d9

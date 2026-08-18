@@ -6,15 +6,9 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
 import {
   DISCOUNT_CONDITION_IDS,
+  liftsToSections,
   ROW_CONDITIONS,
-  type RowConditionT,
 } from '@/lib/kosztorys/row-conditions'
-
-// Narrows `sectionLabel` to a string so the row below can interpolate it — the conditions that do not
-// lift to sekcje are the same ones `foldableSectionIds` skips computing a set for.
-const hasSectionLabel = (
-  condition: RowConditionT,
-): condition is RowConditionT & { sectionLabel: string } => condition.sectionLabel !== null
 
 // One menu for „co widzę", at three granularities that all read the same way: a tick means the thing
 // is on screen, unticking it takes it away. Pozycje are hidden outright; sekcje fold under their band
@@ -31,6 +25,7 @@ export function KosztorysFiltersMenu() {
   const {
     subtotals,
     collapsedSectionIds,
+    storedCollapsedSectionIds,
     setCollapsedSectionIds,
     foldableSectionIds,
     engagedConditionIds,
@@ -39,12 +34,13 @@ export function KosztorysFiltersMenu() {
     conditionCounts,
     view,
     globalDiscount,
+    search,
   } = useKosztorysEditorContext()
 
   const options = subtotals.map((s) => ({ value: String(s.sectionId), label: s.sectionName }))
 
   const expanded = subtotals
-    .filter((s) => !collapsedSectionIds.has(s.sectionId))
+    .filter((s) => !storedCollapsedSectionIds.has(s.sectionId))
     .map((s) => String(s.sectionId))
 
   const values = expanded.length === 0 ? [FILTER_NONE] : expanded
@@ -96,7 +92,7 @@ export function KosztorysFiltersMenu() {
   // Folds by unticking sections rather than filtering on top of them: the checkmarks below stay the
   // only description of what the grid shows, so this row and the list can never disagree. Both its
   // tick and its click read the LIVE selection, so re-expanding one section by hand unticks the group.
-  const sectionToggles = filters.filter(hasSectionLabel).map((condition) => {
+  const sectionToggles = filters.filter(liftsToSections).map((condition) => {
     const sectionIds = foldableSectionIds.get(condition.id) ?? new Set<number>()
     // With nothing in that state the row has nothing to report, so it stays unticked rather than
     // claiming „wszystkie widoczne" vacuously.
@@ -130,7 +126,8 @@ export function KosztorysFiltersMenu() {
         // The same reset the empty state offers — one way back to „pokaż wszystko", not a second one
         // that happens to undo a different half.
         onReset: resetFilters,
-        disabled: engagedConditionIds.size === 0 && collapsedSectionIds.size === 0,
+        disabled:
+          engagedConditionIds.size === 0 && collapsedSectionIds.size === 0 && search.trim() === '',
       }}
       bulkToggleLabel="Zwiń wszystkie sekcje"
       toggles={workToggles}

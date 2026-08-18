@@ -12,6 +12,9 @@ export type ActiveFilterChipT = {
   // Across the whole kosztorys, never over the survivors — a chip whose number counted what its own
   // filter left standing would move every time anything else was ticked.
   count?: number
+  // What the X undoes, in the imperative — built from the bare name rather than from `label`, whose
+  // „Ukryto:" / „Tylko:" prefix would read back as „Usuń: Ukryto: …".
+  removeLabel: string
   removal: ChipRemovalT
 }
 
@@ -55,6 +58,7 @@ export function activeFiltersModel({
     chips.push({
       id: condition.id,
       label: `Ukryto: pozycje ${condition.label}`,
+      removeLabel: `Pokaż z powrotem pozycje ${condition.label}`,
       count: counts.get(condition.id) ?? 0,
       removal: 'condition',
     })
@@ -69,6 +73,7 @@ export function activeFiltersModel({
     chips.push({
       id: problem.id,
       label: `Tylko: ${problem.noun.toLowerCase()} ${problem.label}`,
+      removeLabel: `Przestań pokazywać tylko ${problem.noun.toLowerCase()} ${problem.label}`,
       count: counts.get(problem.id) ?? 0,
       removal: 'problem',
     })
@@ -81,6 +86,7 @@ export function activeFiltersModel({
     chips.push({
       id: 'collapsed-sections',
       label: 'Zwinięte sekcje',
+      removeLabel: 'Rozwiń wszystkie sekcje',
       count: collapsedSectionCount,
       removal: 'sections',
     })
@@ -89,7 +95,12 @@ export function activeFiltersModel({
   // No count: the search runs over the rows as they are typed and matches whatever it matches, so
   // there is no whole-dataset figure to put here that would not be a count of the survivors.
   if (search.trim() !== '') {
-    chips.push({ id: 'search', label: `Szukaj: „${search}"`, removal: 'search' })
+    chips.push({
+      id: 'search',
+      label: `Szukaj: „${search}"`,
+      removeLabel: 'Wyczyść wyszukiwanie',
+      removal: 'search',
+    })
   }
 
   return chips

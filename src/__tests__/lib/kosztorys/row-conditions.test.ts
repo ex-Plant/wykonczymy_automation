@@ -5,9 +5,9 @@ import {
   applyRowConditions,
   clientConditionIds,
   columnsRevealedBy,
-  conditionPlane,
   engagedPlane,
   engagedConditionsOfKind,
+  isFoldSuppressed,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
@@ -320,8 +320,8 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
   })
 
   it('sends each half to the plane it judges, and reveals the cells that repair it', () => {
-    expect(conditionPlane('material-percent-rate-w-tools')).toBe('w_tools')
-    expect(conditionPlane('material-percent-rate-own-tools')).toBe('own_tools')
+    expect(engagedPlane(['material-percent-rate-w-tools'])).toBe('w_tools')
+    expect(engagedPlane(['material-percent-rate-own-tools'])).toBe('own_tools')
     expect([...columnsRevealedBy(['material-percent-rate-w-tools'])].sort()).toEqual([
       'price',
       'priceCoeff',
@@ -501,23 +501,6 @@ describe('columnsRevealedBy', () => {
   })
 })
 
-// What the „Problemy" pick switches the grid to. Only meaningful because the list is single-choice —
-// with two engaged there is no „the" view to switch to.
-describe('conditionPlane', () => {
-  it('sends each stawka problem to the plane it judges', () => {
-    expect(conditionPlane('overpriced-w-tools')).toBe('w_tools')
-    expect(conditionPlane('no-own-tools-price')).toBe('own_tools')
-  })
-
-  // Owner: cena j.m. is typed in the Inwestor view but the cells that repair it assemble in the
-  // subcontractor ones, so there is no single view this problem is fixed in — it moves nobody.
-  it('leaves the view alone for a problem about no plane in particular', () => {
-    expect(conditionPlane('no-client-price')).toBeUndefined()
-    expect(conditionPlane('measure-diverged')).toBeUndefined()
-    expect(conditionPlane('nie-ma-takiego')).toBeUndefined()
-  })
-})
-
 // The engaged set is what SURVIVES a reload, so the plane has to be readable from it. Remembered
 // separately it was lost on refresh, and the narrowing came back judged on a view the grid was no
 // longer showing.
@@ -541,5 +524,36 @@ describe('engagedPlane', () => {
   // A stale id from an older registry must not make the grid unreadable — it is skipped, not fatal.
   it('skips an id it does not recognise', () => {
     expect(engagedPlane(['nie-ma-takiego', 'overpriced-w-tools'])).toBe('w_tools')
+  })
+})
+
+describe('isFoldSuppressed', () => {
+  const NOTHING = new Set<string>()
+
+  it('leaves the folds standing while the reader is not narrowing', () => {
+    expect(isFoldSuppressed('', NOTHING)).toBe(false)
+    expect(isFoldSuppressed('   ', NOTHING)).toBe(false)
+  })
+
+  it('stands the folds down under a search phrase', () => {
+    expect(isFoldSuppressed('gładź', NOTHING)).toBe(true)
+  })
+
+  // The rule the archived instalment recorded and only search actually kept: a hit inside a folded
+  // sekcja is a hit the user is told does not exist, and an unticked filter buries one exactly like a
+  // search does.
+  it('stands them down under an engaged filter too', () => {
+    expect(isFoldSuppressed('', new Set(['no-planned-qty']))).toBe(true)
+  })
+
+  // The client's hider is engaged by the investment's stored share settings, not by a reading
+  // gesture — and it defaults on. Suppressing folds for it would mean no shared kosztorys could ever
+  // arrive folded, which is the whole point of the owner folding sekcje before sharing.
+  it('leaves the folds standing under the client‘s own hider, which is a stored setting', () => {
+    expect(isFoldSuppressed('', new Set(['client-empty']))).toBe(false)
+  })
+
+  it('leaves them alone under a problem, which reports its own count instead', () => {
+    expect(isFoldSuppressed('', new Set(['no-client-price']))).toBe(false)
   })
 })

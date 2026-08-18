@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   baseOrdinals,
   buildSectionBandRows,
-  isFoldSuppressed,
   sectionRepresentatives,
 } from '@/lib/kosztorys/section-band-rows'
 import {
@@ -29,10 +28,9 @@ function row(id: number, sectionId: number): KosztorysV2RowT {
 const VIEW_ROWS = [row(1, 10), row(2, 10), row(3, 10), row(4, 20), row(5, 20)]
 
 // The section list always comes off the FULL dataset, whatever subset the view is showing.
-const enabled = (collapsed: number[] = [], foldSuppressed = false) => ({
+const enabled = (collapsed: number[] = []) => ({
   collapsedSectionIds: new Set(collapsed),
   enabled: true,
-  foldSuppressed,
   sections: sectionRepresentatives(VIEW_ROWS),
 })
 
@@ -108,22 +106,6 @@ describe('buildSectionBandRows', () => {
     expect(buildSectionBandRows([], enabled())).toEqual([])
   })
 
-  it('ignores a collapsed section while a row filter is active', () => {
-    const rows = buildSectionBandRows(VIEW_ROWS, enabled([10], true))
-
-    expect(rows.map((r) => r.id)).toEqual([
-      sectionHeaderRowId(10),
-      1,
-      2,
-      3,
-      sectionFooterRowId(10),
-      sectionHeaderRowId(20),
-      4,
-      5,
-      sectionFooterRowId(20),
-    ])
-  })
-
   // Bands come from the section list, so rows arriving out of order are regrouped rather than
   // emitting a second band pair (a duplicate key for dsg's virtualizer) or spilling outside a band.
   it('gathers a section arriving in two blocks under one band pair', () => {
@@ -151,7 +133,6 @@ describe('buildSectionBandRows', () => {
       // Even a collapsed section stays visible: with no band there would be nothing to re-expand it.
       collapsedSectionIds: new Set([10]),
       enabled: false,
-      foldSuppressed: false,
       sections: sectionRepresentatives(VIEW_ROWS),
     })
 
@@ -187,33 +168,5 @@ describe('sectionRepresentatives', () => {
     const reps = sectionRepresentatives([row(4, 20), row(1, 10), row(5, 20)])
 
     expect(reps.map((r) => r.id)).toEqual([4, 1])
-  })
-})
-
-describe('isFoldSuppressed', () => {
-  const NOTHING = new Set<string>()
-
-  it('leaves the folds standing while the reader is not narrowing', () => {
-    expect(isFoldSuppressed('', NOTHING)).toBe(false)
-    expect(isFoldSuppressed('   ', NOTHING)).toBe(false)
-  })
-
-  it('stands the folds down under a search phrase', () => {
-    expect(isFoldSuppressed('gładź', NOTHING)).toBe(true)
-  })
-
-  // The rule the archived instalment recorded and only search actually kept: a hit inside a folded
-  // sekcja is a hit the user is told does not exist, and an unticked filter buries one exactly like a
-  // search does.
-  it('stands them down under an engaged filter too', () => {
-    expect(isFoldSuppressed('', new Set(['no-planned-qty']))).toBe(true)
-  })
-
-  it('stands them down for the client‘s own hider, so a shared kosztorys folds the same way', () => {
-    expect(isFoldSuppressed('', new Set(['client-empty']))).toBe(true)
-  })
-
-  it('leaves them alone under a problem, which reports its own count instead', () => {
-    expect(isFoldSuppressed('', new Set(['no-client-price']))).toBe(false)
   })
 })
