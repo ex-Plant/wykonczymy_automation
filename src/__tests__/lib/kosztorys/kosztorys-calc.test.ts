@@ -7,6 +7,7 @@ import {
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
+  rowPlannedNetPreDiscountForView,
   stageValueForView,
   type PriceViewT,
 } from '@/lib/kosztorys/calc'
@@ -191,6 +192,51 @@ describe('rowPlannedNetForView', () => {
   it('rabat kwotowy wchodzi w wartość przedmiaru', () => {
     const discounted = { ...planned12, discountType: 'amount' as const, discountValue: 30 }
     expect(rowPlannedNetForView(discounted, 'client')).toBe(210) // 240 − 30
+  })
+})
+
+// Bliźniak wartości przedmiaru bez rabatu — podstawa prognozy marży (EX-649). Te dwie figury różnią
+// się WYŁĄCZNIE rabatem, i to w widoku inwestora; każdy przypadek poniżej rozstrzyga którą z nich
+// czyta wołający.
+describe('rowPlannedNetPreDiscountForView', () => {
+  const planned12 = { ...item, plannedQty: 12 }
+
+  it('bez rabatu zgadza się z wartością przedmiaru w każdym widoku', () => {
+    for (const view of ['client', 'w_tools', 'own_tools'] as PriceViewT[]) {
+      expect(rowPlannedNetPreDiscountForView(planned12, view)).toBe(
+        rowPlannedNetForView(planned12, view),
+      )
+    }
+  })
+
+  it('rabat procentowy nie schodzi z ceny inwestora', () => {
+    const discounted = { ...planned12, discountType: 'percent' as const, discountValue: 10 }
+    expect(rowPlannedNetPreDiscountForView(discounted, 'client')).toBe(240)
+    expect(rowPlannedNetForView(discounted, 'client')).toBe(216)
+  })
+
+  it('rabat kwotowy nie schodzi z ceny inwestora', () => {
+    const discounted = { ...planned12, discountType: 'amount' as const, discountValue: 30 }
+    expect(rowPlannedNetPreDiscountForView(discounted, 'client')).toBe(240)
+    expect(rowPlannedNetForView(discounted, 'client')).toBe(210)
+  })
+
+  // Rabat i tak nigdy nie sięga podwykonawcy, więc na obu planach obie figury muszą siedzieć
+  // równo — inaczej prognoza obcinałaby jedną stronę i nie drugą.
+  it('na planach podwykonawcy rabat nie robi różnicy', () => {
+    const discounted = { ...planned12, discountType: 'percent' as const, discountValue: 10 }
+    expect(rowPlannedNetPreDiscountForView(discounted, 'w_tools')).toBe(144)
+    expect(rowPlannedNetPreDiscountForView(discounted, 'own_tools')).toBe(120)
+  })
+
+  it('rabat globalny też nie schodzi', () => {
+    const global = { ...planned12, globalDiscountActive: true }
+    expect(rowPlannedNetPreDiscountForView(global, 'client')).toBe(240)
+  })
+
+  it('przedmiar 0 to 0, nie ujemna kwota rabatu', () => {
+    const empty = { ...item, plannedQty: 0, discountType: 'amount' as const, discountValue: 30 }
+    expect(rowPlannedNetPreDiscountForView(empty, 'client')).toBe(0)
   })
 })
 

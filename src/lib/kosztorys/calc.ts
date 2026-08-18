@@ -115,6 +115,22 @@ export function rowPlannedNetForView(row: ViewPricingT, view: PriceViewT): numbe
 }
 
 /**
+ * The przedmiar at the view's price, PRE-rabat — the forecast's basis (EX-649).
+ *
+ * Sits beside rowPlannedNetForView rather than reusing it because the two differ by exactly the
+ * rabat, and the forecast must not carry one: a rabat is not granted up front (owner, 2026-08-18),
+ * so a prognoza is the przedmiar at full price. Routing the forecast through the offer figure would
+ * discount only its client half — the rabat never reaches a subcontractor plane — and inflate the
+ * forecast margin by the whole rabat.
+ *
+ * On either subcontractor plane the two agree by construction; the client view is the only place
+ * the choice between them is observable.
+ */
+export function rowPlannedNetPreDiscountForView(row: ViewPricingT, view: PriceViewT): number {
+  return row.plannedQty > 0 ? row.plannedQty * viewPrice(row, view) : 0
+}
+
+/**
  * Discount actually taken off the row, in PLN at the view's price. Derived rather than read from
  * discountValue, which is only the raw input: under 'percent' it holds percentage points, and under
  * either type it says nothing until it meets a price — which changes per view.
