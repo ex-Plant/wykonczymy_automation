@@ -45,9 +45,11 @@ Decisions taken in brainstorming (2026-08-18):
 - Daily cron `0 6 * * *` → `/api/cron/fleet-reminders`, shaped after `leads-reconcile`.
   Thresholds 30 / 7 / 1 days plus overdue, deduplicated via `notifiedThreshold` +
   `notifiedAt` on the inspection row; overdue re-nags every 7 days.
-- **One digest email per day** to `FLEET_NOTIFY_EMAIL` (env, mirroring
-  `LEADS_NOTIFY_EMAIL`), sectioned overdue / ≤7 days / ≤30 days — never one mail per
-  event.
+- **One digest email per day**, sectioned overdue / ≤7 days / ≤30 days — never one mail per
+  event. It goes to **two** recipients in one send (owner, 2026-08-18):
+  `FLEET_NOTIFICATION_EMAIL` (`bartek@`, the same inbox as leads) and `ADMIN_EMAIL` (`admin@`).
+  Both are env vars, mirroring `LEADS_NOTIFY_EMAIL`, so adding an app account never silently
+  subscribes someone to fleet mail.
 - Known hole, addressed deliberately: a vehicle with no event of a given type has no
   deadline and is invisible to the cron. Covered by a weekly "brak danych" section in the
   digest.

@@ -28,6 +28,11 @@ export const serverSchema = z.object({
   LEADS_NOTIFY_EMAIL: z.string().min(1),
   LEADS_ALERT_EMAIL: z.string().min(1),
   LEADS_REPLY_FROM: z.string().min(1),
+  // Fleet reminder digest recipient (EX-711). Points at the same inbox as
+  // LEADS_NOTIFY_EMAIL until the owner wants the two split.
+  FLEET_NOTIFICATION_EMAIL: z.string().min(1),
+  // Second recipient on every internal notification — the company admin inbox.
+  ADMIN_EMAIL: z.string().min(1),
   // Google (Sheets + Drive for kosztorys integration)
   GOOGLE_SERVICE_ACCOUNT_JSON: z
     .string()

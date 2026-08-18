@@ -37,7 +37,7 @@ Nothing fleet-related exists. What exists and will be reused:
 `/flota` lists every company car, one row each, with five deadline columns coloured by urgency.
 Opening a car shows its full inspection history and a button to record a new one. Recording an
 inspection is one short form; the "next due" date is prefilled from the type's interval and
-overwritable. Every morning a single email lands at `FLEET_NOTIFY_EMAIL` listing only what actually
+overwritable. Every morning a single email lands at `FLEET_NOTIFICATION_EMAIL` listing only what actually
 needs attention — nothing on a quiet day. A nav badge marks unseen fleet alerts.
 
 Verify by: seeding two vehicles with inspections at varying distances from today, running the cron
@@ -184,8 +184,13 @@ machinery, not data anyone edits. Access on both: read/create/update `isAdminOrO
 
 **Intent**: The digest recipient, validated like every other secret.
 
-**Contract**: `FLEET_NOTIFY_EMAIL: z.string().email()` on the **server** schema, mirroring
-`LEADS_NOTIFY_EMAIL`. Add it to `.env` locally; it is owed on Vercel before the cron ships.
+**Contract**: `FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL` as `z.string().min(1)` on the **server** schema,
+mirroring `LEADS_NOTIFY_EMAIL`.
+
+**Done up front (2026-08-18)**: both are in `.env` and on Vercel (Production + Preview, matching where
+`LEADS_NOTIFY_EMAIL` lives — Development has neither). `FLEET_NOTIFICATION_EMAIL` points at
+`bartek@wykonczymy.com.pl`, the same inbox as leads, until the owner wants the two split;
+`ADMIN_EMAIL` is `admin@wykonczymy.com.pl`. The digest goes to **both** — see Phase 4.
 
 ### Success Criteria
 
@@ -402,8 +407,9 @@ its deadline as announced, or the deadline goes silent for a week.
 of registration, type label, due date, and days remaining; the kilometre-triggered oil rows carry
 their own line explaining the reading they were judged against, since an alarm the reader can't
 account for reads as a bug. The Monday-only "brak danych" section comes last. Every interpolated value
-passes through `escapeHtml`. Recipient is `serverEnv.FLEET_NOTIFY_EMAIL`. Empty digest → the caller
-does not send at all.
+passes through `escapeHtml`. Recipients are **both** `serverEnv.FLEET_NOTIFICATION_EMAIL` and
+`serverEnv.ADMIN_EMAIL`, as one message with two addresses in `to` — not two sends, so the dedupe
+stamp still describes one delivery. Empty digest → the caller does not send at all.
 
 #### 3. Cron route
 
