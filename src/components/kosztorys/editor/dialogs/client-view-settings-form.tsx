@@ -8,7 +8,9 @@ import { CLIENT_VIEW_GROUPS, COLUMN_LABELS } from '@/lib/kosztorys/column-config
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 
 type PropsT = {
-  value: ClientViewSettingsT
+  // `null` while the caller's read is in flight — the placeholder is rendered here so both dialogs
+  // don't each carry the same branch.
+  value: ClientViewSettingsT | null
   onChange: (value: ClientViewSettingsT) => void
   disabled?: boolean
 }
@@ -48,6 +50,7 @@ function CheckboxRow({
 export function ClientViewSettingsForm({ value, onChange, disabled }: PropsT) {
   const { conditionCounts } = useKosztorysEditorContext()
   const emptyCount = conditionCounts.get('client-empty') ?? 0
+  if (!value) return <p className="text-muted-foreground text-sm">Wczytywanie…</p>
   const hidden = new Set(value.hiddenColumns)
 
   const toggleColumn = (key: string, visible: boolean) => {

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
+import { useDraft } from '@/hooks/use-draft'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
@@ -30,12 +31,7 @@ export function KosztorysClientViewDialog({
   settings,
   onSaved,
 }: PropsT) {
-  const [draft, setDraft] = useState<ClientViewSettingsT | null>(settings)
-  const [propsSettings, setPropsSettings] = useState(settings)
-  if (propsSettings !== settings) {
-    setPropsSettings(settings)
-    setDraft(settings)
-  }
+  const [draft, setDraft] = useDraft(settings)
   const [pending, startTransition] = useTransition()
 
   const save = (asDefaults: boolean) =>
@@ -74,11 +70,7 @@ export function KosztorysClientViewDialog({
           // while the podsumowanie below it keeps its own client projection.
           description="Zaznacz, które kolumny i pozycje inwestor widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
         />
-        {!draft ? (
-          <p className="text-muted-foreground text-sm">Wczytywanie…</p>
-        ) : (
-          <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
-        )}
+        <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
         <DialogFooter>
           <Button
             variant="outline"

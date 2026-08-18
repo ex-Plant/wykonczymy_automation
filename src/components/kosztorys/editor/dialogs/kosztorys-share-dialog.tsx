@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useDraft } from '@/hooks/use-draft'
 import { ArrowLeft, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,16 +54,11 @@ export function KosztorysShareDialog({
   // nobody hands out a link without having just looked at what it discloses, which a first-run-only
   // wizard would give up after the first share.
   const [step, setStep] = useState<'settings' | 'link'>('settings')
-  const [draft, setDraft] = useState<ClientViewSettingsT | null>(settings)
+  const [draft, setDraft] = useDraft(settings)
   const [wasOpen, setWasOpen] = useState(open)
   if (wasOpen !== open) {
     setWasOpen(open)
     if (open) setStep('settings')
-  }
-  const [propsSettings, setPropsSettings] = useState(settings)
-  if (propsSettings !== settings) {
-    setPropsSettings(settings)
-    setDraft(settings)
   }
 
   const url = token ? `${FRONTEND_URL}/k/${token}` : ''
@@ -120,11 +116,7 @@ export function KosztorysShareDialog({
           />
           {step === 'settings' ? (
             <>
-              {!draft ? (
-                <p className="text-muted-foreground text-sm">Wczytywanie…</p>
-              ) : (
-                <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
-              )}
+              <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
               <DialogFooter>
                 <Button size="sm" disabled={!draft || pending} onClick={saveAndContinue}>
                   Dalej
