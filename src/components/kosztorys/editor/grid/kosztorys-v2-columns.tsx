@@ -122,22 +122,19 @@ function withTip(node: ReactNode, tip: string): ReactNode {
 
 // Column title as a sort-menu header (when onSetSort is provided), wrapped in an explanatory
 // tooltip when the field has one in HEADER_TIPS.
-// `sortable: false` for columns whose value is categorical or dash-laden (the subcontractor
-// „źródło ceny" pair) — a sort trigger there would render a caret over a sort nothing can resolve.
 //
 // The label is resolved from `field`, never passed in: every header and the column picker then read
 // the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
 function title(
   field: string,
   opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
-  sortable = true,
 ): ReactNode {
   const label = columnLabelForView(field, opts.view)
   const active = opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null
   const tip = HEADER_TIPS[field]
   // The tip goes ONTO the sort trigger (same element), not around it — a second wrapping trigger
   // would fight the dropdown for the click. Plain-label columns have no trigger, so wrap directly.
-  if (opts.onSetSort && sortable) {
+  if (opts.onSetSort) {
     return (
       <SortHeader
         label={label}
@@ -280,8 +277,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           }),
         ]
       : [
-          subcontractorModeColumn(view, title('priceMode', opts, false)),
-          subcontractorCoeffColumn(view, title('priceCoeff', opts, false)),
+          subcontractorModeColumn(view, title('priceMode', opts)),
+          subcontractorCoeffColumn(view, title('priceCoeff', opts)),
           subcontractorPriceColumn(view, title('price', opts)),
         ]
   const identity: Column<KosztorysV2RowT>[] = [
@@ -410,6 +407,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   ]
 
   const stageCols: Column<KosztorysV2RowT>[] = shownStages.map((st) => {
+    // The qty field IS the column id, so the sort wiring is the same shape `title()` builds — the
+    // etap menu just hosts it alongside rename/plane/roster instead of owning the whole menu.
+    const qtyField = stageKey(st.id)
     const header = (
       <StageHeader
         stage={st}
@@ -418,6 +418,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         onSetPlane={opts.onSetStagePlane}
         workers={opts.workers}
         onSetWorker={opts.onSetStageWorker}
+        sort={opts.sort?.field === qtyField ? { dir: opts.sort.dir, scope: opts.sort.scope } : null}
+        onSort={opts.onSetSort && ((pick) => opts.onSetSort?.(qtyField, pick))}
+        onPersistOrder={opts.onPersistKosztorysOrder}
         executedValue={opts.executedValueByStage?.get(st.id) ?? 0}
       />
     )
@@ -431,12 +434,11 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     // the header, which is not where anyone looks after a keystroke goes nowhere. Same string, hung
     // where the lock is discovered.
     if (st.plane == null) {
-      const qtyKey = stageKey(st.id)
       return {
         ...computedColumn(
-          qtyKey,
+          qtyField,
           header,
-          (r) => r[qtyKey] ?? null,
+          (r) => r[qtyField] ?? null,
           { tone: 'danger', tip: () => STAGE_HEADER_COPY.planeUnconfirmed },
           // Blank, never „0,00": an etap nobody has recorded work in has no quantity, and a zero
           // would read as one that was measured.
@@ -446,8 +448,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
-    return keyCol(stageKey(st.id), floatColumnLeft, {
-      id: stageKey(st.id),
+    return keyCol(qtyField, floatColumnLeft, {
+      id: qtyField,
       title: header,
       minWidth: 150,
     })
@@ -514,7 +516,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const komentarz: Column<KosztorysV2RowT>[] = [
     keyCol('note', longTextColumn, {
       id: 'note',
-      title: title('note', opts, false),
+      title: title('note', opts),
       minWidth: 200,
       grow: 1,
       headerClassName: 'border-l border-border',

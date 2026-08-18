@@ -1,66 +1,27 @@
 'use client'
 
-import { ArrowDown, ArrowUp, ChevronsUpDown, ListOrdered } from 'lucide-react'
-
-import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils/cn'
 import { HeaderMenu } from '@/components/ui/datasheet-grid/header-menu'
 import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
-import type { SortPickT } from '@/lib/kosztorys/row-view'
-import type { SortDirT, SortScopeT } from '@/lib/kosztorys/row-view'
+import { SortIcon, SortMenuItems, type SortMenuPropsT } from './sort-menu-items'
 
-type PropsT = {
+type PropsT = SortMenuPropsT & {
   label: string
-  active: SortPickT | null
-  onSort: (pick: SortPickT | null) => void
-  // „Zapisz kolejność" — writes the sort showing right now into the stored order, so it survives
-  // clearing the sort. Absent in the read-only view, where the item does not appear at all.
-  onPersistOrder?: () => void
   tip?: string
 }
 
 export function SortHeader({ label, active, onSort, onPersistOrder, tip }: PropsT) {
-  const Icon = active?.dir === 'asc' ? ArrowUp : active?.dir === 'desc' ? ArrowDown : ChevronsUpDown
-
-  // Four commands rather than a direction pair plus a scope toggle: direction and scope are picked
-  // in one gesture, and no scope can be in force unnoticed.
-  function item(dir: SortDirT, scope: SortScopeT, text: string) {
-    const DirIcon = dir === 'asc' ? ArrowUp : ArrowDown
-    const on = active?.dir === dir && active.scope === scope
-    return (
-      <DropdownMenuItem onSelect={() => onSort({ dir, scope })}>
-        <DirIcon className={cn(on ? 'opacity-100' : 'opacity-50')} />
-        {text}
-      </DropdownMenuItem>
-    )
-  }
-
   // The active-sort weight goes on the label element, not triggerClassName: HeaderLabel's own
   // font-medium sits on that element and would beat anything merely inherited from the trigger.
   return (
     <HeaderMenu
       label={<HeaderLabel className={cn(active && 'font-semibold')}>{label}</HeaderLabel>}
-      icon={<Icon className={cn(active ? 'opacity-100' : 'opacity-50')} />}
+      icon={<SortIcon active={active} />}
       triggerClassName={cn(active && 'text-primary')}
       triggerTitle="Sortuj kolumnę"
       tip={tip}
     >
-      {item('asc', 'section', 'Sortuj rosnąco zachowując sekcje')}
-      {item('desc', 'section', 'Sortuj malejąco zachowując sekcje')}
-      <DropdownMenuSeparator />
-      {item('asc', 'global', 'Sortuj rosnąco')}
-      {item('desc', 'global', 'Sortuj malejąco')}
-      <DropdownMenuSeparator />
-      {onPersistOrder && (
-        <DropdownMenuItem onSelect={onPersistOrder}>
-          <ListOrdered />
-          Zapisz kolejność
-        </DropdownMenuItem>
-      )}
-      <DropdownMenuItem disabled={!active} onSelect={() => onSort(null)}>
-        <ChevronsUpDown className="opacity-50" />
-        Wyczyść sortowanie
-      </DropdownMenuItem>
+      <SortMenuItems active={active} onSort={onSort} onPersistOrder={onPersistOrder} />
     </HeaderMenu>
   )
 }

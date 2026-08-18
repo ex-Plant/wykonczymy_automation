@@ -416,8 +416,8 @@ widths and ranks are untouched.
 
 #### Automated
 
-- [ ] 2.1 Grid column specs still pass
-- [ ] 2.2 Preview/read-only column specs still pass
+- [x] 2.1 Grid column specs still pass
+- [x] 2.2 Preview/read-only column specs still pass
 
 ### Phase 3: Headers for the per-stage value columns
 

@@ -21,7 +21,9 @@ import { StageWorkerSection } from './stage-worker-section'
 import { ReassignWorkerConfirmDialog } from './reassign-worker-confirm-dialog'
 import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 import { STAGE_HEADER_COPY as COPY } from './stage-header-copy'
+import { SortMenuItems } from './sort-menu-items'
 import { cn } from '@/lib/utils/cn'
+import type { SortPickT } from '@/lib/kosztorys/row-view'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
 
@@ -32,6 +34,11 @@ type PropsT = {
   onSetPlane?: (stageId: number, plane: ToolPlaneT) => void
   workers?: WorkerRefT[]
   onSetWorker?: (stageId: number, workerId: number | null) => void
+  // Sorting by this etap's quantity — its header is the only place that offers it. `onSort` absent
+  // (a preview) means no sort section, exactly like the other optional handlers here.
+  sort?: SortPickT | null
+  onSort?: (pick: SortPickT | null) => void
+  onPersistOrder?: () => void
   // The etap's executed value at its own plane — quoted in the reassignment confirm so the dialog and
   // the panel can't cite different amounts. 0 (or absent) means nothing has been executed here yet.
   executedValue?: number
@@ -45,6 +52,9 @@ export function StageHeader({
   onSetPlane,
   workers,
   onSetWorker,
+  sort = null,
+  onSort,
+  onPersistOrder,
   executedValue = 0,
 }: PropsT) {
   const label = stage.label ?? `Etap ${stage.ordinal}`
@@ -145,6 +155,12 @@ export function StageHeader({
                 trailing={planeIcon(plane)}
               />
             ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {onSort && (
+          <>
+            <SortMenuItems active={sort} onSort={onSort} onPersistOrder={onPersistOrder} />
             <DropdownMenuSeparator />
           </>
         )}
