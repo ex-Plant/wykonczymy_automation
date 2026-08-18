@@ -754,6 +754,30 @@ Numery pozycji liczą się po **pełnym, nieposortowanym** zbiorze — dziura w 
 że coś jest schowane. Numeracja przeliczana per widok czyniłaby filtr niewidocznym (1…N tak czy
 inaczej).
 
+**Grupa „Problemy" — sześć defektów pod jednym trójkątem (2026-08-17, EX-706).** Diagnostyki
+przestały być luźnymi przyciskami w pasku i zebrały się w jedną listę, a nad nią stoi czerwony
+trójkąt zapalany **danymi, nie kliknięciem** — „czy coś jest nie tak z tym kosztorysem" ma jedną
+odpowiedź w jednym miejscu, zanim ktokolwiek cokolwiek otworzy. Wiersz pojawia się tylko przy
+liczniku > 0, a przy czystym kosztorysie znika cała grupa. Rozstrzygnięcia, które łatwo odkręcić
+w złą stronę:
+
+- **Problemy są jednokrotnego wyboru** — drugi wybór zastępuje pierwszy. Stąd `toggleConditionExclusive`
+  i stąd `engagedPlane` w ogóle da się odpowiedzieć: przy wielokrotnym wyborze nie byłoby jednej
+  płaszczyzny, na której czyta się wynik.
+- **Zaangażowany problem zostaje na liście, nawet gdy jego licznik spadnie do zera.** Inaczej
+  naprawienie ostatniego trafienia zabierało jedyny przycisk zdejmujący zawężenie — siatka zostawała
+  przycięta bez wyjścia. To była 🔴 tej bramki.
+- **Zbyt wysoka stawka wykonawcy to dwa wiersze, po jednym na płaszczyznę** — liczone niezależnie od
+  aktywnego widoku. Defekt na płaszczyźnie, na którą akurat nie patrzysz, dalej jest defektem, a
+  w widoku klienta żadna stawka wykonawcy się nie renderuje, więc inaczej nie wyszedłby nigdy.
+- **Problem etapowy zawęża kolumny etapów**, nie wiersze. Zakaz „widoczności per etap" dotyczy stanu
+  **utrwalonego**; filtr jest przejściowy, więc go nie łamie.
+- **Etap bez płaszczyzny liczy się dwa razy** (jest też etapem bez pracownika) — świadomie, żeby każdy
+  wiersz czytał się dosłownie. Gdyby te liczniki kiedyś zasiliły jedną nagłówkową liczbę, trzeba to
+  przemyśleć od nowa.
+- **Podgląd inwestora nie ma problemów w ogóle** — ani grupy, ani trójkąta. Dokument klienta nie nosi
+  księgowych wątpliwości firmy.
+
 **Pasek aktywnych filtrów — co go kształtuje (2026-08-18, EX-713/EX-714).** Pasek nazywa każde
 źródło, które właśnie skraca siatkę, i każde zdejmuje się jednym kliknięciem. Dwie decyzje warto
 znać, zanim ktoś je odkręci:
