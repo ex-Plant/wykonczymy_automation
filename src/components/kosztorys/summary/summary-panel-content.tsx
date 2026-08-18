@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { cn } from '@/lib/utils/cn'
 import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { computeAmountDue, type MaterialsT } from '@/lib/kosztorys/summary-economics'
@@ -98,6 +99,10 @@ type PropsT = {
   // Off on a host where the panel is one block among several rather than a full-height overlay (the
   // investment page): the share pies are the first thing worth dropping when vertical space is tight.
   showPies?: boolean
+  // On a host that already indents the page (the investment page), the panel's own side padding
+  // lands ON TOP of the page gutter and the whole block sits a step right of everything around it.
+  // The overlay host has no gutter of its own, so the padding stays on by default.
+  flush?: boolean
   // Read-only client render: gate the mismatch scream and render internal links as plain text.
   preview?: boolean
   stages?: KosztorysStageT[]
@@ -154,6 +159,7 @@ export function SummaryPanelContent({
   showSettingsBar = false,
   showTransactionLists = true,
   showPies = true,
+  flush = false,
   preview = false,
   stages,
   stageTotals,
@@ -214,6 +220,7 @@ export function SummaryPanelContent({
   // Derived once for both surfaces that offer the choice: the popover and the Materiały tab print
   // this same lock, so they can never disagree about whether the choice is available.
   const pricingLockedReason = settlementMode === 'GROSS' ? MATERIALS_GROSS_LOCK_REASON : undefined
+  const gutter = flush ? undefined : 'px-4'
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const amountDue = computeAmountDue(
     laborCostsNet,
@@ -229,7 +236,7 @@ export function SummaryPanelContent({
           settings block sat here once as an inline section and had to be evicted: growing it squeezed
           SummaryScrollRegion into a sliver, two containers fighting over one fixed height. It is back
           as a popover, whose content is portalled out of flow and so adds no height to this bar. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-4">
+      <div className={cn('flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 pt-4', gutter)}>
         <ToggleGroup
           options={viewOptions}
           value={view}
@@ -273,7 +280,7 @@ export function SummaryPanelContent({
             showBreakdown={showTransactionLists}
           />
         ) : (
-          <div className="flex w-full flex-col gap-y-4 px-4 pt-4 pb-4">
+          <div className={cn('flex w-full flex-col gap-y-4 pt-4 pb-4', gutter)}>
             {view === 'summary' && (
               <SummaryOverviewTab
                 investmentId={investmentId}

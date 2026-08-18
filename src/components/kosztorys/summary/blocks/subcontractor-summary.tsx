@@ -55,7 +55,7 @@ export function SubcontractorSummary({
   })
 
   return (
-    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-6 pb-10 text-sm">
+    <div className="text-foreground flex w-full flex-col gap-y-4 px-4 pt-4 pb-4 text-sm">
       {/* The multiplier controls lead the block, like the rozliczenie selects on the other tabs: they
           price every figure below them, so they read as the setting the tables answer to rather than
           a footnote to one of them. Above the row, not inside its left column — nested there they

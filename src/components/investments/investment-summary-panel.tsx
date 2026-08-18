@@ -103,6 +103,8 @@ export async function InvestmentSummaryPanel({
       // route that renders the transfers table, which a route-wide re-render would rebuild.
       subcontractorDue={subcontractorDue}
       views={INVESTMENT_PANEL_VIEWS}
+      // This page already indents its blocks; the panel's own side padding would stack on top of it.
+      flush
       showTransactionLists={false}
       showPies={false}
     />
