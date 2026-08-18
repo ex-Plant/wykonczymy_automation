@@ -72,7 +72,7 @@ const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && r
 
 const PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
 
-// Named because the grid reads it too: the „Pozostało do rozliczenia" column exists only while this
+// Named because the grid reads it too: the „Rozjazd między arkuszem Google a apką" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
 export const MEASURE_DIVERGED_CONDITION_ID = 'measure-diverged'
 
@@ -265,14 +265,14 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     id: MEASURE_DIVERGED_CONDITION_ID,
     // „do rozpisania", not „z rozjazdem": the reference figure exists only where an old sheet was
     // imported, and the gap it names is work not yet entered — not a fault. Same wording as the
-    // „Pozostało do rozliczenia" column it points at.
+    // „Rozjazd między arkuszem Google a apką" column it points at.
     label: 'z pomiarem do rozpisania na etapy',
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'worklist',
     matches: (row, ctx) => measureDiscrepancy(row, ctx.stages) != null,
   },
-  // Work booked against no offer. „Pozostało do rozliczenia" cannot report it — with a przedmiar of
+  // Work booked against no offer. „Rozjazd między arkuszem Google a apką" cannot report it — with a przedmiar of
   // zero the percentage cell renders „—", and reddening a dash is an alarm with no legible cause — so
   // the case surfaces here instead, where the row says in words what is wrong.
   {

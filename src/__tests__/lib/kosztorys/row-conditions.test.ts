@@ -85,7 +85,7 @@ describe('the conditions, each on its boundary', () => {
     )
   })
 
-  // EX-707. „Pozostało do rozliczenia" stays silent here on purpose — with no przedmiar its percentage
+  // EX-707. „Rozjazd między arkuszem Google a apką" stays silent here on purpose — with no przedmiar its percentage
   // cell is a „—", and a red dash names nothing. The problem is real, so it is named here instead.
   it('„z wykonaną pracą bez przedmiaru" needs work entered AND no offer', () => {
     expect(matches('work-without-planned-qty', row({ plannedQty: 0, [stageKey(2)]: 3 }))).toBe(true)

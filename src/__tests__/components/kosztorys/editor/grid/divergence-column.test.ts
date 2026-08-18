@@ -8,7 +8,7 @@ import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { MeasureDiscrepancyT } from '@/lib/kosztorys/settlement-rows'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-// „Pozostało do rozliczenia" is the only column that rides a FILTER rather than the picker — it
+// „Rozjazd między arkuszem Google a apką" is the only column that rides a FILTER rather than the picker — it
 // exists exactly while the „z pomiarem do rozpisania na etapy" diagnostic is pressed. So what is
 // asserted here is the gate, not the arithmetic (measure-discrepancy.test.ts owns that): the button
 // alone decides, no stored tick can override it, and it is unreachable from a client's document.
@@ -36,7 +36,7 @@ const ids = (opts: Partial<BuildV2ColumnsOptsT> = {}) =>
     .map((column) => column.id)
     .filter((id): id is string => id != null)
 
-describe('the „Pozostało do rozliczenia" column', () => {
+describe('the „Rozjazd między arkuszem Google a apką" column', () => {
   it('is absent while the diagnostic is not engaged', () => {
     expect(ids()).not.toContain('divergence')
     expect(ids({ divergenceFilterEngaged: false })).not.toContain('divergence')

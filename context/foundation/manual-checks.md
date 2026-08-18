@@ -981,9 +981,9 @@ E2E odroczone (patrz bramka przeglądu).
 Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkuszem, w którym
 „Pomiar z natury" jest wpisany ręcznie (inwestycja 31 — 32 pozycje, 41 377 zł rozjazdu).
 
-- [ ] Najechanie na komórkę „Pomiar (razem etapy)" **nie** pokazuje żadnej podpowiedzi z rozbiciem arkusz/etapy — rozjazd czyta się wyłącznie z kolumny „Pozostało do rozliczenia"
-- [ ] Kolumna „Pozostało do rozliczenia" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
-- [ ] Kolumna „Pozostało do rozliczenia" pojawia się dopiero po wciśnięciu przycisku „z pomiarem do rozpisania na etapy" i znika po jego odciśnięciu; nie ma jej w liście „Kolumny" i nie da się jej stamtąd ani schować, ani wywołać
+- [ ] Najechanie na komórkę „Pomiar (razem etapy)" **nie** pokazuje żadnej podpowiedzi z rozbiciem arkusz/etapy — rozjazd czyta się wyłącznie z kolumny „Rozjazd między arkuszem Google a apką"
+- [ ] Kolumna „Rozjazd między arkuszem Google a apką" stoi na pierwszym miejscu (zaraz za „Akcje", przed „Sekcją"), ma czerwony nagłówek i czerwone tło komórek, i pokazuje wprost ilość ze znakiem oraz kwotę — bez najeżdżania kursorem
+- [ ] Kolumna „Rozjazd między arkuszem Google a apką" pojawia się dopiero po wciśnięciu przycisku „z pomiarem do rozpisania na etapy" i znika po jego odciśnięciu; nie ma jej w liście „Kolumny" i nie da się jej stamtąd ani schować, ani wywołać
 - [ ] Przy wciśniętym przycisku kolumna zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty; po odciśnięciu przycisku sortowanie samo się czyści (nie zostaje kolejność bez nagłówka do wyłączenia)
 - [ ] Przycisk „z pomiarem do rozpisania na etapy" w pasku narzędzi pokazuje liczbę takich pozycji; kliknięcie zawęża siatkę tylko do nich
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
@@ -991,7 +991,7 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
 - [ ] Sekcja zwinięta **chowa** swoje pozycje także przy włączonym warunku — zwinięcia zdejmuje wyłącznie szukanie (ptaszek i zwinięcie stoją w tym samym menu „Filtry")
 - [ ] Ponowny import tego samego arkusza nadpisuje odniesienie bieżącą treścią arkusza
 - [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
-- [ ] Podgląd dla inwestora (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Pozostało do rozliczenia", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
+- [ ] Podgląd dla inwestora (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd między arkuszem Google a apką", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „z pomiarem do rozpisania na etapy" w ogóle
 
 ## EX-682 / EX-683 — sortowanie wewnątrz sekcji
@@ -1046,12 +1046,12 @@ Osobnej akcji „Zaciągnij pomiary z arkusza" **już nie ma** — zaciągnięci
 więc każdy punkt poniżej dotyczy jednego okna.
 
 - [ ] Opcje → „Porównaj z arkuszem Google…" otwiera okno, pokazuje „Czytam arkusz Google…", a potem cztery bloki: Kwoty, Prace, Stawki podwykonawców, Jak odczytaliśmy arkusz Google
-- [ ] Blok „Kwoty" zestawia wartość prac wykonanych obu stron, a „Pozostało do rozliczenia" pokazuje się tylko wtedy, gdy „wartość netto" w arkuszu naprawdę liczy się z Pomiaru
+- [ ] Blok „Kwoty" zestawia wartość prac wykonanych obu stron, a „Rozjazd między arkuszem Google a apką" pokazuje się tylko wtedy, gdy „wartość netto" w arkuszu naprawdę liczy się z Pomiaru
 - [ ] Blok „Jak odczytaliśmy arkusz Google" podaje 26 z ~435 prac z Pomiarem wskazującym na Przedmiar — **samą liczbą, bez listy wierszy do rozwinięcia**
 - [ ] Pozostałe klasy (Przedmiar z etapu, wartość błędu) mają listy do rozwinięcia, a link prowadzi do konkretnej komórki w arkuszu
 - [ ] Praca przemianowana w arkuszu pojawia się na obu listach „tylko po jednej stronie" — i okno mówi wprost dlaczego
 - [ ] Ostatnia linia okna raportuje zaciągnięcie: przy pierwszym otwarciu niezerowe liczby, przy drugim „był już zgodny z arkuszem Google"
-- [ ] Po pierwszym otwarciu kolumna „Pozostało do rozliczenia" w siatce przelicza się od razu, bez odświeżania strony
+- [ ] Po pierwszym otwarciu kolumna „Rozjazd między arkuszem Google a apką" w siatce przelicza się od razu, bez odświeżania strony
 - [ ] Drugie otwarcie **nie** przemontowuje siatki: wpisany filtr, sortowanie i zwinięte sekcje zostają na miejscu
 - [ ] Zmiana jednego Pomiaru w arkuszu i ponowne otwarcie rusza wyłącznie tę pracę
 - [ ] Wyczyszczenie Pomiaru w arkuszu i ponowne otwarcie zdejmuje odniesienie z tej pracy
@@ -1230,7 +1230,7 @@ powyżej 80% ceny dla inwestora i dodaj etap bez wybranego sposobu rozliczenia.
 - [ ] Sumy wierszy i podsumowanie nie zmieniają się przy zawężeniu — to gest czytania, nie filtr danych
 - [ ] Licznik przy „Filtry" rośnie po włączeniu problemu i wraca po „Zresetuj filtry", które czyści też zawężenie etapów
 - [ ] Przełączanie „Inwestor" / „Z narzędziami" / „Bez narzędzi": wiersze ceny wykonawcy zostają na obu planach, a wiersze etapowe liczą tylko etapy danego widoku
-- [ ] „Pozostało do rozliczenia" dalej wchodzi wyłącznie razem ze swoim wierszem, teraz włączanym z menu
+- [ ] „Rozjazd między arkuszem Google a apką" dalej wchodzi wyłącznie razem ze swoim wierszem, teraz włączanym z menu
 - [ ] Podgląd inwestora (`/podglad-inwestora/<id>` i link tokenowy) nie pokazuje grupy „Problemy" ani trójkąta
 - [ ] Menu filtrów na przelewach i w kasach działa jak wcześniej
 

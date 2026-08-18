@@ -66,7 +66,7 @@ export type BuildV2ColumnsOptsT = {
   // Pinning the section to a palette colour (null clears it) — the colour the Podsumowanie pie uses
   // for this section's wycinek.
   onSetSectionColor?: (sectionId: number, color: SectionColorKeyT | null) => void
-  // Is the „z pomiarem do rozpisania na etapy" diagnostic pressed? Gates the „Pozostało do rozliczenia"
+  // Is the „z pomiarem do rozpisania na etapy" diagnostic pressed? Gates the „Rozjazd między arkuszem Google a apką"
   // column's existence: the column answers exactly that one question, and outside the gesture that
   // asks it the grid shows every pozycja — so it would be a near-empty stripe. The button's count is
   // what announces the rozjazd; the column is where you read it. It rides the filter rather than the

@@ -394,7 +394,7 @@ export function useKosztorysEditor({
     [preview, engagedConditionIds],
   )
 
-  // Gates the „Pozostało do rozliczenia" column: it is the answer to the diagnostic beside it, so it
+  // Gates the „Rozjazd między arkuszem Google a apką" column: it is the answer to the diagnostic beside it, so it
   // rides that button rather than the column picker. With the filter off the grid holds every pozycja
   // and the column would read „—" down nearly all of them — the button's own count is what says the
   // rozjazd is there.

@@ -17,6 +17,7 @@ import {
   itemNounLocative,
 } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import type { SheetCompareResultT } from '@/lib/actions/kosztorys-import'
+import { COLUMN_LABELS } from '@/lib/kosztorys/column-config'
 import type {
   ComparedItemT,
   ExecutedDiffT,
@@ -143,7 +144,7 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
         />
         {unassignedInSheet !== null && unassignedHere !== null && (
           <ComparisonRow
-            label="Pozostało do rozliczenia"
+            label={COLUMN_LABELS.divergence}
             sheet={formatPLN(unassignedInSheet)}
             app={formatPLN(unassignedHere)}
             delta={agree ? null : formatPLN(unassignedInSheet - unassignedHere)}
@@ -155,7 +156,7 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
 
       {unassignedInSheet !== null && (
         <p className="text-muted-foreground text-xs">
-          „Pozostało do rozliczenia" to praca zmierzona w arkuszu Google, której nie rozpisano
+          „{COLUMN_LABELS.divergence}" to praca zmierzona w arkuszu Google, której nie rozpisano
           jeszcze na żaden etap.
         </p>
       )}

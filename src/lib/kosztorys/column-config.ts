@@ -14,13 +14,10 @@ export const COLUMN_LABELS: Record<string, string> = {
   description: 'Opis prac',
   plannedQty: 'Przedmiar',
   stageQtySum: 'Pomiar (razem etapy)',
-  // Names its own subtraction in the header: the column exists to be read at a glance, so needing a
-  // tooltip to learn which way round the difference runs would defeat it.
-  // The sheet's own name for this figure. Ours used to be „Rozjazd", which framed a normal balance
-  // line as a defect — and the only way to clear it is to type into the etapy, i.e. to declare work
-  // done that nobody did.
-  divergence: 'Pozostało do rozliczenia',
-  unit: 'J.m.',
+  // Names both sides of its subtraction in the header: the column is read at a glance, so needing a
+  // tooltip to learn which two figures are being compared would defeat it.
+  divergence: 'Rozjazd między arkuszem Google a apką',
+  unit: 'Jednostka miary',
   priceMode: 'Źródło ceny wykonawcy',
   priceCoeff: 'Mnożnik',
   price: 'Cena j.m. netto',

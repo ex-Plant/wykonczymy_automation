@@ -302,6 +302,13 @@ Dwie reguły trzymają to razem:
   klient czyta, więc jej ukrycie nie rusza podsumowania. Każdy z dwóch filtrów osobno byłby
   bezpieczny tylko dla jednej z nich.
 
+**Podgląd nie zna trybu rozliczenia** (EX-631, rozstrzygnięte 2026-08-12). Dokument klienta niesie
+netto i brutto obok siebie także na inwestycji rozliczanej netto — `settlementMode` NIE wraca jako
+bramka prawdy. O ujawnieniu decyduje wyłącznie allowlista (i zapisane ustawienie widoku klienta pod
+nią); oś kwot jest preferencją czytania, a preferencja jednego czytelnika nie może decydować, co widzi
+drugi. Odwrotnie niż `globalDiscountActive`, który do gałęzi podglądu wrócił właśnie dlatego, że jest
+stanem inwestycji, a nie preferencją.
+
 Ustawienia czytane są **obok** cache'owanego payloadu podglądu (jeden indeksowany odczyt), więc
 zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firmy nie unieważnia drzewa
 żadnej inwestycji.
@@ -324,7 +331,9 @@ zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firm
 - **Oferta i wykonanie to dwie równoległe kwoty** (arkusz: `S` i `T`):
   - **„Wartość netto przedmiar"** = `applyDiscount(Przedmiar × cena)` = arkuszowe `S` — oferta.
   - **„Wartość netto"** = `applyDiscount(Σ etapów × cena)` = arkuszowe `T` — wykonanie.
-  - **„Pozostało do rozliczenia"** = `S − T`; przy pustym Przedmiarze „—" (brak mianownika).
+  - **„Pozostało netto (względem przedmiaru)"** = `S − T`; przy pustym Przedmiarze „—" (brak
+    mianownika). Nie mylić z „Rozjazdem między arkuszem Google a apką" — tamten odejmuje sumę
+    etapów od Pomiaru z natury z arkusza, a nie od Przedmiaru.
   - **„% wykonania"** = `Σ etapów / Przedmiar` (nie z sumy etapów — inaczej `Σ/Σ = 100%` wszędzie).
 
   Konsekwencja architektoniczna: wartość wykonania zależy od etapów, więc `calc.ts` (czysta
@@ -348,16 +357,17 @@ zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firm
   odniesienia jest zamrożona w chwili importu i wie tylko o tych pozycjach, które wtedy istniały.
   Odczyt na żywo dokłada: ile obie strony liczą (oferta i wykonanie, przez te same wejścia
   `calc.ts`), które pozycje są tylko po jednej stronie, oraz — z siatki formuł, nie z wartości —
-  na ilu wierszach Pomiar jest przepisany z Przedmiaru, czyli na ilu kolumna „Pozostało do
-  rozliczenia" **strukturalnie** milczy. Ten sam odczyt odświeża przy okazji zapisane liczby
+  na ilu wierszach Pomiar jest przepisany z Przedmiaru, czyli na ilu kolumna „Rozjazd między
+  arkuszem Google a apką" **strukturalnie** milczy. Ten sam odczyt odświeża przy okazji zapisane liczby
   odniesienia — i **czyści** te, których arkusz przestał podawać ręcznie. Osobnej akcji już nie ma:
   skoro arkusz właśnie został przeczytany, „zostaw nieaktualną kopię" nie jest odpowiedzią, którą
   ktokolwiek by wybrał (właściciel, 2026-08-14).
 
-  **„Rozjazd" nazywa się teraz „Pozostało do rozliczenia"** — odejmowanie jest to samo (Pomiar
-  z natury z arkusza minus suma etapów w aplikacji), ale nazwa przestała udawać usterkę. To zwykła
-  linia bilansowa: jedyny sposób, żeby ją wyzerować, to wpisać ilości w etapy, czyli zadeklarować
-  pracę jako wykonaną. Kolumna jest **odpowiedzią na przycisk „z pomiarem do rozpisania na etapy"**
+  **Kolumna nazywa się „Rozjazd między arkuszem Google a apką"** (2026-08-18; wcześniej krótko
+  „Rozjazd", potem „Pozostało do rozliczenia"). Odejmowanie było i jest to samo — Pomiar z natury
+  z arkusza minus suma etapów w aplikacji — a nazwa mówi wprost, które dwie strony się porównuje.
+  Jedyny sposób, żeby ją wyzerować, to wpisać ilości w etapy, czyli zadeklarować pracę jako
+  wykonaną. Kolumna jest **odpowiedzią na przycisk „z pomiarem do rozpisania na etapy"**
   — pojawia się razem z nim i znika, gdy się go odciśnie. Poza tym gestem siatka pokazuje wszystkie
   pozycje, więc kolumna byłaby pasem „—"; o istnieniu rozjazdu mówi licznik na samym przycisku.
   Z tego samego powodu nie ma jej w liście „Kolumny": widoczność należy do filtra, więc zapisany
@@ -451,6 +461,13 @@ j.m.` wśród wierszy policzonych** (wpisane z palca są wykluczone: to decyzje 
   - **Płaszczyzna cen klienta (prace):** ceny wpisywane netto, `brutto = netto × (1 + vat)`
     liczone. Oś netto/brutto istnieje TYLKO tu i obejmuje wszystkie 3 warianty ceny
     (klient + oba podwykonawcy) po stawce inwestycji — spójne z P8 (2026-07-15).
+    - **DOPRECYZOWANIE — rozliczenie z podwykonawcą idzie BEZ VAT** (właściciel, 2026-07-21,
+      EX-558). Ekipa nie wystawia faktury VAT, więc na jej stronie netto = brutto. Powyższe „3
+      warianty ceny na osi netto/brutto" mówi tylko o tym, że **silnik** potrafi wyliczyć brutto
+      dla każdego cennika — nie o tym, że taka oś ma sens w rozliczeniu z ekipą. Skutek dla UI:
+      blok „Podsumowanie podwykonawców" **nie ma** przełącznika netto/brutto, tylko jedną kolumnę
+      „Kwota"; przełącznik zostaje wyłącznie w widoku Klient. „Suma wykonanej pracy" po stronie
+      podwykonawcy się nie gruntuje, tak jak zaliczki.
   - **Płaszczyzna księgi (actuals):** transakcje i wydatki są **netto, bez VAT** — schemat
     transferów nie ma osi VAT. `LABOR_COST`, `RABAT`, materiały (`INVESTMENT_EXPENSE`),
     korekty (`CORRECTION`), wpłaty, wypłaty — wszystkie renderują się w **wartości nominalnej,
@@ -655,6 +672,14 @@ się w widoku klienta, który pokazuje wszystkie etapy, więc zwężenie kolumn 
 **Konsekwencja przyjęta świadomie:** dopóki jakiś etap nie ma wybranego wariantu, dwa rachunki **nie
 sumują się** do całości pracy wykonanej — brakującą kwotę zgłasza tylko plakietka ostrzeżenia. Lepsza
 brakująca kwota niż kwota dopisana ekipie, której nikt nie wskazał.
+
+### Pozycja z materiałem w cenie j.m. dostaje stawkę podwykonawcy kwotą stałą (EX-649, 2026-08-17)
+
+Konwencja właściciela, nie reguła w kodzie: gdy materiał jest wliczony w cenę jednostkową pozycji,
+stawkę podwykonawcy wpisuje się **ręcznie, kwotą stałą** — po to, żeby ekipa nie brała procentu od
+materiału. Taka pozycja zostawiona na domyślnym współczynniku (0,65 / 0,5525) po cichu przepłaca ekipę
+i zaburza obie marże. Kosztorys nie wie, które pozycje niosą materiał, więc tego nie da się wymusić
+automatem — stąd konwencja i ewentualne podpowiedzenie w edytorze.
 
 ### Należne podwykonawcy jest PRZED rabatem (EX-554, 2026-07-21)
 
