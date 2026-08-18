@@ -561,13 +561,13 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 2.1 Fleet unit specs pass
+- [x] 2.1 Fleet unit specs pass — c6ffab6f
 
 ### Phase 3: UI
 
 #### Automated
 
-- [ ] 3.1 Fleet query specs pass
+- [x] 3.1 Fleet query specs pass
 
 ### Phase 4: Daily Digest
 
