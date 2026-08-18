@@ -234,7 +234,7 @@ UX siatki = zwykła tabela (TanStack); sednem nie jest wygląd, tylko zapis.
 
 ```
 inputy: pozycja (opis, jednostka, przedmiar, pomiar, 3 ceny, discount_type+value,
-        note, hidden_in_export, display_order);
+        note, display_order);
         sekcja (nazwa, display_order, vat_rate);
         etap (ordinal, label, plane); stage_progress (item, stage → ilość)
 liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
@@ -257,7 +257,9 @@ liczone na żywo: wartość wiersza, sumy sekcji/całości, V, marża, brutto
 > przejmuje **widok klienta** (S-13, link tokenowy + „Podgląd dla klienta").
 > Poniższe zostaje jako zapis intencji ownera z POC: reguły „co klient widzi"
 > przenoszą się na widok klienta, mechanizm (`buildPrintHtml`, PDF, plik) nie.
-> Flaga `hidden_in_export` nie ma dziś czytelnika — EX-549.
+> Flaga `hidden_in_export` nigdy nie dostała czytelnika — kolumna skasowana 2026-08-18,
+> EX-549 anulowane; ukrywanie pozycji przed klientem weszło jako reguła („ukryj puste pozycje",
+> EX-695), nie jako flaga per wiersz.
 
 Wydruk = **oferta dla klienta** (tylko ceny klienta: netto / VAT / brutto; bez
 cen podwykonawcy, marży, postępu, „pozostało"). Mechanizm: `buildPrintHtml` +
@@ -266,7 +268,7 @@ cen podwykonawcy, marży, postępu, „pozostało"). Mechanizm: `buildPrintHtml`
 **Eksport jest EDYTOWALNY (krok „przygotuj eksport"):** dziś owner bierze
 kosztorys i ręcznie ukrywa wybrane pozycje przed klientem. Odwzorowanie:
 
-- każda pozycja ma flagę widoczności w eksporcie (`hidden_in_export`),
+- każda pozycja ma flagę widoczności w eksporcie,
 - krok „przygotuj eksport" pokazuje kosztorys z togglami widoczności per pozycja,
 - **część pozycji domyślnie ukryta** (reguła default → P12),
 - owner odkrywa / ukrywa więcej, potem generuje PDF (tylko widoczne).
@@ -300,9 +302,8 @@ zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firm
 ## Decyzje zamknięte
 
 - **Dostęp (prosto):** **ADMIN, OWNER, MANAGER** — widzą i edytują wszystko.
-  **EMPLOYEE — zero dostępu, nie widzi kosztorysu w ogóle.** **Follow-on:**
-  ukrycie wrażliwych komórek (najpewniej ceny podwykonawcy = koszt/marża) przed
-  MANAGEREM — tylko OWNER/ADMIN (P10).
+  **EMPLOYEE — zero dostępu, nie widzi kosztorysu w ogóle.** Rozważany follow-on
+  (ukrycie cen podwykonawcy przed MANAGEREM) **odpadł** — P10.
 - **Sekcje w pełni edytowalne:** dodawanie, zmiana nazwy, zmiana kolejności
   (`display_order`); nagłówek + suma sekcji (liczona). Dowolna liczba pozycji
   w sekcji (bez limitu).
@@ -860,9 +861,15 @@ this section is the original phrasing/context for those questions.
 
 ### Dostęp / widoczność
 
-- **P10.** Które dokładnie komórki/kolumny ukryć przed MANAGEREM (follow-on)?
+- **P10.** ~~Które dokładnie komórki/kolumny ukryć przed MANAGEREM (follow-on)?
   Hipoteza: ceny podwykonawcy (z narzędziami / bez) = koszt i marża. Cena
-  klienta, przedmiar/pomiar, postęp etapów — widoczne dla MANAGERA?
+  klienta, przedmiar/pomiar, postęp etapów — widoczne dla MANAGERA?~~
+  **ROZSTRZYGNIĘTE (owner, 2026-08-18): żadnych — MANAGER widzi wszystko.**
+  Jedyne, czego nie widzi, to zakładka Marża, i to już działa (gate po roli na
+  stronie inwestycji i w Podsumowaniu v2). Ukrywanie kolumn dotyczy **klienta**,
+  nie roli — weszło jako per-inwestycyjne ustawienia widoku klienta (EX-695).
+  Slice S-10 `kosztorys-column-rbac` wycięty w całości; pytanie o wiersze nigdy
+  nie było tu zadane — dopisano je przez symetrię do kolumn.
 
 ### Plan-vs-actual
 
