@@ -1325,3 +1325,36 @@ snapshots, URL params or the DB — which is the only reason `stage_<id>` is saf
 all. Postgres reissues a deleted stage's id, which is exactly why stage ids are kept out of the
 persisted hidden-columns map. If anyone ever proposes persisting the sort, that question reopens on
 day one.
+
+## A render throw in a streamed RSC page still answers 200 — an E2E status assertion cannot see it
+
+`e2e/kosztorys-share-link.spec.ts` guards a hazard the authed app cannot show: `(share)/layout.tsx`
+mounts no `CurrentUserProvider` (the share token is the whole credential), `useCurrentUser` throws on
+a null context, and `KosztorysTotalsPanel` is `forceMount`ed — so a session read added anywhere under
+`SummaryPanelContent` breaks every investor link while typecheck, units and every other spec stay
+green. The spec was written with `expect(response.status()).toBe(200)` as its headline assertion, on
+the reasoning that a hard render throw is served as a 500 and so cannot slip past.
+
+It cannot slip past **a page Next renders in one shot**. Break-verifying the spec (planting a
+`useCurrentUser()` inside `SummaryPanelContent`, rebuilding, re-running) produced this:
+
+```
+[WebServer] ⨯ Error: useCurrentUser must be used within CurrentUserProvider
+✘ a generated share link renders ... — expect(getByText('Fundamenty …')).toBeVisible() failed
+```
+
+The server logged the throw and **still answered 200**. The status line ships with the first chunk;
+by the time the component throws, the headers are long gone and the failure is delivered inside the
+stream, to the client error boundary. Status codes only describe what was known before the first byte.
+
+**The rule:** on a streamed route, assert what the page _shows_, never what it _returned_. A status
+assertion is worth keeping for the pre-render failures it does catch (a 404 from a rejected token),
+but it must never be the load-bearing one, and it must never be traded for the content assertions —
+a spec asserting only the status would have passed a share link that renders nothing but an error.
+
+**The generalisation is about method, not Next.js.** The spec was authored, typechecked, run green,
+and reported as protecting the risk — and its headline assertion protected nothing. The only step
+that surfaced that was deliberately breaking the production behaviour and watching _which_ assertion
+went red. Green proves the test runs; it says nothing about what the test would catch. On a guard
+written for a specific failure — where the whole point is the day someone breaks it — the break check
+is the test of the test, and skipping it is how a decorative assertion gets committed with confidence.
