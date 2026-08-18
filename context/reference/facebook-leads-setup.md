@@ -163,11 +163,37 @@ Design constraints this dump proves out:
 
 ## Regenerating the token (only if it is ever revoked)
 
-1. https://developers.facebook.com/tools/explorer → Get Page Access Token → select scopes
-   (`leads_retrieval`, `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`) →
-   pick **Wykończymy** in "User or Page".
-2. https://developers.facebook.com/tools/debug/accesstoken → paste → Debug → **Extend Access Token**.
-3. Put the extended token in `.env` and Vercel prod env → redeploy.
+The live token is **System-User-derived** (2026-08-10) — that is what makes it report `expires_at: 0`
+and removes token expiry as a failure mode. Reproduce that path, not the Explorer path:
 
-For a **never-expiring** token: exchange the short user token → long-lived user token FIRST, then
-pull the page token (a page token derived from a long-lived user token doesn't expire).
+1. Business settings → **System User** → generate a token for the `wykonczymy` app with **all five**
+   scopes: `leads_retrieval`, `pages_show_list`, `pages_read_engagement`, `pages_manage_metadata`,
+   **`pages_manage_ads`**. The last is the non-obvious one — `/{page_id}/leadgen_forms` is filed
+   under ads management, so without it `listLeadForms()` fails `(#200)` even though reading the
+   leads themselves works.
+2. **A System User token is not itself usable.** `/{page_id}/leadgen_forms` rejects it with
+   `(#190) This method must be called with a Page Access Token`. Derive the Page token —
+   `GET /{PAGE_ID}?fields=access_token` with the system user token as Bearer — and it inherits the
+   never-expiry. **That derived token is what `META_PAGE_ACCESS_TOKEN` holds.**
+3. Put it in `.env` and Vercel prod env → redeploy (env changes don't reach existing deployments).
+
+`META_APP_TOKEN` is the never-expiring `APP_ID|APP_SECRET` form — it needs no regeneration.
+
+Legacy fallback (expiring, ~60–90 days — only if the System User path is unavailable):
+Explorer → Get Page Access Token → same scopes → debug tool → **Extend Access Token**. Exchange the
+short user token for a long-lived one _first_, then pull the page token; a page token derived from a
+long-lived user token outlives one derived from a short one, but still expires.
+
+## Known gap: webhook rows carry no `form_id`
+
+`GET /{leadgen_id}` with no `?fields` returns exactly `created_time`, `field_data`, `id` — **no
+`form_id`**. So in the webhook route `parsed.data.form_id` is always `undefined`, `fetchFormQuestions`
+is never called, and `normalizeLead` falls back to key heuristics + an email regex instead of Meta's
+declared `EMAIL` / `PHONE` / `FULL_NAME` types; `formId` / `formQuestions` persist empty. Confirmed in
+real data — every `facebook_lead_ads` row has a null `form_id` while `website_form` rows carry theirs.
+The reconcile path is unaffected (it passes `form.id` explicitly), which is why the „Pobierz
+zgłoszenia" button yields richer rows than the webhook.
+
+Fix when someone picks it up: add `?fields=id,created_time,field_data,form_id,ad_id` to
+`src/lib/leads/fetch-lead.ts`, or read `change.value.form_id`, which Meta already puts in the webhook
+body. Owes a failing repro test first (test-driven debugging).

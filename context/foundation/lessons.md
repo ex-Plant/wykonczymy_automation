@@ -92,7 +92,7 @@
 
 - **Context**: Acting on any static-analysis audit output — dependency-cruiser `no-circular`/boundary/orphan warnings (`.dependency-cruiser.cjs`, the M4L2 `context/map/` artifacts), but equally knip/depcheck dead-code, ESLint, a security scanner. Triggered here while triaging the "one real import cycle" the structure map flagged as top structural debt.
 - **Problem**: The tool reported 16 cycles; the map (and then I) elevated the one non-form cycle to "top structural debt" with a proposed refactor. All of it was wrong. Reading the source showed the Payload `config → collections/transfers → sync-sheet → sheets-sync → … → config` loop is **already runtime-safe**: `hooks/transfers/sync-sheet.ts` imports the action with a deliberate lazy `await import()` (commented), so the module-init chain never closes — depcruise flags it only because it resolves dynamic imports into the graph. The second cycle (`lib/constants/transfer-rules.ts ↔ transfers.ts`) is likewise author-documented as call-time-safe (`transfers.ts:139`). I compounded the tool's low precision with my own: asserted a "latent timebomb" and a "one-line fix in `get-current-user-jwt.ts`" from a partial `grep` — the fix would have killed only 1 of 3 overlapping paths and not silenced the warning anyway — and even proposed a `dependencyTypesNot: ['dynamic-import']` config tweak that, **when actually run, didn't work** (excluding dynamic on the `to`-edge doesn't drop a cycle whose dynamic edge is mid-loop). A user's "one line?" was the only precision filter applied.
-- **Rule**: (1) Static audits are **high-recall, low-precision** — they surface _candidates_; the value is pruning false positives, not trusting the count. Never promote a raw finding to "debt"/"bug" without reading the code it points at. (2) For a cycle specifically, **read the edge types**: a loop with a lazy `await import()` (or values used only at call time) has no init-time cycle and is usually a deliberate, safe break — the tool can't see "runtime-only." Check for an author comment at the edge before proposing a "fix." (3) **Verify any proposed fix by running it**, don't assert it from a `grep` — count _all_ the paths (multiple static importers of a shared node = multiple cycles), and if you suggest a config change, execute it and confirm the warning actually clears. (4) Consequently, when wiring a static audit into a gate (pre-push/CI), a rule that fires only on known-safe findings (`no-circular` here) belongs at **`warn`** (never blocks), while invariant-encoding boundary rules that catch real build-breakers (`no-hook-imports-revalidate`, `no-payload-graph-imports-env-server`) block at **`error`**.
+- **Rule**: (1) Static audits are **high-recall, low-precision** — they surface _candidates_; the value is pruning false positives, not trusting the count. Never promote a raw finding to "debt"/"bug" without reading the code it points at. (2) For a cycle specifically, **read the edge types**: a loop with a lazy `await import()` (or values used only at call time) has no init-time cycle and is usually a deliberate, safe break — the tool can't see "runtime-only." Check for an author comment at the edge before proposing a "fix." (3) **Verify any proposed fix by running it**, don't assert it from a `grep` — count _all_ the paths (multiple static importers of a shared node = multiple cycles), and if you suggest a config change, execute it and confirm the warning actually clears. (4) Consequently, when wiring a static audit into a gate (pre-push/CI), a rule that fires only on known-safe findings (`no-circular` here) belongs at **`warn`** (never blocks), while invariant-encoding boundary rules that catch real build-breakers (`no-hook-imports-revalidate`, `no-payload-graph-imports-env-server`) block at **`error`**. (5) **And often the gate shouldn't be the graph tool at all.** Wiring depcruise into pre-push was considered and rejected (2026-07-08): of the two `error` boundaries, `no-payload-graph-imports-env-server` is already self-enforcing (`server-only` throws under `generate:types`), and `no-hook-imports-revalidate` is a **direct-import ban** — ESLint's sweet spot, where it fires in-editor and at pre-commit instead of at push. It lives as a `no-restricted-imports` block in `eslint.config.mjs` scoped to `src/hooks/**`. Reach for depcruise's unique capability (the transitive graph) only when a rule actually needs transitivity; neither of these does.
 - **Applies to**: research, plan, plan-review, implement, impl-review, simplify, dead-code-scanner
 
 ## react-datasheet-grid in a flex container flickers — give it a definite width with `grid-cols-[minmax(0,1fr)]`
@@ -625,6 +625,13 @@
   stored value on top of it. Two sources of truth for one plane is the ambiguity you set out to fix.
 - **Applies to**: `usePersistedEnum` / `localStorage` column and axis preferences on any surface
   that also has a share, preview, print or client mode.
+- **The guards move with it, and most of them stop being true.** The old axis picker was `disabled`
+  at `vatRate === 0` ("the pick silently does nothing" — true of a rendering preference). Carried
+  onto the stored mode unexamined, that same line stranded an investment in `GROSS`/`MIXED`
+  permanently, editable only from the Payload admin, because the panel is the sole edit surface —
+  and at VAT 0 the mode is _not_ a no-op: `MIXED` still drives both money columns. When a control's
+  subject changes, re-derive every guard on it from the new subject; a guard whose rationale names
+  the old subject is a bug in waiting.
 
 ## An A/B comparison affordance belongs in the URL, not in client state — the old reading must skip the new one's fetches
 
@@ -1358,3 +1365,102 @@ that surfaced that was deliberately breaking the production behaviour and watchi
 went red. Green proves the test runs; it says nothing about what the test would catch. On a guard
 written for a specific failure — where the whole point is the day someone breaks it — the break check
 is the test of the test, and skipping it is how a decorative assertion gets committed with confidence.
+
+## A cross-field invariant belongs in the collection hook, not the server action — and `beforeValidate` on update can see the change
+
+- **Context**: A deposit carried an etap tag that had to belong to the tagged investment's kosztorys.
+  The guard was written where the app writes — `updateTransferAction` — and covered exactly the app's
+  own edit form. The Payload admin panel and the REST API write the collection directly, so moving a
+  deposit to another investment there kept a tag pointing into the previous investment's tree.
+- **The boundary this draws**: the repo's default is still "a new side effect goes in the server
+  action, not a new `afterChange` hook". That default is about _effects_ — revalidation, sync, the
+  work that follows a write. An **invariant of the row itself** is the opposite case: it has to hold
+  for every writer, and the action is only one of at least three. Put it in the collection hook, and
+  next to its siblings — the same `validate.ts` already cleared the tag for the wrong _type_, so the
+  wrong _investment_ had an obvious home.
+- **The premise that nearly killed the fix was wrong, and reading the source is what got it wrong.**
+  The finding was filed believing `beforeValidate` cannot tell "field not provided" from "field
+  cleared" on a partial update — so a hook guard would be guessing. Ten minutes of probing the hook
+  against the test DB disproved it: on update Payload hands the hook `data` as the **full merged
+  document** (every field present, the new `investment` already in place) alongside `originalDoc`, so
+  `resolveId(data.x) !== resolveId(originalDoc.x)` is unambiguous. Even a one-field
+  `payload.update({ data: { investment: X } })` arrives fully populated.
+- **The rule**: a behavioural claim about a framework hook is a claim you can _run_. Reading the
+  library's source produced a confident wrong answer; a probe against the real thing settled it and
+  cost less than the workaround would have.
+- **Testing it needs the path the action can't reach**: the regression guard drives `payload.update`
+  directly (DB-gated spec), because an action-level test exercises the one writer that was never
+  broken.
+
+## A fixture in a degenerate state makes every absence assertion vacuous
+
+- **Context**: the per-view column specs built their fixture with stages carrying `plane: null`.
+  Under `viewStages` a null-plane stage belongs to no view, so at `view: 'w_tools'` the builder
+  emitted **no stage columns at all** — and the spec asserted only absences.
+- **Problem**: the spec would stay green if every stage column vanished from the product. It was
+  comparing nothing against nothing. That is exactly how the EX-571 critical shipped green
+  (`stageTotalsForView` splitting a view-scoped total across the other crew's etapy): the guard that
+  should have caught it was passing without exercising the filter it was named after.
+- **Rule**: a spec made only of `expect(...).not.toContain(...)` is only a guard while something
+  positive is also asserted from the **same** fixture — pin what _is_ there next to what isn't.
+  When a fixture leaves the discriminator unset (`null` plane, empty array, no rows), ask what the
+  assertion is comparing; if the answer is "an empty list against an empty list", the fixture is the
+  bug, not the subject.
+- **Applies to**: any view/plane/role-filtered builder spec, and any plan that says fixtures "get
+  explicit values rather than accommodating patches" — that sentence is the tell that someone
+  already saw this coming.
+
+## A row type files with the producer when it is nominal, with the consumer when it is structural
+
+- **Context**: `src/types/reference-data.ts` had accreted `MaterialTransactionRowT`,
+  `PayoutTransactionRowT` and their siblings — shapes returned by transfer queries, sitting in a
+  module named for reference data (roles, categories, settlement modes).
+- **The symptom that made it concrete**: the file imported `@/lib/constants/transfers`, so every
+  change to the transfer-type union recompiled a module that has nothing to do with transfers.
+- **Rule**: ask whether the type is _nominal_ or _structural_. Nominal — it describes what a
+  particular query returns and changes when that schema changes → it files with the **producer**
+  (`src/types/transfers.ts`), even though the only code reading it is kosztorys UI. Structural — it
+  is just a shape several unrelated places happen to need → it files with the consumer, or in a
+  neutral home. "Who imports it" is the wrong axis; "what makes it change" is the right one.
+- **Applies to**: `src/types/*`, and the same split one level up — `queries/reference-data.ts`
+  shed its nine per-investment aggregates into `balances.ts` / `investment-transactions.ts` /
+  `transfer-totals.ts` rather than into one `transfers.ts`, which would only have moved the
+  grab-bag.
+
+## `unstable_cache` dedupes across requests, never within one — and nesting two of them disables the cache
+
+- **Context**: EX-597's read-path audit, verified against the installed Next 16.1.7 source rather
+  than the docs.
+- **What is actually true**: every `unstable_cache` invocation independently does an
+  `incrementalCache.get` plus a full `JSON.parse`; the only dedup structure it keeps is keyed on the
+  _revalidation_ promise, not the read. So on a cold entry three callers in one render each run the
+  whole query. `fetchReferenceData` ran 3× per render of the investment page for exactly this reason
+  — the page, the transfers table and the root-layout nav each call it.
+- **The two caches are different axes, and you often want both**: `unstable_cache` spans requests
+  and re-runs on tag invalidation; React `cache()` collapses calls _within one render_. Wrap
+  `cache(unstable_cache(fn))` — that order, React's outside. It is only safe when nothing reads the
+  value before a mutation in the same request, so the first call is always post-write.
+- **The trap in the other direction**: an `unstable_cache` **nested inside another** bypasses the
+  cache entirely — the inner call just runs. Before wrapping an existing query, check whether any of
+  its callers is already wrapped.
+- **Applies to**: anything under `src/lib/queries`; the reference-data blob is the worked example
+  (`src/lib/queries/reference-data.ts:41-46`).
+
+## A correlated `jsonb_array_elements` count is slow for a reason the row counts don't show: it trips JIT
+
+- **Where**: `listPresetSections` in `src/lib/db/presets.ts` (EX-622, 2026-07-28) — count the items per
+  sekcja across every szablon.
+- **Measured** on 2 szablony / 26 sekcji / 320 items each: a lateral count re-expanded per section ran
+  ~122 ms (423 ms with JIT enabled); the same result as a pre-aggregated CTE joined once ran **~2.5 ms**.
+- **Why the gap is bigger than O(sections × items) explains**: Postgres has no statistics for a
+  set-returning function, so it estimates `jsonb_array_elements` at a flat **100 rows**. The correlated
+  form therefore costed at `rows=72000`, crossed `jit_above_cost`, and paid ~115 ms of code emission to
+  produce a 26-row result. The CTE form stays under the threshold. A plan that looks merely quadratic can
+  be paying a fixed compile tax on top — read the cost estimate, not just the row counts.
+- **Rule**: aggregate a JSON array **once** in a CTE and hash-join it, never re-expand it per outer row.
+  And when a count is keyed on an id that is only unique _inside_ its parent document (a `sectionId`
+  within one szablon), the join must carry the parent id too — dropping it doesn't merely mistally, it
+  fans the join out and duplicates rows.
+- **`WITH ORDINALITY` when replacing a JS sort with SQL**: `Array.prototype.sort` is stable, Postgres'
+  is not. If a consumer relies on ties arriving in array order (here: one szablon's metas must arrive
+  consecutively), the array position has to be an explicit tiebreaker in `ORDER BY`.

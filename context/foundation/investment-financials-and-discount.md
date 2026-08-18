@@ -211,3 +211,13 @@ figure deducted.
 Specs: `context/reference/superpowers/archive/2026-06-11-investment-rabat.md`,
 `context/reference/superpowers/archive/2026-06-11-loss-strata-transfer-type.md`,
 `context/reference/superpowers/archive/2026-06-12-settled-internal-material-design.md`.
+
+## MANAGER sees the settled materiały, not the marża (owner ruling, 2026-07-28)
+
+The kosztorys page passes `financials` only for ADMIN/OWNER but `settledBreakdown`
+unconditionally, and that asymmetry is deliberate, not an oversight: a MANAGER is meant to read
+the rozliczone materiały table while the marża stays hidden. So the visible overlap between
+`financials` / `materialsGrossBase` / `materialsNetBilled` / `settledBreakdown` is not redundancy
+to collapse — the props carry different audiences, and the gap between them _is_ the access gate.
+Deriving `settledBreakdown` from `financials` (a tempting prop-count cleanup) silently deletes that
+table for every MANAGER.
