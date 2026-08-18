@@ -1,6 +1,4 @@
 import { toGross } from '@/lib/kosztorys/calc'
-import { costForCategory } from '@/lib/utils/category-costs'
-import type { CategoryCostT } from '@/types/investment-financials'
 
 export type MoneyPairT = { net: number; gross: number }
 
@@ -78,25 +76,6 @@ export function materialsPair(materials: MaterialsT, netRate: number | null): Mo
  *  here would only pretend they differ. */
 export function billedMaterials(materials: MaterialsT, netRate: number | null): number {
   return materialsPair(materials, netRate).net
-}
-
-/** The same billed figure as `billedMaterials`, per expense category — for a surface that shows the
- *  split rather than the aggregate. `netCategoryCosts` is a SUBSET of `categoryCosts`, so a
- *  category's brutto base is its total minus its netto part; feeding the raw total as `grossBase`
- *  would divide the netto part a second time. Built on `billedMaterials` so Σ of these columns is
- *  the same arithmetic as the total they must add up to. */
-export function billedCategoryCosts(
-  categoryCosts: CategoryCostT[],
-  netCategoryCosts: CategoryCostT[],
-  netRate: number | null,
-): CategoryCostT[] {
-  return categoryCosts.map(({ categoryId, total }) => {
-    const netBilled = costForCategory(netCategoryCosts, categoryId)
-    return {
-      categoryId,
-      total: billedMaterials({ grossBase: total - netBilled, netBilled }, netRate),
-    }
-  })
 }
 
 /** „Łącznie" — the prace on their own two planes, plus materiały. Materiały enters BOTH axes at the

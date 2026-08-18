@@ -8,7 +8,7 @@ import { calculateMargin } from '@/lib/db/calculate-margin'
 import { grossBalance } from '@/lib/db/gross-balance'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
-import { billedCategoryCosts, billedMaterials } from '@/lib/kosztorys/summary-economics'
+import { billedMaterials } from '@/lib/kosztorys/summary-economics'
 import { marginV2, type SubcontractorSettlementT } from '@/lib/kosztorys/margin-v2'
 import { ZERO_FINANCIALS } from '@/types/investment-financials'
 import type { InvestmentRefT } from '@/types/reference-data'
@@ -41,11 +41,6 @@ export function shapeInvestments(
       { grossBase: financials.materialsGrossBase, netBilled: financials.materialsNetBilled },
       netRate,
     )
-    const billedCategories = billedCategoryCosts(
-      financials.categoryCosts,
-      financials.netCategoryCosts,
-      netRate,
-    )
     const balance = calculateBalance(financials)
     return {
       id: inv.id,
@@ -58,7 +53,6 @@ export function shapeInvestments(
       totalLaborCostsFromTransactions: transactionFinancials.totalLaborCosts,
       totalPayouts: financials.totalPayouts,
       totalInvestmentExpense,
-      categoryCosts: billedCategories,
       totalSettled: financials.totalSettled,
       balance,
       // The VAT base must be the SAME pair the netto bilans was built from. Grossing a

@@ -3,9 +3,7 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
-import type { ExpenseCategoryRefT } from '@/types/reference-data'
 import type { InvestmentRowT } from '@/types/table-rows'
-import { costForCategory } from '@/lib/utils/category-costs'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
 import { ContactLink } from '@/components/ui/contact-link'
@@ -17,10 +15,9 @@ const col = createColumnHelper<InvestmentRowT>()
 
 type InvestmentColumnOptionsT = {
   userRole: RoleT
-  expenseCategories: ExpenseCategoryRefT[]
 }
 
-export function getInvestmentColumns({ userRole, expenseCategories }: InvestmentColumnOptionsT) {
+export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
   const isAdminOrOwner = isAdminOrOwnerRole(userRole)
   return [
     col.accessor('name', {
@@ -115,15 +112,6 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
       },
     }),
 
-    // Mirrors the single-investment stats so labels stay 1:1 with the detail page.
-    ...expenseCategories.map((cat) =>
-      col.accessor((row) => costForCategory(row.categoryCosts, cat.id), {
-        id: `category-${cat.id}`,
-        header: cat.name,
-        meta: { align: 'right' },
-        cell: (info) => formatPLN(info.getValue()),
-      }),
-    ),
     col.accessor('totalInvestmentExpense', {
       id: 'totalInvestmentExpense',
       header: 'Wydatki inwestycyjne',

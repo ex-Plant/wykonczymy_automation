@@ -60,8 +60,8 @@ export const fetchInvestmentFinancials = unstable_cache(
     return record
   },
   // Versioned key — see the note on `reference-data-v2`. Bumped when `InvestmentFinancialsT` gained
-  // `netCategoryCosts`: an entry written before that lacks the array, and `billedCategoryCosts`
-  // dereferences it, so the listing throws rather than merely showing an old number.
+  // `netCategoryCosts`: an entry written before that lacks the array, and a reader dereferencing it
+  // throws rather than merely showing an old number.
   ['investment-financials-v2'],
   // Two tags, not one: the figures are summed from transfers, but the materiały concession and the
   // settlement mode that gates it are columns on `investments`. Tagged on transfers alone, saving a

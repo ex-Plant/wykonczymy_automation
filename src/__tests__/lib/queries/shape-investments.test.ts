@@ -69,7 +69,6 @@ describe('shapeInvestments', () => {
       totalLaborCosts: 0,
       totalPayouts: 0,
       totalInvestmentExpense: 0,
-      categoryCosts: [],
       balance: 0,
       margin: 0,
     })
@@ -100,13 +99,9 @@ describe('shapeInvestments', () => {
     }
     const [row] = shapeInvestments([baseInv], financials)
     expect(row.totalInvestmentExpense).toBe(1150)
-    expect(row.categoryCosts).toEqual([
-      { categoryId: 1, total: 800 },
-      { categoryId: 2, total: 400 },
-    ])
   })
 
-  it('prices each category on the plane it was recorded on when a rate is set', () => {
+  it('prices each bucket on the plane it was recorded on when a rate is set', () => {
     const financials: InvestmentFinancialsMapT = {
       '5': {
         // Category 1 mixes planes: 1150 brutto receipts + 100 already billed netto.
@@ -127,7 +122,6 @@ describe('shapeInvestments', () => {
     }
     const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
     // 1150 ÷ 1,25 = 920, plus the 100 netto at face value — the netto part is NOT divided again.
-    expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1020 }])
     expect(row.totalInvestmentExpense).toBe(1020)
   })
 
@@ -153,7 +147,6 @@ describe('shapeInvestments', () => {
       [{ ...baseInv, materialsNetRate: 0.25, settlementMode: 'GROSS' }],
       financials,
     )
-    expect(row.categoryCosts).toEqual([{ categoryId: 1, total: 1250 }])
     expect(row.totalInvestmentExpense).toBe(1250)
   })
 
@@ -277,16 +270,9 @@ describe('shapeInvestments', () => {
       },
     }
     const [row] = shapeInvestments([{ ...baseInv, materialsNetRate: 0.25 }], financials)
-    // Absolute figures first — the Σ identity alone is satisfied by any wrong pair, because the
-    // korekta is DERIVED as total − Σ columns and would silently absorb a mispriced column.
-    expect(row.totalInvestmentExpense).toBeCloseTo(1612, 10) // 1890/1.25 + 100
-    expect(row.categoryCosts).toEqual([
-      { categoryId: 1, total: 1020 }, // (1250 − 100)/1.25 + 100
-      { categoryId: 2, total: 400 }, // 500/1.25
-    ])
-    // 1612 − (1020 + 400): the 192 with no category is inside the total and shown by no column.
-    const columnSum = row.categoryCosts.reduce((sum, c) => sum + c.total, 0)
-    expect(row.totalInvestmentExpense - columnSum).toBeCloseTo(192, 10)
+    // 1890/1.25 + 100. The 240 booked to no category is in there — priced through the same rate,
+    // it contributes the 192 that separates this from the two categories' 1420.
+    expect(row.totalInvestmentExpense).toBeCloseTo(1612, 10)
   })
 })
 

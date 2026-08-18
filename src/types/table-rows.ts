@@ -1,7 +1,6 @@
 import type { CashRegisterTypeT, InvestmentStatusT } from '@/types/reference-data'
 import type { SheetStatusT } from '@/lib/constants/sheets'
 import type { RoleT } from '@/lib/auth/roles'
-import type { CategoryCostT } from '@/types/investment-financials'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
 /** The shapes a listing query hands to the table that renders it — a contract between the two
@@ -24,9 +23,6 @@ export type InvestmentRowT = {
   totalPayouts: number
   totalInvestmentExpense: number
   totalSettled: number
-  /** Priced on the plane the client is billed on, not the raw receipts — so these columns and
-   *  `totalInvestmentExpense` stand on the same plane and add up. */
-  categoryCosts: CategoryCostT[]
   balance: number
   balanceGross: number
   /** The same bilans on the transactions plane. Both are shown while investments are still being
