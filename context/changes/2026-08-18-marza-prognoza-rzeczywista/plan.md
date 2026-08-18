@@ -515,15 +515,15 @@ figure here.
 
 #### Automated
 
-- [x] 2.1 `allowed-summary-views.test.ts` covers the now-visible tab (the gate was extracted from `summary-panel-content.tsx` to make it testable without a renderer)
-- [x] 2.2 Phase-1 specs still pass
+- [x] 2.1 `allowed-summary-views.test.ts` covers the now-visible tab (the gate was extracted from `summary-panel-content.tsx` to make it testable without a renderer) — 30791066
+- [x] 2.2 Phase-1 specs still pass — 30791066
 
 ### Phase 3: The listing fold
 
 #### Automated
 
-- [ ] 3.1 `kosztorys-subcontractor-due.test.ts` SQL↔TS parity passes
-- [ ] 3.2 `kosztorys-client-totals.test.ts` still passes
+- [x] 3.1 `kosztorys-subcontractor-due.test.ts` SQL↔TS parity passes (fails red on both perturbations: dropping the qty gate on the unconfirmed flag, and swapping the plane column pair)
+- [x] 3.2 `kosztorys-client-totals.test.ts` still passes
 
 ### Phase 4: The „Marża v2" column
 

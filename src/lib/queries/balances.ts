@@ -4,6 +4,8 @@ import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
+import type { SubcontractorSettlementT } from '@/lib/kosztorys/margin-v2'
 import {
   sumAllRegisterBalances,
   sumAllWorkerBalances,
@@ -102,5 +104,29 @@ export const fetchKosztorysClientTotals = unstable_cache(
     return record
   },
   ['kosztorys-client-totals-v1'],
+  { tags: KOSZTORYS_CLIENT_TOTALS_TAGS },
+)
+
+export type KosztorysSubcontractorDueMapT = Record<string, SubcontractorSettlementT>
+
+// Same tag set as the client pair above, deliberately not a narrower one: every table this fold
+// reads (items, stages, progress, and the investment's coefficients) is already in it, and a second
+// list would be a second thing to keep in step.
+export const fetchKosztorysSubcontractorDue = unstable_cache(
+  async (): Promise<KosztorysSubcontractorDueMapT> => {
+    const elapsed = perfStart()
+    const payload = await getPayload({ config })
+    const db = await getDb(payload)
+    const rows = await selectKosztorysSubcontractorDue(db)
+    const record: KosztorysSubcontractorDueMapT = {}
+    for (const { investmentId, ...settlement } of rows) {
+      record[String(investmentId)] = settlement
+    }
+    console.log(
+      `[PERF] query.fetchKosztorysSubcontractorDue ${elapsed()}ms (${rows.length} investments)`,
+    )
+    return record
+  },
+  ['kosztorys-subcontractor-due-v1'],
   { tags: KOSZTORYS_CLIENT_TOTALS_TAGS },
 )
