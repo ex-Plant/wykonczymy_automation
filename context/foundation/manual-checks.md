@@ -11,13 +11,25 @@ etapy z przypisanym rozliczeniem i jeden **bez**, kilka pozycji z rabatem, a na 
 zaksięgowane wypłaty i strata. Zalogowany jako OWNER.
 
 - [ ] W podsumowaniu kosztorysu jest zakładka „Marża" obok „Podwykonawcy"
-- [ ] Przełącznik „Prognoza / Marża rzeczywista" przełącza dwie różne tabele, a wybór scenariusza („z narzędziami / bez narzędzi") widać **tylko** pod prognozą
-- [ ] Prognoza w obu scenariuszach różni się wyłącznie wierszem „Należne podwykonawcom (przedmiar)"; „Wartość przedmiaru" stoi w miejscu
+- [ ] Przełącznik „Prognoza / Marża rzeczywista" przełącza dwie różne tabele, a checkbox „Bez narzędzi" widać **tylko** pod prognozą
+- [ ] Odhaczenie „Bez narzędzi" rusza wyłącznie wierszem „Należne podwykonawcom (stawka …)"; „Wartość przedmiaru" stoi w miejscu
+- [ ] Wybór zakładki i scenariusza przeżywa przejście na inną zakładkę i z powrotem
 - [ ] Rabat na pozycji nie rusza prognozy, a marżę rzeczywistą obniża
+- [ ] Opis pod prognozą mówi wprost, że jest to marża **przed materiałem** i leży wyżej niż rzeczywista
 - [ ] Marża rzeczywista pokazuje „Ustaw rozliczenie etapów" (nie zero), dopóki etap z wykonaną pracą nie ma rozliczenia; po ustawieniu pojawia się kwota
+- [ ] W tym samym stanie (etap bez rozliczenia) blok „Rozliczenie z ekipą" **nie renderuje się wcale** — nie ma „Nadpłaty" liczonej z niepełnej kwoty
+- [ ] Po ustawieniu wszystkich etapów blok „Rozliczenie z ekipą" pokazuje należność, wypłaty i „Pozostało do wypłaty"
+- [ ] Wypłata dokładnie równa „Sumie wykonanej pracy" daje „Pozostało do wypłaty 0,00 zł" na czarno — **nie** czerwoną „Nadpłatę"
+- [ ] Wypłata większa niż wykonana praca daje czerwoną „Nadpłatę" z podpowiedzią
 - [ ] W podglądzie inwestora nie ma ani „Marży", ani „Podwykonawców"
-- [ ] Na `/inwestycje` kolumny „Marża" i „Marża v2" stoją obok siebie i **różnią się** na inwestycji, która ma i zaksięgowane wypłaty, i kosztorys
-- [ ] Inwestycja z nierozliczonym etapem pokazuje „ustaw etapy" w „Marża v2", a w „Marża" niezmienioną kwotę
+- [ ] Na `/inwestycje` stoją obok siebie „Bilans netto v1 / v2", „Marża v1 / v2" oraz „Robocizna v1 / v2"
+- [ ] „Marża v1" na liście równa się marży na zakładce v1 strony inwestycji tej samej inwestycji
+- [ ] „Bilans netto v1" na liście równa się bilansowi na zakładce v1 strony inwestycji
+- [ ] Inwestycja z nierozliczonym etapem pokazuje „ustaw etapy" w „Marża v2", a w „Marża v1" niezmienioną kwotę
+- [ ] Sortowanie po „Marża v2" zbiera wiersze „ustaw etapy" na końcu, nie wśród kwot bliskich zeru
+- [ ] Inwestycja, której robocizna z kosztorysu i z transferów zgadzają się co do grosza, nie ma żadnej ikony przy „Robocizna v2"; przy rozjeździe stoi tam czerwony trójkąt, a pod kursorem kwota rozjazdu
+- [ ] W dialogu transferu znowu są „Koszty robocizny" i „Rabat", a lista typów jest posortowana po polskiej nazwie
+- [ ] Zaksięgowanie „Kosztów robocizny" rusza „Robocizną v1" i ikoną rozjazdu przy „Robocizna v2", a sama „Robocizna v2" i „Marża v2" stoją w miejscu
 - [ ] Jako MANAGER nie ma na liście żadnej z dwóch kolumn marży
 - [ ] „Marża v2" na liście równa się „Marży rzeczywistej" w panelu kosztorysu tej samej inwestycji
 

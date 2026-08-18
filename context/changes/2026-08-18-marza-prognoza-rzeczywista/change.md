@@ -1,7 +1,7 @@
 ---
 change_id: marza-prognoza-rzeczywista
 title: Zakładka „Marża" — prognoza z przedmiaru obok marży rzeczywistej, obie z kosztorysu
-status: implementing
+status: implemented
 created: 2026-08-18
 updated: 2026-08-18
 archived_at: null
@@ -74,3 +74,18 @@ rozliczonego materiału. Pełne uzasadnienie w EX-649.
   obowiązują te nowsze: (a) issue każe usunąć „obniżkę materiałów" z `calculateMargin`, my starej
   formuły nie ruszamy i dopisujemy drugą; (b) issue liczy prognozę „less rabat", właściciel
   rozstrzygnął, że prognoza idzie po pełnej cenie.
+
+## Odstępstwa od planu (zapisane przy review gate, 2026-08-18)
+
+- **Cofnięcie EX-555: `LABOR_COST` i `RABAT` wracają do okna transferu — tymczasowo.** Plan tego nie
+  przewidywał. Powód: `readingFromKosztorys` nie ma żadnego fallbacku, więc inwestycja, której
+  kosztorys nadal żyje w arkuszu, czyta 0 zł robocizny i 0 zł rabatu — i po zdjęciu obu typów nie da
+  się jej rozliczyć żadną drogą. Podwójnego liczenia nie blokujemy, tylko **pokazujemy** (ikona rozjazdu
+  przy „Robocizna v2" na listingu). v2 jest na to strukturalnie odporne, bo odczyt z kosztorysu **zastępuje**
+  figurę, a nie dodaje do niej. Warunek wyjścia: **EX-712** — gdy każda żywa inwestycja ma kosztorys
+  w aplikacji, oba typy znikają z okna na stałe i ten akapit się usuwa.
+- **Blok „Rozliczenie z ekipą" pod marżą rzeczywistą — wbrew decyzji 5 planu.** Plan mówił, że
+  wypłaty do marży nie wchodzą i nie mają się przy niej pokazywać. Przy dogfoodingu okazało się, że
+  sama marża bez tej pary czyta się jak sprzeczność („kosztorys mówi tyle, ekipa dostała tyle"), więc
+  blok wchodzi **obok** marży, z opisem mówiącym wprost, że jest poza nią. Decyzja 5 zostaje w mocy
+  co do **formuły** — wypłaty dalej nie są kosztem marży; zmienia się tylko to, co widać na ekranie.
