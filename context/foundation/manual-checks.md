@@ -1244,8 +1244,9 @@ Setup: jak wyżej, plus jedna pozycja bez ceny wykonawcy w widoku „Bez narzęd
 
 ## sortowanie-kolumn-spojne — sortowanie w każdej kolumnie z danymi
 
-**In review** — wszystko zautomatyzowane zielone (tsc 0, eslint 0 na zmienionych plikach, 2419
-testów). Sortowanie przestaje zależeć od tego, którego nagłówka kolumna użyła: klucze dostają etapy
+**Zarchiwizowane** (`context/archive/2026-08-17-sortowanie-kolumn-spojne/`) — wszystko
+zautomatyzowane zielone (tsc 0, eslint 0 na zmienionych plikach, 2419 testów). Sortowanie przestaje
+zależeć od tego, którego nagłówka kolumna użyła: klucze dostają etapy
 (ilościowo i wartościowo netto/brutto), „Komentarz", „Źródło ceny wykonawcy" i „Mnożnik". Bez
 sortowania zostają tylko „akcje" i przerwa między warstwami — nie ma w nich czego porównywać.
 

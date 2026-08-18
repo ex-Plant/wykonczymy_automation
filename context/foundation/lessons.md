@@ -1293,3 +1293,35 @@ second language. That is different from two planes that genuinely compute differ
 agree, which still needs the bridge test. Worth doing with no live victim: here every path that changed
 stored order happened to go through the client or remount, so nothing was broken — the defect was the
 triplicated rule, and the fix deleted code the following refactor would otherwise have relocated first.
+
+## A capability offered by a helper, not declared by a column, gets its coverage decided by accident
+
+Sorting in the kosztorys grid looked like a per-column product decision and was nothing of the kind:
+`title()` was the only helper that constructed a `SortHeader`, so every column built by a different
+header component (`StageHeader`, the stage-value header) shipped unsortable without anyone choosing
+that. Nothing in the repo ever recorded a decision to exclude them; the one written justification was
+a limitation note about two columns whose keys genuinely could not resolve, and a third column's
+opt-out arrived as an unremarked third argument in an unrelated feature commit.
+
+**The tell:** a capability whose presence is a side effect of _which constructor a call site reached
+for_ rather than a property the column declares. When you find one, the fix is the rule, not the
+patches — decide what the capability's universal predicate is („every column carrying data"), then
+make the exceptions the ones that fail it, so the next column added inherits the right answer instead
+of the nearest helper's.
+
+The corollary is what makes it worth writing down: a limitation note in a commit message ages into a
+believed constraint. Here the note said `columnSortValue` had no case for per-stage ids — true of the
+two **value** namespaces it was written about, and false of the **quantity** namespace it was later
+read as covering, since `stage_<id>` is a real always-numeric row field the default branch already
+resolved. That is the second instance in this file of a deferral rationale hardening into a
+dependency; both times, checking the stated blocker took minutes and dissolved most of the work.
+
+**Two constraints this change leaves standing, for whoever touches grid sorting next.** First,
+`reconcileSort` derives a sort's validity from the rendered column ids, so _anything_ that removes a
+column silently cancels the user's sort — cheap and correct while only deliberate axis toggles could
+do it, considerably less obvious now that a stage-scoped „Problemy" filter narrows the stage columns
+too. Second, the sort is a pure lens: it is persisted nowhere — not in localStorage, presets,
+snapshots, URL params or the DB — which is the only reason `stage_<id>` is safe as a sort field at
+all. Postgres reissues a deleted stage's id, which is exactly why stage ids are kept out of the
+persisted hidden-columns map. If anyone ever proposes persisting the sort, that question reopens on
+day one.
