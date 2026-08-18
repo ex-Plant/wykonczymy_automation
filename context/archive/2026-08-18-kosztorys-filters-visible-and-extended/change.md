@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-filters-visible-and-extended
 title: Kosztorys filters made visible and extended — active-filter chips + more registry conditions
-status: implemented
+status: archived
 created: 2026-08-18
 updated: 2026-08-18
-archived_at: null
+archived_at: 2026-08-18T15:57:34Z
 branch: kosztorys-filters-visible-and-extended
 worktree: .claude/worktrees/kosztorys-filters
 ---
