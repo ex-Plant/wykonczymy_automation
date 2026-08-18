@@ -398,10 +398,7 @@ export function useKosztorysEditor({
   const divergenceFilterEngaged = !preview && engagedConditionIds.has(MEASURE_DIVERGED_CONDITION_ID)
 
   // Subtracts from the allowlist, never adds to it — the ceiling stays `PREVIEW_VISIBLE_COLUMNS`.
-  const previewHiddenColumns = useMemo(
-    () => (preview && clientView ? new Set(clientView.hiddenColumns) : undefined),
-    [preview, clientView],
-  )
+  const previewHiddenColumns = preview && clientView ? new Set(clientView.hiddenColumns) : undefined
 
   const columnOpts = {
     view,
@@ -462,7 +459,10 @@ export function useKosztorysEditor({
   // executed but unpriced sums to zero and is exactly the one nobody wants folded away. A mixed
   // section belongs to neither half of a pair and so stays visible under both — by design, since
   // „sekcje bez przedmiaru" cannot honestly name a section that has some.
+  // Empty under the preview like every other filter input: the „Filtry" menu that reads this lives in
+  // the owner's toolbar, so on a client's share there is nothing to tick.
   const foldableSectionIds = useMemo(() => {
+    if (preview) return new Map<string, Set<number>>()
     const ctx = { stages, hasSettledMaterial }
     return new Map(
       ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
@@ -470,7 +470,7 @@ export function useKosztorysEditor({
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
     )
-  }, [rows, stages, hasSettledMaterial])
+  }, [preview, rows, stages, hasSettledMaterial])
 
   // Problems only, and never under the preview. The latch is half of a two-part gesture whose other
   // half — „Odśwież — ukryj poprawione" — lives in the „Problemy" menu and is rendered only while a

@@ -178,6 +178,19 @@ export function KosztorysEditorBody({
   // The client's own hider counts here too: with „ukryj puste pozycje" on and every pozycja empty,
   // the client would otherwise get a grid with nothing in it and no word about why.
   const emptyByFilter = engagedHiders(engagedConditionIds).length > 0
+  // One decision, not two: the title and the description always come from the same branch, so
+  // splitting them into parallel ternaries only invites the two to drift apart.
+  const emptyCopy = preview
+    ? {
+        title: 'Brak pozycji do pokazania',
+        description: 'Żadna pozycja nie ma jeszcze przedmiaru ani wykonanej pracy.',
+      }
+    : emptyByFilter
+      ? { title: 'Wszystkie pozycje schowane', description: undefined }
+      : {
+          title: `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`,
+          description: 'Filtr zrobił swoje — nie ma już czego poprawiać.',
+        }
   const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (laborCostsNetFromKosztorys /
@@ -324,20 +337,8 @@ export function KosztorysEditorBody({
             (emptyByFilter || engagedDiagnostics.length > 0) && (
               <EmptyState
                 className="pointer-events-none absolute inset-0"
-                title={
-                  preview
-                    ? 'Brak pozycji do pokazania'
-                    : emptyByFilter
-                      ? 'Wszystkie pozycje schowane'
-                      : `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`
-                }
-                description={
-                  preview
-                    ? 'Żadna pozycja nie ma jeszcze przedmiaru ani wykonanej pracy.'
-                    : emptyByFilter
-                      ? undefined
-                      : 'Filtr zrobił swoje — nie ma już czego poprawiać.'
-                }
+                title={emptyCopy.title}
+                description={emptyCopy.description}
               >
                 {/* The client has no „Filtry" menu, so nothing there is theirs to reset. */}
                 {!preview && (

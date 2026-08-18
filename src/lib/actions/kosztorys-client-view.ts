@@ -2,7 +2,7 @@
 
 import { ownerOnlyAction } from '@/lib/actions/owner-only-action'
 import {
-  sanitizeClientViewSettings as sanitize,
+  sanitizeClientViewSettings,
   type ClientViewSettingsT,
 } from '@/lib/kosztorys/client-view-settings'
 import { findClientViewRow } from '@/lib/queries/kosztorys-client-view'
@@ -16,7 +16,7 @@ export async function saveClientViewSettingsAction(
   settings: ClientViewSettingsT,
 ): Promise<ActionResultT> {
   return ownerOnlyAction('saveClientViewSettingsAction', FORBIDDEN, async ({ payload }) => {
-    const data = sanitize(settings)
+    const data = sanitizeClientViewSettings(settings)
     const row = await findClientViewRow(payload, investmentId)
 
     if (row) {
@@ -51,7 +51,7 @@ export async function saveClientViewDefaultsAction(
   return ownerOnlyAction('saveClientViewDefaultsAction', FORBIDDEN, async ({ payload }) => {
     await payload.updateGlobal({
       slug: 'kosztorys-client-view-defaults',
-      data: sanitize(settings),
+      data: sanitizeClientViewSettings(settings),
     })
     return { success: true }
   })
