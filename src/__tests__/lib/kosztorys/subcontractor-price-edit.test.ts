@@ -24,7 +24,6 @@ const row: ViewPricingT = {
   wToolsOverrideValue: 0,
   ownToolsOverrideType: null,
   ownToolsOverrideValue: 0,
-  hiddenInExport: false,
   note: null,
   globalDiscountActive: false,
   globalWToolsCoeff: 0.65,

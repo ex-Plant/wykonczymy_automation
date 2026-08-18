@@ -83,7 +83,6 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
         clientPrice: 100,
         discountType: 'amount',
         discountValue: 50,
-        hiddenInExport: false,
       },
       overrideAccess: true,
       ...ctx,

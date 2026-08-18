@@ -60,7 +60,6 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
               discountValue: 10,
               wToolsOverrideType: 'coeff',
               wToolsOverrideValue: 0.65,
-              hiddenInExport: true,
               note: 'uwaga',
             },
           ],
@@ -128,7 +127,6 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
     expect(item.plannedQty).toBe(0)
     expect(item.discountType).toBeNull()
     expect(item.discountValue).toBe(0)
-    expect(item.hiddenInExport).toBe(false)
     expect(item.note).toBeNull()
   })
 

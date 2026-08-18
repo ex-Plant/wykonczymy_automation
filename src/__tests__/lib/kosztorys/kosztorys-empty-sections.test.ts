@@ -21,7 +21,6 @@ function item(id: number, sectionId: number, overrides: Partial<KosztorysItemT> 
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    hiddenInExport: false,
     note: null,
     ...overrides,
   } satisfies KosztorysItemT

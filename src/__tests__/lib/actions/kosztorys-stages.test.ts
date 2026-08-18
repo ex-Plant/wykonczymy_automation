@@ -21,9 +21,8 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
-const { removeStageAction, setStageProgressAction, updateStageAction } = await import(
-  '@/lib/actions/kosztorys'
-)
+const { removeStageAction, setStageProgressAction, updateStageAction } =
+  await import('@/lib/actions/kosztorys')
 
 // Gated like the sibling guard spec: skips with no DB env (portable), FAILS if env is set but the
 // DB is unreachable. Run against the local DB with `--env-file=.env`.
@@ -101,7 +100,6 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
         plannedQty: 0,
         discountValue: 0,
         clientPrice: 0,
-        hiddenInExport: false,
       },
       overrideAccess: true,
       ...ctx,

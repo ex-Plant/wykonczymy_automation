@@ -33,7 +33,6 @@ export const ITEM_INSERT_COLUMNS = [
   'w_tools_override_value',
   'own_tools_override_type',
   'own_tools_override_value',
-  'hidden_in_export',
   'note',
 ] as const
 
@@ -121,7 +120,7 @@ export async function insertItems(
   if (rows.length === 0) return []
   const values = rows.map(
     ({ sectionId, item: it }) =>
-      sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.sheetMeasuredQty ?? null}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideType ?? null}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideType ?? null}, ${it.ownToolsOverrideValue}, ${it.hiddenInExport}, ${it.note ?? null})`,
+      sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.sheetMeasuredQty ?? null}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideType ?? null}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideType ?? null}, ${it.ownToolsOverrideValue}, ${it.note ?? null})`,
   )
   const res = await db.execute(sql`
     INSERT INTO kosztorys_items (${sql.raw(ITEM_INSERT_COLUMNS.join(', '))})

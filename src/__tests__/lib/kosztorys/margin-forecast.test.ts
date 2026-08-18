@@ -19,7 +19,6 @@ const item: ViewPricingT = {
   wToolsOverrideValue: 12,
   ownToolsOverrideType: 'amount',
   ownToolsOverrideValue: 10,
-  hiddenInExport: false,
   note: null,
   globalDiscountActive: false,
   globalWToolsCoeff: 0.65,

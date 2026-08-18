@@ -121,7 +121,6 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
         sheetMeasuredQty: 7,
         clientPrice: 100,
         discountValue: 0,
-        hiddenInExport: false,
       },
       context: { skipRevalidation: true },
       overrideAccess: true,

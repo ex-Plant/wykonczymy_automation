@@ -57,7 +57,6 @@ const itemPatchSchema = z
     wToolsOverrideValue: z.coerce.number(),
     ownToolsOverrideType: overrideTypeSchema.nullable(),
     ownToolsOverrideValue: z.coerce.number(),
-    hiddenInExport: z.boolean(),
     note: z.string().nullable(),
   })
   .partial()

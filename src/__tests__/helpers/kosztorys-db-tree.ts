@@ -93,7 +93,6 @@ export async function createKosztorysTree(
           wToolsOverrideValue: item.wToolsOverrideValue ?? 0,
           ownToolsOverrideType: item.ownToolsOverrideType ?? null,
           ownToolsOverrideValue: item.ownToolsOverrideValue ?? 0,
-          hiddenInExport: item.hiddenInExport ?? false,
           note: item.note ?? null,
         },
         ...FIXTURE_CONTEXT,

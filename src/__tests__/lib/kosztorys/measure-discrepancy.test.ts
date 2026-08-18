@@ -26,7 +26,6 @@ function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    hiddenInExport: false,
     note: null,
     sectionName: 'Podłogi',
     sectionColor: null,

@@ -77,7 +77,6 @@ async function run() {
               wToolsOverrideValue: i % 5 === 0 ? 700 : 0,
               ownToolsOverrideType: null,
               ownToolsOverrideValue: 0,
-              hiddenInExport: false,
             },
             ...ctx,
           }),

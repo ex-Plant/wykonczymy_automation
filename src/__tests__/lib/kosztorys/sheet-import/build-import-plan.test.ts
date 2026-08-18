@@ -40,7 +40,6 @@ function currentTree(overrides: Partial<SnapshotPayloadT> = {}): SnapshotPayload
         wToolsOverrideValue: 0,
         ownToolsOverrideType: null,
         ownToolsOverrideValue: 0,
-        hiddenInExport: false,
         note: 'ustalone z klientem',
       },
     ],

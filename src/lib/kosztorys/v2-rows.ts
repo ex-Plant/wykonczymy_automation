@@ -14,7 +14,6 @@ const ITEM_FIELDS = [
   'wToolsOverrideValue',
   'ownToolsOverrideType',
   'ownToolsOverrideValue',
-  'hiddenInExport',
   'note',
 ] as const satisfies readonly (keyof ItemPatchT)[]
 

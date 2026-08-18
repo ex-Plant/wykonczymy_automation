@@ -115,7 +115,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
               clientPrice: 40,
               discountType: 'percent',
               discountValue: 10,
-              hiddenInExport: true,
             },
           ],
         },
@@ -176,7 +175,6 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
       expect(item.sheetMeasuredQty).toBeNull()
       expect(item.discountType).toBeNull()
       expect(item.discountValue).toBe(0)
-      expect(item.hiddenInExport).toBe(false)
       expect(item.note).toBeNull()
     }
     expect(after.progress).toEqual([])

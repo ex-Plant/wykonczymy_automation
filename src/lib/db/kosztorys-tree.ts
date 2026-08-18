@@ -73,7 +73,7 @@ export async function selectKosztorysTreeData(
                  discount_type, discount_value, client_price,
                  w_tools_override_type, w_tools_override_value,
                  own_tools_override_type, own_tools_override_value,
-                 hidden_in_export, note
+                 note
           FROM kosztorys_items WHERE investment_id = ${investmentId}
         ) i
       ) AS items,
@@ -149,7 +149,6 @@ const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
   wToolsOverrideValue: num(row.w_tools_override_value),
   ownToolsOverrideType: str(row.own_tools_override_type) as SubcontractorOverrideTypeT | null,
   ownToolsOverrideValue: num(row.own_tools_override_value),
-  hiddenInExport: Boolean(row.hidden_in_export),
   note: str(row.note),
 })
 

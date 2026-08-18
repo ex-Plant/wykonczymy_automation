@@ -230,13 +230,12 @@ export function buildImportPlan(
         wToolsOverrideValue: wTools.value,
         ownToolsOverrideType: ownTools.type,
         ownToolsOverrideValue: ownTools.value,
-        // The sheet has no column for either, so a matched praca keeps what the app holds rather
+        // The sheet has no column for it, so a matched praca keeps what the app holds rather
         // than having it blanked by an import that never had an opinion. `sheetMeasuredQty` gets
         // the opposite treatment on purpose — it rides the spread above and OVERWRITES, because it
         // is the sheet's own claim and the app never edits it: whatever the sheet says today is the
         // answer, including „nothing typed here any more".
         note: current?.note ?? null,
-        hiddenInExport: current?.hiddenInExport ?? false,
       })
 
       for (const entry of parsedProgressByItem.get(sheetItem.id) ?? []) {

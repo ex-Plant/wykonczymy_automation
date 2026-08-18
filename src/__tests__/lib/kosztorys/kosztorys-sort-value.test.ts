@@ -35,7 +35,6 @@ const tree: KosztorysTreeT = makeTree({
           wToolsOverrideValue: 0,
           ownToolsOverrideType: null,
           ownToolsOverrideValue: 0,
-          hiddenInExport: false,
           note: null,
         },
         {
@@ -53,7 +52,6 @@ const tree: KosztorysTreeT = makeTree({
           wToolsOverrideValue: 0,
           ownToolsOverrideType: null,
           ownToolsOverrideValue: 0,
-          hiddenInExport: false,
           note: null,
         },
       ],

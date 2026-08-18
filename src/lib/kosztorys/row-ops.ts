@@ -53,7 +53,6 @@ export function buildBlankRow(input: BlankRowInputT): KosztorysV2RowT {
     wToolsOverrideValue: 0,
     ownToolsOverrideType: null,
     ownToolsOverrideValue: 0,
-    hiddenInExport: false,
     note: null,
     sectionName: input.sectionName,
     sectionColor: input.sectionColor,

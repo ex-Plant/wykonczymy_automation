@@ -63,7 +63,6 @@ export async function createBlankItem(
       plannedQty: 0,
       discountValue: 0,
       clientPrice: 0,
-      hiddenInExport: false,
     },
   })
   return { id: created.id, displayOrder }

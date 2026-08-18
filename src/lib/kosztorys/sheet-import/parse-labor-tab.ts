@@ -153,7 +153,6 @@ export function parseLaborTab(
       discountValue: discountFraction > 0 ? discountPercent : 0,
       clientPrice: number(row[columns.clientPrice]),
       sheetMeasuredQty: readMeasuredQty(row, formulas[rowIndex] ?? [], columns.measuredQty),
-      hiddenInExport: false,
       note: null,
     })
 
