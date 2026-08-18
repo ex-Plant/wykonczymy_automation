@@ -247,8 +247,8 @@ describe('membership arrays — exact contents and order', () => {
     // dialog was the only way to settle the investment at all.
     expect(TRANSACTION_TRANSFER_TYPES).toEqual([
       'OTHER',
-      'LABOR_COST',
       'CORRECTION',
+      'LABOR_COST',
       'RABAT',
       'LOSS',
       'INVESTMENT_EXPENSE',

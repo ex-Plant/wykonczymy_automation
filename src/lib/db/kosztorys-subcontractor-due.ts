@@ -1,7 +1,7 @@
 import 'server-only'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { DEFAULT_COEFFS } from '@/lib/kosztorys/constants'
-import type { SubcontractorSettlementT } from '@/lib/kosztorys/margin-v2'
+import type { SubcontractorSettlementT } from '@/lib/kosztorys/subcontractor-due'
 import type { DbExecutorT } from './get-db'
 
 // What the crew is owed, for EVERY investment at once — one row per investment, never one per etap.
@@ -51,7 +51,10 @@ export async function selectKosztorysSubcontractorDue(
         END AS price
       FROM kosztorys_stages ks
       JOIN stage_progress sp ON sp.stage_id = ks.id
-      JOIN kosztorys_items ki ON ki.id = sp.item_id
+      -- stage_progress carries no investment column, so the item is scoped explicitly rather than
+      -- inherited from the etap: without it a row pairing an etap and an item from two different
+      -- investments would be priced into one of them at the other's coefficients.
+      JOIN kosztorys_items ki ON ki.id = sp.item_id AND ki.investment_id = ks.investment_id
       JOIN investments inv ON inv.id = ks.investment_id
     )
     SELECT

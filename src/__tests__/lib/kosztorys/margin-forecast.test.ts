@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { marginForecast } from '@/lib/kosztorys/margin-forecast'
+import { marginForecastByPlane } from '@/lib/kosztorys/margin-forecast'
 import type { ViewPricingT } from '@/lib/kosztorys/types'
 
-// Przedmiar 10 × 20 zł = 200 zł po stronie inwestora. Podwykonawca ma wpisane na sztywno dwie różne
-// kwoty — 12 z narzędziami, 10 bez — bo scenariusz ma je rozróżniać.
+// Przedmiar 10 × 20 zl = 200 zl on the client side. The crew carries two hard-coded amounts — 12
+// with tools, 10 without — because the scenario is what has to tell them apart.
 const item: ViewPricingT = {
   id: 1,
   sectionId: 10,
@@ -25,9 +25,9 @@ const item: ViewPricingT = {
   globalOwnToolsCoeff: 0.55,
 }
 
-describe('marginForecast', () => {
+describe('marginForecastByPlane', () => {
   it('wycenia przedmiar po obu stronach i zwraca różnicę', () => {
-    expect(marginForecast([item], 'w_tools')).toEqual({
+    expect(marginForecastByPlane([item]).w_tools).toEqual({
       clientNet: 200,
       subcontractorNet: 120,
       margin: 80,
@@ -35,7 +35,7 @@ describe('marginForecast', () => {
   })
 
   it('scenariusz zmienia wyłącznie stronę podwykonawcy', () => {
-    const own = marginForecast([item], 'own_tools')
+    const own = marginForecastByPlane([item]).own_tools
     expect(own.clientNet).toBe(200)
     expect(own.subcontractorNet).toBe(100)
     expect(own.margin).toBe(100)
@@ -47,58 +47,51 @@ describe('marginForecast', () => {
       wToolsOverrideType: null,
       ownToolsOverrideType: null,
     }
-    expect(marginForecast([derived], 'w_tools').subcontractorNet).toBe(130) // 10 × 20 × 0.65
-    expect(marginForecast([derived], 'own_tools').subcontractorNet).toBe(110) // 10 × 20 × 0.55
+    expect(marginForecastByPlane([derived]).w_tools.subcontractorNet).toBe(130) // 10 × 20 × 0.65
+    expect(marginForecastByPlane([derived]).own_tools.subcontractorNet).toBe(110) // 10 × 20 × 0.55
   })
 
-  // Rozstrzygnięcie właściciela (2026-08-18): rabatu nie daje się z góry, więc prognoza liczy się
-  // z przedmiaru po pełnej cenie. Gdyby przechodziła przez rowPlannedNetForView, rabat obciąłby
-  // wyłącznie stronę inwestora — prognoza urosłaby dokładnie o rabat.
-  it('rabat procentowy nie rusza prognozy', () => {
+  // Owner's call (2026-08-18): a rabat is not granted up front, so the forecast prices the
+  // przedmiar at the full rate. Routed through rowPlannedNetForView the rabat would trim the client
+  // side alone, and the forecast would grow by exactly the rabat. One case here as the integration
+  // smoke — all three rabat kinds are pinned at the source in `kosztorys-calc.test.ts`.
+  it('rabat nie rusza prognozy', () => {
     const discounted = { ...item, discountType: 'percent' as const, discountValue: 10 }
-    expect(marginForecast([discounted], 'w_tools')).toEqual(marginForecast([item], 'w_tools'))
-  })
-
-  it('rabat kwotowy nie rusza prognozy', () => {
-    const discounted = { ...item, discountType: 'amount' as const, discountValue: 30 }
-    expect(marginForecast([discounted], 'w_tools')).toEqual(marginForecast([item], 'w_tools'))
-  })
-
-  it('rabat globalny nie rusza prognozy', () => {
-    const global = { ...item, globalDiscountActive: true }
-    expect(marginForecast([global], 'w_tools')).toEqual(marginForecast([item], 'w_tools'))
+    expect(marginForecastByPlane([discounted]).w_tools).toEqual(
+      marginForecastByPlane([item]).w_tools,
+    )
   })
 
   it('sumuje pozycje', () => {
     const second = { ...item, id: 2, plannedQty: 5, clientPrice: 40 }
-    const both = marginForecast([item, second], 'w_tools')
+    const both = marginForecastByPlane([item, second]).w_tools
     expect(both.clientNet).toBe(400) // 200 + 5 × 40
     expect(both.subcontractorNet).toBe(180) // 120 + 5 × 12
     expect(both.margin).toBe(220)
   })
 
   it('pusty kosztorys to zera, nie NaN', () => {
-    expect(marginForecast([], 'w_tools')).toEqual({
+    expect(marginForecastByPlane([]).w_tools).toEqual({
       clientNet: 0,
       subcontractorNet: 0,
       margin: 0,
     })
   })
 
-  // „Ilości nie bywają ujemne" — pozycja bez przedmiaru nie może wnosić ujemnej kwoty do prognozy.
+  // Quantities are never negative — an item with no przedmiar cannot contribute a negative amount.
   it('pozycja bez przedmiaru nic nie wnosi', () => {
     const empty = { ...item, plannedQty: 0 }
-    expect(marginForecast([empty], 'w_tools')).toEqual({
+    expect(marginForecastByPlane([empty]).w_tools).toEqual({
       clientNet: 0,
       subcontractorNet: 0,
       margin: 0,
     })
   })
 
-  // Wysoki rabat zjada marżę „po kursie" ceny pełnej — ale to figura marży rzeczywistej, nie
-  // prognozy. Tu utrwalamy, że prognoza może zejść na minus wyłącznie przez samą stawkę.
+  // A steep rabat eats the margin at the full price — but that is the actual margin, not the
+  // forecast. This pins that the forecast can only go negative through the crew's rate itself.
   it('stawka podwykonawcy powyżej ceny inwestora daje ujemną prognozę', () => {
     const overpriced = { ...item, wToolsOverrideValue: 25 }
-    expect(marginForecast([overpriced], 'w_tools').margin).toBe(-50) // 200 − 250
+    expect(marginForecastByPlane([overpriced]).w_tools.margin).toBe(-50) // 200 − 250
   })
 })

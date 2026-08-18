@@ -13,7 +13,9 @@ export type MarginForecastT = {
  * The forecast margin: the whole offered scope priced for the investor, less the same scope priced
  * for one crew. A scenario, not a projection — the reader picks a plane and the number holds still
  * (EX-649). Rows carrying a hand-typed subcontractor amount are per-plane already, so the toggle
- * distinguishes them without any special case here.
+ * distinguishes them without any special case here. Both planes come out of one traversal because the
+ * client half is plane-invariant — priced per plane it was folded twice per keystroke on a 1000-row
+ * kosztorys.
  *
  * Stage-blind on purpose, and that is the whole difference from `marginV2`: the przedmiar is what
  * was offered, so no etap, no executed qty and no etap's plane enters — which is also why the
@@ -25,12 +27,17 @@ export type MarginForecastT = {
  * carries that material's revenue and none of its cost, so the forecast sits structurally above the
  * actual and the two never converge. The kosztorys cannot know which rows those are.
  */
-export function marginForecast(rows: ViewPricingT[], plane: ToolPlaneT): MarginForecastT {
+export function marginForecastByPlane(rows: ViewPricingT[]): Record<ToolPlaneT, MarginForecastT> {
   let clientNet = 0
-  let subcontractorNet = 0
+  let wToolsNet = 0
+  let ownToolsNet = 0
   for (const row of rows) {
     clientNet += rowPlannedNetPreDiscountForView(row, 'client')
-    subcontractorNet += rowPlannedNetPreDiscountForView(row, plane)
+    wToolsNet += rowPlannedNetPreDiscountForView(row, 'w_tools')
+    ownToolsNet += rowPlannedNetPreDiscountForView(row, 'own_tools')
   }
-  return { clientNet, subcontractorNet, margin: clientNet - subcontractorNet }
+  return {
+    w_tools: { clientNet, subcontractorNet: wToolsNet, margin: clientNet - wToolsNet },
+    own_tools: { clientNet, subcontractorNet: ownToolsNet, margin: clientNet - ownToolsNet },
+  }
 }

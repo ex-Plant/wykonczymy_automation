@@ -7,9 +7,11 @@ import { TRANSACTION_TRANSFER_TYPES } from '@/lib/constants/transfers'
 // green render cannot tell „coerced" from „silently kept", and silently kept is the whole defect.
 
 describe('restorableType', () => {
-  it('coerces a type the dialog no longer offers', () => {
-    expect(restorableType('LABOR_COST')).toBe('INVESTMENT_EXPENSE')
-    expect(restorableType('RABAT')).toBe('INVESTMENT_EXPENSE')
+  it('coerces a type the dialog does not offer', () => {
+    // A real transfer type this dialog has never booked — it belongs to the deposit flow. Was
+    // `LABOR_COST`/`RABAT` until EX-649 put those two back on the dialog.
+    expect(restorableType('INVESTOR_DEPOSIT')).toBe('INVESTMENT_EXPENSE')
+    expect(restorableType('CANCELLATION')).toBe('INVESTMENT_EXPENSE')
   })
 
   it('keeps every type the dialog still offers', () => {

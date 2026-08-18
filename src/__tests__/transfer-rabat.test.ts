@@ -23,9 +23,12 @@ describe('RABAT transfer type', () => {
     expect(needsSourceRegister('RABAT')).toBe(false)
   })
 
-  it('is no longer offered by the transaction transfer dialog', () => {
-    // The write-switch (EX-555): rabat comes from the kosztorys, so booking one by hand would
-    // double-count against it. Every assertion above still holds — the type is live for legacy rows.
-    expect(TRANSACTION_TRANSFER_TYPES).not.toContain('RABAT')
+  it('is offered by the transaction transfer dialog again', () => {
+    // EX-649 reverses EX-555 temporarily. Rabat does come from the kosztorys, but only once the
+    // investment's kosztorys is IN the app — while it is still a spreadsheet the reading is 0 zł, and
+    // with the dialog also refusing the booking there would be no route to settle it at all. Double
+    // counting is made visible by the „Robocizna v1 / v2 / Różnica" columns instead of prevented.
+    // EX-712 takes this back out once „Różnica" is zero everywhere.
+    expect(TRANSACTION_TRANSFER_TYPES).toContain('RABAT')
   })
 })

@@ -194,9 +194,9 @@ describe('rowPlannedNetForView', () => {
   })
 })
 
-// Bliźniak wartości przedmiaru bez rabatu — podstawa prognozy marży (EX-649). Te dwie figury różnią
-// się WYŁĄCZNIE rabatem, i to w widoku inwestora; każdy przypadek poniżej rozstrzyga którą z nich
-// czyta wołający.
+// The pre-rabat twin of the przedmiar value, the forecast margin's base (EX-649). The two figures
+// differ ONLY by the rabat, and only on the client view; every case below pins which of them the
+// caller reads.
 describe('rowPlannedNetPreDiscountForView', () => {
   const planned12 = { ...item, plannedQty: 12 }
 
@@ -220,8 +220,8 @@ describe('rowPlannedNetPreDiscountForView', () => {
     expect(rowPlannedNetForView(discounted, 'client')).toBe(210)
   })
 
-  // Rabat i tak nigdy nie sięga podwykonawcy, więc na obu planach obie figury muszą siedzieć
-  // równo — inaczej prognoza obcinałaby jedną stronę i nie drugą.
+  // The rabat never reaches the subcontractor anyway, so on both planes the two figures must sit
+  // equal — otherwise the forecast would trim one side and not the other.
   it('na planach podwykonawcy rabat nie robi różnicy', () => {
     const discounted = { ...planned12, discountType: 'percent' as const, discountValue: 10 }
     expect(rowPlannedNetPreDiscountForView(discounted, 'w_tools')).toBe(144)

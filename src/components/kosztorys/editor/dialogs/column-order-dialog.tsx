@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Reorder, motion } from 'framer-motion'
 import { EyeOff, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import type { ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
 import { rankForMove, type ColumnRanksT } from '@/lib/kosztorys/column-order'
+import { useDraft } from '@/hooks/use-draft'
 import { cn } from '@/lib/utils/cn'
 
 type PropsT = {
@@ -51,12 +51,7 @@ export function ColumnOrderDialog({
   // The list is driven locally while a drag is in flight and only committed on drop. Writing the
   // rank on every crossing instead would push a store update through the editor context mid-drag,
   // rebuilding the whole grid between frames — that is what made dragging crawl.
-  const [order, setOrder] = useState(keys)
-  const [propsOrder, setPropsOrder] = useState(keys)
-  if (!sameKeys(propsOrder, keys)) {
-    setPropsOrder(keys)
-    setOrder(keys)
-  }
+  const [order, setOrder] = useDraft(keys, sameKeys)
 
   // Writes ONE key: the dragged group's new rank. Persisting the whole list would freeze today's
   // default order in every browser (see use-column-order). The key comes from the row that was

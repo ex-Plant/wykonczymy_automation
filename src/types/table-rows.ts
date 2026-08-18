@@ -33,9 +33,11 @@ export type InvestmentRowT = {
    *  the raw transfers on purpose: fed the kosztorys robocizna it was neither reading, and matched
    *  no other surface in the app. */
   margin: number
-  /** The EX-649 reading, beside `margin` rather than instead of it. `null` where an etap holds
-   *  executed work with no rozliczenie — the figure is unknowable, not zero. */
-  marginV2: number | null
+  /** The EX-649 reading, beside `margin` rather than instead of it. Absent where an etap holds
+   *  executed work with no rozliczenie — the figure is unknowable, not zero. `undefined` and not
+   *  `null` because TanStack's `sortUndefined` is the only thing that keeps those rows out of the
+   *  numeric comparator, which would read them as 0. */
+  marginV2?: number
   address: string
   phone: string
   email: string

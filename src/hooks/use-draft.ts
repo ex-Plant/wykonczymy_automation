@@ -13,16 +13,16 @@ import { useState } from 'react'
  *
  * Which makes the source's own stability the precondition — pass state or a prop, never something
  * derived during render. A `useDraft(items.map(...))` gets a new array every render, resets on each
- * one, and the form is simply uneditable. `column-order-dialog.tsx` is exactly that case and is why
- * it keeps its own copy of this block with a `sameKeys` comparison instead of calling in here.
+ * one, and the form is simply uneditable. Such a caller passes `isSame` instead, comparing what the
+ * value actually says rather than which object said it.
  */
-export function useDraft<T>(source: T) {
+export function useDraft<T>(source: T, isSame: (a: T, b: T) => boolean = Object.is) {
   // Both wrapped in a lambda: React reads a bare function argument as a lazy initializer / an
   // updater, so a function-typed `T` would be invoked and the draft would hold its return value.
   const [draft, setDraft] = useState(() => source)
   const [lastSource, setLastSource] = useState(() => source)
 
-  if (lastSource !== source) {
+  if (!isSame(lastSource, source)) {
     setLastSource(() => source)
     setDraft(() => source)
   }

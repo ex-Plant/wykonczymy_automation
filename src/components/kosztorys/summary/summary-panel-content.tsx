@@ -6,7 +6,7 @@ import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { computeAmountDue, type MaterialsT } from '@/lib/kosztorys/summary-economics'
 import { bucketDepositsByPlane } from '@/lib/kosztorys/deposit-planes'
-import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
+import { toSettlement, type SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
 import { SummaryExpensesTab } from '@/components/kosztorys/summary/tabs/summary-expenses-tab'
@@ -197,7 +197,6 @@ export function SummaryPanelContent({
   const view: SummaryViewT = allowedViews.includes(summaryView)
     ? summaryView
     : (allowedViews[0] ?? 'summary')
-  const isSubcontractorView = view === 'subcontractors'
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
   const {
@@ -265,7 +264,7 @@ export function SummaryPanelContent({
         {topBarSlot}
       </div>
       <SummaryScrollRegion>
-        {isSubcontractorView && subcontractorDue ? (
+        {view === 'subcontractors' && subcontractorDue ? (
           <SubcontractorSummary
             investmentId={investmentId}
             subcontractorDue={subcontractorDue}
@@ -275,9 +274,6 @@ export function SummaryPanelContent({
             workers={workers}
             showGlobalSettings={showSettingsBar}
             showTransactions={showTransactionLists}
-            // Same signal, not a second one: the host that drops the lists is the compact host, and
-            // the plane split + per-worker table are detail of the same kind.
-            showBreakdown={showTransactionLists}
           />
         ) : (
           <div className={cn('flex w-full flex-col gap-y-4 pt-4 pb-4', gutter)}>
@@ -345,10 +341,7 @@ export function SummaryPanelContent({
                 discountAmount={discountAmount}
                 // `combined`, not one plane: each etap is already valued at the plane it carries,
                 // so the two halves are one bill.
-                subcontractor={{
-                  due: subcontractorDue.combined,
-                  hasUnconfirmedPlane: subcontractorDue.hasUnconfirmedPlane,
-                }}
+                subcontractor={toSettlement(subcontractorDue)}
                 forecastByPlane={marginForecastByPlane}
               />
             )}

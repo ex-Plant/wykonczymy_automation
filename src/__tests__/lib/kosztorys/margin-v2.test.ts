@@ -35,14 +35,10 @@ describe('marginV2', () => {
     expect(marginV2(financials, settled)).not.toBe(calculateMargin(financials))
   })
 
-  // Rozstrzygnięcie właściciela (2026-08-18): etap z wykonaną pracą i bez wybranego sposobu
-  // rozliczenia wstrzymuje figurę. Zero twierdziłoby, że praca nic nie kosztowała.
-  it('etap bez sposobu rozliczenia wstrzymuje figurę', () => {
-    expect(marginV2(financials, { due: 600, hasUnconfirmedPlane: true })).toBeNull()
-  })
-
-  it('wstrzymuje niezależnie od tego, ile już naliczono', () => {
-    expect(marginV2(financials, { due: 0, hasUnconfirmedPlane: true })).toBeNull()
+  // Owner's call (2026-08-18): an etap holding executed work with no settlement picked withholds
+  // the figure. Zero would claim the work cost nothing.
+  it.each([600, 0])('etap bez sposobu rozliczenia wstrzymuje figurę (należne %s)', (due) => {
+    expect(marginV2(financials, { due, hasUnconfirmedPlane: true })).toBeNull()
   })
 
   it('pusta inwestycja to zero, nie null', () => {

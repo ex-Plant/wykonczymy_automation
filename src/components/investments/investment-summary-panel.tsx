@@ -62,7 +62,11 @@ export async function InvestmentSummaryPanel({
   // — the listing's SQL fold exists because 1000 investments cannot each ship their rows, which is
   // not this page's problem. „Prognoza" is deliberately not built here (decision 3): it is read where
   // the kosztorys is edited.
-  const subcontractorDue = subcontractorDueByPlane(rows, tree.stages)
+  //
+  // Gated here rather than at the prop below: the fold is stages × rows, so a MANAGER would pay it in
+  // full only to have the result dropped. The gate also keeps the crew's per-plane cost — company-plane
+  // money — out of their RSC payload rather than merely off their screen.
+  const subcontractorDue = canSeeMargin ? subcontractorDueByPlane(rows, tree.stages) : undefined
 
   // `derive` is the whole-tree → two-numbers reduction (treeToRows + kosztorysClientTotals). Logged
   // next to the row count it consumed, because that ratio is the argument for aggregating in SQL.

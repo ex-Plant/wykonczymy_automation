@@ -1,6 +1,6 @@
 import type { SummaryViewT } from '@/components/kosztorys/summary/hooks/use-summary-view'
 
-export type ViewDisclosureT = {
+type ViewDisclosureT = {
   // Read-only client render. The panel also mounts under (share), which carries no session at all,
   // so the reader's identity reaches this decision as flags the host set — never as a role lookup.
   preview: boolean
