@@ -284,14 +284,14 @@ export const DEPOSIT_UI_TYPES: TransferTypeT[] = [
 // be settled at all and its bilans renders as if no robocizna existed.
 //
 // So both are offerable again for EVERY investment, with no gating — double-counting is made VISIBLE
-// rather than prevented, by the „Robocizna v1 / v2 / Różnica" columns on the
+// rather than prevented, by the „Robocizna v1 / v2" columns on the
 // listing and by the v2 reconciliation, which now has something to reconcile against.
 //
-// TEMPORARY — EX-712 removes both entries again once the „Różnica" column is zero everywhere.
+// TEMPORARY — EX-712 removes both entries again once the rozjazd between the two is zero everywhere.
 export const TRANSACTION_TRANSFER_TYPES: TransferTypeT[] = [
   'OTHER', // Inny wydatek
-  'LABOR_COST', // Koszty robocizny
   'CORRECTION', // Korekta
+  'LABOR_COST', // Koszty robocizny
   'RABAT', // Rabat
   'LOSS', // Strata
   'INVESTMENT_EXPENSE', // Wydatek inwestycyjny

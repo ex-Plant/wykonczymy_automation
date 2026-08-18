@@ -2,11 +2,13 @@
 
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
 import type { InvestmentRowT } from '@/types/table-rows'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
 import { ContactLink } from '@/components/ui/contact-link'
+import { LabelHintIcon } from '@/components/ui/label-hint-icon'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
@@ -65,13 +67,16 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
           }),
           col.accessor('marginV2', {
             id: 'marginV2',
+            // Without this the withheld rows go through the numeric comparator, which reads them as
+            // 0 and scatters them among the genuine near-zero margins.
+            sortUndefined: 'last',
             header: 'Marża v2',
             meta: { align: 'right' },
             // A row with an unsettled etap has no amount at all — zero would claim the crew works
             // for free. The prompt names what the owner has to do to get the number back.
             cell: (info) => {
               const value = info.getValue()
-              return value === null ? (
+              return value === undefined ? (
                 <span className="text-muted-foreground text-xs">ustaw etapy</span>
               ) : (
                 <BalanceCell value={value} />
@@ -80,10 +85,8 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
           }),
         ]
       : []),
-    // The transition's work queue, and the only place the two planes are put side by side as the
-    // figure they actually disagree about. Sort by „Różnica" and you get the investments whose
-    // kosztorys is still in a spreadsheet, worst first; zero everywhere means the move is done and
-    // all three of these columns can go.
+    // The transition's work queue: the two planes side by side on the figure they actually disagree
+    // about. Zero rozjazd everywhere means the move is done and both columns can go.
     col.accessor('totalLaborCostsFromTransactions', {
       id: 'laborCostsFromTransactions',
       header: 'Robocizna v1',
@@ -94,20 +97,26 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       id: 'laborCostsFromKosztorys',
       header: 'Robocizna v2',
       meta: { align: 'right' },
-      cell: (info) => formatPLN(info.getValue()),
-    }),
-    col.accessor((row) => row.totalLaborCosts - row.totalLaborCostsFromTransactions, {
-      id: 'laborCostsGap',
-      header: 'Różnica',
-      meta: { align: 'right' },
-      // Zero is the answer that matters most here — „nothing left to move" — so it renders as a dash
-      // rather than 0,00 zl, which would read as a number someone still has to check.
+      // The rozjazd rides on this cell rather than a column of its own: as a column it was a bare
+      // number under a header nobody could decode, and it is only ever read against the v2 amount
+      // standing next to it.
       cell: (info) => {
-        const gap = info.getValue()
-        return gap === 0 ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <span className="font-medium">{formatPLN(gap)}</span>
+        // Rounded: both sides are independent float folds, so a fully migrated investment lands a
+        // sub-grosz residue apart rather than exactly equal, and the icon would never disappear.
+        const gap = roundToCents(
+          info.getValue() - info.row.original.totalLaborCostsFromTransactions,
+        )
+        return (
+          <span className="inline-flex items-center justify-end gap-1">
+            {formatPLN(info.getValue())}
+            {/* No icon at zero — „nothing left to move" is the answer that needs no explanation. */}
+            {gap !== 0 && (
+              <LabelHintIcon
+                variant="mismatch"
+                content={`Rozjazd z „Robocizna v1": ${formatPLN(gap)}. Tyle robocizny jest w kosztorysie ponad to, co zaksięgowano transferami — dodatnia kwota znaczy, że transfery są niedobite, ujemna, że praca nie jest jeszcze wpisana w kosztorys.`}
+              />
+            )}
+          </span>
         )
       },
     }),

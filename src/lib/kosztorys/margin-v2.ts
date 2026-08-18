@@ -1,18 +1,7 @@
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
-
-/** The crew side of the margin, as `subcontractorDueByPlane` reports it — the amount and the reason
- *  it may be short. Taken as one object so a caller cannot pass the amount and drop the caveat. */
-export type SubcontractorSettlementT = {
-  /** Executed work valued pre-rabat, each etap at its own plane. */
-  due: number
-  /** Some etap holds executed work with no settlement plane, so `due` is short by an unknown amount. */
-  hasUnconfirmedPlane: boolean
-}
+import type { SubcontractorSettlementT } from '@/lib/kosztorys/subcontractor-due'
 
 /**
- * The margin as of EX-649: robocizna less rabat, less what the kosztorys says the crew is owed, less
- * the material priced into robocizna, less strata.
- *
  * It stands BESIDE `calculateMargin`, which is untouched and still live on v1, `/raporty` and the
  * existing listing column — the owner wants the two readings side by side (2026-08-18). Two
  * deliberate differences from it:
@@ -33,9 +22,15 @@ export type SubcontractorSettlementT = {
  * set. `null` rather than a flag beside the amount, so no caller can render the number by accident.
  */
 export function marginV2(
-  f: InvestmentFinancialsT,
+  financials: InvestmentFinancialsT,
   subcontractor: SubcontractorSettlementT,
 ): number | null {
   if (subcontractor.hasUnconfirmedPlane) return null
-  return f.totalLaborCosts - f.totalDiscount - subcontractor.due - f.totalSettled - f.totalLoss
+  return (
+    financials.totalLaborCosts -
+    financials.totalDiscount -
+    subcontractor.due -
+    financials.totalSettled -
+    financials.totalLoss
+  )
 }

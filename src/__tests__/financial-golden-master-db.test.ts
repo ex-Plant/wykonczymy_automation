@@ -14,6 +14,7 @@ import { calculateMargin } from '@/lib/db/calculate-margin'
 import { marginV2 } from '@/lib/kosztorys/margin-v2'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
 import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
+import { NOTHING_DUE } from '@/lib/kosztorys/subcontractor-due'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import { round2 } from '@/__tests__/helpers/money'
@@ -222,17 +223,12 @@ async function buildSnapshot(payload: Payload): Promise<{
     ])
 
   const db = await getDb(payload)
-  const clientTotals = new Map<
-    number,
-    Awaited<ReturnType<typeof selectKosztorysClientTotals>>[number]
-  >()
-  for (const row of await selectKosztorysClientTotals(db)) clientTotals.set(row.investmentId, row)
-  const subcontractorDue = new Map<
-    number,
-    Awaited<ReturnType<typeof selectKosztorysSubcontractorDue>>[number]
-  >()
-  for (const row of await selectKosztorysSubcontractorDue(db))
-    subcontractorDue.set(row.investmentId, row)
+  const clientTotals = new Map(
+    (await selectKosztorysClientTotals(db)).map((row) => [row.investmentId, row]),
+  )
+  const subcontractorDue = new Map(
+    (await selectKosztorysSubcontractorDue(db)).map((row) => [row.investmentId, row]),
+  )
 
   const investments: Record<string, InvestmentSnapshotT> = {}
   const names = new Map<string, string>()
@@ -255,7 +251,7 @@ async function buildSnapshot(payload: Payload): Promise<{
       marginV2: roundOrNull(
         marginV2(
           financialsOnReading(financials, readingFromKosztorys(clientTotals.get(id))),
-          subcontractorDue.get(id) ?? { due: 0, hasUnconfirmedPlane: false },
+          subcontractorDue.get(id) ?? NOTHING_DUE,
         ),
       ),
       categoryCosts: toPairs(financials.categoryCosts),

@@ -418,7 +418,9 @@ describe('shapeInvestments marża v2', () => {
       '5': { due: 800, hasUnconfirmedPlane: true },
     })
 
-    expect(row.marginV2).toBeNull()
+    // `undefined`, not `null` — the row type carries the absence that way because TanStack's
+    // `sortUndefined` is what keeps a withheld row out of the numeric comparator.
+    expect(row.marginV2).toBeUndefined()
     // Only the kosztorys figure is withheld; the transactions plane has no rozliczenie to miss.
     expect(row.margin).toBe(2000)
   })

@@ -40,8 +40,15 @@ to the transfers.
 - The kosztorys pair is folded in Postgres for every investment at once
   (`src/lib/db/kosztorys-client-totals.ts`), pinned against the TS reference formula by a
   DB-backed parity spec.
-- `LABOR_COST` / `RABAT` are **no longer offered by the transfer dialog** — nothing new can be
-  booked on the plane we stopped reading. Existing rows keep working everywhere else.
+- `LABOR_COST` / `RABAT` are **offered by the transfer dialog again, temporarily** (EX-649,
+  reversing that half of EX-555; EX-712 closes it). Removing them assumed the kosztorys was
+  already in the app — for an investment whose kosztorys is still a spreadsheet, the reading
+  returns 0 zł and the dialog refusing the booking left no way to settle it at all. Both are
+  offered for every investment with no gating: the resulting double-counting is made **visible**
+  by the „Robocizna v1 / v2" columns on the listing (rozjazd jako ikona przy v2) and by the v2
+  reconciliation,
+  rather than prevented. v2 itself is structurally immune — `readingFromKosztorys` **replaces**
+  rather than adds, so a hand-booked `LABOR_COST` moves the v1 figures only.
 - The **reconciliation** on the investment page screams for an investment with booked transfers
   and an empty kosztorys. That is correct: it is the list of work still to be entered.
 - Every other figure here — wpłaty, materiały, wypłaty, korekty, strata — is a cash movement
