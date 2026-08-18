@@ -3,7 +3,18 @@
 import { ListFilter } from 'lucide-react'
 import { FilterMultiSelect, FILTER_NONE } from '@/components/filters/filter-multi-select'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-import { ROW_CONDITIONS } from '@/lib/kosztorys/row-conditions'
+import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
+import {
+  DISCOUNT_CONDITION_IDS,
+  ROW_CONDITIONS,
+  type RowConditionT,
+} from '@/lib/kosztorys/row-conditions'
+
+// Narrows `sectionLabel` to a string so the row below can interpolate it — the conditions that do not
+// lift to sekcje are the same ones `foldableSectionIds` skips computing a set for.
+const hasSectionLabel = (
+  condition: RowConditionT,
+): condition is RowConditionT & { sectionLabel: string } => condition.sectionLabel !== null
 
 // One menu for „co widzę", at three granularities that all read the same way: a tick means the thing
 // is on screen, unticking it takes it away. Pozycje are hidden outright; sekcje fold under their band
@@ -26,6 +37,8 @@ export function KosztorysFiltersMenu() {
     toggleCondition,
     resetFilters,
     conditionCounts,
+    view,
+    globalDiscount,
   } = useKosztorysEditorContext()
 
   const options = subtotals.map((s) => ({ value: String(s.sectionId), label: s.sectionName }))
@@ -47,7 +60,25 @@ export function KosztorysFiltersMenu() {
     )
   }
 
-  const filters = ROW_CONDITIONS.filter((condition) => condition.kind === 'filter')
+  // Two gates on top of `kind === 'filter'`, both asking the same thing: is the axis on screen at all?
+  //  • plane — a condition about a stawka wykonawcy is unanswerable from „Inwestor", where no
+  //    subcontractor price renders. Offering it there would narrow the grid on a number the reader
+  //    cannot see, and unlike a problem a filter deliberately does not switch the view to fetch it.
+  //  • rabat — under a global rabat the per-item rabat applies to nothing and its columns are pulled
+  //    from the grid, so the pair goes dead in the registry too; listing it would offer a tick that
+  //    provably changes nothing.
+  // An ENGAGED condition is listed regardless of both gates: it is hiding pozycje right now, and this
+  // menu is where a tick comes back. Gating it out would leave the grid short with no control to
+  // restore it — switching the view would strand a rate filter, and turning the global rabat on would
+  // strand a rabat one.
+  const perItemDiscountInert = isGlobalDiscountActive(globalDiscount)
+  const filters = ROW_CONDITIONS.filter(
+    (condition) =>
+      condition.kind === 'filter' &&
+      (engagedConditionIds.has(condition.id) ||
+        ((condition.plane == null || condition.plane === view) &&
+          !(perItemDiscountInert && DISCOUNT_CONDITION_IDS.has(condition.id)))),
+  )
   const workToggles = filters.map((condition) => ({
     id: condition.id,
     // The count is how many pozycje are in that state, not how many the row is currently showing —
@@ -65,7 +96,7 @@ export function KosztorysFiltersMenu() {
   // Folds by unticking sections rather than filtering on top of them: the checkmarks below stay the
   // only description of what the grid shows, so this row and the list can never disagree. Both its
   // tick and its click read the LIVE selection, so re-expanding one section by hand unticks the group.
-  const sectionToggles = filters.map((condition) => {
+  const sectionToggles = filters.filter(hasSectionLabel).map((condition) => {
     const sectionIds = foldableSectionIds.get(condition.id) ?? new Set<number>()
     // With nothing in that state the row has nothing to report, so it stays unticked rather than
     // claiming „wszystkie widoczne" vacuously.

@@ -465,10 +465,13 @@ export function useKosztorysEditor({
     if (preview) return new Map<string, Set<number>>()
     const ctx = { stages, hasSettledMaterial }
     return new Map(
-      ROW_CONDITIONS.filter((condition) => condition.kind === 'filter').map((condition) => [
-        condition.id,
-        sectionIdsWhereAllMatch(rows, condition.id, ctx),
-      ]),
+      // `sectionLabel === null` is the condition saying it does not lift to sekcje, so computing its
+      // set is a full pass over every row for a `Map` entry the menu would never read — and this memo
+      // recomputes on `rows`, i.e. on every edit. The menu already falls back to an empty set for a
+      // missing id, so a skipped condition simply renders no „Sekcje …" row.
+      ROW_CONDITIONS.filter(
+        (condition) => condition.kind === 'filter' && condition.sectionLabel !== null,
+      ).map((condition) => [condition.id, sectionIdsWhereAllMatch(rows, condition.id, ctx)]),
     )
   }, [preview, rows, stages, hasSettledMaterial])
 
