@@ -10,7 +10,7 @@ export type SortMenuPropsT = {
   active: SortPickT | null
   onSort: (pick: SortPickT | null) => void
   // „Zapisz kolejność" — writes the sort showing right now into the stored order, so it survives
-  // clearing the sort. Absent in the read-only view, where the item does not appear at all.
+  // clearing the sort.
   onPersistOrder?: () => void
 }
 
@@ -53,7 +53,6 @@ export function SortMenuItems({ active, onSort, onPersistOrder }: SortMenuPropsT
   )
 }
 
-// The trigger glyph: which way this column is sorted, or the neutral both-ways arrow when it isn't.
 export function SortIcon({ active }: { active: SortPickT | null }) {
   const Icon = active?.dir === 'asc' ? ArrowUp : active?.dir === 'desc' ? ArrowDown : ChevronsUpDown
   return <Icon className={cn(active ? 'opacity-100' : 'opacity-50')} />

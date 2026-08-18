@@ -11,6 +11,7 @@ import { KosztorysProgressCounter } from '@/components/kosztorys/summary/charts/
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
+import { stageLabel } from '@/lib/kosztorys/stage-label'
 
 type PropsT = {
   stages: KosztorysStageT[]
@@ -54,7 +55,7 @@ export function SummaryStagesTab({
             {stages.map((st) => (
               <SummaryRow
                 key={st.id}
-                label={st.label ?? `Etap ${st.ordinal}`}
+                label={stageLabel(st)}
                 line={moneyPair(stageTotals.get(st.id) ?? 0, vatRate)}
                 axis={STAGES_AXIS}
               />

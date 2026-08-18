@@ -20,8 +20,9 @@ import { useInlineRename } from '@/components/kosztorys/editor/hooks/use-inline-
 import { StageWorkerSection } from './stage-worker-section'
 import { ReassignWorkerConfirmDialog } from './reassign-worker-confirm-dialog'
 import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
+import { stageLabel } from '@/lib/kosztorys/stage-label'
 import { STAGE_HEADER_COPY as COPY } from './stage-header-copy'
-import { SortMenuItems } from './sort-menu-items'
+import { SortIcon, SortMenuItems } from './sort-menu-items'
 import { cn } from '@/lib/utils/cn'
 import type { SortPickT } from '@/lib/kosztorys/row-view'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
@@ -34,8 +35,7 @@ type PropsT = {
   onSetPlane?: (stageId: number, plane: ToolPlaneT) => void
   workers?: WorkerRefT[]
   onSetWorker?: (stageId: number, workerId: number | null) => void
-  // Sorting by this etap's quantity — its header is the only place that offers it. `onSort` absent
-  // (a preview) means no sort section, exactly like the other optional handlers here.
+  // Sorting by this etap's quantity — its header is the only place that offers it.
   sort?: SortPickT | null
   onSort?: (pick: SortPickT | null) => void
   onPersistOrder?: () => void
@@ -44,7 +44,6 @@ type PropsT = {
   executedValue?: number
 }
 
-// An emptied label persists as null and falls back to the „Etap N" placeholder.
 export function StageHeader({
   stage,
   onRename,
@@ -57,7 +56,7 @@ export function StageHeader({
   onPersistOrder,
   executedValue = 0,
 }: PropsT) {
-  const label = stage.label ?? `Etap ${stage.ordinal}`
+  const label = stageLabel(stage)
   const { editing, start, inputProps } = useInlineRename((name) =>
     onRename?.(stage.id, name.trim()),
   )
@@ -87,7 +86,7 @@ export function StageHeader({
   // plane icon or warning — the rozliczenie is internal subcontractor information, never client-facing.
   if (!onRename && !onRemove && !onSetPlane && !onSetWorker) {
     return (
-      <HeaderLabel className={cn('px-1', stage.label == null && 'text-muted-foreground')}>
+      <HeaderLabel className={cn('px-1', !stage.label && 'text-muted-foreground')}>
         {label}
       </HeaderLabel>
     )
@@ -119,7 +118,8 @@ export function StageHeader({
               {stage.plane != null && planeIcon(stage.plane)}
               <HeaderLabel
                 className={cn(
-                  stage.plane != null && stage.label == null && 'text-muted-foreground',
+                  stage.plane != null && !stage.label && 'text-muted-foreground',
+                  sort && 'font-semibold',
                 )}
               >
                 {label}
@@ -131,7 +131,9 @@ export function StageHeader({
                   size="lg"
                 />
               )}
-              <ChevronDown className="opacity-50" />
+              {/* The etap menu holds the sort, so its trigger has to carry the sort's state too —
+                  otherwise the one column ordering the grid is the only one that never says so. */}
+              {sort ? <SortIcon active={sort} /> : <ChevronDown className="opacity-50" />}
             </span>
             {assignedWorker && (
               <span className="text-muted-foreground text-2xs truncate">{assignedWorker.name}</span>
@@ -139,6 +141,7 @@ export function StageHeader({
           </span>
         }
         icon={null}
+        triggerClassName={cn(sort && 'text-primary')}
         triggerTitle="Opcje etapu"
       >
         {onSetPlane && (

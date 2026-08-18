@@ -35,10 +35,9 @@ import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/sectio
 import { longTextColumn } from '@/components/ui/datasheet-grid/long-text-cell'
 import { type ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
 import {
-  STAGE_QTY_PREFIX,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   STAGE_VALUE_NET_COLUMN_GROUP,
-  STAGES_COLUMN_GROUP,
+  stageGroupOfKey,
   stageKey,
   stageValueGrossKey,
   stageValueNetKey,
@@ -66,8 +65,10 @@ import {
   rowTotalQtyDone,
   rowValueForView,
 } from '@/lib/kosztorys/settlement-rows'
+import { activeSortPick } from '@/lib/kosztorys/row-view'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { stagesMatchingEngaged } from '@/lib/kosztorys/stage-conditions'
+import { stageLabel } from '@/lib/kosztorys/stage-label'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // floatColumn right-aligns by default; the grid reads cleaner with every cell left-aligned under
@@ -120,27 +121,24 @@ function withTip(node: ReactNode, tip: string): ReactNode {
   )
 }
 
-// Column title as a sort-menu header (when onSetSort is provided), wrapped in an explanatory
-// tooltip when the field has one in HEADER_TIPS.
-//
-// The label is resolved from `field`, never passed in: every header and the column picker then read
-// the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
-function title(
+// A column header that offers the sort menu, or — with no `onSetSort`, i.e. a preview — the bare
+// label. The tip goes ONTO the sort trigger (same element), not around it: a second wrapping trigger
+// would fight the dropdown for the click. Plain labels have no trigger, so they wrap directly, and
+// they wrap (no truncate) into the fixed, taller header row (KosztorysEditorBody).
+function sortableHeader(
+  label: string,
   field: string,
-  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
+  tip: string | undefined,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
 ): ReactNode {
-  const label = columnLabelForView(field, opts.view)
-  const active = opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null
-  const tip = HEADER_TIPS[field]
-  // The tip goes ONTO the sort trigger (same element), not around it — a second wrapping trigger
-  // would fight the dropdown for the click. Plain-label columns have no trigger, so wrap directly.
-  if (opts.onSetSort) {
+  const { onSetSort } = opts
+  if (onSetSort) {
     return (
       <SortHeader
         label={label}
-        active={active}
+        active={activeSortPick(opts.sort, field)}
         tip={tip}
-        onSort={(pick) => opts.onSetSort?.(field, pick)}
+        onSort={(pick) => onSetSort(field, pick)}
         onPersistOrder={opts.onPersistKosztorysOrder}
       />
     )
@@ -149,11 +147,20 @@ function title(
   return tip ? withTip(node, tip) : node
 }
 
+// The label is resolved from `field`, never passed in: every header and the column picker then read
+// the same resolver, so a label that becomes view-dependent can't land in one and miss the other.
+function title(
+  field: string,
+  opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
+): ReactNode {
+  return sortableHeader(columnLabelForView(field, opts.view), field, HEADER_TIPS[field], opts)
+}
+
 // Header of a per-stage value column: a read-only mirror of the stage's name. One source for the
 // name, so a rename moves all three of the stage's headers and a delete takes all three columns.
-// Deliberately not `StageHeader` — a mirror carries no rename/delete affordance of its own; it is
-// `title()`'s shape with a label the column-label resolver cannot produce, the stage's name being
-// data rather than a static column label.
+// Deliberately not `StageHeader` — a mirror carries no rename/delete affordance of its own; its
+// label is simply one the column-label resolver cannot produce, the stage's name being data rather
+// than a static column label.
 function stageValueHeader(
   stage: KosztorysStageT,
   suffix: string,
@@ -161,20 +168,7 @@ function stageValueHeader(
   field: string,
   opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
 ): ReactNode {
-  const label = `${stage.label || `Etap ${stage.ordinal}`} ${suffix}`
-  if (opts.onSetSort) {
-    return (
-      <SortHeader
-        label={label}
-        active={opts.sort?.field === field ? { dir: opts.sort.dir, scope: opts.sort.scope } : null}
-        tip={tip}
-        onSort={(pick) => opts.onSetSort?.(field, pick)}
-        onPersistOrder={opts.onPersistKosztorysOrder}
-      />
-    )
-  }
-  // Wraps (no truncate) into the fixed, taller header row (KosztorysEditorBody).
-  return withTip(<HeaderLabel>{label}</HeaderLabel>, tip)
+  return sortableHeader(`${stageLabel(stage)} ${suffix}`, field, tip, opts)
 }
 
 const DEFAULT_COLUMN_MIN_WIDTH = 140
@@ -433,7 +427,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         onSetPlane={opts.onSetStagePlane}
         workers={opts.workers}
         onSetWorker={opts.onSetStageWorker}
-        sort={opts.sort?.field === qtyField ? { dir: opts.sort.dir, scope: opts.sort.scope } : null}
+        sort={activeSortPick(opts.sort, qtyField)}
         onSort={opts.onSetSort && ((pick) => opts.onSetSort?.(qtyField, pick))}
         onPersistOrder={opts.onPersistKosztorysOrder}
         executedValue={opts.executedValueByStage?.get(st.id) ?? 0}
@@ -589,15 +583,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     : dataColumns
 }
 
-// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id. The
-// prefixes are mutually exclusive (none is a prefix of another), so the order of these tests carries
-// no meaning — the qty prefix last is not load-bearing.
+// A stage column answers to its axis's shared "Etapy — …" picker entry, not to its own id.
 function toggleKey(columnId: string): string {
-  if (columnId.startsWith(`${STAGE_VALUE_NET_COLUMN_GROUP}_`)) return STAGE_VALUE_NET_COLUMN_GROUP
-  if (columnId.startsWith(`${STAGE_VALUE_GROSS_COLUMN_GROUP}_`)) {
-    return STAGE_VALUE_GROSS_COLUMN_GROUP
-  }
-  return columnId.startsWith(STAGE_QTY_PREFIX) ? STAGES_COLUMN_GROUP : columnId
+  return stageGroupOfKey(columnId) ?? columnId
 }
 
 // The column allowlist and the client price plane are one disclosure decision (useKosztorysEditor
