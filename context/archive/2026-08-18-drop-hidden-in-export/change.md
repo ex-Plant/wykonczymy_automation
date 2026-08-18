@@ -1,9 +1,10 @@
 ---
 change_id: drop-hidden-in-export
 title: Drop the dead hiddenInExport column
-status: in-review
+status: archived
 created: 2026-08-18
 updated: 2026-08-18
+archived_at: 2026-08-18T09:19:31Z
 branch: staging
 worktree: null
 ---
