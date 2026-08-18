@@ -579,4 +579,4 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 5.1 Notification specs still pass after the widening
+- [x] 5.1 Notification specs still pass after the widening — 7989026d

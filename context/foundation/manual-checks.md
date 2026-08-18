@@ -1321,3 +1321,32 @@ Zalogowany jako OWNER.
 - [ ] Pojawienie się paska spycha siatkę w dół — nie przelicza jej wysokości, więc ostatni wiersz może wymagać przewinięcia (świadoma decyzja, nie usterka)
 - [ ] Przycisk „Kolumny” pokazuje licznik ukrytych kolumn; kolumna wyciągnięta na wierzch przez włączony problem **nie** jest w nim liczona
 - [ ] Na linku dla inwestora sekcje zwinięte przed udostępnieniem przychodzą zwinięte — strzałka na belce działa i zgadza się z tym, co widać
+
+## EX-711 — moduł floty: przeglądy pojazdów i przypomnienia mailowe
+
+**In review** — automaty zielone (tsc 0, `pnpm test` 2514/2514, build OK; jeden błąd eslint w
+`src/hooks/use-latest-request.ts` jest sprzed tej zmiany). Migracja zastosowana lokalnie.
+
+Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W użyciu`, jeden
+`Wycofany` — i wpisy przeglądów o terminach 45 / 30 / 7 / 1 / −3 dni od dziś.
+
+- [ ] „Flota" jest w bocznym menu; jako EMPLOYEE nie ma jej wcale, a wejście na `/flota` wyrzuca na stronę główną
+- [ ] Dodanie pojazdu, a potem przeglądu każdego z pięciu typów, daje na liście pięć wypełnionych kolumn terminów
+- [ ] Wybór „Przegląd techniczny" podpowiada termin 12 miesięcy do przodu, „Wymiana opon" nie podpowiada nic
+- [ ] Nadpisanie podpowiedzianej daty, a potem zmiana typu, **nie** kasuje wpisanej daty
+- [ ] Pole „Następna wymiana przy (km)" widać wyłącznie przy typie „Wymiana oleju"
+- [ ] Pojazd bez wpisu wymiany oleju ma w tej kolumnie szare „brak danych", a nie fałszywy zielony termin
+- [ ] Pojazd z wpisem bez terminu ma „bez terminu" — to inny stan niż „brak danych"
+- [ ] Wycofany pojazd jest wizualnie odsunięty i nie ma kolorowania pilności
+- [ ] Strona pojazdu pokazuje historię pogrupowaną po typie, najnowsze u góry, z przebiegiem od poprzedniego wpisu
+- [ ] Wpis bez odczytu przebiegu nie pokazuje różnicy km (a nie „+0 km")
+- [ ] Załącznik dodany do przeglądu liczy się na liście historii (ikona spinacza)
+- [ ] Ręczne wywołanie `/api/cron/fleet-reminders` przy terminach 45 / 30 / 7 / 1 / −3 wysyła jeden mail zawierający dokładnie cztery ostatnie, w odpowiednich sekcjach
+- [ ] Mail przychodzi na oba adresy (`FLEET_NOTIFICATION_EMAIL` i `ADMIN_EMAIL`) jako jedna wiadomość
+- [ ] Ponowne wywołanie tuż po tym nie wysyła nic
+- [ ] Termin po czasie odzywa się ponownie dopiero po tygodniu, nie codziennie
+- [ ] Wpisanie przeglądu, o który mail się upominał, ucisza go przy kolejnym uruchomieniu
+- [ ] Sekcja „Brak danych" jest w mailu w poniedziałek, a we wtorek jej nie ma
+- [ ] Wpis wymiany oleju z celem km, a potem przegląd z odczytem 500 km przed celem, daje w mailu linijkę z celem i ostatnim odczytem
+- [ ] Pojazd, który wjechał w okno 30 dni, podbija plakietkę przy „Flota"; wejście na `/flota` ją zeruje
+- [ ] Plakietka przy „Zgłoszenia" zachowuje się dokładnie jak dotąd
