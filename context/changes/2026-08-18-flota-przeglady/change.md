@@ -11,19 +11,30 @@ worktree: null
 
 ## Notes
 
+Linear: **EX-711** — https://linear.app/ex-plant/issue/EX-711/modul-floty-przeglady-pojazdow-i-przypomnienia-mailowe
+
 New module for the company car fleet. Two collections: `vehicles` (registration, make,
 model, year, VIN, ACTIVE/RETIRED — no employee assignment) and `vehicle-inspections`
 (one row per event: vehicle, type, performedAt, nextDueAt, odometer, cost, note,
 attachments).
 
-Four inspection types as a fixed union, mirroring the transfer-type union:
-`TECHNICAL` / `INSURANCE` / `OIL_CHANGE` / `WARRANTY`.
+Five inspection types as a fixed union, mirroring the transfer-type union:
+`TECHNICAL` / `INSURANCE` / `OIL_CHANGE` / `WARRANTY` / `TYRES`. Prefill intervals are
+12 / 12 / 12 / 24 months; `TYRES` has none — the ask was only "be able to type a date so a
+reminder goes out", so it carries no interval and no seasonal logic.
 
 Decisions taken in brainstorming (2026-08-18):
 
 - Deadlines are **date-driven**, not mileage-driven. Odometer is a note, captured per
   event; "distance since last inspection" is the delta between two consecutive events of
   the same type, and reads "—" when either reading is missing.
+- **Exception, added after the owner pushed back: the oil change genuinely runs on
+  mileage.** It keeps a date target _and_ a `nextDueOdometer` target. The kilometre leg
+  cannot be polled — we never know the current mileage — so it is edge-triggered: every
+  inspection of any type contributes a fresh odometer reading, and that reading is compared
+  against the pending oil target (fires at <= 1000 km remaining, or once passed). One to
+  three readings a year, for no extra work from anyone. Late by design, and documented as
+  such so "the cron didn't warn me about the oil" isn't filed as a bug.
 - `nextDueAt` is **typed by hand, prefilled from a per-type interval** (variant C). The
   truth about the next date is printed on the document (badanie techniczne, polisa OC),
   so the system must not compute it authoritatively — a two-year warranty inspection

@@ -2,6 +2,7 @@
 
 > Full plan: `context/changes/2026-08-18-flota-przeglady/plan.md`
 > Decisions record: `context/changes/2026-08-18-flota-przeglady/change.md`
+> Linear: EX-711
 
 ## What & Why
 
