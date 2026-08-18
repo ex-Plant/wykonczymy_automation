@@ -212,6 +212,14 @@ describe('columnSortValue — the columns that used to opt out of sorting', () =
     expect(planeIdsSortedBy(stageValueGrossKey(100), 'client')).toEqual([2, 1, 3])
   })
 
+  it('has no value for an etap the plane does not price', () => {
+    // Etap 200 is own_tools: in `w_tools` its column is not assembled at all, and its wartość is not
+    // this crew's to sort by — the same „—" answer as an etap that no longer exists.
+    expect(
+      columnSortValue(planeRow(1), stageValueNetKey(200), 'w_tools', planeTree.stages),
+    ).toBeNull()
+  })
+
   it('has no value for an etap that is gone', () => {
     expect(
       columnSortValue(planeRow(1), stageValueNetKey(999), 'client', planeTree.stages),

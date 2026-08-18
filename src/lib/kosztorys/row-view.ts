@@ -28,6 +28,12 @@ export type SortScopeT = 'section' | 'global'
 export type SortPickT = { dir: SortDirT; scope: SortScopeT }
 export type SortStateT = ({ field: string } & SortPickT) | null
 
+// What one column header knows about the sort: its own pick, or null when the sort belongs to some
+// other column. Every header asks this — none of them may read `sort.field` and decide for itself.
+export function activeSortPick(sort: SortStateT | undefined, field: string): SortPickT | null {
+  return sort?.field === field ? { dir: sort.dir, scope: sort.scope } : null
+}
+
 // Sort by the accessor's value; strings by locale (pl), numbers numerically. Returns a new array.
 // Decorate-sort-undecorate: getValue can be an O(stages) reduce (the "remaining" key), and calling
 // it inside the comparator would re-evaluate it ~2·n·log(n) times — compute it once per row instead.

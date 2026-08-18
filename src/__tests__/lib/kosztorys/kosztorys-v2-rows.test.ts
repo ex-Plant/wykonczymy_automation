@@ -91,6 +91,13 @@ describe('diffRow', () => {
     expect(diffRow(prev, next)).toEqual({})
   })
 
+  // Prefiks ilości niesie id etapu, więc klucz z nieliczbowym ogonem nie jest etapem. Bez tego
+  // Number('x') → NaN pojechałoby do zapisu jako id etapu.
+  it('nie bierze klucza z prefiksem ilości, ale bez id etapu, za postęp', () => {
+    const [prev] = treeToRows(tree)
+    expect(diffRow(prev, { ...prev, stage_x: 5 } as typeof prev)).toEqual({})
+  })
+
   // Pomiar wczytany z arkusza jest liczbą odniesienia tylko do odczytu — czyści go osobna akcja,
   // nigdy autozapis komórki. Gdyby przeciekł do `itemPatch`, arkuszowa wartość zapisywałaby się z
   // powrotem przy każdej edycji wiersza i rozjazd nigdy by nie zniknął.

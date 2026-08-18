@@ -1,5 +1,5 @@
 import { isGlobalDiscountActive } from '@/lib/kosztorys/calc'
-import { STAGE_QTY_PREFIX, stageKey } from '@/lib/kosztorys/stage-keys'
+import { stageIdFromQtyKey, stageKey } from '@/lib/kosztorys/stage-keys'
 import type { ItemPatchT, KosztorysTreeT, KosztorysV2RowT, StageKeyT } from '@/lib/kosztorys/types'
 
 // Item fields editable in the grid (= the keys of ItemPatchT). The diff compares only these.
@@ -62,13 +62,11 @@ export function diffRow(prev: KosztorysV2RowT, next: KosztorysV2RowT): RowDiffT 
 
   const stageChanges: { stageId: number; qty: number }[] = []
   for (const k of Object.keys(next)) {
-    if (!k.startsWith(STAGE_QTY_PREFIX)) continue
+    const stageId = stageIdFromQtyKey(k)
+    if (stageId === null) continue
     const nextVal = next[k as StageKeyT]
     if (prev[k as StageKeyT] !== nextVal) {
-      stageChanges.push({
-        stageId: Number(k.slice(STAGE_QTY_PREFIX.length)),
-        qty: Number(nextVal) || 0,
-      })
+      stageChanges.push({ stageId, qty: Number(nextVal) || 0 })
     }
   }
 

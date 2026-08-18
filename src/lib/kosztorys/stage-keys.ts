@@ -1,8 +1,7 @@
 import type { StageKeyT } from '@/lib/kosztorys/types'
 
-// The stage-column key namespace: the string prefixes each stage axis lives under, and the builders
-// that turn a stage id into a concrete column key. One home so the prefix, its group, and its key
-// builder are decided together — every row/column/settlement module keys stage cells through these.
+// One home for the stage-column key namespace, so a prefix, its group and its key builder are
+// decided together — every row/column/settlement module keys stage cells through these.
 
 // Each stage axis hides under ONE picker entry rather than one per `stage_<id>`: a row per stage is
 // noise, and it keeps stage ids out of the visibility map — Postgres can reissue a deleted stage's
@@ -33,23 +32,33 @@ export function stageValueGrossKey(stageId: number): string {
   return `${STAGE_VALUE_GROSS_COLUMN_GROUP}_${stageId}`
 }
 
-// The inverses of the two value builders, for code that receives a column id and has to recover the
-// etap it belongs to (sort-value.ts). Only the value namespaces need one: `stage_<id>` is a real row
-// field, so its consumers read the key rather than parse it.
+// The inverses of the builders above, for code that receives a key and has to recover the etap it
+// belongs to (sort-value.ts, diffRow).
 //
 // A key from the WRONG namespace must resolve to null, not to a number — `Number('Gross_7')` is NaN
 // but `Number('')` is 0, so a bare Number() on a mis-routed key would silently name etap 0.
-function stageIdFromKey(key: string, group: string): number | null {
-  const prefix = `${group}_`
+function stageIdFromPrefixedKey(key: string, prefix: string): number | null {
   if (!key.startsWith(prefix)) return null
   const rest = key.slice(prefix.length)
   return /^\d+$/.test(rest) ? Number(rest) : null
 }
 
+export function stageIdFromQtyKey(key: string): number | null {
+  return stageIdFromPrefixedKey(key, STAGE_QTY_PREFIX)
+}
+
 export function stageIdFromValueNetKey(key: string): number | null {
-  return stageIdFromKey(key, STAGE_VALUE_NET_COLUMN_GROUP)
+  return stageIdFromPrefixedKey(key, `${STAGE_VALUE_NET_COLUMN_GROUP}_`)
 }
 
 export function stageIdFromValueGrossKey(key: string): number | null {
-  return stageIdFromKey(key, STAGE_VALUE_GROSS_COLUMN_GROUP)
+  return stageIdFromPrefixedKey(key, `${STAGE_VALUE_GROSS_COLUMN_GROUP}_`)
+}
+
+// Which stage axis a column id belongs to, or null for a column that is not per-etap at all. The
+// three namespaces are mutually exclusive, so the order of these tests carries no meaning.
+export function stageGroupOfKey(columnId: string): string | null {
+  if (stageIdFromValueNetKey(columnId) !== null) return STAGE_VALUE_NET_COLUMN_GROUP
+  if (stageIdFromValueGrossKey(columnId) !== null) return STAGE_VALUE_GROSS_COLUMN_GROUP
+  return stageIdFromQtyKey(columnId) !== null ? STAGES_COLUMN_GROUP : null
 }
