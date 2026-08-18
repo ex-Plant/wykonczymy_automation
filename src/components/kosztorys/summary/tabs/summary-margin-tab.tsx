@@ -1,68 +1,61 @@
 'use client'
 
-import { useState } from 'react'
 import { faceValue } from '@/lib/kosztorys/summary-economics'
 import {
+  SUMMARY_LABEL_COL,
   SummaryHeaderCell,
   SummaryLabelCell,
   SummaryTable,
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
-import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
+import {
+  useMarginFigure,
+  useMarginPlane,
+  type MarginFigureT,
+} from '@/components/kosztorys/summary/hooks/use-margin-reading'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Description } from '@/components/ui/description'
-import { PLANE_LABELS, SUBCONTRACTOR_FIGURE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
+import { PLANE_LABELS, SUBCONTRACTOR_FIGURE_LABELS } from '@/lib/kosztorys/constants'
 import { marginV2, type SubcontractorSettlementT } from '@/lib/kosztorys/margin-v2'
 import type { MarginForecastT } from '@/lib/kosztorys/margin-forecast'
 import { financialsOnReading, type SummaryReadingT } from '@/lib/kosztorys/summary-reading'
 import type { InvestmentFinancialsT } from '@/types/investment-financials'
 import type { ToolPlaneT } from '@/lib/kosztorys/types'
 
-type FigureT = 'forecast' | 'actual'
-
-const FIGURE_OPTIONS: OptionT<FigureT>[] = [
+const FIGURE_OPTIONS: OptionT<MarginFigureT>[] = [
   { value: 'forecast', label: 'Prognoza' },
   { value: 'actual', label: 'Marża rzeczywista' },
 ]
 
-const PLANE_OPTIONS: OptionT<ToolPlaneT>[] = TOOL_PLANES.map((plane) => ({
-  value: plane,
-  label: PLANE_LABELS[plane],
-}))
-
 const HINTS = {
-  laborCosts: 'Kwota, którą inwestor płaci firmie za pracę. Podstawa marży.',
-  discount: 'Rabat na robociznę — firma rezygnuje z części ceny.',
-  due: 'Wykonane etapy wycenione stawką ekipy, która je robi. Nie wypłaty — te idą własnym rytmem.',
-  settled: 'Materiały kupione przez firmę, wliczone w cenę robocizny. Nie obciążają inwestora.',
-  loss: 'Koszt pokrywany przez firmę — obniża jej marżę i dług inwestora.',
-  plannedNet: 'Cały przedmiar w cenie dla inwestora, przed rabatem.',
-  plannedDue: 'Ten sam przedmiar wyceniony stawką wybranej ekipy.',
+  // due: 'Wykonane etapy wycenione stawką ekipy, która je robi. Nie wypłaty — te idą własnym rytmem.',
+  // settled: 'Materiały kupione przez firmę, wliczone w cenę robocizny. Nie obciążają inwestora.',
+  // loss: 'Koszt pokrywany przez firmę — obniża jej marżę i dług inwestora.',
+  // plannedNet: 'Przedmiar w cenie dla inwestora, przed rabatem.',
+  plannedDue: 'Prognozowana kwota do zapłaty podwykonawcom.',
 } as const
 
 // The two descriptions below are the only place in the app that says what separates these figures,
 // so they are part of the feature, not decoration.
 const FORECAST_DESCRIPTION =
-  'Cały przedmiar w cenie dla inwestora minus ten sam przedmiar w stawce wybranej ekipy. ' +
-  'Scenariusz, nie prognoza w czasie: liczy się z pełnej ceny, bo rabatu nie daje się z góry, ' +
-  'i nie zna ani straty, ani materiału wliczonego w robociznę.'
-
-const FORECAST_MATERIAL_NOTE =
-  'To marża przed materiałem. Na pozycjach, w których materiał siedzi w cenie j.m., przedmiar niesie ' +
-  'przychód z materiału i żadnego jego kosztu — prognoza stoi o ten koszt wyżej niż marża rzeczywista ' +
-  'i te dwie kwoty nie zejdą się nawet przy pełnym wykonaniu.'
+  'Prognoza czyli przedmiar w cenie dla inwestora minus przedmiar w stawce wybranej ekipy. ' +
+  'Liczy się z pełnej ceny bez rabatu, straty ani materiałów wliczonych w inwestycje.'
 
 const ACTUAL_DESCRIPTION =
-  'Robocizna z kosztorysu minus rabat, minus praca należna podwykonawcom za wykonane etapy, minus ' +
-  'materiał wliczony w robociznę i strata. Podwykonawcy liczeni z kosztorysu, a nie z wypłat — ' +
-  'wypłata mówi, ile zapłacono, nie ile zrobiono.'
+  'Robocizna minus rabat minus suma wykonanej pracy, minus ' +
+  'materiał wliczony w robociznę i strata. Koszt podwykonawców liczony z kosztorysu, a nie z wypłat — ile zrobiono, nie ile do tej pory wypłacono.'
+
+// Wider than the shared value track: this table carries a single amount column, so at the shared
+// width the row reads as a long label with a stub pinned to it. The withheld state also puts a
+// sentence where a number normally goes.
+const COLS = `${SUMMARY_LABEL_COL} 17rem`
 
 const WITHHELD_LABEL = 'Ustaw rozliczenie etapów'
 
 const WITHHELD_NOTE =
-  'Etapy z wykonaną pracą, ale bez rozliczenia (z narzędziami / bez narzędzi), nie wchodzą do kosztu ' +
-  'ekipy. Dopóki ich nie ustawisz, marża wyszłaby zawyżona o nieznaną kwotę, więc nie ma jej tu wcale.'
+  'Etapy z wykonaną pracą, ale bez rozliczenia (z narzędziami / bez narzędzi), nie wchodzą do kosztu ekipy. Dopóki ich nie ustawisz, marża wyszłaby zawyżona o nieznaną kwotę.'
 
 type PropsT = {
   financials: InvestmentFinancialsT
@@ -89,54 +82,46 @@ export function SummaryMarginTab({
   subcontractor,
   forecastByPlane,
 }: PropsT) {
-  // Local state, deliberately not persisted: the `kosztorys-*` localStorage family is what the
-  // client-share disclosure lock treats as client-writable, and neither pick is worth putting there.
-  const [figure, setFigure] = useState<FigureT>(forecastByPlane ? 'forecast' : 'actual')
-  const [plane, setPlane] = useState<ToolPlaneT>('w_tools')
+  const [figure, setFigure] = useMarginFigure()
+  const [plane, setPlane] = useMarginPlane()
 
   const readFinancials = financialsOnReading(financials, { laborCostsNet, discountAmount })
   const { totalLaborCosts, totalDiscount, totalLoss, totalSettled } = readFinancials
   const margin = marginV2(readFinancials, subcontractor)
 
-  // No VAT plane: marża sums net amounts, so there is one „Kwota" track.
-  const cols = summaryMoneyCols('net')
   const forecast = forecastByPlane?.[plane]
 
   return (
-    <div className="flex w-fit flex-col gap-y-3">
+    <div className="flex w-full flex-col gap-4">
       {/* Only offered where both figures exist — a one-option toggle would suggest a second reading
           this host does not have. */}
       {forecastByPlane && (
-        <ToggleGroup
-          options={FIGURE_OPTIONS}
-          value={figure}
-          onChange={setFigure}
-          aria-label="Która marża"
-        />
+        <div className="w-fit">
+          <ToggleGroup
+            options={FIGURE_OPTIONS}
+            value={figure}
+            onChange={setFigure}
+            aria-label="Która marża"
+          />
+        </div>
       )}
 
       {figure === 'forecast' && forecast ? (
         <>
-          {/* Belongs to the forecast alone: the actual margin prices each etap at the plane the etap
-              itself carries, so a scenario toggle beside it would imply an effect it does not have. */}
-          <ToggleGroup
-            options={PLANE_OPTIONS}
-            value={plane}
-            onChange={setPlane}
-            aria-label="Scenariusz podwykonawcy"
-          />
-          <SummaryTable cols={cols} className="w-fit">
+          <Description className="max-w-xl" size="xs">
+            {FORECAST_DESCRIPTION}
+          </Description>
+          <SummaryTable cols={COLS} className="w-fit">
             <SummaryHeaderCell variant="label">Prognoza</SummaryHeaderCell>
             <SummaryHeaderCell>Kwota</SummaryHeaderCell>
 
             <SummaryRow
               label="Wartość przedmiaru"
-              hint={HINTS.plannedNet}
               line={faceValue(forecast.clientNet)}
               axis="net"
             />
             <SummaryRow
-              label="Należne podwykonawcom (przedmiar)"
+              label={`Należne podwykonawcom (stawka ${PLANE_LABELS[plane].toLowerCase()})`}
               hint={HINTS.plannedDue}
               line={faceValue(-forecast.subcontractorNet)}
               axis="net"
@@ -150,21 +135,26 @@ export function SummaryMarginTab({
               danger={forecast.margin < 0}
             />
           </SummaryTable>
-          <Description size="xs">{FORECAST_DESCRIPTION}</Description>
-          <Description size="xs">{FORECAST_MATERIAL_NOTE}</Description>
+          {/* Belongs to the forecast alone: the actual margin prices each etap at the plane the etap
+              itself carries, so a scenario switch beside it would imply an effect it does not have. */}
+          <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
+              checked={plane === 'own_tools'}
+              onCheckedChange={(state) => setPlane(state === true ? 'own_tools' : 'w_tools')}
+            />
+            {PLANE_LABELS.own_tools}
+          </label>
         </>
       ) : (
         <>
-          <SummaryTable cols={cols} className="w-fit">
+          <Description className="max-w-xl" size="xs">
+            {ACTUAL_DESCRIPTION}
+          </Description>
+          <SummaryTable cols={COLS} className="w-fit">
             <SummaryHeaderCell variant="label">Marża rzeczywista</SummaryHeaderCell>
             <SummaryHeaderCell>Kwota</SummaryHeaderCell>
 
-            <SummaryRow
-              label="Robocizna"
-              hint={HINTS.laborCosts}
-              line={faceValue(totalLaborCosts)}
-              axis="net"
-            />
+            <SummaryRow label="Robocizna" line={faceValue(totalLaborCosts)} axis="net" />
             {totalDiscount !== 0 && (
               <SummaryRow
                 label="Rabat"
@@ -178,7 +168,6 @@ export function SummaryMarginTab({
                 „Podwykonawcy" tab can never call one amount two things. */}
             <SummaryRow
               label={SUBCONTRACTOR_FIGURE_LABELS.due}
-              hint={HINTS.due}
               line={faceValue(-subcontractor.due)}
               axis="net"
               discount
@@ -186,20 +175,13 @@ export function SummaryMarginTab({
             {totalSettled !== 0 && (
               <SummaryRow
                 label="Materiały wliczone w robociznę"
-                hint={HINTS.settled}
                 line={faceValue(-totalSettled)}
                 axis="net"
                 discount
               />
             )}
             {totalLoss !== 0 && (
-              <SummaryRow
-                label="Strata"
-                hint={HINTS.loss}
-                line={faceValue(-totalLoss)}
-                axis="net"
-                discount
-              />
+              <SummaryRow label="Strata" line={faceValue(-totalLoss)} axis="net" discount />
             )}
             {margin === null ? (
               // No amount at all — a zero-cost crew is a false statement, not a missing one.
@@ -219,7 +201,6 @@ export function SummaryMarginTab({
               />
             )}
           </SummaryTable>
-          <Description size="xs">{ACTUAL_DESCRIPTION}</Description>
         </>
       )}
     </div>
