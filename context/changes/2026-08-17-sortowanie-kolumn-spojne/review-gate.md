@@ -77,5 +77,5 @@ ledger is the report.
 - `pnpm test` — full unit suite green (see close-out).
 - E2E: none owed. The change adds no new browser-level flow — it widens an existing header-menu
   gesture to more columns, and the sort engine it drives is covered at unit level.
-- Manual: 11 checks registered in `context/foundation/manual-checks.md`, unticked — the archive
-  blocker for this slice.
+- Manual: 11 checks registered in `context/foundation/manual-checks.md`, unticked. Non-blocking by
+  standing owner decision — the slice is closed as done (EX-710) with the checks left as a registry.
