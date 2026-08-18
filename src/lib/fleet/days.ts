@@ -28,6 +28,9 @@ export const warsawToday = (now: Date = new Date()): DayT => toWarsawDay(now)
 export const daysBetween = (from: DayT, to: DayT): number =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 
+/** Parsed as UTC midnight so the weekday is the calendar day's, not the runner's timezone's. */
+export const isMonday = (day: DayT): boolean => new Date(`${day}T00:00:00Z`).getUTCDay() === 1
+
 /** A day plus a month count. Used to prefill the next due date from an interval. */
 export const addMonthsToDay = (day: DayT, months: number): DayT => {
   const [year, month, date] = day.split('-').map(Number)

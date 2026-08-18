@@ -567,13 +567,13 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [x] 3.1 Fleet query specs pass
+- [x] 3.1 Fleet query specs pass — 76f22c25
 
 ### Phase 4: Daily Digest
 
 #### Automated
 
-- [ ] 4.1 Sweep spec passes
+- [x] 4.1 Sweep spec passes
 
 ### Phase 5: Nav Badge
 
