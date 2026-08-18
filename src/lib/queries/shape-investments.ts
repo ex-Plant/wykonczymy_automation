@@ -1,13 +1,20 @@
-import type { InvestmentFinancialsMapT, KosztorysClientTotalsMapT } from '@/lib/queries/balances'
+import type {
+  InvestmentFinancialsMapT,
+  KosztorysClientTotalsMapT,
+  KosztorysSubcontractorDueMapT,
+} from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { grossBalance } from '@/lib/db/gross-balance'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import { billedCategoryCosts, billedMaterials } from '@/lib/kosztorys/summary-economics'
+import { marginV2, type SubcontractorSettlementT } from '@/lib/kosztorys/margin-v2'
 import { ZERO_FINANCIALS } from '@/types/investment-financials'
 import type { InvestmentRefT } from '@/types/reference-data'
 import type { InvestmentRowT } from '@/types/table-rows'
+
+const NOTHING_DUE: SubcontractorSettlementT = { due: 0, hasUnconfirmedPlane: false }
 
 /** The listing row assembly, kept apart from the fetches in `queries/investments.ts` so the parity
  *  audit can run the REAL row builder from a plain node script — importing it through the query
@@ -17,6 +24,7 @@ export function shapeInvestments(
   investments: InvestmentRefT[],
   financialsRecord: InvestmentFinancialsMapT,
   kosztorysTotalsRecord: KosztorysClientTotalsMapT = {},
+  subcontractorDueRecord: KosztorysSubcontractorDueMapT = {},
 ): InvestmentRowT[] {
   return investments.map((inv) => {
     const transactionFinancials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS
@@ -62,6 +70,9 @@ export function shapeInvestments(
         financials.totalDiscount,
       ),
       margin: calculateMargin(financials),
+      // No kosztorys is an answer here as much as it is for robocizna: nothing is owed to a crew for
+      // work nobody entered, so the zero settlement is a fact, not a missing input.
+      marginV2: marginV2(financials, subcontractorDueRecord[String(inv.id)] ?? NOTHING_DUE),
       address: inv.address,
       phone: inv.phone,
       email: inv.email,

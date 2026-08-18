@@ -26,6 +26,9 @@ export type InvestmentRowT = {
   balance: number
   balanceGross: number
   margin: number
+  /** The EX-649 reading, beside `margin` rather than instead of it. `null` where an etap holds
+   *  executed work with no rozliczenie — the figure is unknowable, not zero. */
+  marginV2: number | null
   address: string
   phone: string
   email: string

@@ -22,8 +22,16 @@ import { grossBalance } from '@/lib/db/gross-balance'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
+import { marginV2 } from '@/lib/kosztorys/margin-v2'
+import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
+import { treeToRows } from '@/lib/kosztorys/v2-rows'
+import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
-import type { KosztorysClientTotalsMapT } from '@/lib/queries/balances'
+import type {
+  KosztorysClientTotalsMapT,
+  KosztorysSubcontractorDueMapT,
+} from '@/lib/queries/balances'
 import type { InvestmentRefT, InvestmentStatusT } from '@/types/reference-data'
 
 // REAL-PATH parity: assemble each figure exactly the way each PAGE assembles it, over
@@ -103,6 +111,12 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       kosztorysTotals[String(investmentId)] = totals
     }
 
+    const subcontractorDue: KosztorysSubcontractorDueMapT = {}
+    for (const row of await selectKosztorysSubcontractorDue(await getDb(payload))) {
+      const { investmentId, ...settlement } = row
+      subcontractorDue[String(investmentId)] = settlement
+    }
+
     const mismatches: string[] = []
     for (const inv of investments) {
       const where = { investment: { equals: inv.id } }
@@ -133,6 +147,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         [inv],
         listingFin ? { [String(inv.id)]: listingFin } : {},
         kosztorysTotals,
+        subcontractorDue,
       )
 
       // DETAIL assembly (mirrors inwestycje/[id]/page.tsx + financial-stats.tsx)
@@ -166,6 +181,28 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         ],
         ['wliczone w robociznę', listingRow?.totalSettled ?? 0, detailFin.totalSettled],
       ]
+
+      // Deliberately NOT the SQL fold on the right: the listing already reads it, so feeding it to
+      // both sides would compare the fold with itself. The tree is the reference the panel renders.
+      const tree = await buildKosztorysTree(inv.id)
+      const byPlane = subcontractorDueByPlane(treeToRows(tree), tree.stages)
+      const detailMarginV2 = marginV2(detailFin, {
+        due: byPlane.combined,
+        hasUnconfirmedPlane: byPlane.hasUnconfirmedPlane,
+      })
+      const listingMarginV2 = listingRow?.marginV2 ?? null
+      // Compared before rounding because `null` is a third state, not a number: an investment whose
+      // etapy are unsettled must be withheld on BOTH sides, and 0 vs null is exactly the confusion
+      // this figure exists to avoid.
+      const v2Agrees =
+        detailMarginV2 === null || listingMarginV2 === null
+          ? detailMarginV2 === listingMarginV2
+          : round2(detailMarginV2) === round2(listingMarginV2)
+      if (!v2Agrees) {
+        mismatches.push(
+          `#${inv.id} ${inv.name} · marża v2: listing=${listingMarginV2} detail=${detailMarginV2}`,
+        )
+      }
       for (const [label, listing, detail] of compare) {
         if (round2(listing) !== round2(detail)) {
           mismatches.push(

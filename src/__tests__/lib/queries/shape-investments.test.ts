@@ -368,3 +368,63 @@ describe('shapeInvestments robocizna source', () => {
     expect(zeroProgress).toEqual(shapeInvestments([baseInv], transactionFinancials, {})[0])
   })
 })
+
+// EX-649: the second margin rides on the same row. The transactions plane sets 1000 zł of wypłat and
+// the kosztorys says 800 zł is owed for the work actually done — the two figures must NOT coincide,
+// or a column that kept reading `totalPayouts` would pass.
+describe('shapeInvestments marża v2', () => {
+  const transactionFinancials: InvestmentFinancialsMapT = {
+    '5': {
+      categoryCosts: [],
+      netCategoryCosts: [],
+      totalMaterialCosts: 1000,
+      materialsGrossBase: 1000,
+      materialsNetBilled: 0,
+      totalIncome: 9547,
+      totalLaborCosts: 3900,
+      totalPayouts: 1000,
+      totalDiscount: 0,
+      totalLoss: 200,
+      totalSettled: 300,
+      materialsNetDiscount: 400,
+      settledCategoryCosts: [],
+    },
+  }
+
+  const kosztorysTotals: KosztorysClientTotalsMapT = {
+    '5': {
+      doneNet: 4500,
+      laborCostsNetFromKosztorys: 5000,
+      discountNetFromKosztorys: 500,
+      globalDiscountNet: 0,
+    },
+  }
+
+  it('prices the crew from the kosztorys, not from the wypłaty', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals, {
+      '5': { due: 800, hasUnconfirmedPlane: false },
+    })
+
+    expect(row.marginV2).toBe(3200) // 5000 − 500 rabatu − 800 ekipie − 300 wliczonych − 200 straty
+    // The old column is untouched — it still reads wypłaty AND still subtracts the obniżka
+    // materiałów, so the two legitimately disagree.
+    expect(row.margin).toBe(2600)
+  })
+
+  it('withholds the figure when an etap carries work with no rozliczenie', () => {
+    const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals, {
+      '5': { due: 800, hasUnconfirmedPlane: true },
+    })
+
+    expect(row.marginV2).toBeNull()
+    // Only the new figure is withheld; the old one is unaffected by the missing rozliczenie.
+    expect(row.margin).toBe(2600)
+  })
+
+  it('owes nothing to a crew for an investment with no kosztorys', () => {
+    // No kosztorys means no robocizna either, so the figure is what the company absorbed on its own.
+    const [row] = shapeInvestments([baseInv], transactionFinancials)
+
+    expect(row.marginV2).toBe(-500) // 0 robocizny − 300 wliczonych − 200 straty
+  })
+})

@@ -522,15 +522,15 @@ figure here.
 
 #### Automated
 
-- [x] 3.1 `kosztorys-subcontractor-due.test.ts` SQL↔TS parity passes (fails red on both perturbations: dropping the qty gate on the unconfirmed flag, and swapping the plane column pair)
-- [x] 3.2 `kosztorys-client-totals.test.ts` still passes
+- [x] 3.1 `kosztorys-subcontractor-due.test.ts` SQL↔TS parity passes (fails red on both perturbations: dropping the qty gate on the unconfirmed flag, and swapping the plane column pair) — e0d48789
+- [x] 3.2 `kosztorys-client-totals.test.ts` still passes — e0d48789
 
 ### Phase 4: The „Marża v2" column
 
 #### Automated
 
-- [ ] 4.1 `shape-investments.test.ts` passes
-- [ ] 4.2 `investment-render-parity-db.test.ts` passes with the new `marża v2` row
+- [x] 4.1 `shape-investments.test.ts` passes — three new cases: crew priced from the kosztorys (not wypłaty), the withheld `null`, and no kosztorys at all
+- [x] 4.2 `investment-render-parity-db.test.ts` passes with the new `marża v2` row (fails red when the fold reads the other plane's coefficient; needed `pnpm seed:kosztorys:test` + planes on the seeded etapy — the perf seed left every etap unrozliczony, so the row compared null with null)
 
 ### Phase 5: Guards and living docs
 

@@ -57,6 +57,21 @@ export function getInvestmentColumns({ userRole, expenseCategories }: Investment
             meta: { align: 'right' },
             cell: (info) => <BalanceCell value={info.getValue()} />,
           }),
+          col.accessor('marginV2', {
+            id: 'marginV2',
+            header: 'Marża v2',
+            meta: { align: 'right' },
+            // A row with an unsettled etap has no amount at all — zero would claim the crew works
+            // for free. The prompt names what the owner has to do to get the number back.
+            cell: (info) => {
+              const value = info.getValue()
+              return value === null ? (
+                <span className="text-muted-foreground text-xs">ustaw etapy</span>
+              ) : (
+                <BalanceCell value={value} />
+              )
+            },
+          }),
         ]
       : []),
     // Mirrors the single-investment stats so labels stay 1:1 with the detail page.
