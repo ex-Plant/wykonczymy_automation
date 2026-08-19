@@ -459,13 +459,13 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 3.1 `src/__tests__/lib/queries/fleet.test.ts` passes
+- [x] 3.1 `src/__tests__/lib/queries/fleet.test.ts` passes — dc791b3a
 
 ### Phase 4: Write path — the toggle action
 
 #### Automated
 
-- [ ] 4.1 the `setVehicleFlagsAction` spec passes
+- [x] 4.1 the `setVehicleFlagsAction` spec passes
 
 ### Phase 5: UI — the „Do wymiany" column, the badge, the editor
 
