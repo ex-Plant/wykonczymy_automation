@@ -71,13 +71,19 @@ export function SheetImportDialog({
 
   function handleConfirm() {
     startTransition(async () => {
-      const result = await applyKosztorysImport(investmentId)
-      if (!result.success) {
-        toastMessage(result.error, 'error', 6000)
-        return
+      try {
+        const result = await applyKosztorysImport(investmentId)
+        if (!result.success) {
+          toastMessage(result.error, 'error', 6000)
+          return
+        }
+        const { sections, items, stages } = result.data
+        toastMessage(`Wczytano: ${sections} sekcji · ${items} prac · ${stages} etapów`, 'success')
+      } catch {
+        // A transport-level rejection can arrive AFTER the replacement committed, so the grid may
+        // already be rendering rows that no longer exist. Refreshing regardless is the safe read.
+        toastMessage('Pobieranie przerwane — odświeżam kosztorys', 'error', 6000)
       }
-      const { sections, items, stages } = result.data
-      toastMessage(`Wczytano: ${sections} sekcji · ${items} prac · ${stages} etapów`, 'success')
       onOpenChange(false)
       onImported()
     })
@@ -215,9 +221,8 @@ function ColumnsBlock({
   )
 }
 
-// The last screen before the rozpiska is replaced, so it names the loss rather than softening it.
-// „Nic nie jest usuwane" is what this block used to promise, and keeping the unmatched prace is
-// exactly what filled one kosztorys with 83 copies of itself.
+// The last screen before the rozpiska is replaced, so it names the loss rather than softening it:
+// keeping the unmatched prace instead is exactly what filled one kosztorys with 83 copies of itself.
 function DroppedBlock({ dropped }: { dropped: ImportReportT['dropped'] }) {
   const clean = dropped.length === 0
   const withProgress = dropped.filter((item) => item.hasProgress).length

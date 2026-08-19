@@ -1,10 +1,12 @@
 import { pluralize } from '@/lib/utils/polish-plural'
 
-// The counted nouns both sheet dialogs put in front of a number. Shared so „5 prac" never becomes
-// „5 pozycji" one dialog over — the two reports are read one after the other, and a changed word
-// reads as a changed thing.
+// The counted nouns every editor dialog puts in front of a number. Shared so „5 prac" never becomes
+// „5 pozycji" one dialog over — the reports are read one after the other, and a changed word reads
+// as a changed thing.
 
 export const itemNoun = (count: number) => pluralize(count, ['praca', 'prace', 'prac'])
+
+export const sectionNoun = (count: number) => pluralize(count, ['sekcja', 'sekcje', 'sekcji'])
 
 export const itemHasPhrase = (count: number) =>
   pluralize(count, ['praca ma', 'prace mają', 'prac ma'])

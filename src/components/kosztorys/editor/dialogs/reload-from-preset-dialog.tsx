@@ -10,13 +10,8 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import { cn } from '@/lib/utils/cn'
 import { toastMessage } from '@/lib/utils/toast'
-import {
-  getPresetName,
-  groupPresetSections,
-  itemNoun,
-  sectionNoun,
-  type PresetGroupT,
-} from './preset-picker-groups'
+import { getPresetName, groupPresetSections, type PresetGroupT } from './preset-picker-groups'
+import { itemNoun, sectionNoun } from './sheet-report-words'
 import { usePresetSections } from './use-preset-sections'
 
 type PropsT = {

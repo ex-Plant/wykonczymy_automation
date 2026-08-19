@@ -15,8 +15,8 @@ import {
   groupPresetSections,
   isGroupFullySelected,
   metaKey,
-  sectionNoun,
 } from './preset-picker-groups'
+import { sectionNoun } from './sheet-report-words'
 import { usePresetSections } from './use-preset-sections'
 
 type PropsT = {

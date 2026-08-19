@@ -11,6 +11,7 @@ import { deriveOverride } from './derive-override'
 import { sheetCoeffs, type SheetCoeffsT } from './sheet-coeffs'
 import { compareFooterTotals, type FooterComparisonT } from './footer-totals'
 import { keyItems } from './item-key'
+import { groupInOrder } from '@/lib/utils/group-in-order'
 import { parseLaborTab } from './parse-labor-tab'
 import { type ImportGridsT } from './read-sheet'
 import {
@@ -71,19 +72,6 @@ export type ImportFailureT = { ok: false; problems: string[] } & UnresolvedColum
 export type ImportPlanT =
   | ({ ok: true; tree: SnapshotPayloadT; report: ImportReportT } & UnresolvedColumnsT)
   | ImportFailureT
-
-function groupBy<ValueT, KeyT>(
-  values: readonly ValueT[],
-  key: (value: ValueT) => KeyT,
-): Map<KeyT, ValueT[]> {
-  const grouped = new Map<KeyT, ValueT[]>()
-  for (const value of values) {
-    const bucket = grouped.get(key(value))
-    if (bucket) bucket.push(value)
-    else grouped.set(key(value), [value])
-  }
-  return grouped
-}
 
 /**
  * Everything the preview shows and everything apply writes, from the sheet grids plus the
@@ -170,12 +158,7 @@ export function buildImportPlan(
   const matchedCurrentIds = new Set<number>()
 
   const parsedSectionName = new Map(parsed.sections.map((section) => [section.id, section.name]))
-  const parsedKeys = keyItems(
-    // `keyItems` wants full items; the parsed ones lack the four override fields, which it never
-    // reads. Only the section, description and their order matter for keying.
-    parsed.items as unknown as KosztorysItemT[],
-    (item) => parsedSectionName.get(item.sectionId) ?? '',
-  )
+  const parsedKeys = keyItems(parsed.items, (item) => parsedSectionName.get(item.sectionId) ?? '')
   const keyByParsedId = new Map<number, string>()
   for (const [key, item] of parsedKeys) keyByParsedId.set(item.id, key)
 
@@ -196,8 +179,8 @@ export function buildImportPlan(
     })),
   )
 
-  const parsedProgressByItem = groupBy(parsed.progress, (entry) => entry.itemId)
-  const parsedItemsBySection = groupBy(parsed.items, (item) => item.sectionId)
+  const parsedProgressByItem = groupInOrder(parsed.progress, (entry) => entry.itemId)
+  const parsedItemsBySection = groupInOrder(parsed.items, (item) => item.sectionId)
 
   for (const sheetSection of parsed.sections) {
     const sectionId = nextSectionId++
@@ -245,7 +228,7 @@ export function buildImportPlan(
   // „Zastąp" means the sheet decides what the rozpiska contains: a praca it doesn't have stops
   // existing, rather than being appended beside the sheet's own copy. The owner is told what goes
   // before the write, and `replaceTreeWithSnapshot` takes a labelled snapshot either way.
-  const progressByCurrentItem = groupBy(currentTree.progress, (entry) => entry.itemId)
+  const progressByCurrentItem = groupInOrder(currentTree.progress, (entry) => entry.itemId)
   const dropped: DroppedItemT[] = currentTree.items
     .filter((item) => !matchedCurrentIds.has(item.id))
     .map((item) => ({

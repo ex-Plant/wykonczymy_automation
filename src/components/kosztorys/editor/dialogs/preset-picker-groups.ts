@@ -1,8 +1,4 @@
 import type { PresetSectionMetaT } from '@/lib/db/presets'
-import { pluralize } from '@/lib/utils/polish-plural'
-
-export const sectionNoun = (count: number) => pluralize(count, ['sekcja', 'sekcje', 'sekcji'])
-export const itemNoun = (count: number) => pluralize(count, ['praca', 'prace', 'prac'])
 
 export const getPresetName = (group: PresetGroupT) => group.presetName
 

@@ -317,14 +317,21 @@ describe('buildImportPlan', () => {
     ])
   })
 
-  it('keeps a matched praca’s wpisane etapy — replacing the rozpiska must not cost them', () => {
+  it('takes a matched praca’s wykonanie from the arkusz, not from the current rozpiska', () => {
+    // Pomiar IS the sum of the etapy, and the arkusz owns them — so a wpisane wykonanie the arkusz
+    // does not repeat is replaced, not merged. The previous state is recoverable from „Wersje".
     const current = currentTree()
-    current.progress = [{ itemId: 70, stageId: 700, qtyDone: 3 }]
+    current.progress = [
+      { itemId: 70, stageId: 700, qtyDone: 3 },
+      { itemId: 70, stageId: 702, qtyDone: 1.5 },
+    ]
 
     const { tree } = plan(source(), current)
     const matched = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    expect(tree.progress.filter((entry) => entry.itemId === matched.id)).toHaveLength(1)
+    expect(tree.progress.filter((entry) => entry.itemId === matched.id)).toEqual([
+      { itemId: matched.id, stageId: 1, qtyDone: 2 },
+    ])
   })
 
   it('refuses to build a tree when a column cannot be resolved', () => {

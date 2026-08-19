@@ -178,7 +178,7 @@ export function KosztorysActionsMenu() {
             <ChevronDown />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="w-80">
           <DropdownMenuLabel>Edycja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
             <Undo2 />
@@ -195,13 +195,6 @@ export function KosztorysActionsMenu() {
               description="Poprawia literówki, zbędne spacje i wielkie litery w całej rozpisce."
             />
           </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onSelect={() => setClearOpen(true)}>
-            <Trash2 />
-            <MenuItemBody
-              label="Wyczyść kosztorys…"
-              description="Usuwa całą rozpiskę. Stan sprzed zapisze się w „Wersje”."
-            />
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Wersje</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => setVersionOpen(true)}>
@@ -216,6 +209,13 @@ export function KosztorysActionsMenu() {
             <MenuItemBody
               label="Wczytaj"
               description="Przywróć kosztorys do wcześniej zapisanego stanu."
+            />
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => setClearOpen(true)}>
+            <Trash2 />
+            <MenuItemBody
+              label="Wyczyść kosztorys…"
+              description="Usuwa całą rozpiskę. Stan sprzed zapisze się w „Wersje”."
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />

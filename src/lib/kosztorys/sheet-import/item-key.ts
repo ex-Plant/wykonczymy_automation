@@ -1,6 +1,9 @@
-import type { KosztorysItemT } from '@/lib/kosztorys/types'
 import { TYPO_FIXES } from '@/lib/kosztorys/clean-description'
 import { fold } from './columns'
+
+// The subset of a praca `keyItems` reads. Widened from `KosztorysItemT` so callers holding a
+// half-built praca (the parsed sheet rows, which have no override fields yet) need no cast.
+type KeyableItemT = { sectionId: number; description: string | null }
 
 // „Popraw literówki w opisie prac" rewrites LETTERS, and `fold()` — case, diacritics, whitespace —
 // cannot absorb that. Without this the cleaner silently costs every praca it touches its identity:
@@ -13,9 +16,16 @@ import { fold } from './columns'
 // two sides would diverge on case alone — the one thing `fold()` had already solved. Folding both
 // the text and the rules sidesteps the ordering entirely, and drops the rules that only ever
 // corrected diacritics (`farba silikonowa` → `farbą silikonową`), which folding equates anyway.
-const FOLDED_TYPO_FIXES = TYPO_FIXES.map(([from, to]) => [fold(from), fold(to)] as const).filter(
-  ([from, to]) => from !== to,
-)
+//
+// The edge spaces are re-attached because `fold()` trims: ` parc` → ` prac` is a word-boundary rule,
+// and without its leading space it would rewrite „parcie gruntu" into „pracie gruntu" and collapse
+// two unrelated prace onto one key.
+const foldRule = (rule: string) =>
+  (/^\s/.test(rule) ? ' ' : '') + fold(rule) + (/\s$/.test(rule) ? ' ' : '')
+
+const FOLDED_TYPO_FIXES = TYPO_FIXES.map(
+  ([from, to]) => [foldRule(from), foldRule(to)] as const,
+).filter(([from, to]) => from !== to)
 
 function foldDescription(description: string | null): string {
   return FOLDED_TYPO_FIXES.reduce(
@@ -24,24 +34,22 @@ function foldDescription(description: string | null): string {
   )
 }
 
-// The praca's identity across a re-import: which section it sits in, what it is called, and which
-// repetition of that name it is. Ids can't do this job — the sheet has none — and the row number
+// Ids can't carry a praca's identity across a re-import — the sheet has none — and the row number
 // can't either, since inserting one praca would re-key every praca below it.
 export const itemKey = (section: string, description: string | null, occurrence: number): string =>
   `${fold(section)}|${foldDescription(description)}#${occurrence}`
 
-export function keyItems(
-  items: readonly KosztorysItemT[],
-  sectionName: (item: KosztorysItemT) => string,
-): Map<string, KosztorysItemT> {
+export function keyItems<ItemT extends KeyableItemT>(
+  items: readonly ItemT[],
+  sectionName: (item: ItemT) => string,
+): Map<string, ItemT> {
   const seen = new Map<string, number>()
-  const byKey = new Map<string, KosztorysItemT>()
+  const byKey = new Map<string, ItemT>()
   for (const item of items) {
-    const section = sectionName(item)
-    const base = `${fold(section)}|${foldDescription(item.description)}`
+    const base = `${fold(sectionName(item))}|${foldDescription(item.description)}`
     const occurrence = seen.get(base) ?? 0
     seen.set(base, occurrence + 1)
-    byKey.set(itemKey(section, item.description, occurrence), item)
+    byKey.set(`${base}#${occurrence}`, item)
   }
   return byKey
 }

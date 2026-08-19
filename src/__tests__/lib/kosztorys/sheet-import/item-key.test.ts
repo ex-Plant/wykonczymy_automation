@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { cleanDescription, TYPO_FIXES } from '@/lib/kosztorys/clean-description'
 import { itemKey, keyItems } from '@/lib/kosztorys/sheet-import/item-key'
 import type { KosztorysItemT } from '@/lib/kosztorys/types'
 
@@ -37,6 +38,25 @@ describe('itemKey', () => {
 
   it('keys the same across case, diacritics and whitespace runs', () => {
     expect(key('Malowanie  ŚCIAN')).toBe(key('malowanie scian'))
+  })
+
+  // The guarantee the import rests on: whatever „Popraw literówki" would do to an opis, the key does
+  // not notice. Table-driven over the whole rule set so a rule added later has to hold it too.
+  it.each(TYPO_FIXES.map(([from]) => from))(
+    'keys „%s" the same before and after the cleaner rewrites it',
+    (typo) => {
+      const before = `Wykonanie ${typo} w łazience`
+      expect(key(before)).toBe(key(cleanDescription(before)))
+      expect(key(before.toUpperCase())).toBe(key(cleanDescription(before.toUpperCase())))
+    },
+  )
+
+  it('keeps a word-boundary rule from eating the middle of another word', () => {
+    // ` parc` → ` prac` needs its leading space, which `fold()` would otherwise trim off the rule —
+    // and „wyparcie" would silently become „wypracie", collapsing two unrelated prace onto one key.
+    expect(key('Zabezpieczenie na wyparcie gruntu')).not.toBe(
+      key('Zabezpieczenie na wypracie gruntu'),
+    )
   })
 
   it('keeps two genuinely different opisy apart', () => {

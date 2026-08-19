@@ -291,20 +291,28 @@ export async function cleanItemDescriptionsAction(
   )
 }
 
-// „Wyczyść kosztorys" — the rozpiska back to empty, in one click. Goes through the same wholesale
-// replacement as the import and the szablon reload rather than its own DELETE: that path already
-// owns the investment lock and the forced labelled snapshot, which is the only thing making this
-// undoable.
+// --- Structure: sections / items ---
+
+const clearKosztorysSchema = z.object({ investmentId: z.number().int().positive() })
+
+// Goes through the same wholesale replacement as the import and the szablon reload rather than its
+// own DELETE: that path already owns the investment lock and the forced labelled snapshot, which is
+// the only thing making this undoable.
 //
 // The empty tree's `settings` are inert — `takeSettingsFromTree` is off, so restoreKosztorys writes
 // back the investment's own VAT and współczynniki. The global rabat is NOT: „wyczyść" means empty,
-// and an amount discount left behind would price the next import below its own total.
+// and an amount discount left behind would price the next import below its own total. It is the one
+// figure the snapshot cannot give back — SnapshotPayloadT excludes it by design — which is why the
+// dialog says so instead of promising a clean round trip.
 export async function clearKosztorysAction(investmentId: number): Promise<ActionResultT> {
   return protectedAction(
     'clearKosztorysAction',
     async ({ payload, user }) => {
+      const parsed = validateAction(clearKosztorysSchema, { investmentId })
+      if (!parsed.success) return parsed
+
       await replaceTreeWithSnapshot(payload, {
-        investmentId,
+        investmentId: parsed.data.investmentId,
         label: 'Przed wyczyszczeniem',
         takenBy: user.id,
         tree: {
@@ -315,6 +323,7 @@ export async function clearKosztorysAction(investmentId: number): Promise<Action
           progress: [],
           settings: { wToolsCoeff: 0, ownToolsCoeff: 0, vatRate: 0 },
         },
+        takeSettingsFromTree: false,
         clearGlobalDiscount: true,
       })
       return { success: true }
@@ -322,8 +331,6 @@ export async function clearKosztorysAction(investmentId: number): Promise<Action
     [...KOSZTORYS_TREE_TAGS],
   )
 }
-
-// --- Structure: sections / items ---
 
 // Appends a section at the end, WITH its first blank item — see createSectionWithFirstItem for why
 // the pair is one call (and one round trip for the client) rather than two actions.

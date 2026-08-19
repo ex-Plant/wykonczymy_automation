@@ -6,7 +6,7 @@ import { DialogActions } from '@/components/ui/dialog-actions'
 import { clearKosztorysAction } from '@/lib/actions/kosztorys'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { toastMessage } from '@/lib/utils/toast'
-import { itemNoun, sectionNoun } from './preset-picker-groups'
+import { itemNoun, sectionNoun } from './sheet-report-words'
 
 type PropsT = {
   investmentId: number
@@ -48,7 +48,7 @@ export function ClearKosztorysDialog({ investmentId, open, onOpenChange, onClear
       <DialogContent className="sm:max-w-lg">
         <DialogHeader
           title="Wyczyść kosztorys"
-          description="Cała rozpiska zniknie — razem z etapami i wpisanym wykonaniem. Stawka VAT i współczynniki zostają, rabat globalny zostanie wyzerowany. Stan sprzed wyczyszczenia zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
+          description="Cała rozpiska zniknie — razem z etapami i wpisanym wykonaniem. Stawka VAT i współczynniki zostają, rabat globalny zostanie wyzerowany (przywrócenie stanu go nie cofa). Stan sprzed wyczyszczenia zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
         />
 
         <p className="text-muted-foreground text-sm">
@@ -62,6 +62,8 @@ export function ClearKosztorysDialog({ investmentId, open, onOpenChange, onClear
           pendingLabel="Czyszczę…"
           onConfirm={handleConfirm}
           onCancel={() => onOpenChange(false)}
+          // Clearing an already-empty rozpiska would only push an empty restore point into „Wersje".
+          confirmDisabled={sections === 0 && items === 0}
         />
       </DialogContent>
     </Dialog>

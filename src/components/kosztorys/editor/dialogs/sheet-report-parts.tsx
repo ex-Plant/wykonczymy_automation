@@ -33,10 +33,10 @@ export function ReportTable({ headers, children }: { headers: ReactNode[]; child
   )
 }
 
-export const SHEET_SIDE = 'Arkusz Google'
-export const APP_SIDE = 'Ta aplikacja'
+const SHEET_SIDE = 'Arkusz Google'
+const APP_SIDE = 'Ta aplikacja'
 
-export type ReportCellT = { content: ReactNode; tone?: string }
+type ReportCellT = { content: ReactNode; tone?: string }
 
 export function ReportRow({ label, cells }: { label: ReactNode; cells: ReportCellT[] }) {
   return (
