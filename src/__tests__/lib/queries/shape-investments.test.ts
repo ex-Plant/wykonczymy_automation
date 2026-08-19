@@ -323,6 +323,7 @@ describe('shapeInvestments robocizna source', () => {
     const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
 
     expect(row.totalLaborCostsFromTransactions).toBe(3900)
+    expect(row.totalCostsFromTransactions).toBe(4900) // 1000 materiały + 3900 robocizny z transferów
     expect(row.balanceFromTransactions).toBe(4647) // 9547 − (1000 + 3900), no rabat on this plane
     expect(row.margin).toBe(2900) // 3900 − 1000 wypłat
   })

@@ -12,7 +12,11 @@ export type InvestmentRowT = {
   id: number
   name: string
   status: InvestmentStatusT
+  /** Materiały + robocizna. The sum is old, but EX-555 (`f72c68a1`) swapped the robocizna under it
+   *  for the kosztorys one without renaming the column, so it has been a v2 reading — silently —
+   *  since then. Its transactions twin below is the reading it used to be. */
   totalCosts: number
+  totalCostsFromTransactions: number
   totalMaterialCosts: number
   totalIncome: number
   /** Kosztorys plane, pre-rabat. Its twin below is pre-rabat too, so the two subtract cleanly.

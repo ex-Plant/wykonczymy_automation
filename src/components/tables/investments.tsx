@@ -5,6 +5,7 @@ import { formatPLN } from '@/lib/utils/format-currency'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
 import type { InvestmentRowT } from '@/types/table-rows'
+import { INVESTMENT_HEADER_TIPS } from '@/components/tables/investments-header-tips'
 import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
 import { ContactLink } from '@/components/ui/contact-link'
@@ -14,6 +15,17 @@ import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
 
 const col = createColumnHelper<InvestmentRowT>()
+
+// The kosztorys-sourced half of every doubled figure. Named here, beside the columns themselves, so
+// the toolbar's „Pokaż kolumny v2" switch and the columns cannot drift apart — and so EX-712, which
+// deletes the v1/v2 split once the rozjazd is zero everywhere, has one list to delete.
+export const V2_COLUMN_IDS = [
+  'totalCosts',
+  'balance',
+  'balanceGross',
+  'marginV2',
+  'laborCostsFromKosztorys',
+] as const
 
 // An investment whose kosztorys is empty reads zero robocizna, and every other v2 figure is built on
 // that zero: the bilans then says the client owes nothing for work that was done, and the marża that
@@ -40,11 +52,22 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { canHide: false, minWidth: 'min-w-56' },
     }),
 
+    col.accessor('totalCostsFromTransactions', {
+      id: 'totalCostsFromTransactions',
+      header: 'Koszty inwestora v1',
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalCostsFromTransactions },
+      cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
+    }),
     col.accessor('totalCosts', {
       id: 'totalCosts',
-      header: 'Koszty inwestora',
-      meta: { align: 'right' },
-      cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
+      header: 'Koszty inwestora v2',
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalCosts },
+      cell: (info) =>
+        hasKosztorysReading(info.row.original) ? (
+          <span className="font-medium">{formatPLN(info.getValue())}</span>
+        ) : (
+          <NoKosztorysData />
+        ),
     }),
     // Every figure that exists on two planes is shown on BOTH, v1 beside v2: nothing here infers
     // which plane an investment „really" belongs to, because while investments are still being moved
@@ -53,13 +76,13 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
     col.accessor('balanceFromTransactions', {
       id: 'balanceFromTransactions',
       header: 'Bilans netto v1',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceFromTransactions },
       cell: (info) => <BalanceCell value={info.getValue()} />,
     }),
     col.accessor('balance', {
       id: 'balance',
       header: 'Bilans netto v2',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balance },
       cell: (info) =>
         hasKosztorysReading(info.row.original) ? (
           <BalanceCell value={info.getValue()} />
@@ -71,7 +94,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
     col.accessor('balanceGross', {
       id: 'balanceGross',
       header: 'Bilans brutto v2',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceGross },
       cell: (info) =>
         hasKosztorysReading(info.row.original) ? (
           <BalanceCell value={info.getValue()} />
@@ -84,7 +107,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
           col.accessor('margin', {
             id: 'margin',
             header: 'Marża v1',
-            meta: { align: 'right' },
+            meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.margin },
             cell: (info) => <BalanceCell value={info.getValue()} />,
           }),
           col.accessor('marginV2', {
@@ -93,7 +116,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
             // 0 and scatters them among the genuine near-zero margins.
             sortUndefined: 'last',
             header: 'Marża v2',
-            meta: { align: 'right' },
+            meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.marginV2 },
             // A row with an unsettled etap has no amount at all — zero would claim the crew works
             // for free. The prompt names what the owner has to do to get the number back.
             cell: (info) => {
@@ -113,13 +136,13 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
     col.accessor('totalLaborCostsFromTransactions', {
       id: 'laborCostsFromTransactions',
       header: 'Robocizna v1',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.laborCostsFromTransactions },
       cell: (info) => formatPLN(info.getValue()),
     }),
     col.accessor('totalLaborCosts', {
       id: 'laborCostsFromKosztorys',
       header: 'Robocizna v2',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.laborCostsFromKosztorys },
       // The rozjazd rides on this cell rather than a column of its own: as a column it was a bare
       // number under a header nobody could decode, and it is only ever read against the v2 amount
       // standing next to it.
@@ -148,13 +171,13 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
     col.accessor('totalInvestmentExpense', {
       id: 'totalInvestmentExpense',
       header: 'Wydatki inwestycyjne',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalInvestmentExpense },
       cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
     }),
     col.accessor('totalSettled', {
       id: 'totalSettled',
       header: 'Wydatki wliczone w robociznę',
-      meta: { align: 'right' },
+      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalSettled },
       cell: (info) => formatPLN(info.getValue()),
     }),
     // Wypłaty (payouts) is admin/owner-only, matching the detail page where it
@@ -164,7 +187,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
           col.accessor('totalPayouts', {
             id: 'totalPayouts',
             header: 'Wypłaty',
-            meta: { align: 'right' },
+            meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalPayouts },
             cell: (info) => formatPLN(info.getValue()),
           }),
         ]

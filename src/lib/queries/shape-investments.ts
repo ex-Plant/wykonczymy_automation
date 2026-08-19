@@ -46,6 +46,10 @@ export function shapeInvestments(
       name: inv.name,
       status: inv.status,
       totalCosts,
+      // Materiały are transaction-sourced on both planes, so the pair differs by robocizna alone —
+      // which is exactly the rozjazd „Robocizna v1/v2" reports one column over.
+      totalCostsFromTransactions:
+        transactionFinancials.totalMaterialCosts + transactionFinancials.totalLaborCosts,
       totalMaterialCosts: financials.totalMaterialCosts,
       totalIncome: financials.totalIncome,
       totalLaborCosts: financials.totalLaborCosts,
