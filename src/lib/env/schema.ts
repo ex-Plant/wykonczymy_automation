@@ -10,9 +10,49 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_FRONTEND_URL: z.string().refine(isValidUrl, 'Invalid URL'),
 })
 
-// The production Blob store's id, which a token carries verbatim (`vercel_blob_rw_<STORE_ID>_…`).
-// Not a secret — it is also the store's public CDN hostname.
+// The two Blob stores' ids, which a token carries verbatim (`vercel_blob_rw_<STORE_ID>_…`).
+// Not secrets — each is also its store's public CDN hostname.
 export const PROD_BLOB_STORE_ID = 'oJHLWhvHKJrsgWiN'
+export const PREVIEW_BLOB_STORE_ID = 'rNjU0fDb7Sz8bHVA'
+
+// Local dev runs against a restored prod dump, so `media.filename` values are the REAL invoice
+// keys — a delete on localhost against the production store destroys a tax-retained faktura, and
+// Blob has no undelete. Non-production therefore reads and writes the preview store only; the
+// production token stays reachable to the backup scripts as BLOB_READ_WRITE_TOKEN_PROD.
+// Keyed on VERCEL_ENV, never NODE_ENV: a local `next build` sets NODE_ENV=production and would
+// switch the guard off on the very machine it protects.
+//
+// Both directions are refused, because both destroy data. The preview store is periodically wiped
+// and re-restored as scratch, so a production deploy pointed at it writes real client invoices into
+// a store nobody treats as durable — a slower loss than a stray del(), not a smaller one.
+// Deliberately NOT an allow-list: an unrecognised store id passes, so rotating either store can
+// never refuse a production boot on the strength of a stale constant here.
+//
+// One function, because two call sites enforce this: `serverSchema` below, and `payload.config.ts`
+// — the file that hands the token to the Blob plugin whose handleDelete calls del(), which cannot
+// import `env/server` (`server-only` throws under the Payload CLI) and whose graph parses no
+// schema, so without its own check the /admin delete path would reach the store unvalidated.
+// Returns the refusal text, or null when the pairing is allowed.
+export const blobTokenRefusal = (
+  vercelEnv: string | undefined,
+  token: string | undefined,
+): string | null => {
+  const targets = (storeId: string) => token?.startsWith(`vercel_blob_rw_${storeId}_`) === true
+
+  if (vercelEnv === 'production') {
+    if (!targets(PREVIEW_BLOB_STORE_ID)) return null
+    return (
+      `targets the PREVIEW Blob store (${PREVIEW_BLOB_STORE_ID}) in production. ` +
+      'That store is wiped and re-restored as scratch, so real invoices written there are lost.'
+    )
+  }
+
+  if (!targets(PROD_BLOB_STORE_ID)) return null
+  return (
+    `targets the PRODUCTION Blob store (${PROD_BLOB_STORE_ID}) outside production. ` +
+    'Use the preview store token; the production one belongs under BLOB_READ_WRITE_TOKEN_PROD.'
+  )
+}
 
 export const serverSchema = z
   .object({
@@ -61,20 +101,7 @@ export const serverSchema = z
     VERCEL_ENV: z.enum(['production', 'preview', 'development']).optional(),
     CRON_SECRET: z.string().min(1),
   })
-  // Local dev runs against a restored prod dump, so `media.filename` values are the REAL invoice
-  // keys — a delete on localhost against the production store destroys a tax-retained faktura, and
-  // Blob has no undelete. Non-production therefore reads and writes the preview store only; the
-  // production token stays reachable to the backup scripts as BLOB_READ_WRITE_TOKEN_PROD.
-  // Keyed on VERCEL_ENV, never NODE_ENV: a local `next build` sets NODE_ENV=production and would
-  // switch the guard off on the very machine it protects.
   .superRefine((env, ctx) => {
-    if (env.VERCEL_ENV === 'production') return
-    if (!env.BLOB_READ_WRITE_TOKEN.startsWith(`vercel_blob_rw_${PROD_BLOB_STORE_ID}_`)) return
-    ctx.addIssue({
-      code: 'custom',
-      path: ['BLOB_READ_WRITE_TOKEN'],
-      message:
-        `refuses to run outside production: this is the PRODUCTION Blob store (${PROD_BLOB_STORE_ID}). ` +
-        'Use the preview store token here and keep the production one under BLOB_READ_WRITE_TOKEN_PROD.',
-    })
+    const refusal = blobTokenRefusal(env.VERCEL_ENV, env.BLOB_READ_WRITE_TOKEN)
+    if (refusal) ctx.addIssue({ code: 'custom', path: ['BLOB_READ_WRITE_TOKEN'], message: refusal })
   })

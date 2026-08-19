@@ -17,10 +17,11 @@
 //     --dir ./blob-restore [--concurrency 8] [--dry-run] [--limit 5]
 //
 //   --dir <path>        local backup dir (mirror of the store's pathnames)
-//   --allow-prod        REQUIRED when the token targets the production store (see the guard below)
-//   --concurrency <n>   parallel uploads (default 8)
+//   --allow-prod        REQUIRED for any target that is not the preview store (see the guard below)
+//   --concurrency <n>   parallel uploads (default 8, positive integer)
 //   --skip-existing     list the target first and upload only what is missing (resume a run)
-//   --dry-run           enumerate + report, upload nothing
+//   --dry-run           enumerate + report, upload nothing (with --skip-existing it still lists
+//                       the target, so it is not an offline operation)
 //   --limit <n>         upload only the first n files (smoke test)
 
 import { readdir, readFile, stat } from 'node:fs/promises'
@@ -28,7 +29,9 @@ import { join, relative, extname } from 'node:path'
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(name)
-  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback
+  const value = i !== -1 ? process.argv[i + 1] : undefined
+  // A flag is never a value: `--dir --allow-prod` must not swallow the guard flag as the dir.
+  return value && !value.startsWith('--') ? value : fallback
 }
 const has = (name) => process.argv.includes(name)
 
@@ -39,18 +42,33 @@ if (!token) { console.error('BLOB_READ_WRITE_TOKEN missing (must be the TARGET s
 // production store outside production, but this script reads process.env directly and never imports
 // it — and on 2026-08-19 a stale token variable sent 7 put()s at production with nothing objecting.
 // So the one tool that writes asks out loud before it can touch the real invoices.
-const PROD_STORE_ID = 'oJHLWhvHKJrsgWiN'
-const targetStore = token.split('_')[3]
-if (targetStore === PROD_STORE_ID && !has('--allow-prod')) {
-  console.error(`\nREFUSING: BLOB_READ_WRITE_TOKEN targets the PRODUCTION store (${PROD_STORE_ID}).`)
+// Kept in sync by hand with PROD_BLOB_STORE_ID in src/lib/env/schema.ts — rotate one, rotate both.
+const PROD_BLOB_STORE_ID = 'oJHLWhvHKJrsgWiN'
+const PREVIEW_BLOB_STORE_ID = 'rNjU0fDb7Sz8bHVA'
+// Allow-list, not deny-list, so the tool fails CLOSED: a rotated store, a second production store
+// or a token shape this regex doesn't recognise all land in the refusal branch. A deny-list would
+// read `undefined` off an unparseable token and wave it through to a bulk upload.
+const targetStore = /^vercel_blob_rw_([A-Za-z0-9]+)_/.exec(token)?.[1]
+if (targetStore !== PREVIEW_BLOB_STORE_ID && !has('--allow-prod')) {
+  const named = targetStore ? `store ${targetStore}` : 'an unrecognised token shape'
+  console.error(`\nREFUSING: BLOB_READ_WRITE_TOKEN targets ${named}, not the preview store.`)
+  if (targetStore === PROD_BLOB_STORE_ID) console.error('That is the PRODUCTION store — real invoices.')
   console.error('Pass --allow-prod if that is genuinely what you want; otherwise use the preview token.\n')
   process.exit(1)
 }
-if (targetStore === PROD_STORE_ID) console.log(`\n⚠️  --allow-prod: writing to the PRODUCTION store (${PROD_STORE_ID})`)
+if (targetStore === PROD_BLOB_STORE_ID) {
+  console.log(`\n⚠️  --allow-prod: writing to the PRODUCTION store (${PROD_BLOB_STORE_ID})`)
+}
 
 const dir = arg('--dir')
 if (!dir) { console.error('--dir <backup dir> required'); process.exit(1) }
 const concurrency = Number(arg('--concurrency', '8'))
+// `Array.from({ length: NaN })` is empty, so a typo'd value would spawn zero workers, upload
+// nothing, print OK and exit 0 — a green no-op is the worst failure mode a recovery tool has.
+if (!Number.isInteger(concurrency) || concurrency < 1) {
+  console.error('--concurrency must be a positive integer')
+  process.exit(1)
+}
 const limit = Number(arg('--limit', '0'))
 const dryRun = has('--dry-run')
 const skipExisting = has('--skip-existing')
@@ -146,4 +164,6 @@ await Promise.all(Array.from({ length: concurrency }, async () => {
 
 console.log(`\nUploaded ${done}/${files.length}`)
 if (failures.length) { console.error(`FAIL: ${failures.length} uploads errored`); process.exit(1) }
+// A caller checking the exit code must not read "green" off a run that silently skipped files.
+if (done !== files.length) { console.error(`FAIL: ${files.length - done} files never attempted`); process.exit(1) }
 console.log('OK\n')

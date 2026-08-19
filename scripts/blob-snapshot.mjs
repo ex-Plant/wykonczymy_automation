@@ -7,12 +7,17 @@
 // Downloads are anonymous GETs of public blob URLs, no credential. This script never
 // calls put/del/copy/empty. There is no code path here that can mutate the store.
 //
-//   node --env-file=.env context/changes/blob-backup/blob-snapshot.mjs
-//       -> DRY RUN: list only. No download, no writes.
+// TARGET STORE: this reads plain BLOB_READ_WRITE_TOKEN, which outside production resolves to the
+// PREVIEW store — a snapshot taken off bare `.env` is a snapshot of preview, and nothing here will
+// say otherwise. To snapshot production, export the parked token at the call site (see below).
+//
+//   node --env-file=.env scripts/blob-snapshot.mjs
+//       -> DRY RUN: list only. No download, no writes. (preview store)
 //
 //   SNAPSHOT_STAMP=$(date +%Y%m%d-%H%M%S) \
-//   node --env-file=.env context/changes/blob-backup/blob-snapshot.mjs --download
-//       -> download every blob to ~/backups/wykonczymy-blob/blob-snapshot-<stamp>/
+//   BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" \
+//   node --env-file=.env scripts/blob-snapshot.mjs --download
+//       -> download every PRODUCTION blob to ~/backups/wykonczymy-blob/blob-snapshot-<stamp>/
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -23,6 +28,11 @@ if (!token) {
   console.error('BLOB_READ_WRITE_TOKEN missing — run with `node --env-file=.env`')
   process.exit(1)
 }
+
+// Say which store this is, every run. A snapshot of the wrong store is the failure mode that
+// reports success — the same shape as the nightly DB backups that dumped the wrong database for
+// weeks. The store id is public (it is the CDN hostname), so printing it leaks nothing.
+console.log(`store: ${/^vercel_blob_rw_([A-Za-z0-9]+)_/.exec(token)?.[1] ?? 'UNRECOGNISED TOKEN SHAPE'}`)
 
 const DOWNLOAD = process.argv.includes('--download')
 const OUT_ROOT = join(homedir(), 'backups', 'wykonczymy-blob') // durable, outside the repo

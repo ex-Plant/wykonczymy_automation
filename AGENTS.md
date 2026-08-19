@@ -153,13 +153,24 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`
   values are the real invoices. A delete on localhost against the production store therefore destroys
   a tax-retained faktura. Local dev, Vercel Development and Preview/staging all point
-  `BLOB_READ_WRITE_TOKEN` at the **preview** store; the production token lives under
-  `BLOB_READ_WRITE_TOKEN_PROD` in `.env` for the backup scripts only. Two guards enforce it: the env
-  layer refuses a production token when `VERCEL_ENV !== 'production'` (`src/lib/env/schema.ts`), and
-  `scripts/blob-restore.mjs` refuses to write to that store without `--allow-prod`. Beware
+  `BLOB_READ_WRITE_TOKEN` at the **preview** store; the GitHub Actions secret of the same name stays
+  **production** (the nightly backup must keep backing up production). No script reads
+  `BLOB_READ_WRITE_TOKEN_PROD` — it is parked in `.env` for deliberate opt-in, so reaching production
+  means exporting it at the call site:
+  `BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" node scripts/blob-snapshot.mjs --download`.
+  Run a blob script off plain `.env` and you get the **preview** store — the read-only tools won't
+  object, they will just snapshot the wrong store and report success. Three guards enforce the write
+  side: the env layer refuses a store/environment mismatch in **either** direction — the production
+  token when `VERCEL_ENV !== 'production'`, and the preview token when it **is** (that store is wiped
+  and re-restored as scratch, so production invoices written there are lost) —
+  (`src/lib/env/schema.ts`), `src/payload.config.ts` runs the same check where it hands the token to
+  the Blob plugin (the env layer never loads in the Payload graph, so `/admin` would otherwise delete
+  unguarded), and `scripts/blob-restore.mjs` refuses **any** target that is not the preview store
+  without `--allow-prod`. Beware
   `.env.local` — `vercel env pull` writes there and Next.js prefers it over `.env`. The preview store
   is a point-in-time copy, so an invoice newer than the last restore 404s locally; top it up with
-  `pnpm blob:refresh:preview`. Detail: `context/changes/blob-backup/runbook.md` §3.
+  `pnpm blob:refresh:preview` (needs `lftp`; caches the FTP mirror in `dumps/blob-mirror`, uploads at
+  most `BLOB_REFRESH_MAX` files per run). Detail: `context/changes/blob-backup/runbook.md` §3.
 - Never `git push`; a human pushes to remotes.
 
 ## Architecture

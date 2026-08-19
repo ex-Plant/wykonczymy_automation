@@ -15,8 +15,7 @@ export default defineConfig({
       // Most specific first — vite matches alias keys in order.
       // env/server eagerly parses the full server schema at import; swap it for a
       // process.env passthrough so unit tests needn't supply every server var.
-      // The schemas themselves are pure and are the subject of their own spec, so they resolve
-      // to the real module — the stub below would otherwise swallow this path as a prefix.
+      // Resolves to the real module: the stub below would otherwise swallow this path as a prefix.
       '@/lib/env/schema': path.resolve(__dirname, './src/lib/env/schema.ts'),
       '@/lib/env/server': path.resolve(__dirname, './src/__tests__/stubs/env-server.ts'),
       '@/lib/env': path.resolve(__dirname, './src/__tests__/stubs/env.ts'),

@@ -1369,7 +1369,10 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 
 ### Faza 2: Odrzucenie produkcyjnego tokenu Blob poza produkcją
 
-- [ ] Wklejenie produkcyjnego tokenu do `.env` (i `.env.local`) sprawia, że `pnpm dev` odmawia startu, a błąd nazywa `BLOB_READ_WRITE_TOKEN`
+- [ ] Wklejenie produkcyjnego tokenu do `.env` (i `.env.local`) → `pnpm dev` **wstaje** (Next kompiluje trasy leniwie), ale pierwsze wejście na dowolną stronę `(frontend)` rzuca błędem nazywającym `BLOB_READ_WRITE_TOKEN`
+- [ ] Przy tym samym tokenie wejście **prosto na `/admin/collections/media`**, bez odwiedzania `(frontend)`, też rzuca błędem — to strażnik z `payload.config.ts`, na ścieżce która faktycznie kasuje
+- [ ] `pnpm build` z produkcyjnym tokenem kończy się niepowodzeniem (bramka builda)
+- [ ] Odwrotny kierunek: `VERCEL_ENV=production pnpm build` przy zwykłym (preview) tokenie w `.env` **też** kończy się niepowodzeniem — komunikat nazywa store preview. Bez tej zmiennej ten sam build przechodzi, co potwierdza, że strażnik trzyma się `VERCEL_ENV`, a nie `NODE_ENV`
 
 ### Faza 3: Komenda odświeżająca + blokada zapisu do proda
 

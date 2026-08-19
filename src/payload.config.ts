@@ -11,6 +11,8 @@ import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
+import { blobTokenRefusal } from '@/lib/env/schema'
+
 import { AmountEdits } from '@/collections/amount-edits'
 import { CashRegisters } from '@/collections/cash-registers'
 import { Investments } from '@/collections/investments'
@@ -33,6 +35,12 @@ import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-def
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Nothing in the Payload graph parses the env schema, so this file re-runs its Blob-token guard:
+// it is what hands the token to the plugin whose handleDelete calls del(), and without this
+// /admin/collections/media would delete real, tax-retained invoices from a dev session.
+const refusal = blobTokenRefusal(process.env.VERCEL_ENV, process.env.BLOB_READ_WRITE_TOKEN)
+if (refusal) throw new Error(`BLOB_READ_WRITE_TOKEN ${refusal}`)
 
 export default buildConfig({
   admin: {

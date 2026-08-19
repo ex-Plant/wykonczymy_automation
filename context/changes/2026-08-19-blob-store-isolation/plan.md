@@ -366,3 +366,9 @@ Run **once**, after the final phase:
 #### Automated
 
 - [x] 4.1 No phase-scoped automated check (prose only) — 1f8f5729
+
+### Whole-tree Gate
+
+- [x] G.1 `pnpm typecheck` — clean
+- [x] G.2 `pnpm test` — 2537 passed, 0 failed
+- [x] G.3 `pnpm lint` — 2 errors, both pre-existing and outside this diff (`src/hooks/use-latest-request.ts:15`, `test.js:255`); not inherited by this branch

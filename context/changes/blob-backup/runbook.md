@@ -163,10 +163,22 @@ are Simple Operations (100K included), so it stays far inside the free tier.
   per-pathname and can't `list`, so it can't enumerate the store.
 - **Only production holds the production token (2026-08-19).** Local dev, the Vercel Development
   scope and Preview/staging all resolve `BLOB_READ_WRITE_TOKEN` to the **preview** store
-  (`rNjU0fDb7Sz8bHVA`); the production token lives on as `BLOB_READ_WRITE_TOKEN_PROD` in `.env`,
-  for the backup scripts only. Two guards keep it there: the env layer refuses a production token
-  whenever `VERCEL_ENV !== 'production'` (`src/lib/env/schema.ts`), and `blob-restore.mjs` refuses
-  to write to that store without `--allow-prod`. Watch for `.env.local` — `vercel env pull` writes
+  (`rNjU0fDb7Sz8bHVA`); the production token is parked as `BLOB_READ_WRITE_TOKEN_PROD` in `.env`.
+  **The GitHub Actions secret `BLOB_READ_WRITE_TOKEN` stays the production token** — the nightly
+  backup exists to back up production, and the `--min-blobs` floor would not catch the swap (the
+  preview store holds ~2347 files, comfortably above it). **No script reads
+  `BLOB_READ_WRITE_TOKEN_PROD`**: reaching production is an explicit opt-in at the call site,
+  `BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" node scripts/blob-snapshot.mjs --download`.
+  Run a blob tool off bare `.env` and it targets preview; the read-only ones now print the store id
+  on every run so that is visible rather than silent. Three guards keep the write side honest: the
+  env layer refuses a store/environment mismatch in **either** direction — a production token
+  whenever `VERCEL_ENV !== 'production'`, and a preview token when it **is** production, since that
+  store is periodically wiped and re-restored as scratch —
+  (`src/lib/env/schema.ts`), `src/payload.config.ts` repeats the check where the token is handed to
+  the Blob plugin (nothing in the Payload graph parses the env schema, so `/admin`'s delete path
+  needs its own), and `blob-restore.mjs` refuses **any** target that is not the preview store
+  without `--allow-prod` — an allow-list, so a rotated store or an unparseable token fails closed.
+  Watch for `.env.local` — `vercel env pull` writes
   there and Next.js gives it precedence over `.env`, so a pull is the most likely way the
   production token comes back.
 - **Safety comes from the calls, not the token.** The snapshot passes the RW token to exactly
@@ -303,6 +315,26 @@ ideally time-aligned.
 invoice's `media` row exists but its bytes aren't in the older snapshot → that one receipt is
 unmappable until the next snapshot. Bounded to same-day uploads by the daily cadence +
 immutable invoices. Phase 2's paired manifest+dump timestamp minimizes it.
+
+### Topping up the preview store for local dev (`pnpm blob:refresh:preview`)
+
+The everyday version of the same time-alignment problem. The preview store is a point-in-time copy
+(2347 files, restored 2026-08-19), so after a fresher `pnpm db:import` an invoice uploaded to
+production since then has a `media` row locally but **404s** — its bytes were never in the copy.
+`pnpm blob:refresh:preview` closes that gap:
+
+1. `lftp` (a prerequisite — `brew install lftp`) mirrors `/blob_backups/media/` from the FTPS
+   server into `dumps/blob-mirror` (gitignored, overridable with `BLOB_MIRROR_DIR`). Delta only.
+   The password goes through `LFTP_PASSWORD`, never the command string.
+2. It asserts the mirror is non-empty — `lftp -c` does not reliably propagate a failure exit code,
+   so a failed auth would otherwise look identical to a healthy "nothing to do" run.
+3. `blob-restore.mjs --skip-existing --limit "$BLOB_REFRESH_MAX"` (default 500) uploads only what
+   the preview store is missing. The cap is the quota brake from §2 — every `put()` is an advanced
+   operation, and exceeding that quota suspended **every store on the account**, production
+   included. It is resumable: re-run to continue, or raise `BLOB_REFRESH_MAX`.
+
+The wrapper refuses `--allow-prod` outright, so a command named `refresh-preview` cannot write to
+production no matter what the caller types or a stale `.env.local` holds.
 
 ---
 
