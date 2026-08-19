@@ -20,7 +20,6 @@ const col = createColumnHelper<InvestmentRowT>()
 // the toolbar's „Pokaż kolumny v2" switch and the columns cannot drift apart — and so EX-712, which
 // deletes the v1/v2 split once the rozjazd is zero everywhere, has one list to delete.
 export const V2_COLUMN_IDS = [
-  'totalCosts',
   'balance',
   'balanceGross',
   'marginV2',
@@ -52,23 +51,6 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { canHide: false, minWidth: 'min-w-56' },
     }),
 
-    col.accessor('totalCostsFromTransactions', {
-      id: 'totalCostsFromTransactions',
-      header: 'Koszty inwestora v1',
-      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalCostsFromTransactions },
-      cell: (info) => <span className="font-medium">{formatPLN(info.getValue())}</span>,
-    }),
-    col.accessor('totalCosts', {
-      id: 'totalCosts',
-      header: 'Koszty inwestora v2',
-      meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.totalCosts },
-      cell: (info) =>
-        hasKosztorysReading(info.row.original) ? (
-          <span className="font-medium">{formatPLN(info.getValue())}</span>
-        ) : (
-          <NoKosztorysData />
-        ),
-    }),
     // Every figure that exists on two planes is shown on BOTH, v1 beside v2: nothing here infers
     // which plane an investment „really" belongs to, because while investments are still being moved
     // off the spreadsheets one legitimately carries figures on both. Hide what you are not comparing

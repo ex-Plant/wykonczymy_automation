@@ -32,7 +32,6 @@ export function shapeInvestments(
     // transaction-sourced.
     const reading = readingFromKosztorys(kosztorysTotalsRecord[String(inv.id)])
     const financials = financialsOnReading(transactionFinancials, reading)
-    const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
     const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
     // The two-bucket form rather than Σ of the columns: equal to the grosz, but it is the same call
     // the investment's own Podsumowanie makes, so the two surfaces cannot drift apart.
@@ -45,11 +44,6 @@ export function shapeInvestments(
       id: inv.id,
       name: inv.name,
       status: inv.status,
-      totalCosts,
-      // Materiały are transaction-sourced on both planes, so the pair differs by robocizna alone —
-      // which is exactly the rozjazd „Robocizna v1/v2" reports one column over.
-      totalCostsFromTransactions:
-        transactionFinancials.totalMaterialCosts + transactionFinancials.totalLaborCosts,
       totalMaterialCosts: financials.totalMaterialCosts,
       totalIncome: financials.totalIncome,
       totalLaborCosts: financials.totalLaborCosts,

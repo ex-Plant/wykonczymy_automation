@@ -52,7 +52,6 @@ describe('shapeInvestments', () => {
         globalDiscountNet: 0,
       },
     })
-    expect(row.totalCosts).toBe(4900) // 1000 + 3900
     expect(row.balance).toBe(4647) // 9547 - (1000 + 3900)
     // Bilans is on the kosztorys plane, marża v1 on the transactions one — here the 3900 exists
     // ONLY in the kosztorys, so v1 sees wypłaty with no robocizna behind them.
@@ -63,7 +62,6 @@ describe('shapeInvestments', () => {
   it('defaults to zeroed financials when investment has no entry', () => {
     const [row] = shapeInvestments([baseInv], {})
     expect(row).toMatchObject({
-      totalCosts: 0,
       totalMaterialCosts: 0,
       totalIncome: 0,
       totalLaborCosts: 0,
@@ -307,12 +305,11 @@ describe('shapeInvestments robocizna source', () => {
     },
   }
 
-  it('builds bilans, marża and koszty from the kosztorys pair', () => {
+  it('builds bilans and marża from the kosztorys pair', () => {
     const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
 
     expect(row.totalLaborCosts).toBe(5000)
-    expect(row.totalCosts).toBe(6000) // 1000 materiały + 5000 robocizny z kosztorysu
-    expect(row.balance).toBe(4047) // 9547 − 6000 + 500 rabatu
+    expect(row.balance).toBe(4047) // 9547 − (1000 materiałów + 5000 robocizny) + 500 rabatu
   })
 
   // EX-649: the same two figures on the transactions plane ride along beside them, because during
@@ -323,7 +320,6 @@ describe('shapeInvestments robocizna source', () => {
     const [row] = shapeInvestments([baseInv], transactionFinancials, kosztorysTotals)
 
     expect(row.totalLaborCostsFromTransactions).toBe(3900)
-    expect(row.totalCostsFromTransactions).toBe(4900) // 1000 materiały + 3900 robocizny z transferów
     expect(row.balanceFromTransactions).toBe(4647) // 9547 − (1000 + 3900), no rabat on this plane
     expect(row.margin).toBe(2900) // 3900 − 1000 wypłat
   })
