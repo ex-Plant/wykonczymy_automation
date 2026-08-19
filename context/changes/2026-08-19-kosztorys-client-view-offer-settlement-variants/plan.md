@@ -467,4 +467,4 @@ Danych do przeniesienia nie ma — nikt nie odklikał jeszcze żadnego wariantu.
 
 #### Automated
 
-- [ ] 4.1 Specy dotkniętych warstw dalej przechodzą
+- [x] 4.1 Specy dotkniętych warstw dalej przechodzą

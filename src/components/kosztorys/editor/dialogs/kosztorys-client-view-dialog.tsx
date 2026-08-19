@@ -5,6 +5,7 @@ import { useDraft } from '@/hooks/use-draft'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
+import { ClientViewModeWarning } from '@/components/kosztorys/editor/dialogs/client-view-mode-warning'
 import {
   saveClientViewDefaultsAction,
   saveClientViewSettingsAction,
@@ -38,7 +39,7 @@ export function KosztorysClientViewDialog() {
       // the old value after a failed defaults write would make the editor and the DB disagree.
       onSaved(draft)
       if (asDefaults) {
-        const defaults = await saveClientViewDefaultsAction(draft)
+        const defaults = await saveClientViewDefaultsAction(draft, draft.mode)
         if (!defaults.success) {
           return toastMessage(
             `Zapisano dla tej inwestycji, ale nie jako domyślne: ${defaults.error}`,
@@ -63,6 +64,7 @@ export function KosztorysClientViewDialog() {
           description="Zaznacz, które kolumny i pozycje inwestor widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
         />
         <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
+        {draft && <ClientViewModeWarning picked={draft.mode} saved={settings?.mode} />}
         <DialogFooter>
           <Button
             variant="outline"
@@ -73,7 +75,7 @@ export function KosztorysClientViewDialog() {
             Zapisz jako domyślne
           </Button>
           <Button size="sm" disabled={!draft || pending} onClick={() => save(false)}>
-            Zapisz
+            {draft?.mode === 'SETTLEMENT' ? 'Zapisz i pokaż rozliczenie' : 'Zapisz i pokaż ofertę'}
           </Button>
         </DialogFooter>
       </DialogContent>

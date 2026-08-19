@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
+import { ClientViewModeWarning } from '@/components/kosztorys/editor/dialogs/client-view-mode-warning'
 import { generateShareLinkAction, revokeShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { saveClientViewSettingsAction } from '@/lib/actions/kosztorys-client-view'
-import { sameClientViewSettings } from '@/lib/kosztorys/client-view-settings'
+import { sameClientViewConfig } from '@/lib/kosztorys/client-view-settings'
 import { FRONTEND_URL } from '@/lib/env'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 import { toastMessage } from '@/lib/utils/toast'
@@ -53,7 +54,7 @@ export function KosztorysShareDialog() {
       // „Dalej" on an untouched step writes nothing. A saved row overrides the firm-wide default
       // forever after, so clicking through the review must not silently opt this investment out of
       // a default the owner may change later.
-      if (settings && sameClientViewSettings(draft, settings)) return setStep('link')
+      if (settings && sameClientViewConfig(draft, settings)) return setStep('link')
       const res = await saveClientViewSettingsAction(investmentId, draft)
       if (!res.success) return toastMessage(res.error, 'error')
       onSettingsChange(draft)
@@ -101,6 +102,7 @@ export function KosztorysShareDialog() {
           {step === 'settings' ? (
             <>
               <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
+              {draft && <ClientViewModeWarning picked={draft.mode} saved={settings?.mode} />}
               <DialogFooter>
                 <Button size="sm" disabled={!draft || pending} onClick={saveAndContinue}>
                   Dalej

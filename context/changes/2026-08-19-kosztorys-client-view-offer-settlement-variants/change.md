@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-client-view-offer-settlement-variants
 title: Warianty „Oferta / Rozliczenie" w ustawieniach podglądu inwestora
-status: implementing
+status: implemented
 created: 2026-08-19
 updated: 2026-08-19
 archived_at: null
