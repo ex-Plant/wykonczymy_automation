@@ -375,7 +375,7 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [ ] 4.1 `pnpm typecheck` and `pnpm lint` clean
+- [x] 4.1 `pnpm typecheck` and `pnpm lint` clean
 
 ### Phase 5: Sweep investment 90
 
