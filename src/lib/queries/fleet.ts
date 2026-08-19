@@ -7,6 +7,7 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { groupByVehicle, loadFleetDataset, type FleetDatasetT } from '@/lib/fleet/dataset'
 import { daysBetween, toWarsawDay, warsawToday } from '@/lib/fleet/days'
+import { activeFlags } from '@/lib/fleet/flags'
 import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
 import { byInspectionType, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { classifyDeadline } from '@/lib/fleet/thresholds'
@@ -32,7 +33,9 @@ const getFleetDataset = unstable_cache(
 
     return dataset
   },
-  ['fleet-dataset'],
+  // Keyed -v2 because the payload widened with `flags`: entries written before it are still valid
+  // JSON, so tags alone would keep serving rows the parser reads as unflagged (lessons.md).
+  ['fleet-dataset-v2'],
   { tags: [CACHE_TAGS.vehicles, CACHE_TAGS.vehicleInspections] },
 )
 
@@ -61,6 +64,7 @@ export const toRow = (
     deadlines: byInspectionType((type) =>
       toDeadline(latest[type]?.nextDueAt ?? null, latest[type] !== null, today),
     ),
+    activeFlags: activeFlags(vehicle.flags, events),
   }
 }
 

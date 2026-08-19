@@ -42,6 +42,7 @@ const vehicle: FleetDatasetT['vehicles'][number] = {
   status: 'ACTIVE',
   year: 2019,
   vin: '',
+  flags: {},
 }
 
 describe('toRow', () => {
@@ -100,6 +101,35 @@ describe('toRow', () => {
 
     expect(row.deadlines.INSURANCE).toMatchObject({ hasEvent: true, bucket: null })
     expect(row.deadlines.OIL_CHANGE.hasEvent).toBe(false)
+  })
+})
+
+describe('toRow flags', () => {
+  it('carries a mark no inspection answers', () => {
+    const row = toRow({ ...vehicle, flags: { TYRES: '2026-08-01' } }, [], TODAY)
+
+    expect(row.activeFlags).toEqual(['TYRES'])
+  })
+
+  // The row is the only place the two surfaces read, so clearing must happen here, not in the UI.
+  it('drops a mark the history already answers', () => {
+    const row = toRow(
+      { ...vehicle, flags: { TYRES: '2026-08-01' } },
+      [datasetEvent('TYRES', '2026-08-05T00:00:00.000Z')],
+      TODAY,
+    )
+
+    expect(row.activeFlags).toEqual([])
+  })
+
+  it('keeps a mark when the inspection predates it', () => {
+    const row = toRow(
+      { ...vehicle, flags: { TYRES: '2026-08-01' } },
+      [datasetEvent('TYRES', '2026-04-01T00:00:00.000Z')],
+      TODAY,
+    )
+
+    expect(row.activeFlags).toEqual(['TYRES'])
   })
 })
 

@@ -452,14 +452,14 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 2.1 `pnpm generate:types` emits `'SERVICE'` and `flags`
-- [x] 2.2 migration applies against the local DB
+- [x] 2.1 `pnpm generate:types` emits `'SERVICE'` and `flags` — 18cbb8bd
+- [x] 2.2 migration applies against the local DB — 18cbb8bd
 
 ### Phase 3: Read path — carry the active flags onto the row
 
 #### Automated
 
-- [ ] 3.1 `src/__tests__/lib/queries/fleet.test.ts` passes
+- [x] 3.1 `src/__tests__/lib/queries/fleet.test.ts` passes
 
 ### Phase 4: Write path — the toggle action
 

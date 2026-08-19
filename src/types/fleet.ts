@@ -15,6 +15,8 @@ export type FleetDeadlineT = {
 
 export type FleetRowT = VehicleRecordT & {
   deadlines: Record<InspectionTypeT, FleetDeadlineT>
+  /** The manual „do wymiany" marks still standing — the stored map minus whatever the history answers. */
+  activeFlags: InspectionTypeT[]
   /** Newest reading known for the car, from an inspection of any type. */
   latestOdometer: number | null
   /** Distance since the last oil change; `null` when either reading is missing. */

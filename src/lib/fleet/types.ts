@@ -1,3 +1,4 @@
+import type { VehicleFlagsT } from '@/lib/fleet/flags'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
 import type { VehicleStatusT } from '@/lib/fleet/vehicle-status'
 
@@ -33,7 +34,11 @@ export type VehicleSummaryT = {
   status: VehicleStatusT
 }
 
-export type VehicleRecordT = VehicleSummaryT & { year: number | null; vin: string }
+export type VehicleRecordT = VehicleSummaryT & {
+  year: number | null
+  vin: string
+  flags: VehicleFlagsT
+}
 
 /** One vehicle with the events recorded against it — what every sweep rule reads. */
 export type VehicleHistoryT = {
