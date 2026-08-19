@@ -331,10 +331,10 @@ No schema change, no migration, nothing to backfill.
 
 Run once, after Phase 4.
 
-- Type checking passes: `pnpm typecheck`
-- Linting passes: `pnpm lint`
-- Full unit suite passes: `pnpm test`
-- Build succeeds: `pnpm build`
+- [x] Type checking passes: `pnpm typecheck`
+- [x] Linting passes: `pnpm lint` — 2 errors survive in `src/hooks/use-latest-request.ts` and `test.js`, both pre-existing and untouched here
+- [x] Full unit suite passes: `pnpm test` — 2554 passed
+- [x] Build succeeds: `pnpm build`
 
 ## References
 
@@ -375,10 +375,10 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 4.1 `pnpm typecheck` and `pnpm lint` clean
+- [x] 4.1 `pnpm typecheck` and `pnpm lint` clean — 795f71b5 (kod wciągnięty przez równoległy commit 96e3782e)
 
 ### Phase 5: Sweep investment 90
 
 #### Automated
 
-- [ ] 5.1 (none — manual verification only)
+- [x] 5.1 (none — manual verification only)

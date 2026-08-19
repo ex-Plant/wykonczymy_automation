@@ -1386,3 +1386,25 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 ### Dodatkowo (kasowanie — sedno zmiany)
 
 - [ ] Usunięcie testowego wydatku z lokalnym uploadem kasuje blob z **preview** store, a licznik plików w `wykonczymy-blob` (prod) pozostaje bez zmian
+
+## import-zastepuje-w-calosci — import zastępuje całą rozpiskę
+
+### Faza 1: Klucz kojarzenia prac odporny na literówki
+
+- [ ] Na inwestycji 90: „Popraw literówki w opisie prac", potem „Porównaj z arkuszem Google" — różnica nie rośnie (przed zmianą: 83 → 137 po jednym przebiegu poprawiania)
+
+### Faza 2: Import zastępuje
+
+- [ ] Import na inwestycję z jedną pracą, której arkusz nie ma: po imporcie pracy nie ma, a „Wersje" trzyma opisaną wersję sprzed importu, która ją przywraca
+
+### Faza 3: Podgląd mówi, co zniknie
+
+- [ ] Podgląd importu na inwestycji z pracami spoza arkusza, w tym jedną z wpisanymi etapami: liczba, treść i znacznik „wpisane etapy" zgadzają się jeszcze przed zapisem
+
+### Faza 4: „Wyczyść kosztorys"
+
+- [ ] Wyczyszczenie zasianej inwestycji: siatka pustoszeje bez przeładowania, „Wersje" trzymają „Przed wyczyszczeniem", przywrócenie wraca z całą rozpiską (razem z etapami i wykonaniem), a stawka VAT i współczynniki są nietknięte
+
+### Faza 5: Wymiecenie inwestycji 90
+
+- [ ] „Porównaj z arkuszem Google" pokazuje zerową różnicę, a siatka ma 373 wiersze, nie 456

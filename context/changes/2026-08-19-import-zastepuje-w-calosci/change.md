@@ -1,7 +1,7 @@
 ---
 change_id: import-zastepuje-w-calosci
 title: Import zastępuje całą rozpiskę zamiast doklejać nierozpoznane prace
-status: implementing
+status: implemented
 created: 2026-08-19
 updated: 2026-08-19
 archived_at: null
