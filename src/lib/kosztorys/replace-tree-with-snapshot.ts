@@ -1,6 +1,7 @@
 import 'server-only'
 import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
+import { lockInvestmentForReplace } from '@/lib/db/lock-investment'
 import { insertSnapshot } from '@/lib/db/snapshots'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { restoreKosztorys } from './restore-kosztorys'
@@ -25,6 +26,21 @@ type OptionsT = {
   takeSettingsFromTree?: boolean
 }
 
+// A duplicate key here is never a data problem the owner can act on — it means someone else wrote
+// this kosztorys mid-replacement (an etap added from another tab, say — the lock below covers the
+// wholesale replacements, not every writer). Postgres's own text is an English dump of the failed
+// INSERT and its fifty bind params, and `protectedAction` puts whatever it catches straight into the toast.
+const CONCURRENT_WRITE =
+  'Ktoś zmieniał ten kosztorys w tym samym czasie — nic nie zostało zapisane. Spróbuj ponownie.'
+
+function isUniqueViolation(error: unknown): boolean {
+  // Drizzle wraps the driver error, so the pg code sits somewhere down the `cause` chain.
+  for (let current: unknown = error; current instanceof Error; current = current.cause) {
+    if ((current as { code?: unknown }).code === '23505') return true
+  }
+  return false
+}
+
 // Swap an investment's whole rozpiska for `tree`, reversibly. In ONE transaction: a forced pre-wipe
 // snapshot (captured on the transaction handle and BEFORE the wipe — outside it, a rollback would
 // leave the snapshot behind; after the wipe it would snapshot nothing) and the replacement itself.
@@ -46,25 +62,36 @@ export async function replaceTreeWithSnapshot(
   payload: Payload,
   { investmentId, label, takenBy, tree, clearGlobalDiscount, takeSettingsFromTree }: OptionsT,
 ): Promise<InsertKosztorysTreeResultT> {
-  return withPayloadTransaction(
-    payload,
-    async (req) => {
-      const current = await serializeKosztorys(investmentId)
-      await insertSnapshot(await getDb(payload, req), {
-        investmentId,
-        kind: 'manual',
-        label,
-        takenBy,
-        payload: current,
-      })
-      return restoreKosztorys(
-        payload,
-        req,
-        investmentId,
-        { ...tree, settings: takeSettingsFromTree ? tree.settings : current.settings },
-        { clearGlobalDiscount },
-      )
-    },
-    { skipRevalidation: true },
-  )
+  try {
+    return await withPayloadTransaction(
+      payload,
+      async (req) => {
+        const db = await getDb(payload, req)
+        // Before the read, not just before the wipe: the snapshot is „the state you can go back to",
+        // and taken outside the lock it would describe a tree another replacement has already
+        // superseded — and `current.settings` below would then write that stale config back.
+        await lockInvestmentForReplace(db, investmentId)
+
+        const current = await serializeKosztorys(investmentId)
+        await insertSnapshot(db, {
+          investmentId,
+          kind: 'manual',
+          label,
+          takenBy,
+          payload: current,
+        })
+        return restoreKosztorys(
+          payload,
+          req,
+          investmentId,
+          { ...tree, settings: takeSettingsFromTree ? tree.settings : current.settings },
+          { clearGlobalDiscount },
+        )
+      },
+      { skipRevalidation: true },
+    )
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new Error(CONCURRENT_WRITE)
+    throw error
+  }
 }

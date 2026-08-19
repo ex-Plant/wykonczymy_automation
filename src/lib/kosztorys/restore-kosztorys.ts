@@ -1,6 +1,7 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
+import { lockInvestmentForReplace } from '@/lib/db/lock-investment'
 import { insertKosztorysTree, type InsertKosztorysTreeResultT } from './insert-kosztorys-tree'
 import type { SnapshotPayloadT } from './snapshot-format'
 
@@ -18,6 +19,10 @@ export async function restoreKosztorys(
 ): Promise<InsertKosztorysTreeResultT> {
   const db = await getDb(payload, req) // transaction-scoped Drizzle handle (req carries transactionID)
   const where = { investment: { equals: investmentId } }
+
+  // Also taken by `replaceTreeWithSnapshot` before its pre-wipe snapshot; re-taking is free, and
+  // this is the entry point „Przywróć wersję" reaches without it.
+  await lockInvestmentForReplace(db, investmentId)
 
   // Wipe. Deleting sections DB-cascades their items → stage_progress; deleting stages cascades any
   // remaining stage_progress. Order between the two is immaterial — cascades cover both directions.
