@@ -18,3 +18,6 @@ export const rateNoun = (count: number) => pluralize(count, ['stawka', 'stawki',
 
 export const rateNounDiffers = (count: number) =>
   pluralize(count, ['stawka różni się', 'stawki różnią się', 'stawek różni się'])
+
+export const itemVanishesPhrase = (count: number) =>
+  pluralize(count, ['praca zniknie', 'prace znikną', 'prac zniknie'])

@@ -236,20 +236,23 @@ describe('buildImportPlan', () => {
     expect(built.ok ? '' : built.problems.join(' ')).toContain('zakres pracy z narzędziami')
   })
 
-  it('retains a praca the sheet no longer has, with its own values', () => {
+  it('drops a praca the sheet no longer has, and reports it', () => {
     const current = currentTree()
     current.items[0].description = 'demontaż starej klimatyzacji'
 
     const { tree, report } = plan(source(), current)
-    const retained = tree.items.find((row) => row.description === 'demontaż starej klimatyzacji')
 
-    expect(retained).toMatchObject({ plannedQty: 9, clientPrice: 999 })
-    expect(report.retained).toEqual([
-      { section: 'Klimatyzacja', description: 'demontaż starej klimatyzacji' },
+    expect(tree.items.some((row) => row.description === 'demontaż starej klimatyzacji')).toBe(false)
+    expect(report.dropped).toEqual([
+      {
+        section: 'Klimatyzacja',
+        description: 'demontaż starej klimatyzacji',
+        hasProgress: false,
+      },
     ])
   })
 
-  it('puts a retained praca last in its section so the sheet’s order survives', () => {
+  it('builds exactly the sheet’s prace, in the sheet’s order', () => {
     const current = currentTree()
     current.items[0].description = 'demontaż starej klimatyzacji'
 
@@ -259,20 +262,23 @@ describe('buildImportPlan', () => {
       .filter((row) => row.sectionId === section.id)
       .sort((a, b) => a.displayOrder - b.displayOrder)
 
-    expect(inSection.at(-1)?.description).toBe('demontaż starej klimatyzacji')
+    expect(inSection.map((row) => row.description)).toEqual(['montaż jednostki wewnętrznej'])
   })
 
-  it('retains a whole section the sheet dropped, after the sheet’s own sections', () => {
+  it('drops a whole section the sheet no longer has', () => {
     const current = currentTree()
     current.sections[0].name = 'Ogrzewanie podłogowe'
 
-    const { tree } = plan(source(), current)
+    const { tree, report } = plan(source(), current)
 
     expect(tree.sections.map((section) => section.name)).toEqual([
       'Prace dodatkowe',
       'Klimatyzacja',
-      'Ogrzewanie podłogowe',
     ])
+    expect(report.dropped.map((entry) => entry.section)).toEqual(
+      Array(report.dropped.length).fill('Ogrzewanie podłogowe'),
+    )
+    expect(report.dropped.length).toBeGreaterThan(0)
   })
 
   it('keeps a matched praca’s note — the sheet has no column for it', () => {
@@ -295,39 +301,30 @@ describe('buildImportPlan', () => {
     expect(item.sheetMeasuredQty).toBe(2)
   })
 
-  it('leaves a retained praca’s reference figure alone — no sheet row overwrote it', () => {
+  it('marks a dropped praca that somebody had typed wykonanie against', () => {
     const current = currentTree()
     current.items[0].description = 'demontaż starej klimatyzacji'
+    current.progress = [{ itemId: 70, stageId: 700, qtyDone: 3 }]
 
-    const retained = plan(source(), current).tree.items.find(
-      (row) => row.description === 'demontaż starej klimatyzacji',
-    )!
+    const { report } = plan(source(), current)
 
-    expect(retained.sheetMeasuredQty).toBe(99)
+    expect(report.dropped).toEqual([
+      {
+        section: 'Klimatyzacja',
+        description: 'demontaż starej klimatyzacji',
+        hasProgress: true,
+      },
+    ])
   })
 
-  it('drops a retained praca’s wykonano for etapy the sheet no longer has', () => {
-    const current = currentTree({
-      stages: Array.from({ length: 12 }, (_, index) => ({
-        id: 700 + index,
-        ordinal: index + 1,
-        label: null,
-        plane: null,
-        workerId: null,
-      })),
-    })
-    current.items[0].description = 'demontaż starej klimatyzacji'
-    current.progress = [
-      { itemId: 70, stageId: 700, qtyDone: 3 }, // etap 1 — survives
-      { itemId: 70, stageId: 711, qtyDone: 4 }, // etap 12 — the sheet has 10
-    ]
+  it('keeps a matched praca’s wpisane etapy — replacing the rozpiska must not cost them', () => {
+    const current = currentTree()
+    current.progress = [{ itemId: 70, stageId: 700, qtyDone: 3 }]
 
     const { tree } = plan(source(), current)
-    const retained = tree.items.find((row) => row.description === 'demontaż starej klimatyzacji')!
-    const kept = tree.progress.filter((entry) => entry.itemId === retained.id)
+    const matched = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    expect(kept).toHaveLength(1)
-    expect(tree.stages.find((stage) => stage.id === kept[0].stageId)?.ordinal).toBe(1)
+    expect(tree.progress.filter((entry) => entry.itemId === matched.id)).toHaveLength(1)
   })
 
   it('refuses to build a tree when a column cannot be resolved', () => {

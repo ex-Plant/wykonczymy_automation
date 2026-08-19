@@ -148,7 +148,7 @@ function emptyReport(): ImportReportT {
     counts: { sections: 0, items: 0, stages: 0 },
     rateDecisions: [],
     coeffs: { wTools: null, ownTools: null },
-    retained: [],
+    dropped: [],
     totals: [],
     warnings: [],
   }

@@ -5,13 +5,7 @@ import type {
   KosztorysStageT,
   StageProgressT,
 } from '@/lib/kosztorys/types'
-import {
-  FIELD_LABELS,
-  fold,
-  isOptionalField,
-  type ColumnFieldT,
-  type OptionalFieldT,
-} from './columns'
+import { FIELD_LABELS, isOptionalField, type ColumnFieldT, type OptionalFieldT } from './columns'
 import type { SheetColumnMappingT } from './sheet-column-mapping'
 import { deriveOverride } from './derive-override'
 import { sheetCoeffs, type SheetCoeffsT } from './sheet-coeffs'
@@ -48,7 +42,9 @@ const MISSING_COLUMN_CONSEQUENCES: Record<OptionalFieldT, string> = {
   comment: 'komentarze z arkusza nie wejdą',
 }
 
-export type RetainedItemT = { section: string; description: string }
+// A praca the sheet does not have. `hasProgress` marks the ones where the loss is more than text —
+// somebody typed wykonanie against them — so the preview can single those out before the write.
+export type DroppedItemT = { section: string; description: string; hasProgress: boolean }
 
 export type { ReportedRateResolutionT }
 
@@ -63,7 +59,7 @@ export type ImportReportT = {
   // The multipliers read out of the cennik's formulas, `null` where it stated none. Shown because
   // applying them overwrites a figure the owner may have set by hand in „Ustawienia".
   coeffs: SheetCoeffsT
-  retained: RetainedItemT[]
+  dropped: DroppedItemT[]
   totals: FooterComparisonT[]
   // Non-fatal notes, e.g. a „zakres pracy" tab whose own header could not be read: its rates are
   // simply unavailable, which is a degraded import rather than a refused one.
@@ -244,42 +240,19 @@ export function buildImportPlan(
     }
   }
 
-  // Etapy come from the sheet, so a retained praca's wykonano survives only for the ordinals that
-  // still exist.
   const stages: KosztorysStageT[] = parsed.stages
-  const survivingOrdinals = new Set(stages.map((stage) => stage.ordinal))
-  const currentOrdinal = new Map(currentTree.stages.map((stage) => [stage.id, stage.ordinal]))
 
-  const retained: RetainedItemT[] = []
-  const retainedItems = currentTree.items.filter((item) => !matchedCurrentIds.has(item.id))
-  const currentProgressByItem = groupBy(currentTree.progress, (entry) => entry.itemId)
-  const sectionIdByName = new Map(sections.map((section) => [fold(section.name), section.id]))
-
-  for (const item of retainedItems) {
-    const sectionName = currentSectionName.get(item.sectionId) ?? ''
-    let sectionId = sectionIdByName.get(fold(sectionName))
-    if (sectionId === undefined) {
-      sectionId = nextSectionId++
-      sectionIdByName.set(fold(sectionName), sectionId)
-      const source = currentTree.sections.find((section) => section.id === item.sectionId)
-      sections.push({
-        id: sectionId,
-        name: sectionName,
-        displayOrder: sections.length,
-        color: source?.color ?? null,
-      })
-    }
-
-    const itemId = nextItemId++
-    items.push({ ...item, id: itemId, sectionId, displayOrder: items.length })
-    retained.push({ section: sectionName, description: item.description ?? '' })
-
-    for (const entry of currentProgressByItem.get(item.id) ?? []) {
-      const ordinal = currentOrdinal.get(entry.stageId)
-      if (ordinal === undefined || !survivingOrdinals.has(ordinal)) continue
-      progress.push({ itemId, stageId: ordinal, qtyDone: entry.qtyDone })
-    }
-  }
+  // „Zastąp" means the sheet decides what the rozpiska contains: a praca it doesn't have stops
+  // existing, rather than being appended beside the sheet's own copy. The owner is told what goes
+  // before the write, and `replaceTreeWithSnapshot` takes a labelled snapshot either way.
+  const progressByCurrentItem = groupBy(currentTree.progress, (entry) => entry.itemId)
+  const dropped: DroppedItemT[] = currentTree.items
+    .filter((item) => !matchedCurrentIds.has(item.id))
+    .map((item) => ({
+      section: currentSectionName.get(item.sectionId) ?? '',
+      description: item.description ?? '',
+      hasProgress: (progressByCurrentItem.get(item.id) ?? []).some((entry) => entry.qtyDone !== 0),
+    }))
 
   return {
     ok: true,
@@ -311,7 +284,7 @@ export function buildImportPlan(
       },
       rateDecisions: rates.filter(isReported),
       coeffs,
-      retained,
+      dropped,
       totals: compareFooterTotals(grids.laborGrid, resolvedLaborColumns, parsed),
       warnings,
     },

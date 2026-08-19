@@ -17,7 +17,11 @@ import {
   ReportRow,
   ReportTable,
 } from '@/components/kosztorys/editor/dialogs/sheet-report-parts'
-import { columnNoun, itemNoun } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
+import {
+  columnNoun,
+  itemNoun,
+  itemVanishesPhrase,
+} from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { formatCoeff } from '@/lib/kosztorys/format'
@@ -84,7 +88,7 @@ export function SheetImportDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Pobierz kosztorys z arkusza Google"
-      description="Kosztorys zostanie zastąpiony danymi z arkusza. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
+      description="Cała rozpiska zostanie zastąpiona danymi z arkusza — prac, których arkusz nie ma, nie będzie. Stan sprzed pobrania zapisze się automatycznie — wrócisz do niego przez „Wczytaj”."
       loaded={loaded}
       data={preview}
       error={error}
@@ -120,7 +124,7 @@ export function SheetImportDialog({
               onMappingSaved={onMappingSaved}
             />
             <SheetRatesBlock mode="import" decisions={report.rateDecisions} />
-            <RetainedBlock retained={report.retained} />
+            <DroppedBlock dropped={report.dropped} />
             <TotalsBlock totals={report.totals} mismatched={mismatchedTotals} />
           </>
         )
@@ -211,8 +215,12 @@ function ColumnsBlock({
   )
 }
 
-function RetainedBlock({ retained }: { retained: ImportReportT['retained'] }) {
-  const clean = retained.length === 0
+// The last screen before the rozpiska is replaced, so it names the loss rather than softening it.
+// „Nic nie jest usuwane" is what this block used to promise, and keeping the unmatched prace is
+// exactly what filled one kosztorys with 83 copies of itself.
+function DroppedBlock({ dropped }: { dropped: ImportReportT['dropped'] }) {
+  const clean = dropped.length === 0
+  const withProgress = dropped.filter((item) => item.hasProgress).length
   return (
     <SheetReportBlock
       title="Prace, których nie ma w arkuszu Google"
@@ -220,12 +228,25 @@ function RetainedBlock({ retained }: { retained: ImportReportT['retained'] }) {
       verdict={
         clean
           ? 'Każda praca z kosztorysu jest też w arkuszu.'
-          : `${retained.length} ${itemNoun(retained.length)} zostanie zachowanych — nic nie jest usuwane. Jeśli jest ich nieoczekiwanie dużo, sprawdź, czy w arkuszu nie zmieniła się nazwa sekcji.`
+          : [
+              `${dropped.length} ${itemVanishesPhrase(dropped.length)} — arkusz zastępuje całą rozpiskę.`,
+              withProgress > 0 &&
+                `W tym ${withProgress} ${itemNoun(withProgress)} z wpisanym wykonaniem.`,
+              'Stan sprzed importu zapisze się automatycznie — wrócisz do niego przez „Wczytaj”. Jeśli prac jest nieoczekiwanie dużo, sprawdź, czy w arkuszu nie zmieniła się nazwa sekcji.',
+            ]
+              .filter(Boolean)
+              .join(' ')
       }
     >
       {!clean && (
-        <ReportFold summary={`Zobacz, które prace zostaną (${retained.length})`}>
-          <ItemList items={retained} />
+        <ReportFold summary={`Zobacz, które prace znikną (${dropped.length})`}>
+          <ItemList
+            items={dropped.map((item) => ({
+              section: item.section,
+              description: item.description,
+              note: item.hasProgress ? 'wpisane etapy' : undefined,
+            }))}
+          />
         </ReportFold>
       )}
     </SheetReportBlock>

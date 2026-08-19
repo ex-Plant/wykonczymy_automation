@@ -83,13 +83,20 @@ export function ComparisonRow({
   return <ReportRow label={label} cells={cells} />
 }
 
-// „sekcja · opis", the way both dialogs name a praca they are listing rather than pricing.
-export function ItemList({ items }: { items: { section: string; description: string }[] }) {
+// „sekcja · opis", the way both dialogs name a praca they are listing rather than pricing. `note`
+// is the rare per-praca aside — „wpisane etapy" on a praca an import is about to remove — and rides
+// the same line so the eye picks it out of a fold that can run to hundreds of rows.
+export function ItemList({
+  items,
+}: {
+  items: { section: string; description: string; note?: string }[]
+}) {
   return (
     <>
       {items.map((item, index) => (
         <p key={`${index}-${item.description}`} className="text-muted-foreground text-xs">
           {item.section} · {item.description}
+          {item.note && <span className="text-amber-600"> · {item.note}</span>}
         </p>
       ))}
     </>

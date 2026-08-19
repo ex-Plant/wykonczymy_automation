@@ -354,22 +354,22 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 1.1 `item-key` spec passes
-- [x] 1.2 The whole `sheet-import` spec directory still passes
+- [x] 1.1 `item-key` spec passes — d371c62a
+- [x] 1.2 The whole `sheet-import` spec directory still passes — d371c62a
 
 ### Phase 2: The import replaces the whole rozpiska
 
 #### Automated
 
-- [ ] 2.1 `build-import-plan` spec passes with the rewritten drop cases
-- [ ] 2.2 `sheet-import-gate` spec passes
-- [ ] 2.3 `pnpm typecheck` clean after the `retained` → `dropped` rename
+- [x] 2.1 `build-import-plan` spec passes with the rewritten drop cases
+- [x] 2.2 `sheet-import-gate` spec passes
+- [x] 2.3 `pnpm typecheck` clean after the `retained` → `dropped` rename
 
 ### Phase 3: The preview says what disappears
 
 #### Automated
 
-- [ ] 3.1 `pnpm typecheck` and `pnpm lint` clean
+- [x] 3.1 `pnpm typecheck` and `pnpm lint` clean
 
 ### Phase 4: „Wyczyść kosztorys"
 
