@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { protectedAction, validateAction } from '@/lib/actions/run-action'
+import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
@@ -31,7 +32,9 @@ import {
 } from '@/lib/kosztorys/display-order'
 import { applyPercentDiscountSchema } from '@/lib/kosztorys/percent-discount'
 import { isSectionColorKey, type SectionColorKeyT } from '@/lib/kosztorys/section-colors'
+import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
 import { SETTLEMENT_MODES, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import { SNAPSHOT_SCHEMA_VERSION } from '@/lib/kosztorys/snapshot-format'
 import { TOOL_PLANES } from '@/lib/kosztorys/constants'
 import type { ActionResultT } from '@/types/action'
 import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
@@ -285,6 +288,38 @@ export async function cleanItemDescriptionsAction(
       return { success: true, data: await setItemDescriptions(db, investmentId, changed) }
     },
     ['kosztorysItems'],
+  )
+}
+
+// „Wyczyść kosztorys" — the rozpiska back to empty, in one click. Goes through the same wholesale
+// replacement as the import and the szablon reload rather than its own DELETE: that path already
+// owns the investment lock and the forced labelled snapshot, which is the only thing making this
+// undoable.
+//
+// The empty tree's `settings` are inert — `takeSettingsFromTree` is off, so restoreKosztorys writes
+// back the investment's own VAT and współczynniki. The global rabat is NOT: „wyczyść" means empty,
+// and an amount discount left behind would price the next import below its own total.
+export async function clearKosztorysAction(investmentId: number): Promise<ActionResultT> {
+  return protectedAction(
+    'clearKosztorysAction',
+    async ({ payload, user }) => {
+      await replaceTreeWithSnapshot(payload, {
+        investmentId,
+        label: 'Przed wyczyszczeniem',
+        takenBy: user.id,
+        tree: {
+          schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+          sections: [],
+          items: [],
+          stages: [],
+          progress: [],
+          settings: { wToolsCoeff: 0, ownToolsCoeff: 0, vatRate: 0 },
+        },
+        clearGlobalDiscount: true,
+      })
+      return { success: true }
+    },
+    [...KOSZTORYS_TREE_TAGS],
   )
 }
 

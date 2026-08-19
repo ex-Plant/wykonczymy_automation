@@ -15,6 +15,7 @@ import {
   Settings2,
   Share2,
   SheetIcon,
+  Trash2,
   Undo2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ import { KosztorysClientViewDialog } from '@/components/kosztorys/editor/dialogs
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
+import { ClearKosztorysDialog } from '@/components/kosztorys/editor/dialogs/clear-kosztorys-dialog'
 import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-compare-dialog'
 import { compareWithSheet, type SheetCompareResultT } from '@/lib/actions/kosztorys-import'
 import { cleanItemDescriptionsAction } from '@/lib/actions/kosztorys'
@@ -61,6 +63,7 @@ export function KosztorysActionsMenu() {
     useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
   const [reloadOpen, setReloadOpen] = useState(false)
+  const [clearOpen, setClearOpen] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [compareResult, setCompareResult] = useState<SheetCompareResultT | null>(null)
   const [compareError, setCompareError] = useState<string | null>(null)
@@ -192,6 +195,13 @@ export function KosztorysActionsMenu() {
               description="Poprawia literówki, zbędne spacje i wielkie litery w całej rozpisce."
             />
           </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => setClearOpen(true)}>
+            <Trash2 />
+            <MenuItemBody
+              label="Wyczyść kosztorys…"
+              description="Usuwa całą rozpiskę. Stan sprzed zapisze się w „Wersje”."
+            />
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Wersje</DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => setVersionOpen(true)}>
@@ -292,6 +302,12 @@ export function KosztorysActionsMenu() {
         open={reloadOpen}
         onOpenChange={setReloadOpen}
         onReloaded={() => onTreeReplaced?.()}
+      />
+      <ClearKosztorysDialog
+        investmentId={investmentId}
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        onCleared={() => onTreeReplaced?.()}
       />
       <KosztorysClientViewDialog
         investmentId={investmentId}

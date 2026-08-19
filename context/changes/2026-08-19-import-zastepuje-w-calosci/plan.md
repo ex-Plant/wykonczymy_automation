@@ -361,15 +361,15 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 2.1 `build-import-plan` spec passes with the rewritten drop cases
-- [x] 2.2 `sheet-import-gate` spec passes
-- [x] 2.3 `pnpm typecheck` clean after the `retained` → `dropped` rename
+- [x] 2.1 `build-import-plan` spec passes with the rewritten drop cases — 0b4daa86
+- [x] 2.2 `sheet-import-gate` spec passes — 0b4daa86
+- [x] 2.3 `pnpm typecheck` clean after the `retained` → `dropped` rename — 0b4daa86
 
 ### Phase 3: The preview says what disappears
 
 #### Automated
 
-- [x] 3.1 `pnpm typecheck` and `pnpm lint` clean
+- [x] 3.1 `pnpm typecheck` and `pnpm lint` clean — 0b4daa86
 
 ### Phase 4: „Wyczyść kosztorys"
 

@@ -171,7 +171,7 @@ function stageValueHeader(
   return sortableHeader(`${stageLabel(stage)} ${suffix}`, field, tip, opts)
 }
 
-const DEFAULT_COLUMN_MIN_WIDTH = 140
+const DEFAULT_COLUMN_MIN_WIDTH = 100
 
 function withResize(
   col: Column<KosztorysV2RowT>,
@@ -381,7 +381,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const measure: Column<KosztorysV2RowT>[] = [
     {
       ...computedColumn('stageQtySum', title('stageQtySum', opts), (r) => totalQtyDone(r)),
-      minWidth: 170,
+      minWidth: 80,
     },
     unitColumn(title('unit', opts)),
   ]
@@ -449,14 +449,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           // would read as one that was measured.
           (value) => (value == null ? '' : formatQty(value)),
         ),
-        minWidth: 150,
+        minWidth: 80,
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
     return keyCol(qtyField, floatColumnLeft, {
       id: qtyField,
       title: header,
-      minWidth: 150,
+      minWidth: 80,
     })
   })
 
