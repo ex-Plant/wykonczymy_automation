@@ -14,6 +14,7 @@ import { firstNoteLine } from '@/lib/utils/invoice-note'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
   availableExpenseDatasets,
+  clientVisibleExpenseRows,
   partitionExpenseRows,
   sumBilled,
   expenseRowHref,
@@ -29,7 +30,8 @@ type PropsT = {
   investmentName: string
   // Every expense type and both settled states — the tabs split them.
   rows: MaterialTransactionRowT[]
-  // Read-only public/preview render: no row links (they point into the app, which a client can't reach).
+  // Read-only public/preview render: no row links (they point into the app, which a client can't
+  // reach), and the settled set is dropped rather than merely unlinked.
   preview?: boolean
 }
 
@@ -151,7 +153,7 @@ export function MaterialsTransactionsTable({
   rows,
   preview = false,
 }: PropsT) {
-  const partition = partitionExpenseRows(rows)
+  const partition = partitionExpenseRows(preview ? clientVisibleExpenseRows(rows) : rows)
   const available = availableExpenseDatasets(partition)
   const [dataset, setDataset] = useState<ExpenseDatasetT>('gross')
   const { download, isPending } = useInvoiceZip()
@@ -170,7 +172,7 @@ export function MaterialsTransactionsTable({
     label: `${DATASET_LABELS[set]} (${partition[set].length})`,
   }))
 
-  if (rows.length === 0) return null
+  if (available.length === 0) return null
 
   function handleDownload() {
     const date = today()

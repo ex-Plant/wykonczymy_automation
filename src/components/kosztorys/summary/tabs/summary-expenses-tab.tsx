@@ -8,6 +8,7 @@ import {
   PRICING_MODE_OPTIONS,
 } from '@/components/kosztorys/summary/materials-pricing-options'
 import { materialsNetRateForMode, pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
+import { clientVisibleExpenseRows } from '@/lib/kosztorys/expense-datasets'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { SlicePie } from '@/components/ui/slice-pie'
@@ -65,6 +66,13 @@ export function SummaryExpensesTab({
   showPie = true,
 }: PropsT) {
   const pricingMode = pricingModeOf(materialsNetRate)
+  // Filtered here rather than only inside the list, so the section's own gate counts the same rows
+  // it will show — an investment whose only wydatki are settled must not open a „Lista wydatków"
+  // that a client then finds empty. The list re-filters regardless: it fails closed for its other
+  // hosts, not just for this one.
+  const listedTransactions = preview
+    ? clientVisibleExpenseRows(materialTransactions)
+    : materialTransactions
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -124,13 +132,13 @@ export function SummaryExpensesTab({
           />
         )}
       </div>
-      {showTransactions && materialTransactions.length > 0 && (
+      {showTransactions && listedTransactions.length > 0 && (
         <CollapsibleSection title="Lista wydatków" size="sm" defaultOpen={false}>
           <div className="pt-4">
             <MaterialsTransactionsTable
               investmentId={investmentId}
               investmentName={investmentName}
-              rows={materialTransactions}
+              rows={listedTransactions}
               preview={preview}
             />
           </div>

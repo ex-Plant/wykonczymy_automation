@@ -54,3 +54,14 @@ export function expenseRowHref(investmentId: number, row: MaterialTransactionRow
     id: row.id,
   })
 }
+
+// What a client may see of the list. The settled bucket is the company's own spend — the breakdown
+// block above the list is already withheld from a preview, so leaving these rows here would hand
+// back, item by item (with faktury), exactly the figure that block withholds. Routed through the
+// partition rather than re-testing `row.settled`, so „settled" means one thing in both places.
+export function clientVisibleExpenseRows(
+  rows: MaterialTransactionRowT[],
+): MaterialTransactionRowT[] {
+  const settled = new Set(partitionExpenseRows(rows).settled)
+  return rows.filter((row) => !settled.has(row))
+}

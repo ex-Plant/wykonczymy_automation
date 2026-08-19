@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   availableExpenseDatasets,
+  clientVisibleExpenseRows,
   partitionExpenseRows,
   expenseRowHref,
 } from '@/lib/kosztorys/expense-datasets'
@@ -114,5 +115,23 @@ describe('expenseRowHref', () => {
       settled: false,
     }
     expect(expenseRowHref(42, stale)).toBe('/inwestycje/42?id=9')
+  })
+})
+
+describe('clientVisibleExpenseRows', () => {
+  it('drops the settled set — a client would otherwise rebuild the withheld figure row by row', () => {
+    expect(clientVisibleExpenseRows(rows).map((row) => row.id)).toEqual([1, 2, 3])
+  })
+
+  it('keeps a settled netto row, because the model still bills it to the investor', () => {
+    const settledNet: MaterialTransactionRowT = {
+      ...ROW_BASE,
+      id: 5,
+      type: 'INVESTMENT_EXPENSE_NET',
+      amount: 1230,
+      billed: 1000,
+      settled: true,
+    }
+    expect(clientVisibleExpenseRows([settledNet]).map((row) => row.id)).toEqual([5])
   })
 })
