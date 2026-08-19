@@ -444,16 +444,16 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 1.1 `flags.test.ts` passes
-- [x] 1.2 `missing-data.test.ts` passes
-- [x] 1.3 `src/__tests__/lib/fleet` suite passes
+- [x] 1.1 `flags.test.ts` passes — c584a523
+- [x] 1.2 `missing-data.test.ts` passes — c584a523
+- [x] 1.3 `src/__tests__/lib/fleet` suite passes — c584a523
 
 ### Phase 2: Schema — the enum value, the flags column, the migration
 
 #### Automated
 
-- [ ] 2.1 `pnpm generate:types` emits `'SERVICE'` and `flags`
-- [ ] 2.2 migration applies against the local DB
+- [x] 2.1 `pnpm generate:types` emits `'SERVICE'` and `flags`
+- [x] 2.2 migration applies against the local DB
 
 ### Phase 3: Read path — carry the active flags onto the row
 
