@@ -1,10 +1,10 @@
 ---
 change_id: blob-store-isolation
 title: Point local dev at the preview Blob store so non-prod can't delete real invoices
-status: implemented
+status: archived
 created: 2026-08-19
 updated: 2026-08-19
-archived_at: null
+archived_at: 2026-08-19T12:50:44Z
 branch: konradantonik/blob-store-isolation
 worktree: null
 ---
