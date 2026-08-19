@@ -10,9 +10,8 @@ import {
   DEPOSIT_UI_TYPES,
   TRANSFER_TYPE_LABELS,
   showsInvestment,
-  VAT_PLANES,
+  isVatPlane,
   type PaymentMethodT,
-  type VatPlaneT,
 } from '@/lib/constants/transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { expenseFormSchema } from '@/components/forms/expense-form/expense-schema'
@@ -51,9 +50,6 @@ type FormValuesT = {
 }
 
 const FORM_ID = 'deposit'
-
-const isVatPlane = (value: string | undefined): value is VatPlaneT =>
-  VAT_PLANES.includes(value as VatPlaneT)
 
 export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: DepositFormPropsT) {
   // COMPANY_FUNDING visible only to admin/owner — managers see other deposit types

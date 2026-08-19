@@ -1,11 +1,6 @@
 import { z } from 'zod'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
-import {
-  getAmountError,
-  getNetAmountError,
-  refineAmount,
-  refineDate,
-} from '@/lib/utils/validation'
+import { getAmountError, getNetAmountError, refineAmount, refineDate } from '@/lib/utils/validation'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
 import {
   validateTransferFields,
@@ -121,7 +116,10 @@ export const bulkExpenseFormSchema = z
         })
       }
       refineNetAmount(
-        { amount: Number(item.amount), netAmount: item.netAmount ? Number(item.netAmount) : undefined },
+        {
+          amount: Number(item.amount),
+          netAmount: item.netAmount ? Number(item.netAmount) : undefined,
+        },
         data.type,
         ctx,
         index,
@@ -197,6 +195,7 @@ export const editExpenseFormSchema = z
     expenseCategory: z.string(),
     otherCategory: z.string(),
     invoiceNote: z.string(),
+    vatPlane: z.string(),
   })
   .superRefine((data, ctx) => {
     if (data.amount !== undefined) refineAmount(data as { amount: string; type?: string }, ctx)

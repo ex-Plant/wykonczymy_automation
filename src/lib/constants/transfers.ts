@@ -369,6 +369,9 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodT, string> = {
 export const VAT_PLANES = ['NET', 'GROSS'] as const
 export type VatPlaneT = (typeof VAT_PLANES)[number]
 
+export const isVatPlane = (value: string | undefined): value is VatPlaneT =>
+  VAT_PLANES.includes(value as VatPlaneT)
+
 export const VAT_PLANE_LABELS: Record<VatPlaneT, string> = {
   NET: 'Netto',
   GROSS: 'Brutto',

@@ -242,7 +242,7 @@ export async function updateTransferAction(
       const { original } = result
 
       // Only LABOR_COST transfers can have their amount edited
-      const { amount, ...fields } = parsed.data
+      const { amount, vatPlane, ...fields } = parsed.data
       const newAmount = isLaborCost(original.type) ? amount : undefined
       const amountChanged = newAmount !== undefined && newAmount !== original.amount
 
@@ -255,6 +255,9 @@ export async function updateTransferAction(
         data: {
           ...fields,
           ...(newAmount !== undefined && { amount: newAmount }),
+          // The plane is a property of a wpłata alone — every other type bills on one plane, so an
+          // edit that carried one in would invent a distinction the settlement never reads.
+          ...(original.type === 'INVESTOR_DEPOSIT' && vatPlane !== undefined && { vatPlane }),
           // Newly picked files are extra pages of the same invoice, so they append — an edit that
           // replaced the list would strand the pages the user never touched.
           ...(invoiceMediaIds?.length && {
