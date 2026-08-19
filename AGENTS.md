@@ -170,7 +170,7 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   `.env.local` — `vercel env pull` writes there and Next.js prefers it over `.env`. The preview store
   is a point-in-time copy, so an invoice newer than the last restore 404s locally; top it up with
   `pnpm blob:refresh:preview` (needs `lftp`; caches the FTP mirror in `dumps/blob-mirror`, uploads at
-  most `BLOB_REFRESH_MAX` files per run). Detail: `context/changes/blob-backup/runbook.md` §3.
+  most `BLOB_REFRESH_MAX` files per run). Detail: `context/reference/blob-recovery-runbook.md` §3.
 - Never `git push`; a human pushes to remotes.
 
 ## Architecture

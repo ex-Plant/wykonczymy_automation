@@ -4,7 +4,7 @@
 # Why: invoice/receipt files live in Vercel Blob with no versioning / no undelete.
 # The DB dump (db-backup.yml) backs up only the `media` POINTER rows, not the bytes.
 # This mirrors the bytes so a DB restore has files to resolve against. Recovery
-# procedure + rationale: context/changes/blob-backup/runbook.md.
+# procedure + rationale: context/reference/blob-recovery-runbook.md.
 #
 # Strategy — Rung 3 "manifest-diff", MIRROR-ONLY:
 #   1. Pull the latest manifest from FTP  (the set already backed up)
