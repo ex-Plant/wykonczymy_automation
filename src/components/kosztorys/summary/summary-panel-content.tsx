@@ -21,10 +21,7 @@ import {
   type SummaryViewT,
 } from '@/components/kosztorys/summary/hooks/use-summary-view'
 import type { InvestmentFinancialsT, MaterialsBreakdownRowT } from '@/types/investment-financials'
-import {
-  buildSettlementPlaneVerdict,
-  type KosztorysReconciliationT,
-} from '@/lib/kosztorys/reconciliation'
+import { type KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { MarginForecastT } from '@/lib/kosztorys/margin-forecast'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
@@ -199,20 +196,7 @@ export function SummaryPanelContent({
     : (allowedViews[0] ?? 'summary')
   // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
   // GROSS the brutto section. Derived from the deposit list, never typed.
-  const {
-    paidNet,
-    paidGross,
-    total: depositsTotal,
-    taggedNet,
-    taggedGross,
-  } = bucketDepositsByPlane(depositTransactions)
-  // Computed here, where the mode and the bucketed deposits already are; the tab renders the verdict
-  // rather than deciding it.
-  const settlementVerdict = buildSettlementPlaneVerdict({
-    mode: settlementMode,
-    taggedNet,
-    taggedGross,
-  })
+  const { paidNet, paidGross, total: depositsTotal } = bucketDepositsByPlane(depositTransactions)
   // The same gate the server applies to `materialsNetDiscount`, so both sides fall silent together
   // rather than the panel discounting a figure marża never saw.
   const effectiveNetRate = effectiveMaterialsNetRate(settlementMode, materialsNetRate)
@@ -292,7 +276,6 @@ export function SummaryPanelContent({
                 discountAmount={discountAmount}
                 lossAmount={lossAmount}
                 reconciliation={reconciliation}
-                settlementVerdict={settlementVerdict}
                 priceView="client"
                 vatRate={vatRate}
                 materialsNetRate={effectiveNetRate}

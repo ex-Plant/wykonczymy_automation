@@ -19,12 +19,8 @@ import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { SlicePie } from '@/components/ui/slice-pie'
-import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
 import type { DepositTransactionRowT } from '@/types/transfers'
-import type {
-  KosztorysReconciliationT,
-  SettlementPlaneVerdictT,
-} from '@/lib/kosztorys/reconciliation'
+import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
 import { costTotalsPieSlices } from '@/lib/kosztorys/chart-slices'
 import { formatNet } from '@/lib/kosztorys/format'
 
@@ -44,7 +40,6 @@ type PropsT = {
   // Σ LOSS — the deduction step between the wpłaty and the closing figure. Face value on both axes.
   lossAmount: number
   reconciliation: KosztorysReconciliationT
-  settlementVerdict: SettlementPlaneVerdictT
   priceView: PriceViewT
   vatRate: number
   // The investment's saved materiały netto rate (null = off), already gated on the settlement mode
@@ -75,7 +70,6 @@ export function SummaryOverviewTab({
   discountAmount,
   lossAmount,
   reconciliation,
-  settlementVerdict,
   priceView,
   vatRate,
   materialsNetRate,
@@ -118,9 +112,6 @@ export function SummaryOverviewTab({
 
   return (
     <div className="flex w-full flex-col gap-y-4">
-      {!preview && settlementVerdict.mismatch && (
-        <SettlementPlaneWarning verdict={settlementVerdict} investmentId={investmentId} />
-      )}
       {/* Above the row, not inside its left column: nested there it pushed the settlement table down
           while the pie stayed put, and the tab lost its top edge. */}
       {onSettlementModeChange && (
@@ -163,6 +154,7 @@ export function SummaryOverviewTab({
             <SummaryDepositsTab
               investmentId={investmentId}
               rows={depositRows}
+              settlementMode={settlementMode}
               paidNet={paidNet}
               paidGross={paidGross}
               preview={preview}

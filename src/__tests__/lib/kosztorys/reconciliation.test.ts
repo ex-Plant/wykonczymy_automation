@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { kosztorysClientTotals } from '@/lib/kosztorys/settlement-client-totals'
-import {
-  buildKosztorysReconciliation,
-  buildSettlementPlaneVerdict,
-} from '@/lib/kosztorys/reconciliation'
-import { SETTLEMENT_MODES } from '@/lib/kosztorys/settlement-mode'
+import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
 import { deriveFinancials } from '@/lib/db/investment-financials'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
 import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
@@ -274,77 +270,5 @@ describe('grosz-exact tolerance (no fuzzy epsilon)', () => {
       laborCostsNetFromTransactions: 100.001,
     })
     expect(verdict.laborCosts.mismatch).toBe(false)
-  })
-})
-
-describe('buildSettlementPlaneVerdict', () => {
-  const none = { total: 0, count: 0 }
-
-  it('screams when a netto-settled investment took brutto wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({
-      mode: 'NET',
-      taggedNet: { total: 1000, count: 4 },
-      taggedGross: { total: 250, count: 2 },
-    })
-    expect(verdict.mismatch).toBe(true)
-    expect(verdict.offendingAmount).toBe(250)
-    expect(verdict.offendingCount).toBe(2)
-    expect(verdict.offendingPlane).toBe('GROSS')
-  })
-
-  it('screams when a brutto-settled investment took netto wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({
-      mode: 'GROSS',
-      taggedNet: { total: 400, count: 1 },
-      taggedGross: { total: 900, count: 3 },
-    })
-    expect(verdict.mismatch).toBe(true)
-    expect(verdict.offendingAmount).toBe(400)
-    expect(verdict.offendingCount).toBe(1)
-    expect(verdict.offendingPlane).toBe('NET')
-  })
-
-  // The regression this shape exists for: `paidNet` folds unmarked deposits into netto under the
-  // null→netto settlement ruling, so reading it as evidence fired the warning on every brutto
-  // investment whose deposits nobody had ever tagged.
-  it('stays silent when a brutto-settled investment has only untagged wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({
-      mode: 'GROSS',
-      taggedNet: none,
-      taggedGross: none,
-    })
-    expect(verdict.mismatch).toBe(false)
-    expect(verdict.offendingAmount).toBe(0)
-    expect(verdict.offendingCount).toBe(0)
-  })
-
-  it('stays clean when a netto-settled investment took only netto wpłaty', () => {
-    expect(
-      buildSettlementPlaneVerdict({
-        mode: 'NET',
-        taggedNet: { total: 1000, count: 3 },
-        taggedGross: none,
-      }).mismatch,
-    ).toBe(false)
-  })
-
-  it('never screams in MIXED, whatever the wpłaty', () => {
-    const verdict = buildSettlementPlaneVerdict({
-      mode: 'MIXED',
-      taggedNet: { total: 500, count: 2 },
-      taggedGross: { total: 700, count: 2 },
-    })
-    expect(verdict.mismatch).toBe(false)
-    expect(verdict.offendingAmount).toBe(0)
-    // No plane to name — the warning renders nothing rather than mislabelling one of the two.
-    expect(verdict.offendingPlane).toBeNull()
-  })
-
-  it('stays clean with no wpłaty at all, in every mode', () => {
-    for (const mode of SETTLEMENT_MODES) {
-      expect(
-        buildSettlementPlaneVerdict({ mode, taggedNet: none, taggedGross: none }).mismatch,
-      ).toBe(false)
-    }
   })
 })

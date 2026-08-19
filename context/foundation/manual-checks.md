@@ -757,8 +757,7 @@ exists — read them as superseded by this section, not as owed.
 - [ ] Żadnej gwiazdki przy wierszach „Podsumowania" w każdej osi kwot (netto / brutto / mieszany).
 - [ ] Czerwony przypis „Pola oznaczone gwiazdką…" zniknął.
 - [ ] Na inwestycji, gdzie robocizna z kosztorysu rozjeżdża się z transakcjami LABOR_COST, ostrzeżenie o rozbieżności pokazuje się **także** przy aktywnym filtrze.
-- [ ] `SettlementPlaneWarning` pokazuje się na rozjeżdżającej się inwestycji przy aktywnym filtrze.
-- [ ] Podgląd inwestora (`preview`) nadal wycisza oba werdykty.
+- [ ] Podgląd inwestora (`preview`) nadal wycisza werdykt rozbieżności.
 
 ### Phase 3: Delete the dead filter plumbing
 
