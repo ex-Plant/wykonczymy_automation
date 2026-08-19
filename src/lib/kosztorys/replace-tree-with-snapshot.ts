@@ -91,7 +91,12 @@ export async function replaceTreeWithSnapshot(
       { skipRevalidation: true },
     )
   } catch (error) {
-    if (isUniqueViolation(error)) throw new Error(CONCURRENT_WRITE)
+    if (isUniqueViolation(error)) {
+      // TODO(EX-449) SENTRY-REQUIRED: the constraint name is the only thing separating a genuine
+      // race from a bug that merely looks like one — the toast below can't carry it.
+      console.error('[replace-tree] unique violation', error)
+      throw new Error(CONCURRENT_WRITE)
+    }
     throw error
   }
 }

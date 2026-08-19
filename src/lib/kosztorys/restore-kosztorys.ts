@@ -1,5 +1,6 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
+import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { lockInvestmentForReplace } from '@/lib/db/lock-investment'
 import { insertKosztorysTree, type InsertKosztorysTreeResultT } from './insert-kosztorys-tree'
@@ -18,16 +19,21 @@ export async function restoreKosztorys(
   { clearGlobalDiscount = false }: { clearGlobalDiscount?: boolean } = {},
 ): Promise<InsertKosztorysTreeResultT> {
   const db = await getDb(payload, req) // transaction-scoped Drizzle handle (req carries transactionID)
-  const where = { investment: { equals: investmentId } }
-
   // Also taken by `replaceTreeWithSnapshot` before its pre-wipe snapshot; re-taking is free, and
   // this is the entry point „Przywróć wersję" reaches without it.
   await lockInvestmentForReplace(db, investmentId)
 
   // Wipe. Deleting sections DB-cascades their items → stage_progress; deleting stages cascades any
   // remaining stage_progress. Order between the two is immaterial — cascades cover both directions.
-  await payload.delete({ collection: 'kosztorys-sections', where, req })
-  await payload.delete({ collection: 'kosztorys-stages', where, req })
+  //
+  // Raw SQL rather than `payload.delete({ where })`: the bulk delete loops document by document and
+  // collects each failure into `result.errors` INSTEAD OF THROWING, so a row that refuses to go
+  // leaves the wipe reporting success. The restore then inserts the fresh tree beside the survivor —
+  // a duplicated section, and, when the survivor is an etap, an INSERT that meets
+  // `kosztorys_stages_investment_ordinal_unique` and takes the whole restore down as a bogus
+  // „concurrent write". One statement per table cannot half-succeed.
+  await db.execute(sql`DELETE FROM kosztorys_sections WHERE investment_id = ${investmentId}`)
+  await db.execute(sql`DELETE FROM kosztorys_stages WHERE investment_id = ${investmentId}`)
 
   const inserted = await insertKosztorysTree(db, investmentId, snapshot)
 
