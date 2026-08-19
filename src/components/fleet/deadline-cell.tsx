@@ -1,5 +1,6 @@
 'use client'
 
+import { daysLabel } from '@/lib/fleet/deadline-label'
 import { OVERDUE } from '@/lib/fleet/thresholds'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { cn } from '@/lib/utils/cn'
@@ -9,12 +10,6 @@ type DeadlineCellPropsT = {
   deadline: FleetDeadlineT
   /** A retired car carries no urgency — its deadlines are history, not a to-do list. */
   muted?: boolean
-}
-
-const daysLabel = (daysLeft: number): string => {
-  if (daysLeft < 0) return `${Math.abs(daysLeft)} dni po terminie`
-  if (daysLeft === 0) return 'dziś'
-  return `za ${daysLeft} dni`
 }
 
 /**

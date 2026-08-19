@@ -15,7 +15,8 @@ import {
   INSPECTION_TYPES,
   type InspectionTypeT,
 } from '@/lib/fleet/inspection-types'
-import { resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
+import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
+import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
 import { formatKm } from '@/lib/utils/format-distance'
 import { useInspectionFormStore } from '@/stores/form-stores'
 import { inspectionFormSchema, type InspectionFormValuesT } from './inspection-schema'
@@ -79,8 +80,27 @@ export function InspectionForm({
     }),
     // Upload first, then create — the row must never reference a media id that failed to land.
     action: async (data) => {
-      const attachments = files.length > 0 ? await resolveInvoicePageIds(files) : []
-      return action({ ...data, attachments })
+      let attachments: number[] = []
+
+      if (files.length > 0) {
+        try {
+          attachments = await resolveInvoicePageIds(files)
+        } catch (err) {
+          // A partly-failed batch still landed pages in Blob; those belong to no inspection.
+          if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
+          return {
+            success: false,
+            error: err instanceof Error ? err.message : 'Nie udało się przesłać plików',
+          }
+        }
+      }
+
+      const result = await action({ ...data, attachments })
+      // The pages are in Blob and the row that would have referenced them was never created, so
+      // nothing can reach them again. The user keeps the form and can resubmit, which re-uploads.
+      if (!result.success && attachments.length > 0) discardOrphanedUploads(attachments)
+
+      return result
     },
     toData: (value) => ({
       vehicle: Number(value.vehicle),
@@ -103,15 +123,13 @@ export function InspectionForm({
    * The last reading this car is known to have had, when the one being typed is below it. A swapped
    * instrument cluster makes a lower reading legitimate, so this warns and never blocks the submit.
    */
-  const odometerWentBackwardsFrom = ((): number | null => {
-    const previous =
-      vehicles.find((vehicle) => String(vehicle.id) === currentVehicle)?.latestOdometer ?? null
-    const typed = currentOdometer.trim() === '' ? null : Number(currentOdometer)
-
-    return previous !== null && typed !== null && Number.isFinite(typed) && typed < previous
-      ? previous
+  const previousOdometer =
+    vehicles.find((vehicle) => String(vehicle.id) === currentVehicle)?.latestOdometer ?? null
+  const typedOdometer = optionalNumber(currentOdometer)
+  const odometerWentBackwardsFrom =
+    previousOdometer !== null && typedOdometer !== undefined && typedOdometer < previousOdometer
+      ? previousOdometer
       : null
-  })()
 
   /**
    * Suggest the next due date from the type's interval. The real date is printed on the document, so
@@ -128,6 +146,13 @@ export function InspectionForm({
       'nextDueAt',
       months && performedAt ? addMonthsToDay(performedAt, months) : '',
     )
+  }
+
+  const onTypeChange = (type: InspectionTypeT) => {
+    prefillNextDue(type)
+    // The km target is rendered only for OIL_CHANGE, but hiding a field does not clear it — without
+    // this a TECHNICAL row persists an oil target it has no business carrying.
+    if (type !== 'OIL_CHANGE') form.setFieldValue('nextDueOdometer', '')
   }
 
   return (
@@ -147,7 +172,7 @@ export function InspectionForm({
 
         <form.AppField
           name="type"
-          listeners={{ onChange: ({ value }) => prefillNextDue(value as InspectionTypeT) }}
+          listeners={{ onChange: ({ value }) => onTypeChange(value as InspectionTypeT) }}
         >
           {(field: AppFieldComponentsT) => (
             <field.Select label="Rodzaj" showError>

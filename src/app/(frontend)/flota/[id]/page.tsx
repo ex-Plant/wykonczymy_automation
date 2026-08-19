@@ -1,13 +1,16 @@
 import { notFound, redirect } from 'next/navigation'
+import { getPayload } from 'payload'
+import config from '@payload-config'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
+import { STREAMS, markSeen } from '@/lib/db/notifications'
 import { fetchVehicleDetail } from '@/lib/queries/fleet'
 import { AddInspectionDialog } from '@/components/dialogs/add-inspection-dialog'
 import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
+import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge'
 import { VehicleDetailTabs } from '@/components/fleet/vehicle-detail-tabs'
 import { InfoList } from '@/components/ui/info-list'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import { VEHICLE_STATUS_LABELS } from '@/lib/fleet/inspection-types'
 import { formatKm } from '@/lib/utils/format-distance'
 import type { DynamicPagePropsT } from '@/types/page'
 
@@ -16,7 +19,12 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
   if (!session.success) redirect('/')
 
   const { id } = await params
-  const detail = await fetchVehicleDetail(Number(id))
+  // Arriving straight from the digest mail also counts as looking at the fleet.
+  const payload = await getPayload({ config })
+  const [, detail] = await Promise.all([
+    markSeen(payload, session.user.id, STREAMS.fleet),
+    fetchVehicleDetail(Number(id)),
+  ])
   if (!detail) notFound()
 
   const { vehicle, historyByType } = detail
@@ -31,7 +39,7 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <InfoList
           items={[
-            { label: 'Status', value: VEHICLE_STATUS_LABELS[vehicle.status].pl },
+            { label: 'Status', value: <VehicleStatusBadge status={vehicle.status} /> },
             { label: 'VIN', value: vehicle.vin || '—' },
             {
               label: 'Od wymiany oleju',

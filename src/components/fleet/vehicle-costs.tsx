@@ -16,9 +16,6 @@ import type { InspectionHistoryEntryT } from '@/types/fleet'
 // Both grids run the same tracks, so the totals and the itemisation line up column for column.
 const COLS = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
 
-/**
- * What the car has cost: the totals first, then every entry behind them.
- */
 export function VehicleCosts({
   historyByType,
 }: {

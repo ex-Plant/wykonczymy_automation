@@ -1,15 +1,10 @@
 'use client'
 
 import { createColumnHelper } from '@tanstack/react-table'
+import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge'
 import { DeadlineCell } from '@/components/fleet/deadline-cell'
 import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
-import { BADGE_BASE } from '@/components/ui/badge'
-import {
-  INSPECTION_TYPE_LABELS,
-  INSPECTION_TYPES,
-  VEHICLE_STATUS_LABELS,
-} from '@/lib/fleet/inspection-types'
-import { cn } from '@/lib/utils/cn'
+import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import type { FleetRowT } from '@/types/fleet'
 
 const col = createColumnHelper<FleetRowT>()
@@ -38,7 +33,7 @@ export function getFleetColumns() {
       ),
     }),
     ...INSPECTION_TYPES.map((type) =>
-      col.accessor((row) => row.deadlines[type].daysLeft, {
+      col.accessor((row) => row.deadlines[type].daysLeft ?? undefined, {
         id: type,
         header: INSPECTION_TYPE_LABELS[type].pl,
         // A car with nothing recorded has no distance to sort by; park those at the end rather than
@@ -56,18 +51,7 @@ export function getFleetColumns() {
       id: 'status',
       header: 'Status',
       meta: { align: 'right' },
-      cell: (info) => (
-        <span
-          className={cn(
-            BADGE_BASE,
-            info.getValue() === 'ACTIVE'
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-              : 'bg-muted text-muted-foreground',
-          )}
-        >
-          {VEHICLE_STATUS_LABELS[info.getValue()].pl}
-        </span>
-      ),
+      cell: (info) => <VehicleStatusBadge status={info.getValue()} />,
     }),
   ]
 }

@@ -93,8 +93,11 @@ The prefill is a suggestion, never authoritative: the real next date is printed 
 
 ## Critical Implementation Details
 
-**Dates are dates, not timestamps.** `performedAt` and `nextDueAt` are SQL `date` columns and Payload
-`date` fields with `dayOnly` picker appearance. A timestamp column plus a `Europe/Warsaw` UI makes
+**Dates are days, not instants.** `performedAt` and `nextDueAt` are Payload `date` fields with the
+`dayOnly` picker appearance. _Shipped as `timestamptz`, not SQL `date`_ — that is the DB's existing
+day-only convention and the only shape Payload's adapter models; the day semantics are enforced in
+code by `toWarsawDay` (`src/lib/fleet/days.ts`), which every read goes through. Treating a timestamp
+column as an instant plus a `Europe/Warsaw` UI makes
 "is this due today" answer differently depending on the hour, and the resulting off-by-one is the
 classic way this kind of module goes subtly wrong. Day comparison in the cron happens against today's
 date in `Europe/Warsaw`, resolved once per run and threaded through — never `new Date()` re-read

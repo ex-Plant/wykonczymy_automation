@@ -5,7 +5,7 @@ import { FRONTEND_URL } from '@/lib/env'
 import { renderBrandedEmail } from './email-template'
 import { buildLeadAnswers } from './lead-answers'
 import { leadRawDataSchema, leadFormQuestionsSchema } from './lead-schema'
-import { escapeHtml } from './escape-html'
+import { escapeHtml } from '@/lib/utils/escape-html'
 import type { RecoveredLeadT } from './reconcile-sweep'
 
 // Absolute URL — email clients can't resolve relative paths. Served from public/.

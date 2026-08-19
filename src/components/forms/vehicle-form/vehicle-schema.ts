@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { VEHICLE_STATUSES } from '@/lib/fleet/inspection-types'
+import { VEHICLE_STATUSES } from '@/lib/fleet/vehicle-status'
 
 // Form-input layer: every field is a string, as the HTML controls produce them.
 export const vehicleFormSchema = z.object({

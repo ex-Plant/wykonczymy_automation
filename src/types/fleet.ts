@@ -1,5 +1,6 @@
-import type { InspectionTypeT, VehicleStatusT } from '@/lib/fleet/inspection-types'
+import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
 import type { DeadlineBucketT } from '@/lib/fleet/thresholds'
+import type { VehicleRecordT } from '@/lib/fleet/types'
 
 /**
  * One deadline cell on the fleet listing. `hasEvent` is what separates "nothing recorded" from
@@ -12,14 +13,7 @@ export type FleetDeadlineT = {
   hasEvent: boolean
 }
 
-export type FleetRowT = {
-  id: number
-  registration: string
-  make: string
-  model: string
-  year: number | null
-  vin: string
-  status: VehicleStatusT
+export type FleetRowT = VehicleRecordT & {
   deadlines: Record<InspectionTypeT, FleetDeadlineT>
   /** Newest reading known for the car, from an inspection of any type. */
   latestOdometer: number | null

@@ -1,4 +1,4 @@
-import type { InspectionEventT } from '@/lib/fleet/types'
+import type { InspectionEventT, VehicleHistoryT, VehicleSummaryT } from '@/lib/fleet/types'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
 
 let nextId = 1
@@ -21,3 +21,22 @@ export const event = (
   odometerNotifiedAt: null,
   ...overrides,
 })
+
+/** A vehicle with a registration derived from its id, so assertions can name one without a fixture. */
+export const vehicle = (overrides: Partial<VehicleSummaryT> = {}): VehicleSummaryT => {
+  const id = overrides.id ?? 1
+
+  return {
+    id,
+    registration: `WX 0000${id}`,
+    make: 'Ford',
+    model: 'Transit',
+    status: 'ACTIVE',
+    ...overrides,
+  }
+}
+
+export const history = (
+  events: InspectionEventT[],
+  overrides: Partial<VehicleSummaryT> = {},
+): VehicleHistoryT => ({ vehicle: vehicle(overrides), events })

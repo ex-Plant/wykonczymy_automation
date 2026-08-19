@@ -46,10 +46,18 @@ export const countUnreadLeads = async (payload: Payload, userId: number): Promis
  * the cursor means it started mattering after the user's last visit. Only the newest entry per
  * (vehicle, type) counts, and only for vehicles still in use; a renewed inspection therefore drops
  * out of the badge by itself, exactly as it drops off the listing.
+ *
+ * `GREATEST(…, created_at)` covers the case that date alone cannot: a policy *entered* today that
+ * expires in five days slid into the window before it existed, so its window-entry instant is older
+ * than any cursor and the most urgent thing in the fleet would never reach the badge.
+ *
+ * `today` is the Warsaw day, passed in rather than read as Postgres `now()` (UTC) — otherwise the
+ * badge and the listing disagree about the window for the last two hours of every day.
  */
 export const countUnreadFleetDeadlines = async (
   payload: Payload,
   userId: number,
+  today: string,
 ): Promise<number> => {
   const db = await getDb(payload)
 
@@ -62,7 +70,7 @@ export const countUnreadFleetDeadlines = async (
       ) AS seen_at
     ),
     current_deadlines AS (
-      SELECT DISTINCT ON (i.vehicle_id, i.type) i.next_due_at
+      SELECT DISTINCT ON (i.vehicle_id, i.type) i.next_due_at, i.created_at
       FROM vehicle_inspections i
       JOIN vehicles v ON v.id = i.vehicle_id AND v.status = 'ACTIVE'
       ORDER BY i.vehicle_id, i.type, i.performed_at DESC
@@ -70,14 +78,17 @@ export const countUnreadFleetDeadlines = async (
     SELECT COUNT(*) AS count
     FROM current_deadlines, read_cursor
     WHERE current_deadlines.next_due_at IS NOT NULL
-      AND current_deadlines.next_due_at <= now() + interval '30 days'
-      AND current_deadlines.next_due_at - interval '30 days' > read_cursor.seen_at
+      AND current_deadlines.next_due_at <= ${today}::date + interval '30 days'
+      AND GREATEST(
+            current_deadlines.next_due_at - interval '30 days',
+            current_deadlines.created_at
+          ) > read_cursor.seen_at
   `)
 
   return Number(result.rows[0].count)
 }
 
-/** Advance the user's read cursor for one stream to now — called when they open its page. */
+/** Called when the user opens the stream's page. */
 export const markSeen = async (
   payload: Payload,
   userId: number,

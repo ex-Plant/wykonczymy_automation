@@ -1,21 +1,10 @@
-import type { Payload } from 'payload'
 import { isMonday, toWarsawDay, daysBetween, type DayT } from '@/lib/fleet/days'
-import { latestOdometerReading, resolveDeadlines } from '@/lib/fleet/deadlines'
-import {
-  INSPECTION_TYPES,
-  OIL_CHANGE_INTERVAL_KM,
-  type InspectionTypeT,
-} from '@/lib/fleet/inspection-types'
+import { latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
+import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { findMissingInspections, type MissingInspectionT } from '@/lib/fleet/missing-data'
-import { shouldNotify } from '@/lib/fleet/should-notify'
+import { oilTarget, shouldNotify } from '@/lib/fleet/should-notify'
 import { OVERDUE } from '@/lib/fleet/thresholds'
-import type { InspectionEventT, VehicleSummaryT } from '@/lib/fleet/types'
-import { toInspectionEvent } from '@/lib/queries/fleet'
-
-export type VehicleHistoryT = {
-  vehicle: VehicleSummaryT
-  events: InspectionEventT[]
-}
+import type { VehicleHistoryT } from '@/lib/fleet/types'
 
 export type DigestEntryT = {
   inspectionId: number
@@ -85,11 +74,11 @@ export const buildFleetDigest = (
   for (const { vehicle, events } of histories) {
     if (vehicle.status !== 'ACTIVE') continue
 
-    const deadlines = resolveDeadlines(events)
+    const latest = latestByType(events)
     const latestOdometer = latestOdometerReading(events)
 
     for (const type of INSPECTION_TYPES) {
-      const row = deadlines[type].latest
+      const row = latest[type]
       if (!row) continue
 
       const decision = shouldNotify({ row, today, latestOdometer })
@@ -130,60 +119,4 @@ export const buildFleetDigest = (
   }
 
   return digest
-}
-
-/** Mirrors the two legs of `odometerLegFires` — typed target first, interval as the fallback. */
-const oilTarget = (row: InspectionEventT): number | null =>
-  row.nextDueOdometer ?? (row.odometer != null ? row.odometer + OIL_CHANGE_INTERVAL_KM : null)
-
-/** Active and retired alike — the retired ones are filtered where urgency is decided, not here. */
-export async function loadFleetHistories(payload: Payload): Promise<VehicleHistoryT[]> {
-  const [vehicles, inspections] = await Promise.all([
-    payload.find({ collection: 'vehicles', limit: 500, depth: 0, overrideAccess: true }),
-    payload.find({
-      collection: 'vehicle-inspections',
-      limit: 5000,
-      depth: 0,
-      overrideAccess: true,
-    }),
-  ])
-
-  const events = inspections.docs.map(toInspectionEvent)
-
-  return vehicles.docs.map((vehicle) => ({
-    vehicle: {
-      id: vehicle.id,
-      registration: vehicle.registration,
-      make: vehicle.make,
-      model: vehicle.model,
-      status: vehicle.status,
-    },
-    events: events.filter((event) => event.vehicleId === vehicle.id),
-  }))
-}
-
-/**
- * Record what was announced — called only after a successful send. A stamp written ahead of the mail
- * would silence the deadline for a week on a delivery that never happened.
- */
-export async function stampNotified(
-  payload: Payload,
-  stamps: readonly StampT[],
-  sentAt: Date = new Date(),
-): Promise<void> {
-  const at = sentAt.toISOString()
-
-  await Promise.all(
-    stamps.map((stamp) =>
-      payload.update({
-        collection: 'vehicle-inspections',
-        id: stamp.inspectionId,
-        overrideAccess: true,
-        data: {
-          ...(stamp.threshold !== null && { notifiedThreshold: stamp.threshold, notifiedAt: at }),
-          ...(stamp.odometer && { odometerNotifiedAt: at }),
-        },
-      }),
-    ),
-  )
 }

@@ -4,14 +4,10 @@ import config from '@payload-config'
 import { isAuthorizedCronRequest } from '@/lib/cron/verify-cron-request'
 import { warsawToday } from '@/lib/fleet/days'
 import { notifyFleetDigest } from '@/lib/fleet/notify'
-import {
-  buildFleetDigest,
-  isEmptyDigest,
-  loadFleetHistories,
-  stampNotified,
-} from '@/lib/fleet/reminder-sweep'
+import { buildFleetDigest, isEmptyDigest } from '@/lib/fleet/reminder-sweep'
+import { loadFleetHistories, stampNotified } from '@/lib/fleet/sweep-io'
 
-// The daily fleet digest. Scheduled from vercel.json.
+// Scheduled from vercel.json.
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -35,9 +31,17 @@ export async function GET(request: NextRequest) {
 
     await notifyFleetDigest(payload, digest)
     // Only after the send: see stampNotified.
-    await stampNotified(payload, digest.stamps)
+    const stampFailures = await stampNotified(payload, digest.stamps)
 
-    return NextResponse.json({ ok: true, sent: true, sections }, { status: 200 })
+    if (stampFailures.length > 0) {
+      // TODO(EX-449) SENTRY-REQUIRED: these rows will re-announce tomorrow.
+      console.error('[cron/fleet-reminders] Stamp failed for inspections', stampFailures)
+    }
+
+    return NextResponse.json(
+      { ok: true, sent: true, sections, stampFailures: stampFailures.length },
+      { status: 200 },
+    )
   } catch (err) {
     // A module whose whole value is a mail that arrives must read as a failed run when it doesn't —
     // an `ok: true` no-op here would look identical to a quiet week.

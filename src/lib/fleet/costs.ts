@@ -1,4 +1,5 @@
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
+import { groupInOrder } from '@/lib/utils/group-in-order'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
 
 export type TypeCostT = {
@@ -36,19 +37,22 @@ export const summariseCosts = (
       .map((entry) => ({ id: entry.id, type, performedAt: entry.performedAt, cost: entry.cost })),
   )
 
-  const byType = INSPECTION_TYPES.map((type) => {
-    const ofType = costed.filter((entry) => entry.type === type)
+  const grouped = groupInOrder(costed, (entry) => entry.type)
 
-    return {
-      type,
-      count: ofType.length,
-      total: ofType.reduce((sum, entry) => sum + entry.cost, 0),
-    }
-  }).filter((bucket) => bucket.count > 0)
+  // Iterating INSPECTION_TYPES rather than the Map's keys keeps the table in the domain's order
+  // rather than in whichever type happened to be costed first.
+  const byType = INSPECTION_TYPES.flatMap((type) => {
+    const ofType = grouped.get(type)
+    if (!ofType) return []
+
+    return [
+      { type, count: ofType.length, total: ofType.reduce((sum, entry) => sum + entry.cost, 0) },
+    ]
+  })
 
   return {
     byType,
-    total: costed.reduce((sum, entry) => sum + entry.cost, 0),
-    entries: [...costed].sort((a, b) => b.performedAt.localeCompare(a.performedAt)),
+    total: byType.reduce((sum, bucket) => sum + bucket.total, 0),
+    entries: costed.sort((a, b) => b.performedAt.localeCompare(a.performedAt)),
   }
 }

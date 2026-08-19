@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react'
 import { BADGE_BASE } from '@/components/ui/badge'
-import { OIL_CHANGE_INTERVAL_KM } from '@/lib/fleet/inspection-types'
+import { OIL_CHANGE_INTERVAL_KM } from '@/lib/fleet/thresholds'
 import { cn } from '@/lib/utils/cn'
 import { formatKm } from '@/lib/utils/format-distance'
 

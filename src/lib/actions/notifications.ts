@@ -3,6 +3,7 @@
 import type { ActionResultT } from '@/types/action'
 import { protectedAction } from './run-action'
 import { countUnreadFleetDeadlines, countUnreadLeads } from '@/lib/db/notifications'
+import { warsawToday } from '@/lib/fleet/days'
 
 /**
  * Unread new-lead count for the nav badge. Wraps protectedAction (auth + payload +
@@ -20,6 +21,6 @@ export async function getUnreadLeadsCount(): Promise<ActionResultT<number>> {
 export async function getUnreadFleetCount(): Promise<ActionResultT<number>> {
   return protectedAction('getUnreadFleetCount', async ({ payload, user }) => ({
     success: true,
-    data: await countUnreadFleetDeadlines(payload, user.id),
+    data: await countUnreadFleetDeadlines(payload, user.id, warsawToday()),
   }))
 }

@@ -1,15 +1,10 @@
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
-import type { InspectionEventT, VehicleSummaryT } from '@/lib/fleet/types'
+import type { VehicleHistoryT } from '@/lib/fleet/types'
 
 export type MissingInspectionT = {
   vehicleId: number
   registration: string
   type: InspectionTypeT
-}
-
-type VehicleHistoryT = {
-  vehicle: VehicleSummaryT
-  events: readonly InspectionEventT[]
 }
 
 /**

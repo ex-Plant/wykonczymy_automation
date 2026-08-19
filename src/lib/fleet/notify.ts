@@ -1,38 +1,41 @@
 import type { Payload } from 'payload'
 import { FRONTEND_URL } from '@/lib/env'
 import { serverEnv } from '@/lib/env/server'
-import { escapeHtml } from '@/lib/leads/escape-html'
+import { escapeHtml } from '@/lib/utils/escape-html'
+import { daysLabel } from '@/lib/fleet/deadline-label'
 import { INSPECTION_TYPE_LABELS } from '@/lib/fleet/inspection-types'
 import { formatKm } from '@/lib/utils/format-distance'
 import type { DigestEntryT, FleetDigestT, OdometerEntryT } from '@/lib/fleet/reminder-sweep'
 import type { MissingInspectionT } from '@/lib/fleet/missing-data'
 
-const daysLabel = (daysLeft: number): string => {
-  if (daysLeft < 0) return `${Math.abs(daysLeft)} dni po terminie`
-  if (daysLeft === 0) return 'dziś'
-  return `za ${daysLeft} dni`
-}
+/** Empty in, empty out — an absent section prints nothing rather than an empty heading. */
+const section = <T>(
+  title: string,
+  entries: readonly T[],
+  tag: 'table' | 'ul',
+  row: (entry: T) => string,
+  lead = '',
+): string =>
+  entries.length === 0
+    ? ''
+    : `
+    <h3>${escapeHtml(title)}</h3>${lead}
+    <${tag}>
+      ${entries.map(row).join('\n      ')}
+    </${tag}>`
 
-const deadlineTable = (title: string, entries: DigestEntryT[]): string => {
-  if (entries.length === 0) return ''
-
-  const rows = entries
-    .map(
-      (entry) => `<tr>
+const deadlineTable = (title: string, entries: DigestEntryT[]): string =>
+  section(
+    title,
+    entries,
+    'table',
+    (entry) => `<tr>
         <td><strong>${escapeHtml(entry.registration)}</strong></td>
         <td>${escapeHtml(INSPECTION_TYPE_LABELS[entry.type].pl)}</td>
         <td>${escapeHtml(entry.nextDueAt)}</td>
         <td>${escapeHtml(daysLabel(entry.daysLeft))}</td>
       </tr>`,
-    )
-    .join('\n      ')
-
-  return `
-    <h3>${escapeHtml(title)}</h3>
-    <table>
-      ${rows}
-    </table>`
-}
+  )
 
 const remainingLabel = (kmRemaining: number): string =>
   kmRemaining < 0
@@ -41,45 +44,29 @@ const remainingLabel = (kmRemaining: number): string =>
 
 // The mileage alarm is judged against a reading taken at some past inspection, not against the car's
 // current odometer. Printing both is what stops it reading as a bug the day it arrives.
-const odometerSection = (entries: OdometerEntryT[]): string => {
-  if (entries.length === 0) return ''
-
-  const rows = entries
-    .map(
-      (entry) => `<li>
+const odometerSection = (entries: OdometerEntryT[]): string =>
+  section(
+    'Wymiana oleju — limit kilometrów',
+    entries,
+    'ul',
+    (entry) => `<li>
         <strong>${escapeHtml(entry.registration)}</strong> — wymiana oleju przy
         ${escapeHtml(formatKm(entry.targetOdometer))}, ostatni odczyt
         ${escapeHtml(formatKm(entry.latestOdometer))} (${escapeHtml(remainingLabel(entry.kmRemaining))}).
       </li>`,
-    )
-    .join('\n      ')
+  )
 
-  return `
-    <h3>Wymiana oleju — limit kilometrów</h3>
-    <ul>
-      ${rows}
-    </ul>`
-}
-
-const missingSection = (entries: MissingInspectionT[]): string => {
-  if (entries.length === 0) return ''
-
-  const rows = entries
-    .map(
-      (entry) =>
-        `<li><strong>${escapeHtml(entry.registration)}</strong> — ${escapeHtml(
-          INSPECTION_TYPE_LABELS[entry.type].pl,
-        )}</li>`,
-    )
-    .join('\n      ')
-
-  return `
-    <h3>Brak danych (podsumowanie tygodniowe)</h3>
-    <p>Dla tych pozycji nie ma żadnego wpisu, więc żaden termin nie może się o nie upomnieć.</p>
-    <ul>
-      ${rows}
-    </ul>`
-}
+const missingSection = (entries: MissingInspectionT[]): string =>
+  section(
+    'Brak danych (podsumowanie tygodniowe)',
+    entries,
+    'ul',
+    (entry) =>
+      `<li><strong>${escapeHtml(entry.registration)}</strong> — ${escapeHtml(
+        INSPECTION_TYPE_LABELS[entry.type].pl,
+      )}</li>`,
+    '\n    <p>Dla tych pozycji nie ma żadnego wpisu, więc żaden termin nie może się o nie upomnieć.</p>',
+  )
 
 const subjectFor = (digest: FleetDigestT): string => {
   if (digest.overdue.length > 0)

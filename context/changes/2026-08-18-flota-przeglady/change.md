@@ -3,7 +3,7 @@ change_id: flota-przeglady
 title: Fleet module — vehicles, inspection deadlines, daily reminder email
 status: implemented
 created: 2026-08-18
-updated: 2026-08-18
+updated: 2026-08-19
 archived_at: null
 branch: konradantonik/ex-711-flota-przeglady
 worktree: .claude/worktrees/ex-711-flota
@@ -60,3 +60,17 @@ Decisions taken in brainstorming (2026-08-18):
 Step 2, out of scope here but the schema assumes it: photo → OpenRouter vision → JSON →
 prefilled form, reusing the `scan-receipt.ts` / `/api/extract-receipt` pattern. It adds a
 second entry path to the same form, not a schema change.
+
+## Out-of-band inclusions
+
+`3f8a2f2e feat(inwestycje): „brak danych" na kolumnach v2 przy pustym kosztorysie` was authored by a
+parallel agent and landed on this branch. It has no coupling to the fleet module — kept rather than
+cherry-picked out because it is one self-contained component change and independently revertible.
+Its own review finding (the guard infers "no kosztorys" from `totalLaborCosts !== 0`, which a real
+kosztorys with przedmiar but no etap progress also satisfies) belongs to that agent, not this slice.
+
+## Deploy prerequisites
+
+`FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL` are new **required** vars in `src/lib/env/schema.ts`, and
+`(frontend)/layout.tsx` imports `serverEnv` as the build gate — so any Vercel environment without them
+fails `next build` the moment this merges. Set them on preview **and** production before pushing.

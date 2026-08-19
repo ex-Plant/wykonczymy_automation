@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { InspectionForm } from '@/components/forms/inspection-form/inspection-form'
 import { createInspectionAction } from '@/lib/actions/fleet'
-import { warsawToday } from '@/lib/fleet/days'
+import { addMonthsToDay, warsawToday } from '@/lib/fleet/days'
+import { INSPECTION_INTERVAL_MONTHS } from '@/lib/fleet/inspection-types'
 import type { InspectionFormValuesT } from '@/components/forms/inspection-form/inspection-schema'
 import type { FleetRowT } from '@/types/fleet'
 
@@ -15,12 +16,18 @@ type AddInspectionDialogPropsT = {
   vehicleId?: number
 }
 
+const DEFAULT_TYPE = 'TECHNICAL'
+
 export function AddInspectionDialog({ vehicles, vehicleId }: AddInspectionDialogPropsT) {
+  const performedAt = warsawToday()
+  // The form only prefills on a type CHANGE, so the type the dialog opens on has to arrive prefilled.
+  const months = INSPECTION_INTERVAL_MONTHS[DEFAULT_TYPE]
+
   const defaultValues: InspectionFormValuesT = {
     vehicle: vehicleId ? String(vehicleId) : '',
-    type: 'TECHNICAL',
-    performedAt: warsawToday(),
-    nextDueAt: '',
+    type: DEFAULT_TYPE,
+    performedAt,
+    nextDueAt: months ? addMonthsToDay(performedAt, months) : '',
     odometer: '',
     nextDueOdometer: '',
     cost: '',

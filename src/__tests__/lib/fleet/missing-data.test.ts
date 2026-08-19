@@ -1,23 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { findMissingInspections } from '@/lib/fleet/missing-data'
-import type { VehicleSummaryT } from '@/lib/fleet/types'
-import { event } from '@/__tests__/helpers/fleet'
-
-const vehicle = (id: number, overrides: Partial<VehicleSummaryT> = {}): VehicleSummaryT => ({
-  id,
-  registration: `WX 0000${id}`,
-  make: 'Ford',
-  model: 'Transit',
-  status: 'ACTIVE',
-  ...overrides,
-})
+import { event, vehicle } from '@/__tests__/helpers/fleet'
 
 describe('findMissingInspections', () => {
   // The hole the deadline logic structurally cannot see: no event means no nextDueAt, so no threshold
   // ever fires and the car stays silent forever.
   it('reports every type a vehicle has never had recorded', () => {
     const missing = findMissingInspections([
-      { vehicle: vehicle(1), events: [event('TECHNICAL', '2026-01-01')] },
+      { vehicle: vehicle(), events: [event('TECHNICAL', '2026-01-01')] },
     ])
 
     expect(missing).toEqual([
@@ -37,13 +27,13 @@ describe('findMissingInspections', () => {
       event('TYRES', '2026-01-01'),
     ]
 
-    expect(findMissingInspections([{ vehicle: vehicle(1), events }])).toEqual([])
+    expect(findMissingInspections([{ vehicle: vehicle(), events }])).toEqual([])
   })
 
   // A retired car has no deadlines worth chasing, and it would otherwise nag forever.
   it('ignores retired vehicles entirely', () => {
     const missing = findMissingInspections([
-      { vehicle: vehicle(2, { status: 'RETIRED' }), events: [] },
+      { vehicle: vehicle({ id: 2, status: 'RETIRED' }), events: [] },
     ])
 
     expect(missing).toEqual([])
@@ -51,7 +41,7 @@ describe('findMissingInspections', () => {
 
   it('counts an event with no due date as recorded — the gap is data, not absence', () => {
     const missing = findMissingInspections([
-      { vehicle: vehicle(1), events: [event('TYRES', '2026-04-01', { nextDueAt: null })] },
+      { vehicle: vehicle(), events: [event('TYRES', '2026-04-01', { nextDueAt: null })] },
     ])
 
     expect(missing.some((entry) => entry.type === 'TYRES')).toBe(false)

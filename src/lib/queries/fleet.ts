@@ -5,13 +5,12 @@ import { CACHE_TAGS } from '@/lib/cache/tags'
 import { perfStart } from '@/lib/perf'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
-import { assertCompletePage } from '@/lib/queries/assert-complete-page'
+import { groupByVehicle, loadFleetDataset, type FleetDatasetT } from '@/lib/fleet/dataset'
 import { daysBetween, toWarsawDay, warsawToday } from '@/lib/fleet/days'
-import { kmSinceOilChange, latestOdometerReading, resolveDeadlines } from '@/lib/fleet/deadlines'
-import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
+import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
+import { byInspectionType, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { classifyDeadline } from '@/lib/fleet/thresholds'
-import type { InspectionEventT, VehicleSummaryT } from '@/lib/fleet/types'
-import type { VehicleInspection } from '@/payload-types'
+import type { InspectionRecordT } from '@/lib/fleet/types'
 import type {
   FleetRowT,
   InspectionHistoryEntryT,
@@ -19,70 +18,19 @@ import type {
   FleetDeadlineT,
 } from '@/types/fleet'
 
-export type FleetDatasetT = {
-  vehicles: (VehicleSummaryT & { year: number | null; vin: string })[]
-  events: (InspectionEventT & { cost: number | null; note: string; attachmentCount: number })[]
-}
-
-const asId = (value: number | { id: number }): number =>
-  typeof value === 'number' ? value : value.id
-
-export const toInspectionEvent = (row: VehicleInspection) => ({
-  id: row.id,
-  vehicleId: asId(row.vehicle),
-  type: row.type,
-  performedAt: row.performedAt,
-  nextDueAt: row.nextDueAt ?? null,
-  odometer: row.odometer ?? null,
-  nextDueOdometer: row.nextDueOdometer ?? null,
-  notifiedThreshold: row.notifiedThreshold ?? null,
-  notifiedAt: row.notifiedAt ?? null,
-  odometerNotifiedAt: row.odometerNotifiedAt ?? null,
-  cost: row.cost ?? null,
-  note: row.note ?? '',
-  attachmentCount: row.attachments?.length ?? 0,
-})
+export type { FleetDatasetT }
 
 /**
- * The whole fleet in one cached read — a handful of cars with a few events each, so a per-vehicle
- * read would buy nothing and cost N cache entries to invalidate. Deliberately raw: nothing here
- * depends on today's date, so the entry survives midnight (see `fetchFleetOverview`).
+ * Deliberately raw: nothing here depends on today's date, so the entry survives midnight (see
+ * `fetchFleetOverview`).
  */
 const getFleetDataset = unstable_cache(
   async (): Promise<FleetDatasetT> => {
     const elapsed = perfStart()
-    const payload = await getPayload({ config })
-
-    const [vehicles, inspections] = await Promise.all([
-      payload.find({
-        collection: 'vehicles',
-        sort: 'registration',
-        limit: 500,
-        depth: 0,
-        overrideAccess: true,
-      }),
-      payload.find({
-        collection: 'vehicle-inspections',
-        sort: '-performedAt',
-        limit: 5000,
-        depth: 0,
-        overrideAccess: true,
-      }),
-    ])
+    const dataset = await loadFleetDataset(await getPayload({ config }))
     console.log(`[PERF] query.getFleetDataset ${elapsed()}ms`)
 
-    return {
-      vehicles: assertCompletePage(vehicles, 'getFleetDataset.vehicles').map((vehicle) => ({
-        id: vehicle.id,
-        registration: vehicle.registration,
-        make: vehicle.make,
-        model: vehicle.model,
-        status: vehicle.status,
-        year: vehicle.year ?? null,
-        vin: vehicle.vin ?? '',
-      })),
-      events: assertCompletePage(inspections, 'getFleetDataset.inspections').map(toInspectionEvent),
-    }
+    return dataset
   },
   ['fleet-dataset'],
   { tags: [CACHE_TAGS.vehicles, CACHE_TAGS.vehicleInspections] },
@@ -101,21 +49,18 @@ const toDeadline = (nextDueAt: string | null, hasEvent: boolean, today: string):
 
 export const toRow = (
   vehicle: FleetDatasetT['vehicles'][number],
-  events: FleetDatasetT['events'],
+  events: readonly InspectionRecordT[],
   today: string,
 ): FleetRowT => {
-  const deadlines = resolveDeadlines(events)
+  const latest = latestByType(events)
 
   return {
     ...vehicle,
     latestOdometer: latestOdometerReading(events),
     kmSinceOilChange: kmSinceOilChange(events),
-    deadlines: Object.fromEntries(
-      INSPECTION_TYPES.map((type) => [
-        type,
-        toDeadline(deadlines[type].nextDueAt, deadlines[type].latest !== null, today),
-      ]),
-    ) as Record<InspectionTypeT, FleetDeadlineT>,
+    deadlines: byInspectionType((type) =>
+      toDeadline(latest[type]?.nextDueAt ?? null, latest[type] !== null, today),
+    ),
   }
 }
 
@@ -132,12 +77,8 @@ export async function fetchFleetOverview(): Promise<FleetRowT[]> {
   const { vehicles, events } = await getFleetDataset()
   const today = warsawToday()
 
-  return vehicles.map((vehicle) =>
-    toRow(
-      vehicle,
-      events.filter((event) => event.vehicleId === vehicle.id),
-      today,
-    ),
+  return groupByVehicle({ vehicles, events }).map(({ vehicle, events: ofVehicle }) =>
+    toRow(vehicle, ofVehicle, today),
   )
 }
 
@@ -147,7 +88,7 @@ export async function fetchFleetOverview(): Promise<FleetRowT[]> {
  * "the car didn't move".
  */
 export const historyOfType = (
-  events: FleetDatasetT['events'],
+  events: readonly InspectionRecordT[],
   type: InspectionTypeT,
 ): InspectionHistoryEntryT[] => {
   const ofType = events
@@ -188,8 +129,6 @@ export async function fetchVehicleDetail(id: number): Promise<VehicleDetailT | n
 
   return {
     vehicle: toRow(vehicle, ofVehicle, warsawToday()),
-    historyByType: Object.fromEntries(
-      INSPECTION_TYPES.map((type) => [type, historyOfType(ofVehicle, type)]),
-    ) as Record<InspectionTypeT, InspectionHistoryEntryT[]>,
+    historyByType: byInspectionType((type) => historyOfType(ofVehicle, type)),
   }
 }

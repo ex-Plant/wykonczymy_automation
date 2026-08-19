@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { historyOfType, toInspectionEvent, toRow, type FleetDatasetT } from '@/lib/queries/fleet'
+import { historyOfType, toRow, type FleetDatasetT } from '@/lib/queries/fleet'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
-import type { VehicleInspection } from '@/payload-types'
 
 // The projections below are what the listing and the digest both read. A deadline that renders
 // "fine" for a vehicle with nothing recorded, or a mileage delta computed against a missing
@@ -136,37 +135,6 @@ describe('historyOfType', () => {
 
     expect(historyOfType(events, 'TECHNICAL')).toHaveLength(1)
     expect(historyOfType(events, 'WARRANTY')).toEqual([])
-  })
-})
-
-describe('toInspectionEvent', () => {
-  it('flattens a depth-0 relation id and counts attachments without loading them', () => {
-    const row = {
-      id: 9,
-      vehicle: 4,
-      type: 'OIL_CHANGE',
-      performedAt: '2026-02-01T00:00:00.000Z',
-      attachments: [11, 12],
-    } as unknown as VehicleInspection
-
-    expect(toInspectionEvent(row)).toMatchObject({
-      vehicleId: 4,
-      attachmentCount: 2,
-      nextDueAt: null,
-      note: '',
-    })
-  })
-
-  it('accepts a populated relation object too', () => {
-    const row = {
-      id: 9,
-      vehicle: { id: 4 },
-      type: 'TECHNICAL',
-      performedAt: '2026-02-01T00:00:00.000Z',
-    } as unknown as VehicleInspection
-
-    expect(toInspectionEvent(row).vehicleId).toBe(4)
-    expect(toInspectionEvent(row).attachmentCount).toBe(0)
   })
 })
 

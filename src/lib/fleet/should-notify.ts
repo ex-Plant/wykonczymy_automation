@@ -1,6 +1,8 @@
 import { daysBetween, toWarsawDay, type DayT } from '@/lib/fleet/days'
-import { OIL_CHANGE_INTERVAL_KM, OIL_ODOMETER_WARN_KM } from '@/lib/fleet/inspection-types'
+
 import {
+  OIL_CHANGE_INTERVAL_KM,
+  OIL_ODOMETER_WARN_KM,
   OVERDUE,
   classifyDeadline,
   isMoreUrgent,
@@ -64,13 +66,24 @@ const dateLegFires = (
  * Two ways the oil can come due on mileage: the target somebody typed, or — when nobody typed one —
  * the interval measured from the reading taken at the change itself. Without the second, an oil
  * change entered with no target is watched by nothing at all.
+ *
+ * Exported because the digest prints this figure; deciding and announcing must read the same target.
+ */
+export const oilTarget = (row: InspectionEventT): number | null =>
+  row.nextDueOdometer ?? (row.odometer != null ? row.odometer + OIL_CHANGE_INTERVAL_KM : null)
+
+/**
+ * The two targets warn at different distances, deliberately: a typed target is a commitment worth a
+ * heads-up before it lands, a derived one is only a guess and earns nothing until it is passed.
  */
 const odometerLegFires = (row: InspectionEventT, latestOdometer: number | null): boolean => {
   if (row.type !== 'OIL_CHANGE' || latestOdometer == null || row.odometerNotifiedAt !== null)
     return false
 
-  if (row.nextDueOdometer != null)
-    return row.nextDueOdometer - latestOdometer <= OIL_ODOMETER_WARN_KM
+  const target = oilTarget(row)
+  if (target == null) return false
 
-  return row.odometer != null && latestOdometer - row.odometer > OIL_CHANGE_INTERVAL_KM
+  return row.nextDueOdometer != null
+    ? target - latestOdometer <= OIL_ODOMETER_WARN_KM
+    : latestOdometer > target
 }

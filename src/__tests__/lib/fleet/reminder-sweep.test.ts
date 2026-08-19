@@ -1,26 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildFleetDigest, isEmptyDigest, type VehicleHistoryT } from '@/lib/fleet/reminder-sweep'
-import { event } from '@/__tests__/helpers/fleet'
-import type { InspectionEventT, VehicleSummaryT } from '@/lib/fleet/types'
+import { buildFleetDigest, isEmptyDigest } from '@/lib/fleet/reminder-sweep'
+import { event, history } from '@/__tests__/helpers/fleet'
 
 // 2026-08-18 is a Tuesday; 2026-08-17 a Monday. The weekly missing-data section hangs off exactly
 // that difference, so both days are pinned rather than derived.
 const TUESDAY = '2026-08-18'
 const MONDAY = '2026-08-17'
-
-const vehicle = (overrides: Partial<VehicleSummaryT> = {}): VehicleSummaryT => ({
-  id: 1,
-  registration: 'WA12345',
-  make: 'Ford',
-  model: 'Transit',
-  status: 'ACTIVE',
-  ...overrides,
-})
-
-const history = (
-  events: InspectionEventT[],
-  overrides: Partial<VehicleSummaryT> = {},
-): VehicleHistoryT => ({ vehicle: vehicle(overrides), events })
 
 describe('buildFleetDigest', () => {
   it('sends nothing when every deadline is far away', () => {
@@ -122,7 +107,7 @@ describe('buildFleetDigest', () => {
     expect(digest.odometer).toEqual([
       {
         inspectionId: expect.any(Number),
-        registration: 'WA12345',
+        registration: 'WX 00001',
         targetOdometer: 115_000,
         latestOdometer: 114_500,
         kmRemaining: 500,
@@ -161,7 +146,7 @@ describe('buildFleetDigest — oil interval without a typed target', () => {
     expect(digest.odometer).toEqual([
       {
         inspectionId: expect.any(Number),
-        registration: 'WA12345',
+        registration: 'WX 00001',
         targetOdometer: 110_000,
         latestOdometer: 115_000,
         kmRemaining: -5_000,

@@ -31,7 +31,7 @@ export const daysBetween = (from: DayT, to: DayT): number =>
 /** Parsed as UTC midnight so the weekday is the calendar day's, not the runner's timezone's. */
 export const isMonday = (day: DayT): boolean => new Date(`${day}T00:00:00Z`).getUTCDay() === 1
 
-/** A day plus a month count. Used to prefill the next due date from an interval. */
+/** Used to prefill the next due date from an interval. */
 export const addMonthsToDay = (day: DayT, months: number): DayT => {
   const [year, month, date] = day.split('-').map(Number)
   const shifted = new Date(Date.UTC(year, month - 1 + months, date))
