@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { InspectionForm } from '@/components/forms/inspection-form/inspection-form'
 import { createInspectionAction } from '@/lib/actions/fleet'
+import { warsawToday } from '@/lib/fleet/days'
 import type { InspectionFormValuesT } from '@/components/forms/inspection-form/inspection-schema'
 import type { FleetRowT } from '@/types/fleet'
 
 type AddInspectionDialogPropsT = {
-  vehicles: Pick<FleetRowT, 'id' | 'registration' | 'make' | 'model'>[]
+  vehicles: Pick<FleetRowT, 'id' | 'registration' | 'make' | 'model' | 'latestOdometer'>[]
   /** Preselected vehicle — the vehicle page knows which car the user is looking at. */
   vehicleId?: number
 }
@@ -18,7 +19,7 @@ export function AddInspectionDialog({ vehicles, vehicleId }: AddInspectionDialog
   const defaultValues: InspectionFormValuesT = {
     vehicle: vehicleId ? String(vehicleId) : '',
     type: 'TECHNICAL',
-    performedAt: '',
+    performedAt: warsawToday(),
     nextDueAt: '',
     odometer: '',
     nextDueOdometer: '',

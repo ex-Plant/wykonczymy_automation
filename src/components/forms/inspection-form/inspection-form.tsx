@@ -16,6 +16,7 @@ import {
   type InspectionTypeT,
 } from '@/lib/fleet/inspection-types'
 import { resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
+import { formatKm } from '@/lib/utils/format-distance'
 import { useInspectionFormStore } from '@/stores/form-stores'
 import { inspectionFormSchema, type InspectionFormValuesT } from './inspection-schema'
 import type { InspectionFormDataT } from './inspection-schema'
@@ -32,7 +33,7 @@ type InspectionFormPropsT = {
   submittingLabel: string
   onSubmitSuccess: () => void
   keepOpen?: boolean
-  vehicles: Pick<FleetRowT, 'id' | 'registration' | 'make' | 'model'>[]
+  vehicles: Pick<FleetRowT, 'id' | 'registration' | 'make' | 'model' | 'latestOdometer'>[]
   /**
    * Pins the form to one car. The draft store is shared with the listing's dialog, so a restored
    * draft can carry a different vehicle than the page the user is on — this is what makes the page
@@ -69,8 +70,13 @@ export function InspectionForm({
     successMessage,
     onSubmitSuccess,
     onReset: () => setFiles([]),
-    mergeStored: (stored) =>
-      lockedVehicleId ? { ...stored, vehicle: String(lockedVehicleId) } : stored,
+    // A draft saved before today restores yesterday's date, and an older one restores the empty
+    // string the form used to default to — neither is what "data przeglądu = dziś" promises.
+    mergeStored: (stored) => ({
+      ...stored,
+      ...(lockedVehicleId && { vehicle: String(lockedVehicleId) }),
+      performedAt: stored.performedAt || defaultValues.performedAt,
+    }),
     // Upload first, then create — the row must never reference a media id that failed to land.
     action: async (data) => {
       const attachments = files.length > 0 ? await resolveInvoicePageIds(files) : []
@@ -90,6 +96,22 @@ export function InspectionForm({
   })
 
   const currentType = useStore(form.store, (state) => state.values.type)
+  const currentVehicle = useStore(form.store, (state) => state.values.vehicle)
+  const currentOdometer = useStore(form.store, (state) => state.values.odometer)
+
+  /**
+   * The last reading this car is known to have had, when the one being typed is below it. A swapped
+   * instrument cluster makes a lower reading legitimate, so this warns and never blocks the submit.
+   */
+  const odometerWentBackwardsFrom = ((): number | null => {
+    const previous =
+      vehicles.find((vehicle) => String(vehicle.id) === currentVehicle)?.latestOdometer ?? null
+    const typed = currentOdometer.trim() === '' ? null : Number(currentOdometer)
+
+    return previous !== null && typed !== null && Number.isFinite(typed) && typed < previous
+      ? previous
+      : null
+  })()
 
   /**
    * Suggest the next due date from the type's interval. The real date is printed on the document, so
@@ -155,6 +177,13 @@ export function InspectionForm({
             <field.Input label="Przebieg (km)" type="number" placeholder="120000" showError />
           )}
         </form.AppField>
+
+        {odometerWentBackwardsFrom !== null && (
+          <p className="text-chart-orange -mt-2 text-xs">
+            Ostatni zapisany przebieg to {formatKm(odometerWentBackwardsFrom)} — wpisany odczyt jest
+            niższy.
+          </p>
+        )}
 
         {currentType === 'OIL_CHANGE' && (
           <form.AppField name="nextDueOdometer">
