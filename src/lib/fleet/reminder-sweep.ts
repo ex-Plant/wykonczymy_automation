@@ -1,6 +1,9 @@
 import { isMonday, toWarsawDay, daysBetween, type DayT } from '@/lib/fleet/days'
 import { latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
-import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
+import {
+  SCHEDULED_INSPECTION_TYPES,
+  type ScheduledInspectionTypeT,
+} from '@/lib/fleet/inspection-types'
 import { findMissingInspections, type MissingInspectionT } from '@/lib/fleet/missing-data'
 import { oilTarget, shouldNotify } from '@/lib/fleet/should-notify'
 import { OVERDUE } from '@/lib/fleet/thresholds'
@@ -9,7 +12,7 @@ import type { VehicleHistoryT } from '@/lib/fleet/types'
 export type DigestEntryT = {
   inspectionId: number
   registration: string
-  type: InspectionTypeT
+  type: ScheduledInspectionTypeT
   nextDueAt: DayT
   daysLeft: number
 }
@@ -77,7 +80,9 @@ export const buildFleetDigest = (
     const latest = latestByType(events)
     const latestOdometer = latestOdometerReading(events)
 
-    for (const type of INSPECTION_TYPES) {
+    // Scheduled types only — an ad-hoc SERVICE carries no due date, so there is nothing to count
+    // down to and nothing the sweep could ever say about it.
+    for (const type of SCHEDULED_INSPECTION_TYPES) {
       const row = latest[type]
       if (!row) continue
 
