@@ -1,5 +1,5 @@
 import { daysBetween, toWarsawDay, type DayT } from '@/lib/fleet/days'
-import { OIL_ODOMETER_WARN_KM } from '@/lib/fleet/inspection-types'
+import { OIL_CHANGE_INTERVAL_KM, OIL_ODOMETER_WARN_KM } from '@/lib/fleet/inspection-types'
 import {
   OVERDUE,
   classifyDeadline,
@@ -60,9 +60,17 @@ const dateLegFires = (
   return daysBetween(toWarsawDay(row.notifiedAt), today) > OVERDUE_RENAG_DAYS
 }
 
-const odometerLegFires = (row: InspectionEventT, latestOdometer: number | null): boolean =>
-  row.type === 'OIL_CHANGE' &&
-  row.nextDueOdometer != null &&
-  latestOdometer != null &&
-  row.odometerNotifiedAt === null &&
-  row.nextDueOdometer - latestOdometer <= OIL_ODOMETER_WARN_KM
+/**
+ * Two ways the oil can come due on mileage: the target somebody typed, or — when nobody typed one —
+ * the interval measured from the reading taken at the change itself. Without the second, an oil
+ * change entered with no target is watched by nothing at all.
+ */
+const odometerLegFires = (row: InspectionEventT, latestOdometer: number | null): boolean => {
+  if (row.type !== 'OIL_CHANGE' || latestOdometer == null || row.odometerNotifiedAt !== null)
+    return false
+
+  if (row.nextDueOdometer != null)
+    return row.nextDueOdometer - latestOdometer <= OIL_ODOMETER_WARN_KM
+
+  return row.odometer != null && latestOdometer - row.odometer > OIL_CHANGE_INTERVAL_KM
+}

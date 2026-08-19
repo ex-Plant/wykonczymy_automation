@@ -21,6 +21,10 @@ export type FleetRowT = {
   vin: string
   status: VehicleStatusT
   deadlines: Record<InspectionTypeT, FleetDeadlineT>
+  /** Newest reading known for the car, from an inspection of any type. */
+  latestOdometer: number | null
+  /** Distance since the last oil change; `null` when either reading is missing. */
+  kmSinceOilChange: number | null
 }
 
 export type InspectionHistoryEntryT = {

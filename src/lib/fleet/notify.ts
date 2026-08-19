@@ -3,10 +3,9 @@ import { FRONTEND_URL } from '@/lib/env'
 import { serverEnv } from '@/lib/env/server'
 import { escapeHtml } from '@/lib/leads/escape-html'
 import { INSPECTION_TYPE_LABELS } from '@/lib/fleet/inspection-types'
+import { formatKm } from '@/lib/utils/format-distance'
 import type { DigestEntryT, FleetDigestT, OdometerEntryT } from '@/lib/fleet/reminder-sweep'
 import type { MissingInspectionT } from '@/lib/fleet/missing-data'
-
-const formatKm = (value: number) => `${value.toLocaleString('pl-PL')} km`
 
 const daysLabel = (daysLeft: number): string => {
   if (daysLeft < 0) return `${Math.abs(daysLeft)} dni po terminie`
@@ -35,6 +34,11 @@ const deadlineTable = (title: string, entries: DigestEntryT[]): string => {
     </table>`
 }
 
+const remainingLabel = (kmRemaining: number): string =>
+  kmRemaining < 0
+    ? `przekroczono o ${formatKm(Math.abs(kmRemaining))}`
+    : `pozostało ${formatKm(kmRemaining)}`
+
 // The mileage alarm is judged against a reading taken at some past inspection, not against the car's
 // current odometer. Printing both is what stops it reading as a bug the day it arrives.
 const odometerSection = (entries: OdometerEntryT[]): string => {
@@ -44,9 +48,8 @@ const odometerSection = (entries: OdometerEntryT[]): string => {
     .map(
       (entry) => `<li>
         <strong>${escapeHtml(entry.registration)}</strong> — wymiana oleju przy
-        ${escapeHtml(formatKm(entry.nextDueOdometer))}, ostatni odczyt
-        ${escapeHtml(formatKm(entry.latestOdometer))} (pozostało
-        ${escapeHtml(formatKm(entry.kmRemaining))}).
+        ${escapeHtml(formatKm(entry.targetOdometer))}, ostatni odczyt
+        ${escapeHtml(formatKm(entry.latestOdometer))} (${escapeHtml(remainingLabel(entry.kmRemaining))}).
       </li>`,
     )
     .join('\n      ')

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { latestOdometerReading, resolveDeadlines } from '@/lib/fleet/deadlines'
+import { kmSinceOilChange, latestOdometerReading, resolveDeadlines } from '@/lib/fleet/deadlines'
 import { INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { event } from '@/__tests__/helpers/fleet'
 
@@ -77,5 +77,33 @@ describe('latestOdometerReading', () => {
 
   it('is null when no event carries a reading', () => {
     expect(latestOdometerReading([event('TYRES', '2026-07-01')])).toBeNull()
+  })
+})
+
+describe('kmSinceOilChange', () => {
+  it('measures the newest reading of any type against the last oil change', () => {
+    const oil = event('OIL_CHANGE', '2026-01-01', { odometer: 100_000 })
+    const technical = event('TECHNICAL', '2026-06-01', { odometer: 208_000 })
+
+    expect(kmSinceOilChange([oil, technical])).toBe(108_000)
+  })
+
+  it('measures from the NEWEST oil change, not the first one', () => {
+    const older = event('OIL_CHANGE', '2025-01-01', { odometer: 40_000 })
+    const newer = event('OIL_CHANGE', '2026-01-01', { odometer: 100_000 })
+    const technical = event('TECHNICAL', '2026-06-01', { odometer: 108_000 })
+
+    expect(kmSinceOilChange([older, newer, technical])).toBe(8_000)
+  })
+
+  it('is null when the oil change carries no reading', () => {
+    const oil = event('OIL_CHANGE', '2026-01-01')
+    const technical = event('TECHNICAL', '2026-06-01', { odometer: 108_000 })
+
+    expect(kmSinceOilChange([oil, technical])).toBeNull()
+  })
+
+  it('is null when the car has never had an oil change recorded', () => {
+    expect(kmSinceOilChange([event('TECHNICAL', '2026-06-01', { odometer: 108_000 })])).toBeNull()
   })
 })

@@ -123,7 +123,7 @@ describe('buildFleetDigest', () => {
       {
         inspectionId: expect.any(Number),
         registration: 'WA12345',
-        nextDueOdometer: 115_000,
+        targetOdometer: 115_000,
         latestOdometer: 114_500,
         kmRemaining: 500,
       },
@@ -143,5 +143,29 @@ describe('buildFleetDigest', () => {
     // A vehicle with nothing recorded has no deadline that could ever fire — the weekly section is
     // the only thing standing between it and permanent silence.
     expect(isEmptyDigest(buildFleetDigest(bare, TUESDAY))).toBe(true)
+  })
+})
+
+describe('buildFleetDigest — oil interval without a typed target', () => {
+  it('derives the target from the interval so an untargeted oil change is still watched', () => {
+    const digest = buildFleetDigest(
+      [
+        history([
+          event('OIL_CHANGE', '2024-01-01T00:00:00.000Z', { odometer: 100_000 }),
+          event('TECHNICAL', '2026-08-01T00:00:00.000Z', { odometer: 115_000 }),
+        ]),
+      ],
+      TUESDAY,
+    )
+
+    expect(digest.odometer).toEqual([
+      {
+        inspectionId: expect.any(Number),
+        registration: 'WA12345',
+        targetOdometer: 110_000,
+        latestOdometer: 115_000,
+        kmRemaining: -5_000,
+      },
+    ])
   })
 })

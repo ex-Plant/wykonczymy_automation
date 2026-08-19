@@ -7,7 +7,7 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 import { daysBetween, toWarsawDay, warsawToday } from '@/lib/fleet/days'
-import { resolveDeadlines } from '@/lib/fleet/deadlines'
+import { kmSinceOilChange, latestOdometerReading, resolveDeadlines } from '@/lib/fleet/deadlines'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { classifyDeadline } from '@/lib/fleet/thresholds'
 import type { InspectionEventT, VehicleSummaryT } from '@/lib/fleet/types'
@@ -108,6 +108,8 @@ export const toRow = (
 
   return {
     ...vehicle,
+    latestOdometer: latestOdometerReading(events),
+    kmSinceOilChange: kmSinceOilChange(events),
     deadlines: Object.fromEntries(
       INSPECTION_TYPES.map((type) => [
         type,

@@ -169,3 +169,21 @@ describe('toInspectionEvent', () => {
     expect(toInspectionEvent(row).attachmentCount).toBe(0)
   })
 })
+
+describe('toRow — oil interval', () => {
+  it('carries the newest reading and the distance since the last oil change', () => {
+    const oil = datasetEvent('OIL_CHANGE', '2026-01-01', { odometer: 100_000 })
+    const technical = datasetEvent('TECHNICAL', '2026-06-01', { odometer: 108_000 })
+    const row = toRow(vehicle, [oil, technical], '2026-08-18')
+
+    expect(row.latestOdometer).toBe(108_000)
+    expect(row.kmSinceOilChange).toBe(8_000)
+  })
+
+  it('leaves both null when nothing carries a reading', () => {
+    const row = toRow(vehicle, [datasetEvent('TECHNICAL', '2026-06-01')], '2026-08-18')
+
+    expect(row.latestOdometer).toBeNull()
+    expect(row.kmSinceOilChange).toBeNull()
+  })
+})

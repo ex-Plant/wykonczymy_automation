@@ -2,6 +2,7 @@
 
 import { createColumnHelper } from '@tanstack/react-table'
 import { DeadlineCell } from '@/components/fleet/deadline-cell'
+import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
 import { BADGE_BASE } from '@/components/ui/badge'
 import {
   INSPECTION_TYPE_LABELS,
@@ -19,7 +20,12 @@ export function getFleetColumns() {
       id: 'registration',
       header: 'Rejestracja',
       meta: { canHide: false },
-      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      cell: (info) => (
+        <span className="flex items-center gap-2 font-medium">
+          {info.getValue()}
+          <OilIntervalBadge kmSinceOilChange={info.row.original.kmSinceOilChange} />
+        </span>
+      ),
     }),
     col.accessor((row) => `${row.make} ${row.model}`, {
       id: 'vehicle',

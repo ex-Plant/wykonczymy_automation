@@ -1,7 +1,11 @@
 import type { Payload } from 'payload'
 import { isMonday, toWarsawDay, daysBetween, type DayT } from '@/lib/fleet/days'
 import { latestOdometerReading, resolveDeadlines } from '@/lib/fleet/deadlines'
-import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
+import {
+  INSPECTION_TYPES,
+  OIL_CHANGE_INTERVAL_KM,
+  type InspectionTypeT,
+} from '@/lib/fleet/inspection-types'
 import { findMissingInspections, type MissingInspectionT } from '@/lib/fleet/missing-data'
 import { shouldNotify } from '@/lib/fleet/should-notify'
 import { OVERDUE } from '@/lib/fleet/thresholds'
@@ -24,8 +28,10 @@ export type DigestEntryT = {
 export type OdometerEntryT = {
   inspectionId: number
   registration: string
-  nextDueOdometer: number
+  /** The reading the oil is due at — the typed target, or the interval from the last change. */
+  targetOdometer: number
   latestOdometer: number
+  /** Negative once the target is behind us. */
   kmRemaining: number
 }
 
@@ -104,13 +110,14 @@ export const buildFleetDigest = (
         else digest.within7.push(entry)
       }
 
-      if (decision.odometer && row.nextDueOdometer != null && latestOdometer != null) {
+      const target = oilTarget(row)
+      if (decision.odometer && target != null && latestOdometer != null) {
         digest.odometer.push({
           inspectionId: row.id,
           registration: vehicle.registration,
-          nextDueOdometer: row.nextDueOdometer,
+          targetOdometer: target,
           latestOdometer,
-          kmRemaining: row.nextDueOdometer - latestOdometer,
+          kmRemaining: target - latestOdometer,
         })
       }
 
@@ -124,6 +131,10 @@ export const buildFleetDigest = (
 
   return digest
 }
+
+/** Mirrors the two legs of `odometerLegFires` — typed target first, interval as the fallback. */
+const oilTarget = (row: InspectionEventT): number | null =>
+  row.nextDueOdometer ?? (row.odometer != null ? row.odometer + OIL_CHANGE_INTERVAL_KM : null)
 
 /** Active and retired alike — the retired ones are filtered where urgency is decided, not here. */
 export async function loadFleetHistories(payload: Payload): Promise<VehicleHistoryT[]> {

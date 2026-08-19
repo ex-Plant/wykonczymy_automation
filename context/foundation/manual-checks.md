@@ -923,8 +923,9 @@ Setup: aplikacja na **5435** (`DB_POSTGRES_URL_TEST`), zalogowany jako OWNER (ko
 dla ADMIN/OWNER). Po `pnpm db:import:test` uruchom `pnpm seed:kosztorys:test`, inaczej baza nie ma
 ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
 
-- [ ] Inwestycja **z kosztorysem**: „Bilans netto", „Bilans brutto", „Koszty inwestora" i „Marża" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
-- [ ] Inwestycja **bez kosztorysu** pokazuje na liście i w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31). Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
+- [ ] Inwestycja **bez kosztorysu**: „Koszty inwestora v2", „Bilans netto v2", „Bilans brutto v2", „Marża v2" i „Robocizna v2" pokazują „brak danych" (nie 0 zł), a przy „Robociźnie v2" nie ma ikony rozjazdu; „Koszty inwestora v1", „Bilans netto v1", „Marża v1" i „Robocizna v1" dalej pokazują liczby z transferów
+- [ ] Inwestycja **z kosztorysem**: „Bilans netto v2", „Bilans brutto v2", „Koszty inwestora v2" i „Marża v2" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
+- [ ] Inwestycja **bez kosztorysu** liczy w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31) — w v2 widać to jako zera, na liście jako „brak danych". Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
 - [ ] Inwestycja z kosztorysem sumującym się **do zera** wygląda identycznie jak ta bez kosztorysu. Nie da się ich odróżnić po liczbach i nie ma powodu, żeby dało się je odróżnić.
 - [ ] Inwestycja z pustym kosztorysem, ale z zaksięgowaną robocizną w transakcjach — reconciliation **krzyczy** niezgodność. To jest sygnał „ta robota czeka na wprowadzenie do kosztorysu", nie fałszywy alarm.
 - [ ] Zmiana ilości w kosztorysie rusza „Marżę" na liście **bez** klikania „Odśwież dane".
@@ -1350,3 +1351,10 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 - [ ] Wpis wymiany oleju z celem km, a potem przegląd z odczytem 500 km przed celem, daje w mailu linijkę z celem i ostatnim odczytem
 - [ ] Pojazd, który wjechał w okno 30 dni, podbija plakietkę przy „Flota"; wejście na `/flota` ją zeruje
 - [ ] Plakietka przy „Zgłoszenia" zachowuje się dokładnie jak dotąd
+- [ ] Dialog „Przegląd" otwiera się z dzisiejszą datą w polu „Data wykonania"
+- [ ] Wpisanie przebiegu niższego niż ostatni zapisany dla tego pojazdu pokazuje pod polem ostrzeżenie, ale nie blokuje zapisu
+- [ ] Pojazd z wymianą oleju przy 100 000 km i późniejszym odczytem 115 000 km ma plakietkę „Olej" w tabelce floty i w szczegółach pojazdu
+- [ ] Ten sam pojazd trafia do mailowej sekcji „Wymiana oleju — limit kilometrów" z informacją o przekroczeniu, mimo że nikt nie wpisał celu km
+- [ ] Sekcja „Koszty" na stronie pojazdu sumuje wpisy per rodzaj i w wierszu „Razem", a „Szczegóły" listują te same wpisy od najnowszego
+- [ ] Rodzaj przeglądu, w którym nikt nie wpisał kosztu, nie pojawia się w podsumowaniu jako 0 zł
+- [ ] Strona pojazdu otwiera się na „Przeglądy"; przełącznik „Koszty" pokazuje podsumowanie i szczegóły, a powrót na „Przeglądy" działa

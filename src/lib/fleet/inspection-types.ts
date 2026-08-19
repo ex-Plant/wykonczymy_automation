@@ -48,5 +48,12 @@ export const INSPECTION_INTERVAL_MONTHS: Record<InspectionTypeT, number | null> 
  */
 export const OIL_ODOMETER_WARN_KM = 1000
 
+/**
+ * How far the car may go on one oil change before the module raises an alarm of its own. This is the
+ * fallback for the common case where nobody typed a target into „Następna wymiana przy (km)" — with
+ * no target there is nothing to count down to, and the oil would age unwatched.
+ */
+export const OIL_CHANGE_INTERVAL_KM = 10_000
+
 export const isInspectionType = (value: unknown): value is InspectionTypeT =>
   typeof value === 'string' && (INSPECTION_TYPES as readonly string[]).includes(value)

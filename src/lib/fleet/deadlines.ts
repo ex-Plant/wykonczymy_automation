@@ -51,3 +51,16 @@ export const resolveDeadlines = (
 export const latestOdometerReading = (events: readonly InspectionEventT[]): number | null =>
   [...events].sort(byPerformedAtDesc).find((candidate) => candidate.odometer != null)?.odometer ??
   null
+
+/**
+ * Distance covered since the last oil change: the newest reading of ANY type minus the reading taken
+ * at the newest oil change. `null` when either is missing — an unknown distance is not zero.
+ */
+export const kmSinceOilChange = (events: readonly InspectionEventT[]): number | null => {
+  const lastOilChange = [...events]
+    .sort(byPerformedAtDesc)
+    .find((candidate) => candidate.type === 'OIL_CHANGE')
+  const latest = latestOdometerReading(events)
+
+  return latest != null && lastOilChange?.odometer != null ? latest - lastOilChange.odometer : null
+}
