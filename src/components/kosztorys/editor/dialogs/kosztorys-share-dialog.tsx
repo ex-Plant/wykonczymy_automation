@@ -10,44 +10,28 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/
 import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
 import { generateShareLinkAction, revokeShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { saveClientViewSettingsAction } from '@/lib/actions/kosztorys-client-view'
-import {
-  sameClientViewSettings,
-  type ClientViewSettingsT,
-} from '@/lib/kosztorys/client-view-settings'
+import { sameClientViewSettings } from '@/lib/kosztorys/client-view-settings'
 import { FRONTEND_URL } from '@/lib/env'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 import { toastMessage } from '@/lib/utils/toast'
 import { Description } from '@/components/ui/description'
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  // Token + its load state are owned by the parent, which fetches on the Opcje-menu click. Radix
-  // fires onOpenChange only for its OWN trigger, never for a programmatic `open`, so a fetch hung
-  // off onOpenChange never ran when the dialog is opened from a menu item. The dialog updates the
-  // token back up on generate/revoke.
-  token: string | null
-  loaded: boolean
-  onTokenChange: (token: string | null) => void
-  // Same fetched-above contract as the token, and the same state the „Ustawienia podglądu…" window
-  // edits — one copy per editor, so the two surfaces can never show different answers.
-  settings: ClientViewSettingsT | null
-  onSettingsChange: (settings: ClientViewSettingsT) => void
-}
-
-// Controlled from the parent (Opcje menu) rather than owning its own trigger — a DropdownMenuItem
-// closes the menu on select, so the dialog can't live inside it.
-export function KosztorysShareDialog({
-  investmentId,
-  open,
-  onOpenChange,
-  token,
-  loaded,
-  onTokenChange,
-  settings,
-  onSettingsChange,
-}: PropsT) {
+export function KosztorysShareDialog() {
+  const { investmentId } = useKosztorysEditorContext()
+  // The token and the settings are fetched by the action on the menu click, not here: Radix fires
+  // onOpenChange only for its OWN trigger, never for a programmatic `open`. The settings are the same
+  // copy the „Ustawienia podglądu…" window edits, so the two surfaces can never show different answers.
+  const {
+    shareOpen: open,
+    setShareOpen: onOpenChange,
+    shareToken: token,
+    shareLoaded: loaded,
+    setShareToken: onTokenChange,
+    clientView: settings,
+    setClientView: onSettingsChange,
+  } = useKosztorysActions().investor
   const [confirmingRevoke, setConfirmingRevoke] = useState(false)
   const [pending, startTransition] = useTransition()
   // Every open starts at the settings, including when a link already exists — the point is that

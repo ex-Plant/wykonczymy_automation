@@ -7,18 +7,13 @@ import { clearKosztorysAction } from '@/lib/actions/kosztorys'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { toastMessage } from '@/lib/utils/toast'
 import { itemNoun, sectionNoun } from './sheet-report-words'
-
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCleared: () => void
-}
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
 
 // The one action in „Opcje" that leaves nothing behind, so it states the counts it is about to
 // delete rather than asking „na pewno?" over an unnamed amount.
-export function ClearKosztorysDialog({ investmentId, open, onOpenChange, onCleared }: PropsT) {
-  const { tree } = useKosztorysEditorContext()
+export function ClearKosztorysDialog() {
+  const { tree, investmentId, onTreeReplaced } = useKosztorysEditorContext()
+  const { open, setOpen: onOpenChange } = useKosztorysActions().clear
   const [pending, startTransition] = useTransition()
 
   const sections = tree.sections.length
@@ -39,7 +34,7 @@ export function ClearKosztorysDialog({ investmentId, open, onOpenChange, onClear
         toastMessage('Czyszczenie przerwane — odświeżam kosztorys', 'error', 6000)
       }
       onOpenChange(false)
-      onCleared()
+      onTreeReplaced?.()
     })
   }
 

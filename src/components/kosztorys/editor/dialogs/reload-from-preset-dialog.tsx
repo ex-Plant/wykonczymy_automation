@@ -13,13 +13,7 @@ import { toastMessage } from '@/lib/utils/toast'
 import { getPresetName, groupPresetSections, type PresetGroupT } from './preset-picker-groups'
 import { itemNoun, sectionNoun } from './sheet-report-words'
 import { usePresetSections } from './use-preset-sections'
-
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onReloaded: () => void
-}
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
 
 const countItems = (group: PresetGroupT) =>
   group.metas.reduce((total, meta) => total + meta.itemCount, 0)
@@ -29,8 +23,9 @@ const summary = (sections: number, items: number) =>
 
 // The counterpart to „Dodaj sekcję z szablonu", which appends; this one replaces, so both counts are
 // stated before the confirm.
-export function ReloadFromPresetDialog({ investmentId, open, onOpenChange, onReloaded }: PropsT) {
-  const { tree } = useKosztorysEditorContext()
+export function ReloadFromPresetDialog() {
+  const { tree, investmentId, onTreeReplaced } = useKosztorysEditorContext()
+  const { open, setOpen: onOpenChange } = useKosztorysActions().reloadPreset
   const { sections, resetSections } = usePresetSections(open)
   const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
@@ -69,7 +64,7 @@ export function ReloadFromPresetDialog({ investmentId, open, onOpenChange, onRel
         toastMessage('Wczytywanie przerwane — odświeżam kosztorys', 'error', 6000)
       }
       handleOpenChange(false)
-      onReloaded()
+      onTreeReplaced?.()
     })
   }
 

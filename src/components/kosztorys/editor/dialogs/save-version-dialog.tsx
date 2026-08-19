@@ -5,17 +5,15 @@ import { FormDialogShell } from '@/components/ui/form-dialog-shell'
 import { Input } from '@/components/ui/input'
 import { saveSnapshotAction } from '@/lib/actions/kosztorys-snapshots'
 import { toastMessage } from '@/lib/utils/toast'
-
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 // "Zapisz wersję" — a named manual restore point. The field is prefilled with the current timestamp
 // (editable) so a quick save-and-Enter still yields a sensible label, while typing a real name gives
 // the entry a findable title in the "Wersje" list above the ambient auto history.
-export function SaveVersionDialog({ investmentId, open, onOpenChange }: PropsT) {
+export function SaveVersionDialog() {
+  const { investmentId } = useKosztorysEditorContext()
+  const { open, setOpen: onOpenChange } = useKosztorysActions().version
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
 

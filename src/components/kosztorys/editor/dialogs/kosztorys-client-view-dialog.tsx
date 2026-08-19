@@ -9,28 +9,20 @@ import {
   saveClientViewDefaultsAction,
   saveClientViewSettingsAction,
 } from '@/lib/actions/kosztorys-client-view'
-import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { toastMessage } from '@/lib/utils/toast'
-
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  // Fetched by the parent on the menu click — Radix never fires onOpenChange for a programmatic
-  // `open`, the same reason the share dialog takes its token from above.
-  settings: ClientViewSettingsT | null
-  onSaved: (settings: ClientViewSettingsT) => void
-}
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 // Nothing is written until „Zapisz": closing the window leaves the client's link exactly as it was,
 // so the owner can look through the list without deciding anything.
-export function KosztorysClientViewDialog({
-  investmentId,
-  open,
-  onOpenChange,
-  settings,
-  onSaved,
-}: PropsT) {
+export function KosztorysClientViewDialog() {
+  const { investmentId } = useKosztorysEditorContext()
+  const {
+    settingsOpen: open,
+    setSettingsOpen: onOpenChange,
+    clientView: settings,
+    setClientView: onSaved,
+  } = useKosztorysActions().investor
   const [draft, setDraft] = useDraft(settings)
   const [pending, startTransition] = useTransition()
 

@@ -26,17 +26,8 @@ import type {
 import type { FormulaSampleT } from '@/lib/kosztorys/sheet-import/formula-health'
 import { formatQty } from '@/lib/kosztorys/format'
 import { formatPLN } from '@/lib/utils/format-currency'
-
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  result: SheetCompareResultT | null
-  error: string | null
-  loaded: boolean
-  // Re-runs the comparison with the new pointing in place — same window, no reopen.
-  onMappingSaved: () => void
-}
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 const MATCHES = 0.005
 
@@ -51,15 +42,18 @@ const MATCHES = 0.005
  * the refresh wrote: this window is the only thing that touches the stored Pomiar, so a read-shaped
  * dialog that writes in silence would leave the owner no way to tell it apart from one that doesn't.
  */
-export function SheetCompareDialog({
-  investmentId,
-  open,
-  onOpenChange,
-  result,
-  error,
-  loaded,
-  onMappingSaved,
-}: PropsT) {
+export function SheetCompareDialog() {
+  const { investmentId } = useKosztorysEditorContext()
+  // `read` re-runs the comparison with the new pointing in place — same window, no reopen.
+  const {
+    open,
+    setOpen: onOpenChange,
+    result,
+    error,
+    loaded,
+    read,
+  } = useKosztorysActions().sheetCompare
+
   return (
     <SheetReportDialog
       open={open}
@@ -79,7 +73,7 @@ export function SheetCompareDialog({
             problems={problems}
             columns={columns}
             consequence="nic nie zostało zmienione"
-            onMappingSaved={onMappingSaved}
+            onMappingSaved={read}
           />
         ) : !comparison || !refresh ? (
           <p className="text-muted-foreground text-sm">

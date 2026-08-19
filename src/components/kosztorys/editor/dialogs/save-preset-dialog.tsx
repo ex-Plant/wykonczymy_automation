@@ -7,20 +7,15 @@ import { Input } from '@/components/ui/input'
 import { ToggleGroup } from '@/components/ui/toggle-group'
 import { SimpleSelect } from '@/components/ui/simple-select'
 import { savePresetAction } from '@/lib/actions/kosztorys-presets'
-import type { PresetMetaT } from '@/lib/db/presets'
 import { toastMessage } from '@/lib/utils/toast'
-
-type PropsT = {
-  investmentId: number
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  // Fetched by the parent when the dialog opens; only the overwrite picker needs it.
-  existingPresets: PresetMetaT[]
-}
+import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
+import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 // "Zapisz jako szablon…" — save this kosztorys as a reusable, cross-investment template, itself
 // either a new named template or an overwrite of an existing one (name picked from the list).
-export function SavePresetDialog({ investmentId, open, onOpenChange, existingPresets }: PropsT) {
+export function SavePresetDialog() {
+  const { investmentId } = useKosztorysEditorContext()
+  const { open, setOpen: onOpenChange, existingPresets } = useKosztorysActions().savePreset
   const [name, setName] = useState('')
   const [mode, setMode] = useState<'new' | 'overwrite'>('new')
   const [overwriteName, setOverwriteName] = useState('')
