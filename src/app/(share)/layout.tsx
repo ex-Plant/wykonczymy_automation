@@ -1,5 +1,6 @@
 import '@/styles/globals.css'
 import type { Metadata } from 'next'
+import { ToastContainer } from 'react-toastify'
 import { cn } from '@/lib/utils/cn'
 import { abcFavorit, spaceMono } from '@/fonts'
 
@@ -18,7 +19,10 @@ export default function ShareLayout({ children }: { children: React.ReactNode })
       className={cn(abcFavorit.variable, spaceMono.variable, 'overscroll-none antialiased')}
       suppressHydrationWarning
     >
-      <body className="bg-background text-foreground relative min-h-screen">{children}</body>
+      <body className="bg-background text-foreground relative min-h-screen">
+        {children}
+        <ToastContainer style={{ zIndex: 10001 }} />
+      </body>
     </html>
   )
 }
