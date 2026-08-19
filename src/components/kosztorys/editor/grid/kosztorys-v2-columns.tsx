@@ -449,14 +449,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           // would read as one that was measured.
           (value) => (value == null ? '' : formatQty(value)),
         ),
-        minWidth: 90,
+        minWidth: 100,
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
     return keyCol(qtyField, floatColumnLeft, {
       id: qtyField,
       title: header,
-      minWidth: 90,
+      minWidth: 100,
     })
   })
 
