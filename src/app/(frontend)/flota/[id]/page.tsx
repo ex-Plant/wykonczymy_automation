@@ -7,6 +7,7 @@ import { STREAMS, markSeen } from '@/lib/db/notifications'
 import { fetchVehicleDetail } from '@/lib/queries/fleet'
 import { AddInspectionDialog } from '@/components/dialogs/add-inspection-dialog'
 import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
+import { VehicleFlags } from '@/components/fleet/vehicle-flags'
 import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge'
 import { VehicleDetailTabs } from '@/components/fleet/vehicle-detail-tabs'
 import { InfoList } from '@/components/ui/info-list'
@@ -41,6 +42,10 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
           items={[
             { label: 'Status', value: <VehicleStatusBadge status={vehicle.status} /> },
             { label: 'VIN', value: vehicle.vin || '—' },
+            {
+              label: 'Do wymiany',
+              value: <VehicleFlags vehicleId={vehicle.id} active={vehicle.activeFlags} />,
+            },
             {
               label: 'Od wymiany oleju',
               value: (

@@ -43,8 +43,13 @@ describe('findMissingInspections', () => {
   it('never reports Serwis, even for a vehicle with no events at all', () => {
     const missing = findMissingInspections([{ vehicle: vehicle(), events: [] }])
 
-    expect(missing).toHaveLength(5)
-    expect(missing.some((entry) => entry.type === 'SERVICE')).toBe(false)
+    expect(missing.map((entry) => entry.type)).toEqual([
+      'TECHNICAL',
+      'INSURANCE',
+      'OIL_CHANGE',
+      'WARRANTY',
+      'TYRES',
+    ])
   })
 
   it('counts an event with no due date as recorded — the gap is data, not absence', () => {

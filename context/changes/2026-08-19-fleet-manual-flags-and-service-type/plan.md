@@ -465,10 +465,10 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 4.1 the `setVehicleFlagsAction` spec passes
+- [x] 4.1 the `setVehicleFlagsAction` spec passes — ea75fc32
 
 ### Phase 5: UI — the „Do wymiany" column, the badge, the editor
 
 #### Automated
 
-- [ ] 5.1 `src/__tests__/lib/fleet` + `queries/fleet.test.ts` pass after the UI wiring
+- [x] 5.1 `src/__tests__/lib/fleet` + `queries/fleet.test.ts` pass after the UI wiring

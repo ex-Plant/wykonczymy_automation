@@ -4,7 +4,8 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge'
 import { DeadlineCell } from '@/components/fleet/deadline-cell'
 import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
-import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
+import { FlagBadge } from '@/components/fleet/flag-badge'
+import { INSPECTION_TYPE_LABELS, SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import type { FleetRowT } from '@/types/fleet'
 
 const col = createColumnHelper<FleetRowT>()
@@ -32,7 +33,21 @@ export function getFleetColumns() {
         </span>
       ),
     }),
-    ...INSPECTION_TYPES.map((type) =>
+    col.accessor((row) => row.activeFlags.length, {
+      id: 'flags',
+      header: 'Do wymiany',
+      // An unflagged car renders nothing, not a dash: the column is an alarm surface, and a column
+      // of dashes is what makes an alarm easy to miss.
+      cell: (info) => (
+        <span className="flex flex-wrap gap-1">
+          {info.row.original.activeFlags.map((type) => (
+            <FlagBadge key={type} type={type} />
+          ))}
+        </span>
+      ),
+    }),
+    // Only the scheduled types get a column — SERVICE has no deadline to show.
+    ...SCHEDULED_INSPECTION_TYPES.map((type) =>
       col.accessor((row) => row.deadlines[type].daysLeft ?? undefined, {
         id: type,
         header: INSPECTION_TYPE_LABELS[type].pl,
