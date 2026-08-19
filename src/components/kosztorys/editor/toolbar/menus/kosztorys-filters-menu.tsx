@@ -121,6 +121,7 @@ export function KosztorysFiltersMenu() {
       searchable
       title="Co widać: pozycje i sekcje"
       triggerClassName="w-fit min-w-0"
+      contentClassName="w-80"
       resetAction={{
         label: 'Zresetuj filtry',
         // The same reset the empty state offers — one way back to „pokaż wszystko", not a second one

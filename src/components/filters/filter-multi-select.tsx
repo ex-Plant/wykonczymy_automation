@@ -68,6 +68,9 @@ type FilterMultiSelectPropsT = {
   // whose menu hides things by more than the option list, where the ticked count would answer a
   // question nobody asked.
   triggerCount?: number
+  // Widens the panel for a menu whose rows are sentences rather than labels — at w-56 they wrap to
+  // three lines each.
+  contentClassName?: string
 }
 
 // URL param encoding: [] = all selected (no filter), ['__none__'] = nothing selected
@@ -93,6 +96,7 @@ export function FilterMultiSelect({
   actionsHeading,
   optionsHeading,
   triggerCount,
+  contentClassName,
 }: FilterMultiSelectPropsT) {
   const [open, setOpen] = useState(false)
   const [localSelected, setLocalSelected] = useState<string[] | null>(null)
@@ -211,7 +215,7 @@ export function FilterMultiSelect({
           )}
         </FilterTriggerButton>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-0" align="start">
+      <PopoverContent className={cn('w-56 p-0', contentClassName)} align="start">
         {resetAction && (
           <div className="border-border border-b p-1">
             <Button

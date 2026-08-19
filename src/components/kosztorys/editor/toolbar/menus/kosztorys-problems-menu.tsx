@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, RefreshCw, RotateCcw, TriangleAlert } from 'lucide-react'
+import { Fragment } from 'react'
 import { FilterTriggerButton } from '@/components/filters/filter-trigger-button'
 import {
   DropdownMenu,
@@ -62,7 +63,7 @@ export function KosztorysProblemsMenu() {
       </DropdownMenuTrigger>
       {/* „Pozycje ze zbyt wysoką stawką wykonawcy w widoku z narzędziami (1)" is a sentence, not
           a label: at the default width every row wrapped to three or four lines. */}
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-96">
         {/* A poprawiona pozycja is held in place while it is being fixed, so something has to say
             „skończyłem, przelicz to teraz" — and that gesture is this, not toggling the problem off
             and on again to get the same effect sideways. Shown only while one is engaged, because
@@ -89,14 +90,14 @@ export function KosztorysProblemsMenu() {
           </>
         )}
         <DropdownMenuLabel>Pokaż tylko to, co wymaga poprawki</DropdownMenuLabel>
-        {problemToggles.map((toggle) => (
-          <DropdownMenuItem
-            key={toggle.id}
-            onSelect={() => toggleConditionExclusive(toggle.id, PROBLEM_IDS)}
-          >
-            <Check className={cn('shrink-0', toggle.active ? 'opacity-100' : 'opacity-0')} />
-            <span className="whitespace-normal">{toggle.label}</span>
-          </DropdownMenuItem>
+        {problemToggles.map((toggle, index) => (
+          <Fragment key={toggle.id}>
+            {index > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem onSelect={() => toggleConditionExclusive(toggle.id, PROBLEM_IDS)}>
+              <Check className={cn('shrink-0', toggle.active ? 'opacity-100' : 'opacity-0')} />
+              <span className="whitespace-normal">{toggle.label}</span>
+            </DropdownMenuItem>
+          </Fragment>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
