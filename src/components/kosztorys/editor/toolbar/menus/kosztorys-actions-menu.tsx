@@ -11,6 +11,7 @@ import {
   Redo2,
   Save,
   Scale as ScaleIcon,
+  SpellCheck,
   Settings2,
   Share2,
   SheetIcon,
@@ -34,6 +35,7 @@ import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-ve
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
 import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-compare-dialog'
 import { compareWithSheet, type SheetCompareResultT } from '@/lib/actions/kosztorys-import'
+import { cleanItemDescriptionsAction } from '@/lib/actions/kosztorys'
 import { listPresetsAction } from '@/lib/actions/kosztorys-presets'
 import { getShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { readClientViewSettings } from '@/lib/queries/client-view-settings-endpoint'
@@ -70,7 +72,23 @@ export function KosztorysActionsMenu() {
   const [existingPresets, setExistingPresets] = useState<PresetMetaT[]>([])
   const [clientViewOpen, setClientViewOpen] = useState(false)
   const [clientView, setClientView] = useState<ClientViewSettingsT | null>(null)
+  const [cleaning, setCleaning] = useState(false)
   const settingsRequest = useLatestRequest()
+
+  // Rewrites every opis in place, so the grid is reseeded off the investment's revision token — the
+  // same signal the sheet compare uses after it writes.
+  function handleCleanDescriptions() {
+    setCleaning(true)
+    void cleanItemDescriptionsAction(investmentId)
+      .then((res) => {
+        if (!res.success) return toastMessage(res.error, 'error')
+        if (res.data === 0) return toastMessage('Nie znaleziono nic do poprawienia', 'info')
+        toastMessage(`Poprawiono opisy: ${res.data}`, 'success')
+        onTreeReplaced?.()
+      })
+      .catch(() => toastMessage('Nie udało się poprawić opisów', 'error'))
+      .finally(() => setCleaning(false))
+  }
 
   function handleOpenPreset() {
     setPresetOpen(true)
@@ -166,6 +184,13 @@ export function KosztorysActionsMenu() {
           <DropdownMenuItem onSelect={redo} disabled={!canRedo}>
             <Redo2 />
             <MenuItemBody label="Ponów" description="Cmd/Ctrl+Shift+Z" />
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleCleanDescriptions} disabled={cleaning}>
+            <SpellCheck />
+            <MenuItemBody
+              label="Popraw literówki w opisie prac"
+              description="Poprawia literówki, zbędne spacje i wielkie litery w całej rozpisce."
+            />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Wersje</DropdownMenuLabel>

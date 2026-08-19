@@ -6,6 +6,8 @@ import { protectedAction, validateAction } from '@/lib/actions/run-action'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
+import { cleanDescription } from '@/lib/kosztorys/clean-description'
+import { getItemDescriptions, setItemDescriptions } from '@/lib/db/kosztorys-descriptions'
 import {
   createSectionWithFirstItem,
   type CreatedSectionWithItemT,
@@ -257,6 +259,30 @@ export async function applyPercentDiscountToAllItemsAction(
         WHERE investment_id = ${investmentId}
       `)
       return { success: true }
+    },
+    ['kosztorysItems'],
+  )
+}
+
+// „Popraw literówki w opisie prac" — rewrites every opis in the kosztorys through one shared set of
+// rules (spelling, spacing, sentence case). Bulk overwrite of hand-typed text, irrecoverable by
+// in-session undo, so it snapshots first exactly like applyPercentDiscountToAllItemsAction.
+export async function cleanItemDescriptionsAction(
+  investmentId: number,
+): Promise<ActionResultT<number>> {
+  return protectedAction(
+    'cleanItemDescriptionsAction',
+    async ({ payload, user }) => {
+      const db = await getDb(payload)
+      const rows = await getItemDescriptions(db, investmentId)
+      const changed = rows.flatMap((row) => {
+        const description = cleanDescription(row.description)
+        return description === row.description ? [] : [{ id: row.id, description }]
+      })
+      if (changed.length === 0) return { success: true, data: 0 }
+
+      await captureAutoSnapshot(db, investmentId, user.id)
+      return { success: true, data: await setItemDescriptions(db, investmentId, changed) }
     },
     ['kosztorysItems'],
   )
