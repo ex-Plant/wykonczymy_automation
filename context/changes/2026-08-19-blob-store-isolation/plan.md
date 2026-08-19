@@ -352,17 +352,17 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 2.1 Guard spec passes: `pnpm exec vitest run src/__tests__/lib/env/schema.test.ts`
+- [x] 2.1 Guard spec passes: `pnpm exec vitest run src/__tests__/lib/env/schema.test.ts` — c1b3e5b5
 
 ### Phase 3: Refresh command, and a write guard on the restore tool
 
 #### Automated
 
-- [x] 3.1 Guard refuses production without the flag (non-zero exit, no upload lines)
-- [x] 3.2 Guard allows the preview store (proceeds past the check)
+- [x] 3.1 Guard refuses production without the flag (non-zero exit, no upload lines) — b6b1acb3
+- [x] 3.2 Guard allows the preview store (proceeds past the check) — b6b1acb3
 
 ### Phase 4: Write the rule down where it is read
 
 #### Automated
 
-- [x] 4.1 No phase-scoped automated check (prose only)
+- [x] 4.1 No phase-scoped automated check (prose only) — 1f8f5729

@@ -1358,3 +1358,28 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 - [ ] Sekcja „Koszty" na stronie pojazdu sumuje wpisy per rodzaj i w wierszu „Razem", a „Szczegóły" listują te same wpisy od najnowszego
 - [ ] Rodzaj przeglądu, w którym nikt nie wpisał kosztu, nie pojawia się w podsumowaniu jako 0 zł
 - [ ] Strona pojazdu otwiera się na „Przeglądy"; przełącznik „Koszty" pokazuje podsumowanie i szczegóły, a powrót na „Przeglądy" działa
+
+## blob-store-isolation — lokalny dev na preview Blob store
+
+### Faza 1: Przepięcie non-prod na preview store
+
+- [ ] `pnpm dev` wstaje i istniejąca faktura się renderuje (bajty serwuje teraz preview store)
+- [ ] Upload nowej faktury lokalnie kończy się sukcesem, a plik pojawia się w `wykonczymy-blob-preview`, nie w `wykonczymy-blob`
+- [ ] `vercel env pull` do pliku roboczego daje dla Development token preview, nie produkcyjny
+
+### Faza 2: Odrzucenie produkcyjnego tokenu Blob poza produkcją
+
+- [ ] Wklejenie produkcyjnego tokenu do `.env` (i `.env.local`) sprawia, że `pnpm dev` odmawia startu, a błąd nazywa `BLOB_READ_WRITE_TOKEN`
+
+### Faza 3: Komenda odświeżająca + blokada zapisu do proda
+
+- [ ] `pnpm blob:refresh:preview` kończy się i raportuje deltę, którą wgrał (0 tuż po świeżym restore)
+- [ ] Po `pnpm db:import` ze świeższego dumpa ta sama komenda sprawia, że wcześniej 404-ujące faktury renderują się lokalnie
+
+### Faza 4: Dokumentacja
+
+- [ ] Czytając samo `AGENTS.md` da się powiedzieć, które środowisko używa którego store'a i jak świadomie sięgnąć po produkcyjny
+
+### Dodatkowo (kasowanie — sedno zmiany)
+
+- [ ] Usunięcie testowego wydatku z lokalnym uploadem kasuje blob z **preview** store, a licznik plików w `wykonczymy-blob` (prod) pozostaje bez zmian
