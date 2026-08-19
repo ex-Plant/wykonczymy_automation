@@ -2,8 +2,9 @@
 
 import { ownerOnlyAction } from '@/lib/actions/owner-only-action'
 import {
-  sanitizeClientViewSettings,
-  type ClientViewSettingsT,
+  sanitizeClientViewConfig,
+  type ClientViewConfigT,
+  type ClientViewModeT,
 } from '@/lib/kosztorys/client-view-settings'
 import { findClientViewRow } from '@/lib/queries/kosztorys-client-view'
 import type { ActionResultT } from '@/types/action'
@@ -13,10 +14,10 @@ const FORBIDDEN = 'Tylko właściciel może zmieniać ustawienia podglądu inwes
 
 export async function saveClientViewSettingsAction(
   investmentId: number,
-  settings: ClientViewSettingsT,
+  config: ClientViewConfigT,
 ): Promise<ActionResultT> {
   return ownerOnlyAction('saveClientViewSettingsAction', FORBIDDEN, async ({ payload }) => {
-    const data = sanitizeClientViewSettings(settings)
+    const data = sanitizeClientViewConfig(config)
     const row = await findClientViewRow(payload, investmentId)
 
     if (row) {
@@ -45,13 +46,23 @@ export async function saveClientViewSettingsAction(
   })
 }
 
+// Read-modify-write, one variant at a time: „Zapisz jako domyślne" on the offer must not wipe the
+// firm-wide settlement default, which the owner is not even looking at when they press it.
 export async function saveClientViewDefaultsAction(
-  settings: ClientViewSettingsT,
+  config: ClientViewConfigT,
+  mode: ClientViewModeT,
 ): Promise<ActionResultT> {
   return ownerOnlyAction('saveClientViewDefaultsAction', FORBIDDEN, async ({ payload }) => {
+    const current = sanitizeClientViewConfig(
+      await payload.findGlobal({ slug: 'kosztorys-client-view-defaults', depth: 0 }),
+    )
+
     await payload.updateGlobal({
       slug: 'kosztorys-client-view-defaults',
-      data: sanitizeClientViewSettings(settings),
+      data: sanitizeClientViewConfig({
+        mode,
+        variants: { ...current.variants, [mode]: config.variants[mode] },
+      }),
     })
     return { success: true }
   })

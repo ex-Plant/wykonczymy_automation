@@ -461,7 +461,7 @@ Danych do przeniesienia nie ma — nikt nie odklikał jeszcze żadnego wariantu.
 
 #### Automated
 
-- [ ] 3.1 Spec DB-owy resolvera przechodzi
+- [x] 3.1 Spec DB-owy resolvera przechodzi
 
 ### Phase 4: UI
 

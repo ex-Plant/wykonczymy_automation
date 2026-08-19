@@ -2,7 +2,9 @@ import 'server-only'
 import { getPayload, type Payload } from 'payload'
 import config from '@payload-config'
 import {
-  sanitizeClientViewSettings,
+  clientViewSettingsForMode,
+  sanitizeClientViewConfig,
+  type ClientViewConfigT,
   type ClientViewSettingsT,
 } from '@/lib/kosztorys/client-view-settings'
 
@@ -29,8 +31,9 @@ export async function findClientViewRow(payload: Payload, investmentId: number) 
 }
 
 /**
- * The one answer to "what does investment N serve a client": its own row, else the firm-wide
- * default, else the code default. Read by both preview entrances and by the settings dialog, so the
+ * The one answer to "how is investment N configured for its client": its own row, else the firm-wide
+ * default, else the code default. Read by the settings dialogs, which need BOTH variants — the
+ * preview entrances take the resolved single variant from `getClientViewSettings` below, so the
  * dialog can never show a starting state the client does not get.
  *
  * Deliberately uncached and outside `cachedPreviewKosztorysEditorData`: two indexed reads mean a
@@ -43,7 +46,7 @@ export async function findClientViewRow(payload: Payload, investmentId: number) 
  * round-trip depths to reach it; the wasted global read when a row does exist is one row of a
  * single-row table.
  */
-export async function getClientViewSettings(investmentId: number): Promise<ClientViewSettingsT> {
+export async function getClientViewConfig(investmentId: number): Promise<ClientViewConfigT> {
   const payload = await getPayload({ config })
 
   const [row, defaults] = await Promise.all([
@@ -55,5 +58,10 @@ export async function getClientViewSettings(investmentId: number): Promise<Clien
     }),
   ])
 
-  return sanitizeClientViewSettings(row ?? defaults ?? {})
+  return sanitizeClientViewConfig(row ?? defaults ?? {})
+}
+
+// What the client is actually served: the active variant, and nothing about the inactive one.
+export async function getClientViewSettings(investmentId: number): Promise<ClientViewSettingsT> {
+  return clientViewSettingsForMode(await getClientViewConfig(investmentId))
 }

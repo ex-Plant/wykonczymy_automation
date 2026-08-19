@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
-import { findClientViewRow, getClientViewSettings } from '@/lib/queries/kosztorys-client-view'
+import {
+  findClientViewRow,
+  getClientViewConfig,
+  getClientViewSettings,
+} from '@/lib/queries/kosztorys-client-view'
+import { sanitizeClientViewConfig } from '@/lib/kosztorys/client-view-settings'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The resolution chain decides what a client is served, so it runs against the REAL DB: a `where`
@@ -8,6 +13,11 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 // stub while serving one investment's settings to another.
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
+
+const CODE_DEFAULTS = sanitizeClientViewConfig({})
+
+const OFFER_VARIANT = { hiddenColumns: ['discountValue'], hideEmptyRows: false }
+const SETTLEMENT_VARIANT = { hiddenColumns: ['plannedGross'], hideEmptyRows: true }
 
 describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
   let payload: Payload
@@ -27,8 +37,8 @@ describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
       collection: 'kosztorys-client-view',
       data: {
         investment: investmentWithRow,
-        hiddenColumns: ['discountValue'],
-        hideEmptyRows: false,
+        mode: 'SETTLEMENT',
+        variants: { OFFER: OFFER_VARIANT, SETTLEMENT: SETTLEMENT_VARIANT },
       },
     })
   })
@@ -40,7 +50,7 @@ describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
     // later spec's investment serves.
     await payload.updateGlobal({
       slug: 'kosztorys-client-view-defaults',
-      data: { hiddenColumns: [], hideEmptyRows: true },
+      data: { mode: 'OFFER', variants: {} },
     })
   })
 
@@ -52,39 +62,50 @@ describe.skipIf(!ENV_READY)('getClientViewSettings (DB)', () => {
     expect(row).not.toBeNull()
   })
 
-  it('serves the investment’s own row when it has one', async () => {
+  it('serves the variant the stored mode names, not the first one', async () => {
     const settings = await getClientViewSettings(investmentWithRow)
-    expect(settings).toEqual({ hiddenColumns: ['discountValue'], hideEmptyRows: false })
+    expect(settings).toEqual(SETTLEMENT_VARIANT)
+  })
+
+  it('keeps the inactive variant readable for the dialog', async () => {
+    const config = await getClientViewConfig(investmentWithRow)
+    expect(config.mode).toBe('SETTLEMENT')
+    expect(config.variants.OFFER).toEqual(OFFER_VARIANT)
   })
 
   it('drops a stored key outside the allowlist — the ceiling is not a stored decision', async () => {
     await payload.update({
       collection: 'kosztorys-client-view',
       where: { investment: { equals: investmentWithRow } },
-      data: { hiddenColumns: ['discountValue', 'note', 'priceMode'] },
+      data: {
+        variants: {
+          OFFER: OFFER_VARIANT,
+          SETTLEMENT: { hiddenColumns: ['plannedGross', 'note', 'priceMode'], hideEmptyRows: true },
+        },
+      },
     })
 
     const settings = await getClientViewSettings(investmentWithRow)
-    expect(settings.hiddenColumns).toEqual(['discountValue'])
+    expect(settings.hiddenColumns).toEqual(['plannedGross'])
   })
 
   it('falls back to the firm-wide default for an investment with no row', async () => {
     await payload.updateGlobal({
       slug: 'kosztorys-client-view-defaults',
-      data: { hiddenColumns: ['plannedGross'], hideEmptyRows: false },
+      data: { mode: 'SETTLEMENT', variants: { SETTLEMENT: SETTLEMENT_VARIANT } },
     })
 
     const settings = await getClientViewSettings(investmentWithoutRow)
-    expect(settings).toEqual({ hiddenColumns: ['plannedGross'], hideEmptyRows: false })
+    expect(settings).toEqual(SETTLEMENT_VARIANT)
   })
 
   it('falls back to the code default when the global holds nothing', async () => {
     await payload.updateGlobal({
       slug: 'kosztorys-client-view-defaults',
-      data: { hiddenColumns: [], hideEmptyRows: true },
+      data: { mode: 'OFFER', variants: {} },
     })
 
-    const settings = await getClientViewSettings(investmentWithoutRow)
-    expect(settings).toEqual({ hiddenColumns: [], hideEmptyRows: true })
+    const config = await getClientViewConfig(investmentWithoutRow)
+    expect(config).toEqual(CODE_DEFAULTS)
   })
 })
