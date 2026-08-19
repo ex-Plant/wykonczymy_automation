@@ -38,6 +38,13 @@ const minBlobs = Number(arg('--min-blobs', '0'))
 const LIST_API = 'https://blob.vercel-storage.com'
 const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`
 
+// `list()` reports the LOGICAL pathname; when a blob was uploaded with addRandomSuffix the real
+// storage key — the one Payload stores in `media.filename` and asks for on read — lives in the
+// URL instead (`foo.heic` vs `foo-T9Y1iW9h….heic`). Backing files up under `pathname` therefore
+// saves the right bytes under a name nothing resolves: the EX-459 restore drill found 7 invoices
+// restored-but-404ing this way. Key everything off the URL segment.
+const storageKey = (blob) => decodeURIComponent(new URL(blob.url).pathname.slice(1))
+
 // --- enumerate (read-only REST list) ---
 async function listAll() {
   const blobs = []
@@ -62,7 +69,7 @@ async function loadKnown(path) {
     const raw = await readFile(path, 'utf8')
     if (!raw.trim()) return new Set()
     const parsed = JSON.parse(raw)
-    return new Set((parsed.blobs ?? []).map((b) => b.pathname))
+    return new Set((parsed.blobs ?? []).map((b) => b.key ?? b.pathname))
   } catch (err) {
     if (err.code === 'ENOENT') return new Set() // no prior manifest => full seed
     throw err
@@ -77,7 +84,7 @@ if (current.length < minBlobs) {
 }
 
 const known = await loadKnown(prevManifestPath)
-const fresh = current.filter((b) => !known.has(b.pathname))
+const fresh = current.filter((b) => !known.has(storageKey(b)))
 console.log(`\nVercel: ${current.length} blobs, ${fmtMB(totalBytes)} · known: ${known.size} · new: ${fresh.length}\n`)
 
 // --- download only the new blobs (anonymous GET) ---
@@ -85,15 +92,29 @@ const mediaDir = join(outDir, 'media')
 await mkdir(mediaDir, { recursive: true })
 let done = 0
 const failures = []
+// The Blob API throws transient 5xx under sustained traffic, which would otherwise fail the whole
+// run and leave the delta unbacked until someone notices. A *persistent* 403 on every blob is a
+// different animal — the store is suspended over plan limits, and no amount of retrying helps.
+const RETRIES = 4
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+async function download(url) {
+  for (let attempt = 1; ; attempt += 1) {
+    const res = await fetch(url) // public blob, no auth header
+    if (res.ok || attempt > RETRIES) return res
+    await sleep(1000 * 2 ** (attempt - 1))
+  }
+}
+
 for (const b of fresh) {
-  const res = await fetch(b.downloadUrl ?? b.url) // public blob, no auth header
-  if (!res.ok) { console.error(`  FAIL ${res.status}  ${b.pathname}`); failures.push({ pathname: b.pathname, status: res.status }); continue }
+  const key = storageKey(b)
+  const res = await download(b.downloadUrl ?? b.url)
+  if (!res.ok) { console.error(`  FAIL ${res.status}  ${key}`); failures.push({ key, status: res.status }); continue }
   const buf = Buffer.from(await res.arrayBuffer())
-  const dest = join(mediaDir, b.pathname)
+  const dest = join(mediaDir, key)
   await mkdir(dirname(dest), { recursive: true })
   await writeFile(dest, buf)
   done += 1
-  console.log(`  ${String(done).padStart(4)}/${fresh.length}  ${b.pathname}`)
+  console.log(`  ${String(done).padStart(4)}/${fresh.length}  ${key}`)
 }
 
 // --- emit the new manifest = union of everything ever seen (mirror-only) ---
@@ -102,10 +123,10 @@ const byPath = new Map()
 if (prevManifestPath) {
   try {
     const prev = JSON.parse(await readFile(prevManifestPath, 'utf8') || '{}')
-    for (const b of prev.blobs ?? []) byPath.set(b.pathname, b)
+    for (const b of prev.blobs ?? []) byPath.set(b.key ?? b.pathname, b)
   } catch (err) { if (err.code !== 'ENOENT') throw err }
 }
-for (const b of current) byPath.set(b.pathname, { pathname: b.pathname, url: b.url, size: b.size })
+for (const b of current) byPath.set(storageKey(b), { key: storageKey(b), pathname: b.pathname, url: b.url, size: b.size })
 const mergedBlobs = [...byPath.values()]
 await writeFile(
   join(outDir, `manifest-${stamp}.json`),
@@ -113,7 +134,7 @@ await writeFile(
 )
 
 // --- completeness: every live blob must be represented in the manifest ---
-const covered = current.every((b) => byPath.has(b.pathname))
+const covered = current.every((b) => byPath.has(storageKey(b)))
 console.log(`\nNew files downloaded: ${done}/${fresh.length} · manifest total: ${mergedBlobs.length}`)
 if (!covered) { console.error('FAIL completeness: a live blob is missing from the manifest'); process.exit(1) }
 if (failures.length) { console.error(`FAIL: ${failures.length} downloads errored — see manifest`); process.exit(1) }

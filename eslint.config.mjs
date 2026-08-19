@@ -113,6 +113,7 @@ export default ts.config(
       'scripts/inspect-sheet.mjs',
       'scripts/blob-mirror.mjs',
       'scripts/blob-snapshot.mjs',
+      'scripts/blob-restore.mjs',
     ],
   },
 )

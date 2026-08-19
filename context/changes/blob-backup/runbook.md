@@ -1,6 +1,12 @@
 # Vercel Blob Backup & Recovery Runbook (EX-459)
 
-> **Status:** IN PROGRESS — living document, update as we go.
+> **Status:** Phases 1–3 DONE — daily mirror verified unattended, restore drill executed
+> 2026-08-19 against a dedicated preview store. It found and fixed a real backup defect
+> (the random-suffix key bug, §2) and exposed a bigger one: **on the Hobby plan a restore
+> cannot be completed at all** (§2, "The Hobby plan cannot execute a restore") — the drill
+> exceeded the Advanced-Operations allowance and suspended every blob store on the account,
+> production included. Resolved by upgrading the plan; drill closed 7/7 the same day.
+> Living document, update as we go.
 > **Linear:** [EX-459](https://linear.app/ex-plant/issue/EX-459) · **Started:** 2026-07-13
 > **Purpose:** Invoice/receipt files live in Vercel Blob with zero backup. Blob has no
 > versioning / no undelete / no PITR — `del()` and overwrite are permanent. These are
@@ -16,6 +22,7 @@ So recovery = **restore DB dump** (already backed up hourly to FTP) **+ re-uploa
 backup by filename**. No URL rewriting is needed (see §2).
 
 ```
+0. CHECK THE PLAN FIRST — a restore needs Pro, see §2. On Hobby it suspends the store mid-way.
 1. Restore the DB dump (Neon → FTP, hourly)          → gives media rows + transactions_rels links
 2. Re-upload every backup file into the target store  → put(filename, bytes, addRandomSuffix:false)
 3. Open a transaction, confirm its invoice renders    → done
@@ -43,10 +50,10 @@ by `transactions_rels.order` — not a column on the transaction.
 - Lose the Blob → you lose bytes, never the mapping. The DB still knows which `filename`
   belongs to which transaction.
 
-| Backup                                | Holds                                | Answers                                        |
-| ------------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| Backup                                | Holds                                       | Answers                                                       |
+| ------------------------------------- | ------------------------------------------- | ------------------------------------------------------------- |
 | **DB dump** (exists, hourly Neon→FTP) | `transactions_rels`, `media.id`, `filename` | _which_ receipt pages belong to _which_ transaction, in order |
-| **Blob snapshot** (this task)         | the bytes, keyed by `filename`       | _what the receipt actually is_                 |
+| **Blob snapshot** (this task)         | the bytes, keyed by `filename`              | _what the receipt actually is_                                |
 
 **Both are required; neither alone recovers a usable system.**
 
@@ -77,6 +84,25 @@ All verified against code + the local dump DB (5433). Re-verify before trusting 
 - Join keys that matter: **`filename`** and **`sizes_thumbnail_filename`**. `url` /
   `sizes_thumbnail_url` are filename-derived and travel unchanged.
 
+### The storage key is in the URL, not in `pathname` (found by the Phase-3 drill)
+
+`list()` returns two different names and only one of them is the key the app asks for:
+
+```
+pathname : prg-17-06-2026-49fa56-7c32b7.heic                                  ← logical name
+url      : …/prg-17-06-2026-49fa56-7c32b7-T9Y1iW9hKIpd9PzojysULOWKjQRspd.heic ← REAL storage key
+media.filename in Postgres = the URL segment (the suffixed one)
+```
+
+Blobs uploaded while `addRandomSuffix` was on (pre-`appendShortId` uploads, ~2026-07) carry that
+26-char suffix. Keying the backup off `pathname` saves the **right bytes under a name nothing
+resolves**: the file restores, `/api/media/file/<filename>` still 404s. 7 transaction-linked
+invoices were in exactly this state; the drill is what surfaced it, because "files exist" passes
+and only "it renders" fails. **`scripts/blob-mirror.mjs` now derives the key from `blob.url`**
+(`storageKey()`), and the manifest carries it as `key`. Old manifests are read by
+`key ?? pathname`, so the affected files simply look new to the next run and are re-fetched under
+the correct name. The wrongly-named copies stay on FTP — mirror-only never deletes — and are inert.
+
 ### Filename uniqueness (why keying by filename is safe)
 
 1. **Blob keys are unique by definition** — a store cannot hold two blobs at one pathname
@@ -99,6 +125,34 @@ All verified against code + the local dump DB (5433). Re-verify before trusting 
 - **3 media rows point at already-missing blobs** (`id` 429, 580, 581 — old WhatsApp images).
   **0 transactions reference them** → harmless orphans. The snapshot cannot include them
   (already gone from the store). Documented so they aren't mistaken for backup failures.
+
+### The Hobby plan cannot execute a restore (found the hard way, 2026-08-19)
+
+**A full restore costs one Advanced Operation per file, and the Hobby plan includes 2K/month.**
+Vercel counts `put()` / `copy()` / `list()` as Advanced Operations (`del()` is free), so
+re-uploading the current 2.3k blobs is ~2.3k operations before a single retry — over the
+allowance on its own. The Phase-3 drill hit 3K/2K and Vercel **suspended every blob store on
+the account**, prod included:
+
+```
+wykonczymy-blob          ● Suspended   Billing State: Inactive
+wykonczymy-blob-preview  ● Suspended   Billing State: Inactive   ← same second, account-level
+```
+
+What suspension does: the management API keeps working (`list` → 200, metadata intact, **no data
+is lost**), but every public URL returns **403**, so `/api/media/file/<filename>` serves nothing.
+On Hobby the counter does not reset early — Vercel's terms are _"wait until 30 days have passed"_.
+
+**Therefore: a real recovery on this account requires Pro before it starts.** Attempting one on
+Hobby suspends the store part-way through, leaving production with half its media and 403 on the
+rest — strictly worse than not starting. The FTP backup itself is fine and complete; it is the
+_write_ path back into Blob that the plan gates.
+
+Storage was never the binding limit (434 MB / 1 GB). Deleting a store frees GB-month but does
+**not** refund Advanced Operations — it is cleanup, never a fix for suspension.
+
+The daily mirror is unaffected: it spends ~3 `list()` calls per run (~90/month) and its downloads
+are Simple Operations (100K included), so it stays far inside the free tier.
 
 ---
 
@@ -196,15 +250,38 @@ ideally time-aligned.
 2. **Pick the target store** and its `BLOB_READ_WRITE_TOKEN`:
    - Same-store repair (partial loss) → prod store token.
    - New store (account/project loss) → new store token; also set it as the app's env var.
-3. **Re-upload the backup**, for every file in the snapshot:
 
-   ```js
-   put(filename, bytes, { access: 'public', addRandomSuffix: false, token })
+   **Assert the store id before any write.** The token carries it verbatim
+   (`vercel_blob_rw_<STORE_ID>_…`), so there is no excuse for guessing which store a shell
+   variable points at — during the drill a stale `tok.txt` sent 7 `put()`s into **production**
+   instead of preview. Gate the command:
+
+   ```bash
+   case "$TOK" in
+     vercel_blob_rw_<EXPECTED_STORE_ID>_*) echo "GUARD OK" ;;
+     *) echo "GUARD FAILED — aborting"; exit 1 ;;
+   esac
    ```
 
-   - `addRandomSuffix: false` is **mandatory** (§2 config invariant).
-   - Mirror-only: for a partial loss, uploading files that already exist just overwrites with
-     identical bytes — safe. Never `del()`.
+   Blob has no versioning: a `put()` at an existing key is an irreversible overwrite. That drill
+   write happened to be harmless only because the bytes were identical to what was already there.
+
+3. **Pull the backup off FTP**, then **re-upload it** with the restore tool (rehearsed
+   2026-08-19 on 2347 files):
+
+   ```bash
+   lftp -c "set ftp:ssl-force true; set ftp:passive-mode on; open -u \$FTP_USER,\$FTP_PASS 188.210.222.1;
+            lcd ./blob-restore; mirror --parallel=4 /blob_backups/media/ ."
+
+   BLOB_READ_WRITE_TOKEN=<TARGET store token> node scripts/blob-restore.mjs \
+     --dir ./blob-restore --concurrency 8
+   ```
+
+   - `addRandomSuffix` is forced to `0` inside the script — **mandatory** (§2 config invariant).
+   - Interrupted or partly failed? Re-run with **`--skip-existing`**: it lists the target and
+     uploads only what is missing. Transient 5xx are retried with backoff.
+   - Put-only: for a partial loss, re-uploading files that already exist overwrites with identical
+     bytes — safe. The script never calls `del()`.
 
 4. **No DB URL rewrite** — `media.url` is relative and filename-resolved (§2). Do not touch it.
 5. **Verify:** open a transaction with a `transactions_rels` row at `path='invoice'` → invoice
@@ -282,9 +359,55 @@ immutable invoices. Phase 2's paired manifest+dump timestamp minimizes it.
     emptied `test/media/` first): downloaded 12, uploaded them **flat** to `test/media/` (verified
     no `media/media/` nesting via FTP `cls`), manifest written to `test/manifests/`.
   - `/blob_backups/test/` cleaned up afterward — only real `media/` (1771) + `manifests/` baseline remain.
-- **Still owed (→ Done):**
-  1. **Confirm the first _unattended_ cron run** — daily `30 3 * * *` (03:30 UTC / 05:30 CEST) firing
-     into `/blob_backups/` (not `test/`). Verify: `gh run list --workflow "Backup Vercel Blob"` shows
-     a `schedule`-triggered `success` + a fresh `/blob_backups/manifests/manifest-*.json`.
-  2. **Phase 3 restore drill** (§1 / Phase 3 above) — seed a preview-branch Blob store from these
-     backup files and map to preview transactions, proving end-to-end recovery.
+- **2026-08-19** — **Unattended cron CONFIRMED. Phase 2 closed.** `gh run list --workflow
+blob-backup.yml` shows 10 consecutive `schedule`-triggered runs, all `success` (most recent 4h
+  before this check), and FTP carries one manifest per day — latest
+  `/blob_backups/manifests/manifest-20260819-040909.json`. `/blob_backups/media/` has grown
+  **1771 → 2346** files since the seed, so the delta path is demonstrably writing real bytes, not
+  just exiting green. Nothing was pruned, as intended.
+- **2026-08-19** — **Phase 3 restore drill DONE.** Store `wykonczymy-blob-preview`
+  (`store_rNjU0fDb7Sz8bHVA`, fra1, public) created and connected to the **preview** environment
+  only; the whole FTP mirror (2347 files / 227 MB) pulled down and re-uploaded into it with
+  `scripts/blob-restore.mjs`. Results:
+  - **Pathnames survive a re-upload unchanged** — `addRandomSuffix: '0'` puts the key back exactly
+    as backed up, so the open question is settled: **no `media.url` rewrite is ever needed.**
+  - Preview store ends at **2347 blobs / 222.79 MB**; the preview DB's 950 `media` rows resolve
+    except 10 (3 known orphans + the 7 suffix-key files below). Thumbnails: 448 of 448 present
+    minus the 3 orphans.
+  - Acceptance ran through the plugin's own read path (`head()` + fetch, `staticHandler.js`), not
+    just a file listing: content-type and byte size match `media.filesize` exactly.
+  - **Defect found: the random-suffix key bug (§2).** 7 transaction-linked invoices were backed up
+    under `pathname` instead of the real key — bytes safe, name wrong, so they restore into a 404.
+    `blob-mirror.mjs` fixed to key off `blob.url`; the next daily run re-fetches them correctly.
+  - Robustness gap fixed while drilling: the Blob API throws transient 5xx under sustained upload
+    (13/2347 failed on the first pass) — `put`/download now retry with backoff, and
+    `blob-restore.mjs --skip-existing` resumes a partial run. (The 403s seen late in the drill were
+    **not** throttling — they were the suspension below. Retry does not help there and must not be
+    read as a fix for it.)
+  - Notes for the next drill: preview deployments sit behind Vercel SSO, so the acceptance was run
+    against a local server pointed at the preview DB + preview store. A worktree can't serve it
+    either — Turbopack rejects the symlinked `node_modules` ("points out of the filesystem root").
+- **2026-08-19 — INCIDENT caused by the drill: every blob store on the account suspended.** The
+  restore's ~2.3k `put()` calls pushed Advanced Operations to 3K against the Hobby allowance of 2K,
+  and Vercel suspended **both** stores at the same second (`Billing State: Inactive`) — prod
+  included. Effect on production: public URLs 403 (no invoice or photo renders) **and new uploads
+  fail**, since `put()` is itself an advanced operation. No data lost — the management API still
+  lists all 2345 prod blobs with correct sizes. Not fixable from this side: `del()` is free and
+  refunds nothing, so deleting files or the preview store does not lift it; on Hobby the counter
+  only rolls after 30 days. Resolution is a plan upgrade (Pro / Pro trial), which is the owner's
+  call. **The lesson is now §2's "The Hobby plan cannot execute a restore" — read it before any
+  future drill or real recovery.**
+- **2026-08-19 — suspension lifted (plan upgraded), drill closed 7/7.** Both stores back to
+  `● Active`, prod URLs 200. The 7 mis-keyed invoices were fetched from prod under their real
+  storage key and put into the preview store, and the acceptance re-run end-to-end: transactions
+  **3773–3779** all resolve through the plugin's own read path (`head()` + fetch), with byte size
+  and content-type matching their `media` rows. Phase 3 is now fully green.
+  - Two process fixes came out of it, both folded into §5 step 2: **assert the store id from the
+    token before any write** (a stale token variable sent those 7 `put()`s to prod first), and
+    remember `pg` returns `numeric` as a **string** — a verifier comparing `bytes !== row.filesize`
+    reports a mismatch on identical sizes.
+- **Still owed (→ Done):** nothing for the backup itself. Follow-ups in Linear: re-run the drill
+  quarterly (**on Pro, and against a plan-limit budget** — a drill is as expensive as a real
+  recovery), decide what to do about the 3 orphan `media` rows (429/580/581 — bytes gone from the
+  store since before the first snapshot, referenced by no transaction), and push the mirror's
+  storage-key fix so the daily run re-fetches the 7 mis-keyed invoices.
