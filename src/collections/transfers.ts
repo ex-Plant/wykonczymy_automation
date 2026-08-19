@@ -136,10 +136,11 @@ export const Transfers: CollectionConfig = {
       options: [...PAYMENT_METHODS],
     },
     {
-      // EX-536 netto/brutto wpłata bucket. Three-state: NET / GROSS / null. INVESTOR_DEPOSIT only,
-      // create-only (immutable once set). Not `required`, and the create schema keeps it `.optional()`
-      // — the form always sends a plane now, but rows written before that stay null and read as netto
-      // in the reconciliation.
+      // EX-536 netto/brutto wpłata bucket. Three-state: NET / GROSS / null. INVESTOR_DEPOSIT only.
+      // Not `required`, and the create schema keeps it `.optional()` — the form always sends a plane
+      // now, but rows written before that stay null and read as netto in the reconciliation. Editable
+      // after the fact: a plane typed wrong (or a row predating the field) has no other way back, and
+      // it decides which side of the tryb mieszany the wpłata pays.
       name: 'vatPlane',
       type: 'select',
       label: { en: 'Deposit VAT plane', pl: 'Rozliczenie netto/brutto' },
@@ -147,7 +148,6 @@ export const Transfers: CollectionConfig = {
         { label: { en: 'Net', pl: 'Netto' }, value: 'NET' },
         { label: { en: 'Gross', pl: 'Brutto' }, value: 'GROSS' },
       ],
-      access: { update: () => false },
       admin: {
         condition: (data) => typeOf(data) === 'INVESTOR_DEPOSIT',
       },

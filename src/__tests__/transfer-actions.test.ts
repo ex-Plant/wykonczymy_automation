@@ -726,6 +726,34 @@ describe('updateTransferAction', () => {
     )
   })
 
+  it('INVESTOR_DEPOSIT → vatPlane edit is persisted', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ type: 'INVESTOR_DEPOSIT', vatPlane: 'NET', createdBy: adminUser.id }),
+    )
+
+    const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS' }))
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ vatPlane: 'GROSS' }),
+      }),
+    )
+  })
+
+  it('non-deposit type → vatPlane is dropped, never written', async () => {
+    mockFindByID.mockResolvedValueOnce(makeOriginalTransfer({ createdBy: adminUser.id }))
+
+    const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS' }))
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ vatPlane: expect.anything() }),
+      }),
+    )
+  })
+
   it('cancelled transaction → returns error', async () => {
     mockFindByID.mockResolvedValueOnce(makeOriginalTransfer({ cancelled: true }))
 
