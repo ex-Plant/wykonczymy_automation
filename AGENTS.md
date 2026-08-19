@@ -149,6 +149,17 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 - The **E2E suite** runs against an isolated `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, db `wykonczymy-test`), never the dev DB. Populate/reset its fixtures with `pnpm db:import:test` (same dump → test DB). `pnpm test:e2e` starts the container (`--wait` on its healthcheck) but does **not** import — run `db:import:test` once after a fresh volume or to reset.
 - **`pnpm db:import:test` must be followed by `pnpm seed:kosztorys:test`.** Prod dumps carry zero kosztorys rows, and `pnpm test:parity`'s dataset floor now fails closed on that — with no kosztorys in `db-test` every listing figure reads zero robocizny and the parity guard would pass green having tested nothing about it.
 - `GOOGLE_SERVICE_ACCOUNT_JSON` and `KOSZTORYS_TEMPLATE_SHEET_ID` in `.env` are real working credentials — Google Sheets writes hit live data.
+- **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
+  has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`
+  values are the real invoices. A delete on localhost against the production store therefore destroys
+  a tax-retained faktura. Local dev, Vercel Development and Preview/staging all point
+  `BLOB_READ_WRITE_TOKEN` at the **preview** store; the production token lives under
+  `BLOB_READ_WRITE_TOKEN_PROD` in `.env` for the backup scripts only. Two guards enforce it: the env
+  layer refuses a production token when `VERCEL_ENV !== 'production'` (`src/lib/env/schema.ts`), and
+  `scripts/blob-restore.mjs` refuses to write to that store without `--allow-prod`. Beware
+  `.env.local` — `vercel env pull` writes there and Next.js prefers it over `.env`. The preview store
+  is a point-in-time copy, so an invoice newer than the last restore 404s locally; top it up with
+  `pnpm blob:refresh:preview`. Detail: `context/changes/blob-backup/runbook.md` §3.
 - Never `git push`; a human pushes to remotes.
 
 ## Architecture

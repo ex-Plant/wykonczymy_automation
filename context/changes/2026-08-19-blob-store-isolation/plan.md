@@ -365,4 +365,4 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [ ] 4.1 No phase-scoped automated check (prose only)
+- [x] 4.1 No phase-scoped automated check (prose only)

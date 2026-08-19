@@ -161,6 +161,14 @@ are Simple Operations (100K included), so it stays far inside the free tier.
 - Vercel Blob has **no read-only store token** — one long-lived `BLOB_READ_WRITE_TOKEN` per
   store, always read+write. `issueSignedToken({operations:['get','head']})` exists but is
   per-pathname and can't `list`, so it can't enumerate the store.
+- **Only production holds the production token (2026-08-19).** Local dev, the Vercel Development
+  scope and Preview/staging all resolve `BLOB_READ_WRITE_TOKEN` to the **preview** store
+  (`rNjU0fDb7Sz8bHVA`); the production token lives on as `BLOB_READ_WRITE_TOKEN_PROD` in `.env`,
+  for the backup scripts only. Two guards keep it there: the env layer refuses a production token
+  whenever `VERCEL_ENV !== 'production'` (`src/lib/env/schema.ts`), and `blob-restore.mjs` refuses
+  to write to that store without `--allow-prod`. Watch for `.env.local` — `vercel env pull` writes
+  there and Next.js gives it precedence over `.env`, so a pull is the most likely way the
+  production token comes back.
 - **Safety comes from the calls, not the token.** The snapshot passes the RW token to exactly
   **one read-only call — `list()`** (no destructive variant). The download loop uses anonymous
   `fetch()` on public URLs, no credential. `put` / `del` / `copy` / `empty-store` are never
@@ -254,7 +262,9 @@ ideally time-aligned.
    **Assert the store id before any write.** The token carries it verbatim
    (`vercel_blob_rw_<STORE_ID>_…`), so there is no excuse for guessing which store a shell
    variable points at — during the drill a stale `tok.txt` sent 7 `put()`s into **production**
-   instead of preview. Gate the command:
+   instead of preview. `blob-restore.mjs` now enforces this itself: it derives the store id from
+   the token and **exits non-zero without issuing a request** when that store is production and
+   `--allow-prod` was not passed. For any other command that writes, gate it by hand:
 
    ```bash
    case "$TOK" in
@@ -274,7 +284,7 @@ ideally time-aligned.
             lcd ./blob-restore; mirror --parallel=4 /blob_backups/media/ ."
 
    BLOB_READ_WRITE_TOKEN=<TARGET store token> node scripts/blob-restore.mjs \
-     --dir ./blob-restore --concurrency 8
+     --dir ./blob-restore --concurrency 8 [--allow-prod]
    ```
 
    - `addRandomSuffix` is forced to `0` inside the script — **mandatory** (§2 config invariant).
