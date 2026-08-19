@@ -87,12 +87,10 @@ export function SectionHeaderCell({
           event.preventDefault()
           toggle()
         }}
-        // `w-max`, not `w-full`: the band hugs its own content and is let out of the cell by the
+        // `w-max`, not `w-full`: the band hugs its own content and is let out of the cell by theDda
         // `overflow: visible` rule in globals.css, so the name stops being clipped at the „Sekcja"
         // column's width.
-        // `normal-case` undoes the `capitalize` the host cell may carry („Opis prac" does): the band
-        // is chrome, not an item description, so „(17 poz.)" and „netto … zł" must read as written.
-        className="hover:bg-accent/50 flex h-full w-max cursor-pointer items-center gap-2 px-2 text-lg font-semibold normal-case"
+        className="hover:bg-accent/50 flex h-full w-max cursor-pointer items-center gap-2 px-2 text-lg font-semibold"
       >
         <SectionDot />
         {onRename ? (

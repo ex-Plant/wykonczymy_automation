@@ -310,10 +310,6 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       title: title('description', opts),
       minWidth: 360,
       grow: 2,
-      // The browser's UA sheet sets `text-transform: none` directly on form controls (Preflight
-      // doesn't touch it), so the inherited `capitalize` reaches the resting text but has to be
-      // re-applied to the editor.
-      cellClassName: 'capitalize [&_textarea]:capitalize',
     }),
   ]
 
