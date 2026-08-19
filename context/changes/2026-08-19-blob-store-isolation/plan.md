@@ -358,8 +358,8 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [ ] 3.1 Guard refuses production without the flag (non-zero exit, no upload lines)
-- [ ] 3.2 Guard allows the preview store (proceeds past the check)
+- [x] 3.1 Guard refuses production without the flag (non-zero exit, no upload lines)
+- [x] 3.2 Guard allows the preview store (proceeds past the check)
 
 ### Phase 4: Write the rule down where it is read
 

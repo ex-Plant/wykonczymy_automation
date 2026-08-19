@@ -17,6 +17,7 @@
 //     --dir ./blob-restore [--concurrency 8] [--dry-run] [--limit 5]
 //
 //   --dir <path>        local backup dir (mirror of the store's pathnames)
+//   --allow-prod        REQUIRED when the token targets the production store (see the guard below)
 //   --concurrency <n>   parallel uploads (default 8)
 //   --skip-existing     list the target first and upload only what is missing (resume a run)
 //   --dry-run           enumerate + report, upload nothing
@@ -33,6 +34,19 @@ const has = (name) => process.argv.includes(name)
 
 const token = process.env.BLOB_READ_WRITE_TOKEN
 if (!token) { console.error('BLOB_READ_WRITE_TOKEN missing (must be the TARGET store token)'); process.exit(1) }
+
+// A token names its store verbatim: `vercel_blob_rw_<STORE_ID>_…`. The app's env layer refuses the
+// production store outside production, but this script reads process.env directly and never imports
+// it — and on 2026-08-19 a stale token variable sent 7 put()s at production with nothing objecting.
+// So the one tool that writes asks out loud before it can touch the real invoices.
+const PROD_STORE_ID = 'oJHLWhvHKJrsgWiN'
+const targetStore = token.split('_')[3]
+if (targetStore === PROD_STORE_ID && !has('--allow-prod')) {
+  console.error(`\nREFUSING: BLOB_READ_WRITE_TOKEN targets the PRODUCTION store (${PROD_STORE_ID}).`)
+  console.error('Pass --allow-prod if that is genuinely what you want; otherwise use the preview token.\n')
+  process.exit(1)
+}
+if (targetStore === PROD_STORE_ID) console.log(`\n⚠️  --allow-prod: writing to the PRODUCTION store (${PROD_STORE_ID})`)
 
 const dir = arg('--dir')
 if (!dir) { console.error('--dir <backup dir> required'); process.exit(1) }
