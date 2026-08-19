@@ -36,27 +36,26 @@ describe('resolveItemRates', () => {
     expect(resolved[0]).toMatchObject({ wToolsRate: 5.1, ownToolsRate: 3, kind: 'agree' })
   })
 
-  it('takes both rates from ONE tab, never one from each', () => {
-    // Mixing sources yields an incoherent pair — a „z narzędziami" price that is cheaper than the
-    // „bez narzędzi" one it is paired with. This was an actual defect in the analysis script.
+  it('never mixes one rate from each tab — a disagreement enters blank instead', () => {
     const resolved = resolveItemRates(items('malowanie'), [
       tab('bez narzędzi', [{ description: 'malowanie', wTools: 10, ownTools: 8, typed: true }]),
       tab('z narzędziami', [{ description: 'malowanie', wTools: 20, ownTools: 16 }]),
     ])
 
-    const [first] = resolved
-    expect([first.wToolsRate, first.ownToolsRate]).toEqual([10, 8])
+    expect(resolved[0]).toMatchObject({ kind: 'conflict', wToolsRate: 0, ownToolsRate: 0 })
   })
 
-  it('rejects a candidate whose bez-narzędzi rate exceeds its z-narzędziami rate', () => {
+  it('sends a praca whose bez-narzędzi rate exceeds its z-narzędziami rate to the owner', () => {
     // Białostocka r104 „gruntowanie": 3 zł with tools against 5,10 zł without. Cheaper WITH tools is
-    // arithmetically impossible — a scoring heuristic without this guard picked exactly that pair.
+    // arithmetically impossible, so that row was read wrong — and a read we cannot trust is not
+    // evidence that the OTHER tab is right either.
     const resolved = resolveItemRates(items('gruntowanie'), [
       tab('bez narzędzi', [{ description: 'gruntowanie', wTools: 3, ownTools: 5.1, typed: true }]),
       tab('z narzędziami', [{ description: 'gruntowanie', wTools: 5.1, ownTools: 3 }]),
     ])
 
-    expect(resolved[0]).toMatchObject({ wToolsRate: 5.1, ownToolsRate: 3 })
+    expect(resolved[0]).toMatchObject({ kind: 'conflict', conflictReason: 'incoherent' })
+    expect(resolved[0].candidates).toHaveLength(2)
   })
 
   it('takes the only tab that has the praca at all', () => {
@@ -72,7 +71,10 @@ describe('resolveItemRates', () => {
     })
   })
 
-  it('prefers the hand-typed value over a formula-derived one and says so', () => {
+  // The hand-typed cell used to win outright. On the owner's sheet it came in LOWER than the formula
+  // it beat, which is the opposite of what that rule assumed — and „ręcznie wpisana" is also what a
+  // misread row looks like. Every disagreement is now the owner's to settle (owner, 2026-08-19).
+  it('does not let a hand-typed cell settle a disagreement', () => {
     const resolved = resolveItemRates(items('szpachlowanie'), [
       tab('bez narzędzi', [{ description: 'szpachlowanie', wTools: 26, ownTools: 20 }]),
       tab('z narzędziami', [
@@ -81,15 +83,17 @@ describe('resolveItemRates', () => {
     ])
 
     expect(resolved[0]).toMatchObject({
-      wToolsRate: 30,
-      kind: 'auto',
-      sourceTab: 'z narzędziami',
+      kind: 'conflict',
+      conflictReason: 'disagree',
+      wToolsRate: 0,
+      sourceTab: null,
     })
+    expect(resolved[0].candidates).toHaveLength(2)
   })
 
   // Picking the first tab here wrote a stawka nobody approved and left no trace of the other kwota in
   // the kosztorys. The praca now enters blank and the owner arbitrates in the sheet.
-  it('leaves a praca whose hand-typed tabs disagree without any stawka', () => {
+  it('reports every kwota that was in play so the owner can arbitrate', () => {
     const resolved = resolveItemRates(items('akrylowanie'), [
       tab('bez narzędzi', [{ description: 'akrylowanie', wTools: 12, ownTools: 9, typed: true }]),
       tab('z narzędziami', [{ description: 'akrylowanie', wTools: 15, ownTools: 11, typed: true }]),
@@ -129,6 +133,16 @@ describe('resolveItemRates', () => {
 
     expect(resolved[0]).toMatchObject({ kind: 'conflict', wToolsRate: 0, ownToolsRate: 0 })
     expect(resolved[0].candidates).toHaveLength(2)
+  })
+
+  // The report groups conflicts by reason, so an impossible pair in the ONLY cennik that has the
+  // praca must still say which kind of conflict it is — there is no second tab to compare it against.
+  it('marks a lone impossible pair as a misread rather than a disagreement', () => {
+    const resolved = resolveItemRates(items('gruntowanie'), [
+      tab('z narzędziami', [{ description: 'gruntowanie', wTools: 3, ownTools: 5.1 }]),
+    ])
+
+    expect(resolved[0]).toMatchObject({ kind: 'conflict', conflictReason: 'incoherent' })
   })
 
   it('reports a praca missing from every tab instead of guessing a rate', () => {

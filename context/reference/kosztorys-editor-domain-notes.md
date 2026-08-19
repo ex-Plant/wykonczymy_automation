@@ -438,7 +438,16 @@ j.m.` wśród wierszy policzonych** (wpisane z palca są wykluczone: to decyzje 
   cenniku" (nie ma z czym porównywać), a w kosztorysie znajduje się je diagnostyką **„bez ceny
   wykonawcy"** (per widok, jak `overpriced-*`). **Pusta para vs wypełniona to też konflikt**: arkusz
   renderuje niewypełnioną komórkę jako 0, więc „za darmo" i „nikt nie wypełnił" to ta sama liczba i
-  tylko właściciel je rozróżni.
+  tylko właściciel je rozróżni. **Od 2026-08-19 KAŻDA różnica jest konfliktem** (właściciel): padły
+  dwa ostatnie automaty — „wpisana ręcznie bije formułę" i „para niemożliwa (bez narzędzi > z
+  narzędziami) jest odrzucana, a reszta się zgadza, więc bierzemy resztę". Ręcznie wpisana stawka
+  wchodziła NIŻSZA od formuły, którą pokonywała, czyli odwrotnie niż zakładała reguła, a „ręcznie
+  wpisane" wygląda tak samo jak źle odczytany wiersz — więc żadna z tych przesłanek nie rozstrzyga.
+  `kind: 'auto'` zniknął; w raporcie zostaje fold „Stawki z jednego cennika" (praca jest tylko w
+  jednej zakładce — nie ma z czym się nie zgadzać). Konflikty niosą `conflictReason`
+  (`'disagree' | 'incoherent'`) i mają **osobny fold na powód**: „cenniki podają różne kwoty" to
+  pytanie o arkusz, „para niemożliwa" to pytanie o NASZ odczyt arkusza — każde chce innego akapitu
+  pod tabelką, a per wiersz byłoby tym samym zdaniem powtórzonym w kółko.
 - **Wypłaty podwykonawcy w arkuszu = ręczny rejestr, NIE wyliczenie** (Białostocka 5, zweryfikowane
   na formułach zakładki `zakres pracy bez narzędzi`, wiersze 396–400). Po stronie podwykonawcy arkusz
   liczy **tylko jedno**: „suma wykonanej pracy" (r398 `=SUM(W396:AF396)` = Σ etapów × stawka „bez

@@ -11,17 +11,12 @@ import {
   type RatesReportModeT,
 } from '@/components/kosztorys/editor/dialogs/sheet-rates-verdict'
 import type { StaleRateT } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
-import type { ReportedRateResolutionT } from '@/lib/kosztorys/sheet-import/resolve-rates'
+import type {
+  RateConflictReasonT,
+  ReportedRateResolutionT,
+} from '@/lib/kosztorys/sheet-import/resolve-rates'
 import { cn } from '@/lib/utils/cn'
 import { formatPLN } from '@/lib/utils/format-currency'
-
-// Why this kwota won, under the kwota itself rather than in a column of its own: the reason is only
-// ever read about the figure that went into the kosztorys, and a whole column repeated it per row.
-// No „wzięto —" prefix: green already says which kwota entered, on every one of these rows.
-const TAKEN_NOTES: Record<'single' | 'auto', string> = {
-  single: 'jedyny cennik',
-  auto: 'wpisana ręcznie',
-}
 
 type PropsT = {
   // Which dialog is rendering this. The comparison writes nothing, so it must not speak about what
@@ -44,11 +39,7 @@ type PropsT = {
  */
 export function SheetRatesBlock({ mode, decisions, stale = [] }: PropsT) {
   const conflicts = decisions?.filter((rate) => rate.kind === 'conflict') ?? []
-  const resolved =
-    decisions?.filter(
-      (rate): rate is ReportedRateResolutionT & { kind: 'single' | 'auto' } =>
-        rate.kind !== 'conflict',
-    ) ?? []
+  const singles = decisions?.filter((rate) => rate.kind === 'single') ?? []
 
   return (
     <SheetReportBlock
@@ -78,55 +69,99 @@ export function SheetRatesBlock({ mode, decisions, stale = [] }: PropsT) {
         </ReportFold>
       )}
 
-      {conflicts.length > 0 && (
-        <ReportFold
-          summary={
-            mode === 'import'
-              ? `Stawki bez rozstrzygnięcia (${conflicts.length}) — wejdą puste, do uzupełnienia ręcznie`
-              : `Stawki bez rozstrzygnięcia (${conflicts.length}) — arkusz nie mówi, która kwota jest właściwa`
-          }
-        >
-          <RatesByTabTable rows={conflicts.map(conflictRow)} />
-          {/* The one thing nobody guesses from the table: „zakres pracy z narzędziami" and „zakres
-              pracy bez narzędzi" are two catalogues of the SAME prace, and each carries BOTH price
-              columns. So the tab name in a row says which catalogue we read, never which column. */}
-          <p className="text-muted-foreground text-xs">
-            Obie zakładki „zakres pracy" mają obie kolumny — i „z narzędziami", i „bez narzędzi" —
-            więc każda z nich sama w sobie wystarczy. Gdy podają różne kwoty, nie wybieramy za
-            Ciebie:{' '}
-            {mode === 'import'
-              ? 'te prace wejdą bez stawki wykonawcy (0 zł) i czekają na uzupełnienie.'
-              : 'dla tych prac arkusz nie podaje jednej stawki wykonawcy, więc nie ma z czym porównać kosztorysu.'}{' '}
-            Znajdziesz je w kosztorysie przez „Problemy → bez ceny wykonawcy". Pusta komórka w
-            cenniku też liczy się jako rozbieżność — arkusz pokazuje ją jako 0 zł i nie da się jej
-            odróżnić od pracy faktycznie za darmo.
-          </p>
-        </ReportFold>
-      )}
+      <ConflictFold
+        mode={mode}
+        reason="disagree"
+        rows={conflicts.filter((rate) => rate.conflictReason !== 'incoherent')}
+      />
+      <ConflictFold
+        mode={mode}
+        reason="incoherent"
+        rows={conflicts.filter((rate) => rate.conflictReason === 'incoherent')}
+      />
 
-      {resolved.length > 0 && (
+      {singles.length > 0 && (
         <ReportFold
           tone="text-muted-foreground"
-          // Not „cenniki nie mówiły tego samego": the list also holds prace that appear in ONE cennik,
-          // which have nothing to disagree with. The fold says what is true of every row in it.
-          summary={`Stawki do sprawdzenia (${resolved.length}) — rozstrzygnięte automatycznie`}
+          // Nothing was decided here — these prace stand in one cennik only, so there was never a
+          // second kwota to weigh. Said plainly, because the fold used to promise „rozstrzygnięte
+          // automatycznie" and that is now something the import never does.
+          summary={`Stawki z jednego cennika (${singles.length}) — druga zakładka nie ma tej pracy`}
         >
-          <RatesByTabTable rows={resolved.map(resolvedRow)} />
+          <RatesByTabTable rows={singles.map(singleRow)} />
         </ReportFold>
       )}
     </SheetReportBlock>
   )
 }
 
+/**
+ * One reason a praca has no stawka, as its own fold. Two reasons, two folds rather than a column
+ * saying which is which: „cenniki się nie zgadzają" is a question about the sheet, „para jest
+ * niemożliwa" is a question about our read of it, and each needs a different paragraph under the
+ * table. Per-row it would be the same sentence repeated down the list.
+ */
+function ConflictFold({
+  mode,
+  reason,
+  rows,
+}: {
+  mode: RatesReportModeT
+  reason: RateConflictReasonT
+  rows: ReportedRateResolutionT[]
+}) {
+  if (rows.length === 0) return null
+
+  const summary =
+    reason === 'disagree'
+      ? `Stawki bez rozstrzygnięcia (${rows.length}) — cenniki podają różne kwoty`
+      : `Stawki bez rozstrzygnięcia (${rows.length}) — para niemożliwa, zły odczyt wiersza`
+
+  return (
+    <ReportFold summary={mode === 'import' ? `${summary}, wejdą puste` : summary}>
+      <RatesByTabTable rows={rows.map(conflictRow)} />
+      <p className="text-muted-foreground text-xs">
+        {reason === 'disagree' ? (
+          // The one thing nobody guesses from the table: „zakres pracy z narzędziami" and „zakres
+          // pracy bez narzędzi" are two catalogues of the SAME prace, and each carries BOTH price
+          // columns. So the tab name in a row says which catalogue we read, never which column.
+          <>
+            Obie zakładki „zakres pracy" mają obie kolumny — i „z narzędziami", i „bez narzędzi" —
+            więc każda z nich sama w sobie wystarczy. Gdy podają różne kwoty, nie wybieramy za
+            Ciebie. Pusta komórka w cenniku też liczy się jako rozbieżność — arkusz pokazuje ją jako
+            0 zł i nie da się jej odróżnić od pracy faktycznie za darmo.{' '}
+          </>
+        ) : (
+          <>
+            Wykonawca z własnym sprzętem nie może być droższy od takiego, któremu sprzęt dajemy —
+            narzędzia są całą różnicą. Taka para znaczy, że obie kwoty przyszły z wierszy, które do
+            siebie nie należą, więc nie bierzemy z tego cennika nic.{' '}
+          </>
+        )}
+        {mode === 'import'
+          ? 'Te prace wejdą bez stawki wykonawcy (0 zł) i czekają na uzupełnienie.'
+          : 'Dla tych prac arkusz nie podaje jednej stawki wykonawcy, więc nie ma z czym porównać kosztorysu.'}{' '}
+        Znajdziesz je w kosztorysie przez „Problemy → bez ceny wykonawcy".
+      </p>
+    </ReportFold>
+  )
+}
+
 // One praca as the table renders it: what each zakładka said, keyed by the zakładka's own name. The
 // note under a kwota answers a different question per fold — „wpisana ręcznie / z formuły" where the
-// owner has to arbitrate, „wzięto / pominięto" where we already did. `taken` marks the pair that is
-// now in the kosztorys, so the owner can read which figure won without reading a note at all.
+// owner has to arbitrate, „jedyny cennik" where there was nothing to weigh.
+//
+// The tone is PER PLANE, because a conflict almost never covers both: the cenniki agree on
+// „z narzędziami" and part ways on „bez narzędzi", and colouring the whole pair red would hide which
+// of the two the owner actually has to settle.
+type RateToneT = 'taken' | 'match' | 'differs'
+
 type TabbedRateCellT = {
   wToolsRate: number
   ownToolsRate: number
   note: string
-  taken: boolean
+  wToolsTone?: RateToneT
+  ownToolsTone?: RateToneT
 }
 
 type TabbedRateRowT = {
@@ -134,56 +169,59 @@ type TabbedRateRowT = {
   byTab: Map<string, TabbedRateCellT>
 }
 
-const conflictRow = (rate: ReportedRateResolutionT): TabbedRateRowT => ({
+const conflictRow = (rate: ReportedRateResolutionT): TabbedRateRowT => {
+  const candidates = rate.candidates ?? []
+  // With one cennik there is nothing to compare against, so neither plane gets a colour — the row is
+  // here because its own pair is impossible, not because two zakładki disagreed.
+  const tone = (plane: 'wToolsRate' | 'ownToolsRate'): RateToneT | undefined => {
+    if (candidates.length < 2) return undefined
+    return candidates.every((candidate) => same(candidate[plane], candidates[0][plane]))
+      ? 'match'
+      : 'differs'
+  }
+  const wToolsTone = tone('wToolsRate')
+  const ownToolsTone = tone('ownToolsRate')
+
+  return {
+    description: rate.description,
+    byTab: new Map(
+      candidates.map((candidate) => [
+        candidate.tab,
+        {
+          wToolsRate: candidate.wToolsRate,
+          ownToolsRate: candidate.ownToolsRate,
+          // Both planes of one zakładka are read from one row, and in practice a row is typed or
+          // computed as a whole — one note per pair rather than two identical ones per kwota.
+          note: candidate.wToolsTyped || candidate.ownToolsTyped ? 'wpisana ręcznie' : 'z formuły',
+          wToolsTone,
+          ownToolsTone,
+        },
+      ]),
+    ),
+  }
+}
+
+// Kwoty are money to six places at most; comparing raw floats would call 0,65×20 and 13 different.
+const same = (left: number, right: number): boolean => Math.abs(left - right) < 1e-6
+
+const singleRow = (rate: ReportedRateResolutionT): TabbedRateRowT => ({
   description: rate.description,
   byTab: new Map(
-    (rate.candidates ?? []).map((candidate) => [
-      candidate.tab,
-      {
-        wToolsRate: candidate.wToolsRate,
-        ownToolsRate: candidate.ownToolsRate,
-        // Both planes of one zakładka are read from one row, and in practice a row is typed or
-        // computed as a whole — one note per pair rather than two identical ones per kwota.
-        note: candidate.wToolsTyped || candidate.ownToolsTyped ? 'wpisana ręcznie' : 'z formuły',
-        // Nothing is green here on purpose: the whole point of a conflict is that no kwota entered.
-        taken: false,
-      },
-    ]),
-  ),
-})
-
-const resolvedRow = (
-  rate: ReportedRateResolutionT & { kind: 'single' | 'auto' },
-): TabbedRateRowT => ({
-  description: rate.description,
-  byTab: new Map([
-    ...(rate.sourceTab
-      ? ([
+    rate.sourceTab
+      ? [
           [
             rate.sourceTab,
             {
               wToolsRate: rate.wToolsRate,
               ownToolsRate: rate.ownToolsRate,
-              note: TAKEN_NOTES[rate.kind],
-              taken: true,
+              note: 'jedyny cennik',
+              wToolsTone: 'taken',
+              ownToolsTone: 'taken',
             },
           ],
-        ] as const)
-      : []),
-    ...(rate.rejected
-      ? ([
-          [
-            rate.rejected.tab,
-            {
-              wToolsRate: rate.rejected.wToolsRate,
-              ownToolsRate: rate.rejected.ownToolsRate,
-              note: 'pominięto',
-              taken: false,
-            },
-          ],
-        ] as const)
-      : []),
-  ]),
+        ]
+      : [],
+  ),
 })
 
 /**
@@ -216,11 +254,13 @@ function RatesByTabTable({ rows }: { rows: TabbedRateRowT[] }) {
             const cell = row.byTab.get(tab)
             return [
               {
-                content: <RateCell rate={cell?.wToolsRate} note={cell?.note} taken={cell?.taken} />,
+                content: (
+                  <RateCell rate={cell?.wToolsRate} note={cell?.note} tone={cell?.wToolsTone} />
+                ),
               },
               {
                 content: (
-                  <RateCell rate={cell?.ownToolsRate} note={cell?.note} taken={cell?.taken} />
+                  <RateCell rate={cell?.ownToolsRate} note={cell?.note} tone={cell?.ownToolsTone} />
                 ),
               },
             ]
@@ -249,19 +289,22 @@ function TabHeader({ tab, plane }: { tab: string; plane: string }) {
   )
 }
 
-// Green says „this is the kwota the kosztorys now holds" — the question the owner opens this fold
-// with, answered by the figure itself instead of by a column pointing at it.
-function RateCell({ rate, note, taken }: { rate?: number; note?: string; taken?: boolean }) {
+// Colour answers the question the owner opens the fold with, at the level they have to act on:
+// green „ta kwota jest w kosztorysie / tu obie zakładki mówią to samo", red „te dwie kwoty się
+// rozjeżdżają — to tę parę rozstrzygasz".
+const TONE_CLASS: Record<RateToneT, string> = {
+  taken: 'text-green-600',
+  match: 'text-green-600',
+  differs: 'text-red-600',
+}
+
+function RateCell({ rate, note, tone }: { rate?: number; note?: string; tone?: RateToneT }) {
   if (rate === undefined) return <span className="text-muted-foreground">—</span>
+  const toneClass = tone ? TONE_CLASS[tone] : undefined
   return (
     <>
-      <span className={cn('whitespace-nowrap', taken && 'text-green-600')}>{formatPLN(rate)}</span>
-      <span
-        className={cn(
-          'block text-xs whitespace-nowrap',
-          taken ? 'text-green-600' : 'text-muted-foreground',
-        )}
-      >
+      <span className={cn('whitespace-nowrap', toneClass)}>{formatPLN(rate)}</span>
+      <span className={cn('block text-xs whitespace-nowrap', toneClass ?? 'text-muted-foreground')}>
         {note}
       </span>
     </>

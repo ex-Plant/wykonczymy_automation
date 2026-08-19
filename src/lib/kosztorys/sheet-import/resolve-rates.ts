@@ -7,9 +7,9 @@ export type RateRowT = {
   description: string
   wToolsRate: number
   ownToolsRate: number
-  // Whether the cell was typed by hand rather than computed. A hand-typed rate is a decision the
-  // owner made about THIS praca; a formula is the default markup applied to everything. That is why
-  // a typed value outranks a derived one when the tabs disagree.
+  // Whether the cell was typed by hand rather than computed. It no longer settles anything — it is
+  // shown beside the kwota in the conflict table, so the owner arbitrating a disagreement can see
+  // which side somebody actually wrote down.
   wToolsTyped: boolean
   ownToolsTyped: boolean
   // Whether the cell MOVES when Cena j.m. moves. Only a rate that does may be imported as a
@@ -22,13 +22,18 @@ export type RateRowT = {
 
 export type RateTabT = { title: string; rows: RateRowT[] }
 
+// Why a conflict is a conflict. The two read completely differently to the owner: „disagree" is a
+// question about the sheet's own answer („który cennik ma rację"), „incoherent" is a question about
+// OUR read of it („ten wiersz wzięliśmy nie stamtąd, co trzeba"). Grouped by this in the report, so
+// the reason is read once per group instead of once per praca.
+export type RateConflictReasonT = 'disagree' | 'incoherent'
+
 // Why a resolution came out the way it did — every value but `agree` is shown to the owner, because
 // each one means the two price lists did not simply say the same thing.
 export type RateDecisionKindT =
   | 'agree' // both tabs, same pair
   | 'single' // only one tab has this praca
-  | 'auto' // tabs disagreed, one was hand-typed — resolved without asking
-  | 'conflict' // the cenniki disagree with nothing to break the tie: NOT resolved, imports blank
+  | 'conflict' // the cenniki don't agree, or a pair reads as misread: NOT resolved, imports blank
   | 'missing' // no tab has it: the praca imports at 0 zł
 
 // The kinds the preview lists one by one. `agree` says nothing, and `missing` is reported as a count
@@ -57,11 +62,10 @@ export type RateResolutionT = {
   wToolsTracksPrice: boolean
   ownToolsTracksPrice: boolean
   sourceTab: string | null
-  // What the tab that lost said, for the preview. Only set on `auto`.
-  rejected?: { tab: string; wToolsRate: number; ownToolsRate: number }
-  // Only set on `conflict`, where there is no winner and no rejected side — just the cenniki's
-  // answers, all of them, for the owner to arbitrate in the sheet.
+  // Only set on `conflict`, where there is no winner — just the cenniki's answers, all of them, for
+  // the owner to arbitrate in the sheet.
   candidates?: RateCandidateT[]
+  conflictReason?: RateConflictReasonT
 }
 
 // A resolution worth showing to the owner — the two silent kinds are already filtered out.
@@ -107,16 +111,11 @@ const referencesColumn = (column: number) => {
 
 // A pair where the subcontractor who brings their own tools costs MORE than one we equip is
 // arithmetically impossible — the tools are the difference. Such a pair means the two rate columns
-// were read from a row that doesn't belong to this praca, so it is dropped before any comparison
-// rather than scored against the other tab.
+// were read from a row that doesn't belong to this praca.
 const isCoherent = (row: RateRowT): boolean => row.ownToolsRate <= row.wToolsRate
 
-// A pair with no money in it. The sheet renders an unfilled cell and a deliberate „za darmo" as the
-// same 0, so a blank pair may not lose to a filled one on its own — see `decide`.
-const isBlank = (row: RateRowT): boolean => !(row.wToolsRate > 0) && !(row.ownToolsRate > 0)
-
 /**
- * The cenniki disagree and nothing breaks the tie, so the import stops choosing: the praca enters with
+ * The cenniki did not say one thing, so the import stops choosing: the praca enters with
  * NO stawka (0 zł, an explicit amount — never „auto", which would invent money at the investment's
  * global multiplier) and the owner fills it in. Every figure that was in play rides along, so the
  * report can name all of them and where each came from.
@@ -124,12 +123,14 @@ const isBlank = (row: RateRowT): boolean => !(row.wToolsRate > 0) && !(row.ownTo
 function unresolved(
   description: string,
   pool: ReadonlyArray<{ tab: string; row: RateRowT }>,
+  conflictReason: RateConflictReasonT,
 ): RateResolutionT {
   return {
     description,
     wToolsRate: 0,
     ownToolsRate: 0,
     kind: 'conflict',
+    conflictReason,
     wToolsTracksPrice: false,
     ownToolsTracksPrice: false,
     sourceTab: null,
@@ -159,80 +160,34 @@ function decide(
     }
   }
 
-  const coherent = candidates.filter(({ row }) => isCoherent(row))
-  // Nothing coherent anywhere is not a reason to import 0 zł — it is a reason to import the
-  // authoritative tab's figure and put the praca in front of the owner.
-  const pool = coherent.length > 0 ? coherent : candidates
-  const [winner, ...rest] = pool
+  // An impossible pair is not a cennik that disagrees — it is a row we read wrong, and a read we
+  // cannot trust says nothing about the rows around it either. So it goes to the owner whether it
+  // stood alone or beside a tab that happened to agree with the rest.
+  if (candidates.some(({ row }) => !isCoherent(row)))
+    return unresolved(description, candidates, 'incoherent')
+
+  const [first, ...rest] = candidates
   const base = {
     description,
-    wToolsRate: winner.row.wToolsRate,
-    ownToolsRate: winner.row.ownToolsRate,
-    wToolsTracksPrice: winner.row.wToolsTracksPrice,
-    ownToolsTracksPrice: winner.row.ownToolsTracksPrice,
-    sourceTab: winner.tab,
+    wToolsRate: first.row.wToolsRate,
+    ownToolsRate: first.row.ownToolsRate,
+    wToolsTracksPrice: first.row.wToolsTracksPrice,
+    ownToolsTracksPrice: first.row.ownToolsTracksPrice,
+    sourceTab: first.tab,
   }
 
   if (candidates.length === 1) return { ...base, kind: 'single' }
 
-  const other = rest.find(
+  const disagrees = rest.some(
     ({ row }) =>
-      !same(row.wToolsRate, winner.row.wToolsRate) ||
-      !same(row.ownToolsRate, winner.row.ownToolsRate),
+      !same(row.wToolsRate, first.row.wToolsRate) ||
+      !same(row.ownToolsRate, first.row.ownToolsRate),
   )
-  if (!other) {
-    if (coherent.length === candidates.length) return { ...base, kind: 'agree' }
-    // The survivors agree, but the guard dropped a candidate to get here — that dropped pair is
-    // exactly what the owner needs to see, so it rides along as the rejected side.
-    const dropped = candidates.find(({ row }) => !isCoherent(row))
-    return {
-      ...base,
-      kind: 'auto',
-      ...(dropped && {
-        rejected: {
-          tab: dropped.tab,
-          wToolsRate: dropped.row.wToolsRate,
-          ownToolsRate: dropped.row.ownToolsRate,
-        },
-      }),
-    }
-  }
-
-  const rejected = {
-    tab: other.tab,
-    wToolsRate: other.row.wToolsRate,
-    ownToolsRate: other.row.ownToolsRate,
-  }
-  const winnerTyped = winner.row.wToolsTyped || winner.row.ownToolsTyped
-  const otherTyped = other.row.wToolsTyped || other.row.ownToolsTyped
-
-  // An empty pair against a filled one is a conflict even when the filled side was typed by hand: an
-  // unfilled cennik cell renders as 0, so „nikt tego nie wypełnił" and „ta praca jest za darmo" are
-  // the same figure and only the owner can tell them apart (owner, 2026-08-17).
-  if (isBlank(winner.row) !== isBlank(other.row)) return unresolved(description, pool)
-
-  // One side hand-typed: that side is the owner's decision about this praca and wins outright.
-  if (otherTyped && !winnerTyped) {
-    return {
-      description,
-      wToolsRate: other.row.wToolsRate,
-      ownToolsRate: other.row.ownToolsRate,
-      kind: 'auto',
-      wToolsTracksPrice: other.row.wToolsTracksPrice,
-      ownToolsTracksPrice: other.row.ownToolsTracksPrice,
-      sourceTab: other.tab,
-      rejected: {
-        tab: winner.tab,
-        wToolsRate: winner.row.wToolsRate,
-        ownToolsRate: winner.row.ownToolsRate,
-      },
-    }
-  }
-  if (winnerTyped && !otherTyped) return { ...base, kind: 'auto', rejected }
-
-  // Both typed and different, or both derived and different: nothing here says which one is the
-  // truth, and picking the first tab would have written a stawka the owner never approved.
-  return unresolved(description, pool)
+  // Every disagreement goes to the owner, including the one a hand-typed cell used to settle (owner,
+  // 2026-08-19): the typed side came in LOWER than the formula it beat, which is the opposite of what
+  // the rule assumed, and a pair that far apart is as likely to be a misread row as a decision. The
+  // rule also cannot see WHICH plane was typed — it read „ta zakładka jest ręczna" off either cell.
+  return disagrees ? unresolved(description, candidates, 'disagree') : { ...base, kind: 'agree' }
 }
 
 /**

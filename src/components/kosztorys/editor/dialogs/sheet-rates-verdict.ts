@@ -32,14 +32,14 @@ export function ratesVerdict(
   if (conflicts > 0) {
     const conflictClause =
       mode === 'import'
-        ? `Bez stawki wykonawcy wejdzie ${conflicts} ${rateNoun(conflicts)} — cenniki podają różne kwoty, więc nie wybieramy za Ciebie. Do uzupełnienia ręcznie w kosztorysie.`
-        : `${conflicts} ${rateNoun(conflicts)} nie ma rozstrzygnięcia w arkuszu — cenniki podają różne kwoty, więc arkusz nie mówi, ile ta praca kosztuje.`
+        ? `Bez stawki wykonawcy wejdzie ${conflicts} ${rateNoun(conflicts)} — arkusz nie podaje dla nich jednej pewnej kwoty, więc nie wybieramy za Ciebie. Do uzupełnienia ręcznie w kosztorysie.`
+        : `${conflicts} ${rateNoun(conflicts)} nie ma rozstrzygnięcia w arkuszu — nie podaje dla nich jednej pewnej kwoty, więc nie wiadomo, ile ta praca kosztuje.`
     return [conflictClause, staleClause].filter(Boolean).join(' ')
   }
 
   if (staleClause) return staleClause
-  // Everything in the fold is worth a look — but „cenniki nie powiedziały tego samego" is a claim the
-  // list cannot keep: a praca listed in one cennik only has nothing to disagree with.
   if (decisions.length === 0) return 'Oba cenniki podały te same stawki.'
-  return `${decisions.length} ${rateNoun(decisions.length)} do sprawdzenia — rozstrzygnięte automatycznie.`
+  // What is left cannot be a disagreement — those are conflicts now. These prace simply stand in one
+  // cennik, so the sentence reports where the stawka came from, not that anything was settled.
+  return `${decisions.length} ${rateNoun(decisions.length)} tylko w jednym cenniku — stamtąd wzięliśmy stawkę.`
 }
