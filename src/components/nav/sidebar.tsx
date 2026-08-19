@@ -3,21 +3,12 @@
 import { Button } from '@/components/ui/button'
 import { logoutAction } from '@/lib/actions/auth'
 import { refreshDataAction } from '@/lib/actions/refresh'
-import { isAdminOrOwnerRole, isManagementRole } from '@/lib/auth/roles'
+import { isManagementRole } from '@/lib/auth/roles'
 import { SECTION_LINKS } from '@/lib/constants/sections'
 import { UnreadFleetBadge } from '@/components/nav/unread-fleet-badge'
 import { toastMessage } from '@/lib/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import {
-  Car,
-  FileBarChart,
-  FileSpreadsheet,
-  LogOut,
-  Mail,
-  RefreshCw,
-  Shield,
-  Users,
-} from 'lucide-react'
+import { Car, FileSpreadsheet, LogOut, Mail, RefreshCw, Shield, Users } from 'lucide-react'
 import Link from 'next/link'
 import { useTransition } from 'react'
 
@@ -38,7 +29,6 @@ export function Sidebar() {
   }
 
   const showUsers = isManagementRole(user.role)
-  const showReports = isAdminOrOwnerRole(user.role)
 
   // Roundcube can't auto-login via URL; _user only prefills the username field on its
   // login page (no-op when a Roundcube session is already active).
@@ -83,14 +73,6 @@ export function Sidebar() {
             <Link href="/pracownicy">
               <Users />
               Pracownicy
-            </Link>
-          </Button>
-        )}
-        {showReports && (
-          <Button variant="ghost" size="sm" align="start" asChild>
-            <Link href="/raporty">
-              <FileBarChart />
-              Raporty
             </Link>
           </Button>
         )}
