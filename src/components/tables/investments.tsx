@@ -15,6 +15,18 @@ import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-
 
 const col = createColumnHelper<InvestmentRowT>()
 
+// An investment whose kosztorys is empty reads zero robocizna, and every other v2 figure is built on
+// that zero: the bilans then says the client owes nothing for work that was done, and the marża that
+// the crews cost nothing. All of them say „brak danych" instead — the kosztorys is the source, so
+// „nothing entered" is the honest reading, and the number returns the moment it is.
+function hasKosztorysReading(row: InvestmentRowT): boolean {
+  return row.totalLaborCosts !== 0
+}
+
+function NoKosztorysData() {
+  return <span className="text-muted-foreground text-xs">brak danych</span>
+}
+
 type InvestmentColumnOptionsT = {
   userRole: RoleT
 }
@@ -48,14 +60,24 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       id: 'balance',
       header: 'Bilans netto v2',
       meta: { align: 'right' },
-      cell: (info) => <BalanceCell value={info.getValue()} />,
+      cell: (info) =>
+        hasKosztorysReading(info.row.original) ? (
+          <BalanceCell value={info.getValue()} />
+        ) : (
+          <NoKosztorysData />
+        ),
     }),
     // No v1 twin: brutto has only ever been computed on the plane its netto came from.
     col.accessor('balanceGross', {
       id: 'balanceGross',
       header: 'Bilans brutto v2',
       meta: { align: 'right' },
-      cell: (info) => <BalanceCell value={info.getValue()} />,
+      cell: (info) =>
+        hasKosztorysReading(info.row.original) ? (
+          <BalanceCell value={info.getValue()} />
+        ) : (
+          <NoKosztorysData />
+        ),
     }),
     ...(isAdminOrOwner
       ? [
@@ -76,6 +98,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
             // for free. The prompt names what the owner has to do to get the number back.
             cell: (info) => {
               const value = info.getValue()
+              if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
               return value === undefined ? (
                 <span className="text-muted-foreground text-xs">ustaw etapy</span>
               ) : (
@@ -101,6 +124,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       // number under a header nobody could decode, and it is only ever read against the v2 amount
       // standing next to it.
       cell: (info) => {
+        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
         // Rounded: both sides are independent float folds, so a fully migrated investment lands a
         // sub-grosz residue apart rather than exactly equal, and the icon would never disappear.
         const gap = roundToCents(

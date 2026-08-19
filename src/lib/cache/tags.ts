@@ -13,6 +13,8 @@ export const CACHE_TAGS = {
   stageProgress: 'collection:stage-progress',
   leads: 'collection:leads',
   presets: 'collection:kosztorys-presets',
+  vehicles: 'collection:vehicles',
+  vehicleInspections: 'collection:vehicle-inspections',
 } as const
 
 export const entityTag = (collection: string, id: number | string) => `${collection}:${id}` as const

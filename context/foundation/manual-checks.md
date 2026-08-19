@@ -923,8 +923,9 @@ Setup: aplikacja na **5435** (`DB_POSTGRES_URL_TEST`), zalogowany jako OWNER (ko
 dla ADMIN/OWNER). Po `pnpm db:import:test` uruchom `pnpm seed:kosztorys:test`, inaczej baza nie ma
 ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
 
-- [ ] Inwestycja **z kosztorysem**: „Bilans netto", „Bilans brutto", „Koszty inwestora" i „Marża" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
-- [ ] Inwestycja **bez kosztorysu** pokazuje na liście i w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31). Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
+- [ ] Inwestycja **bez kosztorysu**: „Koszty inwestora v2", „Bilans netto v2", „Bilans brutto v2", „Marża v2" i „Robocizna v2" pokazują „brak danych" (nie 0 zł), a przy „Robociźnie v2" nie ma ikony rozjazdu; „Koszty inwestora v1", „Bilans netto v1", „Marża v1" i „Robocizna v1" dalej pokazują liczby z transferów
+- [ ] Inwestycja **z kosztorysem**: „Bilans netto v2", „Bilans brutto v2", „Koszty inwestora v2" i „Marża v2" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
+- [ ] Inwestycja **bez kosztorysu** liczy w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31) — w v2 widać to jako zera, na liście jako „brak danych". Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
 - [ ] Inwestycja z kosztorysem sumującym się **do zera** wygląda identycznie jak ta bez kosztorysu. Nie da się ich odróżnić po liczbach i nie ma powodu, żeby dało się je odróżnić.
 - [ ] Inwestycja z pustym kosztorysem, ale z zaksięgowaną robocizną w transakcjach — reconciliation **krzyczy** niezgodność. To jest sygnał „ta robota czeka na wprowadzenie do kosztorysu", nie fałszywy alarm.
 - [ ] Zmiana ilości w kosztorysie rusza „Marżę" na liście **bez** klikania „Odśwież dane".
@@ -1321,3 +1322,39 @@ Zalogowany jako OWNER.
 - [ ] Pojawienie się paska spycha siatkę w dół — nie przelicza jej wysokości, więc ostatni wiersz może wymagać przewinięcia (świadoma decyzja, nie usterka)
 - [ ] Przycisk „Kolumny” pokazuje licznik ukrytych kolumn; kolumna wyciągnięta na wierzch przez włączony problem **nie** jest w nim liczona
 - [ ] Na linku dla inwestora sekcje zwinięte przed udostępnieniem przychodzą zwinięte — strzałka na belce działa i zgadza się z tym, co widać
+
+## EX-711 — moduł floty: przeglądy pojazdów i przypomnienia mailowe
+
+**In review** — automaty zielone (tsc 0, `pnpm test` 2514/2514, build OK; jeden błąd eslint w
+`src/hooks/use-latest-request.ts` jest sprzed tej zmiany). Migracja zastosowana lokalnie.
+
+Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W użyciu`, jeden
+`Wycofany` — i wpisy przeglądów o terminach 45 / 30 / 7 / 1 / −3 dni od dziś.
+
+- [ ] „Flota" jest w bocznym menu; jako EMPLOYEE nie ma jej wcale, a wejście na `/flota` wyrzuca na stronę główną
+- [ ] Dodanie pojazdu, a potem przeglądu każdego z pięciu typów, daje na liście pięć wypełnionych kolumn terminów
+- [ ] Wybór „Przegląd techniczny" podpowiada termin 12 miesięcy do przodu, „Wymiana opon" nie podpowiada nic
+- [ ] Nadpisanie podpowiedzianej daty, a potem zmiana typu, **nie** kasuje wpisanej daty
+- [ ] Pole „Następna wymiana przy (km)" widać wyłącznie przy typie „Wymiana oleju"
+- [ ] Pojazd bez wpisu wymiany oleju ma w tej kolumnie szare „brak danych", a nie fałszywy zielony termin
+- [ ] Pojazd z wpisem bez terminu ma „bez terminu" — to inny stan niż „brak danych"
+- [ ] Wycofany pojazd jest wizualnie odsunięty i nie ma kolorowania pilności
+- [ ] Strona pojazdu pokazuje historię pogrupowaną po typie, najnowsze u góry, z przebiegiem od poprzedniego wpisu
+- [ ] Wpis bez odczytu przebiegu nie pokazuje różnicy km (a nie „+0 km")
+- [ ] Załącznik dodany do przeglądu liczy się na liście historii (ikona spinacza)
+- [ ] Ręczne wywołanie `/api/cron/fleet-reminders` przy terminach 45 / 30 / 7 / 1 / −3 wysyła jeden mail zawierający dokładnie cztery ostatnie, w odpowiednich sekcjach
+- [ ] Mail przychodzi na oba adresy (`FLEET_NOTIFICATION_EMAIL` i `ADMIN_EMAIL`) jako jedna wiadomość
+- [ ] Ponowne wywołanie tuż po tym nie wysyła nic
+- [ ] Termin po czasie odzywa się ponownie dopiero po tygodniu, nie codziennie
+- [ ] Wpisanie przeglądu, o który mail się upominał, ucisza go przy kolejnym uruchomieniu
+- [ ] Sekcja „Brak danych" jest w mailu w poniedziałek, a we wtorek jej nie ma
+- [ ] Wpis wymiany oleju z celem km, a potem przegląd z odczytem 500 km przed celem, daje w mailu linijkę z celem i ostatnim odczytem
+- [ ] Pojazd, który wjechał w okno 30 dni, podbija plakietkę przy „Flota"; wejście na `/flota` ją zeruje
+- [ ] Plakietka przy „Zgłoszenia" zachowuje się dokładnie jak dotąd
+- [ ] Dialog „Przegląd" otwiera się z dzisiejszą datą w polu „Data wykonania"
+- [ ] Wpisanie przebiegu niższego niż ostatni zapisany dla tego pojazdu pokazuje pod polem ostrzeżenie, ale nie blokuje zapisu
+- [ ] Pojazd z wymianą oleju przy 100 000 km i późniejszym odczytem 115 000 km ma plakietkę „Olej" w tabelce floty i w szczegółach pojazdu
+- [ ] Ten sam pojazd trafia do mailowej sekcji „Wymiana oleju — limit kilometrów" z informacją o przekroczeniu, mimo że nikt nie wpisał celu km
+- [ ] Sekcja „Koszty" na stronie pojazdu sumuje wpisy per rodzaj i w wierszu „Razem", a „Szczegóły" listują te same wpisy od najnowszego
+- [ ] Rodzaj przeglądu, w którym nikt nie wpisał kosztu, nie pojawia się w podsumowaniu jako 0 zł
+- [ ] Strona pojazdu otwiera się na „Przeglądy"; przełącznik „Koszty" pokazuje podsumowanie i szczegóły, a powrót na „Przeglądy" działa

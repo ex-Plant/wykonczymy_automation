@@ -37,8 +37,8 @@ Nothing fleet-related exists. What exists and will be reused:
 `/flota` lists every company car, one row each, with five deadline columns coloured by urgency.
 Opening a car shows its full inspection history and a button to record a new one. Recording an
 inspection is one short form; the "next due" date is prefilled from the type's interval and
-overwritable. Every morning a single email lands at `FLEET_NOTIFICATION_EMAIL` listing only what actually
-needs attention — nothing on a quiet day. A nav badge marks unseen fleet alerts.
+overwritable. Every morning a single email lands at `FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL`
+listing only what actually needs attention — nothing on a quiet day. A nav badge marks unseen fleet alerts.
 
 Verify by: seeding two vehicles with inspections at varying distances from today, running the cron
 route locally with the cron secret, and confirming one digest arrives with the right rows in the
@@ -93,8 +93,11 @@ The prefill is a suggestion, never authoritative: the real next date is printed 
 
 ## Critical Implementation Details
 
-**Dates are dates, not timestamps.** `performedAt` and `nextDueAt` are SQL `date` columns and Payload
-`date` fields with `dayOnly` picker appearance. A timestamp column plus a `Europe/Warsaw` UI makes
+**Dates are days, not instants.** `performedAt` and `nextDueAt` are Payload `date` fields with the
+`dayOnly` picker appearance. _Shipped as `timestamptz`, not SQL `date`_ — that is the DB's existing
+day-only convention and the only shape Payload's adapter models; the day semantics are enforced in
+code by `toWarsawDay` (`src/lib/fleet/days.ts`), which every read goes through. Treating a timestamp
+column as an instant plus a `Europe/Warsaw` UI makes
 "is this due today" answer differently depending on the hour, and the resulting off-by-one is the
 classic way this kind of module goes subtly wrong. Day comparison in the cron happens against today's
 date in `Europe/Warsaw`, resolved once per run and threaded through — never `new Date()` re-read
@@ -120,7 +123,7 @@ the env var. Nothing renders yet.
 
 #### 1. Migration
 
-**File**: `src/migrations/<today>_0_add_fleet.ts` (+ registration in `src/migrations/index.ts`)
+**File**: `src/migrations/20260818_1_add_fleet.ts` (+ registration in `src/migrations/index.ts`)
 
 **Intent**: Create the two fleet tables and give Payload's lock-check the columns it needs, following
 the hand-written migration convention.
@@ -184,8 +187,8 @@ machinery, not data anyone edits. Access on both: read/create/update `isAdminOrO
 
 **Intent**: The digest recipient, validated like every other secret.
 
-**Contract**: `FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL` as `z.string().min(1)` on the **server** schema,
-mirroring `LEADS_NOTIFY_EMAIL`.
+**Contract**: `FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL` as `z.string().min(1)` on the **server**
+schema, mirroring `LEADS_NOTIFY_EMAIL`.
 
 **Done up front (2026-08-18)**: both are in `.env` and on Vercel (Production + Preview, matching where
 `LEADS_NOTIFY_EMAIL` lives — Development has neither). `FLEET_NOTIFICATION_EMAIL` points at
@@ -554,29 +557,29 @@ Run once, after Phase 5.
 
 #### Automated
 
-- [ ] 1.1 Migration applies against the local DB
-- [ ] 1.2 Types regenerate without error
+- [x] 1.1 Migration applies against the local DB — 28d6923f
+- [x] 1.2 Types regenerate without error — 28d6923f
 
 ### Phase 2: Deadline Logic
 
 #### Automated
 
-- [ ] 2.1 Fleet unit specs pass
+- [x] 2.1 Fleet unit specs pass — c6ffab6f
 
 ### Phase 3: UI
 
 #### Automated
 
-- [ ] 3.1 Fleet query specs pass
+- [x] 3.1 Fleet query specs pass — 76f22c25
 
 ### Phase 4: Daily Digest
 
 #### Automated
 
-- [ ] 4.1 Sweep spec passes
+- [x] 4.1 Sweep spec passes — a9db0a6b
 
 ### Phase 5: Nav Badge
 
 #### Automated
 
-- [ ] 5.1 Notification specs still pass after the widening
+- [x] 5.1 Notification specs still pass after the widening — 7989026d

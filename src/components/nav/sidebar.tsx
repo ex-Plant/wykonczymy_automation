@@ -5,9 +5,19 @@ import { logoutAction } from '@/lib/actions/auth'
 import { refreshDataAction } from '@/lib/actions/refresh'
 import { isAdminOrOwnerRole, isManagementRole } from '@/lib/auth/roles'
 import { SECTION_LINKS } from '@/lib/constants/sections'
+import { UnreadFleetBadge } from '@/components/nav/unread-fleet-badge'
 import { toastMessage } from '@/lib/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import { FileBarChart, FileSpreadsheet, LogOut, Mail, RefreshCw, Shield, Users } from 'lucide-react'
+import {
+  Car,
+  FileBarChart,
+  FileSpreadsheet,
+  LogOut,
+  Mail,
+  RefreshCw,
+  Shield,
+  Users,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useTransition } from 'react'
 
@@ -56,6 +66,15 @@ export function Sidebar() {
             <Link href="/kosztorysy">
               <FileSpreadsheet />
               Kosztorysy
+            </Link>
+          </Button>
+        )}
+        {showUsers && (
+          <Button variant="ghost" size="sm" align="start" asChild>
+            <Link href="/flota">
+              <Car />
+              Flota
+              <UnreadFleetBadge />
             </Link>
           </Button>
         )}
