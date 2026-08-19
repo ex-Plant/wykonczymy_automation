@@ -26,6 +26,8 @@ import {
   canBeSettled,
   isLaborCost,
   isCancellationType,
+  isVatPlane,
+  VAT_PLANES,
 } from '@/lib/constants/transfers'
 
 // CHARACTERIZATION SUITE (EX-573 phase 0). Everything here is pinned against the
@@ -137,16 +139,23 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
   },
 }
 
-// Not boolean, so it has no row in the truth table above — its per-type answers are
-// pinned by the spec-table consistency suite instead (transfer-spec-table.test.ts).
-const NOT_A_BOOLEAN_PREDICATE = ['financialBucketOf', 'billedAmountOf', 'billedAmountFor']
+// No row in the truth table above, which is keyed on transfer type. The first three are
+// not boolean — their per-type answers are pinned by the spec-table consistency suite
+// instead (transfer-spec-table.test.ts). `isVatPlane` is boolean but narrows a VAT plane,
+// not a transfer type, so it gets its own suite below.
+const NOT_A_TRANSFER_TYPE_PREDICATE = [
+  'financialBucketOf',
+  'billedAmountOf',
+  'billedAmountFor',
+  'isVatPlane',
+]
 
 describe('transfer constants — helper truth table', () => {
   it('covers every exported predicate', () => {
     // Derived from the module, not a hand-typed count — a `toHaveLength(15)` stays green
     // forever while a newly exported predicate goes untested. Its one exclusion is named
     // and justified, so adding an export forces a decision here rather than silence.
-    const covered = [...Object.keys(HELPERS), ...NOT_A_BOOLEAN_PREDICATE]
+    const covered = [...Object.keys(HELPERS), ...NOT_A_TRANSFER_TYPE_PREDICATE]
     const exported = Object.entries(transfersModule)
       .filter(([, value]) => typeof value === 'function')
       .map(([name]) => name)
@@ -364,4 +373,17 @@ describe('unknown-tolerant predicates reject non-string input', () => {
       expect(fn(input)).toBe(false)
     })
   }
+})
+
+describe('isVatPlane', () => {
+  it.each(VAT_PLANES)('%s → true', (plane) => {
+    expect(isVatPlane(plane)).toBe(true)
+  })
+
+  // undefined is the stored state of every wpłata booked before EX-536 — it must narrow
+  // to false so the forms fall back to their own default instead of persisting a
+  // non-plane string as a plane.
+  it.each(['', 'net', 'BRUTTO', undefined])('%j → false', (input) => {
+    expect(isVatPlane(input)).toBe(false)
+  })
 })
