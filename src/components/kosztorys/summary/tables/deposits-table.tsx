@@ -20,20 +20,24 @@ import type { DepositTransactionRowT } from '@/types/transfers'
 // SummaryLabelCell/SummaryValueCell). Deposits are rare, so no virtualization: one row each,
 // date-desc.
 //
-// The table always adds a „Rozliczenie netto/brutto" column naming each wpłata's vatPlane — Netto
-// (`NET`), Brutto (`GROSS`), or „Nie określono" (`null`) — and closes with a Razem row for each of the
-// three rodzaje. The buckets are display-only: „Nie określono" still counts as netto in the settlement
-// math (owner's „brak wartości = netto" ruling, 2026-07-23).
+// The netto/brutto split is shown only in tryb mieszany, the one tryb where the plane of a wpłata
+// changes the settlement — elsewhere every wpłata lands on the same plane, so the column and the
+// per-plane Razem rows would name a distinction that carries no information. In tryb mieszany the
+// column names each wpłata's vatPlane — Netto (`NET`), Brutto (`GROSS`), or „Nie określono" (`null`)
+// — and the block closes with a Razem row per rodzaj. The buckets are display-only: „Nie określono"
+// still counts as netto in the settlement math (owner's „brak wartości = netto" ruling, 2026-07-23).
 const planeLabel = (plane: DepositTransactionRowT['vatPlane']) =>
   plane == null ? 'Nie określono' : VAT_PLANE_LABELS[plane]
 export function DepositsTable({
   investmentId,
   rows,
   preview,
+  showPlaneSplit,
 }: {
   investmentId: number
   rows: DepositTransactionRowT[]
   preview: boolean
+  showPlaneSplit: boolean
 }) {
   const dateCell = (row: DepositTransactionRowT) => (
     <SummaryLabelCell className="tabular-nums">
@@ -51,6 +55,7 @@ export function DepositsTable({
   )
 
   // One Razem row per rodzaj — always all three, even a 0 zł bucket, so the split is fully readable.
+  // Only in tryb mieszany; the other tryby close with a single Razem.
   const perPlane = (['NET', 'GROSS', null] as const).map((plane) => ({
     plane,
     total: rows.reduce((sum, row) => (row.vatPlane === plane ? sum + row.amount : sum), 0),
@@ -60,35 +65,48 @@ export function DepositsTable({
   // as one segment — but the Razem grid is only two columns wide, so it never paints an empty „Rodzaj"
   // cell (the rodzaj is already in each Razem label). Their shared first two tracks are fixed rem
   // widths, so Data/Kwota stay aligned across both.
-  const listCols = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_LABEL_COL}`
+  const listCols = showPlaneSplit
+    ? `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_LABEL_COL}`
+    : `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
   const totalCols = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
   return (
     <div className="flex w-fit flex-col">
       <SummaryTable cols={listCols} className="w-fit">
         <SummaryHeaderCell variant="label">Wpłaty</SummaryHeaderCell>
         <SummaryHeaderCell>Kwota</SummaryHeaderCell>
-        <SummaryHeaderCell variant="label">Rozliczenie netto/brutto</SummaryHeaderCell>
+        {showPlaneSplit && (
+          <SummaryHeaderCell variant="label">Rozliczenie netto/brutto</SummaryHeaderCell>
+        )}
 
         {rows.map((row) => (
           <Fragment key={row.id}>
             {dateCell(row)}
             <SummaryValueCell tone="success">{formatNet(row.amount)}</SummaryValueCell>
-            <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>
+            {showPlaneSplit && <SummaryLabelCell>{planeLabel(row.vatPlane)}</SummaryLabelCell>}
           </Fragment>
         ))}
       </SummaryTable>
 
       <SummaryTable cols={totalCols} className="-mt-px w-fit">
-        {perPlane.map((bucket) => (
-          <Fragment key={bucket.plane ?? 'null'}>
-            <SummaryLabelCell weight="bold">
-              Razem {planeLabel(bucket.plane).toLowerCase()}
-            </SummaryLabelCell>
+        {showPlaneSplit ? (
+          perPlane.map((bucket) => (
+            <Fragment key={bucket.plane ?? 'null'}>
+              <SummaryLabelCell weight="bold">
+                Razem {planeLabel(bucket.plane).toLowerCase()}
+              </SummaryLabelCell>
+              <SummaryValueCell tone="success" weight="bold">
+                {formatNet(bucket.total)}
+              </SummaryValueCell>
+            </Fragment>
+          ))
+        ) : (
+          <>
+            <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
             <SummaryValueCell tone="success" weight="bold">
-              {formatNet(bucket.total)}
+              {formatNet(rows.reduce((sum, row) => sum + row.amount, 0))}
             </SummaryValueCell>
-          </Fragment>
-        ))}
+          </>
+        )}
       </SummaryTable>
     </div>
   )
