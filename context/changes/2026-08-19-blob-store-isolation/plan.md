@@ -346,13 +346,13 @@ Run **once**, after the final phase:
 
 #### Automated
 
-- [x] 1.1 No phase-scoped automated check (secrets file + Vercel dashboard only)
+- [x] 1.1 No phase-scoped automated check (secrets file + Vercel dashboard only) — e2980b2b
 
 ### Phase 2: Refuse a production Blob token outside production
 
 #### Automated
 
-- [ ] 2.1 Guard spec passes: `pnpm exec vitest run src/__tests__/lib/env/schema.test.ts`
+- [x] 2.1 Guard spec passes: `pnpm exec vitest run src/__tests__/lib/env/schema.test.ts`
 
 ### Phase 3: Refresh command, and a write guard on the restore tool
 
