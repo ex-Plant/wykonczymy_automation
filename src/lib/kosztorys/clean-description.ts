@@ -4,7 +4,7 @@
 
 // Ordered: `podwieszanych (obcięcie` un-closes before it re-closes, which is what keeps the closing
 // paren from stacking up one per run.
-const TYPO_FIXES: readonly (readonly [string, string])[] = [
+export const TYPO_FIXES: readonly (readonly [string, string])[] = [
   ['fisnish', 'finish'],
   ['ścianch', 'ścianach'],
   ['sylikonow', 'silikonow'],
