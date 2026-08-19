@@ -25,31 +25,40 @@ describe('parseVehicleFlags', () => {
 })
 
 describe('activeFlags', () => {
+  const today = '2026-08-19'
+
   it('keeps a mark that no inspection answers', () => {
-    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, [])).toEqual(['OIL_CHANGE'])
+    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, [], today)).toEqual(['OIL_CHANGE'])
   })
 
   it('retires a mark answered the same day', () => {
     const events = [event('OIL_CHANGE', '2026-08-19')]
 
-    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events)).toEqual([])
+    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events, today)).toEqual([])
   })
 
   // Backfilling last year's service must not silence a mark made today.
   it('keeps a mark when the inspection predates it', () => {
     const events = [event('OIL_CHANGE', '2026-06-01')]
 
-    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events)).toEqual(['OIL_CHANGE'])
+    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events, today)).toEqual(['OIL_CHANGE'])
+  })
+
+  // A booked appointment is work that has NOT happened — the mark is what says it still must.
+  it('keeps a mark when the inspection is dated in the future', () => {
+    const events = [event('OIL_CHANGE', '2026-08-20')]
+
+    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events, today)).toEqual(['OIL_CHANGE'])
   })
 
   it('ignores an inspection of another type', () => {
-    const events = [event('TECHNICAL', '2026-08-20')]
+    const events = [event('TECHNICAL', '2026-08-19')]
 
-    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events)).toEqual(['OIL_CHANGE'])
+    expect(activeFlags({ OIL_CHANGE: '2026-08-19' }, events, today)).toEqual(['OIL_CHANGE'])
   })
 
   it('returns the marks in domain order, not insertion order', () => {
-    expect(activeFlags({ TYRES: '2026-08-19', TECHNICAL: '2026-08-19' }, [])).toEqual([
+    expect(activeFlags({ TYRES: '2026-08-19', TECHNICAL: '2026-08-19' }, [], today)).toEqual([
       'TECHNICAL',
       'TYRES',
     ])

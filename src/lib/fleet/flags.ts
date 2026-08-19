@@ -28,12 +28,14 @@ export const parseVehicleFlags = (raw: unknown): VehicleFlagsT => {
 }
 
 /**
- * Which marks still stand. A mark is retired by an inspection of its type performed ON or AFTER the
- * day it was made — so recording the work clears the alarm by itself, exactly as a new event retires
- * the old deadline (see `deadlines.ts`), and no write-back is needed on the inspection path.
+ * Which marks still stand. A mark is retired by an inspection of its type performed within
+ * `[flaggedAt, today]` — so recording the work clears the alarm by itself, exactly as a new event
+ * retires the old deadline (see `deadlines.ts`), and no write-back is needed on the inspection path.
  *
- * The "on or after" boundary is what makes backfilling safe: entering a service from last year cannot
- * silence a mark made today.
+ * Both ends of that window are load-bearing. The lower one makes backfilling safe: entering a service
+ * from last year cannot silence a mark made today. The upper one keeps a FUTURE-dated event from
+ * doing it — a booked appointment is work that has not happened, and the mark is precisely the thing
+ * saying it still needs to.
  *
  * Returned in INSPECTION_TYPES order, never the stored object's, so the badges keep the domain's
  * order regardless of which type happened to be flagged first.
@@ -41,14 +43,19 @@ export const parseVehicleFlags = (raw: unknown): VehicleFlagsT => {
 export const activeFlags = (
   flags: VehicleFlagsT,
   events: readonly InspectionEventT[],
+  today: DayT,
 ): InspectionTypeT[] =>
   INSPECTION_TYPES.filter((type) => {
     const flaggedAt = flags[type]
     if (!flaggedAt) return false
 
-    return !events.some(
-      (event) => event.type === type && toWarsawDay(event.performedAt) >= flaggedAt,
-    )
+    return !events.some((event) => {
+      if (event.type !== type) return false
+
+      const performedOn = toWarsawDay(event.performedAt)
+
+      return performedOn >= flaggedAt && performedOn <= today
+    })
   })
 
 /**

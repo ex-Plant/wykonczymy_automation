@@ -64,7 +64,7 @@ export const toRow = (
     deadlines: byInspectionType((type) =>
       toDeadline(latest[type]?.nextDueAt ?? null, latest[type] !== null, today),
     ),
-    activeFlags: activeFlags(vehicle.flags, events),
+    activeFlags: activeFlags(vehicle.flags, events, today),
   }
 }
 

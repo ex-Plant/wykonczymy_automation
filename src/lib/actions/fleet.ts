@@ -95,6 +95,7 @@ export async function setVehicleFlagsAction(vehicleId: number, types: Inspection
 
       const current = parseVehicleFlags(vehicle.flags)
       const events = inspections.docs.map(toInspectionEvent)
+      const today = warsawToday()
 
       await payload.update({
         collection: 'vehicles',
@@ -102,9 +103,9 @@ export async function setVehicleFlagsAction(vehicleId: number, types: Inspection
         data: {
           flags: nextFlags({
             current,
-            active: activeFlags(current, events),
+            active: activeFlags(current, events, today),
             selected: parsed.data,
-            today: warsawToday(),
+            today,
           }),
         },
       })
