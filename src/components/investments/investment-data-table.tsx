@@ -61,24 +61,26 @@ export function InvestmentDataTable({ data, presets }: InvestmentDataTablePropsT
               className={SEARCH_FILTER_TOOLBAR_WIDTH}
             />
             <StatusFilter selectedStatuses={selectedStatuses} onToggle={toggleStatus} />
+            <AddInvestmentDialog presets={presets} />
             {/* One switch for the whole kosztorys-sourced half, beside the per-column picker rather
               than inside it: reading v1 alone means hiding five columns at once, and doing that
               five ticks at a time is the gesture this replaces. Unticking writes the same
               visibility state the picker does, so the two never disagree about what is on screen. */}
-            <label className="flex w-fit cursor-pointer items-center gap-2 text-sm whitespace-nowrap">
-              <Checkbox
-                checked={v2Shown}
-                onCheckedChange={(state) =>
-                  table.setColumnVisibility((prev) => ({
-                    ...prev,
-                    ...Object.fromEntries(V2_COLUMN_IDS.map((id) => [id, state === true])),
-                  }))
-                }
-              />
-              Pokaż kolumny v2
-            </label>
-            <AddInvestmentDialog presets={presets} />
-            <ColumnToggle table={table} columnVisibility={cv} />
+            <div className="ml-auto flex items-center gap-2">
+              <label className="flex w-fit cursor-pointer items-center gap-2 text-sm whitespace-nowrap">
+                <Checkbox
+                  checked={v2Shown}
+                  onCheckedChange={(state) =>
+                    table.setColumnVisibility((prev) => ({
+                      ...prev,
+                      ...Object.fromEntries(V2_COLUMN_IDS.map((id) => [id, state === true])),
+                    }))
+                  }
+                />
+                Pokaż kolumny v2
+              </label>
+              <ColumnToggle table={table} columnVisibility={cv} />
+            </div>
           </>
         )
       }}

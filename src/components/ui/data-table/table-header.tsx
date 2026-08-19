@@ -3,7 +3,7 @@
 import { flexRender, type HeaderGroup } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { SimpleTooltip } from '@/components/ui/tooltip'
 
 export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[] }) {
   return (
@@ -17,7 +17,16 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
             const tooltip = header.column.columnDef.meta?.tooltip
             const minWidth = header.column.columnDef.meta?.minWidth
             const rawHeader = header.column.columnDef.header
-            const label = typeof rawHeader === 'string' ? rawHeader : undefined
+
+            // The header itself is the trigger, matching the kosztorys grid — no (i) icon competing
+            // for width with the sort arrow. Radix closes the tip on pointerdown, so the click that
+            // sorts also dismisses it instead of leaving it hanging over the re-sorted table.
+            const content = (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                {header.isPlaceholder ? null : flexRender(rawHeader, header.getContext())}
+                {canSort && <SortIcon sorted={sorted} />}
+              </span>
+            )
 
             return (
               <th
@@ -31,16 +40,7 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
                 )}
                 onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
               >
-                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                  {header.isPlaceholder ? null : flexRender(rawHeader, header.getContext())}
-                  {tooltip && (
-                    // Stops the icon click from bubbling into the <th>'s sort handler.
-                    <span onClick={(event) => event.stopPropagation()} className="inline-flex">
-                      <InfoTooltip content={tooltip} label={label} />
-                    </span>
-                  )}
-                  {canSort && <SortIcon sorted={sorted} />}
-                </span>
+                {tooltip ? <SimpleTooltip content={tooltip}>{content}</SimpleTooltip> : content}
               </th>
             )
           })}
