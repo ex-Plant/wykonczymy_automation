@@ -41,11 +41,6 @@ export const isAdminOrOwnerOrManager: Access = ({ req: { user } }) =>
 
 export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user)
 
-export const isAdminOrOwnerOrSelf: Access = ({ req: { user }, id }) => {
-  if (hasAnyRole(user, 'ADMIN', 'OWNER')) return true
-  return user?.id === id
-}
-
 // manager can update only employees
 export const canUpdateUser: Access = ({ req: { user }, id }) => {
   if (hasAnyRole(user, 'ADMIN', 'OWNER')) return true
