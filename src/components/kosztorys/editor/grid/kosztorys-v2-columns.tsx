@@ -171,7 +171,7 @@ function stageValueHeader(
   return sortableHeader(`${stageLabel(stage)} ${suffix}`, field, tip, opts)
 }
 
-const DEFAULT_COLUMN_MIN_WIDTH = 100
+const DEFAULT_COLUMN_MIN_WIDTH = 110
 
 function withResize(
   col: Column<KosztorysV2RowT>,
@@ -449,14 +449,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           // would read as one that was measured.
           (value) => (value == null ? '' : formatQty(value)),
         ),
-        minWidth: 80,
+        minWidth: 90,
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
     return keyCol(qtyField, floatColumnLeft, {
       id: qtyField,
       title: header,
-      minWidth: 80,
+      minWidth: 90,
     })
   })
 
