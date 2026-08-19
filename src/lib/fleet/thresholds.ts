@@ -43,3 +43,7 @@ export const OIL_ODOMETER_WARN_KM = 1000
  * no target there is nothing to count down to, and the oil would age unwatched.
  */
 export const OIL_CHANGE_INTERVAL_KM = 10_000
+
+/** `null` (no reading to compare) is not overdue — an unknown distance must never render as alarm. */
+export const isOilChangeOverdue = (kmSinceOilChange: number | null): boolean =>
+  kmSinceOilChange !== null && kmSinceOilChange > OIL_CHANGE_INTERVAL_KM

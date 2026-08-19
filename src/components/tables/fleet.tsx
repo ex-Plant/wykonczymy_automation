@@ -16,12 +16,7 @@ export function getFleetColumns() {
       id: 'registration',
       header: 'Rejestracja',
       meta: { canHide: false },
-      cell: (info) => (
-        <span className="flex items-center gap-2 font-medium">
-          {info.getValue()}
-          <OilIntervalBadge kmSinceOilChange={info.row.original.kmSinceOilChange} />
-        </span>
-      ),
+      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
     }),
     col.accessor((row) => `${row.make} ${row.model}`, {
       id: 'vehicle',
@@ -55,10 +50,16 @@ export function getFleetColumns() {
         // letting null read as "most urgent".
         sortUndefined: 'last',
         cell: (info) => (
-          <DeadlineCell
-            deadline={info.row.original.deadlines[type]}
-            muted={info.row.original.status === 'RETIRED'}
-          />
+          <div className="flex flex-col items-start gap-1">
+            <DeadlineCell
+              deadline={info.row.original.deadlines[type]}
+              muted={info.row.original.status === 'RETIRED'}
+            />
+            {/* The kilometre overrun belongs to the oil deadline, not to the car as a whole. */}
+            {type === 'OIL_CHANGE' && (
+              <OilIntervalBadge kmSinceOilChange={info.row.original.kmSinceOilChange} />
+            )}
+          </div>
         ),
       }),
     ),
