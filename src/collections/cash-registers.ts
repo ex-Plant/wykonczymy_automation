@@ -23,6 +23,7 @@ const preventDeleteWithTransactions: CollectionBeforeDeleteHook = async ({ id, r
       or: [{ sourceRegister: { equals: id } }, { targetRegister: { equals: id } }],
     },
     limit: 1,
+    req,
   })
 
   if (totalDocs > 0) {
