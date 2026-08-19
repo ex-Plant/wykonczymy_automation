@@ -14,15 +14,19 @@ export const KosztorysClientViewDefaults: GlobalConfig = {
   },
   fields: [
     {
-      name: 'hiddenColumns',
-      type: 'json',
-      defaultValue: [],
+      name: 'mode',
+      type: 'select',
+      required: true,
+      defaultValue: 'OFFER',
+      options: [
+        { value: 'OFFER', label: { en: 'Offer', pl: 'Oferta' } },
+        { value: 'SETTLEMENT', label: { en: 'Settlement', pl: 'Rozliczenie' } },
+      ],
     },
     {
-      name: 'hideEmptyRows',
-      type: 'checkbox',
-      required: true,
-      defaultValue: true,
+      name: 'variants',
+      type: 'json',
+      defaultValue: {},
     },
   ],
 }

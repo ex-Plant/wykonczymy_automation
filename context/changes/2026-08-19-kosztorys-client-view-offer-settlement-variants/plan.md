@@ -454,8 +454,8 @@ Danych do przeniesienia nie ma — nikt nie odklikał jeszcze żadnego wariantu.
 
 #### Automated
 
-- [ ] 2.1 Migracja wchodzi na czystej lokalnej bazie
-- [ ] 2.2 Typy Payloada regenerują się bez błędu
+- [x] 2.1 Migracja wchodzi na czystej lokalnej bazie
+- [x] 2.2 Typy Payloada regenerują się bez błędu
 
 ### Phase 3: Odczyt i zapis
 

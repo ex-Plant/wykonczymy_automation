@@ -5,7 +5,9 @@ import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 // `kosztoryses` is the v1 Google-Sheet link row (required `googleSheetId`), so a v2 kosztorys has no
 // row there at all, and a client-disclosure decision is not a property of the investment record.
 //
-// `hiddenColumns` stores what is HIDDEN, not what is visible: `PREVIEW_VISIBLE_COLUMNS` stays the
+// `variants` holds both column sets at once — `mode` picks the one the client's link serves, so
+// moving an investment from offer to settlement is one field, not twenty re-ticked checkboxes.
+// Each variant stores what is HIDDEN, not what is visible: `PREVIEW_VISIBLE_COLUMNS` stays the
 // ceiling, so a column added to the allowlist later is served without rewriting a single stored row.
 export const KosztorysClientView: CollectionConfig = {
   slug: 'kosztorys-client-view',
@@ -15,7 +17,7 @@ export const KosztorysClientView: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'investment',
-    defaultColumns: ['investment', 'hideEmptyRows', 'updatedAt'],
+    defaultColumns: ['investment', 'mode', 'updatedAt'],
     group: { en: 'Kosztorys', pl: 'Kosztorys' },
   },
   // No revalidation hooks: the settings are read outside the preview's `unstable_cache` entry, so a
@@ -36,15 +38,19 @@ export const KosztorysClientView: CollectionConfig = {
       unique: true,
     },
     {
-      name: 'hiddenColumns',
-      type: 'json',
-      defaultValue: [],
+      name: 'mode',
+      type: 'select',
+      required: true,
+      defaultValue: 'OFFER',
+      options: [
+        { value: 'OFFER', label: { en: 'Offer', pl: 'Oferta' } },
+        { value: 'SETTLEMENT', label: { en: 'Settlement', pl: 'Rozliczenie' } },
+      ],
     },
     {
-      name: 'hideEmptyRows',
-      type: 'checkbox',
-      required: true,
-      defaultValue: true,
+      name: 'variants',
+      type: 'json',
+      defaultValue: {},
     },
   ],
 }
