@@ -1407,3 +1407,19 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 ### Faza 5: Wymiecenie inwestycji 90
 
 - [ ] „Porównaj z arkuszem Google" pokazuje zerową różnicę, a siatka ma 373 wiersze, nie 456
+
+## EX-711 — flota: ręczne znaczniki „do wymiany" i typ „Serwis"
+
+Setup: baza testowa 5435 po `pnpm exec payload migrate` (migracja `20260819_0`), co najmniej jeden
+pojazd z historią przeglądów. Zalogowany jako OWNER.
+
+- [ ] Na karcie pojazdu zaznaczenie „Wymiana opon" pokazuje czerwoną plakietkę „Opony" w kolumnie „Do wymiany" na `/flota`
+- [ ] Dodanie przeglądu „Wymiana opon" z dzisiejszą datą sprawia, że plakietka znika z obu miejsc
+- [ ] Dodanie takiego przeglądu z datą sprzed roku **nie** gasi świeżego oznaczenia
+- [ ] Odznaczenie pola na karcie pojazdu usuwa plakietkę
+- [ ] Ponowne zaznaczenie typu, który historia już zgasiła, znów pokazuje plakietkę (a nie zostaje bez efektu)
+- [ ] Sortowanie kolumny „Do wymiany" skupia oznaczone pojazdy razem
+- [ ] „Serwis" jest do wyboru w „Dodaj przegląd", nie podpowiada następnej daty i nie ma pola „Następna wymiana przy (km)"
+- [ ] Zapisany „Serwis" widać w historii Przeglądów pojazdu i w zakładce Koszty
+- [ ] `/flota` **nie ma** kolumny terminu „Serwis"
+- [ ] Poniedziałkowy raport (`pnpm ...` / podgląd digestu) nie zgłasza „brak Serwisu" dla żadnego auta
