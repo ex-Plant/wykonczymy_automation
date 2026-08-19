@@ -17,6 +17,7 @@ type KosztorysEditorContextT = ReturnType<typeof useKosztorysEditor> & {
   // Opens „Pobierz z arkusza Google". Owned above the toolbar because the empty-kosztorys screen
   // offers it too. Absent in preview, which renders neither trigger.
   openImport?: () => void
+  hasSheet: boolean
 }
 
 const KosztorysEditorContext = createContext<KosztorysEditorContextT | null>(null)

@@ -179,6 +179,10 @@ export type KosztorysEditorDataT = {
   // investment page applies (a MANAGER gets no marża) — never as client-share stripping: both preview
   // entrances pass it, so the preview and the owner's own panel compute from identical inputs.
   financials?: InvestmentFinancialsT
+  // Whether the investment has a Google sheet linked. Gates the toolbar's „Arkusz Google" entries,
+  // which would otherwise offer an import/compare that can only answer „Inwestycja nie ma kosztorysu.".
+  // Optional: the client-share entry points render no toolbar, so they have nothing to gate.
+  hasSheet?: boolean
   // Roster for the etap header's worker picker (EX-613). Optional on cost, not on visibility: the
   // client-share entry points render no stage menu, so fetching the roster there buys nothing.
   workers?: WorkerRefT[]

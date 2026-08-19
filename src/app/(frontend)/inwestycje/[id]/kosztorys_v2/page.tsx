@@ -75,6 +75,9 @@ export default async function InvestmentKosztorysV2Page({
   // Names join here (not in the cached query): resolve each worker id against reference data.
   // Sorting/totals live in the pure block helper.
   const payoutsByWorker = resolvePayoutWorkerNames(payouts, refData.workers)
+  // Whether a Google sheet is linked rides along on the reference data already fetched above — no
+  // second trip for one boolean.
+  const hasSheet = refData.investments.find((i) => i.id === investmentId)?.hasSheet ?? false
 
   return (
     <KosztorysEditorV2
@@ -96,6 +99,7 @@ export default async function InvestmentKosztorysV2Page({
       depositTransactions={depositTransactions}
       materialTransactions={materialTransactions}
       workers={refData.workers}
+      hasSheet={hasSheet}
     />
   )
 }

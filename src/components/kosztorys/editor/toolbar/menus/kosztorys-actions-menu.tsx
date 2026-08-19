@@ -59,8 +59,17 @@ function MenuItemBody({ label, description }: { label: string; description: stri
 // The Save-preset dialog is a controlled sibling of the menu, not a child of DropdownMenuContent —
 // onSelect closes the menu, so opening the dialog from inside it would fight the menu for focus.
 export function KosztorysActionsMenu() {
-  const { investmentId, onOpenVersions, onTreeReplaced, openImport, undo, redo, canUndo, canRedo } =
-    useKosztorysEditorContext()
+  const {
+    investmentId,
+    onOpenVersions,
+    onTreeReplaced,
+    openImport,
+    hasSheet,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useKosztorysEditorContext()
   const [presetOpen, setPresetOpen] = useState(false)
   const [reloadOpen, setReloadOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
@@ -234,22 +243,27 @@ export function KosztorysActionsMenu() {
               description="Zastąp całą rozpiskę zapisanym szablonem."
             />
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={openImport}>
-            <SheetIcon />
-            <MenuItemBody
-              label="Pobierz z arkusza Google…"
-              description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
-            />
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleOpenCompare}>
-            <ScaleIcon />
-            <MenuItemBody
-              label="Porównaj z arkuszem…"
-              description="Sprawdź, czy arkusz i aplikacja liczą to samo, i odśwież zapisane Pomiary z natury."
-            />
-          </DropdownMenuItem>
+          {/* Both entries can only answer „Inwestycja nie ma kosztorysu." without a linked sheet. */}
+          {hasSheet && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={openImport}>
+                <SheetIcon />
+                <MenuItemBody
+                  label="Pobierz z arkusza Google…"
+                  description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleOpenCompare}>
+                <ScaleIcon />
+                <MenuItemBody
+                  label="Porównaj z arkuszem…"
+                  description="Sprawdź, czy arkusz i aplikacja liczą to samo, i odśwież zapisane Pomiary z natury."
+                />
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Inwestor</DropdownMenuLabel>
           <DropdownMenuItem asChild>

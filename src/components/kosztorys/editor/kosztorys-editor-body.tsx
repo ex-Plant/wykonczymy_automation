@@ -69,6 +69,7 @@ export function KosztorysEditorBody({
   depositTransactions,
   preview = false,
   clientView,
+  hasSheet = false,
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
   onTreeReplaced,
@@ -226,6 +227,7 @@ export function KosztorysEditorBody({
         onOpenVersions,
         onTreeReplaced,
         openImport: preview ? undefined : openImport,
+        hasSheet,
       }}
     >
       <div
@@ -291,7 +293,7 @@ export function KosztorysEditorBody({
             >
               {/* Typing a rozpiska by hand is the rarer of the two starts — the sheet already holds
                   it. Buried in „Opcje" it is the one moment nobody finds it. */}
-              {!preview && (
+              {!preview && hasSheet && (
                 <Button
                   variant="outline"
                   size="sm"
