@@ -132,10 +132,16 @@ describe.skipIf(!ENV_READY)('compareWithSheet — persisted state (DB)', () => {
     `)
   }
 
-  it('writes the sheet’s hand-typed Pomiar onto matched prace and clears the ones it stopped claiming', async () => {
+  it('writes the sheet’s Pomiar onto matched prace and clears the ones it stopped claiming', async () => {
     await seedTree()
+    // The first praca's Pomiar sums the etapy — no claim, so its stored figure is cleared. The
+    // second mirrors the Przedmiar, which is still a claim and lands as the reference figure.
     sheetState.formulas = BIALOSTOCKA_ROWS.map((_, index) =>
-      index === FIRST_ITEM_ROW ? row({ O: '=N5' }) : [],
+      index === FIRST_ITEM_ROW
+        ? row({ O: '=SUM(D5:M5)' })
+        : index === FIRST_ITEM_ROW + 1
+          ? row({ O: '=N6' })
+          : [],
     )
 
     const result = await compareWithSheet(investmentId)

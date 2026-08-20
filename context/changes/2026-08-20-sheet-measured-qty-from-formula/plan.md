@@ -294,17 +294,17 @@ window. Kosztorys data is throwaway until dogfooding merges to `main`.
 
 #### Automated
 
-- [x] 1.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/formula-refs.test.ts`
-- [x] 1.2 Rates resolution is unchanged: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/resolve-rates.test.ts`
+- [x] 1.1 New spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/formula-refs.test.ts` — 29761d54
+- [x] 1.2 Rates resolution is unchanged: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/resolve-rates.test.ts` — 29761d54
 
 ### Phase 2: Narrow the Pomiar rule
 
 #### Automated
 
-- [ ] 2.1 Parser specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/parse-labor-tab.test.ts`
-- [ ] 2.2 Comparison spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/build-sheet-comparison.test.ts`
-- [ ] 2.3 DB-backed spec passes: `pnpm exec vitest run src/__tests__/lib/actions/kosztorys-compare-with-sheet.test.ts`
-- [ ] 2.4 Both specs seen RED before the parser change
+- [x] 2.1 Parser specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/parse-labor-tab.test.ts`
+- [x] 2.2 Comparison spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/build-sheet-comparison.test.ts`
+- [x] 2.3 DB-backed spec passes: `pnpm exec vitest run src/__tests__/lib/actions/kosztorys-compare-with-sheet.test.ts`
+- [x] 2.4 Both specs seen RED before the parser change
 
 ### Phase 3: Comments and the record
 
