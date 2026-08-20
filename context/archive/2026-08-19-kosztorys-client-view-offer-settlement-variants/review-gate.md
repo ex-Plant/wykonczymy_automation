@@ -5,20 +5,13 @@ Fan-out: `/10x-impl-review`, `/code-review`, `tailwind-v4-audit`, `feature-first
 
 ## Findings
 
-- [x] 🔴 CRITICAL · fixed · code-review · `src/lib/actions/kosztorys-client-view.ts:58` · „Zapisz jako domyślne" wrote the firm-wide `mode` into the global — one button, pressed while looking at ONE investment, flipped what every investment without its own row serves on its live client link. Now the action writes only `variants[mode]`; `mode` scopes which variant is written and is never stored.
-      test: test-driven-debugging · integration — red repro asserted the persisted global (`stored.mode` stayed `'OFFER'` after saving the SETTLEMENT variant); instrument validated by re-adding `mode,` and watching it fail. `src/__tests__/lib/actions/kosztorys-client-view-defaults.test.ts`
-- [x] 🔴 CRITICAL · fixed · impl-review · `src/migrations/20260819_0_client_view_offer_settlement_variants.ts` · migration mixed ADD COLUMN with DROP COLUMN, and this table is read by the unauthenticated `/k/:token` entrance — so no deploy order was safe (migrate-first ⇒ live SELECT on a dropped column, push-first ⇒ SELECT on a column not yet added; Postgres 42703 either way). Rewritten purely additive + idempotent; the DROP is deliberately NOT authored yet and is owed as a follow-up migration once this deploy is live (recorded in `plan.md`).
-      test: no automated test · — deploy-ordering property, not expressible as a spec; the guard is the AGENTS.md migration-direction rule plus the `.husky/pre-push` reminder.
-- [x] 🟡 WARNING · fixed · code-review · `src/lib/kosztorys/client-view-settings.ts:66` · the sanitizer failed OPEN: a missing variant, or one whose `hiddenColumns` was absent / not an array, produced an empty hidden set — and the stored value is the HIDDEN set, so „nothing hidden" serves the whole `PREVIEW_VISIBLE_COLUMNS` allowlist, discount figures included, off a schemaless json column any owner can hand-edit in /admin. Now falls back to the variant's default hidden set at every step.
-      test: test-driven-debugging · unit — `it.each` over no-hidden-set / non-array / null asserts the default hidden set, plus a companion asserting an explicitly empty array is still honoured (that one IS a real choice). `src/__tests__/lib/kosztorys/client-view-settings.test.ts`
-- [x] 🟡 WARNING · fixed · impl-review · `src/migrations/20260819_0_…ts` · rows written before this migration would survive with `variants = '{}'` — resolving to the CODE default and silently opting those investments out of the firm-wide default forever, with nothing on screen to say so. Migration now `DELETE FROM "kosztorys_client_view"` (no data to preserve — settings are re-picked in one dialog).
-      test: no automated test · — one-shot migration effect against an empty prod table; a spec would assert the migration file, not behaviour.
-- [x] 🟡 WARNING · fixed · code-review · `src/lib/actions/kosztorys-client-view.ts:67` · the defaults write merged the _other_ variant through `sanitizeClientViewConfig`, materialising today's code default into the row — freezing a variant nobody had ever chosen, so a later change to the code default would never reach it. Now the untouched variant is carried over RAW.
-      test: TDD · integration — „writes only the named variant, leaving the other absent rather than frozen" (`stored.variants.SETTLEMENT` `toBeUndefined()`).
-- [x] 🟡 WARNING · fixed · code-review · `…/dialogs/kosztorys-client-view-dialog.tsx:44`, `kosztorys-share-dialog.tsx` · the dialogs published the RAW draft up to the parent while the server persisted the sanitized copy — editor state and DB disagreed after any save that dropped a key. Both now publish `sanitizeClientViewConfig(draft)`.
-      test: no automated test · — covered indirectly by the sanitizer specs; the wiring itself is browser-level and rides on EX-721.
-- [x] 🟡 WARNING · fixed · impl-review · `src/migrations/20260819_0_…ts` · `CREATE TYPE` was not idempotent, so a re-run aborted the whole migration. Wrapped in `DO $$ … EXCEPTION WHEN duplicate_object THEN null; END $$`, and both `ADD COLUMN`s made `IF NOT EXISTS`.
-- [x] 🔵 OBSERVATION · fixed · code-review · `src/lib/queries/kosztorys-client-view.ts:22` · inert `limit: 1` alongside `pagination: false`. Removed; the comment now says why there is no COUNT query.
+**Trimmed at archive (2026-08-20).** Pre-trim tally: **15 fixed, 1 filed, 2 dropped,
+2 dismissed · 0 open**. Every `fixed` finding is gone from this list — its durable record is
+the commit that fixed it (`c7164447`), and the fix itself is now just the code, readable at
+face value. What survives is the negative space git cannot hold: what was looked at and
+deliberately NOT changed, and why. The one exception kept below in condensed form is the
+finding that also filed an issue — a filing leaves no commit of its own.
+
 - [x] 🔵 OBSERVATION · dismissed · code-review · `…/actions/investor-actions.tsx:47` · „a second `readSettings()` can land mid-edit and stomp the draft" — unreachable: both dialogs are modal, the menu items that call it are behind the closed dropdown, and `useLatestRequest` already makes the read latest-wins. Both dialogs re-read on open by design.
 - [x] fixed · module-cohesion · `…/editor/hooks/use-kosztorys-settings.ts` · the staged-confirm machinery (state + the whole `investorImpactConfirm` props block) was about to exist twice — once for the two trybs rozliczenia, once for the variant flip. Extracted `useInvestorImpactConfirm()`; `use-client-view-mode-confirm.ts` is now a thin policy wrapper over it.
 - [x] fixed · structure-scatter · `src/lib/kosztorys/investor-impact.ts` (new) · `INVESTOR_IMPACT_TITLE` and the impact strings were module-private to a hook while a second home needed them. Promoted to one React-free module beside the other kosztorys logic — the wording can no longer drift between the controls that raise the dialog.
@@ -55,3 +48,8 @@ untouched-by-triage files (`collections/kosztorys-client-view.ts`,
 - kosztorys share-token specs — 3 passed.
 - `pnpm test:e2e` — not run (never run unprompted; the browser-level risk is filed as EX-721).
 - Full suite (`lint` + `test` + `build` over the whole tree) — offered to the user at close-out.
+
+_Condensed from a trimmed `fixed` finding (it filed an issue, so nothing else records it):_
+the additive migration leaves `hidden_columns` / `hide_empty_rows` alive in prod; the DROP is a
+separate migration owed **after** this deploy is live — **EX-722**. Rationale distilled into
+`context/foundation/lessons.md`.
