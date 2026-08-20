@@ -27,6 +27,7 @@ export type AppFieldComponentsT = {
       emptyMessage?: string
     }
   >
+  DatePicker: React.FC<FormControlPropsT>
   Checkbox: React.FC<FormControlPropsT>
   Textarea: React.FC<FormControlPropsT & { rows?: number }>
   FileInput: React.FC<FormControlPropsT>
