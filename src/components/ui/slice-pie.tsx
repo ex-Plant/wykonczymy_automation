@@ -28,6 +28,11 @@ export function SlicePie({
   const total = slices.reduce((sum, slice) => sum + slice.value, 0)
   const isInvalidTotal = slices.length > 0 && total < 0
 
+  // A share-of-whole chart needs shares to compare: one filled slice is always 100% of itself, so it
+  // states what the table beside it already says and costs a screenful doing it. The bad-total alarm
+  // still gets through — that is a data fault worth reporting whatever the slice count.
+  if (!isInvalidTotal && slices.filter((slice) => slice.value !== 0).length < 2) return null
+
   return (
     <figure className="flex flex-col gap-3">
       {(caption || action) && (
