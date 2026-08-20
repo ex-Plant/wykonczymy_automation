@@ -3,13 +3,15 @@
 import { useTransition } from 'react'
 import { useDraft } from '@/hooks/use-draft'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
-import { ClientViewModeWarning } from '@/components/kosztorys/editor/dialogs/client-view-mode-warning'
+import { useClientViewModeConfirm } from '@/components/kosztorys/editor/dialogs/use-client-view-mode-confirm'
 import {
   saveClientViewDefaultsAction,
   saveClientViewSettingsAction,
 } from '@/lib/actions/kosztorys-client-view'
+import { sanitizeClientViewConfig } from '@/lib/kosztorys/client-view-settings'
 import { toastMessage } from '@/lib/utils/toast'
 import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -26,6 +28,7 @@ export function KosztorysClientViewDialog() {
   } = useKosztorysActions().investor
   const [draft, setDraft] = useDraft(settings)
   const [pending, startTransition] = useTransition()
+  const { confirmModeChange, modeConfirmProps } = useClientViewModeConfirm(settings)
 
   const save = (asDefaults: boolean) =>
     startTransition(async () => {
@@ -36,8 +39,9 @@ export function KosztorysClientViewDialog() {
       const res = await saveClientViewSettingsAction(investmentId, draft)
       if (!res.success) return toastMessage(res.error, 'error')
       // Published before the second write is attempted: that row IS saved, so leaving the parent on
-      // the old value after a failed defaults write would make the editor and the DB disagree.
-      onSaved(draft)
+      // the old value after a failed defaults write would make the editor and the DB disagree. The
+      // sanitized copy, not the draft, for the same reason — the server stored that one.
+      onSaved(sanitizeClientViewConfig(draft))
       if (asDefaults) {
         const defaults = await saveClientViewDefaultsAction(draft, draft.mode)
         if (!defaults.success) {
@@ -48,37 +52,47 @@ export function KosztorysClientViewDialog() {
         }
       }
       toastMessage(
-        asDefaults ? 'Zapisano — te ustawienia są teraz domyślne.' : 'Zapisano ustawienia.',
+        asDefaults
+          ? 'Zapisano — te kolumny są teraz domyślne dla tego wariantu.'
+          : 'Zapisano ustawienia.',
         'success',
       )
       onOpenChange(false)
     })
 
+  const requestSave = (asDefaults: boolean) => {
+    if (draft) confirmModeChange(draft, () => save(asDefaults))
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader
-          title="Ustawienia podglądu inwestora"
-          // Scoped to the rozpiska on purpose: the setting reaches the grid's columns and pozycje,
-          // while the podsumowanie below it keeps its own client projection.
-          description="Zaznacz, które kolumny i pozycje inwestor widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
-        />
-        <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
-        {draft && <ClientViewModeWarning picked={draft.mode} saved={settings?.mode} />}
-        <DialogFooter>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!draft || pending}
-            onClick={() => save(true)}
-          >
-            Zapisz jako domyślne
-          </Button>
-          <Button size="sm" disabled={!draft || pending} onClick={() => save(false)}>
-            {draft?.mode === 'SETTLEMENT' ? 'Zapisz i pokaż rozliczenie' : 'Zapisz i pokaż ofertę'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader
+            title="Ustawienia podglądu inwestora"
+            // Scoped to the rozpiska on purpose: the setting reaches the grid's columns and pozycje,
+            // while the podsumowanie below it keeps its own client projection.
+            description="Zaznacz, które kolumny i pozycje inwestor widzi w rozpisce. Ceny podwykonawców nie pojawiają się w niej nigdy."
+          />
+          <ClientViewSettingsForm value={draft} onChange={setDraft} disabled={pending} />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!draft || pending}
+              onClick={() => requestSave(true)}
+            >
+              Zapisz jako domyślne
+            </Button>
+            <Button size="sm" disabled={!draft || pending} onClick={() => requestSave(false)}>
+              {draft?.mode === 'SETTLEMENT'
+                ? 'Zapisz i pokaż rozliczenie'
+                : 'Zapisz i pokaż ofertę'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog {...modeConfirmProps} />
+    </>
   )
 }

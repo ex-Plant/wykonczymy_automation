@@ -26,16 +26,16 @@ Ten sam przełącznik i to samo ostrzeżenie działają w kroku ustawień okna �
 
 ## Key Decisions Made
 
-| Decyzja                | Wybór                                            | Dlaczego                                                                                                     | Źródło  |
-| ---------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------- |
-| Czym jest wariant      | Trwały tryb inwestycji, nie preset w oknie       | Przełączenie etapu nie może kasować odklikanych kolumn drugiego wariantu                                     | Rozmowa |
-| Edytowany vs aktywny   | Jedno i to samo                                  | Nie ma sytuacji „edytuję ofertę, pokazuję rozliczenie"; dwa przełączniki w jednym oknie myliłyby się ze sobą | Rozmowa |
-| Potwierdzenie zmiany   | Ostrzeżenie w oknie + przycisk nazywający skutek | Wzorzec zmiany sposobu rozliczenia materiałów: to samo okno, ten sam flow, bez osobnego modala               | Rozmowa |
-| „Zapisz jako domyślne" | Jeden wariant (wybrany) + domyślny tryb          | Ślepe nadpisanie globalu skasowałoby domyślne drugiego wariantu; nowa inwestycja ma startować w ofercie      | Rozmowa |
-| Schemat                | Jeden `variants` (jsonb) + `mode`                | Jedna kolumna niezależnie od liczby wariantów; sanitizer i tak waliduje kształt                              | Plan    |
-| Okno „Udostępnij"      | Ten sam formularz z przełącznikiem               | Wspólne ciało zostaje jednym źródłem tego, co widać; generując link wybierasz wariant                        | Plan    |
-| Nazwa w kodzie         | `ClientViewModeT` z prefiksem                    | `SettlementModeT` to sposób rozliczenia robocizny — inne pojęcie, to samo słowo                              | Plan    |
-| Migracja               | Tępa: drop + add, zero backfillu                 | Nikt nie odklikał jeszcze żadnego wariantu (owner, 2026-08-19)                                               | Rozmowa |
+| Decyzja                | Wybór                                                                         | Dlaczego                                                                                                                                          | Źródło  |
+| ---------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| Czym jest wariant      | Trwały tryb inwestycji, nie preset w oknie                                    | Przełączenie etapu nie może kasować odklikanych kolumn drugiego wariantu                                                                          | Rozmowa |
+| Edytowany vs aktywny   | Jedno i to samo                                                               | Nie ma sytuacji „edytuję ofertę, pokazuję rozliczenie"; dwa przełączniki w jednym oknie myliłyby się ze sobą                                      | Rozmowa |
+| Potwierdzenie zmiany   | Okienko „Uwaga — zmiana widoczna dla inwestora!” + przycisk nazywający skutek | Wzorzec zmiany sposobu rozliczenia materiałów: dokładnie ten sam dialog i ten sam flow (korekta 2026-08-20 — patrz „Odstępstwa” w plan.md)        | Rozmowa |
+| „Zapisz jako domyślne" | Jeden wariant (wybrany), bez domyślnego trybu                                 | Ślepe nadpisanie globalu skasowałoby domyślne drugiego wariantu; firmowy tryb przestawiłby naraz wszystkie żywe linki (korekta 2026-08-20)        | Rozmowa |
+| Schemat                | Jeden `variants` (jsonb) + `mode`                                             | Jedna kolumna niezależnie od liczby wariantów; sanitizer i tak waliduje kształt                                                                   | Plan    |
+| Okno „Udostępnij"      | Ten sam formularz z przełącznikiem                                            | Wspólne ciało zostaje jednym źródłem tego, co widać; generując link wybierasz wariant                                                             | Plan    |
+| Nazwa w kodzie         | `ClientViewModeT` z prefiksem                                                 | `SettlementModeT` to sposób rozliczenia robocizny — inne pojęcie, to samo słowo                                                                   | Plan    |
+| Migracja               | Addytywna: add + kasowanie wierszy, zero backfillu                            | Nikt nie odklikał jeszcze żadnego wariantu (owner, 2026-08-19); drop w tym samym kroku nie ma bezpiecznej kolejności deployu (korekta 2026-08-20) | Rozmowa |
 
 ## Scope
 

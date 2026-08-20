@@ -3,7 +3,7 @@ change_id: kosztorys-client-view-offer-settlement-variants
 title: Warianty „Oferta / Rozliczenie" w ustawieniach podglądu inwestora
 status: implemented
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-20
 archived_at: null
 branch: kosztorys-client-view-offer-settlement-variants
 worktree: null
@@ -23,16 +23,24 @@ Ustalenia z rozmowy poprzedzającej (2026-08-19):
 - **Przełącznik w oknie = zmiana tego, co widzi inwestor.** Jedna decyzja, nie dwie: nie ma
   „edytuję ofertę, ale pokazuję rozliczenie". Wybrany wariant jest jednocześnie edytowanym
   i (po zapisie) aktywnym.
-- **Wyraźny zapis + ostrzeżenie.** Przycisk nazywa skutek wprost („Zapisz i pokaż rozliczenie"),
-  a nad nim ostrzeżenie, że zapis zmienia widok inwestora — pokazywane tylko, gdy wybrany wariant
-  różni się od zapisanego. Wzorzec jak przy zmianie sposobu rozliczenia materiałów: to samo okno,
-  ten sam flow, bez osobnego modala potwierdzenia.
-- **„Zapisz jako domyślne" dotyczy jednego wariantu** — tego wybranego — i zapisuje też domyślny
-  tryb, więc nowa inwestycja startuje w ofercie.
+- **Wyraźny zapis + potwierdzenie.** Przycisk nazywa skutek wprost („Zapisz i pokaż rozliczenie"),
+  a zapis po zmianie wariantu podnosi to samo okienko „Uwaga — zmiana widoczna dla inwestora!", które
+  stoi przed zmianą sposobu rozliczenia materiałów. Wzorzec jak tam: to samo okno, ten sam flow.
+  (Korekta wobec pierwszego zapisu tej decyzji, który mówił „bez osobnego modala" i został wdrożony
+  jako baner w oknie — owner odrzucił baner, ma być dokładnie ten dialog.)
+- **„Zapisz jako domyślne" dotyczy jednego wariantu** — tego wybranego — i zapisuje **wyłącznie jego
+  zestaw kolumn**. Domyślnego trybu firmowego nie rusza (przegląd kodu, 2026-08-20): ten tryb decyduje,
+  co widzi każda inwestycja bez własnych ustawień, więc jego zmiana przestawiłaby naraz wszystkie żywe
+  linki inwestorów — z przycisku, którego potwierdzenie mówi o jednej inwestycji. Nowa inwestycja i tak
+  startuje w ofercie (wartość domyślna kolumny), a firmowy tryb zostaje świadomą zmianą w /admin.
 - **Domyślne z kodu są dwa, różne.** Oferta: opis prac, przedmiar, jednostka miary, cena j.m. netto,
   wartość przedmiaru netto. Rozliczenie: pomiar, etapy, razem netto, % wykonania.
 - **Brak danych do zachowania (owner, 2026-08-19).** Nikt nie odklikał jeszcze żadnego wariantu, więc
-  migracja jest tępa: usuwa stare kolumny i dodaje nowe, zero backfillu.
+  migracja jest tępa: dodaje nowe kolumny, kasuje istniejące wiersze, zero backfillu. Stare kolumny
+  (`hidden_columns`, `hide_empty_rows`) **zostają** — migracja jest czysto addytywna, bo tę tabelę
+  czyta też niezalogowane wejście po tokenie: gdyby jednym ruchem dodawała i usuwała, żadna kolejność
+  deployu nie byłaby bezpieczna (jedna ze stron trafiałaby na 42703 właśnie na `/k/:token`). Stare
+  kolumny zdejmie osobna migracja, dopisana dopiero po wypuszczeniu tego deployu.
 - **Odczyt po stronie inwestora bez zmian.** `getClientViewSettings(investmentId)` dalej zwraca jeden
   płaski zestaw — rozwiązuje tylko wariant aktywny — więc podgląd i wejście po tokenie zostają
   nietknięte.

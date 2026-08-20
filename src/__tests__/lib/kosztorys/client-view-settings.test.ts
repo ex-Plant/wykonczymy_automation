@@ -58,6 +58,29 @@ describe('sanitizeClientViewConfig', () => {
     )
   })
 
+  // The stored value is the HIDDEN set, so „no usable list" must never be read as „hide nothing" —
+  // that would serve the whole allowlist. `variants` is a schemaless json column any owner can
+  // hand-edit in /admin, so a malformed variant is reachable without a code change.
+  it.each([
+    ['a variant with no hidden set', { OFFER: { hideEmptyRows: true } }],
+    ['a hidden set that is not an array', { OFFER: { hiddenColumns: 'price' } }],
+    ['a null hidden set', { OFFER: { hiddenColumns: null } }],
+  ])('falls back to the default hidden set on %s', (_label, variants) => {
+    const config = sanitizeClientViewConfig({ variants })
+
+    expect(config.variants.OFFER.hiddenColumns).toEqual(
+      sanitizeClientViewConfig({}).variants.OFFER.hiddenColumns,
+    )
+  })
+
+  it('keeps an explicitly empty hidden set — that is a real choice, not a malformed one', () => {
+    const config = sanitizeClientViewConfig({
+      variants: { OFFER: { hiddenColumns: [], hideEmptyRows: true } },
+    })
+
+    expect(config.variants.OFFER.hiddenColumns).toEqual([])
+  })
+
   it('drops a stored key that is outside the disclosure ceiling', () => {
     const config = sanitizeClientViewConfig({
       variants: { OFFER: { hiddenColumns: ['price', 'subcontractorPrice'], hideEmptyRows: true } },

@@ -468,3 +468,23 @@ Danych do przeniesienia nie ma — nikt nie odklikał jeszcze żadnego wariantu.
 #### Automated
 
 - [x] 4.1 Specy dotkniętych warstw dalej przechodzą
+
+## Odstępstwa od planu (przegląd 2026-08-20)
+
+Trzy rzeczy wyszły inaczej, niż zapisano wyżej. Bloki faz zostają nietknięte — to jest ich sprostowanie.
+
+1. **Potwierdzenie zmiany wariantu to `ConfirmDialog`, nie baner w oknie.** Faza 4 zakładała
+   `client-view-mode-warning.tsx` na `components/ui/warning-banner.tsx`; owner odrzucił baner — ma być
+   dokładnie to okienko, które podnosi zmiana sposobu rozliczenia materiałów. Plik został usunięty,
+   a wspólny mechanizm mieszka w `components/kosztorys/editor/hooks/use-investor-impact-confirm.ts`
+   (używają go oba okna klienta i `use-kosztorys-settings`), z copy w `lib/kosztorys/investor-impact.ts`.
+2. **„Zapisz jako domyślne" nie zapisuje już domyślnego trybu firmowego.** Zapis obejmuje wyłącznie
+   zestaw kolumn wybranego wariantu. Firmowy `mode` decyduje, co widzi każda inwestycja bez własnych
+   ustawień, więc zapisywany stamtąd przestawiałby naraz wszystkie żywe linki inwestorów — a
+   potwierdzenie mówi o jednej inwestycji. Pilnuje tego spec
+   `src/__tests__/lib/actions/kosztorys-client-view-defaults.test.ts`.
+3. **Migracja jest addytywna, nie „drop + add".** Tabelę czyta też niezalogowane wejście po tokenie,
+   więc migracja robiąca jedno i drugie naraz nie ma bezpiecznej kolejności deployu (jedna ze stron
+   trafia na 42703 na `/k/:token`). `hidden_columns` / `hide_empty_rows` zostają w bazie; **osobna
+   migracja zdejmująca je jest do dopisania dopiero po wypuszczeniu tego deployu** — dopisana teraz
+   poszłaby na prod w tym samym `pnpm db:migrate:prod` i przywróciła to okno.

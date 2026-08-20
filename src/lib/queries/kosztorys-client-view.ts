@@ -22,8 +22,7 @@ export async function findClientViewRow(payload: Payload, investmentId: number) 
     collection: 'kosztorys-client-view',
     where: { investment: { equals: investmentId } },
     depth: 0,
-    limit: 1,
-    // No COUNT query for a unique-indexed lookup that already stops at one row.
+    // No COUNT query for a lookup a unique index already caps at one row.
     pagination: false,
     overrideAccess: true,
   })
@@ -61,7 +60,6 @@ export async function getClientViewConfig(investmentId: number): Promise<ClientV
   return sanitizeClientViewConfig(row ?? defaults ?? {})
 }
 
-// What the client is actually served: the active variant, and nothing about the inactive one.
 export async function getClientViewSettings(investmentId: number): Promise<ClientViewSettingsT> {
   return clientViewSettingsForMode(await getClientViewConfig(investmentId))
 }

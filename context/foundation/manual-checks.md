@@ -1415,7 +1415,7 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 
 - [ ] W `/admin` wiersz „Ustawienia podglądu inwestora" pokazuje pole trybu z etykietami „Oferta" / „Rozliczenie"
 - [ ] Przełączenie „Oferta ⟷ Rozliczenie" w oknie ustawień zmienia zestaw ticków i nic nie zapisuje do kliknięcia zapisu; kolumny odklikane w ofercie są nietknięte po powrocie
-- [ ] Ostrzeżenie pojawia się tylko gdy wybrany wariant różni się od zapisanego i znika po zapisie; etykieta przycisku nazywa wariant, który zobaczy inwestor
+- [ ] Zapis po zmianie wariantu podnosi okienko „Uwaga — zmiana widoczna dla inwestora!" (jak przy zmianie rozliczenia materiałów); „Anuluj" nic nie zapisuje, a zapis bez zmiany wariantu nie pyta o nic; etykieta przycisku nazywa wariant, który zobaczy inwestor
 - [ ] Link `/k/<token>` w trybie `OFFER` pokazuje kolumny ofertowe; po przestawieniu na `SETTLEMENT` ten sam link pokazuje kolumny rozliczeniowe
 - [ ] „Zapisz jako domyślne" na wariancie ofertowym nie rusza domyślnych rozliczenia (sprawdzalne przez drugą inwestycję bez własnego wiersza)
-- [ ] Okno „Udostępnij" ma ten sam przełącznik i to samo ostrzeżenie; „Dalej" bez żadnej zmiany nie tworzy wiersza dla inwestycji, która go nie miała
+- [ ] Okno „Udostępnij" ma ten sam przełącznik i to samo okienko potwierdzenia na „Dalej"; „Dalej" bez żadnej zmiany nie tworzy wiersza dla inwestycji, która go nie miała
