@@ -1,7 +1,7 @@
 ---
 change_id: sheet-measured-qty-from-formula
 title: Import Pomiar z natury when the cell holds a formula that is not the stage sum
-status: implementing
+status: implemented
 created: 2026-08-20
 updated: 2026-08-20
 archived_at: null

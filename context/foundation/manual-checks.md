@@ -1419,3 +1419,16 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 - [ ] Link `/k/<token>` w trybie `OFFER` pokazuje kolumny ofertowe; po przestawieniu na `SETTLEMENT` ten sam link pokazuje kolumny rozliczeniowe
 - [ ] „Zapisz jako domyślne" na wariancie ofertowym nie rusza domyślnych rozliczenia (sprawdzalne przez drugą inwestycję bez własnego wiersza)
 - [ ] Okno „Udostępnij" ma ten sam przełącznik i to samo okienko potwierdzenia na „Dalej"; „Dalej" bez żadnej zmiany nie tworzy wiersza dla inwestycji, która go nie miała
+
+## sheet-measured-qty-from-formula — „Pomiar z natury" z formuły
+
+### Faza 2: Zawężenie reguły odczytu
+
+- [ ] „Porównaj z arkuszem…" na inwestycji 65 raportuje prace, których Pomiar był wcześniej odrzucany, a menu „Problemy" pokazuje niezerowe „z pomiarem do rozpisania na etapy"
+- [ ] Na inwestycji, której arkusz jest pustą ofertą (pomiar = suma etapów w każdym wierszu), licznik dalej wynosi 0
+- [ ] Ponowne otwarcie tego samego okna raportuje „już zgodne" — nic nie zostaje przepisane
+- [ ] Podgląd inwestora nie ma kolumny „Rozjazd" ani menu „Problemy"
+
+### Faza 3: Komentarze i zapis
+
+- [ ] Żaden z dwóch dokumentów referencyjnych nie twierdzi już, że kolumna „Rozjazd" jest ślepa na `=N#`
