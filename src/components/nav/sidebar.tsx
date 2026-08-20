@@ -55,7 +55,7 @@ export function Sidebar() {
           <Button variant="ghost" size="sm" align="start" asChild>
             <Link href="/kosztorysy">
               <FileSpreadsheet />
-              Kosztorysy
+              Kosztorysy v1
             </Link>
           </Button>
         )}

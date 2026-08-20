@@ -54,13 +54,13 @@ export default async function SheetsListPage() {
   }))
 
   return (
-    <PageWrapper title="Kosztorysy">
+    <PageWrapper title="Kosztorysy v1">
       <div className="flex flex-wrap items-center justify-end gap-3">
         <ExternalLink href={ALL_SHEETS_URL}>Otwórz arkusze google ↗</ExternalLink>
       </div>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium">Kosztorysy</h2>
+        <h2 className="text-sm font-medium">Kosztorysy v1</h2>
         <KosztorysDataTable data={kosztorysRows} availableInvestments={investmentsWithoutSheet} />
       </section>
 
