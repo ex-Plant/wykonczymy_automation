@@ -51,6 +51,20 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { canHide: false, minWidth: 'min-w-56' },
     }),
 
+    col.accessor('hasSheet', {
+      id: 'hasSheet',
+      header: 'Kosztorys',
+      enableSorting: true,
+      cell: (info) => (
+        <SheetButton investmentId={info.row.original.id} hasSheet={!!info.getValue()} />
+      ),
+    }),
+    col.display({
+      id: 'kosztorysV2',
+      header: 'Kosztorys_v2',
+      cell: (info) => <OpenKosztorysV2Button investmentId={info.row.original.id} label="Otwórz" />,
+    }),
+
     // Every figure that exists on two planes is shown on BOTH, v1 beside v2: nothing here infers
     // which plane an investment „really" belongs to, because while investments are still being moved
     // off the spreadsheets one legitimately carries figures on both. Hide what you are not comparing
@@ -208,19 +222,6 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { align: 'right' },
       enableSorting: true,
       cell: (info) => <InvestmentStatusBadge status={info.getValue()} />,
-    }),
-    col.accessor('hasSheet', {
-      id: 'hasSheet',
-      header: 'Kosztorys',
-      enableSorting: true,
-      cell: (info) => (
-        <SheetButton investmentId={info.row.original.id} hasSheet={!!info.getValue()} />
-      ),
-    }),
-    col.display({
-      id: 'kosztorysV2',
-      header: 'Kosztorys_v2',
-      cell: (info) => <OpenKosztorysV2Button investmentId={info.row.original.id} label="Otwórz" />,
     }),
     col.display({
       id: 'actions',
