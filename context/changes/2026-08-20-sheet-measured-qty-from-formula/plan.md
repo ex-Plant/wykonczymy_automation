@@ -310,4 +310,4 @@ window. Kosztorys data is throwaway until dogfooding merges to `main`.
 
 #### Automated
 
-- [x] 3.1 No phase-scoped automated check — prose and comments only
+- [x] 3.1 No phase-scoped automated check — prose and comments only — a93e7a49
