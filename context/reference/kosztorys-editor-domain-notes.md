@@ -110,9 +110,15 @@ decyzji właściciela (cena klienta = faktura vs cena podwykonawcy = wypłata). 
 
 W starszych arkuszach `O` (pomiar) bywa zwykłym `=N<ten sam wiersz>` zamiast `=SUM(D:M)` — tak się je
 wtedy budowało. Na żywym arkuszu wychodzi 241 z 336 prac, więc to **stan normalny, nie awaria arkusza
-i nie błąd odczytu**. U nas pomiar jest zawsze sumą etapów, więc dla takiego wiersza nie ma czego
-zapisać jako pomiar z arkusza — i to jest powód, dla którego zero rozjazdów przy „Porównaj
-z arkuszem" niczego nie dowodzi.
+i nie błąd odczytu**.
+
+**Odwrócone 2026-08-20 (właściciel).** Do tej daty z tego zdania wyprowadzaliśmy wniosek „dla takiego
+wiersza nie ma czego zapisać jako pomiar" — i to on, nie sama reguła, był powodem, dla którego zero
+rozjazdów przy „Porównaj z arkuszem" niczego nie dowodziło. Wniosek był nasz, nie właściciela.
+Komórka, którą właściciel wypełnił, JEST pomiarem niezależnie od tego, co wyprodukowało liczbę: pomiar
+przepisany z Przedmiaru postawiony obok sumy etapów to prawdziwe porównanie, nie tautologia. Import
+pomija dziś wyłącznie formułę sięgającą do kolumn etapów. Skanem po 56 podpiętych arkuszach: suma
+etapów w komórce pomiaru to 2 wiersze w całej bazie, `=N{wiersz}` — 267–448 wierszy na arkusz.
 
 Konsekwencja dla raportu: ta klasa nie jest defektem do poprawienia i nie zasługuje na listę wiersz po
 wierszu (właściciel, 2026-08-14) — sam licznik odpowiada na pytanie.
@@ -737,13 +743,18 @@ martwa. To **nie jest** cofnięcie EX-494 — suma etapów pozostaje jedyną pra
 Pusta komórka musi dać `null`, nie `0`: dla liczby odniesienia `0` znaczy „arkusz twierdzi, że nic nie
 zrobiono", a to jest twierdzenie, którego pusta komórka nie stawia.
 
-**Formuła w tej komórce = brak odniesienia, nie odniesienie równe jej wynikowi.** Zapisanie wyniku
+**Formuła sumująca etapy = brak odniesienia, nie odniesienie równe jej wynikowi.** Zapisanie wyniku
 `=SUM(D:M)` dałoby porównanie sumy etapów z sumą etapów — funkcję robiącą nic. Dlatego import czyta
-formuły zakładki `kosztorys_robocizny` (wcześniej pobierał ją wyłącznie po wartościach) i zapisuje
-odniesienie tylko tam, gdzie liczba jest wpisana z ręki. Rozkład jest binarny, nie mieszany: arkusz
-kanoniczny 435/435 formuł, inwestycja 31 — 0/245, arkusz testowy — 0/253. Odrzucenie `=N#` (Pomiar
-przepisany z Przedmiaru) idzie tą samą regułą, ale nie po cichu — patrz
-`context/reference/kosztorys-sheet/formula-anomalies.md`, wniosek 2.
+formuły zakładki `kosztorys_robocizny` (wcześniej pobierał ją wyłącznie po wartościach) i pomija
+komórkę wtedy i tylko wtedy, gdy jej formuła sięga do kolumn etapów — w dowolnym kształcie
+(`=SUM(D5:M5)`, `=SUM(D:M)`, `=D5+E5`) i budowana z rozpoznanego zakresu etapów, nie z literału
+(wąskie układy mają etapy `D–I`).
+
+**Zawężone 2026-08-20 (właściciel).** Pierwotna reguła odrzucała KAŻDĄ formułę i tak trafiła do kodu,
+choć argument istniał tylko dla sumy etapów. Kosztowało to strukturalną ślepotę na ~750 pozycjach
+w ~20 inwestycjach — patrz `context/reference/kosztorys-sheet/formula-anomalies.md`, wniosek 2, i
+sekcja o `=N#` wyżej. Rozkład, na którym oparto pierwotną ankietę (435/435, 0/245, 0/253), mierzył
+wyłącznie jeden kształt formuły i dlatego wyszedł binarny.
 
 ## Filtry edytora — gramatyka „ptaszek znaczy widoczne" (2026-08-14, EX-665)
 

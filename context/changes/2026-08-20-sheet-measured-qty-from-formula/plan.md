@@ -301,13 +301,13 @@ window. Kosztorys data is throwaway until dogfooding merges to `main`.
 
 #### Automated
 
-- [x] 2.1 Parser specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/parse-labor-tab.test.ts`
-- [x] 2.2 Comparison spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/build-sheet-comparison.test.ts`
-- [x] 2.3 DB-backed spec passes: `pnpm exec vitest run src/__tests__/lib/actions/kosztorys-compare-with-sheet.test.ts`
-- [x] 2.4 Both specs seen RED before the parser change
+- [x] 2.1 Parser specs pass: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/parse-labor-tab.test.ts` — ba60b524
+- [x] 2.2 Comparison spec passes: `pnpm exec vitest run src/__tests__/lib/kosztorys/sheet-import/build-sheet-comparison.test.ts` — ba60b524
+- [x] 2.3 DB-backed spec passes: `pnpm exec vitest run src/__tests__/lib/actions/kosztorys-compare-with-sheet.test.ts` — ba60b524
+- [x] 2.4 Both specs seen RED before the parser change — ba60b524
 
 ### Phase 3: Comments and the record
 
 #### Automated
 
-- [ ] 3.1 No phase-scoped automated check — prose and comments only
+- [x] 3.1 No phase-scoped automated check — prose and comments only
