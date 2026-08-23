@@ -588,9 +588,9 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 4.1 `pnpm exec vitest run src/__tests__/validate-hook.test.ts src/__tests__/transfer-schema.test.ts` przechodzi, z testem odtwarzającym dla każdej z trzech dziur
-- [x] 4.2 `pnpm test:integration` przechodzi — asercja na stan utrwalony po próbie przetagowania
-- [x] 4.3 `grep -n "vatPlane" src/lib/schemas/transfer.ts` pokazuje pole tylko w `createTransferSchema`
+- [x] 4.1 `pnpm exec vitest run src/__tests__/validate-hook.test.ts src/__tests__/transfer-schema.test.ts` przechodzi, z testem odtwarzającym dla każdej z trzech dziur — d6b80d12
+- [x] 4.2 `pnpm test:integration` przechodzi — asercja na stan utrwalony po próbie przetagowania — d6b80d12
+- [x] 4.3 `grep -n "vatPlane" src/lib/schemas/transfer.ts` pokazuje pole tylko w `createTransferSchema` — d6b80d12
 
 ### Phase 5: Nazewnictwo
 
