@@ -43,19 +43,21 @@ export const SETTLEMENT_MODE_ADMIN_OPTIONS = SETTLEMENT_MODES.map((value) => ({
 // A Record, not an if-chain, for the same reason as the labels above: a mode added to
 // SETTLEMENT_MODES without a projection is a compile error, not a silent fallthrough to netto.
 //
-// In the grid, „Mieszane" means both money columns: a mixed-settled client is billed on both planes,
-// so showing one would hide half the bill. The panel's 'mixed' has no grid counterpart — the grid
-// renders columns, not a settlement narrative. The panel has no such projection: the owner ruled
-// that both money columns stand in every tryb, client-facing preview included (2026-08-07), so the
-// only thing the panel asks of the mode is whether it is „Mieszane".
-const GRID_AXIS_BY_MODE: Record<SettlementModeT, MoneyAxisT> = {
+// The tryb decides which money column EXISTS — one per tryb, never two. „Mieszane" settles on netto
+// like tryb netto (owner, 2026-08-20, reversing the two-column reading from earlier that day): what
+// is mixed there are the WPŁATY, not the bill — a wpłata przelewem is legitimate there and comes off
+// the netto column at the netto its faktura names, where tryb netto flags it as off-plane. One projection for the grid and the
+// Podsumowanie alike, client-facing preview included: the tryb is a fact about the deal, so the
+// client is the reader it is hidden for first (reverses the 2026-08-07 ruling that both columns stand
+// in every tryb, and EX-631's „podgląd nie zna trybu rozliczenia").
+const MONEY_AXIS_BY_MODE: Record<SettlementModeT, MoneyAxisT> = {
   NET: 'net',
   GROSS: 'gross',
-  MIXED: 'both',
+  MIXED: 'net',
 }
 
-export function settlementModeToGridAxis(mode: SettlementModeT): MoneyAxisT {
-  return GRID_AXIS_BY_MODE[mode]
+export function settlementModeToMoneyAxis(mode: SettlementModeT): MoneyAxisT {
+  return MONEY_AXIS_BY_MODE[mode]
 }
 
 // A brutto-settled client has VAT added on top of the bill, so there is nothing to strip off and the

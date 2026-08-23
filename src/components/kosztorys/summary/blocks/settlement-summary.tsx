@@ -4,12 +4,12 @@ import {
   combinedPair,
   moneyPair,
   laborCostsNetPreDiscount,
+  type MoneyPairT,
 } from '@/lib/kosztorys/summary-economics'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
-import { SUMMARY_LABEL_COL, SUMMARY_VALUE_COL } from '@/components/ui/summary-grid'
 import { SummaryBreakdownTable } from '@/components/kosztorys/summary/tables/summary-breakdown-table'
 import { SummaryTotalsTable } from '@/components/kosztorys/summary/tables/summary-totals-table'
 import type { SettlementGroupT } from '@/components/kosztorys/summary/settlement-groups'
@@ -24,26 +24,16 @@ import {
 const mismatchTooltip = (recon: ReconT, subject: string) =>
   reconciliationTooltip(recon, subject, formatNet)
 
-// Both money columns stand in every tryb rozliczenia, client-facing preview included (owner,
-// 2026-08-07). The tryb decides the arithmetic behind „Do zapłaty" — never which columns exist — so a
-// reader can always quote both kwoty without switching a control first.
-const MONEY_AXIS: MoneyAxisT = 'both'
-
-// The settlement table carries one money track where the breakdown above carries two — span both so
-// the two tables end on the same edge instead of the lower one stepping in by a column.
-const SETTLEMENT_COLS = `${SUMMARY_LABEL_COL} calc(${SUMMARY_VALUE_COL} * 2 + 1px)`
-
 type PropsT = {
   investmentId: number
   // Robocizna wartość netto (po rabacie) — client-side, reacts to unsaved edits.
   laborCostsNet: number
-  // What the investor is billed for materiały — one figure on the plane they settle, built upstream
-  // by `billedMaterials`. It enters both money columns unchanged, so the table renders it as a single
-  // merged cell rather than a netto/brutto pair.
-  materialsBilled: number
-  // The settlement steps below the breakdown, built by the caller because their sequence IS the tryb
-  // rozliczenia — mieszany resolves through a reszta the other tryby don't have, and splits into two
-  // tory (gotówka / faktura) that each settle their own debt.
+  // What the investor is billed for materiały. One figure standing on both planes: VAT never touches
+  // materiały, only the investment's own stawka materiałów does, and that is applied upstream.
+  materialsPair: MoneyPairT
+  // Which money columns the tryb rozliczenia shows.
+  moneyAxis: MoneyAxisT
+  // The settlement steps below the breakdown, built by the caller.
   settlementGroups: SettlementGroupT[]
   // The rabat actually taken off the executed robocizna (net zł): the global discount when active,
   // else Σ per-item rabat. Unified upstream so this table shows one explicit „Rabat" line. 0 = none.
@@ -63,12 +53,13 @@ type PropsT = {
 }
 
 // The bottom summary block, in two tables that answer two different questions. The first builds the
-// debt — Robocizna przed rabatem, the Rabat, materiały, then Łącznie. Below it, one table per
-// settlement tor, where wpłaty pay that Łącznie down to what is left to pay.
+// debt — Robocizna przed rabatem, the Rabat, materiały, then Łącznie. Below it, the settlement, where
+// wpłaty pay that Łącznie down to what is left to pay.
 export function SettlementSummary({
   investmentId,
   laborCostsNet,
-  materialsBilled,
+  materialsPair,
+  moneyAxis,
   settlementGroups,
   discountAmount,
   reconciliation,
@@ -90,16 +81,16 @@ export function SettlementSummary({
   // figure. It renders negative: it is a deduction step, and a positive figure in a subtracted row
   // reads as if it were being added.
   const discount = moneyPair(-discountAmount, vatRate)
-  const combined = combinedPair(laborCostsNet, materialsBilled, vatRate)
+  const combined = combinedPair(laborCostsNet, materialsPair, vatRate)
 
-  const moneyCols = summaryMoneyCols(MONEY_AXIS)
+  const moneyCols = summaryMoneyCols(moneyAxis)
 
   return (
     <div className="text-foreground flex flex-col items-start gap-x-12 gap-y-8 text-sm">
       <div className="flex w-fit flex-col gap-8">
         <SummaryBreakdownTable
           cols={moneyCols}
-          moneyAxis={MONEY_AXIS}
+          moneyAxis={moneyAxis}
           laborCostsPair={laborCostsPair}
           laborCostsMismatch={
             reconVisible && reconciliation.laborCosts.mismatch
@@ -107,7 +98,7 @@ export function SettlementSummary({
               : undefined
           }
           discount={showDiscount ? discount : undefined}
-          materialsBilled={materialsBilled}
+          materialsPair={materialsPair}
           combined={combined}
           discountMismatch={
             reconVisible && reconciliation.discount.mismatch
@@ -118,9 +109,7 @@ export function SettlementSummary({
         {settlementGroups.map((group, index) => (
           <SummaryTotalsTable
             key={group.caption ?? index}
-            // A two-column group lines its Netto/Brutto up with the breakdown above; a single-plane
-            // one spans both tracks so the tables still end on the same edge.
-            cols={group.axis === 'both' ? moneyCols : SETTLEMENT_COLS}
+            cols={moneyCols}
             caption={group.caption}
             axis={group.axis}
             rows={group.rows}

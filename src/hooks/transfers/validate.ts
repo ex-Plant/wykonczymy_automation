@@ -9,7 +9,7 @@ import {
   needsWorker,
   needsExpenseCategory,
   canBeSettled,
-  billsNetAmount,
+  carriesNetAmount,
 } from '@/lib/constants/transfers'
 import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
@@ -47,6 +47,7 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   const otherCategory = resolved('otherCategory')
   const worker = resolved('worker')
   const expenseCategory = resolved('expenseCategory')
+  const vatPlane = resolved('vatPlane')
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
@@ -122,17 +123,18 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     d.settled = false
   }
 
-  // The netto figure is load-bearing exactly on the type whose spec row bills at `netAmount`, and
-  // meaningless anywhere else — so the type that doesn't bill at it stores null. This hook is the
-  // server-side authority; the rule itself lives once in getNetAmountError.
+  // The netto figure is load-bearing on exactly the rows that carry one — the type billed at netto
+  // and a wpłata brutto — and meaningless anywhere else, so every other row stores null. This hook
+  // is the server-side authority; the rule itself lives once in getNetAmountError.
   // The numerics stay on `??` rather than `resolved()`: unlike a relationship, a money field has no
   // "cleared" state — an explicit null on a required amount is the absence the stored row must fill,
   // not an erasure to validate against.
-  if (billsNetAmount(type)) {
+  if (carriesNetAmount(type, vatPlane)) {
     const netErr = getNetAmountError(
       d.netAmount ?? original?.netAmount,
       d.amount ?? original?.amount,
       type,
+      vatPlane,
     )
     if (netErr) errors.push(netErr)
   } else {

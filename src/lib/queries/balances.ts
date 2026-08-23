@@ -3,9 +3,11 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import { getDb, type DbExecutorT } from '@/lib/db/get-db'
+import { selectDepositPlaneSums } from '@/lib/db/deposit-plane-sums'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
 import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
 import type { SubcontractorSettlementT } from '@/lib/kosztorys/subcontractor-due'
+import type { DepositPlaneSumsT } from '@/lib/kosztorys/deposit-planes'
 import {
   sumAllRegisterBalances,
   sumAllWorkerBalances,
@@ -132,4 +134,15 @@ export const fetchKosztorysSubcontractorDue = cachedInvestmentMap(
   'fetchKosztorysSubcontractorDue',
   selectKosztorysSubcontractorDue,
   KOSZTORYS_CLIENT_TOTALS_TAGS,
+)
+
+export type DepositPlaneSumsMapT = Record<string, DepositPlaneSumsT>
+
+// Transfers only: this fold reads no investment column at all — the VAT rate the legacy bridge needs
+// for pre-spike rows arrives later, in `shapeInvestments`.
+export const fetchDepositPlaneSums = cachedInvestmentMap(
+  'deposit-plane-sums-v2',
+  'fetchDepositPlaneSums',
+  selectDepositPlaneSums,
+  [CACHE_TAGS.transfers],
 )

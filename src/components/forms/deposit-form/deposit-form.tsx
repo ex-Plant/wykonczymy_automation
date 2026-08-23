@@ -1,6 +1,7 @@
 'use client'
 
 import { SelectItem } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FieldGroup } from '@/components/ui/field'
 import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
@@ -19,6 +20,11 @@ import type { CreateTransferFormT } from '@/lib/schemas/transfer'
 import type { ReferenceDataT } from '@/types/reference-data'
 import { getDefaultCashRegister } from '@/lib/utils/default-cash-register'
 import { today } from '@/lib/utils/date'
+import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
+import { strandsDeposit } from '@/lib/kosztorys/deposit-planes'
+import { DEPOSIT_PLANE_INSTRUMENTAL } from '@/lib/constants/transfers'
+import { formatPLN } from '@/lib/utils/format-currency'
+import { netFromGross } from '@/lib/utils/net-gross-amounts'
 import {
   AmountField,
   CashRegisterField,
@@ -26,7 +32,7 @@ import {
   DescriptionField,
   EntityComboboxField,
   PaymentMethodField,
-  VatPlaneField,
+  PlaneAmountField,
 } from '@/components/forms/form-fields'
 import FormFooter from '../form-components/form-footer'
 import { createTransferAction } from '@/lib/actions/transfers'
@@ -41,6 +47,9 @@ type DepositFormPropsT = {
 type FormValuesT = {
   description: string
   amount: string
+  // The brutto kwota, typed only on a przelew — there `amount` is the faktura's netto beside it and
+  // this one is the money that actually moved. A gotówka leaves it empty; it has no brutto side.
+  amountGross: string
   date: string
   type: string
   paymentMethod: string
@@ -50,6 +59,10 @@ type FormValuesT = {
 }
 
 const FORM_ID = 'deposit'
+
+// Gotówka is the no-VAT tor, przelew the invoiced one — so the method IS the plane, and the wpłata
+// is typed on the side it names. Nothing else sets `vatPlane` any more.
+const planeFor = (paymentMethod: string) => (paymentMethod === 'TRANSFER' ? 'GROSS' : 'NET')
 
 export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: DepositFormPropsT) {
   // COMPANY_FUNDING visible only to admin/owner — managers see other deposit types
@@ -61,13 +74,22 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
   // investment keeps it, so navigating between investments never rewrites a half-filled form.
   const investmentFromUrl = useInvestmentFromUrl(referenceData.investments)
 
-  const { form, reset } = useManagedForm<FormValuesT, CreateTransferFormT>({
+  // The stawka the netto suggestion is computed at is the investment's own — before one is picked,
+  // the default keeps the suggestion usable rather than freezing it.
+  const investmentFor = (investmentId: string | undefined) =>
+    referenceData.investments.find((i) => String(i.id) === investmentId)
+
+  const rateFor = (investmentId: string | undefined) =>
+    investmentFor(investmentId)?.vatRate ?? DEFAULT_VAT
+
+  const { form, reset, submitConfirm } = useManagedForm<FormValuesT, CreateTransferFormT>({
     formId: FORM_ID,
     useFormStore: useDepositFormStore,
     schema: expenseFormSchema,
     defaultValues: {
       description: '',
       amount: '',
+      amountGross: '',
       date: today(),
       type: 'INVESTOR_DEPOSIT',
       paymentMethod: 'CASH',
@@ -75,20 +97,60 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
       sourceRegister: getDefaultCashRegister(referenceData),
       investment: investmentFromUrl,
     },
-    mergeStored: (stored) => ({
-      ...stored,
-      investment: stored.investment || investmentFromUrl,
-      // A draft saved before „nie określono" was removed carries a value the select no longer
-      // offers, which would render the field blank — fall back to the netto default.
-      vatPlane: isVatPlane(stored.vatPlane) ? stored.vatPlane : 'NET',
-    }),
+    mergeStored: (stored) => {
+      const investment = stored.investment || investmentFromUrl
+      // The method is the plane, so a draft never restores the two out of step — whatever it stored
+      // in `vatPlane` (including a value from before the method drove it) gives way to the method.
+      const vatPlane = planeFor(stored.paymentMethod)
+      // A draft saved before the two kwota fields existed holds one amount, on the side its own
+      // plane named: a przelew therefore restores with its netto merely suggested, and a gotówka
+      // with no brutto at all — that kwota never existed.
+      const restored =
+        stored.amountGross === undefined
+          ? vatPlane === 'GROSS'
+            ? {
+                amount: netFromGross(stored.amount, rateFor(investment)),
+                amountGross: stored.amount,
+              }
+            : { amount: stored.amount, amountGross: '' }
+          : { amount: stored.amount, amountGross: stored.amountGross }
+
+      return { ...stored, ...restored, investment, vatPlane }
+    },
     keepOpen,
     successMessage: 'Wpłata dodana',
     onSubmitSuccess,
     action: createTransferAction,
+    // Asked, never refused. The wpłata happened — the owner is told what booking it this way costs
+    // and decides. Refusing would only teach him to mistype the method to get past the door, and the
+    // tag cannot be corrected afterwards (anulowanie + zaksięgowanie na nowo is the only path).
+    //
+    // The remedy it names is the TRYB, not the wpłata (owner, 2026-08-23): an investment taking money
+    // both ways is a mieszana one, and switching it rescues this kwota — where re-booking a gotówka
+    // as a przelew would be typing a faktura that does not exist.
+    confirmBeforeSubmit: (value) => {
+      const mode = investmentFor(value.investment)?.settlementMode
+      if (value.type !== 'INVESTOR_DEPOSIT' || !mode) return null
+      if (!strandsDeposit(planeFor(value.paymentMethod), mode)) return null
+
+      return {
+        title: 'Ta wpłata nie policzy się w rozliczeniu',
+        description: `Inwestycja jest rozliczana brutto, a wpłata ${DEPOSIT_PLANE_INSTRUMENTAL.NET} nie ma kwoty brutto — ${formatPLN(Number(value.amount))} zostanie poza rozliczeniem. Jeśli klient płaci obiema drogami, ustaw tej inwestycji rozliczenie mieszane.`,
+        confirmLabel: 'Zapisz mimo to',
+        cancelLabel: 'Popraw',
+      }
+    },
     toData: (value) => ({
       description: value.description,
-      amount: Number(value.amount),
+      // `amount` is always the money that moved, on the plane `vatPlane` names.
+      amount: Number(value.vatPlane === 'GROSS' ? value.amountGross : value.amount),
+      // …and a przelew carries the faktura's netto beside it. Stored, not derived — the settlement
+      // reads it back rather than dividing by a rate that does not fit the whole bill. A gotówka
+      // sends nothing: it has no netto twin, it IS the netto.
+      netAmount:
+        value.type === 'INVESTOR_DEPOSIT' && value.vatPlane === 'GROSS'
+          ? Number(value.amount)
+          : undefined,
       date: value.date,
       type: value.type as CreateTransferFormT['type'],
       paymentMethod: value.paymentMethod as PaymentMethodT,
@@ -106,53 +168,90 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
   })
 
   const currentType = useStore(form.store, (s) => s.values.type)
+  const currentInvestment = useStore(form.store, (s) => s.values.investment)
+  const currentPlane = useStore(form.store, (s) => s.values.vatPlane)
+  const vatRate = rateFor(currentInvestment)
 
   return (
-    <FormShell form={form} onReset={reset}>
-      <FieldGroup>
-        {/* Type */}
-        <form.AppField
-          name="type"
-          listeners={{
-            onChange: () => {
-              form.resetField('investment')
-              form.resetField('vatPlane')
-            },
-          }}
-        >
-          {(field) => (
-            <field.Select label="Typ wpłaty" showError>
-              {depositTypes.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TRANSFER_TYPE_LABELS[t]}
-                </SelectItem>
-              ))}
-            </field.Select>
-          )}
-        </form.AppField>
+    <>
+      <FormShell form={form} onReset={reset}>
+        <FieldGroup>
+          {/* Type */}
+          <form.AppField
+            name="type"
+            listeners={{
+              onChange: () => {
+                form.resetField('investment')
+                // Not reset but rederived — the method survives the type change, and a plane that
+                // disagreed with it would put the wrong kwota on screen.
+                form.setFieldValue('vatPlane', planeFor(form.getFieldValue('paymentMethod')))
+                // Both kwota fields go with it — the pair belongs to the wpłata being typed, and half
+                // of a previous one is worse than none.
+                form.resetField('amount')
+                form.resetField('amountGross')
+              },
+            }}
+          >
+            {(field) => (
+              <field.Select label="Typ wpłaty" showError>
+                {depositTypes.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {TRANSFER_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </field.Select>
+            )}
+          </form.AppField>
 
-        {/* Directly under the type, same slot the wydatek form gives it — the investment is what the
+          {/* Directly under the type, same slot the wydatek form gives it — the investment is what the
             rest of the form is about, not a trailing detail. Which types offer it is the predicate's
-            call, not this form's — netto/brutto below is a separate, INVESTOR_DEPOSIT-only axis. */}
-        {showsInvestment(currentType) && (
-          <EntityComboboxField form={form} variant="investment" items={referenceData.investments} />
-        )}
+            call, not this form's — the netto/brutto kwota pair is a separate, INVESTOR_DEPOSIT-only
+            axis. */}
+          {showsInvestment(currentType) && (
+            <EntityComboboxField
+              form={form}
+              variant="investment"
+              items={referenceData.investments}
+            />
+          )}
 
-        <DescriptionField form={form} placeholder="Opis wpłaty" />
+          <DescriptionField form={form} placeholder="Opis wpłaty" />
 
-        <div className="flex items-start gap-4">
-          <AmountField form={form} fieldClassName="min-w-0 flex-1" />
-          <DateField form={form} fieldClassName="w-40" />
-        </div>
+          {/* Above the kwota, because on a wpłata od inwestora it is the method that decides WHICH
+            kwoty are being typed: gotówka is one, przelew is two off the faktura. The date rides
+            here rather than beside them — a przelew already puts two inputs in that row, and a
+            third squeezed the labels into two lines. */}
+          <div className="flex items-start gap-4">
+            <PaymentMethodField
+              form={form}
+              listeners={{
+                onChange: ({ value }) => form.setFieldValue('vatPlane', planeFor(value)),
+              }}
+              fieldClassName="min-w-0 flex-1"
+            />
+            <DateField form={form} fieldClassName="w-40" />
+          </div>
 
-        <CashRegisterField form={form} cashRegisters={referenceData.cashRegisters} />
+          <div className="flex items-start gap-4">
+            {currentType === 'INVESTOR_DEPOSIT' ? (
+              <PlaneAmountField
+                form={form}
+                vatRate={vatRate}
+                plane={isVatPlane(currentPlane) ? currentPlane : 'NET'}
+                fieldClassName="min-w-0 flex-1"
+              />
+            ) : (
+              <AmountField form={form} fieldClassName="min-w-0 flex-1" />
+            )}
+          </div>
 
-        <PaymentMethodField form={form} />
+          <CashRegisterField form={form} cashRegisters={referenceData.cashRegisters} />
+        </FieldGroup>
 
-        {currentType === 'INVESTOR_DEPOSIT' && <VatPlaneField form={form} />}
-      </FieldGroup>
+        <FormFooter className="mt-6" />
+      </FormShell>
 
-      <FormFooter className="mt-6" />
-    </FormShell>
+      <ConfirmDialog {...submitConfirm} />
+    </>
   )
 }

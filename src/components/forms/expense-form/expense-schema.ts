@@ -42,9 +42,29 @@ export const expenseFormSchema = z
     otherDescription: z.string().optional().default(''),
     invoiceNote: z.string().optional().default(''),
     vatPlane: z.string().optional().default(''),
+    // `.catch` not `.optional()`: the deposit form's value type declares it required (a przelew
+    // types it beside the netto), while every other form on this schema omits it entirely.
+    amountGross: z.string().catch(''),
   })
   .superRefine((data, ctx) => {
-    refineAmount(data, ctx)
+    // A wpłata brutto is typed as two independent kwoty off one faktura, so each is checked as
+    // itself — `amountGross` is the money that moved, `amount` the netto the faktura named beside
+    // it. Everywhere else `amount` is the only kwota there is.
+    const paidGross = data.vatPlane === 'GROSS'
+    refineAmount(
+      paidGross ? { ...data, amount: data.amountGross } : data,
+      ctx,
+      paidGross ? 'amountGross' : 'amount',
+    )
+    if (paidGross) {
+      const netErr = getNetAmountError(
+        data.amount ? Number(data.amount) : undefined,
+        data.amountGross ? Number(data.amountGross) : undefined,
+        data.type,
+        data.vatPlane,
+      )
+      if (netErr) ctx.addIssue({ code: 'custom', message: netErr, path: ['amount'] })
+    }
     refineDate(data, ctx)
     validateTransferFields(data, ctx)
   })
@@ -195,7 +215,6 @@ export const editExpenseFormSchema = z
     expenseCategory: z.string(),
     otherCategory: z.string(),
     invoiceNote: z.string(),
-    vatPlane: z.string(),
   })
   .superRefine((data, ctx) => {
     if (data.amount !== undefined) refineAmount(data as { amount: string; type?: string }, ctx)

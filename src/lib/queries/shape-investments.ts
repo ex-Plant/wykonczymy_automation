@@ -1,14 +1,15 @@
 import type {
+  DepositPlaneSumsMapT,
   InvestmentFinancialsMapT,
   KosztorysClientTotalsMapT,
   KosztorysSubcontractorDueMapT,
 } from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
-import { grossBalance } from '@/lib/db/gross-balance'
+import { depositPairFromPlaneSums, NO_DEPOSIT_SUMS } from '@/lib/kosztorys/deposit-planes'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
-import { billedMaterials } from '@/lib/kosztorys/summary-economics'
+import { billedMaterials, computeAmountDue } from '@/lib/kosztorys/summary-economics'
 import { marginV2 } from '@/lib/kosztorys/margin-v2'
 import { NOTHING_DUE } from '@/lib/kosztorys/subcontractor-due'
 import { ZERO_FINANCIALS } from '@/types/investment-financials'
@@ -24,6 +25,7 @@ export function shapeInvestments(
   financialsRecord: InvestmentFinancialsMapT,
   kosztorysTotalsRecord: KosztorysClientTotalsMapT = {},
   subcontractorDueRecord: KosztorysSubcontractorDueMapT = {},
+  depositPlaneSumsRecord: DepositPlaneSumsMapT = {},
 ): InvestmentRowT[] {
   return investments.map((inv) => {
     const transactionFinancials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS
@@ -39,7 +41,24 @@ export function shapeInvestments(
       { grossBase: financials.materialsGrossBase, netBilled: financials.materialsNetBilled },
       netRate,
     )
-    const balance = calculateBalance(financials)
+    // The v2 bilans IS the panel's „Pozostało do zapłaty", negated — the same call, not a second
+    // formula that agrees by convention (owner, 2026-08-20: „panel i lista mają nazywać jedną
+    // kwotę"). Negated because the two read the same fact from opposite ends: the panel prints what
+    // the client still owes, the bilans how the client stands, so owing shows as a minus here.
+    // The term-by-term form `calculateBalance` still runs for v1 collapses onto exactly this once
+    // the wpłaty are read per plane — its materiały-minus-concession pair IS `billedMaterials`, and
+    // its robocizna-plus-rabat pair IS the reading's post-rabat robocizna.
+    const amountDue = computeAmountDue(
+      reading.laborCostsNet,
+      depositPairFromPlaneSums(
+        depositPlaneSumsRecord[String(inv.id)] ?? NO_DEPOSIT_SUMS,
+        inv.vatRate,
+      ),
+      { grossBase: financials.materialsGrossBase, netBilled: financials.materialsNetBilled },
+      inv.vatRate,
+      netRate,
+      financials.totalLoss,
+    )
     return {
       id: inv.id,
       name: inv.name,
@@ -51,20 +70,17 @@ export function shapeInvestments(
       totalPayouts: financials.totalPayouts,
       totalInvestmentExpense,
       totalSettled: financials.totalSettled,
-      balance,
-      // The VAT base must be the SAME pair the netto bilans was built from. Grossing a
-      // kosztorys-sourced bilans with the transfers robocizna would price the VAT on work the bilans
-      // never counted, so the brutto figure would stop being the netto one plus its tax.
+      balance: -amountDue.net,
       // Both planes, side by side, because neither is inferable from the other and an investment
       // whose kosztorys is still in a spreadsheet has its robocizna ONLY here. No brutto twin: the
       // transactions bilans has never had one.
       balanceFromTransactions: calculateBalance(transactionFinancials),
-      balanceGross: grossBalance(
-        balance,
-        inv.vatRate,
-        financials.totalLaborCosts,
-        financials.totalDiscount,
-      ),
+      // Only meaningful where the investment settles brutto: there every wpłata carries a brutto
+      // kwota, so the deduction is complete. Elsewhere a wpłata gotówka has no brutto kwota at all
+      // and this figure deducts less than was paid, which is why the listing prints „nie dotyczy"
+      // outside tryb brutto rather than this number (owner, 2026-08-23). Still computed for every
+      // row: the tryb is a fact the reader can flip, and the column returns with it.
+      balanceGross: -amountDue.gross,
       // The RAW financials, not the rebased ones: this is the v1 margin and v1 IS the transactions
       // plane. Run on the kosztorys robocizna it was a third figure that matched no surface in the
       // app — same name as the investment page's, 235 908,25 zl apart from it on „11 Listopada 40".

@@ -12,9 +12,8 @@ const BALANCE =
 
 export const INVESTMENT_HEADER_TIPS: Record<string, string> = {
   balanceFromTransactions: `${BALANCE}\n${FROM_TRANSACTIONS}`,
-  balance: `${BALANCE}\n${FROM_KOSZTORYS}`,
-  balanceGross:
-    'Bilans netto v2 minus VAT razy (robocizna minus rabat).\nVAT jedzie wyłącznie po pracach, i to po rabacie — złotówka zrabatowana nigdy nie była zafakturowana.\nStrata schodzi w kwocie nominalnej i nie poszerza podstawy VAT.',
+  balance: `${BALANCE}\n${FROM_KOSZTORYS}\nLiczony w trybie netto i mieszanym — w brutto rachunek jest brutto, więc tu widnieje „nie dotyczy".`,
+  balanceGross: `Ten sam bilans w brutto.\n${FROM_KOSZTORYS}\nLiczony tylko w trybie brutto: gdzie indziej część wpłat przychodzi gotówką i nie ma kwoty brutto, więc bilans brutto zaniżałby to, co klient wpłacił.`,
   margin: `Robocizna minus wypłaty minus rabat minus strata minus wydatki wliczone w robociznę minus obniżka materiałów.\n${FROM_TRANSACTIONS}`,
   marginV2: `Robocizna minus rabat minus należne ekipom minus wydatki wliczone w robociznę minus strata.\n${FROM_KOSZTORYS}\nZamiast wypłat wchodzi to, co ekipom się NALEŻY za rozpisane etapy — ekipa zapłacona z opóźnieniem czytałaby się jako zysk.\nObniżki materiałów tu nie ma — to ustępstwo na przelotowym koszcie, nie na wykonanej pracy.\n„ustaw etapy" = któryś etap ma pracę bez rozliczenia, więc kwota jest nieznana, a nie zerowa.`,
   laborCostsFromTransactions:

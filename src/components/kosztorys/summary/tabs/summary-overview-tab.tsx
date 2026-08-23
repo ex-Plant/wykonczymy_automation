@@ -1,10 +1,10 @@
 'use client'
 
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import { settlementModeToMoneyAxis, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
   billedMaterials,
-  computeMixedSettlement,
+  faceValue,
   laborCostsNetPreDiscount,
   type MaterialsT,
   type MoneyPairT,
@@ -16,13 +16,17 @@ import {
   SETTLEMENT_MODE_SELECT_OPTIONS,
 } from '@/components/kosztorys/summary/settlement-mode-options'
 import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement-groups'
+import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
+import { offPlaneDeposits } from '@/lib/kosztorys/deposit-planes'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
-import { CollapsibleSection } from '@/components/ui/collapsible-section'
+import Link from 'next/link'
+import { DEPOSIT_TYPES } from '@/lib/constants/transfers'
+import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
+import { Separator } from '@/components/ui/separator'
 import { SlicePie } from '@/components/ui/slice-pie'
 import type { DepositTransactionRowT } from '@/types/transfers'
 import type { KosztorysReconciliationT } from '@/lib/kosztorys/reconciliation'
 import { costTotalsPieSlices } from '@/lib/kosztorys/chart-slices'
-import { formatNet } from '@/lib/kosztorys/format'
 
 type PropsT = {
   investmentId: number
@@ -35,7 +39,6 @@ type PropsT = {
   laborCostsNet: number
   amountDue: MoneyPairT
   materials: MaterialsT
-  depositsTotal: number
   discountAmount: number
   // Σ LOSS — the deduction step between the wpłaty and the closing figure. Face value on both axes.
   lossAmount: number
@@ -45,9 +48,9 @@ type PropsT = {
   // The investment's saved materiały netto rate (null = off), already gated on the settlement mode
   // by the panel — feeds every materiały figure in this tab.
   materialsNetRate: number | null
-  // Wpłaty split by VAT plane — feeds the tryb mieszany settlement.
-  paidNet: number
-  paidGross: number
+  // The same wpłaty on BOTH planes, each crossed at VAT by the plane it was paid on — the deduction
+  // step every tryb subtracts from „Łącznie".
+  paidPair: MoneyPairT
   // The individual wpłaty, for the folded list below the settlement.
   depositRows: DepositTransactionRowT[]
   // Off on a host whose own transfers table already lists every wpłata (the investment page), where a
@@ -66,49 +69,34 @@ export function SummaryOverviewTab({
   laborCostsNet,
   amountDue,
   materials,
-  depositsTotal,
   discountAmount,
   lossAmount,
   reconciliation,
   priceView,
   vatRate,
   materialsNetRate,
-  paidNet,
-  paidGross,
+  paidPair,
   depositRows,
   showDeposits = true,
   preview = false,
   showPie = true,
 }: PropsT) {
-  // Tryb mieszany settles part in cash (no invoice → no VAT) and invoices only the rest, so its
-  // „Do zapłaty" can't come from the plain Łącznie − wpłaty the other tryby use. Both readings of the
-  // remaining debt already exist on the settlement, so the pair is a re-labelling, not new arithmetic.
-  const mixed =
-    settlementMode === 'MIXED'
-      ? computeMixedSettlement(
-          laborCostsNet,
-          materials,
-          vatRate,
-          paidNet,
-          paidGross,
-          materialsNetRate,
-          lossAmount,
-        )
-      : null
+  const moneyAxis = settlementModeToMoneyAxis(settlementMode)
   const settlementGroups = buildSettlementGroups({
-    mixed,
+    paid: paidPair,
     amountDue,
-    depositsTotal,
     lossAmount,
-    vatRate,
+    axis: moneyAxis,
   })
-  // What the investor is billed for materiały — one figure, feeding both the Podsumowanie row and the
-  // „Struktura kosztów" pie so the two can never disagree. The pie is a netto robocizna/materiały
-  // split, identical in every mode, so it sits here beside the settlement rather than inside any one
-  // mode's block. Robocizna enters the pie PRZED rabatem: a rabat is a concession on the price, not a
-  // change in what the job is made of, and a rabat exceeding the executed work would otherwise feed
-  // the pie a negative slice.
+  // What the investor is billed for materiały, feeding both the Podsumowanie row and the „Struktura
+  // kosztów" pie so the two can never disagree. The pie is a netto robocizna/materiały split,
+  // identical in every mode, so it sits here beside the settlement rather than inside any one mode's
+  // block. Robocizna enters the pie PRZED rabatem: a rabat is a concession on the price, not a change
+  // in what the job is made of, and a rabat exceeding the executed work would otherwise feed the pie
+  // a negative slice.
   const materialsBilled = billedMaterials(materials, materialsNetRate)
+  const materialsPair = faceValue(materialsBilled)
+  const offPlane = offPlaneDeposits(depositRows, settlementMode)
 
   return (
     <div className="flex w-full flex-col gap-y-4">
@@ -129,7 +117,8 @@ export function SummaryOverviewTab({
           <SettlementSummary
             investmentId={investmentId}
             laborCostsNet={laborCostsNet}
-            materialsBilled={materialsBilled}
+            materialsPair={materialsPair}
+            moneyAxis={moneyAxis}
             settlementGroups={settlementGroups}
             discountAmount={discountAmount}
             reconciliation={reconciliation}
@@ -137,31 +126,55 @@ export function SummaryOverviewTab({
             vatRate={vatRate}
             preview={preview}
           />
+          {/* Owner-only: the client can't act on the plane mismatch and shouldn't see the doubt. */}
+          {!preview && settlementMode !== 'MIXED' && offPlane.length > 0 && (
+            <SettlementPlaneWarning rows={offPlane} mode={settlementMode} />
+          )}
         </div>
         {showPie && (
           <SlicePie
+            // Both slices netto, materiały off the settled pair rather than the billed figure: in
+            // tryb mieszany that figure is the brutto plane, and slicing it against netto robocizna
+            // drew a share of two different planes. Shares only — a percent is the whole point here,
+            // and the money is already in the table beside it.
             slices={costTotalsPieSlices(
               laborCostsNetPreDiscount(laborCostsNet, discountAmount),
-              materialsBilled,
+              materialsPair.net,
             )}
-            formatValue={formatNet}
           />
         )}
       </div>
       {showDeposits && (
-        <CollapsibleSection title="Lista wpłat" size="sm" defaultOpen={false}>
+        <div>
+          {/* The open CollapsibleSection's own head, minus the trigger — same type, padding and rule,
+              so this section keeps the rhythm of the collapsible ones on the other tabs. */}
+          <div className="w-fit">
+            <div className="flex items-center gap-2 py-2 text-left">
+              <h2 className="text-foreground text-sm font-medium">
+                {preview ? (
+                  'Lista wpłat'
+                ) : (
+                  <Link
+                    href={investmentTransfersHref(investmentId, { types: DEPOSIT_TYPES })}
+                    className="hover:underline"
+                  >
+                    Lista wpłat
+                  </Link>
+                )}
+              </h2>
+            </div>
+            <Separator orientation="horizontal" />
+          </div>
           <div className="pt-4">
             <SummaryDepositsTab
               investmentId={investmentId}
               rows={depositRows}
+              vatRate={vatRate}
               settlementMode={settlementMode}
-              paidNet={paidNet}
-              paidGross={paidGross}
               preview={preview}
-              showPie={showPie}
             />
           </div>
-        </CollapsibleSection>
+        </div>
       )}
     </div>
   )

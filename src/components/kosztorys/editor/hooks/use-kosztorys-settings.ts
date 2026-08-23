@@ -184,11 +184,14 @@ export function useKosztorysSettings({
     )
   }
 
-  function handleSettlementModeChange(mode: SettlementModeT) {
+  // `depositImpact` is supplied by the caller rather than derived here: the wpłaty live with the
+  // panel that renders the control, and this hook has never been given them. It carries what the
+  // switch would strand — see `settlementModeDepositImpact`.
+  function handleSettlementModeChange(mode: SettlementModeT, depositImpact?: string) {
     if (mode === tree.settlementMode) return
     // On the undo stack like its sibling investment settings — without it Ctrl+Z after a mode flip
     // silently reverts whatever unrelated edit preceded it.
-    stageInvestorImpact(SETTLEMENT_MODE_IMPACT, () =>
+    stageInvestorImpact([SETTLEMENT_MODE_IMPACT, depositImpact].filter(Boolean).join(' '), () =>
       saveSetting('Zmiana sposobu rozliczenia', applySettlementMode, tree.settlementMode, mode),
     )
   }

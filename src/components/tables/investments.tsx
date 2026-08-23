@@ -4,6 +4,8 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
+import { axisShows } from '@/lib/kosztorys/money-axis'
+import { settlementModeToMoneyAxis } from '@/lib/kosztorys/settlement-mode'
 import type { InvestmentRowT } from '@/types/table-rows'
 import { INVESTMENT_HEADER_TIPS } from '@/components/tables/investments-header-tips'
 import { BalanceCell } from '@/components/ui/balance-cell'
@@ -36,6 +38,19 @@ function hasKosztorysReading(row: InvestmentRowT): boolean {
 
 function NoKosztorysData() {
   return <span className="text-muted-foreground text-xs">brak danych</span>
+}
+
+// The tryb decides which bilans EXISTS — one column per investment, never two (owner, 2026-08-23).
+// The other one isn't merely uninteresting, it is unbuilt: since nothing is derived at VAT, a bilans
+// brutto on an investment settled netto deducts only the przelewy and silently drops every wpłata
+// gotówka. The same projection the Podsumowanie panel reads, so the listing can never print a kwota
+// the panel refuses to show.
+function NotApplicable() {
+  return <span className="text-muted-foreground text-xs">nie dotyczy</span>
+}
+
+function settlesOn(row: InvestmentRowT, plane: 'net' | 'gross'): boolean {
+  return axisShows(settlementModeToMoneyAxis(row.settlementMode))[plane]
 }
 
 type InvestmentColumnOptionsT = {
@@ -79,24 +94,22 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       id: 'balance',
       header: 'Bilans netto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balance },
-      cell: (info) =>
-        hasKosztorysReading(info.row.original) ? (
-          <BalanceCell value={info.getValue()} />
-        ) : (
-          <NoKosztorysData />
-        ),
+      cell: (info) => {
+        if (!settlesOn(info.row.original, 'net')) return <NotApplicable />
+        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
+        return <BalanceCell value={info.getValue()} />
+      },
     }),
     // No v1 twin: brutto has only ever been computed on the plane its netto came from.
     col.accessor('balanceGross', {
       id: 'balanceGross',
       header: 'Bilans brutto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceGross },
-      cell: (info) =>
-        hasKosztorysReading(info.row.original) ? (
-          <BalanceCell value={info.getValue()} />
-        ) : (
-          <NoKosztorysData />
-        ),
+      cell: (info) => {
+        if (!settlesOn(info.row.original, 'gross')) return <NotApplicable />
+        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
+        return <BalanceCell value={info.getValue()} />
+      },
     }),
     ...(isAdminOrOwner
       ? [

@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner } from '@/access'
 import {
   canBeSettled,
+  carriesNetAmount,
   needsExpenseCategory,
   needsOtherCategory,
   needsSourceRegister,
@@ -96,16 +97,18 @@ export const Transfers: CollectionConfig = {
       },
     },
     {
-      // The netto amount billed to the investor, while `amount` (brutto) is what left the
-      // register. Immutable like `amount` — a wrong netto is corrected by cancelling the
-      // row and re-adding it, so no edit path can move a figure both bilanses read.
-      // The netAmount ≤ amount rule has one authority: hooks/transfers/validate.ts.
+      // The netto twin of `amount` (brutto). On a netto wydatek it is what the investor is
+      // billed while brutto is what left the register; on a wpłata brutto it is what the
+      // faktura named as netto. Immutable like `amount` — a wrong netto is corrected by
+      // cancelling the row and re-adding it, so no edit path can move a figure both
+      // bilanses read. Which rows carry it, and the netAmount ≤ amount rule, have one
+      // authority each: `carriesNetAmount` and hooks/transfers/validate.ts.
       name: 'netAmount',
       type: 'number',
       label: { en: 'Net amount', pl: 'Kwota netto' },
       access: { update: () => false },
       admin: {
-        condition: (data) => typeOf(data) === 'INVESTMENT_EXPENSE_NET',
+        condition: (data) => carriesNetAmount(typeOf(data), data?.vatPlane),
       },
     },
     {

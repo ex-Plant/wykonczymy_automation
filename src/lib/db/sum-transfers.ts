@@ -314,7 +314,7 @@ export const getDepositTransactions = async (
   // further — `?type=PAYOUT` correctly yields zero wpłaty rather than widening the surface.
   const result = await db.execute(
     sql.raw(`
-    SELECT id, date, amount, vat_plane
+    SELECT id, date, amount, net_amount, vat_plane
     FROM transactions
     WHERE cancelled IS NOT TRUE
       AND type = 'INVESTOR_DEPOSIT'
@@ -329,6 +329,7 @@ export const getDepositTransactions = async (
     // sortable, so the client DataTable re-sorts „Wg daty" on it directly.
     date: String(row.date),
     amount: Number(row.amount),
+    netAmount: row.net_amount == null ? null : Number(row.net_amount),
     vatPlane: row.vat_plane == null ? null : (row.vat_plane as VatPlaneT),
   }))
   console.log(`[PERF] query.getDepositTransactions ${elapsed()}ms (${rows.length} rows)`)

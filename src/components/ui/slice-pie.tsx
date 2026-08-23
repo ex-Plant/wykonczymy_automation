@@ -5,11 +5,13 @@ import { Cell, Pie, PieChart } from 'recharts'
 import { AlertIcon } from '@/components/ui/alert-icon'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieSliceLegend, type PieSliceT } from '@/components/ui/pie-legend'
+import { formatPercentPrecise } from '@/lib/kosztorys/format'
 
 // Shared skeleton for the footer pies: recharts donut + legend. `caption` is optional — the legend
 // names every slice and the surrounding tab supplies the context, so a pie only titles itself when it
 // carries an `action` the title has to explain. `formatValue` renders slice figures in the tooltip
-// and legend — the caller owns units/locale, so this stays domain-free.
+// and legend — the caller owns units/locale, so this stays domain-free. Omit it for a share-only pie:
+// both fall back to the percent.
 export function SlicePie({
   caption,
   action,
@@ -19,7 +21,7 @@ export function SlicePie({
   caption?: string
   action?: ReactNode
   slices: PieSliceT[]
-  formatValue: (value: number) => string
+  formatValue?: (value: number) => string
 }) {
   // recharts derives each wedge's angle from value / totalSum. A negative total (one slice far
   // outweighing the rest, e.g. a mistyped section figure) makes that math degenerate and the pie
@@ -63,7 +65,15 @@ export function SlicePie({
               ))}
             </Pie>
             <ChartTooltip
-              content={<ChartTooltipContent valueFormatter={(v) => formatValue(Number(v))} />}
+              content={
+                <ChartTooltipContent
+                  valueFormatter={(v) =>
+                    formatValue
+                      ? formatValue(Number(v))
+                      : formatPercentPrecise(total > 0 ? Number(v) / total : null)
+                  }
+                />
+              }
             />
           </PieChart>
         </ChartContainer>
