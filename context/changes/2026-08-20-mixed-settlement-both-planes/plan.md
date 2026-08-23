@@ -564,16 +564,16 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 1.1 `pnpm exec vitest run src/__tests__/lib/kosztorys/deposit-planes.test.ts src/__tests__/lib/kosztorys/settlement-mode.test.ts` przechodzi
-- [x] 1.2 `npx tsc --noEmit` nie zgłasza już błędów w tych dwóch plikach
+- [x] 1.1 `pnpm exec vitest run src/__tests__/lib/kosztorys/deposit-planes.test.ts src/__tests__/lib/kosztorys/settlement-mode.test.ts` przechodzi — 1efa2b73
+- [x] 1.2 `npx tsc --noEmit` nie zgłasza już błędów w tych dwóch plikach — 1efa2b73
 
 ### Phase 2: Arytmetyka rozliczenia
 
 #### Automated
 
-- [ ] 2.1 `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-economics.test.ts src/__tests__/components/kosztorys/summary/settlement-groups.test.ts` przechodzi
+- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-economics.test.ts src/__tests__/components/kosztorys/summary/settlement-groups.test.ts` przechodzi — 2b7cb661
 - [ ] 2.2 `pnpm test` — cały pakiet jednostkowy zielony, 0 z 41 wcześniejszych czerwonych
-- [ ] 2.3 `npx tsc --noEmit` czysty na całym `src/__tests__`
+- [x] 2.3 `npx tsc --noEmit` czysty na całym `src/__tests__` — 2b7cb661
 
 ### Phase 3: Kontrakt lista ↔ panel
 

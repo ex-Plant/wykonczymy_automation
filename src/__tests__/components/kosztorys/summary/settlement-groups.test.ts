@@ -1,149 +1,87 @@
 import { describe, expect, it } from 'vitest'
 import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement-groups'
-import { computeMixedSettlement } from '@/lib/kosztorys/summary-economics'
+import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 
 const rowNamed = (groups: ReturnType<typeof buildSettlementGroups>, label: string) =>
   groups.flatMap((group) => group.rows).find((row) => row.label === label)
 
-describe('buildSettlementGroups — the non-mixed tryby', () => {
-  it('one two-column table: wpłaty spanning both tracks, then „Pozostało do zapłaty"', () => {
-    const groups = buildSettlementGroups({
-      mixed: null,
-      amountDue: { net: 1000, gross: 1230 },
-      depositsTotal: 300,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
-    expect(groups.map((group) => group.axis)).toEqual(['both'])
-    expect(groups[0]?.caption).toBeUndefined()
-    expect(groups[0]?.rows.map((row) => row.label)).toEqual(['Wpłaty', 'Pozostało do zapłaty'])
-    // ONE debt quoted on two planes, not two debts — so one row across two columns, never a row each.
-    expect(rowNamed(groups, 'Pozostało do zapłaty')?.line).toEqual({ net: 1000, gross: 1230 })
-    // Wpłaty carry no VAT: one merged cell, not a netto/brutto pair that happens to match.
-    expect(rowNamed(groups, 'Wpłaty')?.span).toBe(true)
-    // A deduction step: a positive figure in a subtracted row reads as an addition.
-    expect(rowNamed(groups, 'Wpłaty')?.line.net).toBe(-300)
+const build = (over: Partial<Parameters<typeof buildSettlementGroups>[0]> = {}) =>
+  buildSettlementGroups({
+    paid: { net: 300, gross: 300 },
+    amountDue: { net: 1000, gross: 1230 },
+    lossAmount: 0,
+    axis: 'net',
+    ...over,
   })
 
-  // The two axes straddle zero independently — netto subtracts wpłaty at face value while brutto
-  // grosses the debt — so the alarm resolves per CELL now that both share a row. Keyed off one axis,
-  // a real outstanding brutto debt renders un-alarmed beside a slightly overpaid netto.
-  it('tones each column of „Do zapłaty" from its own figure when the axes differ in sign', () => {
-    const groups = buildSettlementGroups({
-      mixed: null,
-      amountDue: { net: -100, gross: 130 },
-      depositsTotal: 1100,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
+// One pool of wpłaty, one debt — so one table in EVERY tryb. The split into a „Rozliczenie netto" and
+// a „Rozliczenie fakturą" tor is what this replaced: two captions asking the reader which of two
+// numbers the client owes.
+describe('buildSettlementGroups', () => {
+  it('is a single uncaptioned table, whatever the tryb', () => {
+    for (const axis of ['net', 'gross', 'both'] as MoneyAxisT[]) {
+      const groups = build({ axis })
+      expect(groups).toHaveLength(1)
+      expect(groups[0]?.caption).toBeUndefined()
+    }
+  })
+
+  it('stands in the panel’s own money columns rather than choosing its own', () => {
+    expect(build({ axis: 'gross' })[0]?.axis).toBe('gross')
+    expect(build({ axis: 'net' })[0]?.axis).toBe('net')
+  })
+
+  it('reads top-down: wpłaty, then „Pozostało do zapłaty"', () => {
+    expect(build()[0]?.rows.map((row) => row.label)).toEqual(['Wpłaty', 'Pozostało do zapłaty'])
+  })
+
+  // A gotówka has no brutto kwota and a przelew carries both off its faktura, so each column
+  // deducts what its own wpłaty were worth — deriving one from the other is the −2399,20 bug.
+  it('deducts each plane’s own kwota, negated', () => {
+    const groups = build({ paid: { net: 250, gross: 300 } })
+    expect(rowNamed(groups, 'Wpłaty')?.line).toEqual({ net: -250, gross: -300 })
+    expect(rowNamed(groups, 'Wpłaty')?.discount).toBe(true)
+  })
+
+  it('quotes ONE debt on both planes — a row across the columns, never a row each', () => {
+    const groups = build({ amountDue: { net: 1000, gross: 1230 } })
+    expect(rowNamed(groups, 'Pozostało do zapłaty')?.line).toEqual({ net: 1000, gross: 1230 })
+    expect(rowNamed(groups, 'Pozostało netto')).toBeUndefined()
+    expect(rowNamed(groups, 'Do zapłaty brutto')).toBeUndefined()
+  })
+
+  // Materiały are a term of Łącznie in the Podsumowanie table above, not a settlement step —
+  // printing them here too would charge them twice on the way down to the debt.
+  it('carries no materiały step', () => {
+    expect(rowNamed(build(), 'Materiały')).toBeUndefined()
+  })
+})
+
+// The two planes cross zero independently — a bill settled to the grosz on netto can still owe on
+// brutto — so the alarm resolves per CELL. Keyed off one axis, a real outstanding brutto debt would
+// render un-alarmed beside a slightly overpaid netto.
+describe('the „Pozostało do zapłaty" alarm', () => {
+  it('tones each column from its own figure when the planes differ in sign', () => {
+    const groups = build({ amountDue: { net: -100, gross: 130 } })
     expect(rowNamed(groups, 'Pozostało do zapłaty')?.danger).toEqual({ net: false, gross: true })
   })
 
-  // Materiały are a term of Łącznie in the Podsumowanie table above, not a settlement step — printing
-  // them here too would charge them twice on the way down to the debt.
-  it('carries no materiały step', () => {
-    const groups = buildSettlementGroups({
-      mixed: null,
-      amountDue: { net: 1000, gross: 1230 },
-      depositsTotal: 300,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
-    expect(rowNamed(groups, 'Materiały')).toBeUndefined()
+  it('rounds first, so a floating-point residue is not a debt', () => {
+    const groups = build({ amountDue: { net: 7e-12, gross: 0 } })
+    expect(rowNamed(groups, 'Pozostało do zapłaty')?.danger).toEqual({ net: false, gross: false })
   })
 })
 
-describe('buildSettlementGroups — tryb mieszany', () => {
-  it('splits into the cash tor and the faktura tor, each closing on its own plane', () => {
-    const mixed = computeMixedSettlement(1000, { grossBase: 0, netBilled: 0 }, 0.23, 400, 123, null)
-    const groups = buildSettlementGroups({
-      mixed,
-      amountDue: { net: 0, gross: 0 },
-      depositsTotal: 0,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
-    expect(groups.map((group) => group.caption)).toEqual([
-      'Rozliczenie netto',
-      'Rozliczenie fakturą',
-    ])
-    // A wpłata belongs to the tor it was made on — that is what the split exists to keep true.
-    expect(rowNamed(groups, 'Wpłaty netto')?.line.net).toBe(-400)
-    expect(rowNamed(groups, 'Wpłaty brutto')?.line.net).toBe(-123)
-    expect(rowNamed(groups, 'Pozostało netto')?.line.net).toBeCloseTo(600)
-    // Łącznie brutto 1230 less the 400 wpłaty netto — the wpłata comes off after the gross-up, not before.
-    expect(rowNamed(groups, 'Pozostało brutto')?.line.net).toBeCloseTo(830)
-    // Each tor settles on one plane, so neither may claim the two-column layout.
-    expect(groups.map((group) => group.axis)).toEqual(['net', 'net'])
-    // Both tory open with their wpłaty, so the two read the same way down the page.
-    expect(groups[1]?.rows.map((row) => row.label)).toEqual([
-      'Wpłaty brutto',
-      'Pozostało brutto',
-      'Do zapłaty brutto',
-    ])
+// A deduction step like a wpłata, at face value on both planes — it never crossed a VAT bridge, and
+// unlike a rabat it is not a concession on the price. Only when there is one: a 0 zł step would tell
+// every investment about a cost nobody absorbed.
+describe('the strata step', () => {
+  it('renders nothing when nothing was absorbed', () => {
+    expect(rowNamed(build({ lossAmount: 0 }), 'Strata')).toBeUndefined()
   })
 
-  // „Do zapłaty netto" is the same debt read back without a faktura, not a second one owed on top of
-  // the brutto close — and it deducts the faktura tor's wpłaty, which the netto table doesn't show.
-  // Alarmed like its twin it reads as two debts, so only the faktura close carries the tone.
-  it('alarms the faktura close but not its netto counterpart', () => {
-    const mixed = computeMixedSettlement(1000, { grossBase: 0, netBilled: 0 }, 0.23, 0, 0, null)
-    const groups = buildSettlementGroups({
-      mixed,
-      amountDue: { net: 0, gross: 0 },
-      depositsTotal: 0,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
-    expect(mixed.amountDueNet).toBeGreaterThan(0)
-    expect(rowNamed(groups, 'Do zapłaty netto')?.danger).toBeUndefined()
-    expect(rowNamed(groups, 'Do zapłaty brutto')?.danger).toBe(true)
-  })
-
-  // Materiały are a term of Łącznie in the Podsumowanie table above; the netto tor starts from that
-  // Łącznie and the faktura tor from a reszta that already carries it, so neither restates the charge.
-  it('carries no materiały step on either tor', () => {
-    const mixed = computeMixedSettlement(
-      1000,
-      { grossBase: 500, netBilled: 0 },
-      0.23,
-      400,
-      123,
-      null,
-    )
-    const groups = buildSettlementGroups({
-      mixed,
-      amountDue: { net: 0, gross: 0 },
-      depositsTotal: 0,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
-    expect(rowNamed(groups, 'Materiały')).toBeUndefined()
-  })
-})
-
-// A strata is a deduction step like a wpłata, at face value on both planes — and only when there is
-// one: a 0 zł step would tell every investment about a concession it never got.
-describe('buildSettlementGroups — the strata step', () => {
-  it('renders no strata step when nothing was absorbed', () => {
-    const groups = buildSettlementGroups({
-      mixed: null,
-      amountDue: { net: 1000, gross: 1230 },
-      depositsTotal: 300,
-      lossAmount: 0,
-      vatRate: 0.23,
-    })
-    expect(rowNamed(groups, 'Strata')).toBeUndefined()
-  })
-
-  it('spans both tracks below the wpłaty in the non-mixed tryby', () => {
-    const groups = buildSettlementGroups({
-      mixed: null,
-      amountDue: { net: 1000, gross: 1230 },
-      depositsTotal: 300,
-      lossAmount: 250,
-      vatRate: 0.23,
-    })
+  it('sits between the wpłaty and the debt, spanning both columns at face value', () => {
+    const groups = build({ lossAmount: 250 })
     expect(groups[0]?.rows.map((row) => row.label)).toEqual([
       'Wpłaty',
       'Strata',
@@ -151,36 +89,5 @@ describe('buildSettlementGroups — the strata step', () => {
     ])
     expect(rowNamed(groups, 'Strata')?.line).toEqual({ net: -250, gross: -250 })
     expect(rowNamed(groups, 'Strata')?.span).toBe(true)
-  })
-
-  // It deducts from both tory but appears once, exactly like „Wpłaty netto" — the faktura tor names
-  // it in the „Pozostało brutto" hint instead, so that figure stays reconstructible.
-  it('sits in the netto tor only under tryb mieszany, and the faktura hint says so', () => {
-    const mixed = computeMixedSettlement(
-      1000,
-      { grossBase: 0, netBilled: 0 },
-      0.23,
-      400,
-      123,
-      null,
-      250,
-    )
-    const groups = buildSettlementGroups({
-      mixed,
-      amountDue: { net: 0, gross: 0 },
-      depositsTotal: 0,
-      lossAmount: 250,
-      vatRate: 0.23,
-    })
-    expect(groups[0]?.rows.map((row) => row.label)).toEqual([
-      'Wpłaty netto',
-      'Strata',
-      'Pozostało netto',
-      'Do zapłaty netto',
-    ])
-    expect(groups[1]?.rows.map((row) => row.label)).not.toContain('Strata')
-    expect(rowNamed(groups, 'Pozostało brutto')?.hint).toContain('stratę')
-    // Łącznie brutto 1230 − 400 wpłaty netto − 250 strata.
-    expect(rowNamed(groups, 'Pozostało brutto')?.line.net).toBeCloseTo(580)
   })
 })
