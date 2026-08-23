@@ -5,7 +5,7 @@ import {
   bulkExpenseFormSchema,
   expenseFormSchema,
 } from '@/components/forms/expense-form/expense-schema'
-import { validateLineItemCategories } from '@/lib/schemas/transfer'
+import { updateTransferSchema, validateLineItemCategories } from '@/lib/schemas/transfer'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
 
 describe('validateLineItemCategories — CORRECTION (investment-conditional)', () => {
@@ -236,12 +236,24 @@ describe('createTransferSchema — vatPlane', () => {
     expect(result.success).toBe(true)
   })
 
-  it('INVESTOR_DEPOSIT with vatPlane = GROSS → passes', () => {
+  // A wpłata przelewem carries the netto its faktura names beside the brutto that moved — nothing
+  // crosses VAT here, so the netto is read off the document rather than derived from a stawka.
+  it('INVESTOR_DEPOSIT with vatPlane = GROSS → passes when the faktura netto rides along', () => {
+    const result = createTransferSchema.safeParse({
+      ...VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT,
+      vatPlane: 'GROSS',
+      netAmount: 80,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('INVESTOR_DEPOSIT with vatPlane = GROSS and no netto → error on netAmount', () => {
     const result = createTransferSchema.safeParse({
       ...VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT,
       vatPlane: 'GROSS',
     })
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('netAmount')
   })
 
   it('INVESTOR_DEPOSIT with vatPlane = garbage → error on vatPlane', () => {
@@ -258,6 +270,23 @@ describe('createTransferSchema — vatPlane', () => {
       const result = createTransferSchema.safeParse(VALID_SERVER_PAYLOADS[type])
       expect(result.success, `${type} should not require vatPlane`).toBe(true)
     }
+  })
+})
+
+// A plane typed wrong is corrected the way every other immutable figure on a wpłata is: cancel the
+// row and book it again. An edit path would move the wpłata between the two sides of the
+// settlement after the fact, silently rewriting a bilans the client has already seen.
+describe('updateTransferSchema — the plane is not editable', () => {
+  const VALID_UPDATE = {
+    description: 'edited',
+    date: '2026-02-25',
+    paymentMethod: 'CASH' as const,
+  }
+
+  it('drops a vatPlane submitted with an edit', () => {
+    const result = updateTransferSchema.safeParse({ ...VALID_UPDATE, vatPlane: 'GROSS' })
+    expect(result.success).toBe(true)
+    expect(result.data).not.toHaveProperty('vatPlane')
   })
 })
 

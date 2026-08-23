@@ -442,6 +442,11 @@ export const billsNetAmount = (type: unknown): boolean => billedAmountOf(type) =
 export const carriesNetAmount = (type: unknown, vatPlane: unknown): boolean =>
   billsNetAmount(type) || (type === 'INVESTOR_DEPOSIT' && vatPlane === 'GROSS')
 
+// Does this row STORE a netto/brutto plane? The tag names the side of the settlement a wpłata pays,
+// so only a wpłata od inwestora has one; anywhere else it is a value `carriesNetAmount` and both
+// settlement predicates would still read.
+export const carriesVatPlane = (type: unknown): boolean => type === 'INVESTOR_DEPOSIT'
+
 /**
  * The figure this row bills the investor — the one number every billing surface must read, so the
  * app's totals, the „Wydatki inwestycyjne" list and the owner's sheet can't disagree about what a

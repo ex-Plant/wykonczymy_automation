@@ -59,7 +59,6 @@ export const updateTransferSchema = z.object({
   expenseCategory: z.number().optional(),
   otherCategory: z.number().optional(),
   invoiceNote: z.string().optional(),
-  vatPlane: z.enum(['NET', 'GROSS']).optional(),
 })
 
 export type UpdateTransferFormT = z.infer<typeof updateTransferSchema>

@@ -230,6 +230,24 @@ describe('createTransferAction', () => {
     },
   )
 
+  // The write takes `parsed.data`, so anything the schema does not name is gone before Payload sees
+  // it. Spreading the raw input instead handed a client every column on the row — `cancelled` among
+  // them, which is the audit trail.
+  it('writes only what the schema named — a smuggled column never reaches payload.create', async () => {
+    const result = await createTransferAction({
+      ...makeSingleTransferData(),
+      cancelled: true,
+      settled: true,
+    } as unknown as Parameters<typeof createTransferAction>[0])
+
+    expect(result.success).toBe(true)
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ cancelled: expect.anything() }),
+      }),
+    )
+  })
+
   it('valid PAYOUT → success', async () => {
     const result = await createTransferAction(
       makeSingleTransferData({ type: 'PAYOUT', investment: undefined, worker: 1 }),
@@ -726,33 +744,26 @@ describe('updateTransferAction', () => {
     )
   })
 
-  it('INVESTOR_DEPOSIT → vatPlane edit is persisted', async () => {
-    mockFindByID.mockResolvedValueOnce(
-      makeOriginalTransfer({ type: 'INVESTOR_DEPOSIT', vatPlane: 'NET', createdBy: adminUser.id }),
-    )
+  // Not even on the type that owns the plane. It decides which side of the settlement the wpłata
+  // pays, so an edit would rewrite a bilans the client has already seen — the correction is a
+  // cancellation plus a fresh booking, exactly as for `amount`.
+  it.each(['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE'])(
+    '%s → a vatPlane submitted with an edit never reaches the write',
+    async (type) => {
+      mockFindByID.mockResolvedValueOnce(
+        makeOriginalTransfer({ type, vatPlane: 'NET', createdBy: adminUser.id }),
+      )
 
-    const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS' }))
+      const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS' }))
 
-    expect(result.success).toBe(true)
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ vatPlane: 'GROSS' }),
-      }),
-    )
-  })
-
-  it('non-deposit type → vatPlane is dropped, never written', async () => {
-    mockFindByID.mockResolvedValueOnce(makeOriginalTransfer({ createdBy: adminUser.id }))
-
-    const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS' }))
-
-    expect(result.success).toBe(true)
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.not.objectContaining({ vatPlane: expect.anything() }),
-      }),
-    )
-  })
+      expect(result.success).toBe(true)
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ vatPlane: expect.anything() }),
+        }),
+      )
+    },
+  )
 
   it('cancelled transaction → returns error', async () => {
     mockFindByID.mockResolvedValueOnce(makeOriginalTransfer({ cancelled: true }))

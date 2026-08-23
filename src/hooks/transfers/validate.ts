@@ -10,6 +10,7 @@ import {
   needsExpenseCategory,
   canBeSettled,
   carriesNetAmount,
+  carriesVatPlane,
 } from '@/lib/constants/transfers'
 import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
@@ -139,6 +140,10 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
     if (netErr) errors.push(netErr)
   } else {
     d.netAmount = null
+  }
+
+  if (!carriesVatPlane(type)) {
+    d.vatPlane = null
   }
 
   if (needsExpenseCategory(type, !!investment) && !expenseCategory) {
