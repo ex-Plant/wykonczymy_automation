@@ -603,4 +603,4 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 6.1 (brak bramki fazowej — faza prozatorska; całości pilnuje „Whole-tree Gate") — bramka całości zielona (lint: dwa błędy spoza changeu)
+- [x] 6.1 (brak bramki fazowej — faza prozatorska; całości pilnuje „Whole-tree Gate") — bramka całości zielona (lint: dwa błędy spoza changeu) — 4f24faa7
