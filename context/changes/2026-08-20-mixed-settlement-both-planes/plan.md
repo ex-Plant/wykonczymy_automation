@@ -596,8 +596,8 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [ ] 5.1 `pnpm exec vitest run src/__tests__/transfer-table.test.ts` przechodzi
-- [ ] 5.2 `grep -rn "VAT_PLANE_LABELS" src/components` nie zwraca już `tables/transfers.tsx`
+- [x] 5.1 `pnpm exec vitest run src/__tests__/transfer-table.test.ts` przechodzi
+- [x] 5.2 `grep -rn "VAT_PLANE_LABELS" src/components` nie zwraca już `tables/transfers.tsx`
 
 ### Phase 6: Domknięcie
 

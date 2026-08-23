@@ -42,12 +42,14 @@ export function PlaneAmountField({ form, vatRate, plane, fieldClassName }: Plane
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vatRate, plane])
 
+  // No plane in the label: a wpłata gotówką carries ONE kwota and offers no second one to tell it
+  // apart from, so „netto" here only invites the reader to look for a brutto that does not exist.
   if (plane === 'NET') {
     return (
       <form.AppField key="amount-net" name="amount">
         {(field: AppFieldComponentsT) => (
           <field.Input
-            label="Kwota netto (PLN)"
+            label="Kwota (PLN)"
             placeholder="0.00"
             type="number"
             showError

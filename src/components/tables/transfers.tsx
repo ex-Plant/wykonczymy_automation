@@ -14,7 +14,7 @@ import {
   isCancellationType,
   EXPENSE_CATEGORY_LABEL,
   SETTLED_TYPE,
-  VAT_PLANE_LABELS,
+  DEPOSIT_PLANE_LABELS,
   billsNetAmount,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
@@ -59,10 +59,13 @@ const allColumns = [
   }),
   col.accessor('vatPlane', {
     id: 'vatPlane',
-    header: 'Rozliczenie netto/brutto',
+    // The tag names the FORM the wpłata arrived in, not the plane the bill is settled in — same
+    // dictionary as the deposit list in the panel. „netto"/„brutto" naming both on one screen is
+    // what made the reader guess which of the two a given cell meant (owner, 2026-08-23).
+    header: 'Forma wpłaty',
     cell: (info) => {
       const value = info.getValue()
-      return value ? VAT_PLANE_LABELS[value] : '—'
+      return value ? DEPOSIT_PLANE_LABELS[value] : '—'
     },
   }),
   col.accessor('investmentName', {
