@@ -848,6 +848,80 @@ sortowanie „w całym kosztorysie" zdejmuje pasy (i razem z nimi zwinięcia —
 nie miałaby czym się rozwinąć). Sortowanie „w sekcjach" zostawia wiersze na miejscu, więc pasy,
 sumy i zwinięcia zostają.
 
+## Wpłaty a tryb rozliczenia (czwarty przebieg, 2026-08-23)
+
+**Nic nie przechodzi przez VAT.** Wpłata niesie wyłącznie te kwoty, które naprawdę miała:
+
+- **gotówka** — jedna kwota netto, **brak kwoty brutto**. Lista wpłat drukuje w kolumnie brutto „×",
+  nigdy 0,00: zero czyta się jak wpłata warta nic, a prawda jest taka, że tej kwoty nie ma.
+- **przelew** — obie kwoty prosto z faktury: brutto i netto, które ta faktura nazywa. Netto jest
+  podpowiadane stawką inwestycji i pozostaje do nadpisania. Kolumna `net_amount` istniała wcześniej
+  (to kolumna wydatku netto), więc nie było migracji.
+
+Powód: rachunek stoi na **dwóch stawkach** — przy rozliczeniu brutto materiały wchodzą stawką ze
+sklepu, a robocizna narasta stawką z faktury — więc nie ma jednej stawki, którą dałoby się przeliczyć
+wpłatę. Wcześniejsze przeliczanie zawyżało zaliczenie klientowi (w przykładzie kontrolnym ok. 73 zł
+na wpłacie 10 000; przy rachunku złożonym z samych materiałów — cały VAT). Konsekwencja przyjęta
+świadomie: „Razem" na liście wpłat przestało być parą związaną VAT-em, więc **zniknęło z pierwszej
+tabelki**; suma na płaszczyźnie trybu i tak stoi w wierszu „Wpłaty" w rozliczeniu wyżej.
+
+**Nazwa tagu mówi o formie, nie o płaszczyźnie.** „Netto"/„brutto" znaczyło na jednym ekranie dwie
+różne rzeczy — tryb, w którym rozliczany jest cały rachunek, i tor, którym przyszła jedna wpłata.
+Przechowywana wartość się nie zmieniła (`vatPlane` = NET/GROSS); zmieniła się etykieta:
+„Gotówka"/„Przelew" (`DEPOSIT_PLANE_LABELS`). Tryb dalej nazywa się netto/brutto
+(`VAT_PLANE_LABELS`). Wpłata bez oznaczenia liczy się jako gotówka.
+
+**Tag wpłaty jest nieedytowalny.** Przetagowanie przesuwa dług o wartość VAT-u — ta sama klasa
+decyzji co zmiana kwoty, której formularz edycji dla wpłat i tak odmawia. Transfer nie ma historii
+wersji (edycja nadpisuje w miejscu), więc jedyna droga zostawiająca ślad to anulowanie
+i zaksięgowanie na nowo. Pilnują tego trzy warstwy naraz, bo żadna nie wystarcza sama: pole
+w kolekcji (`access.update`), schemat aktualizacji i akcja serwerowa — Local API z
+`overrideAccess: true` przechodzi obok pierwszej z nich.
+
+### Dwa predykaty, celowo obok siebie
+
+- `isOffPlaneDeposit(wiersz, tryb)` — „czy tryb wciąż mówi prawdę". Oba kierunki. Zapala czerwony
+  wiersz na liście wpłat i czerwony tekst pod rozliczeniem.
+- `strandsDeposit(forma, tryb)` — „czy ta wpłata przepada". Wyłącznie **gotówka przy rozliczeniu
+  brutto**: tam wpłata nie ma kwoty brutto, a nic już nie przelicza przez VAT, więc nie spłaca nic.
+  Tylko to zatrzymuje księgowanie pytaniem.
+
+Kierunek odwrotny (przelew tam, gdzie rachunek jest netto) spłaca dług kwotą netto z faktury — nic
+nie ginie, więc jest sygnałem o trybie, nie stratą.
+
+**Nigdzie nie blokujemy — pytamy.** Wpłata fizycznie się wydarzyła; odmowa zapisania faktu nauczyłaby
+tylko przekłamywać formę płatności, żeby przejść przez drzwi — tym bardziej, że tagu nie da się potem
+poprawić. Dialog stoi w dwóch miejscach: przy księgowaniu wpłaty i przy przestawianiu trybu
+rozliczenia (to drugie wycenia, ile wpłat i za ile przestanie się liczyć). Panel admina i wywołanie
+akcji wprost są świadomie nieobjęte — skoro nigdzie nie blokujemy, warstwa serwerowa nie zyskuje
+nowej reguły.
+
+### Lekarstwem jest tryb, nie wpłata
+
+Jeśli na inwestycję wpływa i gotówka, i przelew, to ta inwestycja **jest mieszana** — nie nadążył
+tryb, a nie wpłata jest zła. Dlatego wszystkie trzy komunikaty proponują „ustaw rozliczenie
+mieszane", a nie „przeksięguj wpłatę": przestawienie trybu naprawdę ratuje tę kwotę (rachunek idzie
+wtedy netto, gdzie każda forma ma kwotę), a kazanie przeksięgować gotówkę na przelew znaczyłoby
+wpisać fakturę, której nie ma.
+
+### Dlaczego tryb mieszany zostaje
+
+Po usunięciu przeliczania mieszany różni się od netto **tylko** tym, że nie uznaje wpłaty przelewem
+za niezgodną — kwoty liczy identycznie (`settlementModeToMoneyAxis`: MIXED → netto, dokładnie jak NET).
+Zostaje mimo to, bo jest jedyną odpowiedzią, którą mają do zaproponowania trzy ostrzeżenia powyżej:
+bez trzeciego trybu właściciel, który przyjmuje obie formy, nie ma dokąd przestawić inwestycji i
+czerwony tekst zostaje na stałe. Mieszany nazywa fakt o inwestycji — „tu obie formy są legalne" — a
+nie inną arytmetykę.
+
+**Lista inwestycji pokazuje jeden bilans na tryb.** Widoczna jest kolumna tego trybu, w którym
+inwestycja jest rozliczana; druga mówi „nie dotyczy". Mieszane idzie na **netto**, dokładnie jak
+panel: bilans brutto odliczyłby wyłącznie przelewy i po cichu zgubił każdą gotówkę (na jednej
+inwestycji testowej to różnica między +1 162,22 a −53 500). W trybie brutto ta różnica jest uczciwa —
+te wpłaty są tam już zaznaczone na czerwono. W mieszanym gotówka jest legalna, więc ta sama liczba
+byłaby po prostu fałszywa. To ta sama projekcja co oś panelu, nie druga jej kopia: lista nie może
+pokazać kwoty, której panel pokazać odmawia. Obie kwoty liczą się dalej dla każdego wiersza — tryb
+jest faktem, który właściciel może przestawić, i kolumna wraca razem z nim.
+
 ## Otwarte / odłożone
 
 - **A vs B (przechowywanie cen):** 3 sztywne kolumny vs dynamiczna tabela

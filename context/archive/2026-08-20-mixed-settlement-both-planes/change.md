@@ -1,10 +1,10 @@
 ---
 change_id: mixed-settlement-both-planes
 title: Tryb mieszany — każda wpłata na obu planach, jedna tabela rozliczenia
-status: implementing
+status: done
 created: 2026-08-20
 updated: 2026-08-23
-archived_at: null
+archived_at: 2026-08-23
 branch: kosztorys-client-view-offer-settlement-variants
 worktree: null
 ---
@@ -299,3 +299,23 @@ z faktury i zdanie tego już nie sugeruje.
 Dwa predykaty stoją więc obok siebie i to jest celowe: `isOffPlaneDeposit` odpowiada „czy tryb wciąż
 mówi prawdę" (oba kierunki, czerwony wiersz i tekst), `strandsDeposit` — „czy ta wpłata przepada"
 (tylko gotówka przy rozliczeniu brutto, i tylko to zatrzymuje księgowanie pytaniem).
+
+## Dług E2E — EX-723
+
+Ścieżka „gotówka na inwestycji rozliczanej brutto → dialog → «Zapisz mimo to» → wpłata w bazie
+i czerwony wiersz na liście" przechodzi wszystkie granice naraz i nie ma strażnika end-to-end.
+Odłożona do backlogu jako **EX-723** (projekt „Wykonczymy", etykieta `e2e-backlog`) razem
+z dyspozycją testową: Playwright w `e2e/` przeciw bazie 5435, asercja na stanie utrwalonym
+(`vat_plane = 'NET'` w bazie), przebieg z „Anuluj" i kontrola kierunku odwrotnego.
+
+## Zapis z domknięcia, 2026-08-23
+
+- **Zbiór parity nie ma ani jednej wpłaty przelewem.** Baza testowa trzyma 221 wierszy
+  `INVESTOR_DEPOSIT` na 5 175 912,57 zł i **zero** z `vat_plane = 'GROSS'`, więc płaszczyzna brutto
+  jest sprawdzana wyłącznie testami jednostkowymi — golden master przechodzi po niej ślepo. Zanim
+  ktoś oprze się na parity przy kolejnej zmianie wpłat, trzeba dosiać przelew.
+- **Bramka całości:** typecheck, `pnpm test` (184 pliki / 2678 testów), `pnpm test:integration`
+  (41 / 140), `pnpm test:parity` i `pnpm build` — zielone. `pnpm lint` zgłasza **dwa błędy spoza
+  tego changeu**: `test.js` w korzeniu (plik spoza repo, `.gitignore:99`) i
+  `src/hooks/use-latest-request.ts:15` („Cannot access refs during render") z commita `8e47fb80`
+  innego changeu na tej samej gałęzi. Żadna z sześciu faz nie ruszała tych plików.

@@ -1432,3 +1432,18 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 ### Faza 3: Komentarze i zapis
 
 - [ ] Żaden z dwóch dokumentów referencyjnych nie twierdzi już, że kolumna „Rozjazd" jest ślepa na `=N#`
+
+## mixed-settlement-both-planes — wpłaty na obu planach, jeden bilans na tryb
+
+Setup: baza testowa 5435 (`DB_POSTGRES_URL_TEST`) z rozpisanym kosztorysem
+(`pnpm db:import:test` + `pnpm seed:kosztorys:test`), zalogowany jako OWNER. Potrzebna inwestycja
+z zaksięgowanymi wpłatami od inwestora **obu form** (gotówka i przelew) oraz możliwość przestawienia
+jej trybu rozliczenia.
+
+- [ ] Na `/inwestycje` bilans v2 inwestycji z wpłatami równa się „Pozostało do zapłaty" z panelu Podsumowania tej samej inwestycji, ze znakiem przeciwnym
+- [ ] Inwestycja rozliczana netto pokazuje „nie dotyczy" w kolumnie bilansu brutto i odwrotnie; mieszana pokazuje netto
+- [ ] Dialog edycji wpłaty nie ma pola formy wpłaty i zapis edycji nie zmienia tagu
+- [ ] W panelu admina pole „Rozliczenie netto/brutto" na zaksięgowanej wpłacie jest tylko do odczytu
+- [ ] Zaksięgowanie wydatku (nie wpłaty) zostawia tag pusty, także po edycji
+- [ ] Kolumna na `/transfery` mówi „Forma wpłaty" i pokazuje „Gotówka" / „Przelew"
+- [ ] Formularz wpłaty gotówką ma jedno pole kwoty bez słowa „netto" w etykiecie

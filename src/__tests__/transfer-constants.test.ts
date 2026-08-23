@@ -24,6 +24,8 @@ import {
   isExpensesTabType,
   billsNetAmount,
   canBeSettled,
+  carriesNetAmount,
+  carriesVatPlane,
   isLaborCost,
   isCancellationType,
   isVatPlane,
@@ -137,17 +139,25 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
     fn: isCancellationType,
     trueFor: ['CANCELLATION'],
   },
+  carriesVatPlane: {
+    fn: carriesVatPlane,
+    // The tag names which side of the settlement a wpłata pays, so only a wpłata od inwestora
+    // has one — every other type stores null and validate.ts strips a smuggled plane.
+    trueFor: ['INVESTOR_DEPOSIT'],
+  },
 }
 
 // No row in the truth table above, which is keyed on transfer type. The first three are
 // not boolean — their per-type answers are pinned by the spec-table consistency suite
 // instead (transfer-spec-table.test.ts). `isVatPlane` is boolean but narrows a VAT plane,
-// not a transfer type, so it gets its own suite below.
+// not a transfer type, so it gets its own suite below; `carriesNetAmount` is keyed on the
+// PAIR (type, plane), which the truth table above has no column for, so it too gets one.
 const NOT_A_TRANSFER_TYPE_PREDICATE = [
   'financialBucketOf',
   'billedAmountOf',
   'billedAmountFor',
   'isVatPlane',
+  'carriesNetAmount',
 ]
 
 describe('transfer constants — helper truth table', () => {
@@ -373,6 +383,25 @@ describe('unknown-tolerant predicates reject non-string input', () => {
       expect(fn(input)).toBe(false)
     })
   }
+})
+
+describe('carriesNetAmount — keyed on the pair, not the type', () => {
+  // Two unrelated reasons behind one predicate, and only one of them reads the plane: a netto
+  // wydatek carries a netto whatever the plane says, a wpłata only when it arrived as a przelew.
+  it.each([
+    ['INVESTMENT_EXPENSE_NET', 'NET', true],
+    ['INVESTMENT_EXPENSE_NET', 'GROSS', true],
+    ['INVESTMENT_EXPENSE_NET', undefined, true],
+    ['INVESTOR_DEPOSIT', 'GROSS', true],
+    ['INVESTOR_DEPOSIT', 'NET', false],
+    // Untagged is gotówka: one kwota netto, no brutto twin to name.
+    ['INVESTOR_DEPOSIT', undefined, false],
+    ['INVESTMENT_EXPENSE', 'GROSS', false],
+    ['COMPANY_FUNDING', 'GROSS', false],
+    ['OTHER_DEPOSIT', 'GROSS', false],
+  ] as const)('carriesNetAmount(%s, %s) === %s', (type, plane, expected) => {
+    expect(carriesNetAmount(type, plane)).toBe(expected)
+  })
 })
 
 describe('isVatPlane', () => {
