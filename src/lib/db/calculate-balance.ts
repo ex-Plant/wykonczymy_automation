@@ -7,7 +7,8 @@ import type { InvestmentFinancialsT } from '@/types/investment-financials'
 // netto price rather than the brutto receipt, so it RAISES the balance too (and lowers marża).
 // A loss is the cost the company absorbed instead of charging it on, so it raises the balance the
 // same way — but at FACE VALUE (EX-675): the amount entered is the amount the client stops paying,
-// identically in netto and in brutto, so it never widens the VAT base in `grossBalance`.
+// identically in netto and in brutto, so it never widens the VAT base — unlike a rabat, which is a
+// concession on the price and therefore grosses.
 export function calculateBalance(financials: InvestmentFinancialsT) {
   const totalCosts = financials.totalMaterialCosts + financials.totalLaborCosts
   return (

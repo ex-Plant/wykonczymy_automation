@@ -25,7 +25,7 @@ export function shapeInvestments(
   financialsRecord: InvestmentFinancialsMapT,
   kosztorysTotalsRecord: KosztorysClientTotalsMapT = {},
   subcontractorDueRecord: KosztorysSubcontractorDueMapT = {},
-  depositPlaneSumsRecord: DepositPlaneSumsMapT = {},
+  depositPlaneSumsRecord: DepositPlaneSumsMapT,
 ): InvestmentRowT[] {
   return investments.map((inv) => {
     const transactionFinancials = financialsRecord[String(inv.id)] ?? ZERO_FINANCIALS

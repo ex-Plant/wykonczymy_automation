@@ -579,10 +579,10 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [ ] 3.1 `pnpm test:parity` przechodzi (parity + golden master)
-- [ ] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/shape-investments.test.ts` przechodzi
-- [ ] 3.3 `grep -rn "grossBalance" src` nie zwraca nic
-- [ ] 3.4 `npx tsc --noEmit` czysty — żadne wywołanie `shapeInvestments` nie zgubiło wpłat
+- [x] 3.1 `pnpm test:parity` przechodzi (parity + golden master)
+- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/shape-investments.test.ts` przechodzi
+- [x] 3.3 `grep -rn "grossBalance" src` nie zwraca nic
+- [x] 3.4 `npx tsc --noEmit` czysty — żadne wywołanie `shapeInvestments` nie zgubiło wpłat
 
 ### Phase 4: Ścieżka zapisu
 

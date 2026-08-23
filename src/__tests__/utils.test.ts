@@ -152,6 +152,18 @@ describe('formatPLN', () => {
     expect(result).toContain('500')
     expect(result).toContain('zł')
   })
+
+  // A bilans is a negated figure, so an investment settled to the grosz reaches this as -0 or as a
+  // −7e-12 residue. Intl keeps that sign: the listing announced „-0,00 zł" for a debt of nothing.
+  it('prints a settled-to-zero figure without a minus', () => {
+    expect(formatPLN(-0)).not.toContain('-')
+    expect(formatPLN(-7e-12)).not.toContain('-')
+    expect(formatPLN(-0.004)).not.toContain('-')
+  })
+
+  it('still keeps the minus on a real debt', () => {
+    expect(formatPLN(-0.01)).toContain('-')
+  })
 })
 
 // ── getRelationName ──────────────────────────────────────────────────────

@@ -17,8 +17,9 @@ import {
   effectiveMaterialsNetRate,
   type SettlementModeT,
 } from '@/lib/kosztorys/settlement-mode'
-import { billedMaterials } from '@/lib/kosztorys/summary-economics'
-import { grossBalance } from '@/lib/db/gross-balance'
+import { billedMaterials, computeAmountDue } from '@/lib/kosztorys/summary-economics'
+import { depositPairFromPlaneSums, NO_DEPOSIT_SUMS } from '@/lib/kosztorys/deposit-planes'
+import { selectDepositPlaneSums } from '@/lib/db/deposit-plane-sums'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
@@ -29,6 +30,7 @@ import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import type {
+  DepositPlaneSumsMapT,
   KosztorysClientTotalsMapT,
   KosztorysSubcontractorDueMapT,
 } from '@/lib/queries/balances'
@@ -117,6 +119,15 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       subcontractorDue[String(investmentId)] = settlement
     }
 
+    // The map this spec ran for three days without. Omitted, every listing bilans read as if nobody
+    // had paid anything — 63 278,90 zl adrift on one investment — and the comparison stayed green
+    // because the detail side was assembled from the same missing input.
+    const depositPlaneSums: DepositPlaneSumsMapT = {}
+    for (const row of await selectDepositPlaneSums(await getDb(payload))) {
+      const { investmentId, ...sums } = row
+      depositPlaneSums[String(investmentId)] = sums
+    }
+
     const mismatches: string[] = []
     for (const inv of investments) {
       const where = { investment: { equals: inv.id } }
@@ -154,6 +165,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         listingFin ? { [String(inv.id)]: listingFin } : {},
         kosztorysTotals,
         subcontractorDue,
+        depositPlaneSums,
       )
 
       // Every investment fed in comes back out, so a `?? 0` below can only ever mask a dropped row —
@@ -170,6 +182,18 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         new Set(),
       )
       const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
+      // The panel's own „Pozostało do zapłaty", assembled from the DETAIL side's objects. It is the
+      // only reading of the brutto plane in the app — the transactions plane has never had a brutto
+      // bilans — so the oracle has to be this, not a second formula derived from `detailBalance`
+      // that no surface renders.
+      const detailAmountDue = computeAmountDue(
+        readingFromKosztorys(kosztorysTotals[String(inv.id)]).laborCostsNet,
+        depositPairFromPlaneSums(depositPlaneSums[String(inv.id)] ?? NO_DEPOSIT_SUMS, inv.vatRate),
+        { grossBase: detailFin.materialsGrossBase, netBilled: detailFin.materialsNetBilled },
+        inv.vatRate,
+        netRate,
+        detailFin.totalLoss,
+      )
 
       const compare: [string, number, number][] = [
         ['bilans', listingRow?.balance ?? 0, detailBalance],
@@ -189,16 +213,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
             netRate,
           ),
         ],
-        [
-          'bilans brutto',
-          listingRow?.balanceGross ?? 0,
-          grossBalance(
-            detailBalance,
-            inv.vatRate,
-            detailFin.totalLaborCosts,
-            detailFin.totalDiscount,
-          ),
-        ],
+        ['bilans brutto', listingRow?.balanceGross ?? 0, -detailAmountDue.gross],
         ['wliczone w robociznę', listingRow?.totalSettled ?? 0, detailFin.totalSettled],
       ]
 
