@@ -571,9 +571,9 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-economics.test.ts src/__tests__/components/kosztorys/summary/settlement-groups.test.ts` przechodzi — 2b7cb661
+- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/kosztorys/summary-economics.test.ts src/__tests__/components/kosztorys/summary/settlement-groups.test.ts` przechodzi — be28b001
 - [ ] 2.2 `pnpm test` — cały pakiet jednostkowy zielony, 0 z 41 wcześniejszych czerwonych
-- [x] 2.3 `npx tsc --noEmit` czysty na całym `src/__tests__` — 2b7cb661
+- [x] 2.3 `npx tsc --noEmit` czysty na całym `src/__tests__` — be28b001
 
 ### Phase 3: Kontrakt lista ↔ panel
 
