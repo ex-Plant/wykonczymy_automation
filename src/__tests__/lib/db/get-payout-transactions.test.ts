@@ -17,16 +17,24 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
   let payload: Payload
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
+  let otherInvestmentId: number
 
   // Three PAYOUTs on distinct weekdays whose weekday-alphabetical order differs from their chronological
   // order, so a weekday-first date string would sort them wrong: 2026-07-13 Mon, 07-15 Wed, 07-18 Sat.
   const DATES = ['2026-07-13T09:00:00Z', '2026-07-15T09:00:00Z', '2026-07-18T09:00:00Z']
 
-  async function insertPayout(dateIso: string): Promise<void> {
+  async function insertTx(opts: {
+    date: string
+    type?: string
+    investmentId: number
+    cancelled?: boolean
+    amount?: number
+  }): Promise<void> {
     await db.execute(sql`
       INSERT INTO transactions (description, amount, date, type, payment_method, investment_id, worker_id, cancelled)
-      VALUES ('test', 100, ${dateIso}::timestamptz, 'PAYOUT'::enum_transactions_type, 'TRANSFER',
-        ${investmentId}, NULL, false)
+      VALUES ('test', ${opts.amount ?? 100}, ${opts.date}::timestamptz,
+        ${opts.type ?? 'PAYOUT'}::enum_transactions_type, 'TRANSFER', ${opts.investmentId}, NULL,
+        ${opts.cancelled ?? false})
     `)
   }
 
@@ -37,15 +45,33 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
     db = await getDb(payload)
 
     investmentId = await createTestInvestment(payload, 'get-payout-transactions-test')
+    otherInvestmentId = await createTestInvestment(payload, 'get-payout-transactions-other')
 
-    for (const date of DATES) await insertPayout(date)
+    for (const date of DATES) await insertTx({ date, investmentId })
+    // Each must be excluded by a different predicate in the WHERE; 999 marks them so a leak is
+    // visible in the amounts, not only in the row count.
+    await insertTx({ date: DATES[0], investmentId, cancelled: true, amount: 999 })
+    await insertTx({ date: DATES[0], investmentId, type: 'INVESTMENT_EXPENSE', amount: 999 })
+    await insertTx({ date: DATES[0], investmentId: otherInvestmentId, amount: 999 })
   })
 
   afterAll(async () => {
-    if (investmentId) {
-      await db.execute(sql`DELETE FROM transactions WHERE investment_id = ${investmentId}`)
-      await deleteTestInvestment(payload, investmentId)
+    for (const id of [investmentId, otherInvestmentId]) {
+      if (id) await db.execute(sql`DELETE FROM transactions WHERE investment_id = ${id}`)
     }
+    for (const id of [investmentId, otherInvestmentId]) {
+      if (id) await deleteTestInvestment(payload, id)
+    }
+  })
+
+  // This WHERE now feeds BOTH the wypłaty list and, summed off the same rows, „Pozostało do wypłaty"
+  // — so a dropped predicate moves money on two surfaces at once. The `GROUP BY` query that used to
+  // assert these exclusions independently is gone (EX-720); the coverage moved here with it.
+  it('excludes cancelled rows, non-PAYOUT types and other investments’ payouts', async () => {
+    const rows = await getPayoutTransactionsForInvestment(payload, investmentId)
+
+    expect(rows).toHaveLength(3)
+    expect(rows.map((row) => row.amount)).not.toContain(999)
   })
 
   it('emits year-first date strings that sort lexically in chronological order', async () => {

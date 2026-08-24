@@ -15,10 +15,6 @@ beforeEach(() => {
   redirect.mockReset()
 })
 
-// The regression this guard exists for: `kosztorys_v2` sat two failure modes in one Promise.all —
-// getKosztorysTree throws, requireInvestmentOr404 redirects — and whichever rejected first decided
-// what a non-management session saw. Throwing wins that race, so an EMPLOYEE landed on error.tsx
-// instead of the login page. A page guard has exactly one correct answer here, and it is a redirect.
 describe('requireManagementPage', () => {
   it.each([
     ['a session without the role', { success: false, error: 'Brak uprawnień' }],
@@ -26,7 +22,8 @@ describe('requireManagementPage', () => {
   ])('redirects to the login page on %s — never throws', async (_case, authResult) => {
     requireAuth.mockResolvedValue(authResult)
 
-    await expect(requireManagementPage()).resolves.toBeUndefined()
+    await requireManagementPage()
+
     expect(redirect).toHaveBeenCalledWith('/zaloguj')
   })
 
