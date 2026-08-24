@@ -21,6 +21,8 @@ type VehicleFormPropsT = {
   submittingLabel: string
   onSubmitSuccess: () => void
   keepOpen?: boolean
+  /** False on the edit dialogs — see `useManagedForm`. */
+  persistDraft?: boolean
 }
 
 export function VehicleForm({
@@ -32,6 +34,7 @@ export function VehicleForm({
   submittingLabel,
   onSubmitSuccess,
   keepOpen,
+  persistDraft,
 }: VehicleFormPropsT) {
   const { form, reset } = useManagedForm<VehicleFormValuesT, VehicleFormDataT>({
     formId,
@@ -42,11 +45,12 @@ export function VehicleForm({
     successMessage,
     onSubmitSuccess,
     action,
+    persistDraft,
     toData: (value) => ({
       registration: value.registration.trim().toUpperCase(),
       make: value.make,
       model: value.model,
-      year: value.year ? Number(value.year) : undefined,
+      year: value.year ? Number(value.year) : null,
       vin: value.vin.trim().toUpperCase(),
       status: value.status,
     }),

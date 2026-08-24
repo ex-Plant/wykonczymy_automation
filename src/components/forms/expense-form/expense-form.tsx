@@ -26,10 +26,7 @@ import { createBulkTransferAction } from '@/lib/actions/transfers'
 import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import { restorableType } from '@/components/forms/expense-form/draft-type'
-import {
-  investmentForType,
-  staleFieldsForType,
-} from '@/lib/transfers/clear-fields-for-type'
+import { investmentForType, staleFieldsForType } from '@/lib/transfers/clear-fields-for-type'
 import {
   makeLineItem,
   type BulkExpenseFormValuesT,
@@ -75,7 +72,11 @@ const FORM_ID = 'expense'
 export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: TransferFormPropsT) {
   const { recoveredFiles, submit } = useFormSubmit(FORM_ID)
 
-  const storedValues = useExpenseFormStore((s) => s.formData)
+  // Scoped by formId like every other draft consumer: `'expense'` is the only writer today, but the
+  // day an „Edytuj wydatek" dialog shares this slot its draft would otherwise seed the create form.
+  const storedFormId = useExpenseFormStore((s) => s.formId)
+  const draft = useExpenseFormStore((s) => s.formData)
+  const storedValues = storedFormId === FORM_ID ? draft : null
   const updateFormData = useExpenseFormStore((s) => s.updateFormData)
   const resetFormData = useExpenseFormStore((s) => s.resetFormData)
 
@@ -145,7 +146,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       onSubmit: bulkExpenseFormSchema,
     },
     listeners: {
-      onChange: ({ formApi }) => updateFormData(formApi.state.values as FormValuesT),
+      onChange: ({ formApi }) => updateFormData(FORM_ID, formApi.state.values as FormValuesT),
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {
@@ -234,9 +235,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
 
   // Blanked, never reset — see clear-fields-for-type.
   function resetConditionalFields(type: string) {
-    staleFieldsForType(type).forEach(([field, value]) =>
-      form.setFieldValue(field, value),
-    )
+    staleFieldsForType(type).forEach(([field, value]) => form.setFieldValue(field, value))
     form.setFieldValue(
       'investment',
       investmentForType(type, form.getFieldValue('investment'), investmentFromUrl),

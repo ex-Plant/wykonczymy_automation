@@ -8,6 +8,7 @@ import { fetchFleetOverview } from '@/lib/queries/fleet'
 import { FleetDataTable } from '@/components/fleet/fleet-data-table'
 import { Description } from '@/components/ui/description'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { pluralize } from '@/lib/utils/polish-plural'
 
 export default async function FleetPage() {
   const session = await requireAuth(MANAGEMENT_ROLES)
@@ -23,7 +24,9 @@ export default async function FleetPage() {
 
   return (
     <PageWrapper title="Flota">
-      <Description>{activeCount} pojazdów w użyciu</Description>
+      <Description>
+        {activeCount} {pluralize(activeCount, ['pojazd', 'pojazdy', 'pojazdów'])} w użyciu
+      </Description>
       <FleetDataTable data={fleet} />
     </PageWrapper>
   )

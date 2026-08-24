@@ -1,0 +1,47 @@
+import type { CollectionBeforeDeleteHook, CollectionSlug, Where } from 'payload'
+
+type DeleteProbeT = {
+  collection: CollectionSlug
+  where: (id: string | number) => Where
+  /** Names the referencing data in the refusal, e.g. „transakcje" → „(transakcje: 5)". */
+  label: string
+}
+
+/**
+ * Refuse a hard delete while another collection still references the row.
+ *
+ * The FKs pointing at these collections are `ON DELETE SET NULL`, so the delete would NOT fail — it
+ * would strip the reference and leave a row nothing can be traced back to. A `NOT NULL` FK is the
+ * other half of the same problem: there the delete fails, but with a raw `23502` instead of a
+ * sentence anyone can act on. This turns both into one refusal that names the counts.
+ */
+export function makePreventDelete({
+  probes,
+  message,
+}: {
+  probes: readonly DeleteProbeT[]
+  message: (blockers: string[]) => string
+}): CollectionBeforeDeleteHook {
+  return async ({ id, req }) => {
+    // limit: 1 — only totalDocs is read; Payload computes it via a separate count query, so a
+    // single-row page still yields the true total without hydrating every referencing row.
+    // `req` is forwarded so each count joins the delete's transaction: a caller that clears the
+    // referencing rows and this one in a single transaction must not be refused on pre-delete state.
+    const blockers = (
+      await Promise.all(
+        probes.map(async ({ collection, where, label }) => {
+          const { totalDocs } = await req.payload.find({
+            collection,
+            where: where(id),
+            limit: 1,
+            req,
+          })
+
+          return totalDocs > 0 ? `${label}: ${totalDocs}` : null
+        }),
+      )
+    ).filter((entry) => entry !== null)
+
+    if (blockers.length > 0) throw new Error(message(blockers))
+  }
+}

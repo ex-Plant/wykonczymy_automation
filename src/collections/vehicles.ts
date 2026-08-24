@@ -56,6 +56,13 @@ export const Vehicles: CollectionConfig = {
       label: { en: 'VIN', pl: 'VIN' },
     },
     {
+      // Machine-shaped: a map of inspection type → the day it was marked „do wymiany", written by
+      // the vehicle page. Hidden because hand-editing raw JSON here would only corrupt it.
+      name: 'flags',
+      type: 'json',
+      admin: { hidden: true },
+    },
+    {
       name: 'status',
       type: 'select',
       required: true,

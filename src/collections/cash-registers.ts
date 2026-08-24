@@ -1,11 +1,8 @@
-import type {
-  CollectionConfig,
-  CollectionBeforeDeleteHook,
-  CollectionBeforeValidateHook,
-} from 'payload'
+import type { CollectionConfig, CollectionBeforeValidateHook, Where } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerField, isAdminOrOwnerOrManager, isManager } from '@/access'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { makePreventDelete } from '@/hooks/prevent-delete'
 
 /** Managers can only create AUXILIARY registers — force the type. */
 const enforceAuxiliaryForManager: CollectionBeforeValidateHook = ({ data, req }) => {
@@ -13,24 +10,19 @@ const enforceAuxiliaryForManager: CollectionBeforeValidateHook = ({ data, req })
   return data
 }
 
-/** Block deletion if any transactions reference this register. */
-const preventDeleteWithTransactions: CollectionBeforeDeleteHook = async ({ id, req }) => {
-  // limit: 1 — only totalDocs is read; Payload computes it via a separate count query, so
-  // a single-row page still yields the true total without hydrating every referencing row.
-  const { totalDocs } = await req.payload.find({
-    collection: 'transactions',
-    where: {
-      or: [{ sourceRegister: { equals: id } }, { targetRegister: { equals: id } }],
+const preventDeleteWithTransactions = makePreventDelete({
+  probes: [
+    {
+      collection: 'transactions',
+      where: (id): Where => ({
+        or: [{ sourceRegister: { equals: id } }, { targetRegister: { equals: id } }],
+      }),
+      label: 'transakcje',
     },
-    limit: 1,
-  })
-
-  if (totalDocs > 0) {
-    throw new Error(
-      `Nie można usunąć kasy — istnieje ${totalDocs} powiązanych transakcji. Najpierw usuń lub przenieś transakcje.`,
-    )
-  }
-}
+  ],
+  message: (blockers) =>
+    `Nie można usunąć kasy — istnieją powiązane dane (${blockers.join(', ')}). Najpierw usuń lub przenieś transakcje.`,
+})
 
 export const CashRegisters: CollectionConfig = {
   slug: 'cash-registers',

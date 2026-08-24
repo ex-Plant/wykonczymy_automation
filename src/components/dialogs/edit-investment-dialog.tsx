@@ -47,6 +47,7 @@ export function EditInvestmentDialog({ investment }: EditInvestmentDialogPropsT)
           submittingLabel="Zapisywanie..."
           onSubmitSuccess={onSubmitSuccess}
           keepOpen={keepOpen}
+          persistDraft={false}
         />
       )}
     </FormDialog>

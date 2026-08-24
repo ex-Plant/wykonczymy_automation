@@ -1,7 +1,5 @@
-import { AlertTriangle } from 'lucide-react'
-import { BADGE_BASE } from '@/components/ui/badge'
-import { OIL_CHANGE_INTERVAL_KM } from '@/lib/fleet/thresholds'
-import { cn } from '@/lib/utils/cn'
+import { AlertBadge } from '@/components/fleet/alert-badge'
+import { OIL_CHANGE_INTERVAL_KM, isOilChangeOverdue } from '@/lib/fleet/thresholds'
 import { formatKm } from '@/lib/utils/format-distance'
 
 /**
@@ -18,15 +16,14 @@ export function OilIntervalBadge({
   kmSinceOilChange: number | null
   className?: string
 }) {
-  if (kmSinceOilChange === null || kmSinceOilChange <= OIL_CHANGE_INTERVAL_KM) return null
+  if (!isOilChangeOverdue(kmSinceOilChange)) return null
 
   return (
-    <span
-      className={cn(BADGE_BASE, 'bg-destructive/10 text-destructive gap-1', className)}
+    <AlertBadge
+      className={className}
       title={`Od ostatniej wymiany oleju minęło ${formatKm(kmSinceOilChange)}`}
     >
-      <AlertTriangle className="size-3" />
       Olej +{formatKm(kmSinceOilChange - OIL_CHANGE_INTERVAL_KM)}
-    </span>
+    </AlertBadge>
   )
 }

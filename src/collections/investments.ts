@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { makePreventDelete } from '@/hooks/prevent-delete'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import {
   SETTLEMENT_MODE_ADMIN_OPTIONS,
@@ -12,6 +13,21 @@ const STATUS_OPTIONS = [
   { label: { en: 'Active', pl: 'Aktywna' }, value: 'active' },
   { label: { en: 'Completed', pl: 'Zakończona' }, value: 'completed' },
 ] as const
+
+// For LABOR_COST / RABAT / LOSS an orphaned transaction is terminal: they carry no source register
+// either, so a row stripped of `investment_id` is reachable from no investment and no kasa at all.
+// Cancelled rows count — they are the audit trail, and orphaning them erases it just as thoroughly.
+const preventDeleteWithTransactions = makePreventDelete({
+  probes: [
+    {
+      collection: 'transactions',
+      where: (id) => ({ investment: { equals: id } }),
+      label: 'transakcje',
+    },
+  ],
+  message: (blockers) =>
+    `Nie można usunąć inwestycji — istnieją powiązane dane (${blockers.join(', ')}). Najpierw usuń lub przenieś transakcje.`,
+})
 
 export const Investments: CollectionConfig = {
   slug: 'investments',
@@ -25,6 +41,7 @@ export const Investments: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   hooks: {
+    beforeDelete: [preventDeleteWithTransactions],
     afterChange: [makeRevalidateAfterChange('investments')],
     afterDelete: [makeRevalidateAfterDelete('investments')],
   },

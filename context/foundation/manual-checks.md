@@ -1470,3 +1470,49 @@ jedyne wydatki na materiał są typu „rozliczone R+M".
 - [ ] **Ta sama inwestycja na `/inwestycje/<id>` → „Podsumowanie" → „Wydatki"**: tabela podziału widoczna, żadnego „Brak wydatków" (ten host nie dostaje wierszy transakcji, tylko agregat — bramka czytająca wiersze zostawiała tu pustą zakładkę)
 - [ ] Podgląd klienta tej samej inwestycji nie pokazuje wierszy rozliczonych ani tabeli rozliczonych
 - [ ] Legacy `/kosztorys` dalej renderuje iframe arkusza dla inwestycji z podpiętym arkuszem i stan „nie ma jeszcze arkusza" dla tej bez
+
+## EX-711 — flota: ręczne znaczniki „do wymiany" i typ „Serwis"
+
+Setup: baza testowa 5435 po `pnpm exec payload migrate` (migracja `20260819_1`), co najmniej jeden
+pojazd z historią przeglądów. Zalogowany jako OWNER.
+
+- [ ] Na karcie pojazdu zaznaczenie „Wymiana opon" pokazuje czerwoną plakietkę „Opony" w kolumnie „Do wymiany" na `/flota`
+- [ ] Dodanie przeglądu „Wymiana opon" z dzisiejszą datą sprawia, że plakietka znika z obu miejsc
+- [ ] Dodanie takiego przeglądu z datą sprzed roku **nie** gasi świeżego oznaczenia
+- [ ] Odznaczenie pola na karcie pojazdu usuwa plakietkę
+- [ ] Ponowne zaznaczenie typu, który historia już zgasiła, znów pokazuje plakietkę (a nie zostaje bez efektu)
+- [ ] Sortowanie kolumny „Do wymiany" skupia oznaczone pojazdy razem
+- [ ] „Serwis" jest do wyboru w „Dodaj przegląd", nie podpowiada następnej daty i nie ma pola „Następna wymiana przy (km)"
+- [ ] Zapisany „Serwis" widać w historii Przeglądów pojazdu i w zakładce Koszty
+- [ ] `/flota` **nie ma** kolumny terminu „Serwis"
+- [ ] Poniedziałkowy raport (`pnpm ...` / podgląd digestu) nie zgłasza „brak Serwisu" dla żadnego auta
+
+### Edycja pojazdu i wycofanie (rozstrzygnięcie 2026-08-24)
+
+- [ ] „Edytuj" na karcie pojazdu otwiera okno wypełnione danymi TEGO auta (nie pustymi i nie z poprzednio otwartego okna „Dodaj pojazd")
+- [ ] Zmiana marki/modelu i zapis: nagłówek karty pokazuje nową wartość bez ręcznego przeładowania
+- [ ] Ustawienie statusu „Wycofany" i zapis: plakietka statusu na karcie i wiersz na `/flota` pokazują wycofanie
+- [ ] Wycofanie **nie** kasuje ręcznych znaczników „do wymiany" ani historii przeglądów
+- [ ] Zapis z pustą rejestracją nie przechodzi — okno zostaje otwarte z błędem, a dane w bazie są nietknięte
+- [ ] Zaczęcie „Dodaj pojazd", zamknięcie okna BEZ zapisu, potem „Edytuj" na dowolnym aucie: okno pokazuje dane tego auta, a nie porzucony szkic (to samo dla pracowników i inwestycji)
+- [ ] „Dodaj przegląd" z listy `/flota` i z karty pojazdu dalej dzielą szkic — zaczęty na liście odtwarza się na karcie, tylko z pojazdem podmienionym na ten z karty
+
+### Załączniki przeglądu — ingest przy wyborze pliku
+
+- [ ] Wybranie zdjęcia HEIC w „Dodaj przegląd": po chwili przycisk zapisu znów jest aktywny, a zapisany przegląd ma czytelny załącznik (nie plik, którego przeglądarka nie otworzy)
+- [ ] Wybranie pliku > 4 MB (PDF): pojawia się komunikat o odrzuconym pliku, a przegląd zapisuje się bez niego
+- [ ] W trakcie przetwarzania pliku przycisk zapisu jest wyszarzony, a Enter w formularzu **nie** zapisuje przeglądu bez załącznika
+- [ ] W trakcie przetwarzania pliku **przeciągnięcie** drugiego pliku na to samo pole nie robi nic — pole jest przygaszone i nie startuje drugiego przetwarzania
+- [ ] Po nieudanym przetworzeniu (albo po zapisie z „nie zamykaj") ponowne wybranie **tego samego** pliku znów startuje przetwarzanie, a nie milczy
+
+### Bramka przeglądu (2026-08-24)
+
+- [ ] Karta pojazdu, sekcja „Do wymiany:": zaznaczenie typu, a potem „Dodaj przegląd" tego samego typu z datą **wczorajszą** — plakietka znika z `/flota` **i** pole samo się odznacza na otwartej karcie, bez ręcznego przeładowania
+- [ ] Zaznaczenie typu przy wyłączonym internecie: pojawia się komunikat o nieudanym zapisie, a pole wraca do stanu sprzed kliknięcia
+- [ ] Nieudany zapis jednego typu nie cofa wcześniejszego, udanego zaznaczenia innego typu
+- [ ] „Edytuj pojazd": wyczyszczenie pola „Rocznik" i zapis — po ponownym otwarciu pole jest puste (a nie ze starym rokiem)
+- [ ] Plakietka „Olej +N km" siedzi w kolumnie „Wymiana oleju" na `/flota` i wygląda identycznie jak plakietki ręcznych znaczników
+- [ ] Panel Payload: próba usunięcia kasy / inwestycji / pracownika z powiązanymi danymi dalej odmawia i wymienia, czego dotyczy („transakcje: N", „kasy: N", …)
+- [ ] „Edytuj pojazd 7": zmiana pola, Esc bez zapisu, ponowne otwarcie — formularz pokazuje dane z bazy, nie porzucony szkic (to samo dla „Edytuj inwestycję" i „Edytuj pracownika")
+- [ ] Rozpoczęty szkic w „Dodaj pojazd" przeżywa otwarcie i zamknięcie „Edytuj pojazd" — dialog edycji nie kasuje ani nie nadpisuje szkicu tworzenia
+- [ ] „Dodaj pojazd": wypełnienie części pól, Esc, ponowne otwarcie — szkic **wraca** (zachowanie niezmienione)

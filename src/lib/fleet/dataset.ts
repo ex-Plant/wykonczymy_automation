@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
+import { parseVehicleFlags } from '@/lib/fleet/flags'
 import { toInspectionEvent } from '@/lib/fleet/map-inspection'
 import { groupInOrder } from '@/lib/utils/group-in-order'
 import type {
@@ -49,6 +50,7 @@ export async function loadFleetDataset(payload: Payload): Promise<FleetDatasetT>
       status: vehicle.status,
       year: vehicle.year ?? null,
       vin: vehicle.vin ?? '',
+      flags: parseVehicleFlags(vehicle.flags),
     })),
     events: assertCompletePage(inspections, 'loadFleetDataset.inspections').map(toInspectionEvent),
   }

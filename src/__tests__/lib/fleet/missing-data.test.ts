@@ -39,6 +39,19 @@ describe('findMissingInspections', () => {
     expect(missing).toEqual([])
   })
 
+  // SERVICE is ad-hoc: there is no schedule it could be absent from.
+  it('never reports Serwis, even for a vehicle with no events at all', () => {
+    const missing = findMissingInspections([{ vehicle: vehicle(), events: [] }])
+
+    expect(missing.map((entry) => entry.type)).toEqual([
+      'TECHNICAL',
+      'INSURANCE',
+      'OIL_CHANGE',
+      'WARRANTY',
+      'TYRES',
+    ])
+  })
+
   it('counts an event with no due date as recorded — the gap is data, not absence', () => {
     const missing = findMissingInspections([
       { vehicle: vehicle(), events: [event('TYRES', '2026-04-01', { nextDueAt: null })] },

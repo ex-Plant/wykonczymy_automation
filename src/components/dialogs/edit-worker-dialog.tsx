@@ -46,6 +46,7 @@ export function EditWorkerDialog({ worker, cashRegisters }: EditWorkerDialogProp
           submittingLabel="Zapisywanie..."
           onSubmitSuccess={onSubmitSuccess}
           keepOpen={keepOpen}
+          persistDraft={false}
           cashRegisters={cashRegisters}
         />
       )}
