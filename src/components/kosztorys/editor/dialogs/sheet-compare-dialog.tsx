@@ -23,6 +23,11 @@ import type {
   ExecutedDiffT,
   SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
+import { againstNamedFigure } from '@/components/kosztorys/editor/dialogs/sheet-footer-report'
+import {
+  footerDisagreements,
+  type FooterComparisonT,
+} from '@/lib/kosztorys/sheet-import/footer-totals'
 import type { FormulaSampleT } from '@/lib/kosztorys/sheet-import/formula-health'
 import { formatQty } from '@/lib/kosztorys/format'
 import { formatPLN } from '@/lib/utils/format-currency'
@@ -82,6 +87,10 @@ export function SheetCompareDialog() {
         ) : (
           <>
             <MoneyBlock comparison={comparison} />
+            <SheetFooterBlock
+              footer={comparison.footer}
+              executedFromSheet={comparison.totals.executedNetFromSheet}
+            />
             <ItemsBlock comparison={comparison} />
             <SheetRatesBlock
               mode="compare"
@@ -118,7 +127,6 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
   const sheetMeasured =
     netValueRow?.matchedAgainst === 'measuredNet' ? netValueRow.sheetValue : null
   const sheetExecuted = footer.find((total) => total.key === 'executedNet')?.sheetValue ?? null
-  const footerDelta = sheetExecuted === null ? null : sheetExecuted - totals.executedNetFromSheet
   const unassignedInSheet =
     sheetMeasured === null || sheetExecuted === null ? null : sheetMeasured - sheetExecuted
   const unassignedHere = sheetMeasured === null ? null : sheetMeasured - totals.executedNetFromApp
@@ -162,13 +170,6 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
           rabat globalny schodzi raz od sumy.
         </p>
       )}
-      {footerDelta !== null && Math.abs(footerDelta) >= MATCHES && (
-        <p className="text-xs text-amber-600">
-          Podsumowanie na dole arkusza Google, „R netto - suma prac wykonannych", wychodzi{' '}
-          {formatPLN(sheetExecuted ?? 0)} — o {formatPLN(footerDelta)} inaczej niż suma jego
-          własnych prac.
-        </p>
-      )}
     </SheetReportBlock>
   )
 }
@@ -180,6 +181,65 @@ function executedVerdict(executed: number): string {
   if (executed < 0)
     return `Tutaj rozpisano na etapy o ${formatPLN(-executed)} więcej pracy niż w arkuszu Google.`
   return `W arkuszu Google rozpisano na etapy o ${formatPLN(executed)} więcej pracy niż tutaj.`
+}
+
+/**
+ * The sheet against itself: the figures typed into its summary rows against what its own prace add
+ * up to. Deliberately its own block with its own column names — this is not the arkusz↔aplikacja
+ * question the block above answers, and reusing those headers put one and the same figure under „Ta
+ * aplikacja" here and „Arkusz Google" in the import preview.
+ *
+ * A disagreement points at one of two places and the dialog cannot tell them apart: the sheet's own
+ * footer arithmetic (live, both cases have been that — a section left out of a hand-written SUM, and
+ * a correction typed straight into a value column), or our reading of the cena/rabat columns, which
+ * would make every figure in the block above wrong too. So it names both and blames neither.
+ */
+function SheetFooterBlock({
+  footer,
+  // Our sum of the sheet's etapy — the one figure „R netto" names, see `againstNamedFigure`.
+  executedFromSheet,
+}: {
+  footer: readonly FooterComparisonT[]
+  executedFromSheet: number
+}) {
+  // A summary row the sheet does not carry is not a finding — see `footerDisagreements`.
+  const stated = footer
+    .filter((total) => total.sheetValue !== null)
+    .map(againstNamedFigure(executedFromSheet))
+  if (stated.length === 0) return null
+  const disagreeing = footerDisagreements(stated)
+
+  return (
+    <SheetReportBlock
+      title="Podsumowanie na dole arkusza Google"
+      status={disagreeing.length === 0 ? 'ok' : 'warn'}
+      verdict={
+        disagreeing.length === 0
+          ? 'Kwoty wpisane na dole arkusza zgadzają się z sumą jego własnych prac.'
+          : 'Arkusz nie zgadza się sam ze sobą — kwoty wpisane na jego dole nie wychodzą z sumy jego własnych prac.'
+      }
+    >
+      <ComparisonTable sides={['Wpisane na dole', 'Suma jego prac']}>
+        {stated.map((total) => (
+          <ComparisonRow
+            key={total.key}
+            label={total.label}
+            sheet={formatPLN(total.sheetValue ?? 0)}
+            app={formatPLN(total.appValue)}
+            delta={total.matches || total.delta === null ? null : formatPLN(total.delta)}
+          />
+        ))}
+      </ComparisonTable>
+      {disagreeing.length > 0 && (
+        <p className="text-muted-foreground text-xs">
+          Kwot powyżej to nie zmienia — te liczymy z prac arkusza, wiersz po wierszu, a nie z jego
+          podsumowania. Ale warto sprawdzić, po której stronie leży błąd: albo formuły sumujące na
+          dole arkusza (pominięta sekcja, kwota wpisana ręcznie w kolumnie wartości etapu), albo
+          nasz odczyt cen i rabatów — a wtedy kwoty powyżej też będą złe.
+        </p>
+      )}
+    </SheetReportBlock>
+  )
 }
 
 function ItemsBlock({ comparison }: { comparison: SheetComparisonT }) {

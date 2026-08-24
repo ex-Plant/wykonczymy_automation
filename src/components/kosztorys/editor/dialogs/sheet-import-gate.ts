@@ -1,5 +1,8 @@
 import type { ImportPreviewT } from '@/lib/actions/kosztorys-import'
-import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
+import {
+  footerDisagreements,
+  type FooterComparisonT,
+} from '@/lib/kosztorys/sheet-import/footer-totals'
 
 export type ImportGateT = {
   confirmDisabled: boolean
@@ -21,7 +24,6 @@ export function evaluateImportGate(
   return {
     confirmDisabled:
       !loaded || pending || !preview || preview.problems.length > 0 || preview.failure !== null,
-    mismatchedTotals:
-      preview?.report.totals.filter((total) => total.sheetValue !== null && !total.matches) ?? [],
+    mismatchedTotals: preview ? footerDisagreements(preview.report.totals) : [],
   }
 }

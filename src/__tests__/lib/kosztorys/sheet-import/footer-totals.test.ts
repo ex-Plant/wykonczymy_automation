@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { compareFooterTotals } from '@/lib/kosztorys/sheet-import/footer-totals'
+import {
+  compareFooterTotals,
+  footerDisagreements,
+} from '@/lib/kosztorys/sheet-import/footer-totals'
 import { parseLaborTab } from '@/lib/kosztorys/sheet-import/parse-labor-tab'
 import { resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
@@ -99,5 +102,29 @@ describe('compareFooterTotals', () => {
     planned[19] = 1605
 
     expect(byKey(grid, 'plannedNet')).toMatchObject({ sheetValue: 1605, matches: true })
+  })
+})
+
+describe('footerDisagreements', () => {
+  it('surfaces a stated total that agrees with no figure we can compute', () => {
+    // Planetowa 44a: „wartość netto" totals a hand-written list of 13 section headers on a sheet
+    // that has 14, so it lands 2650 zł under every candidate. That row matches NOTHING — which is
+    // exactly the state the comparison dialog used to render as nothing at all.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    const planned = grid.find((row) => String(row[16]).startsWith('wartość netto'))!
+    planned[18] = 2287.5 - 2650
+
+    const surfaced = footerDisagreements(compare(grid))
+
+    expect(surfaced.map((total) => total.key)).toContain('plannedNet')
+    expect(surfaced.find((total) => total.key === 'plannedNet')!.delta).toBeCloseTo(-2650, 6)
+  })
+
+  it('says nothing about a summary row the sheet does not carry', () => {
+    const withoutFooter = BIALOSTOCKA_ROWS.filter((row) => !String(row[16]).startsWith('R netto'))
+
+    expect(footerDisagreements(compare(withoutFooter)).map((total) => total.key)).not.toContain(
+      'executedNet',
+    )
   })
 })

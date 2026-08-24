@@ -30,6 +30,14 @@ export type FooterComparisonT = {
   matchedAgainst: AppTotalKeyT | null
 }
 
+/**
+ * The summary rows where the sheet disagrees with itself: it states a figure, and its own prace do
+ * not add up to it. A row we could not find at all is deliberately NOT one of these — a sheet with
+ * no such summary says nothing about how we read it.
+ */
+export const footerDisagreements = (footer: readonly FooterComparisonT[]): FooterComparisonT[] =>
+  footer.filter((total) => total.sheetValue !== null && !total.matches)
+
 // Both figures are money, so anything under a grosz is rounding, not disagreement.
 const TOLERANCE = 0.005
 
