@@ -6,6 +6,7 @@ import { FieldGroup } from '@/components/ui/field'
 import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
+import { investmentForType } from '@/components/forms/clear-fields-for-type'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import {
   DEPOSIT_UI_TYPES,
@@ -182,8 +183,13 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
           <form.AppField
             name="type"
             listeners={{
-              onChange: () => {
-                form.resetField('investment')
+              onChange: ({ value }) => {
+                // Blanked, not reset: the default is the URL's investment, which resetField would
+                // put back on a type that never shows the field (EX-709).
+                form.setFieldValue(
+                  'investment',
+                  investmentForType(value, form.getFieldValue('investment'), investmentFromUrl),
+                )
                 // Not reset but rederived — the method survives the type change, and a plane that
                 // disagreed with it would put the wrong kwota on screen.
                 form.setFieldValue(
@@ -192,8 +198,8 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
                 )
                 // Both kwota fields go with it — the pair belongs to the wpłata being typed, and half
                 // of a previous one is worse than none.
-                form.resetField('amount')
-                form.resetField('amountGross')
+                form.setFieldValue('amount', '')
+                form.setFieldValue('amountGross', '')
               },
             }}
           >

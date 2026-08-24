@@ -1,0 +1,59 @@
+import { describe, it, expect } from 'vitest'
+import {
+  EXPENSE_CONDITIONAL_FIELDS,
+  investmentForType,
+  staleFieldsForType,
+} from '@/components/forms/clear-fields-for-type'
+
+// EX-709: the expense dialog opened from /inwestycje/105 defaults `investment` to 105, so the
+// type-change handler's form.resetField('investment') RESTORED that id instead of clearing it —
+// the field went hidden with 105 still in it and the row saved carrying an investment its type
+// never shows. The server-side counterpart (hooks/transfers/validate.ts) masks it on staging;
+// production runs a branch that predates the guard, which is how #4302 was booked.
+describe('investmentForType', () => {
+  it('empties the investment for a type that never shows one', () => {
+    expect(investmentForType('OTHER', '105', '105')).toBe('')
+  })
+
+  it('empties it for the company-level deposits too', () => {
+    expect(investmentForType('OTHER_DEPOSIT', '105', '105')).toBe('')
+    expect(investmentForType('COMPANY_FUNDING', '105', '105')).toBe('')
+  })
+
+  it('keeps the pick when the new type carries an investment', () => {
+    expect(investmentForType('PAYOUT', '105', '')).toBe('105')
+  })
+
+  it('refills from the URL when the new type shows the field and nothing is picked', () => {
+    expect(investmentForType('INVESTMENT_EXPENSE', '', '105')).toBe('105')
+  })
+
+  it('leaves it empty off an investment page', () => {
+    expect(investmentForType('INVESTMENT_EXPENSE', '', '')).toBe('')
+  })
+})
+
+describe('staleFieldsForType', () => {
+  const patch = (type: string) =>
+    Object.fromEntries(staleFieldsForType(type, EXPENSE_CONDITIONAL_FIELDS))
+
+  it('empties the fields the type does not carry', () => {
+    expect(patch('OTHER')).toEqual({ targetRegister: '', worker: '', settled: false })
+  })
+
+  it('empties the kasa for a type that is not a cash movement', () => {
+    expect(patch('LABOR_COST')).toHaveProperty('sourceRegister', '')
+  })
+
+  it('leaves the kasa and the settled flag alone where the type carries them', () => {
+    expect(patch('INVESTMENT_EXPENSE')).toEqual({ targetRegister: '', worker: '' })
+  })
+
+  it('unsets settled when the new type cannot be settled', () => {
+    expect(patch('INVESTMENT_EXPENSE_NET')).toHaveProperty('settled', false)
+  })
+
+  it('keeps the worker on a payout', () => {
+    expect(patch('PAYOUT')).not.toHaveProperty('worker')
+  })
+})
