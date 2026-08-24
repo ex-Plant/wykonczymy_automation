@@ -7,11 +7,13 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { groupByVehicle, loadFleetDataset, type FleetDatasetT } from '@/lib/fleet/dataset'
 import { daysBetween, toWarsawDay, warsawToday } from '@/lib/fleet/days'
+import { sumCosts } from '@/lib/fleet/costs'
 import { activeFlags } from '@/lib/fleet/flags'
 import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
 import { byInspectionType, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { classifyDeadline } from '@/lib/fleet/thresholds'
 import type { InspectionRecordT } from '@/lib/fleet/types'
+import { ALL_TIME, type DateRangeT } from '@/lib/utils/date-range'
 import type {
   FleetRowT,
   InspectionHistoryEntryT,
@@ -52,10 +54,15 @@ const toDeadline = (nextDueAt: string | null, hasEvent: boolean, today: string):
   }
 }
 
+/**
+ * `costRange` has no default on purpose: leaving it out would quietly change the number the cost
+ * column shows, so every caller states which window it means.
+ */
 export const toRow = (
   vehicle: FleetDatasetT['vehicles'][number],
   events: readonly InspectionRecordT[],
   today: string,
+  costRange: DateRangeT,
 ): FleetRowT => {
   const latest = latestByType(events)
 
@@ -67,6 +74,7 @@ export const toRow = (
       toDeadline(latest[type]?.nextDueAt ?? null, latest[type] !== null, today),
     ),
     activeFlags: activeFlags(vehicle.flags, events, today),
+    totalCosts: sumCosts(events, costRange),
   }
 }
 
@@ -84,7 +92,7 @@ export async function fetchFleetOverview(): Promise<FleetRowT[]> {
   const today = warsawToday()
 
   return groupByVehicle({ vehicles, events }).map(({ vehicle, events: ofVehicle }) =>
-    toRow(vehicle, ofVehicle, today),
+    toRow(vehicle, ofVehicle, today, ALL_TIME),
   )
 }
 
@@ -134,7 +142,7 @@ export async function fetchVehicleDetail(id: number): Promise<VehicleDetailT | n
   const ofVehicle = events.filter((event) => event.vehicleId === id)
 
   return {
-    vehicle: toRow(vehicle, ofVehicle, warsawToday()),
+    vehicle: toRow(vehicle, ofVehicle, warsawToday(), ALL_TIME),
     historyByType: byInspectionType((type) => historyOfType(ofVehicle, type)),
   }
 }

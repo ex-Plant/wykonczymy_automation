@@ -482,15 +482,15 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/costs.test.ts`
-- [x] 2.2 Brak odwołań do `cost !== null` / `cost === null` w `src/lib` i `src/components`
+- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/costs.test.ts` — 0969ed3f
+- [x] 2.2 Brak odwołań do `cost !== null` / `cost === null` w `src/lib` i `src/components` — 0969ed3f
 
 ### Phase 3: Kolumna kosztów i suma w stopce
 
 #### Automated
 
-- [ ] 3.1 Nowe przypadki `toRow` (suma z wielu przeglądów, pojazd bez przeglądów → 0) na fixturze z realną kwotą
-- [ ] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/fleet.test.ts`
+- [x] 3.1 Nowe przypadki `toRow` (suma z wielu przeglądów, pojazd bez przeglądów → 0) na fixturze z realną kwotą
+- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/fleet.test.ts`
 
 ### Phase 4: Filtr zakresu dat
 

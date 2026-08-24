@@ -21,7 +21,8 @@ type VirtualizedTableBodyPropsT<TData> = {
   visibleColumnIds: Set<string>
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
-  footer?: (colCount: number) => React.ReactNode
+  footer?: (visibleColumnIds: string[]) => React.ReactNode
+  visibleColumnIdList: string[]
 }
 
 export function VirtualizedTableBody<TData>({
@@ -35,6 +36,7 @@ export function VirtualizedTableBody<TData>({
   getRowHref,
   getRowClassName,
   footer,
+  visibleColumnIdList,
 }: VirtualizedTableBodyPropsT<TData>) {
   const virtualItems = virtualizer.getVirtualItems()
   // `table-auto` sizes columns from the cells currently in the DOM — which, under virtualization, is
@@ -94,7 +96,7 @@ export function VirtualizedTableBody<TData>({
             </>
           )}
         </tbody>
-        {footer && rows.length > 0 && <TableFooter>{footer(colCount)}</TableFooter>}
+        {footer && rows.length > 0 && <TableFooter>{footer(visibleColumnIdList)}</TableFooter>}
       </table>
     </div>
   )

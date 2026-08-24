@@ -6,6 +6,7 @@ import { DeadlineCell } from '@/components/fleet/deadline-cell'
 import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
 import { FlagBadge } from '@/components/fleet/flag-badge'
 import { INSPECTION_TYPE_LABELS, SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
+import { formatPLN } from '@/lib/utils/format-currency'
 import type { FleetRowT } from '@/types/fleet'
 
 const col = createColumnHelper<FleetRowT>()
@@ -40,6 +41,12 @@ export function getFleetColumns() {
           ))}
         </span>
       ),
+    }),
+    col.accessor('totalCosts', {
+      id: 'costs',
+      header: 'Koszty',
+      meta: { align: 'right' },
+      cell: (info) => <span className="tabular-nums">{formatPLN(info.getValue())}</span>,
     }),
     ...SCHEDULED_INSPECTION_TYPES.map((type) =>
       col.accessor((row) => row.deadlines[type].daysLeft ?? undefined, {
