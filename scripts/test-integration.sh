@@ -27,6 +27,13 @@ if [ "$SENTINEL_MISSING" != "f" ] || [ "$(cat "$STAMP" 2>/dev/null || true)" != 
   [ -s dumps/dump-latest.sql ] || pnpm db:dump
   pnpm db:import:test
   DB_POSTGRES_URL="$DB_POSTGRES_URL_TEST" pnpm exec payload migrate
+  # A re-import restores the prod dump, and the dump carries neither kosztorys rows nor a single
+  # wpłata brutto — so an import that stops here silently strips the coverage `pnpm test:parity`'s
+  # dataset floor exists to guarantee, and the next parity run fails on a fixture this script
+  # thinned. Re-seed both here, so the documented three-step reset holds however the test DB is
+  # rebuilt.
+  pnpm seed:kosztorys:test
+  pnpm seed:deposits:test
   printf '%s' "$FINGERPRINT" > "$STAMP"
 else
   echo "→ test DB schema current — skipping re-import"

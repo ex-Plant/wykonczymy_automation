@@ -13,6 +13,13 @@ import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { marginV2 } from '@/lib/kosztorys/margin-v2'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectDepositPlaneSums } from '@/lib/db/deposit-plane-sums'
+import {
+  depositPairFromPlaneSums,
+  NO_DEPOSIT_SUMS,
+  type DepositPlaneSumsT,
+} from '@/lib/kosztorys/deposit-planes'
+import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
 import { NOTHING_DUE } from '@/lib/kosztorys/subcontractor-due'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
@@ -58,6 +65,13 @@ type InvestmentSnapshotT = {
    *  and rabat come from the kosztorys and the crew from its etapy, which is what the listing shows.
    *  `null` where an etap holds work with no rozliczenie. */
   marginV2: number | null
+  /** The wpłaty bucketed by VAT plane, straight off the SQL fold the listing reads. Frozen as four
+   *  raw sums rather than one total because that is where a bucketing regression shows: an untagged
+   *  wpłata sliding into the brutto bucket moves two of these and leaves their sum alone. */
+  deposits: DepositPlaneSumsT
+  /** Σ wpłat netto AFTER the legacy bridge — the only figure here that runs a wpłata brutto with no
+   *  netto through `legacyNet`, so it is the one that catches the bridge itself drifting. */
+  depositsNetAfterBridge: number
   categoryCosts: CategoryPairT[]
   settledCategoryCosts: CategoryPairT[]
 }
@@ -67,7 +81,12 @@ type InvestmentSnapshotT = {
 type HashMapT = Record<string, string>
 
 type SnapshotT = {
-  fingerprint: { transactionCount: number; kosztorysItemCount: number }
+  fingerprint: {
+    transactionCount: number
+    kosztorysItemCount: number
+    grossDepositsWithNet: number
+    legacyGrossDeposits: number
+  }
   /** Per-entity hash of the transaction rows that feed that entity's figures — see readInputHashes. */
   inputHashes: { investments: HashMapT; registers: HashMapT; workers: HashMapT }
   investments: Record<string, InvestmentSnapshotT>
@@ -118,6 +137,7 @@ async function readInputHashes(payload: Payload) {
         id, investment_id, source_register_id, target_register_id, worker_id,
         id || '|' || type || '|' || amount
           || '|' || COALESCE(net_amount::text, '')
+          || '|' || COALESCE(vat_plane::text, '')
           || '|' || COALESCE(settled::text, '')
           || '|' || COALESCE(investment_id::text, '')
           || '|' || COALESCE(source_register_id::text, '')
@@ -195,11 +215,27 @@ async function readInputHashes(payload: Payload) {
     hashes.investments[key] = `${hashes.investments[key] ?? ''}/${sig}`
   }
 
-  const counted = await db.execute(sql`SELECT count(*)::int AS row_count FROM transactions`)
+  // The wpłata brutto counts ride along on the scan that was already counting rows — they are the
+  // dataset floor's second axis, and what they guard is spelled out at DATASET_FLOOR.
+  const counted = await db.execute(sql`
+    SELECT
+      count(*)::int AS row_count,
+      count(*) FILTER (
+        WHERE type = 'INVESTOR_DEPOSIT' AND cancelled IS NOT TRUE
+          AND vat_plane = 'GROSS' AND net_amount IS NOT NULL
+      )::int AS gross_with_net,
+      count(*) FILTER (
+        WHERE type = 'INVESTOR_DEPOSIT' AND cancelled IS NOT TRUE
+          AND vat_plane = 'GROSS' AND net_amount IS NULL
+      )::int AS legacy_gross
+    FROM transactions
+  `)
   return {
     hashes,
     transactionCount: Number(counted.rows[0].row_count),
     kosztorysItemCount,
+    grossDepositsWithNet: Number(counted.rows[0].gross_with_net),
+    legacyGrossDeposits: Number(counted.rows[0].legacy_gross),
   }
 }
 
@@ -229,6 +265,9 @@ async function buildSnapshot(payload: Payload): Promise<{
   const subcontractorDue = new Map(
     (await selectKosztorysSubcontractorDue(db)).map((row) => [row.investmentId, row]),
   )
+  const depositPlaneSums = new Map(
+    (await selectDepositPlaneSums(db)).map(({ investmentId, ...sums }) => [investmentId, sums]),
+  )
 
   const investments: Record<string, InvestmentSnapshotT> = {}
   const names = new Map<string, string>()
@@ -238,6 +277,10 @@ async function buildSnapshot(payload: Payload): Promise<{
     // Mirrors shapeInvestments(): an investment with no transactions renders as zeros
     // rather than being absent, so the snapshot covers all of them.
     const financials = financialsMap.get(id) ?? ZERO_FINANCIALS
+    // Absent means no wpłaty at all, which `shapeInvestments` reads as zero on both planes — the
+    // same fallback here, so an investment nobody has paid is frozen rather than skipped.
+    const deposits = depositPlaneSums.get(id) ?? NO_DEPOSIT_SUMS
+    const vatRate = doc.vatRate ?? DEFAULT_VAT
     investments[String(id)] = {
       totalMaterialCosts: round2(financials.totalMaterialCosts),
       totalIncome: round2(financials.totalIncome),
@@ -254,6 +297,16 @@ async function buildSnapshot(payload: Payload): Promise<{
           subcontractorDue.get(id) ?? NOTHING_DUE,
         ),
       ),
+      deposits: {
+        paidNet: round2(deposits.paidNet),
+        paidGrossNet: round2(deposits.paidGrossNet),
+        paidGrossLegacy: round2(deposits.paidGrossLegacy),
+        paidGross: round2(deposits.paidGross),
+        // A count, not money — it is what the „osierocone wpłaty" marker on the listing renders, so
+        // it is an input like the sums and rounding it would be nonsense.
+        paidNetCount: deposits.paidNetCount,
+      },
+      depositsNetAfterBridge: round2(depositPairFromPlaneSums(deposits, vatRate).net),
       categoryCosts: toPairs(financials.categoryCosts),
       settledCategoryCosts: toPairs(financials.settledCategoryCosts),
     }
@@ -267,6 +320,8 @@ async function buildSnapshot(payload: Payload): Promise<{
       fingerprint: {
         transactionCount: inputs.transactionCount,
         kosztorysItemCount: inputs.kosztorysItemCount,
+        grossDepositsWithNet: inputs.grossDepositsWithNet,
+        legacyGrossDeposits: inputs.legacyGrossDeposits,
       },
       inputHashes: inputs.hashes,
       investments,
@@ -284,7 +339,19 @@ async function buildSnapshot(payload: Payload): Promise<{
 /*  `kosztorysItems` carries the floor's whole point onto the new axis: with the kosztorys tables
  *  empty every investment falls back to the transactions plane, so the read-switch branch is never
  *  executed and the suite passes green having tested nothing about it. */
-const DATASET_FLOOR = { investments: 50, registers: 10, transactions: 1000, kosztorysItems: 20 }
+/*  The two wpłata counts are the same argument on the wpłaty axis: an untagged wpłata counts as
+ *  gotówka, so a fixture with no wpłata brutto leaves every bucket but `paidNet` at zero — the
+ *  brutto plane and the legacy bridge are then frozen at nothing and a regression in either passes
+ *  green. Two counters rather than one because they are two different code paths: the netto off the
+ *  faktura is READ, and only a row missing it crosses the bridge that derives one at VAT. */
+const DATASET_FLOOR = {
+  investments: 50,
+  registers: 10,
+  transactions: 1000,
+  kosztorysItems: 20,
+  grossDepositsWithNet: 2,
+  legacyGrossDeposits: 0,
+}
 
 function assertNonTrivial(snapshot: SnapshotT) {
   const counts = {
@@ -292,12 +359,15 @@ function assertNonTrivial(snapshot: SnapshotT) {
     registers: Object.keys(snapshot.registers).length,
     transactions: snapshot.fingerprint.transactionCount,
     kosztorysItems: snapshot.fingerprint.kosztorysItemCount,
+    grossDepositsWithNet: snapshot.fingerprint.grossDepositsWithNet,
+    legacyGrossDeposits: snapshot.fingerprint.legacyGrossDeposits,
   }
   for (const key of Object.keys(DATASET_FLOOR) as (keyof typeof DATASET_FLOOR)[]) {
     if (counts[key] <= DATASET_FLOOR[key]) {
       throw new Error(
         `db-test holds only ${counts[key]} ${key} (floor ${DATASET_FLOOR[key]}) — this is a ` +
-          `thin or half-restored dataset. Run \`pnpm db:import:test\` before regenerating.`,
+          `thin or half-restored dataset. Run \`pnpm db:import:test\`, then ` +
+          `\`pnpm seed:kosztorys:test\` and \`pnpm seed:deposits:test\`, before regenerating.`,
       )
     }
   }
