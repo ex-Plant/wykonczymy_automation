@@ -153,10 +153,24 @@ udokumentowanego resetu `db-test`.
   - inw. `INV`: przelew 129 600 / netto 118 000; przelew 54 000 / netto 49 000;
     przelew 8 640 / netto 8 000; **legacy** 21 600 / netto `NULL`
   - druga inwestycja: przelew 32 400 / netto 29 500; **legacy** 10 800 / netto `NULL`
-- Przelewy przez `payload.create` (przechodzą hook walidacyjny — wiersz jest realny, nie
-  wymyślony), `paymentMethod: 'TRANSFER'`, `vatPlane: 'GROSS'`, `context: { skipRevalidation: true }`.
+- ~~Przelewy przez `payload.create` (przechodzą hook walidacyjny — wiersz jest realny, nie
+  wymyślony)~~, `paymentMethod: 'TRANSFER'`, `vatPlane: 'GROSS'`, `context: { skipRevalidation: true }`.
 - Wiersze legacy surowym `INSERT` przez `getDb` — ścieżka zapisu ich zabrania (`getNetAmountError`),
   a fixture ma je mieć, bo prod je ma. Komentarz w skrypcie mówi dokładnie to.
+
+**Amended at the review gate: WSZYSTKIE sześć wierszy idzie surowym `INSERT`, nie tylko legacy.**
+`payload.create` nie wchodzi w grę, bo `afterChange` na `transactions` synchronizuje wiersz do
+ŻYWEGO arkusza właściciela, a `afterDelete` robi to bez furtki `skipSheetSync` — idempotentny seed
+kasowałby i dopisywał wiersze fixture'u w prawdziwym arkuszu przy każdym przebiegu. Walidacji to nie
+gubi: kształt przelewów jest sprawdzany tą samą jedyną instancją reguły (`getNetAmountError`) w
+prechecku przed pierwszym zapisem. Nie zmieniaj tego z powrotem „dla spójności" — plan mylił się tu,
+nie implementacja.
+
+**Amended at the review gate (2): wiersze dostają JAWNE `id` z bloku `900_001+`, a wipe jest keyowany
+wyłącznie markerem.** Klucz porównywalności golden mastera to `sig` zaczynający się od `id` wiersza,
+więc `id` z sekwencji przehashowywały obie dosiane inwestycje przy każdym przebiegu i wyrzucały je do
+`dataMoved` — `pnpm test:parity` świeciło na zielono, nie porównawszy ani jednej figury na
+płaszczyźnie brutto. Idempotencja musi obejmować TOŻSAMOŚĆ wiersza, nie tylko jego treść.
 
 #### 2. `package.json`
 

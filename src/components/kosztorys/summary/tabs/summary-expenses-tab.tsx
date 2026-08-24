@@ -9,7 +9,6 @@ import {
 } from '@/components/kosztorys/summary/materials-pricing-options'
 import { materialsNetRateForMode, pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
 import { clientVisibleExpenseRows } from '@/lib/kosztorys/expense-datasets'
-import { roundToCents } from '@/lib/utils/round-to-cents'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { Description } from '@/components/ui/description'
 import { DecimalField } from '@/components/ui/decimal-field'
@@ -76,8 +75,10 @@ export function SummaryExpensesTab({
   // page's panel never supplies it, so a row-sourced gate blanks the breakdown table on a host whose
   // figures are fully populated. Σ rows === `totalMaterialCosts` (`buildMaterialsBreakdown`), so this
   // is the aggregate gate reading its own data instead of a second query's.
-  const hasBilledMaterials =
-    roundToCents(materialsBreakdown.reduce((sum, row) => sum + row.net, 0)) !== 0
+  // Rows, not their Σ: a CORRECTION that exactly cancels a category nets the breakdown to zero while
+  // the table below still has rows to draw, and a Σ-based gate would print „Brak wydatków" on top of
+  // them.
+  const hasBilledMaterials = materialsBreakdown.length > 0
   // Suppressed only by a block that actually renders below: „Lista wydatków" is itself gated on
   // showTransactions, so counting its rows on a host that hides the list would leave the tab blank.
   const isEmpty =

@@ -6,14 +6,23 @@ import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/tra
 // shared by the derivation below and the block's fallback so the two can't drift apart.
 export const UNASSIGNED_WORKER_NAME = 'Bez przypisanego pracownika'
 
+// The three-branch fallback both subcontractor surfaces resolve a name through — they sit one above
+// the other in the same block off the same roster, so an unknown worker must not read two ways.
+export function resolveWorkerName(
+  workerId: number | null,
+  nameById: ReadonlyMap<number, string>,
+  resolved?: string,
+): string {
+  if (workerId === null) return UNASSIGNED_WORKER_NAME
+  return resolved ?? nameById.get(workerId) ?? 'Nieznany pracownik'
+}
+
 /**
- * Group the realized PAYOUT rows per worker and resolve each name from the roster.
- *
  * Never re-split this into its own `GROUP BY worker_id` query: a second cache entry over the same
  * WHERE can serve the block's totals from a different snapshot than the list beneath them.
  *
- * The null-worker bucket is a real cash payout and keeps its own entry: folding it into a named
- * worker would invent a debt, dropping it would overstate „Pozostało do wypłaty".
+ * The null-worker bucket keeps its own entry rather than being folded or dropped — see the query
+ * that lets those rows through (`get-payout-transactions.ts`).
  */
 export function derivePayoutsByWorker(
   rows: PayoutTransactionRowT[],
@@ -28,7 +37,6 @@ export function derivePayoutsByWorker(
   return [...totalByWorker].map(([workerId, total]) => ({
     workerId,
     total: roundToCents(total),
-    name:
-      workerId === null ? UNASSIGNED_WORKER_NAME : (nameById.get(workerId) ?? 'Nieznany pracownik'),
+    name: resolveWorkerName(workerId, nameById),
   }))
 }

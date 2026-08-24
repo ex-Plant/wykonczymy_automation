@@ -1,5 +1,7 @@
 import type { ClientViewModeT } from '@/lib/kosztorys/client-view-settings'
 import { formatPLN } from '@/lib/utils/format-currency'
+import { depositNoun } from '@/lib/kosztorys/off-plane-deposit-copy'
+import type { StrandedDepositsT } from '@/lib/kosztorys/off-plane-deposits'
 import { pluralize } from '@/lib/utils/polish-plural'
 
 // One title for every setting whose consequence lands on the investor's link, because the mistake it
@@ -23,12 +25,9 @@ export const CLIENT_VIEW_MODE_IMPACT: Record<ClientViewModeT, string> = {
 // blocking it because of how money already came in would let the wpłaty dictate the deal. What it
 // owes him is the kwota, before he presses — the damage is silent afterwards, since nothing is
 // rewritten and the rows just stop counting.
-export function settlementModeDepositImpact(stranded: {
-  count: number
-  amount: number
-}): string | undefined {
+export function settlementModeDepositImpact(stranded: StrandedDepositsT): string | undefined {
   if (stranded.count === 0) return undefined
-  const noun = pluralize(stranded.count, ['wpłata', 'wpłaty', 'wpłat'])
+  const noun = depositNoun(stranded.count)
   const verb = pluralize(stranded.count, ['przestanie', 'przestaną', 'przestanie'])
   return `${stranded.count} ${noun} gotówką (${formatPLN(stranded.amount)}) ${verb} się liczyć w rozliczeniu — jeśli klient płaci obiema drogami, wybierz rozliczenie mieszane.`
 }

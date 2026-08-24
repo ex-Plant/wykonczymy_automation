@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  EXPENSE_CONDITIONAL_FIELDS,
   investmentForType,
   staleFieldsForType,
-} from '@/components/forms/clear-fields-for-type'
+} from '@/lib/transfers/clear-fields-for-type'
 
 // EX-709: the expense dialog opened from /inwestycje/105 defaults `investment` to 105, so the
 // type-change handler's form.resetField('investment') RESTORED that id instead of clearing it —
@@ -35,7 +34,7 @@ describe('investmentForType', () => {
 
 describe('staleFieldsForType', () => {
   const patch = (type: string) =>
-    Object.fromEntries(staleFieldsForType(type, EXPENSE_CONDITIONAL_FIELDS))
+    Object.fromEntries(staleFieldsForType(type))
 
   it('empties the fields the type does not carry', () => {
     expect(patch('OTHER')).toEqual({ targetRegister: '', worker: '', settled: false })
@@ -55,5 +54,19 @@ describe('staleFieldsForType', () => {
 
   it('keeps the worker on a payout', () => {
     expect(patch('PAYOUT')).not.toHaveProperty('worker')
+  })
+
+  // Retention is the intended reading, not a side effect of the EX-709 fix (owner, 2026-08-24): the
+  // patch names only what the NEW type cannot carry, so a field both types carry keeps the pick and
+  // the user does not re-enter what he just chose. The old handler cleared all four unconditionally,
+  // which is the behaviour these two cases exist to keep from creeping back.
+  it('keeps the kasa when both types carry one', () => {
+    expect(patch('CORRECTION')).not.toHaveProperty('sourceRegister')
+    expect(patch('INVESTMENT_EXPENSE')).not.toHaveProperty('sourceRegister')
+  })
+
+  it('keeps the settled flag between two settleable types', () => {
+    expect(patch('CORRECTION')).not.toHaveProperty('settled')
+    expect(patch('INVESTMENT_EXPENSE')).not.toHaveProperty('settled')
   })
 })

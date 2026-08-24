@@ -5,7 +5,13 @@ import {
 } from '@/lib/constants/transfers'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { pluralize } from '@/lib/utils/polish-plural'
-import type { StrandedDepositsT } from '@/lib/kosztorys/deposit-planes'
+import type { StrandedDepositsT } from '@/lib/kosztorys/off-plane-deposits'
+
+// The noun both wpłata sentences decline. They speak about the same rows on the same event, so a
+// change to the wording has to reach both.
+export function depositNoun(count: number) {
+  return pluralize(count, ['wpłata', 'wpłaty', 'wpłat'])
+}
 
 // The one sentence that names a plane mismatch, so the Podsumowanie banner and the listing's marker
 // cannot say it two ways (EX-724). Two vocabularies inside it on purpose, because it compares two
@@ -18,7 +24,7 @@ import type { StrandedDepositsT } from '@/lib/kosztorys/deposit-planes'
 export function offPlaneDepositSentence({ count, amount }: StrandedDepositsT, mode: VatPlaneT) {
   const settledIn = VAT_PLANE_LABELS[mode].toLocaleLowerCase()
   const paidBy = DEPOSIT_PLANE_INSTRUMENTAL[mode === 'NET' ? 'GROSS' : 'NET']
-  const noun = pluralize(count, ['wpłata', 'wpłaty', 'wpłat'])
+  const noun = depositNoun(count)
   const verb = pluralize(count, ['jest', 'są', 'jest'])
   // Face value — what the client actually handed over, and in tryb brutto exactly what the
   // settlement is missing.

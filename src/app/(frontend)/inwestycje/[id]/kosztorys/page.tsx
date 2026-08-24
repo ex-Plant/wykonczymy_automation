@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { parseInvestmentId, requireInvestmentOr404 } from '@/lib/queries/investments'
+import { parseInvestmentId } from '@/lib/queries/investment-id'
+import { requireInvestmentOr404 } from '@/lib/queries/investments'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { SheetIframeView } from '@/components/sheets/iframe-view'

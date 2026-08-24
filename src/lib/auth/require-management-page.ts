@@ -6,8 +6,6 @@ import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import type { SessionUserT } from '@/types/auth'
 
 /**
- * Page-level management guard: require a management session or bounce to the login page.
- *
  * Redirecting is the whole contract — a page that lets a DAL guard's `throw` decide instead shows an
  * error screen to someone who is merely logged out. Pages that also need the investment loaded use
  * `requireInvestmentOr404`; this is for the ones that already hold it.

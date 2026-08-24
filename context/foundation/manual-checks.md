@@ -1450,7 +1450,8 @@ jej trybu rozliczenia.
 
 ## EX-720 — nadmiarowe odczyty na trasach kosztorysu
 
-Setup: baza testowa 5435 (`pnpm db:import:test` + `pnpm seed:kosztorys:test`). Potrzebne trzy sesje
+Setup: baza testowa 5435 — pełny reset to trzy kroki (`pnpm db:import:test`, `pnpm seed:kosztorys:test`,
+`pnpm seed:deposits:test`). Potrzebne trzy sesje
 (OWNER, MANAGER, EMPLOYEE), inwestycja z podpiętym arkuszem Google i druga bez, inwestycja
 z wypłatami dla podwykonawców (w tym jedną bez przypisanego pracownika) oraz inwestycja, której
 jedyne wydatki na materiał są typu „rozliczone R+M".

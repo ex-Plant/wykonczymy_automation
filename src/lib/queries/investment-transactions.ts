@@ -2,10 +2,8 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
-import {
-  getPayoutTransactionsForInvestment,
-  getDepositTransactionsForInvestment,
-} from '@/lib/db/sum-transfers'
+import { getPayoutTransactionsForInvestment } from '@/lib/db/get-payout-transactions'
+import { getDepositTransactionsForInvestment } from '@/lib/db/get-deposit-transactions'
 import { findTransfersRaw } from '@/lib/queries/transfers'
 import { fetchMediaByIds } from '@/lib/queries/media'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
@@ -17,8 +15,7 @@ import type {
   MaterialTransactionRowT,
 } from '@/types/transfers'
 
-// Realized PAYOUTs for one investment. Tagged on CACHE_TAGS.transfers alone: the rows carry no
-// worker name — that is resolved downstream off reference data — so a rename must not bust this.
+// Tagged on CACHE_TAGS.transfers alone: the rows carry no worker name — that is resolved downstream off reference data — so a rename must not bust this.
 export async function fetchPayoutTransactionsForInvestment(
   investmentId: number,
 ): Promise<PayoutTransactionRowT[]> {

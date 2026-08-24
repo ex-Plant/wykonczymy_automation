@@ -1,4 +1,4 @@
-import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payouts-by-worker'
+import { resolveWorkerName } from '@/lib/kosztorys/payouts-by-worker'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
@@ -114,10 +114,7 @@ export function computeSubcontractorSummary(
       const remaining = roundToCents(due - paid)
       return {
         workerId,
-        name:
-          workerId === null
-            ? UNASSIGNED_WORKER_NAME
-            : (payout?.name ?? nameById.get(workerId) ?? 'Nieznany pracownik'),
+        name: resolveWorkerName(workerId, nameById, payout?.name),
         due,
         paid,
         remaining,

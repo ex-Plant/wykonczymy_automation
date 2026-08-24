@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { selectDepositPlaneSums } from '@/lib/db/deposit-plane-sums'
-import { getDepositTransactionsForInvestment } from '@/lib/db/sum-transfers'
+import { getDepositTransactionsForInvestment } from '@/lib/db/get-deposit-transactions'
 import {
   bucketDepositsByPlane,
   NO_DEPOSIT_SUMS,
@@ -54,9 +54,15 @@ describe.skipIf(!ENV_READY)('selectDepositPlaneSums (DB)', () => {
   })
 
   it('buckets every investment exactly like the TS fold does', async () => {
+    const perInvestment = await Promise.all(
+      investmentIds.map(async (id) => ({
+        id,
+        rows: await getDepositTransactionsForInvestment(payload, id),
+      })),
+    )
+
     const mismatches: string[] = []
-    for (const id of investmentIds) {
-      const rows = await getDepositTransactionsForInvestment(payload, id)
+    for (const { id, rows } of perInvestment) {
       const fromRows = roundSums(bucketDepositsByPlane(rows))
       // Absent from the SQL fold means no wpłaty at all, which every caller reads as zero on both
       // planes — so the absence has to compare EQUAL to that zero, not be skipped.

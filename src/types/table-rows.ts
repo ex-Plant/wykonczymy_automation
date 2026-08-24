@@ -2,7 +2,7 @@ import type { CashRegisterTypeT, InvestmentStatusT } from '@/types/reference-dat
 import type { SheetStatusT } from '@/lib/constants/sheets'
 import type { RoleT } from '@/lib/auth/roles'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
-import type { StrandedDepositsT } from '@/lib/kosztorys/deposit-planes'
+import type { StrandedDepositsT } from '@/lib/kosztorys/off-plane-deposits'
 
 /** The shapes a listing query hands to the table that renders it — a contract between the two
  *  layers, not a property of either. They live here rather than in the table component because the
@@ -49,6 +49,11 @@ export type InvestmentRowT = {
   review: string
   notes: string
   hasSheet: boolean
+  /** Whether the investment HAS a kosztorys, which none of the figures above can answer: „pomiar z
+   *  natury" is the etap sum (EX-494), so a fully entered rozpiska with no etap progress reads zero
+   *  robocizny — identical to no kosztorys at all. The v2 columns withhold on this, not on the
+   *  figure, or they print „brak danych" over real data. */
+  hasKosztorys: boolean
   // No column renders these — the whole row is handed to EditInvestmentDialog, whose form needs
   // them. `vatRate` is the exception that also prices `balanceGross`.
   materialsNetRate: number | null

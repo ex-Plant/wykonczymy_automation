@@ -5,9 +5,8 @@ import {
   sumAllWorkerBalances,
   sumAllInvestmentFinancials,
   sumFilteredByType,
-  deriveFinancials,
-  deriveCategoryBreakdowns,
 } from '@/lib/db/sum-transfers'
+import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
 import {
   fakePayload,
   lastSql,

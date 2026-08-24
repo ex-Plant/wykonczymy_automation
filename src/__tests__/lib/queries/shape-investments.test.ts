@@ -420,7 +420,11 @@ describe('shapeInvestments robocizna source', () => {
     ).toBe(0)
   })
 
-  it('cannot tell an absent kosztorys from one that sums to zero', () => {
+  // A kosztorys fully entered but with no etap progress yet sums to exactly zero, because „pomiar z
+  // natury" IS the etap sum (EX-494). Read presence off that zero and the listing prints „brak
+  // danych" over a complete rozpiska and suppresses the v1/v2 rozjazd icon precisely where a fresh
+  // kosztorys most needs flagging — so presence travels as its own fact.
+  it('tells an absent kosztorys from one that sums to zero', () => {
     const [zeroProgress] = shapeInvestments(
       [baseInv],
       transactionFinancials,
@@ -435,10 +439,29 @@ describe('shapeInvestments robocizna source', () => {
       NO_MAP,
       NO_DEPOSITS,
     )
+    const [absent] = shapeInvestments([baseInv], transactionFinancials, {}, NO_MAP, NO_DEPOSITS)
 
-    expect(zeroProgress).toEqual(
-      shapeInvestments([baseInv], transactionFinancials, {}, NO_MAP, NO_DEPOSITS)[0],
+    expect(zeroProgress.hasKosztorys).toBe(true)
+    expect(absent.hasKosztorys).toBe(false)
+    // Presence changes nothing else: every figure still reads the zero the same way.
+    expect({ ...zeroProgress, hasKosztorys: false }).toEqual(absent)
+  })
+
+  it('reads presence off the entry, not off the figure it carries', () => {
+    const [withWork] = shapeInvestments(
+      [baseInv],
+      transactionFinancials,
+      kosztorysTotals,
+      NO_MAP,
+      NO_DEPOSITS,
     )
+
+    expect(withWork.hasKosztorys).toBe(true)
+    // Same map, different investment — presence must key on the id like every figure above it.
+    expect(
+      shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals, NO_MAP, NO_DEPOSITS)[0]
+        .hasKosztorys,
+    ).toBe(false)
   })
 })
 

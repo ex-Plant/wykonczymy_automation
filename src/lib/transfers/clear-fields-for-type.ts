@@ -29,18 +29,11 @@ const CARRIED_BY: Record<ConditionalFieldT, (type: string) => boolean> = {
   settled: canBeSettled,
 }
 
-export const EXPENSE_CONDITIONAL_FIELDS = [
-  'sourceRegister',
-  'targetRegister',
-  'worker',
-  'settled',
-] as const satisfies readonly ConditionalFieldT[]
-
-export function staleFieldsForType(
-  type: string,
-  fields: readonly ConditionalFieldT[],
-): [ConditionalFieldT, '' | false][] {
-  return fields.filter((f) => !CARRIED_BY[f](type)).map((f) => [f, EMPTY_VALUE[f]])
+export function staleFieldsForType(type: string): [ConditionalFieldT, '' | false][] {
+  const fields = Object.keys(CARRIED_BY) as ConditionalFieldT[]
+  return fields
+    .filter((field) => !CARRIED_BY[field](type))
+    .map((field) => [field, EMPTY_VALUE[field]])
 }
 
 // Investment is the one field with a fallback rather than a blank: the URL the dialog was opened

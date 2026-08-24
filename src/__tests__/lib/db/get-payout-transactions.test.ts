@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
-import { getPayoutTransactionsForInvestment } from '@/lib/db/sum-transfers'
+import { getPayoutTransactionsForInvestment } from '@/lib/db/get-payout-transactions'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // The client DataTable re-sorts these rows lexically on the emitted `date` string, so that string MUST
@@ -64,9 +64,8 @@ describe.skipIf(!ENV_READY)('getPayoutTransactionsForInvestment (DB)', () => {
     }
   })
 
-  // This WHERE now feeds BOTH the wypłaty list and, summed off the same rows, „Pozostało do wypłaty"
-  // — so a dropped predicate moves money on two surfaces at once. The `GROUP BY` query that used to
-  // assert these exclusions independently is gone (EX-720); the coverage moved here with it.
+  // This WHERE feeds BOTH the wypłaty list and, summed off the same rows, „Pozostało do wypłaty" —
+  // so a dropped predicate moves money on two surfaces at once, and nothing else asserts it.
   it('excludes cancelled rows, non-PAYOUT types and other investments’ payouts', async () => {
     const rows = await getPayoutTransactionsForInvestment(payload, investmentId)
 

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { parseInvestmentId } from '@/lib/queries/investments'
+import { parseInvestmentId } from '@/lib/queries/investment-id'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import {

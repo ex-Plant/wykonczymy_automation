@@ -27,10 +27,9 @@ import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import { restorableType } from '@/components/forms/expense-form/draft-type'
 import {
-  EXPENSE_CONDITIONAL_FIELDS,
   investmentForType,
   staleFieldsForType,
-} from '@/components/forms/clear-fields-for-type'
+} from '@/lib/transfers/clear-fields-for-type'
 import {
   makeLineItem,
   type BulkExpenseFormValuesT,
@@ -233,10 +232,9 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
-  // Blanked, never reset: resetField restores the mount default, which on an investment page is
-  // the URL's investment and on a restored draft is the whole draft — see clear-fields-for-type.
+  // Blanked, never reset — see clear-fields-for-type.
   function resetConditionalFields(type: string) {
-    staleFieldsForType(type, EXPENSE_CONDITIONAL_FIELDS).forEach(([field, value]) =>
+    staleFieldsForType(type).forEach(([field, value]) =>
       form.setFieldValue(field, value),
     )
     form.setFieldValue(

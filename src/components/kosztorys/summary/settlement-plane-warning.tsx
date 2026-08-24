@@ -11,9 +11,9 @@ import type { DepositTransactionRowT } from '@/types/transfers'
 // per-wpłata list (owner, 2026-08-23) — the wpłaty list sits right below and already marks those same
 // rows, so listing them here answered „which ones?" twice.
 //
-// What it says is that the DEAL is mieszany and the tryb has not caught up, so the remedy it names is
-// the tryb, not re-booking (owner, 2026-08-23). The sentence itself lives in `offPlaneDepositSentence`
-// — the investments listing marks the same rows and must not word it differently.
+// The sentence lives in `offPlaneDepositSentence` — the investments listing marks the same rows and
+// must not word it differently. Why the remedy it names is the tryb rather than re-booking: see
+// `isOffPlaneDeposit`.
 export function SettlementPlaneWarning({
   rows,
   mode,

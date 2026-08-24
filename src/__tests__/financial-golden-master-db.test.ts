@@ -215,8 +215,8 @@ async function readInputHashes(payload: Payload) {
     hashes.investments[key] = `${hashes.investments[key] ?? ''}/${sig}`
   }
 
-  // The wpłata brutto counts ride along on the scan that was already counting rows — they are the
-  // dataset floor's second axis, and what they guard is spelled out at DATASET_FLOOR.
+  // Ride along on the scan that was already counting rows. They are the dataset floor's second axis;
+  // what they guard is spelled out at DATASET_FLOOR.
   const counted = await db.execute(sql`
     SELECT
       count(*)::int AS row_count,
@@ -259,14 +259,15 @@ async function buildSnapshot(payload: Payload): Promise<{
     ])
 
   const db = await getDb(payload)
-  const clientTotals = new Map(
-    (await selectKosztorysClientTotals(db)).map((row) => [row.investmentId, row]),
-  )
-  const subcontractorDue = new Map(
-    (await selectKosztorysSubcontractorDue(db)).map((row) => [row.investmentId, row]),
-  )
+  const [clientTotalRows, subcontractorDueRows, depositPlaneSumRows] = await Promise.all([
+    selectKosztorysClientTotals(db),
+    selectKosztorysSubcontractorDue(db),
+    selectDepositPlaneSums(db),
+  ])
+  const clientTotals = new Map(clientTotalRows.map((row) => [row.investmentId, row]))
+  const subcontractorDue = new Map(subcontractorDueRows.map((row) => [row.investmentId, row]))
   const depositPlaneSums = new Map(
-    (await selectDepositPlaneSums(db)).map(({ investmentId, ...sums }) => [investmentId, sums]),
+    depositPlaneSumRows.map(({ investmentId, ...sums }) => [investmentId, sums]),
   )
 
   const investments: Record<string, InvestmentSnapshotT> = {}
@@ -436,6 +437,40 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
     const inputsUnchanged = (scope: keyof SnapshotT['inputHashes'], id: string) =>
       (expected.inputHashes[scope][id] ?? '') === (actual.inputHashes[scope][id] ?? '')
 
+    // The `total / 2` floor below counts entities and is blind to WHICH ones, so it cannot see an
+    // axis going dark: only a handful of investments carry a wpłata brutto or a kosztorys at all,
+    // and if exactly those fall out of the compared set the count barely moves while the figures
+    // that are the whole reason this fixture exists are compared on nobody. That is not
+    // hypothetical: it is what a seed re-inserting its rows under fresh ids did (EX-725), and
+    // `assertNonTrivial` could not catch it because it counts rows in the DB, not comparable
+    // entities. So each axis is asserted where it is actually spent: in the compared set.
+    //
+    // A table rather than one hard-wired check, because the two axes are equally thin and equally
+    // seed-fed. Today the kosztorys axis rests on a single investment that happens to also carry
+    // brutto — so the brutto check covers it by coincidence, and the coincidence dies the moment a
+    // seed puts the two on different investments.
+    const AXES = [
+      {
+        name: 'wpłata brutto',
+        guards: '`deposits` and `depositsNetAfterBridge`',
+        reseed: 'pnpm seed:deposits:test',
+        carriedBy: (id: string) => (expected.investments[id]?.deposits.paidGross ?? 0) !== 0,
+      },
+      {
+        name: 'kosztorys',
+        guards: '`totalLaborCosts` and the v2 figures derived from it',
+        reseed: 'pnpm seed:kosztorys:test',
+        carriedBy: (id: string) => (expected.inputHashes.investments[id] ?? '').includes('/k:'),
+      },
+    ] as const
+
+    const axisSkipped = new Map(AXES.map((axis) => [axis.name, [] as string[]]))
+    const noteAxisSkip = (id: string) => {
+      for (const axis of AXES) {
+        if (axis.carriedBy(id)) axisSkipped.get(axis.name)!.push(label(id))
+      }
+    }
+
     for (const id of Object.keys(expected.investments)) {
       const now = actual.investments[id]
       // A row the fixture knows and the DB no longer returns: prod deleted it. Same class as
@@ -444,11 +479,13 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
       if (!now) {
         dataMoved.push(`${label(id)} (gone)`)
         investmentsSkipped++
+        noteAxisSkip(id)
         continue
       }
       if (!inputsUnchanged('investments', id)) {
         dataMoved.push(label(id))
         investmentsSkipped++
+        noteAxisSkip(id)
         continue
       }
       const was = expected.investments[id]
@@ -502,6 +539,18 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
         `only ${comparable} of ${total} fixture investments still ` +
           `match their transactions — the fixture is too stale to guard anything. ` +
           `Regenerate with \`pnpm test:golden:update\` and review the diff.`,
+      )
+    }
+
+    for (const axis of AXES) {
+      const skipped = axisSkipped.get(axis.name)!
+      if (skipped.length === 0) continue
+      throw new Error(
+        `${skipped.length} of the fixture's ${axis.name} investments fell out of the compared set, ` +
+          `so ${axis.guards} are guarded on nobody:\n  ` +
+          skipped.join('\n  ') +
+          `\nIf their rows really moved, re-seed with \`${axis.reseed}\` (the seeds write fixed ` +
+          `ids on purpose) and regenerate with \`pnpm test:golden:update\`.`,
       )
     }
 

@@ -6,11 +6,8 @@ import type {
 } from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
-import {
-  depositPairFromPlaneSums,
-  NO_DEPOSIT_SUMS,
-  strandedFromPlaneSums,
-} from '@/lib/kosztorys/deposit-planes'
+import { depositPairFromPlaneSums, NO_DEPOSIT_SUMS } from '@/lib/kosztorys/deposit-planes'
+import { strandedFromPlaneSums } from '@/lib/kosztorys/off-plane-deposits'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import { billedMaterials, computeAmountDue } from '@/lib/kosztorys/summary-economics'
@@ -36,7 +33,11 @@ export function shapeInvestments(
     // Robocizna and rabat come from the kosztorys, full stop — no kosztorys reads as zero. Every
     // other figure here is a cash movement the kosztorys knows nothing about and stays
     // transaction-sourced.
-    const reading = readingFromKosztorys(kosztorysTotalsRecord[String(inv.id)])
+    // The presence of the entry, held before it is flattened into figures: the aggregate returns a
+    // row iff the investment has at least one kosztorys item (`kosztorys-client-totals.ts`), and
+    // that fact is unrecoverable from the numbers it carries.
+    const clientTotals = kosztorysTotalsRecord[String(inv.id)]
+    const reading = readingFromKosztorys(clientTotals)
     const financials = financialsOnReading(transactionFinancials, reading)
     const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
     // The two-bucket form rather than Σ of the columns: equal to the grosz, but it is the same call
@@ -104,6 +105,7 @@ export function shapeInvestments(
       review: inv.review,
       notes: inv.notes,
       hasSheet: inv.hasSheet,
+      hasKosztorys: clientTotals !== undefined,
       materialsNetRate: inv.materialsNetRate,
       settlementMode: inv.settlementMode,
       vatRate: inv.vatRate,

@@ -284,13 +284,25 @@ itself.
 independently. Each block should read the source it displays, and the empty-state message should
 appear only when there is nothing in any of them.
 
-**Contract**: the rows are partitioned once with `partitionExpenseRows(listedTransactions)` (already
-imported neighbours: `clientVisibleExpenseRows` from the same module). The billed gate becomes
+**Contract** (amended at the review gate — the row-sourced gate below was ABANDONED, see the note
+after this paragraph): the rows are partitioned once with `partitionExpenseRows(listedTransactions)`
+(already imported neighbours: `clientVisibleExpenseRows` from the same module). The billed gate becomes
 `sumBilled(gross) + sumBilled(net) !== 0` over that partition; the settled block keeps gating on the
 data it renders (`settledBreakdown`); `isEmpty` becomes "no billed rows AND no settled breakdown AND
 no listed rows", so the message can never sit above a populated list. `materialsBreakdown` and the
 pie keep their current source — the per-category figure is out of scope (see What We're NOT Doing),
 and that remaining seam is the one the tab still carries.
+
+**Amended at the review gate: the billed gate reads `materialsBreakdown`, not the transaction rows.**
+The planned row-sourced gate is an outright defect and the slice's own gate caught it:
+`materialTransactions` is OPTIONAL and `InvestmentSummaryPanel` never supplies it, so a gate counting
+rows blanked the breakdown table on a host whose figures were fully populated — „Brak wydatków" printed
+over an investment with real wydatki. The shipped gate reads the array the two blocks it gates actually
+render. Arithmetically identical on the editor host (`buildMaterialsBreakdown`'s Σ === `totalMaterialCosts`),
+so no behaviour changed there. Do NOT reinstate the row-sourced gate „for symmetry" — that is the exact
+regression this gate already caught once. Second amendment: the gate is `materialsBreakdown.length > 0`,
+not `Σ !== 0` — a CORRECTION that exactly cancels a category nets the Σ to zero while the table still
+has rows to draw.
 
 ### Success Criteria:
 

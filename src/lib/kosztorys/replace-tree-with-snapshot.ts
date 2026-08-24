@@ -3,7 +3,7 @@ import type { Payload } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { lockInvestmentForReplace } from '@/lib/db/lock-investment'
 import { insertSnapshot } from '@/lib/db/snapshots'
-import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
+import { isConcurrentWrite, withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { restoreKosztorys } from './restore-kosztorys'
 import { serializeKosztorys } from './serialize-kosztorys'
 import type { InsertKosztorysTreeResultT } from './insert-kosztorys-tree'
@@ -26,26 +26,15 @@ type OptionsT = {
   takeSettingsFromTree?: boolean
 }
 
-// Neither code here is a data problem the owner can act on — both mean someone else wrote this
-// kosztorys mid-replacement (an etap added from another tab, say — the lock below covers the
-// wholesale replacements, not every writer). Postgres's own text is an English dump of the failed
-// statement and its fifty bind params, and `protectedAction` puts whatever it catches straight into the toast.
-const CONCURRENT_WRITE =
-  'Ktoś zmieniał ten kosztorys w tym samym czasie — nic nie zostało zapisane. Spróbuj ponownie.'
-
-// 40001 is what REPEATABLE READ raises when the wipe below meets a row someone updated after this
-// transaction's snapshot; 23505 is the same collision arriving as a duplicate key, when the concurrent
-// write was an INSERT the wipe could not see and the re-INSERT of etapy 1..n then landed on it.
-const CONCURRENT_WRITE_CODES = new Set(['40001', '23505'])
-
-function isConcurrentWrite(error: unknown): boolean {
-  // Drizzle wraps the driver error, so the pg code sits somewhere down the `cause` chain.
-  for (let current: unknown = error; current instanceof Error; current = current.cause) {
-    const { code } = current as { code?: unknown }
-    if (typeof code === 'string' && CONCURRENT_WRITE_CODES.has(code)) return true
-  }
-  return false
-}
+// Says only what the pg code actually proves: nothing was written, and retrying is safe. It
+// deliberately does NOT name a concurrent writer — `40001` proves one, `23505` does not, since that
+// is equally what a wipe that half-succeeded leaves behind (restore-kosztorys.ts). Naming one would
+// report our own bug to the owner as somebody else's edit. Postgres's own text is no better a substitute: an English dump of
+// the failed statement and its fifty bind params, which `protectedAction` would put straight into
+// the toast. The cause is recoverable from the `console.error` below, which carries the code and the
+// constraint name.
+const REPLACE_FAILED =
+  'Nie udało się zapisać kosztorysu — nic nie zostało zapisane. Spróbuj ponownie.'
 
 // A conflict means this attempt read a tree that is no longer current, so retrying is not hopeful
 // repetition — the next attempt opens a fresh snapshot, sees the writer that beat it, and captures
@@ -74,25 +63,18 @@ const MAX_ATTEMPTS = 3
 // is the sheet's answer where it has one and the job's own everywhere else.
 export async function replaceTreeWithSnapshot(
   payload: Payload,
-  { investmentId, label, takenBy, tree, clearGlobalDiscount, takeSettingsFromTree }: OptionsT,
+  options: OptionsT,
 ): Promise<InsertKosztorysTreeResultT> {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await attemptReplacement(payload, {
-        investmentId,
-        label,
-        takenBy,
-        tree,
-        clearGlobalDiscount,
-        takeSettingsFromTree,
-      })
+      return await attemptReplacement(payload, options)
     } catch (error) {
       if (!isConcurrentWrite(error)) throw error
       if (attempt >= MAX_ATTEMPTS) {
         // TODO(EX-449) SENTRY-REQUIRED: the pg code and constraint name are the only thing separating
         // a genuine race from a bug that merely looks like one — the toast below can't carry them.
         console.error('[replace-tree] concurrent write, attempts exhausted', error)
-        throw new Error(CONCURRENT_WRITE)
+        throw new Error(REPLACE_FAILED)
       }
     }
   }
@@ -138,9 +120,8 @@ async function attemptReplacement(
     // The lock above cannot cover that writer: an UPDATE never touches the investment row. An INSERT
     // does — its FK check takes FOR KEY SHARE on it and waits out the lock — so a concurrent insert
     // lands AFTER the replacement, which is a legal order and not a lost write (its section may by
-    // then be gone, and the insert simply fails).
-    // Now the same interleaving aborts the replacement instead, which is recoverable — the owner
-    // retries and the second attempt snapshots the tree that actually exists.
+    // then be gone, and the insert simply fails). The same interleaving now aborts the replacement,
+    // which is recoverable — the owner retries and the second attempt snapshots the tree that exists.
     { isolationLevel: 'repeatable read' },
   )
 }

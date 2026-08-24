@@ -1,19 +1,32 @@
-// FIXTURE (EX-725): dosiewa wpłaty brutto do zbioru testowego. Prodowy dump nie zawiera ani jednej —
-// wszystkie wpłaty są nieotagowane, więc bez tego skryptu cała płaszczyzna brutto i most legacy są w
-// fixture zerem, a `pnpm test:parity` failuje na podłodze zbioru.
+// FIXTURE (EX-725): seeds wpłaty brutto into the test dataset. The prod dump carries not one — every
+// wpłata there is untagged — so without this script the whole brutto plane and the legacy bridge are
+// zero in the fixture and `pnpm test:parity` fails on the dataset floor.
 //
-// Trzeci krok resetu db-test, po `pnpm db:import:test` i `pnpm seed:kosztorys:test`:
+// Third step of the db-test reset, after `pnpm db:import:test` and `pnpm seed:kosztorys:test`:
 //
-//   pnpm seed:deposits:test          # albo: INV=7 DB_POSTGRES_URL=… node --env-file=.env --import tsx src/scripts/seed-deposit-planes.ts
+//   pnpm seed:deposits:test
 //
-// Idempotentny: wiersze noszą marker w opisie i są nim czyszczone przed każdym przebiegiem.
+// Refuses any database but `wykonczymy-test`. This is the first seed script writing the REAL
+// transfers plane (AGENTS.md scopes the throwaway rule to kosztorys only), the write is raw SQL so no
+// `afterChange` fires to flag it, and ~257 400 zł of fabricated wpłaty landing in the dev DB — or in
+// Neon — would be silent. The `pnpm seed:deposits:test` prefix is what points it at 5435; the guard is
+// what makes running it any other way fail loudly instead of corrupting a real ledger.
 //
-// Zapis idzie surowym SQL-em, nie przez Payload, z dwóch powodów. Po pierwsze `afterChange` na
-// `transactions` synchronizuje wiersz do arkusza właściciela, a `afterDelete` robi to bez żadnej
-// furtki `skipSheetSync` — seed fixture'u nie ma prawa dotknąć żywego arkusza. Po drugie wiersz
-// legacy (brutto bez kwoty netto) jest przez ścieżkę zapisu ZABRONIONY — `getNetAmountError` go
-// odrzuca — a fixture ma go mieć, bo prod ma wiersze sprzed spike'u. Kształt przelewów jest za to
-// sprawdzany tą samą jedyną instancją reguły, więc pominięcie hooka nie znaczy pominięcia walidacji.
+// Idempotent in row CONTENT and in row IDENTITY. Identity is the load-bearing half: the golden
+// master's comparability key is a `sig` that starts with the row `id`, so sequence-assigned ids would
+// re-hash both seeded investments on every run, drop them into `dataMoved`, and skip them past the
+// entire figure comparison — a green `test:parity` that compares nothing on the plane this fixture
+// exists to guard. Hence the fixed id block below and a wipe keyed on the marker ALONE: the second
+// investment is resolved from data, so a wipe narrowed to this run's targets would strand the
+// previous run's rows the moment that pick moves.
+//
+// The write goes through raw SQL rather than Payload for two reasons. First, `afterChange` on
+// `transactions` syncs the row to the owner's live sheet and `afterDelete` does so with no
+// `skipSheetSync` escape hatch — a fixture seed has no business touching a live sheet. Second, the
+// legacy row (brutto with no netto) is FORBIDDEN by the write path — `getNetAmountError` rejects it —
+// and the fixture must have one, because prod has rows predating the spike. The transfers' shape is
+// still checked against that same single instance of the rule, so skipping the hook is not skipping
+// validation.
 import { getPayload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import config from '../payload.config'
@@ -21,14 +34,18 @@ import { getDb } from '@/lib/db/get-db'
 import { getNetAmountError } from '@/lib/utils/validation'
 
 const MARKER = '[fixture:gross-deposit]'
+const TEST_DATABASE = 'wykonczymy-test'
 const KOSZTORYS_INVESTMENT_ID = Number(process.env.INV ?? 7)
 
+// Reserved block, far above anything `transactions_id_seq` will reach (the dump sits under 4k rows).
+// Explicit ids never advance the sequence, so this cannot collide with a real insert.
+const FIRST_ID = 900_001
+
 type SeedRowT = {
-  // Kwota brutto z faktury.
   amount: number
-  // Kwota netto, którą faktura nazwała — `null` znaczy wiersz legacy, sprzed istnienia tej kolumny.
-  // Celowo NIE jest `amount ÷ (1+VAT)`: rachunek złożony z robocizny i materiałów ma dwie stawki,
-  // więc netto jest CZYTANE, nie wyprowadzane. Regresja, która je wyprowadzi, rusza liczbę.
+  // The netto the invoice named — `null` marks a legacy row, predating this column. Deliberately NOT
+  // `amount ÷ (1+VAT)`: a bill made of robocizna and materials carries two rates, so the netto is
+  // READ, not derived. A regression that derives it moves the number.
   netAmount: number | null
   date: string
 }
@@ -52,10 +69,18 @@ async function run() {
   const payload = await getPayload({ config })
   const db = await getDb(payload)
 
-  // Druga inwestycja rozwiązywana z danych, nie zahardkodowana: `id` przychodzą z dumpa prodowego.
-  // Bez kosztorysu — żeby wpłata brutto istniała też tam, gdzie robocizna czytana z kosztorysu jest
-  // zerem, czyli w stanie „klient nadpłacił", w którym bilans brutto jest jedyną figurą, jaka się
-  // rusza.
+  const current = await db.execute(sql`SELECT current_database() AS name`)
+  const database = String(current.rows[0]?.name ?? '')
+  if (database !== TEST_DATABASE) {
+    throw new Error(
+      `odmawiam zapisu do bazy "${database}" — ten seed pisze wyłącznie do "${TEST_DATABASE}". ` +
+        `Uruchom go przez \`pnpm seed:deposits:test\`.`,
+    )
+  }
+
+  // Second investment resolved from data rather than hard-coded: the ids come out of the prod dump.
+  // Without a kosztorys — so a wpłata brutto exists where robocizna read from the kosztorys is zero
+  // too, i.e. the „klient nadpłacił" state, in which the bilans brutto is the only figure that moves.
   const second = await db.execute(sql`
     SELECT t.investment_id AS id
     FROM transactions t
@@ -83,8 +108,9 @@ async function run() {
   for (const { investmentId, rows } of targets) {
     for (const row of rows) {
       const error = getNetAmountError(row.netAmount, row.amount, 'INVESTOR_DEPOSIT', 'GROSS')
-      // Wiersz legacy łamie tę regułę Z DEFINICJI — po to istnieje. Każdy inny błąd to literówka w
-      // kwotach powyżej i seed ma stanąć, zanim wstawi wiersz, którego aplikacja nie umiałaby zapisać.
+      // The legacy row breaks that rule BY DEFINITION — that is what it is for. Any other error is a
+      // typo in the amounts above, and the seed must stop before inserting a row the app itself could
+      // never have saved.
       if (error && row.netAmount !== null) {
         throw new Error(`wiersz ${row.amount}/${row.netAmount} na inw. ${investmentId}: ${error}`)
       }
@@ -92,19 +118,18 @@ async function run() {
   }
 
   const investmentIds = targets.map((t) => t.investmentId)
-  let wiped = 0
-  let seeded = 0
-  for (const { investmentId, rows } of targets) {
-    const gone = await db.execute(sql`
-      DELETE FROM transactions
-      WHERE description LIKE ${`${MARKER}%`}
-        AND investment_id = ${investmentId}
-      RETURNING id
-    `)
-    wiped += gone.rows.length
+  // Marker only, deliberately not narrowed to `investmentIds`: see the identity note in the header.
+  const gone = await db.execute(sql`
+    DELETE FROM transactions
+    WHERE description LIKE ${`${MARKER}%`}
+    RETURNING id
+  `)
 
-    // Kasa z ostatniej wpłaty tej inwestycji — `INVESTOR_DEPOSIT` ma kasę wymaganą, a wybór z danych
-    // trzyma seed odpornym na `id` przychodzące z dumpa.
+  let seeded = 0
+  let nextId = FIRST_ID
+  for (const { investmentId, rows } of targets) {
+    // Kasa from this investment's last wpłata — `INVESTOR_DEPOSIT` requires one, and picking it from
+    // data keeps the seed resilient to the ids the dump happens to carry.
     const register = await db.execute(sql`
       SELECT source_register_id AS id
       FROM transactions
@@ -122,19 +147,20 @@ async function run() {
     for (const row of rows) {
       await db.execute(sql`
         INSERT INTO transactions
-          (description, amount, net_amount, vat_plane, date, type, payment_method,
+          (id, description, amount, net_amount, vat_plane, date, type, payment_method,
            source_register_id, investment_id, cancelled, settled)
         VALUES
-          (${label(row)}, ${row.amount}, ${row.netAmount}, 'GROSS', ${row.date}::timestamptz,
+          (${nextId}, ${label(row)}, ${row.amount}, ${row.netAmount}, 'GROSS', ${row.date}::timestamptz,
            'INVESTOR_DEPOSIT', 'TRANSFER', ${registerId}, ${investmentId}, false, false)
       `)
+      nextId++
       seeded++
     }
   }
 
   console.log(
-    `Fixture wpłat brutto: usunięto ${wiped}, wstawiono ${seeded} ` +
-      `(inw. ${investmentIds.join(', ')})`,
+    `Fixture wpłat brutto: usunięto ${gone.rows.length}, wstawiono ${seeded} ` +
+      `(inw. ${investmentIds.join(', ')}, id ${FIRST_ID}..${nextId - 1})`,
   )
   process.exit(0)
 }

@@ -6,7 +6,7 @@ import { FieldGroup } from '@/components/ui/field'
 import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
-import { investmentForType } from '@/components/forms/clear-fields-for-type'
+import { investmentForType } from '@/lib/transfers/clear-fields-for-type'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import {
   DEPOSIT_UI_TYPES,
@@ -22,7 +22,7 @@ import type { ReferenceDataT } from '@/types/reference-data'
 import { getDefaultCashRegister } from '@/lib/utils/default-cash-register'
 import { today } from '@/lib/utils/date'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
-import { strandsDeposit } from '@/lib/kosztorys/deposit-planes'
+import { strandsDeposit } from '@/lib/kosztorys/off-plane-deposits'
 import { DEPOSIT_PLANE_INSTRUMENTAL } from '@/lib/constants/transfers'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
@@ -184,8 +184,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
             name="type"
             listeners={{
               onChange: ({ value }) => {
-                // Blanked, not reset: the default is the URL's investment, which resetField would
-                // put back on a type that never shows the field (EX-709).
+                // Blanked, not reset — see clear-fields-for-type.
                 form.setFieldValue(
                   'investment',
                   investmentForType(value, form.getFieldValue('investment'), investmentFromUrl),

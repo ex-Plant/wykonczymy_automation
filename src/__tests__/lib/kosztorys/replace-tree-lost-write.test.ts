@@ -82,7 +82,12 @@ describe.skipIf(!ENV_READY)('wholesale replacement vs a concurrent autosave (DB)
     if (investmentId) await deleteTestInvestment(payload, investmentId)
   })
 
-  it('keeps an edit committed between the snapshot read and the wipe restorable', async () => {
+  // Timeout, not a default: this spec deliberately commits from a second connection while the
+  // replacement holds `SELECT … FOR UPDATE`, so it only completes because Payload's UPDATE does not
+  // re-check the FK. If one ever does, it takes FOR KEY SHARE, the two connections wait on each
+  // other, and an untimed `it` hangs the serial pre-push integration leg forever with no output —
+  // failing is recoverable, hanging is not.
+  it('keeps an edit committed between the snapshot read and the wipe restorable', { timeout: 30_000 }, async () => {
     const before = await serializeKosztorys(investmentId)
     const snapshotsBefore = await listSnapshots(await getDb(payload), investmentId)
 

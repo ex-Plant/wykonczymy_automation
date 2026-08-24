@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 import { HistoryBackButton } from '@/components/ui/history-back-button'
-import { getInvestmentName, isInvestmentId } from '@/lib/queries/investments'
+import { getInvestmentName } from '@/lib/queries/investments'
+import { isInvestmentId } from '@/lib/queries/investment-id'
 
 type InvestmentCrumbPropsT = {
   params: Promise<{ id: string }>

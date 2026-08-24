@@ -38,3 +38,18 @@ export async function withPayloadTransaction<T>(
     throw error
   }
 }
+
+// The two shapes a lost race takes under `repeatable read`: 40001 when a write meets a row someone
+// updated after this transaction's snapshot, and 23505 when the same collision arrives as a duplicate
+// key — the concurrent write was an INSERT this transaction's snapshot could not see, so a re-INSERT
+// lands on it. Retrying is only ever sound for a caller that re-reads its input on the next attempt.
+const CONCURRENT_WRITE_CODES = new Set(['40001', '23505'])
+
+export function isConcurrentWrite(error: unknown): boolean {
+  // Drizzle wraps the driver error, so the pg code sits somewhere down the `cause` chain.
+  for (let current: unknown = error; current instanceof Error; current = current.cause) {
+    const { code } = current as { code?: unknown }
+    if (typeof code === 'string' && CONCURRENT_WRITE_CODES.has(code)) return true
+  }
+  return false
+}
