@@ -262,8 +262,7 @@ function DroppedBlock({ dropped }: { dropped: ImportReportT['dropped'] }) {
  * Two summary rows, both checked against our pricing of the SHEET's own prace — the stored kosztorys
  * never enters this table. So a difference is the sheet disagreeing with itself, either because we
  * misread a cena or a rabat or because its own footer arithmetic is off; live, it has always been
- * the latter. „R netto" additionally faces the etapy the import is about to replace, so a difference
- * there can equally be the two sides holding different progress — no fault in either.
+ * the latter.
  */
 function TotalsBlock({
   totals,
@@ -290,7 +289,13 @@ function TotalsBlock({
                 formatPLN(total.sheetValue)
               )
             }
-            app={formatPLN(total.appValue)}
+            app={
+              total.appValue === null ? (
+                <span className="text-muted-foreground">nie policzyliśmy</span>
+              ) : (
+                formatPLN(total.appValue)
+              )
+            }
             delta={total.delta === null || total.matches ? null : formatPLN(total.delta)}
           />
         ))}

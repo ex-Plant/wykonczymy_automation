@@ -49,3 +49,20 @@ prices:
   „R netto" sums the value columns and picks the −405 zł up.
 
 Neither is a cena or a rabat, so the verdict now points at the footer's own sums.
+
+## What the review gate changed (see `review-gate.md`)
+
+Two things the first pass got half-right, both fixed in `footer-totals.ts` rather than in a dialog —
+the two windows now agree by construction instead of by each applying the same correction:
+
+- **„R netto" is checked only against its namesake.** Its label names one figure; letting it match
+  whichever candidate it happens to equal is how a footer summing the wrong columns lands on the
+  OFFER total and reads as agreement. „wartość netto" keeps the full candidate scan, because
+  Przedmiar and Pomiar are both defensible readings of THAT label. The first fix put this in a view
+  helper (`againstNamedFigure`) that only the comparison window called, so the import kept the false
+  ✓ — the same contradiction, sides swapped.
+- **A row with no app-side counterpart is not a disagreement.** The Pomiar column is optional in the
+  header; without it there is no like-for-like sum for „wartość netto", and falling back to Przedmiar
+  accused a perfectly parsed sheet of a five-figure error. `appValue` is now `number | null` and
+  `footerDisagreements` skips such a row — the mirror image of skipping a row the sheet doesn't
+  carry.

@@ -17,13 +17,13 @@ import {
   itemNounLocative,
 } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import type { SheetCompareResultT } from '@/lib/actions/kosztorys-import'
+import { MONEY_TOLERANCE } from '@/lib/kosztorys/calc'
 import { COLUMN_LABELS } from '@/lib/kosztorys/column-config'
 import type {
   ComparedItemT,
   ExecutedDiffT,
   SheetComparisonT,
 } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
-import { againstNamedFigure } from '@/components/kosztorys/editor/dialogs/sheet-footer-report'
 import {
   footerDisagreements,
   type FooterComparisonT,
@@ -33,8 +33,6 @@ import { formatQty } from '@/lib/kosztorys/format'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
-
-const MATCHES = 0.005
 
 /**
  * „Porównaj z arkuszem" — a live read of the sheet against the stored kosztorys, which also pulls the
@@ -87,10 +85,7 @@ export function SheetCompareDialog() {
         ) : (
           <>
             <MoneyBlock comparison={comparison} />
-            <SheetFooterBlock
-              footer={comparison.footer}
-              executedFromSheet={comparison.totals.executedNetFromSheet}
-            />
+            <SheetFooterBlock footer={comparison.footer} />
             <ItemsBlock comparison={comparison} />
             <SheetRatesBlock
               mode="compare"
@@ -114,7 +109,7 @@ export function SheetCompareDialog() {
 function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
   const { totals, footer } = comparison
   const executed = totals.executedNetFromSheet - totals.executedNetFromApp
-  const agree = Math.abs(executed) < MATCHES
+  const agree = Math.abs(executed) < MONEY_TOLERANCE
 
   // The sheet sums its prace twice: once off Pomiar z natury („wartość netto") and once off the
   // etapy („R netto"). The gap between the two is its own „pozostało do rozliczenia" — work measured
@@ -126,7 +121,11 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
   const netValueRow = footer.find((total) => total.key === 'plannedNet')
   const sheetMeasured =
     netValueRow?.matchedAgainst === 'measuredNet' ? netValueRow.sheetValue : null
-  const sheetExecuted = footer.find((total) => total.key === 'executedNet')?.sheetValue ?? null
+  // Same guard, same reason: a „R netto" that sums the wrong columns states a figure which is not
+  // the executed work, and subtracting it would print a „Rozjazd" nobody's sheet contains.
+  const executedRow = footer.find((total) => total.key === 'executedNet')
+  const sheetExecuted =
+    executedRow?.matchedAgainst === 'executedNet' ? executedRow.sheetValue : null
   const unassignedInSheet =
     sheetMeasured === null || sheetExecuted === null ? null : sheetMeasured - sheetExecuted
   const unassignedHere = sheetMeasured === null ? null : sheetMeasured - totals.executedNetFromApp
@@ -177,7 +176,8 @@ function MoneyBlock({ comparison }: { comparison: SheetComparisonT }) {
 // The sign says which side is ahead, so it is named rather than left as a bare `< 0` in the middle
 // of a ternary — reading it backwards would tell the owner the wrong side is behind on its etapy.
 function executedVerdict(executed: number): string {
-  if (Math.abs(executed) < MATCHES) return 'Obie strony policzyły tyle samo prac wykonanych.'
+  if (Math.abs(executed) < MONEY_TOLERANCE)
+    return 'Obie strony policzyły tyle samo prac wykonanych.'
   if (executed < 0)
     return `Tutaj rozpisano na etapy o ${formatPLN(-executed)} więcej pracy niż w arkuszu Google.`
   return `W arkuszu Google rozpisano na etapy o ${formatPLN(executed)} więcej pracy niż tutaj.`
@@ -194,18 +194,11 @@ function executedVerdict(executed: number): string {
  * a correction typed straight into a value column), or our reading of the cena/rabat columns, which
  * would make every figure in the block above wrong too. So it names both and blames neither.
  */
-function SheetFooterBlock({
-  footer,
-  // Our sum of the sheet's etapy — the one figure „R netto" names, see `againstNamedFigure`.
-  executedFromSheet,
-}: {
-  footer: readonly FooterComparisonT[]
-  executedFromSheet: number
-}) {
+function SheetFooterBlock({ footer }: { footer: readonly FooterComparisonT[] }) {
   // A summary row the sheet does not carry is not a finding — see `footerDisagreements`.
-  const stated = footer
-    .filter((total) => total.sheetValue !== null)
-    .map(againstNamedFigure(executedFromSheet))
+  const stated = footer.filter(
+    (total): total is FooterComparisonT & { sheetValue: number } => total.sheetValue !== null,
+  )
   if (stated.length === 0) return null
   const disagreeing = footerDisagreements(stated)
 
@@ -224,8 +217,14 @@ function SheetFooterBlock({
           <ComparisonRow
             key={total.key}
             label={total.label}
-            sheet={formatPLN(total.sheetValue ?? 0)}
-            app={formatPLN(total.appValue)}
+            sheet={formatPLN(total.sheetValue)}
+            app={
+              total.appValue === null ? (
+                <span className="text-muted-foreground">nie policzyliśmy</span>
+              ) : (
+                formatPLN(total.appValue)
+              )
+            }
             delta={total.matches || total.delta === null ? null : formatPLN(total.delta)}
           />
         ))}

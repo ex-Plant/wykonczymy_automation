@@ -6,8 +6,8 @@ import {
 
 export type ImportGateT = {
   confirmDisabled: boolean
-  // Footer sums the sheet and the app disagree on — surfaced, never blocking. A row we could not
-  // find at all is NOT one of these: it is a sheet with no such summary row, which says nothing
+  // Summary rows where the sheet disagrees with itself — surfaced, never blocking. A row we could
+  // not find at all is NOT one of these: it is a sheet with no such summary row, which says nothing
   // about whether the parse was right.
   mismatchedTotals: FooterComparisonT[]
 }

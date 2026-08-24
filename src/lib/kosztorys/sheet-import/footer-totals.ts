@@ -1,4 +1,4 @@
-import { netForQtyForView, rowPlannedNetForView } from '@/lib/kosztorys/calc'
+import { MONEY_TOLERANCE, netForQtyForView, rowPlannedNetForView } from '@/lib/kosztorys/calc'
 import type { ViewPricingT } from '@/lib/kosztorys/types'
 import { FOOTER_ROWS, fold, type FooterRowKeyT } from './columns'
 import type { ParsedItemT, ParsedLaborTabT } from './parse-labor-tab'
@@ -20,26 +20,28 @@ export type FooterComparisonT = {
   // The sheet's own wording, so the preview names the row the owner will look for.
   label: string
   sheetValue: number | null
-  appValue: number
+  // What the sheet's own prace add up to on the reading this row is checked against. `null` when
+  // that figure cannot be computed at all — a sheet with no Pomiar column has nothing to hold
+  // „wartość netto" against — and a row nobody could check is not a row anybody may call wrong.
+  appValue: number | null
   delta: number | null
   matches: boolean
   // Which app figure the sheet row turned out to agree with. The owner's labels do NOT reliably say
   // which figure a row holds — on sheets where nothing is executed yet all of them carry the same
   // number, and on others „wartość netto" sits over the executed figure — so a row is checked
-  // against every candidate and reported against whichever it matches. `null` when it matches none.
+  // against every figure its label leaves open (`CANDIDATES`) and reported against whichever it
+  // matches. `null` when it matches none.
   matchedAgainst: AppTotalKeyT | null
 }
 
 /**
  * The summary rows where the sheet disagrees with itself: it states a figure, and its own prace do
  * not add up to it. A row we could not find at all is deliberately NOT one of these — a sheet with
- * no such summary says nothing about how we read it.
+ * no such summary says nothing about how we read it — and neither is one we had no figure to check
+ * it against, for the same reason read from the other side.
  */
 export const footerDisagreements = (footer: readonly FooterComparisonT[]): FooterComparisonT[] =>
-  footer.filter((total) => total.sheetValue !== null && !total.matches)
-
-// Both figures are money, so anything under a grosz is rounding, not disagreement.
-const TOLERANCE = 0.005
+  footer.filter((total) => total.sheetValue !== null && total.appValue !== null && !total.matches)
 
 // The parser drops the four subcontractor override fields and the import never sets a global
 // discount, so the client-view price is fully determined here — the coefficients only ever feed the
@@ -96,29 +98,40 @@ export function compareFooterTotals(
     const row = footer.find((cells) => cells.some((cell) => matches(fold(cell))))
     const sheetValue = row === undefined ? null : readFooterValue(row, resolved.columns.netValue)
 
-    // Checked against every figure rather than only its namesake — see `matchedAgainst`.
     const matchedAgainst =
       sheetValue === null
         ? null
-        : (CANDIDATES.find((candidate) => {
+        : (CANDIDATES[key].find((candidate) => {
             const value = appValues[candidate]
-            return value !== null && Math.abs(sheetValue - value) < TOLERANCE
+            return value !== null && Math.abs(sheetValue - value) < MONEY_TOLERANCE
           }) ?? null)
-    const appValue = appValues[matchedAgainst ?? DEFAULT_CANDIDATE[key]] ?? appValues[key] ?? 0
+    const appValue = appValues[matchedAgainst ?? DEFAULT_CANDIDATE[key]]
 
     return {
       key,
       label,
       sheetValue,
       appValue,
-      delta: sheetValue === null ? null : sheetValue - appValue,
+      delta: sheetValue === null || appValue === null ? null : sheetValue - appValue,
       matches: matchedAgainst !== null,
       matchedAgainst,
     }
   })
 }
 
-const CANDIDATES: AppTotalKeyT[] = [...FOOTER_ROWS.map(({ key }) => key), 'measuredNet']
+/**
+ * Which app figures each summary row may be checked against. „wartość netto" gets all of them: the
+ * owner's labels do not reliably say which figure that row holds, and Przedmiar and Pomiar are both
+ * defensible readings of it — see `matchedAgainst`.
+ *
+ * „R netto - suma prac wykonannych" gets only its namesake, because that label names one figure and
+ * one only. A footer that sums the wrong columns lands on the OFFER total, and letting the row match
+ * there is exactly how a sheet disagreeing with itself renders as a clean one.
+ */
+const CANDIDATES: Record<FooterRowKeyT, AppTotalKeyT[]> = {
+  plannedNet: [...FOOTER_ROWS.map(({ key }) => key), 'measuredNet'],
+  executedNet: ['executedNet'],
+}
 
 // Where a row lands when it agrees with nothing. „wartość netto" falls back to the sum of the same
 // column the sheet totals there, never to Przedmiar: a sheet with work in progress prices those two

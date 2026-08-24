@@ -1,5 +1,6 @@
 import { columnLetter } from '@/lib/google/sheet-configs'
 import {
+  MONEY_TOLERANCE,
   globalDiscountAmount,
   isGlobalDiscountActive,
   netForQtyForView,
@@ -115,9 +116,6 @@ const asPlanePricing = (item: KosztorysItemT, settings: SnapshotSettingsT): View
   globalWToolsCoeff: settings.wToolsCoeff,
   globalOwnToolsCoeff: settings.ownToolsCoeff,
 })
-
-// Half a grosz — below it the two sides differ only by float noise, which is not a finding.
-const MATCHES = 0.005
 
 function sumQtyDone(progress: readonly StageProgressT[]): Map<number, number> {
   const byItem = new Map<number, number>()
@@ -237,7 +235,7 @@ export function buildSheetComparison(
     const appQty = appQtyDone.get(appItem.id) ?? 0
     const sheetNet = netForQtyForView(asClientPricing(item), sheetQty, 'client')
     const appNet = netForQtyForView(asClientPricing(appItem), appQty, 'client')
-    if (Math.abs(sheetNet - appNet) >= MATCHES) {
+    if (Math.abs(sheetNet - appNet) >= MONEY_TOLERANCE) {
       executedDiffs.push({
         ...named(item, sheetSectionName),
         sheetNet,
@@ -258,8 +256,8 @@ export function buildSheetComparison(
       const appWTools = subcontractorPrice(pricing, 'w_tools')
       const appOwnTools = subcontractorPrice(pricing, 'own_tools')
       if (
-        Math.abs(rate.wToolsRate - appWTools) >= MATCHES ||
-        Math.abs(rate.ownToolsRate - appOwnTools) >= MATCHES
+        Math.abs(rate.wToolsRate - appWTools) >= MONEY_TOLERANCE ||
+        Math.abs(rate.ownToolsRate - appOwnTools) >= MONEY_TOLERANCE
       ) {
         staleRates.push({
           ...named(item, sheetSectionName),
@@ -311,7 +309,7 @@ export function buildSheetComparison(
         Math.abs(
           executedNetAsEditorShows(currentTree.items, currentTree.progress, globalDiscount) -
             appTotals.executedNet,
-        ) >= MATCHES,
+        ) >= MONEY_TOLERANCE,
       health: scanFormulaHealth(
         grids.laborGrid,
         grids.laborGridFormulas,

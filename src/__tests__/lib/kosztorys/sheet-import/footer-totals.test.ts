@@ -95,6 +95,35 @@ describe('compareFooterTotals', () => {
     })
   })
 
+  it('refuses „R netto" a figure its label does not name', () => {
+    // That label names the executed work and nothing else. A footer summing the wrong columns lands
+    // on the OFFER total (1605 here, against 2287,50 executed); letting the row match there is how a
+    // sheet disagreeing with itself renders as a clean one — in the import preview with a green ✓,
+    // while the comparison window called the same sheet broken.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    grid.find((row) => String(row[16]).startsWith('R netto'))![18] = 1605
+
+    expect(byKey(grid, 'executedNet')).toMatchObject({
+      matches: false,
+      matchedAgainst: null,
+      appValue: 2287.5,
+      delta: 1605 - 2287.5,
+    })
+  })
+
+  it('says nothing about „wartość netto" on a sheet with no Pomiar column', () => {
+    // Pomiar is optional in the header, and without it the app has no like-for-like sum for that
+    // row. Falling back to Przedmiar accused a perfectly parsed sheet of a five-figure error.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    for (const row of grid.slice(0, 3)) row[14] = ''
+
+    expect(byKey(grid, 'plannedNet')).toMatchObject({
+      appValue: null,
+      delta: null,
+      matches: false,
+    })
+  })
+
   it('finds the summary figure when the owner merged it out of the Wartość netto column', () => {
     const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
     const planned = grid.find((row) => String(row[16]).startsWith('wartość netto'))!
@@ -126,5 +155,13 @@ describe('footerDisagreements', () => {
     expect(footerDisagreements(compare(withoutFooter)).map((total) => total.key)).not.toContain(
       'executedNet',
     )
+  })
+
+  it('says nothing about a row it had no figure to check against', () => {
+    // Same silence from the other side: no Pomiar column, so „wartość netto" faces nothing.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    for (const row of grid.slice(0, 3)) row[14] = ''
+
+    expect(footerDisagreements(compare(grid)).map((total) => total.key)).not.toContain('plannedNet')
   })
 })
