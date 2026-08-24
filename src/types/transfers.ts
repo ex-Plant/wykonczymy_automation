@@ -85,6 +85,9 @@ export type DepositTransactionRowT = {
   id: number
   date: string
   amount: number
+  // The netto off the faktura, stored on a wpłata brutto only — its netto twin is a fact read from
+  // the row, never derived at VAT (see `deposit-planes.ts`).
+  netAmount: number | null
   vatPlane: VatPlaneT | null
 }
 

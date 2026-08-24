@@ -1,4 +1,4 @@
-import { columnLetter } from '@/lib/google/sheet-configs'
+import { referencesColumn } from './formula-refs'
 import { fold, HEADER_BLOCK_ROWS } from './columns'
 import type { RateTabGridT } from './read-sheet'
 import { resolveRates, type ResolvedRatesT } from './resolve-columns'
@@ -97,16 +97,6 @@ function indexByOccurrence(rows: readonly RateRowT[]): Map<string, RateRowT> {
     byKey.set(occurrenceKey(row.description, occurrence), row)
   }
   return byKey
-}
-
-// Does a formula read the given column of its own row? The lookbehind is what keeps „R" from matching
-// inside „AR12" — a false hit there would mistake an unrelated formula for one chained off the
-// z-narzędziami cell. Compiled once per column rather than per row: the column is fixed for a whole
-// tab, and a fresh RegExp per row is one compile per praca in the cennik.
-const referencesColumn = (column: number) => {
-  const pattern = new RegExp(`(?<![A-Z])\\$?${columnLetter(column)}\\$?\\d`)
-  return (formula: unknown): boolean =>
-    typeof formula === 'string' && formula.startsWith('=') && pattern.test(formula.toUpperCase())
 }
 
 // A pair where the subcontractor who brings their own tools costs MORE than one we equip is

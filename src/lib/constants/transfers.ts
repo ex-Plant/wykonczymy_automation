@@ -377,6 +377,24 @@ export const VAT_PLANE_LABELS: Record<VatPlaneT, string> = {
   GROSS: 'Brutto',
 }
 
+// How a wpłata's plane is NAMED to the owner (2026-08-23). The stored value is unchanged; what
+// changed is that „netto"/„brutto" named two different things on one screen — the plane the whole
+// bill is settled in, and the tor this one wpłata arrived by — and the reader had to work out which
+// from context. The tag answers the second, so it says the thing the owner can actually see on the
+// wyciąg. Deliberately not read off `paymentMethod`: the plane is what the settlement uses, and a
+// legacy row can carry a method that never picked one (BLIK / karta are off the form).
+export const DEPOSIT_PLANE_LABELS: Record<VatPlaneT, string> = {
+  NET: 'Gotówka',
+  GROSS: 'Przelew',
+}
+
+// The same two in the instrumental — „2 wpłaty są gotówką". A label map cannot carry a case and
+// Polish gives no helper for one.
+export const DEPOSIT_PLANE_INSTRUMENTAL: Record<VatPlaneT, string> = {
+  NET: 'gotówką',
+  GROSS: 'przelewem',
+}
+
 // ── Predicates ──────────────────────────────────────────────────────────
 //
 // Every value here must stay eager. sync-sheet.ts spreads these arrays at module load
@@ -415,6 +433,19 @@ export const billedAmountOf = (type: unknown): 'amount' | 'netAmount' =>
 // the netto beside the brutto, or gates the netto input asks exactly this — as a named predicate
 // so `'netAmount'` stays a spec-table detail instead of a literal spread across three layers.
 export const billsNetAmount = (type: unknown): boolean => billedAmountOf(type) === 'netAmount'
+
+// Does this row STORE a netto figure beside `amount`? Two unrelated reasons, deliberately one
+// predicate, because the write path only cares whether the column is populated or nulled: a netto
+// wydatek is BILLED at netto, and a wpłata brutto carries the netto its faktura names. The wpłata's
+// netto is read, never derived — a bill built at two stawki has no single rate to cross it with
+// (see `lib/kosztorys/deposit-planes.ts`).
+export const carriesNetAmount = (type: unknown, vatPlane: unknown): boolean =>
+  billsNetAmount(type) || (type === 'INVESTOR_DEPOSIT' && vatPlane === 'GROSS')
+
+// Does this row STORE a netto/brutto plane? The tag names the side of the settlement a wpłata pays,
+// so only a wpłata od inwestora has one — tagged onto any other type it would be a value every
+// settlement predicate reads, with no second kwota on the form to back it.
+export const carriesVatPlane = (type: unknown): boolean => type === 'INVESTOR_DEPOSIT'
 
 /**
  * The figure this row bills the investor — the one number every billing surface must read, so the

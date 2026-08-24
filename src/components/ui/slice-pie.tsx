@@ -5,11 +5,13 @@ import { Cell, Pie, PieChart } from 'recharts'
 import { AlertIcon } from '@/components/ui/alert-icon'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieSliceLegend, type PieSliceT } from '@/components/ui/pie-legend'
+import { formatPercentPrecise } from '@/lib/kosztorys/format'
 
 // Shared skeleton for the footer pies: recharts donut + legend. `caption` is optional — the legend
 // names every slice and the surrounding tab supplies the context, so a pie only titles itself when it
 // carries an `action` the title has to explain. `formatValue` renders slice figures in the tooltip
-// and legend — the caller owns units/locale, so this stays domain-free.
+// and legend — the caller owns units/locale, so this stays domain-free. Omit it for a share-only pie:
+// both fall back to the percent.
 export function SlicePie({
   caption,
   action,
@@ -19,7 +21,7 @@ export function SlicePie({
   caption?: string
   action?: ReactNode
   slices: PieSliceT[]
-  formatValue: (value: number) => string
+  formatValue?: (value: number) => string
 }) {
   // recharts derives each wedge's angle from value / totalSum. A negative total (one slice far
   // outweighing the rest, e.g. a mistyped section figure) makes that math degenerate and the pie
@@ -27,6 +29,11 @@ export function SlicePie({
   // Zero is a legitimate default (no figures yet, or a balanced cancel-out) — only negative is a mistake.
   const total = slices.reduce((sum, slice) => sum + slice.value, 0)
   const isInvalidTotal = slices.length > 0 && total < 0
+
+  // A share-of-whole chart needs shares to compare: one filled slice is always 100% of itself, so it
+  // states what the table beside it already says and costs a screenful doing it. The bad-total alarm
+  // still gets through — that is a data fault worth reporting whatever the slice count.
+  if (!isInvalidTotal && slices.filter((slice) => slice.value !== 0).length < 2) return null
 
   return (
     <figure className="flex flex-col gap-3">
@@ -58,7 +65,15 @@ export function SlicePie({
               ))}
             </Pie>
             <ChartTooltip
-              content={<ChartTooltipContent valueFormatter={(v) => formatValue(Number(v))} />}
+              content={
+                <ChartTooltipContent
+                  valueFormatter={(v) =>
+                    formatValue
+                      ? formatValue(Number(v))
+                      : formatPercentPrecise(total > 0 ? Number(v) / total : null)
+                  }
+                />
+              }
             />
           </PieChart>
         </ChartContainer>

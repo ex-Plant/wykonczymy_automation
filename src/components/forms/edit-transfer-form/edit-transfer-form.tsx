@@ -11,10 +11,9 @@ import {
   showsInvestment,
   needsExpenseCategory,
   isLaborCost,
-  isVatPlane,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
-import { editExpenseFormSchema } from '@/components/forms/expense-form/expense-schema'
+import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
 import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
 import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
@@ -30,7 +29,6 @@ import {
   DescriptionField,
   EntityComboboxField,
   ExpenseCategoryField,
-  VatPlaneField,
 } from '@/components/forms/form-fields'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
@@ -43,7 +41,7 @@ type EditTransferFormPropsT = {
   keepOpen?: boolean
 }
 
-type FormValuesT = z.infer<typeof editExpenseFormSchema>
+type FormValuesT = z.infer<typeof editTransferFormSchema>
 
 const FORM_ID = 'edit-transfer'
 
@@ -70,12 +68,9 @@ export function EditTransferForm({
       expenseCategory: row.expenseCategoryId ? String(row.expenseCategoryId) : '',
       otherCategory: row.otherCategoryId ? String(row.otherCategoryId ?? '') : '',
       invoiceNote: row.invoiceNote ?? '',
-      // '' for a wpłata booked before the plane existed — the select opens on its placeholder and
-      // the submit below sends nothing, so an untouched legacy row keeps its „Nie określono".
-      vatPlane: row.vatPlane ?? '',
     } as FormValuesT,
     validators: {
-      onSubmit: editExpenseFormSchema,
+      onSubmit: editTransferFormSchema,
     },
     onSubmit: async ({ value }) => {
       const data: UpdateTransferFormT = {
@@ -87,7 +82,6 @@ export function EditTransferForm({
         expenseCategory: value.expenseCategory ? Number(value.expenseCategory) : undefined,
         otherCategory: value.otherCategory ? Number(value.otherCategory) : undefined,
         invoiceNote: value.invoiceNote || undefined,
-        vatPlane: isVatPlane(value.vatPlane) ? value.vatPlane : undefined,
       }
 
       // Capture files before dialog closes — the ref won't be available after unmount
@@ -180,8 +174,10 @@ export function EditTransferForm({
             )}
           </form.AppField>
 
-          {row.type === 'INVESTOR_DEPOSIT' && <VatPlaneField form={form} />}
-
+          {/* No plane field here by design (owner, 2026-08-20): retagging a wpłata moves the debt by
+              a VAT's worth, exactly like editing its kwota — which this form already refuses. A
+              transfer has no version history, so the correction path is the one that leaves a trail:
+              anuluj i zaksięguj na nowo. */}
           <form.AppField name="invoiceNote">
             {(field: AppFieldComponentsT) => (
               <field.Textarea label="Notatka" placeholder="Wpisz notatkę..." rows={3} showError />

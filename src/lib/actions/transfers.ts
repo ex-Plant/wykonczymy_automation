@@ -5,7 +5,7 @@ import type { Transaction } from '@/payload-types'
 import {
   createBulkExpenseSchema,
   type CreateBulkExpenseFormT,
-} from '@/components/forms/expense-form/expense-schema'
+} from '@/components/forms/expense-form/bulk-expense-schema'
 import { canMutateTransfer } from '@/lib/auth/roles'
 import { canBeSettled } from '@/lib/constants/transfers'
 import { perfStart } from '@/lib/perf'
@@ -42,7 +42,7 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
 
       if (needsSourceRegister(parsed.data.type)) {
         // For deposits, sourceRegister is actually the target (the register receiving money)
-        const validated = await validateSourceRegister(data.sourceRegister, payload)
+        const validated = await validateSourceRegister(parsed.data.sourceRegister, payload)
         console.log(`[PERF]   validateSourceRegister ${step()}ms`)
         if (!validated.success) return validated
       }
@@ -50,8 +50,10 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
       await payload.create({
         collection: 'transactions',
         data: {
-          ...data,
-          description: data.description || '',
+          // `parsed.data`, never the raw input: the schema is what narrows a client payload down to
+          // the fields a transfer may carry, and spreading the input again hands that narrowing back.
+          ...parsed.data,
+          description: parsed.data.description || '',
           invoice: invoiceMediaIds?.length ? invoiceMediaIds : undefined,
           createdBy: user.id,
         },
@@ -242,7 +244,7 @@ export async function updateTransferAction(
       const { original } = result
 
       // Only LABOR_COST transfers can have their amount edited
-      const { amount, vatPlane, ...fields } = parsed.data
+      const { amount, ...fields } = parsed.data
       const newAmount = isLaborCost(original.type) ? amount : undefined
       const amountChanged = newAmount !== undefined && newAmount !== original.amount
 
@@ -255,9 +257,6 @@ export async function updateTransferAction(
         data: {
           ...fields,
           ...(newAmount !== undefined && { amount: newAmount }),
-          // The plane is a property of a wpłata alone — every other type bills on one plane, so an
-          // edit that carried one in would invent a distinction the settlement never reads.
-          ...(original.type === 'INVESTOR_DEPOSIT' && vatPlane !== undefined && { vatPlane }),
           // Newly picked files are extra pages of the same invoice, so they append — an edit that
           // replaced the list would strand the pages the user never touched.
           ...(invoiceMediaIds?.length && {

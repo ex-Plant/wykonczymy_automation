@@ -17,8 +17,9 @@ import {
   effectiveMaterialsNetRate,
   type SettlementModeT,
 } from '@/lib/kosztorys/settlement-mode'
-import { billedMaterials } from '@/lib/kosztorys/summary-economics'
-import { grossBalance } from '@/lib/db/gross-balance'
+import { billedMaterials, computeAmountDue } from '@/lib/kosztorys/summary-economics'
+import { depositPairFromPlaneSums, NO_DEPOSIT_SUMS } from '@/lib/kosztorys/deposit-planes'
+import { selectDepositPlaneSums } from '@/lib/db/deposit-plane-sums'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { shapeInvestments } from '@/lib/queries/shape-investments'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
@@ -29,6 +30,7 @@ import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import { buildKosztorysTree } from '@/lib/queries/kosztorys'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import type {
+  DepositPlaneSumsMapT,
   KosztorysClientTotalsMapT,
   KosztorysSubcontractorDueMapT,
 } from '@/lib/queries/balances'
@@ -117,6 +119,14 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       subcontractorDue[String(investmentId)] = settlement
     }
 
+    // Omitted, every listing bilans reads as if nobody had paid anything — and the comparison stays
+    // green regardless, because the detail side is assembled from the same missing input.
+    const depositPlaneSums: DepositPlaneSumsMapT = {}
+    for (const row of await selectDepositPlaneSums(await getDb(payload))) {
+      const { investmentId, ...sums } = row
+      depositPlaneSums[String(investmentId)] = sums
+    }
+
     const mismatches: string[] = []
     for (const inv of investments) {
       const where = { investment: { equals: inv.id } }
@@ -154,6 +164,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
         listingFin ? { [String(inv.id)]: listingFin } : {},
         kosztorysTotals,
         subcontractorDue,
+        depositPlaneSums,
       )
 
       // Every investment fed in comes back out, so a `?? 0` below can only ever mask a dropped row —
@@ -161,18 +172,33 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       expect(listingRow, `#${inv.id} ${inv.name} is missing from the listing`).toBeDefined()
 
       // DETAIL assembly (mirrors inwestycje/[id]/page.tsx + financial-stats.tsx)
-      const fields = buildFinancialFields(detailFin, expenseCategories)
       // The formula ToggleStatButtons renders, over every card (nothing hidden) — FinancialStats
       // partitions `fields` into rows without dropping any, so rows.flat() is `fields`.
-      const detailBalance = computeSummary(fields, new Set())
       const detailBalanceFromTransactions = computeSummary(
         buildFinancialFields(transactionFin, expenseCategories),
         new Set(),
       )
       const netRate = effectiveMaterialsNetRate(inv.settlementMode, inv.materialsNetRate)
+      // The panel's own „Pozostało do zapłaty", assembled from the DETAIL side's objects. It is the
+      // only reading of the brutto plane in the app — the transactions plane has never had a brutto
+      // bilans — so the oracle has to be this, not a second formula derived from `detailBalance`
+      // that no surface renders.
+      // Both bilanse v2 come off this one call, netto included. The v1-shaped sum over
+      // `financialsOnReading` is NOT the oracle for it: that one deducts `totalIncome`, which counts
+      // a przelew at its brutto, where the netto plane deducts the netto the faktura named — 230 zł
+      // apart on a 1230/1000 wpłata. Nothing renders that sum on the reading side anyway
+      // (FinancialStats is v1-only).
+      const detailAmountDue = computeAmountDue(
+        readingFromKosztorys(kosztorysTotals[String(inv.id)]).laborCostsNet,
+        depositPairFromPlaneSums(depositPlaneSums[String(inv.id)] ?? NO_DEPOSIT_SUMS, inv.vatRate),
+        { grossBase: detailFin.materialsGrossBase, netBilled: detailFin.materialsNetBilled },
+        inv.vatRate,
+        netRate,
+        detailFin.totalLoss,
+      )
 
       const compare: [string, number, number][] = [
-        ['bilans', listingRow?.balance ?? 0, detailBalance],
+        ['bilans', listingRow?.balance ?? 0, -detailAmountDue.net],
         ['bilans v1', listingRow?.balanceFromTransactions ?? 0, detailBalanceFromTransactions],
         ['marża v1', listingRow?.margin ?? 0, calculateMargin(transactionFin)],
         [
@@ -189,16 +215,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
             netRate,
           ),
         ],
-        [
-          'bilans brutto',
-          listingRow?.balanceGross ?? 0,
-          grossBalance(
-            detailBalance,
-            inv.vatRate,
-            detailFin.totalLaborCosts,
-            detailFin.totalDiscount,
-          ),
-        ],
+        ['bilans brutto', listingRow?.balanceGross ?? 0, -detailAmountDue.gross],
         ['wliczone w robociznę', listingRow?.totalSettled ?? 0, detailFin.totalSettled],
       ]
 

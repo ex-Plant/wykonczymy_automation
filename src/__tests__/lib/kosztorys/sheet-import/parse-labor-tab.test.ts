@@ -148,8 +148,8 @@ describe('parseLaborTab', () => {
     expect(parse(BIALOSTOCKA_ROWS).items.map((item) => item.sheetMeasuredQty)).toEqual([1, 50, 2])
   })
 
-  it('reads a „Pomiar z natury" written as a formula as no claim at all', () => {
-    // The blank offer sheet has `=SUM(D:M)` in every row of that column, so its value IS Σ etapów.
+  it('reads a „Pomiar z natury" computed from the etapy as no claim at all', () => {
+    // The blank offer sheet sums the etapy in every row of that column, so its value IS Σ etapów.
     // Storing it would set up a comparison of Σ etapów against itself.
     const formulas = BIALOSTOCKA_ROWS.map((row) => {
       const blank = row.map(() => '')
@@ -160,6 +160,32 @@ describe('parseLaborTab', () => {
     expect(
       parse(BIALOSTOCKA_ROWS, formulas).items.every((item) => item.sheetMeasuredQty === null),
     ).toBe(true)
+  })
+
+  it('refuses the stage sum written as a whole-column range too', () => {
+    const formulas = BIALOSTOCKA_ROWS.map((row) => {
+      const blank = row.map(() => '')
+      blank[POMIAR_COLUMN] = '=SUM(D:M)'
+      return blank
+    })
+
+    expect(
+      parse(BIALOSTOCKA_ROWS, formulas).items.every((item) => item.sheetMeasuredQty === null),
+    ).toBe(true)
+  })
+
+  it('keeps a „Pomiar z natury" the sheet computed some other way', () => {
+    // `=N5` mirrors the Przedmiar. Whatever produced the number, it is the owner's claim about what
+    // was measured — and against Σ etapów that is a real comparison, not a tautology.
+    const formulas = BIALOSTOCKA_ROWS.map((row) => {
+      const blank = row.map(() => '')
+      blank[POMIAR_COLUMN] = '=N5'
+      return blank
+    })
+
+    expect(parse(BIALOSTOCKA_ROWS, formulas).items.map((item) => item.sheetMeasuredQty)).toEqual([
+      1, 50, 2,
+    ])
   })
 
   it('reads an empty „Pomiar z natury" as no claim, not as a measurement of zero', () => {

@@ -94,12 +94,3 @@ export function expensePieSlices(
     })),
   )
 }
-
-// Wpłaty split by VAT plane — netto vs brutto deposits. Shown only in tryb mieszany, where the plane
-// distinction exists; the netto slice absorbs the unmarked deposits (they default to netto).
-export function depositPlanePieSlices(paidNet: number, paidGross: number): PieSliceT[] {
-  return paintSlices([
-    { id: 'net', name: 'Wpłaty netto', value: paidNet },
-    { id: 'gross', name: 'Wpłaty brutto', value: paidGross },
-  ])
-}

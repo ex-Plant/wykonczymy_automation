@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   breakdownRowPair,
-  computeMixedSettlement,
   combinedPair,
   computeAmountDue,
   faceValue,
@@ -144,13 +143,13 @@ describe('materialsNetDiscount', () => {
 
 describe('materiały netto pricing off (no saved rate)', () => {
   it('combinedPair: materiały netto === brutto, so Łącznie carries the full receipt on both axes', () => {
-    const combined = combinedPair(1000, billedMaterials(justGross(123), null), 0.23)
+    const combined = combinedPair(1000, faceValue(billedMaterials(justGross(123), null)), 0.23)
     expect(combined.net).toBeCloseTo(1123)
     expect(combined.gross).toBeCloseTo(1230 + 123)
   })
 
   it('computeAmountDue: materiały enter netto at full brutto; brutto axis unchanged', () => {
-    const r = computeAmountDue(1000, 300, justGross(123), 0.23, null)
+    const r = computeAmountDue(1000, { net: 300, gross: 300 }, justGross(123), 0.23, null)
     // netto: robocizna 1000 − wpłaty 300 + materiały 123 (raw brutto, not derived 100).
     expect(r.net).toBeCloseTo(823)
     expect(r.gross).toBeCloseTo(1230 - 300 + 123)
@@ -163,25 +162,30 @@ describe('materiały netto pricing off (no saved rate)', () => {
 describe('combinedPair („Łącznie")', () => {
   it('prace gross, materiały enter both axes at the billed figure', () => {
     // materiały 123 brutto → billed 100 netto at a 23% rate.
-    const combined = combinedPair(1000, billedMaterials(justGross(123), 0.23), 0.23)
+    const combined = combinedPair(1000, faceValue(billedMaterials(justGross(123), 0.23)), 0.23)
     expect(combined.net).toBeCloseTo(1100)
     // 1230 + 100 — the SAME 100 the netto axis added, not the raw 123 receipt.
     expect(combined.gross).toBeCloseTo(1330)
   })
 
   it('the two axes differ by exactly the VAT on prace, never on materiały', () => {
-    const combined = combinedPair(1000, 100, 0.23)
+    const combined = combinedPair(1000, faceValue(100), 0.23)
     expect(combined.gross - combined.net).toBeCloseTo(230)
   })
 
   it('vat = 0: both axes read the same figure', () => {
-    expect(combinedPair(0, 500, 0)).toEqual({ net: 500, gross: 500 })
+    expect(combinedPair(0, faceValue(500), 0)).toEqual({ net: 500, gross: 500 })
   })
 })
 
+// `paid` arrives as a pair the wpłaty already carry — a gotówka's kwota netto, a przelew's two
+// kwoty off its faktura. Nothing here derives one plane from the other; that division is what the
+// three bugs below were made of.
 describe('computeAmountDue', () => {
+  const NO_MATERIALS = { grossBase: 0, netBilled: 0 }
+
   it('materiały added at derived netto (net) and raw brutto (gross); wpłaty at face value', () => {
-    const r = computeAmountDue(1000, 300, justGross(123), 0.23, 0.23)
+    const r = computeAmountDue(1000, { net: 300, gross: 300 }, justGross(123), 0.23, 0.23)
     // netto: robocizna 1000 − wpłaty 300 + materiały 100 (billed).
     expect(r.net).toBeCloseTo(800)
     // brutto: robocizna 1000 → 1230, − wpłaty 300 + the same billed 100.
@@ -189,14 +193,55 @@ describe('computeAmountDue', () => {
   })
 
   it('zero zaliczki: equals Łącznie (robocizna + materiały netto)', () => {
-    const r = computeAmountDue(1000, 0, justGross(123), 0.23, 0.23)
+    const r = computeAmountDue(1000, { net: 0, gross: 0 }, justGross(123), 0.23, 0.23)
     expect(r.net).toBeCloseTo(1100)
   })
 
   it('zaliczki exceeding R + M goes negative (overpaid)', () => {
-    const r = computeAmountDue(1000, 1800, justGross(123), 0.23, 0.23)
+    const r = computeAmountDue(1000, { net: 1800, gross: 1800 }, justGross(123), 0.23, 0.23)
     expect(r.net).toBeCloseTo(1000 - 1800 + 100)
     expect(r.gross).toBeCloseTo(1230 - 1800 + 100)
+  })
+
+  it('each plane subtracts its OWN kwota — a przelew pays 12 300 brutto and 10 000 netto', () => {
+    const r = computeAmountDue(10_000, { net: 10_000, gross: 12_300 }, NO_MATERIALS, 0.23, null)
+    expect(r.net).toBeCloseTo(0)
+    expect(r.gross).toBeCloseTo(0)
+  })
+
+  // The owner's signed example (`change.md`): robocizna 88 500 netto, materiały 10 000 z paragonu
+  // przy 8%, wpłaty 40 000 gotówką + 10 000 przelewem. Computed here by hand, not by re-running the
+  // function's own arithmetic — the netto column is the one tryb mieszany renders.
+  it('lands on the owner-signed 48 500,00 netto', () => {
+    const VAT = 0.08
+    const transferNet = 10_000 / (1 + VAT)
+    const r = computeAmountDue(
+      88_500,
+      { net: 40_000 + transferNet, gross: 10_000 },
+      { grossBase: 10_000, netBilled: 0 },
+      VAT,
+      VAT,
+    )
+
+    expect(r.net).toBeCloseTo(48_500, 2)
+    // Materiały stand at face value on both planes, so brutto = 95 580 + 9 259,26 − 10 000.
+    expect(r.gross).toBeCloseTo(94_839.26, 2)
+  })
+
+  // REGRESSION (`change.md` bug 1): a wpłata brutto used to be subtracted at face value from the
+  // netto column, so 10 000 zł billed and settled by a 12 300 zł przelew read −2 399,20 owed.
+  it('never lets a przelew overshoot the netto column', () => {
+    const r = computeAmountDue(10_000, { net: 10_000, gross: 12_300 }, NO_MATERIALS, 0.23, null)
+    expect(r.net).not.toBeCloseTo(-2300)
+    expect(r.net).toBeCloseTo(0)
+  })
+
+  // REGRESSION (`change.md` bug 2): „Pozostało brutto" was Łącznie brutto − wpłaty NETTO, which
+  // charged the VAT on the already-settled part — 3 200 zł on a 40 000 zł bill at 8%.
+  it('charges no VAT on the part a przelew already settled', () => {
+    const r = computeAmountDue(40_000, { net: 40_000, gross: 43_200 }, NO_MATERIALS, 0.08, null)
+    expect(r.gross).not.toBeCloseTo(3200)
+    expect(r.gross).toBeCloseTo(0)
   })
 })
 
@@ -206,29 +251,18 @@ describe('computeAmountDue', () => {
 // wipes 1000 zł. Grossing it here would hand the client 230 zł nobody ever charged.
 describe('strata enters the settlement at face value', () => {
   it('computeAmountDue: one loss lowers netto and brutto by the SAME złoty', () => {
-    const base = computeAmountDue(1000, 300, justGross(123), 0.23, 0.23)
-    const withLoss = computeAmountDue(1000, 300, justGross(123), 0.23, 0.23, 400)
+    const paid = { net: 300, gross: 300 }
+    const base = computeAmountDue(1000, paid, justGross(123), 0.23, 0.23)
+    const withLoss = computeAmountDue(1000, paid, justGross(123), 0.23, 0.23, 400)
     expect(base.net - withLoss.net).toBeCloseTo(400)
     expect(base.gross - withLoss.gross).toBeCloseTo(400)
   })
 
-  it('computeMixedSettlement: a loss mirrors a wpłata netto on both sections', () => {
-    const vat = 0.23
-    const base = computeMixedSettlement(700, justGross(369), vat, 400, 200, vat)
-    const withLoss = computeMixedSettlement(700, justGross(369), vat, 400, 200, vat, 150)
-    expect(base.outstandingNet - withLoss.outstandingNet).toBeCloseTo(150)
-    expect(base.remainderGross - withLoss.remainderGross).toBeCloseTo(150)
-    // Both closing figures inherit the shift from the two terms above — no second deduction.
-    expect(base.amountDueGross - withLoss.amountDueGross).toBeCloseTo(150)
-    expect(base.amountDueNet - withLoss.amountDueNet).toBeCloseTo(150)
-  })
-
-  it('computeMixedSettlement: a loss lands exactly where an equal wpłata netto would', () => {
-    const vat = 0.23
-    const asDeposit = computeMixedSettlement(700, justGross(369), vat, 550, 200, vat)
-    const asLoss = computeMixedSettlement(700, justGross(369), vat, 400, 200, vat, 150)
-    expect(asLoss.outstandingNet).toBeCloseTo(asDeposit.outstandingNet)
-    expect(asLoss.remainderGross).toBeCloseTo(asDeposit.remainderGross)
+  it('lands exactly where an equal wpłata would, on both planes', () => {
+    const asDeposit = computeAmountDue(1000, { net: 450, gross: 450 }, justGross(123), 0.23, 0.23)
+    const asLoss = computeAmountDue(1000, { net: 300, gross: 300 }, justGross(123), 0.23, 0.23, 150)
+    expect(asLoss.net).toBeCloseTo(asDeposit.net)
+    expect(asLoss.gross).toBeCloseTo(asDeposit.gross)
   })
 })
 
@@ -240,132 +274,24 @@ describe('Podsumowanie brutto waterfall (rabat grosses, materiały brutto)', () 
     const laborCostsNet = 800 // do zapłaty, po rabacie
     const discountNet = 200
     const materialsGross = 123 // → 100 netto at 23%
-    const depositsTotal = 300
+    // A przelew: 300 brutto whose faktura names 250 netto. The waterfall has to close on each
+    // axis against ITS kwota — a single figure subtracted from both is bug 1 and bug 2 at once.
+    const paid = { net: 250, gross: 300 }
     const vat = 0.23
 
     const laborCostsNetFromKosztorys = laborCostsNet + discountNet // 1000, pre-rabat
     const combined = combinedPair(
       laborCostsNetFromKosztorys,
-      billedMaterials(justGross(materialsGross), vat),
+      faceValue(billedMaterials(justGross(materialsGross), vat)),
       vat,
     )
     const discount = moneyPair(discountNet, vat)
-    const deposits = faceValue(depositsTotal)
-    const amountDue = computeAmountDue(
-      laborCostsNet,
-      depositsTotal,
-      justGross(materialsGross),
-      vat,
-      vat,
-    )
+    const amountDue = computeAmountDue(laborCostsNet, paid, justGross(materialsGross), vat, vat)
 
-    expect(combined.net - discount.net - deposits.net).toBeCloseTo(amountDue.net)
-    expect(combined.gross - discount.gross - deposits.gross).toBeCloseTo(amountDue.gross)
+    expect(combined.net - discount.net - paid.net).toBeCloseTo(amountDue.net)
+    expect(combined.gross - discount.gross - paid.gross).toBeCloseTo(amountDue.gross)
     // Concretely on the brutto axis: Łącznie (1000→1230 + 100) − rabat (200→246) − wpłaty 300.
     expect(amountDue.gross).toBeCloseTo(1230 + 100 - 246 - 300)
-  })
-})
-
-// Two stacked sections: NETTO (Robocizna + Materiały = Łącznie → − wpłaty netto → Do rozliczenia
-// netto) then BRUTTO (Do rozliczenia netto + VAT = Reszta brutto → − wpłaty brutto → Do zapłaty
-// brutto). Only the still-owed netto is grossed, so netto deposits shield their złoty from VAT.
-describe('computeMixedSettlement (tryb mieszany)', () => {
-  const vat = 0.23
-  const laborCostsNet = 700
-  const materialsGross = 369 // netto = 300 after VAT strip (369 / 1.23)
-
-  it('netto section: Łącznie = robocizna + materiały netto, minus wpłaty netto', () => {
-    const s = computeMixedSettlement(laborCostsNet, justGross(materialsGross), vat, 400, 0, vat)
-    expect(s.laborCostsNet).toBeCloseTo(700)
-    expect(s.materialsBilled).toBeCloseTo(300)
-    expect(s.combinedNet).toBeCloseTo(1000)
-    expect(s.outstandingNet).toBeCloseTo(600) // 1000 − 400
-  })
-
-  // VAT rides the prace and nothing else, so the brutto section starts from „Łącznie" brutto — where
-  // materiały already sits at face value — and the wpłaty come off it. Grossing the still-owed netto
-  // instead swept materiały into the VAT: „Pozostało brutto" then quoted the same debt 69 zł above the
-  // „Łącznie" brutto printed directly over it, on one screen. Every case here uses a materiały rate
-  // DIFFERENT from the VAT rate, because at rate === vatRate the two formulas agree and the bug hides.
-  it('brutto section: Łącznie brutto less the wpłaty netto, then wpłaty brutto pay it down', () => {
-    const s = computeMixedSettlement(laborCostsNet, justGross(materialsGross), vat, 400, 200, vat)
-    // Prace 700 × 1,23 = 861, materiały 300 at face → Łącznie brutto 1161; − 400 wpłaty netto.
-    expect(s.remainderGross).toBeCloseTo(761)
-    expect(s.amountDueGross).toBeCloseTo(561)
-  })
-
-  it('never grosses materiały: Reszta brutto reconciles with combinedPair', () => {
-    const s = computeMixedSettlement(laborCostsNet, justGross(materialsGross), vat, 400, 0, vat)
-    const combined = combinedPair(laborCostsNet, s.materialsBilled, vat)
-    expect(s.remainderGross).toBeCloseTo(combined.gross - 400)
-    // The old arithmetic — grossing Łącznie netto whole — is what this rules out.
-    expect(s.remainderGross).not.toBeCloseTo(s.outstandingNet * (1 + vat))
-  })
-
-  it('no wpłaty netto: Reszta brutto IS Łącznie brutto', () => {
-    const s = computeMixedSettlement(laborCostsNet, justGross(materialsGross), vat, 0, 0, vat)
-    expect(s.outstandingNet).toBeCloseTo(1000)
-    expect(s.remainderGross).toBeCloseTo(1161)
-    expect(s.amountDueGross).toBeCloseTo(1161)
-  })
-
-  it('over-paying netto past Łącznie: both closing figures go negative (no clamp)', () => {
-    const s = computeMixedSettlement(laborCostsNet, justGross(materialsGross), vat, 1500, 0, vat)
-    expect(s.outstandingNet).toBeCloseTo(-500)
-    expect(s.remainderGross).toBeCloseTo(1161 - 1500)
-  })
-
-  // The bug this guards: „Do zapłaty netto" divided the whole outstanding brutto by the VAT rate,
-  // which de-grossed the wpłaty brutto along with it and credited the client less than they paid. A
-  // wpłata is cash — VAT belongs to the prace alone (owner, 2026-08-07).
-  it('credits wpłaty brutto at face value — a wpłata carries no VAT to strip', () => {
-    const s = computeMixedSettlement(laborCostsNet, justGross(materialsGross), vat, 400, 200, vat)
-    // Pozostało netto 600 − the wpłata as paid, 200. NOT 600 − 200 ÷ 1,23.
-    expect(s.amountDueNet).toBeCloseTo(400)
-    expect(s.amountDueNet).not.toBeCloseTo(600 - 200 / (1 + vat))
-  })
-
-  it('an extra złoty wpłacony brutto lowers the netto closing figure by exactly that złoty', () => {
-    const base = computeMixedSettlement(
-      laborCostsNet,
-      justGross(materialsGross),
-      vat,
-      400,
-      200,
-      vat,
-    )
-    const more = computeMixedSettlement(
-      laborCostsNet,
-      justGross(materialsGross),
-      vat,
-      400,
-      300,
-      vat,
-    )
-    expect(base.amountDueNet - more.amountDueNet).toBeCloseTo(100)
-  })
-
-  it('vatRate = 0: no VAT — Reszta brutto equals Do rozliczenia netto', () => {
-    const s = computeMixedSettlement(700, justGross(300), 0, 400, 100, 0)
-    expect(s.materialsBilled).toBeCloseTo(300) // no VAT to strip
-    expect(s.outstandingNet).toBeCloseTo(600)
-    expect(s.remainderGross).toBeCloseTo(600)
-    expect(s.amountDueGross).toBeCloseTo(500)
-  })
-
-  // The rate is a division on the receipt, the VAT a multiplication on the prace — two different
-  // planes. Reading materiały off the VAT rate here is the shape of the bug that hid behind fixtures
-  // where the two rates happened to match.
-  it('grosses the prace at the VAT rate while materiały stays at its own billed figure', () => {
-    const s = computeMixedSettlement(700, justGross(1100), vat, 0, 0, 0.1)
-    expect(s.materialsBilled).toBeCloseTo(1000)
-    expect(s.remainderGross).toBeCloseTo(700 * 1.23 + 1000)
-  })
-
-  it('the netto figure follows the investment rate, not the VAT rate', () => {
-    const s = computeMixedSettlement(700, justGross(1100), vat, 0, 0, 0.1)
-    expect(s.materialsBilled).toBeCloseTo(1000) // 1100 ÷ 1,1
-    expect(s.combinedNet).toBeCloseTo(1700)
   })
 })
 
@@ -380,7 +306,7 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
   const GROSS_BASE = 123
 
   const combined = (materials: { grossBase: number; netBilled: number }, rate: number | null) =>
-    combinedPair(1000, billedMaterials(materials, rate), VAT)
+    combinedPair(1000, faceValue(billedMaterials(materials, rate)), VAT)
 
   it('B1: at a −8% toggle the netto bucket contributes its full amount, not ×0.92', () => {
     const base = combined(justGross(GROSS_BASE), REDUCTION)
@@ -399,10 +325,11 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
   // netAmount — the grossed-up twin belongs to the Wydatki breakdown, which reads the two planes
   // separately, not to the settlement.
   it('a netto expense raises Pozostało do zapłaty by its netAmount on both axes', () => {
-    const base = computeAmountDue(1000, 300, justGross(GROSS_BASE), VAT, REDUCTION)
+    const paid = { net: 300, gross: 300 }
+    const base = computeAmountDue(1000, paid, justGross(GROSS_BASE), VAT, REDUCTION)
     const withNet = computeAmountDue(
       1000,
-      300,
+      paid,
       { grossBase: GROSS_BASE, netBilled: NET_BILLED },
       VAT,
       REDUCTION,
@@ -419,17 +346,12 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
     expect(pair.gross).toBeCloseTo(odd * (1 + REDUCTION))
   })
 
-  it('tryb mieszany sees it too — the netto section is not a separate composition', () => {
-    const base = computeMixedSettlement(700, justGross(369), VAT, 400, 0, VAT)
-    const withNet = computeMixedSettlement(
-      700,
-      { grossBase: 369, netBilled: NET_BILLED },
-      VAT,
-      400,
-      0,
-      VAT,
-    )
-    expect(withNet.combinedNet - base.combinedNet).toBeCloseTo(NET_BILLED)
+  it('every tryb sees it — one billed figure, not a per-tryb composition', () => {
+    const paid = { net: 400, gross: 400 }
+    const base = computeAmountDue(700, paid, justGross(369), VAT, VAT)
+    const withNet = computeAmountDue(700, paid, { grossBase: 369, netBilled: NET_BILLED }, VAT, VAT)
+    expect(withNet.net - base.net).toBeCloseTo(NET_BILLED)
+    expect(withNet.gross - base.gross).toBeCloseTo(NET_BILLED)
   })
 })
 
@@ -478,7 +400,7 @@ describe('laborCostsNetPreDiscount — one „Robocizna", one number', () => {
     const laborCostsNet = 90_000 // already post-rabat
     const discountAmount = 10_000
     const materials = justGross(12_300)
-    const combined = combinedPair(laborCostsNet, billedMaterials(materials, 0.23), 0.23)
+    const combined = combinedPair(laborCostsNet, faceValue(billedMaterials(materials, 0.23)), 0.23)
 
     const rows =
       laborCostsNetPreDiscount(laborCostsNet, discountAmount) -
@@ -493,7 +415,14 @@ describe('laborCostsNetPreDiscount — one „Robocizna", one number', () => {
 // a strata of the same amount, no robocizna and no wpłaty — the client owes nothing on either axis.
 describe('investment 62 — an expense fully covered by a strata', () => {
   it('closes the settlement at zero on both planes', () => {
-    const amountDue = computeAmountDue(0, 0, justGross(362.84), 0.23, null, 362.84)
+    const amountDue = computeAmountDue(
+      0,
+      { net: 0, gross: 0 },
+      justGross(362.84),
+      0.23,
+      null,
+      362.84,
+    )
 
     expect(amountDue.net).toBeCloseTo(0)
     expect(amountDue.gross).toBeCloseTo(0)

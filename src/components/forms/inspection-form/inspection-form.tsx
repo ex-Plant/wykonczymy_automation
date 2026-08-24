@@ -186,15 +186,11 @@ export function InspectionForm({
         </form.AppField>
 
         <form.AppField name="performedAt">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Data wykonania" type="date" showError />
-          )}
+          {(field: AppFieldComponentsT) => <field.DatePicker label="Data wykonania" showError />}
         </form.AppField>
 
         <form.AppField name="nextDueAt">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Następny termin" type="date" showError />
-          )}
+          {(field: AppFieldComponentsT) => <field.DatePicker label="Następny termin" showError />}
         </form.AppField>
 
         <form.AppField name="odometer">

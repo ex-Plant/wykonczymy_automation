@@ -10,7 +10,7 @@ export function DateField({ form, fieldClassName }: DateFieldPropsT) {
   return (
     <form.AppField name="date">
       {(field: AppFieldComponentsT) => (
-        <field.Input label="Data" type="date" showError fieldClassName={fieldClassName} />
+        <field.DatePicker label="Data" showError fieldClassName={fieldClassName} />
       )}
     </form.AppField>
   )

@@ -93,10 +93,10 @@ export async function readImportGrids(
     // Numbers must arrive as numbers: formatted values come back as „1 234,56 zł" strings that a
     // locale-naive parseFloat reads as 1.
     read(wanted, 'UNFORMATTED_VALUE'),
-    // Every tab is fetched twice, values and formulas, because on both a formula is the only
-    // evidence that a figure was NOT typed by a human. On a rate tab that decides which price list
-    // wins; on the robocizna tab it decides whether „Pomiar z natury" is a real measurement or the
-    // blank sheet's own `=SUM(etapy)` — storing the latter would compare Σ etapów against itself.
+    // Every tab is fetched twice, values and formulas, because on both a formula says where a
+    // figure came from. On a rate tab it marks the price the owner did NOT type, which decides
+    // which price list wins; on the robocizna tab it tells „Pomiar z natury" apart from the blank
+    // sheet's own sum of the etapy — storing the latter would compare Σ etapów against itself.
     read(wanted, 'FORMULA'),
   ])
 

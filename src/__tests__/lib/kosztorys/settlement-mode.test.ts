@@ -2,24 +2,29 @@ import { describe, expect, it } from 'vitest'
 import {
   effectiveMaterialsNetRate,
   SETTLEMENT_MODES,
-  settlementModeToGridAxis,
+  settlementModeToMoneyAxis,
 } from '@/lib/kosztorys/settlement-mode'
+import { isOffPlaneDeposit } from '@/lib/kosztorys/deposit-planes'
 import { computeAmountDue } from '@/lib/kosztorys/summary-economics'
 
-// The stored mode is the only source of the grid's money plane. The panel has no such projection —
-// both columns stand there in every tryb, so it only ever asks whether the mode is MIXED.
+const NO_DEPOSITS = { net: 0, gross: 0 }
+
+// The tryb decides which money column EXISTS — exactly one, never two. „Mieszane" settles on netto
+// like tryb netto: what is mixed there are the WPŁATY, not the bill.
 describe('settlement mode projections', () => {
-  it('projects MIXED to both money columns in the grid', () => {
-    expect(settlementModeToGridAxis('MIXED')).toBe('both')
+  it('settles Mieszane on netto, the plane its wpłaty share', () => {
+    expect(settlementModeToMoneyAxis('MIXED')).toBe('net')
   })
 
-  it('projects a single-plane mode to that plane in the grid', () => {
-    expect(settlementModeToGridAxis('NET')).toBe('net')
-    expect(settlementModeToGridAxis('GROSS')).toBe('gross')
+  it('projects a single-plane mode to that plane', () => {
+    expect(settlementModeToMoneyAxis('NET')).toBe('net')
+    expect(settlementModeToMoneyAxis('GROSS')).toBe('gross')
   })
 
-  it('never yields a hidden-money axis for any mode', () => {
-    for (const mode of SETTLEMENT_MODES) expect(settlementModeToGridAxis(mode)).not.toBe('none')
+  it('gives every tryb exactly one money column — never both, never none', () => {
+    for (const mode of SETTLEMENT_MODES) {
+      expect(['net', 'gross']).toContain(settlementModeToMoneyAxis(mode))
+    }
   })
 })
 
@@ -46,22 +51,27 @@ describe('effectiveMaterialsNetRate', () => {
 describe('the stored mode still changes the reading at VAT 0%', () => {
   const VAT_ZERO = 0
 
-  it('keeps Mieszane a different grid projection from the single-plane modes', () => {
-    // The projection takes no VAT rate at all, so a 0% investment cannot flatten it.
-    expect(settlementModeToGridAxis('MIXED')).not.toBe(settlementModeToGridAxis('NET'))
-  })
-
   it('bills materiały differently under NET than under GROSS', () => {
     // The panel nulls the materiały netto rate at rozliczenie brutto. That rate is a division on the
     // receipt, not a VAT strip, so switching mode moves „Do zapłaty" even with no VAT in play.
     const materials = { grossBase: 1230, netBilled: 0 }
-    const underNet = computeAmountDue(1000, 0, materials, VAT_ZERO, 0.23)
-    const underGross = computeAmountDue(1000, 0, materials, VAT_ZERO, null)
+    const underNet = computeAmountDue(1000, NO_DEPOSITS, materials, VAT_ZERO, 0.23)
+    const underGross = computeAmountDue(1000, NO_DEPOSITS, materials, VAT_ZERO, null)
 
     expect(underNet.net).not.toBe(underGross.net)
     // Both columns move: materiały are billed ONCE and enter both planes at that same figure, so the
     // rate reaches the brutto column too. VAT 0% only removes the VAT on prace — nothing here.
     expect(underNet.gross).not.toBe(underGross.gross)
     expect(underGross.gross - underNet.gross).toBeCloseTo(230)
+  })
+
+  it('keeps Mieszane a different reading from tryb netto — this is why the third mode exists', () => {
+    // Mieszane and netto settle on the same column, so what separates them is not arithmetic but
+    // whether a przelew is an anomaly. Take this away and the three warnings have nothing to
+    // propose: „ustaw rozliczenie mieszane" is the remedy each of them names.
+    const przelew = { vatPlane: 'GROSS' as const }
+
+    expect(isOffPlaneDeposit(przelew, 'NET')).toBe(true)
+    expect(isOffPlaneDeposit(przelew, 'MIXED')).toBe(false)
   })
 })

@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils/cn'
 import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { computeAmountDue, type MaterialsT } from '@/lib/kosztorys/summary-economics'
-import { bucketDepositsByPlane } from '@/lib/kosztorys/deposit-planes'
+import { depositsStrandedBy, sumDeposits } from '@/lib/kosztorys/deposit-planes'
+import { settlementModeDepositImpact } from '@/lib/kosztorys/investor-impact'
 import { toSettlement, type SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
 import { SummaryOverviewTab } from '@/components/kosztorys/summary/tabs/summary-overview-tab'
@@ -74,7 +75,9 @@ type PropsT = {
   settlementMode: SettlementModeT
   // Optional because supplying them is what makes a host an *editor* of these settings. A host that
   // omits them renders the figures without the „Opcje rozliczenia" block — see the gate below.
-  onSettlementModeChange?: (mode: SettlementModeT) => void
+  // The second argument is what the switch would strand — assembled here, where the wpłaty are, and
+  // carried into the confirm dialog the writer raises.
+  onSettlementModeChange?: (mode: SettlementModeT, depositImpact?: string) => void
   // The investment's persisted materiały netto rate as a fraction; null = the concession is off.
   // Server-owned on purpose — the panel and the marża the server computed read one value.
   materialsNetRate: number | null
@@ -194,9 +197,19 @@ export function SummaryPanelContent({
   const view: SummaryViewT = allowedViews.includes(summaryView)
     ? summaryView
     : (allowedViews[0] ?? 'summary')
-  // Wpłaty split by VAT plane for tryb mieszany: NET (+ unmarked) settle the netto section,
-  // GROSS the brutto section. Derived from the deposit list, never typed.
-  const { paidNet, paidGross, total: depositsTotal } = bucketDepositsByPlane(depositTransactions)
+  // The wpłaty on each plane, READ off the rows — a wpłata netto contributes nothing to brutto,
+  // a wpłata brutto carries its own netto from the faktura. Summed here, beside the buckets, so the
+  // settlement and the wpłaty list can never sum them by two rules.
+  const paidPair = sumDeposits(depositTransactions, vatRate)
+  // Both controls that write the tryb go through this, so neither can raise the switch without
+  // pricing it first. Warning only — the switch is never refused (owner, 2026-08-23).
+  const changeSettlementMode =
+    onSettlementModeChange &&
+    ((mode: SettlementModeT) =>
+      onSettlementModeChange(
+        mode,
+        settlementModeDepositImpact(depositsStrandedBy(depositTransactions, mode)),
+      ))
   // The same gate the server applies to `materialsNetDiscount`, so both sides fall silent together
   // rather than the panel discounting a figure marża never saw.
   const effectiveNetRate = effectiveMaterialsNetRate(settlementMode, materialsNetRate)
@@ -207,7 +220,7 @@ export function SummaryPanelContent({
   const materials: MaterialsT = { grossBase: materialsGrossBase, netBilled: materialsNetBilled }
   const amountDue = computeAmountDue(
     laborCostsNet,
-    depositsTotal,
+    paidPair,
     materials,
     vatRate,
     effectiveNetRate,
@@ -229,11 +242,11 @@ export function SummaryPanelContent({
         {/* A client reads the mode, never writes it — the same `preview` gate every other
             owner-only affordance in this panel uses. Supplying the two writers is what makes a host
             an editor of these settings; a read-only host (no writers) renders no trigger at all. */}
-        {!preview && onSettlementModeChange && onMaterialsNetRateChange && (
+        {!preview && changeSettlementMode && onMaterialsNetRateChange && (
           <SummaryInvestmentSettings
             vatRate={vatRate}
             settlementMode={settlementMode}
-            onSettlementModeChange={onSettlementModeChange}
+            onSettlementModeChange={changeSettlementMode}
             // The EFFECTIVE rate, not the stored one: at tryb brutto the saved rate is inert, and the
             // popover printing „Netto" while the Materiały tab beside it printed „Brutto" made one
             // setting answer its own question two ways on one screen. Nothing is lost — the rate is
@@ -267,20 +280,18 @@ export function SummaryPanelContent({
                 settlementMode={settlementMode}
                 // Same gate as the settings trigger above: a client reads the mode, and only a host
                 // that supplied the writer may edit it from inside the tab.
-                onSettlementModeChange={preview ? undefined : onSettlementModeChange}
+                onSettlementModeChange={preview ? undefined : changeSettlementMode}
                 isSavingSettings={isSavingSettings}
                 laborCostsNet={laborCostsNet}
                 amountDue={amountDue}
                 materials={materials}
-                depositsTotal={depositsTotal}
                 discountAmount={discountAmount}
                 lossAmount={lossAmount}
                 reconciliation={reconciliation}
                 priceView="client"
                 vatRate={vatRate}
                 materialsNetRate={effectiveNetRate}
-                paidNet={paidNet}
-                paidGross={paidGross}
+                paidPair={paidPair}
                 depositRows={depositTransactions}
                 showDeposits={showTransactionLists}
                 preview={preview}

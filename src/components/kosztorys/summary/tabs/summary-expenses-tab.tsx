@@ -10,6 +10,7 @@ import {
 import { materialsNetRateForMode, pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
 import { clientVisibleExpenseRows } from '@/lib/kosztorys/expense-datasets'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
+import { Description } from '@/components/ui/description'
 import { DecimalField } from '@/components/ui/decimal-field'
 import { SlicePie } from '@/components/ui/slice-pie'
 import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
@@ -73,6 +74,10 @@ export function SummaryExpensesTab({
   const listedTransactions = preview
     ? clientVisibleExpenseRows(materialTransactions)
     : materialTransactions
+  const hasBilledMaterials = materials.grossBase + materials.netBilled !== 0
+  // Every block below is gated on having rows, so with none the tab renders as a blank page under
+  // the settlement select — indistinguishable from a load that failed.
+  const isEmpty = !hasBilledMaterials && settledBreakdown.length === 0
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -107,9 +112,12 @@ export function SummaryExpensesTab({
           )}
         </div>
       )}
+      {isEmpty && (
+        <Description withIcon={false}>Brak wydatków inwestycyjnych na materiały.</Description>
+      )}
       <div className="flex flex-col items-start gap-8 lg:flex-row">
         <div className="flex flex-col gap-6">
-          {materials.grossBase + materials.netBilled !== 0 && (
+          {hasBilledMaterials && (
             <MaterialsBreakdownTable rows={materialsBreakdown} netRate={materialsNetRate} />
           )}
           {/* Never rows inside the wydatki table: this spend is the company's, so it must be
@@ -125,7 +133,7 @@ export function SummaryExpensesTab({
             />
           )}
         </div>
-        {showPie && (
+        {showPie && !isEmpty && (
           <SlicePie
             slices={expensePieSlices(materialsBreakdown, materialsNetRate)}
             formatValue={formatNet}

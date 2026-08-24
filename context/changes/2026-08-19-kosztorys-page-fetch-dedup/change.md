@@ -37,7 +37,7 @@ Seed findings from the ad-hoc read (now verified in `research.md`):
   `fetchExpenseCategories()` while the page holds `refData.expenseCategories`. **Leave it** — the
   share path genuinely reaches this fetcher, so the PII boundary is live, not stale.
 - Legacy `kosztorys/page.tsx` — `requireInvestmentOr404` (findByID for the name) is awaited
-  *before* `getInvestmentSheetId`, so the sheet lookup is gated on a load it doesn't need.
+  _before_ `getInvestmentSheetId`, so the sheet lookup is gated on a load it doesn't need.
   **Confirmed** — the only genuinely serial pair in the sweep.
 
 New, not in the seed: seven dead nested `unstable_cache` calls on the share path, the unfixed

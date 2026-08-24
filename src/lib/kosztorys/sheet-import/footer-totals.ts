@@ -123,7 +123,7 @@ const DEFAULT_CANDIDATE: Record<FooterRowKeyT, AppTotalKeyT> = {
 
 /**
  * The sheet's Pomiar column priced by us — read straight off the grid rather than from the parsed
- * items, because `sheetMeasuredQty` is deliberately null wherever that cell holds a formula, and this
+ * items, because `sheetMeasuredQty` is deliberately null wherever that cell sums the etapy, and this
  * has to reproduce the sheet's own total whatever is behind the number. `null` with no Pomiar column,
  * so an absent figure can never masquerade as a matching zero.
  */

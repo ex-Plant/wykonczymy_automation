@@ -8,9 +8,13 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from '@/components/ui/dialog'
 import { ClientViewSettingsForm } from '@/components/kosztorys/editor/dialogs/client-view-settings-form'
+import { useClientViewModeConfirm } from '@/components/kosztorys/editor/dialogs/use-client-view-mode-confirm'
 import { generateShareLinkAction, revokeShareLinkAction } from '@/lib/actions/kosztorys-share'
 import { saveClientViewSettingsAction } from '@/lib/actions/kosztorys-client-view'
-import { sameClientViewSettings } from '@/lib/kosztorys/client-view-settings'
+import {
+  sameClientViewConfig,
+  sanitizeClientViewConfig,
+} from '@/lib/kosztorys/client-view-settings'
 import { FRONTEND_URL } from '@/lib/env'
 import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 import { toastMessage } from '@/lib/utils/toast'
@@ -33,6 +37,7 @@ export function KosztorysShareDialog() {
     setClientView: onSettingsChange,
   } = useKosztorysActions().investor
   const [confirmingRevoke, setConfirmingRevoke] = useState(false)
+  const { confirmModeChange, modeConfirmProps } = useClientViewModeConfirm(settings)
   const [pending, startTransition] = useTransition()
   // Every open starts at the settings, including when a link already exists — the point is that
   // nobody hands out a link without having just looked at what it discloses, which a first-run-only
@@ -47,18 +52,22 @@ export function KosztorysShareDialog() {
 
   const url = token ? `${FRONTEND_URL}/k/${token}` : ''
 
-  const saveAndContinue = () =>
+  const save = () =>
     startTransition(async () => {
       if (!draft) return
       // „Dalej" on an untouched step writes nothing. A saved row overrides the firm-wide default
       // forever after, so clicking through the review must not silently opt this investment out of
       // a default the owner may change later.
-      if (settings && sameClientViewSettings(draft, settings)) return setStep('link')
+      if (settings && sameClientViewConfig(draft, settings)) return setStep('link')
       const res = await saveClientViewSettingsAction(investmentId, draft)
       if (!res.success) return toastMessage(res.error, 'error')
-      onSettingsChange(draft)
+      onSettingsChange(sanitizeClientViewConfig(draft))
       setStep('link')
     })
+
+  const saveAndContinue = () => {
+    if (draft) confirmModeChange(draft, save)
+  }
 
   const generate = () =>
     startTransition(async () => {
@@ -155,6 +164,7 @@ export function KosztorysShareDialog() {
         onConfirm={revoke}
         onCancel={() => setConfirmingRevoke(false)}
       />
+      <ConfirmDialog {...modeConfirmProps} />
     </>
   )
 }

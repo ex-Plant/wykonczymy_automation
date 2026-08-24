@@ -1,9 +1,15 @@
+import { roundToCents } from '@/lib/utils/round-to-cents'
+
 // Bare pl-PL number with 2 decimals (no currency symbol) for dense grid cells and subtotals —
 // distinct from `formatPLN`, which emits "zł" and is too wide for the spreadsheet layout.
-// `n + 0` collapses JS's negative zero: a deduction row negates its amount for display, so an
-// investment with no wpłaty reached toLocaleString as -0 and rendered „-0,00".
+// Through `roundToCents` for its negative-zero collapse: a deduction row negates its amount, so no
+// wpłaty reached toLocaleString as -0, and a settlement that cancels out lands on -7e-12 rather than
+// on 0 — toLocaleString rounds that to „0,00" but keeps the sign, printing „-0,00".
 export const formatNet = (n: number) =>
-  (n + 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  roundToCents(n).toLocaleString('pl-PL', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 
 // A quantity as prose, not as a grid figure: no fixed decimals, because „95" reads as the whole
 // number the owner typed while `formatNet` would render it „95,00" and invite the reader to look for

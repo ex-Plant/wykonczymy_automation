@@ -236,10 +236,12 @@ describe('buildSheetComparison', () => {
     expect(built.ok === false && built.problems.join(' ')).toContain('Przedmiar')
   })
 
-  it('counts a reference quantity only where the sheet typed the Pomiar by hand', () => {
-    // Row 5's Pomiar is the formula `=N5`: a copied offer, not a measurement, so „Rozjazd" has
-    // nothing to say about that praca.
-    const formulas = BIALOSTOCKA_ROWS.map((_, index) => (index === 4 ? row({ O: '=N5' }) : []))
+  it('counts a reference quantity everywhere except where the Pomiar sums the etapy', () => {
+    // Row 5's Pomiar sums the etapy, so its value IS Σ etapów and „Rozjazd" has nothing to compare.
+    // Row 6's mirrors the Przedmiar — a claim the etapy can still contradict, so it counts.
+    const formulas = BIALOSTOCKA_ROWS.map((_, index) =>
+      index === 4 ? row({ O: '=SUM(D5:M5)' }) : index === 5 ? row({ O: '=N6' }) : [],
+    )
 
     expect(compare(source({ laborGridFormulas: formulas })).referenceQty).toEqual({
       matched: 3,

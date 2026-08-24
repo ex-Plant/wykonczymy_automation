@@ -7,6 +7,7 @@ import { SummaryMoneyHeaders } from '@/components/kosztorys/summary/grid/summary
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 import { summaryMoneyCols } from '@/components/kosztorys/summary/grid/summary-axis'
 import { SectionSharePie } from '@/components/kosztorys/summary/charts/section-share-pie'
+import { Description } from '@/components/ui/description'
 import { KosztorysProgressCounter } from '@/components/kosztorys/summary/charts/kosztorys-progress-counter'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
@@ -39,7 +40,7 @@ export function SummaryStagesTab({
   vatRate,
 }: PropsT) {
   const { doneNet, plannedNet } = useKosztorysEditorContext()
-  if (stages.length === 0) return null
+  if (stages.length === 0) return <Description withIcon={false}>Brak etapów.</Description>
   const cols = summaryMoneyCols(STAGES_AXIS)
 
   return (

@@ -359,3 +359,45 @@ describe('validateTransfer — netAmount (the netto expense type)', () => {
     expect(() => validateTransfer(args)).toThrow(/Kwota netto nie może przekraczać kwoty brutto/)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════
+// vatPlane
+// ═══════════════════════════════════════════════════════════════════════
+
+// A stray plane on a wydatek is not merely noise: `carriesNetAmount` reads the pair (type, plane),
+// and both settlement predicates bucket rows by it. The hook is the server-side authority, so the
+// rule sits next to the netAmount one it feeds.
+describe('validateTransfer — vatPlane', () => {
+  it('keeps the plane on a wpłata od inwestora', () => {
+    const data = { ...VALID_DATA.INVESTOR_DEPOSIT, vatPlane: 'GROSS', netAmount: 80 }
+    expect(validateTransfer(hookArgs(data)).vatPlane).toBe('GROSS')
+  })
+
+  it.each(['INVESTMENT_EXPENSE', 'COMPANY_FUNDING', 'OTHER_DEPOSIT', 'PAYOUT', 'LOSS'])(
+    'strips a plane smuggled onto %s',
+    (type) => {
+      const data = {
+        ...base,
+        type,
+        sourceRegister: 1,
+        investment: 1,
+        expenseCategory: 1,
+        worker: 1,
+      }
+      expect(validateTransfer(hookArgs({ ...data, vatPlane: 'GROSS' })).vatPlane).toBeNull()
+    },
+  )
+
+  // Through `resolved`, like every other rule here: a PATCH that carries no type must still be
+  // judged against the stored one, or an edit of one field would leave a stale plane in place.
+  it('strips a stored plane when a partial update names a non-deposit type', () => {
+    const args = hookArgs(
+      { description: 'edited' },
+      {
+        operation: 'update',
+        originalDoc: { ...VALID_DATA.INVESTMENT_EXPENSE, vatPlane: 'GROSS' },
+      },
+    )
+    expect(validateTransfer(args).vatPlane).toBeNull()
+  })
+})

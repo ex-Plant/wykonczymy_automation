@@ -21,10 +21,6 @@ export type SettlementRowT = {
   discount?: boolean
   bold?: boolean
   danger?: boolean | { net: boolean; gross: boolean }
-  // Renders as ONE centred cell across both money tracks — for a step that carries no VAT and so
-  // comes off both planes at the same złoty. Printing it twice reads as a netto/brutto pair that
-  // happens to match. No effect on a single-plane table.
-  span?: boolean
   // Links the label to the investment's filtered wpłaty list — the deposit rows only.
   linkToDeposits?: boolean
 }
@@ -82,7 +78,6 @@ export function SummaryTotalsTable({
           discount={row.discount}
           bold={row.bold}
           danger={row.danger}
-          span={row.span}
         />
       ))}
     </SummaryTable>

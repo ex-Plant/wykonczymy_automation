@@ -8,6 +8,7 @@ import type { InspectionFormValuesT } from '@/components/forms/inspection-form/i
 type DepositFormValuesT = {
   description: string
   amount: string
+  amountGross: string
   date: string
   type: string
   paymentMethod: string

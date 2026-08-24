@@ -52,10 +52,13 @@ W arkuszu kanonicznym `O` to `=SUM(D:M)` — suma etapów. Tutaj jest odwrotnie:
 o wykonaniu, a mimo to `S` (a przez to „wartość netto" 508 196 zł) liczy się właśnie z niego.
 Dlatego arkusz sam u siebie ma dwie różne liczby: 508 196 zł z Pomiaru i 466 819 zł z osi etapów.
 
-**Skutek dla importu:** import bierze Pomiar tylko wtedy, gdy jest wpisany z ręki
-(`sheet-import/parse-robocizna.ts`, `readMeasuredQty`), więc te 241 wierszy nie dostaje liczby
-odniesienia i kolumna „Rozjazd" jest na nich strukturalnie ślepa. Na 26 z nich (16 677 zł) arkusz
-liczy pracę jako wykonaną, choć etapy są puste albo niepełne.
+**Skutek dla importu — nieaktualny od 2026-08-20.** Import brał wtedy Pomiar wyłącznie wpisany
+z ręki, więc te 241 wierszy nie dostawało liczby odniesienia i kolumna „Rozjazd" była na nich
+strukturalnie ślepa. Na 26 z nich (16 677 zł) arkusz liczył pracę jako wykonaną, choć etapy były
+puste albo niepełne — to jest ta sama 16 677,70 zł, o którą rozjeżdżał się dogfooding.
+**Zamknięte:** reguła (`sheet-import/parse-labor-tab.ts`, `readMeasuredQty`) pomija dziś tylko
+komórkę, której formuła sięga do kolumn etapów, więc `=N#` wnosi swoją liczbę i te wiersze są
+widoczne w „Rozjazdzie" i w problemie „z pomiarem do rozpisania na etapy".
 
 ### 3. Ręczna arytmetyka w komórkach ilościowych — 2 wiersze
 
@@ -78,16 +81,17 @@ i nic się nie psuje, ale wpisanie rabatu w r372 po cichu zmieni dwie kolejne po
 1. **Formuła w `N` nie jest sygnałem ostrzegawczym, ale `=M#` już tak** — Przedmiar czytający kolumnę
    etapu daje ofertę zerową i wywraca „Pozostało". **Zrobione (2026-08-13):** raportowane w oknie
    „Porównaj z arkuszem".
-2. **`O = =N#` to inny przypadek niż `O = =SUM(D:M)`.** Oba są odrzucane tą samą regułą
-   („bierzemy tylko Pomiar wpisany z ręki"). Odrzucenie sumy etapów jest słuszne — porównanie sumy
-   etapów z sumą etapów zawsze da zero. **Rozstrzygnięte (2026-08-13):** `=N` też zostaje odrzucone,
-   ale nie po cichu — jest raportowane. Ta liczba nie jest pomiarem, tylko ofertą, więc pokazanie jej
-   jako „Rozjazd" zamieniłoby tę kolumnę w listę pracy niezrobionej, co jest zadaniem kolumny
-   „Pozostało"; raport mówi wprost, na ilu pozycjach „Rozjazd" z tego powodu milczy.
-   **Doprecyzowane (właściciel, 2026-08-14): sama liczba, bez listy wierszy do rozwinięcia.** Na
-   pustym arkuszu ofertowym to normalny stan każdego wiersza, więc lista zaprosiłaby do przeglądania
-   setek pozycji, z którymi nic nie jest nie tak. Pozostałe dwie klasy listy zachowują — tam wiersz
-   naprawdę jest do obejrzenia.
+2. **`O = =N#` to inny przypadek niż `O = =SUM(D:M)`** — i od 2026-08-20 traktowany inaczej.
+   Odrzucenie sumy etapów jest słuszne: porównanie sumy etapów z sumą etapów zawsze da zero.
+   `=N#` nie ma tej właściwości. **Rozstrzygnięte (2026-08-13):** oba odrzucone tą samą regułą,
+   `=N#` dodatkowo raportowane licznikiem. **Odwrócone (właściciel, 2026-08-20):** komórka, którą
+   właściciel wypełnił, jest pomiarem niezależnie od tego, co wyprodukowało liczbę, a szukamy
+   dokładnie rozjazdu między sumą etapów a pomiarem z natury. Import pomija więc wyłącznie formułę
+   sięgającą do kolumn etapów; `=N#` wnosi swoją wartość. Skala: ~750 pozycji w ~20 inwestycjach,
+   z czego 480 ma etapy całkiem puste. Argument „to zadanie kolumny »Pozostało«" upadł — „Pozostało"
+   kotwiczy się w Przedmiarze i nie mówi nic o tym, co arkusz uznał za zrobione.
+   Licznik z 2026-08-14 (sama liczba, bez listy wierszy) zostaje bez zmian — to raport o kształcie
+   formuł, nie o rozjeździe.
 3. **Wzorzec `S` i `AE` jest w tym arkuszu nienaruszony** — jeśli kiedyś przestanie być, ten skan to
    wychwyci; warto go powtórzyć na każdym nowym arkuszu klienta przed importem.
 

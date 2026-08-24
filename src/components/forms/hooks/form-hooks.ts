@@ -6,6 +6,7 @@ import { useStore } from '@tanstack/react-form'
 
 import { FormCheckbox } from '../form-components/form-checkbox'
 import { FormCombobox } from '../form-components/form-combobox'
+import { FormDatePicker } from '../form-components/form-date-picker'
 import { FormFileInput } from '../form-components/form-file-input'
 import { FormSelect } from '../form-components/form-select'
 import { FormTextarea } from '../form-components/form-textarea'
@@ -16,6 +17,7 @@ const { useAppForm, withForm } = createFormHook({
     Input: FormInput,
     Select: FormSelect,
     Combobox: FormCombobox,
+    DatePicker: FormDatePicker,
     Checkbox: FormCheckbox,
     Textarea: FormTextarea,
     FileInput: FormFileInput,

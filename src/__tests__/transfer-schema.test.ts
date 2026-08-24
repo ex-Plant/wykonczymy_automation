@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  createTransferSchema,
   createBulkExpenseSchema,
   bulkExpenseFormSchema,
-  expenseFormSchema,
-} from '@/components/forms/expense-form/expense-schema'
-import { validateLineItemCategories } from '@/lib/schemas/transfer'
+} from '@/components/forms/expense-form/bulk-expense-schema'
+import { transferFormSchema } from '@/lib/schemas/transfer-form'
+import { createTransferSchema, updateTransferSchema } from '@/lib/schemas/transfer'
+import { validateLineItemCategories } from '@/lib/schemas/transfer-validation'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
 
 describe('validateLineItemCategories — CORRECTION (investment-conditional)', () => {
@@ -236,12 +236,24 @@ describe('createTransferSchema — vatPlane', () => {
     expect(result.success).toBe(true)
   })
 
-  it('INVESTOR_DEPOSIT with vatPlane = GROSS → passes', () => {
+  // A wpłata przelewem carries the netto its faktura names beside the brutto that moved — nothing
+  // crosses VAT here, so the netto is read off the document rather than derived from a stawka.
+  it('INVESTOR_DEPOSIT with vatPlane = GROSS → passes when the faktura netto rides along', () => {
+    const result = createTransferSchema.safeParse({
+      ...VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT,
+      vatPlane: 'GROSS',
+      netAmount: 80,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('INVESTOR_DEPOSIT with vatPlane = GROSS and no netto → error on netAmount', () => {
     const result = createTransferSchema.safeParse({
       ...VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT,
       vatPlane: 'GROSS',
     })
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('netAmount')
   })
 
   it('INVESTOR_DEPOSIT with vatPlane = garbage → error on vatPlane', () => {
@@ -258,6 +270,23 @@ describe('createTransferSchema — vatPlane', () => {
       const result = createTransferSchema.safeParse(VALID_SERVER_PAYLOADS[type])
       expect(result.success, `${type} should not require vatPlane`).toBe(true)
     }
+  })
+})
+
+// A plane typed wrong is corrected the way every other immutable figure on a wpłata is: cancel the
+// row and book it again. An edit path would move the wpłata between the two sides of the
+// settlement after the fact, silently rewriting a bilans the client has already seen.
+describe('updateTransferSchema — the plane is not editable', () => {
+  const VALID_UPDATE = {
+    description: 'edited',
+    date: '2026-02-25',
+    paymentMethod: 'CASH' as const,
+  }
+
+  it('drops a vatPlane submitted with an edit', () => {
+    const result = updateTransferSchema.safeParse({ ...VALID_UPDATE, vatPlane: 'GROSS' })
+    expect(result.success).toBe(true)
+    expect(result.data).not.toHaveProperty('vatPlane')
   })
 })
 
@@ -381,24 +410,51 @@ describe('createBulkExpenseSchema — per-line-item category', () => {
 
 // ── 2c: Client Schema — Valid payloads ──────────────────────────────────
 
-describe('expenseFormSchema — valid payloads (string values)', () => {
+describe('transferFormSchema — valid payloads (string values)', () => {
   for (const [type, serverPayload] of Object.entries(VALID_SERVER_PAYLOADS)) {
     it(`${type} — passes`, () => {
-      const result = expenseFormSchema.safeParse(toClientPayload(serverPayload))
+      const result = transferFormSchema.safeParse(toClientPayload(serverPayload))
       expect(result.success).toBe(true)
     })
   }
 })
 
+// The netto/brutto kwota pair is an INVESTOR_DEPOSIT-only axis, but the plane is derived from the
+// payment method, which every deposit type offers. A „Zasilenie z konta firmowego" przelewem
+// therefore arrives tagged GROSS with only `amount` typed — the brutto field is never rendered for
+// it — and a plane-keyed branch would park the error on an input the user cannot see.
+
+describe('transferFormSchema — a non-investor deposit paid by przelew', () => {
+  const przelew = (type: string) => ({
+    ...toClientPayload({ ...base, type, sourceRegister: 1, paymentMethod: 'TRANSFER' }),
+    vatPlane: 'GROSS',
+    amountGross: '',
+  })
+
+  it.each(['OTHER_DEPOSIT', 'COMPANY_FUNDING'])('%s — passes on `amount` alone', (type) => {
+    const result = transferFormSchema.safeParse(przelew(type))
+    expect(result.success, JSON.stringify(errorPaths(result))).toBe(true)
+  })
+
+  it('INVESTOR_DEPOSIT — still owes both kwoty (control)', () => {
+    const result = transferFormSchema.safeParse({
+      ...przelew('INVESTOR_DEPOSIT'),
+      investment: '1',
+    })
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('amountGross')
+  })
+})
+
 // ── 2c: Client Schema — Missing required fields ────────────────────────
 
-describe('expenseFormSchema — missing required fields', () => {
+describe('transferFormSchema — missing required fields', () => {
   // A strata lowers the investor's bilans (EX-675), so the link is what tells it whose debt to
   // lower — an unlinked one would be a concession credited to nobody.
   it('LOSS without investment → error on investment', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.LOSS)
     payload.investment = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('investment')
   })
@@ -406,7 +462,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('INVESTOR_DEPOSIT without sourceRegister → error on sourceRegister', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT)
     payload.sourceRegister = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('sourceRegister')
   })
@@ -414,7 +470,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('INVESTOR_DEPOSIT without investment → error on investment', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT)
     payload.investment = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('investment')
   })
@@ -422,7 +478,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('REGISTER_TRANSFER without targetRegister → error on targetRegister', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.REGISTER_TRANSFER)
     payload.targetRegister = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('targetRegister')
   })
@@ -431,7 +487,7 @@ describe('expenseFormSchema — missing required fields', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.REGISTER_TRANSFER)
     payload.targetRegister = '1'
     payload.sourceRegister = '1'
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('targetRegister')
   })
@@ -439,7 +495,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('PAYOUT without sourceRegister → error on sourceRegister', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.PAYOUT)
     payload.sourceRegister = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('sourceRegister')
   })
@@ -447,14 +503,14 @@ describe('expenseFormSchema — missing required fields', () => {
   it('OTHER without otherCategory → passes (optional)', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.OTHER)
     payload.otherCategory = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(true)
   })
 
   it('amount empty → error on amount', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.COMPANY_FUNDING)
     payload.amount = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('amount')
   })
@@ -462,7 +518,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('amount = "0" → error on amount', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.COMPANY_FUNDING)
     payload.amount = '0'
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('amount')
   })
@@ -470,7 +526,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('amount = "-5" → error on amount', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.COMPANY_FUNDING)
     payload.amount = '-5'
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('amount')
   })
@@ -478,7 +534,7 @@ describe('expenseFormSchema — missing required fields', () => {
   it('date empty → error on date', () => {
     const payload = toClientPayload(VALID_SERVER_PAYLOADS.COMPANY_FUNDING)
     payload.date = ''
-    const result = expenseFormSchema.safeParse(payload)
+    const result = transferFormSchema.safeParse(payload)
     expect(result.success).toBe(false)
     expect(errorPaths(result)).toContain('date')
   })
@@ -553,7 +609,7 @@ describe('schema parity — valid payloads', () => {
   for (const [type, serverPayload] of Object.entries(VALID_SERVER_PAYLOADS)) {
     it(`${type} — both schemas pass`, () => {
       const serverResult = createTransferSchema.safeParse(serverPayload)
-      const clientResult = expenseFormSchema.safeParse(toClientPayload(serverPayload))
+      const clientResult = transferFormSchema.safeParse(toClientPayload(serverPayload))
       expect(serverResult.success).toBe(true)
       expect(clientResult.success).toBe(true)
     })

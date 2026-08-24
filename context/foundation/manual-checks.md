@@ -1407,3 +1407,43 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 ### Faza 5: Wymiecenie inwestycji 90
 
 - [ ] „Porównaj z arkuszem Google" pokazuje zerową różnicę, a siatka ma 373 wiersze, nie 456
+
+## kosztorys-client-view-offer-settlement-variants — warianty „Oferta / Rozliczenie"
+
+> Migracja weszła na 5433 i 5435 — dev server uruchomiony przed nią serwuje `column does not exist`
+> mimo poprawnej bazy. Zrestartuj go przed pierwszym kliknięciem.
+
+- [ ] W `/admin` wiersz „Ustawienia podglądu inwestora" pokazuje pole trybu z etykietami „Oferta" / „Rozliczenie"
+- [ ] Przełączenie „Oferta ⟷ Rozliczenie" w oknie ustawień zmienia zestaw ticków i nic nie zapisuje do kliknięcia zapisu; kolumny odklikane w ofercie są nietknięte po powrocie
+- [ ] Zapis po zmianie wariantu podnosi okienko „Uwaga — zmiana widoczna dla inwestora!" (jak przy zmianie rozliczenia materiałów); „Anuluj" nic nie zapisuje, a zapis bez zmiany wariantu nie pyta o nic; etykieta przycisku nazywa wariant, który zobaczy inwestor
+- [ ] Link `/k/<token>` w trybie `OFFER` pokazuje kolumny ofertowe; po przestawieniu na `SETTLEMENT` ten sam link pokazuje kolumny rozliczeniowe
+- [ ] „Zapisz jako domyślne" na wariancie ofertowym nie rusza domyślnych rozliczenia (sprawdzalne przez drugą inwestycję bez własnego wiersza)
+- [ ] Okno „Udostępnij" ma ten sam przełącznik i to samo okienko potwierdzenia na „Dalej"; „Dalej" bez żadnej zmiany nie tworzy wiersza dla inwestycji, która go nie miała
+
+## sheet-measured-qty-from-formula — „Pomiar z natury" z formuły
+
+### Faza 2: Zawężenie reguły odczytu
+
+- [ ] „Porównaj z arkuszem…" na inwestycji 65 raportuje prace, których Pomiar był wcześniej odrzucany, a menu „Problemy" pokazuje niezerowe „z pomiarem do rozpisania na etapy"
+- [ ] Na inwestycji, której arkusz jest pustą ofertą (pomiar = suma etapów w każdym wierszu), licznik dalej wynosi 0
+- [ ] Ponowne otwarcie tego samego okna raportuje „już zgodne" — nic nie zostaje przepisane
+- [ ] Podgląd inwestora nie ma kolumny „Rozjazd" ani menu „Problemy"
+
+### Faza 3: Komentarze i zapis
+
+- [ ] Żaden z dwóch dokumentów referencyjnych nie twierdzi już, że kolumna „Rozjazd" jest ślepa na `=N#`
+
+## mixed-settlement-both-planes — wpłaty na obu planach, jeden bilans na tryb
+
+Setup: baza testowa 5435 (`DB_POSTGRES_URL_TEST`) z rozpisanym kosztorysem
+(`pnpm db:import:test` + `pnpm seed:kosztorys:test`), zalogowany jako OWNER. Potrzebna inwestycja
+z zaksięgowanymi wpłatami od inwestora **obu form** (gotówka i przelew) oraz możliwość przestawienia
+jej trybu rozliczenia.
+
+- [ ] Na `/inwestycje` bilans v2 inwestycji z wpłatami równa się „Pozostało do zapłaty" z panelu Podsumowania tej samej inwestycji, ze znakiem przeciwnym
+- [ ] Inwestycja rozliczana netto pokazuje „nie dotyczy" w kolumnie bilansu brutto i odwrotnie; mieszana pokazuje netto
+- [ ] Dialog edycji wpłaty nie ma pola formy wpłaty i zapis edycji nie zmienia tagu
+- [ ] W panelu admina pole „Rozliczenie netto/brutto" na zaksięgowanej wpłacie jest tylko do odczytu
+- [ ] Zaksięgowanie wydatku (nie wpłaty) zostawia tag pusty, także po edycji
+- [ ] Kolumna na `/transfery` mówi „Forma wpłaty" i pokazuje „Gotówka" / „Przelew"
+- [ ] Formularz wpłaty gotówką ma jedno pole kwoty bez słowa „netto" w etykiecie

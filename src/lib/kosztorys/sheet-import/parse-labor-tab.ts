@@ -6,6 +6,7 @@ import type {
   StageProgressT,
 } from '@/lib/kosztorys/types'
 import { fold, HEADER_BLOCK_ROWS, isFooterLabel } from './columns'
+import { referencesAnyColumn } from './formula-refs'
 import { round6 } from '@/lib/utils/round'
 import type { ResolvedLaborColumnsT } from './resolve-columns'
 
@@ -60,18 +61,22 @@ function findFooterStart(grid: unknown[][], columns: ResolvedLaborColumnsT['colu
   return -1
 }
 
-// „Pomiar z natury" only means something when the owner TYPED it. On the blank offer sheet the
-// column is `=SUM(D:M)` in every row, so importing its value would store Σ etapów and later compare
-// it against Σ etapów — a reconciliation that can never fire. `number()` is deliberately not used:
-// its `|| 0` would turn an empty cell into a measurement of zero, flagging every row nobody has
+// „Pomiar z natury" means nothing only when the sheet computed it FROM the etapy: on the blank offer
+// sheet that column sums them in every row, so importing its value would store Σ etapów and later
+// compare it against Σ etapów — a reconciliation that can never fire. Any other formula is left
+// alone. The owner writes the pomiar as `=N{row}` — a copy of the Przedmiar — far more often than
+// by hand, and that number IS their claim about what was measured; refusing it made the rozjazd
+// structurally blind on most of the sheets we import. `number()` is deliberately not used: its
+// `|| 0` would turn an empty cell into a measurement of zero, flagging every row nobody has
 // measured yet.
 function readMeasuredQty(
   row: unknown[],
   formulaRow: unknown[],
   column: number | undefined,
+  readsStages: (formula: unknown) => boolean,
 ): number | null {
   if (column === undefined) return null
-  if (typeof formulaRow[column] === 'string' && formulaRow[column].startsWith('=')) return null
+  if (readsStages(formulaRow[column])) return null
   const cell = row[column]
   if (cell == null) return null
   if (typeof cell === 'string' && cell.trim() === '') return null
@@ -97,6 +102,12 @@ export function parseLaborTab(
   let nextSectionId = 1
   let nextItemId = 1
   let skippedBeforeFirstSection = 0
+
+  // Built from the resolved run, never from a literal „D:M": the narrow layouts put the etapy
+  // somewhere else entirely, and a hardcoded range would read their Przedmiar as an etap.
+  const readsStages = referencesAnyColumn(
+    Array.from({ length: stageColumns.count }, (_, index) => stageColumns.firstColumn + index),
+  )
 
   const footerStart = findFooterStart(grid, columns)
   const lastRow = footerStart < 0 ? grid.length : footerStart
@@ -152,7 +163,12 @@ export function parseLaborTab(
       discountType: discountFraction > 0 ? 'percent' : null,
       discountValue: discountFraction > 0 ? discountPercent : 0,
       clientPrice: number(row[columns.clientPrice]),
-      sheetMeasuredQty: readMeasuredQty(row, formulas[rowIndex] ?? [], columns.measuredQty),
+      sheetMeasuredQty: readMeasuredQty(
+        row,
+        formulas[rowIndex] ?? [],
+        columns.measuredQty,
+        readsStages,
+      ),
       note: null,
     })
 

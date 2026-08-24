@@ -32,8 +32,8 @@ error from a stale code comment.** `src/lib/db/kosztorys-tree.ts:16-22` states t
 with the NUMBER of reads, not their size. So the lever is the count, and the floor is one (EX-597)."
 EX-597's own record **retires that theory**
 (`context/archive/2026-07-27-decouple-panel-write-refresh/change.md:214-218`): the parallel reads
-measured 20/21/21/21/44 ms for a 45 ms total — *"total equals the slowest read, not their sum.
-Collapsing them into one query could never win, and measured, it doesn't."* The comment was never
+measured 20/21/21/21/44 ms for a 45 ms total — _"total equals the slowest read, not their sum.
+Collapsing them into one query could never win, and measured, it doesn't."_ The comment was never
 updated, and at least one later slice cites it verbatim as fact
 (`context/archive/2026-08-12-ex-555-write-switch-labor-rabat/research.md:170-172`).
 
@@ -44,16 +44,16 @@ that will keep producing wrong decisions until fixed.
 
 The findings, ranked by what they're actually worth:
 
-| # | Finding | Real basis | Verdict |
-|---|---|---|---|
-| 1 | `payoutsByWorker` is a `GROUP BY` over the rows `payoutTransactions` already returns | **correctness** — the Σ and its rows are two independent reads that can desync; exact EX-680 shape | fix |
-| 2 | `SummaryExpensesTab` receives the materials aggregate and its row list from two different queries | **correctness** — the surviving instance of the EX-680 pattern | fix (rides along) |
-| 3 | `requireInvestmentOr404` on `kosztorys_v2` is a `findByID` for a name `refData` already carries | code shape; violates its own docstring | fix |
-| 4 | An `EMPLOYEE` reaching `/kosztorys_v2` races a throw against a redirect | **latent bug**, surfaced by #3 | fix with #3 |
-| 5 | Seven `unstable_cache` calls nested inside `cachedPreviewKosztorysEditorData` | documented trap (`lessons.md:1443`); inner caches are dead | fix or document |
-| 6 | Three stale/duplicated comments that are actively misleading planning | doc rot with a proven blast radius | fix |
-| 7 | Legacy `/kosztorys` serializes the sheet lookup behind the guard | one serial round trip, genuinely serial | fix (cheap) |
-| 8 | `fetchExpenseCategories` re-reads a table `refData` already loaded | duplicate SQL | **do not fix** — PII boundary is real |
+| #   | Finding                                                                                           | Real basis                                                                                         | Verdict                               |
+| --- | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 1   | `payoutsByWorker` is a `GROUP BY` over the rows `payoutTransactions` already returns              | **correctness** — the Σ and its rows are two independent reads that can desync; exact EX-680 shape | fix                                   |
+| 2   | `SummaryExpensesTab` receives the materials aggregate and its row list from two different queries | **correctness** — the surviving instance of the EX-680 pattern                                     | fix (rides along)                     |
+| 3   | `requireInvestmentOr404` on `kosztorys_v2` is a `findByID` for a name `refData` already carries   | code shape; violates its own docstring                                                             | fix                                   |
+| 4   | An `EMPLOYEE` reaching `/kosztorys_v2` races a throw against a redirect                           | **latent bug**, surfaced by #3                                                                     | fix with #3                           |
+| 5   | Seven `unstable_cache` calls nested inside `cachedPreviewKosztorysEditorData`                     | documented trap (`lessons.md:1443`); inner caches are dead                                         | fix or document                       |
+| 6   | Three stale/duplicated comments that are actively misleading planning                             | doc rot with a proven blast radius                                                                 | fix                                   |
+| 7   | Legacy `/kosztorys` serializes the sheet lookup behind the guard                                  | one serial round trip, genuinely serial                                                            | fix (cheap)                           |
+| 8   | `fetchExpenseCategories` re-reads a table `refData` already loaded                                | duplicate SQL                                                                                      | **do not fix** — PII boundary is real |
 
 ## Detailed Findings
 
@@ -62,6 +62,7 @@ The findings, ranked by what they're actually worth:
 The two queries are character-for-character the same filter:
 
 `src/lib/db/sum-transfers.ts:358-366`
+
 ```sql
 SELECT worker_id, COALESCE(SUM(amount), 0) AS total
 FROM transactions
@@ -70,6 +71,7 @@ GROUP BY worker_id
 ```
 
 `src/lib/db/sum-transfers.ts:391-398`
+
 ```sql
 SELECT worker_id, date, amount, description
 FROM transactions
@@ -95,20 +97,20 @@ pure `map` that never filters, sums or reorders — it accepts a derived array u
 values can drift ~1e-13. It cannot reach a cent, and every sign-sensitive comparison downstream is
 already `roundToCents`-guarded (`subcontractor-summary.ts:112`, `:131`,
 `subcontractor-worker-totals.tsx:70-72`) — the comment at `subcontractor-summary.ts:107-111` says
-this guard exists *precisely because* `paid` is a raw Postgres SUM and `due` is a float product.
+this guard exists _precisely because_ `paid` is a raw Postgres SUM and `due` is a float product.
 
 **Why it matters, and it isn't perf:** these are two independent `unstable_cache` entries
 (`investment-transactions.ts:34` and `:48`), so a transfer mutation landing between them can hand the
 panel a Σ that disagrees with the rows printed underneath it. That is exactly what EX-680 deleted for
-wpłaty three days ago — `195f564f`, *"the total and the list could disagree, and on the share they
-did"* — and the type contract already encodes the rule for deposits
-(`src/lib/kosztorys/types.ts:171-174`: *"Required: the wpłaty TOTAL is summed from these rows"*).
+wpłaty three days ago — `195f564f`, _"the total and the list could disagree, and on the share they
+did"_ — and the type contract already encodes the rule for deposits
+(`src/lib/kosztorys/types.ts:171-174`: _"Required: the wpłaty TOTAL is summed from these rows"_).
 
 **History:** the split was never a decision. The slice scoped the sum only
 (`context/archive/2026-07-21-podsumowanie-podwykonawcow/change.md:116`); the owner asked for the raw
 list mid-slice (`:66-72`), it shipped as a second commit the same day (`7a88f088` → `23fade5f`), and
 nobody revisited whether the sum could come from the list. The only recorded rationale is
-`investment-transactions.ts:38` — *"Same cache contract as the per-worker sum above"*.
+`investment-transactions.ts:38` — _"Same cache contract as the per-worker sum above"_.
 
 **Shape of the fix (per `lessons.md:1128`):** delete `payoutsByWorker` from `KosztorysEditorDataT`
 rather than picking a winner, and derive inside `SubcontractorSummary` from `payoutTransactions`.
@@ -137,7 +139,7 @@ one page would leave the other half looking deliberate.
 
 `depositTransactions` is clean by contrast: `bucketDepositsByPlane(depositTransactions)` returns the
 total and the rows from one source (`summary-panel-content.tsx:199-205`, `deposit-planes.ts:6-9`).
-`SubcontractorSummary` is *not* an instance — `subcontractorDue` is genuinely the kosztorys plane
+`SubcontractorSummary` is _not_ an instance — `subcontractorDue` is genuinely the kosztorys plane
 against the transactions plane, and `subcontractor-summary.ts:79-81` states the headline is
 deliberately not Σ rows.
 
@@ -146,28 +148,28 @@ deliberately not Σ rows.
 `page.tsx:46` costs one `payload.findByID` (`investments.ts:81-99`, `overrideAccess: true`,
 `unstable_cache` keyed `['investment', id]`). It returns three things:
 
-| what | already available |
-|---|---|
-| `investment.name` | `refData.investments` — `page.tsx:80` already reaches into that array for `hasSheet` |
+| what                                           | already available                                                                                                                                        |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `investment.name`                              | `refData.investments` — `page.tsx:80` already reaches into that array for `hasSheet`                                                                     |
 | `user.role` (for the `financials` gate, `:91`) | `requireAuth(MANAGEMENT_ROLES)` — a `cache()`d JWT decode (`get-current-user-jwt.ts:31`), no DB; `getKosztorysTree` already calls it (`kosztorys.ts:17`) |
-| existence → `notFound()` | `refData.investments.find(...)` — the query is unfiltered (`reference-data.ts:62-70`), so any existing investment is in it |
+| existence → `notFound()`                       | `refData.investments.find(...)` — the query is unfiltered (`reference-data.ts:62-70`), so any existing investment is in it                               |
 
 The `investments` collection has **no relationship fields**, so the `findByID` is a single-table read
 — cheap in SQL, but still a cache entry and a round trip.
 
-Its own docstring forbids this exact use (`investments.ts:47-49`): *"Pages that already hold the
+Its own docstring forbids this exact use (`investments.ts:47-49`): _"Pages that already hold the
 investment from another fetch (e.g. the detail page's refData) don't use this — it would double the
-load."* `inwestycje/[id]/page.tsx:49-57` follows it; this page doesn't.
+load."_ `inwestycje/[id]/page.tsx:49-57` follows it; this page doesn't.
 
 **The redundancy was introduced, not inherited.** `9dbe3b11` (2026-07-17, EX-445) added the guard to a
-page that then had *no* `fetchReferenceData` — it replaced a hand-rolled `getInvestment` + `notFound()`
+page that then had _no_ `fetchReferenceData` — it replaced a hand-rolled `getInvestment` + `notFound()`
 and was not redundant. `3889c48b` (2026-07-19, "per-category Materiały breakdown") added
 `fetchReferenceData` two days later and nobody noticed the guard had become a duplicate read.
-`3fc35958` (2026-07-21, EX-554) then folded the guard *into* the `Promise.all` "so its latency
+`3fc35958` (2026-07-21, EX-554) then folded the guard _into_ the `Promise.all` "so its latency
 overlaps the group rather than gating it" — which is why it has stayed invisible ever since.
 
 **Precedent is three days old:** `dca9e111` (2026-08-19) made `hasSheet` ride `refData.investments`
-— *"no second trip for one boolean"*. The same array carries the name. EX-608 already made this exact
+— _"no second trip for one boolean"_. The same array carries the name. EX-608 already made this exact
 argument for the crumb (`investments.ts:65-72`,
 `context/changes/2026-08-18-linear-done-audit/done-issues-audit.md:585-589`) and left the page guard
 on the same route still paying for it.
@@ -188,7 +190,7 @@ does less work before throwing, so an `EMPLOYEE` most likely lands on `src/app/(
 rather than the login page — and `lessons.md:1336` records that a render throw in a streamed RSC page
 still answers **200**, so nothing external would flag it.
 
-Removing #3 makes the outcome deterministic *in the wrong direction* (always the throw). The fix has
+Removing #3 makes the outcome deterministic _in the wrong direction_ (always the throw). The fix has
 to be explicit: call `requireAuth(MANAGEMENT_ROLES)` on the page and `redirect('/zaloguj')` before the
 fan-out, matching `inwestycje/[id]/page.tsx:29-31`. This is why #3 is not a pure deletion.
 
@@ -197,19 +199,19 @@ fan-out, matching `inwestycje/[id]/page.tsx:29-31`. This is why #3 is not a pure
 `cachedPreviewKosztorysEditorData` (`preview-kosztorys.ts:94-98`) wraps
 `buildPreviewKosztorysEditorData`, whose body calls seven already-cached fetchers:
 
-| inner cached call | reached at |
-|---|---|
-| `fetchFilteredByType` | `preview-kosztorys.ts:62` |
-| `fetchCategoryBreakdowns` | `:62` |
-| `fetchExpenseCategories` | `:63` |
-| `findTransfersRaw` | `:64` → `investment-transactions.ts:84` |
+| inner cached call                                           | reached at                              |
+| ----------------------------------------------------------- | --------------------------------------- |
+| `fetchFilteredByType`                                       | `preview-kosztorys.ts:62`               |
+| `fetchCategoryBreakdowns`                                   | `:62`                                   |
+| `fetchExpenseCategories`                                    | `:63`                                   |
+| `findTransfersRaw`                                          | `:64` → `investment-transactions.ts:84` |
 | `fetchExpenseCategories` (second nesting of the same entry) | `:64` → `investment-transactions.ts:94` |
-| `fetchAllMedia` | `:64` → `investment-transactions.ts:97` |
-| `fetchDepositTransactionsForInvestment` | `:65` |
+| `fetchAllMedia`                                             | `:64` → `investment-transactions.ts:97` |
+| `fetchDepositTransactionsForInvestment`                     | `:65`                                   |
 
-`lessons.md:1443-1445`: *"an `unstable_cache` nested inside another bypasses the cache entirely — the
-inner call just runs."* So on the share path those seven caches are dead weight: an outer miss runs
-every query raw. `buildKosztorysTree` is the one nested call that is *correctly* uncached — that is
+`lessons.md:1443-1445`: _"an `unstable_cache` nested inside another bypasses the cache entirely — the
+inner call just runs."_ So on the share path those seven caches are dead weight: an outer miss runs
+every query raw. `buildKosztorysTree` is the one nested call that is _correctly_ uncached — that is
 what the guard/body split at `kosztorys.ts:23-26` exists for.
 
 Two adjacent observations on the same wrapper: its key is `['preview-kosztorys-editor-data']` with **no
@@ -217,7 +219,7 @@ investment id and no version suffix**, while it is a shape-sensitive payload an 
 renders directly — `lessons.md:1010` and `reference-data.ts:148-151` both say a shape change needs a
 key bump because a tag only marks an entry stale and it still serves the old payload once.
 
-This is the largest *mechanical* finding in the sweep, and it is not on `kosztorys_v2` at all.
+This is the largest _mechanical_ finding in the sweep, and it is not on `kosztorys_v2` at all.
 
 ### 6. Three comments that are actively producing wrong decisions
 
@@ -304,7 +306,7 @@ stand on correctness and code shape alone.
   `depositTransactions` contract both encode "derive the figure from the rows"; nothing in the record
   supports "fetch fewer things". Findings 1 and 2 are the remaining violations of the rule that exists.
 - **A guarded/unguarded function pair is the seam that lets a share path exist** (`kosztorys.ts:23-26`).
-  Anything moved *into* `buildKosztorysTree` becomes unauthenticated-reachable, and `requireAuth`
+  Anything moved _into_ `buildKosztorysTree` becomes unauthenticated-reachable, and `requireAuth`
   reads cookies so it can never move inside an `unstable_cache` callback
   (`preview-kosztorys.ts:92-93`). That bounds every restructuring option here.
 - **Auth failure mode is not standardized**: DAL guards throw, page guards redirect, `getInvestmentName`

@@ -4,6 +4,8 @@ import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import { isAdminOrOwnerRole, type RoleT } from '@/lib/auth/roles'
+import { axisShows } from '@/lib/kosztorys/money-axis'
+import { settlementModeToMoneyAxis } from '@/lib/kosztorys/settlement-mode'
 import type { InvestmentRowT } from '@/types/table-rows'
 import { INVESTMENT_HEADER_TIPS } from '@/components/tables/investments-header-tips'
 import { BalanceCell } from '@/components/ui/balance-cell'
@@ -38,6 +40,27 @@ function NoKosztorysData() {
   return <span className="text-muted-foreground text-xs">brak danych</span>
 }
 
+// The tryb decides which bilans EXISTS — one column per investment, never two (owner, 2026-08-23).
+// The other one isn't merely uninteresting, it is unbuilt: since nothing is derived at VAT, a bilans
+// brutto on an investment settled netto deducts only the przelewy and silently drops every wpłata
+// gotówka. The same projection the Podsumowanie panel reads, so the listing can never print a kwota
+// the panel refuses to show.
+function NotApplicable() {
+  return <span className="text-muted-foreground text-xs">nie dotyczy</span>
+}
+
+function settlesOn(row: InvestmentRowT, plane: 'net' | 'gross'): boolean {
+  return axisShows(settlementModeToMoneyAxis(row.settlementMode))[plane]
+}
+
+// Withheld cells sort last instead of by the figure behind them. The balance is computed for every
+// row whether or not the tryb builds it, so a „nie dotyczy" would otherwise sort on a number the
+// column refuses to print — same reason `marginV2` carries `sortUndefined` below.
+const balanceOrUndefined = (plane: 'net' | 'gross') => (row: InvestmentRowT) =>
+  settlesOn(row, plane) && hasKosztorysReading(row)
+    ? row[plane === 'net' ? 'balance' : 'balanceGross']
+    : undefined
+
 type InvestmentColumnOptionsT = {
   userRole: RoleT
 }
@@ -51,6 +74,20 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { canHide: false, minWidth: 'min-w-56' },
     }),
 
+    col.accessor('hasSheet', {
+      id: 'hasSheet',
+      header: 'Kosztorys',
+      enableSorting: true,
+      cell: (info) => (
+        <SheetButton investmentId={info.row.original.id} hasSheet={!!info.getValue()} />
+      ),
+    }),
+    col.display({
+      id: 'kosztorysV2',
+      header: 'Kosztorys_v2',
+      cell: (info) => <OpenKosztorysV2Button investmentId={info.row.original.id} label="Otwórz" />,
+    }),
+
     // Every figure that exists on two planes is shown on BOTH, v1 beside v2: nothing here infers
     // which plane an investment „really" belongs to, because while investments are still being moved
     // off the spreadsheets one legitimately carries figures on both. Hide what you are not comparing
@@ -61,28 +98,28 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceFromTransactions },
       cell: (info) => <BalanceCell value={info.getValue()} />,
     }),
-    col.accessor('balance', {
+    col.accessor(balanceOrUndefined('net'), {
       id: 'balance',
+      sortUndefined: 'last',
       header: 'Bilans netto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balance },
-      cell: (info) =>
-        hasKosztorysReading(info.row.original) ? (
-          <BalanceCell value={info.getValue()} />
-        ) : (
-          <NoKosztorysData />
-        ),
+      cell: (info) => {
+        if (!settlesOn(info.row.original, 'net')) return <NotApplicable />
+        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
+        return <BalanceCell value={info.row.original.balance} />
+      },
     }),
     // No v1 twin: brutto has only ever been computed on the plane its netto came from.
-    col.accessor('balanceGross', {
+    col.accessor(balanceOrUndefined('gross'), {
       id: 'balanceGross',
+      sortUndefined: 'last',
       header: 'Bilans brutto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceGross },
-      cell: (info) =>
-        hasKosztorysReading(info.row.original) ? (
-          <BalanceCell value={info.getValue()} />
-        ) : (
-          <NoKosztorysData />
-        ),
+      cell: (info) => {
+        if (!settlesOn(info.row.original, 'gross')) return <NotApplicable />
+        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
+        return <BalanceCell value={info.row.original.balanceGross} />
+      },
     }),
     ...(isAdminOrOwner
       ? [
@@ -208,19 +245,6 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { align: 'right' },
       enableSorting: true,
       cell: (info) => <InvestmentStatusBadge status={info.getValue()} />,
-    }),
-    col.accessor('hasSheet', {
-      id: 'hasSheet',
-      header: 'Kosztorys',
-      enableSorting: true,
-      cell: (info) => (
-        <SheetButton investmentId={info.row.original.id} hasSheet={!!info.getValue()} />
-      ),
-    }),
-    col.display({
-      id: 'kosztorysV2',
-      header: 'Kosztorys_v2',
-      cell: (info) => <OpenKosztorysV2Button investmentId={info.row.original.id} label="Otwórz" />,
     }),
     col.display({
       id: 'actions',

@@ -1,17 +1,14 @@
 'use client'
 
-import { faceValue, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
+import type { MoneyPairT } from '@/lib/kosztorys/summary-economics'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import { SummaryHeaderCell, SummaryTable } from '@/components/ui/summary-grid'
 import { SummaryMoneyHeaders } from '@/components/kosztorys/summary/grid/summary-money-headers'
 import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 
 // The sheet's Podsumowanie split: „Robocizna" pre-rabat, „Rabat" taking it down to the executed
-// value, „Materiały" as the single figure the investor is billed, then „Łącznie". Every row is a term
-// of Łącznie, so the reader can add the columns down.
-//
-// Materiały spans both money tracks as ONE centred cell: it is a single amount that enters both axes
-// unchanged, and printing it twice would read as a netto/brutto pair that happens to match.
+// value, „Materiały", then „Łącznie". Every row is a term of Łącznie, so the reader can add the
+// columns down.
 export function SummaryBreakdownTable({
   cols,
   moneyAxis,
@@ -19,7 +16,7 @@ export function SummaryBreakdownTable({
   laborCostsMismatch,
   discount,
   discountMismatch,
-  materialsBilled,
+  materialsPair,
   combined,
 }: {
   cols: string
@@ -30,8 +27,8 @@ export function SummaryBreakdownTable({
   // directly under Robocizna because that is the figure it reduces.
   discount?: MoneyPairT
   discountMismatch?: string
-  // What the investor is billed for materiały — one figure, on the plane they settle. 0 hides the row.
-  materialsBilled: number
+  // What the investor is billed for materiały, on both planes. 0 on both hides the row.
+  materialsPair: MoneyPairT
   // Robocizna po rabacie + materiały, on both axes.
   combined: MoneyPairT
 }) {
@@ -56,8 +53,8 @@ export function SummaryBreakdownTable({
           discount
         />
       )}
-      {materialsBilled !== 0 && (
-        <SummaryRow label="Materiały" line={faceValue(materialsBilled)} axis={moneyAxis} span />
+      {materialsPair.gross !== 0 && (
+        <SummaryRow label="Materiały" line={materialsPair} axis={moneyAxis} />
       )}
       <SummaryRow label="Łącznie" line={combined} axis={moneyAxis} emphasize />
     </SummaryTable>
