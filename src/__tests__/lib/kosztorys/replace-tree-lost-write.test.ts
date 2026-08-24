@@ -34,8 +34,10 @@ vi.mock('@/lib/kosztorys/serialize-kosztorys', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/kosztorys/serialize-kosztorys')>()
   return {
     ...actual,
-    serializeKosztorys: async (investmentId: number) => {
-      const tree = await actual.serializeKosztorys(investmentId)
+    // Forwards every argument: the replacement passes its transaction-scoped `req`, and a mock that
+    // dropped it would quietly move the read back onto its own connection — testing the wrong thing.
+    serializeKosztorys: async (...args: Parameters<typeof actual.serializeKosztorys>) => {
+      const tree = await actual.serializeKosztorys(...args)
       await onSnapshotRead?.()
       return tree
     },

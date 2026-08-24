@@ -111,7 +111,10 @@ async function attemptReplacement(
       // superseded — and `current.settings` below would then write that stale config back.
       await lockInvestmentForReplace(db, investmentId)
 
-      const current = await serializeKosztorys(investmentId)
+      // On `req`, so the read joins the transaction below and shares its snapshot: „przed" then
+      // describes exactly the tree the wipe is about to delete, not whatever a second connection
+      // happened to see.
+      const current = await serializeKosztorys(investmentId, req)
       await insertSnapshot(db, {
         investmentId,
         kind: 'manual',
@@ -132,7 +135,10 @@ async function attemptReplacement(
     // can no longer describe two different trees (EX-718). Under READ COMMITTED an autosave from
     // another tab committing between them was deleted by the wipe and absent from the snapshot —
     // lost with no way back, on the one path that exists to undo an import or „Wyczyść kosztorys".
-    // The lock above cannot cover that writer: an ordinary edit never touches the investment row.
+    // The lock above cannot cover that writer: an UPDATE never touches the investment row. An INSERT
+    // does — its FK check takes FOR KEY SHARE on it and waits out the lock — so a concurrent insert
+    // lands AFTER the replacement, which is a legal order and not a lost write (its section may by
+    // then be gone, and the insert simply fails).
     // Now the same interleaving aborts the replacement instead, which is recoverable — the owner
     // retries and the second attempt snapshots the tree that actually exists.
     { isolationLevel: 'repeatable read' },
