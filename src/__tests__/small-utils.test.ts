@@ -7,31 +7,36 @@ import { refineAmount, refineDate } from '@/lib/utils/validation'
 // ── parseDateRange ───────────────────────────────────────────────────────
 
 describe('parseDateRange', () => {
-  it('returns range when both from and to present', () => {
+  it('keeps both bounds when both are given', () => {
     expect(parseDateRange({ from: '2024-01-01', to: '2024-01-31' })).toEqual({
       from: '2024-01-01',
       to: '2024-01-31',
     })
   })
 
-  it('returns undefined when only from present', () => {
-    expect(parseDateRange({ from: '2024-01-01' })).toBeUndefined()
+  // One bound is a filter in its own right — „everything since January" — so it must not collapse
+  // into no filter at all.
+  it('leaves the far end open when only one bound is given', () => {
+    expect(parseDateRange({ from: '2024-01-01' })).toEqual({ from: '2024-01-01', to: undefined })
+    expect(parseDateRange({ to: '2024-01-31' })).toEqual({ from: undefined, to: '2024-01-31' })
   })
 
-  it('returns undefined when only to present', () => {
-    expect(parseDateRange({ to: '2024-01-31' })).toBeUndefined()
+  it('is an empty window when neither is present', () => {
+    expect(parseDateRange({})).toEqual({ from: undefined, to: undefined })
   })
 
-  it('returns undefined when neither present', () => {
-    expect(parseDateRange({})).toBeUndefined()
+  it('drops a bound that arrived repeated', () => {
+    expect(parseDateRange({ from: ['2024-01-01'], to: '2024-01-31' })).toEqual({
+      from: undefined,
+      to: '2024-01-31',
+    })
   })
 
-  it('ignores array values', () => {
-    expect(parseDateRange({ from: ['2024-01-01'], to: '2024-01-31' })).toBeUndefined()
-  })
-
-  it('ignores empty string from', () => {
-    expect(parseDateRange({ from: '', to: '2024-01-31' })).toBeUndefined()
+  it('treats an empty string as no bound', () => {
+    expect(parseDateRange({ from: '', to: '2024-01-31' })).toEqual({
+      from: undefined,
+      to: '2024-01-31',
+    })
   })
 })
 

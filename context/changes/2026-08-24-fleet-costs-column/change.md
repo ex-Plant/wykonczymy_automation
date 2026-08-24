@@ -1,7 +1,7 @@
 ---
 change_id: fleet-costs-column
 title: Kolumna poniesionych kosztów na liście floty + filtr daty
-status: implementing
+status: implemented
 created: 2026-08-24
 updated: 2026-08-24
 archived_at: null

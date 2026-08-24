@@ -489,13 +489,20 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 3.1 Nowe przypadki `toRow` (suma z wielu przeglądów, pojazd bez przeglądów → 0) na fixturze z realną kwotą
-- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/fleet.test.ts`
+- [x] 3.1 Nowe przypadki `toRow` (suma z wielu przeglądów, pojazd bez przeglądów → 0) na fixturze z realną kwotą — e87c0ded
+- [x] 3.2 `pnpm exec vitest run src/__tests__/lib/queries/fleet.test.ts` — e87c0ded
 
 ### Phase 4: Filtr zakresu dat
 
 #### Automated
 
-- [ ] 4.1 Spec parsera zakresu: sam `from`, sam `to`, oba, żaden
-- [ ] 4.2 Spec `sumCosts` z zakresem: na `from`, na `to`, dzień przed, dzień po
-- [ ] 4.3 Specy transferów zielone po przejściu na wspólny hook
+- [x] 4.1 Spec parsera zakresu: sam `from`, sam `to`, oba, żaden
+- [x] 4.2 Spec `sumCosts` z zakresem: na `from`, na `to`, dzień przed, dzień po
+- [x] 4.3 Specy transferów zielone po przejściu na wspólny hook
+
+### Whole-tree Gate
+
+- [x] `pnpm typecheck`
+- [x] `pnpm lint` — jedyny błąd (`src/hooks/use-latest-request.ts:15`, „Cannot access refs during render") jest sprzed tej zmiany (`8e47fb80`) i nie dotyczy żadnego z ruszonych plików
+- [x] `pnpm test` — 2745 zielonych, 161 pominiętych (specy wymagające DB)
+- [x] `pnpm build`

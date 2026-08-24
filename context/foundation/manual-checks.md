@@ -1516,3 +1516,35 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] „Edytuj pojazd 7": zmiana pola, Esc bez zapisu, ponowne otwarcie — formularz pokazuje dane z bazy, nie porzucony szkic (to samo dla „Edytuj inwestycję" i „Edytuj pracownika")
 - [ ] Rozpoczęty szkic w „Dodaj pojazd" przeżywa otwarcie i zamknięcie „Edytuj pojazd" — dialog edycji nie kasuje ani nie nadpisuje szkicu tworzenia
 - [ ] „Dodaj pojazd": wypełnienie części pól, Esc, ponowne otwarcie — szkic **wraca** (zachowanie niezmienione)
+
+## fleet-costs-column — kolumna kosztów na liście floty + filtr dat (EX-729)
+
+### Faza 1: „Koszt" polem wymaganym
+
+- [ ] Dialog „Przegląd" nie pozwala zapisać bez kwoty — pod polem „Koszt" pojawia się komunikat
+- [ ] `0` w polu „Koszt" zapisuje się normalnie i pokazuje `0,00 zł` w historii przeglądów
+- [ ] Istniejące przeglądy bez kwoty pokazują po migracji `0 zł`, nie pustkę ani błąd
+
+### Faza 2: Jedna reguła kosztów
+
+- [ ] Zakładka „Koszty" na karcie pojazdu pokazuje te same liczby co przed zmianą dla pojazdu, którego wszystkie przeglądy miały wpisaną kwotę
+
+### Faza 3: Kolumna i stopka
+
+- [ ] Kolumna „Koszty" pokazuje sumę zgodną z zakładką „Koszty" na karcie tego samego pojazdu
+- [ ] Sortowanie po kolumnie działa w obie strony; pojazd bez przeglądów pokazuje `0 zł`
+- [ ] Kolumnę da się ukryć przez „Kolumny", a wybór przeżywa odświeżenie
+- [ ] Po ukryciu kolumny „Koszty" stopka znika, a nie rozjeżdża tabelę
+- [ ] Suma w stopce równa się sumie widocznych wierszy, także po wpisaniu czegoś w wyszukiwarkę
+
+### Faza 4: Filtr zakresu dat
+
+- [ ] `/flota?from=2026-07-01&to=2026-07-31` — kolumna i stopka liczą wyłącznie lipiec
+- [ ] Wybór „Miesiąc" nadpisuje oba krańce; „Wyczyść daty" znika oba i przywraca pełną historię
+- [ ] Sam „Od" bez „Do" działa (wszystko od tej daty w przód); sam „Do" analogicznie wstecz
+- [ ] Filtr przeżywa odświeżenie strony i da się wysłać linkiem
+- [ ] Kolumny terminów, „Do wymiany" i przebieg **nie** reagują na filtr dat — pokazują to samo co przed
+- [ ] Licznik „N pojazdów w użyciu" nie reaguje na filtr dat
+- [ ] Filtr dat na `/kasa/[id]`, `/inwestycje/[id]`, `/pracownicy/[id]` i dashboardzie działa jak przed zmianą (regresja po przejściu na wspólny hook)
+- [ ] Zmiana zakresu dat na transferach nadal pokazuje loader na czas przeładowania
+
