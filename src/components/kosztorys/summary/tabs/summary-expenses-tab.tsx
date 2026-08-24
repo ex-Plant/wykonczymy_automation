@@ -8,11 +8,8 @@ import {
   PRICING_MODE_OPTIONS,
 } from '@/components/kosztorys/summary/materials-pricing-options'
 import { materialsNetRateForMode, pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
-import {
-  clientVisibleExpenseRows,
-  partitionExpenseRows,
-  sumBilled,
-} from '@/lib/kosztorys/expense-datasets'
+import { clientVisibleExpenseRows } from '@/lib/kosztorys/expense-datasets'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { Description } from '@/components/ui/description'
 import { DecimalField } from '@/components/ui/decimal-field'
@@ -74,16 +71,19 @@ export function SummaryExpensesTab({
   const listedTransactions = preview
     ? clientVisibleExpenseRows(materialTransactions)
     : materialTransactions
-  // Read off the rows the tab holds, not off the financials aggregate that arrives beside them:
-  // the two are separate queries, and gating a block on the other one's number is how this tab could
-  // print „Brak wydatków" directly above a populated „Lista wydatków". Numerically identical —
-  // `sumBilled(gross) + sumBilled(net) === totalMaterialCosts` is pinned in
-  // `derive-financials-bucketing.test.ts`.
-  const billedRows = partitionExpenseRows(listedTransactions)
-  const hasBilledMaterials = sumBilled(billedRows.gross) + sumBilled(billedRows.net) !== 0
-  // Only when there is nothing in ANY block below — otherwise the message contradicts what follows it.
+  // Reads the array the two blocks it gates actually render, so the gate cannot disagree with them.
+  // Deliberately NOT the transaction rows: `materialTransactions` is optional and the investment
+  // page's panel never supplies it, so a row-sourced gate blanks the breakdown table on a host whose
+  // figures are fully populated. Σ rows === `totalMaterialCosts` (`buildMaterialsBreakdown`), so this
+  // is the aggregate gate reading its own data instead of a second query's.
+  const hasBilledMaterials =
+    roundToCents(materialsBreakdown.reduce((sum, row) => sum + row.net, 0)) !== 0
+  // Suppressed only by a block that actually renders below: „Lista wydatków" is itself gated on
+  // showTransactions, so counting its rows on a host that hides the list would leave the tab blank.
   const isEmpty =
-    !hasBilledMaterials && settledBreakdown.length === 0 && listedTransactions.length === 0
+    !hasBilledMaterials &&
+    settledBreakdown.length === 0 &&
+    !(showTransactions && listedTransactions.length > 0)
 
   return (
     <div className="flex w-full flex-col gap-4">
