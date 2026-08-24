@@ -39,7 +39,7 @@ import { toastMessage } from '@/lib/utils/toast'
 import {
   bulkExpenseFormSchema,
   type CreateBulkExpenseFormT,
-} from '@/components/forms/expense-form/expense-schema'
+} from '@/components/forms/expense-form/bulk-expense-schema'
 import type { ReferenceDataT } from '@/types/reference-data'
 import { today } from '@/lib/utils/date'
 import {

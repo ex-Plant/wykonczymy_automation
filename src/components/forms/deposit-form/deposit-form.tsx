@@ -15,7 +15,7 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
-import { expenseFormSchema } from '@/components/forms/expense-form/expense-schema'
+import { transferFormSchema } from '@/lib/schemas/transfer-form'
 import type { CreateTransferFormT } from '@/lib/schemas/transfer'
 import type { ReferenceDataT } from '@/types/reference-data'
 import { getDefaultCashRegister } from '@/lib/utils/default-cash-register'
@@ -88,7 +88,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
   const { form, reset, submitConfirm } = useManagedForm<FormValuesT, CreateTransferFormT>({
     formId: FORM_ID,
     useFormStore: useDepositFormStore,
-    schema: expenseFormSchema,
+    schema: transferFormSchema,
     defaultValues: {
       description: '',
       amount: '',

@@ -5,7 +5,7 @@ import type { Transaction } from '@/payload-types'
 import {
   createBulkExpenseSchema,
   type CreateBulkExpenseFormT,
-} from '@/components/forms/expense-form/expense-schema'
+} from '@/components/forms/expense-form/bulk-expense-schema'
 import { canMutateTransfer } from '@/lib/auth/roles'
 import { canBeSettled } from '@/lib/constants/transfers'
 import { perfStart } from '@/lib/perf'

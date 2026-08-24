@@ -13,7 +13,7 @@ import {
   isLaborCost,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
-import { editExpenseFormSchema } from '@/components/forms/expense-form/expense-schema'
+import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
 import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
 import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
@@ -41,7 +41,7 @@ type EditTransferFormPropsT = {
   keepOpen?: boolean
 }
 
-type FormValuesT = z.infer<typeof editExpenseFormSchema>
+type FormValuesT = z.infer<typeof editTransferFormSchema>
 
 const FORM_ID = 'edit-transfer'
 
@@ -70,7 +70,7 @@ export function EditTransferForm({
       invoiceNote: row.invoiceNote ?? '',
     } as FormValuesT,
     validators: {
-      onSubmit: editExpenseFormSchema,
+      onSubmit: editTransferFormSchema,
     },
     onSubmit: async ({ value }) => {
       const data: UpdateTransferFormT = {

@@ -3,10 +3,6 @@ import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
 import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 import { validateTransferFields } from './transfer-validation'
 
-// Shared refinement helpers moved to transfer-validation.ts (also used by the bulk
-// expense schema). Re-exported so existing importers of this module keep working.
-export { validateTransferFields, validateLineItemCategories } from './transfer-validation'
-
 // ---------------------------------------------------------------------------
 // Server-side schema for single transfers
 // ---------------------------------------------------------------------------

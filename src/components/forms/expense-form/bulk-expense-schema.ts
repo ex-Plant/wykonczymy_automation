@@ -1,14 +1,11 @@
 import { z } from 'zod'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
-import { getAmountError, getNetAmountError, refineAmount, refineDate } from '@/lib/utils/validation'
+import { getAmountError, getNetAmountError, refineDate } from '@/lib/utils/validation'
 import { UNREADABLE_RECEIPT } from '@/lib/ai/receipt-extraction-schema'
 import {
   validateTransferFields,
   validateLineItemCategories,
-  createTransferSchema,
-} from '@/lib/schemas/transfer'
-
-export { createTransferSchema }
+} from '@/lib/schemas/transfer-validation'
 
 function refineNetAmount(
   item: { amount: number; netAmount?: number },
@@ -21,58 +18,6 @@ function refineNetAmount(
     ctx.addIssue({ code: 'custom', message: error, path: ['lineItems', index, 'netAmount'] })
   }
 }
-
-/**
- * Client-side form validation schema.
- * Works with string values (HTML inputs) — the server schema handles type conversion.
- */
-export const expenseFormSchema = z
-  .object({
-    description: z.string(),
-    amount: z.string(),
-    date: z.string(),
-    type: z.string(),
-    paymentMethod: z.string(),
-    sourceRegister: z.string(),
-    targetRegister: z.string().optional().default(''),
-    investment: z.string().optional().default(''),
-    expenseCategory: z.string().optional().default(''),
-    otherCategory: z.string().optional().default(''),
-    worker: z.string().optional().default(''),
-    otherDescription: z.string().optional().default(''),
-    invoiceNote: z.string().optional().default(''),
-    vatPlane: z.string().optional().default(''),
-    // `.catch` not `.optional()`: the deposit form's value type declares it required (a przelew
-    // types it beside the netto), while every other form on this schema omits it entirely.
-    amountGross: z.string().catch(''),
-  })
-  .superRefine((data, ctx) => {
-    // A wpłata brutto is typed as two independent kwoty off one faktura, so each is checked as
-    // itself — `amountGross` is the money that moved, `amount` the netto the faktura named beside
-    // it. Everywhere else `amount` is the only kwota there is. Keyed on the type too, so the branch
-    // cannot outlive the two-kwota UI, which only a wpłata od inwestora renders.
-    const paidGross = data.type === 'INVESTOR_DEPOSIT' && data.vatPlane === 'GROSS'
-    refineAmount(
-      paidGross ? { ...data, amount: data.amountGross } : data,
-      ctx,
-      paidGross ? 'amountGross' : 'amount',
-    )
-    if (paidGross) {
-      const netErr = getNetAmountError(
-        data.amount ? Number(data.amount) : undefined,
-        data.amountGross ? Number(data.amountGross) : undefined,
-        data.type,
-        data.vatPlane,
-      )
-      if (netErr) ctx.addIssue({ code: 'custom', message: netErr, path: ['amount'] })
-    }
-    refineDate(data, ctx)
-    validateTransferFields(data, ctx)
-  })
-
-// ---------------------------------------------------------------------------
-// Bulk expense schemas (line-items pattern)
-// ---------------------------------------------------------------------------
 
 const lineItemClientSchema = z.object({
   id: z.string(),
@@ -201,22 +146,3 @@ export const createBulkExpenseSchema = z
   })
 
 export type CreateBulkExpenseFormT = z.infer<typeof createBulkExpenseSchema>
-
-// ---------------------------------------------------------------------------
-// Edit expense schema (client-side, string values)
-// ---------------------------------------------------------------------------
-
-export const editExpenseFormSchema = z
-  .object({
-    description: z.string(),
-    amount: z.string().optional(),
-    date: z.string().min(1, 'Data jest wymagana'),
-    paymentMethod: z.string(),
-    investment: z.string(),
-    expenseCategory: z.string(),
-    otherCategory: z.string(),
-    invoiceNote: z.string(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.amount !== undefined) refineAmount(data as { amount: string; type?: string }, ctx)
-  })
