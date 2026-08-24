@@ -15,8 +15,9 @@ export default async function InvestmentKosztorysPage({
 }) {
   const { id } = await params
   // The sheet lookup keys off the parsed id, not off the guard's result, so it has no reason to wait
-  // for it. Safe to run beside a guard that redirects, unlike the kosztorys_v2 fan-out: this lookup
-  // reads with overrideAccess and never throws, so nothing here can beat the redirect to the answer.
+  // for it. Unlike the kosztorys_v2 fan-out it carries no access-control throw of its own, so it
+  // cannot turn a logged-out session's login page into an error screen; only a dead DB could, and
+  // then the page has no answer either way.
   const investmentId = parseInvestmentId(id)
   // Sheet id lives on the kosztoryses collection, not on investments.
   const sheetIdPromise = getPayload({ config }).then((payload) =>

@@ -54,17 +54,16 @@ export type TransferRowT = {
   originalType: TransferTypeT | null
 }
 
-// Raw PAYOUT-per-worker aggregate for one investment. `workerId` is null for the „Bez przypisanego
+// PAYOUT-per-worker total for one investment. `workerId` is null for the „Bez przypisanego
 // pracownika" bucket — a real cash payout with no worker attached, which must still count toward Σ
-// zaliczek. Names are NOT joined here (query stays tagged on transfers alone); the page enriches.
+// zaliczek.
 export type PayoutByWorkerT = {
   workerId: number | null
   total: number
 }
 
-// The page-enriched PAYOUT-per-worker row: `PayoutByWorkerT` plus the worker's name resolved from
-// reference data (null worker → „Bez przypisanego pracownika"). This is what the editor prop chain
-// carries down to the subcontractor summary block.
+// `PayoutByWorkerT` plus the worker's name, as `derivePayoutsByWorker` folds it out of the realized
+// PAYOUT rows for the subcontractor summary block.
 export type SubcontractorPayoutRowT = PayoutByWorkerT & {
   name: string
 }

@@ -343,7 +343,6 @@ export const getDepositTransactionsForInvestment = async (
  * wypłata (data · pracownik · opis · kwota), sortable, and sum them per worker itself. Null worker
  * kept deliberately — no `worker_id IS NOT NULL` guard: a payout with nobody attached is a real cash
  * movement that must still count toward Σ zaliczek, else „Pozostało do wypłaty" overstates the debt.
- * Names resolve at the block, off reference data this query is not tagged on.
  */
 export const getPayoutTransactionsForInvestment = async (
   payload: Payload,

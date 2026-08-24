@@ -16,12 +16,9 @@ import type { DbExecutorT } from './get-db'
 // Everything behind the editor tree in ONE round trip.
 //
 // The one round trip is NOT what makes this fast, and nothing new should be collapsed into a single
-// query on that reasoning. EX-597 measured the five-parallel-reads version it replaced and found the
-// reads genuinely parallel — 20/21/21/21/44 ms totalling 45 ms, the slowest read, not their sum — so
-// cutting the count could never have won and, measured, it didn't. The 83–119 ms one-row `investment`
-// read that looked like proof of per-round-trip cost was Neon cold-start connection setup; warm it is
-// 21 ms. Neon's latency is bimodal (~20–60 ms warm, ~160–200 ms cold), which is what makes a small
-// sample look structural. Record:
+// query on that reasoning — EX-597 measured the parallel-reads version it replaced and the round-trip
+// count was never the cost. Neon's latency is bimodal (~20–60 ms warm, ~160–200 ms cold), which is
+// what makes a small sample look structural. Record:
 // `context/archive/2026-07-27-decouple-panel-write-refresh/change.md` § Superseded beliefs.
 //
 // Each collection is aggregated server-side into a jsonb array, ordered inside the aggregate. Values

@@ -17,9 +17,8 @@ import type {
   MaterialTransactionRowT,
 } from '@/types/transfers'
 
-// Realized PAYOUTs for one investment. Cached under CACHE_TAGS.transfers alone — worker names are
-// joined at the block from reference data, so no users tag is needed here; recalculate-balances fires
-// revalidateTag(transfers) on every transfer mutation.
+// Realized PAYOUTs for one investment. Tagged on CACHE_TAGS.transfers alone: the rows carry no
+// worker name — that is resolved downstream off reference data — so a rename must not bust this.
 export async function fetchPayoutTransactionsForInvestment(
   investmentId: number,
 ): Promise<PayoutTransactionRowT[]> {
