@@ -80,14 +80,15 @@ describe('the strata step', () => {
     expect(rowNamed(build({ lossAmount: 0 }), 'Strata')).toBeUndefined()
   })
 
-  it('sits between the wpłaty and the debt, spanning both columns at face value', () => {
-    const groups = build({ lossAmount: 250 })
-    expect(groups[0]?.rows.map((row) => row.label)).toEqual([
-      'Wpłaty',
-      'Strata',
-      'Pozostało do zapłaty',
-    ])
-    expect(rowNamed(groups, 'Strata')?.line).toEqual({ net: -250, gross: -250 })
-    expect(rowNamed(groups, 'Strata')?.span).toBe(true)
+  it('sits between the wpłaty and the debt, at face value on both planes, in either tryb', () => {
+    for (const axis of ['net', 'gross'] as MoneyAxisT[]) {
+      const groups = build({ lossAmount: 250, axis })
+      expect(groups[0]?.rows.map((row) => row.label)).toEqual([
+        'Wpłaty',
+        'Strata',
+        'Pozostało do zapłaty',
+      ])
+      expect(rowNamed(groups, 'Strata')?.line).toEqual({ net: -250, gross: -250 })
+    }
   })
 })

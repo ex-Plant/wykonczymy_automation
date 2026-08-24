@@ -42,15 +42,15 @@ export function buildSettlementGroups({
   // unlike a rabat it is not a concession on the price. Rendered only when there is one; an
   // investment with no strata says nothing rather than printing a 0 zł step.
   if (lossAmount !== 0) {
-    rows.push({ label: 'Strata', line: faceValue(-lossAmount), discount: true, span: true })
+    rows.push({ label: 'Strata', line: faceValue(-lossAmount), discount: true })
   }
   rows.push({
     label: 'Pozostało do zapłaty',
     line: amountDue,
     bold: true,
     // Per cell: netto and brutto cross zero independently, so a slightly overpaid netto can sit
-    // beside a real outstanding brutto. Rounded first — wpłaty now cross a VAT bridge, so a bill
-    // settled to the grosz lands on 1e-13 rather than on 0 and would scream red beside „0,00".
+    // beside a real outstanding brutto. Rounded first — a bill settled to the grosz lands on 1e-13
+    // rather than on 0 and would scream red beside „0,00".
     danger: { net: roundToCents(amountDue.net) > 0, gross: roundToCents(amountDue.gross) > 0 },
   })
 

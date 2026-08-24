@@ -12,12 +12,10 @@ import type {
 } from '@/lib/queries/balances'
 import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { ZERO_FINANCIALS } from '@/types/investment-financials'
-import { axisShows } from '@/lib/kosztorys/money-axis'
-import { settlementModeToMoneyAxis } from '@/lib/kosztorys/settlement-mode'
 
 const NO_MAP = {}
-// Wpłaty now arrive as their own map rather than through `totalIncome`, and the parameter carries no
-// default: forgetting it used to shape a row whose bilans silently omitted every wpłata.
+// The map carries no default on purpose: omitted, it shapes a row whose bilans silently drops every
+// wpłata.
 const NO_DEPOSITS: DepositPlaneSumsMapT = {}
 const paidNet = (amount: number): DepositPlaneSumsMapT => ({
   '5': { paidNet: amount, paidGrossNet: 0, paidGrossLegacy: 0, paidGross: 0 },
@@ -519,8 +517,7 @@ describe('shapeInvestments marża v2', () => {
 })
 
 // The bilans v2 IS the panel's „Pozostało do zapłaty" negated, and the wpłaty it deducts arrive per
-// plane. The parity gate ran for three days with this map missing — every listing bilans read as if
-// nobody had paid anything — so these pin what each plane is worth.
+// plane — so these pin what each plane is worth.
 describe('shapeInvestments wpłaty', () => {
   const owes10k: KosztorysClientTotalsMapT = {
     '5': {
@@ -532,7 +529,8 @@ describe('shapeInvestments wpłaty', () => {
   }
 
   it('lowers each plane by what that plane was actually paid', () => {
-    // 4000 gotówką (kwota netto, bez brutto) + przelew 1230 brutto, którego faktura mówi 1000 netto.
+    // 4000 gotówką — one kwota netto, no brutto — plus a przelew of 1230 brutto whose faktura
+    // names 1000 netto.
     const deposits: DepositPlaneSumsMapT = {
       '5': { paidNet: 4000, paidGrossNet: 1000, paidGrossLegacy: 0, paidGross: 1230 },
     }
@@ -567,22 +565,20 @@ describe('shapeInvestments wpłaty', () => {
   })
 
   // Both bilanse are computed for every row; the tryb decides which the listing prints (`settlesOn`
-  // in `components/tables/investments.tsx` reads it straight off `settlementMode`). Exactly one
-  // column per tryb — mieszane settles netto, the plane its wpłaty share.
+  // in `components/tables/investments.tsx` projects it through `settlementModeToMoneyAxis`, whose own
+  // spec owns that table). All this row builder owes is carrying the tryb through untouched.
   it('carries the tryb the listing gates its two bilans columns on', () => {
-    const shows = (mode: InvestmentRefT['settlementMode']) => {
-      const [row] = shapeInvestments(
+    const carried = (mode: InvestmentRefT['settlementMode']) =>
+      shapeInvestments(
         [{ ...baseInv, settlementMode: mode }],
         { '5': ZERO_FINANCIALS },
         owes10k,
         NO_MAP,
         NO_DEPOSITS,
-      )
-      return axisShows(settlementModeToMoneyAxis(row.settlementMode))
-    }
+      )[0].settlementMode
 
-    expect(shows('NET')).toEqual({ net: true, gross: false })
-    expect(shows('GROSS')).toEqual({ net: false, gross: true })
-    expect(shows('MIXED')).toEqual({ net: true, gross: false })
+    expect(carried('NET')).toBe('NET')
+    expect(carried('GROSS')).toBe('GROSS')
+    expect(carried('MIXED')).toBe('MIXED')
   })
 })

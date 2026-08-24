@@ -133,10 +133,9 @@ export function SummaryOverviewTab({
         </div>
         {showPie && (
           <SlicePie
-            // Both slices netto, materiały off the settled pair rather than the billed figure: in
-            // tryb mieszany that figure is the brutto plane, and slicing it against netto robocizna
-            // drew a share of two different planes. Shares only — a percent is the whole point here,
-            // and the money is already in the table beside it.
+            // Both slices on the netto plane — a share of two different planes is not a share.
+            // Shares only: a percent is the whole point here, and the money is already in the table
+            // beside it.
             slices={costTotalsPieSlices(
               laborCostsNetPreDiscount(laborCostsNet, discountAmount),
               materialsPair.net,

@@ -1,4 +1,4 @@
-import { toGross } from '@/lib/kosztorys/calc'
+import { toGross, toNet } from '@/lib/kosztorys/calc'
 
 export type MoneyPairT = { net: number; gross: number }
 
@@ -22,7 +22,7 @@ export function faceValue(net: number): MoneyPairT {
 // different (larger) concession than the server's `materialsNetDiscount` computes — the two figures
 // would then disagree on screen, which is the defect this whole change exists to close.
 export function billedMaterialsPair(gross: number, netRate: number | null): MoneyPairT {
-  return netRate == null ? faceValue(gross) : { net: gross / (1 + netRate), gross }
+  return netRate == null ? faceValue(gross) : { net: toNet(gross, netRate), gross }
 }
 
 // One „Wydatki inwestycyjne" row on both planes. A rate is a bridge BETWEEN planes and ONE rate
@@ -99,11 +99,10 @@ export function laborCostsNetPreDiscount(laborCostsNet: number, discountAmount: 
 
 // „Pozostało do zapłaty" (sheet footer r456–464): the headline still-owed figure — Łącznie less the
 // investor's wpłaty (Σ INVESTOR_DEPOSIT), read top-down on each plane in EVERY tryb. `paid` carries a
-// figure per plane rather than one for both, because a wpłata enters a column converted to that
-// column's plane: a wpłata brutto comes off brutto in full and off netto de-grossed, a wpłata netto
-// the reverse (owner, 2026-08-20 — reverses the earlier face-value rule, which subtracted brutto
-// złotys from a netto price). Can go negative when wpłaty exceed Łącznie: a real overpaid state, not
-// clamped here.
+// figure per plane rather than one for both, because each plane deducts only the kwoty its wpłaty
+// actually carry — a wpłata gotówką has no brutto kwota at all, and inventing one at VAT credits the
+// client money he never paid (owner, 2026-08-23). Can go negative when wpłaty exceed Łącznie: a real
+// overpaid state, not clamped here.
 //
 // `loss` (strata) comes off both axes at FACE VALUE, unlike a wpłata and unlike a rabat. A rabat is a
 // concession on the price, so a discounted złoty was never billed and never carried VAT — it grosses.

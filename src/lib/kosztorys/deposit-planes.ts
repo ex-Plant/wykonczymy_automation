@@ -1,3 +1,4 @@
+import { toNet } from '@/lib/kosztorys/calc'
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import type { MoneyPairT } from '@/lib/kosztorys/summary-economics'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
@@ -24,23 +25,23 @@ export type DepositPairT = { net: number; gross: number | null }
  *  needs the VAT rate, and the listing sums these in SQL where no rate is in reach — so the raw
  *  sums travel and the bridge is applied once, in `depositPairFromPlaneSums`, by both sides. */
 export type DepositPlaneSumsT = {
-  // Σ wpłat netto — they ARE the netto plane, in full.
+  // Σ of the wpłaty netto — they ARE the netto plane, in full.
   paidNet: number
-  // Σ kwot netto wpłat brutto, gdzie faktura je podała.
+  // Σ of the netto kwoty of wpłaty brutto, where the faktura named one.
   paidGrossNet: number
-  // Σ kwot brutto wpłat brutto BEZ kwoty netto — tylko one przechodzą przez most legacy.
+  // Σ of the brutto kwoty of wpłaty brutto carrying NO netto — only these cross the legacy bridge.
   paidGrossLegacy: number
-  // Σ na planie brutto: WYŁĄCZNIE wpłaty brutto. Complete only where a wpłata netto cannot occur —
+  // Σ on the brutto plane: wpłaty brutto ONLY. Complete only where a wpłata netto cannot occur —
   // i.e. tryb brutto, which is the only tryb that renders this column.
   paidGross: number
 }
 
-const isGross = (row: { vatPlane: VatPlaneT | null }) => row.vatPlane === 'GROSS'
+export const isGross = (row: { vatPlane: VatPlaneT | null }) => row.vatPlane === 'GROSS'
 
 // Legacy bridge, spike-only: a wpłata brutto booked before `netAmount` existed has no netto to read.
 // Dividing at VAT is precisely the derivation this model rejects, so it is here to keep pre-spike
 // rows legible, not because it is right — those rows are corrected by anulowanie i re-księgowanie.
-const legacyNet = (amount: number, vatRate: number) => amount / (1 + vatRate)
+const legacyNet = (amount: number, vatRate: number) => toNet(amount, vatRate)
 
 export function depositRowPair(row: DepositRowT, vatRate: number): DepositPairT {
   if (!isGross(row)) return { net: row.amount, gross: null }
@@ -79,7 +80,6 @@ export function depositPairFromPlaneSums(
 }
 
 // Σ of a set of wpłaty on each plane — the deduction step every tryb subtracts from „Łącznie".
-// Read, never derived: each row contributes only the kwoty it carries.
 export function sumDeposits(rows: DepositRowT[], vatRate: number): MoneyPairT {
   return depositPairFromPlaneSums(bucketDepositsByPlane(rows), vatRate)
 }
@@ -139,17 +139,3 @@ export function depositsStrandedBy<RowT extends { vatPlane: VatPlaneT | null; am
     amount: stranded.reduce((sum, row) => sum + row.amount, 0),
   }
 }
-
-// What one wpłata is worth in the single money column tryb netto / brutto shows. `null` = the wpłata
-// has no kwota on that plane at all — an off-plane wpłata netto in tryb brutto pays down nothing
-// until it is re-booked.
-export function settledPlaneAmount(
-  row: DepositRowT,
-  mode: VatPlaneT,
-  vatRate: number,
-): number | null {
-  return depositRowPair(row, vatRate)[mode === 'NET' ? 'net' : 'gross']
-}
-
-/** No wpłaty at all — what an investment absent from the listing's deposit aggregate reads as. */
-export const NO_DEPOSITS: MoneyPairT = { net: 0, gross: 0 }

@@ -8,6 +8,7 @@ import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import { formatNet } from '@/lib/kosztorys/format'
 import {
   depositRowPair,
+  isGross,
   isOffPlaneDeposit,
   sumDeposits,
   type DepositPairT,
@@ -84,8 +85,8 @@ export function DepositsTable({
   // exactly like its rows — so here „Razem" is the sum of what stands directly above it, not of a
   // list whose two columns never met. Netto only; see the row itself.
   // Silent when one bucket is empty: a subtotal equal to „Razem" is a row that says nothing twice.
-  const netRows = rows.filter((row) => row.vatPlane !== 'GROSS')
-  const grossRows = rows.filter((row) => row.vatPlane === 'GROSS')
+  const netRows = rows.filter((row) => !isGross(row))
+  const grossRows = rows.filter(isGross)
   const showPlaneSubtotals =
     settlementMode === 'MIXED' && netRows.length > 0 && grossRows.length > 0
   const planeSubtotals: { label: string; pair: DepositPairT }[] = [

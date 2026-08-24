@@ -361,7 +361,7 @@ describe('validateTransfer — netAmount (the netto expense type)', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════
-// vatPlane — the tag belongs to a wpłata od inwestora and to nothing else
+// vatPlane
 // ═══════════════════════════════════════════════════════════════════════
 
 // A stray plane on a wydatek is not merely noise: `carriesNetAmount` reads the pair (type, plane),

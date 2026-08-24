@@ -4,8 +4,8 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '@/lib/constants/transfer
 type PaymentMethodFieldPropsT = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly form: any
-  // Forwarded to the inner AppField; the wpłata form uses it to move the kwota onto the plane the
-  // method implies (gotówka → netto, przelew → brutto).
+  // The wpłata form uses this to move the kwota onto the plane the method implies (gotówka → netto,
+  // przelew → brutto).
   readonly listeners?: { onChange?: (arg: { value: string }) => void }
   readonly fieldClassName?: string
 }

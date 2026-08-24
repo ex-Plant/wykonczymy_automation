@@ -1,16 +1,32 @@
 import { useEffect, useRef } from 'react'
 import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import type { VatPlaneT } from '@/lib/constants/transfers'
-import { netFromGross } from '@/lib/utils/net-gross-amounts'
+import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
 
 type PlaneAmountFieldPropsT = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: any
   vatRate: number
-  // Which side of the VAT the wpłata is booked on — the payment method picks it (gotówka → netto,
-  // przelew → brutto).
   plane: VatPlaneT
   fieldClassName?: string
+}
+
+/**
+ * The netto to write into the field, or null when the kwota standing there is the owner's.
+ *
+ * Ownership is read off the value — it is his as soon as it stops matching the last kwota this
+ * component wrote — rather than latched when a keystroke arrives. A latch answers the wrong question
+ * twice: a reopened draft mounts with a fresh `false` over a netto typed off the faktura, and the
+ * empty string a `resetField` pushes reads as a keystroke that raises it for good.
+ */
+export function netSuggestion(
+  currentNet: string,
+  gross: string,
+  lastSuggested: string | null,
+  rate: number,
+): string | null {
+  if (currentNet !== '' && currentNet !== lastSuggested) return null
+  return netFromGross(gross, rate)
 }
 
 // Gotówka is one netto kwota and that IS the whole wpłata — it has no brutto side to type. A przelew
@@ -20,15 +36,12 @@ type PlaneAmountFieldPropsT = {
 // insisted, we would be back to inventing a kwota the client never paid
 // (see `lib/kosztorys/deposit-planes.ts`).
 export function PlaneAmountField({ form, vatRate, plane, fieldClassName }: PlaneAmountFieldPropsT) {
-  // The last kwota this component wrote into the netto field. A programmatic write reaches the
-  // field's own listener indistinguishably from a keystroke, so the suggestion is what tells the two
-  // apart: anything else in that field came from the owner and is never overwritten again.
+  // The last kwota this component wrote into the netto field — what `netSuggestion` compares against.
   const suggested = useRef<string | null>(null)
-  const netOverwritten = useRef(false)
 
   const suggestNet = (gross: string, rate: number) => {
-    if (netOverwritten.current) return
-    const next = netFromGross(gross, rate)
+    const next = netSuggestion(form.getFieldValue('amount') ?? '', gross, suggested.current, rate)
+    if (next === null) return
     suggested.current = next
     form.setFieldValue('amount', next)
   }
@@ -77,15 +90,7 @@ export function PlaneAmountField({ form, vatRate, plane, fieldClassName }: Plane
           />
         )}
       </form.AppField>
-      <form.AppField
-        key="amount-faktura-net"
-        name="amount"
-        listeners={{
-          onChange: ({ value }: { value: string }) => {
-            if (value !== suggested.current) netOverwritten.current = true
-          },
-        }}
-      >
+      <form.AppField key="amount-faktura-net" name="amount">
         {(field: AppFieldComponentsT) => (
           <field.Input
             label="Kwota netto z faktury (PLN)"

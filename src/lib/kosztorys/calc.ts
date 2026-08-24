@@ -83,6 +83,15 @@ export function toGross(net: number, vatRate: number): number {
 }
 
 /**
+ * The inverse, beside its twin so the crossing is one pair rather than a named direction and three
+ * hand-written divisions. Divides rather than `× (1 − rate)`: at 23% a 123 zł brutto is 100 zł netto,
+ * and 123 × 0,77 = 94,71 is a different figure.
+ */
+export function toNet(gross: number, vatRate: number): number {
+  return gross / (1 + vatRate)
+}
+
+/**
  * What any quantity of this row is worth at the view's price, post-discount. Zero quantity is worth
  * zero: `> 0` rather than a truthiness check because a cleared cell writes null, and an 'amount' rabat
  * would otherwise turn `applyDiscount(0)` into −discountValue — a row priced at zero reading negative.

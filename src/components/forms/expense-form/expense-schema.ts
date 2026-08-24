@@ -49,8 +49,9 @@ export const expenseFormSchema = z
   .superRefine((data, ctx) => {
     // A wpłata brutto is typed as two independent kwoty off one faktura, so each is checked as
     // itself — `amountGross` is the money that moved, `amount` the netto the faktura named beside
-    // it. Everywhere else `amount` is the only kwota there is.
-    const paidGross = data.vatPlane === 'GROSS'
+    // it. Everywhere else `amount` is the only kwota there is. Keyed on the type too, so the branch
+    // cannot outlive the two-kwota UI, which only a wpłata od inwestora renders.
+    const paidGross = data.type === 'INVESTOR_DEPOSIT' && data.vatPlane === 'GROSS'
     refineAmount(
       paidGross ? { ...data, amount: data.amountGross } : data,
       ctx,

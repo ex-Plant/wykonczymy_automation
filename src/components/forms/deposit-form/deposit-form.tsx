@@ -24,7 +24,7 @@ import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { strandsDeposit } from '@/lib/kosztorys/deposit-planes'
 import { DEPOSIT_PLANE_INSTRUMENTAL } from '@/lib/constants/transfers'
 import { formatPLN } from '@/lib/utils/format-currency'
-import { netFromGross } from '@/lib/utils/net-gross-amounts'
+import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
 import {
   AmountField,
   CashRegisterField,
@@ -61,8 +61,11 @@ type FormValuesT = {
 const FORM_ID = 'deposit'
 
 // Gotówka is the no-VAT tor, przelew the invoiced one — so the method IS the plane, and the wpłata
-// is typed on the side it names. Nothing else sets `vatPlane` any more.
-const planeFor = (paymentMethod: string) => (paymentMethod === 'TRANSFER' ? 'GROSS' : 'NET')
+// is typed on the side it names. Keyed on the type as well, because only a wpłata od inwestora has
+// a plane: every other type renders one kwota, and a GROSS tag on it would demand a brutto field
+// that is not on screen.
+const planeFor = (type: string, paymentMethod: string) =>
+  type === 'INVESTOR_DEPOSIT' && paymentMethod === 'TRANSFER' ? 'GROSS' : 'NET'
 
 export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: DepositFormPropsT) {
   // COMPANY_FUNDING visible only to admin/owner — managers see other deposit types
@@ -101,7 +104,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
       const investment = stored.investment || investmentFromUrl
       // The method is the plane, so a draft never restores the two out of step — whatever it stored
       // in `vatPlane` (including a value from before the method drove it) gives way to the method.
-      const vatPlane = planeFor(stored.paymentMethod)
+      const vatPlane = planeFor(stored.type, stored.paymentMethod)
       // A draft saved before the two kwota fields existed holds one amount, on the side its own
       // plane named: a przelew therefore restores with its netto merely suggested, and a gotówka
       // with no brutto at all — that kwota never existed.
@@ -131,7 +134,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
     confirmBeforeSubmit: (value) => {
       const mode = investmentFor(value.investment)?.settlementMode
       if (value.type !== 'INVESTOR_DEPOSIT' || !mode) return null
-      if (!strandsDeposit(planeFor(value.paymentMethod), mode)) return null
+      if (!strandsDeposit(planeFor(value.type, value.paymentMethod), mode)) return null
 
       return {
         title: 'Ta wpłata nie policzy się w rozliczeniu',
@@ -176,7 +179,6 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
     <>
       <FormShell form={form} onReset={reset}>
         <FieldGroup>
-          {/* Type */}
           <form.AppField
             name="type"
             listeners={{
@@ -184,7 +186,10 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
                 form.resetField('investment')
                 // Not reset but rederived — the method survives the type change, and a plane that
                 // disagreed with it would put the wrong kwota on screen.
-                form.setFieldValue('vatPlane', planeFor(form.getFieldValue('paymentMethod')))
+                form.setFieldValue(
+                  'vatPlane',
+                  planeFor(form.getFieldValue('type'), form.getFieldValue('paymentMethod')),
+                )
                 // Both kwota fields go with it — the pair belongs to the wpłata being typed, and half
                 // of a previous one is worse than none.
                 form.resetField('amount')
@@ -225,7 +230,8 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
             <PaymentMethodField
               form={form}
               listeners={{
-                onChange: ({ value }) => form.setFieldValue('vatPlane', planeFor(value)),
+                onChange: ({ value }) =>
+                  form.setFieldValue('vatPlane', planeFor(form.getFieldValue('type'), value)),
               }}
               fieldClassName="min-w-0 flex-1"
             />

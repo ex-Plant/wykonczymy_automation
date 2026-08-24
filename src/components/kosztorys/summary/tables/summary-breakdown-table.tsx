@@ -9,10 +9,6 @@ import { SummaryRow } from '@/components/kosztorys/summary/grid/summary-row'
 // The sheet's Podsumowanie split: „Robocizna" pre-rabat, „Rabat" taking it down to the executed
 // value, „Materiały", then „Łącznie". Every row is a term of Łącznie, so the reader can add the
 // columns down.
-//
-// Materiały spans both money tracks as ONE centred cell wherever its two planes carry the same
-// złoty — printing that twice would read as a netto/brutto pair that happens to match. W trybie
-// mieszanym they genuinely differ, so the row splits like every other.
 export function SummaryBreakdownTable({
   cols,
   moneyAxis,
@@ -58,12 +54,7 @@ export function SummaryBreakdownTable({
         />
       )}
       {materialsPair.gross !== 0 && (
-        <SummaryRow
-          label="Materiały"
-          line={materialsPair}
-          axis={moneyAxis}
-          span={materialsPair.net === materialsPair.gross}
-        />
+        <SummaryRow label="Materiały" line={materialsPair} axis={moneyAxis} />
       )}
       <SummaryRow label="Łącznie" line={combined} axis={moneyAxis} emphasize />
     </SummaryTable>

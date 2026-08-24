@@ -6,7 +6,7 @@ import {
   depositsStrandedBy,
   isOffPlaneDeposit,
   offPlaneDeposits,
-  settledPlaneAmount,
+  sumDeposits,
   strandsDeposit,
   type DepositRowT,
 } from '@/lib/kosztorys/deposit-planes'
@@ -98,9 +98,22 @@ describe('depositPairFromPlaneSums', () => {
   })
 
   it('counts ONLY przelewy on the brutto plane', () => {
-    // The plane tryb brutto renders. A gotówka contributes nothing here — which is exactly what
-    // `strandsDeposit` warns about, rather than something the sum should paper over.
+    // A gotówka contributes nothing here — which is exactly what `strandsDeposit` warns about,
+    // rather than something the sum should paper over.
     expect(depositPairFromPlaneSums(bucketDepositsByPlane([cash(5000)]), VAT).gross).toBe(0)
+  })
+})
+
+// The composition the panel actually calls — guarding that bucketing and the bridge stay wired to
+// each other, not just correct apart.
+describe('sumDeposits', () => {
+  it('reduces a mixed list to one pair: every netto counted, only przelewy on brutto', () => {
+    const rows = [cash(1000), untagged(500), transfer(1230, 950), legacyTransfer(1230)]
+    expect(sumDeposits(rows, VAT)).toEqual({ net: 1000 + 500 + 950 + 1000, gross: 1230 + 1230 })
+  })
+
+  it('gotówka alone leaves the brutto plane at zero — nothing is grossed up to fill it', () => {
+    expect(sumDeposits([cash(1000), untagged(500)], VAT)).toEqual({ net: 1500, gross: 0 })
   })
 })
 
@@ -136,7 +149,6 @@ describe('the two off-plane predicates', () => {
   }
 
   it('only tryb brutto strands anything — a przelew on a netto bill still pays the debt down', () => {
-    // The asymmetry the warning copy turns on: wrong tryb in both directions, lost money in one.
     expect(isOffPlaneDeposit(row('GROSS'), 'NET')).toBe(true)
     expect(strandsDeposit('GROSS', 'NET')).toBe(false)
   })
@@ -172,14 +184,5 @@ describe('depositsStrandedBy', () => {
     const rows = [cash(100), transfer(1230, 950)]
     expect(depositsStrandedBy(rows, 'NET')).toEqual({ count: 0, amount: 0 })
     expect(depositsStrandedBy(rows, 'MIXED')).toEqual({ count: 0, amount: 0 })
-  })
-})
-
-describe('settledPlaneAmount', () => {
-  it('gives the kwota the single money column shows, or null where the wpłata has none', () => {
-    expect(settledPlaneAmount(cash(1000), 'NET', VAT)).toBe(1000)
-    expect(settledPlaneAmount(cash(1000), 'GROSS', VAT)).toBeNull()
-    expect(settledPlaneAmount(transfer(1230, 950), 'GROSS', VAT)).toBe(1230)
-    expect(settledPlaneAmount(transfer(1230, 950), 'NET', VAT)).toBe(950)
   })
 })

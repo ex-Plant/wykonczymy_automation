@@ -23,8 +23,8 @@ import type { InvestmentRowT } from '@/types/table-rows'
 export function shapeInvestments(
   investments: InvestmentRefT[],
   financialsRecord: InvestmentFinancialsMapT,
-  kosztorysTotalsRecord: KosztorysClientTotalsMapT = {},
-  subcontractorDueRecord: KosztorysSubcontractorDueMapT = {},
+  kosztorysTotalsRecord: KosztorysClientTotalsMapT,
+  subcontractorDueRecord: KosztorysSubcontractorDueMapT,
   depositPlaneSumsRecord: DepositPlaneSumsMapT,
 ): InvestmentRowT[] {
   return investments.map((inv) => {
@@ -45,9 +45,11 @@ export function shapeInvestments(
     // formula that agrees by convention (owner, 2026-08-20: „panel i lista mają nazywać jedną
     // kwotę"). Negated because the two read the same fact from opposite ends: the panel prints what
     // the client still owes, the bilans how the client stands, so owing shows as a minus here.
-    // The term-by-term form `calculateBalance` still runs for v1 collapses onto exactly this once
-    // the wpłaty are read per plane — its materiały-minus-concession pair IS `billedMaterials`, and
-    // its robocizna-plus-rabat pair IS the reading's post-rabat robocizna.
+    // Not the term-by-term form `calculateBalance` still runs for v1: every term of the two agrees
+    // (its materiały-minus-concession pair IS `billedMaterials`, its robocizna-plus-rabat pair IS
+    // the reading's post-rabat robocizna) except the wpłaty, and that one cannot — `totalIncome`
+    // counts a przelew at the brutto that moved, while the netto plane deducts the netto its faktura
+    // named.
     const amountDue = computeAmountDue(
       reading.laborCostsNet,
       depositPairFromPlaneSums(

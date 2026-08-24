@@ -15,9 +15,8 @@ type PropsT = {
   preview?: boolean
 }
 
-// The „Wpłaty" block — folded below the settlement in the Podsumowanie view: the deposits list with
-// its gotówka/przelew split, or an empty-state line when there are none. The split shows in every
-// tryb, not only mieszany (owner, 2026-08-20).
+// The „Wpłaty" block — the deposits list with its gotówka/przelew split, or an empty-state line when
+// there are none. The split shows in every tryb, not only mieszany (owner, 2026-08-20).
 export function SummaryDepositsTab({
   investmentId,
   rows,

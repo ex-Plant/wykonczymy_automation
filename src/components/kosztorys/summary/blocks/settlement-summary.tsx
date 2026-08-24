@@ -33,7 +33,6 @@ type PropsT = {
   materialsPair: MoneyPairT
   // Which money columns the tryb rozliczenia shows.
   moneyAxis: MoneyAxisT
-  // The settlement steps below the breakdown, built by the caller.
   settlementGroups: SettlementGroupT[]
   // The rabat actually taken off the executed robocizna (net zł): the global discount when active,
   // else Σ per-item rabat. Unified upstream so this table shows one explicit „Rabat" line. 0 = none.

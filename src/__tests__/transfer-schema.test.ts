@@ -419,6 +419,33 @@ describe('expenseFormSchema — valid payloads (string values)', () => {
   }
 })
 
+// The netto/brutto kwota pair is an INVESTOR_DEPOSIT-only axis, but the plane is derived from the
+// payment method, which every deposit type offers. A „Zasilenie z konta firmowego" przelewem
+// therefore arrives tagged GROSS with only `amount` typed — the brutto field is never rendered for
+// it — and a plane-keyed branch would park the error on an input the user cannot see.
+
+describe('expenseFormSchema — a non-investor deposit paid by przelew', () => {
+  const przelew = (type: string) => ({
+    ...toClientPayload({ ...base, type, sourceRegister: 1, paymentMethod: 'TRANSFER' }),
+    vatPlane: 'GROSS',
+    amountGross: '',
+  })
+
+  it.each(['OTHER_DEPOSIT', 'COMPANY_FUNDING'])('%s — passes on `amount` alone', (type) => {
+    const result = expenseFormSchema.safeParse(przelew(type))
+    expect(result.success, JSON.stringify(errorPaths(result))).toBe(true)
+  })
+
+  it('INVESTOR_DEPOSIT — still owes both kwoty (control)', () => {
+    const result = expenseFormSchema.safeParse({
+      ...przelew('INVESTOR_DEPOSIT'),
+      investment: '1',
+    })
+    expect(result.success).toBe(false)
+    expect(errorPaths(result)).toContain('amountGross')
+  })
+})
+
 // ── 2c: Client Schema — Missing required fields ────────────────────────
 
 describe('expenseFormSchema — missing required fields', () => {

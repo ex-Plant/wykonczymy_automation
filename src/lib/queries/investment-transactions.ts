@@ -61,7 +61,10 @@ export async function fetchDepositTransactionsForInvestment(
       const payload = await getPayload({ config })
       return getDepositTransactionsForInvestment(payload, investmentId)
     },
-    ['deposit-transactions', String(investmentId)],
+    // -v2: the row gained `netAmount`, and an entry written by the previous build deserializes
+    // without it — `depositRowPair` would then read the przelew's netto off the stawka instead of
+    // off the faktura, disagreeing with a listing already keyed `deposit-plane-sums-v2`.
+    ['deposit-transactions-v2', String(investmentId)],
     { tags: [CACHE_TAGS.transfers] },
   )()
 }

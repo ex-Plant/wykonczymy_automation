@@ -53,6 +53,14 @@ function settlesOn(row: InvestmentRowT, plane: 'net' | 'gross'): boolean {
   return axisShows(settlementModeToMoneyAxis(row.settlementMode))[plane]
 }
 
+// Withheld cells sort last instead of by the figure behind them. The balance is computed for every
+// row whether or not the tryb builds it, so a „nie dotyczy" would otherwise sort on a number the
+// column refuses to print — same reason `marginV2` carries `sortUndefined` below.
+const balanceOrUndefined = (plane: 'net' | 'gross') => (row: InvestmentRowT) =>
+  settlesOn(row, plane) && hasKosztorysReading(row)
+    ? row[plane === 'net' ? 'balance' : 'balanceGross']
+    : undefined
+
 type InvestmentColumnOptionsT = {
   userRole: RoleT
 }
@@ -90,25 +98,27 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceFromTransactions },
       cell: (info) => <BalanceCell value={info.getValue()} />,
     }),
-    col.accessor('balance', {
+    col.accessor(balanceOrUndefined('net'), {
       id: 'balance',
+      sortUndefined: 'last',
       header: 'Bilans netto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balance },
       cell: (info) => {
         if (!settlesOn(info.row.original, 'net')) return <NotApplicable />
         if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
-        return <BalanceCell value={info.getValue()} />
+        return <BalanceCell value={info.row.original.balance} />
       },
     }),
     // No v1 twin: brutto has only ever been computed on the plane its netto came from.
-    col.accessor('balanceGross', {
+    col.accessor(balanceOrUndefined('gross'), {
       id: 'balanceGross',
+      sortUndefined: 'last',
       header: 'Bilans brutto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceGross },
       cell: (info) => {
         if (!settlesOn(info.row.original, 'gross')) return <NotApplicable />
         if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
-        return <BalanceCell value={info.getValue()} />
+        return <BalanceCell value={info.row.original.balanceGross} />
       },
     }),
     ...(isAdminOrOwner

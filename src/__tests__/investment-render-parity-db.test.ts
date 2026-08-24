@@ -119,9 +119,8 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       subcontractorDue[String(investmentId)] = settlement
     }
 
-    // The map this spec ran for three days without. Omitted, every listing bilans read as if nobody
-    // had paid anything — 63 278,90 zl adrift on one investment — and the comparison stayed green
-    // because the detail side was assembled from the same missing input.
+    // Omitted, every listing bilans reads as if nobody had paid anything — and the comparison stays
+    // green regardless, because the detail side is assembled from the same missing input.
     const depositPlaneSums: DepositPlaneSumsMapT = {}
     for (const row of await selectDepositPlaneSums(await getDb(payload))) {
       const { investmentId, ...sums } = row
@@ -173,10 +172,8 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       expect(listingRow, `#${inv.id} ${inv.name} is missing from the listing`).toBeDefined()
 
       // DETAIL assembly (mirrors inwestycje/[id]/page.tsx + financial-stats.tsx)
-      const fields = buildFinancialFields(detailFin, expenseCategories)
       // The formula ToggleStatButtons renders, over every card (nothing hidden) — FinancialStats
       // partitions `fields` into rows without dropping any, so rows.flat() is `fields`.
-      const detailBalance = computeSummary(fields, new Set())
       const detailBalanceFromTransactions = computeSummary(
         buildFinancialFields(transactionFin, expenseCategories),
         new Set(),
@@ -186,6 +183,11 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       // only reading of the brutto plane in the app — the transactions plane has never had a brutto
       // bilans — so the oracle has to be this, not a second formula derived from `detailBalance`
       // that no surface renders.
+      // Both bilanse v2 come off this one call, netto included. The v1-shaped sum over
+      // `financialsOnReading` is NOT the oracle for it: that one deducts `totalIncome`, which counts
+      // a przelew at its brutto, where the netto plane deducts the netto the faktura named — 230 zł
+      // apart on a 1230/1000 wpłata. Nothing renders that sum on the reading side anyway
+      // (FinancialStats is v1-only).
       const detailAmountDue = computeAmountDue(
         readingFromKosztorys(kosztorysTotals[String(inv.id)]).laborCostsNet,
         depositPairFromPlaneSums(depositPlaneSums[String(inv.id)] ?? NO_DEPOSIT_SUMS, inv.vatRate),
@@ -196,7 +198,7 @@ describe.skipIf(!ENV_READY)('listing vs detail RENDERED parity — real assembly
       )
 
       const compare: [string, number, number][] = [
-        ['bilans', listingRow?.balance ?? 0, detailBalance],
+        ['bilans', listingRow?.balance ?? 0, -detailAmountDue.net],
         ['bilans v1', listingRow?.balanceFromTransactions ?? 0, detailBalanceFromTransactions],
         ['marża v1', listingRow?.margin ?? 0, calculateMargin(transactionFin)],
         [

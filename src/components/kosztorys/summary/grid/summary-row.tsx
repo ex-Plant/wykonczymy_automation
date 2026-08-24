@@ -20,10 +20,6 @@ export type SummaryRowOptsT = {
   // — the EX-535 reconciliation check against the transaction ledger. The client footer never passes
   // it, which is what lets both surfaces share this row instead of keeping two copies.
   mismatch?: string
-  // One centred figure across BOTH money tracks instead of a cell per plane. For a row that carries a
-  // single amount entering both axes — materiały, wpłaty — where a value repeated in two columns
-  // would read as two figures that happen to match, rather than as one that spans them.
-  span?: boolean
 }
 
 type SummaryRowPropsT = SummaryRowOptsT & {
@@ -63,34 +59,16 @@ export function SummaryRow({ label, line, axis, ...opts }: SummaryRowPropsT) {
       <SummaryLabelCell weight={weight} hints={hints}>
         {label}
       </SummaryLabelCell>
-      {opts.span && showNet && showGross ? (
-        <SummaryValueCell
-          className="col-span-2 text-center"
-          weight={weight}
-          tone={toneFor('net')}
-          note={note}
-        >
+      {showNet && (
+        <SummaryValueCell weight={weight} tone={toneFor('net')} note={note}>
           {formatNet(line.net)}
         </SummaryValueCell>
-      ) : (
-        <>
-          {showNet && (
-            <SummaryValueCell key="net" weight={weight} tone={toneFor('net')} note={note}>
-              {formatNet(line.net)}
-            </SummaryValueCell>
-          )}
-          {/* The note rides the net cell only — repeated on brutto it would read as two captions. */}
-          {showGross && (
-            <SummaryValueCell
-              key="gross"
-              weight={weight}
-              tone={toneFor('gross')}
-              note={showNet ? undefined : note}
-            >
-              {formatNet(line.gross)}
-            </SummaryValueCell>
-          )}
-        </>
+      )}
+      {/* The note rides the net cell only — repeated on brutto it would read as two captions. */}
+      {showGross && (
+        <SummaryValueCell weight={weight} tone={toneFor('gross')} note={showNet ? undefined : note}>
+          {formatNet(line.gross)}
+        </SummaryValueCell>
       )}
     </Fragment>
   )

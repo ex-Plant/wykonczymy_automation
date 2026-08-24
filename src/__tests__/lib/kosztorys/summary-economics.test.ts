@@ -346,8 +346,6 @@ describe('the netto-billed bucket is frozen against the materiały toggle', () =
     expect(pair.gross).toBeCloseTo(odd * (1 + REDUCTION))
   })
 
-  // Materiały are billed ONCE, so the netto bucket reaches every tryb through the same term —
-  // there is no second composition for tryb mieszany to drift out of.
   it('every tryb sees it — one billed figure, not a per-tryb composition', () => {
     const paid = { net: 400, gross: 400 }
     const base = computeAmountDue(700, paid, justGross(369), VAT, VAT)

@@ -443,8 +443,8 @@ export const carriesNetAmount = (type: unknown, vatPlane: unknown): boolean =>
   billsNetAmount(type) || (type === 'INVESTOR_DEPOSIT' && vatPlane === 'GROSS')
 
 // Does this row STORE a netto/brutto plane? The tag names the side of the settlement a wpłata pays,
-// so only a wpłata od inwestora has one; anywhere else it is a value `carriesNetAmount` and both
-// settlement predicates would still read.
+// so only a wpłata od inwestora has one — tagged onto any other type it would be a value every
+// settlement predicate reads, with no second kwota on the form to back it.
 export const carriesVatPlane = (type: unknown): boolean => type === 'INVESTOR_DEPOSIT'
 
 /**
