@@ -1,10 +1,5 @@
-import {
-  DEPOSIT_PLANE_INSTRUMENTAL,
-  VAT_PLANE_LABELS,
-  type VatPlaneT,
-} from '@/lib/constants/transfers'
-import { formatPLN } from '@/lib/utils/format-currency'
-import { pluralize } from '@/lib/utils/polish-plural'
+import { type VatPlaneT } from '@/lib/constants/transfers'
+import { offPlaneDepositSentence } from '@/lib/kosztorys/off-plane-deposit-copy'
 import { AlertIcon } from '@/components/ui/alert-icon'
 import type { DepositTransactionRowT } from '@/types/transfers'
 
@@ -17,11 +12,8 @@ import type { DepositTransactionRowT } from '@/types/transfers'
 // rows, so listing them here answered „which ones?" twice.
 //
 // What it says is that the DEAL is mieszany and the tryb has not caught up, so the remedy it names is
-// the tryb, not re-booking (owner, 2026-08-23). The two directions do not cost the same, and the
-// sentence must not pretend they do: only in tryb brutto does the kwota vanish (a gotówka has no
-// brutto kwota and nothing is derived at VAT). A przelew on a bill settled netto pays the debt down
-// at the netto its faktura names — saying „nie spłaca nic" there, as this did until 2026-08-23, was
-// simply false.
+// the tryb, not re-booking (owner, 2026-08-23). The sentence itself lives in `offPlaneDepositSentence`
+// — the investments listing marks the same rows and must not word it differently.
 export function SettlementPlaneWarning({
   rows,
   mode,
@@ -29,14 +21,6 @@ export function SettlementPlaneWarning({
   rows: DepositTransactionRowT[]
   mode: VatPlaneT
 }) {
-  // Two vocabularies on purpose, because the sentence compares two different things: the tryb the
-  // bill is settled in (netto / brutto) against the tor these wpłaty came by (gotówką / przelewem).
-  const settledIn = VAT_PLANE_LABELS[mode].toLocaleLowerCase()
-  const paidBy = DEPOSIT_PLANE_INSTRUMENTAL[mode === 'NET' ? 'GROSS' : 'NET']
-  const noun = pluralize(rows.length, ['wpłata', 'wpłaty', 'wpłat'])
-  const verb = pluralize(rows.length, ['jest', 'są', 'jest'])
-  // Face value — what the client actually handed over, and in tryb brutto exactly what the
-  // settlement is missing.
   const atStake = rows.reduce((sum, row) => sum + row.amount, 0)
 
   return (
@@ -45,11 +29,7 @@ export function SettlementPlaneWarning({
       className="text-destructive flex max-w-lg items-start gap-2 text-xs font-semibold"
     >
       <AlertIcon className="mt-0.5 size-3.5" />
-      <span>
-        Rozliczenie {settledIn}, a {rows.length} {noun} {verb} {paidBy}
-        {mode === 'GROSS' && <> — {formatPLN(atStake)} nie spłaca nic</>}. Jeśli klient płaci obiema
-        drogami, ustaw rozliczenie mieszane.
-      </span>
+      <span>{offPlaneDepositSentence({ count: rows.length, amount: atStake }, mode)}</span>
     </p>
   )
 }
