@@ -8,7 +8,11 @@ import {
   PRICING_MODE_OPTIONS,
 } from '@/components/kosztorys/summary/materials-pricing-options'
 import { materialsNetRateForMode, pricingModeOf } from '@/lib/kosztorys/materials-pricing-mode'
-import { clientVisibleExpenseRows } from '@/lib/kosztorys/expense-datasets'
+import {
+  clientVisibleExpenseRows,
+  partitionExpenseRows,
+  sumBilled,
+} from '@/lib/kosztorys/expense-datasets'
 import { CollapsibleSection } from '@/components/ui/collapsible-section'
 import { Description } from '@/components/ui/description'
 import { DecimalField } from '@/components/ui/decimal-field'
@@ -16,7 +20,6 @@ import { SlicePie } from '@/components/ui/slice-pie'
 import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { formatNet, ratePercent } from '@/lib/kosztorys/format'
-import type { MaterialsT } from '@/lib/kosztorys/summary-economics'
 import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 import type { MaterialTransactionRowT } from '@/types/transfers'
 
@@ -24,8 +27,6 @@ type PropsT = {
   investmentId: number
   // Names the transactions list's downloaded invoice archive.
   investmentName: string
-  // Materiały in two buckets — a zero total hides the breakdown.
-  materials: MaterialsT
   materialsBreakdown: MaterialsBreakdownRowT[]
   // Material the company bought and folded into robocizna, split per category. Owner-plane: it lowers
   // marża and never touches the investor's bilans, hence its own table rather than extra rows above
@@ -53,7 +54,6 @@ type PropsT = {
 export function SummaryExpensesTab({
   investmentId,
   investmentName,
-  materials,
   materialsBreakdown,
   settledBreakdown = [],
   materialTransactions,
@@ -74,10 +74,16 @@ export function SummaryExpensesTab({
   const listedTransactions = preview
     ? clientVisibleExpenseRows(materialTransactions)
     : materialTransactions
-  const hasBilledMaterials = materials.grossBase + materials.netBilled !== 0
-  // Every block below is gated on having rows, so with none the tab renders as a blank page under
-  // the settlement select — indistinguishable from a load that failed.
-  const isEmpty = !hasBilledMaterials && settledBreakdown.length === 0
+  // Read off the rows the tab holds, not off the financials aggregate that arrives beside them:
+  // the two are separate queries, and gating a block on the other one's number is how this tab could
+  // print „Brak wydatków" directly above a populated „Lista wydatków". Numerically identical —
+  // `sumBilled(gross) + sumBilled(net) === totalMaterialCosts` is pinned in
+  // `derive-financials-bucketing.test.ts`.
+  const billedRows = partitionExpenseRows(listedTransactions)
+  const hasBilledMaterials = sumBilled(billedRows.gross) + sumBilled(billedRows.net) !== 0
+  // Only when there is nothing in ANY block below — otherwise the message contradicts what follows it.
+  const isEmpty =
+    !hasBilledMaterials && settledBreakdown.length === 0 && listedTransactions.length === 0
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -133,7 +139,7 @@ export function SummaryExpensesTab({
             />
           )}
         </div>
-        {showPie && !isEmpty && (
+        {showPie && hasBilledMaterials && (
           <SlicePie
             slices={expensePieSlices(materialsBreakdown, materialsNetRate)}
             formatValue={formatNet}

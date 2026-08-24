@@ -437,16 +437,16 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 2.1 New derivation spec passes
-- [x] 2.2 The existing block spec still passes
-- [x] 2.3 Nothing references the deleted symbols
+- [x] 2.1 New derivation spec passes — 85275f84
+- [x] 2.2 The existing block spec still passes — 85275f84
+- [x] 2.3 Nothing references the deleted symbols — 85275f84
 
 ### Phase 3: The wydatki tab reads its own rows
 
 #### Automated
 
-- [ ] 3.1 The bucketing invariant still holds
-- [ ] 3.2 Parity across the three surfaces stays green (`pnpm test:parity`)
+- [x] 3.1 The bucketing invariant still holds — PENDING_SHA
+- [x] 3.2 Parity across the three surfaces stays green (`pnpm test:parity`) — PENDING_SHA
 
 ### Phase 4: The serial pair, the comments, and the lesson
 

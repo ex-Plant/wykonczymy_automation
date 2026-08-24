@@ -297,7 +297,6 @@ export function SummaryPanelContent({
               <SummaryExpensesTab
                 investmentId={investmentId}
                 investmentName={investmentName}
-                materials={materials}
                 materialsBreakdown={materialsBreakdown}
                 // Owner plane — dropped here too, not only by the client share omitting it upstream:
                 // marża-side spend must fail closed on every path into a client render.
