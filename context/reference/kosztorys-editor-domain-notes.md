@@ -454,6 +454,14 @@ j.m.` wśród wierszy policzonych** (wpisane z palca są wykluczone: to decyzje 
   (`'disagree' | 'incoherent'`) i mają **osobny fold na powód**: „cenniki podają różne kwoty" to
   pytanie o arkusz, „para niemożliwa" to pytanie o NASZ odczyt arkusza — każde chce innego akapitu
   pod tabelką, a per wiersz byłoby tym samym zdaniem powtórzonym w kółko.
+- **Import zastępuje w całości i NIC nie przenosi ze starego drzewa — także tego, czego arkusz nie
+  ma** (właściciel, 2026-08-24; zamyka EX-717 jako „nie robimy"). Dla pracy, którą import rozpoznał
+  jako tę samą, przepada etykieta etapu, plan „z narzędziami / bez narzędzi", przypisany pracownik
+  i wpisane w aplikacji wykonanie — arkusz żadnego z nich nie zna, więc nie są zastępowane, tylko
+  znikają. To **nie jest** przeoczenie do naprawienia: „zastąp" znaczy zastąp, a przenoszenie
+  metadanych dla części prac zrobiłoby z jednego przycisku dwa różne zachowania zależne od tego, czy
+  klucz się trafił. Kto chce stan sprzed importu, sięga po „Wersje" — po to jest migawka robiona
+  przed importem. Rozstrzygnięcie dotyczy całego planu importu (`buildImportPlan`), nie jednego pola.
 - **Wypłaty podwykonawcy w arkuszu = ręczny rejestr, NIE wyliczenie** (Białostocka 5, zweryfikowane
   na formułach zakładki `zakres pracy bez narzędzi`, wiersze 396–400). Po stronie podwykonawcy arkusz
   liczy **tylko jedno**: „suma wykonanej pracy" (r398 `=SUM(W396:AF396)` = Σ etapów × stawka „bez

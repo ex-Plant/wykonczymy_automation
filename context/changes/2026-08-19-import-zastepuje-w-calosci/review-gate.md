@@ -36,7 +36,7 @@ new styling beyond one width utility.
       collapsing two unrelated prace. `foldRule` re-attaches the edge spaces.
       test: TDD · unit — `keeps a word-boundary rule from eating the middle of another word`.
 - [x] 🟡 WARNING · fixed · impl-review · `build-import-plan.test.ts:320` · the „keeps a matched
-      praca's wpisane etapy" spec was tautological — it passed on progress the *sheet* supplies, not
+      praca's wpisane etapy" spec was tautological — it passed on progress the _sheet_ supplies, not
       on anything carried over, so it would have stayed green under any behaviour. Replaced with the
       honest assertion (the arkusz's wykonanie wins over the app's) and named accordingly.
       test: TDD · unit — replaced in place.
@@ -70,7 +70,9 @@ new styling beyond one width utility.
 - [x] filed EX-717 · deferred · code-review · `build-import-plan.ts:147` · a matched praca loses its
       etap `label` / `plane` / `workerId` — fields the arkusz has no column for, so they are lost
       rather than replaced. Recoverable via „Wersje", hence not a blocker.
-      test: TDD · unit — disposition recorded in EX-717.
+      **Rozstrzygnięte 2026-08-24 (właściciel): nie przenosimy — „zastąp" znaczy zastąp.** EX-717
+      anulowane, test niepotrzebny; decyzja mieszka w
+      `context/reference/kosztorys-editor-domain-notes.md` → „Decyzje zamknięte".
 - [x] filed EX-718 · deferred · code-review · `replace-tree-with-snapshot.ts` · the „before" snapshot
       is read outside the write transaction, so a concurrent save in that window is snapshotted
       wrong. Single-owner app, so low-probability; fix belongs to that module, not this slice.
