@@ -13,6 +13,7 @@ import { warsawToday } from '@/lib/fleet/days'
 import { activeFlags, nextFlags, parseVehicleFlags } from '@/lib/fleet/flags'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { toInspectionEvent } from '@/lib/fleet/map-inspection'
+import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 import { validateAction, protectedAction } from './run-action'
 
 const flagsSchema = z.array(z.enum(INSPECTION_TYPES))
@@ -66,11 +67,8 @@ export async function createInspectionAction(data: InspectionFormDataT) {
 }
 
 /**
- * Persist the „do wymiany" marks ticked on a vehicle.
- *
- * The stored map is rebuilt from the ticked set rather than patched: unticking is a removal, and a
- * type whose earlier mark the history already answered has to be re-stamped with today — keeping its
- * stale day would make the tick a no-op. Hence the read of the current events before writing.
+ * Persist the „do wymiany" marks ticked on a vehicle. The events are read first because `nextFlags`
+ * needs to know which marks the history has already answered — see its own note for why.
  */
 export async function setVehicleFlagsAction(vehicleId: number, types: InspectionTypeT[]) {
   return protectedAction(
@@ -79,22 +77,18 @@ export async function setVehicleFlagsAction(vehicleId: number, types: Inspection
       const parsed = validateAction(flagsSchema, types)
       if (!parsed.success) return parsed
 
-      const vehicle = await payload.findByID({
-        collection: 'vehicles',
-        id: vehicleId,
-        depth: 0,
-        overrideAccess: true,
-      })
+      const vehicle = await payload.findByID({ collection: 'vehicles', id: vehicleId, depth: 0 })
       const inspections = await payload.find({
         collection: 'vehicle-inspections',
         where: { vehicle: { equals: vehicleId } },
         limit: 1000,
         depth: 0,
-        overrideAccess: true,
       })
 
       const current = parseVehicleFlags(vehicle.flags)
-      const events = inspections.docs.map(toInspectionEvent)
+      // Every event of the type has to be seen: a truncated page hides the inspection that already
+      // answered a mark, and `nextFlags` would then re-stamp it as freshly ticked.
+      const events = assertCompletePage(inspections, 'setVehicleFlagsAction').map(toInspectionEvent)
       const today = warsawToday()
 
       await payload.update({

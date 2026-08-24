@@ -80,8 +80,6 @@ export const buildFleetDigest = (
     const latest = latestByType(events)
     const latestOdometer = latestOdometerReading(events)
 
-    // Scheduled types only — an ad-hoc SERVICE carries no due date, so there is nothing to count
-    // down to and nothing the sweep could ever say about it.
     for (const type of SCHEDULED_INSPECTION_TYPES) {
       const row = latest[type]
       if (!row) continue

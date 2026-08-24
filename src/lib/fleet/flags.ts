@@ -1,13 +1,6 @@
 import { toWarsawDay, type DayT } from '@/lib/fleet/days'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
-import type { InspectionEventT } from '@/lib/fleet/types'
-
-/**
- * The manual marks on a vehicle: „this car needs its oil changed / new tyres", typed by a human
- * rather than derived from a deadline. Stored as the DAY the mark was made, not a boolean — that day
- * is what lets the mark clear itself (see `activeFlags`) instead of rotting until somebody unticks it.
- */
-export type VehicleFlagsT = Partial<Record<InspectionTypeT, DayT>>
+import type { InspectionEventT, VehicleFlagsT } from '@/lib/fleet/types'
 
 const isDay = (value: unknown): value is DayT =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -37,6 +30,11 @@ export const parseVehicleFlags = (raw: unknown): VehicleFlagsT => {
  * doing it — a booked appointment is work that has not happened, and the mark is precisely the thing
  * saying it still needs to.
  *
+ * It is INCLUSIVE at both ends, and that costs something: a day has no clock, so a mark made hours
+ * after the work was recorded is retired by it on sight and the tick reads as a no-op. Same-day
+ * clearing is the common case and an exclusive bound would break it, so the ambiguity is paid here
+ * rather than there — the checkbox unticking itself on the round-trip is what makes it visible.
+ *
  * Returned in INSPECTION_TYPES order, never the stored object's, so the badges keep the domain's
  * order regardless of which type happened to be flagged first.
  */
@@ -62,10 +60,9 @@ export const activeFlags = (
  * The map to persist for a newly ticked set.
  *
  * A type that is already active keeps its original day — re-saving the form must not restart its
- * clock. A type being newly ticked is stamped with today, and this is the case the `active` argument
- * exists for: a mark already retired by an inspection still has its old day sitting in the map, so
- * "keep whatever is stored" would write back a day the history already covers and the tick would do
- * nothing. Anything deselected is dropped, which is also how a retired entry gets pruned.
+ * clock. This is what the `active` argument exists for: a mark already retired by an inspection still
+ * has its old day sitting in the map, so „keep whatever is stored" would write back a day the history
+ * already covers and the tick would do nothing.
  */
 export const nextFlags = ({
   current,

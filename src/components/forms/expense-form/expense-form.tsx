@@ -71,7 +71,11 @@ const FORM_ID = 'expense'
 export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: TransferFormPropsT) {
   const { recoveredFiles, submit } = useFormSubmit(FORM_ID)
 
-  const storedValues = useExpenseFormStore((s) => s.formData)
+  // Scoped by formId like every other draft consumer: `'expense'` is the only writer today, but the
+  // day an „Edytuj wydatek" dialog shares this slot its draft would otherwise seed the create form.
+  const storedFormId = useExpenseFormStore((s) => s.formId)
+  const draft = useExpenseFormStore((s) => s.formData)
+  const storedValues = storedFormId === FORM_ID ? draft : null
   const updateFormData = useExpenseFormStore((s) => s.updateFormData)
   const resetFormData = useExpenseFormStore((s) => s.resetFormData)
 

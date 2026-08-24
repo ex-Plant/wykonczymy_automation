@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { startTransition, useOptimistic } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { setVehicleFlagsAction } from '@/lib/actions/fleet'
 import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
@@ -10,8 +9,13 @@ import { toastMessage } from '@/lib/utils/toast'
 
 /**
  * The only place marks are edited. Ticking is optimistic — the boxes are the whole UI, so waiting on
- * the round-trip would make every click feel broken — but a failed write rolls the local set back to
- * what the server last gave us rather than leaving a tick nothing persisted.
+ * the round-trip would make every click feel broken.
+ *
+ * `useOptimistic` rather than `useState`, because the server's set moves on its own: recording an
+ * inspection from this same page retires the matching mark, and a component seeded once would keep
+ * showing the tick while the badge is already gone — then re-stamp that type on the next unrelated
+ * toggle. Anchoring on the prop also makes the failure path free: the tick reverts to whatever the
+ * server last said, with no pre-toggle snapshot to keep.
  */
 export function VehicleFlags({
   vehicleId,
@@ -20,24 +24,26 @@ export function VehicleFlags({
   vehicleId: number
   active: InspectionTypeT[]
 }) {
-  const [selected, setSelected] = useState<InspectionTypeT[]>(active)
-  const router = useRouter()
+  const [selected, setSelected] = useOptimistic(active)
 
-  async function toggle(type: InspectionTypeT) {
+  function toggle(type: InspectionTypeT) {
     const next = selected.includes(type)
       ? selected.filter((candidate) => candidate !== type)
       : [...selected, type]
 
-    setSelected(next)
+    startTransition(async () => {
+      setSelected(next)
 
-    const result = await setVehicleFlagsAction(vehicleId, next)
-    if (!result.success) {
-      setSelected(active)
-      toastMessage(result.error, 'error')
-      return
-    }
-
-    router.refresh()
+      try {
+        const result = await setVehicleFlagsAction(vehicleId, next)
+        if (!result.success) toastMessage(result.error, 'error')
+      } catch {
+        // The action never rejects on a handler throw — `protectedAction` catches those. Reaching
+        // here means the request itself failed, so nothing was persisted.
+        // TODO(EX-449) SENTRY-REQUIRED: transport failure on setVehicleFlagsAction
+        toastMessage('Nie udało się zapisać oznaczenia — spróbuj ponownie.', 'error')
+      }
+    })
   }
 
   return (

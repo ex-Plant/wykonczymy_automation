@@ -27,6 +27,16 @@ type UseManagedFormArgsT<TValues, TData> = {
    * which the caller seeds directly.
    */
   mergeStored?: (stored: TValues) => TValues
+  /**
+   * Whether typed values outlive the dialog. Only sound on a CREATE form, where the draft is the
+   * only copy of what was typed and the record it describes does not exist yet.
+   *
+   * An EDIT form must pass `false`: there `defaultValues` is a snapshot of a live row, the draft is
+   * a divergence from it, and the submit writes back EVERY field. So a restored draft silently
+   * reverts whatever changed in the meantime — another editor's fix, or a status changed elsewhere
+   * on the page — in fields the user never touched. Fresh server data has to win.
+   */
+  persistDraft?: boolean
 }
 
 /**
@@ -46,6 +56,7 @@ export function useManagedForm<TValues, TData>({
   action,
   onReset,
   mergeStored,
+  persistDraft = true,
 }: UseManagedFormArgsT<TValues, TData>) {
   const { submit } = useFormSubmit(formId)
 
@@ -55,13 +66,15 @@ export function useManagedForm<TValues, TData>({
   const resetFormData = useFormStore((s) => s.resetFormData)
 
   const reset = () => {
-    resetFormData()
+    // Clearing the single slot is only ours to do if we wrote it — an edit form doing so would drop
+    // an unrelated „Dodaj…" draft still in progress.
+    if (persistDraft) resetFormData()
     onReset?.()
   }
 
   // A draft belongs to the instance that wrote it. „Dodaj pojazd" and „Edytuj pojazd 7" share one
   // store slot, so without this an abandoned add-draft would win over the record being edited.
-  const draft = storedFormId === formId ? storedValues : null
+  const draft = persistDraft && storedFormId === formId ? storedValues : null
 
   const initialValues = draft === null ? defaultValues : (mergeStored?.(draft) ?? draft)
 
@@ -71,7 +84,9 @@ export function useManagedForm<TValues, TData>({
       onSubmit: schema,
     },
     listeners: {
-      onChange: ({ formApi }) => updateFormData(formId, formApi.state.values as TValues),
+      onChange: ({ formApi }) => {
+        if (persistDraft) updateFormData(formId, formApi.state.values as TValues)
+      },
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {

@@ -1,6 +1,7 @@
-import type { CollectionBeforeDeleteHook, CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { makePreventDelete } from '@/hooks/prevent-delete'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import {
   SETTLEMENT_MODE_ADMIN_OPTIONS,
@@ -13,29 +14,20 @@ const STATUS_OPTIONS = [
   { label: { en: 'Completed', pl: 'Zakończona' }, value: 'completed' },
 ] as const
 
-// Block deletion while any transaction still points here. The FK is ON DELETE SET NULL, so a delete
-// does not fail — it silently strips `investment_id` from every referencing row, and nothing records
-// which investment they belonged to. For LABOR_COST / RABAT / LOSS that is terminal: they carry no
-// source register either, so an orphaned row is reachable from no investment and no kasa at all.
+// For LABOR_COST / RABAT / LOSS an orphaned transaction is terminal: they carry no source register
+// either, so a row stripped of `investment_id` is reachable from no investment and no kasa at all.
 // Cancelled rows count — they are the audit trail, and orphaning them erases it just as thoroughly.
-const preventDeleteWithTransactions: CollectionBeforeDeleteHook = async ({ id, req }) => {
-  // limit: 1 — only totalDocs is read; Payload computes it via a separate count query, so
-  // a single-row page still yields the true total without hydrating every referencing row.
-  // `req` is forwarded so the count joins the delete's transaction: a caller that clears the
-  // transactions and the investment in one transaction must not be refused on pre-delete state.
-  const { totalDocs } = await req.payload.find({
-    collection: 'transactions',
-    where: { investment: { equals: id } },
-    limit: 1,
-    req,
-  })
-
-  if (totalDocs > 0) {
-    throw new Error(
-      `Nie można usunąć inwestycji — istnieje ${totalDocs} powiązanych transakcji. Najpierw usuń lub przenieś transakcje.`,
-    )
-  }
-}
+const preventDeleteWithTransactions = makePreventDelete({
+  probes: [
+    {
+      collection: 'transactions',
+      where: (id) => ({ investment: { equals: id } }),
+      label: 'transakcje',
+    },
+  ],
+  message: (blockers) =>
+    `Nie można usunąć inwestycji — istnieją powiązane dane (${blockers.join(', ')}). Najpierw usuń lub przenieś transakcje.`,
+})
 
 export const Investments: CollectionConfig = {
   slug: 'investments',

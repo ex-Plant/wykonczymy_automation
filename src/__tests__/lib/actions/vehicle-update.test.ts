@@ -29,8 +29,7 @@ describe.skipIf(!ENV_READY)('updateVehicleAction (DB)', () => {
   let vehicleId = 0
   let registration = ''
 
-  const stored = async () =>
-    payload.findByID({ collection: 'vehicles', id: vehicleId, depth: 0 })
+  const stored = async () => payload.findByID({ collection: 'vehicles', id: vehicleId, depth: 0 })
 
   const edit = (overrides: Partial<VehicleFormDataT> = {}): VehicleFormDataT => ({
     registration,
@@ -86,6 +85,15 @@ describe.skipIf(!ENV_READY)('updateVehicleAction (DB)', () => {
     const row = await stored()
     expect(row.make).toBe('Renault')
     expect(parseVehicleFlags(row.flags)).toEqual({ OIL_CHANGE: '2026-01-01' })
+  })
+
+  // Regression: the domain schema used to make `year` optional, and Payload reads a missing key on
+  // update as "leave the column alone" — so emptying „Rocznik" saved successfully and changed nothing.
+  it('clears „Rocznik" when the field is emptied', async () => {
+    const result = await updateVehicleAction(vehicleId, edit({ year: null }))
+    expect(result.success).toBe(true)
+
+    expect((await stored()).year).toBeNull()
   })
 
   it('writes nothing when the payload fails validation', async () => {

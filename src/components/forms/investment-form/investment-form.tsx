@@ -21,6 +21,8 @@ type InvestmentFormPropsT = {
   submittingLabel: string
   onSubmitSuccess: () => void
   keepOpen?: boolean
+  /** False on the edit dialogs — see `useManagedForm`. */
+  persistDraft?: boolean
   // Create-only seed-from-szablon picker; omitted on edit.
   presetOptions?: PresetMetaT[]
 }
@@ -34,6 +36,7 @@ export function InvestmentForm({
   submittingLabel,
   onSubmitSuccess,
   keepOpen,
+  persistDraft,
   presetOptions,
 }: InvestmentFormPropsT) {
   const { form, reset } = useManagedForm<InvestmentFormValuesT, InvestmentFormDataT>({
@@ -45,6 +48,7 @@ export function InvestmentForm({
     successMessage,
     onSubmitSuccess,
     action,
+    persistDraft,
     toData: (value) => ({
       name: value.name,
       address: value.address,

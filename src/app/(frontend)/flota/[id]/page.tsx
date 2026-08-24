@@ -69,7 +69,7 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
                 ),
               },
               {
-                label: 'Zaznacz jeśli wymaga uwagi natychmiast:',
+                label: 'Do wymiany:',
                 value: <VehicleFlags vehicleId={vehicle.id} active={vehicle.activeFlags} />,
               },
             ]}

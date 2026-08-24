@@ -1410,7 +1410,7 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 
 ## EX-711 — flota: ręczne znaczniki „do wymiany" i typ „Serwis"
 
-Setup: baza testowa 5435 po `pnpm exec payload migrate` (migracja `20260819_0`), co najmniej jeden
+Setup: baza testowa 5435 po `pnpm exec payload migrate` (migracja `20260819_1`), co najmniej jeden
 pojazd z historią przeglądów. Zalogowany jako OWNER.
 
 - [ ] Na karcie pojazdu zaznaczenie „Wymiana opon" pokazuje czerwoną plakietkę „Opony" w kolumnie „Do wymiany" na `/flota`
@@ -1439,3 +1439,17 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] Wybranie zdjęcia HEIC w „Dodaj przegląd": po chwili przycisk zapisu znów jest aktywny, a zapisany przegląd ma czytelny załącznik (nie plik, którego przeglądarka nie otworzy)
 - [ ] Wybranie pliku > 4 MB (PDF): pojawia się komunikat o odrzuconym pliku, a przegląd zapisuje się bez niego
 - [ ] W trakcie przetwarzania pliku przycisk zapisu jest wyszarzony, a Enter w formularzu **nie** zapisuje przeglądu bez załącznika
+- [ ] W trakcie przetwarzania pliku **przeciągnięcie** drugiego pliku na to samo pole nie robi nic — pole jest przygaszone i nie startuje drugiego przetwarzania
+- [ ] Po nieudanym przetworzeniu (albo po zapisie z „nie zamykaj") ponowne wybranie **tego samego** pliku znów startuje przetwarzanie, a nie milczy
+
+### Bramka przeglądu (2026-08-24)
+
+- [ ] Karta pojazdu, sekcja „Do wymiany:": zaznaczenie typu, a potem „Dodaj przegląd" tego samego typu z datą **wczorajszą** — plakietka znika z `/flota` **i** pole samo się odznacza na otwartej karcie, bez ręcznego przeładowania
+- [ ] Zaznaczenie typu przy wyłączonym internecie: pojawia się komunikat o nieudanym zapisie, a pole wraca do stanu sprzed kliknięcia
+- [ ] Nieudany zapis jednego typu nie cofa wcześniejszego, udanego zaznaczenia innego typu
+- [ ] „Edytuj pojazd": wyczyszczenie pola „Rocznik" i zapis — po ponownym otwarciu pole jest puste (a nie ze starym rokiem)
+- [ ] Plakietka „Olej +N km" siedzi w kolumnie „Wymiana oleju" na `/flota` i wygląda identycznie jak plakietki ręcznych znaczników
+- [ ] Panel Payload: próba usunięcia kasy / inwestycji / pracownika z powiązanymi danymi dalej odmawia i wymienia, czego dotyczy („transakcje: N", „kasy: N", …)
+- [ ] „Edytuj pojazd 7": zmiana pola, Esc bez zapisu, ponowne otwarcie — formularz pokazuje dane z bazy, nie porzucony szkic (to samo dla „Edytuj inwestycję" i „Edytuj pracownika")
+- [ ] Rozpoczęty szkic w „Dodaj pojazd" przeżywa otwarcie i zamknięcie „Edytuj pojazd" — dialog edycji nie kasuje ani nie nadpisuje szkicu tworzenia
+- [ ] „Dodaj pojazd": wypełnienie części pól, Esc, ponowne otwarcie — szkic **wraca** (zachowanie niezmienione)

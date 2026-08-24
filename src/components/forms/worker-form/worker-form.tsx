@@ -23,6 +23,8 @@ type WorkerFormPropsT = {
   submittingLabel: string
   onSubmitSuccess: () => void
   keepOpen?: boolean
+  /** False on the edit dialogs — see `useManagedForm`. */
+  persistDraft?: boolean
   cashRegisters: ReferenceItemT[]
 }
 
@@ -35,6 +37,7 @@ export function WorkerForm({
   submittingLabel,
   onSubmitSuccess,
   keepOpen,
+  persistDraft,
   cashRegisters,
 }: WorkerFormPropsT) {
   const { form, reset } = useManagedForm<WorkerFormValuesT, WorkerFormDataT>({
@@ -46,6 +49,7 @@ export function WorkerForm({
     successMessage,
     onSubmitSuccess,
     action,
+    persistDraft,
     toData: (value) => ({
       name: value.name,
       email: value.email,

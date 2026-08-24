@@ -25,6 +25,7 @@ function FileInput({
   accept = 'image/*,application/pdf',
   initialFileName,
   multiple,
+  disabled,
   ref,
   ...props
 }: FileInputPropsT) {
@@ -62,6 +63,9 @@ function FileInput({
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
+    // `disabled` reaches the hidden input, which kills the click path but not this one. Callers that
+    // disable mid-ingest would otherwise get a second concurrent batch through the drop target.
+    if (disabled) return
 
     const dropped = [...e.dataTransfer.files].slice(0, multiple ? undefined : 1)
     if (dropped.length === 0) return
@@ -109,6 +113,7 @@ function FileInput({
           'border-input bg-background flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 transition-colors',
           'text-muted-foreground hover:border-primary/50 hover:bg-muted/50',
           isDragOver && 'border-primary bg-muted/50',
+          disabled && 'pointer-events-none opacity-50',
           className,
         )}
       >
@@ -120,6 +125,7 @@ function FileInput({
           type="file"
           accept={accept}
           multiple={multiple}
+          disabled={disabled}
           onChange={handleChange}
           className="sr-only"
           {...props}

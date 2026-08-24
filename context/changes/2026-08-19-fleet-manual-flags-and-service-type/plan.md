@@ -68,8 +68,11 @@ Two related additions to the fleet module:
 - No flag history/audit (who ticked it, when it cleared) — the current mark is the whole state.
 - No backfill: no existing vehicle gets a flag, no existing inspection is reclassified as `SERVICE`.
 - No edit/delete UI for inspections (still absent today; out of scope).
-- No change to `OilIntervalBadge` — the automatic km-overrun badge stays next to the registration and
-  keeps its own meaning ("the car has driven past its interval"), separate from a manual mark.
+- No change to what `OilIntervalBadge` MEANS — the automatic km-overrun keeps its own reading ("the
+  car has driven past its interval"), separate from a manual mark. Amended during implementation: it
+  moved out of the registration cell into the OIL_CHANGE deadline column, because the overrun belongs
+  to the oil deadline rather than to the car as a whole. Its markup is now shared with `FlagBadge`
+  via `AlertBadge` so the two reds cannot drift apart.
 
 ## Implementation Approach
 
@@ -117,7 +120,8 @@ pl: 'Serwis' }`, `INSPECTION_INTERVAL_MONTHS.SERVICE = null` (same documented me
 
 #### 2. Flag rules
 
-**File**: `src/lib/fleet/flags.ts` (new)
+**File**: `src/lib/fleet/flags.ts` (new; `VehicleFlagsT` itself lives in `src/lib/fleet/types.ts` with
+the other domain shapes, so the two files do not import each other)
 
 **Intent**: The whole flag semantics as pure functions: parse the untyped `jsonb`, decide which flags
 are currently active given the vehicle's events, and compute the next stored map for a toggle.
@@ -128,7 +132,11 @@ are currently active given the vehicle's events, and compute the next stored map
 export type VehicleFlagsT = Partial<Record<InspectionTypeT, DayT>>   // type → the day it was flagged
 
 export const parseVehicleFlags = (raw: unknown): VehicleFlagsT      // drops unknown keys / bad days
-export const activeFlags = (flags: VehicleFlagsT, events: readonly InspectionEventT[]): InspectionTypeT[]
+export const activeFlags = (
+  flags: VehicleFlagsT,
+  events: readonly InspectionEventT[],
+  today: DayT,                            // parameter, so nothing here reads the clock
+): InspectionTypeT[]
 export const nextFlags = (args: {
   current: VehicleFlagsT
   active: readonly InspectionTypeT[]      // what is active right now
@@ -137,8 +145,10 @@ export const nextFlags = (args: {
 }): VehicleFlagsT
 ```
 
-A flag is **active** when its day is set and no event of that type has `performedAt` (as a Warsaw day)
-on or after it. `activeFlags` returns them in `INSPECTION_TYPES` order, not object order.
+A flag is **active** when its day is set and no event of that type falls in the closed window
+`[flaggedAt, today]` (Warsaw days). The upper bound is what keeps a FUTURE-dated event — a booked
+appointment — from retiring a mark that says the work still has to happen. `activeFlags` returns them
+in `INSPECTION_TYPES` order, not object order.
 `nextFlags` keeps the stored day for a type that is already active and re-stamps `today` for one
 being newly ticked; anything not selected is dropped from the map.
 

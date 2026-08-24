@@ -44,6 +44,9 @@ export const OIL_ODOMETER_WARN_KM = 1000
  */
 export const OIL_CHANGE_INTERVAL_KM = 10_000
 
-/** `null` (no reading to compare) is not overdue — an unknown distance must never render as alarm. */
-export const isOilChangeOverdue = (kmSinceOilChange: number | null): boolean =>
+/**
+ * `null` (no reading to compare) is not overdue — an unknown distance must never render as alarm.
+ * Typed as a predicate so a caller that goes on to print the overrun keeps the narrowed number.
+ */
+export const isOilChangeOverdue = (kmSinceOilChange: number | null): kmSinceOilChange is number =>
   kmSinceOilChange !== null && kmSinceOilChange > OIL_CHANGE_INTERVAL_KM

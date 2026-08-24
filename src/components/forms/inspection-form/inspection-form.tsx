@@ -266,7 +266,11 @@ export function InspectionForm({
           label="Załączniki"
           multiple
           disabled={isIngesting}
-          onChange={(e) => ingestPicked(Array.from(e.target.files ?? []))}
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? [])
+            e.target.value = '' // allow re-picking the same file after a reset or a failed ingest
+            ingestPicked(picked)
+          }}
         />
       </FieldGroup>
 

@@ -1,7 +1,6 @@
 /**
- * The types that carry a deadline — every one of them answers "when is it next due". Read by the
- * listing's deadline columns, the reminder sweep and the weekly missing-inspections report, which all
- * used to read INSPECTION_TYPES back when the two lists were the same thing.
+ * The types that carry a deadline — every one of them answers "when is it next due". SERVICE is the
+ * odd one out: an ad-hoc repair has nothing to count down to, so it belongs to no deadline surface.
  */
 export const SCHEDULED_INSPECTION_TYPES = [
   'TECHNICAL',

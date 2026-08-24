@@ -44,6 +44,7 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogPropsT) {
           submittingLabel="Zapisywanie..."
           onSubmitSuccess={onSubmitSuccess}
           keepOpen={keepOpen}
+          persistDraft={false}
         />
       )}
     </FormDialog>

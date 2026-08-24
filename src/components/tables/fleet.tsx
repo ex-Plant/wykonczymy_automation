@@ -41,7 +41,6 @@ export function getFleetColumns() {
         </span>
       ),
     }),
-    // Only the scheduled types get a column — SERVICE has no deadline to show.
     ...SCHEDULED_INSPECTION_TYPES.map((type) =>
       col.accessor((row) => row.deadlines[type].daysLeft ?? undefined, {
         id: type,
