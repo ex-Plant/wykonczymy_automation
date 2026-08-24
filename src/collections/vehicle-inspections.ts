@@ -88,8 +88,12 @@ export const VehicleInspections: CollectionConfig = {
       },
     },
     {
+      // Required so a zero in the fleet listing's cost column means „it cost nothing" and nothing
+      // else — an optional price would make that cell unreadable (EX-729).
       name: 'cost',
       type: 'number',
+      required: true,
+      min: 0,
       label: { en: 'Cost', pl: 'Koszt' },
     },
     {

@@ -21,7 +21,7 @@ export const toInspectionEvent = (row: VehicleInspection): InspectionRecordT => 
   notifiedThreshold: row.notifiedThreshold ?? null,
   notifiedAt: row.notifiedAt ?? null,
   odometerNotifiedAt: row.odometerNotifiedAt ?? null,
-  cost: row.cost ?? null,
+  cost: row.cost,
   note: row.note ?? '',
   attachmentCount: row.attachments?.length ?? 0,
 })

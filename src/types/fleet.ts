@@ -30,7 +30,7 @@ export type InspectionHistoryEntryT = {
   nextDueAt: string | null
   odometer: number | null
   nextDueOdometer: number | null
-  cost: number | null
+  cost: number
   note: string
   attachmentCount: number
   /** Distance since the previous event of the same type; `null` when either reading is missing. */

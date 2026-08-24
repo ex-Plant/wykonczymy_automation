@@ -28,7 +28,7 @@ export type InspectionEventT = {
 
 /** An inspection plus the fields only the UI reads — what the loaders actually return. */
 export type InspectionRecordT = InspectionEventT & {
-  cost: number | null
+  cost: number
   note: string
   attachmentCount: number
 }

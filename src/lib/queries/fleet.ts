@@ -33,9 +33,11 @@ const getFleetDataset = unstable_cache(
 
     return dataset
   },
-  // Keyed -v2 because the payload widened with `flags`: entries written before it are still valid
-  // JSON, so tags alone would keep serving rows the parser reads as unflagged (lessons.md).
-  ['fleet-dataset-v2'],
+  // Keyed -v3 because the payload's SHAPE has changed twice: it widened with `flags`, and `cost`
+  // narrowed from `number | null` to `number`. An entry written under either older shape is still
+  // valid JSON, so tags alone would keep serving it — a tag marks an entry stale but the same
+  // request is still answered from it once before revalidation (lessons.md).
+  ['fleet-dataset-v3'],
   { tags: [CACHE_TAGS.vehicles, CACHE_TAGS.vehicleInspections] },
 )
 

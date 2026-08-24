@@ -73,6 +73,7 @@ import * as migration_20260818_1_add_fleet from './20260818_1_add_fleet'
 import * as migration_20260819_0_client_view_offer_settlement_variants from './20260819_0_client_view_offer_settlement_variants'
 import * as migration_20260819_1_add_service_type_and_vehicle_flags from './20260819_1_add_service_type_and_vehicle_flags'
 import * as migration_20260824_0_drop_kosztorys_client_view_hidden_columns from './20260824_0_drop_kosztorys_client_view_hidden_columns'
+import * as migration_20260824_1_require_inspection_cost from './20260824_1_require_inspection_cost'
 
 export const migrations = [
   {
@@ -449,5 +450,10 @@ export const migrations = [
     up: migration_20260824_0_drop_kosztorys_client_view_hidden_columns.up,
     down: migration_20260824_0_drop_kosztorys_client_view_hidden_columns.down,
     name: '20260824_0_drop_kosztorys_client_view_hidden_columns',
+  },
+  {
+    up: migration_20260824_1_require_inspection_cost.up,
+    down: migration_20260824_1_require_inspection_cost.down,
+    name: '20260824_1_require_inspection_cost',
   },
 ]
