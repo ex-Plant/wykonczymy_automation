@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-page-fetch-dedup
 title: Remove redundant server-side fetches on the kosztorys routes
-status: implementing
+status: implemented
 created: 2026-08-19
 updated: 2026-08-24
 archived_at: null

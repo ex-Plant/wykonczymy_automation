@@ -452,4 +452,4 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 4.1 No reference to the deleted parity script survives — PENDING_SHA
+- [x] 4.1 No reference to the deleted parity script survives — 6b37c4bf
