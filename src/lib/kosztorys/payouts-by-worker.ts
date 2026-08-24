@@ -9,9 +9,8 @@ export const UNASSIGNED_WORKER_NAME = 'Bez przypisanego pracownika'
 /**
  * Group the realized PAYOUT rows per worker and resolve each name from the roster.
  *
- * The per-worker Σ used to arrive as its own `GROUP BY worker_id` query alongside these rows — two
- * cache entries over character-for-character the same WHERE, so the block's totals and the list under
- * them could be served from different snapshots. Deriving here makes that drift unrepresentable.
+ * Never re-split this into its own `GROUP BY worker_id` query: a second cache entry over the same
+ * WHERE can serve the block's totals from a different snapshot than the list beneath them.
  *
  * The null-worker bucket is a real cash payout and keeps its own entry: folding it into a named
  * worker would invent a debt, dropping it would overstate „Pozostało do wypłaty".

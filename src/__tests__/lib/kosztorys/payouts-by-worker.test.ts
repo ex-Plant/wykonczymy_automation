@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { UNASSIGNED_WORKER_NAME, derivePayoutsByWorker } from '@/lib/kosztorys/payout-worker-names'
+import { UNASSIGNED_WORKER_NAME, derivePayoutsByWorker } from '@/lib/kosztorys/payouts-by-worker'
 import type { WorkerRefT } from '@/types/reference-data'
 import type { PayoutTransactionRowT } from '@/types/transfers'
 
@@ -27,8 +27,6 @@ describe('derivePayoutsByWorker', () => {
     expect(rowFor(1, rows)).toEqual({ workerId: 1, total: 1250.5, name: 'Jan Kowalski' })
   })
 
-  // The null bucket is a real cash payout with nobody attached. Folded into a named worker it would
-  // invent a debt; dropped, „Pozostało do wypłaty" overstates by its whole amount.
   it('keeps the null-worker bucket as its own row rather than merging or dropping it', () => {
     const rows = derivePayoutsByWorker(
       [payout(1, 1000), payout(null, 300), payout(null, 200)],
@@ -49,8 +47,6 @@ describe('derivePayoutsByWorker', () => {
     expect(rowFor(99, rows)).toEqual({ workerId: 99, total: 750, name: 'Nieznany pracownik' })
   })
 
-  // Float addition is new here — the old per-worker figure was a SQL SUM over numeric, which never
-  // produced a 0.1 + 0.2 tail.
   it('rounds a grouped total to cents', () => {
     const rows = derivePayoutsByWorker([payout(1, 0.1), payout(1, 0.2)], workers)
 

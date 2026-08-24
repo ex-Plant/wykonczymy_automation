@@ -1,4 +1,4 @@
-import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payout-worker-names'
+import { UNASSIGNED_WORKER_NAME } from '@/lib/kosztorys/payouts-by-worker'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
