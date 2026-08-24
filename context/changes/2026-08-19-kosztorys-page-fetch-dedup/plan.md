@@ -445,11 +445,11 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 3.1 The bucketing invariant still holds — PENDING_SHA
-- [x] 3.2 Parity across the three surfaces stays green (`pnpm test:parity`) — PENDING_SHA
+- [x] 3.1 The bucketing invariant still holds — 07797100
+- [x] 3.2 Parity across the three surfaces stays green (`pnpm test:parity`) — 07797100
 
 ### Phase 4: The serial pair, the comments, and the lesson
 
 #### Automated
 
-- [ ] 4.1 No reference to the deleted parity script survives
+- [x] 4.1 No reference to the deleted parity script survives — PENDING_SHA

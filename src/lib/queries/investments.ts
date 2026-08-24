@@ -68,17 +68,11 @@ export async function requireInvestmentOr404(id: string) {
   return { investmentId, investment, user: session.user }
 }
 
-// Name only, for the top-bar crumb. Reads it off the reference data instead of issuing its own
-// query: the layout nav already pulls that list on every management route and it is request-deduped,
-// so the name costs nothing here — where a dedicated read was a third trip to the same row, and one
-// its own `investments` tag re-paid after every settings write (EX-608).
-// The role gate is what keeps it free: without a management session there is no warm list to read,
-// and the crumb only ever renders over routes that already require one.
-// Reads the name off the already-warm reference data instead of querying: `fetchReferenceData` is
-// request-deduped and every management session loads it in `Navigation`, so a dedicated cached read
-// only added a third round trip for the same row — and one that went cold on every settings write.
-// The role gate is load-bearing, not decorative: without it a non-management session would pull the
-// company-wide reference dataset just to render a crumb (EX-608).
+// Name only, for the top-bar crumb. Reads it off the already-warm reference data instead of querying:
+// `fetchReferenceData` is request-deduped and every management session loads it in `Navigation`, so a
+// dedicated cached read only added a third round trip for the same row — and one that went cold on
+// every settings write. The role gate is load-bearing, not decorative: without it a non-management
+// session would pull the company-wide reference dataset just to render a crumb (EX-608).
 export async function getInvestmentName(id: string): Promise<string | null> {
   const { success } = await requireAuth(MANAGEMENT_ROLES)
   if (!success) return null

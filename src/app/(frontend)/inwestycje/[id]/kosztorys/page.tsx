@@ -1,6 +1,6 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { requireInvestmentOr404 } from '@/lib/queries/investments'
+import { parseInvestmentId, requireInvestmentOr404 } from '@/lib/queries/investments'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { SheetIframeView } from '@/components/sheets/iframe-view'
@@ -14,11 +14,15 @@ export default async function InvestmentKosztorysPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const { investmentId, investment } = await requireInvestmentOr404(id)
-
+  // The sheet lookup keys off the parsed id, not off the guard's result, so it has no reason to wait
+  // for it. Safe to run beside a guard that redirects, unlike the kosztorys_v2 fan-out: this lookup
+  // reads with overrideAccess and never throws, so nothing here can beat the redirect to the answer.
+  const investmentId = parseInvestmentId(id)
   // Sheet id lives on the kosztoryses collection, not on investments.
-  const payload = await getPayload({ config })
-  const sheetId = await getInvestmentSheetId(payload, investmentId)
+  const sheetIdPromise = getPayload({ config }).then((payload) =>
+    getInvestmentSheetId(payload, investmentId),
+  )
+  const [{ investment }, sheetId] = await Promise.all([requireInvestmentOr404(id), sheetIdPromise])
 
   if (sheetId) {
     return (
