@@ -1,11 +1,11 @@
 ---
 change_id: kosztorys-page-fetch-dedup
 title: Remove redundant server-side fetches on the kosztorys routes
-status: preparing
+status: implementing
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-24
 archived_at: null
-branch: null
+branch: liner_issues_fixing
 worktree: null
 ---
 
@@ -47,3 +47,12 @@ script as the parity guard).
 Decisions (owner, 2026-08-19): base off **`staging`**; finding 2 (`SummaryExpensesTab` aggregate
 beside its own row list) **rides along** in this change rather than getting its own slice — so
 `pnpm test:parity` is a gate on this work.
+
+Plan (2026-08-24): `plan.md` + `plan-brief.md`. Four phases, one commit each. Phase 1 (the auth race +
+dropping `requireInvestmentOr404`) goes first and alone — it is the only real defect and the two halves
+are inseparable. Owner decisions this session: the tab gates on its own rows but `materialsBreakdown`
+stays aggregate-sourced (`deriveFinancials` produces the whole `InvestmentFinancialsT`, so the aggregate
+cannot be deleted — the research's EX-680 recipe does not transfer 1:1); the auth guard is proven by a
+Vitest spec on the extracted gate, **not** by an E2E (no `EMPLOYEE` fixture exists, and no `e2e-backlog`
+issue is owed); `(share)/podglad-inwestora` stays untouched; the retired-measurement rule lands in
+`lessons.md`.

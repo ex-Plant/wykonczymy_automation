@@ -1,4 +1,5 @@
-import { parseInvestmentId, requireInvestmentOr404 } from '@/lib/queries/investments'
+import { notFound } from 'next/navigation'
+import { parseInvestmentId } from '@/lib/queries/investments'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import {
@@ -12,6 +13,7 @@ import {
   fetchWholeInvestmentFinancials,
 } from '@/lib/queries/whole-investment-financials'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
+import { requireManagementPage } from '@/lib/auth/require-management-page'
 import { resolvePayoutWorkerNames } from '@/lib/kosztorys/payout-worker-names'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 import { perfStart } from '@/lib/perf'
@@ -26,6 +28,11 @@ export default async function InvestmentKosztorysV2Page({
   const elapsed = perfStart()
   const { id } = await params
   const investmentId = parseInvestmentId(id)
+  // Awaited before the fan-out on purpose. Folded into the Promise.all it would race
+  // getKosztorysTree's throw, and whichever rejects first decides whether a non-management session
+  // sees the login page or an error screen. Serializing costs nothing: requireAuth is a cache()'d
+  // JWT decode with no round trip, and getKosztorysTree reads it back from the same request cache.
+  const user = await requireManagementPage()
 
   const treePromise = getKosztorysTree(investmentId)
   // Read-only bridge to the financial plane: the investment's live material spend (unsettled
@@ -41,11 +48,7 @@ export default async function InvestmentKosztorysV2Page({
   // The individual materiały rows for the Podsumowanie's wydatki list — same fetch the client share
   // read uses, so both surfaces label and split the rows identically.
   const materialTxPromise = fetchMaterialTransactionsForInvestment(investmentId)
-  // Folded into the same Promise.all as everything else so the 404 lookup runs concurrently with the
-  // data fetches rather than gating them; its notFound() rejection propagates through Promise.all.
-  const investmentPromise = requireInvestmentOr404(id)
   const [
-    { investment, user },
     tree,
     financialsSource,
     refData,
@@ -54,7 +57,6 @@ export default async function InvestmentKosztorysV2Page({
     depositTransactions,
     materialTransactions,
   ] = await Promise.all([
-    investmentPromise,
     treePromise,
     financialsPromise,
     fetchReferenceData(),
@@ -64,8 +66,8 @@ export default async function InvestmentKosztorysV2Page({
     materialTxPromise,
   ])
   console.log(
-    `[PERF] kosztorys_v2/${investmentId} 9-fetch fan-out ${elapsed()}ms ` +
-      `(tree + financials source + referenceData + payouts + 3 transaction lists + investment)`,
+    `[PERF] kosztorys_v2/${investmentId} 7-fetch fan-out ${elapsed()}ms ` +
+      `(tree + financials source + referenceData + payouts + 3 transaction lists)`,
   )
   const { financials, materialsBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
@@ -75,9 +77,10 @@ export default async function InvestmentKosztorysV2Page({
   // Names join here (not in the cached query): resolve each worker id against reference data.
   // Sorting/totals live in the pure block helper.
   const payoutsByWorker = resolvePayoutWorkerNames(payouts, refData.workers)
-  // Whether a Google sheet is linked rides along on the reference data already fetched above — no
-  // second trip for one boolean.
-  const hasSheet = refData.investments.find((i) => i.id === investmentId)?.hasSheet ?? false
+  // The investment's name, its existence and whether a Google sheet is linked all ride along on the
+  // reference data already fetched above — a dedicated findByID bought none of the three.
+  const investment = refData.investments.find((i) => i.id === investmentId)
+  if (!investment) notFound()
 
   return (
     <KosztorysEditorV2
@@ -99,7 +102,7 @@ export default async function InvestmentKosztorysV2Page({
       depositTransactions={depositTransactions}
       materialTransactions={materialTransactions}
       workers={refData.workers}
-      hasSheet={hasSheet}
+      hasSheet={investment.hasSheet}
     />
   )
 }
