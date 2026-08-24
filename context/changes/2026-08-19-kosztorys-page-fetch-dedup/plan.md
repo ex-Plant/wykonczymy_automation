@@ -430,16 +430,16 @@ Run once, after Phase 4.
 
 #### Automated
 
-- [x] 1.1 The new guard spec passes
-- [x] 1.2 No production caller of `requireInvestmentOr404` remains on `kosztorys_v2`
+- [x] 1.1 The new guard spec passes — f6a759fa
+- [x] 1.2 No production caller of `requireInvestmentOr404` remains on `kosztorys_v2` — f6a759fa
 
 ### Phase 2: One source for the payouts — Σ derived from the rows
 
 #### Automated
 
-- [ ] 2.1 New derivation spec passes
-- [ ] 2.2 The existing block spec still passes
-- [ ] 2.3 Nothing references the deleted symbols
+- [x] 2.1 New derivation spec passes
+- [x] 2.2 The existing block spec still passes
+- [x] 2.3 Nothing references the deleted symbols
 
 ### Phase 3: The wydatki tab reads its own rows
 

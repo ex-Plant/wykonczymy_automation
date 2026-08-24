@@ -3,7 +3,6 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import {
-  sumPayoutsByWorkerForInvestment,
   getPayoutTransactionsForInvestment,
   getDepositTransactionsForInvestment,
 } from '@/lib/db/sum-transfers'
@@ -13,29 +12,14 @@ import { fetchExpenseCategories } from '@/lib/queries/reference-data'
 import { extractInvoiceIds, resolveInvoiceFiles } from '@/lib/invoices/invoice-field'
 import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
-  PayoutByWorkerT,
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
 } from '@/types/transfers'
 
-// Realized PAYOUTs for one investment, grouped per worker (null-worker bucket kept). Cached under
-// CACHE_TAGS.transfers alone — names are joined at the page from reference data, so no users tag is
-// needed here; recalculate-balances fires revalidateTag(transfers) on every transfer mutation.
-export async function fetchPayoutsByWorkerForInvestment(
-  investmentId: number,
-): Promise<PayoutByWorkerT[]> {
-  return unstable_cache(
-    async () => {
-      const payload = await getPayload({ config })
-      return sumPayoutsByWorkerForInvestment(payload, investmentId)
-    },
-    ['payouts-by-worker', String(investmentId)],
-    { tags: [CACHE_TAGS.transfers] },
-  )()
-}
-
-// Same cache contract as the per-worker sum above — transfers tag, worker names joined at the page.
+// Realized PAYOUTs for one investment. Cached under CACHE_TAGS.transfers alone — worker names are
+// joined at the block from reference data, so no users tag is needed here; recalculate-balances fires
+// revalidateTag(transfers) on every transfer mutation.
 export async function fetchPayoutTransactionsForInvestment(
   investmentId: number,
 ): Promise<PayoutTransactionRowT[]> {

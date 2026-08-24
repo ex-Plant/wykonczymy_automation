@@ -8,7 +8,6 @@ import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type { InvestmentFinancialsT, MaterialsBreakdownRowT } from '@/types/investment-financials'
 import type { WorkerRefT } from '@/types/reference-data'
 import type {
-  SubcontractorPayoutRowT,
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
@@ -162,11 +161,9 @@ export type KosztorysEditorDataT = {
   discountNetFromTransactions: number
   // Σ LOSS — the cost the company absorbed, which the settlement deducts at face value.
   investmentLoss: number
-  // Realized PAYOUTs per worker for the subcontractor summary block. Optional (default []) because the
-  // two client-view share entry points never render that block and don't supply it.
-  payoutsByWorker?: SubcontractorPayoutRowT[]
-  // Individual realized PAYOUT rows for the subcontractor block's sortable wypłaty list. Optional
-  // (default []) — same reason as payoutsByWorker.
+  // Individual realized PAYOUT rows for the subcontractor summary block — its sortable wypłaty list
+  // AND its per-worker Σ, derived in the block. Optional (default []) because the two client-view
+  // share entry points never render that block and don't supply them.
   payoutTransactions?: PayoutTransactionRowT[]
   // Individual deposit rows for the client Podsumowanie's sortable wpłaty list. Required: the wpłaty
   // TOTAL is summed from these rows, so a host that omits them isn't showing an empty list — it is

@@ -3,7 +3,6 @@ import { parseInvestmentId } from '@/lib/queries/investments'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import {
-  fetchPayoutsByWorkerForInvestment,
   fetchPayoutTransactionsForInvestment,
   fetchDepositTransactionsForInvestment,
   fetchMaterialTransactionsForInvestment,
@@ -14,7 +13,6 @@ import {
 } from '@/lib/queries/whole-investment-financials'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { requireManagementPage } from '@/lib/auth/require-management-page'
-import { resolvePayoutWorkerNames } from '@/lib/kosztorys/payout-worker-names'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 import { perfStart } from '@/lib/perf'
 
@@ -39,9 +37,8 @@ export default async function InvestmentKosztorysV2Page({
   // INVESTMENT_EXPENSE + CORRECTION) plus its per-expense-category split, summed via the same
   // cached path the detail page uses.
   const financialsPromise = fetchWholeInvestmentFinancials(investmentId)
-  // Realized PAYOUTs per worker (null-worker bucket kept) for the subcontractor summary block.
-  const payoutsPromise = fetchPayoutsByWorkerForInvestment(investmentId)
-  // The individual realized PAYOUT rows — feed the subcontractor block's sortable wypłaty list.
+  // The realized PAYOUT rows — the subcontractor block's wypłaty list and, summed there, its
+  // per-worker totals.
   const payoutTxPromise = fetchPayoutTransactionsForInvestment(investmentId)
   // The individual deposit rows — feed the client Podsumowanie's sortable wpłaty list.
   const depositTxPromise = fetchDepositTransactionsForInvestment(investmentId)
@@ -52,7 +49,6 @@ export default async function InvestmentKosztorysV2Page({
     tree,
     financialsSource,
     refData,
-    payouts,
     payoutTransactions,
     depositTransactions,
     materialTransactions,
@@ -60,23 +56,19 @@ export default async function InvestmentKosztorysV2Page({
     treePromise,
     financialsPromise,
     fetchReferenceData(),
-    payoutsPromise,
     payoutTxPromise,
     depositTxPromise,
     materialTxPromise,
   ])
   console.log(
-    `[PERF] kosztorys_v2/${investmentId} 7-fetch fan-out ${elapsed()}ms ` +
-      `(tree + financials source + referenceData + payouts + 3 transaction lists)`,
+    `[PERF] kosztorys_v2/${investmentId} 6-fetch fan-out ${elapsed()}ms ` +
+      `(tree + financials source + referenceData + 3 transaction lists)`,
   )
   const { financials, materialsBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
     refData.expenseCategories,
   )
-  // Names join here (not in the cached query): resolve each worker id against reference data.
-  // Sorting/totals live in the pure block helper.
-  const payoutsByWorker = resolvePayoutWorkerNames(payouts, refData.workers)
   // The investment's name, its existence and whether a Google sheet is linked all ride along on the
   // reference data already fetched above — a dedicated findByID bought none of the three.
   const investment = refData.investments.find((i) => i.id === investmentId)
@@ -97,7 +89,6 @@ export default async function InvestmentKosztorysV2Page({
       laborCostsNetFromTransactions={financials.totalLaborCosts}
       discountNetFromTransactions={financials.totalDiscount}
       investmentLoss={financials.totalLoss}
-      payoutsByWorker={payoutsByWorker}
       payoutTransactions={payoutTransactions}
       depositTransactions={depositTransactions}
       materialTransactions={materialTransactions}

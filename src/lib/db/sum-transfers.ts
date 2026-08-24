@@ -7,11 +7,7 @@ import type {
   InvestmentFinancialsT,
   TypeSettledTotalT,
 } from '@/types/investment-financials'
-import type {
-  DepositTransactionRowT,
-  PayoutByWorkerT,
-  PayoutTransactionRowT,
-} from '@/types/transfers'
+import type { DepositTransactionRowT, PayoutTransactionRowT } from '@/types/transfers'
 import { buildSqlConditions, isNoResultsSentinel } from '@/lib/db/where-to-sql'
 import { getDb } from '@/lib/db/get-db'
 import { DEPOSIT_TYPES, type VatPlaneT } from '@/lib/constants/transfers'
@@ -343,44 +339,11 @@ export const getDepositTransactionsForInvestment = async (
   getDepositTransactions(payload, { investment: { equals: investmentId } })
 
 /**
- * SUM realized PAYOUT amounts for ONE investment, grouped by worker. Mirrors sumAllWorkerBalances
- * but scoped to an investment and — critically — WITHOUT a `worker_id IS NOT NULL` guard: a null
- * worker is a real cash payout that must still count toward Σ zaliczek, else „Pozostało do wypłaty"
- * overstates the debt. Names are resolved at the page (kept off this query so it stays tagged on
- * transfers alone).
- */
-export const sumPayoutsByWorkerForInvestment = async (
-  payload: Payload,
-  investmentId: number,
-): Promise<PayoutByWorkerT[]> => {
-  const elapsed = perfStart()
-  const db = await getDb(payload)
-
-  const result = await db.execute(sql`
-    SELECT worker_id,
-      COALESCE(SUM(amount), 0) AS total
-    FROM transactions
-    WHERE type = 'PAYOUT'
-      AND investment_id = ${investmentId}
-      AND cancelled IS NOT TRUE
-    GROUP BY worker_id
-  `)
-
-  const rows = result.rows.map((row) => ({
-    workerId: row.worker_id == null ? null : Number(row.worker_id),
-    total: Number(row.total),
-  }))
-  console.log(
-    `[PERF] query.sumPayoutsByWorkerForInvestment ${elapsed()}ms (${rows.length} workers)`,
-  )
-  return rows
-}
-
-/**
- * The individual realized PAYOUT rows for an investment — the un-summed twin of
- * `sumPayoutsByWorkerForInvestment`, so the subcontractor block can list each wypłata
- * (data · pracownik · opis · kwota), sortable, alongside the per-worker totals. Same filter
- * (PAYOUT, this investment, not cancelled), null worker kept. Names resolve at the page.
+ * The individual realized PAYOUT rows for an investment, so the subcontractor block can list each
+ * wypłata (data · pracownik · opis · kwota), sortable, and sum them per worker itself. Null worker
+ * kept deliberately — no `worker_id IS NOT NULL` guard: a payout with nobody attached is a real cash
+ * movement that must still count toward Σ zaliczek, else „Pozostało do wypłaty" overstates the debt.
+ * Names resolve at the block, off reference data this query is not tagged on.
  */
 export const getPayoutTransactionsForInvestment = async (
   payload: Payload,
