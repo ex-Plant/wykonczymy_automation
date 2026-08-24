@@ -6,6 +6,7 @@ import {
   depositsStrandedBy,
   isOffPlaneDeposit,
   offPlaneDeposits,
+  strandedFromPlaneSums,
   sumDeposits,
   strandsDeposit,
   type DepositRowT,
@@ -67,6 +68,7 @@ describe('bucketDepositsByPlane', () => {
       paidGrossNet: 950,
       paidGrossLegacy: 246,
       paidGross: 1476,
+      paidNetCount: 2,
     })
   })
 
@@ -80,6 +82,7 @@ describe('bucketDepositsByPlane', () => {
       paidGrossNet: 0,
       paidGrossLegacy: 0,
       paidGross: 0,
+      paidNetCount: 0,
     })
   })
 })
@@ -89,7 +92,7 @@ describe('bucketDepositsByPlane', () => {
 describe('depositPairFromPlaneSums', () => {
   it('crosses the legacy bucket at VAT and nothing else', () => {
     const pair = depositPairFromPlaneSums(
-      { paidNet: 150, paidGrossNet: 950, paidGrossLegacy: 246, paidGross: 1476 },
+      { paidNet: 150, paidGrossNet: 950, paidGrossLegacy: 246, paidGross: 1476, paidNetCount: 2 },
       VAT,
     )
 
@@ -184,5 +187,33 @@ describe('depositsStrandedBy', () => {
     const rows = [cash(100), transfer(1230, 950)]
     expect(depositsStrandedBy(rows, 'NET')).toEqual({ count: 0, amount: 0 })
     expect(depositsStrandedBy(rows, 'MIXED')).toEqual({ count: 0, amount: 0 })
+  })
+})
+
+// The listing's twin of the warning: it folds its wpłaty in SQL and never holds a row, so the damage
+// has to be readable off the sums alone (EX-724).
+describe('strandedFromPlaneSums', () => {
+  const sums = bucketDepositsByPlane([cash(100), untagged(50), transfer(1230, 950)])
+
+  it('in tryb brutto reports the netto bucket — count and face value', () => {
+    expect(strandedFromPlaneSums(sums, 'GROSS')).toEqual({ count: 2, amount: 150 })
+  })
+
+  it('agrees with the row-level count, so panel and listing cannot say different numbers', () => {
+    const rows = [cash(100), untagged(50), transfer(1230, 950)]
+    expect(strandedFromPlaneSums(bucketDepositsByPlane(rows), 'GROSS')).toEqual(
+      depositsStrandedBy(rows, 'GROSS'),
+    )
+  })
+
+  it('is absent outside tryb brutto — nothing is stranded, so there is nothing to mark', () => {
+    expect(strandedFromPlaneSums(sums, 'NET')).toBeUndefined()
+    expect(strandedFromPlaneSums(sums, 'MIXED')).toBeUndefined()
+  })
+
+  it('is absent in tryb brutto when every wpłata came przelewem', () => {
+    expect(
+      strandedFromPlaneSums(bucketDepositsByPlane([transfer(1230, 950)]), 'GROSS'),
+    ).toBeUndefined()
   })
 })

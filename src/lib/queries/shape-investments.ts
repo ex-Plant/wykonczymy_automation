@@ -6,7 +6,11 @@ import type {
 } from '@/lib/queries/balances'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
-import { depositPairFromPlaneSums, NO_DEPOSIT_SUMS } from '@/lib/kosztorys/deposit-planes'
+import {
+  depositPairFromPlaneSums,
+  NO_DEPOSIT_SUMS,
+  strandedFromPlaneSums,
+} from '@/lib/kosztorys/deposit-planes'
 import { effectiveMaterialsNetRate } from '@/lib/kosztorys/settlement-mode'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
 import { billedMaterials, computeAmountDue } from '@/lib/kosztorys/summary-economics'
@@ -50,12 +54,10 @@ export function shapeInvestments(
     // the reading's post-rabat robocizna) except the wpłaty, and that one cannot — `totalIncome`
     // counts a przelew at the brutto that moved, while the netto plane deducts the netto its faktura
     // named.
+    const depositSums = depositPlaneSumsRecord[String(inv.id)] ?? NO_DEPOSIT_SUMS
     const amountDue = computeAmountDue(
       reading.laborCostsNet,
-      depositPairFromPlaneSums(
-        depositPlaneSumsRecord[String(inv.id)] ?? NO_DEPOSIT_SUMS,
-        inv.vatRate,
-      ),
+      depositPairFromPlaneSums(depositSums, inv.vatRate),
       { grossBase: financials.materialsGrossBase, netBilled: financials.materialsNetBilled },
       inv.vatRate,
       netRate,
@@ -83,6 +85,10 @@ export function shapeInvestments(
       // outside tryb brutto rather than this number (owner, 2026-08-23). Still computed for every
       // row: the tryb is a fact the reader can flip, and the column returns with it.
       balanceGross: -amountDue.gross,
+      // The count the brutto bilans above leaves out. The panel screams about the same wpłaty
+      // (`SettlementPlaneWarning`); without this the listing printed the reduced figure bare and the
+      // two surfaces told the reader different things (EX-724).
+      strandedDeposits: strandedFromPlaneSums(depositSums, inv.settlementMode),
       // The RAW financials, not the rebased ones: this is the v1 margin and v1 IS the transactions
       // plane. Run on the kosztorys robocizna it was a third figure that matched no surface in the
       // app — same name as the investment page's, 235 908,25 zl apart from it on „11 Listopada 40".

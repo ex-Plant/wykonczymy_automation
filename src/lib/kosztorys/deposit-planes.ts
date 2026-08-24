@@ -34,6 +34,9 @@ export type DepositPlaneSumsT = {
   // Σ on the brutto plane: wpłaty brutto ONLY. Complete only where a wpłata netto cannot occur —
   // i.e. tryb brutto, which is the only tryb that renders this column.
   paidGross: number
+  // How MANY wpłaty make up `paidNet`. A sum cannot say „ile" and the warning has to (EX-724): the
+  // listing folds its wpłaty in SQL and never sees a row, so the count travels with the money.
+  paidNetCount: number
 }
 
 export const isGross = (row: { vatPlane: VatPlaneT | null }) => row.vatPlane === 'GROSS'
@@ -53,11 +56,14 @@ export const NO_DEPOSIT_SUMS: DepositPlaneSumsT = {
   paidGrossNet: 0,
   paidGrossLegacy: 0,
   paidGross: 0,
+  paidNetCount: 0,
 }
 
 export function bucketDepositsByPlane(rows: DepositRowT[]): DepositPlaneSumsT {
   return rows.reduce<DepositPlaneSumsT>((acc, row) => {
-    if (!isGross(row)) return { ...acc, paidNet: acc.paidNet + row.amount }
+    if (!isGross(row)) {
+      return { ...acc, paidNet: acc.paidNet + row.amount, paidNetCount: acc.paidNetCount + 1 }
+    }
     return {
       ...acc,
       paidGross: acc.paidGross + row.amount,
@@ -126,13 +132,30 @@ export function strandsDeposit(
   return mode === 'GROSS' && plane !== 'GROSS'
 }
 
+// How many wpłaty a tryb brutto leaves unpaid, and what they are worth — the figures every surface
+// that has to name the damage says out loud.
+export type StrandedDepositsT = { count: number; amount: number }
+
+// The same damage read off the SQL sums instead of the rows, for the listing, which folds its wpłaty
+// in Postgres and never holds one (EX-724). The netto bucket IS the stranded set: it is filtered by
+// „plane is not GROSS", which is exactly what `strandsDeposit` asks. `undefined` rather than a zero
+// pair because nothing is wrong then, and the marker is the absence of a marker.
+export function strandedFromPlaneSums(
+  { paidNet, paidNetCount }: DepositPlaneSumsT,
+  mode: SettlementModeT,
+): StrandedDepositsT | undefined {
+  // `null` is the bucket's own plane — untagged counts as gotówka — so the rule is asked, not copied.
+  if (!strandsDeposit(null, mode) || paidNetCount === 0) return undefined
+  return { count: paidNetCount, amount: paidNet }
+}
+
 // What flipping the tryb would cost, counted BEFORE the flip. The tryb is a fact the owner may
 // change after wpłaty exist, and nothing is rewritten when he does — the same rows simply stop
 // counting. So the switch owes the same sentence the booking does, with the damage already added up.
 export function depositsStrandedBy<RowT extends { vatPlane: VatPlaneT | null; amount: number }>(
   rows: RowT[],
   nextMode: SettlementModeT,
-): { count: number; amount: number } {
+): StrandedDepositsT {
   const stranded = rows.filter((row) => strandsDeposit(row.vatPlane, nextMode))
   return {
     count: stranded.length,

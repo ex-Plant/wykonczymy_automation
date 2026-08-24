@@ -141,7 +141,7 @@ export type DepositPlaneSumsMapT = Record<string, DepositPlaneSumsT>
 // Transfers only: this fold reads no investment column at all — the VAT rate the legacy bridge needs
 // for pre-spike rows arrives later, in `shapeInvestments`.
 export const fetchDepositPlaneSums = cachedInvestmentMap(
-  'deposit-plane-sums-v2',
+  'deposit-plane-sums-v3',
   'fetchDepositPlaneSums',
   selectDepositPlaneSums,
   [CACHE_TAGS.transfers],

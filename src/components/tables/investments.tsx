@@ -12,6 +12,7 @@ import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
 import { ContactLink } from '@/components/ui/contact-link'
 import { LabelHintIcon } from '@/components/ui/label-hint-icon'
+import { offPlaneDepositSentence } from '@/lib/kosztorys/off-plane-deposit-copy'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
@@ -116,9 +117,23 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       header: 'Bilans brutto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceGross },
       cell: (info) => {
-        if (!settlesOn(info.row.original, 'gross')) return <NotApplicable />
-        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
-        return <BalanceCell value={info.row.original.balanceGross} />
+        const row = info.row.original
+        if (!settlesOn(row, 'gross')) return <NotApplicable />
+        if (!hasKosztorysReading(row)) return <NoKosztorysData />
+        return (
+          <span className="inline-flex items-center justify-end gap-1">
+            <BalanceCell value={row.balanceGross} />
+            {/* Whatever this figure drops, said out loud — the Podsumowanie panel says the same
+                sentence about the same wpłaty, and a bare number here contradicted it. The tryb is
+                brutto by the time a row carries these, which is the only tryb that strands any. */}
+            {row.strandedDeposits && (
+              <LabelHintIcon
+                variant="strandedDeposits"
+                content={offPlaneDepositSentence(row.strandedDeposits, 'GROSS')}
+              />
+            )}
+          </span>
+        )
       },
     }),
     ...(isAdminOrOwner

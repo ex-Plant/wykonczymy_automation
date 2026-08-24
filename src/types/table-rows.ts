@@ -2,6 +2,7 @@ import type { CashRegisterTypeT, InvestmentStatusT } from '@/types/reference-dat
 import type { SheetStatusT } from '@/lib/constants/sheets'
 import type { RoleT } from '@/lib/auth/roles'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { StrandedDepositsT } from '@/lib/kosztorys/deposit-planes'
 
 /** The shapes a listing query hands to the table that renders it — a contract between the two
  *  layers, not a property of either. They live here rather than in the table component because the
@@ -24,6 +25,10 @@ export type InvestmentRowT = {
   totalSettled: number
   balance: number
   balanceGross: number
+  /** The wpłaty `balanceGross` silently drops — a gotówka has no brutto kwota, so in tryb brutto it
+   *  deducts nothing and the client reads as owing more than he does. Absent means nothing is wrong:
+   *  only tryb brutto strands anything, and the cell renders the marker exactly when this is here. */
+  strandedDeposits?: StrandedDepositsT
   /** The same bilans on the transactions plane. Both are shown while investments are still being
    *  moved off the sheets: for one that has no kosztorys in the app yet, this is the only reading
    *  that carries its robocizna at all. */

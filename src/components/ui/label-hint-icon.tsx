@@ -20,6 +20,11 @@ const VARIANT = {
     className: 'text-destructive',
     ariaLabel: 'Rozliczenie etapu niepotwierdzone',
   },
+  strandedDeposits: {
+    Icon: TriangleAlert,
+    className: 'text-destructive',
+    ariaLabel: 'Wpłaty poza trybem rozliczenia',
+  },
   noStages: {
     Icon: TriangleAlert,
     className: 'text-destructive',
@@ -33,6 +38,7 @@ const VARIANT = {
 export type LabelHintT =
   | { variant: 'mismatch'; content: string }
   | { variant: 'planeUnconfirmed'; content: string }
+  | { variant: 'strandedDeposits'; content: string }
   | { variant: 'noStages' }
 
 // Sized by how loud the alarm has to be for its surroundings, not by which alarm it is: `lg` sits in
