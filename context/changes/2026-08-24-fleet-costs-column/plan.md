@@ -474,16 +474,16 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 1.1 Migracja przechodzi na lokalnej bazie: `pnpm payload migrate`
-- [x] 1.2 Kolumna `cost` jest `NOT NULL` w `\d vehicle_inspections`
-- [x] 1.3 Spec akcji przeglądu odrzuca payload bez kwoty i nic nie zapisuje
+- [x] 1.1 Migracja przechodzi na lokalnej bazie: `pnpm payload migrate` — 3efb2236
+- [x] 1.2 Kolumna `cost` jest `NOT NULL` w `\d vehicle_inspections` — 3efb2236
+- [x] 1.3 Spec akcji przeglądu odrzuca payload bez kwoty i nic nie zapisuje — 3efb2236
 
 ### Phase 2: Jedna reguła kosztów
 
 #### Automated
 
-- [ ] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/costs.test.ts`
-- [ ] 2.2 Brak odwołań do `cost !== null` / `cost === null` w `src/lib` i `src/components`
+- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/costs.test.ts`
+- [x] 2.2 Brak odwołań do `cost !== null` / `cost === null` w `src/lib` i `src/components`
 
 ### Phase 3: Kolumna kosztów i suma w stopce
 

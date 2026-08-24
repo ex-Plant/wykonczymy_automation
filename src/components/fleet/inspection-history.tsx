@@ -75,7 +75,7 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
             {entry.kmSincePrevious !== null ? `+${formatKm(entry.kmSincePrevious)}` : EMPTY}
           </SummaryValueCell>
 
-          <SummaryValueCell>{entry.cost !== null ? formatPLN(entry.cost) : EMPTY}</SummaryValueCell>
+          <SummaryValueCell>{formatPLN(entry.cost)}</SummaryValueCell>
 
           {shown.oilTarget && (
             <SummaryValueCell>
