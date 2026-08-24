@@ -4,9 +4,8 @@ import {
   sumAllInvestmentFinancials,
   sumFilteredByType,
   sumCategoryByTypeSettled,
-  deriveFinancials,
-  deriveCategoryBreakdowns,
 } from '@/lib/db/sum-transfers'
+import { deriveFinancials, deriveCategoryBreakdowns } from '@/lib/db/investment-financials'
 import { getDb } from '@/lib/db/get-db'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { buildFinancialFields } from '@/lib/queries/investment-financial-fields'

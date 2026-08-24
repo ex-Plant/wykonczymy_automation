@@ -2,6 +2,7 @@ import type { CashRegisterTypeT, InvestmentStatusT } from '@/types/reference-dat
 import type { SheetStatusT } from '@/lib/constants/sheets'
 import type { RoleT } from '@/lib/auth/roles'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
+import type { StrandedDepositsT } from '@/lib/kosztorys/off-plane-deposits'
 
 /** The shapes a listing query hands to the table that renders it — a contract between the two
  *  layers, not a property of either. They live here rather than in the table component because the
@@ -24,6 +25,10 @@ export type InvestmentRowT = {
   totalSettled: number
   balance: number
   balanceGross: number
+  /** The wpłaty `balanceGross` silently drops — a gotówka has no brutto kwota, so in tryb brutto it
+   *  deducts nothing and the client reads as owing more than he does. Absent means nothing is wrong:
+   *  only tryb brutto strands anything, and the cell renders the marker exactly when this is here. */
+  strandedDeposits?: StrandedDepositsT
   /** The same bilans on the transactions plane. Both are shown while investments are still being
    *  moved off the sheets: for one that has no kosztorys in the app yet, this is the only reading
    *  that carries its robocizna at all. */
@@ -44,6 +49,11 @@ export type InvestmentRowT = {
   review: string
   notes: string
   hasSheet: boolean
+  /** Whether the investment HAS a kosztorys, which none of the figures above can answer: „pomiar z
+   *  natury" is the etap sum (EX-494), so a fully entered rozpiska with no etap progress reads zero
+   *  robocizny — identical to no kosztorys at all. The v2 columns withhold on this, not on the
+   *  figure, or they print „brak danych" over real data. */
+  hasKosztorys: boolean
   // No column renders these — the whole row is handed to EditInvestmentDialog, whose form needs
   // them. `vatRate` is the exception that also prices `balanceGross`.
   materialsNetRate: number | null

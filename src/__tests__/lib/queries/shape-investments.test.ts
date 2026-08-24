@@ -18,7 +18,7 @@ const NO_MAP = {}
 // wpłata.
 const NO_DEPOSITS: DepositPlaneSumsMapT = {}
 const paidNet = (amount: number): DepositPlaneSumsMapT => ({
-  '5': { paidNet: amount, paidGrossNet: 0, paidGrossLegacy: 0, paidGross: 0 },
+  '5': { paidNet: amount, paidGrossNet: 0, paidGrossLegacy: 0, paidGross: 0, paidNetCount: 1 },
 })
 
 const baseInv: InvestmentRefT = {
@@ -420,7 +420,11 @@ describe('shapeInvestments robocizna source', () => {
     ).toBe(0)
   })
 
-  it('cannot tell an absent kosztorys from one that sums to zero', () => {
+  // A kosztorys fully entered but with no etap progress yet sums to exactly zero, because „pomiar z
+  // natury" IS the etap sum (EX-494). Read presence off that zero and the listing prints „brak
+  // danych" over a complete rozpiska and suppresses the v1/v2 rozjazd icon precisely where a fresh
+  // kosztorys most needs flagging — so presence travels as its own fact.
+  it('tells an absent kosztorys from one that sums to zero', () => {
     const [zeroProgress] = shapeInvestments(
       [baseInv],
       transactionFinancials,
@@ -435,10 +439,29 @@ describe('shapeInvestments robocizna source', () => {
       NO_MAP,
       NO_DEPOSITS,
     )
+    const [absent] = shapeInvestments([baseInv], transactionFinancials, {}, NO_MAP, NO_DEPOSITS)
 
-    expect(zeroProgress).toEqual(
-      shapeInvestments([baseInv], transactionFinancials, {}, NO_MAP, NO_DEPOSITS)[0],
+    expect(zeroProgress.hasKosztorys).toBe(true)
+    expect(absent.hasKosztorys).toBe(false)
+    // Presence changes nothing else: every figure still reads the zero the same way.
+    expect({ ...zeroProgress, hasKosztorys: false }).toEqual(absent)
+  })
+
+  it('reads presence off the entry, not off the figure it carries', () => {
+    const [withWork] = shapeInvestments(
+      [baseInv],
+      transactionFinancials,
+      kosztorysTotals,
+      NO_MAP,
+      NO_DEPOSITS,
     )
+
+    expect(withWork.hasKosztorys).toBe(true)
+    // Same map, different investment — presence must key on the id like every figure above it.
+    expect(
+      shapeInvestments([{ ...baseInv, id: 6 }], {}, kosztorysTotals, NO_MAP, NO_DEPOSITS)[0]
+        .hasKosztorys,
+    ).toBe(false)
   })
 })
 
@@ -532,7 +555,13 @@ describe('shapeInvestments wpłaty', () => {
     // 4000 gotówką — one kwota netto, no brutto — plus a przelew of 1230 brutto whose faktura
     // names 1000 netto.
     const deposits: DepositPlaneSumsMapT = {
-      '5': { paidNet: 4000, paidGrossNet: 1000, paidGrossLegacy: 0, paidGross: 1230 },
+      '5': {
+        paidNet: 4000,
+        paidGrossNet: 1000,
+        paidGrossLegacy: 0,
+        paidGross: 1230,
+        paidNetCount: 1,
+      },
     }
     const [row] = shapeInvestments(
       [{ ...baseInv, vatRate: 0.23 }],
@@ -550,7 +579,7 @@ describe('shapeInvestments wpłaty', () => {
 
   it('crosses a pre-spike przelew at VAT and nothing else', () => {
     const legacyOnly: DepositPlaneSumsMapT = {
-      '5': { paidNet: 0, paidGrossNet: 0, paidGrossLegacy: 1230, paidGross: 1230 },
+      '5': { paidNet: 0, paidGrossNet: 0, paidGrossLegacy: 1230, paidGross: 1230, paidNetCount: 0 },
     }
     const [row] = shapeInvestments(
       [{ ...baseInv, vatRate: 0.23 }],
@@ -580,5 +609,52 @@ describe('shapeInvestments wpłaty', () => {
     expect(carried('NET')).toBe('NET')
     expect(carried('GROSS')).toBe('GROSS')
     expect(carried('MIXED')).toBe('MIXED')
+  })
+})
+
+// „Bilans brutto v2" deducts przelewy only, by design — so where a wpłata came gotówką the column
+// under-counts what the client paid. The panel screams about it; the listing needs the same fact on
+// the row to mark the cell (EX-724).
+describe('shapeInvestments wpłaty osierocone przez tryb brutto', () => {
+  const mixedDeposits: DepositPlaneSumsMapT = {
+    '5': {
+      paidNet: 4000,
+      paidGrossNet: 1000,
+      paidGrossLegacy: 0,
+      paidGross: 1230,
+      paidNetCount: 2,
+    },
+  }
+
+  const shape = (settlementMode: InvestmentRefT['settlementMode']) =>
+    shapeInvestments(
+      [{ ...baseInv, settlementMode, vatRate: 0.23 }],
+      { '5': ZERO_FINANCIALS },
+      NO_MAP,
+      NO_MAP,
+      mixedDeposits,
+    )[0]
+
+  it('carries how many wpłaty the brutto bilans drops, and what they are worth', () => {
+    expect(shape('GROSS').strandedDeposits).toEqual({ count: 2, amount: 4000 })
+  })
+
+  it('leaves the row unmarked outside tryb brutto — there nothing is dropped', () => {
+    expect(shape('NET').strandedDeposits).toBeUndefined()
+    expect(shape('MIXED').strandedDeposits).toBeUndefined()
+  })
+
+  it('leaves the row unmarked in tryb brutto when every wpłata came przelewem', () => {
+    const transfersOnly: DepositPlaneSumsMapT = {
+      '5': { paidNet: 0, paidGrossNet: 1000, paidGrossLegacy: 0, paidGross: 1230, paidNetCount: 0 },
+    }
+    const [row] = shapeInvestments(
+      [{ ...baseInv, settlementMode: 'GROSS', vatRate: 0.23 }],
+      { '5': ZERO_FINANCIALS },
+      NO_MAP,
+      NO_MAP,
+      transfersOnly,
+    )
+    expect(row.strandedDeposits).toBeUndefined()
   })
 })

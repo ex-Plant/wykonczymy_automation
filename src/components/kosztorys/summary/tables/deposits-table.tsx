@@ -9,10 +9,10 @@ import { formatNet } from '@/lib/kosztorys/format'
 import {
   depositRowPair,
   isGross,
-  isOffPlaneDeposit,
   sumDeposits,
   type DepositPairT,
 } from '@/lib/kosztorys/deposit-planes'
+import { isOffPlaneDeposit } from '@/lib/kosztorys/off-plane-deposits'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import {
   SUMMARY_LABEL_COL,

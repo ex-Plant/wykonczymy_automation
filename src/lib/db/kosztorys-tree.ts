@@ -15,11 +15,11 @@ import type { DbExecutorT } from './get-db'
 
 // Everything behind the editor tree in ONE round trip.
 //
-// The five-parallel-reads version (payload.find or raw SQL, it made no difference) measured 101-178ms
-// on Neon, and the read that gave the game away was `investment`: ONE row, 83-119ms. A single row
-// cannot take 100ms to hydrate or to scan. All five reads landed within ~50ms of each other whatever
-// their row count, because the cost is the round trip itself under pool contention — it scales with
-// the NUMBER of reads, not their size. So the lever is the count, and the floor is one (EX-597).
+// The one round trip is NOT what makes this fast, and nothing new should be collapsed into a single
+// query on that reasoning — EX-597 measured the parallel-reads version it replaced and the round-trip
+// count was never the cost. Neon's latency is bimodal (~20–60 ms warm, ~160–200 ms cold), which is
+// what makes a small sample look structural. Record:
+// `context/archive/2026-07-27-decouple-panel-write-refresh/change.md` § Superseded beliefs.
 //
 // Each collection is aggregated server-side into a jsonb array, ordered inside the aggregate. Values
 // arrive already typed by JSON (numeric renders as a JSON number), but `num` stays on every figure

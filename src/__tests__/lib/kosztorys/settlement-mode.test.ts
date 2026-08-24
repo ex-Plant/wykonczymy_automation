@@ -4,7 +4,7 @@ import {
   SETTLEMENT_MODES,
   settlementModeToMoneyAxis,
 } from '@/lib/kosztorys/settlement-mode'
-import { isOffPlaneDeposit } from '@/lib/kosztorys/deposit-planes'
+import { isOffPlaneDeposit } from '@/lib/kosztorys/off-plane-deposits'
 import { computeAmountDue } from '@/lib/kosztorys/summary-economics'
 
 const NO_DEPOSITS = { net: 0, gross: 0 }

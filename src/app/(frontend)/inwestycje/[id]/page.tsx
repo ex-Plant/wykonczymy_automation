@@ -1,11 +1,12 @@
 import { Suspense } from 'react'
-import { redirect, notFound } from 'next/navigation'
-import { requireAuth } from '@/lib/auth/require-auth'
-import { MANAGEMENT_ROLES, isAdminOrOwnerRole } from '@/lib/auth/roles'
+import { notFound } from 'next/navigation'
+import { isAdminOrOwnerRole } from '@/lib/auth/roles'
+import { requireManagementPage } from '@/lib/auth/require-management-page'
+import { parseInvestmentId } from '@/lib/queries/investment-id'
 import { parsePagination } from '@/lib/utils/pagination'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
+import { deriveFinancials } from '@/lib/db/investment-financials'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { InvestmentSummaryPanel } from '@/components/investments/investment-summary-panel'
 import { StatsVersionToggle } from '@/components/investments/stats-version-toggle'
@@ -26,9 +27,7 @@ import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function InvestmentDetailPage({ params, searchParams }: DynamicPagePropsT) {
-  const session = await requireAuth(MANAGEMENT_ROLES)
-  if (!session.success) redirect('/zaloguj')
-  const { user } = session
+  const user = await requireManagementPage()
 
   const step = perfStart()
 
@@ -36,7 +35,7 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
   const sp = await searchParams
   const { page, limit } = parsePagination(sp)
 
-  const investmentId = Number(id)
+  const investmentId = parseInvestmentId(id)
   const urlFilters = buildTransferFilters(sp, { id: user.id })
   const transferWhere = { ...urlFilters, investment: { equals: investmentId } }
 

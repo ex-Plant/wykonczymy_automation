@@ -1447,3 +1447,26 @@ jej trybu rozliczenia.
 - [ ] Zaksięgowanie wydatku (nie wpłaty) zostawia tag pusty, także po edycji
 - [ ] Kolumna na `/transfery` mówi „Forma wpłaty" i pokazuje „Gotówka" / „Przelew"
 - [ ] Formularz wpłaty gotówką ma jedno pole kwoty bez słowa „netto" w etykiecie
+
+## EX-720 — nadmiarowe odczyty na trasach kosztorysu
+
+Setup: baza testowa 5435 — pełny reset to trzy kroki (`pnpm db:import:test`, `pnpm seed:kosztorys:test`,
+`pnpm seed:deposits:test`). Potrzebne trzy sesje
+(OWNER, MANAGER, EMPLOYEE), inwestycja z podpiętym arkuszem Google i druga bez, inwestycja
+z wypłatami dla podwykonawców (w tym jedną bez przypisanego pracownika) oraz inwestycja, której
+jedyne wydatki na materiał są typu „rozliczone R+M".
+
+- [ ] Sesja `EMPLOYEE` na `/inwestycje/<id>/kosztorys_v2` ląduje na `/zaloguj`, nie na stronie błędu
+- [ ] Sesja `OWNER` dalej widzi edytor z nazwą inwestycji w okruszku i zakładką „Marża"
+- [ ] Sesja `MANAGER` widzi edytor bez zakładki „Marża"
+- [ ] Nieistniejące id inwestycji dalej renderuje stronę 404
+- [ ] „Podsumowanie podwykonawców" pokazuje te same sumy per pracownik co przed zmianą
+- [ ] Wypłata bez pracownika dalej figuruje jako „Bez przypisanego pracownika" i wlicza się w „Pozostało do wypłaty"
+- [ ] Pracownik z przypisanymi etapami i bez wypłaty dalej dostaje swój wiersz
+- [ ] „Lista wpłat" pod blokiem wymienia każdą wypłatę z właściwym nazwiskiem
+- [ ] Inwestycja z samymi rozliczonymi materiałami: brak komunikatu „Brak wydatków", tabela „rozliczone R+M" widoczna, lista pokazuje te wiersze — i **nie ma wykresu kołowego samych zer**
+- [ ] Inwestycja bez materiałów w ogóle: „Brak wydatków inwestycyjnych na materiały." i żadnych pustych tabel pod spodem
+- [ ] Inwestycja ze zwykłymi wydatkami: tabela podziału, wykres i „Lista wydatków" obecne, a „Razem" listy zgadza się z podziałem
+- [ ] **Ta sama inwestycja na `/inwestycje/<id>` → „Podsumowanie" → „Wydatki"**: tabela podziału widoczna, żadnego „Brak wydatków" (ten host nie dostaje wierszy transakcji, tylko agregat — bramka czytająca wiersze zostawiała tu pustą zakładkę)
+- [ ] Podgląd klienta tej samej inwestycji nie pokazuje wierszy rozliczonych ani tabeli rozliczonych
+- [ ] Legacy `/kosztorys` dalej renderuje iframe arkusza dla inwestycji z podpiętym arkuszem i stan „nie ma jeszcze arkusza" dla tej bez

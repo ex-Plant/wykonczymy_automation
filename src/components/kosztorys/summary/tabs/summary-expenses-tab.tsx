@@ -16,7 +16,6 @@ import { SlicePie } from '@/components/ui/slice-pie'
 import { expensePieSlices } from '@/lib/kosztorys/chart-slices'
 import { SETTLED_TYPE } from '@/lib/constants/transfers'
 import { formatNet, ratePercent } from '@/lib/kosztorys/format'
-import type { MaterialsT } from '@/lib/kosztorys/summary-economics'
 import type { MaterialsBreakdownRowT } from '@/types/investment-financials'
 import type { MaterialTransactionRowT } from '@/types/transfers'
 
@@ -24,8 +23,6 @@ type PropsT = {
   investmentId: number
   // Names the transactions list's downloaded invoice archive.
   investmentName: string
-  // Materiały in two buckets — a zero total hides the breakdown.
-  materials: MaterialsT
   materialsBreakdown: MaterialsBreakdownRowT[]
   // Material the company bought and folded into robocizna, split per category. Owner-plane: it lowers
   // marża and never touches the investor's bilans, hence its own table rather than extra rows above
@@ -53,7 +50,6 @@ type PropsT = {
 export function SummaryExpensesTab({
   investmentId,
   investmentName,
-  materials,
   materialsBreakdown,
   settledBreakdown = [],
   materialTransactions,
@@ -74,10 +70,21 @@ export function SummaryExpensesTab({
   const listedTransactions = preview
     ? clientVisibleExpenseRows(materialTransactions)
     : materialTransactions
-  const hasBilledMaterials = materials.grossBase + materials.netBilled !== 0
-  // Every block below is gated on having rows, so with none the tab renders as a blank page under
-  // the settlement select — indistinguishable from a load that failed.
-  const isEmpty = !hasBilledMaterials && settledBreakdown.length === 0
+  // Reads the array the two blocks it gates actually render, so the gate cannot disagree with them.
+  // Deliberately NOT the transaction rows: `materialTransactions` is optional and the investment
+  // page's panel never supplies it, so a row-sourced gate blanks the breakdown table on a host whose
+  // figures are fully populated. Σ rows === `totalMaterialCosts` (`buildMaterialsBreakdown`), so this
+  // is the aggregate gate reading its own data instead of a second query's.
+  // Rows, not their Σ: a CORRECTION that exactly cancels a category nets the breakdown to zero while
+  // the table below still has rows to draw, and a Σ-based gate would print „Brak wydatków" on top of
+  // them.
+  const hasBilledMaterials = materialsBreakdown.length > 0
+  // Suppressed only by a block that actually renders below: „Lista wydatków" is itself gated on
+  // showTransactions, so counting its rows on a host that hides the list would leave the tab blank.
+  const isEmpty =
+    !hasBilledMaterials &&
+    settledBreakdown.length === 0 &&
+    !(showTransactions && listedTransactions.length > 0)
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -133,7 +140,7 @@ export function SummaryExpensesTab({
             />
           )}
         </div>
-        {showPie && !isEmpty && (
+        {showPie && hasBilledMaterials && (
           <SlicePie
             slices={expensePieSlices(materialsBreakdown, materialsNetRate)}
             formatValue={formatNet}

@@ -1,8 +1,8 @@
-import { parseInvestmentId, requireInvestmentOr404 } from '@/lib/queries/investments'
+import { notFound } from 'next/navigation'
+import { parseInvestmentId } from '@/lib/queries/investment-id'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import {
-  fetchPayoutsByWorkerForInvestment,
   fetchPayoutTransactionsForInvestment,
   fetchDepositTransactionsForInvestment,
   fetchMaterialTransactionsForInvestment,
@@ -12,7 +12,7 @@ import {
   fetchWholeInvestmentFinancials,
 } from '@/lib/queries/whole-investment-financials'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
-import { resolvePayoutWorkerNames } from '@/lib/kosztorys/payout-worker-names'
+import { requireManagementPage } from '@/lib/auth/require-management-page'
 import { KosztorysEditorV2 } from '@/components/kosztorys/editor/kosztorys-editor-v2'
 import { perfStart } from '@/lib/perf'
 
@@ -26,59 +26,46 @@ export default async function InvestmentKosztorysV2Page({
   const elapsed = perfStart()
   const { id } = await params
   const investmentId = parseInvestmentId(id)
+  // Both awaits sit before the fan-out for one reason: getKosztorysTree throws — for a failed
+  // session AND for a missing investment — so anything folded into the Promise.all beside it is
+  // racing that throw for the right to decide what the user sees. The guard would lose the login
+  // page to an error screen; the existence check would lose the 404 page outright, since the tree
+  // rejects before a check placed after the fan-out can run at all.
+  const user = await requireManagementPage()
+  const refData = await fetchReferenceData()
+  // Name, existence and the linked-sheet flag all ride along on reference data — a dedicated
+  // findByID bought none of the three. Its one cost: a tag marks this entry stale but still serves
+  // it once, so an investment created seconds ago 404s until the next request.
+  const investment = refData.investments.find((i) => i.id === investmentId)
+  if (!investment) notFound()
 
   const treePromise = getKosztorysTree(investmentId)
   // Read-only bridge to the financial plane: the investment's live material spend (unsettled
   // INVESTMENT_EXPENSE + CORRECTION) plus its per-expense-category split, summed via the same
   // cached path the detail page uses.
   const financialsPromise = fetchWholeInvestmentFinancials(investmentId)
-  // Realized PAYOUTs per worker (null-worker bucket kept) for the subcontractor summary block.
-  const payoutsPromise = fetchPayoutsByWorkerForInvestment(investmentId)
-  // The individual realized PAYOUT rows — feed the subcontractor block's sortable wypłaty list.
   const payoutTxPromise = fetchPayoutTransactionsForInvestment(investmentId)
-  // The individual deposit rows — feed the client Podsumowanie's sortable wpłaty list.
   const depositTxPromise = fetchDepositTransactionsForInvestment(investmentId)
   // The individual materiały rows for the Podsumowanie's wydatki list — same fetch the client share
   // read uses, so both surfaces label and split the rows identically.
   const materialTxPromise = fetchMaterialTransactionsForInvestment(investmentId)
-  // Folded into the same Promise.all as everything else so the 404 lookup runs concurrently with the
-  // data fetches rather than gating them; its notFound() rejection propagates through Promise.all.
-  const investmentPromise = requireInvestmentOr404(id)
-  const [
-    { investment, user },
-    tree,
-    financialsSource,
-    refData,
-    payouts,
-    payoutTransactions,
-    depositTransactions,
-    materialTransactions,
-  ] = await Promise.all([
-    investmentPromise,
-    treePromise,
-    financialsPromise,
-    fetchReferenceData(),
-    payoutsPromise,
-    payoutTxPromise,
-    depositTxPromise,
-    materialTxPromise,
-  ])
+  const [tree, financialsSource, payoutTransactions, depositTransactions, materialTransactions] =
+    await Promise.all([
+      treePromise,
+      financialsPromise,
+      payoutTxPromise,
+      depositTxPromise,
+      materialTxPromise,
+    ])
   console.log(
-    `[PERF] kosztorys_v2/${investmentId} 9-fetch fan-out ${elapsed()}ms ` +
-      `(tree + financials source + referenceData + payouts + 3 transaction lists + investment)`,
+    `[PERF] kosztorys_v2/${investmentId} 5-fetch fan-out ${elapsed()}ms ` +
+      `(tree + financials source + 3 transaction lists)`,
   )
   const { financials, materialsBreakdown, settledBreakdown } = deriveWholeInvestmentFinancials(
     financialsSource,
     tree,
     refData.expenseCategories,
   )
-  // Names join here (not in the cached query): resolve each worker id against reference data.
-  // Sorting/totals live in the pure block helper.
-  const payoutsByWorker = resolvePayoutWorkerNames(payouts, refData.workers)
-  // Whether a Google sheet is linked rides along on the reference data already fetched above — no
-  // second trip for one boolean.
-  const hasSheet = refData.investments.find((i) => i.id === investmentId)?.hasSheet ?? false
-
   return (
     <KosztorysEditorV2
       investmentId={investmentId}
@@ -94,12 +81,11 @@ export default async function InvestmentKosztorysV2Page({
       laborCostsNetFromTransactions={financials.totalLaborCosts}
       discountNetFromTransactions={financials.totalDiscount}
       investmentLoss={financials.totalLoss}
-      payoutsByWorker={payoutsByWorker}
       payoutTransactions={payoutTransactions}
       depositTransactions={depositTransactions}
       materialTransactions={materialTransactions}
       workers={refData.workers}
-      hasSheet={hasSheet}
+      hasSheet={investment.hasSheet}
     />
   )
 }

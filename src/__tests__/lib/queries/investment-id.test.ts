@@ -1,13 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-// investments.ts pulls the whole server graph (payload config, auth, perf) for its query exports.
-// isInvestmentId is pure, so stub the graph rather than stand it up — the alternative is a DB-backed
-// spec for a five-line predicate.
-vi.mock('payload', () => ({ getPayload: vi.fn() }))
-vi.mock('@payload-config', () => ({ default: {} }))
-vi.mock('next/navigation', () => ({ notFound: vi.fn(), redirect: vi.fn() }))
+// Only `notFound()` — the module is otherwise pure, which is why it was split out of investments.ts
+// (that one top-level-imports the whole server graph and forced this spec to stub it).
+vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
 
-const { isInvestmentId } = await import('@/lib/queries/investments')
+const { isInvestmentId } = await import('@/lib/queries/investment-id')
 
 // The rule had drifted: the @investmentCrumb slot re-inlined it as /^\d+$/, which disagrees with
 // parseInvestmentId on both ends. These two cases are the disagreement — they are why the predicate

@@ -15,7 +15,7 @@ import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 //
 // The colliding etap ordinal below is the second half of the same defect: a surviving etap 1 meets
 // `kosztorys_stages_investment_ordinal_unique` when the incoming etap 1 goes in, and the 23505 was
-// being translated into „Ktoś zmieniał ten kosztorys w tym samym czasie" — a race that never happened.
+// being translated into a bogus concurrent-write failure — a race that never happened.
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(async () => ({ success: true, user: { id: 1, role: 'OWNER' } })),
 }))

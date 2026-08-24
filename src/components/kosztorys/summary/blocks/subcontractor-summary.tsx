@@ -6,19 +6,19 @@ import { SubcontractorWorkerTotals } from '@/components/kosztorys/summary/blocks
 import { SubcontractorPayoutsTable } from '@/components/kosztorys/summary/tables/subcontractor-payouts-table'
 import { EditorGlobalSettings } from '@/components/kosztorys/editor/toolbar/editor-global-settings'
 import { computeSubcontractorSummary } from '@/lib/kosztorys/subcontractor-summary'
+import { derivePayoutsByWorker } from '@/lib/kosztorys/payouts-by-worker'
 import type { SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { WorkerRefT } from '@/types/reference-data'
-import type { PayoutTransactionRowT, SubcontractorPayoutRowT } from '@/types/transfers'
+import type { PayoutTransactionRowT } from '@/types/transfers'
 
 type PropsT = {
   investmentId: number
   // View-independent settlement: each etap valued at its OWN plane's price. `combined` is „Suma
   // wykonanej pracy"; `wTools`/`ownTools` feed the split rows; `hasUnconfirmedPlane` flips the badge.
   subcontractorDue: SubcontractorDueByPlaneT
-  // Realized PAYOUTs per worker (null-worker bucket kept), name-enriched at the page.
-  payouts: SubcontractorPayoutRowT[]
-  // The un-summed PAYOUT rows, already date-desc from the query. Feed the sortable/virtualized list.
+  // The PAYOUT rows, already date-desc from the query. Both the sortable list and the per-worker Σ
+  // come off these — a host cannot hand in a total that disagrees with the rows beneath it.
   payoutTransactions: PayoutTransactionRowT[]
   // The etap list and the roster, both only for the per-worker table: stages say who is ASSIGNED
   // (even where nothing is owed yet), workers supply names the payout rows don't carry.
@@ -38,13 +38,13 @@ type PropsT = {
 export function SubcontractorSummary({
   investmentId,
   subcontractorDue,
-  payouts,
   payoutTransactions,
   stages,
   workers,
   showGlobalSettings = true,
   showTransactions = true,
 }: PropsT) {
+  const payouts = derivePayoutsByWorker(payoutTransactions, workers ?? [])
   const summary = computeSubcontractorSummary(subcontractorDue.combined, payouts, {
     byWorker: subcontractorDue.byWorker,
     stages,

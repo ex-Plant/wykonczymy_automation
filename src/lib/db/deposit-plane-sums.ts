@@ -20,6 +20,9 @@ export type DepositPlaneSumsRowT = DepositPlaneSumsT & { investmentId: number }
  * the client owes. That is a deliberate narrowing of the v1 bilans, whose `totalIncome` still counts
  * all three deposit types — v2 settles the client, v1 reads the cash ledger.
  *
+ * The netto bucket is counted as well as summed: in tryb brutto those wpłaty pay nothing down, and
+ * the listing has to say how many were dropped (EX-724) with no row in reach to count.
+ *
  * An investment with no wpłaty is simply absent, which the caller reads as zero on both planes.
  */
 export async function selectDepositPlaneSums(db: DbExecutorT): Promise<DepositPlaneSumsRowT[]> {
@@ -28,7 +31,8 @@ export async function selectDepositPlaneSums(db: DbExecutorT): Promise<DepositPl
       COALESCE(SUM(amount) FILTER (WHERE vat_plane IS DISTINCT FROM 'GROSS'), 0) AS paid_net,
       COALESCE(SUM(net_amount) FILTER (WHERE vat_plane = 'GROSS'), 0) AS paid_gross_net,
       COALESCE(SUM(amount) FILTER (WHERE vat_plane = 'GROSS' AND net_amount IS NULL), 0) AS paid_gross_legacy,
-      COALESCE(SUM(amount) FILTER (WHERE vat_plane = 'GROSS'), 0) AS paid_gross
+      COALESCE(SUM(amount) FILTER (WHERE vat_plane = 'GROSS'), 0) AS paid_gross,
+      COUNT(*) FILTER (WHERE vat_plane IS DISTINCT FROM 'GROSS') AS paid_net_count
     FROM transactions
     WHERE investment_id IS NOT NULL
       AND type = 'INVESTOR_DEPOSIT'
@@ -41,5 +45,6 @@ export async function selectDepositPlaneSums(db: DbExecutorT): Promise<DepositPl
     paidGrossNet: Number(row.paid_gross_net),
     paidGrossLegacy: Number(row.paid_gross_legacy),
     paidGross: Number(row.paid_gross),
+    paidNetCount: Number(row.paid_net_count),
   }))
 }

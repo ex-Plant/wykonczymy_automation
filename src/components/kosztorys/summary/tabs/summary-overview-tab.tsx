@@ -17,7 +17,7 @@ import {
 } from '@/components/kosztorys/summary/settlement-mode-options'
 import { buildSettlementGroups } from '@/components/kosztorys/summary/settlement-groups'
 import { SettlementPlaneWarning } from '@/components/kosztorys/summary/settlement-plane-warning'
-import { offPlaneDeposits } from '@/lib/kosztorys/deposit-planes'
+import { offPlaneDeposits } from '@/lib/kosztorys/off-plane-deposits'
 import { SummaryDepositsTab } from '@/components/kosztorys/summary/tabs/summary-deposits-tab'
 import Link from 'next/link'
 import { DEPOSIT_TYPES } from '@/lib/constants/transfers'

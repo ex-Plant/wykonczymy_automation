@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils/cn'
 import { effectiveMaterialsNetRate, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { computeAmountDue, type MaterialsT } from '@/lib/kosztorys/summary-economics'
-import { depositsStrandedBy, sumDeposits } from '@/lib/kosztorys/deposit-planes'
+import { sumDeposits } from '@/lib/kosztorys/deposit-planes'
+import { depositsStrandedBy } from '@/lib/kosztorys/off-plane-deposits'
 import { settlementModeDepositImpact } from '@/lib/kosztorys/investor-impact'
 import { toSettlement, type SubcontractorDueByPlaneT } from '@/lib/kosztorys/subcontractor-due'
 import { SummaryStagesTab } from '@/components/kosztorys/summary/tabs/summary-stages-tab'
@@ -28,7 +29,6 @@ import type { MarginForecastT } from '@/lib/kosztorys/margin-forecast'
 import type { SectionSliceInputT } from '@/lib/kosztorys/chart-slices'
 import type { WorkerRefT } from '@/types/reference-data'
 import type {
-  SubcontractorPayoutRowT,
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
@@ -107,8 +107,6 @@ type PropsT = {
   preview?: boolean
   stages?: KosztorysStageT[]
   stageTotals?: Map<number, number>
-  // Realized PAYOUTs per worker — feeds the subcontractor summary block (Z/Bez narzędzi views only).
-  payoutsByWorker?: SubcontractorPayoutRowT[]
   // Name lookup for a worker who holds etapy but has no wypłata yet (EX-613) — such a worker exists
   // only in the settlement's `byWorker`, which carries ids and no names.
   workers?: WorkerRefT[]
@@ -163,7 +161,6 @@ export function SummaryPanelContent({
   preview = false,
   stages,
   stageTotals,
-  payoutsByWorker,
   workers,
   payoutTransactions,
   materialTransactions,
@@ -265,7 +262,6 @@ export function SummaryPanelContent({
           <SubcontractorSummary
             investmentId={investmentId}
             subcontractorDue={subcontractorDue}
-            payouts={payoutsByWorker ?? []}
             payoutTransactions={payoutTransactions ?? []}
             stages={stages}
             workers={workers}
@@ -302,7 +298,6 @@ export function SummaryPanelContent({
               <SummaryExpensesTab
                 investmentId={investmentId}
                 investmentName={investmentName}
-                materials={materials}
                 materialsBreakdown={materialsBreakdown}
                 // Owner plane — dropped here too, not only by the client share omitting it upstream:
                 // marża-side spend must fail closed on every path into a client render.

@@ -17,7 +17,7 @@ type PlaneAmountFieldPropsT = {
  * Ownership is read off the value — it is his as soon as it stops matching the last kwota this
  * component wrote — rather than latched when a keystroke arrives. A latch answers the wrong question
  * twice: a reopened draft mounts with a fresh `false` over a netto typed off the faktura, and the
- * empty string a `resetField` pushes reads as a keystroke that raises it for good.
+ * empty string a programmatic clear pushes reads as a keystroke that raises it for good.
  */
 export function netSuggestion(
   currentNet: string,

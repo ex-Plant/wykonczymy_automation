@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
+import { deriveFinancials } from '@/lib/db/investment-financials'
 import type { TypeSettledTotalT } from '@/types/investment-financials'
 import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'

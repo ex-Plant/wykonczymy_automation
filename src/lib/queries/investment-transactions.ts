@@ -2,40 +2,20 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { CACHE_TAGS } from '@/lib/cache/tags'
-import {
-  sumPayoutsByWorkerForInvestment,
-  getPayoutTransactionsForInvestment,
-  getDepositTransactionsForInvestment,
-} from '@/lib/db/sum-transfers'
+import { getPayoutTransactionsForInvestment } from '@/lib/db/get-payout-transactions'
+import { getDepositTransactionsForInvestment } from '@/lib/db/get-deposit-transactions'
 import { findTransfersRaw } from '@/lib/queries/transfers'
 import { fetchMediaByIds } from '@/lib/queries/media'
 import { fetchExpenseCategories } from '@/lib/queries/reference-data'
 import { extractInvoiceIds, resolveInvoiceFiles } from '@/lib/invoices/invoice-field'
 import { billedAmountFor, EXPENSES_TAB_TYPES } from '@/lib/constants/transfers'
 import type {
-  PayoutByWorkerT,
   PayoutTransactionRowT,
   DepositTransactionRowT,
   MaterialTransactionRowT,
 } from '@/types/transfers'
 
-// Realized PAYOUTs for one investment, grouped per worker (null-worker bucket kept). Cached under
-// CACHE_TAGS.transfers alone — names are joined at the page from reference data, so no users tag is
-// needed here; recalculate-balances fires revalidateTag(transfers) on every transfer mutation.
-export async function fetchPayoutsByWorkerForInvestment(
-  investmentId: number,
-): Promise<PayoutByWorkerT[]> {
-  return unstable_cache(
-    async () => {
-      const payload = await getPayload({ config })
-      return sumPayoutsByWorkerForInvestment(payload, investmentId)
-    },
-    ['payouts-by-worker', String(investmentId)],
-    { tags: [CACHE_TAGS.transfers] },
-  )()
-}
-
-// Same cache contract as the per-worker sum above — transfers tag, worker names joined at the page.
+// Tagged on CACHE_TAGS.transfers alone: the rows carry no worker name — that is resolved downstream off reference data — so a rename must not bust this.
 export async function fetchPayoutTransactionsForInvestment(
   investmentId: number,
 ): Promise<PayoutTransactionRowT[]> {

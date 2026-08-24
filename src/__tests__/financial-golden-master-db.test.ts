@@ -13,6 +13,13 @@ import { calculateBalance } from '@/lib/db/calculate-balance'
 import { calculateMargin } from '@/lib/db/calculate-margin'
 import { marginV2 } from '@/lib/kosztorys/margin-v2'
 import { selectKosztorysClientTotals } from '@/lib/db/kosztorys-client-totals'
+import { selectDepositPlaneSums } from '@/lib/db/deposit-plane-sums'
+import {
+  depositPairFromPlaneSums,
+  NO_DEPOSIT_SUMS,
+  type DepositPlaneSumsT,
+} from '@/lib/kosztorys/deposit-planes'
+import { DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import { selectKosztorysSubcontractorDue } from '@/lib/db/kosztorys-subcontractor-due'
 import { NOTHING_DUE } from '@/lib/kosztorys/subcontractor-due'
 import { financialsOnReading, readingFromKosztorys } from '@/lib/kosztorys/summary-reading'
@@ -58,6 +65,13 @@ type InvestmentSnapshotT = {
    *  and rabat come from the kosztorys and the crew from its etapy, which is what the listing shows.
    *  `null` where an etap holds work with no rozliczenie. */
   marginV2: number | null
+  /** The wpłaty bucketed by VAT plane, straight off the SQL fold the listing reads. Frozen as four
+   *  raw sums rather than one total because that is where a bucketing regression shows: an untagged
+   *  wpłata sliding into the brutto bucket moves two of these and leaves their sum alone. */
+  deposits: DepositPlaneSumsT
+  /** Σ wpłat netto AFTER the legacy bridge — the only figure here that runs a wpłata brutto with no
+   *  netto through `legacyNet`, so it is the one that catches the bridge itself drifting. */
+  depositsNetAfterBridge: number
   categoryCosts: CategoryPairT[]
   settledCategoryCosts: CategoryPairT[]
 }
@@ -67,7 +81,12 @@ type InvestmentSnapshotT = {
 type HashMapT = Record<string, string>
 
 type SnapshotT = {
-  fingerprint: { transactionCount: number; kosztorysItemCount: number }
+  fingerprint: {
+    transactionCount: number
+    kosztorysItemCount: number
+    grossDepositsWithNet: number
+    legacyGrossDeposits: number
+  }
   /** Per-entity hash of the transaction rows that feed that entity's figures — see readInputHashes. */
   inputHashes: { investments: HashMapT; registers: HashMapT; workers: HashMapT }
   investments: Record<string, InvestmentSnapshotT>
@@ -118,6 +137,7 @@ async function readInputHashes(payload: Payload) {
         id, investment_id, source_register_id, target_register_id, worker_id,
         id || '|' || type || '|' || amount
           || '|' || COALESCE(net_amount::text, '')
+          || '|' || COALESCE(vat_plane::text, '')
           || '|' || COALESCE(settled::text, '')
           || '|' || COALESCE(investment_id::text, '')
           || '|' || COALESCE(source_register_id::text, '')
@@ -195,11 +215,27 @@ async function readInputHashes(payload: Payload) {
     hashes.investments[key] = `${hashes.investments[key] ?? ''}/${sig}`
   }
 
-  const counted = await db.execute(sql`SELECT count(*)::int AS row_count FROM transactions`)
+  // Ride along on the scan that was already counting rows. They are the dataset floor's second axis;
+  // what they guard is spelled out at DATASET_FLOOR.
+  const counted = await db.execute(sql`
+    SELECT
+      count(*)::int AS row_count,
+      count(*) FILTER (
+        WHERE type = 'INVESTOR_DEPOSIT' AND cancelled IS NOT TRUE
+          AND vat_plane = 'GROSS' AND net_amount IS NOT NULL
+      )::int AS gross_with_net,
+      count(*) FILTER (
+        WHERE type = 'INVESTOR_DEPOSIT' AND cancelled IS NOT TRUE
+          AND vat_plane = 'GROSS' AND net_amount IS NULL
+      )::int AS legacy_gross
+    FROM transactions
+  `)
   return {
     hashes,
     transactionCount: Number(counted.rows[0].row_count),
     kosztorysItemCount,
+    grossDepositsWithNet: Number(counted.rows[0].gross_with_net),
+    legacyGrossDeposits: Number(counted.rows[0].legacy_gross),
   }
 }
 
@@ -223,11 +259,15 @@ async function buildSnapshot(payload: Payload): Promise<{
     ])
 
   const db = await getDb(payload)
-  const clientTotals = new Map(
-    (await selectKosztorysClientTotals(db)).map((row) => [row.investmentId, row]),
-  )
-  const subcontractorDue = new Map(
-    (await selectKosztorysSubcontractorDue(db)).map((row) => [row.investmentId, row]),
+  const [clientTotalRows, subcontractorDueRows, depositPlaneSumRows] = await Promise.all([
+    selectKosztorysClientTotals(db),
+    selectKosztorysSubcontractorDue(db),
+    selectDepositPlaneSums(db),
+  ])
+  const clientTotals = new Map(clientTotalRows.map((row) => [row.investmentId, row]))
+  const subcontractorDue = new Map(subcontractorDueRows.map((row) => [row.investmentId, row]))
+  const depositPlaneSums = new Map(
+    depositPlaneSumRows.map(({ investmentId, ...sums }) => [investmentId, sums]),
   )
 
   const investments: Record<string, InvestmentSnapshotT> = {}
@@ -238,6 +278,10 @@ async function buildSnapshot(payload: Payload): Promise<{
     // Mirrors shapeInvestments(): an investment with no transactions renders as zeros
     // rather than being absent, so the snapshot covers all of them.
     const financials = financialsMap.get(id) ?? ZERO_FINANCIALS
+    // Absent means no wpłaty at all, which `shapeInvestments` reads as zero on both planes — the
+    // same fallback here, so an investment nobody has paid is frozen rather than skipped.
+    const deposits = depositPlaneSums.get(id) ?? NO_DEPOSIT_SUMS
+    const vatRate = doc.vatRate ?? DEFAULT_VAT
     investments[String(id)] = {
       totalMaterialCosts: round2(financials.totalMaterialCosts),
       totalIncome: round2(financials.totalIncome),
@@ -254,6 +298,16 @@ async function buildSnapshot(payload: Payload): Promise<{
           subcontractorDue.get(id) ?? NOTHING_DUE,
         ),
       ),
+      deposits: {
+        paidNet: round2(deposits.paidNet),
+        paidGrossNet: round2(deposits.paidGrossNet),
+        paidGrossLegacy: round2(deposits.paidGrossLegacy),
+        paidGross: round2(deposits.paidGross),
+        // A count, not money — it is what the „osierocone wpłaty" marker on the listing renders, so
+        // it is an input like the sums and rounding it would be nonsense.
+        paidNetCount: deposits.paidNetCount,
+      },
+      depositsNetAfterBridge: round2(depositPairFromPlaneSums(deposits, vatRate).net),
       categoryCosts: toPairs(financials.categoryCosts),
       settledCategoryCosts: toPairs(financials.settledCategoryCosts),
     }
@@ -267,6 +321,8 @@ async function buildSnapshot(payload: Payload): Promise<{
       fingerprint: {
         transactionCount: inputs.transactionCount,
         kosztorysItemCount: inputs.kosztorysItemCount,
+        grossDepositsWithNet: inputs.grossDepositsWithNet,
+        legacyGrossDeposits: inputs.legacyGrossDeposits,
       },
       inputHashes: inputs.hashes,
       investments,
@@ -284,7 +340,19 @@ async function buildSnapshot(payload: Payload): Promise<{
 /*  `kosztorysItems` carries the floor's whole point onto the new axis: with the kosztorys tables
  *  empty every investment falls back to the transactions plane, so the read-switch branch is never
  *  executed and the suite passes green having tested nothing about it. */
-const DATASET_FLOOR = { investments: 50, registers: 10, transactions: 1000, kosztorysItems: 20 }
+/*  The two wpłata counts are the same argument on the wpłaty axis: an untagged wpłata counts as
+ *  gotówka, so a fixture with no wpłata brutto leaves every bucket but `paidNet` at zero — the
+ *  brutto plane and the legacy bridge are then frozen at nothing and a regression in either passes
+ *  green. Two counters rather than one because they are two different code paths: the netto off the
+ *  faktura is READ, and only a row missing it crosses the bridge that derives one at VAT. */
+const DATASET_FLOOR = {
+  investments: 50,
+  registers: 10,
+  transactions: 1000,
+  kosztorysItems: 20,
+  grossDepositsWithNet: 2,
+  legacyGrossDeposits: 0,
+}
 
 function assertNonTrivial(snapshot: SnapshotT) {
   const counts = {
@@ -292,12 +360,15 @@ function assertNonTrivial(snapshot: SnapshotT) {
     registers: Object.keys(snapshot.registers).length,
     transactions: snapshot.fingerprint.transactionCount,
     kosztorysItems: snapshot.fingerprint.kosztorysItemCount,
+    grossDepositsWithNet: snapshot.fingerprint.grossDepositsWithNet,
+    legacyGrossDeposits: snapshot.fingerprint.legacyGrossDeposits,
   }
   for (const key of Object.keys(DATASET_FLOOR) as (keyof typeof DATASET_FLOOR)[]) {
     if (counts[key] <= DATASET_FLOOR[key]) {
       throw new Error(
         `db-test holds only ${counts[key]} ${key} (floor ${DATASET_FLOOR[key]}) — this is a ` +
-          `thin or half-restored dataset. Run \`pnpm db:import:test\` before regenerating.`,
+          `thin or half-restored dataset. Run \`pnpm db:import:test\`, then ` +
+          `\`pnpm seed:kosztorys:test\` and \`pnpm seed:deposits:test\`, before regenerating.`,
       )
     }
   }
@@ -366,6 +437,40 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
     const inputsUnchanged = (scope: keyof SnapshotT['inputHashes'], id: string) =>
       (expected.inputHashes[scope][id] ?? '') === (actual.inputHashes[scope][id] ?? '')
 
+    // The `total / 2` floor below counts entities and is blind to WHICH ones, so it cannot see an
+    // axis going dark: only a handful of investments carry a wpłata brutto or a kosztorys at all,
+    // and if exactly those fall out of the compared set the count barely moves while the figures
+    // that are the whole reason this fixture exists are compared on nobody. That is not
+    // hypothetical: it is what a seed re-inserting its rows under fresh ids did (EX-725), and
+    // `assertNonTrivial` could not catch it because it counts rows in the DB, not comparable
+    // entities. So each axis is asserted where it is actually spent: in the compared set.
+    //
+    // A table rather than one hard-wired check, because the two axes are equally thin and equally
+    // seed-fed. Today the kosztorys axis rests on a single investment that happens to also carry
+    // brutto — so the brutto check covers it by coincidence, and the coincidence dies the moment a
+    // seed puts the two on different investments.
+    const AXES = [
+      {
+        name: 'wpłata brutto',
+        guards: '`deposits` and `depositsNetAfterBridge`',
+        reseed: 'pnpm seed:deposits:test',
+        carriedBy: (id: string) => (expected.investments[id]?.deposits.paidGross ?? 0) !== 0,
+      },
+      {
+        name: 'kosztorys',
+        guards: '`totalLaborCosts` and the v2 figures derived from it',
+        reseed: 'pnpm seed:kosztorys:test',
+        carriedBy: (id: string) => (expected.inputHashes.investments[id] ?? '').includes('/k:'),
+      },
+    ] as const
+
+    const axisSkipped = new Map(AXES.map((axis) => [axis.name, [] as string[]]))
+    const noteAxisSkip = (id: string) => {
+      for (const axis of AXES) {
+        if (axis.carriedBy(id)) axisSkipped.get(axis.name)!.push(label(id))
+      }
+    }
+
     for (const id of Object.keys(expected.investments)) {
       const now = actual.investments[id]
       // A row the fixture knows and the DB no longer returns: prod deleted it. Same class as
@@ -374,11 +479,13 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
       if (!now) {
         dataMoved.push(`${label(id)} (gone)`)
         investmentsSkipped++
+        noteAxisSkip(id)
         continue
       }
       if (!inputsUnchanged('investments', id)) {
         dataMoved.push(label(id))
         investmentsSkipped++
+        noteAxisSkip(id)
         continue
       }
       const was = expected.investments[id]
@@ -432,6 +539,18 @@ describe.skipIf(!ENV_READY)('financial golden master — every figure, every inv
         `only ${comparable} of ${total} fixture investments still ` +
           `match their transactions — the fixture is too stale to guard anything. ` +
           `Regenerate with \`pnpm test:golden:update\` and review the diff.`,
+      )
+    }
+
+    for (const axis of AXES) {
+      const skipped = axisSkipped.get(axis.name)!
+      if (skipped.length === 0) continue
+      throw new Error(
+        `${skipped.length} of the fixture's ${axis.name} investments fell out of the compared set, ` +
+          `so ${axis.guards} are guarded on nobody:\n  ` +
+          skipped.join('\n  ') +
+          `\nIf their rows really moved, re-seed with \`${axis.reseed}\` (the seeds write fixed ` +
+          `ids on purpose) and regenerate with \`pnpm test:golden:update\`.`,
       )
     }
 

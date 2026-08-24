@@ -27,6 +27,10 @@ import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import { restorableType } from '@/components/forms/expense-form/draft-type'
 import {
+  investmentForType,
+  staleFieldsForType,
+} from '@/lib/transfers/clear-fields-for-type'
+import {
   makeLineItem,
   type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
@@ -228,14 +232,15 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
-  // TanStack Form preserves values of unmounted fields. When the user switches
-  // transfer type, hidden fields (e.g. investment) keep stale selections.
-  // Reset them so validation and submission use a clean slate for the new type.
-  const conditionalFields = ['targetRegister', 'investment', 'worker', 'settled'] as const
-
-  function resetConditionalFields() {
-    conditionalFields.forEach((field) => form.resetField(field))
-    form.resetField('sourceRegister')
+  // Blanked, never reset — see clear-fields-for-type.
+  function resetConditionalFields(type: string) {
+    staleFieldsForType(type).forEach(([field, value]) =>
+      form.setFieldValue(field, value),
+    )
+    form.setFieldValue(
+      'investment',
+      investmentForType(type, form.getFieldValue('investment'), investmentFromUrl),
+    )
     // resetField('lineItems') would restore the stale-id mount default; set a fresh-id blank row
     // instead so the row (and its uncontrolled FileInput) remounts. The queued files live outside
     // the form, so clear them too — otherwise a file queued before the type switch attaches to the
@@ -254,7 +259,10 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           Select down while „Data" beside it stayed put, breaking the row's alignment. */}
         <div className="space-y-1.5">
           <div className="flex items-start gap-4">
-            <form.AppField name="type" listeners={{ onChange: resetConditionalFields }}>
+            <form.AppField
+              name="type"
+              listeners={{ onChange: ({ value }) => resetConditionalFields(value) }}
+            >
               {(field) => (
                 <field.Select label="Typ wydatku" showError fieldClassName="min-w-0 flex-1">
                   {TRANSACTION_TRANSFER_TYPES.map((t) => (

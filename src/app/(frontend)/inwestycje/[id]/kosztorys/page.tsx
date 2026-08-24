@@ -1,5 +1,6 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import { parseInvestmentId } from '@/lib/queries/investment-id'
 import { requireInvestmentOr404 } from '@/lib/queries/investments'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
 import { SheetButton } from '@/components/dialogs/sheet-button'
@@ -14,11 +15,16 @@ export default async function InvestmentKosztorysPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const { investmentId, investment } = await requireInvestmentOr404(id)
-
+  // The sheet lookup keys off the parsed id, not off the guard's result, so it has no reason to wait
+  // for it. Unlike the kosztorys_v2 fan-out it carries no access-control throw of its own, so it
+  // cannot turn a logged-out session's login page into an error screen; only a dead DB could, and
+  // then the page has no answer either way.
+  const investmentId = parseInvestmentId(id)
   // Sheet id lives on the kosztoryses collection, not on investments.
-  const payload = await getPayload({ config })
-  const sheetId = await getInvestmentSheetId(payload, investmentId)
+  const sheetIdPromise = getPayload({ config }).then((payload) =>
+    getInvestmentSheetId(payload, investmentId),
+  )
+  const [{ investment }, sheetId] = await Promise.all([requireInvestmentOr404(id), sheetIdPromise])
 
   if (sheetId) {
     return (

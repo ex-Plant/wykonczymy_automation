@@ -2,7 +2,7 @@ import {
   buildMaterialsBreakdown,
   buildSettledBreakdown,
 } from '@/lib/queries/investment-financial-fields'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
+import { deriveFinancials } from '@/lib/db/investment-financials'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import { fetchCategoryBreakdowns, fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import type {
@@ -47,7 +47,8 @@ export type WholeInvestmentFinancialsT = {
  * Rate + mode come from the kosztorys tree, not the investment row — they are what make
  * `materialsNetDiscount` a real term rather than 0. Every whole-investment surface derives through
  * here so the owner's editor, the investment panel and the client share cannot end up reading three
- * different materiały figures; `src/scripts/audit-investment-parity.ts` polices that agreement.
+ * different materiały figures; `src/__tests__/investment-render-parity-db.test.ts` (`pnpm
+ * test:parity`) polices that agreement.
  */
 export function deriveWholeInvestmentFinancials(
   { typeDistribution, breakdowns }: InvestmentFinancialsSourceT,

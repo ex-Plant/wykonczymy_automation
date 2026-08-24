@@ -2,7 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
-import { getDepositTransactions, getDepositTransactionsForInvestment } from '@/lib/db/sum-transfers'
+import {
+  getDepositTransactions,
+  getDepositTransactionsForInvestment,
+} from '@/lib/db/get-deposit-transactions'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // EX-600: what the spec pins is that opening this query to a caller `Where` didn't widen its surface

@@ -6,6 +6,8 @@
 > cannot be completed at all** (§2, "The Hobby plan cannot execute a restore") — the drill
 > exceeded the Advanced-Operations allowance and suspended every blob store on the account,
 > production included. Resolved by upgrading the plan; drill closed 7/7 the same day.
+> **Phase 4 (§4, §6) is OPEN** — a total-loss rebuild from the FTP server alone, whose real
+> target is the non-backed-up configuration, not the bytes.
 > Living document, update as we go.
 > **Linear:** [EX-459](https://linear.app/ex-plant/issue/EX-459) · **Started:** 2026-07-13
 > **Purpose:** Invoice/receipt files live in Vercel Blob with zero backup. Blob has no
@@ -256,6 +258,41 @@ repaired by re-putting only the missing keys — same mechanic. Because `media.u
 (§2), same-store partial repair and new-store full rebuild are the **same operation**:
 put-by-filename, no URL rewrite.
 
+### Phase 4 — Total-loss drill: rebuild from the FTP server alone
+
+**Scope.** Not "Neon and Vercel died the same night". The realistic single event with a two-plane
+blast radius is one compromised or locked **Vercel account** — it holds the Blob store _and_
+`DB_POSTGRES_URL_PROD` as an env var — or one destructive run from a laptop whose `.env` carries the
+prod DB URL and `BLOB_READ_WRITE_TOKEN_PROD` side by side (the drill already produced a miniature:
+a stale token variable sent 7 `put()`s into production, §5 step 2). The Hobby suspension (§2)
+settled that the blast radius is the **account**, not the store. Code is out of scope — it exists
+on GitHub and on the owner's machine.
+
+**The question:** can the app be stood up when the only surviving input is `188.210.222.1`? Phase 3
+proved the bytes restore. What this drill produces is §6's gap list, confirmed or corrected — the
+non-backed-up _configuration_ is the untested part, not the data.
+
+**Budget first.** A rebuild costs ~2.4k Advanced Operations, same as a real recovery (§2). Pro or
+don't start.
+
+1. **Pull both backups off FTP and nothing else.** Newest `/db_backups/*.sql.gz` plus the whole
+   `/blob_backups/media/` + its manifest. Work from a shell with the prod DB URL and prod blob token
+   **unset**, so an accidental fallback to the live system fails loudly instead of quietly passing.
+2. **Restore the DB into a fresh target** (a new local database or a throwaway Neon branch — never
+   an existing one): `gzip -dc … | psql`, then `scripts/reset-sequences.sql`. The dump is
+   `--no-owner --no-privileges --clean --if-exists`, so it lands under whatever role you have.
+3. **Run `payload migrate`.** The dump carries `_payload_migrations` as of the dump, not as of
+   `main` — code newer than the backup needs the delta or reads fail on missing columns.
+4. **Create a fresh Blob store**, take its token, and re-upload with
+   `node scripts/blob-restore.mjs --dir <mirror> --concurrency 8`. New store id, no `media.url`
+   rewrite (§2).
+5. **Point the app at both** and note every env var you had to supply that neither backup contained
+   — that list is the actual finding.
+6. **Acceptance:** a transaction's invoice renders (main file + thumbnail) through the plugin's own
+   read path, on a stack whose only input was the FTP server. Also confirm the env guards in
+   `src/lib/env/schema.ts` don't block the rebuild: a brand-new production store token used from a
+   machine where `VERCEL_ENV` is unset trips the store/environment check by design.
+
 ---
 
 ## 5. Recovery runbook (step-by-step)
@@ -338,7 +375,30 @@ production no matter what the caller types or a stale `.env.local` holds.
 
 ---
 
-## 6. Progress log
+## 6. What the backups do NOT hold (recoverability inventory)
+
+Everything below the line is re-mintable and therefore out of drill scope: the repo (GitHub +
+local), the Neon project, the Blob store, the Vercel project, the Google service-account key, SMTP
+credentials, the OpenRouter key. No collection uses an `encrypted` field, so losing
+`PAYLOAD_SECRET` costs a re-login and nothing else.
+
+What is genuinely unrecoverable:
+
+| Gap                                | Why it is unrecoverable                                                                                                      | Bound                                                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **FTP is a single copy**           | DB dumps _and_ the blob mirror live on one shared box (it also serves `/db_backups_chaoskitchen/`). No second destination.   | That box dying loses both backups at once. No drill fixes this — only a second destination does. |
+| **FTP credentials**                | Held only in GitHub Actions secrets and the owner's `.env`.                                                                  | Backups can be intact and still unreachable.                                                     |
+| **30-day dump retention**          | `RETENTION_DAYS: 30` in `db-backup.yml` prunes older dumps. The blob mirror does not prune.                                  | Corruption noticed on day 31 is gone.                                                            |
+| **Nightly DB window**              | Cron is `0 4-22 * * *` UTC → no dump 00:00–06:00 Warsaw.                                                                     | Up to ~6h of writes, in the lowest-activity hours.                                               |
+| **Same-day blob uploads**          | Mirror runs 03:30 UTC daily.                                                                                                 | Up to ~24h of invoices have a `media` row and no bytes.                                          |
+| **Shared secrets on the far side** | `WPFORMS_WEBHOOK_SECRET` and `META_VERIFY_TOKEN` are re-mintable, but the WordPress and Meta ends must be re-synced by hand. | Recoverable; costs coordination, not data.                                                       |
+
+Two fixes that need no drill: a **second backup destination**, and the FTP credentials recorded
+somewhere that survives the laptop.
+
+---
+
+## 7. Progress log
 
 - **2026-07-13** — Investigation + this runbook. Verified store size (~1771/174MB), mapping
   model, relative `media.url`, filename uniqueness (940/940), 3 harmless orphans, config

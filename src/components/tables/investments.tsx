@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { roundToCents } from '@/lib/utils/round-to-cents'
@@ -12,6 +13,7 @@ import { BalanceCell } from '@/components/ui/balance-cell'
 import { InvestmentStatusBadge } from '@/components/investments/investment-status-badge'
 import { ContactLink } from '@/components/ui/contact-link'
 import { LabelHintIcon } from '@/components/ui/label-hint-icon'
+import { offPlaneDepositSentence } from '@/lib/kosztorys/off-plane-deposit-copy'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
@@ -32,12 +34,28 @@ export const V2_COLUMN_IDS = [
 // that zero: the bilans then says the client owes nothing for work that was done, and the marża that
 // the crews cost nothing. All of them say „brak danych" instead — the kosztorys is the source, so
 // „nothing entered" is the honest reading, and the number returns the moment it is.
+//
+// Off `hasKosztorys` rather than `totalLaborCosts !== 0`, which cannot tell the two apart: „pomiar z
+// natury" is the etap sum, so a rozpiska entered in full but not yet started sums to zero and would
+// be withheld as „nothing entered" — over real data, and with the v1/v2 rozjazd icon suppressed
+// exactly where a fresh kosztorys most needs it flagged.
 function hasKosztorysReading(row: InvestmentRowT): boolean {
-  return row.totalLaborCosts !== 0
+  return row.hasKosztorys
 }
 
 function NoKosztorysData() {
   return <span className="text-muted-foreground text-xs">brak danych</span>
+}
+
+// A numeric cell that may carry a hint icon next to it. Right-aligned inline so the icon rides with
+// the number instead of pinning to the column edge, which is what put the two figures out of line.
+function HintedValue({ children, hint }: { children: ReactNode; hint: ReactNode }) {
+  return (
+    <span className="inline-flex items-center justify-end gap-1">
+      {children}
+      {hint}
+    </span>
+  )
 }
 
 // The tryb decides which bilans EXISTS — one column per investment, never two (owner, 2026-08-23).
@@ -116,9 +134,26 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
       header: 'Bilans brutto v2',
       meta: { align: 'right', tooltip: INVESTMENT_HEADER_TIPS.balanceGross },
       cell: (info) => {
-        if (!settlesOn(info.row.original, 'gross')) return <NotApplicable />
-        if (!hasKosztorysReading(info.row.original)) return <NoKosztorysData />
-        return <BalanceCell value={info.row.original.balanceGross} />
+        const row = info.row.original
+        if (!settlesOn(row, 'gross')) return <NotApplicable />
+        if (!hasKosztorysReading(row)) return <NoKosztorysData />
+        return (
+          <HintedValue
+            /* Whatever this figure drops, said out loud — the Podsumowanie panel says the same
+               sentence about the same wpłaty, and a bare number here contradicted it. The tryb is
+               brutto by the time a row carries these, which is the only tryb that strands any. */
+            hint={
+              row.strandedDeposits && (
+                <LabelHintIcon
+                  variant="strandedDeposits"
+                  content={offPlaneDepositSentence(row.strandedDeposits, 'GROSS')}
+                />
+              )
+            }
+          >
+            <BalanceCell value={row.balanceGross} />
+          </HintedValue>
+        )
       },
     }),
     ...(isAdminOrOwner
@@ -173,16 +208,19 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
           info.getValue() - info.row.original.totalLaborCostsFromTransactions,
         )
         return (
-          <span className="inline-flex items-center justify-end gap-1">
+          <HintedValue
+            /* No icon at zero — „nothing left to move" is the answer that needs no explanation. */
+            hint={
+              gap !== 0 && (
+                <LabelHintIcon
+                  variant="mismatch"
+                  content={`Rozjazd z „Robocizna v1": ${formatPLN(gap)}. Tyle robocizny jest w kosztorysie ponad to, co zaksięgowano transferami — dodatnia kwota znaczy, że transfery są niedobite, ujemna, że praca nie jest jeszcze wpisana w kosztorys.`}
+                />
+              )
+            }
+          >
             {formatPLN(info.getValue())}
-            {/* No icon at zero — „nothing left to move" is the answer that needs no explanation. */}
-            {gap !== 0 && (
-              <LabelHintIcon
-                variant="mismatch"
-                content={`Rozjazd z „Robocizna v1": ${formatPLN(gap)}. Tyle robocizny jest w kosztorysie ponad to, co zaksięgowano transferami — dodatnia kwota znaczy, że transfery są niedobite, ujemna, że praca nie jest jeszcze wpisana w kosztorys.`}
-              />
-            )}
-          </span>
+          </HintedValue>
         )
       },
     }),
