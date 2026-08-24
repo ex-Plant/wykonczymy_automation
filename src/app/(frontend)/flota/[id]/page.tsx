@@ -7,6 +7,7 @@ import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { STREAMS, markSeen } from '@/lib/db/notifications'
 import { fetchVehicleDetail } from '@/lib/queries/fleet'
 import { AddInspectionDialog } from '@/components/dialogs/add-inspection-dialog'
+import { EditVehicleDialog } from '@/components/dialogs/edit-vehicle-dialog'
 import { VehicleFlags } from '@/components/fleet/vehicle-flags'
 import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge'
 import { VehicleDetailTabs } from '@/components/fleet/vehicle-detail-tabs'
@@ -74,7 +75,10 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
             ]}
           />
         </div>
-        <AddInspectionDialog vehicles={[vehicle]} vehicleId={vehicle.id} />
+        <div className="flex flex-wrap gap-2">
+          <EditVehicleDialog vehicle={vehicle} />
+          <AddInspectionDialog vehicles={[vehicle]} vehicleId={vehicle.id} />
+        </div>
       </div>
 
       <VehicleDetailTabs historyByType={historyByType} />

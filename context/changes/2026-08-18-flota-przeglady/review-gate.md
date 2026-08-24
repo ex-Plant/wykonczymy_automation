@@ -29,6 +29,9 @@ out-of-band inclusion rather than cherry-picked out.
       test: no automated test · — Payload-bound I/O with no seam; the data outcome was already safe, only the reporting changed.
 - [x] 🔵 OBSERVATION · fixed · `code-review` · `src/components/dialogs/add-inspection-dialog.tsx:22` · `prefillNextDue` was wired only to the type field's `onChange`, so the dialog's default `TECHNICAL` — the most common case — opened with no suggested „Następny termin". The default value now carries the 12-month prefill.
 - [x] 🔵 OBSERVATION · skipped · `code-review`,`impl-review` · `src/lib/actions/fleet.ts:28` · `updateVehicleAction` has no caller, so `RETIRED` is unreachable in-app and the only "remove this car" gesture is an admin Delete that cascades the inspection history. Real and worth doing, but it adds UI (an edit dialog) and changes what a user MAY DO — surfaced for your call rather than auto-applied.
+      **Rozstrzygnięte 2026-08-24 (właściciel): potrzebna edycja pojazdu i wycofywanie.** `EditVehicleDialog` na karcie pojazdu wywołuje `updateVehicleAction`; „Wycofany" jest odtąd osiągalny po założeniu auta.
+      test: no automated test · unit — `vehicle-update.test.ts` pilnuje PERSISTED stanu akcji (wycofanie, nietknięte znaczniki, odrzucona walidacja); samo okno to wiring bez logiki.
+      Strażnik `beforeDelete` na `vehicles` **nie** wchodzi — nie był proszony; kasowanie w adminie dalej kaskaduje historię (osobna pozycja niżej).
       test: TDD · e2e — owed with whichever fix you pick (edit dialog, or a `beforeDelete` guard mirroring `preventDeleteWithTransactions`).
 - [x] 🔵 OBSERVATION · skipped · `code-review` · `src/lib/env/schema.ts:34` · `FLEET_NOTIFICATION_EMAIL` and `ADMIN_EMAIL` ship as required, and `(frontend)/layout.tsx` imports `serverEnv` as the build gate — any Vercel env without them fails `next build` on merge. Not a code fix; recorded as a deploy prerequisite in `change.md`.
 - [x] 🔵 OBSERVATION · fixed · `impl-review` · `src/lib/fleet/notify.ts:10` + `src/components/fleet/deadline-cell.tsx:14` · `daysLabel` duplicated byte-for-byte between the mail and the cell — the exact "mail contradicts the screen" drift the phase order was designed to prevent. Hoisted to `src/lib/fleet/deadline-label.ts`.
@@ -64,7 +67,8 @@ out-of-band inclusion rather than cherry-picked out.
 - [x] fixed · `simplify` · `src/components/forms/inspection-form/inspection-form.tsx:126` · an IIFE computing one value; `optionalNumber` (line 46) already returns `undefined` for blank, so the `Number.isFinite` guard collapsed. Two plain consts.
 - [x] fixed · `simplify` · `src/__tests__/lib/fleet/missing-data.test.ts:6`, `reminder-sweep.test.ts:12` · the same `vehicle()` factory written twice (and a `history()` beside it) while both files already imported the sibling `event()` from `__tests__/helpers/fleet.ts`. Moved there.
 - [x] skipped · `simplify` · `src/components/forms/inspection-form/inspection-form.tsx:82` · the upload-then-create + orphan-discard block is now a **fourth** copy (`edit-transfer-form.tsx:93`, `expense-form.tsx:178`, `hooks/use-invoice-upload.ts`). Extracting `withInvoiceUpload(files, action)` is right, but it rewrites the submit path of two money-entry forms — a review-worthy refactor, not a gate edit.
-- [x] skipped · `simplify` · `src/components/forms/inspection-form/inspection-form.tsx:82` · this call site skips the `ingestFiles` / `reportBlockedFiles` pair that `use-invoice-upload.ts` runs alongside `resolveInvoicePageIds`, so an inspection attachment gets no HEIC conversion and no blocked-file message. A real behaviour gap, but adding it changes what an upload DOES — surfaced for your call, not auto-applied.
+- [x] fixed · `simplify` · `src/components/forms/inspection-form/inspection-form.tsx:82` · this call site skipped the `ingestFiles` / `reportBlockedFiles` pair that `use-invoice-upload.ts` runs alongside `resolveInvoicePageIds`, so an inspection attachment got no HEIC conversion and no blocked-file message. **Rozstrzygnięte 2026-08-24: ingest przeniesiony na moment WYBORU pliku**, wzorem `use-invoice-upload.ts` i `use-invoice-ingest.ts` — plus busy state, bo bez niego submit w trakcie konwersji HEIC zapisywał przegląd bez załącznika. Submit jest blokowany w `FormFooter` i sprawdzany ponownie w `action` (Enter omija przycisk).
+      test: no automated test · e2e — HEIC → konwersja i plik >4 MB → komunikat to ryzyko przeglądarkowe; dopisane do rejestru manual-checks, spec do EX-716.
 - [x] dismissed · `simplify` · `src/lib/fleet/map-inspection.ts:4` · `asId` duplicates `resolveId` in `lib/utils`. Not taken: `resolveId` returns `number | undefined`, so reusing it costs an `as number` at the one call site — trading a total function for a cast to save two lines. Comment now records why.
 - [x] dismissed · `simplify` · `src/components/fleet/deadline-cell.tsx:25` · „two checks for one fact". They are not: `daysLeft` is independently nullable in `FleetDeadlineT` (the table sorts on it), and dropping either narrowing fails `tsc`. Verified by making the change and reverting it.
 - [x] dismissed · `simplify` · `src/components/nav/sidebar.tsx:72` · Flota hand-wired instead of going through `SECTION_LINKS.badge`. `SECTION_LINKS` has no role gate, and every role-gated link (Kosztorysy, Pracownicy, Raporty) is hardcoded identically — the new entry matches its neighbours; generalising is a nav-wide change.
@@ -104,23 +108,40 @@ announced" collapse onto one orderable integer.
 src/__tests__/components` — 30 files, 229 tests, green.
 - Full suite (`typecheck && lint && test && test:e2e && build`) — **not run**; the e2e leg is ~1h and
   is never started unprompted.
-- **E2E owed.** This slice is browser-level and has no Playwright spec. Not authored here — filing to
-  the E2E backlog is the open item below.
+- **E2E owed.** This slice is browser-level and has no Playwright spec. Not authored here — filed to
+  the E2E backlog as EX-716.
+
+**Po rozstrzygnięciu 2026-08-24** (edycja pojazdu + ingest załączników):
+
+- `pnpm typecheck` — clean. `pnpm lint` — clean on the three touched files.
+- `pnpm exec vitest run` (full unit suite) — 184 files / 2614 tests green, 45 files / 147 skipped.
+- `vehicle-update.test.ts` + `vehicle-flags.test.ts` against `db-test` (5435) — 6/6 green. The test DB
+  needed `pnpm db:migrate:test` first: `20260819_0_add_service_type_and_vehicle_flags` lives on this
+  branch and had never been applied there.
 
 ## Close-out
 
-**19 fixed · 1 filed · 5 dismissed · 8 dropped · 5 skipped · 0 open.**
+**21 fixed · 1 filed · 5 dismissed · 8 dropped · 3 skipped · 0 open.**
 
-Two findings need YOUR decision — real, deliberately not auto-applied because each changes what a
-user may do:
+The two findings that were held back for the owner's decision are **rozstrzygnięte (2026-08-24)** and
+both landed:
 
-1. `updateVehicleAction` has no caller. `RETIRED` is therefore unreachable in the app, and the only
-   "remove this car" gesture is an admin Delete that cascades the whole inspection history. Two
-   fixes: wire an edit dialog, or delete the action and add a `beforeDelete` guard mirroring
-   `preventDeleteWithTransactions`.
-2. The inspection upload skips `ingestFiles` / `reportBlockedFiles`, which every other upload site
-   pairs with `resolveInvoicePageIds` — so an attachment gets no HEIC conversion and no
-   blocked-file message.
+1. **„Potrzebujemy edycję pojazdu i wycofywanie."** `EditVehicleDialog`
+   (`src/components/dialogs/edit-vehicle-dialog.tsx`) sits on the vehicle page next to „Dodaj
+   przegląd" and calls the previously caller-less `updateVehicleAction`, so „Wycofany" is reachable
+   after a car is created. Guard: `src/__tests__/lib/actions/vehicle-update.test.ts` (DB-backed,
+   asserts the persisted row — retirement, the untouched „do wymiany" map, and a rejected payload
+   writing nothing).
+   The **`beforeDelete` guard on `vehicles` was NOT taken** — it wasn't asked for. Deleting a car in
+   `/admin` still cascades its whole inspection history (`ON DELETE cascade`), and nothing in the app
+   offers that gesture, so the exposure is admin-only. If it ever needs closing, mirror
+   `preventDeleteWithReferences`.
+2. **Ingest moved to pick time.** `inspection-form.tsx` now runs `ingestFiles` +
+   `reportBlockedFiles` when the file is chosen (mirroring `use-invoice-upload.ts`), so a HEIC is
+   decoded and an oversize file is refused with a message instead of silently failing at submit. It
+   needed a busy state to be correct: without one a submit fired mid-conversion saves the przegląd
+   with no załącznik. `FormFooter` and `FileInput` are disabled while ingesting, and the `action`
+   wrapper re-checks — a keyboard Enter bypasses the disabled button.
 
 **Expected outcome: in review, not archive.** ~28 EX-711 manual checks in
 `context/foundation/manual-checks.md` are unticked, and manual checks are a hard blocker for Done.

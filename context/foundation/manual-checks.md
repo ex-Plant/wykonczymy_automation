@@ -1423,3 +1423,17 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] Zapisany „Serwis" widać w historii Przeglądów pojazdu i w zakładce Koszty
 - [ ] `/flota` **nie ma** kolumny terminu „Serwis"
 - [ ] Poniedziałkowy raport (`pnpm ...` / podgląd digestu) nie zgłasza „brak Serwisu" dla żadnego auta
+
+### Edycja pojazdu i wycofanie (rozstrzygnięcie 2026-08-24)
+
+- [ ] „Edytuj" na karcie pojazdu otwiera okno wypełnione danymi TEGO auta (nie pustymi i nie z poprzednio otwartego okna „Dodaj pojazd")
+- [ ] Zmiana marki/modelu i zapis: nagłówek karty pokazuje nową wartość bez ręcznego przeładowania
+- [ ] Ustawienie statusu „Wycofany" i zapis: plakietka statusu na karcie i wiersz na `/flota` pokazują wycofanie
+- [ ] Wycofanie **nie** kasuje ręcznych znaczników „do wymiany" ani historii przeglądów
+- [ ] Zapis z pustą rejestracją nie przechodzi — okno zostaje otwarte z błędem, a dane w bazie są nietknięte
+
+### Załączniki przeglądu — ingest przy wyborze pliku
+
+- [ ] Wybranie zdjęcia HEIC w „Dodaj przegląd": po chwili przycisk zapisu znów jest aktywny, a zapisany przegląd ma czytelny załącznik (nie plik, którego przeglądarka nie otworzy)
+- [ ] Wybranie pliku > 4 MB (PDF): pojawia się komunikat o odrzuconym pliku, a przegląd zapisuje się bez niego
+- [ ] W trakcie przetwarzania pliku przycisk zapisu jest wyszarzony, a Enter w formularzu **nie** zapisuje przeglądu bez załącznika
