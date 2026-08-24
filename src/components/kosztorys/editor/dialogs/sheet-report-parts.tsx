@@ -57,8 +57,17 @@ export function ReportRow({ label, cells }: { label: ReactNode; cells: ReportCel
 // Which side said what is the one thing the reader must never have to infer — hence named columns
 // rather than a sentence with two numbers in it. Both dialogs put every side-by-side figure through
 // this pair, so „Różnica" always means the same subtraction in the same direction.
-export function ComparisonTable({ children }: { children: ReactNode }) {
-  return <ReportTable headers={['', SHEET_SIDE, APP_SIDE, 'Różnica']}>{children}</ReportTable>
+export function ComparisonTable({
+  // Named sides, because not every side-by-side here is arkusz against aplikacja: the sheet's own
+  // summary rows are checked against the sheet's own prace, and borrowing „Ta aplikacja" for that
+  // column put one and the same figure under opposite headers in the two dialogs.
+  sides = [SHEET_SIDE, APP_SIDE],
+  children,
+}: {
+  sides?: [string, string]
+  children: ReactNode
+}) {
+  return <ReportTable headers={['', ...sides, 'Różnica']}>{children}</ReportTable>
 }
 
 export function ComparisonRow({

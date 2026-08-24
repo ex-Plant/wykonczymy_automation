@@ -259,10 +259,10 @@ function DroppedBlock({ dropped }: { dropped: ImportReportT['dropped'] }) {
 }
 
 /**
- * Two summary rows, two different meanings when one of them disagrees — and only the first is a
- * doubt about the read. „wartość netto" faces our own pricing of the same column, so a difference
- * there says we misread a cena or a rabat. „R netto" faces the etapy, which the import is about to
- * replace: a difference there is the two sides holding different progress, not a fault in either.
+ * Two summary rows, both checked against our pricing of the SHEET's own prace — the stored kosztorys
+ * never enters this table. So a difference is the sheet disagreeing with itself, either because we
+ * misread a cena or a rabat or because its own footer arithmetic is off; live, it has always been
+ * the latter.
  */
 function TotalsBlock({
   totals,
@@ -289,7 +289,13 @@ function TotalsBlock({
                 formatPLN(total.sheetValue)
               )
             }
-            app={formatPLN(total.appValue)}
+            app={
+              total.appValue === null ? (
+                <span className="text-muted-foreground">nie policzyliśmy</span>
+              ) : (
+                formatPLN(total.appValue)
+              )
+            }
             delta={total.delta === null || total.matches ? null : formatPLN(total.delta)}
           />
         ))}
@@ -300,15 +306,20 @@ function TotalsBlock({
 
 /**
  * „wartość netto" first: it is the only one of the two that doubts the read itself, and a wrong cena
- * makes every other figure in the dialog wrong too. A difference on „R netto" is not a fault at all —
- * it is the two sides holding different etapy, which is precisely what the import replaces. A stale
- * SUM in the owner's own footer is common enough that blocking on any of this would make the button
- * useless exactly where it is needed, so neither line stops the import.
+ * makes every other figure in the dialog wrong too.
+ *
+ * Neither message names the app as a side, because it is not one: both rows face our pricing of the
+ * SHEET's own prace, so a difference is the sheet disagreeing with itself. The „R netto" line used to
+ * promise the import would replace that difference — it cannot, both sides of it came from the sheet
+ * and the same delta returns after every pobranie.
+ *
+ * A stale SUM in the owner's own footer is common enough that blocking on any of this would make the
+ * button useless exactly where it is needed, so neither line stops the import.
  */
 function totalsVerdict(mismatched: FooterComparisonT[]): string {
   if (mismatched.some((total) => total.key === 'plannedNet'))
-    return 'Nasz odczyt prac nie daje sumy, którą arkusz Google ma w podsumowaniu — sprawdź ceny i rabaty. Pobranie jest nadal możliwe.'
+    return 'Kwota wpisana na dole arkusza Google nie wychodzi z sumy jego własnych prac — sprawdź formuły sumujące na dole arkusza. Pobranie jest nadal możliwe.'
   if (mismatched.some((total) => total.key === 'executedNet'))
-    return 'Arkusz Google i ta aplikacja mają rozpisane różne etapy — to właśnie tę różnicę pobranie zastąpi danymi z arkusza.'
+    return 'Kwota „R netto" na dole arkusza Google nie wychodzi z sumy jego własnych etapów — sprawdź formuły sumujące na dole arkusza. Pobranie jest nadal możliwe.'
   return 'Podsumowanie arkusza Google zgadza się z tym, co policzyliśmy z jego prac.'
 }

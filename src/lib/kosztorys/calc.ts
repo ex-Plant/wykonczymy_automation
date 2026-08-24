@@ -2,6 +2,11 @@ import type { GlobalDiscountT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/
 
 // VAT: a single rate per investment (vatRate), carried on the row. No section→item cascade.
 
+// Half a grosz — two money figures closer than this differ by float noise, not by a decision anyone
+// made, so nothing may report them as disagreeing. Money only: a quantity tolerance is a different
+// axis (`QTY_TOLERANCE`), and so is the one guarding a subcontractor rate.
+export const MONEY_TOLERANCE = 0.005
+
 // The pricing layer: what a row is worth per unit, and what ANY quantity of it is worth at that
 // price. Pure functions over ViewPricingT — we persist only the inputs and compute everything live.
 //

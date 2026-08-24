@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { compareFooterTotals } from '@/lib/kosztorys/sheet-import/footer-totals'
+import {
+  compareFooterTotals,
+  footerDisagreements,
+} from '@/lib/kosztorys/sheet-import/footer-totals'
 import { parseLaborTab } from '@/lib/kosztorys/sheet-import/parse-labor-tab'
 import { resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { BIALOSTOCKA_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
@@ -92,6 +95,35 @@ describe('compareFooterTotals', () => {
     })
   })
 
+  it('refuses „R netto" a figure its label does not name', () => {
+    // That label names the executed work and nothing else. A footer summing the wrong columns lands
+    // on the OFFER total (1605 here, against 2287,50 executed); letting the row match there is how a
+    // sheet disagreeing with itself renders as a clean one — in the import preview with a green ✓,
+    // while the comparison window called the same sheet broken.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    grid.find((row) => String(row[16]).startsWith('R netto'))![18] = 1605
+
+    expect(byKey(grid, 'executedNet')).toMatchObject({
+      matches: false,
+      matchedAgainst: null,
+      appValue: 2287.5,
+      delta: 1605 - 2287.5,
+    })
+  })
+
+  it('says nothing about „wartość netto" on a sheet with no Pomiar column', () => {
+    // Pomiar is optional in the header, and without it the app has no like-for-like sum for that
+    // row. Falling back to Przedmiar accused a perfectly parsed sheet of a five-figure error.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    for (const row of grid.slice(0, 3)) row[14] = ''
+
+    expect(byKey(grid, 'plannedNet')).toMatchObject({
+      appValue: null,
+      delta: null,
+      matches: false,
+    })
+  })
+
   it('finds the summary figure when the owner merged it out of the Wartość netto column', () => {
     const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
     const planned = grid.find((row) => String(row[16]).startsWith('wartość netto'))!
@@ -99,5 +131,37 @@ describe('compareFooterTotals', () => {
     planned[19] = 1605
 
     expect(byKey(grid, 'plannedNet')).toMatchObject({ sheetValue: 1605, matches: true })
+  })
+})
+
+describe('footerDisagreements', () => {
+  it('surfaces a stated total that agrees with no figure we can compute', () => {
+    // Planetowa 44a: „wartość netto" totals a hand-written list of 13 section headers on a sheet
+    // that has 14, so it lands 2650 zł under every candidate. That row matches NOTHING — which is
+    // exactly the state the comparison dialog used to render as nothing at all.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    const planned = grid.find((row) => String(row[16]).startsWith('wartość netto'))!
+    planned[18] = 2287.5 - 2650
+
+    const surfaced = footerDisagreements(compare(grid))
+
+    expect(surfaced.map((total) => total.key)).toContain('plannedNet')
+    expect(surfaced.find((total) => total.key === 'plannedNet')!.delta).toBeCloseTo(-2650, 6)
+  })
+
+  it('says nothing about a summary row the sheet does not carry', () => {
+    const withoutFooter = BIALOSTOCKA_ROWS.filter((row) => !String(row[16]).startsWith('R netto'))
+
+    expect(footerDisagreements(compare(withoutFooter)).map((total) => total.key)).not.toContain(
+      'executedNet',
+    )
+  })
+
+  it('says nothing about a row it had no figure to check against', () => {
+    // Same silence from the other side: no Pomiar column, so „wartość netto" faces nothing.
+    const grid = BIALOSTOCKA_ROWS.map((row) => [...row])
+    for (const row of grid.slice(0, 3)) row[14] = ''
+
+    expect(footerDisagreements(compare(grid)).map((total) => total.key)).not.toContain('plannedNet')
   })
 })

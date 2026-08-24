@@ -10,6 +10,7 @@ import {
   ratesVerdict,
   type RatesReportModeT,
 } from '@/components/kosztorys/editor/dialogs/sheet-rates-verdict'
+import { MONEY_TOLERANCE } from '@/lib/kosztorys/calc'
 import type { StaleRateT } from '@/lib/kosztorys/sheet-import/build-sheet-comparison'
 import type {
   RateConflictReasonT,
@@ -316,7 +317,7 @@ function RateCell({ rate, note, tone }: { rate?: number; note?: string; tone?: R
 function RatePair({ sheet, app }: { sheet: number; app: number }) {
   return (
     <>
-      <span className={Math.abs(sheet - app) < 0.005 ? undefined : 'text-amber-600'}>
+      <span className={Math.abs(sheet - app) < MONEY_TOLERANCE ? undefined : 'text-amber-600'}>
         {formatPLN(sheet)}
       </span>
       <span className="text-muted-foreground block text-xs">{formatPLN(app)} w kosztorysie</span>
