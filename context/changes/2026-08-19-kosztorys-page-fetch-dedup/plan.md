@@ -44,8 +44,13 @@ guard; `investments.ts:63-72` states the EX-608 rationale twice.
 
 - An `EMPLOYEE` (or any non-management session) hitting `/inwestycje/<id>/kosztorys_v2` is
   redirected to `/zaloguj`, deterministically, before any data promise is created.
-- `kosztorys_v2` issues seven reads instead of nine, and no figure on the page is read twice from
-  two cache entries.
+- `kosztorys_v2` issues six reads instead of nine, and no figure on the page is read twice from
+  two cache entries. (Amended at the review gate: the pre-change `Promise.all` held 8 promises, not
+  9 — the old `[PERF]` string said "9-fetch" and was already wrong. Delivered end state is
+  `refData` awaited up front + a 5-promise fan-out.)
+- A non-existent investment id renders the 404 page. The existence check must resolve BEFORE the
+  fan-out: `getKosztorysTree` throws for a missing investment, so a check placed after the
+  `Promise.all` can never run.
 - The subcontractor block's Σ per worker and the wypłaty list under it are the same rows.
 - The wydatki tab can no longer contradict itself: no block is gated by a number that came from a
   query other than the one that block renders.
@@ -366,7 +371,7 @@ shape.
 
 #### Automated Verification:
 
-- No reference to the deleted parity script survives: `grep -rn "audit-investment-parity" src context` returns nothing outside `context/archive/`
+- No reference to the deleted parity script survives: `grep -rn "audit-investment-parity" src` returns nothing. (Amended at the review gate — the original criterion said `src context` / "nothing outside `context/archive/`", which is not literally reachable: hits remain in `context/reference/superpowers/archive/**` (an archive by name), in another in-flight change's `context/changes/e2e-harness/` docs, and in this plan quoting its own criterion. `src/**` is the substantive half.)
 
 #### Manual Verification:
 
