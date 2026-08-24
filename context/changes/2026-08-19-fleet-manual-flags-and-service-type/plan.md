@@ -188,7 +188,7 @@ a human **before** the code ships.
 
 #### 1. Migration
 
-**File**: `src/migrations/20260819_0_add_service_type_and_vehicle_flags.ts` (new)
+**File**: `src/migrations/20260819_1_add_service_type_and_vehicle_flags.ts` (new)
 
 **Intent**: Add `SERVICE` to the inspection-type enum and a `flags` blob to `vehicles`. Hand-written
 per `AGENTS.md`; mirror the structure of `20260818_1_add_fleet.ts`.

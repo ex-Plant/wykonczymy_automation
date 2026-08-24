@@ -141,7 +141,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       onSubmit: bulkExpenseFormSchema,
     },
     listeners: {
-      onChange: ({ formApi }) => updateFormData(formApi.state.values as FormValuesT),
+      onChange: ({ formApi }) => updateFormData(FORM_ID, formApi.state.values as FormValuesT),
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {

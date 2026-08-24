@@ -49,6 +49,7 @@ export function useManagedForm<TValues, TData>({
 }: UseManagedFormArgsT<TValues, TData>) {
   const { submit } = useFormSubmit(formId)
 
+  const storedFormId = useFormStore((s) => s.formId)
   const storedValues = useFormStore((s) => s.formData)
   const updateFormData = useFormStore((s) => s.updateFormData)
   const resetFormData = useFormStore((s) => s.resetFormData)
@@ -58,8 +59,11 @@ export function useManagedForm<TValues, TData>({
     onReset?.()
   }
 
-  const initialValues =
-    storedValues === null ? defaultValues : (mergeStored?.(storedValues) ?? storedValues)
+  // A draft belongs to the instance that wrote it. „Dodaj pojazd" and „Edytuj pojazd 7" share one
+  // store slot, so without this an abandoned add-draft would win over the record being edited.
+  const draft = storedFormId === formId ? storedValues : null
+
+  const initialValues = draft === null ? defaultValues : (mergeStored?.(draft) ?? draft)
 
   const form = useAppForm({
     defaultValues: initialValues,
@@ -67,7 +71,7 @@ export function useManagedForm<TValues, TData>({
       onSubmit: schema,
     },
     listeners: {
-      onChange: ({ formApi }) => updateFormData(formApi.state.values as TValues),
+      onChange: ({ formApi }) => updateFormData(formId, formApi.state.values as TValues),
       onChangeDebounceMs: 500,
     },
     onSubmit: async ({ value }) => {

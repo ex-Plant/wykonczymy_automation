@@ -70,7 +70,7 @@ import * as migration_20260814_0_add_sheet_column_mapping_to_kosztoryses from '.
 import * as migration_20260815_0_add_kosztorys_client_view from './20260815_0_add_kosztorys_client_view'
 import * as migration_20260818_0_drop_kosztorys_hidden_in_export from './20260818_0_drop_kosztorys_hidden_in_export'
 import * as migration_20260818_1_add_fleet from './20260818_1_add_fleet'
-import * as migration_20260819_0_add_service_type_and_vehicle_flags from './20260819_0_add_service_type_and_vehicle_flags'
+import * as migration_20260819_1_add_service_type_and_vehicle_flags from './20260819_1_add_service_type_and_vehicle_flags'
 
 export const migrations = [
   {
@@ -434,8 +434,8 @@ export const migrations = [
     name: '20260818_1_add_fleet',
   },
   {
-    up: migration_20260819_0_add_service_type_and_vehicle_flags.up,
-    down: migration_20260819_0_add_service_type_and_vehicle_flags.down,
-    name: '20260819_0_add_service_type_and_vehicle_flags',
+    up: migration_20260819_1_add_service_type_and_vehicle_flags.up,
+    down: migration_20260819_1_add_service_type_and_vehicle_flags.down,
+    name: '20260819_1_add_service_type_and_vehicle_flags',
   },
 ]

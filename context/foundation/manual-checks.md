@@ -1431,6 +1431,8 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] Ustawienie statusu „Wycofany" i zapis: plakietka statusu na karcie i wiersz na `/flota` pokazują wycofanie
 - [ ] Wycofanie **nie** kasuje ręcznych znaczników „do wymiany" ani historii przeglądów
 - [ ] Zapis z pustą rejestracją nie przechodzi — okno zostaje otwarte z błędem, a dane w bazie są nietknięte
+- [ ] Zaczęcie „Dodaj pojazd", zamknięcie okna BEZ zapisu, potem „Edytuj" na dowolnym aucie: okno pokazuje dane tego auta, a nie porzucony szkic (to samo dla pracowników i inwestycji)
+- [ ] „Dodaj przegląd" z listy `/flota` i z karty pojazdu dalej dzielą szkic — zaczęty na liście odtwarza się na karcie, tylko z pojazdem podmienionym na ten z karty
 
 ### Załączniki przeglądu — ingest przy wyborze pliku
 

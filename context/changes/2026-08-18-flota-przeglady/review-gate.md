@@ -78,6 +78,9 @@ out-of-band inclusion rather than cherry-picked out.
 - [x] dropped · `simplify` · `src/lib/fleet/reminder-sweep.ts:38` · `FleetDigestT` mixes the message with the write-back ledger. Splitting the return is churn across the route, the mailer and the specs for one `isEmptyDigest` line.
 - [x] dropped · `simplify` · `src/components/forms/inspection-form/inspection-form.tsx:76` · `lockedVehicleId` exists because both dialogs share `formId="add-inspection"`, so a draft can restore the wrong car. Distinct form ids would delete the merge branch — but sharing the draft across the two entry points may well be deliberate, and it is behaviour, not shape.
 - [x] dropped · `simplify` · `src/components/fleet/inspection-history.tsx:35` · conditional column tracks via two `...(cond ? [x] : [])` spreads. Cosmetic.
+- [x] fixed · `post-gate 2026-08-24` · `src/stores/create-form-store.ts:10` + `hooks/use-managed-form.ts:61` · a form-type's draft store is ONE sessionStorage slot, and `useManagedForm` gave the stored draft priority over `defaultValues` — so an abandoned „Dodaj pojazd" draft restored into „Edytuj pojazd 7" instead of that car's data. Surfaced by mounting `EditVehicleDialog`, but repo-wide: `edit-worker-dialog` and `edit-investment-dialog` had it too. The draft now carries the `formId` that wrote it and is restored only into that instance. Keeps the sharing noted at line 79: both przegląd dialogs use `formId="add-inspection"`, so their shared draft — and `lockedVehicleId`'s merge — are untouched.
+      test: no automated test · e2e — the bug lives in sessionStorage across two dialog mounts; nothing below the browser sees it. Added to the manual-checks registry, covered by EX-716's „shared draft identity" path.
+- [x] fixed · `post-gate 2026-08-24` · `src/migrations/20260819_1_add_service_type_and_vehicle_flags.ts` · the migration was numbered `20260819_0_*`, colliding with staging's already-applied `20260819_0_client_view_offer_settlement_variants`. Payload keys on the full name so nothing would have misfired, but date+sequence stops being unique and the merge into `src/migrations/index.ts` loses its obvious insertion point. Renumbered to `_1_`, which also sorts after the staging one it must follow. The applied row was renamed in the two local DBs (5433 dev, 5435 test); preview and prod never had it — the branch is unmerged.
 
 - [x] filed · `slice-review-gate` · `e2e/` · the slice is browser-level and ships with no Playwright spec — six paths the unit layer structurally cannot reach (shared draft identity across the two dialogs, the type→prefill→hidden-field chain, the odometer warning, the upload error path, the three deadline states + urgency sort, and the badge clearing from either entry point). Not authored here: an E2E run is ~1h and is never started unprompted — filed EX-716 (`e2e-backlog`).
       test: TDD · e2e — filed EX-716
@@ -116,12 +119,18 @@ src/__tests__/components` — 30 files, 229 tests, green.
 - `pnpm typecheck` — clean. `pnpm lint` — clean on the three touched files.
 - `pnpm exec vitest run` (full unit suite) — 184 files / 2614 tests green, 45 files / 147 skipped.
 - `vehicle-update.test.ts` + `vehicle-flags.test.ts` against `db-test` (5435) — 6/6 green. The test DB
-  needed `pnpm db:migrate:test` first: `20260819_0_add_service_type_and_vehicle_flags` lives on this
+  needed `pnpm db:migrate:test` first: `20260819_1_add_service_type_and_vehicle_flags` lives on this
   branch and had never been applied there.
+- Full suite **with `DB_POSTGRES_URL` pointed at 5435** (so the DB-backed specs actually run) — 229
+  files / 2761 tests, 3 files failing on `column "hidden_columns" does not exist`
+  (`kosztorys-client-view`, `share-token`, `preview-kosztorys-token`, `investment-render-parity-db`).
+  **Not this branch's doing**: `db-test` carries staging's `20260824_0_drop_kosztorys_client_view_hidden_columns`
+  while this branch is 37 commits behind and still selects the dropped column. It clears on rebase; no
+  fleet spec is among them.
 
 ## Close-out
 
-**21 fixed · 1 filed · 5 dismissed · 8 dropped · 3 skipped · 0 open.**
+**23 fixed · 1 filed · 5 dismissed · 8 dropped · 3 skipped · 0 open.**
 
 The two findings that were held back for the owner's decision are **rozstrzygnięte (2026-08-24)** and
 both landed:
