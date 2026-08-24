@@ -1,10 +1,10 @@
 ---
 change_id: sheet-compare-footer-inconsistency
 title: Show the sheet's own footer inconsistencies in „Porównaj z arkuszem", not only in the import
-status: implemented
+status: archived
 created: 2026-08-24
 updated: 2026-08-24
-archived_at: null
+archived_at: 2026-08-24T12:26:47Z
 branch: sheet-compare-footer-inconsistency
 worktree: null
 ---
