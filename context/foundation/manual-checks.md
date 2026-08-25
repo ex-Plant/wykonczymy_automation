@@ -1564,3 +1564,25 @@ dev — HMR i React DevTools zawyżają każdy pomiar.
 - [ ] Seria ▲▼ na pozycji w dużej sekcji nie blokuje wpisywania w innym wierszu
 - [ ] Przełączenie osi (netto/brutto, warstwa) przerysowuje siatkę bez zauważalnej pauzy
 - [ ] Undo (Ctrl+Z) po serii edycji wraca w tym samym czasie co przy małym kosztorysie
+
+## Kosztorys — jeden kontrakt edycji dla komórek liczbowych (przecinek, wycofanie, toast)
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`), zalogowany jako
+OWNER. Perf mierzyć osobno, na syntetycznym zestawie ~1000 pozycji (`INV=7`) i na buildzie
+produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
+
+- [ ] „Rabat wart.": wpisanie `12,5` i wyjście z komórki zapisuje 12,5 (nie 125), a po przeładowaniu strony wartość stoi
+- [ ] To samo w „Przedmiar", w „Cena j.m." i w „ilość" dowolnego etapu
+- [ ] Wpisanie `12.5` z kropki daje ten sam wynik, a po wyjściu komórka pokazuje `12,5`
+- [ ] Wpisanie `-` w „Przedmiar" i kliknięcie obok: zostaje **poprzednia** ilość, leci czerwony komunikat „przywrócono …"
+- [ ] Ten sam `-` w komórce, która i tak stała na tej wartości, nie wyrzuca komunikatu z niczego
+- [ ] Wyczyszczenie „Przedmiar" i wyjście zapisuje 0 — bez błędu zapisu i bez powrotu starej liczby
+- [ ] Wyczyszczenie „Rabat wart." zdejmuje też typ rabatu (kolumna „Rabat" wraca na „Bez rabatu")
+- [ ] Escape w trakcie pisania wraca do wartości sprzed wejścia w komórkę, bez komunikatu
+- [ ] Enter zatwierdza i schodzi wiersz niżej; Escape zostaje w tym samym wierszu
+- [ ] Delete na zaznaczeniu kilku komórek liczbowych wpisuje w nie 0 — i **nie** kasuje wierszy
+- [ ] Skopiowanie komórki i wklejenie w inną przenosi tę samą liczbę; wklejenie `1 234,5` z arkusza właściciela też ląduje jako liczba
+- [ ] „Cena j.m." u podwykonawcy: przekroczenie progu dalej pokazuje czerwoną liczbę z dymkiem, a po wyjściu wycofuje wartość z komunikatem (zachowanie niezmienione)
+- [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
+- [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
+- [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny

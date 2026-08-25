@@ -10,7 +10,7 @@ import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
-import { decimalColumn } from '@/components/ui/datasheet-grid/decimal-column'
+import { decimalColumn } from '@/components/kosztorys/editor/grid/cells/decimal-column'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
 import { divergenceColumn } from '@/components/kosztorys/editor/grid/cells/divergence-cell'
 import {
@@ -58,7 +58,7 @@ import {
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
-import { formatPercent, formatQty } from '@/lib/kosztorys/format'
+import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
 import {
   hasStagesOverPlanned,
   measureDiscrepancy,
@@ -70,7 +70,8 @@ import { activeSortPick } from '@/lib/kosztorys/row-view'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { stagesMatchingEngaged } from '@/lib/kosztorys/stage-conditions'
 import { stageLabel } from '@/lib/kosztorys/stage-label'
-import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT, StageKeyT } from '@/lib/kosztorys/types'
+import { numericFieldPolicy } from '@/lib/kosztorys/cell-edit'
 
 // The four per-item rabat columns hidden while the global discount overrides them.
 const DISCOUNT_COLUMN_IDS = new Set([
@@ -80,11 +81,11 @@ const DISCOUNT_COLUMN_IDS = new Set([
   'discountAmountGross',
 ])
 
-// keyColumn requires column: Column<Row[K]>. decimalColumn/textColumn are nullable
-// (Column<number|null> / <string|null>), whereas the item fields are non-null. The cell type is
-// invariant (rowData covariant + setRowData contravariant), so no concrete type other than an
-// exact match will pass — the only safe bridge is `any` at the library boundary. The cells are
-// null-safe at runtime; we return a ready Column<KosztorysV2RowT>.
+// keyColumn requires column: Column<Row[K]>. longTextColumn is nullable (Column<string|null>)
+// whereas the item fields are non-null. The cell type is invariant (rowData covariant + setRowData
+// contravariant), so no concrete type other than an exact match will pass — the only safe bridge is
+// `any` at the library boundary. The cells are null-safe at runtime; we return a ready
+// Column<KosztorysV2RowT>.
 function keyCol(
   key: keyof KosztorysV2RowT,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,6 +94,10 @@ function keyCol(
 ): Column<KosztorysV2RowT> {
   return { ...(keyColumn(key, column) as Column<KosztorysV2RowT>), ...rest }
 }
+
+// „Cena j.m." is money, so a rollback names it in złotówki — „przywrócono 120" would read as a
+// quantity in a grid where most numeric cells hold one.
+const priceLabel = (value: number) => `${formatNet(value)} zł`
 
 // An etap with no rozliczenie belongs to neither crew’s bill (subcontractor-due.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
@@ -274,10 +279,11 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const priceCols: Column<KosztorysV2RowT>[] =
     view === 'client'
       ? [
-          keyCol('clientPrice', decimalColumn, {
-            id: 'price',
-            title: title('price', opts),
-          }),
+          decimalColumn(
+            'price',
+            title('price', opts),
+            numericFieldPolicy<'clientPrice', KosztorysV2RowT>('clientPrice', priceLabel),
+          ),
         ]
       : [
           subcontractorModeColumn(view, title('priceMode', opts)),
@@ -340,11 +346,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
   const przedmiar: Column<KosztorysV2RowT>[] = [
-    keyCol('plannedQty', decimalColumn, {
-      id: 'plannedQty',
-      title: title('plannedQty', opts),
+    {
+      ...decimalColumn(
+        'plannedQty',
+        title('plannedQty', opts),
+        numericFieldPolicy<'plannedQty', KosztorysV2RowT>('plannedQty', formatQty),
+      ),
       minWidth: 150,
-    }),
+    },
   ]
 
   // The imported sheet's „Pomiar z natury" against Σ etapów.
@@ -447,11 +456,14 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
-    return keyCol(qtyField, decimalColumn, {
-      id: qtyField,
-      title: header,
+    return {
+      ...decimalColumn(
+        qtyField,
+        header,
+        numericFieldPolicy<StageKeyT, KosztorysV2RowT>(qtyField, formatQty),
+      ),
       minWidth: 110,
-    })
+    }
   })
 
   // The sheet's V–AE: the value of each stage's recorded qty at the view's price, post-discount.

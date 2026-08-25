@@ -462,5 +462,5 @@ Run once, after phase 4:
 
 #### Automated
 
-- [ ] 4.1 Rewritten `decimal-column.test.ts` passes
-- [ ] 4.2 Column-shape specs green: `v2-columns-order`, `v2-columns-readonly`, `stage-column-filter`, `preview-columns`
+- [x] 4.1 Rewritten `decimal-column.test.ts` passes — moved to `__tests__/components/kosztorys/editor/grid/cells/` with its source
+- [x] 4.2 Column-shape specs green: `v2-columns-order`, `v2-columns-readonly`, `stage-column-filter`, `preview-columns`
