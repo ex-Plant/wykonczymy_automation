@@ -338,9 +338,15 @@ dumps. The snapshot dir is the rollback path and must exist before the first upd
 
 #### Automated
 
-- [ ] 3.1 Dry run enumerates exactly 18 rows
-- [ ] 3.2 Post-run verify green against preview DB (18/18)
-- [ ] 3.3 No HEIC rows remain on staging
+- [x] 3.1 Dry run enumerates exactly 18 rows — 18/18, każdy z dokładnie 1 transakcją (w tym id=1052)
+- [x] 3.2 Post-run verify green against preview DB (18/18) — exit 0
+- [x] 3.3 No HEIC rows remain on staging — `media rows still image/heic: 0`
+
+> **Napotkane przy pierwszym uruchomieniu.** `payload.update` bez `context: { skipRevalidation: true }`
+> wywala się na `afterChange` mediów („Invariant: static generation store missing in revalidateTag") —
+> ta sama pułapka, którą omijają wszystkie skrypty seedowe. Awaria była czysta: transakcja się
+> wycofała, store nietknięty (18 blobów `.HEIC` dalej 200, żaden `.jpg` nie powstał). Rozmiary po
+> konwersji: −93% do −98% (2,79 MB → 82 KB na `IMG_5259-e53451`).
 
 ### Phase 4: Backfill production
 
