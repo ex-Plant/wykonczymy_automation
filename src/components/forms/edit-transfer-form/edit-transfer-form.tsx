@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SelectItem } from '@/components/ui/select'
@@ -53,10 +52,7 @@ export function EditTransferForm({
   keepOpen,
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
-  const { files, isIngesting, ingestPicked, reset: resetFiles } = useFilePickIngest()
-  // Bumped on reset to remount the (uncontrolled) file input, clearing its
-  // native file and internal filename state — form.reset() can't reach them.
-  const [fileInputKey, setFileInputKey] = useState(0)
+  const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
   const form = useAppForm({
     defaultValues: {
@@ -108,10 +104,7 @@ export function EditTransferForm({
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
-        onReset: () => {
-          resetFiles()
-          setFileInputKey((k) => k + 1)
-        },
+        onReset: resetFiles,
       })
 
       return false
@@ -134,7 +127,7 @@ export function EditTransferForm({
 
   return (
     <form.AppForm>
-      <FormClearButton />
+      <FormClearButton onReset={resetFiles} />
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -193,16 +186,11 @@ export function EditTransferForm({
               />
             )}
             <FileInput
-              key={fileInputKey}
+              key={inputKey}
               label="Dodaj faktury"
               accept="image/*,application/pdf"
               multiple
-              disabled={isIngesting}
-              onChange={(e) => {
-                const picked = Array.from(e.target.files ?? [])
-                e.target.value = '' // allow re-picking the same file after a reset or a failed ingest
-                ingestPicked(picked)
-              }}
+              {...fileInputProps}
             />
           </div>
         </FieldGroup>

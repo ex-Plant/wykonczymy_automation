@@ -57,7 +57,7 @@ export function InspectionForm({
   vehicles,
   lockedVehicleId,
 }: InspectionFormPropsT) {
-  const { files, isIngesting, ingestPicked, reset: resetFiles } = useFilePickIngest()
+  const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
   const { form, reset } = useManagedForm<InspectionFormValuesT, InspectionFormDataT>({
     formId,
@@ -232,16 +232,7 @@ export function InspectionForm({
           {(field) => <field.Textarea label="Notatka" rows={2} />}
         </form.AppField>
 
-        <FileInput
-          label="Załączniki"
-          multiple
-          disabled={isIngesting}
-          onChange={(e) => {
-            const picked = Array.from(e.target.files ?? [])
-            e.target.value = '' // allow re-picking the same file after a reset or a failed ingest
-            ingestPicked(picked)
-          }}
-        />
+        <FileInput key={inputKey} label="Załączniki" multiple {...fileInputProps} />
       </FieldGroup>
 
       <FormFooter

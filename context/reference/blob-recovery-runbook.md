@@ -388,27 +388,50 @@ update, and a single failed download aborts the whole run.
 **Prerequisites:** `brew install libheif imagemagick` (`heif-convert`, `magick`), and the run is a
 **human's** — the agent never touches the production DB or the production store.
 
+**Why `VERCEL_ENV=production` is on every line.** The script imports `payload.config`, which refuses
+the production Blob token whenever `VERCEL_ENV !== 'production'` (§3) — so without it all three
+commands throw at import, before `main()` runs. Setting it is what tells that guard this really is
+the production run. It does **not** leave the run unguarded: the script carries its own pairing
+check, and refuses unless the **database and the store name the same environment** — the mispairing
+this whole procedure is one typo away from (production rows rewritten to filenames whose bytes went
+to preview, originals deleted from the wrong store). `--allow-prod` is then required on top, the
+same way `blob-restore.mjs` demands it.
+
 ```bash
 # 1. dry run first — must enumerate the expected row count and nothing else
-BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
   node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
-  --dry-run --snapshot-dir dumps/heic-backfill-prod
+  --dry-run --allow-prod --snapshot-dir dumps/heic-backfill-prod
 
-# 2. the run (snapshots all originals first, then converts + updates)
-BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+# 2. canary — convert two rows, then verify them before committing to the rest
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
   node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
-  --snapshot-dir dumps/heic-backfill-prod
+  --limit 2 --allow-prod --snapshot-dir dumps/heic-backfill-canary
+#    …then the same command with --verify --limit 2 (the "nothing left" sweep is skipped under --limit)
 
-# 3. verify — exits non-zero on any bad row
-BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+# 3. the whole set (snapshots all originals first, then converts + updates)
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
   node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
-  --verify --snapshot-dir dumps/heic-backfill-prod
+  --allow-prod --snapshot-dir dumps/heic-backfill-prod
+
+# 4. verify — exits non-zero on any bad row
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --verify --allow-prod --snapshot-dir dumps/heic-backfill-prod
 ```
 
-The env vars go on the command line, exactly as §3 requires — no script reads
+The token goes on the command line, exactly as §3 requires — no script reads
 `BLOB_READ_WRITE_TOKEN_PROD`, and a run off plain `.env` targets the **preview** store instead
 (which is what the staging rehearsal did). Beware `.env.local`: `vercel env pull` writes there and
 Next prefers it.
+
+If the run stops on a row, it says so and stops there rather than continuing: that row's original may
+already be deleted from the store, so the message names the `blob-restore.mjs` command that puts the
+snapshot back. The manifest is rewritten after every row, so it always describes what actually landed.
 
 `--verify` asserts, per row: `mime_type = image/jpeg`, filename ends `.jpg`, `width`/`height`
 non-null, a thumbnail exists, the **served bytes** start with the JPEG magic number, and the count
@@ -432,8 +455,6 @@ upload as a blob — harmless, but delete it first if a clean store matters.
 largest). One trap found: `payload.update` needs `context: { skipRevalidation: true }` or media's
 `afterChange` throws `Invariant: static generation store missing` and rolls the transaction back —
 that failure was clean, the store untouched.
-
----
 
 ---
 

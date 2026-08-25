@@ -208,7 +208,13 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   A **read** a client component invokes on demand is a `'use server'` function in `src/lib/queries`
   (`register-saldo.ts`, `subcontractor-roster.ts`) — never in `src/lib/actions`, which is mutations only.
 - `src/lib/cache` — cache tags + revalidation helpers
-- Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only)
+- Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only).
+  **A hook's home follows its consumer count, not its subject:** one form → `forms/<form>/`; two or
+  more forms → `forms/hooks/`; a non-form surface → `src/hooks/`. That is why the three file-ingest
+  hooks sit in three directories (`expense-form/use-invoice-files.ts`, `forms/hooks/use-file-pick-ingest.ts`,
+  `hooks/use-invoice-upload.ts`) — one rule, not three accidents. `forms/hooks/` therefore means
+  "shared by 2+ forms", not "domain-free form plumbing"; a domain-aware hook belongs there too once a
+  second form uses it.
 - `src/components/ui` is the domain-agnostic primitives layer — a component that knows it is filtering
   a list belongs in `src/components/filters/` (EX-730 moved the last four out of `ui/`; git history and
   older imports still point at the old home, so don't take a precedent from there)

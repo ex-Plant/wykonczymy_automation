@@ -1,4 +1,4 @@
-// One-off (EX-394): replace every `image/heic` media row with a JPEG.
+// One-off (EX-394): replace every HEIC media row with a JPEG.
 //
 // HEIC→JPEG conversion (EX-457) is client-side only, so rows uploaded before it — plus the one that
 // came through the edit-transfer hole — still hold raw HEIC. `sharp` here cannot decode HEIC
@@ -8,27 +8,28 @@
 //   # staging (preview DB + preview blob store — .env's BLOB_READ_WRITE_TOKEN is already preview)
 //   source .env && DB_POSTGRES_URL="$DB_POSTGRES_URL_PREVIEW" \
 //     node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts --dry-run
-//   source .env && DB_POSTGRES_URL="$DB_POSTGRES_URL_PREVIEW" \
-//     node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts
-//   source .env && DB_POSTGRES_URL="$DB_POSTGRES_URL_PREVIEW" \
-//     node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts --verify
 //
-// Flags: --dry-run | --verify | --snapshot-dir <path> (default dumps/heic-backfill) | --limit <n>
+// Production is a different invocation and belongs to a human — see
+// `context/reference/blob-recovery-runbook.md` §5.
+//
+// Flags: --dry-run | --verify | --allow-prod | --force | --snapshot-dir <path> | --limit <n>
 //
 // ROLLBACK is the snapshot dir, and nothing else. Payload's cloud-storage afterChange deletes the
 // PREVIOUS blob before uploading the replacement, so the moment a row is updated its original is
-// gone from the store. Every original is therefore downloaded BEFORE the first update, and a failed
-// download aborts the whole run. To roll back: re-put the snapshot with
-// `scripts/blob-restore.mjs --dir <snapshot-dir>` and restore the rows from `manifest.json`.
+// gone from the store. Every original is therefore downloaded BEFORE the first update, a failed or
+// short download aborts the whole run, and the manifest is rewritten after every row so an
+// interrupted run still leaves a map of what was already converted.
 //
 // Requires `heif-convert` (libheif) and `magick` (ImageMagick) on PATH: brew install libheif imagemagick
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { getPayload } from 'payload'
+import type { Where } from 'payload'
 import config from '../payload.config'
+import { PREVIEW_BLOB_STORE_ID, PROD_BLOB_STORE_ID } from '../lib/env/schema'
 
 const run = promisify(execFile)
 
@@ -38,16 +39,35 @@ const MAX_WIDTH = 1920
 const MAX_HEIGHT = 1080
 const QUALITY = 60
 
-const arg = (name: string, fallback?: string) => {
+// A slow store must not hang Phase A indefinitely: the Ctrl-C that ends such a stall is exactly the
+// interrupt that would otherwise leave a half-written rollback map.
+const FETCH_TIMEOUT_MS = 60_000
+
+// A declaration, not a `const` arrow: only the former lets tsc treat a call as terminating, which is
+// what keeps every `if (!x) fail(...)` below a narrowing guard rather than a cast at the next use.
+function fail(message: string): never {
+  console.error(`\n${message}\n`)
+  process.exit(1)
+}
+
+const arg = (name: string, fallback: string) => {
   const index = process.argv.indexOf(name)
-  const value = index !== -1 ? process.argv[index + 1] : undefined
-  return value && !value.startsWith('--') ? value : fallback
+  if (index === -1) return fallback
+  const value = process.argv[index + 1]
+  // A flag is never a value: `--limit --verify` must not swallow the next flag as the count.
+  if (!value || value.startsWith('--')) fail(`${name} needs a value`)
+  return value
 }
 const has = (name: string) => process.argv.includes(name)
 
-const SNAPSHOT_DIR = path.resolve(arg('--snapshot-dir', 'dumps/heic-backfill') as string)
+const SNAPSHOT_DIR = path.resolve(arg('--snapshot-dir', 'dumps/heic-backfill'))
 const MANIFEST = path.join(SNAPSHOT_DIR, 'manifest.json')
 const LIMIT = Number(arg('--limit', '0'))
+// `Number('abc')` is NaN and `NaN > 0` is false, so an unvalidated typo silently converts the whole
+// set instead of the canary the operator asked for.
+if (!Number.isInteger(LIMIT) || LIMIT < 0) fail(`--limit must be a non-negative integer`)
+
+type PayloadT = Awaited<ReturnType<typeof getPayload>>
 
 type ManifestEntryT = {
   id: number
@@ -56,6 +76,23 @@ type ManifestEntryT = {
   oldFilesize: number
   newFilesize: number
   linkedTransactions: number
+  converted: boolean
+  error?: string
+}
+
+/**
+ * HEIC is not always labelled `image/heic`: Chrome and Firefox often report an empty `File.type`, so
+ * `process-upload-file.ts` treats `image/heif` and a bare `.heic`/`.heif` suffix as HEIC too. The
+ * selector has to be that wide or the run silently skips rows — and `verify`'s "nothing left" check
+ * reuses this very clause, so a narrow selector would report a clean sweep it never made.
+ */
+const HEIC_WHERE: Where = {
+  or: [
+    { mimeType: { equals: 'image/heic' } },
+    { mimeType: { equals: 'image/heif' } },
+    { filename: { like: '.heic' } },
+    { filename: { like: '.heif' } },
+  ],
 }
 
 /**
@@ -63,18 +100,66 @@ type ManifestEntryT = {
  * token names its store verbatim, and that store id IS the public host — which keeps this dependency
  * -free and, more usefully, makes it impossible to snapshot one store while updating another.
  */
-function blobBaseUrl(): string {
+function resolveTarget() {
   const token = process.env.BLOB_READ_WRITE_TOKEN
-  const store = token && /^vercel_blob_rw_([A-Za-z0-9]+)_/.exec(token)?.[1]
-  if (!store)
-    throw new Error('BLOB_READ_WRITE_TOKEN missing or unrecognised — cannot locate the store')
-  return `https://${store}.public.blob.vercel-storage.com`
+  const store = token ? /^vercel_blob_rw_([A-Za-z0-9]+)_/.exec(token)?.[1] : undefined
+  if (!store) fail('BLOB_READ_WRITE_TOKEN missing or unrecognised — cannot locate the store')
+
+  // The DB is an independent axis from the store, and both are hand-typed on the command line. One
+  // wrong `_PROD` rewrites production rows to filenames whose bytes went to preview: every
+  // backfilled invoice 404s, and the production original is deleted rather than replaced. Recovery
+  // is the snapshot dir only. So the pair is checked, not just the store — the same guard
+  // `scripts/blob-restore.mjs` carries, on the script that deletes as well as writes.
+  const dbUrl = process.env.DB_POSTGRES_URL
+  if (!dbUrl) fail('DB_POSTGRES_URL missing')
+  const isProdDb = dbUrl === process.env.DB_POSTGRES_URL_PROD
+  const isProdStore = store === PROD_BLOB_STORE_ID
+
+  if (isProdDb !== isProdStore) {
+    fail(
+      `REFUSING: the database and the Blob store are not the same environment.\n` +
+        `  database: ${isProdDb ? 'PRODUCTION' : 'non-production'}\n` +
+        `  store:    ${isProdStore ? `PRODUCTION (${PROD_BLOB_STORE_ID})` : `non-production (${store})`}\n` +
+        `Backfilling across that split deletes originals from one store while pointing rows at the other.`,
+    )
+  }
+  // Allow-list, not deny-list, so an unrecognised token shape lands here rather than being waved
+  // through as "not production".
+  if (!isProdStore && store !== PREVIEW_BLOB_STORE_ID) {
+    fail(`REFUSING: BLOB_READ_WRITE_TOKEN targets an unrecognised store (${store}).`)
+  }
+  if (isProdStore && !has('--allow-prod')) {
+    fail(
+      `REFUSING: this targets PRODUCTION (store ${PROD_BLOB_STORE_ID}) — real invoices.\n` +
+        `Pass --allow-prod if that is genuinely what you want.`,
+    )
+  }
+  if (isProdStore)
+    console.log(`\n⚠️  --allow-prod: rewriting PRODUCTION media (${PROD_BLOB_STORE_ID})`)
+
+  return { base: `https://${store}.public.blob.vercel-storage.com` }
 }
 
-async function findHeicRows(payload: Awaited<ReturnType<typeof getPayload>>) {
+/** Filenames predate `sanitizeFileName`, so they may hold characters that would build a wrong URL. */
+const blobUrl = (base: string, filename: string) => `${base}/${encodeURIComponent(filename)}`
+
+async function fetchBlob(url: string, init?: RequestInit) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+}
+
+/** Verify compares its count against the one taken before the update, so both must ask this once. */
+async function countLinkedTransactions(payload: PayloadT, mediaId: number) {
+  const { totalDocs } = await payload.count({
+    collection: 'transactions',
+    where: { invoice: { equals: mediaId } },
+  })
+  return totalDocs
+}
+
+async function findHeicRows(payload: PayloadT) {
   const { docs } = await payload.find({
     collection: 'media',
-    where: { mimeType: { equals: 'image/heic' } },
+    where: HEIC_WHERE,
     limit: 0,
     sort: 'id',
     pagination: false,
@@ -82,26 +167,36 @@ async function findHeicRows(payload: Awaited<ReturnType<typeof getPayload>>) {
   return LIMIT > 0 ? docs.slice(0, LIMIT) : docs
 }
 
+/**
+ * The intermediate is PNG, not JPEG: `heif-convert` picks its encoder from the extension, so a `.jpg`
+ * intermediate would encode at q100 and `magick` would then re-encode at q60 — two lossy passes where
+ * the pipeline promises one.
+ */
 async function convert(source: string, target: string) {
-  const intermediate = path.join(tmpdir(), `heic-backfill-${path.basename(target)}`)
-  // -q 100 on the decode so the only quality loss is the resize/encode below, matching the client.
-  await run('heif-convert', ['-q', '100', source, intermediate])
-  // `-auto-orient` bakes the EXIF rotation into the pixels; without it a phone photo lands sideways,
-  // because nothing downstream re-reads the orientation tag. `>` resizes only when oversized.
-  await run('magick', [
-    intermediate,
-    '-auto-orient',
-    '-resize',
-    `${MAX_WIDTH}x${MAX_HEIGHT}>`,
-    '-quality',
-    String(QUALITY),
-    target,
-  ])
+  const intermediate = path.join(tmpdir(), `heic-backfill-${path.parse(target).name}.png`)
+  try {
+    await run('heif-convert', ['-q', '100', source, intermediate])
+    // `-auto-orient` bakes the EXIF rotation into the pixels; without it a phone photo lands
+    // sideways, because nothing downstream re-reads the orientation tag. `>` resizes only when
+    // oversized.
+    await run('magick', [
+      intermediate,
+      '-auto-orient',
+      '-resize',
+      `${MAX_WIDTH}x${MAX_HEIGHT}>`,
+      '-quality',
+      String(QUALITY),
+      target,
+    ])
+  } finally {
+    // A full-resolution q100 decode is 10-20 MB per phone photo; left behind, a run fills tmpdir.
+    await rm(intermediate, { force: true })
+  }
 }
 
 async function main() {
+  const { base } = resolveTarget()
   const payload = await getPayload({ config })
-  const base = blobBaseUrl()
 
   if (has('--verify')) {
     await verify(payload, base)
@@ -109,57 +204,86 @@ async function main() {
   }
 
   const rows = await findHeicRows(payload)
-  console.log(`${rows.length} media row(s) with mime_type = image/heic`)
+  console.log(`${rows.length} media row(s) still holding HEIC`)
   if (rows.length === 0) return
 
   if (has('--dry-run')) {
     for (const row of rows) {
-      const linked = await payload.count({
-        collection: 'transactions',
-        where: { invoice: { equals: row.id } },
-      })
+      const linked = await countLinkedTransactions(payload, row.id)
       console.log(
         `  id=${row.id}  ${row.filename}  ${((row.filesize ?? 0) / 1_000_000).toFixed(2)} MB  ` +
-          `→ transakcje: ${linked.totalDocs}`,
+          `→ transactions: ${linked}`,
       )
     }
     console.log(`\nDry run — nothing written. Snapshot would land in ${SNAPSHOT_DIR}`)
     return
   }
 
-  // --- Phase A: snapshot everything, or abort. ---
+  // An existing manifest is a previous run's rollback map. Overwriting it with this run's shorter
+  // one destroys the only record of what that run already converted.
+  if (!has('--force') && (await stat(MANIFEST).catch(() => null))) {
+    fail(
+      `${MANIFEST} already exists — a previous run's rollback map.\n` +
+        `Move it aside, point --snapshot-dir elsewhere, or pass --force to overwrite it.`,
+    )
+  }
+
+  // A missing binary would otherwise fail all 18 rows AFTER a full snapshot download.
+  for (const binary of ['heif-convert', 'magick']) {
+    await run(binary, ['--version']).catch(() => fail(`${binary} is not on PATH`))
+  }
+
   await mkdir(SNAPSHOT_DIR, { recursive: true })
   console.log(`\nSnapshotting ${rows.length} original(s) → ${SNAPSHOT_DIR}`)
 
+  // --- Phase A: snapshot everything, or abort before a single write. ---
   for (const row of rows) {
-    const response = await fetch(`${base}/${row.filename}`)
+    const filename = row.filename as string
+    const response = await fetchBlob(blobUrl(base, filename))
     if (!response.ok) {
-      throw new Error(
-        `ABORT before any write: ${row.filename} (id=${row.id}) is not in the store ` +
-          `(${response.status}). Without its bytes there is no rollback for this row, so the whole ` +
-          `run stops. Top the preview store up with \`pnpm blob:refresh:preview\` and retry.`,
+      fail(
+        `ABORT before any write: ${filename} (id=${row.id}) is not in the store (${response.status}). ` +
+          `Without its bytes there is no rollback for this row, so the whole run stops. ` +
+          `Top the preview store up with \`pnpm blob:refresh:preview\` and retry.`,
       )
     }
     const bytes = Buffer.from(await response.arrayBuffer())
-    await writeFile(path.join(SNAPSHOT_DIR, row.filename as string), bytes)
-    console.log(`  ✓ ${row.filename} (${(bytes.length / 1_000_000).toFixed(2)} MB)`)
+    // A 200 proves a response arrived, not that it is the file. A truncated snapshot looks complete
+    // and logs a green tick while being worthless as the rollback for a tax-retained faktura.
+    if (bytes.length === 0) fail(`ABORT: ${filename} (id=${row.id}) served 0 bytes`)
+    if (row.filesize && bytes.length !== row.filesize) {
+      fail(
+        `ABORT: ${filename} (id=${row.id}) served ${bytes.length} B, the row says ${row.filesize} B`,
+      )
+    }
+    const snapshotPath = path.join(SNAPSHOT_DIR, filename)
+    await writeFile(snapshotPath, bytes)
+    const written = await stat(snapshotPath)
+    if (written.size !== bytes.length) fail(`ABORT: ${snapshotPath} is short on disk`)
+    console.log(`  ✓ ${filename} (${(bytes.length / 1_000_000).toFixed(2)} MB)`)
   }
 
   // --- Phase B: convert and update. ---
   console.log(`\nConverting and updating`)
   const manifest: ManifestEntryT[] = []
-  const failures: { id: number; filename: string; error: string }[] = []
 
   for (const row of rows) {
     const oldFilename = row.filename as string
     const newFilename = `${path.parse(oldFilename).name}.jpg`
     const target = path.join(tmpdir(), `heic-backfill-out-${newFilename}`)
+    const entry: ManifestEntryT = {
+      id: row.id,
+      oldFilename,
+      newFilename,
+      oldFilesize: row.filesize ?? 0,
+      newFilesize: 0,
+      linkedTransactions: 0,
+      converted: false,
+    }
+    manifest.push(entry)
 
     try {
-      const linked = await payload.count({
-        collection: 'transactions',
-        where: { invoice: { equals: row.id } },
-      })
+      entry.linkedTransactions = await countLinkedTransactions(payload, row.id)
 
       await convert(path.join(SNAPSHOT_DIR, oldFilename), target)
       const jpeg = await readFile(target)
@@ -175,34 +299,45 @@ async function main() {
         context: { skipRevalidation: true },
       })
 
-      manifest.push({
-        id: row.id,
-        oldFilename,
-        newFilename,
-        oldFilesize: row.filesize ?? 0,
-        newFilesize: jpeg.length,
-        linkedTransactions: linked.totalDocs,
-      })
+      entry.newFilesize = jpeg.length
+      entry.converted = true
       const saved = 100 - Math.round((jpeg.length / (row.filesize || jpeg.length)) * 100)
       console.log(`  ✓ id=${row.id}  ${oldFilename} → ${newFilename}  (-${saved}%)`)
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      failures.push({ id: row.id, filename: oldFilename, error: message })
-      console.error(`  ✗ id=${row.id}  ${oldFilename}: ${message}`)
+      entry.error = error instanceof Error ? error.message : String(error)
+      // Stop rather than carry on. A row can fail with Payload having already deleted its original
+      // (delete-then-upload), so every further row is another possible hole in the store while the
+      // cause is still unknown. The snapshot plus this manifest are what the operator repairs from.
+      await writeFile(MANIFEST, JSON.stringify(manifest, null, 2))
+      fail(
+        `id=${row.id} ${oldFilename}: ${entry.error}\n` +
+          `STOPPED at row ${manifest.length}/${rows.length}. This row's blob may already be deleted ` +
+          `from the store — restore it from the snapshot with:\n` +
+          `  node scripts/blob-restore.mjs --dir ${SNAPSHOT_DIR}\n` +
+          `Manifest (what landed so far): ${MANIFEST}`,
+      )
+    } finally {
+      await rm(target, { force: true })
+      // Rewritten after every row: an interrupt at row 10 of 18 must still leave a map of the nine
+      // that were converted, or the rollback the header promises does not exist.
+      await writeFile(MANIFEST, JSON.stringify(manifest, null, 2))
     }
   }
 
-  await writeFile(MANIFEST, JSON.stringify(manifest, null, 2))
-  console.log(`\n${manifest.length} converted, ${failures.length} failed. Manifest: ${MANIFEST}`)
-  if (failures.length > 0) process.exitCode = 1
+  console.log(`\n${manifest.filter((e) => e.converted).length} converted. Manifest: ${MANIFEST}`)
 }
 
-async function verify(payload: Awaited<ReturnType<typeof getPayload>>, base: string) {
-  const manifest: ManifestEntryT[] = JSON.parse(await readFile(MANIFEST, 'utf8'))
-  console.log(`Verifying ${manifest.length} row(s) against ${MANIFEST}\n`)
+async function verify(payload: PayloadT, base: string) {
+  const raw = await readFile(MANIFEST, 'utf8').catch(() => null)
+  if (raw === null) {
+    fail(`No manifest at ${MANIFEST} — the run never got as far as writing one. Nothing to verify.`)
+  }
+  const manifest: ManifestEntryT[] = JSON.parse(raw)
+  const converted = manifest.filter((entry) => entry.converted)
+  console.log(`Verifying ${converted.length} converted row(s) against ${MANIFEST}\n`)
 
   let failed = 0
-  for (const entry of manifest) {
+  for (const entry of converted) {
     const problems: string[] = []
     const doc = await payload.findByID({ collection: 'media', id: entry.id, disableErrors: true })
 
@@ -216,23 +351,21 @@ async function verify(payload: Awaited<ReturnType<typeof getPayload>>, base: str
 
       // A green row with a 404 behind it is the failure mode this exists to catch: Payload's
       // afterChange deletes first and uploads second, so a half-failed update leaves exactly that.
-      const response = await fetch(`${base}/${doc.filename}`)
+      // Three bytes settle it, so ask for three.
+      const response = await fetchBlob(blobUrl(base, doc.filename as string), {
+        headers: { Range: 'bytes=0-2' },
+      })
       if (!response.ok) {
         problems.push(`blob ${response.status}`)
       } else {
-        const head = Buffer.from(await response.arrayBuffer()).subarray(0, 3)
+        const head = Buffer.from(await response.arrayBuffer())
         if (head[0] !== 0xff || head[1] !== 0xd8 || head[2] !== 0xff)
           problems.push('not JPEG bytes')
       }
 
-      const linked = await payload.count({
-        collection: 'transactions',
-        where: { invoice: { equals: entry.id } },
-      })
-      if (linked.totalDocs !== entry.linkedTransactions) {
-        problems.push(
-          `transakcje ${linked.totalDocs} ≠ ${entry.linkedTransactions} przed konwersją`,
-        )
+      const linked = await countLinkedTransactions(payload, entry.id)
+      if (linked !== entry.linkedTransactions) {
+        problems.push(`transactions ${linked} ≠ ${entry.linkedTransactions} before`)
       }
     }
 
@@ -244,15 +377,34 @@ async function verify(payload: Awaited<ReturnType<typeof getPayload>>, base: str
     )
   }
 
-  const remaining = await payload.count({
-    collection: 'media',
-    where: { mimeType: { equals: 'image/heic' } },
-  })
-  console.log(`\n${manifest.length - failed}/${manifest.length} OK`)
-  console.log(`media rows still image/heic: ${remaining.totalDocs}`)
+  const unconverted = manifest.filter((entry) => !entry.converted)
+  for (const entry of unconverted) {
+    console.log(
+      `  ! id=${entry.id}  ${entry.oldFilename}: never converted — ${entry.error ?? 'run stopped before it'}`,
+    )
+  }
 
-  if (failed > 0 || remaining.totalDocs > 0) process.exitCode = 1
+  console.log(`\n${converted.length - failed}/${converted.length} OK`)
+
+  // A --limit canary deliberately leaves the rest behind, so the sweep assertion would always fail
+  // it — and the operator needs that canary to come back green before running the whole set.
+  let remainingProblem = false
+  if (LIMIT === 0) {
+    const remaining = await payload.count({ collection: 'media', where: HEIC_WHERE })
+    console.log(`media rows still holding HEIC: ${remaining.totalDocs}`)
+    remainingProblem = remaining.totalDocs > 0
+  } else {
+    console.log(`--limit ${LIMIT}: skipping the "nothing left" sweep`)
+  }
+
+  if (failed > 0 || unconverted.length > 0 || remainingProblem) process.exitCode = 1
 }
 
-await main()
-process.exit(process.exitCode ?? 0)
+// Without the catch, a Phase A abort surfaces as an ERR_UNHANDLED_REJECTION stack instead of the
+// operator message the code went to the trouble of writing.
+main()
+  .then(() => process.exit(process.exitCode ?? 0))
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })

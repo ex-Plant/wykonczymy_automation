@@ -1519,15 +1519,20 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 ## EX-394 — HEIC: dziura w edycji przelewu + backfill starych faktur
 
 Setup: baza testowa 5435, zalogowany jako OWNER, na telefonie/dysku plik `.HEIC` prosto z iPhone'a
-oraz zdjęcie **powyżej 4 MB**.
+oraz **PDF powyżej 4 MB**. Zdjęcie nie nadaje się do tego testu: guard 4 MB mierzy bajty **po**
+kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
 
 - [ ] „Edytuj przelew" → „Dodaj faktury" z plikiem `.HEIC`: przycisk „Zapisz" jest zablokowany na czas przetwarzania, a po zapisie podgląd pokazuje JPEG (nie HEIC)
-- [ ] Ten sam dialog, plik **>4 MB**: leci komunikat o odrzuceniu pliku, a **nie** błąd 413 / „Upload nie powiódł się"
+- [ ] Ten sam dialog, **PDF >4 MB**: leci komunikat o odrzuceniu pliku, a **nie** błąd 413 / „Upload nie powiódł się"
+- [ ] Po odrzuceniu pliku (PDF >4 MB / nieudana konwersja) picker **nie** zostaje z nazwą tego pliku — wraca do „Przeciągnij lub kliknij"
+- [ ] „Dodaj przegląd" z „nie zamykaj": po zapisie picker jest pusty, a nie z nazwami z poprzedniego przeglądu
 - [ ] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
 - [ ] Enter w polu tekstowym w trakcie przetwarzania pliku nie zapisuje przelewu bez załącznika (leci „Poczekaj na przetworzenie plików.")
 - [ ] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
+- [ ] „Wyczyść formularz" **w trakcie** konwersji HEIC: po jej zakończeniu „Zapisz" i picker są znów aktywne (nie zostają zablokowane do przeładowania)
+- [ ] „Edytuj przelew" → wybierz plik → „Wyczyść formularz": picker jest pusty, a zapis **nie** dołącza pliku wybranego przed wyczyszczeniem
 - [ ] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
-- [ ] Notatki w formularzach (przelew, inwestycja, przegląd) mają wysokość z `rows` — pole „Notatka" jest wyraźnie niższe niż „Notatki"/„Opinia" na inwestycji
+- [ ] Notatki w formularzach (przelew, inwestycja, przegląd) renderują się i zapisują jak wcześniej — `rows` dociera teraz do DOM, ale `field-sizing-content` + `min-h-[68px]` i tak rządzą wysokością, więc **nie** oczekuj widocznej różnicy
 - [ ] Po backfillu: kilka przekonwertowanych faktur otwiera się i jest czytelnych oraz **poprawnie obróconych**
 - [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
 - [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
@@ -1539,6 +1544,7 @@ produkcyjnej bazy ani produkcyjnego store'a.
 
 - [ ] `--dry-run` na prodzie wylicza spodziewaną liczbę rekordów i nic poza tym
 - [ ] Katalog snapshotu zawiera wszystkie oryginały **przed** pierwszym update'em
+- [ ] Kanarek `--limit 2` przechodzi (`--verify --limit 2` pomija zamiatanie „nic nie zostało")
 - [ ] `--verify` na prodzie zwraca komplet OK i kończy się kodem 0
 - [ ] Kilka faktur otwiera się na produkcji
 

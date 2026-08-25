@@ -27,8 +27,7 @@ describe('ingestPickedFiles', () => {
     expect(blocked).toEqual([])
   })
 
-  // The whole point of this wrapper: unlike ingestFiles, a rowless surface must NOT be handed a hole
-  // where a blocked file was — an undefined in that list would be uploaded as a page.
+  // An undefined left in that list would be uploaded as a page.
   it('compacts the survivors, dropping the blocked file rather than leaving a hole', async () => {
     mockProcess.mockImplementation(async (input: File) => {
       if (input.name === 'b.jpg') throw new BlockedFileError('too-large', 'b.jpg', 9_000_000)
@@ -55,6 +54,14 @@ describe('ingestPickedFiles', () => {
 
     expect(files).toEqual([])
     expect(blocked).toHaveLength(2)
+  })
+
+  it('an empty pick returns an empty result without touching the pipeline', async () => {
+    const { files, blocked } = await ingestPickedFiles([])
+
+    expect(files).toEqual([])
+    expect(blocked).toEqual([])
+    expect(mockProcess).not.toHaveBeenCalled()
   })
 
   it('a non-blocked failure rejects rather than being swallowed', async () => {

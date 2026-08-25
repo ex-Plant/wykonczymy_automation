@@ -315,7 +315,7 @@ dumps. The snapshot dir is the rollback path and must exist before the first upd
 
 #### Automated
 
-- [x] 2.1 The hand-written mirror is gone — replaced by a type DERIVED from the registration (deviation, see below)
+- [x] 2.1 `AppFieldComponentsT` is defined exactly once, in `form-hooks.ts`, as `typeof fieldComponents` (replaces the plan's `grep → nothing` criterion, which the deviation makes unmeetable)
 - [x] 2.2 FormFileInput is gone
 - [x] 2.3 `pnpm typecheck` green after the removal
 

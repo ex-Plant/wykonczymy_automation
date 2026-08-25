@@ -39,5 +39,4 @@ const { useAppForm, withForm } = createFormHook({
 
 export { useFieldContext, useFormContext, useStore }
 
-// Export form hook
 export { useAppForm, withForm }
