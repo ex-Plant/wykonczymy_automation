@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { FileInput } from '@/components/ui/file-input'
@@ -126,7 +127,10 @@ export function EditTransferForm({
 
   // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
   // the file input below only ever ADDS pages, so there is no other way to drop one here.
-  const { visibleInvoices, handleRemove, handleRemoveAll } = useInvoiceRemoval(row.id, row.invoices)
+  const { visibleInvoices, handleRemove, handleRemoveAll, removalConfirm } = useInvoiceRemoval(
+    row.id,
+    row.invoices,
+  )
 
   return (
     <form.AppForm>
@@ -210,6 +214,8 @@ export function EditTransferForm({
           disabled={isIngesting}
         />
       </form>
+
+      <ConfirmDialog {...removalConfirm} />
     </form.AppForm>
   )
 }
