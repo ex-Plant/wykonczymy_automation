@@ -96,9 +96,6 @@ function keyCol(
   return { ...(keyColumn(key, column) as Column<KosztorysV2RowT>), ...rest }
 }
 
-// „Cena j.m." is money, so a rollback names it in złotówki — „przywrócono 120" would read as a
-// quantity in a grid where most numeric cells hold one.
-
 // An etap with no rozliczenie belongs to neither crew’s bill (subcontractor-due.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
 // So the ilość column screams, header and every cell. Reachable in the client view only, which is the
@@ -279,6 +276,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const priceCols: Column<KosztorysV2RowT>[] =
     view === 'client'
       ? [
+          // `formatPLN`: „przywrócono 120" would read as a quantity in a grid full of them.
           decimalColumn(
             'price',
             title('price', opts),

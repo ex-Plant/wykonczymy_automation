@@ -29,8 +29,7 @@ export type UndoRedoApiT = {
   reset: () => void
   // Drop every command (from both stacks) that touches any of these now-deleted ids (EX-526 #2).
   pruneByIds: (ids: number[]) => void
-  // Rewrite (or drop) the command on top, but only while it is still the one the caller pushed —
-  // see the stack core below. Returns whether it amended.
+  // Only while the top is still the command the caller pushed — see the stack core below.
   amendTop: (expected: UndoCommandT, replacement: UndoCommandT | null) => boolean
 }
 

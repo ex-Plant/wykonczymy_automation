@@ -28,9 +28,7 @@ export function useCellDraft<RowT extends { id: number }, EntryT>(
   stopEditing: StopEditingT,
 ) {
   const [blockReason, setBlockReason] = useState<string | null>(null)
-  // The text as typed, the value it started from, and the row it belongs to. Bound straight to the
-  // row instead, anything the row won't accept (a cleared field, a half-typed „50,") snaps back
-  // under the user's hands on the very next keystroke.
+  // A draft, not the row: bound straight to the row, a half-typed „50," would snap back mid-keystroke.
   const [edit, setEdit] = useState<CellEditT<EntryT> | null>(null)
   // The same draft, readable and clearable in one synchronous step. `edit` is what the input renders;
   // this is what `closeDraft` acts on, so a second close — a blur landing in the same commit as the

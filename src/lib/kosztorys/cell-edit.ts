@@ -117,8 +117,8 @@ export function cellPaste<RowT, EntryT>(
 
 /**
  * The contract's default element: any lone `number` field, any row shape. It knows no domain — the
- * two policies that do (the rabat pair, a subcontractor price) live in their own modules. Today's
- * callers are „Przedmiar", „Cena j.m." in the client view and a stage's „ilość".
+ * two policies that do (the rabat pair, a subcontractor price) live in their own modules; the
+ * columns that reach for this one are listed at `decimal-column.tsx`.
  */
 export function numericFieldPolicy<K extends string, RowT extends Record<K, number>>(
   field: K,

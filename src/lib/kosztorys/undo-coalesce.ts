@@ -26,7 +26,7 @@ function coalesceBy<T extends { before: unknown; after: unknown }>(
   return [...byKey.values()].filter((c) => c.before !== c.after)
 }
 
-// The cell a change belongs to. Both reducers below key on it, so „the same cell" means one thing.
+// Both reducers below key on this, so „the same cell" means one thing.
 const fieldKey = (c: FieldChangeT) => `${c.id}:${String(c.field)}`
 const stageChangeKey = (c: StageChangeT) => `${c.id}:${c.stageId}`
 
