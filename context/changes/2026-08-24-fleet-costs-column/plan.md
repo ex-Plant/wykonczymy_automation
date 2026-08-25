@@ -157,8 +157,15 @@ przestaje przyjmować brak wartości.
 
 **Intent**: `optionalNumber` na `cost` przestaje mieć sens, gdy pole jest wymagane.
 
-**Contract**: `toData` (`:141`) — `cost: Number(value.cost)`. Etykieta pola (`:253`) dostaje
-oznaczenie wymagalności zgodne z konwencją pozostałych wymaganych pól tego formularza.
+**Contract**: `toData` (`:141`) — `cost: Number(value.cost)`.
+
+> **Sprostowanie (bramka przeglądu, 2026-08-24).** Plan zakładał, że etykieta pola dostanie
+> „oznaczenie wymagalności zgodne z konwencją pozostałych wymaganych pól tego formularza". Takiej
+> konwencji w repo nie ma — przeszukanie wszystkich dwunastu katalogów `src/components/forms/` nie
+> znalazło ani jednego markera wymagalności (gwiazdka, `isRequired`, `requiredMarker`). Pozycja była
+> więc niewykonalna jak napisana i nie została zrealizowana: wymagalność sygnalizuje wyłącznie
+> komunikat walidacji, tak jak w każdym innym formularzu. Wprowadzenie markera to zmiana konwencji
+> całego repo, a nie szczegół tego slice'a.
 
 #### 5. Typy domenowe
 
@@ -496,13 +503,13 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 4.1 Spec parsera zakresu: sam `from`, sam `to`, oba, żaden
-- [x] 4.2 Spec `sumCosts` z zakresem: na `from`, na `to`, dzień przed, dzień po
-- [x] 4.3 Specy transferów zielone po przejściu na wspólny hook
+- [x] 4.1 Spec parsera zakresu: sam `from`, sam `to`, oba, żaden — 60ec1eef
+- [x] 4.2 Spec `sumCosts` z zakresem: na `from`, na `to`, dzień przed, dzień po — 60ec1eef
+- [x] 4.3 Specy transferów zielone po przejściu na wspólny hook — 60ec1eef
 
 ### Whole-tree Gate
 
-- [x] `pnpm typecheck`
-- [x] `pnpm lint` — jedyny błąd (`src/hooks/use-latest-request.ts:15`, „Cannot access refs during render") jest sprzed tej zmiany (`8e47fb80`) i nie dotyczy żadnego z ruszonych plików
-- [x] `pnpm test` — 2745 zielonych, 161 pominiętych (specy wymagające DB)
-- [x] `pnpm build`
+- [x] `pnpm typecheck` — 60ec1eef
+- [x] `pnpm lint` — jedyny błąd (`src/hooks/use-latest-request.ts:15`, „Cannot access refs during render") jest sprzed tej zmiany (`8e47fb80`) i nie dotyczy żadnego z ruszonych plików — 60ec1eef
+- [x] `pnpm test` — 2745 zielonych, 161 pominiętych (specy wymagające DB) — 60ec1eef
+- [x] `pnpm build` — 60ec1eef

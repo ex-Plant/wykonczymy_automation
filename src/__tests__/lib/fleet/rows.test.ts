@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { historyOfType, toRow, type FleetDatasetT } from '@/lib/queries/fleet'
+import { historyOfType, toRow } from '@/lib/fleet/rows'
+import type { FleetDatasetT } from '@/lib/fleet/dataset'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { ALL_TIME } from '@/lib/utils/date-range'
 

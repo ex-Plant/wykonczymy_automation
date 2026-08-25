@@ -10,7 +10,10 @@ export const inspectionFormSchema = z.object({
   nextDueAt: z.string(),
   odometer: z.string(),
   nextDueOdometer: z.string(),
-  cost: z.string().min(1, 'Koszt jest wymagany'),
+  cost: z
+    .string()
+    .min(1, 'Koszt jest wymagany')
+    .refine((value) => Number(value) >= 0, 'Koszt nie może być ujemny'),
   note: z.string(),
 })
 

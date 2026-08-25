@@ -42,7 +42,7 @@ export function DateFilters({ baseUrl }: { baseUrl: string }) {
   const hasDateFilters = currentFrom || currentTo
 
   return (
-    <FilterGrid className="lg:grid-cols-5">
+    <FilterGrid>
       <Loader loading={isPending} portal />
       <FilterSelect
         value={pickerYear}

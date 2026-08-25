@@ -9,9 +9,6 @@ import { buildUrlWithParams } from '@/lib/utils/build-url-with-params'
  *
  * Every write resets `page` — page 7 of an unfiltered list is rarely page 7 of the filtered one, and
  * landing on an empty page reads as "the filter found nothing".
- *
- * The transition is what keeps the page interactive while the server re-renders; callers surface
- * `isPending` as a loader rather than blocking the input the user is still typing in.
  */
 export function useUrlFilterParams(baseUrl: string) {
   const router = useRouter()

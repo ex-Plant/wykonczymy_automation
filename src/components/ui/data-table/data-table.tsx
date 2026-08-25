@@ -107,12 +107,10 @@ export function DataTable<TData>({
             headerGroups={headerGroups}
             rows={rows}
             virtualizer={virtualizer}
-            colCount={visibleColCount}
-            visibleColumnIds={visibleColumnIds}
+            visibleColumnIdList={visibleColumnIdList}
             getRowHref={getRowHref}
             getRowClassName={getRowClassName}
             footer={footer}
-            visibleColumnIdList={visibleColumnIdList}
           />
         ) : (
           <table className="w-full text-sm">

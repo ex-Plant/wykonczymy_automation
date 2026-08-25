@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ColumnToggle } from '@/components/ui/column-toggle'
 import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
-import { getFleetColumns } from '@/components/tables/fleet'
+import { COSTS_COLUMN_ID, getFleetColumns } from '@/components/tables/fleet'
 import { DateFilters } from '@/components/filters/date-filters'
 import { AddVehicleDialog } from '@/components/dialogs/add-vehicle-dialog'
 import { AddInspectionDialog } from '@/components/dialogs/add-inspection-dialog'
@@ -36,14 +36,18 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
         // Summed from the rows the table is actually rendering, so the total always matches what the
         // search box left on screen instead of quoting a number nobody can see.
         footer={(visibleColumnIds) => {
-          const costsIndex = visibleColumnIds.indexOf('costs')
-          if (costsIndex < 1) return null
+          const costsIndex = visibleColumnIds.indexOf(COSTS_COLUMN_ID)
+          if (costsIndex < 0) return null
 
           return (
             <tr>
-              <td className="font-bold" colSpan={costsIndex}>
-                Razem
-              </td>
+              {/* Nothing to its left once every other column is toggled off — the number is what the
+                  row is for, so it survives losing its label rather than the footer disappearing. */}
+              {costsIndex > 0 && (
+                <td className="font-bold" colSpan={costsIndex}>
+                  Razem
+                </td>
+              )}
               <td className="text-right font-bold tabular-nums">
                 {formatPLN(filteredData.reduce((sum, row) => sum + row.totalCosts, 0))}
               </td>

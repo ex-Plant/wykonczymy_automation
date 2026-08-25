@@ -16,7 +16,6 @@ export default async function FleetPage({ searchParams }: PagePropsT) {
   const session = await requireAuth(MANAGEMENT_ROLES)
   if (!session.success) redirect('/')
 
-  // Viewing the list clears this user's unread badge.
   const payload = await getPayload({ config })
   const [, fleet] = await Promise.all([
     markSeen(payload, session.user.id, STREAMS.fleet),

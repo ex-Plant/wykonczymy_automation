@@ -106,7 +106,7 @@ describe('sumCosts', () => {
   })
 
   // The listing hands over raw stored timestamps; comparing those as strings would drop the window's
-  // last day, because '2026-07-31T22:00:00.000Z' sorts after '2026-07-31'.
+  // last day, because any '2026-07-31T…' sorts after the bare '2026-07-31'.
   it('windows a stored timestamp by its Warsaw day', () => {
     const stored = [{ performedAt: '2026-07-31T00:00:00.000Z', cost: 500 }]
 

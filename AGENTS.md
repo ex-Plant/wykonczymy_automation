@@ -284,7 +284,7 @@ Don't hand-roll tests or pick the layer by feel — route to a skill. Always sta
 
 ## Tech Debt
 
-Non-blocking refactor/cleanup findings live in Linear (project "Wykonczymy v2"). Check it before starting a refactor, and record new findings there rather than spawning a standalone audit doc.
+Non-blocking refactor/cleanup findings live in Linear, in the same **"Wykonczymy"** project as everything else — there is no separate tech-debt project (an earlier "Wykonczymy v2" was never created, and two review gates have now filed into the void looking for it). Check it before starting a refactor, and record new findings there rather than spawning a standalone audit doc.
 
 ## Stack Notes
 

@@ -17,12 +17,10 @@ type VirtualizedTableBodyPropsT<TData> = {
   headerGroups: HeaderGroup<TData>[]
   rows: Row<TData>[]
   virtualizer: ReturnType<typeof useVirtualizer<HTMLDivElement, Element>>
-  colCount: number
-  visibleColumnIds: Set<string>
+  visibleColumnIdList: string[]
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
   footer?: (visibleColumnIds: string[]) => React.ReactNode
-  visibleColumnIdList: string[]
 }
 
 export function VirtualizedTableBody<TData>({
@@ -31,14 +29,14 @@ export function VirtualizedTableBody<TData>({
   headerGroups,
   rows,
   virtualizer,
-  colCount,
-  visibleColumnIds,
+  visibleColumnIdList,
   getRowHref,
   getRowClassName,
   footer,
-  visibleColumnIdList,
 }: VirtualizedTableBodyPropsT<TData>) {
   const virtualItems = virtualizer.getVirtualItems()
+  const colCount = visibleColumnIdList.length
+  const visibleColumnIds = new Set(visibleColumnIdList)
   // `table-auto` sizes columns from the cells currently in the DOM — which, under virtualization, is
   // whatever the scroll window happens to hold, so columns resize mid-scroll. A colgroup + fixed
   // layout pins them to the column defs' own sizes instead, and the summed width becomes the table's

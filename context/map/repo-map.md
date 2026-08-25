@@ -171,7 +171,7 @@ Ordered by cost/value. None block a branch switch; captured here so they survive
    flow (or at least the depcruise + git-territory steps) after any large structural change
    — a folder move, a new top-level feature, or when the risk zones stop matching reality.
 
-> Per AGENTS.md, actionable refactor items (1–5) belong in Linear ("Wykonczymy v2") rather
+> Per AGENTS.md, actionable refactor items (1–5) belong in Linear ("Wykonczymy") rather
 > than lingering as a doc TODO. This section is the hand-off note; promote each to a Linear
 > issue when you pick it up.
 

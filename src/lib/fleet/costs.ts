@@ -29,8 +29,8 @@ export type VehicleCostsT = {
  * the fleet listing call, so the same car cannot show two different totals on two screens.
  *
  * `performedAt` is normalised before comparing: the listing hands over raw stored timestamps, and
- * `'2026-07-31T22:00:00Z' <= '2026-07-31'` is false as a string — the last day of the window would
- * silently drop out.
+ * `'2026-07-31T00:00:00Z' <= '2026-07-31'` is false as a string — that przegląd falls on the
+ * window's last Warsaw day, yet the raw compare would drop it.
  */
 export const sumCosts = (
   entries: readonly { performedAt: string; cost: number }[],

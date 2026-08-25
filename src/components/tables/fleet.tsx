@@ -11,6 +11,8 @@ import type { FleetRowT } from '@/types/fleet'
 
 const col = createColumnHelper<FleetRowT>()
 
+export const COSTS_COLUMN_ID = 'costs'
+
 export function getFleetColumns() {
   return [
     col.accessor('registration', {
@@ -43,7 +45,7 @@ export function getFleetColumns() {
       ),
     }),
     col.accessor('totalCosts', {
-      id: 'costs',
+      id: COSTS_COLUMN_ID,
       header: 'Koszty',
       meta: { align: 'right' },
       cell: (info) => <span className="tabular-nums">{formatPLN(info.getValue())}</span>,

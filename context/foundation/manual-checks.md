@@ -1521,30 +1521,30 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 
 ### Faza 1: „Koszt" polem wymaganym
 
-- [ ] Dialog „Przegląd" nie pozwala zapisać bez kwoty — pod polem „Koszt" pojawia się komunikat
-- [ ] `0` w polu „Koszt" zapisuje się normalnie i pokazuje `0,00 zł` w historii przeglądów
-- [ ] Istniejące przeglądy bez kwoty pokazują po migracji `0 zł`, nie pustkę ani błąd
+- [x] Dialog „Przegląd" nie pozwala zapisać bez kwoty — pod polem „Koszt" pojawia się komunikat
+- [x] `0` w polu „Koszt" zapisuje się normalnie i pokazuje `0,00 zł` w historii przeglądów
+- [x] Istniejące przeglądy bez kwoty pokazują po migracji `0 zł`, nie pustkę ani błąd
 
 ### Faza 2: Jedna reguła kosztów
 
-- [ ] Zakładka „Koszty" na karcie pojazdu pokazuje te same liczby co przed zmianą dla pojazdu, którego wszystkie przeglądy miały wpisaną kwotę
+- [x] Zakładka „Koszty" na karcie pojazdu pokazuje te same liczby co przed zmianą dla pojazdu, którego wszystkie przeglądy miały wpisaną kwotę
 
 ### Faza 3: Kolumna i stopka
 
-- [ ] Kolumna „Koszty" pokazuje sumę zgodną z zakładką „Koszty" na karcie tego samego pojazdu
-- [ ] Sortowanie po kolumnie działa w obie strony; pojazd bez przeglądów pokazuje `0 zł`
-- [ ] Kolumnę da się ukryć przez „Kolumny", a wybór przeżywa odświeżenie
-- [ ] Po ukryciu kolumny „Koszty" stopka znika, a nie rozjeżdża tabelę
-- [ ] Suma w stopce równa się sumie widocznych wierszy, także po wpisaniu czegoś w wyszukiwarkę
+- [x] Kolumna „Koszty" pokazuje sumę zgodną z zakładką „Koszty" na karcie tego samego pojazdu
+- [x] Sortowanie po kolumnie działa w obie strony; pojazd bez przeglądów pokazuje `0 zł`
+- [x] Kolumnę da się ukryć przez „Kolumny", a wybór przeżywa odświeżenie
+- [x] Po ukryciu kolumny „Koszty" stopka znika, a nie rozjeżdża tabelę
+- [x] Po ukryciu **wszystkich** kolumn na lewo od „Koszty" stopka dalej pokazuje kwotę — traci tylko etykietę „Razem"
+- [x] Suma w stopce równa się sumie widocznych wierszy, także po wpisaniu czegoś w wyszukiwarkę
 
 ### Faza 4: Filtr zakresu dat
 
-- [ ] `/flota?from=2026-07-01&to=2026-07-31` — kolumna i stopka liczą wyłącznie lipiec
-- [ ] Wybór „Miesiąc" nadpisuje oba krańce; „Wyczyść daty" znika oba i przywraca pełną historię
-- [ ] Sam „Od" bez „Do" działa (wszystko od tej daty w przód); sam „Do" analogicznie wstecz
-- [ ] Filtr przeżywa odświeżenie strony i da się wysłać linkiem
-- [ ] Kolumny terminów, „Do wymiany" i przebieg **nie** reagują na filtr dat — pokazują to samo co przed
-- [ ] Licznik „N pojazdów w użyciu" nie reaguje na filtr dat
-- [ ] Filtr dat na `/kasa/[id]`, `/inwestycje/[id]`, `/pracownicy/[id]` i dashboardzie działa jak przed zmianą (regresja po przejściu na wspólny hook)
-- [ ] Zmiana zakresu dat na transferach nadal pokazuje loader na czas przeładowania
-
+- [x] `/flota?from=2026-07-01&to=2026-07-31` — kolumna i stopka liczą wyłącznie lipiec
+- [x] Wybór „Miesiąc" nadpisuje oba krańce; „Wyczyść daty" znika oba i przywraca pełną historię
+- [x] Sam „Od" bez „Do" działa (wszystko od tej daty w przód); sam „Do" analogicznie wstecz
+- [x] Filtr przeżywa odświeżenie strony i da się wysłać linkiem
+- [x] Kolumny terminów, „Do wymiany" i przebieg **nie** reagują na filtr dat — pokazują to samo co przed
+- [x] Licznik „N pojazdów w użyciu" nie reaguje na filtr dat
+- [x] Filtr dat na `/kasa/[id]`, `/inwestycje/[id]`, `/pracownicy/[id]` i dashboardzie działa jak przed zmianą (regresja po przejściu na wspólny hook)
+- [x] Zmiana zakresu dat na transferach nadal pokazuje loader na czas przeładowania

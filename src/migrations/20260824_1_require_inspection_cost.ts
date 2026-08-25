@@ -9,9 +9,13 @@ import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-ve
 // count before running this against prod:
 //   SELECT count(*) FROM vehicle_inspections WHERE cost IS NULL;
 //
-// DEPLOY ORDER IS THE REVERSE OF AGENTS.md's DEFAULT, as for every destructive migration: ship the
-// code first, migrate second. The constraint is what the OLD code breaks against — it still submits
-// an absent cost; the new code always sends a number.
+// DEPLOY ORDER IS AGENTS.md's ADDITIVE DEFAULT — migrate prod BEFORE pushing. A tightening reads as
+// destructive, but the two windows are not symmetric. Migrating first leaves old code able to submit
+// an empty koszt for a few minutes: Postgres rejects it loudly with 23502, which is exactly the input
+// this change exists to forbid. Pushing first leaves legacy NULL rows under a `required` field, and
+// Payload backfills an absent value from the stored doc where a stored NULL counts as present — so
+// every partial update on such a row (the sweep's notify stamp, any /admin edit) throws
+// ValidationError until someone runs the migration. That window is unbounded and silent.
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     UPDATE "vehicle_inspections" SET "cost" = 0 WHERE "cost" IS NULL;
