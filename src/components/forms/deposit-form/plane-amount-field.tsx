@@ -1,7 +1,7 @@
 import type { DepositFormApiT } from '@/components/forms/deposit-form/deposit-form-api'
 import { useEffect, useRef } from 'react'
 import type { VatPlaneT } from '@/lib/constants/transfers'
-import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
+import { netSuggestion } from '@/lib/utils/net-suggestion'
 
 type PlaneAmountFieldPropsT = {
   // The concrete form API, not `FormWithFieldT`: this field reads and writes kwoty through
@@ -10,24 +10,6 @@ type PlaneAmountFieldPropsT = {
   vatRate: number
   plane: VatPlaneT
   fieldClassName?: string
-}
-
-/**
- * The netto to write into the field, or null when the kwota standing there is the owner's.
- *
- * Ownership is read off the value — it is his as soon as it stops matching the last kwota this
- * component wrote — rather than latched when a keystroke arrives. A latch answers the wrong question
- * twice: a reopened draft mounts with a fresh `false` over a netto typed off the faktura, and the
- * empty string a programmatic clear pushes reads as a keystroke that raises it for good.
- */
-export function netSuggestion(
-  currentNet: string,
-  gross: string,
-  lastSuggested: string | null,
-  rate: number,
-): string | null {
-  if (currentNet !== '' && currentNet !== lastSuggested) return null
-  return netFromGross(gross, rate)
 }
 
 // Gotówka is one netto kwota and that IS the whole wpłata — it has no brutto side to type. A przelew

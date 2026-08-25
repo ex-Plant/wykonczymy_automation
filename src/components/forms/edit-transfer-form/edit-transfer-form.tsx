@@ -27,8 +27,8 @@ import {
   DateField,
   DescriptionField,
   EntityComboboxField,
-  ExpenseCategoryField,
 } from '@/components/forms/form-fields'
+import { ExpenseCategoryField } from '@/components/forms/edit-transfer-form/expense-category-field'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
 import { FormClearButton } from '../form-components/form-clear-button'

@@ -1,5 +1,4 @@
-import type { useManagedForm } from '@/components/forms/hooks/use-managed-form'
-import type { CreateTransferFormT } from '@/lib/schemas/transfer'
+import type { FormApiOfT } from '@/components/forms/hooks/form-api-of'
 
 export type DepositFormValuesT = {
   description: string
@@ -15,7 +14,4 @@ export type DepositFormValuesT = {
   investment?: string
 }
 
-/** TanStack's form API for this form — a ~16-parameter generic, so it is inferred, never restated. */
-export type DepositFormApiT = ReturnType<
-  typeof useManagedForm<DepositFormValuesT, CreateTransferFormT>
->['form']
+export type DepositFormApiT = FormApiOfT<DepositFormValuesT>

@@ -33,8 +33,8 @@ import {
   DescriptionField,
   EntityComboboxField,
   PaymentMethodField,
-  PlaneAmountField,
 } from '@/components/forms/form-fields'
+import { PlaneAmountField } from '@/components/forms/deposit-form/plane-amount-field'
 import FormFooter from '../form-components/form-footer'
 import { createTransferAction } from '@/lib/actions/transfers'
 import { useDepositFormStore } from '@/stores/form-stores'
