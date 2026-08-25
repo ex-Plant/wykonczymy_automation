@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 
 import { useLatestRequest } from '@/hooks/use-latest-request'
 import { reportBlockedFiles } from '@/lib/invoices/blocked-files-message'
@@ -44,7 +44,9 @@ export function useFilePickIngest() {
       if (!isCurrent()) return
       reportBlockedFiles(blocked)
       setFiles(ingested)
-      if (ingested.length !== picked.length) setInputKey((key) => key + 1)
+      // Only a TOTAL refusal remounts the picker: after a partial block the remount would blank the
+      // label and hide the existing-invoice preview, so the survivors would ride along invisibly.
+      if (ingested.length === 0) setInputKey((key) => key + 1)
     } catch {
       if (!isCurrent()) return
       // TODO(EX-449) SENTRY-REQUIRED: unexpected ingest failure (not a BlockedFileError) — capture
@@ -56,6 +58,9 @@ export function useFilePickIngest() {
       if (isCurrent()) setIsIngesting(false)
     }
   }
+
+  // An ingest outliving the form would land on a toast about a picker no longer on screen.
+  useEffect(() => request.disown, [request])
 
   function reset() {
     // Disowning the in-flight ingest also makes its own `finally` a no-op, so the reset has to clear

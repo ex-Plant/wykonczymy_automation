@@ -82,10 +82,15 @@ export function useInvoiceRemoval(transactionId: number, invoices: InvoiceFileT[
       onConfirm: () => {
         if (!staged) return
         setPending(true)
-        void staged.run().finally(() => {
-          setPending(false)
-          setStaged(null)
-        })
+        // `run` toasts a REFUSED delete but not a rejected one, and `finally` closes the dialog
+        // either way — leaving an invoice on screen the user was told nothing about.
+        void staged
+          .run()
+          .catch(() => toastMessage('Nie udało się usunąć faktury', 'error'))
+          .finally(() => {
+            setPending(false)
+            setStaged(null)
+          })
       },
       onCancel: () => setStaged(null),
     },
