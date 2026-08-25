@@ -7,21 +7,22 @@ above the cleanup checklist at the end.
 
 ## Problemy — jedna lista, ze statusem
 
-_Pełny opis, dowód i SQL każdego z nich jest niżej w tym pliku — numer linii przy pozycji.
+_Pełny opis, dowód i SQL każdego z nich jest niżej w tym pliku — przy pozycji stoi nazwa sekcji
+(numery linii nie przeżywają prettiera, nazwy tak).
 Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` domknięte._
 
 ### Kasują dane
 
-- [ ] · 🔴 · otwarte · log:1488 · **„Usuń całą fakturę" zostawia pliki w magazynie bez rekordu.**
+- [ ] · 🔴 · otwarte · § „Usuń całą fakturę" zostawia pliki · **Usuwanie faktury wielostronicowej zostawia pliki w magazynie bez rekordu.**
       3× odtworzone, za każdym razem inna losowa ofiara, zero błędów w dzienniku serwera. Magazyn
       nie ma kosza, a to są faktury trzymane na potrzeby podatkowe. **Ścieżka jest nowa — merge tę
       usterkę wnosi.** `30be2dba` jej NIE rusza (sprawdzone: idzie w drugą stronę, poszerza warunek
       pomijania). ⇒ **to jest jedyna rzecz blokująca scalenie**
-- [ ] · 🔴 · otwarte · log:1284 · **Zmiana typu wydatku kasuje wszystko: kwotę, netto, opis, notatkę
+- [ ] · 🔴 · otwarte · § „Realny problem: zmiana typu kasuje skan" · **Zmiana typu wydatku kasuje wszystko: kwotę, netto, opis, notatkę
       i podpięty skan faktury.** Bez ostrzeżenia i bez cofnięcia. Kolejność „najpierw skan, potem
       typ" jest tą, którą kod skanu sam zakłada. Koszt: jedno płatne odpytanie modelu + ponowne
       wpięcie pliku
-- [ ] · 🔴 · **cudze, w trakcie naprawy** · log:690 · **Escape w komórce siatki zapisuje zamiast
+- [ ] · 🔴 · **cudze, w trakcie naprawy** · § „DEFEKT: Escape nie anuluje edycji komórki" · **Escape w komórce siatki zapisuje zamiast
       anulować** (2× odtworzone: `7` i `8` wylądowały w Przedmiarze). Naprawia to aktywna zmiana
       `context/changes/2026-08-25-kosztorys-decimal-cell-draft/` (`status: implementing`, ta sama
       gałąź) — jej plan wymienia to wprost. **Nie ruszać, kolizja.** Cmd+Z to cofa
@@ -31,31 +32,31 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
 
 ### Pokazują nieprawdę
 
-- [ ] · 🟡 · otwarte · log:1034 · **Nagłówek sekcji podaje INWESTOROWI liczbę pozycji sprzed filtra**
+- [ ] · 🟡 · otwarte · § „nagłówek sekcji podaje inwestorowi liczbę pozycji sprzed filtra" · **Nagłówek sekcji podaje INWESTOROWI liczbę pozycji sprzed filtra**
       — „WC (52 poz.)" nad czterema wierszami. Ten sam filtr usuwa całą pustą sekcję, ale nie
       koryguje licznika w przerzedzonych. Widzi to klient, nie tylko właściciel
-- [ ] · 🟡 · otwarte · log:1626 · **Stawka „bez narzędzi" 0,55 zamiast 0,5525 w 114 na 117
+- [ ] · 🟡 · otwarte · § „Stawka «bez narzędzi» jest w bazie inna…" · **Stawka „bez narzędzi" 0,55 zamiast 0,5525 w 114 na 117
       inwestycji.** Zastane (leży w bazie od migracji z lipca), dziś nieosiągalne — bo żadna z nich
       nie ma kosztorysu. Odpali przy pierwszej, która dostanie go z szablonu
-- [ ] · 🟡 · otwarte · log:963 · **„Tryb anulowań" na ekranie kasy nigdy nic nie pokaże.** Wszystkie
+- [ ] · 🟡 · otwarte · § „«Tryb anulowań» nigdy nic nie pokaże na ekranie kasy" · **„Tryb anulowań" na ekranie kasy nigdy nic nie pokaże.** Wszystkie
       296 anulowań w bazie ma pustą kasę, pracownika i inwestycję, więc zawężenie do kasy wycina je
       co do jednego. Zastane, strukturalne — nie migracyjne
-- [ ] · 🟡 · otwarte · log:103 · **Niedopasowanie hydracji na kolumnie „Czas dodania"** — serwer
+- [ ] · 🟡 · otwarte · § „Findings" (ledger fazy 1), wpis o React #418 · **Niedopasowanie hydracji na kolumnie „Czas dodania"** — serwer
       renderuje UTC, przeglądarka Europe/Warsaw, więc każdy wiersz rozjeżdża się o dwie godziny.
       Zastane: `main` ma ten plik bajt w bajt taki sam
-- [ ] · 🟡 · otwarte · log:1380 · **Ta sama kwota różni się o grosz w dwóch miejscach zakładki
+- [ ] · 🟡 · otwarte · § „Zakładki podsumowania" → „Ta sama kwota… różni się o grosz" · **Ta sama kwota różni się o grosz w dwóch miejscach zakładki
       „Podwykonawcy"**
 
 ### Blokują albo mylą, ale nic nie psują
 
-- [ ] · 🔵 · otwarte · log:411, log:718 · **Rozwinięty panel podsumowania przechwytuje kliknięcia**
+- [ ] · 🔵 · otwarte · § „Panel podsumowania przykrywa jedyne wejście…" + „…przykrywa też siatkę" · **Rozwinięty panel podsumowania przechwytuje kliknięcia**
       — przykrywa jedyne wejście do importu na pustym kosztorysie ORAZ dolną część siatki. Panel
       jest rozwinięty domyślnie, więc to pierwszy ekran, jaki właściciel zobaczy. Domknięte dowodem:
       po „Schowaj podsumowanie" ten sam klik na tym samym wierszu udaje się natychmiast
-- [ ] · 🔵 · otwarte · log:1872 · **Bramka „tylko właściciel" wyłącznie po stronie serwera** —
+- [ ] · 🔵 · otwarte · § „Bramka «tylko właściciel»" · **Bramka „tylko właściciel" wyłącznie po stronie serwera** —
       manager widzi obie pozycje w menu jako klikalne i idzie przez trzy ekrany, żeby usłyszeć „nie".
       Zapis naprawdę nie przechodzi (sprawdzone w bazie), więc to nie dziura, tylko droga donikąd
-- [ ] · 🔵 · otwarte · log:862 · **Przycisk „Admin" w stopce na preview prowadzi na PRODUKCJĘ.**
+- [ ] · 🔵 · otwarte · § „Przycisk «Admin» w stopce prowadzi na PRODUKCJĘ" · **Przycisk „Admin" w stopce na preview prowadzi na PRODUKCJĘ.**
       Użytkownikowi nie szkodzi (na produkcji link jest poprawny), ale przenosi testującego na żywe
       dane jednym kliknięciem
 - [x] · 🔵 · dropped · ledger fazy 1 · picker kasy podaje MANAGEROWI kasę główną, której `/kasy` mu
@@ -63,14 +64,14 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
 
 ### Domknięte
 
-- [x] · 🟡 · **naprawione na tej gałęzi** · log:1145 · natywne okno przeglądarki przy usuwaniu
+- [x] · 🟡 · **naprawione na tej gałęzi** · § „Faktura wielostronicowa" → „Drobiazg z niespójności" · natywne okno przeglądarki przy usuwaniu
       faktury/strony. Commit `e7d31903` (ConfirmDialog) **jest w `heic-upload-gap`, ale NIE ma go
       w `staging`** — czyli naprawa wjedzie tylko razem z tą gałęzią
 
 ### Nie usterki, tylko świadome amputacje (decyzja właściciela)
 
-- `/raporty` wygaszone razem z wejściem w menu (zastępuje je „Flota") · log:1058
-- pobieranie faktur zawężone do trzech ekranów — **znika z pulpitu** · log:1085
+- `/raporty` wygaszone razem z wejściem w menu (zastępuje je „Flota") · § „Czego po przełączeniu nie będzie" → „1. Raporty"
+- pobieranie faktur zawężone do trzech ekranów — **znika z pulpitu** · § „Czego po przełączeniu nie będzie" → „3. Pobieranie faktur"
 
 ## Setup under test
 
