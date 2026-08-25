@@ -3,6 +3,7 @@ import type { Where } from 'payload'
 import {
   buildTransferFilters,
   scopeAuditThroughOriginal,
+  scopeNarrowsByOriginalOnlyField,
   stripCancelledFilters,
 } from '@/lib/queries/transfer-filters'
 import { sumFilteredByType } from '@/lib/db/sum-transfers'
@@ -123,11 +124,54 @@ describe('audit mode → scope through the cancelled original', () => {
     expect(scopeAuditThroughOriginal(plain)).toEqual(plain)
   })
 
+  // Exported, so a composed Where can carry original-only fields under `and` — unrewritten, the list
+  // reads „Brak danych".
+  it('recurses into `and` as well as `or`', () => {
+    const where = scopeAuditThroughOriginal({
+      and: [{ investment: { equals: 31 } }, { or: [{ worker: { equals: 25 } }] }],
+    })
+
+    expect(where.and).toEqual([
+      { 'cancelledTransaction.investment': { equals: 31 } },
+      { or: [{ 'cancelledTransaction.worker': { equals: 25 } }] },
+    ])
+  })
+
   // Why the sum tile above the list keeps the un-rewritten where: where-to-sql knows columns of
   // `transactions` and refuses anything else rather than silently dropping it (EX-574).
   it('produces a where the stats SQL translator refuses', () => {
     expect(() => buildSqlConditions(auditWhere({ investment: { equals: 31 } }))).toThrow(
       /unmapped field/,
     )
+  })
+})
+
+// The tile cannot be re-aimed the way the list is, so the caller drops it rather than render 0,00 zł
+// beside a list full of rows.
+describe('scopeNarrowsByOriginalOnlyField', () => {
+  it('is true for a field only the original carries, at any nesting depth', () => {
+    expect(scopeNarrowsByOriginalOnlyField({ investment: { equals: 31 } })).toBe(true)
+    expect(
+      scopeNarrowsByOriginalOnlyField({
+        or: [{ sourceRegister: { equals: 7 } }, { targetRegister: { equals: 7 } }],
+      }),
+    ).toBe(true)
+    expect(scopeNarrowsByOriginalOnlyField({ and: [{ or: [{ worker: { equals: 25 } }] }] })).toBe(
+      true,
+    )
+  })
+
+  it('is false for a scope the audit row itself carries, so the tile stays', () => {
+    expect(
+      scopeNarrowsByOriginalOnlyField(
+        buildTransferFilters({ cancelledTransactionAudit: '1' }, { id: 1 }),
+      ),
+    ).toBe(false)
+    expect(
+      scopeNarrowsByOriginalOnlyField({
+        date: { greater_than_equal: '2026-08-01' },
+        createdBy: { in: [3] },
+      }),
+    ).toBe(false)
   })
 })

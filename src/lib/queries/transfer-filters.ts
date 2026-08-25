@@ -183,6 +183,11 @@ export function buildTransferFilters(
 // would be subtracted a second time by the balance query (see enrichCancellationOriginals). So every
 // screen that narrows by one of these — kasa, pracownik, inwestycja — cut the audit rows away before
 // they could be paired with anything, and „Tryb anulowań" answered „Brak danych" on all three.
+// Exported, so a composed Where can carry original-only fields under a branch — unwalked, the list
+// reads „Brak danych".
+const isBranch = (field: string, condition: unknown): condition is Where[] =>
+  (field === 'or' || field === 'and') && Array.isArray(condition)
+
 const FIELDS_ONLY_THE_ORIGINAL_CARRIES = [
   'sourceRegister',
   'targetRegister',
@@ -210,14 +215,25 @@ const FIELDS_ONLY_THE_ORIGINAL_CARRIES = [
 export function scopeAuditThroughOriginal(where: Where): Where {
   return Object.fromEntries(
     Object.entries(where).map(([field, condition]) => {
-      if (field === 'or' && Array.isArray(condition)) {
-        return [field, (condition as Where[]).map(scopeAuditThroughOriginal)]
-      }
+      if (isBranch(field, condition)) return [field, condition.map(scopeAuditThroughOriginal)]
       return (FIELDS_ONLY_THE_ORIGINAL_CARRIES as readonly string[]).includes(field)
         ? [`cancelledTransaction.${field}`, condition]
         : [field, condition]
     }),
   )
+}
+
+/**
+ * Whether a scope narrows by something only the ORIGINAL carries — i.e. whether the sum tile can
+ * still be trusted in „Tryb anulowań". The tile goes through where-to-sql, which throws on a dotted
+ * path, so it cannot be re-aimed the way the list is — the caller drops it rather than render a
+ * confident 0,00 zł beside a populated list.
+ */
+export function scopeNarrowsByOriginalOnlyField(where: Where): boolean {
+  return Object.entries(where).some(([field, condition]) => {
+    if (isBranch(field, condition)) return condition.some(scopeNarrowsByOriginalOnlyField)
+    return (FIELDS_ONLY_THE_ORIGINAL_CARRIES as readonly string[]).includes(field)
+  })
 }
 
 /**
