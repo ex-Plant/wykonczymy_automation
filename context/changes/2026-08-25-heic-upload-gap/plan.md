@@ -167,7 +167,8 @@ annotations removed, `tsc` green.
 
 #### Automated Verification:
 
-- No references remain: `grep -r "AppFieldComponentsT" src` returns nothing
+- `AppFieldComponentsT` is defined exactly once, in `form-hooks.ts`, as `typeof fieldComponents`
+  (superseded the plan's original `grep → nothing`, which the Phase 2 deviation below makes unmeetable)
 - `FormFileInput` is gone: `grep -r "FormFileInput" src` returns nothing
 
 #### Manual Verification:
@@ -326,8 +327,16 @@ dumps. The snapshot dir is the rollback path and must exist before the first upd
 > annotation produced `TS7006 implicitly any` — losing the only type checking those files had.
 >
 > Resolution: `AppFieldComponentsT` is now `typeof fieldComponents` in `form-hooks.ts` — derived from
-> the registration, so the two can no longer disagree. The hand-written duplicate is gone; only the
-> seven wrappers annotate.
+> the registration, so the two can no longer disagree.
+>
+> **Corrected after the branch review.** The wrapper annotations this note described did not survive:
+> `f7a683bd` replaced them with `FormWithFieldT<TName>`, which checks the field NAME only. So today
+> `AppFieldComponentsT` has exactly two references, both inside `form-hooks.ts` — its definition and
+> the `children` callback of `FormWithFieldT`. No `form-fields/` wrapper annotates it any more.
+>
+> `FormWithFieldT.listeners` stays `any` by design (comment at `form-hooks.ts:40`): TanStack types a
+> listener by the field's VALUE, which a name-only type declines to name. An earlier gate note
+> recorded a narrowing there — it was never applied, and should not be read as shipped.
 >
 > **The removal caught a live defect.** The old mirror declared `Textarea: React.FC<… & { rows?: number }>`
 > while `FormTextarea` never accepted or forwarded `rows`. At an annotated call site the mirror is what
@@ -353,6 +362,21 @@ dumps. The snapshot dir is the rollback path and must exist before the first upd
 #### Automated
 
 - [x] 4.1 Runbook produkcyjny gotowy — `context/reference/blob-recovery-runbook.md` §5; sam przebieg jest ludzki, checklist w `context/foundation/manual-checks.md`
+
+### Unplanned work carried on this branch
+
+Recorded after the whole-branch review, which found these had shipped with no trace in the plan.
+
+- **EX-734 / EX-733** — both were filed at a gate as „out of scope, worth their own review", then
+  done on this same branch (`5f1fe3ed`, `f7a683bd`, `30be2dba`): roughly 20 of the 34 unplanned files.
+  The second gate pass describes them honestly; this note is what the plan itself was missing.
+- **`use-form-submit.ts:31-43` changes behaviour for every `keepOpen` form in the app.** A throwing
+  action used to end in silence with the form looking untouched; it now logs and toasts. The change is
+  right — a dropped connection or a deploy invalidating the action id is exactly when the user must be
+  told — but it reaches far beyond this slice and its rationale lived only in a commit message.
+- **Invoice/page removal** (`e7d31903`) rewrote a destructive path from `window.confirm` to a staged
+  `{title, run}` machine. It is the one surface here that deletes invoice bytes from Blob, and it
+  shipped with no declared verification; `manual-checks.md ## EX-394` now carries its own subsection.
 
 ### Whole-tree gate
 
