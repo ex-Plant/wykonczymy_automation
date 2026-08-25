@@ -178,6 +178,48 @@ export function buildTransferFilters(
   return where
 }
 
+// The fields a CANCELLATION row does not carry. cancelTransferAction copies only amount, date,
+// description, paymentMethod and the back-reference — deliberately, since a persisted sourceRegister
+// would be subtracted a second time by the balance query (see enrichCancellationOriginals). So every
+// screen that narrows by one of these — kasa, pracownik, inwestycja — cut the audit rows away before
+// they could be paired with anything, and „Tryb anulowań" answered „Brak danych" on all three.
+const FIELDS_ONLY_THE_ORIGINAL_CARRIES = [
+  'sourceRegister',
+  'targetRegister',
+  'investment',
+  'worker',
+  'expenseCategory',
+  'otherCategory',
+] as const
+
+/**
+ * Re-aim the audit list's scope at the transaction being cancelled.
+ *
+ * „Tryb anulowań" lists CANCELLATION rows and pairs each with its original. The narrowing, though,
+ * is always about the original — „anulowania w tej kasie" means transactions of that kasa that were
+ * cancelled, and the audit row itself belongs to no kasa at all. Payload resolves the dotted path
+ * through the self-relation, so this stays one query rather than a prefetch of ids.
+ *
+ * The list only. The sum tile above it goes through where-to-sql, which knows columns of
+ * `transactions` and throws on anything else — and a CANCELLATION copies its original's amount, so
+ * the tile is summing the same money either way.
+ *
+ * Fields the audit row DOES carry stay put and mean what they say: `date` is when it was cancelled,
+ * `createdBy` is who cancelled it.
+ */
+export function scopeAuditThroughOriginal(where: Where): Where {
+  return Object.fromEntries(
+    Object.entries(where).map(([field, condition]) => {
+      if (field === 'or' && Array.isArray(condition)) {
+        return [field, (condition as Where[]).map(scopeAuditThroughOriginal)]
+      }
+      return (FIELDS_ONLY_THE_ORIGINAL_CARRIES as readonly string[]).includes(field)
+        ? [`cancelledTransaction.${field}`, condition]
+        : [field, condition]
+    }),
+  )
+}
+
 /**
  * Drop the `cancelled` condition for stats queries, which hardcode `cancelled IS NOT TRUE` in SQL.
  *

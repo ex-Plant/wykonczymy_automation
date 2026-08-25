@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
+import type { Where } from 'payload'
+import {
+  buildTransferFilters,
+  scopeAuditThroughOriginal,
+  stripCancelledFilters,
+} from '@/lib/queries/transfer-filters'
 import { sumFilteredByType } from '@/lib/db/sum-transfers'
+import { buildSqlConditions } from '@/lib/db/where-to-sql'
 import { fakePayload, lastSql, resetFakePayload } from '@/__tests__/helpers/fake-payload-sql'
 
 /**
@@ -66,6 +72,62 @@ describe('transfer filters → stats SQL', () => {
   it('matches a cash register on either side of the transfer', async () => {
     expect(await sqlForSearchParams({ sourceRegister: '3,5' })).toContain(
       '(source_register_id IN (3, 5) OR target_register_id IN (3, 5))',
+    )
+  })
+})
+
+/**
+ * These assert the Where, not emitted SQL — deliberately, and against the rule at the top of this
+ * file. The audit list is the one path that does NOT go through where-to-sql: it is handed to
+ * Payload, which resolves the dotted relationship path itself. The Where is therefore the whole
+ * contract, and there is no SQL of ours to pin instead.
+ */
+describe('audit mode → scope through the cancelled original', () => {
+  const auditWhere = (extra: Where) =>
+    scopeAuditThroughOriginal({
+      ...buildTransferFilters({ cancelledTransactionAudit: '1' }, { id: 1 }),
+      ...extra,
+    })
+
+  it('re-aims a kasa scope at both sides of the original transfer', () => {
+    const where = auditWhere({
+      or: [{ sourceRegister: { equals: 7 } }, { targetRegister: { equals: 7 } }],
+    })
+
+    expect(where.or).toEqual([
+      { 'cancelledTransaction.sourceRegister': { equals: 7 } },
+      { 'cancelledTransaction.targetRegister': { equals: 7 } },
+    ])
+  })
+
+  it('re-aims an inwestycja and a pracownik scope the same way', () => {
+    expect(auditWhere({ investment: { equals: 31 } })).toMatchObject({
+      'cancelledTransaction.investment': { equals: 31 },
+    })
+    expect(auditWhere({ worker: { equals: 25 } })).toMatchObject({
+      'cancelledTransaction.worker': { equals: 25 },
+    })
+  })
+
+  it('leaves what the audit row itself carries alone', () => {
+    const where = auditWhere({ date: { greater_than_equal: '2026-08-01' }, createdBy: { in: [3] } })
+
+    expect(where.type).toEqual({ in: ['CANCELLATION'] })
+    expect(where.date).toEqual({ greater_than_equal: '2026-08-01' })
+    expect(where.createdBy).toEqual({ in: [3] })
+  })
+
+  it('changes nothing on the unscoped list, which already worked', () => {
+    const plain = buildTransferFilters({ cancelledTransactionAudit: '1' }, { id: 1 })
+
+    expect(scopeAuditThroughOriginal(plain)).toEqual(plain)
+  })
+
+  // Why the sum tile above the list keeps the un-rewritten where: where-to-sql knows columns of
+  // `transactions` and refuses anything else rather than silently dropping it (EX-574).
+  it('produces a where the stats SQL translator refuses', () => {
+    expect(() => buildSqlConditions(auditWhere({ investment: { equals: 31 } }))).toThrow(
+      /unmapped field/,
     )
   })
 })

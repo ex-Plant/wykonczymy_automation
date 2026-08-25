@@ -45,9 +45,11 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       jednego kosztorysu. Odpaliłoby przy pierwszym złożonym z szablonu albo ręcznie. Naprawa:
       migracja `20260825_0_fix_own_tools_coeff_rounding` — poprawia i wartości, i domyślną kolumny,
       żeby baza przestała przeczyć `DEFAULT_COEFFS`. **Migrację na produkcji odpala człowiek**
-- [ ] · 🟡 · otwarte · § „«Tryb anulowań» nigdy nic nie pokaże na ekranie kasy" · **„Tryb anulowań" na ekranie kasy nigdy nic nie pokaże.** Wszystkie
-      296 anulowań w bazie ma pustą kasę, pracownika i inwestycję, więc zawężenie do kasy wycina je
-      co do jednego. Zastane, strukturalne — nie migracyjne
+- [x] · 🟡 · **naprawione na tej gałęzi** · § „«Tryb anulowań» nigdy nic nie pokaże na ekranie kasy" · **„Tryb anulowań" na ekranie kasy nigdy nic nie pokazywał.** Wszystkie
+      anulowania w bazie mają pustą kasę, pracownika i inwestycję, więc zawężenie do kasy wycinało je
+      co do jednego. Zastane, strukturalne — nie migracyjne. Naprawa: zawężenie celuje teraz
+      w **transakcję anulowaną**, a nie w wiersz anulowania. Zmierzone lokalnie: kasa 7 `0 → 74`,
+      inwestycja 31 `0 → 13`, pracownik 25 `0 → 8`; widok bez zawężenia bez zmian (298)
 - [ ] · 🟡 · otwarte · § „Findings" (ledger fazy 1), wpis o React #418 · **Niedopasowanie hydracji na kolumnie „Czas dodania"** — serwer
       renderuje UTC, przeglądarka Europe/Warsaw, więc każdy wiersz rozjeżdża się o dwie godziny.
       Zastane: `main` ma ten plik bajt w bajt taki sam
@@ -992,6 +994,30 @@ niego odwołuje). Martwy jest wyłącznie na trzech ekranach zawężonych, a prz
 właśnie na nich: kasa, pracownik i inwestycja.
 
 Do zapisania jako osobna sprawa — **to nie jest regresja tego scalenia** i nie blokuje przełączenia.
+
+##### Naprawa
+
+Anulowanie nie ma kasy celowo: gdyby ją miało, zapytanie liczące saldo odjęłoby tę samą kwotę drugi
+raz. Dokładnie tak samo jest z inwestycją i pracownikiem — wiersz anulowania niesie tylko kwotę,
+datę anulowania, opis, formę płatności i odnośnik do oryginału. Więc nie ma czego przenosić na wiersz
+anulowania; przenieść trzeba **pytanie**.
+
+Zawężenie celuje teraz w transakcję anulowaną, nie w wiersz anulowania: „anulowania w tej kasie"
+znaczy „transakcje tej kasy, które anulowano". Payload sam rozwiązuje przejście po odnośniku, więc
+zostaje to jednym zapytaniem, bez wcześniejszego pobierania listy numerów. Zmierzone lokalnie na
+zrzucie produkcji: **kasa 7 `0 → 74`**, **inwestycja 31 `0 → 13`**, **pracownik 25 `0 → 8`**, a widok
+bez zawężenia stoi na swoich 298 — czyli to, co działało, się nie ruszyło.
+
+Kafel z sumą nad listą **zostaje przy starym zapytaniu**: idzie inną drogą (własny tłumacz na SQL,
+który zna wyłącznie kolumny tabeli transakcji i na nieznanym polu rzuca błędem zamiast po cichu
+przestać zawężać — lekcja EX-574). Nic na tym nie traci, bo anulowanie kopiuje kwotę oryginału,
+więc suma jest ta sama z obu stron.
+
+Co zostaje po staremu i znaczy dokładnie to, co mówi: **data** to data anulowania (filtr okresu pyta
+„co anulowano w tym miesiącu"), a **„dodane przez"** to osoba, która anulowała.
+
+Zabezpieczenie: cztery przypadki w `src/__tests__/lib/queries/transfer-filters.test.ts`, w tym ten,
+że widok bez zawężenia nie zmienia się ani o pole.
 
 ### Edytor kosztorysu — dodawanie, usuwanie, wyszukiwarka, literówki
 

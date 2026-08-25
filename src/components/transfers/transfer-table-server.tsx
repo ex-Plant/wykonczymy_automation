@@ -3,7 +3,7 @@ import {
   buildCancellationOriginalsMap,
   enrichCancellationOriginals,
 } from '@/lib/queries/transfers'
-import { stripCancelledFilters } from '@/lib/queries/transfer-filters'
+import { scopeAuditThroughOriginal, stripCancelledFilters } from '@/lib/queries/transfer-filters'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { buildTransferRows } from '@/lib/queries/fetch-transfer-rows'
@@ -20,8 +20,14 @@ export async function TransferTableServer({ config }: TransferTableServerPropsT)
   const skipMedia = config.excludeColumns?.includes('invoice') ?? false
   const showTotalAmount = config.showTotalAmount !== false
 
+  // The audit list narrows through the original; the sum tile below cannot (see
+  // scopeAuditThroughOriginal) and keeps the where it was given.
+  const listQuery = config.cancelledTransactionAudit
+    ? { ...config.query, where: scopeAuditThroughOriginal(config.query.where) }
+    : config.query
+
   const [rawTxResult, refData, typeDistribution] = await Promise.all([
-    findTransfersRaw(config.query),
+    findTransfersRaw(listQuery),
     fetchReferenceData(),
     showTotalAmount
       ? fetchFilteredByType(stripCancelledFilters(config.query.where))
