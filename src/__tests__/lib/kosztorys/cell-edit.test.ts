@@ -16,7 +16,7 @@ const row = (plannedQty: number): QtyRowT => ({ id: 1, plannedQty })
 // branch is tested without dragging the price guard's own rules into it.
 const capped: CellEditPolicyT<QtyRowT, number> = {
   ...qty,
-  guard: (r) => (r.plannedQty > 100 ? 'za dużo' : null),
+  guard: (candidate) => (candidate.plannedQty > 100 ? 'za dużo' : null),
 }
 
 describe('cellKeystroke', () => {

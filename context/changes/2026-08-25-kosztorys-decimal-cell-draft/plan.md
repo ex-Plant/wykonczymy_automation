@@ -441,15 +441,15 @@ Run once, after phase 4:
 
 #### Automated
 
-- [x] 1.1 New spec passes: `cell-edit.test.ts`
-- [x] 1.2 Existing pure specs stay green: `subcontractor-price-edit.test.ts`, `kosztorys-discount-edit.test.ts`
+- [x] 1.1 New spec passes: `cell-edit.test.ts` — d109ddcc
+- [x] 1.2 Existing pure specs stay green: `subcontractor-price-edit.test.ts`, `kosztorys-discount-edit.test.ts` — d109ddcc
 
 ### Phase 2: `useCellDraft` + the subcontractor cells as its first consumer
 
 #### Automated
 
-- [ ] 2.1 `subcontractor-price-edit.test.ts` + `subcontractor-price-guard.test.ts` green after the extraction
-- [ ] 2.2 No phase-scoped automated check for the hook itself (no `renderHook` in this repo) — recorded deliberately
+- [x] 2.1 `subcontractor-price-edit.test.ts` + `subcontractor-price-guard.test.ts` green after the extraction
+- [x] 2.2 No phase-scoped automated check for the hook itself (no `renderHook` in this repo) — recorded deliberately
 
 ### Phase 3: „Rabat wart." onto the shared machine
 
