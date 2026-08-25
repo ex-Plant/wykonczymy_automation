@@ -209,6 +209,9 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   (`register-saldo.ts`, `subcontractor-roster.ts`) — never in `src/lib/actions`, which is mutations only.
 - `src/lib/cache` — cache tags + revalidation helpers
 - Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only)
+- `src/components/ui` is the domain-agnostic primitives layer — a component that knows it is filtering
+  a list belongs in `src/components/filters/` (EX-730 moved the last four out of `ui/`; git history and
+  older imports still point at the old home, so don't take a precedent from there)
 
 ## Auth And Roles
 
