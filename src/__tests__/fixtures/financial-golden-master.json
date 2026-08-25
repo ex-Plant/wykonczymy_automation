@@ -1,6 +1,6 @@
 {
   "fingerprint": {
-    "transactionCount": 3750,
+    "transactionCount": 3760,
     "kosztorysItemCount": 1000,
     "grossDepositsWithNet": 4,
     "legacyGrossDeposits": 2
@@ -75,10 +75,10 @@
       "81": "bc0a1e24e284fef51399245165363ff2",
       "83": "6ef32a2be4859d7fada39a34d278db53",
       "84": "1073645bf06bf2fceeef3edb5d0a0282",
-      "85": "30a3b37fabafdb3852f1f4726107c533",
-      "86": "4174a792a949de2ddaccc83a67a233a6",
+      "85": "b2d0e12e25f4876e0cf8b2f34d0a9242",
+      "86": "8c3c3d008c4eff6cb195a25ad5bc45a1",
       "87": "fbab6b7e5b50e9853a381051e27edd27",
-      "88": "bcfb9f2d14aa7b97efea594a17fac6ac",
+      "88": "fabea96239fc8c811d5df0899f695f34",
       "90": "7a6b74ad1a902859fcea73922f65b03a",
       "91": "fe318a78b98dfa55fecb951162d92e79",
       "93": "551ec5fa93e6dba8e3ff7f8adfff481b",
@@ -87,7 +87,7 @@
       "97": "073d6937c44633af1d7f95e1c7be5a0e",
       "98": "67e452d87e9df4bc2787cf71ddfea446",
       "99": "96108925feb85514b9478ccb15991c97",
-      "100": "111fecb792afe0772b79f2b12a8b2347",
+      "100": "fdf73ed93d769b3a21e440f556927d64",
       "101": "4bc7e6c5185cc0461d5cdb20a3213f6e",
       "102": "b3dc32baa81a9a07d37678ec2404f3c4",
       "103": "080945a9e6862dec9aea85fb5c13f19a",
@@ -121,10 +121,10 @@
       "133": "24c26d922a490a4ad4d29985d556b219"
     },
     "registers": {
-      "5": "6ac5b8e9d3565ac7b123ba876642a79c",
-      "7": "14a6a37c58d006109ef2b1ff774c33d2",
-      "8": "7a55509ffe7bdd4d820816aa3afc7e4f",
-      "9": "34a28a818a743875b482860c0b05182f",
+      "5": "c6def586e4c4933179f980c8ac187a20",
+      "7": "ba5d76691962b7ae191e9e4eac9550cb",
+      "8": "2980fe7d70140cb6d54e942e95e6f0e8",
+      "9": "c2913878f9785cdc9ebf7e1ddf73f656",
       "10": "c0cb4794f6488c9ced66d4bf588d93b0",
       "11": "4d8dd8e8ab0881a8e59b07f02c2ffa89",
       "12": "47a488eb79ea0f5d686d998c3f836dc7",
@@ -171,7 +171,7 @@
       "34": "98eb2bbc21524b029571691e374926b6",
       "36": "684462900a01fd6ccda7e0c816f18b0a",
       "38": "1fb0d3525bf17ef0ec446bcfc7e63bfb",
-      "39": "7caf165c57c78a79ec772a2076327267",
+      "39": "2ae6ce70692acd264723ec409608e981",
       "40": "03f7532583da5d7351debf7112e3df9c",
       "41": "c7e828830614071b3cb4fb40f4ee6edb",
       "43": "feefb64e1709434f578587bec78b6003",
@@ -229,7 +229,7 @@
       "totalSettled": 0,
       "balance": 213825.55,
       "margin": 57362,
-      "marginV2": -650310,
+      "marginV2": -650389.48,
       "deposits": {
         "paidNet": 122508,
         "paidGrossNet": 175000,
@@ -1795,16 +1795,16 @@
       "settledCategoryCosts": []
     },
     "85": {
-      "totalMaterialCosts": 32665.1,
+      "totalMaterialCosts": 32863.07,
       "totalIncome": 135001,
       "totalLaborCosts": 107394,
       "totalPayouts": 70802,
       "totalDiscount": 0,
       "totalLoss": 0,
-      "totalSettled": 0,
-      "balance": -5058.1,
-      "margin": 36592,
-      "marginV2": 0,
+      "totalSettled": 19.99,
+      "balance": -5256.07,
+      "margin": 36572.01,
+      "marginV2": -19.99,
       "deposits": {
         "paidNet": 135001,
         "paidGrossNet": 0,
@@ -1813,19 +1813,19 @@
         "paidNetCount": 3
       },
       "depositsNetAfterBridge": 135001,
-      "categoryCosts": [[1, 32665.1]],
-      "settledCategoryCosts": []
+      "categoryCosts": [[1, 32863.07]],
+      "settledCategoryCosts": [[3, 19.99]]
     },
     "86": {
       "totalMaterialCosts": 16896.69,
       "totalIncome": 40500,
       "totalLaborCosts": 33505,
-      "totalPayouts": 16850,
+      "totalPayouts": 25000,
       "totalDiscount": 0,
       "totalLoss": 0,
       "totalSettled": 0,
       "balance": -9901.69,
-      "margin": 16655,
+      "margin": 8505,
       "marginV2": 0,
       "deposits": {
         "paidNet": 40500,
@@ -1864,14 +1864,14 @@
       "settledCategoryCosts": []
     },
     "88": {
-      "totalMaterialCosts": 14849.56,
+      "totalMaterialCosts": 14884.43,
       "totalIncome": 70000,
       "totalLaborCosts": 65365,
       "totalPayouts": 28970,
       "totalDiscount": 0,
       "totalLoss": 0,
       "totalSettled": 984,
-      "balance": -10214.56,
+      "balance": -10249.43,
       "margin": 35411,
       "marginV2": -984,
       "deposits": {
@@ -1883,7 +1883,7 @@
       },
       "depositsNetAfterBridge": 70000,
       "categoryCosts": [
-        [1, 14697.99],
+        [1, 14732.86],
         [2, 151.57]
       ],
       "settledCategoryCosts": [[1, 984]]
@@ -2087,14 +2087,14 @@
       "settledCategoryCosts": []
     },
     "100": {
-      "totalMaterialCosts": 15577.97,
+      "totalMaterialCosts": 15638.32,
       "totalIncome": 61718.68,
       "totalLaborCosts": 0,
       "totalPayouts": 11100,
       "totalDiscount": 0,
       "totalLoss": 0,
       "totalSettled": 0,
-      "balance": 46140.71,
+      "balance": 46080.36,
       "margin": -11100,
       "marginV2": 0,
       "deposits": {
@@ -2105,7 +2105,7 @@
         "paidNetCount": 2
       },
       "depositsNetAfterBridge": 61718.68,
-      "categoryCosts": [[1, 15577.97]],
+      "categoryCosts": [[1, 15638.32]],
       "settledCategoryCosts": []
     },
     "101": {
@@ -2833,9 +2833,9 @@
   },
   "registers": {
     "5": 972387.78,
-    "7": 26013.29,
-    "8": 10210.42,
-    "9": 3432.64,
+    "7": 20863.29,
+    "8": 210.42,
+    "9": 10005.56,
     "10": 2494.98,
     "11": -332511.08,
     "12": 1547.85,
@@ -2881,7 +2881,7 @@
     "34": 1850,
     "36": 145500,
     "38": 27482,
-    "39": 79695,
+    "39": 87845,
     "40": 93150,
     "41": 73945,
     "43": 141735,
