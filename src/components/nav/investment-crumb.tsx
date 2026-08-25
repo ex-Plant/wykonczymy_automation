@@ -17,11 +17,11 @@ export async function InvestmentCrumb({ params }: InvestmentCrumbPropsT) {
   if (!name) return null
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 flex-col justify-center gap-1.5">
       <HistoryBackButton fallbackHref={`/inwestycje/${id}`} />
       <Link
         href={`/inwestycje/${id}`}
-        className="text-foreground truncate text-sm font-medium hover:underline"
+        className="text-foreground truncate text-sm leading-none font-medium hover:underline"
       >
         {name}
       </Link>
