@@ -50,12 +50,9 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       co do jednego. Zastane, strukturalne — nie migracyjne. Naprawa: zawężenie celuje teraz
       w **transakcję anulowaną**, a nie w wiersz anulowania. Zmierzone lokalnie: kasa 7 `0 → 74`,
       inwestycja 31 `0 → 13`, pracownik 25 `0 → 8`; widok bez zawężenia bez zmian (298)
-- [x] · 🟡 · **naprawione na tej gałęzi** · § „Findings" (ledger fazy 1), wpis o React #418 · **Niedopasowanie hydracji na kolumnie „Czas dodania"** — serwer
-      renderował UTC, przeglądarka Europe/Warsaw, więc każdy wiersz rozjeżdżał się o dwie godziny.
-      Zastane: `main` ma ten plik bajt w bajt taki sam. Naprawa: obie funkcje formatujące datę mają
-      teraz przypiętą strefę `Europe/Warsaw`, więc data znaczy to samo po obu stronach. Przy okazji
-      wyszła druga, cichsza wersja tego samego: sama data (`YYYY-MM-DD`) czytana na zachód od
-      Greenwich renderowała się **o dzień wcześniej**
+- [ ] · 🟡 · otwarte · § „Findings" (ledger fazy 1), wpis o React #418 · **Niedopasowanie hydracji na kolumnie „Czas dodania"** — serwer
+      renderuje UTC, przeglądarka Europe/Warsaw, więc każdy wiersz rozjeżdża się o dwie godziny.
+      Zastane: `main` ma ten plik bajt w bajt taki sam
 - [ ] · 🟡 · otwarte · § „Zakładki podsumowania" → „Ta sama kwota… różni się o grosz" · **Ta sama kwota różni się o grosz w dwóch miejscach zakładki
       „Podwykonawcy"**
 
@@ -116,8 +113,6 @@ _Legend — `[x]` terminal (fixed / dismissed / dropped), `[ ]` still owed._
       produkcja emituje to samo dzisiaj. Realny defekt, ale nie ten merge go wnosi.
       test: test-driven-debugging · unit — `formatPLDateTime` z ustawionym `TZ` da się przypiąć
       bez przeglądarki; guard = ta sama data w dwóch strefach daje ten sam string.
-      **Naprawione mimo odrzucenia dla cutoveru** (strefa przypięta na sztywno) —
-      `src/__tests__/lib/utils/format-date.test.ts`, cztery przypadki, napisane najpierw na czerwono.
 - [x] · 🔵 OBSERVATION · dropped · `src/components/nav/top-nav.tsx:29` · picker kasy
       w „Nowej wpłacie" podaje MANAGEROWI **31** pozycji, w tym `Kasa główna Bartek` (MAIN),
       której `/kasy` mu nie listuje, a `/kasa/5` odmawia. Czyli zobaczyć salda kasy głównej nie
