@@ -13,11 +13,12 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
 
 ### Kasują dane
 
-- [ ] · 🔴 · otwarte · § „Usuń całą fakturę" zostawia pliki · **Usuwanie faktury wielostronicowej zostawia pliki w magazynie bez rekordu.**
-      3× odtworzone, za każdym razem inna losowa ofiara, zero błędów w dzienniku serwera. Magazyn
-      nie ma kosza, a to są faktury trzymane na potrzeby podatkowe. **Ścieżka jest nowa — merge tę
-      usterkę wnosi.** `30be2dba` jej NIE rusza (sprawdzone: idzie w drugą stronę, poszerza warunek
-      pomijania). ⇒ **to jest jedyna rzecz blokująca scalenie**
+- [x] · 🔴 · **naprawione na tej gałęzi** · § „Usuń całą fakturę" zostawia pliki · **Usuwanie faktury wielostronicowej zostawiało pliki
+      w magazynie bez rekordu.** Przyczyna znaleziona i odtworzona: sprzątanie kasowało wszystkie
+      strony **równolegle**, a baza wdrożeniowa (Neon) przy równoległych zapisach Payloada
+      utrzymuje jeden z nich i **melduje sukces dla wszystkich**. Naprawa: kasowanie jedna strona
+      po drugiej. Na Neonie równolegle 5 stron → 3 sieroty, sekwencyjnie 12 na 12 czysto.
+      ⇒ **nic już nie blokuje scalenia**
 - [x] · 🔴 · **naprawione na tej gałęzi** · § „Realny problem: zmiana typu kasuje skan" · **Zmiana typu wydatku kasowała wszystko: kwotę,
       netto, opis, notatkę i podpięty skan faktury.** Czyszczenie zawężone do pól nagłówka (kasa,
       pracownik, inwestycja, „rozliczone") — pozycje, ich pliki i znaczniki skanu zostają. Pola
@@ -1568,6 +1569,37 @@ tu jako rzecz do naprawy przed scaleniem, nie po.
 magazynu plików środowiska przedprodukcyjnego, który jest wspólny i zostaje.** Nazwy plików
 dopisane do listy sprzątania na końcu tego dokumentu.
 
+### Przyczyna i naprawa
+
+**Nie da się tego odtworzyć lokalnie — i to była cała trudność.** Na lokalnej bazie w dockerze
+ta sama ścieżka jest czysta za każdym razem: osiem stron, osiem skasowanych rekordów, przez
+prawdziwe okno przeglądarki i prawdziwy przycisk. Dopiero puszczona przeciw **bazie takiej,
+jaka stoi pod wdrożeniem** (Neon, gałąź próbna) usterka wyskakuje natychmiast.
+
+**Co się naprawdę dzieje.** Sprzątanie po usunięciu brało wszystkie strony **naraz**, równolegle.
+Baza wdrożeniowa przy równoległych zapisach Payloada **utrzymuje jeden z nich, a resztę cicho
+gubi — i melduje sukces dla wszystkich**. Dlatego w dzienniku nie było ani jednego błędu: kod
+dostał osiem potwierdzeń, że skasował osiem rekordów, a w bazie zniknął jeden. To też tłumaczy
+losowość ofiary: wygrywa ten, który zdąży pierwszy.
+
+Pomiar, trzy przebiegi po pięć stron przeciw tej samej bazie:
+
+| sposób        | stron | skasowanych | sierot |
+| ------------- | ----- | ----------- | ------ |
+| równolegle    | 4     | 1           | 3      |
+| równolegle    | 6     | 2           | 4      |
+| po kolei      | 6     | 6           | 0      |
+| po kolei (×2) | 12    | 12          | 0      |
+
+**Naprawa: jedna strona po drugiej.** Żadnej równoległości w tej ścieżce — ani przy kasowaniu,
+ani przy sprawdzaniu, czy plik nie wisi jeszcze gdzie indziej (zły odczyt to też zostawiony plik).
+Test-strażnik pilnuje dokładnie tego: dwa kasowania nigdy nie mogą lecieć naraz. Sprawdzony
+w obie strony — na starym kodzie czerwony, na nowym zielony.
+
+**To samo grozi gdzie indziej.** `stampNotified` w przypomnieniach flotowych zapisuje znaczniki
+tak samo równolegle, więc gubi wszystkie oprócz jednego — skutek jest łagodny (przegląd
+przypomni się nazajutrz), ale mechanizm identyczny. Osobna rzecz, nietknięta tutaj.
+
 ## Wpłaty bez inwestycji i zabezpieczenie transferu do samego siebie
 
 Transfer kasa→kasa przeszedł już pełny test w fazie 1 (wyżej), więc tu tylko to, czego tamten
@@ -1956,11 +1988,10 @@ był plik, nie komunikat.
 
 ## Co blokuje scalenie
 
-**Jedna rzecz.** „Usuń całą fakturę" na fakturze wielostronicowej zostawia pliki w magazynie
-bez wskazującego rekordu — odtworzone trzykrotnie, za każdym razem z inną, losową ofiarą, przy
-zerze błędów w dzienniku serwera. Magazyn nie ma wersjonowania ani kosza, a mowa o dokumentach
-księgowych trzymanych na potrzeby podatkowe. **Ta ścieżka jest nowa**, więc przejście
-`staging` → `main` tę usterkę **wnosi**, a nie odsłania. Naprawa przed scaleniem, nie po.
+**Nic — naprawione.** Blokadą było jedno: „Usuń całą fakturę" na fakturze wielostronicowej
+zostawiało pliki w magazynie bez wskazującego rekordu. Przyczyna leżała w równoległym kasowaniu
+stron, którego baza wdrożeniowa nie znosi (utrzymuje jeden zapis, resztę gubi, a melduje sukces
+dla wszystkich). Kasowanie idzie teraz po kolei; szczegóły i pomiary przy opisie usterki wyżej.
 
 ## Co warto naprawić, ale nie wstrzymuje
 
@@ -2054,6 +2085,8 @@ księgowych trzymanych na potrzeby podatkowe. **Ta ścieżka jest nowa**, więc 
       `orphan-test-a-dd3fc3.png`, `orphan-test-b-b71b23.png`, `orphan-test-c-2f51c0.png`.
       **Ostatnich pięciu nie da się skasować z poziomu aplikacji** — to sieroty z usterki
       „Usuń całą fakturę" opisanej wyżej; idą tylko narzędziem do blobów
+- [ ] bajty z odtwarzania przyczyny tej usterki: 28 plików `repro-orphan-*.png` (rekordy `1423`–`1469`
+      na gałęzi próbnej) — rekordy znikną z gałęzią, bajty zostają w magazynie preview
 - [x] rozliczenia etapów na inwestycji 31 (6 × „z narzędziami", 1 × „bez narzędzi") **zostają
       ustawione** — interfejs nie pozwala cofnąć etapu do stanu „nieustawiony" (opisane wyżej).
       Znikną razem z gałęzią próbną; na produkcji te etapy nadal mają puste rozliczenie
