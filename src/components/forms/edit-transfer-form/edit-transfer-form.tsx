@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { FileInput } from '@/components/ui/file-input'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
+import { useFilePickIngest } from '@/components/forms/hooks/use-file-pick-ingest'
 import {
   showsInvestment,
   needsExpenseCategory,
@@ -14,22 +15,20 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
-import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
-import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
+import type { EditTransferFormValuesT } from './edit-transfer-form-api'
+import { submitWithInvoicePages } from '@/lib/invoices/submit-with-invoice-pages'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
-import type { z } from 'zod'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import { updateTransferAction } from '@/lib/actions/transfers'
 import {
   AmountField,
   DateField,
   DescriptionField,
   EntityComboboxField,
-  ExpenseCategoryField,
 } from '@/components/forms/form-fields'
+import { ExpenseCategoryField } from '@/components/forms/edit-transfer-form/expense-category-field'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
 import { FormClearButton } from '../form-components/form-clear-button'
@@ -41,8 +40,6 @@ type EditTransferFormPropsT = {
   keepOpen?: boolean
 }
 
-type FormValuesT = z.infer<typeof editTransferFormSchema>
-
 const FORM_ID = 'edit-transfer'
 
 export function EditTransferForm({
@@ -52,11 +49,7 @@ export function EditTransferForm({
   keepOpen,
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [hasPickedFiles, setHasPickedFiles] = useState(false)
-  // Bumped on reset to remount the (uncontrolled) file input, clearing its
-  // native file and internal filename state — form.reset() can't reach them.
-  const [fileInputKey, setFileInputKey] = useState(0)
+  const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
   const form = useAppForm({
     defaultValues: {
@@ -68,7 +61,7 @@ export function EditTransferForm({
       expenseCategory: row.expenseCategoryId ? String(row.expenseCategoryId) : '',
       otherCategory: row.otherCategoryId ? String(row.otherCategoryId ?? '') : '',
       invoiceNote: row.invoiceNote ?? '',
-    } as FormValuesT,
+    } as EditTransferFormValuesT,
     validators: {
       onSubmit: editTransferFormSchema,
     },
@@ -84,33 +77,21 @@ export function EditTransferForm({
         invoiceNote: value.invoiceNote || undefined,
       }
 
-      // Capture files before dialog closes — the ref won't be available after unmount
-      const files = [...(fileRef.current?.files ?? [])]
-
       await submit(!!keepOpen, {
         form,
         action: async () => {
-          let invoiceMediaIds: number[] | undefined
-          if (files.length > 0) {
-            try {
-              invoiceMediaIds = await resolveInvoicePageIds(files)
-            } catch (err) {
-              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
-              const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'
-              return { success: false, error: message }
-            }
-          }
-          const result = await updateTransferAction(row.id, data, invoiceMediaIds)
-          // The pages are in Blob but the update that would have attached them never happened.
-          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds)
-          return result
+          // Enter bypasses the disabled submit button, so the guard has to exist here too —
+          // saving mid-ingest would persist the row without the pages still being converted.
+          if (isIngesting) return { success: false, error: 'Poczekaj na przetworzenie plików.' }
+
+          return submitWithInvoicePages(files, (pageIds) =>
+            // `undefined` means "no pages this save" to an update that only ever ADDS invoices.
+            updateTransferAction(row.id, data, pageIds.length > 0 ? pageIds : undefined),
+          )
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
-        onReset: () => {
-          setHasPickedFiles(false)
-          setFileInputKey((k) => k + 1)
-        },
+        onReset: resetFiles,
       })
 
       return false
@@ -124,17 +105,16 @@ export function EditTransferForm({
   // type field without a reload (matches the create form's currentInvestment).
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
 
-  function handleFileChange() {
-    setHasPickedFiles((fileRef.current?.files?.length ?? 0) > 0)
-  }
-
   // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
   // the file input below only ever ADDS pages, so there is no other way to drop one here.
-  const { visibleInvoices, handleRemove, handleRemoveAll } = useInvoiceRemoval(row.id, row.invoices)
+  const { visibleInvoices, handleRemove, handleRemoveAll, removalConfirm } = useInvoiceRemoval(
+    row.id,
+    row.invoices,
+  )
 
   return (
     <form.AppForm>
-      <FormClearButton />
+      <FormClearButton onReset={resetFiles} />
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -163,7 +143,7 @@ export function EditTransferForm({
           )}
 
           <form.AppField name="otherCategory">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
                 {referenceData.otherCategories.map((cat) => (
                   <SelectItem key={cat.id} value={String(cat.id)}>
@@ -179,13 +159,13 @@ export function EditTransferForm({
               transfer has no version history, so the correction path is the one that leaves a trail:
               anuluj i zaksięguj na nowo. */}
           <form.AppField name="invoiceNote">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Textarea label="Notatka" placeholder="Wpisz notatkę..." rows={3} showError />
             )}
           </form.AppField>
 
           <div className="space-y-2">
-            {visibleInvoices.length > 0 && !hasPickedFiles && (
+            {visibleInvoices.length > 0 && files.length === 0 && (
               <InvoicePreviewButton
                 invoices={visibleInvoices}
                 onRemove={handleRemove}
@@ -193,18 +173,24 @@ export function EditTransferForm({
               />
             )}
             <FileInput
-              key={fileInputKey}
-              ref={fileRef}
+              key={inputKey}
               label="Dodaj faktury"
               accept="image/*,application/pdf"
               multiple
-              onChange={handleFileChange}
+              {...fileInputProps}
             />
           </div>
         </FieldGroup>
 
-        <FormFooter label="Zapisz" submittingLabel="Zapisywanie..." className="mt-6" />
+        <FormFooter
+          label="Zapisz"
+          submittingLabel="Zapisywanie..."
+          className="mt-6"
+          disabled={isIngesting}
+        />
       </form>
+
+      <ConfirmDialog {...removalConfirm} />
     </form.AppForm>
   )
 }

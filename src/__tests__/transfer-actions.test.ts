@@ -93,7 +93,7 @@ const {
   removeAllTransferInvoicesAction,
 } = await import('@/lib/actions/transfers')
 
-const { deleteOrphanedMediaAction } = await import('@/lib/actions/media')
+const { deleteOrphanedMediaAction } = await import('@/lib/actions/delete-orphaned-media')
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 

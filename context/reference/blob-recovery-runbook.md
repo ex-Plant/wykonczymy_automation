@@ -127,6 +127,15 @@ the correct name. The wrongly-named copies stay on FTP — mirror-only never del
 - **3 media rows point at already-missing blobs** (`id` 429, 580, 581 — old WhatsApp images).
   **0 transactions reference them** → harmless orphans. The snapshot cannot include them
   (already gone from the store). Documented so they aren't mistaken for backup failures.
+- **A 4th missing blob is NOT harmless** (found 2026-08-25 during the staging→main cutover
+  rehearsal, on the `cutover_rehearsal` Neon branch — a fork of production, so this holds on
+  production too). `media` id **1053** (`bricoman-18-07-2026-30ff6a.jpeg`, 71 680 B, created
+  2026-07-20) **is referenced by transaction 3899** (`transactions_rels.path = 'invoice'`), so
+  unlike 429/580/581 this one is a live invoice with a dead file behind it — the app renders a
+  preview button that resolves to nothing. Keep it separate from the three above when auditing:
+  a reference count of 0 means "safe to ignore", a count of 1 means "an invoice is missing".
+  **The bytes survive in the preview store**, which is a point-in-time copy of production, so the
+  recovery path is a targeted pull from preview rather than an FTP restore.
 
 ### The Hobby plan cannot execute a restore (found the hard way, 2026-08-19)
 
@@ -372,6 +381,113 @@ production since then has a `media` row locally but **404s** — its bytes were 
 
 The wrapper refuses `--allow-prod` outright, so a command named `refresh-preview` cannot write to
 production no matter what the caller types or a stale `.env.local` holds.
+
+### One-off: the HEIC → JPEG backfill on production (EX-394)
+
+`src/scripts/backfill-heic-media.ts` rewrites every `media` row whose `mime_type` is `image/heic`
+into a JPEG. It is a **mutating** run against the production store, so it belongs here rather than
+in a change folder: the same snapshot-first discipline as a restore, for the same reason.
+
+**Why it needs the discipline.** `plugin-cloud-storage`'s `afterChange` deletes the previous blob
+**before** it uploads the replacement. From the moment a row's update begins, its original is gone
+from the store — there is no in-store rollback window, and the FTP mirror is at most 24h fresh
+(§6). The script therefore downloads **every** original to a local snapshot dir before the first
+update, and a single failed download aborts the whole run.
+
+**Prerequisites:** `brew install libheif imagemagick` (`heif-convert`, `magick`), and the run is a
+**human's** — the agent never touches the production DB or the production store.
+
+**Why `VERCEL_ENV=production` is on every line.** The script imports `payload.config`, which refuses
+the production Blob token whenever `VERCEL_ENV !== 'production'` (§3) — so without it all three
+commands throw at import, before `main()` runs. Setting it is what tells that guard this really is
+the production run. It does **not** leave the run unguarded: the script carries its own pairing
+check, and refuses unless the **database and the store name the same environment** — the mispairing
+this whole procedure is one typo away from (production rows rewritten to filenames whose bytes went
+to preview, originals deleted from the wrong store). `--allow-prod` is then required on top, the
+same way `blob-restore.mjs` demands it.
+
+```bash
+# 1. dry run first — must enumerate the expected row count and nothing else
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --dry-run --allow-prod --snapshot-dir dumps/heic-backfill-prod
+
+# 2. canary — convert two rows, then verify them before committing to the rest
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --limit 2 --allow-prod --snapshot-dir dumps/heic-backfill-canary
+#    …then the same command with --verify --limit 2 (the "nothing left" sweep is skipped under --limit)
+
+# 3. the whole set (snapshots all originals first, then converts + updates)
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --allow-prod --snapshot-dir dumps/heic-backfill-prod
+
+# 4. verify — exits non-zero on any bad row
+source .env && VERCEL_ENV=production \
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --verify --allow-prod --snapshot-dir dumps/heic-backfill-prod
+```
+
+The token goes on the command line, exactly as §3 requires — no script reads
+`BLOB_READ_WRITE_TOKEN_PROD`, and a run off plain `.env` targets the **preview** store instead
+(which is what the staging rehearsal did). Beware `.env.local`: `vercel env pull` writes there and
+Next prefers it.
+
+If the run stops on a row, it says so and stops there rather than continuing: that row's original may
+already be deleted from the store, so the message names the `blob-restore.mjs` command that puts the
+snapshot back. The manifest is rewritten after every row, so it always describes what actually landed.
+
+`--verify` asserts, per row: `mime_type = image/jpeg`, filename ends `.jpg`, `width`/`height`
+non-null, a thumbnail exists, the **served bytes** start with the JPEG magic number, and the count
+of documents linking that media id — `transactions.invoice` **and**
+`vehicle-inspections.attachments`, both upload relations — is unchanged. The byte check is the one
+that matters: a green row over a 404 is exactly what a half-failed update leaves behind.
+
+**Cache-bust after the run — not optional.** `src/lib/queries/media.ts` holds the WHOLE media table
+in `unstable_cache(['media-all'], { tags: [media] })` with **no TTL**, and `resolveInvoiceFiles` reads
+`filename` off it. The script passes `context: { skipRevalidation: true }` (media's `afterChange`
+calls `revalidateTag`, which throws outside a request context and rolls the transaction back — the
+trap below), so nothing drops that entry. Meanwhile the blob plugin deleted each `.heic` before
+uploading its JPEG. Until the entry is dropped, **every converted invoice 404s**, and `--verify` will
+not see it — verify reads the database directly.
+
+**Redeploy the production app** once `--verify` comes back clean; a new deployment starts with an
+empty Data Cache. Then open a converted invoice in the live app before calling the run done.
+
+**Rollback.** The snapshot dirs, and nothing else — **both of them**, because the canary in step 2
+wrote to its own dir and those two rows are converted just as irreversibly as the rest:
+
+```bash
+for dir in dumps/heic-backfill-canary dumps/heic-backfill-prod; do
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" \
+    node scripts/blob-restore.mjs --dir "$dir" --allow-prod
+done
+```
+
+then, per id, restore from that dir's `manifest.json` (it records old and new values plus the
+pre-run link count). The DB side is **six** columns, not three — the update regenerated image
+metadata that a restored HEIC cannot carry:
+
+- `filename`, `mime_type`, `filesize` → the `old*` values in the manifest
+- `width`, `height` → back to `NULL` (`sharp` cannot decode HEIC — that NULL is what the row had)
+- `sizes_thumbnail_*` (filename, width, height, mime_type, filesize, url) → back to `NULL`; the
+  generated thumbnail is a separate blob key that the restore does not overwrite, so delete it from
+  the store too or it is left orphaned.
+
+Note each snapshot dir also holds `manifest.json` (plus any `manifest-<timestamp>.json` a `--force`
+re-run set aside), which `blob-restore.mjs` would upload as a blob — harmless, but move them out
+first if a clean store matters.
+
+**Staging rehearsal, 2026-08-25:** 18 rows on the preview DB + preview store, 18/18 converted,
+`--verify` exit 0, zero `image/heic` rows left, files 93–98% smaller (2.79 MB → 82 KB on the
+largest). One trap found: `payload.update` needs `context: { skipRevalidation: true }` or media's
+`afterChange` throws `Invariant: static generation store missing` and rolls the transaction back —
+that failure was clean, the store untouched.
 
 ---
 

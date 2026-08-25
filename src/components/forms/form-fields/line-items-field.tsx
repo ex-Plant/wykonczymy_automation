@@ -19,7 +19,6 @@ import {
   showsOtherCategory,
 } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import {
   makeLineItem,
   type BulkExpenseFormApiT,
@@ -27,8 +26,8 @@ import {
 } from '@/components/forms/expense-form/bulk-expense-form'
 
 // The TanStack array-field API this component drives (`form.Field name="lineItems" mode="array"`).
-// Structural on purpose — same convention as AppFieldComponentsT: name only the members we call,
-// since the full FieldApi generic is unnameable and the real inferred field is assignable to this.
+// Structural on purpose — name only the members we call, since the full FieldApi generic is
+// unnameable and the real inferred field is assignable to this.
 type LineItemsArrayFieldT = {
   state: { value: BulkExpenseFormValuesT['lineItems'] }
   pushValue: (value: BulkExpenseFormValuesT['lineItems'][number]) => void
@@ -132,7 +131,7 @@ function CategorySelect({
 }) {
   return (
     <form.AppField name={`lineItems[${index}].${config.fieldName}`}>
-      {(field: AppFieldComponentsT) => (
+      {(field) => (
         <field.Combobox
           label={config.label}
           placeholder={config.placeholder}
@@ -262,7 +261,7 @@ export function LineItemsField({
                     slots below pay for it with an mt-6 that clears a label + its gap. */}
                   <div className="flex items-start gap-2">
                     <form.AppField name={`lineItems[${index}].amount`}>
-                      {(field: AppFieldComponentsT) => (
+                      {(field) => (
                         <field.Input
                           // Named outright once a Netto column sits next to it — an unqualified
                           // „Kwota" beside „Netto" reads as the amount that bills the client,
@@ -277,7 +276,7 @@ export function LineItemsField({
                     </form.AppField>
                     {showsNetAmount && (
                       <form.AppField name={`lineItems[${index}].netAmount`}>
-                        {(field: AppFieldComponentsT) => (
+                        {(field) => (
                           <field.Input
                             label="Netto"
                             placeholder="0.00 PLN"
@@ -289,7 +288,7 @@ export function LineItemsField({
                       </form.AppField>
                     )}
                     <form.AppField name={`lineItems[${index}].description`}>
-                      {(field: AppFieldComponentsT) => (
+                      {(field) => (
                         <field.Input
                           label="Opis"
                           placeholder="Opcjonalnie"
@@ -355,7 +354,7 @@ export function LineItemsField({
                     />
                   </div>
                   <form.AppField name={`lineItems[${index}].invoiceNote`}>
-                    {(field: AppFieldComponentsT) => (
+                    {(field) => (
                       <field.Textarea
                         label="Notatka"
                         placeholder="Opcjonalnie"

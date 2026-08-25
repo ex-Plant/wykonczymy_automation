@@ -1,10 +1,9 @@
+import type { EditTransferFormApiT } from '@/components/forms/edit-transfer-form/edit-transfer-form-api'
 import { EXPENSE_CATEGORY_LABEL } from '@/lib/constants/transfers'
 import type { ReferenceItemT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type ExpenseCategoryFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  form: EditTransferFormApiT
   expenseCategories: ReferenceItemT[]
 }
 
@@ -16,7 +15,7 @@ export function ExpenseCategoryField({ form, expenseCategories }: ExpenseCategor
 
   return (
     <form.AppField name="expenseCategory">
-      {(field: AppFieldComponentsT) => (
+      {(field) => (
         <field.Combobox
           label={EXPENSE_CATEGORY_LABEL}
           placeholder="Wybierz typ"

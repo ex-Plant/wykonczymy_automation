@@ -1,10 +1,10 @@
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import { CashRegisterField } from './cash-register-field'
 import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import type { ReferenceItemT } from '@/types/reference-data'
 
 type SourceRegisterFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  form: FormWithFieldT<'sourceRegister'>
   cashRegisters: ReferenceItemT[]
   label?: string
   registerBalance: number | null
@@ -24,6 +24,7 @@ export function SourceRegisterField({
     <>
       <CashRegisterField
         form={form}
+        name="sourceRegister"
         cashRegisters={cashRegisters}
         label={label}
         listeners={{ onChange: ({ value }: { value: string }) => fetchRegisterBalance(value) }}

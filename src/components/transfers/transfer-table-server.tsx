@@ -3,7 +3,11 @@ import {
   buildCancellationOriginalsMap,
   enrichCancellationOriginals,
 } from '@/lib/queries/transfers'
-import { stripCancelledFilters } from '@/lib/queries/transfer-filters'
+import {
+  scopeNarrowsByOriginalOnlyField,
+  scopeAuditThroughOriginal,
+  stripCancelledFilters,
+} from '@/lib/queries/transfer-filters'
 import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { buildTransferRows } from '@/lib/queries/fetch-transfer-rows'
@@ -18,10 +22,18 @@ type TransferTableServerPropsT = {
 export async function TransferTableServer({ config }: TransferTableServerPropsT) {
   const step = perfStart()
   const skipMedia = config.excludeColumns?.includes('invoice') ?? false
-  const showTotalAmount = config.showTotalAmount !== false
+  // The audit list narrows through the original, the sum tile cannot — so where the raw where
+  // narrows by an original-only field the tile would sum nothing, and is dropped instead.
+  const showTotalAmount =
+    config.showTotalAmount !== false &&
+    !(config.cancelledTransactionAudit && scopeNarrowsByOriginalOnlyField(config.query.where))
+
+  const listQuery = config.cancelledTransactionAudit
+    ? { ...config.query, where: scopeAuditThroughOriginal(config.query.where) }
+    : config.query
 
   const [rawTxResult, refData, typeDistribution] = await Promise.all([
-    findTransfersRaw(config.query),
+    findTransfersRaw(listQuery),
     fetchReferenceData(),
     showTotalAmount
       ? fetchFilteredByType(stripCancelledFilters(config.query.where))

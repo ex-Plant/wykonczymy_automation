@@ -4,14 +4,12 @@ import { useStore } from '@/components/forms/hooks/form-hooks'
 // because a caller that filters an option list has to know the current selection *before* the field
 // renders — an empty list swaps the whole control out, so there is no field to read from.
 //
-// The cast is the price of the untyped `form: any` these field components take. It assumes `name` is
-// a flat key: a nested path ('a.b') would index `values` literally and return undefined, silently
-// dropping the selection. Every call site passes a top-level field name; keep it that way, or teach
+// `name` is assumed to be a flat key — a nested path ('a.b') would index `values` literally and
+// return undefined, silently dropping the selection. Keep call sites on top-level names, or teach
 // this helper to walk the path.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useFieldValue(form: any, name: string): string | undefined {
+export function useFieldValue(form: { store: unknown }, name: string): string | undefined {
   return useStore(
-    form.store,
+    form.store as Parameters<typeof useStore>[0],
     (state: unknown) => (state as { values: Record<string, string> }).values[name],
   )
 }

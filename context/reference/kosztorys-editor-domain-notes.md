@@ -581,6 +581,36 @@ czekanie na kwotę zostawiało listę obiecującą zastąpienie, którego silnik
   nigdy nie podróżuje przez przywrócenie wersji ani przez preset. Przywrócenie starej wersji zostawia
   bieżący rabat kwotowy nietknięty (wiersze migawki mają swoje własne rabaty per pozycja).
 
+### Pusta komórka liczbowa to zero, nie „brak" (2026-08-25)
+
+Wyczyszczenie „Przedmiaru", „Ceny j.m." czy „ilości" etapu zapisuje **0**, a nie pustkę — w arkuszu
+właściciela pusta pozycja liczy się jako zero i tak wchodzi do sum sekcji. Dlatego kasowanie treści
+komórki nie jest sygnałem „nie wiem", tylko wpisem zerowym, i tak samo działa `Delete` na
+zaznaczeniu kilku komórek: wpisuje zera, nie usuwa wierszy.
+
+Wyjątek pilnowany osobno: wyczyszczenie „Rabat wart." zdejmuje też **typ** rabatu — pozycja wraca na
+„Bez rabatu", bo rabat 0 zł i rabat 0% to w stopce ta sama informacja, a zostawiony typ udawałby
+udzieloną zniżkę.
+
+### Sufit rabatu per pozycja — 0–100%, twardo (EX-736, 2026-08-25)
+
+Rabat procentowy w pozycji **nie może przekroczyć 100%** (właściciel, 2026-08-25). 100% przechodzi —
+to praca oddana gratis, normalna decyzja handlowa. Powyżej wartość netto wiersza schodzi na minus i ta
+ujemna liczba idzie dalej w sumy sekcji i w stopkę, gdzie czyta się jako „inwestorowi należy się za
+wykonaną robotę".
+
+- **Odrzucenie, nie ostrzeżenie.** Komórka „Rabat wart." chodzi tą samą maszyną co sufit ceny
+  podwykonawcy: czerwona liczba z dymkiem w trakcie pisania, wycofanie z komunikatem po wyjściu,
+  wklejenie odrzucone.
+- **Sufit jest tylko na osi procentowej.** Rabat kwotowy nie ma progu — „250" to tam 250 zł, liczba
+  jak każda inna. Dlatego guard czyta parę (typ + wartość), a nie samą wartość.
+- **Przełączenie typu na „%" przycina wartość do 100.** Rabat 150 zł przestawiony w kolumnie „Rabat"
+  na procenty był jedyną drogą do 150% bez ani jednego klawisza przez guard — ta sama luka, którą
+  „Źródło" ma u podwykonawcy (wspólny slot na wartość, czytany pod nowymi regułami). Przycięcie, nie
+  wyzerowanie: przełączenie typu to zmiana jednostki, a nie kasowanie wpisanego rabatu.
+- **Rabat globalny „%" miał zakres `[0, 100]` od początku** (`applyPercentDiscountSchema`), więc
+  komórka była jedyną dziurą. Oba wejścia mówią teraz to samo.
+
 ### Zasięg filtrów na stronie inwestycji (EX-600, 2026-07-28)
 
 Panel podsumowania na `/inwestycje/<id>` pokazuje obok siebie liczby z dwóch źródeł, a filtry z

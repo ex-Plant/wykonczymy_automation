@@ -1,4 +1,4 @@
-import { deleteOrphanedMediaAction } from '@/lib/actions/media'
+import { deleteOrphanedMediaAction } from '@/lib/actions/delete-orphaned-media'
 import { logError } from '@/lib/utils/log-error'
 
 /**

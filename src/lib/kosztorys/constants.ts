@@ -29,9 +29,10 @@ export const SUBCONTRACTOR_FIGURE_LABELS = {
 
 // Default subcontractor markup coefficients for an investment — the single source for both the
 // Payload column `defaultValue` (src/collections/investments.ts) and the query fallback
-// (src/lib/queries/kosztorys.ts). A section or item may override them.
+// (src/lib/queries/kosztorys.ts). A single pozycja may override them.
 // `ownTools` is not an independent rate in the owner's sheet: it is the w-tools rate less 15%
-// (`=R−R*0,15`), so 0.65 × 0.85 = 0.5525 against the client price.
+// (`=R−R*0,15`), so 0.65 × 0.85 = 0.5525 against the client price. Rounding it to 0.55 is what
+// 20260825_0 had to undo across the whole table — the derivation is the rate, not a starting point.
 export const DEFAULT_COEFFS = { wTools: 0.65, ownTools: 0.5525 } as const
 
 // Default VAT rate for an investment without one, stored as a fraction (0.08 = 8%) — the single

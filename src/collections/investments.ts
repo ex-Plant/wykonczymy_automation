@@ -96,8 +96,10 @@ export const Investments: CollectionConfig = {
       label: { en: 'Status', pl: 'Status' },
       options: [...STATUS_OPTIONS],
     },
-    // Global (per-investment) subcontractor markup coefficients — the defaults for the sheet;
-    // a section may override them, and an item may override them. Columns created in a migration with defaults.
+    // Global (per-investment) subcontractor markup coefficients — the defaults for the sheet, which
+    // a single pozycja may override. „Bez narzędzi" is not an independent number: the sheet derives
+    // it as „z narzędziami" less 15%, which is why DEFAULT_COEFFS owns both and the column default
+    // had to be corrected to match (20260825_0).
     {
       name: 'wToolsCoeff',
       type: 'number',

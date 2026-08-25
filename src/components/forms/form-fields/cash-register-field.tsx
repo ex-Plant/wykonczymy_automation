@@ -1,30 +1,31 @@
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import { useMemo, useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
 import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { ReferenceItemT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
-type CashRegisterFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
-  name?: string
+type CashRegisterFieldPropsT<TName extends string> = {
+  form: FormWithFieldT<TName>
+  // Required, with no default: a defaulted literal has to be cast to `TName` to compile, and the
+  // cast is never checked against the form — the renamed-field check this type exists for silently
+  // stops applying at every call site that omits the name.
+  name: TName
   label?: string
   placeholder?: string
   cashRegisters: ReferenceItemT[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listeners?: Record<string, any>
+  listeners?: { onChange?: (arg: { value: string }) => void }
 }
 
-export function CashRegisterField({
+export function CashRegisterField<TName extends string>({
   form,
-  name = 'sourceRegister',
+  name,
   label = 'Kasa',
   placeholder = 'Wybierz kasę',
   cashRegisters,
   listeners,
-}: CashRegisterFieldPropsT) {
+}: CashRegisterFieldPropsT<TName>) {
   const [activeOnly, setActiveOnly] = useState(true)
 
   const selectedId = useFieldValue(form, name)
@@ -44,7 +45,7 @@ export function CashRegisterField({
 
   return (
     <form.AppField name={name} listeners={listeners}>
-      {(field: AppFieldComponentsT) =>
+      {(field) =>
         filteredRegisters.length > 0 ? (
           <field.Combobox
             label={label}

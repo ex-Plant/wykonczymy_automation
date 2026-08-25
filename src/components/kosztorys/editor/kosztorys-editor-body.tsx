@@ -124,8 +124,9 @@ export function KosztorysEditorBody({
 
   const { openImport, importDialogProps } = useSheetImport({ investmentId, onTreeReplaced })
 
-  // Both figures come off the full-dataset `subtotals`, so a search filter narrows the visible rows
-  // without changing what the section says it holds or what it is worth.
+  // Both figures come off `subtotals`, which counts the whole document rather than the visible rows,
+  // so a search filter narrows what is on screen without changing what the section says it holds or
+  // what it is worth. Under the client's preview the document itself is the shorter one.
   const sectionHeader = useMemo(
     () => ({
       figures: new Map(
@@ -242,7 +243,7 @@ export function KosztorysEditorBody({
             <div className="flex shrink-0 items-center gap-2">
               {/* The panel's open state is persisted per person, not per view, so without this the
                   client view inherits whatever the toolbar last left and can never fold it back. */}
-              <KosztorysTotalsPanelToggle size="default" />
+              <KosztorysTotalsPanelToggle size="default" disabled={subtotals.length === 0} />
             </div>
           </header>
         ) : (
@@ -354,33 +355,39 @@ export function KosztorysEditorBody({
                 )}
               </EmptyState>
             )}
-          {/* Overlays the grid's bottom edge instead of consuming a flex track — the grid keeps its
-              full height and its last rows scroll under the (opaque) panel rather than being pushed up. */}
-          <KosztorysTotalsPanel
-            {...panelData}
-            investmentId={investmentId}
-            investmentName={investmentName}
-            depositTransactions={depositTransactions}
-            stages={stages}
-            stageTotals={stageTotals}
-            workers={workers}
-            subcontractorDue={subcontractorDue}
-            marginForecastByPlane={marginForecastByPlane}
-            totalNet={totalNet}
-            laborCostsNet={laborCostsNet}
-            sectionSubtotals={progressSubtotals}
-            discountAmount={discountNetFromKosztorys}
-            lossAmount={investmentLoss}
-            reconciliation={reconciliation}
-            vatRate={tree.vatRate}
-            settlementMode={tree.settlementMode}
-            onSettlementModeChange={editor.handleSettlementModeChange}
-            materialsNetRate={tree.materialsNetRate}
-            onMaterialsNetRateChange={editor.handleMaterialsNetRateChange}
-            isSavingSettings={editor.isSavingSettings}
-            showSettingsBar
-            preview={preview}
-          />
+          {/* An opaque overlay over the WHOLE grid area, not a flex track: open, the summary takes the
+              editor's screen and the grid keeps its full height underneath rather than being squeezed
+              into what is left. Which is why it is not mounted over an empty kosztorys — the panel is
+              open by default, its figures are all zeros there, and it would paint them over the only
+              way in („Pobierz z arkusza Google…"), on exactly the first screen a new investment shows.
+              The stored preference is untouched: it applies again the moment there are rows. */}
+          {subtotals.length > 0 && (
+            <KosztorysTotalsPanel
+              {...panelData}
+              investmentId={investmentId}
+              investmentName={investmentName}
+              depositTransactions={depositTransactions}
+              stages={stages}
+              stageTotals={stageTotals}
+              workers={workers}
+              subcontractorDue={subcontractorDue}
+              marginForecastByPlane={marginForecastByPlane}
+              totalNet={totalNet}
+              laborCostsNet={laborCostsNet}
+              sectionSubtotals={progressSubtotals}
+              discountAmount={discountNetFromKosztorys}
+              lossAmount={investmentLoss}
+              reconciliation={reconciliation}
+              vatRate={tree.vatRate}
+              settlementMode={tree.settlementMode}
+              onSettlementModeChange={editor.handleSettlementModeChange}
+              materialsNetRate={tree.materialsNetRate}
+              onMaterialsNetRateChange={editor.handleMaterialsNetRateChange}
+              isSavingSettings={editor.isSavingSettings}
+              showSettingsBar
+              preview={preview}
+            />
+          )}
         </div>
         {/* Vertical guide while dragging a column edge (left = cursor viewport X). Portaled to body:
             <main> uses transform-gpu, which would otherwise make this `fixed` element measure `left`

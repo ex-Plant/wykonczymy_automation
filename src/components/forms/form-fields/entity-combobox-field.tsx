@@ -1,9 +1,9 @@
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import { useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
 import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { activeOrSelected } from '@/lib/utils/is-active-ref'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type EntityItemT = {
   id: number
@@ -42,21 +42,20 @@ const VARIANT_CONFIG = {
   },
 } as const satisfies Record<string, VariantConfigT>
 
-type EntityComboboxFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
-  variant: keyof typeof VARIANT_CONFIG
+type EntityComboboxFieldPropsT<TVariant extends keyof typeof VARIANT_CONFIG> = {
+  form: FormWithFieldT<(typeof VARIANT_CONFIG)[TVariant]['name']>
+  variant: TVariant
   items: EntityItemT[]
   // Forwarded to the inner AppField; only onChange is used at call sites (reset a dependent field).
   listeners?: { onChange?: () => void }
 }
 
-export function EntityComboboxField({
+export function EntityComboboxField<TVariant extends keyof typeof VARIANT_CONFIG>({
   form,
   variant,
   items,
   listeners,
-}: EntityComboboxFieldPropsT) {
+}: EntityComboboxFieldPropsT<TVariant>) {
   const [activeOnly, setActiveOnly] = useState(true)
   const config = VARIANT_CONFIG[variant]
 
@@ -72,7 +71,7 @@ export function EntityComboboxField({
 
   return (
     <form.AppField name={config.name} listeners={listeners}>
-      {(field: AppFieldComponentsT) =>
+      {(field) =>
         filtered.length > 0 ? (
           <field.Combobox
             label={config.label}

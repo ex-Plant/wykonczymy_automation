@@ -1516,6 +1516,52 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] Rozpoczęty szkic w „Dodaj pojazd" przeżywa otwarcie i zamknięcie „Edytuj pojazd" — dialog edycji nie kasuje ani nie nadpisuje szkicu tworzenia
 - [ ] „Dodaj pojazd": wypełnienie części pól, Esc, ponowne otwarcie — szkic **wraca** (zachowanie niezmienione)
 
+## EX-394 — HEIC: dziura w edycji przelewu + backfill starych faktur
+
+Setup: baza testowa 5435, zalogowany jako OWNER, na telefonie/dysku plik `.HEIC` prosto z iPhone'a
+oraz **PDF powyżej 4 MB**. Zdjęcie nie nadaje się do tego testu: guard 4 MB mierzy bajty **po**
+kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
+
+- [ ] „Edytuj przelew" → „Dodaj faktury" z plikiem `.HEIC`: przycisk „Zapisz" jest zablokowany na czas przetwarzania, a po zapisie podgląd pokazuje JPEG (nie HEIC)
+- [ ] Ten sam dialog, **PDF >4 MB**: leci komunikat o odrzuceniu pliku, a **nie** błąd 413 / „Upload nie powiódł się"
+- [ ] Po odrzuceniu pliku (PDF >4 MB / nieudana konwersja) picker **nie** zostaje z nazwą tego pliku — wraca do „Przeciągnij lub kliknij"
+- [ ] „Dodaj przegląd" z „nie zamykaj": po zapisie picker jest pusty, a nie z nazwami z poprzedniego przeglądu
+- [ ] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
+- [ ] Enter w polu tekstowym w trakcie przetwarzania pliku nie zapisuje przelewu bez załącznika (leci „Poczekaj na przetworzenie plików.")
+- [ ] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
+- [ ] „Wyczyść formularz" **w trakcie** konwersji HEIC: po jej zakończeniu „Zapisz" i picker są znów aktywne (nie zostają zablokowane do przeładowania)
+- [ ] „Edytuj przelew" → wybierz plik → „Wyczyść formularz": picker jest pusty, a zapis **nie** dołącza pliku wybranego przed wyczyszczeniem
+- [ ] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
+- [ ] Notatki w formularzach (przelew, inwestycja, przegląd) renderują się i zapisują jak wcześniej — `rows` dociera teraz do DOM, ale `field-sizing-content` + `min-h-[68px]` i tak rządzą wysokością, więc **nie** oczekuj widocznej różnicy
+- [ ] Po backfillu: kilka przekonwertowanych faktur otwiera się i jest czytelnych oraz **poprawnie obróconych**
+- [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
+- [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
+
+### Usuwanie faktur i stron — jedyna ścieżka w slice'ie, która kasuje bajty z Bloba
+
+Blob nie ma wersjonowania ani undelete, a lokalny dev i preview celują w **preview** store — na
+prodzie te same kliknięcia kasują fakturę zatrzymaną do celów podatkowych. Testować wyłącznie na
+bazie testowej 5435.
+
+- [ ] Wielostronicowa faktura → podgląd → „usuń" na jednej stronie: pytanie brzmi „usunąć tę stronę?", po potwierdzeniu znika **tylko** ta strona, podgląd zostaje otwarty na pozostałych
+- [ ] Ta sama faktura → „usuń całą fakturę": pytanie o całość, podgląd się zamyka, komórka „Faktura" nie pokazuje już nic
+- [ ] Jednostronicowa faktura → „usuń": pytanie brzmi „usunąć fakturę?" (nie „stronę"), podgląd się zamyka
+- [ ] Anulowanie okna potwierdzenia (przycisk, Escape, klik w tło) nie kasuje niczego
+- [ ] Ta sama ścieżka z „Edytuj przelew" zachowuje się identycznie jak z komórki na liście
+- [ ] Po odświeżeniu strony usunięte strony **nie** wracają — a te, których nie usunięto, dalej się otwierają
+
+### Backfill na produkcji — wykonuje człowiek
+
+Procedura, komendy i rollback: `context/reference/blob-recovery-runbook.md` §5. Agent nie dotyka
+produkcyjnej bazy ani produkcyjnego store'a.
+
+- [ ] `--dry-run` na prodzie wylicza spodziewaną liczbę rekordów i nic poza tym
+- [ ] Katalog snapshotu zawiera wszystkie oryginały **przed** pierwszym update'em
+- [ ] Kanarek `--limit 2` przechodzi (`--verify --limit 2` pomija zamiatanie „nic nie zostało")
+- [ ] `--verify` na prodzie zwraca komplet OK i kończy się kodem 0
+- [ ] **Redeploy** aplikacji po runie — bez tego `unstable_cache(['media-all'])` dalej podaje stare nazwy `.heic` i każda przerobiona faktura leci 404 (`--verify` tego nie widzi, czyta prosto z bazy)
+- [ ] Kilka faktur otwiera się na produkcji **po** redeployu
+
 ## S-18 (cut) — spot-check perfu edytora przy ~1000 pozycjach
 
 Jedyna pozostałość po wyciętym slice'ie `kosztorys-hardening` (tombstone S-18 w `roadmap.md`). To
@@ -1532,3 +1578,34 @@ dev — HMR i React DevTools zawyżają każdy pomiar.
 - [ ] Seria ▲▼ na pozycji w dużej sekcji nie blokuje wpisywania w innym wierszu
 - [ ] Przełączenie osi (netto/brutto, warstwa) przerysowuje siatkę bez zauważalnej pauzy
 - [ ] Undo (Ctrl+Z) po serii edycji wraca w tym samym czasie co przy małym kosztorysie
+
+## Kosztorys — jeden kontrakt edycji dla komórek liczbowych (przecinek, wycofanie, toast)
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`), zalogowany jako
+OWNER. Perf mierzyć osobno, na syntetycznym zestawie ~1000 pozycji (`INV=7`) i na buildzie
+produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
+
+- [ ] „Rabat wart.": wpisanie `12,5` i wyjście z komórki zapisuje 12,5 (nie 125), a po przeładowaniu strony wartość stoi
+- [ ] To samo w „Przedmiar", w „Cena j.m." i w „ilość" dowolnego etapu
+- [ ] Wpisanie `12.5` z kropki daje ten sam wynik, a po wyjściu komórka pokazuje `12,5`
+- [ ] Wpisanie `-` w „Przedmiar" i kliknięcie obok: zostaje **poprzednia** ilość, leci czerwony komunikat „przywrócono …"
+- [ ] Ten sam `-` w komórce, która i tak stała na tej wartości, nie wyrzuca komunikatu z niczego
+- [ ] Wyczyszczenie „Przedmiar" i wyjście zapisuje 0 — bez błędu zapisu i bez powrotu starej liczby
+- [ ] Wyczyszczenie „Rabat wart." zdejmuje też typ rabatu (kolumna „Rabat" wraca na „Bez rabatu")
+- [ ] Escape w trakcie pisania wraca do wartości sprzed wejścia w komórkę, bez komunikatu
+- [ ] Enter zatwierdza i schodzi wiersz niżej; Escape zostaje w tym samym wierszu
+- [ ] Delete na zaznaczeniu kilku komórek liczbowych wpisuje w nie 0 — i **nie** kasuje wierszy
+- [ ] Skopiowanie komórki i wklejenie w inną przenosi tę samą liczbę — także w „Rabat wart." i w „Cena j.m." u podwykonawcy
+- [ ] `1 234,5` z arkusza właściciela ląduje jako liczba **trzema drogami**: wpisane z ręki, wklejone do otwartej komórki i wklejone na zaznaczenie
+- [ ] „Cena j.m." u podwykonawcy: przekroczenie progu dalej pokazuje czerwoną liczbę z dymkiem, a po wyjściu wycofuje wartość z komunikatem (zachowanie niezmienione)
+- [ ] Po takim wycofaniu Cmd+Z **nie** przywraca odrzuconej liczby — ani gdy wyjście z komórki nastąpiło od razu, ani po sekundzie zastanowienia nad dymkiem (EX-737)
+- [ ] To samo dla `-` w „Przedmiar": wpisz kilka cyfr, dopisz `-`, odczekaj sekundę, kliknij obok — Cmd+Z cofa edycję sprzed wejścia w komórkę, nie odrzucony prefiks
+- [ ] Przewinięcie listy w trakcie pisania (wiersz wyjeżdża poza ekran): odrzucona liczba zostaje wycofana z komunikatem, a po przeładowaniu w „Przedmiar" stoi wartość sprzed edycji — nie przyjęty prefiks (EX-735)
+- [ ] To samo, gdy wiersz znika przez zmianę filtra albo odświeżenie w środku pisania
+- [ ] Kliknięcie, które jednocześnie wychodzi z komórki i usuwa wiersz z widoku, wyrzuca komunikat **raz**, nie dwa razy
+- [ ] „Rabat wart." przy typie „%": `101` świeci na czerwono z dymkiem, a po wyjściu wraca poprzedni rabat z komunikatem; `100` przechodzi (EX-736)
+- [ ] Ten sam `150` wklejony do „Rabat wart." na procentach nie wchodzi wcale, a przy typie „zł" 150 zł wchodzi normalnie
+- [ ] Rabat 150 zł przełączony w kolumnie „Rabat" na „%" ląduje jako 100%, nie 150%
+- [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
+- [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
+- [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny

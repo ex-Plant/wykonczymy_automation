@@ -1,15 +1,14 @@
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 
 type AmountFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  form: FormWithFieldT<'amount'>
   fieldClassName?: string
 }
 
 export function AmountField({ form, fieldClassName }: AmountFieldPropsT) {
   return (
     <form.AppField name="amount">
-      {(field: AppFieldComponentsT) => (
+      {(field) => (
         <field.Input
           label="Kwota (PLN)"
           placeholder="0.00"

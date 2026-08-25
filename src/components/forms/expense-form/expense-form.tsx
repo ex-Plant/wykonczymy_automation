@@ -23,7 +23,6 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { createBulkTransferAction } from '@/lib/actions/transfers'
-import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
 import { restorableType } from '@/components/forms/expense-form/draft-type'
 import { investmentForType, staleFieldsForType } from '@/lib/transfers/clear-fields-for-type'
@@ -31,11 +30,8 @@ import {
   makeLineItem,
   type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
-import {
-  InvoiceUploadError,
-  positionalFiles,
-  resolveInvoiceMediaIds,
-} from '@/lib/utils/upload-file-client'
+import { positionalFiles } from '@/lib/invoices/row-file-positions'
+import { submitWithInvoicePageRows } from '@/lib/invoices/submit-with-invoice-pages'
 import { toastMessage } from '@/lib/utils/toast'
 import {
   bulkExpenseFormSchema,
@@ -177,27 +173,12 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
 
       await submit(!!keepOpen, {
         form,
-        action: async () => {
-          let invoiceMediaIds: number[][] | undefined
-          if (files.size > 0) {
-            try {
-              // Submit is the only upload site: the AI scan sends raw bytes and persists nothing, so
-              // every attached file is uploaded once here.
-              invoiceMediaIds = await resolveInvoiceMediaIds(value.lineItems.length, files)
-            } catch (err) {
-              // A partly-failed batch still landed pages in Blob; those belong to no expense.
-              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
-              const message = err instanceof Error ? err.message : 'Nie udało się przesłać plików'
-              return { success: false, error: message }
-            }
-          }
-          const result = await createBulkTransferAction(data, invoiceMediaIds)
-          // The files are already in Blob at this point and the expense that would have referenced
-          // them was never created, so nothing can reach them again — clean up rather than leak.
-          // The user keeps their form (files included) and can resubmit, which re-uploads.
-          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds.flat())
-          return result
-        },
+        // Submit is the only upload site: the AI scan sends raw bytes and persists nothing, so
+        // every attached file is uploaded once here.
+        action: () =>
+          submitWithInvoicePageRows(value.lineItems.length, files, (invoicePageRows) =>
+            createBulkTransferAction(data, invoicePageRows),
+          ),
         successMessage: 'Transakcje dodane',
         files,
         onSubmitSuccess,
@@ -233,20 +214,23 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
-  // Blanked, never reset — see clear-fields-for-type.
+  // Blanked, never reset — see clear-fields-for-type. Top-level fields ONLY: the rows, their queued
+  // invoice files and the per-row scan markers all survive a type change.
+  //
+  // They used to be wiped here, which cost the user a paid receipt scan and the re-attached file
+  // every time they picked the type after scanning — the order `use-receipt-generation` itself
+  // assumes, since the scan is what fills the row. The hazard that wipe cited (a queued file
+  // binding to a nonexistent row) cannot happen: files are keyed by row id and `positionalFiles`
+  // resolves them against the CURRENT rows, dropping a stale id rather than mis-binding it. Nor can
+  // a retained value reach the wire — `mapLineItem` drops every conditional per-row field off a type
+  // that does not show it. Clearing everything stays on „Wyczyść".
   function resetConditionalFields(type: string) {
     staleFieldsForType(type).forEach(([field, value]) => form.setFieldValue(field, value))
     form.setFieldValue(
       'investment',
       investmentForType(type, form.getFieldValue('investment'), investmentFromUrl),
     )
-    // resetField('lineItems') would restore the stale-id mount default; set a fresh-id blank row
-    // instead so the row (and its uncontrolled FileInput) remounts. The queued files live outside
-    // the form, so clear them too — otherwise a file queued before the type switch attaches to the
-    // wrong/nonexistent line item on submit.
-    form.setFieldValue('lineItems', [makeLineItem()])
-    resetInvoiceFiles()
-    resetGeneration()
+    // The kasa may have just been blanked above, so the balance beside it no longer describes it.
     resetRegisterBalance()
   }
 

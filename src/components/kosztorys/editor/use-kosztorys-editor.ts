@@ -6,14 +6,16 @@ import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-deboun
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
+  foldRetractions,
   undoAvailability,
   type FieldChangeT,
+  type GridBurstT,
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
 import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
 import { itemFieldLane, stageLane } from '@/lib/kosztorys/save-lanes'
 import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
-import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
+import type { UndoCommandT, UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
@@ -138,7 +140,7 @@ export function useKosztorysEditor({
   const { save, runNow } = useDebouncedSave(500)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
   // here; the toolbar + keyboard call undo/redo (re-exported below).
-  const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
+  const { push, undo, redo, canUndo, canRedo, pruneByIds, amendTop } = undoRedo
   const [gridRef, gridHeight] = useElementHeight()
   // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
   // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
@@ -228,26 +230,54 @@ export function useKosztorysEditor({
   // flush while the shortcut already works (EX-526 #5).
   const [hasPendingBurst, setHasPendingBurst] = useState(false)
 
+  // The grid command sitting on top of the stack, kept with the burst it captured so the next flush
+  // can tell whether it retracts it (EX-737). Never consulted without the identity guard in
+  // `amendTop`, which is what makes a stale entry here harmless rather than a source of truth.
+  const lastGridCommand = useRef<{ command: UndoCommandT; burst: GridBurstT } | null>(null)
+
+  function gridCommand({ fields, stages }: GridBurstT): UndoCommandT | null {
+    if (fields.length === 0 && stages.length === 0) return null
+    return {
+      label: 'Edycja',
+      undo: () => runGridReversal(fields, stages, 'undo'),
+      redo: () => runGridReversal(fields, stages, 'redo'),
+      touchedIds: [...new Set([...fields.map((c) => c.id), ...stages.map((c) => c.id)])],
+    }
+  }
+
   // Collapse the buffered burst into one undo command (before=first seen, after=last), dropping a
-  // net-zero burst (type-then-revert) entirely so it never lands a dead entry on the stack.
+  // net-zero burst (type-then-revert) entirely so it never lands a dead entry on the stack. A burst
+  // that takes back the command already on top cancels against it too, so a refused value and the
+  // prefix it left behind leave the stack exactly as they found it.
   function flushUndoBuffer() {
     if (flushTimer.current) {
       clearTimeout(flushTimer.current)
       flushTimer.current = null
     }
-    const fields = coalesceFieldChanges(pendingFields.current)
-    const stages = coalesceStageChanges(pendingStages.current)
+    let burst: GridBurstT = {
+      fields: coalesceFieldChanges(pendingFields.current),
+      stages: coalesceStageChanges(pendingStages.current),
+    }
     pendingFields.current = []
     pendingStages.current = []
     setHasPendingBurst(false)
-    if (fields.length === 0 && stages.length === 0) return
-    const touchedIds = [...new Set([...fields.map((c) => c.id), ...stages.map((c) => c.id)])]
-    push({
-      label: 'Edycja',
-      undo: () => runGridReversal(fields, stages, 'undo'),
-      redo: () => runGridReversal(fields, stages, 'redo'),
-      touchedIds,
-    })
+
+    const previous = lastGridCommand.current
+    if (previous) {
+      const folded = foldRetractions(previous.burst, burst)
+      if (folded.retracted) {
+        const trimmed = gridCommand(folded.previous)
+        if (amendTop(previous.command, trimmed)) {
+          lastGridCommand.current = trimmed ? { command: trimmed, burst: folded.previous } : null
+          burst = folded.next
+        }
+      }
+    }
+
+    const command = gridCommand(burst)
+    if (!command) return
+    push(command)
+    lastGridCommand.current = { command, burst }
   }
 
   // A failed save can filter the last entry out of the burst buffers; if that empties them, cancel the
@@ -454,9 +484,27 @@ export function useKosztorysEditor({
   )
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
-  // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort.
-  const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
+  // What the document consists of. On the owner's grid it is the FULL dataset in display order, which
+  // is what makes a filter visible: the figures and the numbering skip over the rows it hid. The
+  // client's document is not a filtered view of ours — it IS the offer, so under the preview the
+  // owner's stored hide decision is applied first. Search and sort are deliberately left out of both:
+  // a number that moved as the reader typed would name a different pozycja every keystroke.
+  const documentRows = useMemo(
+    () =>
+      preview
+        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
+        : rows,
+    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
+  )
+
+  // Per-section subtotals: the whole document (not viewRows) — a stable breakdown independent of the
+  // filter/sort. Off `documentRows` rather than `rows`, so „WC (52 poz.)" cannot stand over the four
+  // pozycje a client actually receives. No money moves with it: the only rows the client's document
+  // drops are empty on BOTH axes and add zero to every figure (see the 'client-empty' condition).
+  const subtotals = useMemo(
+    () => sectionSubtotalsForView(documentRows, stages, view),
+    [documentRows, stages, view],
+  )
   // Sections every one of whose pozycje match a liftable condition — the ids each „Sekcje …" row in
   // the menu ticks and unticks as a block. „Wszystkie co do jednej", never „suma = 0": a section fully
   // executed but unpriced sums to zero and is exactly the one nobody wants folded away. A mixed
@@ -507,20 +555,7 @@ export function useKosztorysEditor({
     if (latch) for (const row of next) latch.ids.add(row.id)
     return next
   }, [rows, search, engagedConditionIds, sort, view, stages, hasSettledMaterial, latch])
-  // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
-  // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
-  // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
-  // from it, so under the preview the owner's stored hide decision is applied first and the offer runs
-  // 1…N. Search and sort are deliberately left out of both: a number that moved as the reader typed
-  // would name a different pozycja every keystroke.
-  const numberedRows = useMemo(
-    () =>
-      preview
-        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
-        : rows,
-    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
-  )
-  const ordinalByRowId = useMemo(() => baseOrdinals(numberedRows), [numberedRows])
+  const ordinalByRowId = useMemo(() => baseOrdinals(documentRows), [documentRows])
   // Sections keep their original order however the filter thinned them.
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // Executed total at the active view — the money the totals bar shows and the base the global

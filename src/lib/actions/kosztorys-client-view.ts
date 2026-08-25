@@ -1,6 +1,7 @@
 'use server'
 
 import { ownerOnlyAction } from '@/lib/actions/owner-only-action'
+import { OWNER_ONLY_CLIENT_VIEW_MESSAGE } from '@/lib/kosztorys/owner-only-messages'
 import {
   sanitizeClientViewConfig,
   sanitizeClientViewVariant,
@@ -11,7 +12,7 @@ import { findClientViewRow } from '@/lib/queries/kosztorys-client-view'
 import type { ActionResultT } from '@/types/action'
 
 // Same narrowing as the share actions, for the same reason: this decides what a client is served.
-const FORBIDDEN = 'Tylko właściciel może zmieniać ustawienia podglądu inwestora'
+const FORBIDDEN = OWNER_ONLY_CLIENT_VIEW_MESSAGE
 
 export async function saveClientViewSettingsAction(
   investmentId: number,

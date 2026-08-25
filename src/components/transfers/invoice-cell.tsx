@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
 import { useInvoiceUpload } from '@/hooks/use-invoice-upload'
@@ -16,7 +17,7 @@ type InvoiceCellPropsT = {
 export function InvoiceCell({ transactionId, invoices }: InvoiceCellPropsT) {
   const pickerRef = useRef<HTMLInputElement>(null)
   const { isUploading, uploadFiles } = useInvoiceUpload(transactionId)
-  const { visibleInvoices, handleRemove, handleRemoveAll } = useInvoiceRemoval(
+  const { visibleInvoices, handleRemove, handleRemoveAll, removalConfirm } = useInvoiceRemoval(
     transactionId,
     invoices,
   )
@@ -76,6 +77,8 @@ export function InvoiceCell({ transactionId, invoices }: InvoiceCellPropsT) {
         className="sr-only"
         onChange={handlePicked}
       />
+
+      <ConfirmDialog {...removalConfirm} />
     </>
   )
 }

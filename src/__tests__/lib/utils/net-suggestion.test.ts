@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { netSuggestion } from '@/components/forms/form-fields/plane-amount-field'
+import { netSuggestion } from '@/lib/utils/net-suggestion'
 
 // A faktura whose materiały sit at the shop's stawka has no single rate that derives its netto, so
 // the owner overtypes the suggestion — and from then on the kwota is his. The two ways that

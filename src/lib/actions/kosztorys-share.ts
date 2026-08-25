@@ -3,6 +3,7 @@
 import { randomBytes } from 'node:crypto'
 import type { Payload } from 'payload'
 import { ownerOnlyAction } from '@/lib/actions/owner-only-action'
+import { OWNER_ONLY_SHARE_MESSAGE } from '@/lib/kosztorys/owner-only-messages'
 import type { ActionResultT } from '@/types/action'
 
 // 24 bytes ≈ 192 bits of entropy — the token IS the credential for an unauthenticated page, so it
@@ -11,7 +12,7 @@ const TOKEN_BYTES = 24
 
 // All three share actions are owner-only, not just MANAGEMENT_ROLES: the token is a bearer credential,
 // so a role that cannot rotate or revoke a link must not be able to read one and hand it out either.
-const FORBIDDEN = 'Tylko właściciel może udostępniać kosztorys inwestorowi'
+const FORBIDDEN = OWNER_ONLY_SHARE_MESSAGE
 
 async function findShare(payload: Payload, investmentId: number) {
   const shares = await payload.find({

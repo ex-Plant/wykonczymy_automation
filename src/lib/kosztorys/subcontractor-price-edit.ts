@@ -1,7 +1,8 @@
 import { effectiveCoeff, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { type CellEditPolicyT } from '@/lib/kosztorys/cell-edit'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
+import { formatPLN } from '@/lib/utils/format-currency'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
-import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 import { round6 } from '@/lib/utils/round'
 import type { SubcontractorOverrideTypeT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
@@ -10,23 +11,6 @@ export type OverrideSnapshotT = {
   type: SubcontractorOverrideTypeT | null
   value: number
 }
-
-export type PriceSettleT<RowT> =
-  /** The row already says what the user left behind. */
-  | { kind: 'keep' }
-  /** An emptied field — the override reverts to „auto". */
-  | { kind: 'clear'; row: RowT }
-  | {
-      kind: 'rollback'
-      reason: 'blocked' | 'invalid'
-      /** `null` when the row is already back where it started and only the announcement is owed. */
-      row: RowT | null
-      restoredPrice: number
-    }
-
-export type PriceKeystrokeT<RowT> =
-  /** Text stands on screen, the row is untouched — a cleared field or half-typed garbage. */
-  { kind: 'hold' } | { kind: 'blocked'; message: string } | { kind: 'commit'; row: RowT }
 
 export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): OverrideSnapshotT {
   const { type, value } = OVERRIDE_FIELDS[view]
@@ -37,7 +21,7 @@ export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): Overr
 }
 
 /** The row with one plane's override replaced — the write every transition below resolves to. */
-export function withOverride<RowT extends ViewPricingT>(
+function withOverride<RowT extends ViewPricingT>(
   rowData: RowT,
   view: ToolPlaneT,
   snapshot: OverrideSnapshotT,
@@ -47,70 +31,30 @@ export function withOverride<RowT extends ViewPricingT>(
 }
 
 /**
- * One keystroke in „Cena j.m." (`mode: 'amount'`) or „Mnożnik" (`mode: 'coeff'`) of a subcontractor
- * view. One machine for both because both columns write the same field pair — the column typed into
- * is what picks the mode, so a hand-typed price IS „kwota stała" and nobody has to visit „Źródło"
- * first.
+ * „Cena j.m." (`mode: 'amount'`) and „Mnożnik" (`mode: 'coeff'`) of a subcontractor view as one
+ * policy, because both columns write the same field pair — the column typed into is what picks the
+ * mode, so a hand-typed price IS „kwota stała" and nobody has to visit „Źródło" first.
  *
- * `hold` is the important case: an emptied field must NOT write `type: null` back to the row.
- * Doing so flips the cell out of edit mode mid-typing, which swaps the input for read-only text —
- * the caret dies and the old value reappears under the user's hands. Clearing only takes effect
- * once the user leaves the cell, via `priceSettle`.
+ * The only one of the three cell families that carries a `guard`: the ceiling is a rule about what
+ * the company may pay a crew, and it has no business on the client's own price.
+ *
+ * „Mnożnik" is the sharp end of the prefix trap the rollback exists for — its prefixes start at the
+ * leading „0", so a refused „0,9" used to strand the row at a multiplier of zero.
  */
-export function priceKeystroke<RowT extends ViewPricingT>(
-  raw: string,
-  rowData: RowT,
+export function subcontractorPolicy<RowT extends ViewPricingT>(
   view: ToolPlaneT,
   mode: SubcontractorOverrideTypeT,
-): PriceKeystrokeT<RowT> {
-  const parsed = parseDecimalInput(raw)
-  if (parsed.kind !== 'value') return { kind: 'hold' }
-
-  const row = withOverride(rowData, view, { type: mode, value: parsed.value })
-  const refusal = checkSubcontractorPrice(row, view)
-  if (refusal) return { kind: 'blocked', message: refusal }
-  return { kind: 'commit', row }
-}
-
-/**
- * Leaving the cell.
- *
- * The rollback is what makes a rejected edit safe: keystrokes commit as they go, so typing
- * „2344000" writes 2, 23, 234 … until one crosses the ceiling and the rest are refused. Without
- * this, walking away left the last accepted PREFIX standing as if the user had chosen it — a value
- * they never typed, in a cell they were told had failed. „Mnożnik" is the worse half: its prefixes
- * start at the leading „0", so a refused „0,9" used to strand the row at a multiplier of zero.
- *
- * `reason` is what the caller announces: a refused value owes the user a word, because their number
- * is gone and an older one is on screen in its place. So does an unparseable one that displaced a
- * committed prefix — only garbage that changed nothing goes without a word, the way every text field
- * on earth discards it.
- */
-export function priceSettle<RowT extends ViewPricingT>(
-  draft: string,
-  rowData: RowT,
-  view: ToolPlaneT,
-  mode: SubcontractorOverrideTypeT,
-  entry: OverrideSnapshotT,
-): PriceSettleT<RowT> {
-  const parsed = parseDecimalInput(draft)
-  if (parsed.kind === 'empty') {
-    return { kind: 'clear', row: withOverride(rowData, view, { type: null, value: 0 }) }
-  }
-
-  const result = priceKeystroke(draft, rowData, view, mode)
-  if (result.kind === 'commit') return { kind: 'keep' }
-
-  const restored = withOverride(rowData, view, entry)
-  const current = overrideSnapshot(rowData, view)
-  const settled = current.type === entry.type && current.value === entry.value
+): CellEditPolicyT<RowT, OverrideSnapshotT> {
   return {
-    kind: 'rollback',
-    reason: result.kind === 'blocked' ? 'blocked' : 'invalid',
-    // Null once the row already stands where the rollback would put it — the announcement is still
-    // owed, only the write isn't.
-    row: settled ? null : restored,
-    restoredPrice: subcontractorPrice(restored, view),
+    snapshot: (row) => overrideSnapshot(row, view),
+    sameEntry: (a, b) => a.type === b.type && a.value === b.value,
+    restore: (row, entry) => withOverride(row, view, entry),
+    applyValue: (row, value) => withOverride(row, view, { type: mode, value }),
+    clear: (row) => withOverride(row, view, { type: null, value: 0 }),
+    guard: (row) => checkSubcontractorPrice(row, view),
+    // Carries „zł" even under „Mnożnik": what a refusal restores is the row's PRICE, and a bare
+    // „70,00" in a toast fired from the multiplier column reads as a multiplier of seventy.
+    restoredLabel: (row) => formatPLN(subcontractorPrice(row, view)),
   }
 }
 

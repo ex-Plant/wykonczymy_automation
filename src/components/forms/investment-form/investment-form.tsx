@@ -9,7 +9,6 @@ import { investmentFormSchema, type InvestmentFormValuesT } from './investment-s
 import { useInvestmentFormStore } from '@/stores/form-stores'
 import type { InvestmentFormDataT } from './investment-schema'
 import type { PresetMetaT } from '@/lib/db/presets'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import type { ActionResultT } from '@/types/action'
 
 type InvestmentFormPropsT = {
@@ -66,49 +65,41 @@ export function InvestmentForm({
     <FormShell form={form} onReset={reset}>
       <FieldGroup>
         <form.AppField name="name">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Nazwa" placeholder="Nazwa inwestycji" showError />
-          )}
+          {(field) => <field.Input label="Nazwa" placeholder="Nazwa inwestycji" showError />}
         </form.AppField>
 
         <form.AppField name="address">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Adres" placeholder="Adres inwestycji" showError />
-          )}
+          {(field) => <field.Input label="Adres" placeholder="Adres inwestycji" showError />}
         </form.AppField>
 
         <form.AppField name="phone">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Telefon" placeholder="Numer telefonu" showError />
-          )}
+          {(field) => <field.Input label="Telefon" placeholder="Numer telefonu" showError />}
         </form.AppField>
 
         <form.AppField name="email">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Input label="Email" type="email" placeholder="Adres email" showError />
           )}
         </form.AppField>
 
         <form.AppField name="contactPerson">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Input label="Osoba kontaktowa" placeholder="Imię i nazwisko" showError />
           )}
         </form.AppField>
 
         <form.AppField name="notes">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Textarea label="Notatki" placeholder="Notatki..." rows={3} showError />
           )}
         </form.AppField>
 
         <form.AppField name="review">
-          {(field: AppFieldComponentsT) => (
-            <field.Textarea label="Opinia" placeholder="Opinia..." rows={3} showError />
-          )}
+          {(field) => <field.Textarea label="Opinia" placeholder="Opinia..." rows={3} showError />}
         </form.AppField>
 
         <form.AppField name="status">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Select label="Status" showError>
               <SelectItem value="planowana">Planowana</SelectItem>
               <SelectItem value="active">Aktywna</SelectItem>
@@ -119,7 +110,7 @@ export function InvestmentForm({
 
         {presetOptions && presetOptions.length > 0 && (
           <form.AppField name="presetId">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Select
                 label="Kosztorys z szablonu"
                 placeholder="— pusty kosztorys —"

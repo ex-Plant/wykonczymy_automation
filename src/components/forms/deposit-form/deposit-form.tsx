@@ -33,30 +33,17 @@ import {
   DescriptionField,
   EntityComboboxField,
   PaymentMethodField,
-  PlaneAmountField,
 } from '@/components/forms/form-fields'
+import { PlaneAmountField } from '@/components/forms/deposit-form/plane-amount-field'
 import FormFooter from '../form-components/form-footer'
 import { createTransferAction } from '@/lib/actions/transfers'
 import { useDepositFormStore } from '@/stores/form-stores'
+import type { DepositFormValuesT } from './deposit-form-api'
 
 type DepositFormPropsT = {
   referenceData: ReferenceDataT
   onSubmitSuccess: () => void
   keepOpen?: boolean
-}
-
-type FormValuesT = {
-  description: string
-  amount: string
-  // The brutto kwota, typed only on a przelew — there `amount` is the faktura's netto beside it and
-  // this one is the money that actually moved. A gotówka leaves it empty; it has no brutto side.
-  amountGross: string
-  date: string
-  type: string
-  paymentMethod: string
-  vatPlane?: string
-  sourceRegister: string
-  investment?: string
 }
 
 const FORM_ID = 'deposit'
@@ -86,7 +73,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
   const rateFor = (investmentId: string | undefined) =>
     investmentFor(investmentId)?.vatRate ?? DEFAULT_VAT
 
-  const { form, reset, submitConfirm } = useManagedForm<FormValuesT, CreateTransferFormT>({
+  const { form, reset, submitConfirm } = useManagedForm<DepositFormValuesT, CreateTransferFormT>({
     formId: FORM_ID,
     useFormStore: useDepositFormStore,
     schema: transferFormSchema,
@@ -256,7 +243,11 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
             )}
           </div>
 
-          <CashRegisterField form={form} cashRegisters={referenceData.cashRegisters} />
+          <CashRegisterField
+            form={form}
+            name="sourceRegister"
+            cashRegisters={referenceData.cashRegisters}
+          />
         </FieldGroup>
 
         <FormFooter className="mt-6" />

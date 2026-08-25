@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
+  foldRetractions,
   undoAvailability,
   type FieldChangeT,
   type StageChangeT,
@@ -109,5 +110,93 @@ describe('undoAvailability', () => {
   it('passes the stack through once nothing is buffering', () => {
     expect(undoAvailability(true, true, false)).toEqual({ canUndo: true, canRedo: true })
     expect(undoAvailability(false, false, false)).toEqual({ canUndo: false, canRedo: false })
+  })
+})
+
+// EX-737: keystrokes commit as they go, so a value the policy refuses leaves the last accepted
+// PREFIX on the row and `cellSettle` rolls it back on the way out. Inside one 700ms window the two
+// halves coalesce to nothing on their own; once the window closes between them the prefix is already
+// a command, and the rollback would arrive as a second one — leaving Cmd+Z to hand back exactly the
+// number the user was told had been rejected.
+describe('foldRetractions', () => {
+  it('cancels a pushed prefix against the rollback that took it back', () => {
+    const previous = {
+      fields: [field({ field: 'wToolsOverrideValue', before: 100, after: 234 })],
+      stages: [],
+    }
+    const next = {
+      fields: [field({ field: 'wToolsOverrideValue', before: 234, after: 100 })],
+      stages: [],
+    }
+
+    const folded = foldRetractions(previous, next)
+
+    expect(folded.retracted).toBe(true)
+    expect(folded.previous.fields).toEqual([])
+    expect(folded.next.fields).toEqual([])
+  })
+
+  it('leaves a burst that CONTINUES the previous command alone', () => {
+    const previous = { fields: [field({ before: 'Mal', after: 'Malow' })], stages: [] }
+    const next = { fields: [field({ before: 'Malow', after: 'Malowanie' })], stages: [] }
+
+    const folded = foldRetractions(previous, next)
+
+    expect(folded.retracted).toBe(false)
+    expect(folded.previous.fields).toEqual(previous.fields)
+    expect(folded.next.fields).toEqual(next.fields)
+  })
+
+  it('only cancels the retracted cell, keeping every other change on both sides', () => {
+    const previous = {
+      fields: [
+        field({ id: 1, field: 'wToolsOverrideValue', before: 100, after: 234 }),
+        field({ id: 2, field: 'description', before: 'a', after: 'ab' }),
+      ],
+      stages: [],
+    }
+    const next = {
+      fields: [
+        field({ id: 1, field: 'wToolsOverrideValue', before: 234, after: 100 }),
+        field({ id: 3, field: 'unit', before: 'm2', after: 'mb' }),
+      ],
+      stages: [],
+    }
+
+    const folded = foldRetractions(previous, next)
+
+    expect(folded.previous.fields).toEqual([
+      { id: 2, field: 'description', before: 'a', after: 'ab' },
+    ])
+    expect(folded.next.fields).toEqual([{ id: 3, field: 'unit', before: 'm2', after: 'mb' }])
+  })
+
+  it('does not cancel across cells — same values, different (row, field)', () => {
+    const previous = { fields: [field({ id: 1, before: 'a', after: 'b' })], stages: [] }
+    const next = { fields: [field({ id: 2, before: 'b', after: 'a' })], stages: [] }
+
+    expect(foldRetractions(previous, next).retracted).toBe(false)
+  })
+
+  it('cancels a stage quantity the same way', () => {
+    const previous = { fields: [], stages: [stage({ before: 3, after: 12 })] }
+    const next = { fields: [], stages: [stage({ before: 12, after: 3 })] }
+
+    const folded = foldRetractions(previous, next)
+
+    expect(folded.retracted).toBe(true)
+    expect(folded.previous.stages).toEqual([])
+    expect(folded.next.stages).toEqual([])
+  })
+
+  it('leaves both sides untouched when the previous command is a different kind of edit', () => {
+    const previous = { fields: [], stages: [stage({ before: 0, after: 5 })] }
+    const next = { fields: [field({ before: 'a', after: 'b' })], stages: [] }
+
+    const folded = foldRetractions(previous, next)
+
+    expect(folded.retracted).toBe(false)
+    expect(folded.previous.stages).toEqual(previous.stages)
+    expect(folded.next.fields).toEqual(next.fields)
   })
 })

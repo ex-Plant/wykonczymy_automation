@@ -3,7 +3,7 @@ import FormBase from './form-base'
 import { FormControlPropsT } from '../types/form-types'
 import { useFieldContext } from '../hooks/form-hooks'
 
-export function FormTextarea(props: FormControlPropsT) {
+export function FormTextarea(props: FormControlPropsT & { rows?: number }) {
   const field = useFieldContext<string>()
   const isInvalid = field.state.meta.errors.length > 0
 
@@ -11,6 +11,7 @@ export function FormTextarea(props: FormControlPropsT) {
     <FormBase {...props}>
       <Textarea
         placeholder={props.placeholder}
+        rows={props.rows}
         id={field.name}
         name={field.name}
         value={field.state.value}

@@ -10,10 +10,10 @@ import {
 } from '@/components/ui/summary-grid'
 import { OptionalLink } from '@/components/ui/optional-link'
 import { formatNet } from '@/lib/kosztorys/format'
-import { roundToCents } from '@/lib/utils/round-to-cents'
 import { SUBCONTRACTOR_FIGURE_LABELS } from '@/lib/kosztorys/constants'
 import { investmentTransfersHref } from '@/lib/utils/investment-transfers-href'
 import { workerKey } from '@/lib/kosztorys/worker-key'
+import { subcontractorRowTotals } from '@/lib/kosztorys/subcontractor-summary'
 import type {
   SubcontractorWorkerRowT,
   WorkerSettlementStateT,
@@ -62,15 +62,7 @@ export function SubcontractorWorkerTotals({
   investmentId: number
   rows: SubcontractorWorkerRowT[]
 }) {
-  // Σ of the columns, not a second derivation of the headline block's figures: if the two ever
-  // disagree that is a fact about the data worth seeing, not something to paper over by quoting the
-  // same number twice. Rounded for the same reason each row is — summing floats that individually
-  // land on zero can still drift a grosz below it, which would paint a square „Razem" red.
-  const totals = {
-    due: roundToCents(rows.reduce((sum, row) => sum + row.due, 0)),
-    paid: roundToCents(rows.reduce((sum, row) => sum + row.paid, 0)),
-    remaining: roundToCents(rows.reduce((sum, row) => sum + row.remaining, 0)),
-  }
+  const totals = subcontractorRowTotals(rows)
 
   return (
     <SummaryTable

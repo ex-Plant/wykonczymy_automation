@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computeSubcontractorSummary } from '@/lib/kosztorys/subcontractor-summary'
+import {
+  computeSubcontractorSummary,
+  subcontractorRowTotals,
+} from '@/lib/kosztorys/subcontractor-summary'
 import type { WorkerRefT } from '@/types/reference-data'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 import type { SubcontractorPayoutRowT } from '@/types/transfers'
@@ -8,6 +11,14 @@ const payout = (workerId: number | null, total: number, name = 'x'): Subcontract
   workerId,
   total,
   name,
+})
+
+const stage = (id: number, workerId: number | null): KosztorysStageT => ({
+  id,
+  ordinal: id,
+  label: null,
+  plane: 'w_tools',
+  workerId,
 })
 
 const worker = (id: number, name: string): WorkerRefT => ({
@@ -59,14 +70,6 @@ describe('computeSubcontractorSummary', () => {
 // worker who is owed money going MISSING because they have no wypłata yet — the ledger alone would
 // never mention them.
 describe('computeSubcontractorSummary — per-worker attribution', () => {
-  const stage = (id: number, workerId: number | null): KosztorysStageT => ({
-    id,
-    ordinal: id,
-    label: null,
-    plane: 'w_tools',
-    workerId,
-  })
-
   it('includes a worker with należne and no wypłaty at all', () => {
     const { rows } = computeSubcontractorSummary(500, [payout(1, 200, 'Anna')], {
       byWorker: new Map([
@@ -212,5 +215,43 @@ describe('computeSubcontractorSummary — per-worker attribution', () => {
       })
       expect(rows.find((row) => row.workerId === 1)?.state).toBe('no_stages')
     })
+  })
+})
+
+// „Razem" under the worker table and „Pozostało do wypłaty" in the block beside it are the same
+// amount shown twice on one screen. In the 2026-08-25 rehearsal they read −131 494,73 and
+// −131 494,72, because one side rounded each worker separately and only then added them up.
+describe('subcontractorRowTotals — „Razem" cannot drift from the headline', () => {
+  // 0.125 is exact in binary, so every row is a clean half-grosz rounded up: two rows rounded
+  // separately come to 0,26 while together they are worth 0,25.
+  const HALF_GROSZ_DUE = 0.125
+
+  const summaryWithHalfGrosze = () =>
+    computeSubcontractorSummary(HALF_GROSZ_DUE * 2, [], {
+      byWorker: new Map([
+        [1, HALF_GROSZ_DUE],
+        [2, HALF_GROSZ_DUE],
+      ]),
+      stages: [stage(10, 1), stage(11, 2)],
+    })
+
+  it('sums należne at full precision, not after rounding the rows', () => {
+    expect(subcontractorRowTotals(summaryWithHalfGrosze().rows).due).toBe(0.25)
+  })
+
+  it('reports the same „Pozostało do wypłaty" as the headline block', () => {
+    const summary = summaryWithHalfGrosze()
+    expect(subcontractorRowTotals(summary.rows).remaining).toBe(summary.remaining)
+  })
+
+  // The rounding is there to cancel noise, not a real gap: if attribution lost money, „Razem" must
+  // show it rather than copy the headline's amount.
+  it('still shows the gap when the rows do not add up to the headline', () => {
+    const summary = computeSubcontractorSummary(1000, [], {
+      byWorker: new Map([[1, 400]]),
+      stages: [stage(10, 1)],
+    })
+    expect(subcontractorRowTotals(summary.rows).remaining).toBe(400)
+    expect(summary.remaining).toBe(1000)
   })
 })

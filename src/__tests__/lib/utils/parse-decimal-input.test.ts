@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
+import { decimalText } from '@/lib/utils/decimal-text'
+import { parseCellDecimal, parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 describe('parseDecimalInput', () => {
   it('parsuje liczbę i przyjmuje przecinek jako separator dziesiętny', () => {
@@ -25,5 +26,26 @@ describe('parseDecimalInput', () => {
     expect(parseDecimalInput('Infinity')).toEqual({ kind: 'invalid' })
     expect(parseDecimalInput('-Infinity')).toEqual({ kind: 'invalid' })
     expect(parseDecimalInput('1e999')).toEqual({ kind: 'invalid' })
+  })
+})
+
+// A grid cell renders with `decimalText` and reads back with `parseCellDecimal` on the next
+// keystroke. Break the round trip and an untouched cell re-commits a different number than it showed.
+describe('parseCellDecimal(decimalText(x)) round trip', () => {
+  it.each([0, 1, -3, 12.5, 0.01, 1234567.89, 1e21, -0.5])('survives %s', (value) => {
+    expect(parseCellDecimal(decimalText(value))).toEqual({ kind: 'value', value })
+  })
+
+  it('reads a figure pasted from the sheet with its NBSP thousands separator', () => {
+    expect(parseCellDecimal('1\u00a0234,50')).toEqual({ kind: 'value', value: 1234.5 })
+  })
+
+  it('keeps the form parse strict, where interior whitespace is a typo and not a separator', () => {
+    expect(parseDecimalInput('1 2')).toEqual({ kind: 'invalid' })
+  })
+
+  it('renders null/undefined as the empty cell that parses back to a clear', () => {
+    expect(parseCellDecimal(decimalText(null))).toEqual({ kind: 'empty' })
+    expect(parseCellDecimal(decimalText(undefined))).toEqual({ kind: 'empty' })
   })
 })
