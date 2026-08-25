@@ -1,11 +1,11 @@
 ---
 change_id: kosztorys-decimal-cell-draft
 title: One edit contract for every numeric kosztorys cell — draft, settle on blur, roll back with a toast
-status: implemented
+status: archived
 created: 2026-08-25
 updated: 2026-08-25
 branch: heic-upload-gap
-archived_at: null
+archived_at: 2026-08-25T16:20:59Z
 worktree: null
 ---
 
