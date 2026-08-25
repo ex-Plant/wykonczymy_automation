@@ -22,7 +22,6 @@ import type { z } from 'zod'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import { updateTransferAction } from '@/lib/actions/transfers'
 import {
   AmountField,
@@ -160,7 +159,7 @@ export function EditTransferForm({
           )}
 
           <form.AppField name="otherCategory">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
                 {referenceData.otherCategories.map((cat) => (
                   <SelectItem key={cat.id} value={String(cat.id)}>
@@ -176,7 +175,7 @@ export function EditTransferForm({
               transfer has no version history, so the correction path is the one that leaves a trail:
               anuluj i zaksięguj na nowo. */}
           <form.AppField name="invoiceNote">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Textarea label="Notatka" placeholder="Wpisz notatkę..." rows={3} showError />
             )}
           </form.AppField>

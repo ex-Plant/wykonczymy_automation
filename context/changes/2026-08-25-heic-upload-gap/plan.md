@@ -307,16 +307,32 @@ dumps. The snapshot dir is the rollback path and must exist before the first upd
 
 #### Automated
 
-- [x] 1.1 New spec passes: ingest-picked-files.test.ts
-- [x] 1.2 Existing ingest specs still pass
-- [x] 1.3 Browser E2E filed to the E2E backlog — EX-732
+- [x] 1.1 New spec passes: ingest-picked-files.test.ts — 235e9e47
+- [x] 1.2 Existing ingest specs still pass — 235e9e47
+- [x] 1.3 Browser E2E filed to the E2E backlog — EX-732 — 235e9e47
 
 ### Phase 2: Delete the AppFieldComponentsT mirror
 
 #### Automated
 
-- [ ] 2.1 No references to AppFieldComponentsT remain
-- [ ] 2.2 FormFileInput is gone
+- [x] 2.1 The hand-written mirror is gone — replaced by a type DERIVED from the registration (deviation, see below)
+- [x] 2.2 FormFileInput is gone
+- [x] 2.3 `pnpm typecheck` green after the removal
+
+> **Phase 2 deviation.** The plan said delete `AppFieldComponentsT` outright and let TanStack infer
+> `field`. That holds for the six files that call `useAppForm()` directly — annotations dropped, tsc
+> green. It does **not** hold for the seven `form-fields/` wrappers: each takes `form: any` (one
+> wrapper serves several form value shapes), so inference has nothing to work from and dropping the
+> annotation produced `TS7006 implicitly any` — losing the only type checking those files had.
+>
+> Resolution: `AppFieldComponentsT` is now `typeof fieldComponents` in `form-hooks.ts` — derived from
+> the registration, so the two can no longer disagree. The hand-written duplicate is gone; only the
+> seven wrappers annotate.
+>
+> **The removal caught a live defect.** The old mirror declared `Textarea: React.FC<… & { rows?: number }>`
+> while `FormTextarea` never accepted or forwarded `rows`. At an annotated call site the mirror is what
+> tsc checked, so all five `rows={2|3}` call sites typechecked and were silently dropped at runtime.
+> `FormTextarea` now takes `rows` and passes it through.
 
 ### Phase 3: Backfill the 18 HEIC rows — staging
 

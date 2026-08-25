@@ -11,7 +11,6 @@ import { useWorkerFormStore } from '@/stores/form-stores'
 import { ROLES, ROLE_LABELS } from '@/lib/auth/roles'
 import type { WorkerFormDataT } from './worker-schema'
 import type { ReferenceItemT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import type { ActionResultT } from '@/types/action'
 
 type WorkerFormPropsT = {
@@ -65,19 +64,17 @@ export function WorkerForm({
     <FormShell form={form} onReset={reset}>
       <FieldGroup>
         <form.AppField name="name">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Imię i nazwisko" placeholder="Jan Kowalski" showError />
-          )}
+          {(field) => <field.Input label="Imię i nazwisko" placeholder="Jan Kowalski" showError />}
         </form.AppField>
 
         <form.AppField name="email">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Input label="Email" type="email" placeholder="jan@example.com" showError />
           )}
         </form.AppField>
 
         <form.AppField name="role">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Select label="Rola" showError>
               {ROLES.map((role) => (
                 <SelectItem key={role} value={role}>
@@ -96,9 +93,7 @@ export function WorkerForm({
           cashRegisters={cashRegisters}
         />
 
-        <form.AppField name="active">
-          {(field: AppFieldComponentsT) => <field.Checkbox label="Aktywny" />}
-        </form.AppField>
+        <form.AppField name="active">{(field) => <field.Checkbox label="Aktywny" />}</form.AppField>
       </FieldGroup>
 
       <FormFooter label={submitLabel} submittingLabel={submittingLabel} className="mt-6" />

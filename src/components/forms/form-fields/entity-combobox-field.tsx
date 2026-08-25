@@ -1,9 +1,9 @@
+import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
 import { useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
 import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { activeOrSelected } from '@/lib/utils/is-active-ref'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type EntityItemT = {
   id: number

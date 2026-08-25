@@ -12,23 +12,3 @@ export type FormControlPropsT = {
   className?: string
   fieldClassName?: string
 }
-
-/**
- * Field API type for use in form.AppField render children.
- * Mirrors the registered field components from form-hooks.ts.
- */
-export type AppFieldComponentsT = {
-  Input: React.FC<FormControlPropsT>
-  Select: React.FC<FormControlPropsT & { children: React.ReactNode }>
-  Combobox: React.FC<
-    FormControlPropsT & {
-      items: { value: string; label: string }[]
-      searchPlaceholder?: string
-      emptyMessage?: string
-    }
-  >
-  DatePicker: React.FC<FormControlPropsT>
-  Checkbox: React.FC<FormControlPropsT>
-  Textarea: React.FC<FormControlPropsT & { rows?: number }>
-  FileInput: React.FC<FormControlPropsT>
-}

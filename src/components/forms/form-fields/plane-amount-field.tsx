@@ -1,5 +1,5 @@
+import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
 import { useEffect, useRef } from 'react'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
 

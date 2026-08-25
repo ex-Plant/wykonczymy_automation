@@ -21,7 +21,6 @@ import { formatKm } from '@/lib/utils/format-distance'
 import { useInspectionFormStore } from '@/stores/form-stores'
 import { inspectionFormSchema, type InspectionFormValuesT } from './inspection-schema'
 import type { InspectionFormDataT } from './inspection-schema'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import type { ActionResultT } from '@/types/action'
 import type { FleetRowT } from '@/types/fleet'
 
@@ -163,7 +162,7 @@ export function InspectionForm({
     <FormShell form={form} onReset={reset}>
       <FieldGroup>
         <form.AppField name="vehicle">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Select label="Pojazd" placeholder="Wybierz pojazd" showError>
               {vehicles.map((vehicle) => (
                 <SelectItem key={vehicle.id} value={String(vehicle.id)}>
@@ -178,7 +177,7 @@ export function InspectionForm({
           name="type"
           listeners={{ onChange: ({ value }) => onTypeChange(value as InspectionTypeT) }}
         >
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Select label="Rodzaj" showError>
               {INSPECTION_TYPES.map((type) => (
                 <SelectItem key={type} value={type}>
@@ -190,15 +189,15 @@ export function InspectionForm({
         </form.AppField>
 
         <form.AppField name="performedAt">
-          {(field: AppFieldComponentsT) => <field.DatePicker label="Data wykonania" showError />}
+          {(field) => <field.DatePicker label="Data wykonania" showError />}
         </form.AppField>
 
         <form.AppField name="nextDueAt">
-          {(field: AppFieldComponentsT) => <field.DatePicker label="Następny termin" showError />}
+          {(field) => <field.DatePicker label="Następny termin" showError />}
         </form.AppField>
 
         <form.AppField name="odometer">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Input label="Przebieg (km)" type="number" placeholder="120000" showError />
           )}
         </form.AppField>
@@ -212,7 +211,7 @@ export function InspectionForm({
 
         {currentType === 'OIL_CHANGE' && (
           <form.AppField name="nextDueOdometer">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Input
                 label="Następna wymiana przy (km)"
                 type="number"
@@ -224,13 +223,13 @@ export function InspectionForm({
         )}
 
         <form.AppField name="cost">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Input label="Koszt (PLN)" type="number" placeholder="0.00" showError />
           )}
         </form.AppField>
 
         <form.AppField name="note">
-          {(field: AppFieldComponentsT) => <field.Textarea label="Notatka" rows={2} />}
+          {(field) => <field.Textarea label="Notatka" rows={2} />}
         </form.AppField>
 
         <FileInput

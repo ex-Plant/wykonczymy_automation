@@ -1,10 +1,10 @@
+import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
 import { useMemo, useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
 import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { ReferenceItemT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type CashRegisterFieldPropsT = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

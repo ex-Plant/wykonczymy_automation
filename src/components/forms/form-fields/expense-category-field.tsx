@@ -1,6 +1,6 @@
+import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
 import { EXPENSE_CATEGORY_LABEL } from '@/lib/constants/transfers'
 import type { ReferenceItemT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 
 type ExpenseCategoryFieldPropsT = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -9,7 +9,6 @@ import { VEHICLE_STATUS_LABELS, VEHICLE_STATUSES } from '@/lib/fleet/vehicle-sta
 import { useVehicleFormStore } from '@/stores/form-stores'
 import { vehicleFormSchema, type VehicleFormValuesT } from './vehicle-schema'
 import type { VehicleFormDataT } from './vehicle-schema'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import type { ActionResultT } from '@/types/action'
 
 type VehicleFormPropsT = {
@@ -60,35 +59,25 @@ export function VehicleForm({
     <FormShell form={form} onReset={reset}>
       <FieldGroup>
         <form.AppField name="registration">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Numer rejestracyjny" placeholder="WX 12345" showError />
-          )}
+          {(field) => <field.Input label="Numer rejestracyjny" placeholder="WX 12345" showError />}
         </form.AppField>
 
         <form.AppField name="make">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Marka" placeholder="Ford" showError />
-          )}
+          {(field) => <field.Input label="Marka" placeholder="Ford" showError />}
         </form.AppField>
 
         <form.AppField name="model">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Model" placeholder="Transit" showError />
-          )}
+          {(field) => <field.Input label="Model" placeholder="Transit" showError />}
         </form.AppField>
 
         <form.AppField name="year">
-          {(field: AppFieldComponentsT) => (
-            <field.Input label="Rocznik" type="number" placeholder="2019" showError />
-          )}
+          {(field) => <field.Input label="Rocznik" type="number" placeholder="2019" showError />}
         </form.AppField>
 
-        <form.AppField name="vin">
-          {(field: AppFieldComponentsT) => <field.Input label="VIN" showError />}
-        </form.AppField>
+        <form.AppField name="vin">{(field) => <field.Input label="VIN" showError />}</form.AppField>
 
         <form.AppField name="status">
-          {(field: AppFieldComponentsT) => (
+          {(field) => (
             <field.Select label="Status" showError>
               {VEHICLE_STATUSES.map((status) => (
                 <SelectItem key={status} value={status}>

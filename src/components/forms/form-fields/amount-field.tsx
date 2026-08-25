@@ -1,5 +1,4 @@
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
-
+import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
 type AmountFieldPropsT = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: any
