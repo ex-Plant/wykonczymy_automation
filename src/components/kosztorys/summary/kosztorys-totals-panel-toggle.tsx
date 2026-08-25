@@ -10,12 +10,22 @@ import { cn } from '@/lib/utils/cn'
 // it, or the panel gets stuck in whatever state localStorage remembered.
 // `size` is caller-chosen: the owner's toolbar packs it into a dense `sm` row, while the client
 // view's header carries only two controls and needs this one to read as the primary way in.
-export function KosztorysTotalsPanelToggle({ size = 'sm' }: { size?: 'sm' | 'default' }) {
+// `disabled` on an empty kosztorys, where the body mounts no panel at all: without it the button
+// would flip to „Schowaj podsumowanie" over a screen where nothing opened.
+export function KosztorysTotalsPanelToggle({
+  size = 'sm',
+  disabled = false,
+}: {
+  size?: 'sm' | 'default'
+  disabled?: boolean
+}) {
   const [totalsOpen, setTotalsOpen] = useTotalsPanelOpen()
 
   return (
     <Button
       size={size}
+      disabled={disabled}
+      title={disabled ? 'Kosztorys jest pusty — nie ma czego podsumować' : undefined}
       variant={totalsOpen ? 'default' : 'outline'}
       // default variant has no border, outline does — keep the box identical so toggling doesn't
       // shift the right-aligned neighbour by the border's width.

@@ -20,12 +20,12 @@ import { KosztorysProblemsMenu } from '@/components/kosztorys/editor/toolbar/men
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
 export function KosztorysEditorToolbar() {
-  const { search, setSearch, view, setView } = useKosztorysEditorContext()
+  const { search, setSearch, view, setView, subtotals } = useKosztorysEditorContext()
 
   return (
     <div className="border-border shrink-0 border-b">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-        <KosztorysTotalsPanelToggle />
+        <KosztorysTotalsPanelToggle disabled={subtotals.length === 0} />
         <ToolbarToggle
           legend={VIEW_LEGEND}
           options={VIEWS}

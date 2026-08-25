@@ -65,10 +65,16 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
 
 ### Blokują albo mylą, ale nic nie psują
 
-- [ ] · 🔵 · otwarte · § „Panel podsumowania przykrywa jedyne wejście…" + „…przykrywa też siatkę" · **Rozwinięty panel podsumowania przechwytuje kliknięcia**
-      — przykrywa jedyne wejście do importu na pustym kosztorysie ORAZ dolną część siatki. Panel
-      jest rozwinięty domyślnie, więc to pierwszy ekran, jaki właściciel zobaczy. Domknięte dowodem:
-      po „Schowaj podsumowanie" ten sam klik na tym samym wierszu udaje się natychmiast
+- [x] · 🔵 · **naprawione na tej gałęzi** · § „Panel podsumowania przykrywa jedyne wejście…" + „…przykrywa też siatkę" · **Rozwinięty panel podsumowania przechwytywał kliknięcia**
+      — przykrywał jedyne wejście do importu na pustym kosztorysie. Panel jest rozwinięty domyślnie,
+      więc to pierwszy ekran, jaki właściciel zobaczy. Naprawa: nad pustym kosztorysem panel w ogóle
+      się nie montuje (nie ma czego podsumować — same zera), a przycisk „Pokaż podsumowanie" jest
+      wtedy nieaktywny z wyjaśnieniem. Zapamiętane ustawienie zostaje nietknięte i wraca w tej samej
+      chwili, w której pojawią się wiersze. **Druga połowa wpisu — przykrywanie siatki — odrzucona:**
+      pełnoekranowy panel to zamierzony projekt (commit `96746dab`, „full-height panel"), więc
+      otwarty zasłania **całą** siatkę, nie jej dolną część; człowiek widzi podsumowanie i przycisk
+      „Schowaj podsumowanie" obok. Dowód z próby („klik w wiersz nie dochodzi") pochodzi z kliknięcia
+      po węźle drzewa dostępności, który jest w DOM-ie, ale wizualnie zakryty
 - [ ] · 🔵 · otwarte · § „Bramka «tylko właściciel»" · **Bramka „tylko właściciel" wyłącznie po stronie serwera** —
       manager widzi obie pozycje w menu jako klikalne i idzie przez trzy ekrany, żeby usłyszeć „nie".
       Zapis naprawdę nie przechodzi (sprawdzone w bazie), więc to nie dziura, tylko droga donikąd
@@ -439,6 +445,12 @@ nad panelem (`kosztorys-actions-menu.tsx:88`, sekcja „Arkusz Google", widoczna
 Tamtędy import poszedł bez problemu. Kosmetyka pustego ekranu, nie defekt cutoveru — sam kod
 panelu jest niezmieniony względem prod.
 
+_Naprawione na tej gałęzi._ Przy pustym kosztorysie (`subtotals.length === 0` — ten sam warunek, co
+pusty ekran) panel się nie montuje, a przycisk „Pokaż podsumowanie" jest nieaktywny z podpowiedzią
+„Kosztorys jest pusty — nie ma czego podsumować". Bez automatycznego guardu: to warunek renderowania
+komponentu, a repo nie ma harnessu do renderowania komponentów — najtańszy realny sygnał to E2E,
+którego tu nie zakładam.
+
 ### Preflight — i to jest najmocniejszy dowód w całej próbie
 
 Okno przed importem zapowiedziało: **13 sekcji · 336 prac · 10 etapów**, mnożnik cennika
@@ -750,8 +762,14 @@ nie da się nic kliknąć w siatce.
 **Domknięte dowodem, nie obserwacją** (25.08): próba otwarcia menu „Akcje wiersza" na wierszu w
 dolnej części siatki nie dochodzi w ogóle — panel przechwytuje wskaźnik i klik ponawia się
 bezskutecznie aż do wygaśnięcia. Po „Schowaj podsumowanie" **ten sam klik na tym samym wierszu
-udaje się natychmiast**. Czyli to nie jest zasłonięty widok, tylko zablokowana obsługa: wiersz
-widać i nie da się go dotknąć, bez żadnej wskazówki dlaczego.
+udaje się natychmiast**.
+
+_Odrzucone po sprawdzeniu kodu._ Wniosek „wiersz widać i nie da się go dotknąć" nie jest prawdziwy
+dla człowieka. Panel jest **pełnoekranowy z założenia** (`data-[state=open]:h-full`, commit
+`96746dab` — „full-height panel"): otwarty zasłania całą siatkę nieprzezroczystym tłem, więc nie ma
+wiersza, który widać i który nie reaguje. Klik z próby szedł po węźle z drzewa dostępności — ten
+w DOM-ie zostaje, tylko jest przykryty. Zostaje realna część: pusty kosztorys, gdzie pod panelem
+leżało jedyne wejście do importu — i ta jest naprawiona.
 
 ## Szablony — przenoszenie między inwestycjami
 
