@@ -14,7 +14,7 @@ export type CostEntryT = {
   id: number
   type: InspectionTypeT
   performedAt: string
-  cost: number
+  cost: number | null
 }
 
 export type VehicleCostsT = {
@@ -31,13 +31,19 @@ export type VehicleCostsT = {
  * `performedAt` is normalised before comparing: the listing hands over raw stored timestamps, and
  * `'2026-07-31T00:00:00Z' <= '2026-07-31'` is false as a string — that przegląd falls on the
  * window's last Warsaw day, yet the raw compare would drop it.
+ *
+ * An unknown cost is skipped, not read as zero: adding it in would let „nobody typed a price" quietly
+ * lower the average and make the total claim a precision it does not have.
  */
 export const sumCosts = (
-  entries: readonly { performedAt: string; cost: number }[],
+  entries: readonly { performedAt: string; cost: number | null }[],
   range: DateRangeT,
 ): number =>
   entries.reduce(
-    (sum, entry) => (isWithinRange(toWarsawDay(entry.performedAt), range) ? sum + entry.cost : sum),
+    (sum, entry) =>
+      entry.cost !== null && isWithinRange(toWarsawDay(entry.performedAt), range)
+        ? sum + entry.cost
+        : sum,
     0,
   )
 
@@ -45,7 +51,8 @@ export const sumCosts = (
  * What the car has cost so far, derived from the history already on the page — no second query.
  *
  * A type with no inspection at all is left OUT rather than shown as 0 zł: „we have never done this"
- * is not the claim „it was free", and a row of zeroes reads as the latter.
+ * is not the claim „it was free", and a row of zeroes reads as the latter. An event whose cost is
+ * unknown still counts towards its type's `count` — it happened — but not towards its `total`.
  */
 export const summariseCosts = (
   historyByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>,

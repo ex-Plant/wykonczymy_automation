@@ -52,6 +52,21 @@ describe('findMissingInspections', () => {
     ])
   })
 
+  // „Bezterminowo" in the sheet — the przyczepa's przegląd. Without this the weekly digest would nag
+  // about an inspection that car can never have, forever.
+  it('never reports a type the vehicle is exempt from', () => {
+    const missing = findMissingInspections([
+      { vehicle: vehicle({ exemptions: ['TECHNICAL'] }), events: [] },
+    ])
+
+    expect(missing.map((entry) => entry.type)).toEqual([
+      'INSURANCE',
+      'OIL_CHANGE',
+      'WARRANTY',
+      'TYRES',
+    ])
+  })
+
   it('counts an event with no due date as recorded — the gap is data, not absence', () => {
     const missing = findMissingInspections([
       { vehicle: vehicle(), events: [event('TYRES', '2026-04-01', { nextDueAt: null })] },

@@ -1,4 +1,5 @@
 import { isMonday, toWarsawDay, daysBetween, type DayT } from '@/lib/fleet/days'
+import { isExempt } from '@/lib/fleet/exemptions'
 import { latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
 import {
   SCHEDULED_INSPECTION_TYPES,
@@ -81,6 +82,10 @@ export const buildFleetDigest = (
     const latestOdometer = latestOdometerReading(events)
 
     for (const type of SCHEDULED_INSPECTION_TYPES) {
+      // Same rule as `findMissingInspections`: a type that does not apply is not urgent. Without it
+      // the mail would report PO TERMINIE on the very row the listing renders as „bezterminowo".
+      if (isExempt(vehicle.exemptions, type)) continue
+
       const row = latest[type]
       if (!row) continue
 

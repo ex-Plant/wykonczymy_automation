@@ -464,7 +464,7 @@ Existing rows: `cost` keeps its values (only the constraint drops), `exemptions`
 
 #### Automated
 
-- [ ] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/` passes with the new exemptions spec
+- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/` passes with the new exemptions spec — 7655f215
 
 ### Phase 3: Forms and actions
 

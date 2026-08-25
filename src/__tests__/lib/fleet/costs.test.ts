@@ -6,7 +6,7 @@ import type { InspectionHistoryEntryT } from '@/types/fleet'
 
 let nextId = 1
 
-const entry = (performedAt: string, cost: number): InspectionHistoryEntryT => ({
+const entry = (performedAt: string, cost: number | null): InspectionHistoryEntryT => ({
   id: nextId++,
   type: 'TECHNICAL',
   performedAt,
@@ -14,6 +14,8 @@ const entry = (performedAt: string, cost: number): InspectionHistoryEntryT => ({
   odometer: null,
   nextDueOdometer: null,
   cost,
+  insurer: '',
+  policyNumber: '',
   note: '',
   attachmentCount: 0,
   kmSincePrevious: null,
@@ -58,6 +60,18 @@ describe('summariseCosts', () => {
 
     expect(costs.byType).toEqual([{ type: 'TECHNICAL', count: 1, total: 0 }])
     expect(costs.entries).toHaveLength(1)
+  })
+
+  // The przegląd happened; only its price is unknown. Dropping it from `count` would claim the car
+  // has no history, and adding a zero to `total` would claim the visit was free.
+  it('counts an unknown-cost inspection but keeps it out of the total', () => {
+    const costs = summariseCosts(
+      history({ TECHNICAL: [entry('2026-01-01', null), entry('2025-01-01', 300)] }),
+    )
+
+    expect(costs.byType).toEqual([{ type: 'TECHNICAL', count: 2, total: 300 }])
+    expect(costs.total).toBe(300)
+    expect(costs.entries).toHaveLength(2)
   })
 
   it('lists the entries newest first, across types', () => {
@@ -111,6 +125,18 @@ describe('sumCosts', () => {
     const stored = [{ performedAt: '2026-07-31T00:00:00.000Z', cost: 500 }]
 
     expect(sumCosts(stored, { from: '2026-07-01', to: '2026-07-31' })).toBe(500)
+  })
+
+  // An unknown price is not a free one: coercing `null` to 0 would be invisible in the total, which
+  // is exactly what makes it dangerous.
+  it('skips the entries whose cost is unknown', () => {
+    const mixed = [
+      { performedAt: '2026-07-01', cost: null },
+      { performedAt: '2026-07-02', cost: 250 },
+    ]
+
+    expect(sumCosts(mixed, ALL_TIME)).toBe(250)
+    expect(sumCosts([{ performedAt: '2026-07-01', cost: null }], ALL_TIME)).toBe(0)
   })
 
   it('is zero when nothing falls inside', () => {

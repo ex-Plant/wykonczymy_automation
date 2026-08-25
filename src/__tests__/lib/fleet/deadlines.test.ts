@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
-import { INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
+import { INSPECTION_TYPES, SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { event } from '@/__tests__/helpers/fleet'
 
 describe('latestByType', () => {
@@ -71,5 +71,24 @@ describe('kmSinceOilChange', () => {
 
   it('is null when the car has never had an oil change recorded', () => {
     expect(kmSinceOilChange([event('TECHNICAL', '2026-06-01', { odometer: 108_000 })])).toBeNull()
+  })
+})
+
+// „Odczyt licznika" exists so a mileage can be recorded without inventing a service that never
+// happened. It must therefore count everywhere mileage is read, and nowhere a deadline is decided.
+describe('ODOMETER readings', () => {
+  it('is the newest reading when it is the newest event', () => {
+    const oil = event('OIL_CHANGE', '2026-01-01', { odometer: 160_000 })
+    const reading = event('ODOMETER', '2026-08-01', { odometer: 177_500 })
+
+    expect(latestOdometerReading([oil, reading])).toBe(177_500)
+    expect(kmSinceOilChange([oil, reading])).toBe(17_500)
+  })
+
+  it('never becomes a deadline of its own', () => {
+    const reading = event('ODOMETER', '2026-08-01', { odometer: 177_500 })
+
+    expect(latestByType([reading]).ODOMETER).toBe(reading)
+    expect(SCHEDULED_INSPECTION_TYPES).not.toContain('ODOMETER')
   })
 })

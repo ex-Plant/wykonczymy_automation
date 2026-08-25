@@ -12,6 +12,7 @@ const FLAG_BADGE_LABELS: Record<InspectionTypeT, string> = {
   WARRANTY: 'Gwarancja',
   TYRES: 'Opony',
   SERVICE: 'Serwis',
+  ODOMETER: 'Licznik',
 }
 
 export function FlagBadge({ type, className }: { type: InspectionTypeT; className?: string }) {

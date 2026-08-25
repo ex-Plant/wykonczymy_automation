@@ -1,6 +1,7 @@
 import { type FleetDatasetT } from '@/lib/fleet/dataset'
 import { daysBetween, toWarsawDay } from '@/lib/fleet/days'
 import { sumCosts } from '@/lib/fleet/costs'
+import { isExempt } from '@/lib/fleet/exemptions'
 import { activeFlags } from '@/lib/fleet/flags'
 import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
 import { byInspectionType, type InspectionTypeT } from '@/lib/fleet/inspection-types'
@@ -9,7 +10,12 @@ import type { InspectionRecordT } from '@/lib/fleet/types'
 import { type DateRangeT } from '@/lib/utils/date-range'
 import type { FleetRowT, InspectionHistoryEntryT, FleetDeadlineT } from '@/types/fleet'
 
-const toDeadline = (nextDueAt: string | null, hasEvent: boolean, today: string): FleetDeadlineT => {
+const toDeadline = (
+  nextDueAt: string | null,
+  hasEvent: boolean,
+  exempt: boolean,
+  today: string,
+): FleetDeadlineT => {
   const dueDay = nextDueAt ? toWarsawDay(nextDueAt) : null
 
   return {
@@ -17,6 +23,7 @@ const toDeadline = (nextDueAt: string | null, hasEvent: boolean, today: string):
     daysLeft: dueDay ? daysBetween(today, dueDay) : null,
     bucket: classifyDeadline(dueDay, today),
     hasEvent,
+    exempt,
   }
 }
 
@@ -37,7 +44,12 @@ export const toRow = (
     latestOdometer: latestOdometerReading(events),
     kmSinceOilChange: kmSinceOilChange(events),
     deadlines: byInspectionType((type) =>
-      toDeadline(latest[type]?.nextDueAt ?? null, latest[type] !== null, today),
+      toDeadline(
+        latest[type]?.nextDueAt ?? null,
+        latest[type] !== null,
+        isExempt(vehicle.exemptions, type),
+        today,
+      ),
     ),
     activeFlags: activeFlags(vehicle.flags, events, today),
     totalCosts: sumCosts(events, costRange),
@@ -68,6 +80,8 @@ export const historyOfType = (
       odometer: event.odometer,
       nextDueOdometer: event.nextDueOdometer,
       cost: event.cost,
+      insurer: event.insurer,
+      policyNumber: event.policyNumber,
       note: event.note,
       attachmentCount: event.attachmentCount,
       kmSincePrevious:

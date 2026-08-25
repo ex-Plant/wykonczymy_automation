@@ -5,12 +5,15 @@ import type { VehicleRecordT } from '@/lib/fleet/types'
 /**
  * One deadline cell on the fleet listing. `hasEvent` is what separates "nothing recorded" from
  * "recorded, nothing due" — the two must not render the same, or a blind spot reads as healthy.
+ * `exempt` is a third answer again: the type does not apply to this car, so an empty cell is correct
+ * rather than a gap. The two flags are independent — an exempt type may still carry an old event.
  */
 export type FleetDeadlineT = {
   nextDueAt: string | null
   daysLeft: number | null
   bucket: DeadlineBucketT | null
   hasEvent: boolean
+  exempt: boolean
 }
 
 export type FleetRowT = VehicleRecordT & {
@@ -32,7 +35,9 @@ export type InspectionHistoryEntryT = {
   nextDueAt: string | null
   odometer: number | null
   nextDueOdometer: number | null
-  cost: number
+  cost: number | null
+  insurer: string
+  policyNumber: string
   note: string
   attachmentCount: number
   /** Distance since the previous event of the same type; `null` when either reading is missing. */
