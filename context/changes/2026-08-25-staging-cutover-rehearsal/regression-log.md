@@ -28,6 +28,10 @@ bajty, a nie liczby (faktury, konwersja HEIC, ZIP), sprawdzany był plik, nie ko
 Stopka aplikacji pokazywała `PREVIEW · neondb@ep-wild-resonance-agwnbpae-pooler`, więc każda
 obserwacja poniżej jest przeciw odbitce produkcji, a nie przeciw staremu stagingowi.
 
+**Sprawdzone ponownie 25.08:** produkcja nie ruszyła się od odbicia gałęzi ani o wiersz — te same
+3754 transakcje, ten sam max id 4647, ten sam najnowszy wiersz (`2026-08-24 12:56:39`), 115
+inwestycji, 1326 mediów, 50 migracji. Baseline `1:1` z tabeli wyżej nadal obowiązuje co do sztuki.
+
 ## Werdykt
 
 **Nic nie blokuje scalenia.** Wszystkie 14 znalezionych usterek jest naprawionych na gałęzi
@@ -190,17 +194,25 @@ co i tak trzeba było robić — tylko teraz aplikacja tego nie udaje.
 
 ## Sprzątanie należne po próbie
 
-Baza wróciła do stanu wyjściowego — **3754 wiersze, max id 4647**, rola konta testowego
-z powrotem `MANAGER` na gałęzi próbnej. Pozycje odhaczone (anulowane wiersze testowe,
-przywrócone salda, dźwignie rozliczenia, kolejność pozycji, runbook blobów) są w historii gita.
-Zostaje to, czego nie mogę zrobić sam:
+**Gałąź próbna jest arytmetycznie czysta, ale nie wróciła do 3754 wierszy — i nie miała jak.**
+Stan na 25.08: 3772 wiersze, max id 4669. Nad ostatnim wierszem produkcji siedzi 9 wierszy
+testowych, wszystkie z `cancelled = t`, oraz 9 wierszy `CANCELLATION`, które są ich śladem
+audytowym — anulowanie z definicji **dodaje wiersz, a nie kasuje**, więc licznik nie może wrócić
+do punktu wyjścia i nie jest to brud. Żywego wiersza testowego nie ma ani jednego. (Zdanie
+„baza wróciła do 3754 / max 4647" opisywało koniec fazy 1; faza 2 dołożyła resztę.) Pozycje
+odhaczone — przywrócone salda, dźwignie rozliczenia, kolejność pozycji, runbook blobów — są
+w historii gita. Zostaje to, czego nie mogę zrobić sam:
 
 - [ ] **migracja `20260825_0_fix_own_tools_coeff_rounding` na produkcji** — `pnpm db:migrate:prod`,
-      odpala **człowiek**. Przed odpaleniem potwierdzić założenie, na którym stoi:
-      `SELECT count(*) FROM kosztorys_items;` ma dać 0
-- [ ] **rola `users.id=63` na PRODUKCJI** — gałąź próbna jest odbitką produkcji sprzed próby,
-      więc przestawienie roli na niej nic tam nie zmienia. Jeśli na produkcji ma `OWNER`, nadal
-      ma; tylko człowiek to zmieni
+      odpala **człowiek**. Obie przesłanki, które migracja wypisuje w swoim komentarzu,
+      potwierdzone odczytem na produkcji **25.08**: `kosztorys_items` = 0 oraz `own_tools_coeff`
+      = 0.55 na **115 ze 115** inwestycji, jednorodnie — czyli `UPDATE … WHERE = 0.55` nie ma jak
+      nadpisać wartości wpisanej ręcznie, bo innej wartości tam nie ma. Nie ma też czego wycenić:
+      0 sekcji, 0 pozycji, 0 postępów, 0 migawek (56 nagłówków kosztorysu to same linki do arkuszy,
+      a 2 etapy przy zerze pozycji nie liczą niczego). Przesłanka nie zgnije z upływem czasu —
+      kosztorys nie ma jak powstać na produkcji, bo v2 tam nie stoi. **Warte powiedzenia wprost:**
+      migracji nie odpalono jeszcze nigdzie — produkcja ma 50 migracji, gałąź próbna 76
+      (najnowsza `20260824_1`), więc na produkcji pójdzie jako pierwsza w życiu
 - [ ] `DB_POSTGRES_URL` na Vercel Preview z powrotem na `ep-still-term-agp9aqfa-pooler`
 - [ ] branch Neona `cutover_rehearsal` — auto-delete po dobie; do tego czasu staging na nim stoi
 - [ ] sfabrykowane PNG-i faktur w **preview'owym** store'u Blob (nie produkcyjnym). Store preview
@@ -213,8 +225,11 @@ Zostaje to, czego nie mogę zrobić sam:
       z odtwarzania przyczyny: rekordy (`1423`–`1469`) znikną z gałęzią, bajty zostają
 - [ ] artefakty testowe, **wszystkie znikną razem z gałęzią próbną** — spis jest po to, by nie
       wziąć ich potem za dane właściciela: inwestycja `investments.id=135` („PROBA CUTOVER…",
-      13 sekcji / 336 pozycji), pracownik `users.id=64` („Testowy Pracownik Próbny", interfejs
-      nie ma usuwania pracownika), migawki inwestycji 31, szablon `kosztorys_presets` #1, link
+      13 sekcji / 336 pozycji), inwestycja `investments.id=134` („000", pusta — 0 transakcji,
+      0 sekcji, status `active`), użytkownicy `users.id=63` (`test@test.pl`) i `users.id=64`
+      („Testowy Pracownik Próbny"; interfejs nie ma usuwania pracownika) — **żadnego z tych
+      dwóch kont nie ma na produkcji, która kończy się na `id=62`**, migawki inwestycji 31,
+      szablon `kosztorys_presets` #1, link
       dla inwestora `kosztorys_shares` #1, ustawienia podglądu `kosztorys_client_view` dla
       inwestycji 31 (tryb `OFFER`), rozliczenia etapów na inwestycji 31 (interfejs nie pozwala
       cofnąć etapu do „nieustawiony")
