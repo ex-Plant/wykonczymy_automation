@@ -10,7 +10,10 @@ export const inspectionFormSchema = z.object({
   nextDueAt: z.string(),
   odometer: z.string(),
   nextDueOdometer: z.string(),
-  cost: z.string(),
+  cost: z
+    .string()
+    .min(1, 'Koszt jest wymagany')
+    .refine((value) => Number(value) >= 0, 'Koszt nie może być ujemny'),
   note: z.string(),
 })
 
@@ -25,7 +28,7 @@ export const inspectionSchema = z.object({
   nextDueAt: z.string().optional(),
   odometer: z.number().nonnegative().optional(),
   nextDueOdometer: z.number().nonnegative().optional(),
-  cost: z.number().optional(),
+  cost: z.number().nonnegative(),
   note: z.string().default(''),
   attachments: z.array(z.number()).default([]),
 })

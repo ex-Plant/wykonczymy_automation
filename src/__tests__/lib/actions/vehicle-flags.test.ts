@@ -62,6 +62,7 @@ describe.skipIf(!ENV_READY)('setVehicleFlagsAction (DB)', () => {
         vehicle: vehicleId,
         type: 'OIL_CHANGE',
         performedAt: '2026-02-01T00:00:00.000Z',
+        cost: 0,
       },
     })
   })

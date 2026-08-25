@@ -70,12 +70,11 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
             {entry.odometer !== null ? formatKm(entry.odometer) : EMPTY}
           </SummaryValueCell>
 
-          {/* Only printed when it can be computed — "unknown" and "the car didn't move" differ. */}
           <SummaryValueCell>
             {entry.kmSincePrevious !== null ? `+${formatKm(entry.kmSincePrevious)}` : EMPTY}
           </SummaryValueCell>
 
-          <SummaryValueCell>{entry.cost !== null ? formatPLN(entry.cost) : EMPTY}</SummaryValueCell>
+          <SummaryValueCell>{formatPLN(entry.cost)}</SummaryValueCell>
 
           {shown.oilTarget && (
             <SummaryValueCell>

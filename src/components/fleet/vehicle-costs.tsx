@@ -24,7 +24,7 @@ export function VehicleCosts({
   const { byType, total, entries } = summariseCosts(historyByType)
 
   if (entries.length === 0) {
-    return <p className="text-muted-foreground text-xs">Brak zapisanych kosztów</p>
+    return <p className="text-muted-foreground text-xs">Brak przeglądów</p>
   }
 
   return (

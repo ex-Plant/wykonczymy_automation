@@ -1355,7 +1355,7 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 - [ ] Pojazd z wymianą oleju przy 100 000 km i późniejszym odczytem 115 000 km ma plakietkę „Olej" w tabelce floty i w szczegółach pojazdu
 - [ ] Ten sam pojazd trafia do mailowej sekcji „Wymiana oleju — limit kilometrów" z informacją o przekroczeniu, mimo że nikt nie wpisał celu km
 - [ ] Sekcja „Koszty" na stronie pojazdu sumuje wpisy per rodzaj i w wierszu „Razem", a „Szczegóły" listują te same wpisy od najnowszego
-- [ ] Rodzaj przeglądu, w którym nikt nie wpisał kosztu, nie pojawia się w podsumowaniu jako 0 zł
+- [x] ~~Rodzaj przeglądu, w którym nikt nie wpisał kosztu, nie pojawia się w podsumowaniu jako 0 zł~~ — wycofane (EX-729): „Koszt" jest polem wymaganym, więc przegląd bez kwoty nie istnieje. Następca reguły: rodzaj **bez żadnego przeglądu** nadal nie pojawia się w rozbiciu.
 - [ ] Strona pojazdu otwiera się na „Przeglądy"; przełącznik „Koszty" pokazuje podsumowanie i szczegóły, a powrót na „Przeglądy" działa
 
 ## blob-store-isolation — lokalny dev na preview Blob store

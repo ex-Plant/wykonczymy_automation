@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { historyOfType, toRow, type FleetDatasetT } from '@/lib/queries/fleet'
+import { historyOfType, toRow } from '@/lib/fleet/rows'
+import type { FleetDatasetT } from '@/lib/fleet/dataset'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
+import { ALL_TIME } from '@/lib/utils/date-range'
 
 // The projections below are what the listing and the digest both read. A deadline that renders
 // "fine" for a vehicle with nothing recorded, or a mileage delta computed against a missing
@@ -28,7 +30,7 @@ const datasetEvent = (
   notifiedThreshold: null,
   notifiedAt: null,
   odometerNotifiedAt: null,
-  cost: null,
+  cost: 100,
   note: '',
   attachmentCount: 0,
   ...overrides,
@@ -47,7 +49,7 @@ const vehicle: FleetDatasetT['vehicles'][number] = {
 
 describe('toRow', () => {
   it('reports every type with no event as "no data", never as a met deadline', () => {
-    const row = toRow(vehicle, [], TODAY)
+    const row = toRow(vehicle, [], TODAY, ALL_TIME)
 
     expect(row.deadlines.TECHNICAL).toEqual({
       nextDueAt: null,
@@ -59,7 +61,7 @@ describe('toRow', () => {
   })
 
   it('distinguishes a recorded event without a due date from no event at all', () => {
-    const row = toRow(vehicle, [datasetEvent('TYRES', '2026-04-01T00:00:00.000Z')], TODAY)
+    const row = toRow(vehicle, [datasetEvent('TYRES', '2026-04-01T00:00:00.000Z')], TODAY, ALL_TIME)
 
     expect(row.deadlines.TYRES).toEqual({
       nextDueAt: null,
@@ -78,6 +80,7 @@ describe('toRow', () => {
         }),
       ],
       TODAY,
+      ALL_TIME,
     )
 
     expect(row.deadlines.TECHNICAL).toMatchObject({
@@ -97,6 +100,7 @@ describe('toRow', () => {
         }),
       ],
       TODAY,
+      ALL_TIME,
     )
 
     expect(row.deadlines.INSURANCE).toMatchObject({ hasEvent: true, bucket: null })
@@ -106,7 +110,7 @@ describe('toRow', () => {
 
 describe('toRow flags', () => {
   it('carries a mark no inspection answers', () => {
-    const row = toRow({ ...vehicle, flags: { TYRES: '2026-08-01' } }, [], TODAY)
+    const row = toRow({ ...vehicle, flags: { TYRES: '2026-08-01' } }, [], TODAY, ALL_TIME)
 
     expect(row.activeFlags).toEqual(['TYRES'])
   })
@@ -117,6 +121,7 @@ describe('toRow flags', () => {
       { ...vehicle, flags: { TYRES: '2026-08-01' } },
       [datasetEvent('TYRES', '2026-08-05T00:00:00.000Z')],
       TODAY,
+      ALL_TIME,
     )
 
     expect(row.activeFlags).toEqual([])
@@ -127,6 +132,7 @@ describe('toRow flags', () => {
       { ...vehicle, flags: { TYRES: '2026-08-01' } },
       [datasetEvent('TYRES', '2026-04-01T00:00:00.000Z')],
       TODAY,
+      ALL_TIME,
     )
 
     expect(row.activeFlags).toEqual(['TYRES'])
@@ -172,16 +178,72 @@ describe('toRow — oil interval', () => {
   it('carries the newest reading and the distance since the last oil change', () => {
     const oil = datasetEvent('OIL_CHANGE', '2026-01-01', { odometer: 100_000 })
     const technical = datasetEvent('TECHNICAL', '2026-06-01', { odometer: 108_000 })
-    const row = toRow(vehicle, [oil, technical], '2026-08-18')
+    const row = toRow(vehicle, [oil, technical], '2026-08-18', ALL_TIME)
 
     expect(row.latestOdometer).toBe(108_000)
     expect(row.kmSinceOilChange).toBe(8_000)
   })
 
   it('leaves both null when nothing carries a reading', () => {
-    const row = toRow(vehicle, [datasetEvent('TECHNICAL', '2026-06-01')], '2026-08-18')
+    const row = toRow(vehicle, [datasetEvent('TECHNICAL', '2026-06-01')], '2026-08-18', ALL_TIME)
 
     expect(row.latestOdometer).toBeNull()
     expect(row.kmSinceOilChange).toBeNull()
+  })
+})
+
+describe('toRow — costs', () => {
+  it('adds up every inspection, whatever its type', () => {
+    const row = toRow(
+      vehicle,
+      [
+        datasetEvent('TECHNICAL', '2026-02-01T00:00:00.000Z', { cost: 250 }),
+        datasetEvent('TYRES', '2026-03-01T00:00:00.000Z', { cost: 1200 }),
+        datasetEvent('OIL_CHANGE', '2026-04-01T00:00:00.000Z', { cost: 400 }),
+      ],
+      TODAY,
+      ALL_TIME,
+    )
+
+    expect(row.totalCosts).toBe(1850)
+  })
+
+  // Zero is the listing's answer for „nothing spent" — it is not a placeholder for missing data,
+  // which is why „Koszt" is a required field.
+  it('is zero for a car with no inspections', () => {
+    expect(toRow(vehicle, [], TODAY, ALL_TIME).totalCosts).toBe(0)
+  })
+
+  it('counts only what falls inside the window', () => {
+    const events = [
+      datasetEvent('TECHNICAL', '2026-06-30T00:00:00.000Z', { cost: 1 }),
+      datasetEvent('TECHNICAL', '2026-07-01T00:00:00.000Z', { cost: 10 }),
+      datasetEvent('TECHNICAL', '2026-07-31T00:00:00.000Z', { cost: 100 }),
+      datasetEvent('TECHNICAL', '2026-08-01T00:00:00.000Z', { cost: 1000 }),
+    ]
+
+    expect(toRow(vehicle, events, TODAY, { from: '2026-07-01', to: '2026-07-31' }).totalCosts).toBe(
+      110,
+    )
+  })
+
+  // The window is a lens on money only. Narrowing it must not make a car look up to date on its
+  // inspections, or the filter would quietly hide overdue work.
+  it('leaves deadlines, flags and mileage outside the window', () => {
+    const events = [
+      datasetEvent('TECHNICAL', '2026-01-05T00:00:00.000Z', {
+        nextDueAt: '2026-08-11T00:00:00.000Z',
+        odometer: 108_000,
+      }),
+    ]
+    const marked = { ...vehicle, flags: { TYRES: '2026-08-01' } }
+
+    const full = toRow(marked, events, TODAY, ALL_TIME)
+    const windowed = toRow(marked, events, TODAY, { from: '2026-07-01', to: '2026-07-31' })
+
+    expect(windowed.deadlines).toEqual(full.deadlines)
+    expect(windowed.activeFlags).toEqual(full.activeFlags)
+    expect(windowed.latestOdometer).toBe(full.latestOdometer)
+    expect(windowed.totalCosts).toBe(0)
   })
 })

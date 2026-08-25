@@ -3,19 +3,18 @@
 import { useSearchParams } from 'next/navigation'
 import { Calendar } from 'lucide-react'
 import { FilterGrid } from '@/components/ui/filter-grid'
+import { Loader } from '@/components/ui/loader/loader'
 import { FilterSelect } from '@/components/filters/filter-select'
-import { DateFilterButton } from '@/components/transfers/date-filter-button'
-import { ClearButton } from '@/components/transfers/clear-button'
+import { DateFilterButton } from '@/components/filters/date-filter-button'
+import { ClearButton } from '@/components/filters/clear-button'
+import { useUrlFilterParams } from '@/hooks/use-url-filter-params'
 import { MONTHS } from '@/lib/constants/months'
 import { getMonthDateRange } from '@/lib/utils/date'
 
-type DateFiltersPropsT = {
-  updateParam: (key: string, value: string) => void
-  updateMultipleParams: (overrides: Record<string, string>) => void
-}
-
-export function DateFilters({ updateParam, updateMultipleParams }: DateFiltersPropsT) {
+/** Reads the window from the URL and writes it back there — one owner of `from`/`to`, not two. */
+export function DateFilters({ baseUrl }: { baseUrl: string }) {
   const searchParams = useSearchParams()
+  const { updateParam, updateMultipleParams, isPending } = useUrlFilterParams(baseUrl)
   const currentFrom = searchParams.get('from') ?? ''
   const currentTo = searchParams.get('to') ?? ''
 
@@ -43,7 +42,8 @@ export function DateFilters({ updateParam, updateMultipleParams }: DateFiltersPr
   const hasDateFilters = currentFrom || currentTo
 
   return (
-    <FilterGrid className={`lg:grid-cols-5`}>
+    <FilterGrid>
+      <Loader loading={isPending} portal />
       <FilterSelect
         value={pickerYear}
         onValueChange={handleYearChange}

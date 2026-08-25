@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { summariseCosts } from '@/lib/fleet/costs'
+import { sumCosts, summariseCosts } from '@/lib/fleet/costs'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
+import { ALL_TIME } from '@/lib/utils/date-range'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
 
 let nextId = 1
 
-const entry = (performedAt: string, cost: number | null): InspectionHistoryEntryT => ({
+const entry = (performedAt: string, cost: number): InspectionHistoryEntryT => ({
   id: nextId++,
   type: 'TECHNICAL',
   performedAt,
@@ -42,17 +43,24 @@ describe('summariseCosts', () => {
     expect(costs.total).toBe(1000)
   })
 
-  // A price nobody recorded is not a price of zero — the row would read as "it was free".
-  it('leaves out a type whose entries carry no cost', () => {
-    const costs = summariseCosts(
-      history({ TECHNICAL: [entry('2026-01-01', 200)], TYRES: [entry('2026-02-01', null)] }),
-    )
+  // „We have never done this" is not the claim „it was free" — the successor to the old rule about
+  // priceless entries, which a required „Koszt" made unreachable.
+  it('leaves out a type with no inspection at all', () => {
+    const costs = summariseCosts(history({ TECHNICAL: [entry('2026-01-01', 200)] }))
 
     expect(costs.byType.map((bucket) => bucket.type)).toEqual(['TECHNICAL'])
     expect(costs.entries).toHaveLength(1)
   })
 
-  it('lists the costed entries newest first, across types', () => {
+  // A free service is a real answer and must survive into the breakdown, not be mistaken for none.
+  it('keeps a zero-cost inspection', () => {
+    const costs = summariseCosts(history({ TECHNICAL: [entry('2026-01-01', 0)] }))
+
+    expect(costs.byType).toEqual([{ type: 'TECHNICAL', count: 1, total: 0 }])
+    expect(costs.entries).toHaveLength(1)
+  })
+
+  it('lists the entries newest first, across types', () => {
     const costs = summariseCosts(
       history({
         TECHNICAL: [entry('2026-01-01', 200)],
@@ -67,9 +75,46 @@ describe('summariseCosts', () => {
     ])
   })
 
-  it('is empty when nothing has a price', () => {
-    const costs = summariseCosts(history({ TECHNICAL: [entry('2026-01-01', null)] }))
+  it('is empty when the car has no history', () => {
+    expect(summariseCosts(history({}))).toEqual({ byType: [], total: 0, entries: [] })
+  })
+})
 
-    expect(costs).toEqual({ byType: [], total: 0, entries: [] })
+describe('sumCosts', () => {
+  const july = [
+    { performedAt: '2026-06-30', cost: 1 },
+    { performedAt: '2026-07-01', cost: 10 },
+    { performedAt: '2026-07-15', cost: 100 },
+    { performedAt: '2026-07-31', cost: 1000 },
+    { performedAt: '2026-08-01', cost: 10_000 },
+  ]
+
+  it('counts everything without a window', () => {
+    expect(sumCosts(july, ALL_TIME)).toBe(11_111)
+  })
+
+  it('includes both ends of the window', () => {
+    expect(sumCosts(july, { from: '2026-07-01', to: '2026-07-31' })).toBe(1110)
+  })
+
+  it('runs to the present when only the start is given', () => {
+    expect(sumCosts(july, { from: '2026-07-15' })).toBe(11_100)
+  })
+
+  it('runs from the beginning when only the end is given', () => {
+    expect(sumCosts(july, { to: '2026-07-15' })).toBe(111)
+  })
+
+  // The listing hands over raw stored timestamps; comparing those as strings would drop the window's
+  // last day, because any '2026-07-31T…' sorts after the bare '2026-07-31'.
+  it('windows a stored timestamp by its Warsaw day', () => {
+    const stored = [{ performedAt: '2026-07-31T00:00:00.000Z', cost: 500 }]
+
+    expect(sumCosts(stored, { from: '2026-07-01', to: '2026-07-31' })).toBe(500)
+  })
+
+  it('is zero when nothing falls inside', () => {
+    expect(sumCosts(july, { from: '2027-01-01' })).toBe(0)
+    expect(sumCosts([], ALL_TIME)).toBe(0)
   })
 })

@@ -33,8 +33,9 @@ type DataTablePropsT<TData> = {
   /** Makes the row clickable — navigates to the returned URL */
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
-  /** Summary `<tr>` pinned below the rows. Receives the visible column count so it can span them. */
-  footer?: (colCount: number) => React.ReactNode
+  /** Summary `<tr>` pinned below the rows. Gets the visible column ids, in render order, so it can
+   * span them or place a total under the column it belongs to even when some are hidden. */
+  footer?: (visibleColumnIds: string[]) => React.ReactNode
   toolbar?: (table: Table<TData>, columnVisibility: VisibilityState) => React.ReactNode
   className?: string
 }
@@ -92,7 +93,8 @@ export function DataTable<TData>({
   const headerGroups = table.getHeaderGroups()
   const visibleLeafColumns = table.getVisibleLeafColumns()
   const visibleColCount = visibleLeafColumns.length
-  const visibleColumnIds = new Set(visibleLeafColumns.map((col) => col.id))
+  const visibleColumnIdList = visibleLeafColumns.map((column) => column.id)
+  const visibleColumnIds = new Set(visibleColumnIdList)
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -105,8 +107,7 @@ export function DataTable<TData>({
             headerGroups={headerGroups}
             rows={rows}
             virtualizer={virtualizer}
-            colCount={visibleColCount}
-            visibleColumnIds={visibleColumnIds}
+            visibleColumnIdList={visibleColumnIdList}
             getRowHref={getRowHref}
             getRowClassName={getRowClassName}
             footer={footer}
@@ -129,7 +130,7 @@ export function DataTable<TData>({
                 ))
               )}
             </tbody>
-            {footer && rows.length > 0 && <TableFooter>{footer(visibleColCount)}</TableFooter>}
+            {footer && rows.length > 0 && <TableFooter>{footer(visibleColumnIdList)}</TableFooter>}
           </table>
         )}
       </div>

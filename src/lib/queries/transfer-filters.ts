@@ -1,7 +1,6 @@
 import type { Where } from 'payload'
+import type { ResolvedSearchParamsT } from '@/types/page'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
-
-type SearchParamsT = Record<string, string | string[] | undefined>
 
 type UserContextT = {
   id: number
@@ -58,7 +57,7 @@ function normalizeAmountSearch(raw: string | undefined): AmountSearchT | null {
 }
 
 export function buildTransferFilters(
-  searchParams: SearchParamsT,
+  searchParams: ResolvedSearchParamsT,
   userContext: UserContextT,
 ): Where {
   // Impossible condition — forces Payload to return zero results

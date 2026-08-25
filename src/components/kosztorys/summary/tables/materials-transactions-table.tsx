@@ -218,11 +218,14 @@ export function MaterialsTransactionsTable({
         )}
         initialSorting={[{ id: 'date', desc: true }]}
         getRowHref={preview ? undefined : (row) => expenseRowHref(investmentId, row)}
-        footer={(colCount) => (
+        footer={(visibleColumnIds) => (
           <tr>
             {/* The total is of `billed`, which the netto set renders second-to-last — so the label
                 spans one column less there, and the trailing Brutto column gets an empty cell. */}
-            <td className="font-bold" colSpan={colCount - (activeDataset === 'net' ? 2 : 1)}>
+            <td
+              className="font-bold"
+              colSpan={visibleColumnIds.length - (activeDataset === 'net' ? 2 : 1)}
+            >
               Razem
             </td>
             <td className="text-right font-bold tabular-nums">

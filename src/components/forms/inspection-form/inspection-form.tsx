@@ -138,7 +138,7 @@ export function InspectionForm({
       nextDueAt: value.nextDueAt || undefined,
       odometer: optionalNumber(value.odometer),
       nextDueOdometer: optionalNumber(value.nextDueOdometer),
-      cost: optionalNumber(value.cost),
+      cost: Number(value.cost),
       note: value.note,
       attachments: [],
     }),
