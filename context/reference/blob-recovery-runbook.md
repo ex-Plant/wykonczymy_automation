@@ -127,6 +127,15 @@ the correct name. The wrongly-named copies stay on FTP — mirror-only never del
 - **3 media rows point at already-missing blobs** (`id` 429, 580, 581 — old WhatsApp images).
   **0 transactions reference them** → harmless orphans. The snapshot cannot include them
   (already gone from the store). Documented so they aren't mistaken for backup failures.
+- **A 4th missing blob is NOT harmless** (found 2026-08-25 during the staging→main cutover
+  rehearsal, on the `cutover_rehearsal` Neon branch — a fork of production, so this holds on
+  production too). `media` id **1053** (`bricoman-18-07-2026-30ff6a.jpeg`, 71 680 B, created
+  2026-07-20) **is referenced by transaction 3899** (`transactions_rels.path = 'invoice'`), so
+  unlike 429/580/581 this one is a live invoice with a dead file behind it — the app renders a
+  preview button that resolves to nothing. Keep it separate from the three above when auditing:
+  a reference count of 0 means "safe to ignore", a count of 1 means "an invoice is missing".
+  **The bytes survive in the preview store**, which is a point-in-time copy of production, so the
+  recovery path is a targeted pull from preview rather than an FTP restore.
 
 ### The Hobby plan cannot execute a restore (found the hard way, 2026-08-19)
 
