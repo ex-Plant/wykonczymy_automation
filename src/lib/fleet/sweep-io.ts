@@ -13,6 +13,12 @@ export const loadFleetHistories = async (payload: Payload): Promise<VehicleHisto
  * Returns the ids that failed to stamp instead of throwing: the mail is already out, so a rejection
  * here would make the run report a total failure and earn a cron retry that re-sends the whole
  * digest. An unstamped row simply re-announces tomorrow, which is the harmless direction.
+ *
+ * One stamp at a time, never in parallel: the deployed database keeps one of a set of concurrent
+ * Payload writes, drops the rest and reports success for all of them — so a parallel sweep would
+ * report every row stamped while only one of them was, and re-announce the others daily until
+ * someone noticed. Same failure that lost the pages of a deleted multi-page invoice; see
+ * `lib/invoices/delete-unreferenced-media.ts`.
  */
 export async function stampNotified(
   payload: Payload,
@@ -21,9 +27,11 @@ export async function stampNotified(
 ): Promise<number[]> {
   const at = sentAt.toISOString()
 
-  const results = await Promise.allSettled(
-    stamps.map((stamp) =>
-      payload.update({
+  const failed: number[] = []
+
+  for (const stamp of stamps) {
+    try {
+      await payload.update({
         collection: 'vehicle-inspections',
         id: stamp.inspectionId,
         overrideAccess: true,
@@ -31,11 +39,11 @@ export async function stampNotified(
           ...(stamp.threshold !== null && { notifiedThreshold: stamp.threshold, notifiedAt: at }),
           ...(stamp.odometer && { odometerNotifiedAt: at }),
         },
-      }),
-    ),
-  )
+      })
+    } catch {
+      failed.push(stamp.inspectionId)
+    }
+  }
 
-  return results.flatMap((result, index) =>
-    result.status === 'rejected' ? [stamps[index].inspectionId] : [],
-  )
+  return failed
 }

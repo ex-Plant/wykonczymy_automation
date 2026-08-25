@@ -1596,9 +1596,11 @@ ani przy sprawdzaniu, czy plik nie wisi jeszcze gdzie indziej (zły odczyt to te
 Test-strażnik pilnuje dokładnie tego: dwa kasowania nigdy nie mogą lecieć naraz. Sprawdzony
 w obie strony — na starym kodzie czerwony, na nowym zielony.
 
-**To samo grozi gdzie indziej.** `stampNotified` w przypomnieniach flotowych zapisuje znaczniki
-tak samo równolegle, więc gubi wszystkie oprócz jednego — skutek jest łagodny (przegląd
-przypomni się nazajutrz), ale mechanizm identyczny. Osobna rzecz, nietknięta tutaj.
+**To samo groziło gdzie indziej — poprawione przy okazji.** Znaczniki „powiadomiono" w
+przypomnieniach flotowych stawiały się tak samo równolegle, więc przebieg meldował, że oznaczył
+wszystkie terminy, a w bazie lądował jeden. Skutek łagodniejszy (nieoznaczony przegląd przypomina
+się nazajutrz, i tak w kółko), ale mechanizm ten sam. Idą teraz po kolei, z własnym
+test-strażnikiem.
 
 ## Wpłaty bez inwestycji i zabezpieczenie transferu do samego siebie
 
