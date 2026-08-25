@@ -139,24 +139,24 @@ Same reasoning closes the subcontractor figures: `remaining` and `dueNet`
 
 ## 2. Kosztorys — editor domain
 
-| Concept                | App/UI (PL)          | Sheet name            | Canonical code id                                                                                                   | Cat | Drift in code                                              | Lives in                     |
-| ---------------------- | -------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- | --- | ---------------------------------------------------------- | ---------------------------- |
-| kosztorys (the budget) | Kosztorys            | „kosztorys_robocizny" | `kosztorys` (slug `kosztoryses`)                                                                                    | A   | (`Sheets`/`sheets.ts` legacy)                              | `sheets.ts:13`               |
-| section                | Sekcja               | wiersz sekcji         | `section`                                                                                                           | B   | —                                                          | S-01                         |
-| item                   | Pozycja              | wiersz pozycji        | `item`                                                                                                              | B   | —                                                          | S-01/S-02                    |
-| stage                  | Etap                 | „etapy"               | `stage`                                                                                                             | B   | — (rename landed EX-536)                                   | S-04                         |
-| summary block          | Podsumowanie         | „Podsumowanie"        | `summary`                                                                                                           | B   | — (resolved 2026-07-20)                                    | `kosztorys-summary.tsx`      |
-| combined R+M           | Łącznie              | „Łącznie"             | `combined`                                                                                                          | B   | — (resolved 2026-07-20)                                    | `summary-economics.ts:37`    |
-| planned qty            | Przedmiar            | „Przedmiar" (N)       | `przedmiar`                                                                                                         | A   | —                                                          | S-01                         |
-| stage-sum qty          | Pomiar z natury      | „Pomiar z natury" (O) | `pomiar`                                                                                                            | A   | —                                                          | S-01                         |
-| unit price (client)    | Cena j.m.            | „Cena j.m." (Q)       | `unitPrice`                                                                                                         | B   | —                                                          | S-02                         |
-| net value              | Wartość netto        | „Wartość netto" (T)   | `netValue`                                                                                                          | B   | —                                                          | S-02                         |
-| deposit VAT plane      | Wpłata netto/brutto  | —                     | `vatPlane` (`VatPlaneT`, `VAT_PLANES`)                                                                              | B   | — (EX-536; NET/GROSS/null, null⇒netto per 2026-07-23 flip) | `constants/transfers.ts:138` |
-| payment method         | Metoda płatności     | —                     | `paymentMethod` (`PaymentMethodT`)                                                                                  | B   | — (EX-536; CASH/TRANSFER)                                  | `constants/transfers.ts:121` |
-| cash settlement        | Rozliczenie mieszane | —                     | `computeCashSettlement` (`CashSettlementT`: `combinedNet`/`remainderNet`/`remainderGross`/`invoice`/`cash`/`total`) | B   | — (EX-536)                                                 | `summary-economics.ts:125`   |
-| deposits split         | Rozliczenie wpłat    | —                     | `depositsSplit` / `bucketDepositsByPlane` (`DepositsSplitT`: `paidNet`/`paidGross`/`remainingNet`/`remainingGross`) | B   | — (EX-536)                                                 | `summary-economics.ts:144`   |
-| deposit row            | Wpłata (wiersz)      | —                     | `DepositTransactionRowT`                                                                                            | B   | — (EX-536)                                                 | `types/reference-data.ts:63` |
-| the paying party       | Inwestor             | —                     | `client*` (see note)                                                                                                | B   | `clientView`, `clientPrice`, `view === 'client'` — on hold | `client-view-settings.ts`    |
+| Concept                | App/UI (PL)          | Sheet name            | Canonical code id                                                                                                   | Cat | Drift in code                                                      | Lives in                     |
+| ---------------------- | -------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------------------------------------------ | ---------------------------- |
+| kosztorys (the budget) | Kosztorys            | „kosztorys_robocizny" | `kosztorys` (slug `kosztoryses`)                                                                                    | A   | (`Sheets`/`sheets.ts` legacy)                                      | `sheets.ts:13`               |
+| section                | Sekcja               | wiersz sekcji         | `section`                                                                                                           | B   | —                                                                  | S-01                         |
+| item                   | Pozycja              | wiersz pozycji        | `item`                                                                                                              | B   | —                                                                  | S-01/S-02                    |
+| stage                  | Etap                 | „etapy"               | `stage`                                                                                                             | B   | — (rename landed EX-536)                                           | S-04                         |
+| summary block          | Podsumowanie         | „Podsumowanie"        | `summary`                                                                                                           | B   | — (resolved 2026-07-20)                                            | `kosztorys-summary.tsx`      |
+| combined R+M           | Łącznie              | „Łącznie"             | `combined`                                                                                                          | B   | — (resolved 2026-07-20)                                            | `summary-economics.ts:37`    |
+| planned qty            | Przedmiar            | „Przedmiar" (N)       | `przedmiar`                                                                                                         | A   | —                                                                  | S-01                         |
+| stage-sum qty          | Pomiar z natury      | „Pomiar z natury" (O) | `pomiar`                                                                                                            | A   | —                                                                  | S-01                         |
+| unit price (client)    | Cena j.m.            | „Cena j.m." (Q)       | `unitPrice`                                                                                                         | B   | —                                                                  | S-02                         |
+| net value              | Wartość netto        | „Wartość netto" (T)   | `netValue`                                                                                                          | B   | —                                                                  | S-02                         |
+| deposit VAT plane      | Wpłata netto/brutto  | —                     | `vatPlane` (`VatPlaneT`, `VAT_PLANES`)                                                                              | B   | — (EX-536; NET/GROSS/null, null⇒netto per 2026-07-23 flip)         | `constants/transfers.ts:138` |
+| payment method         | Metoda płatności     | —                     | `paymentMethod` (`PaymentMethodT`)                                                                                  | B   | — (EX-536; CASH/TRANSFER)                                          | `constants/transfers.ts:121` |
+| cash settlement        | Rozliczenie mieszane | —                     | `computeCashSettlement` (`CashSettlementT`: `combinedNet`/`remainderNet`/`remainderGross`/`invoice`/`cash`/`total`) | B   | — (EX-536)                                                         | `summary-economics.ts:125`   |
+| deposits split         | Rozliczenie wpłat    | —                     | `depositsSplit` / `bucketDepositsByPlane` (`DepositsSplitT`: `paidNet`/`paidGross`/`remainingNet`/`remainingGross`) | B   | — (EX-536)                                                         | `summary-economics.ts:144`   |
+| deposit row            | Wpłata (wiersz)      | —                     | `DepositTransactionRowT`                                                                                            | B   | — (EX-536)                                                         | `types/reference-data.ts:63` |
+| the paying party       | Inwestor             | —                     | `client*` (see note)                                                                                                | B   | `clientView`, `clientPrice`, `view === 'client'` — ruled permanent | `client-view-settings.ts`    |
 
 **`stage deposit` / `zaliczki` — retired (EX-536).** The deposit→etap tagging bridge is gone:
 `lib/kosztorys/zaliczki.ts` deleted, the `kosztorys_stage_id` column dropped from `transactions`
@@ -172,11 +172,20 @@ price plane, `collections/kosztorys-client-view.ts`, `lib/actions/kosztorys-clie
 either word, mean the same person.** „Klient" survives in the UI in exactly one unrelated place: a CRM
 lead (`components/tables/leads.tsx`), which is a prospect, not a payer.
 
-The identifier rename is deliberately deferred, not forgotten: `clientPrice` is a Payload scalar field,
-and scalars take no `dbName`, so renaming it is a migration rather than a symbol change. When it is
-taken, the target is **`investor*`** — never `investment*`, which already denotes the **project**
-(`investmentId`), a different thing standing one word away. The confirm gate added with the rename
-already reads that way (`investorImpactConfirm`, `use-kosztorys-settings.ts`).
+**The rename is ruled off, not pending — EX-704 canceled (2026-08-25).** Measured at 123 files /
+~880 sites and dropped: the benefit sits entirely on the `tsc`-visible half, which never expires, while
+the deadline sits on the persisted half (the `client_price` column + five payload surfaces), which is
+worth nothing and carries all the risk. **This entry is the deliverable — reading either word, mean the
+same person, and that needs no code change to hold.** Rationale: `lessons.md`, „A rename splits into two
+halves with opposite economics".
+
+**Never rename the column or a persisted key.** If a later edit lands in one of these files anyway, a
+`tsc`-visible symbol may be renamed in that same commit — but a half-swept tree is worse than a
+consistently `client*` one, so where that would leave the two words mixed across files, leave `client`
+alone. The target, if the sweep is ever taken wholesale, is **`investor*`** — never `investment*`, which
+already denotes the **project** (`investmentId`), a different thing one word away; the confirm gate added
+with the UI rename already reads that way (`investorImpactConfirm`). `clientPrice` is a Payload scalar
+and scalars take no `dbName`, so renaming it would be a migration, not a symbol change.
 
 **`etap` — ruled `stage` (2026-07-20), NOT a proper noun.** It was listed `A` on the "the sheet says
 etapy" reflex, but `stage` is already the code's dominant word (`stage*` outnumbers `etap`-identifiers
