@@ -34,9 +34,11 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
 
 ### Pokazują nieprawdę
 
-- [ ] · 🟡 · otwarte · § „nagłówek sekcji podaje inwestorowi liczbę pozycji sprzed filtra" · **Nagłówek sekcji podaje INWESTOROWI liczbę pozycji sprzed filtra**
-      — „WC (52 poz.)" nad czterema wierszami. Ten sam filtr usuwa całą pustą sekcję, ale nie
-      koryguje licznika w przerzedzonych. Widzi to klient, nie tylko właściciel
+- [x] · 🟡 · **naprawione na tej gałęzi** · § „nagłówek sekcji podaje inwestorowi liczbę pozycji sprzed filtra" · **Nagłówek sekcji podawał INWESTOROWI liczbę pozycji sprzed filtra**
+      — „WC (52 poz.)" nad czterema wierszami. Ten sam filtr usuwał całą pustą sekcję, ale nie
+      korygował licznika w przerzedzonych. Widział to klient, nie tylko właściciel. Naprawa:
+      podsumowania sekcji liczą się z **dokumentu, który klient dostaje**, a nie z pełnego zbioru.
+      Żadna kwota się nie rusza — ukrywany wiersz jest pusty na obu osiach
 - [ ] · 🟡 · otwarte · § „Stawka «bez narzędzi» jest w bazie inna…" · **Stawka „bez narzędzi" 0,55 zamiast 0,5525 w 114 na 117
       inwestycji.** Zastane (leży w bazie od migracji z lipca), dziś nieosiągalne — bo żadna z nich
       nie ma kosztorysu. Odpali przy pierwszej, która dostanie go z szablonu
@@ -1060,6 +1062,24 @@ Sprawdzone **nie tylko w podglądzie, ale i na prawdziwym linku dla klienta** (`
 logowania) — te same 134 wiersze i te same zawyżone liczniki. To więc widzi klient, a nie tylko
 właściciel w podglądzie. Nie blokuje przełączenia — ale jest to jedyna znaleziona usterka, która
 pokazuje się **na zewnątrz firmy**.
+
+##### Przyczyna i naprawa
+
+Nagłówek sekcji bierze i licznik, i kwotę z jednego zestawu podsumowań, a ten liczył się z **pełnego**
+zbioru pozycji — celowo, żeby wyszukiwarka i sortowanie właściciela nie ruszały tego, co sekcja mówi,
+że zawiera. Dla właściciela to jest poprawne: filtr jest jego gestem na ekranie, a nie zmianą
+dokumentu. Dla klienta nie — jego dokument **to jest oferta**, nic za nim nie stoi. Numeracja pozycji
+rozpoznawała tę różnicę już wcześniej (pod podglądem numeruje 1…N po przerzedzeniu), podsumowania nie.
+
+Naprawa: jeden zbiór „wierszy dokumentu" — u właściciela pełny, pod podglądem przerzedzony jego własną
+decyzją o ukrywaniu — i numeracja **oraz** podsumowania liczą się z niego. Kwoty stoją w miejscu, bo
+jedyne wiersze, które ten filtr usuwa, są puste na **obu** osiach (bez przedmiaru i bez wykonanej
+pracy) i wnoszą zero do każdej liczby. Sekcja złożona wyłącznie z takich pozycji znika w całości,
+zamiast dostać nagłówek „(0 poz.)".
+
+Zabezpieczenie: `src/__tests__/lib/kosztorys/client-document-subtotals.test.ts` — licznik zgadza się z
+tym, co klient widzi, a wartość netto, przedmiar, rabat, udział i postęp są identyczne jak u
+właściciela.
 
 ### Czego po przełączeniu **nie będzie**, choć dziś na produkcji działa
 

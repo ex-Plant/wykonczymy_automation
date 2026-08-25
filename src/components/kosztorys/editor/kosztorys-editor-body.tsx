@@ -124,8 +124,9 @@ export function KosztorysEditorBody({
 
   const { openImport, importDialogProps } = useSheetImport({ investmentId, onTreeReplaced })
 
-  // Both figures come off the full-dataset `subtotals`, so a search filter narrows the visible rows
-  // without changing what the section says it holds or what it is worth.
+  // Both figures come off `subtotals`, which counts the whole document rather than the visible rows,
+  // so a search filter narrows what is on screen without changing what the section says it holds or
+  // what it is worth. Under the client's preview the document itself is the shorter one.
   const sectionHeader = useMemo(
     () => ({
       figures: new Map(

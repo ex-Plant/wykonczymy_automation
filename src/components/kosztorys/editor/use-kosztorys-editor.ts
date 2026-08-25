@@ -454,9 +454,27 @@ export function useKosztorysEditor({
   )
   if (reconcileSort(sort, renderedFieldIds) !== sort) setSort(null)
 
-  // Per-section subtotals: the FULL dataset (not viewRows) — a stable breakdown independent of
-  // the filter/sort.
-  const subtotals = useMemo(() => sectionSubtotalsForView(rows, stages, view), [rows, stages, view])
+  // What the document consists of. On the owner's grid it is the FULL dataset in display order, which
+  // is what makes a filter visible: the figures and the numbering skip over the rows it hid. The
+  // client's document is not a filtered view of ours — it IS the offer, so under the preview the
+  // owner's stored hide decision is applied first. Search and sort are deliberately left out of both:
+  // a number that moved as the reader typed would name a different pozycja every keystroke.
+  const documentRows = useMemo(
+    () =>
+      preview
+        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
+        : rows,
+    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
+  )
+
+  // Per-section subtotals: the whole document (not viewRows) — a stable breakdown independent of the
+  // filter/sort. Off `documentRows` rather than `rows`, so „WC (52 poz.)" cannot stand over the four
+  // pozycje a client actually receives. No money moves with it: the only rows the client's document
+  // drops are empty on BOTH axes and add zero to every figure (see the 'client-empty' condition).
+  const subtotals = useMemo(
+    () => sectionSubtotalsForView(documentRows, stages, view),
+    [documentRows, stages, view],
+  )
   // Sections every one of whose pozycje match a liftable condition — the ids each „Sekcje …" row in
   // the menu ticks and unticks as a block. „Wszystkie co do jednej", never „suma = 0": a section fully
   // executed but unpriced sums to zero and is exactly the one nobody wants folded away. A mixed
@@ -507,20 +525,7 @@ export function useKosztorysEditor({
     if (latch) for (const row of next) latch.ids.add(row.id)
     return next
   }, [rows, search, engagedConditionIds, sort, view, stages, hasSettledMaterial, latch])
-  // What the numbers count. On the owner's grid it is the FULL dataset in display order, which is
-  // what makes a filter visible: the numbers skip over the rows it hid. The client's document is not
-  // a filtered view of ours — it IS the offer, and a number skipping there reads as a pozycja missing
-  // from it, so under the preview the owner's stored hide decision is applied first and the offer runs
-  // 1…N. Search and sort are deliberately left out of both: a number that moved as the reader typed
-  // would name a different pozycja every keystroke.
-  const numberedRows = useMemo(
-    () =>
-      preview
-        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
-        : rows,
-    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
-  )
-  const ordinalByRowId = useMemo(() => baseOrdinals(numberedRows), [numberedRows])
+  const ordinalByRowId = useMemo(() => baseOrdinals(documentRows), [documentRows])
   // Sections keep their original order however the filter thinned them.
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])
   // Executed total at the active view — the money the totals bar shows and the base the global
