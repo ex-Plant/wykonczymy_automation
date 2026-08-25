@@ -24,8 +24,11 @@ export type FleetRowT = VehicleRecordT & {
   latestOdometer: number | null
   /** Distance since the last oil change; `null` when either reading is missing. */
   kmSinceOilChange: number | null
-  /** What the car cost inside the caller's window — every inspection type together. */
-  totalCosts: number
+  /**
+   * What the car cost inside the caller's window — every inspection type together. `null` when the
+   * window holds inspections but none of them a price, so „nieznane" cannot render as „0 zł".
+   */
+  totalCosts: number | null
 }
 
 export type InspectionHistoryEntryT = {

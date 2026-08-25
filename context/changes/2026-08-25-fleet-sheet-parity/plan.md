@@ -476,7 +476,7 @@ Existing rows: `cost` keeps its values (only the constraint drops), `exemptions`
 
 #### Automated
 
-- [ ] 4.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes
+- [x] 4.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes — 20d24cc4
 
 ### Phase 5: Import the nine cars
 

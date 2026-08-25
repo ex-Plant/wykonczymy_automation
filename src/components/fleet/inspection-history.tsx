@@ -9,7 +9,7 @@ import {
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
 import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
-import { formatPLN } from '@/lib/utils/format-currency'
+import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { formatKm } from '@/lib/utils/format-distance'
 import type { InspectionHistoryEntryT, VehicleDetailT } from '@/types/fleet'
@@ -21,11 +21,16 @@ import type { InspectionHistoryEntryT, VehicleDetailT } from '@/types/fleet'
 const EMPTY = '—'
 
 /**
- * The two trailing columns are dropped for a section that has nothing to put in them: „Wymiana przy"
- * is an oil-change field, and most entries carry no attachment. An always-present column of dashes
- * costs width and says nothing.
+ * The trailing columns are dropped for a section that has nothing to put in them: ubezpieczyciel and
+ * nr polisy belong to OC, „Wymiana przy" to the oil change, and most entries carry no attachment. An
+ * always-present column of dashes costs width and says nothing.
+ *
+ * Driven by the entries rather than by the section's type so a polisa with no insurer recorded — the
+ * przyczepa's — drops just that one column instead of both.
  */
 const columnsFor = (entries: InspectionHistoryEntryT[]) => ({
+  insurer: entries.some((entry) => entry.insurer !== ''),
+  policyNumber: entries.some((entry) => entry.policyNumber !== ''),
   oilTarget: entries.some((entry) => entry.nextDueOdometer !== null),
   attachments: entries.some((entry) => entry.attachmentCount > 0),
 })
@@ -38,6 +43,8 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
     SUMMARY_VALUE_COL,
     SUMMARY_VALUE_COL,
     SUMMARY_VALUE_COL,
+    ...(shown.insurer ? [SUMMARY_VALUE_COL] : []),
+    ...(shown.policyNumber ? [SUMMARY_VALUE_COL] : []),
     ...(shown.oilTarget ? [SUMMARY_VALUE_COL] : []),
     ...(shown.attachments ? [SUMMARY_VALUE_COL] : []),
   ].join(' ')
@@ -49,6 +56,8 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
       <SummaryHeaderCell>Przebieg</SummaryHeaderCell>
       <SummaryHeaderCell>Od poprzedniego</SummaryHeaderCell>
       <SummaryHeaderCell>Koszt</SummaryHeaderCell>
+      {shown.insurer && <SummaryHeaderCell>Ubezpieczyciel</SummaryHeaderCell>}
+      {shown.policyNumber && <SummaryHeaderCell>Nr polisy</SummaryHeaderCell>}
       {shown.oilTarget && <SummaryHeaderCell>Wymiana przy</SummaryHeaderCell>}
       {shown.attachments && <SummaryHeaderCell>Załączniki</SummaryHeaderCell>}
 
@@ -74,7 +83,11 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
             {entry.kmSincePrevious !== null ? `+${formatKm(entry.kmSincePrevious)}` : EMPTY}
           </SummaryValueCell>
 
-          <SummaryValueCell>{formatPLN(entry.cost)}</SummaryValueCell>
+          <SummaryValueCell>{formatPLNOrDash(entry.cost)}</SummaryValueCell>
+
+          {shown.insurer && <SummaryValueCell>{entry.insurer || EMPTY}</SummaryValueCell>}
+
+          {shown.policyNumber && <SummaryValueCell>{entry.policyNumber || EMPTY}</SummaryValueCell>}
 
           {shown.oilTarget && (
             <SummaryValueCell>

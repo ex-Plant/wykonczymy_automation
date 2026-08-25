@@ -1,6 +1,6 @@
 import { type FleetDatasetT } from '@/lib/fleet/dataset'
 import { daysBetween, toWarsawDay } from '@/lib/fleet/days'
-import { sumCosts } from '@/lib/fleet/costs'
+import { totalCost } from '@/lib/fleet/costs'
 import { isExempt } from '@/lib/fleet/exemptions'
 import { activeFlags } from '@/lib/fleet/flags'
 import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
@@ -52,7 +52,7 @@ export const toRow = (
       ),
     ),
     activeFlags: activeFlags(vehicle.flags, events, today),
-    totalCosts: sumCosts(events, costRange),
+    totalCosts: totalCost(events, costRange),
   }
 }
 

@@ -7,7 +7,7 @@ import type { InspectionHistoryEntryT } from '@/types/fleet'
 export type TypeCostT = {
   type: InspectionTypeT
   count: number
-  total: number
+  total: number | null
 }
 
 export type CostEntryT = {
@@ -19,7 +19,7 @@ export type CostEntryT = {
 
 export type VehicleCostsT = {
   byType: TypeCostT[]
-  total: number
+  total: number | null
   /** Every entry, newest first — the itemisation behind the totals. */
   entries: CostEntryT[]
 }
@@ -33,26 +33,28 @@ export type VehicleCostsT = {
  * window's last Warsaw day, yet the raw compare would drop it.
  *
  * An unknown cost is skipped, not read as zero: adding it in would let „nobody typed a price" quietly
- * lower the average and make the total claim a precision it does not have.
+ * lower the average and make the total claim a precision it does not have. When that leaves nothing
+ * to add up — there were inspections and not one of them carries a price — the answer is `null`,
+ * which the callers render as „—". Zero stays reserved for the true zero: an empty window, or work
+ * that really was free.
  */
-export const sumCosts = (
+export const totalCost = (
   entries: readonly { performedAt: string; cost: number | null }[],
   range: DateRangeT,
-): number =>
-  entries.reduce(
-    (sum, entry) =>
-      entry.cost !== null && isWithinRange(toWarsawDay(entry.performedAt), range)
-        ? sum + entry.cost
-        : sum,
-    0,
-  )
+): number | null => {
+  const inWindow = entries.filter((entry) => isWithinRange(toWarsawDay(entry.performedAt), range))
+  if (inWindow.length > 0 && inWindow.every((entry) => entry.cost === null)) return null
+
+  return inWindow.reduce((sum, entry) => sum + (entry.cost ?? 0), 0)
+}
 
 /**
  * What the car has cost so far, derived from the history already on the page — no second query.
  *
  * A type with no inspection at all is left OUT rather than shown as 0 zł: „we have never done this"
  * is not the claim „it was free", and a row of zeroes reads as the latter. An event whose cost is
- * unknown still counts towards its type's `count` — it happened — but not towards its `total`.
+ * unknown still counts towards its type's `count` — it happened — but not towards its `total`,
+ * which is `null` for a type whose every entry is priceless in the literal sense.
  */
 export const summariseCosts = (
   historyByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>,
@@ -74,12 +76,12 @@ export const summariseCosts = (
     const ofType = grouped.get(type)
     if (!ofType) return []
 
-    return [{ type, count: ofType.length, total: sumCosts(ofType, ALL_TIME) }]
+    return [{ type, count: ofType.length, total: totalCost(ofType, ALL_TIME) }]
   })
 
   return {
     byType,
-    total: sumCosts(costed, ALL_TIME),
+    total: totalCost(costed, ALL_TIME),
     entries: costed.sort((a, b) => b.performedAt.localeCompare(a.performedAt)),
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sumCosts, summariseCosts } from '@/lib/fleet/costs'
+import { summariseCosts, totalCost } from '@/lib/fleet/costs'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { ALL_TIME } from '@/lib/utils/date-range'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
@@ -89,12 +89,23 @@ describe('summariseCosts', () => {
     ])
   })
 
+  // Two przeglądy happened and neither has a price: the count must still say two, while both totals
+  // refuse to claim 0 zł.
+  it('leaves the total unknown for a type whose every entry is unpriced', () => {
+    const costs = summariseCosts(
+      history({ TECHNICAL: [entry('2026-01-01', null), entry('2025-01-01', null)] }),
+    )
+
+    expect(costs.byType).toEqual([{ type: 'TECHNICAL', count: 2, total: null }])
+    expect(costs.total).toBeNull()
+  })
+
   it('is empty when the car has no history', () => {
     expect(summariseCosts(history({}))).toEqual({ byType: [], total: 0, entries: [] })
   })
 })
 
-describe('sumCosts', () => {
+describe('totalCost', () => {
   const july = [
     { performedAt: '2026-06-30', cost: 1 },
     { performedAt: '2026-07-01', cost: 10 },
@@ -104,19 +115,19 @@ describe('sumCosts', () => {
   ]
 
   it('counts everything without a window', () => {
-    expect(sumCosts(july, ALL_TIME)).toBe(11_111)
+    expect(totalCost(july, ALL_TIME)).toBe(11_111)
   })
 
   it('includes both ends of the window', () => {
-    expect(sumCosts(july, { from: '2026-07-01', to: '2026-07-31' })).toBe(1110)
+    expect(totalCost(july, { from: '2026-07-01', to: '2026-07-31' })).toBe(1110)
   })
 
   it('runs to the present when only the start is given', () => {
-    expect(sumCosts(july, { from: '2026-07-15' })).toBe(11_100)
+    expect(totalCost(july, { from: '2026-07-15' })).toBe(11_100)
   })
 
   it('runs from the beginning when only the end is given', () => {
-    expect(sumCosts(july, { to: '2026-07-15' })).toBe(111)
+    expect(totalCost(july, { to: '2026-07-15' })).toBe(111)
   })
 
   // The listing hands over raw stored timestamps; comparing those as strings would drop the window's
@@ -124,7 +135,7 @@ describe('sumCosts', () => {
   it('windows a stored timestamp by its Warsaw day', () => {
     const stored = [{ performedAt: '2026-07-31T00:00:00.000Z', cost: 500 }]
 
-    expect(sumCosts(stored, { from: '2026-07-01', to: '2026-07-31' })).toBe(500)
+    expect(totalCost(stored, { from: '2026-07-01', to: '2026-07-31' })).toBe(500)
   })
 
   // An unknown price is not a free one: coercing `null` to 0 would be invisible in the total, which
@@ -135,12 +146,28 @@ describe('sumCosts', () => {
       { performedAt: '2026-07-02', cost: 250 },
     ]
 
-    expect(sumCosts(mixed, ALL_TIME)).toBe(250)
-    expect(sumCosts([{ performedAt: '2026-07-01', cost: null }], ALL_TIME)).toBe(0)
+    expect(totalCost(mixed, ALL_TIME)).toBe(250)
+  })
+
+  // Nothing left to add up is a different answer from „it was free" — the whole imported fleet lands
+  // in this state, and 0 zł would have been a lie on every one of the nine cars.
+  it('is unknown when the window holds only unpriced entries', () => {
+    const unpriced = [
+      { performedAt: '2026-07-01', cost: null },
+      { performedAt: '2026-07-02', cost: null },
+    ]
+
+    expect(totalCost(unpriced, ALL_TIME)).toBeNull()
+    expect(totalCost(unpriced, { from: '2026-07-02' })).toBeNull()
+  })
+
+  // A real zero survives: free work is a price somebody typed.
+  it('keeps a zero that was actually recorded', () => {
+    expect(totalCost([{ performedAt: '2026-07-01', cost: 0 }], ALL_TIME)).toBe(0)
   })
 
   it('is zero when nothing falls inside', () => {
-    expect(sumCosts(july, { from: '2027-01-01' })).toBe(0)
-    expect(sumCosts([], ALL_TIME)).toBe(0)
+    expect(totalCost(july, { from: '2027-01-01' })).toBe(0)
+    expect(totalCost([], ALL_TIME)).toBe(0)
   })
 })

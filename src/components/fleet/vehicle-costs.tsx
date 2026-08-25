@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/summary-grid'
 import { summariseCosts } from '@/lib/fleet/costs'
 import { INSPECTION_TYPE_LABELS, type InspectionTypeT } from '@/lib/fleet/inspection-types'
-import { formatPLN } from '@/lib/utils/format-currency'
+import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
 
@@ -41,13 +41,13 @@ export function VehicleCosts({
             <Fragment key={bucket.type}>
               <SummaryLabelCell>{INSPECTION_TYPE_LABELS[bucket.type].pl}</SummaryLabelCell>
               <SummaryValueCell>{bucket.count}</SummaryValueCell>
-              <SummaryValueCell>{formatPLN(bucket.total)}</SummaryValueCell>
+              <SummaryValueCell>{formatPLNOrDash(bucket.total)}</SummaryValueCell>
             </Fragment>
           ))}
 
           <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
           <SummaryValueCell weight="bold">{entries.length}</SummaryValueCell>
-          <SummaryValueCell weight="bold">{formatPLN(total)}</SummaryValueCell>
+          <SummaryValueCell weight="bold">{formatPLNOrDash(total)}</SummaryValueCell>
         </SummaryTable>
       </div>
 
@@ -65,7 +65,7 @@ export function VehicleCosts({
                 {formatPLDate(entry.performedAt)}
               </SummaryLabelCell>
               <SummaryValueCell>{INSPECTION_TYPE_LABELS[entry.type].pl}</SummaryValueCell>
-              <SummaryValueCell>{formatPLN(entry.cost)}</SummaryValueCell>
+              <SummaryValueCell>{formatPLNOrDash(entry.cost)}</SummaryValueCell>
             </Fragment>
           ))}
         </SummaryTable>

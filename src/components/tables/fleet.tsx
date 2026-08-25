@@ -6,7 +6,7 @@ import { DeadlineCell } from '@/components/fleet/deadline-cell'
 import { OilIntervalBadge } from '@/components/fleet/oil-interval-badge'
 import { FlagBadge } from '@/components/fleet/flag-badge'
 import { INSPECTION_TYPE_LABELS, SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
-import { formatPLN } from '@/lib/utils/format-currency'
+import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import type { FleetRowT } from '@/types/fleet'
 
 const col = createColumnHelper<FleetRowT>()
@@ -44,11 +44,16 @@ export function getFleetColumns() {
         </span>
       ),
     }),
-    col.accessor('totalCosts', {
+    col.accessor((row) => row.totalCosts ?? undefined, {
       id: COSTS_COLUMN_ID,
       header: 'Koszty',
       meta: { align: 'right' },
-      cell: (info) => <span className="tabular-nums">{formatPLN(info.getValue())}</span>,
+      // Same treatment as an unrecorded deadline: a car whose przeglądy carry no price has no
+      // amount to rank, so it parks at the end instead of leading the cheapest-first sort.
+      sortUndefined: 'last',
+      cell: (info) => (
+        <span className="tabular-nums">{formatPLNOrDash(info.row.original.totalCosts)}</span>
+      ),
     }),
     ...SCHEDULED_INSPECTION_TYPES.map((type) =>
       col.accessor((row) => row.deadlines[type].daysLeft ?? undefined, {

@@ -52,7 +52,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
                 </td>
               )}
               <td className="text-right font-bold tabular-nums">
-                {formatPLN(filteredData.reduce((sum, row) => sum + row.totalCosts, 0))}
+                {formatPLN(filteredData.reduce((sum, row) => sum + (row.totalCosts ?? 0), 0))}
               </td>
               {visibleColumnIds.slice(costsIndex + 1).map((id) => (
                 <td key={id} />
