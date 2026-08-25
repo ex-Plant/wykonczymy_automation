@@ -448,15 +448,15 @@ Run once, after phase 4:
 
 #### Automated
 
-- [x] 2.1 `subcontractor-price-edit.test.ts` + `subcontractor-price-guard.test.ts` green after the extraction
-- [x] 2.2 No phase-scoped automated check for the hook itself (no `renderHook` in this repo) — recorded deliberately
+- [x] 2.1 `subcontractor-price-edit.test.ts` + `subcontractor-price-guard.test.ts` green after the extraction — fbb6a31f
+- [x] 2.2 No phase-scoped automated check for the hook itself (no `renderHook` in this repo) — recorded deliberately — fbb6a31f
 
 ### Phase 3: „Rabat wart." onto the shared machine
 
 #### Automated
 
-- [ ] 3.1 `kosztorys-discount-edit.test.ts` green, unchanged
-- [ ] 3.2 `cell-edit.test.ts` extended with the discount policy's clear/implied-percent cases
+- [x] 3.1 `kosztorys-discount-edit.test.ts` green — its `discountFromValue` block moved to `cell-edit.test.ts` with the now-dead function
+- [x] 3.2 `cell-edit.test.ts` extended with the discount policy's clear/implied-percent cases
 
 ### Phase 4: The grid's numeric columns onto a hand-rolled cell
 

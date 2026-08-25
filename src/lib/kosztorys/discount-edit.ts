@@ -1,6 +1,5 @@
 import { type CellEditPolicyT } from '@/lib/kosztorys/cell-edit'
 import { formatNet, formatQty } from '@/lib/kosztorys/format'
-import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 import type { DiscountTypeT } from '@/lib/kosztorys/types'
 
 // discountType and discountValue are two independent fields, and applyDiscount reads the type
@@ -13,17 +12,9 @@ export type DiscountPairT = { discountType: DiscountTypeT | null; discountValue:
 // Percent, not amount: a rabat is asked for in % far more often than in zł.
 const IMPLIED_TYPE: DiscountTypeT = 'percent'
 
-/** A parsed value onto the pair — the half `discountFromValue` and the cell policy share. */
+/** A parsed value onto the pair, type implied when the row hasn't got one yet. */
 function withDiscountValue<RowT extends DiscountPairT>(current: RowT, value: number): RowT {
   return { ...current, discountType: current.discountType ?? IMPLIED_TYPE, discountValue: value }
-}
-
-export function discountFromValue(current: DiscountPairT, raw: string): DiscountPairT | null {
-  const parsed = parseDecimalInput(raw)
-  if (parsed.kind === 'empty') return { discountType: null, discountValue: 0 }
-  // Reject rather than clear: mid-typing garbage ("1e", "-") must not wipe the row's discount.
-  if (parsed.kind === 'invalid') return null
-  return withDiscountValue(current, parsed.value)
 }
 
 export function discountFromType(

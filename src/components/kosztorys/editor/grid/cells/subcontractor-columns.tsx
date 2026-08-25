@@ -6,6 +6,7 @@ import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { AlertIcon } from '@/components/ui/alert-icon'
 import { cn } from '@/lib/utils/cn'
+import { decimalText } from '@/lib/utils/decimal-text'
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
@@ -47,10 +48,8 @@ const REFUSED_TONE = 'text-destructive font-medium'
 // would otherwise take away from the cell body.
 const CELL_WRAPPER = 'flex size-full items-center'
 
-// A derived price carries the float tail of client × coeff; the cell edits grosze, not the tail. The
-// comma is the separator the sheet and every other money field use, and `parseDecimalInput` reads it
-// back — the thousands separator stays out, it would not survive the round trip.
-const round2 = (value: number): string => String(Math.round(value * 100) / 100).replace('.', ',')
+// A derived price carries the float tail of client × coeff; the cell edits grosze, not the tail.
+const round2 = (value: number): string => decimalText(Math.round(value * 100) / 100)
 
 // The refusal explains itself where the user is typing rather than in a corner toast, mirroring the
 // blocked-action tooltip in kosztorys-row-actions-menu.tsx. `open` is forced while a rejection stands

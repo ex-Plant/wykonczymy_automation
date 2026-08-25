@@ -1,4 +1,5 @@
 import { createTextColumn } from 'react-datasheet-grid'
+import { decimalText } from '@/lib/utils/decimal-text'
 import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 // A pl-PL decimal cell, in place of react-datasheet-grid's own `floatColumn` — which reads „12,5" as
@@ -6,7 +7,6 @@ import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 // blurred cell through `new Intl.NumberFormat()` with NO locale argument, i.e. the browser's. On a
 // Polish browser that made the cell display the very separator it refused to accept, and drop the
 // decimal of anyone who typed it. Here one representation does both directions: comma in, comma out.
-const text = (value: number | null) => (value == null ? '' : String(value).replace('.', ','))
 
 // No thousands separator on the way out — it would not survive the round trip back through the
 // input. Stripped on the way IN because a paste from the owner's sheet carries one (a NBSP).
@@ -23,7 +23,7 @@ const parse = (raw: string): number | null => {
 export const decimalColumn = createTextColumn<number | null>({
   parseUserInput: parse,
   parsePastedValue: parse,
-  formatBlurredInput: text,
-  formatInputOnFocus: text,
-  formatForCopy: text,
+  formatBlurredInput: decimalText,
+  formatInputOnFocus: decimalText,
+  formatForCopy: decimalText,
 })
