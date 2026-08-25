@@ -1515,3 +1515,20 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] „Edytuj pojazd 7": zmiana pola, Esc bez zapisu, ponowne otwarcie — formularz pokazuje dane z bazy, nie porzucony szkic (to samo dla „Edytuj inwestycję" i „Edytuj pracownika")
 - [ ] Rozpoczęty szkic w „Dodaj pojazd" przeżywa otwarcie i zamknięcie „Edytuj pojazd" — dialog edycji nie kasuje ani nie nadpisuje szkicu tworzenia
 - [ ] „Dodaj pojazd": wypełnienie części pól, Esc, ponowne otwarcie — szkic **wraca** (zachowanie niezmienione)
+
+## S-18 (cut) — spot-check perfu edytora przy ~1000 pozycjach
+
+Jedyna pozostałość po wyciętym slice'ie `kosztorys-hardening` (tombstone S-18 w `roadmap.md`). To
+**nie** jest bramka cutovera — jednorazowy pomiar na czystym buildzie, bo jedyne liczby, jakie mamy,
+pochodzą z benchmarku EX-521 na jednej ścieżce (`display-order.ts`, +1 ms), a nie z całej siatki.
+
+Setup: `pnpm db:import:test` → `pnpm seed:kosztorys:test` (domyślnie `INV=7`, syntetyczny zestaw
+~1000 pozycji, pisze do 5435). Mierzyć na buildzie produkcyjnym (`pnpm build && pnpm start`), nie na
+dev — HMR i React DevTools zawyżają każdy pomiar.
+
+- [ ] Otwarcie kosztorysu z ~1000 pozycjami dochodzi do interaktywnej siatki bez zawieszenia zakładki
+- [ ] Scroll przez cały arkusz jest płynny, a w DOM nadal siedzi ~28 wierszy (wirtualizacja żyje)
+- [ ] Wpisanie ilości w pozycji na końcu arkusza podnosi sumy sekcji i stopki bez widocznej zwłoki
+- [ ] Seria ▲▼ na pozycji w dużej sekcji nie blokuje wpisywania w innym wierszu
+- [ ] Przełączenie osi (netto/brutto, warstwa) przerysowuje siatkę bez zauważalnej pauzy
+- [ ] Undo (Ctrl+Z) po serii edycji wraca w tym samym czasie co przy małym kosztorysie
