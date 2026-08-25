@@ -1,4 +1,4 @@
-import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import { useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
@@ -42,21 +42,22 @@ const VARIANT_CONFIG = {
   },
 } as const satisfies Record<string, VariantConfigT>
 
-type EntityComboboxFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
-  variant: keyof typeof VARIANT_CONFIG
+type EntityComboboxFieldPropsT<TVariant extends keyof typeof VARIANT_CONFIG> = {
+  form: FormWithFieldT<(typeof VARIANT_CONFIG)[TVariant]['name']>
+  variant: TVariant
   items: EntityItemT[]
   // Forwarded to the inner AppField; only onChange is used at call sites (reset a dependent field).
   listeners?: { onChange?: () => void }
 }
 
-export function EntityComboboxField({
+// Generic over the variant rather than over the name: the variant IS the name, so `variant="worker"`
+// against a form with no worker field is the error this exists to raise.
+export function EntityComboboxField<TVariant extends keyof typeof VARIANT_CONFIG>({
   form,
   variant,
   items,
   listeners,
-}: EntityComboboxFieldPropsT) {
+}: EntityComboboxFieldPropsT<TVariant>) {
   const [activeOnly, setActiveOnly] = useState(true)
   const config = VARIANT_CONFIG[variant]
 
@@ -72,7 +73,7 @@ export function EntityComboboxField({
 
   return (
     <form.AppField name={config.name} listeners={listeners}>
-      {(field: AppFieldComponentsT) =>
+      {(field) =>
         filtered.length > 0 ? (
           <field.Combobox
             label={config.label}

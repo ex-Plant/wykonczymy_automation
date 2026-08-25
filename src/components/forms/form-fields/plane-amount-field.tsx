@@ -1,11 +1,14 @@
-import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
+import type { DepositFormApiT } from '@/components/forms/deposit-form/deposit-form-api'
 import { useEffect, useRef } from 'react'
 import type { VatPlaneT } from '@/lib/constants/transfers'
 import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
 
 type PlaneAmountFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  // The wpłata form's concrete API rather than the `FormWithFieldT` shape the shared wrappers take:
+  // this one serves that form alone, so there is no reason to settle for name-only checking — and it
+  // reads and writes kwoty through `getFieldValue` / `setFieldValue`, whose signatures a structural
+  // type would have to guess at.
+  form: DepositFormApiT
   vatRate: number
   plane: VatPlaneT
   fieldClassName?: string
@@ -60,7 +63,7 @@ export function PlaneAmountField({ form, vatRate, plane, fieldClassName }: Plane
   if (plane === 'NET') {
     return (
       <form.AppField key="amount-net" name="amount">
-        {(field: AppFieldComponentsT) => (
+        {(field) => (
           <field.Input
             label="Kwota (PLN)"
             placeholder="0.00"
@@ -80,7 +83,7 @@ export function PlaneAmountField({ form, vatRate, plane, fieldClassName }: Plane
         name="amountGross"
         listeners={{ onChange: ({ value }: { value: string }) => suggestNet(value, vatRate) }}
       >
-        {(field: AppFieldComponentsT) => (
+        {(field) => (
           <field.Input
             label="Kwota brutto (PLN)"
             placeholder="0.00"
@@ -91,7 +94,7 @@ export function PlaneAmountField({ form, vatRate, plane, fieldClassName }: Plane
         )}
       </form.AppField>
       <form.AppField key="amount-faktura-net" name="amount">
-        {(field: AppFieldComponentsT) => (
+        {(field) => (
           <field.Input
             label="Kwota netto z faktury (PLN)"
             placeholder="0.00"

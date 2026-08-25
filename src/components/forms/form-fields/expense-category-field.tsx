@@ -1,10 +1,11 @@
-import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
+import type { EditTransferFormApiT } from '@/components/forms/edit-transfer-form/edit-transfer-form-api'
 import { EXPENSE_CATEGORY_LABEL } from '@/lib/constants/transfers'
 import type { ReferenceItemT } from '@/types/reference-data'
 
 type ExpenseCategoryFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  // The edit form's concrete API rather than the `FormWithFieldT` shape the shared wrappers take:
+  // this one serves that form alone, so name-only checking would be settling for less than is free.
+  form: EditTransferFormApiT
   expenseCategories: ReferenceItemT[]
 }
 
@@ -16,7 +17,7 @@ export function ExpenseCategoryField({ form, expenseCategories }: ExpenseCategor
 
   return (
     <form.AppField name="expenseCategory">
-      {(field: AppFieldComponentsT) => (
+      {(field) => (
         <field.Combobox
           label={EXPENSE_CATEGORY_LABEL}
           placeholder="Wybierz typ"

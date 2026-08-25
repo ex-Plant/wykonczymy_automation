@@ -15,9 +15,9 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
+import type { EditTransferFormValuesT } from './edit-transfer-form-api'
 import { submitWithInvoicePages } from '@/lib/invoices/submit-with-invoice-pages'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
-import type { z } from 'zod'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
@@ -40,8 +40,6 @@ type EditTransferFormPropsT = {
   keepOpen?: boolean
 }
 
-type FormValuesT = z.infer<typeof editTransferFormSchema>
-
 const FORM_ID = 'edit-transfer'
 
 export function EditTransferForm({
@@ -63,7 +61,7 @@ export function EditTransferForm({
       expenseCategory: row.expenseCategoryId ? String(row.expenseCategoryId) : '',
       otherCategory: row.otherCategoryId ? String(row.otherCategoryId ?? '') : '',
       invoiceNote: row.invoiceNote ?? '',
-    } as FormValuesT,
+    } as EditTransferFormValuesT,
     validators: {
       onSubmit: editTransferFormSchema,
     },

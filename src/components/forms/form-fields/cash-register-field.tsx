@@ -1,4 +1,4 @@
-import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import { useMemo, useState } from 'react'
 import { ActiveFilterLabel } from '@/components/ui/active-filter-label'
 import { EmptyFieldMessage } from './empty-field-message'
@@ -6,10 +6,9 @@ import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { activeOrSelected } from '@/lib/utils/is-active-ref'
 import type { ReferenceItemT } from '@/types/reference-data'
 
-type CashRegisterFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
-  name?: string
+type CashRegisterFieldPropsT<TName extends string> = {
+  form: FormWithFieldT<TName>
+  name?: TName
   label?: string
   placeholder?: string
   cashRegisters: ReferenceItemT[]
@@ -17,14 +16,19 @@ type CashRegisterFieldPropsT = {
   listeners?: Record<string, any>
 }
 
-export function CashRegisterField({
+// Generic over the field name because the four call sites point it at four different ones
+// (sourceRegister / targetRegister / defaultCashRegister), and the point of the type is that the
+// form handed in actually HAS the one being asked for.
+export function CashRegisterField<TName extends string = 'sourceRegister'>({
   form,
-  name = 'sourceRegister',
+  // TS cannot prove a literal satisfies a caller-chosen TName; the generic default is what makes
+  // this true whenever `name` is omitted.
+  name = 'sourceRegister' as TName,
   label = 'Kasa',
   placeholder = 'Wybierz kasę',
   cashRegisters,
   listeners,
-}: CashRegisterFieldPropsT) {
+}: CashRegisterFieldPropsT<TName>) {
   const [activeOnly, setActiveOnly] = useState(true)
 
   const selectedId = useFieldValue(form, name)
@@ -44,7 +48,7 @@ export function CashRegisterField({
 
   return (
     <form.AppField name={name} listeners={listeners}>
-      {(field: AppFieldComponentsT) =>
+      {(field) =>
         filteredRegisters.length > 0 ? (
           <field.Combobox
             label={label}

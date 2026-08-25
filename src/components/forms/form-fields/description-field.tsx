@@ -1,16 +1,14 @@
-import type { AppFieldComponentsT } from '@/components/forms/hooks/form-hooks'
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
+
 type DescriptionFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  form: FormWithFieldT<'description'>
   placeholder?: string
 }
 
 export function DescriptionField({ form, placeholder = 'Opis transferu' }: DescriptionFieldPropsT) {
   return (
     <form.AppField name="description">
-      {(field: AppFieldComponentsT) => (
-        <field.Input label="Opis (opcjonalnie)" placeholder={placeholder} showError />
-      )}
+      {(field) => <field.Input label="Opis (opcjonalnie)" placeholder={placeholder} showError />}
     </form.AppField>
   )
 }
