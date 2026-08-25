@@ -75,9 +75,13 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       otwarty zasłania **całą** siatkę, nie jej dolną część; człowiek widzi podsumowanie i przycisk
       „Schowaj podsumowanie" obok. Dowód z próby („klik w wiersz nie dochodzi") pochodzi z kliknięcia
       po węźle drzewa dostępności, który jest w DOM-ie, ale wizualnie zakryty
-- [ ] · 🔵 · otwarte · § „Bramka «tylko właściciel»" · **Bramka „tylko właściciel" wyłącznie po stronie serwera** —
-      manager widzi obie pozycje w menu jako klikalne i idzie przez trzy ekrany, żeby usłyszeć „nie".
-      Zapis naprawdę nie przechodzi (sprawdzone w bazie), więc to nie dziura, tylko droga donikąd
+- [x] · 🔵 · **naprawione na tej gałęzi** · § „Bramka «tylko właściciel»" · **Bramka „tylko właściciel" była wyłącznie po stronie serwera** —
+      manager widział obie pozycje w menu jako klikalne i szedł przez trzy ekrany, żeby usłyszeć „nie".
+      Zapis naprawdę nie przechodził (sprawdzone w bazie), więc to nie dziura, tylko droga donikąd.
+      Naprawa: obie pozycje w menu „Opcje" są dla nie-właściciela nieaktywne, a ich opis to **to samo
+      zdanie**, które wcześniej padało dopiero przy „Zapisz". Bramka w interfejsie pyta
+      `isAdminOrOwnerRole` — dokładnie tę funkcję, którą woła `ownerOnlyAction` — więc drzwi i zamek
+      nie mogą się rozjechać, a oba zdania odmowy mieszkają teraz w jednym module
 - [ ] · 🔵 · otwarte · § „Przycisk «Admin» w stopce prowadzi na PRODUKCJĘ" · **Przycisk „Admin" w stopce na preview prowadzi na PRODUKCJĘ.**
       Użytkownikowi nie szkodzi (na produkcji link jest poprawny), ale przenosi testującego na żywe
       dane jednym kliknięciem
@@ -2070,6 +2074,15 @@ Manager dowiaduje się o braku uprawnień dopiero po przejściu całego okna aż
 zapisu. Nie jest to dziura (zapis naprawdę nie przechodzi, sprawdzone w bazie), ale jest to
 droga na skróty przez trzy ekrany po to, żeby usłyszeć „nie". Do rozważenia, nie do
 naprawiania w dniu przełączenia.
+
+_Naprawione na tej gałęzi._ Obie pozycje są dla nie-właściciela `disabled`, a w miejscu opisu stoi
+to samo zdanie, które serwer odpowiadał na końcu drogi („Tylko właściciel może…"). Serwer nie
+zmienił się o jotę — bramką nadal jest `ownerOnlyAction`; menu tylko przestało udawać, że da się
+przejść. Interfejs pyta `isAdminOrOwnerRole`, czyli tę samą funkcję co serwer, więc rozjazd między
+nimi jest niemożliwy bez zmiany jednego miejsca; oba zdania odmowy przeniesione do
+`src/lib/kosztorys/owner-only-messages.ts` (moduł `'use server'` nie może eksportować stałych).
+Bez automatycznego guardu: to gałąź renderowania na roli, a repo nie ma harnessu do renderowania
+komponentów.
 
 Przy okazji potwierdziło się, że **ostrzeżenie o zmianie widocznej dla klienta pojawia się
 przed odmową, nie zamiast niej** — czyli kolejność jest właściwa: najpierw pytanie o skutek
