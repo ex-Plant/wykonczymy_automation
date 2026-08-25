@@ -147,6 +147,34 @@ describe('discountPolicy', () => {
     ).toEqual({ kind: 'clear', row: noDiscount })
   })
 
+  // EX-736: rabat 100% to praca gratis i ma prawo przejść; wyżej wiersz schodzi na minus, a ta
+  // ujemna wartość netto leci dalej w sumy sekcji i stopki.
+  it('odrzuca rabat procentowy powyżej 100%', () => {
+    expect(cellKeystroke('101', noDiscount, policy)).toMatchObject({ kind: 'blocked' })
+    expect(cellKeystroke('100', noDiscount, policy)).toEqual({
+      kind: 'commit',
+      row: { discountType: 'percent', discountValue: 100 },
+    })
+  })
+
+  it('nie stawia sufitu rabatowi kwotowemu — 250 zł to nie 250%', () => {
+    expect(cellKeystroke('250', { discountType: 'amount', discountValue: 0 }, policy)).toMatchObject(
+      { kind: 'commit' },
+    )
+  })
+
+  it('wyjście z komórki wycofuje odrzucony rabat i mówi dlaczego', () => {
+    const entry: DiscountPairT = { discountType: 'percent', discountValue: 10 }
+    expect(cellSettle('150', { discountType: 'percent', discountValue: 15 }, policy, entry)).toEqual(
+      { kind: 'rollback', reason: 'blocked', row: entry, restored: entry },
+    )
+  })
+
+  it('wklejenie ponad sufit zostawia wiersz bez zmian', () => {
+    const current: DiscountPairT = { discountType: 'percent', discountValue: 10 }
+    expect(cellPaste('150', current, policy)).toBe(current)
+  })
+
   it('ogłasza przywrócony rabat w jednostce, którą wiersz niósł', () => {
     expect(policy.restoredLabel({ discountType: 'percent', discountValue: 10 })).toBe('10%')
     expect(policy.restoredLabel({ discountType: 'amount', discountValue: 250 })).toBe(formatPLN(250))

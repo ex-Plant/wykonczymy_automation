@@ -1589,6 +1589,9 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
 - [ ] Przewinięcie listy w trakcie pisania (wiersz wyjeżdża poza ekran): odrzucona liczba zostaje wycofana z komunikatem, a po przeładowaniu w „Przedmiar" stoi wartość sprzed edycji — nie przyjęty prefiks (EX-735)
 - [ ] To samo, gdy wiersz znika przez zmianę filtra albo odświeżenie w środku pisania
 - [ ] Kliknięcie, które jednocześnie wychodzi z komórki i usuwa wiersz z widoku, wyrzuca komunikat **raz**, nie dwa razy
+- [ ] „Rabat wart." przy typie „%": `101` świeci na czerwono z dymkiem, a po wyjściu wraca poprzedni rabat z komunikatem; `100` przechodzi (EX-736)
+- [ ] Ten sam `150` wklejony do „Rabat wart." na procentach nie wchodzi wcale, a przy typie „zł" 150 zł wchodzi normalnie
+- [ ] Rabat 150 zł przełączony w kolumnie „Rabat" na „%" ląduje jako 100%, nie 150%
 - [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
 - [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
 - [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny

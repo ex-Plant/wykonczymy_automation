@@ -21,4 +21,20 @@ describe('discountFromType', () => {
       discountValue: 10,
     })
   })
+
+  // The ceiling is on the value cell, so a rabat of 150 zł flipped to „%" is the one route that
+  // reaches 150% without a keystroke ever passing the guard (EX-736).
+  it('caps the carried value at 100 when the switch is INTO percent', () => {
+    expect(discountFromType({ discountType: 'amount', discountValue: 150 }, 'percent')).toEqual({
+      discountType: 'percent',
+      discountValue: 100,
+    })
+  })
+
+  it('leaves a value the percent plane accepts alone', () => {
+    expect(discountFromType({ discountType: 'amount', discountValue: 40 }, 'percent')).toEqual({
+      discountType: 'percent',
+      discountValue: 40,
+    })
+  })
 })
