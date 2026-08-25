@@ -31,6 +31,26 @@ describe('mapLineItem', () => {
     expect(mapLineItem(item, 'CORRECTION', true).amount).toBe(-1000)
   })
 
+  // Nothing clears „Kategoria" on a type change — the same leak `expenseCategory` and `netAmount`
+  // are already guarded against.
+  describe('category', () => {
+    const categorised = { ...item, category: '3' }
+
+    it('rides along for a type whose form shows the field', () => {
+      expect(mapLineItem(categorised, 'OTHER').category).toBe(3)
+      expect(mapLineItem(categorised, 'INVESTMENT_EXPENSE').category).toBe(3)
+    })
+
+    it('is dropped for a type that never showed the field', () => {
+      expect(mapLineItem(categorised, 'CORRECTION', true).category).toBeUndefined()
+      expect(mapLineItem(categorised, 'REGISTER_TRANSFER').category).toBeUndefined()
+    })
+
+    it('is undefined — never 0 — when the field was shown but left empty', () => {
+      expect(mapLineItem({ ...item, category: '' }, 'OTHER').category).toBeUndefined()
+    })
+  })
+
   // The netto figure rides only on the type that BILLS at it: on any other type a persisted
   // netAmount would sit unread until someone changed the type and silently started billing it.
   describe('netAmount', () => {
@@ -45,8 +65,9 @@ describe('mapLineItem', () => {
     })
 
     it('is undefined — never 0 — when the netto type has no value typed', () => {
-      expect(mapLineItem({ ...item, netAmount: '' }, 'INVESTMENT_EXPENSE_NET').netAmount)
-        .toBeUndefined()
+      expect(
+        mapLineItem({ ...item, netAmount: '' }, 'INVESTMENT_EXPENSE_NET').netAmount,
+      ).toBeUndefined()
     })
   })
 })
