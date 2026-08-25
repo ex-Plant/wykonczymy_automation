@@ -444,20 +444,44 @@ snapshot back. The manifest is rewritten after every row, so it always describes
 
 `--verify` asserts, per row: `mime_type = image/jpeg`, filename ends `.jpg`, `width`/`height`
 non-null, a thumbnail exists, the **served bytes** start with the JPEG magic number, and the count
-of transactions linking that media id is unchanged. The byte check is the one that matters — a
-green row over a 404 is exactly what a half-failed update leaves behind.
+of documents linking that media id — `transactions.invoice` **and**
+`vehicle-inspections.attachments`, both upload relations — is unchanged. The byte check is the one
+that matters: a green row over a 404 is exactly what a half-failed update leaves behind.
 
-**Rollback.** The snapshot dir, and nothing else:
+**Cache-bust after the run — not optional.** `src/lib/queries/media.ts` holds the WHOLE media table
+in `unstable_cache(['media-all'], { tags: [media] })` with **no TTL**, and `resolveInvoiceFiles` reads
+`filename` off it. The script passes `context: { skipRevalidation: true }` (media's `afterChange`
+calls `revalidateTag`, which throws outside a request context and rolls the transaction back — the
+trap below), so nothing drops that entry. Meanwhile the blob plugin deleted each `.heic` before
+uploading its JPEG. Until the entry is dropped, **every converted invoice 404s**, and `--verify` will
+not see it — verify reads the database directly.
+
+**Redeploy the production app** once `--verify` comes back clean; a new deployment starts with an
+empty Data Cache. Then open a converted invoice in the live app before calling the run done.
+
+**Rollback.** The snapshot dirs, and nothing else — **both of them**, because the canary in step 2
+wrote to its own dir and those two rows are converted just as irreversibly as the rest:
 
 ```bash
-BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" \
-  node scripts/blob-restore.mjs --dir dumps/heic-backfill-prod --allow-prod
+for dir in dumps/heic-backfill-canary dumps/heic-backfill-prod; do
+  BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" \
+    node scripts/blob-restore.mjs --dir "$dir" --allow-prod
+done
 ```
 
-then restore each row's `filename` / `mime_type` / `filesize` from
-`dumps/heic-backfill-prod/manifest.json` (it records the old and new values plus the pre-run link
-count per id). Note the snapshot dir also holds `manifest.json`, which `blob-restore.mjs` would
-upload as a blob — harmless, but delete it first if a clean store matters.
+then, per id, restore from that dir's `manifest.json` (it records old and new values plus the
+pre-run link count). The DB side is **six** columns, not three — the update regenerated image
+metadata that a restored HEIC cannot carry:
+
+- `filename`, `mime_type`, `filesize` → the `old*` values in the manifest
+- `width`, `height` → back to `NULL` (`sharp` cannot decode HEIC — that NULL is what the row had)
+- `sizes_thumbnail_*` (filename, width, height, mime_type, filesize, url) → back to `NULL`; the
+  generated thumbnail is a separate blob key that the restore does not overwrite, so delete it from
+  the store too or it is left orphaned.
+
+Note each snapshot dir also holds `manifest.json` (plus any `manifest-<timestamp>.json` a `--force`
+re-run set aside), which `blob-restore.mjs` would upload as a blob — harmless, but move them out
+first if a clean store matters.
 
 **Staging rehearsal, 2026-08-25:** 18 rows on the preview DB + preview store, 18/18 converted,
 `--verify` exit 0, zero `image/heic` rows left, files 93–98% smaller (2.79 MB → 82 KB on the

@@ -22,7 +22,7 @@
 //
 // Requires `heif-convert` (libheif) and `magick` (ImageMagick) on PATH: brew install libheif imagemagick
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
@@ -60,12 +60,36 @@ const arg = (name: string, fallback: string) => {
 }
 const has = (name: string) => process.argv.includes(name)
 
+// A typo in `--dry-run` is not a no-op: the runbook's line already carries `--allow-prod`, so the
+// dry-run guard misses and the destructive run proceeds unprompted.
+const KNOWN_FLAGS = [
+  '--dry-run',
+  '--allow-prod',
+  '--force',
+  '--verify',
+  '--limit',
+  '--snapshot-dir',
+]
+const VALUED_FLAGS = ['--limit', '--snapshot-dir']
+const passedArgs = process.argv.slice(2)
+for (const [index, token] of passedArgs.entries()) {
+  if (!token.startsWith('-')) {
+    // A bare token is only ever the value of the flag before it.
+    if (VALUED_FLAGS.includes(passedArgs[index - 1] ?? '')) continue
+    fail(`unexpected argument: ${token}`)
+  }
+  if (!KNOWN_FLAGS.includes(token)) fail(`unknown flag: ${token}`)
+}
+
 const SNAPSHOT_DIR = path.resolve(arg('--snapshot-dir', 'dumps/heic-backfill'))
+// These filenames predate `sanitizeFileName`, so one with a separator would escape the snapshot dir.
+const snapshotFile = (filename: string) => path.join(SNAPSHOT_DIR, path.basename(filename))
 const MANIFEST = path.join(SNAPSHOT_DIR, 'manifest.json')
-const LIMIT = Number(arg('--limit', '0'))
 // `Number('abc')` is NaN and `NaN > 0` is false, so an unvalidated typo silently converts the whole
-// set instead of the canary the operator asked for.
-if (!Number.isInteger(LIMIT) || LIMIT < 0) fail(`--limit must be a non-negative integer`)
+// set instead of the canary. Zero is refused too: "all rows" is the flag's ABSENCE, not a value.
+const LIMIT = has('--limit') ? Number(arg('--limit', '0')) : 0
+if (has('--limit') && (!Number.isInteger(LIMIT) || LIMIT < 1))
+  fail('--limit must be a positive integer')
 
 type PayloadT = Awaited<ReturnType<typeof getPayload>>
 
@@ -112,7 +136,20 @@ function resolveTarget() {
   // `scripts/blob-restore.mjs` carries, on the script that deletes as well as writes.
   const dbUrl = process.env.DB_POSTGRES_URL
   if (!dbUrl) fail('DB_POSTGRES_URL missing')
-  const isProdDb = dbUrl === process.env.DB_POSTGRES_URL_PROD
+  const prodDbUrl = process.env.DB_POSTGRES_URL_PROD
+  // Byte-equality fails OPEN: Neon's pooled and direct hosts, an added `?sslmode=` or a rotated
+  // password all read as non-production, and the guard then waves through a run on PRODUCTION rows.
+  if (!prodDbUrl)
+    fail('DB_POSTGRES_URL_PROD missing — cannot tell which environment DB_POSTGRES_URL is')
+  const dbIdentity = (url: string) => {
+    try {
+      const parsed = new URL(url)
+      return `${parsed.hostname.replace(/-pooler(?=\.)/, '')}${parsed.pathname}`
+    } catch {
+      return fail(`DB_POSTGRES_URL is not a valid connection URL`)
+    }
+  }
+  const isProdDb = dbIdentity(dbUrl) === dbIdentity(prodDbUrl)
   const isProdStore = store === PROD_BLOB_STORE_ID
 
   if (isProdDb !== isProdStore) {
@@ -147,13 +184,17 @@ async function fetchBlob(url: string, init?: RequestInit) {
   return fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
 }
 
-/** Verify compares its count against the one taken before the update, so both must ask this once. */
-async function countLinkedTransactions(payload: PayloadT, mediaId: number) {
-  const { totalDocs } = await payload.count({
-    collection: 'transactions',
-    where: { invoice: { equals: mediaId } },
-  })
-  return totalDocs
+// BOTH upload relations: a HEIC hanging off `vehicle-inspections.attachments` would count 0 before
+// and 0 after, passing verification green with its link dropped.
+async function countLinkedDocuments(payload: PayloadT, mediaId: number) {
+  const counts = await Promise.all([
+    payload.count({ collection: 'transactions', where: { invoice: { equals: mediaId } } }),
+    payload.count({
+      collection: 'vehicle-inspections',
+      where: { attachments: { equals: mediaId } },
+    }),
+  ])
+  return counts.reduce((total, { totalDocs }) => total + totalDocs, 0)
 }
 
 async function findHeicRows(payload: PayloadT) {
@@ -209,7 +250,7 @@ async function main() {
 
   if (has('--dry-run')) {
     for (const row of rows) {
-      const linked = await countLinkedTransactions(payload, row.id)
+      const linked = await countLinkedDocuments(payload, row.id)
       console.log(
         `  id=${row.id}  ${row.filename}  ${((row.filesize ?? 0) / 1_000_000).toFixed(2)} MB  ` +
           `→ transactions: ${linked}`,
@@ -221,11 +262,20 @@ async function main() {
 
   // An existing manifest is a previous run's rollback map. Overwriting it with this run's shorter
   // one destroys the only record of what that run already converted.
-  if (!has('--force') && (await stat(MANIFEST).catch(() => null))) {
-    fail(
-      `${MANIFEST} already exists — a previous run's rollback map.\n` +
-        `Move it aside, point --snapshot-dir elsewhere, or pass --force to overwrite it.`,
+  if (await stat(MANIFEST).catch(() => null)) {
+    if (!has('--force')) {
+      fail(
+        `${MANIFEST} already exists — a previous run's rollback map.\n` +
+          `Move it aside, point --snapshot-dir elsewhere, or pass --force to set it aside and continue.`,
+      )
+    }
+    // --force means „proceed", not „destroy the rollback map".
+    const archived = MANIFEST.replace(
+      /\.json$/,
+      `-${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
     )
+    await rename(MANIFEST, archived)
+    console.log(`--force: previous manifest kept at ${archived}`)
   }
 
   // A missing binary would otherwise fail all 18 rows AFTER a full snapshot download.
@@ -251,19 +301,22 @@ async function main() {
     // A 200 proves a response arrived, not that it is the file. A truncated snapshot looks complete
     // and logs a green tick while being worthless as the rollback for a tax-retained faktura.
     if (bytes.length === 0) fail(`ABORT: ${filename} (id=${row.id}) served 0 bytes`)
-    if (row.filesize && bytes.length !== row.filesize) {
+    // Gated on a non-null `filesize` the check would vanish for exactly the legacy rows likeliest to
+    // lack one. A row that cannot be proven complete stops the run.
+    if (!row.filesize)
+      fail(`ABORT: ${filename} (id=${row.id}) has no recorded filesize to verify against`)
+    if (bytes.length !== row.filesize) {
       fail(
         `ABORT: ${filename} (id=${row.id}) served ${bytes.length} B, the row says ${row.filesize} B`,
       )
     }
-    const snapshotPath = path.join(SNAPSHOT_DIR, filename)
+    const snapshotPath = snapshotFile(filename)
     await writeFile(snapshotPath, bytes)
     const written = await stat(snapshotPath)
     if (written.size !== bytes.length) fail(`ABORT: ${snapshotPath} is short on disk`)
     console.log(`  ✓ ${filename} (${(bytes.length / 1_000_000).toFixed(2)} MB)`)
   }
 
-  // --- Phase B: convert and update. ---
   console.log(`\nConverting and updating`)
   const manifest: ManifestEntryT[] = []
 
@@ -283,9 +336,9 @@ async function main() {
     manifest.push(entry)
 
     try {
-      entry.linkedTransactions = await countLinkedTransactions(payload, row.id)
+      entry.linkedTransactions = await countLinkedDocuments(payload, row.id)
 
-      await convert(path.join(SNAPSHOT_DIR, oldFilename), target)
+      await convert(snapshotFile(oldFilename), target)
       const jpeg = await readFile(target)
 
       await payload.update({
@@ -295,7 +348,9 @@ async function main() {
         file: { data: jpeg, mimetype: 'image/jpeg', name: newFilename, size: jpeg.length },
         // media's afterChange calls revalidateTag, which throws outside a request context
         // ("static generation store missing") and takes the whole transaction down with it. Same
-        // opt-out the seed scripts use. Nothing to invalidate here anyway — this is a CLI run.
+        // opt-out the seed scripts use. But `lib/queries/media.ts` caches the whole media table under
+        // `['media-all']` with no TTL and cannot be invalidated from here, so every converted invoice
+        // 404s until a redeploy — see `blob-recovery-runbook.md` §5.
         context: { skipRevalidation: true },
       })
 
@@ -305,6 +360,8 @@ async function main() {
       console.log(`  ✓ id=${row.id}  ${oldFilename} → ${newFilename}  (-${saved}%)`)
     } catch (error) {
       entry.error = error instanceof Error ? error.message : String(error)
+      // `fail` exits the process, so the `finally` below never runs on this path.
+      await rm(target, { force: true })
       // Stop rather than carry on. A row can fail with Payload having already deleted its original
       // (delete-then-upload), so every further row is another possible hole in the store while the
       // cause is still unknown. The snapshot plus this manifest are what the operator repairs from.
@@ -325,6 +382,10 @@ async function main() {
   }
 
   console.log(`\n${manifest.filter((e) => e.converted).length} converted. Manifest: ${MANIFEST}`)
+  console.log(
+    `\nNOT DONE YET: redeploy the app so the ['media-all'] cache drops its stale filenames — ` +
+      `until then every converted invoice 404s. See blob-recovery-runbook.md §5.`,
+  )
 }
 
 async function verify(payload: PayloadT, base: string) {
@@ -363,7 +424,7 @@ async function verify(payload: PayloadT, base: string) {
           problems.push('not JPEG bytes')
       }
 
-      const linked = await countLinkedTransactions(payload, entry.id)
+      const linked = await countLinkedDocuments(payload, entry.id)
       if (linked !== entry.linkedTransactions) {
         problems.push(`transactions ${linked} ≠ ${entry.linkedTransactions} before`)
       }

@@ -1537,6 +1537,19 @@ kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
 - [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
 - [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
 
+### Usuwanie faktur i stron — jedyna ścieżka w slice'ie, która kasuje bajty z Bloba
+
+Blob nie ma wersjonowania ani undelete, a lokalny dev i preview celują w **preview** store — na
+prodzie te same kliknięcia kasują fakturę zatrzymaną do celów podatkowych. Testować wyłącznie na
+bazie testowej 5435.
+
+- [ ] Wielostronicowa faktura → podgląd → „usuń" na jednej stronie: pytanie brzmi „usunąć tę stronę?", po potwierdzeniu znika **tylko** ta strona, podgląd zostaje otwarty na pozostałych
+- [ ] Ta sama faktura → „usuń całą fakturę": pytanie o całość, podgląd się zamyka, komórka „Faktura" nie pokazuje już nic
+- [ ] Jednostronicowa faktura → „usuń": pytanie brzmi „usunąć fakturę?" (nie „stronę"), podgląd się zamyka
+- [ ] Anulowanie okna potwierdzenia (przycisk, Escape, klik w tło) nie kasuje niczego
+- [ ] Ta sama ścieżka z „Edytuj przelew" zachowuje się identycznie jak z komórki na liście
+- [ ] Po odświeżeniu strony usunięte strony **nie** wracają — a te, których nie usunięto, dalej się otwierają
+
 ### Backfill na produkcji — wykonuje człowiek
 
 Procedura, komendy i rollback: `context/reference/blob-recovery-runbook.md` §5. Agent nie dotyka
@@ -1546,7 +1559,8 @@ produkcyjnej bazy ani produkcyjnego store'a.
 - [ ] Katalog snapshotu zawiera wszystkie oryginały **przed** pierwszym update'em
 - [ ] Kanarek `--limit 2` przechodzi (`--verify --limit 2` pomija zamiatanie „nic nie zostało")
 - [ ] `--verify` na prodzie zwraca komplet OK i kończy się kodem 0
-- [ ] Kilka faktur otwiera się na produkcji
+- [ ] **Redeploy** aplikacji po runie — bez tego `unstable_cache(['media-all'])` dalej podaje stare nazwy `.heic` i każda przerobiona faktura leci 404 (`--verify` tego nie widzi, czyta prosto z bazy)
+- [ ] Kilka faktur otwiera się na produkcji **po** redeployu
 
 ## S-18 (cut) — spot-check perfu edytora przy ~1000 pozycjach
 
