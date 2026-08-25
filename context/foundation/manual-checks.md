@@ -1583,6 +1583,8 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
 - [ ] Delete na zaznaczeniu kilku komórek liczbowych wpisuje w nie 0 — i **nie** kasuje wierszy
 - [ ] Skopiowanie komórki i wklejenie w inną przenosi tę samą liczbę; wklejenie `1 234,5` z arkusza właściciela też ląduje jako liczba
 - [ ] „Cena j.m." u podwykonawcy: przekroczenie progu dalej pokazuje czerwoną liczbę z dymkiem, a po wyjściu wycofuje wartość z komunikatem (zachowanie niezmienione)
+- [ ] Po takim wycofaniu Cmd+Z **nie** przywraca odrzuconej liczby — ani gdy wyjście z komórki nastąpiło od razu, ani po sekundzie zastanowienia nad dymkiem (EX-737)
+- [ ] To samo dla `-` w „Przedmiar": wpisz kilka cyfr, dopisz `-`, odczekaj sekundę, kliknij obok — Cmd+Z cofa edycję sprzed wejścia w komórkę, nie odrzucony prefiks
 - [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
 - [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
 - [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny

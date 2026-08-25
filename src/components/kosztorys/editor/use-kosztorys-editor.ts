@@ -6,14 +6,16 @@ import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-deboun
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
+  foldRetractions,
   undoAvailability,
   type FieldChangeT,
+  type GridBurstT,
   type StageChangeT,
 } from '@/lib/kosztorys/undo-coalesce'
 import { planGridChanges } from '@/lib/kosztorys/grid-change-plan'
 import { itemFieldLane, stageLane } from '@/lib/kosztorys/save-lanes'
 import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-reversal'
-import type { UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
+import type { UndoCommandT, UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
 import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
@@ -138,7 +140,7 @@ export function useKosztorysEditor({
   const { save, runNow } = useDebouncedSave(500)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
   // here; the toolbar + keyboard call undo/redo (re-exported below).
-  const { push, undo, redo, canUndo, canRedo, pruneByIds } = undoRedo
+  const { push, undo, redo, canUndo, canRedo, pruneByIds, amendTop } = undoRedo
   const [gridRef, gridHeight] = useElementHeight()
   // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
   // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
@@ -228,26 +230,54 @@ export function useKosztorysEditor({
   // flush while the shortcut already works (EX-526 #5).
   const [hasPendingBurst, setHasPendingBurst] = useState(false)
 
+  // The grid command sitting on top of the stack, kept with the burst it captured so the next flush
+  // can tell whether it retracts it (EX-737). Never consulted without the identity guard in
+  // `amendTop`, which is what makes a stale entry here harmless rather than a source of truth.
+  const lastGridCommand = useRef<{ command: UndoCommandT; burst: GridBurstT } | null>(null)
+
+  function gridCommand({ fields, stages }: GridBurstT): UndoCommandT | null {
+    if (fields.length === 0 && stages.length === 0) return null
+    return {
+      label: 'Edycja',
+      undo: () => runGridReversal(fields, stages, 'undo'),
+      redo: () => runGridReversal(fields, stages, 'redo'),
+      touchedIds: [...new Set([...fields.map((c) => c.id), ...stages.map((c) => c.id)])],
+    }
+  }
+
   // Collapse the buffered burst into one undo command (before=first seen, after=last), dropping a
-  // net-zero burst (type-then-revert) entirely so it never lands a dead entry on the stack.
+  // net-zero burst (type-then-revert) entirely so it never lands a dead entry on the stack. A burst
+  // that takes back the command already on top cancels against it too, so a refused value and the
+  // prefix it left behind leave the stack exactly as they found it.
   function flushUndoBuffer() {
     if (flushTimer.current) {
       clearTimeout(flushTimer.current)
       flushTimer.current = null
     }
-    const fields = coalesceFieldChanges(pendingFields.current)
-    const stages = coalesceStageChanges(pendingStages.current)
+    let burst: GridBurstT = {
+      fields: coalesceFieldChanges(pendingFields.current),
+      stages: coalesceStageChanges(pendingStages.current),
+    }
     pendingFields.current = []
     pendingStages.current = []
     setHasPendingBurst(false)
-    if (fields.length === 0 && stages.length === 0) return
-    const touchedIds = [...new Set([...fields.map((c) => c.id), ...stages.map((c) => c.id)])]
-    push({
-      label: 'Edycja',
-      undo: () => runGridReversal(fields, stages, 'undo'),
-      redo: () => runGridReversal(fields, stages, 'redo'),
-      touchedIds,
-    })
+
+    const previous = lastGridCommand.current
+    if (previous) {
+      const folded = foldRetractions(previous.burst, burst)
+      if (folded.retracted) {
+        const trimmed = gridCommand(folded.previous)
+        if (amendTop(previous.command, trimmed)) {
+          lastGridCommand.current = trimmed ? { command: trimmed, burst: folded.previous } : null
+          burst = folded.next
+        }
+      }
+    }
+
+    const command = gridCommand(burst)
+    if (!command) return
+    push(command)
+    lastGridCommand.current = { command, burst }
   }
 
   // A failed save can filter the last entry out of the burst buffers; if that empties them, cancel the

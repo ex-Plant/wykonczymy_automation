@@ -29,6 +29,9 @@ export type UndoRedoApiT = {
   reset: () => void
   // Drop every command (from both stacks) that touches any of these now-deleted ids (EX-526 #2).
   pruneByIds: (ids: number[]) => void
+  // Rewrite (or drop) the command on top, but only while it is still the one the caller pushed —
+  // see the stack core below. Returns whether it amended.
+  amendTop: (expected: UndoCommandT, replacement: UndoCommandT | null) => boolean
 }
 
 // Bound so a long session can't grow the stack without limit; the oldest entry is evicted first.
@@ -68,6 +71,17 @@ export function createUndoRedoStack(maxDepth = MAX_DEPTH) {
       undoStack = []
       redoStack = []
       revision++
+    },
+    // Rewrite the top command in place, or drop it when `replacement` is null. Guarded on identity
+    // rather than on position: a caller that pushed a command and later finds it retracted (EX-737)
+    // may only amend a top it still owns, so anything pushed / undone / pruned since silently makes
+    // this a no-op instead of rewriting a command the caller never saw.
+    amendTop(expected: UndoCommandT, replacement: UndoCommandT | null): boolean {
+      if (undoStack[undoStack.length - 1] !== expected) return false
+      if (replacement) undoStack[undoStack.length - 1] = replacement
+      else undoStack.pop()
+      revision++
+      return true
     },
     // Prune commands referencing a deleted id from both stacks. A command with no `touchedIds`
     // (structural) is never id-scoped, so it survives. Only bumps the revision if something was
@@ -137,12 +151,19 @@ export function useUndoRedo(): UndoRedoApiT {
     rerender()
   }
 
+  function amendTop(expected: UndoCommandT, replacement: UndoCommandT | null) {
+    const amended = stack.amendTop(expected, replacement)
+    if (amended) rerender()
+    return amended
+  }
+
   return {
     push,
     undo,
     redo,
     reset,
     pruneByIds,
+    amendTop,
     canUndo: stack.canUndo,
     canRedo: stack.canRedo,
     revision: stack.revision,
@@ -160,4 +181,5 @@ export const NOOP_UNDO_REDO: UndoRedoApiT = {
   revision: 0,
   reset: () => {},
   pruneByIds: () => {},
+  amendTop: () => false,
 }

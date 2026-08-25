@@ -168,3 +168,63 @@ describe('createUndoRedoStack', () => {
     expect(stack.canUndo).toBe(false) // one press reversed the whole batch
   })
 })
+
+// EX-737: a grid burst that takes back the one the command on top captured must not leave two steps
+// behind. The caller hands the command it pushed as `expected`, so the amend can only ever touch a
+// top it still recognises.
+describe('amendTop', () => {
+  it('replaces the top command, so undo hands back the trimmed one', () => {
+    const stack = createUndoRedoStack()
+    const a = cmd('a')
+    const b = cmd('b')
+    const trimmed = cmd('b-trimmed')
+    stack.push(a)
+    stack.push(b)
+
+    expect(stack.amendTop(b, trimmed)).toBe(true)
+    expect(stack.undo()).toBe(trimmed)
+    expect(stack.undo()).toBe(a)
+  })
+
+  it('drops the top command entirely on a null replacement', () => {
+    const stack = createUndoRedoStack()
+    const a = cmd('a')
+    const b = cmd('b')
+    stack.push(a)
+    stack.push(b)
+
+    expect(stack.amendTop(b, null)).toBe(true)
+    expect(stack.undoDepth).toBe(1)
+    expect(stack.undo()).toBe(a)
+  })
+
+  it('refuses a top the caller no longer owns and leaves the stack alone', () => {
+    const stack = createUndoRedoStack()
+    const a = cmd('a')
+    const b = cmd('b')
+    stack.push(a)
+    stack.push(b)
+
+    expect(stack.amendTop(a, null)).toBe(false)
+    expect(stack.undoDepth).toBe(2)
+    expect(stack.undo()).toBe(b)
+  })
+
+  it('refuses on an empty stack', () => {
+    const stack = createUndoRedoStack()
+    expect(stack.amendTop(cmd('a'), null)).toBe(false)
+  })
+
+  it('bumps the revision only when it actually amends', () => {
+    const stack = createUndoRedoStack()
+    const a = cmd('a')
+    stack.push(a)
+    const before = stack.revision
+
+    stack.amendTop(cmd('other'), null)
+    expect(stack.revision).toBe(before)
+
+    stack.amendTop(a, null)
+    expect(stack.revision).toBe(before + 1)
+  })
+})
