@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addTransferInvoicesAction } from '@/lib/actions/transfers'
 import { reportBlockedFiles } from '@/lib/invoices/blocked-files-message'
-import { ingestFiles } from '@/lib/invoices/ingest-files'
+import { ingestPickedFiles } from '@/lib/invoices/ingest-picked-files'
 import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
 import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
 import { toastMessage } from '@/lib/utils/toast'
@@ -19,10 +19,9 @@ export function useInvoiceUpload(transactionId: number) {
   const [isUploading, setIsUploading] = useState(false)
 
   async function attach(picked: File[]) {
-    const { processed, blocked } = await ingestFiles(picked)
+    const { files: ready, blocked } = await ingestPickedFiles(picked)
     reportBlockedFiles(blocked)
 
-    const ready = processed.filter((file) => file !== undefined)
     if (ready.length === 0) return
 
     let mediaIds: number[]

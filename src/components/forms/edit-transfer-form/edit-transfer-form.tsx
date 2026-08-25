@@ -1,12 +1,13 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { FileInput } from '@/components/ui/file-input'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
+import { useFilePickIngest } from '@/components/forms/hooks/use-file-pick-ingest'
 import {
   showsInvestment,
   needsExpenseCategory,
@@ -52,8 +53,7 @@ export function EditTransferForm({
   keepOpen,
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [hasPickedFiles, setHasPickedFiles] = useState(false)
+  const { files, isIngesting, ingestPicked, reset: resetFiles } = useFilePickIngest()
   // Bumped on reset to remount the (uncontrolled) file input, clearing its
   // native file and internal filename state — form.reset() can't reach them.
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -84,12 +84,13 @@ export function EditTransferForm({
         invoiceNote: value.invoiceNote || undefined,
       }
 
-      // Capture files before dialog closes — the ref won't be available after unmount
-      const files = [...(fileRef.current?.files ?? [])]
-
       await submit(!!keepOpen, {
         form,
         action: async () => {
+          // Enter bypasses the disabled submit button, so the guard has to exist here too —
+          // saving mid-ingest would persist the row without the pages still being converted.
+          if (isIngesting) return { success: false, error: 'Poczekaj na przetworzenie plików.' }
+
           let invoiceMediaIds: number[] | undefined
           if (files.length > 0) {
             try {
@@ -108,7 +109,7 @@ export function EditTransferForm({
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
         onReset: () => {
-          setHasPickedFiles(false)
+          resetFiles()
           setFileInputKey((k) => k + 1)
         },
       })
@@ -123,10 +124,6 @@ export function EditTransferForm({
   // investment is editable here, so adding one to a correction must reveal the
   // type field without a reload (matches the create form's currentInvestment).
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
-
-  function handleFileChange() {
-    setHasPickedFiles((fileRef.current?.files?.length ?? 0) > 0)
-  }
 
   // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
   // the file input below only ever ADDS pages, so there is no other way to drop one here.
@@ -185,7 +182,7 @@ export function EditTransferForm({
           </form.AppField>
 
           <div className="space-y-2">
-            {visibleInvoices.length > 0 && !hasPickedFiles && (
+            {visibleInvoices.length > 0 && files.length === 0 && (
               <InvoicePreviewButton
                 invoices={visibleInvoices}
                 onRemove={handleRemove}
@@ -194,16 +191,25 @@ export function EditTransferForm({
             )}
             <FileInput
               key={fileInputKey}
-              ref={fileRef}
               label="Dodaj faktury"
               accept="image/*,application/pdf"
               multiple
-              onChange={handleFileChange}
+              disabled={isIngesting}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files ?? [])
+                e.target.value = '' // allow re-picking the same file after a reset or a failed ingest
+                ingestPicked(picked)
+              }}
             />
           </div>
         </FieldGroup>
 
-        <FormFooter label="Zapisz" submittingLabel="Zapisywanie..." className="mt-6" />
+        <FormFooter
+          label="Zapisz"
+          submittingLabel="Zapisywanie..."
+          className="mt-6"
+          disabled={isIngesting}
+        />
       </form>
     </form.AppForm>
   )
