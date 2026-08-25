@@ -1,10 +1,10 @@
 ---
 change_id: flota-przeglady
 title: Fleet module — vehicles, inspection deadlines, daily reminder email
-status: implemented
+status: archived
 created: 2026-08-18
-updated: 2026-08-19
-archived_at: null
+updated: 2026-08-25
+archived_at: 2026-08-25T08:30:23Z
 branch: konradantonik/ex-711-flota-przeglady
 worktree: .claude/worktrees/ex-711-flota
 ---
