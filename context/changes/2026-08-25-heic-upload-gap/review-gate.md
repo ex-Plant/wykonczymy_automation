@@ -359,10 +359,14 @@ struktury/kohezji.
       który git i tak zapisuje) i inwentarz trzech ścieżek błędu stojących sześć linii niżej.
 - [x] dropped · comment-noise · `form-hooks.ts:53`, `deposit-form-api.ts:7` · dwa komentarze przeszły
       strip test bez zmian (jednolinijkowe uzasadnienie `store: unknown`; reguła domenowa o kwocie brutto).
-- [ ] 🔵 OBSERVATION · surfaced · suite · `src/hooks/use-latest-request.ts:15` · `eslint` zgłasza
-      **error** `react-hooks/refs` — „Cannot access refs during render". Plik nietknięty przez ten slice
-      i przez ten change; zgłaszam, bo blokuje `pnpm lint` całego repo. **Nie naprawiam** — to inny
-      podsystem i osobna decyzja.
+- [x] 🔵 OBSERVATION · fixed · suite · `src/hooks/use-latest-request.ts:15` · `eslint` zgłaszał
+      **error** `react-hooks/refs` — jedyny w repo. Odczyt `ref.current` w renderze jest nieczysty
+      (React może wyrzucić render i policzyć go od nowa; Compiler memoizuje zakładając czystość).
+      Zgłoszone jako spoza slice'a, naprawione na polecenie użytkownika: leniwy inicjalizator
+      `useState`, licznik schowany w domknięciu, obiekt API tworzony raz zamiast co render. Logika
+      wyciągnięta do `src/lib/utils/latest-request.ts` (`454c54ac`, `79a71d31`).
+      test: TDD · unit — `src/__tests__/lib/utils/latest-request.test.ts`, 5 przypadków; spec
+      zweryfikowany trzema mutacjami źródła, każda psuje dokładnie jeden test.
 
 ## Tests & suite
 
@@ -378,5 +382,5 @@ struktury/kohezji.
 ## Status
 
 Bez zmian względem pierwszego przebiegu: **in review**. Sekcja `## EX-394` w `manual-checks.md`
-nietknięta, backfill produkcyjny wykonuje człowiek. Jeden `[ ]` w tym przebiegu to świadomie
-zgłoszona obserwacja spoza slice'a, nie dług tej zmiany.
+nietknięta, backfill produkcyjny wykonuje człowiek. **Zero otwartych `[ ]`** — jedyna obserwacja
+spoza slice'a została naprawiona na polecenie użytkownika po zamknięciu bramki.
