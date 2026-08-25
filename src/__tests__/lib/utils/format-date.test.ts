@@ -3,7 +3,9 @@ import { formatPLDate, formatPLDateTime } from '@/lib/utils/format-date'
 
 const ORIGINAL_TZ = process.env.TZ
 afterAll(() => {
-  process.env.TZ = ORIGINAL_TZ
+  // Assigning `undefined` back would leave the literal string „undefined" in TZ for later specs.
+  if (ORIGINAL_TZ === undefined) delete process.env.TZ
+  else process.env.TZ = ORIGINAL_TZ
 })
 
 // The reader's clock, not the reader's choice: Vercel runs UTC and the office runs Europe/Warsaw, so
