@@ -20,7 +20,15 @@ export const SCHEDULED_INSPECTION_TYPES = [
  */
 export const INSPECTION_TYPES = [...SCHEDULED_INSPECTION_TYPES, 'SERVICE', 'ODOMETER'] as const
 
+/**
+ * The types a „do wymiany" mark can be put on — everything that is work somebody performs. ODOMETER
+ * is the exception: a reading cannot be needed, only taken.
+ */
+export const FLAGGABLE_INSPECTION_TYPES = [...SCHEDULED_INSPECTION_TYPES, 'SERVICE'] as const
+
 export type ScheduledInspectionTypeT = (typeof SCHEDULED_INSPECTION_TYPES)[number]
+
+export type FlaggableInspectionTypeT = (typeof FLAGGABLE_INSPECTION_TYPES)[number]
 
 export type InspectionTypeT = (typeof INSPECTION_TYPES)[number]
 

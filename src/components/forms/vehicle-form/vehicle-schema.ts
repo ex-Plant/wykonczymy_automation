@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { VEHICLE_STATUSES } from '@/lib/fleet/vehicle-status'
 
 // Form-input layer: every field is a string, as the HTML controls produce them.
@@ -8,6 +9,11 @@ export const vehicleFormSchema = z.object({
   model: z.string().min(1, 'Model jest wymagany'),
   year: z.string(),
   vin: z.string(),
+  // Free text, not an enum: the owner writes „całosezonowe ale do wymiany" there, and half of that
+  // sentence is the half worth keeping.
+  tyres: z.string(),
+  note: z.string(),
+  exemptions: z.array(z.enum(SCHEDULED_INSPECTION_TYPES)),
   status: z.enum(VEHICLE_STATUSES),
 })
 
@@ -19,6 +25,8 @@ export const vehicleSchema = vehicleFormSchema.extend({
   // optional year would make an emptied „Rocznik" field save silently without clearing anything.
   year: z.number().int().min(1900).max(2100).nullable(),
   vin: z.string().default(''),
+  tyres: z.string().default(''),
+  note: z.string().default(''),
 })
 
 export type VehicleFormDataT = z.infer<typeof vehicleSchema>

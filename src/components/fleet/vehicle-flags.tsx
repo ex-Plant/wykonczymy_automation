@@ -3,8 +3,8 @@
 import { startTransition, useOptimistic } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { setVehicleFlagsAction } from '@/lib/actions/fleet'
-import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
-import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
+import { FLAGGABLE_INSPECTION_TYPES, INSPECTION_TYPE_LABELS } from '@/lib/fleet/inspection-types'
+import type { FlaggableInspectionTypeT } from '@/lib/fleet/inspection-types'
 import { toastMessage } from '@/lib/utils/toast'
 
 /**
@@ -22,11 +22,11 @@ export function VehicleFlags({
   active,
 }: {
   vehicleId: number
-  active: InspectionTypeT[]
+  active: FlaggableInspectionTypeT[]
 }) {
   const [selected, setSelected] = useOptimistic(active)
 
-  function toggle(type: InspectionTypeT) {
+  function toggle(type: FlaggableInspectionTypeT) {
     const next = selected.includes(type)
       ? selected.filter((candidate) => candidate !== type)
       : [...selected, type]
@@ -48,7 +48,7 @@ export function VehicleFlags({
 
   return (
     <div className="flex flex-col gap-2">
-      {INSPECTION_TYPES.map((type) => (
+      {FLAGGABLE_INSPECTION_TYPES.map((type) => (
         <label key={type} className="flex cursor-pointer items-center gap-2 text-sm">
           <Checkbox checked={selected.includes(type)} onCheckedChange={() => toggle(type)} />
           {INSPECTION_TYPE_LABELS[type].pl}

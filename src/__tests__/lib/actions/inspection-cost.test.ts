@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import type { InspectionFormDataT } from '@/components/forms/inspection-form/inspection-schema'
 
-// „Koszt" became required so a `0 zł` on the fleet listing means „it cost nothing" and nothing else
-// (EX-729). The type says so, but a client that omits the key is exactly what the runtime guard is
-// for — so this drives the REAL DB and asserts the PERSISTED rows: a `success: false` proves the
-// action returned, not that it wrote nothing.
+// „Koszt" may be unknown again — the sheet import carries no prices — but the invariant EX-729
+// bought survives: `0` still means „it cost nothing", and unknown is `null`, never `0`. Collapsing
+// the two is silent, so this drives the REAL DB and asserts the PERSISTED value rather than the
+// action's return: a `success: true` proves it returned, not what it wrote.
 //
 // Same mock surface as the sibling action specs: requireAuth needs a request/cookie we lack in node,
 // and revalidation touches next/cache outside a request context.
@@ -23,11 +23,11 @@ const { createInspectionAction } = await import('@/lib/actions/fleet')
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
-describe.skipIf(!ENV_READY)('createInspectionAction — cost is required (DB)', () => {
+describe.skipIf(!ENV_READY)('createInspectionAction — cost (DB)', () => {
   let payload: Payload
   let vehicleId = 0
 
-  const storedCount = async () =>
+  const storedRows = async () =>
     (
       await payload.find({
         collection: 'vehicle-inspections',
@@ -35,13 +35,17 @@ describe.skipIf(!ENV_READY)('createInspectionAction — cost is required (DB)', 
         limit: 100,
         depth: 0,
       })
-    ).totalDocs
+    ).docs
+
+  const storedCount = async () => (await storedRows()).length
 
   const inspection = (overrides: Partial<InspectionFormDataT> = {}): InspectionFormDataT => ({
     vehicle: vehicleId,
     type: 'TECHNICAL',
     performedAt: '2026-08-01',
     cost: 250,
+    insurer: '',
+    policyNumber: '',
     note: '',
     attachments: [],
     ...overrides,
@@ -74,7 +78,9 @@ describe.skipIf(!ENV_READY)('createInspectionAction — cost is required (DB)', 
     if (vehicleId) await payload.delete({ collection: 'vehicles', id: vehicleId })
   })
 
-  it('writes nothing when the payload carries no cost', async () => {
+  // The field is optional to a human, not to a caller: `null` is the way to say „unknown", and an
+  // absent key is a client that forgot the field entirely.
+  it('writes nothing when the payload omits the cost key', async () => {
     const { cost: _omitted, ...withoutCost } = inspection()
 
     const result = await createInspectionAction(withoutCost as InspectionFormDataT)
@@ -90,20 +96,28 @@ describe.skipIf(!ENV_READY)('createInspectionAction — cost is required (DB)', 
     expect(await storedCount()).toBe(0)
   })
 
-  // Zero is a legitimate price — a warranty repair costs the company nothing — and must not be
-  // mistaken for „left empty" by the required check.
-  it('persists a zero cost', async () => {
+  // Zero is a legitimate price — a warranty repair costs the company nothing — and must survive as
+  // itself, not be laundered into „unknown".
+  it('persists a zero cost as zero', async () => {
     const result = await createInspectionAction(inspection({ cost: 0 }))
 
     expect(result.success).toBe(true)
+    expect((await storedRows())[0]?.cost).toBe(0)
+  })
 
-    const { docs } = await payload.find({
-      collection: 'vehicle-inspections',
-      where: { vehicle: { equals: vehicleId } },
-      limit: 10,
-      depth: 0,
-    })
-    expect(docs).toHaveLength(1)
-    expect(docs[0]?.cost).toBe(0)
+  it('persists an unknown cost as null, not as zero', async () => {
+    const result = await createInspectionAction(inspection({ cost: null }))
+
+    expect(result.success).toBe(true)
+    expect((await storedRows())[0]?.cost).toBeNull()
+  })
+
+  it('keeps the polisa number as text', async () => {
+    const result = await createInspectionAction(
+      inspection({ type: 'INSURANCE', policyNumber: '22044 4672279', insurer: 'compensa' }),
+    )
+
+    expect(result.success).toBe(true)
+    expect((await storedRows())[0]?.policyNumber).toBe('22044 4672279')
   })
 })

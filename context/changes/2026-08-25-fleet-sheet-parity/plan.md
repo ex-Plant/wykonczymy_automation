@@ -470,7 +470,7 @@ Existing rows: `cost` keeps its values (only the constraint drops), `exemptions`
 
 #### Automated
 
-- [ ] 3.1 `vehicle-update.test.ts` + the rewritten `inspection-cost-required.test.ts` pass
+- [x] 3.1 `vehicle-update.test.ts` + the rewritten `inspection-cost-required.test.ts` pass
 
 ### Phase 4: UI surfaces
 

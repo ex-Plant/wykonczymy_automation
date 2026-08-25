@@ -1,5 +1,8 @@
 import { toWarsawDay, type DayT } from '@/lib/fleet/days'
-import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
+import {
+  FLAGGABLE_INSPECTION_TYPES,
+  type FlaggableInspectionTypeT,
+} from '@/lib/fleet/inspection-types'
 import type { InspectionEventT, VehicleFlagsT } from '@/lib/fleet/types'
 
 const isDay = (value: unknown): value is DayT =>
@@ -16,7 +19,10 @@ export const parseVehicleFlags = (raw: unknown): VehicleFlagsT => {
   const source = raw as Record<string, unknown>
 
   return Object.fromEntries(
-    INSPECTION_TYPES.filter((type) => isDay(source[type])).map((type) => [type, source[type]]),
+    FLAGGABLE_INSPECTION_TYPES.filter((type) => isDay(source[type])).map((type) => [
+      type,
+      source[type],
+    ]),
   )
 }
 
@@ -35,15 +41,15 @@ export const parseVehicleFlags = (raw: unknown): VehicleFlagsT => {
  * clearing is the common case and an exclusive bound would break it, so the ambiguity is paid here
  * rather than there — the checkbox unticking itself on the round-trip is what makes it visible.
  *
- * Returned in INSPECTION_TYPES order, never the stored object's, so the badges keep the domain's
+ * Returned in FLAGGABLE_INSPECTION_TYPES order, never the stored object's, so the badges keep the domain's
  * order regardless of which type happened to be flagged first.
  */
 export const activeFlags = (
   flags: VehicleFlagsT,
   events: readonly InspectionEventT[],
   today: DayT,
-): InspectionTypeT[] =>
-  INSPECTION_TYPES.filter((type) => {
+): FlaggableInspectionTypeT[] =>
+  FLAGGABLE_INSPECTION_TYPES.filter((type) => {
     const flaggedAt = flags[type]
     if (!flaggedAt) return false
 
@@ -71,12 +77,12 @@ export const nextFlags = ({
   today,
 }: {
   current: VehicleFlagsT
-  active: readonly InspectionTypeT[]
-  selected: readonly InspectionTypeT[]
+  active: readonly FlaggableInspectionTypeT[]
+  selected: readonly FlaggableInspectionTypeT[]
   today: DayT
 }): VehicleFlagsT =>
   Object.fromEntries(
-    INSPECTION_TYPES.filter((type) => selected.includes(type)).map((type) => [
+    FLAGGABLE_INSPECTION_TYPES.filter((type) => selected.includes(type)).map((type) => [
       type,
       active.includes(type) ? (current[type] ?? today) : today,
     ]),

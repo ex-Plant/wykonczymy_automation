@@ -91,13 +91,17 @@ export function InspectionForm({
       nextDueAt: value.nextDueAt || undefined,
       odometer: optionalNumber(value.odometer),
       nextDueOdometer: optionalNumber(value.nextDueOdometer),
-      cost: Number(value.cost),
+      cost: value.cost.trim() === '' ? null : Number(value.cost),
+      insurer: value.insurer,
+      policyNumber: value.policyNumber,
       note: value.note,
       attachments: [],
     }),
   })
 
   const currentType = useStore(form.store, (state) => state.values.type)
+  /** „Odczyt licznika" records a number on a day — no deadline, no price, nothing else. */
+  const isReading = currentType === 'ODOMETER'
   const currentVehicle = useStore(form.store, (state) => state.values.vehicle)
   const currentOdometer = useStore(form.store, (state) => state.values.odometer)
 
@@ -132,9 +136,19 @@ export function InspectionForm({
 
   const onTypeChange = (type: InspectionTypeT) => {
     prefillNextDue(type)
-    // The km target is rendered only for OIL_CHANGE, but hiding a field does not clear it — without
-    // this a TECHNICAL row persists an oil target it has no business carrying.
+    // Hiding a field does not clear it — without this a TECHNICAL row persists an oil target, or a
+    // polisa's number, that it has no business carrying.
     if (type !== 'OIL_CHANGE') form.setFieldValue('nextDueOdometer', '')
+    if (type !== 'INSURANCE') {
+      form.setFieldValue('insurer', '')
+      form.setFieldValue('policyNumber', '')
+    }
+    // A reading is not work: it has no price and nothing it makes due. `prefillNextDue` leaves a
+    // date the user already touched alone, which is exactly what must not survive here.
+    if (type === 'ODOMETER') {
+      form.setFieldValue('nextDueAt', '')
+      form.setFieldValue('cost', '')
+    }
   }
 
   return (
@@ -171,9 +185,11 @@ export function InspectionForm({
           {(field) => <field.DatePicker label="Data wykonania" showError />}
         </form.AppField>
 
-        <form.AppField name="nextDueAt">
-          {(field) => <field.DatePicker label="Następny termin" showError />}
-        </form.AppField>
+        {!isReading && (
+          <form.AppField name="nextDueAt">
+            {(field) => <field.DatePicker label="Następny termin" showError />}
+          </form.AppField>
+        )}
 
         <form.AppField name="odometer">
           {(field) => (
@@ -201,11 +217,25 @@ export function InspectionForm({
           </form.AppField>
         )}
 
-        <form.AppField name="cost">
-          {(field) => (
-            <field.Input label="Koszt (PLN)" type="number" placeholder="0.00" showError />
-          )}
-        </form.AppField>
+        {currentType === 'INSURANCE' && (
+          <>
+            <form.AppField name="insurer">
+              {(field) => <field.Input label="Ubezpieczyciel" placeholder="PZU" showError />}
+            </form.AppField>
+
+            <form.AppField name="policyNumber">
+              {(field) => <field.Input label="Nr polisy" showError />}
+            </form.AppField>
+          </>
+        )}
+
+        {!isReading && (
+          <form.AppField name="cost">
+            {(field) => (
+              <field.Input label="Koszt (PLN)" type="number" placeholder="0.00" showError />
+            )}
+          </form.AppField>
+        )}
 
         <form.AppField name="note">
           {(field) => <field.Textarea label="Notatka" rows={2} />}

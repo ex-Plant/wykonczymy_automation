@@ -36,6 +36,9 @@ export function EditVehicleDialog({ vehicle }: EditVehicleDialogPropsT) {
             model: vehicle.model,
             year: vehicle.year === null ? '' : String(vehicle.year),
             vin: vehicle.vin,
+            tyres: vehicle.tyres,
+            note: vehicle.note,
+            exemptions: vehicle.exemptions,
             status: vehicle.status,
           }}
           action={(data) => updateVehicleAction(vehicle.id, data)}

@@ -37,6 +37,9 @@ describe.skipIf(!ENV_READY)('updateVehicleAction (DB)', () => {
     model: 'Transit',
     year: 2019,
     vin: 'VIN123',
+    tyres: '',
+    note: '',
+    exemptions: [],
     status: 'ACTIVE',
     ...overrides,
   })

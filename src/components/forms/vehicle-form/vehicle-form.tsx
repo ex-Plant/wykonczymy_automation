@@ -1,10 +1,12 @@
 'use client'
 
 import { SelectItem } from '@/components/ui/select'
-import { FieldGroup } from '@/components/ui/field'
+import { Checkbox } from '@/components/ui/checkbox'
+import { FieldGroup, FieldLabel } from '@/components/ui/field'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import FormFooter from '@/components/forms/form-components/form-footer'
+import { INSPECTION_TYPE_LABELS, SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { VEHICLE_STATUS_LABELS, VEHICLE_STATUSES } from '@/lib/fleet/vehicle-status'
 import { useVehicleFormStore } from '@/stores/form-stores'
 import { vehicleFormSchema, type VehicleFormValuesT } from './vehicle-schema'
@@ -51,6 +53,9 @@ export function VehicleForm({
       model: value.model,
       year: value.year ? Number(value.year) : null,
       vin: value.vin.trim().toUpperCase(),
+      tyres: value.tyres,
+      note: value.note,
+      exemptions: value.exemptions,
       status: value.status,
     }),
   })
@@ -75,6 +80,37 @@ export function VehicleForm({
         </form.AppField>
 
         <form.AppField name="vin">{(field) => <field.Input label="VIN" showError />}</form.AppField>
+
+        <form.AppField name="tyres">
+          {(field) => <field.Input label="Opony" placeholder="całoroczne" showError />}
+        </form.AppField>
+
+        <form.AppField name="note">
+          {(field) => <field.Textarea label="Uwagi" rows={2} />}
+        </form.AppField>
+
+        <form.AppField name="exemptions">
+          {(field) => (
+            <div className="flex flex-col gap-2">
+              <FieldLabel>Nie dotyczy (bezterminowo)</FieldLabel>
+              {SCHEDULED_INSPECTION_TYPES.map((type) => (
+                <label key={type} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={field.state.value.includes(type)}
+                    onCheckedChange={() =>
+                      field.handleChange(
+                        field.state.value.includes(type)
+                          ? field.state.value.filter((candidate) => candidate !== type)
+                          : [...field.state.value, type],
+                      )
+                    }
+                  />
+                  {INSPECTION_TYPE_LABELS[type].pl}
+                </label>
+              ))}
+            </div>
+          )}
+        </form.AppField>
 
         <form.AppField name="status">
           {(field) => (
