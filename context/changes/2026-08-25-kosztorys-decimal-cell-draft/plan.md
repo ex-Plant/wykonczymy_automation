@@ -455,12 +455,12 @@ Run once, after phase 4:
 
 #### Automated
 
-- [x] 3.1 `kosztorys-discount-edit.test.ts` green — its `discountFromValue` block moved to `cell-edit.test.ts` with the now-dead function
-- [x] 3.2 `cell-edit.test.ts` extended with the discount policy's clear/implied-percent cases
+- [x] 3.1 `kosztorys-discount-edit.test.ts` green — its `discountFromValue` block moved to `cell-edit.test.ts` with the now-dead function — d324351c
+- [x] 3.2 `cell-edit.test.ts` extended with the discount policy's clear/implied-percent cases — d324351c
 
 ### Phase 4: The grid's numeric columns onto a hand-rolled cell
 
 #### Automated
 
-- [x] 4.1 Rewritten `decimal-column.test.ts` passes — moved to `__tests__/components/kosztorys/editor/grid/cells/` with its source
-- [x] 4.2 Column-shape specs green: `v2-columns-order`, `v2-columns-readonly`, `stage-column-filter`, `preview-columns`
+- [x] 4.1 Rewritten `decimal-column.test.ts` passes — moved to `__tests__/components/kosztorys/editor/grid/cells/` with its source — df7ba6ec
+- [x] 4.2 Column-shape specs green: `v2-columns-order`, `v2-columns-readonly`, `stage-column-filter`, `preview-columns` — df7ba6ec
