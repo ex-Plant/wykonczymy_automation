@@ -1,9 +1,9 @@
 ---
 change_id: fleet-sheet-parity
 title: Fleet parity with the owner's vehicle-control sheet
-status: implementing
+status: implemented
 created: 2026-08-25
-updated: 2026-08-25
+updated: 2026-08-26
 archived_at: null
 branch: null
 worktree: null
@@ -45,3 +45,12 @@ Sheet data quality (checked against the raw XML, 2026-08-25):
   not a clean enum — a bare select would lose what the owner actually wrote.
 - „aktualny przebieg" is filled on exactly one car (`WF7972X` = 177 500), which is the whole
   argument for a cheap standalone reading rather than a fake inspection.
+
+Import outcome (2026-08-26, local docker DB): **9 vehicles, 25 events** — the plan's Progress box
+said 20, which was an arithmetic slip in the criterion, not in the data. The table it verified
+against the XML yields 8 TECHNICAL (the przyczepa is exempt) + 9 INSURANCE + 7 OIL_CHANGE
+(no oil history for the T4 or the przyczepa) + 1 ODOMETER.
+
+`src/scripts/import-fleet-sheet.ts` stays until a human has run it against prod (after
+`pnpm db:migrate:prod`); deleting it now would strand that step. Its removal is the last box in the
+manual-checks section.

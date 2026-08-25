@@ -457,30 +457,30 @@ Existing rows: `cost` keeps its values (only the constraint drops), `exemptions`
 
 #### Automated
 
-- [x] 1.1 `pnpm generate:types` emits the new fields with `cost: number | null` — 85b96ff7
-- [x] 1.2 Migration applies against the local docker DB — 85b96ff7
+- [x] 1.1 `pnpm generate:types` emits the new fields with `cost: number | null` — c487c4dc
+- [x] 1.2 Migration applies against the local docker DB — c487c4dc
 
 ### Phase 2: Domain layer
 
 #### Automated
 
-- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/` passes with the new exemptions spec — 7655f215
+- [x] 2.1 `pnpm exec vitest run src/__tests__/lib/fleet/` passes with the new exemptions spec — de620d85
 
 ### Phase 3: Forms and actions
 
 #### Automated
 
-- [x] 3.1 `vehicle-update.test.ts` + the rewritten `inspection-cost-required.test.ts` pass
+- [x] 3.1 `vehicle-update.test.ts` + the rewritten `inspection-cost-required.test.ts` pass — 9288577b
 
 ### Phase 4: UI surfaces
 
 #### Automated
 
-- [x] 4.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes — 20d24cc4
+- [x] 4.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes — 9c5ce99f
 
 ### Phase 5: Import the nine cars
 
 #### Automated
 
-- [ ] 5.1 Dry run lists 9 vehicles and 20 events with no writes
-- [ ] 5.2 Fleet specs still pass after the real local run
+- [x] 5.1 Dry run lists 9 vehicles and 20 events with no writes
+- [x] 5.2 Fleet specs still pass after the real local run

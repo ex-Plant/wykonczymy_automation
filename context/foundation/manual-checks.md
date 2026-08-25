@@ -1609,3 +1609,25 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
 - [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
 - [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
 - [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny
+
+## fleet-sheet-parity — parytet z arkuszem kontroli przeglądów i ubezpieczeń
+
+Setup: baza testowa 5435 po migracji (`DB_POSTGRES_URL="$DB_POSTGRES_URL_TEST" pnpm exec payload
+migrate`) i po imporcie dziewięciu aut
+(`DB_POSTGRES_URL="$DB_POSTGRES_URL_TEST" node --env-file=.env --import tsx src/scripts/import-fleet-sheet.ts`).
+Zalogowany jako OWNER.
+
+- [ ] Panel Payload pokazuje „Ubezpieczyciel"/„Nr polisy" tylko przy Rodzaj = OC
+- [ ] Przegląd zapisuje się z pustym polem Koszt
+- [ ] W dialogu dodawania: OC pokazuje Ubezpieczyciel + Nr polisy, przełączenie Rodzaju na Przegląd techniczny je chowa
+- [ ] `354E000003305` i `22044 4672279` zapisują się i wracają bez zmian
+- [ ] „Odczyt licznika" pyta wyłącznie o datę, przebieg i notatkę (bez terminu i bez kosztu)
+- [ ] Zaznaczenie „bezterminowo" dla Przeglądu technicznego przeżywa przeładowanie strony
+- [ ] Kolumna Przegląd przyczepy (`WD776AL`) czyta „bezterminowo", a przyczepa znika z sekcji „nigdy nie zarejestrowano" w cotygodniowym mailu
+- [ ] Auto, którego przeglądy nie mają żadnej ceny, pokazuje „—" w kolumnie Koszty, a stopka „Razem" go nie dolicza
+- [ ] Strona pojazdu pokazuje Opony, Uwagi i aktualną polisę (ubezpieczyciel + numer)
+- [ ] `/flota` listuje wszystkie dziewięć aut z terminami przeglądu i OC zgodnymi z arkuszem
+- [ ] Przegląd VW T4 (`WF 7029W`, termin 2026-06-27) czyta PO TERMINIE
+- [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa
+- [ ] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
+- [ ] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
