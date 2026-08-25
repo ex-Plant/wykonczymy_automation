@@ -186,7 +186,11 @@ async function readInputHashes(payload: Payload) {
             coalesce(ki.w_tools_override_value::text, '') || ':' ||
             coalesce(ki.own_tools_override_type::text, '') || ':' ||
             coalesce(ki.own_tools_override_value::text, ''),
-          ',' ORDER BY ki.id
+          -- NOT ORDER BY ki.id: the seeds insert items with Promise.all, so a re-seed hands the
+          -- same rows different serial ids in a different order and this hash moves while nothing
+          -- about the data did — the kosztorys axis then goes dark on a fixture nobody can keep
+          -- fresh. Section + display order is what the seed actually fixes.
+          ',' ORDER BY ki.section_id, ki.display_order, ki.id
         )
       ) AS overrides,
       (
