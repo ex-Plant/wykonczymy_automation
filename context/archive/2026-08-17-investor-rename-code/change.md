@@ -1,13 +1,22 @@
 ---
 change_id: investor-rename-code
 title: Rename the paying party from `client` to `investor` in code
-status: preparing
+status: archived
 created: 2026-08-17
-updated: 2026-08-17
-archived_at: null
+updated: 2026-08-25
+archived_at: 2026-08-25
 branch: null
 worktree: null
 ---
+
+## Outcome — canceled 2026-08-25, never planned
+
+Dropped, not deferred. The benefit sits on the `tsc`-visible half (types, props, components, filenames,
+cache tags), which never expires; the deadline sits on the persisted half (the `client_price` column +
+five silent-drop payload surfaces), which is worth nothing and carries all the risk. `research.md` was
+distilled away — its durable half is `lessons.md` („A rename splits into two halves with opposite
+economics"), which keeps the blind-spot inventory and the gate map; the naming ruling is
+`context/domain/02-glossary.md` §2. Nothing else from the 318-line research survives the cancellation.
 
 ## Notes
 
