@@ -14,12 +14,12 @@ export type DiscountPairT = { discountType: DiscountTypeT | null; discountValue:
 const IMPLIED_TYPE: DiscountTypeT = 'percent'
 
 /**
- * A rabat of 100% is work given away — a real commercial decision, so it stands. Above it the row's
- * net goes negative and that figure travels on into the section and footer totals, where it reads as
- * the client being owed money for work that was done. Refused outright rather than warned about
- * (owner, 2026-08-25).
+ * 100% is work given away, a real commercial decision. Above it the row's net goes negative and
+ * travels into the section and footer totals, reading as the client being owed money for work that
+ * was done (owner, 2026-08-25).
  *
- * The ceiling is on the PERCENT plane only: „250" in a rabat kwotowy is 250 zł, an ordinary figure.
+ * Ceiling on the PERCENT plane only — „250" in a rabat kwotowy is an ordinary 250 zł. Floor on both:
+ * „-50" raises the price of the offer through the one field the client reads as a discount.
  */
 export const MAX_DISCOUNT_PERCENT = 100
 
@@ -27,20 +27,27 @@ function withDiscountValue<RowT extends DiscountPairT>(current: RowT, value: num
   return { ...current, discountType: current.discountType ?? IMPLIED_TYPE, discountValue: value }
 }
 
+export type DiscountTypeSwitchT =
+  | { kind: 'change'; pair: DiscountPairT }
+  | { kind: 'blocked'; message: string }
+
+/**
+ * The value slot is shared, so 150 zł re-read as a percentage is the one way past the ceiling with
+ * no keystroke involved. Refused rather than capped — silently making it 100% gives the row away for
+ * free (owner, 2026-08-25).
+ */
 export function discountFromType(
   current: DiscountPairT,
   next: DiscountTypeT | null,
-): DiscountPairT {
-  if (next === null) return { discountType: null, discountValue: 0 }
-  // The value slot is shared, so switching type re-reads the same number under new rules — and 150
-  // zł read as a percentage is the one way past the cell's ceiling, no keystroke involved. Capped
-  // rather than cleared: the switch is a change of UNIT, and dropping the figure would make the user
-  // retype a rabat they had already entered.
-  const value =
-    next === 'percent'
-      ? Math.min(current.discountValue, MAX_DISCOUNT_PERCENT)
-      : current.discountValue
-  return { discountType: next, discountValue: value }
+): DiscountTypeSwitchT {
+  if (next === null) return { kind: 'change', pair: { discountType: null, discountValue: 0 } }
+  if (next === 'percent' && current.discountValue > MAX_DISCOUNT_PERCENT) {
+    return {
+      kind: 'blocked',
+      message: `Rabat ${formatPLN(current.discountValue)} to więcej niż ${MAX_DISCOUNT_PERCENT}% — najpierw zmień wartość.`,
+    }
+  }
+  return { kind: 'change', pair: { discountType: next, discountValue: current.discountValue } }
 }
 
 /**
@@ -55,10 +62,12 @@ export function discountPolicy<RowT extends DiscountPairT>(): CellEditPolicyT<Ro
     restore: (row, entry) => ({ ...row, ...entry }),
     applyValue: withDiscountValue,
     clear: (row) => ({ ...row, discountType: null, discountValue: 0 }),
-    guard: (row) =>
-      row.discountType === 'percent' && row.discountValue > MAX_DISCOUNT_PERCENT
+    guard: (row) => {
+      if (row.discountValue < 0) return 'Rabat nie może być ujemny.'
+      return row.discountType === 'percent' && row.discountValue > MAX_DISCOUNT_PERCENT
         ? `Rabat nie może przekroczyć ${MAX_DISCOUNT_PERCENT}%.`
-        : null,
+        : null
+    },
     // Named in the unit the row was actually carrying — „przywrócono 10" reads as złotówki to
     // anyone who wasn't looking at „Rabat" when the toast fired.
     restoredLabel: (row) =>

@@ -56,7 +56,9 @@ const itemPatchSchema = z
     unit: z.string().nullable(),
     plannedQty: z.coerce.number(),
     discountType: z.enum(['percent', 'amount']).nullable(),
-    discountValue: z.coerce.number(),
+    // Floor only: the percent ceiling can't live here, since the same slot carries złotówki when the
+    // type is 'amount' (discount-edit.ts).
+    discountValue: z.coerce.number().min(0),
     clientPrice: z.coerce.number(),
     wToolsOverrideType: overrideTypeSchema.nullable(),
     wToolsOverrideValue: z.coerce.number(),

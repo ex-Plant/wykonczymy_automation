@@ -115,10 +115,12 @@ describe('cellPaste', () => {
 
   it('wklejona pustka czyści przez politykę — w rabacie zdejmuje też typ', () => {
     expect(cellPaste('', row(7), qty)).toEqual(row(0))
-    expect(cellPaste('', { discountType: 'percent', discountValue: 10 }, discountPolicy())).toEqual({
-      discountType: null,
-      discountValue: 0,
-    })
+    expect(cellPaste('', { discountType: 'percent', discountValue: 10 }, discountPolicy())).toEqual(
+      {
+        discountType: null,
+        discountValue: 0,
+      },
+    )
   })
 })
 
@@ -147,8 +149,7 @@ describe('discountPolicy', () => {
     ).toEqual({ kind: 'clear', row: noDiscount })
   })
 
-  // EX-736: rabat 100% to praca gratis i ma prawo przejść; wyżej wiersz schodzi na minus, a ta
-  // ujemna wartość netto leci dalej w sumy sekcji i stopki.
+  // EX-736: 100% is work given away and passes; above it the row's net goes negative.
   it('odrzuca rabat procentowy powyżej 100%', () => {
     expect(cellKeystroke('101', noDiscount, policy)).toMatchObject({ kind: 'blocked' })
     expect(cellKeystroke('100', noDiscount, policy)).toEqual({
@@ -158,16 +159,16 @@ describe('discountPolicy', () => {
   })
 
   it('nie stawia sufitu rabatowi kwotowemu — 250 zł to nie 250%', () => {
-    expect(cellKeystroke('250', { discountType: 'amount', discountValue: 0 }, policy)).toMatchObject(
-      { kind: 'commit' },
-    )
+    expect(
+      cellKeystroke('250', { discountType: 'amount', discountValue: 0 }, policy),
+    ).toMatchObject({ kind: 'commit' })
   })
 
   it('wyjście z komórki wycofuje odrzucony rabat i mówi dlaczego', () => {
     const entry: DiscountPairT = { discountType: 'percent', discountValue: 10 }
-    expect(cellSettle('150', { discountType: 'percent', discountValue: 15 }, policy, entry)).toEqual(
-      { kind: 'rollback', reason: 'blocked', row: entry, restored: entry },
-    )
+    expect(
+      cellSettle('150', { discountType: 'percent', discountValue: 15 }, policy, entry),
+    ).toEqual({ kind: 'rollback', reason: 'blocked', row: entry, restored: entry })
   })
 
   it('wklejenie ponad sufit zostawia wiersz bez zmian', () => {
@@ -177,7 +178,9 @@ describe('discountPolicy', () => {
 
   it('ogłasza przywrócony rabat w jednostce, którą wiersz niósł', () => {
     expect(policy.restoredLabel({ discountType: 'percent', discountValue: 10 })).toBe('10%')
-    expect(policy.restoredLabel({ discountType: 'amount', discountValue: 250 })).toBe(formatPLN(250))
+    expect(policy.restoredLabel({ discountType: 'amount', discountValue: 250 })).toBe(
+      formatPLN(250),
+    )
     expect(policy.restoredLabel(noDiscount)).toBe('brak rabatu')
   })
 })
