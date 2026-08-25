@@ -1,7 +1,7 @@
 'use client'
 
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { ColumnToggle } from '@/components/ui/column-toggle'
+import { ColumnToggle } from '@/components/filters/column-toggle'
 import { PaginationFooter } from '@/components/ui/pagination-footer'
 import { CancelledFilterButton } from '@/components/transfers/cancelled-filter-button'
 import { CancelledTransactionAuditButton } from '@/components/transfers/cancelled-transaction-audit-button'

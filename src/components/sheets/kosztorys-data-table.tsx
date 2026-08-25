@@ -3,7 +3,10 @@
 import { useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { AddSheetDialog } from '@/components/dialogs/add-sheet-dialog'
 import { Button } from '@/components/ui/button'
 import { useSearchFilter } from '@/hooks/use-search-filter'

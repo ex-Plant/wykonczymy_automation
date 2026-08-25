@@ -2,9 +2,12 @@
 
 import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { ColumnToggle } from '@/components/ui/column-toggle'
+import { ColumnToggle } from '@/components/filters/column-toggle'
 import { StatusFilter } from '@/components/investments/status-filter'
-import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { getInvestmentColumns, V2_COLUMN_IDS } from '@/components/tables/investments'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { InvestmentRowT } from '@/types/table-rows'

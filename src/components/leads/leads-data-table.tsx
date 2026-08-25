@@ -2,8 +2,11 @@
 
 import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { ColumnToggle } from '@/components/ui/column-toggle'
-import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
+import { ColumnToggle } from '@/components/filters/column-toggle'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { getLeadColumns } from '@/components/tables/leads'
 import { ReconcileLeadsButton } from '@/components/leads/reconcile-leads-button'
 import type { LeadRowT } from '@/types/leads'

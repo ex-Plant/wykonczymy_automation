@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Calendar } from 'lucide-react'
-import { FilterGrid } from '@/components/ui/filter-grid'
+import { FilterGrid } from '@/components/filters/filter-grid'
 import { Loader } from '@/components/ui/loader/loader'
 import { FilterSelect } from '@/components/filters/filter-select'
 import { DateFilterButton } from '@/components/filters/date-filter-button'

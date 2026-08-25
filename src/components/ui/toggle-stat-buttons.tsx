@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/button'
-import { FilterGrid } from '@/components/ui/filter-grid'
+import { FilterGrid } from '@/components/filters/filter-grid'
 import { Description } from '@/components/ui/description'
 import { SignedMoneyDisplay, signedMoneyColor } from '@/components/ui/signed-money-display'
 import { InfoTooltip } from '@/components/ui/info-tooltip'

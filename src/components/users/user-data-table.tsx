@@ -2,9 +2,12 @@
 
 import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { ColumnToggle } from '@/components/ui/column-toggle'
+import { ColumnToggle } from '@/components/filters/column-toggle'
 import { ActiveFilterButton } from '@/components/ui/active-filter-button'
-import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { AddWorkerDialog } from '@/components/dialogs/add-worker-dialog'
 import { getUserColumns } from '@/components/tables/users'
 import type { UserRowT } from '@/types/table-rows'

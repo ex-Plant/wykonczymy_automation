@@ -2,8 +2,8 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Banknote, CreditCard, FolderOpen, Landmark, Receipt, Tags, User } from 'lucide-react'
-import { FilterGrid } from '@/components/ui/filter-grid'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { FilterGrid } from '@/components/filters/filter-grid'
+import { SearchFilterInput } from '@/components/filters/search-filter-input'
 import { FilterMultiSelect } from '@/components/filters/filter-multi-select'
 import { ClearButton } from '@/components/filters/clear-button'
 import { DateFilters } from '@/components/filters/date-filters'

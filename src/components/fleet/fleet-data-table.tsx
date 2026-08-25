@@ -2,8 +2,11 @@
 
 import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { ColumnToggle } from '@/components/ui/column-toggle'
-import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
+import { ColumnToggle } from '@/components/filters/column-toggle'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { COSTS_COLUMN_ID, getFleetColumns } from '@/components/tables/fleet'
 import { DateFilters } from '@/components/filters/date-filters'
 import { AddVehicleDialog } from '@/components/dialogs/add-vehicle-dialog'

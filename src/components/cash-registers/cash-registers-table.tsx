@@ -5,8 +5,11 @@ import { DataTable } from '@/components/ui/data-table/data-table'
 import { ActiveFilterButton } from '@/components/ui/active-filter-button'
 import { FilterMultiSelect } from '@/components/filters/filter-multi-select'
 import { Tags, User } from 'lucide-react'
-import { ColumnToggle } from '@/components/ui/column-toggle'
-import { SEARCH_FILTER_TOOLBAR_WIDTH, SearchFilterInput } from '@/components/ui/search-filter-input'
+import { ColumnToggle } from '@/components/filters/column-toggle'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { getCashRegisterColumns, REGISTER_TYPE_LABELS } from '@/components/tables/cash-registers'
 import { RegisterBalanceChart } from '@/components/dashboard/register-balance-chart'
 import { useActiveFilter } from '@/hooks/use-active-filter'
