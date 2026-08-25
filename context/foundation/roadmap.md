@@ -163,7 +163,7 @@ band is parity polish on top of it.
 
 One row per F-NN / S-NN — the index and the backlog handoff in one place. **Plan-ready** = ready to feed into `/10x-plan` now (prerequisites met and no blocking open decision); `no` means blocked, `—` means n/a (deferred). Run a ready slice with `/10x-plan <change-id>`.
 
-Bands: **editor parity S-01–S-09** → **financial-plane bridge S-11–S-12** (active) → **client share / import S-13, S-15** → **testing S-16–S-17** → **cutover S-19**. S-10, S-14 and S-18 are missing on purpose — `kosztorys-column-rbac` (2026-08-18), `kosztorys-export` (2026-08-15) and `kosztorys-hardening` (2026-08-25) were cut whole and their numbers kept as tombstones; see [Cut & folded slices](#cut--folded-slices).
+Bands: **editor parity S-01–S-09** → **financial-plane bridge S-11–S-12** (active) → **client share / import S-13, S-15** → **testing S-16** → **cutover S-19**. S-10, S-14, S-17 and S-18 are missing on purpose — `kosztorys-column-rbac` (2026-08-18), `kosztorys-export` (2026-08-15), `financial-core-smoke` (2026-08-25) and `kosztorys-hardening` (2026-08-25) were cut whole and their numbers kept as tombstones; see [Cut & folded slices](#cut--folded-slices).
 
 | ID   | Change ID                       | Outcome (user can …)                                                                    | Prerequisites      | PRD refs                      | Status   | Plan-ready |
 | ---- | ------------------------------- | --------------------------------------------------------------------------------------- | ------------------ | ----------------------------- | -------- | ---------- |
@@ -183,8 +183,7 @@ Bands: **editor parity S-01–S-09** → **financial-plane bridge S-11–S-12** 
 | S-13 | kosztorys-client-share          | share a live, read-only client view of a kosztorys via a token link (EX-532)            | S-01, S-02, S-04   | — (owner request)             | done     | —          |
 | S-15 | kosztorys-importer              | import an existing sheet kosztorys into the app                                         | S-01 (full parity) | FR-010, FR-016                | done     | —          |
 | S-16 | editor-e2e-coverage             | (gate) rely on automated E2E over the editor before release                             | F-01, S-01…S-15    | FR-013                        | deferred | —          |
-| S-17 | financial-core-smoke            | trust an automated smoke that transfers update balances/figures                         | F-01               | FR-012, FR-011, FR-015, US-02 | deferred | —          |
-| S-19 | new-investment-no-sheet         | create a new investment with no Google Sheet, kosztorys app-only                        | S-16               | FR-009, FR-014, FR-016, US-01 | deferred | —          |
+| S-19 | new-investment-no-sheet         | create a new investment with no Google Sheet, kosztorys app-only                        | S-16               | FR-009, FR-014, FR-016, US-01 | done     | —          |
 
 **Cut / folded (unnumbered):** `kosztorys-rooms` — CUT (pokoje out of scope, 2026-07-08). `kosztorys-catalogue` — FOLDED into S-09 (2026-07-09), then the autocomplete carved back out as `kosztorys-item-autocomplete` — now CUT (2026-07-28, superseded by EX-503 section-append). See [Cut & folded slices](#cut--folded-slices).
 
@@ -197,8 +196,8 @@ Navigation aid — the five execution bands and what gates the jump between them
 | 1    | Editor parity                       | `S-01` … `S-09` | Editor feature-complete: every POC decision + braindump todo built.                                      |
 | 2    | Financial-plane bridge (**active**) | `S-11` → `S-12` | Kosztorys figures readable from (and authoritative for) the investment plane — read-only, no write-back. |
 | 3    | Client share / import               | `S-13` → `S-15` | Last feature work before the editor is locked with tests.                                                |
-| 4    | Testing                             | `S-16` · `S-17` | E2E deferred to here on purpose — specs stabilise only once the editor direction settles.                |
-| 5    | Cutover / release                   | `S-19`          | The release gate: new investments get no sheet. Needs E2E (`S-16`).                                      |
+| 4    | Testing                             | `S-16`          | E2E deferred to here on purpose — specs stabilise only once the editor direction settles.                |
+| 5    | Cutover / release                   | `S-19`          | **Reached 2026-08-25** without a flip: nothing provisioned a sheet, and the app now seeds the kosztorys. |
 
 **Band 2 inserted 2026-07-20 (owner: "separate slices").** `kosztorys-bridge` and
 `robocizna-from-kosztorys` were being built with no roadmap row. They are not editor parity — they
@@ -238,7 +237,7 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Outcome:** (foundation) a Playwright harness is installed and CI-runnable against an isolated test database, with an auth fixture and one green smoke spec; no operator-driven MCP session required to run it.
 - **Change ID:** e2e-harness
 - **PRD refs:** FR-011
-- **Unlocks:** S-16 (editor E2E coverage), S-17 (financial-core smoke), and the FR-013 release gate; reduces the migration-risk guardrail by giving the financial core automated regression protection.
+- **Unlocks:** S-16 (editor E2E coverage), the transfer/financial-core specs (S-17 cut 2026-08-25 — the harness is what let its legs be written slice by slice), and the FR-013 release gate; reduces the migration-risk guardrail by giving the financial core automated regression protection.
 - **Prerequisites:** —
 - **Parallel with:** the whole editor band (no dependency on the harness).
 - **Blockers:** —
@@ -501,24 +500,11 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Change ID:** editor-e2e-coverage
 - **PRD refs:** FR-013
 - **Prerequisites:** F-01, S-01…S-15 (all editor + bridge + import/export slices)
-- **Parallel with:** S-17 (financial-core smoke)
+- **Parallel with:** — (S-17 financial-core-smoke was cut 2026-08-25)
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** This is the quality gate that lets the owner touch the editor only once it is verified. Deliberately deferred to band 4: the editor will churn heavily through bands 1–3 while the direction settles, so standing specs up earlier only chases moving targets. Risk: once here, if coverage lags the slices it locks, the cutover gate (S-19) slips — write the specs close behind the settled editor.
 - **Status:** deferred — band 4. Waits until the editor + bridge + import/export are built and the direction is stable. Gates S-19 (cutover).
-
-### S-17: Financial-core smoke spec
-
-- **Outcome:** a developer/CI run signs in, creates a transfer, and asserts the register balance and investment figures update — automated, no human interaction, replacing the manual Playwright-MCP session for that flow.
-- **Change ID:** financial-core-smoke
-- **PRD refs:** FR-012, FR-011, FR-015, US-02
-- **Prerequisites:** F-01
-- **Parallel with:** everything — independent of the editor arc (guards the financial core, not the editor).
-- **Blockers:** —
-- **Unknowns:**
-  - Transfer side effects (register recalculation hooks) make the spec slower/heavier — confirm the seed + assertion shape keeps it deterministic. — Owner: team. Block: no.
-- **Risk:** The regression guard for guardrail #1 (financial integrity). Risk: asserting the action's return value instead of persisted balances would hide a failed write — assert observable state.
-- **Status:** deferred — band 4. Blocks no editor slice; F-01 harness + the two existing transfer specs cover the flow in the interim. Safe to defer only while editor slices stay additive and don't touch transfer/balance/marża write paths (FR-015).
 
 ### S-19: New investments get no Google Sheet (cutover gate)
 
@@ -529,9 +515,9 @@ Foundations below assume these are present and do NOT re-scaffold them.
 - **Parallel with:** —
 - **Blockers:** —
 - **Unknowns:**
-  - Escape hatch — does the owner ever want to opt a new investment back to a sheet, or is the cutover absolute? PRD resolved "stands as written" (no lingering sheet option); confirm at cutover. — Owner: user. Block: no.
-- **Risk:** The release gate — only flips once full parity is built and E2E-covered (S-16). Guardrail: the materiały-mirror must keep syncing for investments still on sheets (FR-014), and existing sheet kosztorysy stay accessible (FR-016). Risk: a half-built editor behind this flag recreates the two-worlds problem.
-- **Status:** deferred — band 5 (release).
+  - ~~Escape hatch — does the owner ever want to opt a new investment back to a sheet?~~ **Moot (2026-08-25):** there is no opt-in to keep, because there is no provisioning step to opt out of.
+- **Risk:** The release gate. Guardrail: the materiały-mirror must keep syncing for investments still on sheets (FR-014), and existing sheet kosztorysy stay accessible (FR-016) — **both hold**, the mirror is untouched and resolves per linked sheet.
+- **Status:** **done (2026-08-25) — reached without a slice, and verified rather than declared.** Three facts, none of them a flag that was flipped: (1) **nothing ever provisioned a sheet.** No code path creates or copies a spreadsheet on investment create; `KOSZTORYS_TEMPLATE_SHEET_ID` is read only by the env schema and consumed by nobody, and the service account has no Drive quota anyway — linking was always manual. (2) **Nothing syncs without a link.** The mirror in `hooks/transfers/sync-sheet.ts` resolves the sheet from the investment and returns on `!sheetId`, so a sheet-less investment is a silent no-op, not an error. (3) **The app now authors the kosztorys itself** — `createInvestmentAction` seeds the new investment's kosztorys from the chosen preset (`seedInvestmentFromPreset`, best-effort with a warning toast if the preset fails), and `/inwestycje/[id]/kosztorys_v2` renders for every investment, empty state included. What the slice would still have done is a **habit and one nudge**, not a build: stop linking sheets by hand, and retire the „Inwestycje bez kosztorysu" table on `/kosztorysy`, whose only purpose is to prompt for a sheet. Tearing down the Google integration itself is a separate, later release per the vision — not this slice.
 
 ### Cut & folded slices
 
@@ -600,12 +586,36 @@ Kept for the record; pulled out of the numbered sequence because they carry no e
 - **Change ID:** kosztorys-export. **PRD refs:** FR-008 — **unimplemented**, deliberately, by this cut.
 - **Was:** S-14 (also S-07/S-09/S-10/S-11/S-12 under earlier numberings).
 
+#### financial-core-smoke — CUT (S-17 tombstone)
+
+- **CUT entirely (2026-08-25, owner).** The slice was overtaken by the specs other slices wrote on
+  the way past it: what it still owns is **one** spec, which is not a slice. S-17's number stays a
+  tombstone — the table jumps S-16 → S-19 — rather than renumbering the tail again. Linear EX-396
+  cancelled with the same rationale.
+- **Already covered, incidentally.** Sign-in without a human: `global-setup.ts` + `storageState`,
+  plus `auth.spec.ts`. Transfer → register balance: `transfer-create.spec.ts` — and it already
+  asserts the polled **rendered** balance rather than the action's return value, which is the exact
+  anti-pattern this slice's Risk line was written to prevent. The reversal:
+  `transfer-cancel.spec.ts` (reason-length gate, balance returns to its pre-create value, row
+  leaves the default view). A kosztorys write → marża on the listing:
+  `investments-listing-kosztorys.spec.ts`, which is also where the „Odśwież dane" discipline is
+  written down.
+- **Carried forward, not lost — the one uncovered leg.** No spec asserts that a **booked transfer**
+  moves the investment's own figures (materiały / bilans v1 on `/inwestycje/[id]`) without a manual
+  refresh. The layer below is covered — `pnpm test:parity` for the SQL, unit specs for marża — so
+  the only thing that can fail there is the browser leg, i.e. the cache tag: a figure read off the
+  wrong tag renders as a zero, not as an error. Filed as **EX-731** (`e2e-backlog`).
+- **Outcome (dropped):** a dedicated smoke slice gates the financial core.
+- **Change ID:** financial-core-smoke. **PRD refs:** FR-012, FR-011, FR-015, US-02 — covered by the
+  specs listed above plus EX-731, not by a slice.
+- **Was:** S-17 (also S-02/S-12/S-13/S-14/S-15 under earlier numberings).
+
 #### kosztorys-hardening — CUT (S-18 tombstone)
 
 - **CUT entirely (2026-08-25, owner).** The pre-cutover hardening slice did not survive its own
   verification: three of its four bullets were already done or overruled by the ~750 kosztorys
   commits between its writing (2026-07-08) and today, and what remained was one E2E spec plus one
-  manual spot-check. S-18's number stays a tombstone — the table jumps S-17 → S-19 — rather than
+  manual spot-check. S-18's number stays a tombstone — the table jumps S-16 → S-19 — rather than
   renumbering the tail a fifth time. Linear EX-406 cancelled with the same rationale.
 - **Access rules — already enforced, and the wider question was overruled.** Every kosztorys
   collection (`kosztorys-items` / `-sections` / `-stages` / `-shares` / `-client-view`) gates on
