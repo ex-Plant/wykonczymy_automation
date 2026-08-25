@@ -5,7 +5,7 @@ import {
   useInvoiceFiles,
   type IngestResultT,
 } from '@/components/forms/expense-form/use-invoice-files'
-import { filesByRowId } from '@/lib/invoices/upload-file-client'
+import { filesByRowId } from '@/lib/invoices/row-file-positions'
 import { reportBlockedFiles } from '@/lib/invoices/blocked-files-message'
 import { toastMessage } from '@/lib/utils/toast'
 

@@ -3,7 +3,7 @@ import {
   InvoiceUploadError,
   resolveInvoiceMediaIds,
   resolveInvoicePageIds,
-} from '@/lib/invoices/upload-file-client'
+} from '@/lib/invoices/invoice-page-uploads'
 import type { ActionResultT } from '@/types/action'
 
 /**
@@ -43,7 +43,6 @@ async function withOrphanCleanup<TIds>(
   return result
 }
 
-/** One invoice's pages, flat. */
 export function submitWithInvoicePages(
   files: File[],
   submit: (invoicePageIds: number[]) => Promise<ActionResultT>,

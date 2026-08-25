@@ -30,7 +30,7 @@ import {
   makeLineItem,
   type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
-import { positionalFiles } from '@/lib/invoices/upload-file-client'
+import { positionalFiles } from '@/lib/invoices/row-file-positions'
 import { submitWithInvoicePageRows } from '@/lib/invoices/submit-with-invoice-pages'
 import { toastMessage } from '@/lib/utils/toast'
 import {
@@ -222,10 +222,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   // assumes, since the scan is what fills the row. The hazard that wipe cited (a queued file
   // binding to a nonexistent row) cannot happen: files are keyed by row id and `positionalFiles`
   // resolves them against the CURRENT rows, dropping a stale id rather than mis-binding it. Nor can
-  // a retained value reach the wire — `mapLineItem` drops `netAmount` off a brutto-billed type and
-  // `expenseCategory` off a type that does not use it. Both are covered by tests; keep them green
-  // before touching this. Clearing everything stays on „Wyczyść" (`handleReset`), where it is asked
-  // for.
+  // a retained value reach the wire — `mapLineItem` drops every conditional per-row field off a type
+  // that does not show it. Clearing everything stays on „Wyczyść".
   function resetConditionalFields(type: string) {
     staleFieldsForType(type).forEach(([field, value]) => form.setFieldValue(field, value))
     form.setFieldValue(

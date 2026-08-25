@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 // calls it (upload is injected here), so stub the module to keep the import Node-safe.
 vi.mock('@/lib/utils/compress-image', () => ({ compressImage: async (f: File) => f }))
 
-import { InvoiceUploadError, resolveInvoiceMediaIds } from '@/lib/invoices/upload-file-client'
+import { InvoiceUploadError, resolveInvoiceMediaIds } from '@/lib/invoices/invoice-page-uploads'
 
 const file = (name: string) => ({ name }) as File
 
