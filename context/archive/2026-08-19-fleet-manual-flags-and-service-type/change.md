@@ -1,10 +1,10 @@
 ---
 change_id: fleet-manual-flags-and-service-type
 title: Manual "needs replacing" flags per vehicle + a standalone SERVICE inspection type
-status: implemented
+status: archived
 created: 2026-08-19
-updated: 2026-08-19
-archived_at: null
+updated: 2026-08-25
+archived_at: 2026-08-25T08:31:28Z
 branch: fleet-manual-flags-and-service-type
 worktree: null
 ---
