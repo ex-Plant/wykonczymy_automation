@@ -56,8 +56,12 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       teraz przypiętą strefę `Europe/Warsaw`, więc data znaczy to samo po obu stronach. Przy okazji
       wyszła druga, cichsza wersja tego samego: sama data (`YYYY-MM-DD`) czytana na zachód od
       Greenwich renderowała się **o dzień wcześniej**
-- [ ] · 🟡 · otwarte · § „Zakładki podsumowania" → „Ta sama kwota… różni się o grosz" · **Ta sama kwota różni się o grosz w dwóch miejscach zakładki
-      „Podwykonawcy"**
+- [x] · 🟡 · **naprawione na tej gałęzi** · § „Zakładki podsumowania" → „Ta sama kwota… różni się o grosz" · **Ta sama kwota różniła się o grosz w dwóch miejscach zakładki
+      „Podwykonawcy"** — „Razem / Pozostało do wypłaty" pod tabelą pracowników czytało
+      −131 494,73, a blok „Podsumowanie podwykonawców" obok −131 494,72. Naprawa: „Razem" nadal
+      sumuje kolumny (rozjazd w przypisaniu ma być widoczny), ale sumuje je na pełnej precyzji
+      i zaokrągla **raz** — dotąd zbierało po pół grosza na każdym pracowniku, bo każdy wiersz
+      jest zaokrąglany osobno (i musi być: to on decyduje o czerwonym „nadpłacone")
 
 ### Blokują albo mylą, ale nic nie psują
 
@@ -1466,6 +1470,12 @@ podwykonawców" w wierszu „Pozostało do wypłaty" **−131 494,72**. Mechaniz
 strona zaokrągla kwoty per pracownik i dopiero sumuje, druga odejmuje na pełnej precyzji i
 zaokrągla raz. Kwota drobna, ale to jedna liczba w dwóch wersjach na jednym ekranie — a ekran służy
 do rozliczania się z ludźmi.
+
+_Naprawione na tej gałęzi._ „Razem" liczy `subcontractorRowTotals` — nadal Σ kolumn, więc gdyby
+przypisanie kiedykolwiek zgubiło pieniądze, wciąż to widać, ale suma idzie po pełnej precyzji
+i zaokrągla się raz. Guard: `src/__tests__/lib/kosztorys/subcontractor-summary.test.ts`, trzy
+przypadki — dwa wiersze po pół grosza dają 0,25 a nie 0,26, „Razem" zgadza się z nagłówkiem,
+a realny rozjazd przypisania nadal przechodzi na wierzch.
 
 **2. Rozliczenia etapu nie da się cofnąć do „nieustawione".** Pozycje „Z narzędziami" / „Bez
 narzędzi" są w menu **polami wyboru** (zaznaczone / niezaznaczone), więc obiecują przełączanie.

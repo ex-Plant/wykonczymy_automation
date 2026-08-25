@@ -134,3 +134,21 @@ export function computeSubcontractorSummary(
 
   return { dueNet, payoutsTotal, remaining: roundToCents(dueNet - payoutsTotal), rows }
 }
+
+export type SubcontractorRowTotalsT = { due: number; paid: number; remaining: number }
+
+/**
+ * „Razem" under the per-worker table. Σ of the columns rather than a second reading of the headline:
+ * if attribution ever lost money, that is a fact worth seeing, not something to paper over by
+ * quoting the same number twice.
+ *
+ * Summed at full precision and rounded ONCE. Each row is already rounded to the grosz (it has to be
+ * — that is what decides the red „nadpłacone"), so adding the rows up collects half a grosz per
+ * person: in the 2026-08-25 rehearsal „Pozostało do wypłaty" read −131 494,73 here and −131 494,72
+ * in the block beside it. One amount in two versions, on the screen used to settle up with people.
+ */
+export function subcontractorRowTotals(rows: SubcontractorWorkerRowT[]): SubcontractorRowTotalsT {
+  const due = rows.reduce((sum, row) => sum + row.due, 0)
+  const paid = rows.reduce((sum, row) => sum + row.paid, 0)
+  return { due: roundToCents(due), paid: roundToCents(paid), remaining: roundToCents(due - paid) }
+}
