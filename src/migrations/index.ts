@@ -74,6 +74,7 @@ import * as migration_20260819_0_client_view_offer_settlement_variants from './2
 import * as migration_20260819_1_add_service_type_and_vehicle_flags from './20260819_1_add_service_type_and_vehicle_flags'
 import * as migration_20260824_0_drop_kosztorys_client_view_hidden_columns from './20260824_0_drop_kosztorys_client_view_hidden_columns'
 import * as migration_20260824_1_require_inspection_cost from './20260824_1_require_inspection_cost'
+import * as migration_20260825_0_fix_own_tools_coeff_rounding from './20260825_0_fix_own_tools_coeff_rounding'
 
 export const migrations = [
   {
@@ -455,5 +456,10 @@ export const migrations = [
     up: migration_20260824_1_require_inspection_cost.up,
     down: migration_20260824_1_require_inspection_cost.down,
     name: '20260824_1_require_inspection_cost',
+  },
+  {
+    up: migration_20260825_0_fix_own_tools_coeff_rounding.up,
+    down: migration_20260825_0_fix_own_tools_coeff_rounding.down,
+    name: '20260825_0_fix_own_tools_coeff_rounding',
   },
 ]

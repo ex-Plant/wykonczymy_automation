@@ -39,9 +39,12 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       korygował licznika w przerzedzonych. Widział to klient, nie tylko właściciel. Naprawa:
       podsumowania sekcji liczą się z **dokumentu, który klient dostaje**, a nie z pełnego zbioru.
       Żadna kwota się nie rusza — ukrywany wiersz jest pusty na obu osiach
-- [ ] · 🟡 · otwarte · § „Stawka «bez narzędzi» jest w bazie inna…" · **Stawka „bez narzędzi" 0,55 zamiast 0,5525 w 114 na 117
-      inwestycji.** Zastane (leży w bazie od migracji z lipca), dziś nieosiągalne — bo żadna z nich
-      nie ma kosztorysu. Odpali przy pierwszej, która dostanie go z szablonu
+- [x] · 🟡 · **naprawione na tej gałęzi (czeka na migrację prod)** · § „Stawka «bez narzędzi» jest w bazie inna…" · **Stawka „bez narzędzi" 0,55 zamiast 0,5525 —
+      na produkcji we WSZYSTKICH 115 inwestycjach.** Zastane (leży w bazie od migracji z 8 lipca,
+      która utworzyła kolumnę z `DEFAULT 0.55`), dziś nieosiągalne — bo na produkcji nie ma ani
+      jednego kosztorysu. Odpaliłoby przy pierwszym złożonym z szablonu albo ręcznie. Naprawa:
+      migracja `20260825_0_fix_own_tools_coeff_rounding` — poprawia i wartości, i domyślną kolumny,
+      żeby baza przestała przeczyć `DEFAULT_COEFFS`. **Migrację na produkcji odpala człowiek**
 - [ ] · 🟡 · otwarte · § „«Tryb anulowań» nigdy nic nie pokaże na ekranie kasy" · **„Tryb anulowań" na ekranie kasy nigdy nic nie pokaże.** Wszystkie
       296 anulowań w bazie ma pustą kasę, pracownika i inwestycję, więc zawężenie do kasy wycina je
       co do jednego. Zastane, strukturalne — nie migracyjne
@@ -1747,6 +1750,27 @@ bo próba generalna jest ostatnim momentem, w którym widać to jeszcze jako lic
 a nie jako rozjazd w wycenie. Nie ma kosztorysów do naprawiania, więc lekarstwo jest dziś
 jednym zapytaniem.
 
+#### Naprawa
+
+Sprawdzone jeszcze raz na **zrzucie produkcji z 25.08 11:12**, bo liczba ze zdania wyżej jest
+z gałęzi próbnej, a nie z produkcji. Produkcja jest gorsza i prostsza naraz: **115 na 115
+inwestycji ma 0,55**, żadna nie ma 0,5525 — i **zero wierszy kosztorysu w całej bazie**. Te trzy
+z 0,5525 na gałęzi próbnej to inwestycja 31 (stawkę nadpisał jej import z arkusza) i dwie założone
+w trakcie samej próby. Czyli poprawka nie rusza dziś żadnej liczby na żadnym ekranie — nie ma
+czego ruszać.
+
+Źródło jest jedno i konkretne: migracja `20260708_2` utworzyła kolumnę z `DEFAULT 0.55`, czyli
+zaokrągleniem, i tym stemplem oznaczyła wszystko, co wtedy istniało. Aplikacja od tamtej pory mówi
+0,5525 (`DEFAULT_COEFFS`), więc **baza i kod przeczyły sobie od miesiąca**: inwestycja założona
+przez Payloada dostawała 0,5525, obok niej 0,55, i nic na ekranie nie mówiło która.
+
+Migracja `20260825_0_fix_own_tools_coeff_rounding` poprawia oba źródła — wartości i domyślną
+kolumny. Wykonana lokalnie: 110 wierszy na 0,5525, `column_default` = 0,5525.
+
+Zabezpieczenie: `src/__tests__/lib/kosztorys/default-coeffs.test.ts` wiąże obie stawki tym, czym
+są w arkuszu — „bez narzędzi" = „z narzędziami" − 15%. Nic wcześniej nie trzymało ich razem,
+i dlatego zaokrąglenie jednej z nich mogło przeżyć miesiąc.
+
 **Przy okazji, potwierdzenie zamierzonego zachowania.** Inwestycja 6 ma prawdziwe wypłaty
 (71 400,00 zł) i pusty kosztorys — panel od razu pokazał „Nadpłata 70 850,00 zł" i wprost
 napisał, że ekipa dostała więcej, niż jest warta wykonana praca. Dokładnie to, co projekt
@@ -2107,6 +2131,9 @@ dla wszystkich). Kasowanie idzie teraz po kolei; szczegóły i pomiary przy opis
       `orphan-test-a-dd3fc3.png`, `orphan-test-b-b71b23.png`, `orphan-test-c-2f51c0.png`.
       **Ostatnich pięciu nie da się skasować z poziomu aplikacji** — to sieroty z usterki
       „Usuń całą fakturę" opisanej wyżej; idą tylko narzędziem do blobów
+- [ ] **migracja `20260825_0_fix_own_tools_coeff_rounding` na produkcji** — `pnpm db:migrate:prod`,
+      odpala człowiek. Przed odpaleniem warto potwierdzić założenie, na którym stoi:
+      `SELECT count(*) FROM kosztorys_items;` ma dać 0
 - [ ] bajty z odtwarzania przyczyny tej usterki: 28 plików `repro-orphan-*.png` (rekordy `1423`–`1469`
       na gałęzi próbnej) — rekordy znikną z gałęzią, bajty zostają w magazynie preview
 - [x] rozliczenia etapów na inwestycji 31 (6 × „z narzędziami", 1 × „bez narzędzi") **zostają
