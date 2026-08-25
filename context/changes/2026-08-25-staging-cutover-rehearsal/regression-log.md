@@ -215,14 +215,13 @@ w historii gita. Zostaje to, czego nie mogę zrobić sam:
       (najnowsza `20260824_1`), więc na produkcji pójdzie jako pierwsza w życiu
 - [ ] `DB_POSTGRES_URL` na Vercel Preview z powrotem na `ep-still-term-agp9aqfa-pooler`
 - [ ] branch Neona `cutover_rehearsal` — auto-delete po dobie; do tego czasu staging na nim stoi
-- [ ] sfabrykowane PNG-i faktur w **preview'owym** store'u Blob (nie produkcyjnym). Store preview
-      i tak jest zeszytem do wyrzucenia, ale warto je skasować, żeby nie mylić ich z fakturą
-      właściciela: `budmat-polnoc-20-08-2026-bd05be.png`,
-      `remont-serwis-kowalczyk-22-08-2026-32f452.png`, `paragon-dopiecie-{a03850,39a395,e350d0}.png`,
-      `orphan-test-{a-1bfd5a,b-807b17,c-39252a,a-dd3fc3,b-b71b23,c-2f51c0}.png`.
-      **Ostatnich pięciu nie da się skasować z poziomu aplikacji** — to sieroty z usterki „Usuń
-      całą fakturę", idą tylko narzędziem do blobów. Do tego 28 plików `repro-orphan-*.png`
-      z odtwarzania przyczyny: rekordy (`1423`–`1469`) znikną z gałęzią, bajty zostają
+- [x] · **odrzucone** · sfabrykowane PNG-i faktur w **preview'owym** store'u Blob (11 nazwanych + 28 `repro-orphan-*.png` z odtwarzania przyczyny, w tym pięć sierot nieusuwalnych z poziomu
+      aplikacji). Pierwotne uzasadnienie — „żeby nie mylić ich z fakturą właściciela" — nie broni
+      się: pliki nazywają się `orphan-test-*` i `repro-orphan-*`. Store preview jest odbitką
+      punktową produkcji, czyli zeszytem do wyrzucenia, a `blob-restore.mjs` jest put-only, więc
+      pliki zostaną tam bezterminowo i **nikomu to nie przeszkadza**. Jedyny realny koszt to kwota
+      planu (store był raz zawieszony za przekroczenie) — przy ~2347 plikach te 39 to szum.
+      Zapisane, bo gdyby store kiedyś znów padł na limicie, to jest jedno z miejsc do sprzątnięcia
 - [ ] artefakty testowe, **wszystkie znikną razem z gałęzią próbną** — spis jest po to, by nie
       wziąć ich potem za dane właściciela: inwestycja `investments.id=135` („PROBA CUTOVER…",
       13 sekcji / 336 pozycji), inwestycja `investments.id=134` („000", pusta — 0 transakcji,
