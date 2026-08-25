@@ -47,6 +47,11 @@ export function KosztorysActionsMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuLabel>Inwestor</DropdownMenuLabel>
+          <InvestorPreviewMenuItem />
+          <ClientViewSettingsMenuItem />
+          <ShareMenuItem />
+          <DropdownMenuSeparator />
           <DropdownMenuLabel>Edycja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
             <Undo2 />
@@ -87,11 +92,6 @@ export function KosztorysActionsMenu() {
               <SheetCompareMenuItem />
             </>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>Inwestor</DropdownMenuLabel>
-          <InvestorPreviewMenuItem />
-          <ClientViewSettingsMenuItem />
-          <ShareMenuItem />
         </DropdownMenuContent>
       </DropdownMenu>
       <SaveVersionDialog />
