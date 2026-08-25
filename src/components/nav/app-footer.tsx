@@ -9,7 +9,6 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { RoleBadge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { FRONTEND_URL } from '@/lib/env'
 
 export function AppFooter() {
   const user = useCurrentUser()
@@ -31,7 +30,10 @@ export function AppFooter() {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild aria-label="Panel administracyjny">
-            <Link href={`${FRONTEND_URL}/admin`} target="_blank" aria-label="Panel administracyjny">
+            {/* Relative, like the sidebar's twin. Built off FRONTEND_URL it was absolute, and that
+                is ONE value for the whole project — so on staging and on every preview this button
+                opened the production Payload panel, which writes to the live database. */}
+            <Link href="/admin" target="_blank" aria-label="Panel administracyjny">
               <Shield />
               <span className="hidden sm:inline">Admin</span>
             </Link>

@@ -82,9 +82,11 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       zdanie**, które wcześniej padało dopiero przy „Zapisz". Bramka w interfejsie pyta
       `isAdminOrOwnerRole` — dokładnie tę funkcję, którą woła `ownerOnlyAction` — więc drzwi i zamek
       nie mogą się rozjechać, a oba zdania odmowy mieszkają teraz w jednym module
-- [ ] · 🔵 · otwarte · § „Przycisk «Admin» w stopce prowadzi na PRODUKCJĘ" · **Przycisk „Admin" w stopce na preview prowadzi na PRODUKCJĘ.**
-      Użytkownikowi nie szkodzi (na produkcji link jest poprawny), ale przenosi testującego na żywe
-      dane jednym kliknięciem
+- [x] · 🔵 · **naprawione na tej gałęzi** · § „Przycisk «Admin» w stopce prowadzi na PRODUKCJĘ" · **Przycisk „Admin" w stopce na preview prowadził na PRODUKCJĘ.**
+      Użytkownikowi nie szkodził (na produkcji link był poprawny), ale przenosił testującego na żywe
+      dane jednym kliknięciem. Naprawa: link jest względny (`/admin`), tak jak jego bliźniak
+      w bocznej nawigacji — `/admin` leży na tym samym origin, więc z definicji nie może już wyjść
+      poza środowisko, w którym się go klika
 - [x] · 🔵 · dropped · ledger fazy 1 · picker kasy podaje MANAGEROWI kasę główną, której `/kasy` mu
       nie listuje, a `/kasa/5` odmawia. Zastane, sprzed tej gałęzi, nie warte churnu
 
@@ -925,6 +927,10 @@ zwykły, względny `/admin`.
 
 Nie jest to regresja cutoveru — ale jest to jedyne miejsce w aplikacji, które potrafi
 przenieść testującego z preview na produkcję jednym kliknięciem.
+
+_Naprawione na tej gałęzi._ Stopka używa teraz względnego `/admin`, jak boczna nawigacja, a import
+`FRONTEND_URL` z tego pliku zniknął. Pozostałe absolutne linki z `FRONTEND_URL` (maile, `robots.ts`,
+link `/k/<token>` do wysłania inwestorowi) zostają — one z założenia opuszczają aplikację.
 
 ### Zgłoszenia — lista, wnętrze i status kontaktu
 
