@@ -24,6 +24,7 @@ export function SourceRegisterField({
     <>
       <CashRegisterField
         form={form}
+        name="sourceRegister"
         cashRegisters={cashRegisters}
         label={label}
         listeners={{ onChange: ({ value }: { value: string }) => fetchRegisterBalance(value) }}

@@ -243,7 +243,11 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
             )}
           </div>
 
-          <CashRegisterField form={form} cashRegisters={referenceData.cashRegisters} />
+          <CashRegisterField
+            form={form}
+            name="sourceRegister"
+            cashRegisters={referenceData.cashRegisters}
+          />
         </FieldGroup>
 
         <FormFooter className="mt-6" />

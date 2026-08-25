@@ -1,42 +1,71 @@
-import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
-import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
+import { discardOrphanedUploads } from '@/lib/invoices/discard-orphaned-uploads'
+import {
+  InvoiceUploadError,
+  resolveInvoiceMediaIds,
+  resolveInvoicePageIds,
+} from '@/lib/invoices/upload-file-client'
 import type { ActionResultT } from '@/types/action'
 
 /**
- * Upload one invoice's pages, then run the mutation that references them. Pages land in Blob BEFORE
- * the row exists, so every path where the mutation does not attach them has to hand them back — a
- * page nothing references is unreachable, and Blob has no undelete to find it with later.
- *
- * There are three such paths and they look nothing alike, which is why every caller that rolled
- * this by hand got at least one of them wrong: the upload itself fails partway (some pages already
- * landed), the mutation returns a failure, or the mutation *throws* — a dropped connection mid-save
- * or a deploy invalidating the server action id. The throw is re-thrown rather than folded into a
- * failure result so the caller's own error handling still sees it as one.
+ * Pages land in Blob before the row that references them exists, so every path where the mutation
+ * does not attach them must hand them back — Blob has no undelete. A throw from the mutation is
+ * re-thrown rather than folded into a failure result, so the caller still sees it as a throw.
  */
-export async function submitWithInvoicePages(
-  files: File[],
-  submit: (invoicePageIds: number[]) => Promise<ActionResultT>,
+async function withOrphanCleanup<TIds>(
+  resolve: () => Promise<TIds>,
+  flatten: (ids: TIds) => number[],
+  submit: (ids: TIds) => Promise<ActionResultT>,
 ): Promise<ActionResultT> {
-  if (files.length === 0) return submit([])
-
-  let pageIds: number[]
+  let ids: TIds
   try {
-    pageIds = await resolveInvoicePageIds(files)
+    ids = await resolve()
   } catch (err) {
     if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Nie udało się przesłać plików',
+      // Only the upload error phrases itself for this UI; anything else is transport or a
+      // chunk-load failure, whose message is not something to put in front of the user.
+      error:
+        err instanceof InvoiceUploadError
+          ? err.message
+          : 'Nie udało się przesłać plików — spróbuj ponownie.',
     }
   }
 
   let result: ActionResultT
   try {
-    result = await submit(pageIds)
+    result = await submit(ids)
   } catch (err) {
-    discardOrphanedUploads(pageIds)
+    discardOrphanedUploads(flatten(ids))
     throw err
   }
-  if (!result.success) discardOrphanedUploads(pageIds)
+  if (!result.success) discardOrphanedUploads(flatten(ids))
   return result
+}
+
+/** One invoice's pages, flat. */
+export function submitWithInvoicePages(
+  files: File[],
+  submit: (invoicePageIds: number[]) => Promise<ActionResultT>,
+): Promise<ActionResultT> {
+  if (files.length === 0) return submit([])
+  return withOrphanCleanup(
+    () => resolveInvoicePageIds(files),
+    (ids) => ids,
+    submit,
+  )
+}
+
+/** Pages per line-item row, positional — `rows[i]` are the pages of `lineItems[i]`. */
+export function submitWithInvoicePageRows(
+  rowCount: number,
+  files: Map<number, File[]>,
+  submit: (invoicePageRows: number[][] | undefined) => Promise<ActionResultT>,
+): Promise<ActionResultT> {
+  if (files.size === 0) return submit(undefined)
+  return withOrphanCleanup(
+    () => resolveInvoiceMediaIds(rowCount, files),
+    (rows) => rows.flat(),
+    submit,
+  )
 }

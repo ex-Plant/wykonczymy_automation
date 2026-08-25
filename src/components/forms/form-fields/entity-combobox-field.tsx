@@ -50,8 +50,6 @@ type EntityComboboxFieldPropsT<TVariant extends keyof typeof VARIANT_CONFIG> = {
   listeners?: { onChange?: () => void }
 }
 
-// Generic over the variant rather than over the name: the variant IS the name, so `variant="worker"`
-// against a form with no worker field is the error this exists to raise.
 export function EntityComboboxField<TVariant extends keyof typeof VARIANT_CONFIG>({
   form,
   variant,

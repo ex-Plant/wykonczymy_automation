@@ -85,8 +85,7 @@ export function EditTransferForm({
           if (isIngesting) return { success: false, error: 'Poczekaj na przetworzenie plików.' }
 
           return submitWithInvoicePages(files, (pageIds) =>
-            // An empty list would still clear nothing, but `undefined` is what "no pages this
-            // save" means to an update that only ever ADDS to the existing invoices.
+            // `undefined` means "no pages this save" to an update that only ever ADDS invoices.
             updateTransferAction(row.id, data, pageIds.length > 0 ? pageIds : undefined),
           )
         },

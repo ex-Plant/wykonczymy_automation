@@ -32,9 +32,8 @@ export function useFormSubmit(formId: string) {
       try {
         result = await opts.action()
       } catch (err) {
-        // The optimistic branch below gets this from its own `.catch`; here it was missing, so a
-        // save that threw rather than returning a failure — a dropped connection, a deploy
-        // invalidating the action id — ended in silence with the form looking untouched.
+        // A save that throws rather than returning a failure — dropped connection, a deploy
+        // invalidating the action id — would otherwise end in silence, the form looking untouched.
         logError('[FORM_SUBMIT]', err)
         toastMessage(
           err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd',

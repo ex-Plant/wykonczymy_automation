@@ -15,15 +15,7 @@ export type DepositFormValuesT = {
   investment?: string
 }
 
-/**
- * The form API this form hands to its field components, fully inferred — TanStack's own type is a
- * ~16-parameter generic nobody can restate by hand. Lifted out of the `.tsx` so a field component
- * can name it without importing the component that renders it.
- *
- * `bulk-expense-form.ts` reads the same type off a throwaway `withForm` probe because its form is
- * built with `useAppForm` directly; here `useManagedForm` already names the value shape, so its
- * return type is the shorter road to the same place.
- */
+/** TanStack's form API for this form — a ~16-parameter generic, so it is inferred, never restated. */
 export type DepositFormApiT = ReturnType<
   typeof useManagedForm<DepositFormValuesT, CreateTransferFormT>
 >['form']

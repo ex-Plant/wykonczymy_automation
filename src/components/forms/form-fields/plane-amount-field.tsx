@@ -4,10 +4,8 @@ import type { VatPlaneT } from '@/lib/constants/transfers'
 import { netFromGross } from '@/lib/kosztorys/net-gross-amounts'
 
 type PlaneAmountFieldPropsT = {
-  // The wpłata form's concrete API rather than the `FormWithFieldT` shape the shared wrappers take:
-  // this one serves that form alone, so there is no reason to settle for name-only checking — and it
-  // reads and writes kwoty through `getFieldValue` / `setFieldValue`, whose signatures a structural
-  // type would have to guess at.
+  // The concrete form API, not `FormWithFieldT`: this field reads and writes kwoty through
+  // `getFieldValue` / `setFieldValue`, which a name-only structural type cannot describe.
   form: DepositFormApiT
   vatRate: number
   plane: VatPlaneT

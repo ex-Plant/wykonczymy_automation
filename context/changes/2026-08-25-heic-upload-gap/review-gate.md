@@ -284,3 +284,99 @@ Not run, awaiting the user's call: the full `pnpm test` sweep, `pnpm build`, and
 
 Nothing in this change has been committed. `EX-394` stays In Progress with an `[in review]` marker
 (the team has no In Review state).
+
+---
+
+# Review-gate ledger — drugi przebieg (EX-733 + EX-734) · 2026-08-25
+
+Zakres: `e24cb697..HEAD` — `5f1fe3ed` (dedup uploadu faktur + cichy `keepOpen`) i `f7a683bd`
+(zdjęcie `form: any` z wrapperów pól). Fan-out: code-review, comment-noise (flag-only), audyt
+struktury/kohezji.
+
+## Findings
+
+- [x] 🟡 WARNING · fixed · code-review · `src/lib/invoices/delete-unreferenced-media.ts:20` ·
+      sprzątanie sierot liczyło referencje tylko w `transactions`, a `vehicle-inspections.attachments`
+      to druga relacja do `media` — po dodaniu w `5f1fe3ed` sprzątania na ścieżce throw formularz
+      przeglądu mógł skasować własne, już podpięte załączniki (Blob bez undelete). Liczone są teraz
+      obie kolekcje.
+      test: test-driven-debugging · unit — `src/__tests__/lib/invoices/delete-unreferenced-media.test.ts`,
+      4 przypadki; trzeci („spares an attachment still held by a vehicle inspection") to strażnik regresji.
+- [x] 🟡 WARNING · fixed · code-review · `src/components/forms/form-fields/cash-register-field.tsx:22` ·
+      `TName` był wnioskowany z `form`, więc domyślny `name = 'sourceRegister' as TName` nigdy nie był
+      weryfikowany — na jedynym call site pomijającym `name` (deposit-form) kontrola nazwy pola,
+      dla której ten typ powstał, w ogóle nie działała. `name` jest teraz wymagane, generyk bez
+      domyślnej wartości; dwa call sites podają nazwę jawnie.
+      test: no automated test · unit — kontrakt kompilacyjny; zweryfikowany empirycznie (rename
+      `sourceRegister` → `sourceRegisterRENAMED` daje teraz błąd w `deposit-form.tsx:248`, wcześniej 0 błędów).
+- [x] 🟡 WARNING · fixed · code-review · `src/components/forms/expense-form/expense-form.tsx:194` ·
+      czwarta, ręczna kopia sekwencji upload→mutacja→sprzątanie: rzut z `createBulkTransferAction`
+      zostawiał wszystkie strony w Blob na zawsze. Kształt `number[][]` nie pasował do prymitywu, więc
+      rdzeń wyekstrahowany do `withOrphanCleanup`, a call site przepięty na nowe
+      `submitWithInvoicePageRows`.
+      test: no automated test · unit — ścieżka jest czysto kliencka (Blob + server action); pokrycie
+      przez `submitWithInvoicePages` byłoby testem mocka, nie zachowania.
+- [x] 🔵 OBSERVATION · fixed · code-review · `src/lib/invoices/submit-with-invoice-pages.ts:29` ·
+      dedup zmienił komunikat dla `use-invoice-upload`: błąd nie-`InvoiceUploadError` (np. chunk-load)
+      pokazywał surowy, angielski `err.message` zamiast polskiego „spróbuj ponownie". Fallback zawężony
+      — `err.message` tylko dla `InvoiceUploadError`, który jako jedyny formułuje się pod to UI.
+- [x] 🔵 OBSERVATION · dismissed · code-review · `submit-with-invoice-pages.ts:29` · „pliku" → „plików"
+      w treści błędu edit-transfer — formularz jest `multiple`, liczba mnoga jest poprawniejsza.
+- [x] 🔵 OBSERVATION · dismissed · code-review · `src/lib/invoices/discard-orphaned-uploads.ts:10` ·
+      sprzątanie jest best-effort i przy wygasłej sesji samo nie przejdzie auth. Sprzed tej zmiany,
+      bez dostępnego lekarstwa po stronie klienta.
+- [x] 🔵 OBSERVATION · fixed · code-review · `form-hooks.ts:47`, `cash-register-field.tsx:16` ·
+      `listeners?: Record<string, any>` przyjmowało `{ onChange: 42 }`. Zawężone do
+      `{ onChange?: (arg: { value: string }) => void }` — wszystkie call sites już tak wołały.
+- [x] fixed · structure · `src/lib/utils/upload-file-client.ts`, `discard-orphaned-uploads.ts` ·
+      moduły czysto fakturowe (wszystkie eksporty) siedziały w bezdomenowym `lib/utils/`, a nowy
+      prymityw importował je przez ten szew. Przeniesione do `src/lib/invoices/`; 7 importów zaktualizowanych.
+- [x] fixed · structure · `bulk-expense-form.ts:59`, `edit-transfer-form-api.ts:10` · ta sama sztuczka
+      z probe `withForm` napisana dwa razy, z bliźniaczymi komentarzami. Wyciągnięta do
+      `src/components/forms/hooks/form-api-of.ts` (`FormApiOfT<TValues>`); oba typy to teraz jedna linia.
+- [x] dismissed · structure · `plane-amount-field.tsx:1`, `expense-category-field.tsx:1`,
+      `line-items-field.tsx:26` · współdzielony `form-fields/` importuje konkretne typy API z folderów
+      trzech formularzy — inwersja zależności. Świadoma: to wrappery jednego konsumenta, a unia nazw
+      w `FormWithFieldT` odwróciłaby zależność w drugą stronę. Rozstrzygnięte w EX-733.
+- [x] dropped · structure · `bulk-expense-form.ts:65` · `BulkExpenseFormApiT` nie mieszka w pliku
+      `*-form-api.ts` jak dwa pozostałe. Po wyciągnięciu `FormApiOfT` to jedna linia typu w pliku,
+      który i tak jest jego naturalnym domem — przenoszenie samo w sobie nic nie kupuje.
+- [x] fixed · comment-noise · `form-hooks.ts:23,31,46` · trzy bloki, ~25 linii: docblock
+      `AppFieldComponentsT`, docblock `FormWithFieldT` (połowa to narracja o stanie sprzed zmiany
+      — „used to take `form: any`") i trzylinijkowy komentarz nad `listeners`. Przycięte do faktów,
+      których kod nie niesie.
+- [x] fixed · comment-noise · `deposit-form-api.ts:18`, `edit-transfer-form-api.ts:10` · 9- i 7-linijkowe
+      docbloki, w tym akapit porównujący, jak _inny plik_ wyprowadza ten sam typ. Zostały jednolinijkowce
+      (a duplikat sztuczki zniknął razem z dedupem powyżej).
+- [x] fixed · comment-noise · `cash-register-field.tsx:19,24` · dwa komentarze o mechanice TS
+      (`<TName extends string>`, dlaczego `as TName` się kompiluje) — usunięte; pierwszy był na dodatek
+      niezgodny z faktami (mówił „four call sites … four different ones" i wyliczał trzy, przy pięciu call sites).
+- [x] fixed · comment-noise · `entity-combobox-field.tsx:53`, `expense-category-field.tsx:6` · narracja
+      o wyborze generyka i „wzięliśmy lepszy typ" — jedno i drugie mówi już sygnatura. Usunięte.
+- [x] fixed · comment-noise · `plane-amount-field.tsx:7`, `use-field-value.ts:7`,
+      `use-form-submit.ts:35`, `edit-transfer-form.tsx:88`, `submit-with-invoice-pages.ts:5` ·
+      przycięte do jednego powodu każdy; wycięta narracja „tu tego brakowało" (stan sprzed commita,
+      który git i tak zapisuje) i inwentarz trzech ścieżek błędu stojących sześć linii niżej.
+- [x] dropped · comment-noise · `form-hooks.ts:53`, `deposit-form-api.ts:7` · dwa komentarze przeszły
+      strip test bez zmian (jednolinijkowe uzasadnienie `store: unknown`; reguła domenowa o kwocie brutto).
+- [ ] 🔵 OBSERVATION · surfaced · suite · `src/hooks/use-latest-request.ts:15` · `eslint` zgłasza
+      **error** `react-hooks/refs` — „Cannot access refs during render". Plik nietknięty przez ten slice
+      i przez ten change; zgłaszam, bo blokuje `pnpm lint` całego repo. **Nie naprawiam** — to inny
+      podsystem i osobna decyzja.
+
+## Tests & suite
+
+- `pnpm typecheck` — exit 0
+- `pnpm test` — **195 plików / 2759 testów pass**, 49 plików skipped (DB-backed, bez kontenera)
+- `eslint` (lib/invoices, components/forms, **tests**/lib/invoices) — czysto
+- `prettier` — czysto
+- Instrumenty zweryfikowane na znanych pozytywach, nie na zielonym typechecku:
+  `name="kategoriaKtorejNieMa"` → 1 błąd; rename `sourceRegister` w `DepositFormValuesT` → błąd
+  w `deposit-form.tsx:248` (dokładnie ten call site, który wcześniej nie był sprawdzany).
+- Nie uruchamiane: `pnpm build`, `pnpm test:e2e` (~1h, nigdy bez polecenia).
+
+## Status
+
+Bez zmian względem pierwszego przebiegu: **in review**. Sekcja `## EX-394` w `manual-checks.md`
+nietknięta, backfill produkcyjny wykonuje człowiek. Jeden `[ ]` w tym przebiegu to świadomie
+zgłoszona obserwacja spoza slice'a, nie dług tej zmiany.

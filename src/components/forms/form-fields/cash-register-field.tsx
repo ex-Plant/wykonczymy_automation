@@ -8,22 +8,19 @@ import type { ReferenceItemT } from '@/types/reference-data'
 
 type CashRegisterFieldPropsT<TName extends string> = {
   form: FormWithFieldT<TName>
-  name?: TName
+  // Required, with no default: a defaulted literal has to be cast to `TName` to compile, and the
+  // cast is never checked against the form — the renamed-field check this type exists for silently
+  // stops applying at every call site that omits the name.
+  name: TName
   label?: string
   placeholder?: string
   cashRegisters: ReferenceItemT[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  listeners?: Record<string, any>
+  listeners?: { onChange?: (arg: { value: string }) => void }
 }
 
-// Generic over the field name because the four call sites point it at four different ones
-// (sourceRegister / targetRegister / defaultCashRegister), and the point of the type is that the
-// form handed in actually HAS the one being asked for.
-export function CashRegisterField<TName extends string = 'sourceRegister'>({
+export function CashRegisterField<TName extends string>({
   form,
-  // TS cannot prove a literal satisfies a caller-chosen TName; the generic default is what makes
-  // this true whenever `name` is omitted.
-  name = 'sourceRegister' as TName,
+  name,
   label = 'Kasa',
   placeholder = 'Wybierz kasę',
   cashRegisters,

@@ -21,31 +21,21 @@ const fieldComponents = {
 }
 
 /**
- * What `field` carries inside a `form.AppField` render child. Derived from the registration above,
- * never restated: a hand-written copy of this list is what silently swallowed `rows` on every
- * Textarea, because the copy declared the prop, the real component never accepted it, and at an
- * annotated call site the copy is what tsc checks against.
+ * Derived from the registration above, never restated — a hand-written copy once declared a `rows`
+ * prop the real Textarea never accepted, and tsc checked call sites against the copy.
  */
 type AppFieldComponentsT = typeof fieldComponents
 
 /**
- * What a wrapper in `form-fields/` needs from a form: the ability to open `TName` as a field, and
- * the store the field-value helper reads. One wrapper serves several forms with different value
- * shapes, and typing the full TanStack API means restating thirteen generic parameters — so these
- * used to take `form: any`, which threw away the one check that matters. The name a wrapper hardcodes
- * is not verified against the form it is handed, and TanStack does not fail on an unknown name: it
- * opens the field at `undefined`, so a renamed schema field yields a silently empty input that saves
- * nothing, with a green typecheck.
- *
- * Naming only, deliberately — not the value type. Constraining that needs the real generics, while
- * this catches the failure that actually happens: the field is gone or was renamed.
+ * The minimum a `form-fields/` wrapper needs from a form — one wrapper serves several forms, and
+ * restating TanStack's thirteen generics is not viable. Checks the field NAME only: TanStack opens
+ * an unknown name at `undefined`, so a renamed schema field would otherwise render an empty input
+ * that saves nothing, with a green typecheck.
  */
 export type FormWithFieldT<TName extends string> = {
   AppField: (props: {
     name: TName
-    // The one hole left, and it stays `any` on purpose: TanStack types a listener by the field's
-    // VALUE, which is exactly what this type declines to name, so anything narrower fails to match
-    // the real `AppField`. A wrapper only forwards this prop, so nothing here reads it.
+    // Stays `any`: TanStack types a listener by the field's VALUE, which this type declines to name.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     listeners?: any
     children: (field: AppFieldComponentsT) => ReactNode
