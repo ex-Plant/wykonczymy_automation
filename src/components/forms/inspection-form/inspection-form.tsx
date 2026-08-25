@@ -15,8 +15,7 @@ import {
   type InspectionTypeT,
 } from '@/lib/fleet/inspection-types'
 import { useFilePickIngest } from '@/components/forms/hooks/use-file-pick-ingest'
-import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
-import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
+import { submitWithInvoicePages } from '@/lib/invoices/submit-with-invoice-pages'
 import { formatKm } from '@/lib/utils/format-distance'
 import { useInspectionFormStore } from '@/stores/form-stores'
 import { inspectionFormSchema, type InspectionFormValuesT } from './inspection-schema'
@@ -83,27 +82,7 @@ export function InspectionForm({
         return { success: false, error: 'Poczekaj na przetworzenie plików.' }
       }
 
-      let attachments: number[] = []
-
-      if (files.length > 0) {
-        try {
-          attachments = await resolveInvoicePageIds(files)
-        } catch (err) {
-          // A partly-failed batch still landed pages in Blob; those belong to no inspection.
-          if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
-          return {
-            success: false,
-            error: err instanceof Error ? err.message : 'Nie udało się przesłać plików',
-          }
-        }
-      }
-
-      const result = await action({ ...data, attachments })
-      // The pages are in Blob and the row that would have referenced them was never created, so
-      // nothing can reach them again. The user keeps the form and can resubmit, which re-uploads.
-      if (!result.success && attachments.length > 0) discardOrphanedUploads(attachments)
-
-      return result
+      return submitWithInvoicePages(files, (attachments) => action({ ...data, attachments }))
     },
     toData: (value) => ({
       vehicle: Number(value.vehicle),

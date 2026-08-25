@@ -1,4 +1,5 @@
 import { useRouter } from 'next/navigation'
+import { logError } from '@/lib/utils/log-error'
 import { toastMessage } from '@/lib/utils/toast'
 import { useOptimisticFormStore } from '@/stores/optimistic-form-store'
 import type { ActionResultT } from '@/types/action'
@@ -27,7 +28,21 @@ export function useFormSubmit(formId: string) {
     if (isRecovering) clearSubmission()
 
     if (keepOpen) {
-      const result = await opts.action()
+      let result: ActionResultT
+      try {
+        result = await opts.action()
+      } catch (err) {
+        // The optimistic branch below gets this from its own `.catch`; here it was missing, so a
+        // save that threw rather than returning a failure — a dropped connection, a deploy
+        // invalidating the action id — ended in silence with the form looking untouched.
+        logError('[FORM_SUBMIT]', err)
+        toastMessage(
+          err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd',
+          'error',
+          5000,
+        )
+        return
+      }
       if (result.success) {
         toastMessage(opts.successMessage, 'success')
         if (result.warning) toastMessage(result.warning, 'warning', 6000)

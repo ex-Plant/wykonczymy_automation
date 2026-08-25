@@ -15,8 +15,7 @@ import {
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
-import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
-import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
+import { submitWithInvoicePages } from '@/lib/invoices/submit-with-invoice-pages'
 import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
 import type { z } from 'zod'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
@@ -87,20 +86,11 @@ export function EditTransferForm({
           // saving mid-ingest would persist the row without the pages still being converted.
           if (isIngesting) return { success: false, error: 'Poczekaj na przetworzenie plików.' }
 
-          let invoiceMediaIds: number[] | undefined
-          if (files.length > 0) {
-            try {
-              invoiceMediaIds = await resolveInvoicePageIds(files)
-            } catch (err) {
-              if (err instanceof InvoiceUploadError) discardOrphanedUploads(err.uploadedIds)
-              const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'
-              return { success: false, error: message }
-            }
-          }
-          const result = await updateTransferAction(row.id, data, invoiceMediaIds)
-          // The pages are in Blob but the update that would have attached them never happened.
-          if (!result.success && invoiceMediaIds) discardOrphanedUploads(invoiceMediaIds)
-          return result
+          return submitWithInvoicePages(files, (pageIds) =>
+            // An empty list would still clear nothing, but `undefined` is what "no pages this
+            // save" means to an update that only ever ADDS to the existing invoices.
+            updateTransferAction(row.id, data, pageIds.length > 0 ? pageIds : undefined),
+          )
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,

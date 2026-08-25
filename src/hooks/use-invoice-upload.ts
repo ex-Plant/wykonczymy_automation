@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation'
 import { addTransferInvoicesAction } from '@/lib/actions/transfers'
 import { reportBlockedFiles } from '@/lib/invoices/blocked-files-message'
 import { ingestPickedFiles } from '@/lib/invoices/ingest-picked-files'
-import { discardOrphanedUploads } from '@/lib/utils/discard-orphaned-uploads'
-import { InvoiceUploadError, resolveInvoicePageIds } from '@/lib/utils/upload-file-client'
+import { submitWithInvoicePages } from '@/lib/invoices/submit-with-invoice-pages'
 import { toastMessage } from '@/lib/utils/toast'
-import type { ActionResultT } from '@/types/action'
 
 /**
  * `isUploading` is what the caller needs back: the picker gives no feedback of its own, so without
@@ -24,28 +22,10 @@ export function useInvoiceUpload(transactionId: number) {
 
     if (ready.length === 0) return
 
-    let mediaIds: number[]
-    try {
-      mediaIds = await resolveInvoicePageIds(ready)
-    } catch (error) {
-      if (!(error instanceof InvoiceUploadError)) throw error
-      // Pages that did land reference nothing — hand them back or they leak in Blob.
-      discardOrphanedUploads(error.uploadedIds)
-      toastMessage(error.message, 'error')
-      return
-    }
-
-    // The catch covers a transport-level rejection (network drop, 502) as well as a returned
-    // failure — either way the pages are in Blob referenced by nothing.
-    let result: ActionResultT
-    try {
-      result = await addTransferInvoicesAction(transactionId, mediaIds)
-    } catch (error) {
-      discardOrphanedUploads(mediaIds)
-      throw error
-    }
+    const result = await submitWithInvoicePages(ready, (pageIds) =>
+      addTransferInvoicesAction(transactionId, pageIds),
+    )
     if (!result.success) {
-      discardOrphanedUploads(mediaIds)
       toastMessage(result.error, 'error')
       return
     }
