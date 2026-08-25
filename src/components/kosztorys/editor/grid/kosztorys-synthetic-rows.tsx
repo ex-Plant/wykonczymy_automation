@@ -37,7 +37,7 @@ function withBandLabelClass(
   return cn(base, BAND_LABEL_CELL_CLASS)
 }
 
-// Left-aligned like the data cells (computed-cell.tsx / floatColumnLeft are `text-left px-2`), so a
+// Left-aligned like the data cells (computed-cell.tsx / decimalColumn are `text-left px-2`), so a
 // column's total sits directly under its values.
 function TotalsRowCell({ content }: { content: string }) {
   return (

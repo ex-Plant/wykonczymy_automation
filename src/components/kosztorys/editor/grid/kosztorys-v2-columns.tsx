@@ -1,7 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
-import { Column, type CellProps, keyColumn, floatColumn } from 'react-datasheet-grid'
+import { Column, type CellProps, keyColumn } from 'react-datasheet-grid'
 import { SortHeader } from '@/components/kosztorys/editor/grid/sort-header'
 import { StageHeader } from '@/components/kosztorys/editor/grid/stage-header'
 import { STAGE_HEADER_COPY } from '@/components/kosztorys/editor/grid/stage-header-copy'
@@ -10,6 +10,7 @@ import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
+import { decimalColumn } from '@/components/ui/datasheet-grid/decimal-column'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
 import { divergenceColumn } from '@/components/kosztorys/editor/grid/cells/divergence-cell'
 import {
@@ -71,13 +72,6 @@ import { stagesMatchingEngaged } from '@/lib/kosztorys/stage-conditions'
 import { stageLabel } from '@/lib/kosztorys/stage-label'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-// floatColumn right-aligns by default; the grid reads cleaner with every cell left-aligned under
-// its (left-aligned) header, so numbers don't float at the far edge of wide columns.
-const floatColumnLeft = {
-  ...floatColumn,
-  columnData: { ...floatColumn.columnData, alignRight: false },
-}
-
 // The four per-item rabat columns hidden while the global discount overrides them.
 const DISCOUNT_COLUMN_IDS = new Set([
   'discountValue',
@@ -86,7 +80,7 @@ const DISCOUNT_COLUMN_IDS = new Set([
   'discountAmountGross',
 ])
 
-// keyColumn requires column: Column<Row[K]>. floatColumn/textColumn are nullable
+// keyColumn requires column: Column<Row[K]>. decimalColumn/textColumn are nullable
 // (Column<number|null> / <string|null>), whereas the item fields are non-null. The cell type is
 // invariant (rowData covariant + setRowData contravariant), so no concrete type other than an
 // exact match will pass — the only safe bridge is `any` at the library boundary. The cells are
@@ -280,7 +274,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   const priceCols: Column<KosztorysV2RowT>[] =
     view === 'client'
       ? [
-          keyCol('clientPrice', floatColumnLeft, {
+          keyCol('clientPrice', decimalColumn, {
             id: 'price',
             title: title('price', opts),
           }),
@@ -346,7 +340,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   // Przedmiar (sheet N, the offered scope) leads the stage columns rather than following them, so the
   // offered quantity reads before the per-etap execution it is measured against.
   const przedmiar: Column<KosztorysV2RowT>[] = [
-    keyCol('plannedQty', floatColumnLeft, {
+    keyCol('plannedQty', decimalColumn, {
       id: 'plannedQty',
       title: title('plannedQty', opts),
       minWidth: 150,
@@ -453,7 +447,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
         ...PLANE_UNCONFIRMED_CELL,
       }
     }
-    return keyCol(qtyField, floatColumnLeft, {
+    return keyCol(qtyField, decimalColumn, {
       id: qtyField,
       title: header,
       minWidth: 110,
