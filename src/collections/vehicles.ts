@@ -63,6 +63,23 @@ export const Vehicles: CollectionConfig = {
       admin: { hidden: true },
     },
     {
+      name: 'tyres',
+      type: 'text',
+      label: { en: 'Tyres', pl: 'Opony' },
+    },
+    {
+      name: 'note',
+      type: 'textarea',
+      label: { en: 'Note', pl: 'Uwagi' },
+    },
+    {
+      // An array of scheduled inspection types the car will never have — the przyczepa's przegląd is
+      // „bezterminowo". Hidden for the same reason as `flags`: raw JSON typed by hand only corrupts it.
+      name: 'exemptions',
+      type: 'json',
+      admin: { hidden: true },
+    },
+    {
       name: 'status',
       type: 'select',
       required: true,

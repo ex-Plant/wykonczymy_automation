@@ -75,6 +75,7 @@ import * as migration_20260819_1_add_service_type_and_vehicle_flags from './2026
 import * as migration_20260824_0_drop_kosztorys_client_view_hidden_columns from './20260824_0_drop_kosztorys_client_view_hidden_columns'
 import * as migration_20260824_1_require_inspection_cost from './20260824_1_require_inspection_cost'
 import * as migration_20260825_0_fix_own_tools_coeff_rounding from './20260825_0_fix_own_tools_coeff_rounding'
+import * as migration_20260825_1_fleet_sheet_parity from './20260825_1_fleet_sheet_parity'
 
 export const migrations = [
   {
@@ -461,5 +462,10 @@ export const migrations = [
     up: migration_20260825_0_fix_own_tools_coeff_rounding.up,
     down: migration_20260825_0_fix_own_tools_coeff_rounding.down,
     name: '20260825_0_fix_own_tools_coeff_rounding',
+  },
+  {
+    up: migration_20260825_1_fleet_sheet_parity.up,
+    down: migration_20260825_1_fleet_sheet_parity.down,
+    name: '20260825_1_fleet_sheet_parity',
   },
 ]
