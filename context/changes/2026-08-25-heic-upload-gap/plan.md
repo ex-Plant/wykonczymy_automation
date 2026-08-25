@@ -352,4 +352,10 @@ dumps. The snapshot dir is the rollback path and must exist before the first upd
 
 #### Automated
 
-- [ ] 4.1 None — human-executed, gated on 3.2
+- [x] 4.1 Runbook produkcyjny gotowy — `context/reference/blob-recovery-runbook.md` §5; sam przebieg jest ludzki, checklist w `context/foundation/manual-checks.md`
+
+### Whole-tree gate
+
+- [x] `pnpm typecheck` — exit 0
+- [x] `pnpm test` — 2750 passed / 161 skipped, exit 0
+- [x] `pnpm build` — exit 0

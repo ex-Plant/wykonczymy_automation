@@ -1,7 +1,7 @@
 ---
 change_id: heic-upload-gap
 title: Close the HEIC upload bypass, drop the AppFieldComponentsT mirror, backfill legacy HEIC media
-status: implementing
+status: implemented
 created: 2026-08-25
 updated: 2026-08-25
 archived_at: null

@@ -373,6 +373,68 @@ production since then has a `media` row locally but **404s** — its bytes were 
 The wrapper refuses `--allow-prod` outright, so a command named `refresh-preview` cannot write to
 production no matter what the caller types or a stale `.env.local` holds.
 
+### One-off: the HEIC → JPEG backfill on production (EX-394)
+
+`src/scripts/backfill-heic-media.ts` rewrites every `media` row whose `mime_type` is `image/heic`
+into a JPEG. It is a **mutating** run against the production store, so it belongs here rather than
+in a change folder: the same snapshot-first discipline as a restore, for the same reason.
+
+**Why it needs the discipline.** `plugin-cloud-storage`'s `afterChange` deletes the previous blob
+**before** it uploads the replacement. From the moment a row's update begins, its original is gone
+from the store — there is no in-store rollback window, and the FTP mirror is at most 24h fresh
+(§6). The script therefore downloads **every** original to a local snapshot dir before the first
+update, and a single failed download aborts the whole run.
+
+**Prerequisites:** `brew install libheif imagemagick` (`heif-convert`, `magick`), and the run is a
+**human's** — the agent never touches the production DB or the production store.
+
+```bash
+# 1. dry run first — must enumerate the expected row count and nothing else
+BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --dry-run --snapshot-dir dumps/heic-backfill-prod
+
+# 2. the run (snapshots all originals first, then converts + updates)
+BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --snapshot-dir dumps/heic-backfill-prod
+
+# 3. verify — exits non-zero on any bad row
+BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" \
+  node --env-file=.env --import tsx src/scripts/backfill-heic-media.ts \
+  --verify --snapshot-dir dumps/heic-backfill-prod
+```
+
+The env vars go on the command line, exactly as §3 requires — no script reads
+`BLOB_READ_WRITE_TOKEN_PROD`, and a run off plain `.env` targets the **preview** store instead
+(which is what the staging rehearsal did). Beware `.env.local`: `vercel env pull` writes there and
+Next prefers it.
+
+`--verify` asserts, per row: `mime_type = image/jpeg`, filename ends `.jpg`, `width`/`height`
+non-null, a thumbnail exists, the **served bytes** start with the JPEG magic number, and the count
+of transactions linking that media id is unchanged. The byte check is the one that matters — a
+green row over a 404 is exactly what a half-failed update leaves behind.
+
+**Rollback.** The snapshot dir, and nothing else:
+
+```bash
+BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" \
+  node scripts/blob-restore.mjs --dir dumps/heic-backfill-prod --allow-prod
+```
+
+then restore each row's `filename` / `mime_type` / `filesize` from
+`dumps/heic-backfill-prod/manifest.json` (it records the old and new values plus the pre-run link
+count per id). Note the snapshot dir also holds `manifest.json`, which `blob-restore.mjs` would
+upload as a blob — harmless, but delete it first if a clean store matters.
+
+**Staging rehearsal, 2026-08-25:** 18 rows on the preview DB + preview store, 18/18 converted,
+`--verify` exit 0, zero `image/heic` rows left, files 93–98% smaller (2.79 MB → 82 KB on the
+largest). One trap found: `payload.update` needs `context: { skipRevalidation: true }` or media's
+`afterChange` throws `Invariant: static generation store missing` and rolls the transaction back —
+that failure was clean, the store untouched.
+
+---
+
 ---
 
 ## 6. What the backups do NOT hold (recoverability inventory)

@@ -1516,6 +1516,32 @@ pojazd z historią przeglądów. Zalogowany jako OWNER.
 - [ ] Rozpoczęty szkic w „Dodaj pojazd" przeżywa otwarcie i zamknięcie „Edytuj pojazd" — dialog edycji nie kasuje ani nie nadpisuje szkicu tworzenia
 - [ ] „Dodaj pojazd": wypełnienie części pól, Esc, ponowne otwarcie — szkic **wraca** (zachowanie niezmienione)
 
+## EX-394 — HEIC: dziura w edycji przelewu + backfill starych faktur
+
+Setup: baza testowa 5435, zalogowany jako OWNER, na telefonie/dysku plik `.HEIC` prosto z iPhone'a
+oraz zdjęcie **powyżej 4 MB**.
+
+- [ ] „Edytuj przelew" → „Dodaj faktury" z plikiem `.HEIC`: przycisk „Zapisz" jest zablokowany na czas przetwarzania, a po zapisie podgląd pokazuje JPEG (nie HEIC)
+- [ ] Ten sam dialog, plik **>4 MB**: leci komunikat o odrzuceniu pliku, a **nie** błąd 413 / „Upload nie powiódł się"
+- [ ] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
+- [ ] Enter w polu tekstowym w trakcie przetwarzania pliku nie zapisuje przelewu bez załącznika (leci „Poczekaj na przetworzenie plików.")
+- [ ] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
+- [ ] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
+- [ ] Notatki w formularzach (przelew, inwestycja, przegląd) mają wysokość z `rows` — pole „Notatka" jest wyraźnie niższe niż „Notatki"/„Opinia" na inwestycji
+- [ ] Po backfillu: kilka przekonwertowanych faktur otwiera się i jest czytelnych oraz **poprawnie obróconych**
+- [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
+- [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
+
+### Backfill na produkcji — wykonuje człowiek
+
+Procedura, komendy i rollback: `context/reference/blob-recovery-runbook.md` §5. Agent nie dotyka
+produkcyjnej bazy ani produkcyjnego store'a.
+
+- [ ] `--dry-run` na prodzie wylicza spodziewaną liczbę rekordów i nic poza tym
+- [ ] Katalog snapshotu zawiera wszystkie oryginały **przed** pierwszym update'em
+- [ ] `--verify` na prodzie zwraca komplet OK i kończy się kodem 0
+- [ ] Kilka faktur otwiera się na produkcji
+
 ## S-18 (cut) — spot-check perfu edytora przy ~1000 pozycjach
 
 Jedyna pozostałość po wyciętym slice'ie `kosztorys-hardening` (tombstone S-18 w `roadmap.md`). To
