@@ -18,10 +18,11 @@ Stan na 25.08.2026, gałąź `heic-upload-gap`. Legenda: `[ ]` otwarte · `[x]` 
       nie ma kosza, a to są faktury trzymane na potrzeby podatkowe. **Ścieżka jest nowa — merge tę
       usterkę wnosi.** `30be2dba` jej NIE rusza (sprawdzone: idzie w drugą stronę, poszerza warunek
       pomijania). ⇒ **to jest jedyna rzecz blokująca scalenie**
-- [ ] · 🔴 · otwarte · § „Realny problem: zmiana typu kasuje skan" · **Zmiana typu wydatku kasuje wszystko: kwotę, netto, opis, notatkę
-      i podpięty skan faktury.** Bez ostrzeżenia i bez cofnięcia. Kolejność „najpierw skan, potem
-      typ" jest tą, którą kod skanu sam zakłada. Koszt: jedno płatne odpytanie modelu + ponowne
-      wpięcie pliku
+- [x] · 🔴 · **naprawione na tej gałęzi** · § „Realny problem: zmiana typu kasuje skan" · **Zmiana typu wydatku kasowała wszystko: kwotę,
+      netto, opis, notatkę i podpięty skan faktury.** Czyszczenie zawężone do pól nagłówka (kasa,
+      pracownik, inwestycja, „rozliczone") — pozycje, ich pliki i znaczniki skanu zostają. Pola
+      obce dla nowego typu i tak odpadają przy zapisie. Sprawdzone na żywo: kwota, opis i plik
+      przeżywają zmianę typu, a zapisana transakcja jest poprawna
 - [ ] · 🔴 · **cudze, w trakcie naprawy** · § „DEFEKT: Escape nie anuluje edycji komórki" · **Escape w komórce siatki zapisuje zamiast
       anulować** (2× odtworzone: `7` i `8` wylądowały w Przedmiarze). Naprawia to aktywna zmiana
       `context/changes/2026-08-25-kosztorys-decimal-cell-draft/` (`status: implementing`, ta sama
@@ -1311,6 +1312,17 @@ stron musi ustąpić.
 
 Obejście na dziś: **typ wybierać przed wpięciem pliku.** W tej kolejności wszystko działa i pole
 Netto uzupełnia się od razu.
+
+**Naprawione.** Zmiana typu czyści już tylko pola nagłówka, których nowy typ nie ma — kasę,
+pracownika, inwestycję i znacznik „rozliczone". Pozycje zostają nietknięte razem z zakolejkowanymi
+plikami. Obawa, przed którą bronił się poprzedni kształt, jest bezpodstawna: pliki są trzymane pod
+identyfikatorem pozycji, więc plik osierocony zmianą typu i tak nie miałby się do czego przykleić,
+a pola obce dla nowego typu (np. netto na typie brutto) odpadają przy budowaniu zapisu. Oba
+zachowania są pokryte testami. Przycisk „Wyczyść formularz" nadal czyści wszystko — i o to w nim
+chodzi.
+
+Sprawdzone na żywo: kwota 1234,56, opis i wpięty plik przeżywają zmianę typu na „netto", a zapisana
+transakcja niesie poprawne brutto/netto z podpiętym skanem.
 
 ### Wydatek netto od końca do końca
 

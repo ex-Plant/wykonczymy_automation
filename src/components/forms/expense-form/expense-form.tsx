@@ -214,20 +214,25 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const lineItems = useStore(form.store, (s) => s.values.lineItems)
   const total = lineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 
-  // Blanked, never reset — see clear-fields-for-type.
+  // Blanked, never reset — see clear-fields-for-type. Top-level fields ONLY: the rows, their queued
+  // invoice files and the per-row scan markers all survive a type change.
+  //
+  // They used to be wiped here, which cost the user a paid receipt scan and the re-attached file
+  // every time they picked the type after scanning — the order `use-receipt-generation` itself
+  // assumes, since the scan is what fills the row. The hazard that wipe cited (a queued file
+  // binding to a nonexistent row) cannot happen: files are keyed by row id and `positionalFiles`
+  // resolves them against the CURRENT rows, dropping a stale id rather than mis-binding it. Nor can
+  // a retained value reach the wire — `mapLineItem` drops `netAmount` off a brutto-billed type and
+  // `expenseCategory` off a type that does not use it. Both are covered by tests; keep them green
+  // before touching this. Clearing everything stays on „Wyczyść" (`handleReset`), where it is asked
+  // for.
   function resetConditionalFields(type: string) {
     staleFieldsForType(type).forEach(([field, value]) => form.setFieldValue(field, value))
     form.setFieldValue(
       'investment',
       investmentForType(type, form.getFieldValue('investment'), investmentFromUrl),
     )
-    // resetField('lineItems') would restore the stale-id mount default; set a fresh-id blank row
-    // instead so the row (and its uncontrolled FileInput) remounts. The queued files live outside
-    // the form, so clear them too — otherwise a file queued before the type switch attaches to the
-    // wrong/nonexistent line item on submit.
-    form.setFieldValue('lineItems', [makeLineItem()])
-    resetInvoiceFiles()
-    resetGeneration()
+    // The kasa may have just been blanked above, so the balance beside it no longer describes it.
     resetRegisterBalance()
   }
 
