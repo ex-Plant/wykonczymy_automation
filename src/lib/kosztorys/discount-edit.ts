@@ -1,5 +1,6 @@
 import { type CellEditPolicyT } from '@/lib/kosztorys/cell-edit'
-import { formatNet, formatQty } from '@/lib/kosztorys/format'
+import { formatQty } from '@/lib/kosztorys/format'
+import { formatPLN } from '@/lib/utils/format-currency'
 import type { DiscountTypeT } from '@/lib/kosztorys/types'
 
 // discountType and discountValue are two independent fields, and applyDiscount reads the type
@@ -12,7 +13,6 @@ export type DiscountPairT = { discountType: DiscountTypeT | null; discountValue:
 // Percent, not amount: a rabat is asked for in % far more often than in zł.
 const IMPLIED_TYPE: DiscountTypeT = 'percent'
 
-/** A parsed value onto the pair, type implied when the row hasn't got one yet. */
 function withDiscountValue<RowT extends DiscountPairT>(current: RowT, value: number): RowT {
   return { ...current, discountType: current.discountType ?? IMPLIED_TYPE, discountValue: value }
 }
@@ -41,7 +41,7 @@ export function discountPolicy<RowT extends DiscountPairT>(): CellEditPolicyT<Ro
       row.discountType === null
         ? 'brak rabatu'
         : row.discountType === 'amount'
-          ? `${formatNet(row.discountValue)} zł`
+          ? formatPLN(row.discountValue)
           : `${formatQty(row.discountValue)}%`,
   }
 }

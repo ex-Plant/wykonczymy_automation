@@ -58,7 +58,8 @@ import {
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
-import { formatNet, formatPercent, formatQty } from '@/lib/kosztorys/format'
+import { formatPercent, formatQty } from '@/lib/kosztorys/format'
+import { formatPLN } from '@/lib/utils/format-currency'
 import {
   hasStagesOverPlanned,
   measureDiscrepancy,
@@ -97,7 +98,6 @@ function keyCol(
 
 // „Cena j.m." is money, so a rollback names it in złotówki — „przywrócono 120" would read as a
 // quantity in a grid where most numeric cells hold one.
-const priceLabel = (value: number) => `${formatNet(value)} zł`
 
 // An etap with no rozliczenie belongs to neither crew’s bill (subcontractor-due.ts), so its quantities fall
 // out of both subcontractor sums — the kind of hole that is only found when the money doesn't add up.
@@ -282,7 +282,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
           decimalColumn(
             'price',
             title('price', opts),
-            numericFieldPolicy<'clientPrice', KosztorysV2RowT>('clientPrice', priceLabel),
+            numericFieldPolicy<'clientPrice', KosztorysV2RowT>('clientPrice', formatPLN),
           ),
         ]
       : [

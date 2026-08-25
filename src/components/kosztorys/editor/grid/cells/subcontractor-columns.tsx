@@ -7,10 +7,12 @@ import { SimpleTooltip } from '@/components/ui/tooltip'
 import { AlertIcon } from '@/components/ui/alert-icon'
 import { cn } from '@/lib/utils/cn'
 import { decimalText } from '@/lib/utils/decimal-text'
+import { roundToCents } from '@/lib/utils/round-to-cents'
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { modeChange, subcontractorPolicy } from '@/lib/kosztorys/subcontractor-price-edit'
+import { cellPaste } from '@/lib/kosztorys/cell-edit'
 import { useCellDraft } from '@/components/kosztorys/editor/grid/cells/use-cell-draft'
 import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { ReactNode } from 'react'
@@ -28,7 +30,8 @@ const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
 // `columnData` so each component keeps ONE identity across renders — an inline `component:
 // ({rowData}) => …` is a fresh function type on every assembleV2Columns call, which makes
 // react-datasheet-grid remount the cell's DOM instead of reconciling it, losing both the typed text
-// and the rejection state below (EX-422, lessons.md:119-135).
+// and the rejection state below (EX-422, lessons.md — „A `react-datasheet-grid` column's `component`
+// must be a STABLE reference").
 type SubcontractorCellDataT = {
   view: ToolPlaneT
   typeField: keyof KosztorysV2RowT
@@ -49,7 +52,7 @@ const REFUSED_TONE = 'text-destructive font-medium'
 const CELL_WRAPPER = 'flex size-full items-center'
 
 // A derived price carries the float tail of client × coeff; the cell edits grosze, not the tail.
-const round2 = (value: number): string => decimalText(Math.round(value * 100) / 100)
+const priceText = (value: number): string => decimalText(roundToCents(value))
 
 // The refusal explains itself where the user is typing rather than in a corner toast, mirroring the
 // blocked-action tooltip in kosztorys-row-actions-menu.tsx. `open` is forced while a rejection stands
@@ -124,17 +127,13 @@ function SubcontractorCoeffCell({
   return (
     <CellTooltip message={edit.blockReason} forceOpen>
       <EditableCellInput
+        {...edit.inputProps}
         className={
           edit.blockReason ? REFUSED_TONE : inherited ? 'text-muted-foreground italic' : undefined
         }
-        value={edit.draft ?? (inherited ? '' : String(rowData[valueField] ?? ''))}
-        placeholder={inherited ? String(effectiveCoeff(rowData, view)) : ''}
+        value={edit.draft ?? (inherited ? '' : decimalText(rowData[valueField] as number))}
+        placeholder={inherited ? decimalText(effectiveCoeff(rowData, view)) : ''}
         focus={focus}
-        inputMode="decimal"
-        onBlur={edit.onBlur}
-        onEnter={edit.onEnter}
-        onEscape={edit.onEscape}
-        onChange={(e) => edit.onChange(e.target.value)}
       />
     </CellTooltip>
   )
@@ -169,16 +168,12 @@ function SubcontractorPriceCell({
 
   const body = (
     <EditableCellInput
+      {...edit.inputProps}
       // Italic muted mirrors „Mnożnik": the row carries no price of its own, it is showing the one
       // the investment default derives.
       className={message ? REFUSED_TONE : inherited ? 'text-muted-foreground italic' : undefined}
-      value={edit.draft ?? round2(viewPrice(rowData, view))}
+      value={edit.draft ?? priceText(viewPrice(rowData, view))}
       focus={focus}
-      inputMode="decimal"
-      onBlur={edit.onBlur}
-      onEnter={edit.onEnter}
-      onEscape={edit.onEscape}
-      onChange={(e) => edit.onChange(e.target.value)}
     />
   )
 
@@ -233,7 +228,11 @@ export function subcontractorCoeffColumn(
   view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
-  const { type: typeField, value: valueField } = OVERRIDE_FIELDS[view]
+  const { type: typeField } = OVERRIDE_FIELDS[view]
+  // Through the policy, so „what an emptied override means" and „what a pasted one means" are decided
+  // in one place — the same „auto" the cell settles to when the user clears the field by hand, and the
+  // same ceiling a keystroke would have hit.
+  const policy = subcontractorPolicy<KosztorysV2RowT>(view, 'coeff')
   return {
     id: 'priceCoeff',
     title: titleNode,
@@ -242,8 +241,9 @@ export function subcontractorCoeffColumn(
     copyValue: ({ rowData }) =>
       (rowData[typeField] as string | null) === 'amount'
         ? ''
-        : String(effectiveCoeff(rowData, view)),
-    deleteValue: ({ rowData }) => ({ ...rowData, [typeField]: null, [valueField]: 0 }),
+        : decimalText(effectiveCoeff(rowData, view)),
+    pasteValue: ({ rowData, value }) => cellPaste(value, rowData, policy),
+    deleteValue: ({ rowData }) => policy.clear(rowData),
   }
 }
 
@@ -251,14 +251,15 @@ export function subcontractorPriceColumn(
   view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
-  const { type: typeField, value: valueField } = OVERRIDE_FIELDS[view]
+  const policy = subcontractorPolicy<KosztorysV2RowT>(view, 'amount')
   return {
     id: 'price',
     title: titleNode,
     columnData: cellData(view),
     component: SubcontractorPriceCell,
-    copyValue: ({ rowData }) => String(viewPrice(rowData, view)),
-    deleteValue: ({ rowData }) => ({ ...rowData, [typeField]: null, [valueField]: 0 }),
+    copyValue: ({ rowData }) => priceText(viewPrice(rowData, view)),
+    pasteValue: ({ rowData, value }) => cellPaste(value, rowData, policy),
+    deleteValue: ({ rowData }) => policy.clear(rowData),
   }
 }
 
@@ -266,7 +267,8 @@ export function subcontractorModeColumn(
   view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
-  const { type: typeField, value: valueField } = OVERRIDE_FIELDS[view]
+  const { type: typeField } = OVERRIDE_FIELDS[view]
+  const { clear } = subcontractorPolicy<KosztorysV2RowT>(view, 'amount')
   return {
     id: 'priceMode',
     title: titleNode,
@@ -281,6 +283,6 @@ export function subcontractorModeColumn(
     columnData: cellData(view),
     component: SubcontractorModeCell,
     copyValue: ({ rowData }) => (rowData[typeField] as string | null) ?? '',
-    deleteValue: ({ rowData }) => ({ ...rowData, [typeField]: null, [valueField]: 0 }),
+    deleteValue: ({ rowData }) => clear(rowData),
   }
 }

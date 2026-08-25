@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { formatPLN } from '@/lib/utils/format-currency'
 import {
   cellKeystroke,
+  cellPaste,
   cellSettle,
   numericFieldPolicy,
   type CellEditPolicyT,
@@ -92,6 +94,34 @@ describe('cellSettle', () => {
   })
 })
 
+describe('cellPaste', () => {
+  it('wkleja to samo, co da się wpisać z klawiatury', () => {
+    // The gap this closes: the strip of the sheet's NBSP thousands separator lived only on the
+    // column's own paste hook, so „1 234,5" landed when pasted onto a selection and was refused as
+    // invalid when the same text was typed — or pasted into an already-open cell.
+    const pasted = cellPaste('1\u00a0234,5', row(0), qty)
+    expect(pasted).toEqual(row(1234.5))
+    expect(cellKeystroke('1\u00a0234,5', row(0), qty)).toEqual({ kind: 'commit', row: pasted })
+  })
+
+  it('guard odrzuca wklejoną wartość tak samo jak wpisaną', () => {
+    expect(cellPaste('101', row(5), capped)).toEqual(row(5))
+    expect(cellPaste('99', row(5), capped)).toEqual(row(99))
+  })
+
+  it('wklejone śmieci zostawiają wiersz w spokoju', () => {
+    expect(cellPaste('-', row(7), qty)).toEqual(row(7))
+  })
+
+  it('wklejona pustka czyści przez politykę — w rabacie zdejmuje też typ', () => {
+    expect(cellPaste('', row(7), qty)).toEqual(row(0))
+    expect(cellPaste('', { discountType: 'percent', discountValue: 10 }, discountPolicy())).toEqual({
+      discountType: null,
+      discountValue: 0,
+    })
+  })
+})
+
 describe('discountPolicy', () => {
   const policy = discountPolicy<DiscountPairT>()
   const noDiscount: DiscountPairT = { discountType: null, discountValue: 0 }
@@ -119,7 +149,7 @@ describe('discountPolicy', () => {
 
   it('ogłasza przywrócony rabat w jednostce, którą wiersz niósł', () => {
     expect(policy.restoredLabel({ discountType: 'percent', discountValue: 10 })).toBe('10%')
-    expect(policy.restoredLabel({ discountType: 'amount', discountValue: 250 })).toBe('250,00 zł')
+    expect(policy.restoredLabel({ discountType: 'amount', discountValue: 250 })).toBe(formatPLN(250))
     expect(policy.restoredLabel(noDiscount)).toBe('brak rabatu')
   })
 })

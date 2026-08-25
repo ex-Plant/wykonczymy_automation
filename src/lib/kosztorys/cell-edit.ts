@@ -1,4 +1,4 @@
-import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
+import { parseCellDecimal } from '@/lib/utils/parse-decimal-input'
 
 /**
  * The edit contract every numeric cell in the grid runs on: keystrokes commit as they go, the typed
@@ -43,8 +43,6 @@ export type CellSettleT<RowT> =
     }
 
 /**
- * One keystroke.
- *
  * `hold` is the load-bearing case: an emptied field must NOT write the cleared value back to the
  * row mid-typing. Doing so flips the cell out of edit mode, which swaps the input for read-only
  * text — the caret dies and the old value reappears under the user's hands. Clearing only takes
@@ -55,7 +53,7 @@ export function cellKeystroke<RowT, EntryT>(
   rowData: RowT,
   policy: CellEditPolicyT<RowT, EntryT>,
 ): CellKeystrokeT<RowT> {
-  const parsed = parseDecimalInput(raw)
+  const parsed = parseCellDecimal(raw)
   if (parsed.kind !== 'value') return { kind: 'hold' }
 
   const row = policy.applyValue(rowData, parsed.value)
@@ -65,8 +63,6 @@ export function cellKeystroke<RowT, EntryT>(
 }
 
 /**
- * Leaving the cell.
- *
  * The rollback is what makes a rejected edit safe: keystrokes commit as they go, so typing
  * „2344000" writes 2, 23, 234 … until one is refused and the rest bounce. Without this, walking
  * away left the last accepted PREFIX standing as if the user had chosen it — a value they never
@@ -83,7 +79,7 @@ export function cellSettle<RowT, EntryT>(
   policy: CellEditPolicyT<RowT, EntryT>,
   entry: EntryT,
 ): CellSettleT<RowT> {
-  const parsed = parseDecimalInput(draft)
+  const parsed = parseCellDecimal(draft)
   if (parsed.kind === 'empty') return { kind: 'clear', row: policy.clear(rowData) }
 
   const result = cellKeystroke(draft, rowData, policy)
@@ -100,8 +96,29 @@ export function cellSettle<RowT, EntryT>(
 }
 
 /**
- * The policy for a lone numeric field — „Przedmiar", „Cena j.m." in the client view, a stage's
- * „ilość". No guard: the price ceiling is the subcontractor planes' rule, not this one's.
+ * A pasted cell under the same rules as a typed one, minus the draft — there is no caret to protect,
+ * so the settle happens at once. Every numeric column routes its `pasteValue` here, which is what
+ * keeps „what arrives from the clipboard" and „what the user types" from drifting into two answers:
+ * the guarded columns still refuse what a keystroke would have refused, and an emptied cell means
+ * the same as an emptied field.
+ */
+export function cellPaste<RowT, EntryT>(
+  raw: string,
+  rowData: RowT,
+  policy: CellEditPolicyT<RowT, EntryT>,
+): RowT {
+  const parsed = parseCellDecimal(raw)
+  if (parsed.kind === 'empty') return policy.clear(rowData)
+  // Garbage in the clipboard leaves the row alone, the same answer typing it gets.
+  if (parsed.kind === 'invalid') return rowData
+  const next = policy.applyValue(rowData, parsed.value)
+  return policy.guard?.(next) ? rowData : next
+}
+
+/**
+ * The contract's default element: any lone `number` field, any row shape. It knows no domain — the
+ * two policies that do (the rabat pair, a subcontractor price) live in their own modules. Today's
+ * callers are „Przedmiar", „Cena j.m." in the client view and a stage's „ilość".
  */
 export function numericFieldPolicy<K extends string, RowT extends Record<K, number>>(
   field: K,

@@ -4,6 +4,7 @@ import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
 import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { discountFromType, discountPolicy } from '@/lib/kosztorys/discount-edit'
+import { cellPaste } from '@/lib/kosztorys/cell-edit'
 import { useCellDraft } from '@/components/kosztorys/editor/grid/cells/use-cell-draft'
 import { decimalText } from '@/lib/utils/decimal-text'
 import type { DiscountTypeT, KosztorysV2RowT } from '@/lib/kosztorys/types'
@@ -36,11 +37,8 @@ function DiscountTypeCell({ rowData, setRowData, disabled }: CellProps<Kosztorys
 }
 
 // A hand-rolled input rather than a stock numeric column, because an edit here has to reach
-// discountType too (discount-edit.ts), which a keyColumn can't do.
-//
-// Bound straight to the row it could not accept a decimal AT ALL: „12," parses to 12 (`Number('12.')`),
-// the commit re-rendered the controlled input over the separator just typed, and the next digit
-// landed on „12" — storing „12,5" as 125. The draft is what keeps the comma on screen.
+// discountType too (discount-edit.ts), which a keyColumn can't do. The draft contract it runs on —
+// and the „12,5" → 125 incident behind it — is use-cell-draft.ts.
 function DiscountValueCell({
   rowData,
   setRowData,
@@ -49,28 +47,22 @@ function DiscountValueCell({
   stopEditing,
 }: CellProps<KosztorysV2RowT, unknown>) {
   const edit = useCellDraft(rowData, setRowData, discountPolicy<KosztorysV2RowT>(), stopEditing)
-  if (disabled) return <ReadOnlyCellText>{decimalText(rowData.discountValue)}</ReadOnlyCellText>
-  return (
-    <EditableCellInput
-      value={edit.draft ?? decimalText(rowData.discountValue)}
-      inputMode="decimal"
-      focus={focus}
-      onBlur={edit.onBlur}
-      onEnter={edit.onEnter}
-      onEscape={edit.onEscape}
-      onChange={(e) => edit.onChange(e.target.value)}
-    />
-  )
+  const text = decimalText(rowData.discountValue)
+  if (disabled) return <ReadOnlyCellText>{text}</ReadOnlyCellText>
+  return <EditableCellInput {...edit.inputProps} value={edit.draft ?? text} focus={focus} />
 }
 
 export function discountValueColumn(titleNode: ReactNode): Column<KosztorysV2RowT> {
+  const policy = discountPolicy<KosztorysV2RowT>()
   return {
     id: 'discountValue',
     title: titleNode,
-    keepFocus: true,
     component: DiscountValueCell,
-    copyValue: ({ rowData }) => String(rowData.discountValue ?? ''),
-    deleteValue: ({ rowData }) => ({ ...rowData, discountType: null, discountValue: 0 }),
+    // Through the policy, not a hand-written pair: „what an emptied rabat means" is one rule, and it
+    // has to say the same thing whether the user cleared the field or hit Delete on the cell.
+    copyValue: ({ rowData }) => decimalText(rowData.discountValue),
+    pasteValue: ({ rowData, value }) => cellPaste(value, rowData, policy),
+    deleteValue: ({ rowData }) => policy.clear(rowData),
   }
 }
 

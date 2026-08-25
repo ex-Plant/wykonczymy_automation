@@ -215,9 +215,18 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   `hooks/use-invoice-upload.ts`) — one rule, not three accidents. `forms/hooks/` therefore means
   "shared by 2+ forms", not "domain-free form plumbing"; a domain-aware hook belongs there too once a
   second form uses it.
+  The counting is over **directories, not files**: three cells in one directory sharing a hook is
+  still one consumer, so `useCellDraft` stays colocated in `editor/grid/cells/` while
+  `useInlineRename` — read from two directories — sits in `src/hooks/`. Promote a hook when a second
+  directory reaches for it, not when a third file in the same one does.
 - `src/components/ui` is the domain-agnostic primitives layer — a component that knows it is filtering
   a list belongs in `src/components/filters/` (EX-730 moved the last four out of `ui/`; git history and
   older imports still point at the old home, so don't take a precedent from there)
+- **The datasheet-grid seam runs one way.** `src/components/ui/datasheet-grid/` holds the presentational
+  primitives a cell renders (`EditableCellInput`, `ReadOnlyCellText`, `CellSelectMenu`); the `Column`
+  factories that know what a figure MEANS live in `src/components/kosztorys/editor/grid/cells/`. A
+  factory imports a primitive, never the reverse — that is why `decimalColumn` sits under `kosztorys/`
+  despite looking generic: it is parameterised by a `CellEditPolicyT`, which is domain.
 
 ## Auth And Roles
 

@@ -1,12 +1,7 @@
 import { effectiveCoeff, subcontractorPrice } from '@/lib/kosztorys/calc'
-import {
-  cellKeystroke,
-  cellSettle,
-  type CellEditPolicyT,
-  type CellKeystrokeT,
-} from '@/lib/kosztorys/cell-edit'
+import { type CellEditPolicyT } from '@/lib/kosztorys/cell-edit'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
-import { formatNet } from '@/lib/kosztorys/format'
+import { formatPLN } from '@/lib/utils/format-currency'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { round6 } from '@/lib/utils/round'
 import type { SubcontractorOverrideTypeT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
@@ -17,21 +12,6 @@ export type OverrideSnapshotT = {
   value: number
 }
 
-export type PriceSettleT<RowT> =
-  /** The row already says what the user left behind. */
-  | { kind: 'keep' }
-  /** An emptied field — the override reverts to „auto". */
-  | { kind: 'clear'; row: RowT }
-  | {
-      kind: 'rollback'
-      reason: 'blocked' | 'invalid'
-      /** `null` when the row is already back where it started and only the announcement is owed. */
-      row: RowT | null
-      restoredPrice: number
-    }
-
-export type PriceKeystrokeT<RowT> = CellKeystrokeT<RowT>
-
 export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): OverrideSnapshotT {
   const { type, value } = OVERRIDE_FIELDS[view]
   return {
@@ -41,7 +21,7 @@ export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): Overr
 }
 
 /** The row with one plane's override replaced — the write every transition below resolves to. */
-export function withOverride<RowT extends ViewPricingT>(
+function withOverride<RowT extends ViewPricingT>(
   rowData: RowT,
   view: ToolPlaneT,
   snapshot: OverrideSnapshotT,
@@ -57,6 +37,9 @@ export function withOverride<RowT extends ViewPricingT>(
  *
  * The only one of the three cell families that carries a `guard`: the ceiling is a rule about what
  * the company may pay a crew, and it has no business on the client's own price.
+ *
+ * „Mnożnik" is the sharp end of the prefix trap the rollback exists for — its prefixes start at the
+ * leading „0", so a refused „0,9" used to strand the row at a multiplier of zero.
  */
 export function subcontractorPolicy<RowT extends ViewPricingT>(
   view: ToolPlaneT,
@@ -69,43 +52,9 @@ export function subcontractorPolicy<RowT extends ViewPricingT>(
     applyValue: (row, value) => withOverride(row, view, { type: mode, value }),
     clear: (row) => withOverride(row, view, { type: null, value: 0 }),
     guard: (row) => checkSubcontractorPrice(row, view),
-    restoredLabel: (row) => formatNet(subcontractorPrice(row, view)),
-  }
-}
-
-/**
- * One keystroke in a subcontractor price cell. See `cellKeystroke` for why an emptied field is
- * `hold` rather than a write.
- */
-export function priceKeystroke<RowT extends ViewPricingT>(
-  raw: string,
-  rowData: RowT,
-  view: ToolPlaneT,
-  mode: SubcontractorOverrideTypeT,
-): PriceKeystrokeT<RowT> {
-  return cellKeystroke(raw, rowData, subcontractorPolicy<RowT>(view, mode))
-}
-
-/**
- * Leaving a subcontractor price cell. Adds the one thing the generic machine can't know: the price
- * the rollback restored, as a number the caller announces. „Mnożnik" is the sharp end of the prefix
- * trap the rollback exists for — its prefixes start at the leading „0", so a refused „0,9" used to
- * strand the row at a multiplier of zero.
- */
-export function priceSettle<RowT extends ViewPricingT>(
-  draft: string,
-  rowData: RowT,
-  view: ToolPlaneT,
-  mode: SubcontractorOverrideTypeT,
-  entry: OverrideSnapshotT,
-): PriceSettleT<RowT> {
-  const settled = cellSettle(draft, rowData, subcontractorPolicy<RowT>(view, mode), entry)
-  if (settled.kind !== 'rollback') return settled
-  return {
-    kind: 'rollback',
-    reason: settled.reason,
-    row: settled.row,
-    restoredPrice: subcontractorPrice(settled.restored, view),
+    // Carries „zł" even under „Mnożnik": what a refusal restores is the row's PRICE, and a bare
+    // „70,00" in a toast fired from the multiplier column reads as a multiplier of seventy.
+    restoredLabel: (row) => formatPLN(subcontractorPrice(row, view)),
   }
 }
 
