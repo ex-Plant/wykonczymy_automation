@@ -1,4 +1,5 @@
 import { useRouter } from 'next/navigation'
+import { logError } from '@/lib/utils/log-error'
 import { toastMessage } from '@/lib/utils/toast'
 import { useOptimisticFormStore } from '@/stores/optimistic-form-store'
 import type { ActionResultT } from '@/types/action'
@@ -9,7 +10,7 @@ type SubmitOptionsT = {
   form: ResettableFormT
   action: () => Promise<ActionResultT>
   successMessage: string
-  files?: Map<number, File>
+  files?: Map<number, File[]>
   onSubmitSuccess: () => void
   onReset?: () => void
 }
@@ -27,9 +28,23 @@ export function useFormSubmit(formId: string) {
     if (isRecovering) clearSubmission()
 
     if (keepOpen) {
-      const result = await opts.action()
+      let result: ActionResultT
+      try {
+        result = await opts.action()
+      } catch (err) {
+        // A save that throws rather than returning a failure — dropped connection, a deploy
+        // invalidating the action id — would otherwise end in silence, the form looking untouched.
+        logError('[FORM_SUBMIT]', err)
+        toastMessage(
+          err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd',
+          'error',
+          5000,
+        )
+        return
+      }
       if (result.success) {
         toastMessage(opts.successMessage, 'success')
+        if (result.warning) toastMessage(result.warning, 'warning', 6000)
         opts.form.reset()
         opts.onReset?.()
         // The server action revalidates the cache tag; refresh re-renders the RSC

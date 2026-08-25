@@ -5,7 +5,7 @@ import {
 import { formatPLN } from '@/lib/utils/format-currency'
 import { ToggleStatButtons } from '@/components/ui/toggle-stat-buttons'
 import type { StatEntryT } from '@/components/ui/toggle-stat-buttons'
-import type { CashRegisterRowT } from '@/components/tables/cash-registers'
+import type { CashRegisterRowT } from '@/types/table-rows'
 import type { CashRegisterTypeT } from '@/types/reference-data'
 
 type RegisterBalanceChartPropsT = {

@@ -8,8 +8,8 @@ import {
   needsWorker,
 } from '@/lib/constants/transfers'
 
-// Shared type-dependent refinement helpers, used by both the single-transfer schemas
-// (schemas/transfer.ts) and the bulk-expense schema (expense-form/expense-schema.ts).
+// Shared type-dependent refinement helpers, used by every transfer schema: server, client form,
+// and bulk expense.
 
 type TransferFieldsT = {
   type: string
@@ -19,6 +19,7 @@ type TransferFieldsT = {
   expenseCategory?: unknown
   otherCategory?: unknown
   worker?: unknown
+  vatPlane?: unknown
 }
 
 type FieldRuleT = {

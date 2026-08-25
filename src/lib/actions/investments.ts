@@ -2,7 +2,6 @@
 
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
-import { createSheetFromTemplate, isStorageQuotaError } from '@/lib/google/drive'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
 import { extractSheetId, serviceAccountEmail, verifySheetAccess } from '@/lib/google/sheet-access'
 import { stampAllTabs } from '@/lib/google/app-managed-tabs'
@@ -10,8 +9,13 @@ import {
   investmentSchema,
   type InvestmentFormDataT,
 } from '@/components/forms/investment-form/investment-schema'
+import { SETTLEMENT_MODE_DEFAULT } from '@/lib/kosztorys/settlement-mode'
 import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import { validateAction, protectedAction } from './run-action'
+import { logError } from '@/lib/utils/log-error'
+
+const SEED_PRESET_WARNING =
+  'Inwestycja utworzona, ale nie udało się wypełnić kosztorysu z szablonu. Otwórz edytor i uzupełnij ręcznie.'
 
 // Attach (or reset) a fresh materiały tab on the investment's linked sheet.
 // Header + summary are written by the app — the owner builds nothing. Works on a
@@ -42,97 +46,51 @@ export async function createInvestmentAction(data: InvestmentFormDataT) {
       const { presetId, ...investmentData } = parsed.data
       const created = await payload.create({
         collection: 'investments',
-        data: investmentData,
+        // Not on the create form — the mode is chosen later in the kosztorys panel.
+        data: { ...investmentData, settlementMode: SETTLEMENT_MODE_DEFAULT },
       })
 
       // Seed the new (trivially empty) investment's kosztorys from the chosen preset. Best-effort and
       // NON-FATAL: the investment is already committed, so a seed failure must never flip the whole
       // action to failure — that would skip the ['investments'] revalidation (hiding the just-created
-      // investment from the cached list) and invite a duplicate-creating retry. Mirror the non-fatal
-      // stampAllTabs handling in linkSheetAction: log and move on. Any non-'ok' outcome (preset
-      // deleted between form-load and submit, or a DB error) lands the user on an empty editor whose
-      // "Wypełnij z szablonu" CTA lets them retry the seed. No kosztorys* tree tags here — a fresh
-      // investment has no cached tree to invalidate yet.
+      // investment from the cached list) and invite a duplicate-creating retry. Instead we surface a
+      // `warning` the form toasts, so the user isn't left staring at a silently-empty kosztorys —
+      // „Sekcja z szablonu…" in the editor's „Dodaj" menu still lets them retry. No kosztorys* tree
+      // tags here — a fresh investment has no cached tree to invalidate yet.
+      let warning: string | undefined
       const chosenPresetId = presetId ? Number(presetId) : null
       if (chosenPresetId) {
         try {
           const result = await seedInvestmentFromPreset(payload, Number(created.id), chosenPresetId)
           if (result !== 'ok') {
-            console.error(
+            // TODO(EX-449) SENTRY-REQUIRED: silent seed skip the user can't self-report.
+            logError(
               `[create-investment] seed from preset ${chosenPresetId} skipped for #${created.id}: ${result}`,
             )
+            warning = SEED_PRESET_WARNING
           }
         } catch (err) {
-          console.error(
+          // TODO(EX-449) SENTRY-REQUIRED: silent seed failure the user can't self-report.
+          logError(
             `[create-investment] seed from preset ${chosenPresetId} failed for #${created.id} (non-fatal):`,
             err,
           )
+          warning = SEED_PRESET_WARNING
         }
       }
 
-      return { success: true }
+      return { success: true, warning }
     },
     ['investments'],
   )
 }
 
 /**
- * Manual counterpart to the auto-provision in createInvestmentAction. Wired to
- * the "Utwórz nowy kosztorys" CTA on the no-sheet banner (Task 9). Synchronous
- * — the user is staring at a button, so we wait for Drive to land before
- * returning so the UI can refresh and show the iframe.
- */
-export async function provisionSheetAction(investmentId: number) {
-  return protectedAction<{ sheetId: string }>(
-    'provisionSheetAction',
-    async ({ payload }) => {
-      const investment = await payload.findByID({
-        collection: 'investments',
-        id: investmentId,
-        overrideAccess: true,
-      })
-      if (!investment) return { success: false, error: 'Inwestycja nie istnieje.' }
-
-      const existing = await getInvestmentSheetId(payload, investmentId)
-      if (existing) {
-        return { success: false, error: 'Ta inwestycja ma już kosztorys.' }
-      }
-
-      let sheetId: string
-      try {
-        ;({ sheetId } = await createSheetFromTemplate(investment.name))
-      } catch (err) {
-        const msg = String(err)
-        if (isStorageQuotaError(err)) {
-          return {
-            success: false,
-            error:
-              'Nie można utworzyć nowego arkusza — konto usługi Google nie ma miejsca na dysku. ' +
-              'Tworzenie nowych kosztorysów będzie możliwe po skonfigurowaniu Dysku współdzielonego ' +
-              '(Google Workspace). Na razie użyj opcji „Powiąż istniejący arkusz”.',
-          }
-        }
-        return { success: false, error: `Nie udało się utworzyć arkusza: ${msg}` }
-      }
-
-      await payload.create({
-        collection: 'kosztoryses',
-        data: { googleSheetId: sheetId, name: investment.name, investment: investmentId },
-        overrideAccess: true,
-      })
-
-      return { success: true, data: { sheetId } }
-    },
-    // Affects both the kosztoryses listing and the investments table (hasSheet flips true).
-    ['kosztoryses', 'investments'],
-  )
-}
-
-/**
  * Link an EXISTING Google Sheet to an investment. Accepts a pasted sheet URL or a
  * raw id; verifies the service account can actually open it (else the sync/iframe
- * would silently fail), then stores its id. The working alternative to
- * provisionSheetAction while new-file creation is blocked by SA Drive quota.
+ * would silently fail), then stores its id. New-file creation from a template is
+ * not offered — the service account has no Drive quota, so linking an existing
+ * sheet is the only supported path.
  */
 // The service-account email a user must share their sheet with before linking.
 // Non-secret; surfaced in the setup dialog so the share step is clear up front
@@ -218,7 +176,7 @@ export async function linkSheetAction(investmentId: number, input: string) {
       try {
         await stampAllTabs(sheetId, payload, 'ensure')
       } catch (err) {
-        console.error(`[link-sheet] ensureTab failed for #${investmentId} (non-fatal):`, err)
+        logError(`[link-sheet] ensureTab failed for #${investmentId} (non-fatal):`, err)
       }
 
       return { success: true, data: { title: access.title } }

@@ -6,10 +6,102 @@ Only what's true for THIS repo and not inferable from the framework or `@package
 
 Business management dashboard for cash registers, transfers, investments, and employees. Next.js + Payload CMS. **Polish UI, English code.** Code comments are always in English, even when the UI strings they sit next to are Polish. Versions in `@package.json`.
 
+### Naming a financial figure
+
+Canonical identifiers, the App↔Code translation, and the drift still to fix live in the glossary
+`@context/domain/02-glossary.md` (backed by **EX-548**) — **consult it before naming a figure.** The
+four rules it enforces:
+
+1. **Polish only for sheet proper nouns.** A Polish identifier survives only as the name of a
+   specific artifact in the owner's sheet with **no clean English equivalent** (`kosztorys`,
+   `przedmiar`, `pomiar`). The test is the English equivalent, not "the sheet says it in Polish" —
+   the sheet also says `etapy` / `robocizna`, which are `stage` / `laborCosts` in code and stay
+   Polish in UI labels and prose only.
+2. **Everything else is English.** A generic figure is not a sheet noun: `balance` / `margin` /
+   `discount` / `deposit` / `payout` / `loss` — never `bilans` / `marza` / `rabat` / `wplaty` /
+   `wyplaty` / `strata`.
+3. **No half-translated identifiers.** A Polish root welded to an English affix (`robociznaNet`,
+   `zaliczkiByStage`, `wplatyNet`) is banned outright — one identifier is one language, and that
+   language is English.
+4. **One concept, one name** — the cardinal sin is two. A figure carries the _same_ identifier in
+   kosztorys as on the transfers side (`src/collections/transfers.ts`, `src/lib/db`), so nobody
+   translates across the recon seam.
+
+**Plane suffix — the only exception to rule 4.** Where a concept genuinely exists on _both_ the
+kosztorys and the transactions plane and the reconciliation compares the two, keep the base name
+identical and append `FromKosztorys` / `FromTransactions` — `laborCostsNetFromKosztorys` /
+`laborCostsNetFromTransactions`. The shared prefix keeps the pair legible as one concept.
+**Only where two planes actually collide:** a one-plane figure stays bare (`depositsByStage`), as
+does an aggregate at its own source (`totalLaborCosts`). The suffix warns that a twin exists —
+hang it on everything and it stops warning.
+
+## The Owner's Reference Sheet (read this before touching kosztorys)
+
+The kosztorys editor is a port of a live Google Sheet. **The sheet is the domain authority** — when a
+question is "what does this figure mean to the business", read the sheet's formulas, don't reason from
+our code. Ours is the copy; theirs is the original.
+
+**One register per message — never mixed.** This governs **how the agent talks to the owner**, not
+identifier naming — that's the `Polish UI, English code` rule above; never read this as license for
+Polish code identifiers. Talk kosztorys in the sheet's names: „Przedmiar", „Pomiar
+z natury", „etapy", „Cena j.m.", „rabat", „Wartość netto przedmiar". **Never** `plannedQty` /
+`measuredQty` / `rowValueForView`, and never both registers in one message — not even as a
+parenthetical gloss or a mapping column. Sheet names for any domain/design conversation; code
+identifiers only in code review, implementation notes, and commits. The user reasons about the
+business, so translating between the two is the agent's job, silently — the mapping belongs in
+`context/reference/kosztorys-editor-domain-notes.md`, not in the conversation.
+
+**Current reference** — _"Kopia aktualny arkusz 16 lipca 2026 - wersja w jakiej klient dostaje to
+wstępnie"_, i.e. the state a client receives as an initial offer:
+
+```
+1kEWaMv9KRRXVaSMu3AJRw_ptxucnF4oafLR74VWeRHg    # tab kosztorys_robocizny, gid=70964819
+```
+
+Shared read-only with the service account in `GOOGLE_SERVICE_ACCOUNT_JSON`. Read it with the existing
+inspector — it dumps **formulas and values side by side**, which is the whole point (a formula is
+evidence, a rendered number is only a hint):
+
+```bash
+SHEET_ID=1kEWaMv9KRRXVaSMu3AJRw_ptxucnF4oafLR74VWeRHg TABS="kosztorys_robocizny" MAX_ROWS=464 \
+  node --env-file=./.env scripts/inspect-sheet.mjs > /tmp/sheet.txt
+```
+
+**Filled test sheet** (better for testing than the canonical, which is a blank initial offer) —
+_„wypełniony kosztorys do testów"_, real values across all figures **plus** the three v1-sync mirror
+tabs (`wydatki inwestycyjne` / `transfery` / `rozliczone R+M`) baked in:
+
+```
+1qN68vcevWgq0fXckdh4cuyBJ4iGZNlivVuHDvLuzWy4    # tab kosztorys_robocizny, gid=70964819
+```
+
+Also shared read-only with the service account. Nine tabs (adds `materiały`, `pokoje`, `Podsumowanie`,
+the two `zakres pracy z/bez narzędzi` catalogues). Its layout carries column `T = „komentarz"` and the
+`U–AE` per-etap wartość axis (`AE` = bilans), so it's the canonical fixture for parity/import work.
+**Caveat (owner):** some formulas in this test sheet are broken here and there — treat it as a rich
+_shape/layout_ fixture, and cross-check any figure against the canonical sheet before trusting it as spec.
+
+Screenshots of the client-facing offer view (which columns/rows the owner hides before sending, and
+the summary block at the bottom) — the target state the app must reach:
+
+- `context/reference/kosztorys-sheet/offer-view-rows.png` — filtered item rows
+- `context/reference/kosztorys-sheet/offer-view-footer.png` — summary block + section pie chart
+
+**Load-bearing structural facts** (verified across all 435 item rows, 2026-07-16):
+
+- `N` **Przedmiar** is typed by hand — the offered scope. `S` = `N × cena − rabat` = **the offer**.
+- `O` **Pomiar z natury** is **not typed — it is a formula**: `=SUM(D:M)`, the ten stage-quantity
+  columns. So in the owner's model **pomiar IS the stage sum**, and `T` = `O × cena − rabat` is what
+  has actually been executed. This is the fact EX-494 turns on.
+- The footer keeps `wartość netto` (`T456`) and `R netto - suma prac wykonannych` (`T463`) as separate
+  named rows — read them before assuming which figure the UI's "total" should be.
+
+Domain background (prose, may lag the sheet — verify against it): `context/reference/kosztorys-editor-domain-notes.md`.
+
 ## Backlog & Task Tracking
 
-- **Slices:** `context/foundation/roadmap.md` is the source of truth — the v2 arc (`F-01`, `S-01`…`S-10`) in dependency order, each with a `Status` field (`ready` / `proposed` / `blocked` / `done`). Start here for what to build next. Built from `context/foundation/prd.md` via `/10x-roadmap`; per-change plans land in `context/changes/<change-id>/` via `/10x-plan`.
-- **Todos & live status:** Linear project **"Wykonczymy"** (team Ex-plant) only — the slice-status mirror plus every smaller / ad-hoc task. No second todo file. When you start a slice set its Linear issue to In Progress, and to Done when complete. **Reality-check Linear access first** — if the Linear MCP isn't connected, update the slice's `Status` in `roadmap.md` rather than claim a Linear change you can't make.
+- **Slices:** `context/foundation/roadmap.md` is the source of truth — the v2 arc (`F-01`, `S-01`…`S-19`) in dependency order, each with a `Status` field (`ready` / `proposed` / `blocked` / `done`). Start here for what to build next. Built from `context/foundation/prd.md` via `/10x-roadmap`; per-change plans land in `context/changes/<change-id>/` via `/10x-plan`.
+- **Todos & live status:** Linear project **"Wykonczymy"** (team Ex-plant) only — the slice-status mirror plus every smaller / ad-hoc task. No second todo file. The moment you start work that has a Linear issue — any slice, task, or ad-hoc item, not just slices — flip that issue to In Progress (agents routinely forget this), and to Done when complete. **Reality-check Linear access first** — if the Linear MCP isn't connected, update the slice's `Status` in `roadmap.md` rather than claim a Linear change you can't make.
 - **All prose docs live under `context/`** (`foundation/` durable, `changes/` in-flight, `archive/` done, `reference/` standalone references) — never create a top-level `docs/` dir.
 - **Doc lifecycle:** a one-off design/plan doc is not current truth — verify its claims against code before trusting or quoting it. When a change ships, extract the durable rationale into the right living doc (`lessons.md` / a `foundation/` or `context/reference/` doc), then **archive** the raw doc under `context/archive/<slug>/`. Delete only pure scaffolds with zero unique rationale.
 - Refactor/cleanup backlog: track in Linear; record new findings there rather than spawning a standalone audit doc.
@@ -43,7 +135,7 @@ shape tracks the sheet's current state. Domain background: `context/reference/ko
 
 `pnpm migrate:create` has emitted phantom drift since ~March 2026 (missing `.json` snapshots), so **hand-write migrations**: copy the structure of the latest file in `src/migrations/` and adjust FK constraints / internal Payload tables by hand. Don't trust an auto-generated migration blindly.
 
-**Migrations are NO LONGER run by the build.** `payload migrate` was removed from `pnpm build` so a Vercel deploy (incl. previews) can never touch the schema — code and schema are separate planes. Apply migrations to prod deliberately with **`pnpm db:migrate:prod`** (dumps Neon prod first, then `payload migrate` against `DB_POSTGRES_URL_PROD`), run by a **human**, never the agent. A `.husky/pre-push` gate reminds you on a push to `main` that adds `src/migrations/*.ts`. Order: migrate prod **before** pushing the code that needs it. This is a **deploy-time** gate, not a phase gate — writing the migration and the local code that reads the column is one continuous local task; do not stop implementation or mark a plan phase "blocked on prod" while nothing is being pushed. The prod step is owed only when the code actually ships. Pattern owned by the `payload-prod-migrate` skill.
+**Migrations are NO LONGER run by the build.** `payload migrate` was removed from `pnpm build` so a Vercel deploy (incl. previews) can never touch the schema — code and schema are separate planes. Apply migrations to prod deliberately with **`pnpm db:migrate:prod`** (dumps Neon prod first, then `payload migrate` against `DB_POSTGRES_URL_PROD`), run by a **human**, never the agent. A `.husky/pre-push` gate reminds you on a push to `main` that adds `src/migrations/*.ts`. **Order follows the direction of the migration.** Additive (the new code needs a column that isn't there yet) → migrate prod **before** pushing. Destructive (a `DROP COLUMN`) → the reverse, because the column is what the _old_ code needs: push first, migrate once the new deploy is live, or every request in between hits a live SELECT naming a dropped column (Postgres 42703). This is a **deploy-time** gate, not a phase gate — writing the migration and the local code that reads the column is one continuous local task; do not stop implementation or mark a plan phase "blocked on prod" while nothing is being pushed. The prod step is owed only when the code actually ships. Pattern owned by the `payload-prod-migrate` skill.
 
 ### Dependencies
 
@@ -52,9 +144,33 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 ## Databases And Live Data
 
 - **The real DB is Neon Postgres** — `DB_POSTGRES_URL_PROD` in `.env` is the live prod credential. **Never run SQL, migrations, or dumps-restores against the Neon URL**; a human applies prod migrations.
+- **Kosztorys data is throwaway until dogfooding merges to `main`** (owner, 2026-07-16). No kosztorys row — item, stage progress, snapshot, preset — is production data yet. So a change that drops a column, invalidates a snapshot, or breaks a preset owes **no data-preservation path**: delete the stale rows and move on. Don't plan a backfill, a compat shim, or a two-step migration for data nobody has. **Scope: kosztorys only** — transfers, investments, and registers on the same DB are restored from prod dumps and are real. **Delete this bullet when dogfooding lands on `main`**; after that the rules above apply unqualified.
 - The local app points at the docker Postgres on 5433 (`DB_POSTGRES_URL`, db `wykonczymy-db`) — a copy restored from Neon dumps: `pnpm db:dump` (prod → `dumps/dump-latest.sql`, also run by the pre-push hook) and `pnpm db:import` (dump → local). Refreshable, but confirm before wiping it — a restore loses anything entered locally since the last dump.
 - The **E2E suite** runs against an isolated `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, db `wykonczymy-test`), never the dev DB. Populate/reset its fixtures with `pnpm db:import:test` (same dump → test DB). `pnpm test:e2e` starts the container (`--wait` on its healthcheck) but does **not** import — run `db:import:test` once after a fresh volume or to reset.
+- **A `db-test` reset is three commands, not one: `pnpm db:import:test` → `pnpm seed:kosztorys:test` → `pnpm seed:deposits:test`.** The prod dump carries zero kosztorys rows and not one wpłata brutto, and `pnpm test:parity`'s dataset floor fails closed on both. Without the kosztorys seed every listing figure reads zero robocizny; without the wpłata-brutto seed the whole brutto plane and the legacy bridge (`net_amount IS NULL`, derived at VAT) are zero everywhere — so the guard would pass green having tested neither.
 - `GOOGLE_SERVICE_ACCOUNT_JSON` and `KOSZTORYS_TEMPLATE_SHEET_ID` in `.env` are real working credentials — Google Sheets writes hit live data.
+- **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
+  has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`
+  values are the real invoices. A delete on localhost against the production store therefore destroys
+  a tax-retained faktura. Local dev, Vercel Development and Preview/staging all point
+  `BLOB_READ_WRITE_TOKEN` at the **preview** store; the GitHub Actions secret of the same name stays
+  **production** (the nightly backup must keep backing up production). No script reads
+  `BLOB_READ_WRITE_TOKEN_PROD` — it is parked in `.env` for deliberate opt-in, so reaching production
+  means exporting it at the call site:
+  `BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN_PROD" node scripts/blob-snapshot.mjs --download`.
+  Run a blob script off plain `.env` and you get the **preview** store — the read-only tools won't
+  object, they will just snapshot the wrong store and report success. Three guards enforce the write
+  side: the env layer refuses a store/environment mismatch in **either** direction — the production
+  token when `VERCEL_ENV !== 'production'`, and the preview token when it **is** (that store is wiped
+  and re-restored as scratch, so production invoices written there are lost) —
+  (`src/lib/env/schema.ts`), `src/payload.config.ts` runs the same check where it hands the token to
+  the Blob plugin (the env layer never loads in the Payload graph, so `/admin` would otherwise delete
+  unguarded), and `scripts/blob-restore.mjs` refuses **any** target that is not the preview store
+  without `--allow-prod`. Beware
+  `.env.local` — `vercel env pull` writes there and Next.js prefers it over `.env`. The preview store
+  is a point-in-time copy, so an invoice newer than the last restore 404s locally; top it up with
+  `pnpm blob:refresh:preview` (needs `lftp`; caches the FTP mirror in `dumps/blob-mirror`, uploads at
+  most `BLOB_REFRESH_MAX` files per run). Detail: `context/reference/blob-recovery-runbook.md` §3.
 - Never `git push`; a human pushes to remotes.
 
 ## Architecture
@@ -65,13 +181,52 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 - `src/app/(auth)` — login page
 - `src/app/(payload)` — Payload admin panel and API routes
 
+**Parallel-route slots.** Shell chrome that needs route params (it can't read them from the layout)
+gets a `@slot` directory under `(frontend)/`. The slot's `page.tsx` is a **re-export only** — the
+component itself lives in `src/components/nav/` — and the slot needs a `default.tsx` for routes that
+don't match. `@investmentCrumb` (the investment name + back arrow in the top bar) is the first and
+currently only instance; mirror its shape rather than inventing a second arrangement.
+
+**Editor hooks (EX-521).** `use-kosztorys-editor.ts` at the editor root is the **composition entry**
+— it wires sub-hooks together and owns the return shape components read. Each cohesive cluster it
+delegates to (stage ops, settlement settings, view state, …) is one leaf hook under
+`editor/hooks/`. A new cluster goes there, not into a second root-level hook, and **nothing moves
+into `KosztorysEditorProvider`** — context value-identity churn is the EX-496 perf regression that
+was reverted once already. Logic that is genuinely React-free belongs one layer further out in
+`src/lib/kosztorys/`, where it is testable without a hook renderer; that split is why this codebase
+has never needed `renderHook`.
+
 ### Important Directories
 
 Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). The non-obvious ones:
 
-- `src/lib/db` — raw SQL financial calculations (not `src/lib/actions`, which is server actions for mutations)
+- `src/lib/db` — the raw-SQL **data-access** layer: a statement plus its row mapper, nothing else. Auth,
+  caching and view-shaping belong one layer up in `src/lib/queries`, and mutations in `src/lib/actions`.
+  It started as financial calculations only and is now much wider (`get-db`, `where-to-sql`,
+  `with-payload-transaction`, `snapshots`, `presets`, `notifications`, `kosztorys-tree`) — read the rule,
+  not the original theme, when deciding whether a new file lands here.
+  A **read** a client component invokes on demand is a `'use server'` function in `src/lib/queries`
+  (`register-saldo.ts`, `subcontractor-roster.ts`) — never in `src/lib/actions`, which is mutations only.
 - `src/lib/cache` — cache tags + revalidation helpers
-- Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only)
+- Per-feature schemas/hooks live under `src/components/forms/<form>/`, not in `src/types` (which is cross-feature only).
+  **A hook's home follows its consumer count, not its subject:** one form → `forms/<form>/`; two or
+  more forms → `forms/hooks/`; a non-form surface → `src/hooks/`. That is why the three file-ingest
+  hooks sit in three directories (`expense-form/use-invoice-files.ts`, `forms/hooks/use-file-pick-ingest.ts`,
+  `hooks/use-invoice-upload.ts`) — one rule, not three accidents. `forms/hooks/` therefore means
+  "shared by 2+ forms", not "domain-free form plumbing"; a domain-aware hook belongs there too once a
+  second form uses it.
+  The counting is over **directories, not files**: three cells in one directory sharing a hook is
+  still one consumer, so `useCellDraft` stays colocated in `editor/grid/cells/` while
+  `useInlineRename` — read from two directories — sits in `src/hooks/`. Promote a hook when a second
+  directory reaches for it, not when a third file in the same one does.
+- `src/components/ui` is the domain-agnostic primitives layer — a component that knows it is filtering
+  a list belongs in `src/components/filters/` (EX-730 moved the last four out of `ui/`; git history and
+  older imports still point at the old home, so don't take a precedent from there)
+- **The datasheet-grid seam runs one way.** `src/components/ui/datasheet-grid/` holds the presentational
+  primitives a cell renders (`EditableCellInput`, `ReadOnlyCellText`, `CellSelectMenu`); the `Column`
+  factories that know what a figure MEANS live in `src/components/kosztorys/editor/grid/cells/`. A
+  factory imports a primitive, never the reverse — that is why `decimalColumn` sits under `kosztorys/`
+  despite looking generic: it is parameterised by a `CellEditPolicyT`, which is domain.
 
 ## Auth And Roles
 
@@ -107,15 +262,34 @@ Non-obvious rules:
 - `LABOR_COST` (robocizna) has **no source register** — it is a billing/markup figure, not a cash movement. It feeds the margin (`marża = robocizna − wypłaty − rabat − strata`), not the cash ledger.
 - `CORRECTION` may be negative (invoice credits).
 - `RABAT` (rabat) is a labour discount: **no source register**, positive amount, requires an investment. It hits **both** figures — lowers `marża` and raises `bilans` (the client owes less) — unlike `CORRECTION`, which moves only the balance.
-- `LOSS` (strata) is a company-absorbed cost: **no source register**, positive amount, investment **optional**. It only lowers `marża`; `bilans` is untouched — unlike `RABAT`, which moves both.
+- `LOSS` (strata) is a company-absorbed cost: **no source register**, positive amount, investment **required** (EX-675). Like `RABAT` it hits **both** figures — lowers `marża` and raises `bilans` (the client stops owing what the company swallowed). The two differ on the brutto plane: a rabat is a concession on the _price_, so it grosses by VAT, while a strata deducts at **face value** on netto and brutto alike and never widens the VAT base.
 - Cancellation is an audit trail: the original is marked `cancelled: true`, a new `CANCELLATION` row links back to it.
-- Cash register balances are recalculated via Payload hooks on transfer create and delete.
+- Cash register balances are **not** stored — they are computed on read by cached functions. The transfer hooks (`hooks/transfers/recalculate-balances.ts`) only revalidate cache tags; nothing is written back.
+
+**`LABOR_COST` and `RABAT` are bookable again, temporarily (EX-649, reversing EX-555 — EX-712 closes it).** EX-555 took both out of the transfer dialog because robocizna and rabat come from the **kosztorys**. That holds only once an investment's kosztorys is IN the app: while it is still a spreadsheet the reading returns 0 zł and, with the dialog also refusing the booking, the investment could be settled by no route at all. So both are offered again for **every** investment, with no gating — double-counting is made **visible** rather than prevented, by the „Robocizna v1 / v2" columns on the investments listing and by the v2 reconciliation. **EX-712 removes both entries, and those columns, once the rozjazd between the two is zero everywhere.** Everything else about the two types was never touched: the enum, existing rows, history, filters, cancellation and sheet sync.
+
+**There is no fallback, and no figure declares its source.** No kosztorys means robocizna 0 zł and rabat 0 zł on v2 and on the listing — an empty kosztorys is an answer, not a question forwarded to the transfers. The listing RENDERS that zero as „brak danych" on its v2 columns (`components/tables/investments.tsx`), because a v2 bilans built on it reads as „the client owes nothing for work that was done"; the figure underneath is still zero and still never consults the transfers. **v1 vs v2 IS the source choice**: v1 renders the transactions plane and is where legacy robocizna booked as `LABOR_COST`/`RABAT` stays readable until someone enters that work into the kosztorys. So v1 and the listing legitimately disagree for such an investment — that gap is the to-do list, not a defect, and it is not backfilled. On the investment page the reconciliation says the same thing out loud: an empty kosztorys against booked transfers screams a mismatch until the work is entered.
 
 How the financial figures (marża / materiały / robocizna / korekty) connect: `context/foundation/investment-financials-and-discount.md`.
 
 ## Testing
 
 Two test homes by layer: **unit** → Vitest specs under `src/__tests__` (aliases `@/*` → `./src/*`); single-file command in **Common Commands**. **Browser E2E** → Playwright specs under `e2e/` (`pnpm test:e2e`), against the isolated 5435 `db-test` container — see the harness in `context/changes/e2e-harness/`.
+
+**Vitest specs live under `src/__tests__`, never colocated next to their source** — this is the
+one place the feature-first rule is deliberately overridden, because `scripts/test-integration.sh`
+discovers the DB-backed specs by grepping that tree. A colocated spec is simply never run by the
+pre-push gate. Inside it, mirror the source path **in full, every intermediate directory included** —
+`src/lib/db/x.ts` → `src/__tests__/lib/db/x.test.ts`, and a deep component path keeps its depth:
+`src/components/kosztorys/editor/dialogs/preset-picker-groups.ts` →
+`src/__tests__/components/kosztorys/editor/dialogs/preset-picker-groups.test.ts`. Never file a spec
+under the mirror of a directory that isn't its source — a spec for a `components/**` module goes under
+`__tests__/components/**` even when its subject is kosztorys logic. Several specs may share one source
+file; they differ by filename, not by folder. The top level holds older specs that predate the
+mirroring and cross-cutting ones. A spec that
+asserts the whole dataset against a committed fixture (the golden master) is excluded from that
+discovery on purpose and runs via `pnpm test:parity` instead — its neighbours create rows in the
+same shared DB.
 
 Don't hand-roll tests or pick the layer by feel — route to a skill. Always start from a risk in test-plan.md, never from "cover this file"; the cheapest layer that gives a real signal wins. The trap behind every bad test — assert observable behavior, not the implementation under test — and the full anti-pattern lists are owned by the skills (/10x-tdd, /10x-e2e's references/) and test-plan.md; don't restate them here.
 
@@ -124,15 +298,16 @@ Don't hand-roll tests or pick the layer by feel — route to a skill. Always sta
 - **Browser-level / multi-boundary risk** → **`/10x-e2e`** — Playwright harness lives in `e2e/` (`pnpm test:e2e`, isolated 5435 `db-test`); add browser specs there. A browser-level slice **owes** its E2E: author it at the review gate, or defer it into the **E2E backlog** — a Linear issue labelled `e2e-backlog` in project "Wykonczymy" (`slice-review-gate` Step 3 blocks archive until the E2E box is authored or filed with that issue id). "Deferred to `/10x-e2e`" in a commit message does **not** discharge it.
 - **A bug that slipped past the tests (test-driven debugging) — mandatory, not optional.** Reproduce it with a **failing test first**, then fix — never silently patch. Assert the **persisted / observable state, not the action's return value** — a success result can hide a failed write. The repro test stays as the regression guard for the path that had none.
 
-There is no `context/foundation/test-plan.md` here yet — for a larger test rollout, generate one with `/10x-test-plan` first and anchor new tests on its risks.
+`context/foundation/test-plan.md` exists — anchor new tests on a risk it names rather than on "cover this file". For a risk it doesn't cover yet, extend it with `/10x-test-plan` before writing the tests.
 
 ## Tech Debt
 
-Non-blocking refactor/cleanup findings live in Linear (project "Wykonczymy v2"). Check it before starting a refactor, and record new findings there rather than spawning a standalone audit doc.
+Non-blocking refactor/cleanup findings live in Linear, in the same **"Wykonczymy"** project as everything else — there is no separate tech-debt project (an earlier "Wykonczymy v2" was never created, and two review gates have now filed into the void looking for it). Check it before starting a refactor, and record new findings there rather than spawning a standalone audit doc.
 
 ## Stack Notes
 
 - React Compiler is enabled — don't hand-write `useMemo` / `useCallback` for things it handles
+- **The breakpoint scale is overridden** in `src/styles/globals.css` — `sm`=768px, `md`=1024px, `lg`=1280px, where Tailwind ships 640/768/1024. `sm:` is this app's single mobile→desktop break; `md:` is a second, tablet-large step used almost only by the marketing pages. Any snippet pasted from shadcn/upstream docs assumes the stock scale and fires one step too late. **Re-map it onto this scale by intent, not by tier name (EX-624):** an upstream `sm:` and an upstream `md:` are both mobile→desktop splits here, so both become `sm:`. Never add a 640 breakpoint to reproduce upstream's — this app has one mobile→desktop line and it is 768.
 - `src/app/(payload)/layout.tsx` must include `importMap`, `serverFunction`, and `handleServerFunctions`
 - A `console.error` that must become a Sentry capture once Sentry is wired gets a `// TODO(EX-449) SENTRY-REQUIRED:` marker (greppable + shows in the IDE TODO panel) — never a bare comment
 

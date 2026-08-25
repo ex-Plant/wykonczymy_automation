@@ -1,238 +1,235 @@
 ---
-title: Domain Distillation — Wykonczymy
-created: 2026-07-08
-type: domain-distillation
+created: 2026-07-20
+updated: 2026-08-15
+verified_at: 938e0564
+method: m4l5-1 (DDD domain distillation)
 ---
 
-# Domain Distillation — Wykonczymy
+# Destylacja domeny — Wykończymy
 
-DDD distillation of the business domain from source documents **and** code. The
-product is a **map of the domain**, not code. Every claim cites `file:line` that
-was actually verified. Nothing is named that the sources don't name.
-
-**Source keys (docs):** `prd` = `context/foundation/prd.md` · `shape` =
-`context/foundation/shape-notes.md` · `road` = `context/foundation/roadmap.md` ·
-`fin` = `context/foundation/investment-financials-and-discount.md` · `sync` =
-`context/reference/kosztorys-sync.md`
+Regeneracja od zera (bramka 3 changeu `kosztorys-terminology`). Poprzednia wersja opisywała kod
+sprzed rozbicia `settlement.ts` na pięć plików (EX-650), sprzed usunięcia `zaliczki.ts` (EX-536)
+i sprzed EX-675, który odwrócił jej tezę o stracie. Każde twierdzenie poniżej ma kotwicę
+`plik:linia` sprawdzoną przy `938e0564`.
 
 ---
 
-## KROK 0 — Project context
+## KROK 0 — Kontekst
 
-Business-management dashboard for a finishing/renovation company (kasy, transfery,
-inwestycje, pracownicy). Stack: **Next.js App Router + Payload CMS on Postgres
-(Neon prod / docker local)**. Polish UI, English code.
+Dashboard zarządzania firmą wykończeniową: kasy, transfery, inwestycje, pracownicy, i — od v2 —
+**kosztorys** jako osobna płaszczyzna pieniądza. UI polskie, kod angielski.
 
-Where business logic lives (layers):
+Dwie płaszczyzny liczą tę samą inwestycję **niezależnie**:
 
-- **Domain entities** — Payload collections, `src/collections/*.ts`
-- **Domain vocabulary / rules constants** — `src/lib/constants/transfers.ts`,
-  `src/lib/constants/transfer-rules.ts`
-- **Financial derivation (the real domain math)** — raw SQL in `src/lib/db/*`
-- **Cross-field invariants** — Payload hook `src/hooks/transfers/validate.ts`
-- **Mutations / authorization** — server actions `src/lib/actions/*`
-- **UI** — `src/app/(frontend)`, `src/components`
+- **transakcje** — to, co zaksięgowano na transferach (`src/collections/transfers.ts`),
+- **kosztorys** — to, co wynika z rozpiski pozycji i etapów.
 
-Two phases of domain live here at once: the **existing** cash + investment-P&L
-domain (mature, code-enforced) and the **incoming** in-app **kosztorys editor**
-domain (specced in docs, largely not yet built). This distillation covers both
-and flags which is which.
+Ich zderzenie jest świadome i nazwane: `buildKosztorysReconciliation`
+(`src/lib/kosztorys/reconciliation.ts:114`) porównuje dokładnie dwie figury — robociznę i rabat.
 
 ---
 
-## KROK 1 — Ubiquitous Language
+## KROK 1 — Ubiquitous language (stan faktyczny kodu)
 
-### Financial-core vocabulary (existing, code-backed)
+| Termin (arkusz / biznes) | Kod                                       | Kotwica                                     |
+| ------------------------ | ----------------------------------------- | ------------------------------------------- |
+| Kosztorys                | `sheet` / slug `kosztoryses`              | `src/collections/sheets.ts`                 |
+| Pozycja kosztorysu       | `kosztorys-items`                         | `src/collections/kosztorys-items.ts:13`     |
+| Sekcja / dział           | `kosztorys-sections`                      | `src/collections/kosztorys-sections.ts:8`   |
+| Etap                     | `kosztorys-stages`                        | `src/collections/kosztorys-stages.ts:9`     |
+| Postęp etapu             | `stage-progress.qtyDone`                  | `src/collections/stage-progress.ts:31`      |
+| Przedmiar                | `plannedQty`                              | `src/collections/kosztorys-items.ts:39`     |
+| Pomiar z natury          | Σ `qtyDone` po etapach — **nie kolumna**  | `settlement-rows.ts:14` (`rowTotalQtyDone`) |
+| Cena j.m. (klient)       | `clientPrice`                             | `src/collections/kosztorys-items.ts:43`     |
+| Rabat pozycji            | `discountType` / `discountValue`          | `src/collections/kosztorys-items.ts:41-42`  |
+| Płaszczyzna narzędziowa  | `plane` na etapie (`w_tools`/`no_tools`)  | `src/collections/kosztorys-stages.ts:36`    |
+| Wartość wykonana (T)     | `rowValueForView`                         | `settlement-rows.ts:37`                     |
+| Pozostało                | `rowRemainingForView`                     | `settlement-rows.ts:58`                     |
+| Suma prac (pre-rabat)    | `laborCostsNetFromKosztorys`              | `settlement-client-totals.ts:66`            |
+| Rabat kliencki (łącznie) | `discountNetFromKosztorys`                | `settlement-client-totals.ts:67`            |
+| Robocizna (post-rabat)   | `laborCostsNet`                           | `summary-reading.ts:14`                     |
+| Tryb rozliczenia         | `SettlementModeT` (`NET`/`GROSS`/`MIXED`) | `settlement-mode.ts:15`                     |
+| Marża                    | `calculateMargin`                         | `src/lib/db/calculate-margin.ts:16`         |
+| Bilans                   | `calculateBalance`                        | `src/lib/db/calculate-balance.ts:11`        |
+| Rabat na materiałach     | `materialsNetDiscount`                    | `src/lib/db/investment-financials.ts:19`    |
+| Strata                   | `totalLoss`                               | `src/types/investment-financials.ts`        |
+| Saldo kasy               | `registerBalance`                         | `src/lib/queries/register-balance.ts:10`    |
+| Rozliczenie podwykonawcy | `subcontractorDueByPlane`                 | `src/lib/kosztorys/subcontractor-due.ts:39` |
 
-| Term (domain)                             | Definition                                                                                                                        | Source (doc)    | Lives in code                                                                         |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------- |
-| **Transfer / Transakcja**                 | A cash movement between registers; the ledger row.                                                                                | fin:13          | `transfers.ts:52-56` (collection labelled "Transfer", **slug `transactions`**)        |
-| **Kasa / Cash Register**                  | A money container; balance derived, never stored.                                                                                 | prd:229-232     | `cash-registers.ts:34`; types MAIN/AUXILIARY/VIRTUAL/WORKER `cash-registers.ts:77-82` |
-| **Inwestycja / Investment**               | A job/project; unit financials + kosztorys attach to.                                                                             | fin:15-16       | `investments.ts:11`; status active/completed `investments.ts:5-8`                     |
-| **source_register / target_register**     | Register a transfer leaves / enters.                                                                                              | fin:11-13       | `transfers.ts` fields; REGISTER_TRANSFER needs both `validate.ts:69-75`               |
-| **Bilans inwestora**                      | The client's account (what they owe/are owed).                                                                                    | fin:16,57-58    | `calculate-balance.ts:6-9`                                                            |
-| **Marża**                                 | Company profit, admin-only.                                                                                                       | fin:16          | `calculate-margin.ts:13-14`                                                           |
-| **materiały**                             | Σ INVESTMENT_EXPENSE + Σ CORRECTION, excluding `settled`.                                                                         | fin:44-45       | `investment-financials.ts:41,50`                                                      |
-| **robocizna (LABOR_COST)**                | What the company charges the investor for labour. **No source register** — not a cash movement.                                   | fin:18-20       | `calculate-margin.ts:14`; no-source rule `transfer-rules.ts:52-53`                    |
-| **wypłaty (PAYOUT)**                      | Wages paid to a worker; lowers marża.                                                                                             | fin:48          | `calculate-margin.ts:14`                                                              |
-| **wpłaty / income**                       | INVESTOR_DEPOSIT, COMPANY_FUNDING, OTHER_DEPOSIT.                                                                                 | fin:38-39       | `DEPOSIT_TYPES` `transfers.ts:58-62`                                                  |
-| **korekta (CORRECTION)**                  | Accounting adjustment; folds into materiały; **may be negative** (invoice credit).                                                | fin:46-47       | sign rule `validation.ts:7-12`                                                        |
-| **rabat (RABAT)**                         | Labour discount: company earns less, client owes less. Positive, no source register, requires investment.                         | fin:79,84-85    | `calculate-margin.ts:14`, `calculate-balance.ts`                                      |
-| **strata (LOSS)**                         | Company-absorbed cost. Positive, investment optional; **never touches bilans**.                                                   | fin:80          | `calculate-margin.ts:5,14`                                                            |
-| **settled flag ("Wliczone w robociznę")** | Material already priced into robocizna. Leaves register, lowers marża, off client bill. Valid on INVESTMENT_EXPENSE + CORRECTION. | fin:81          | `transfers.ts:228-239`; bucketing `investment-financials.ts:41,50`                    |
-| **cancelled / CANCELLATION**              | Cancel = mark original `cancelled:true` + create linked CANCELLATION audit row.                                                   | fin (audit)     | `transfers.ts:206-226`; flow `actions/transfers.ts:217-237`                           |
-| **Transfer-type union**                   | The 12-value core vocabulary.                                                                                                     | fin:36-42,79-80 | `TransferTypeT` `constants/transfers.ts:2-16`; labels `:18-31`                        |
+**Trzy terminy Category A** (polski zostaje, bo nie ma czystego angielskiego odpowiednika):
+`kosztorys`, `przedmiar`, `pomiar`. Wszystko inne jest angielskie — pełne rulingi w
+`context/domain/02-glossary.md`.
 
-### Kosztorys vocabulary (incoming — specced, largely not built)
+### Pojęcia, których poprzednia mapa nie znała
 
-| Term (domain)                 | Definition                                                                                    | Source (doc)          | Lives in code                                                                                                                       |
-| ----------------------------- | --------------------------------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Kosztorys**                 | Per-investment line-item budget (sections, items, stages, totals).                            | prd:30-31             | slug `kosztoryses`, UI label **Kosztorys**, but code identifier `Sheets` / file `sheets.ts:13` (currently a Google-Sheet-id holder) |
-| **Sekcja / Section**          | Per-investment renameable, orderable item grouping.                                           | prd:158-160           | **BRAK w kodzie** (S-01, not built)                                                                                                 |
-| **Pozycja / Item**            | A line: description, unit, planned qty, measured qty, note.                                   | prd:162               | **BRAK w kodzie** (S-01/S-02)                                                                                                       |
-| **Etap / Stage**              | Variable-count job stages with per-item progress.                                             | prd:173-174           | **BRAK w kodzie** (S-04)                                                                                                            |
-| **Przedmiar / Pomiar**        | Planned qty / measured qty; two independent columns, value from pomiar.                       | road:137              | **BRAK w kodzie**                                                                                                                   |
-| **Three price models**        | klient / podwykonawca z narzędziami / własne narzędzia — one dataset, three views.            | prd:168; road:162-163 | **BRAK w kodzie** (S-03)                                                                                                            |
-| **clientPrice (snapshot)**    | The stored snapshot; subcontractor views computed from it.                                    | road:274              | **BRAK w kodzie**                                                                                                                   |
-| **Markup coefficient**        | Global(investment)→section(nullable)→item override; derives subcontractor prices.             | road:267,274          | **BRAK w kodzie** (S-11)                                                                                                            |
-| **Work catalogue / katalog**  | Master price list; items snapshot price at creation.                                          | prd:181-183           | **BRAK w kodzie** (S-06)                                                                                                            |
-| **VAT rate (per investment)** | One rate per investment; netto entry, brutto computed.                                        | road:279              | **BRAK w kodzie** (S-12)                                                                                                            |
-| **Pokój / Room**              | Per-investment room measurements. **CUT** — out of scope; `kosztorys_rooms` is a dead orphan. | road:186-188          | dead table only                                                                                                                     |
+- **`materialsNetDiscount`** — rabat udzielony na materiałach. Zachowuje się jak rabat robocizny:
+  **podnosi bilans i obniża marżę** (`calculate-balance.ts`, `calculate-margin.ts`). Wchodzi do
+  `InvestmentFinancialsT` (`src/types/investment-financials.ts:26`) i liczony jest w
+  `src/lib/db/investment-financials.ts:92,109`.
+- **`SettlementModeT`** — jak inwestycja jest rozliczana z klientem (netto / brutto / mieszane).
+  Decyzja o **transakcji handlowej**, trzymana na inwestycji, nie preferencja czytelnika:
+  `settlement-mode.ts:5-9`. Rzutuje na oś pieniądza siatki (`settlementModeToGridAxis:59`)
+  i wyłącza stawkę netto materiałów przy brutto (`effectiveMaterialsNetRate:65`).
+- **`subcontractorDueByPlane`** — należność podwykonawcy liczona **per etap, przy cenie własnej
+  płaszczyzny tego etapu**. Zastępuje wcześniejsze przeliczanie 100% wykonanej pracy przy jednej
+  cenie, które na inwestycji mieszanej podwajało pieniądze (`subcontractor-due.ts:21-27`).
+- **`SummaryReadingT`** — typ-przełącznik płaszczyzny; nie figura (`summary-reading.ts:14`).
 
-### Sync / integration vocabulary (transitional bridge)
+### Terminy usunięte z mapy
 
-| Term                 | Definition                                                                                  | Source                | Code                             |
-| -------------------- | ------------------------------------------------------------------------------------------- | --------------------- | -------------------------------- |
-| **Materiały-mirror** | One-way CQRS mirror pushing active INVESTMENT_EXPENSE rows into the sheet (app→sheet only). | prd:33-34; sync:15-19 | `src/lib/actions/sheets-sync.ts` |
-| **APP_MANAGED_TABS** | Three tabs: expenses / settled R+M / transfers.                                             | sync:30-34            | sync module                      |
-| **Synchronizuj**     | Manual drift heal: append missing + heal present + scoped orphan removal.                   | sync:54-55            | sync module                      |
-
-### Naming drift note (ubiquitous language ↔ schema disagree)
-
-The persisted slugs contradict the domain word — a classic legacy tell:
-`transactions` slug = "Transfer" aggregate (`transfers.ts:52-56`). For kosztorys the
-UI label already reads **Kosztorys**, but the slug is `kosztoryses` and the code
-identifier / file is `Sheets` / `sheets.ts:13` — the leftover Google-Sheets name.
-Behavior-neutral, but the map must record it so future work isn't misled.
-
----
-
-## KROK 2 — Subdomain classification
-
-| Subdomain                                                                                                    | Class          | Justification (product goal ref)                                                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Investment financials / P&L** (marża, bilans, the 4 modifiers)                                             | **Core**       | The company's decision-making surface; must "behave identically" through the migration (FR-015; guardrails prd:107-113). Pre-existing, code-enforced core.             |
-| **In-app kosztorys editor** (sections, items, 3 price models, stages, catalogue, live totals, VAT, discount) | **Core**       | The whole point of this phase — "move the kosztorys fully into the app and retire Google Sheets" (shape:64-65; north star road:51-54). The differentiator being built. |
-| **Cash / transfer ledger** (registers, transfer types, balances)                                             | **Core**       | The financial substrate marża/bilans derive from; the financial-core E2E guards exactly this (prd:98-99).                                                              |
-| **Work catalogue**                                                                                           | **Supporting** | Feeds item price snapshots; required at release but not the differentiator (prd:181-183).                                                                              |
-| **Materiały-mirror / Google Sheets sync**                                                                    | **Supporting** | Transitional bridge on "death row" (sync:5-9); kept syncing during transition, torn down later (FR-014; Phase 3b).                                                     |
-| **One-shot importer**                                                                                        | **Supporting** | Migrates live sheet data once; deferred, gates S-10 (road:80,365).                                                                                                     |
-| **Leads / Facebook pipeline**                                                                                | **Supporting** | Adjacent business capability, not this phase's core.                                                                                                                   |
-| **Auth / roles (ADMIN/OWNER/MANAGER/EMPLOYEE)**                                                              | **Generic**    | Standard RBAC (prd:282).                                                                                                                                               |
-| **Test-automation / E2E harness**                                                                            | **Generic**    | "Infrastructure-only: no domain-logic change" (prd:277).                                                                                                               |
+- **Zaliczka** — `src/lib/kosztorys/zaliczki.ts` nie istnieje (EX-536). Tag cache
+  `kosztorysStage` opisywany przez poprzednią destylację razem z nim jest martwy.
+- **`wplatyNet` / `materialyNet`** — zero trafień w drzewie; hybrydy już wycięte.
+- **`measured_qty`** — dropnięte przez EX-489; został `sheetMeasuredQty`
+  (`kosztorys-items.ts:40`, `readOnly`) jako pole importu z arkusza, nie źródło pomiaru.
 
 ---
 
-## KROK 3 — Aggregate candidates & their invariants
+## KROK 2 — Poddomeny
 
-### A. Cash Register (balance)
-
-- **Invariant:** balance is **computed on read, never stored** —
-  deposits add, everything else subtracts, REGISTER_TRANSFER moves source→target,
-  cancelled rows excluded. **ENFORCED** `sum-transfers.ts:31-48,62-90`; confirmed
-  no write path `recalculate-balances.ts:17-18`.
-- **Invariant:** cannot delete a register with referencing transactions.
-  **ENFORCED** (throws with count) `cash-registers.ts:17-31`.
-- **Invariant:** Managers may only create AUXILIARY registers. **ENFORCED**
-  `cash-registers.ts:11-14`.
-- **Non-invariant (deliberate):** a register is **allowed** to go negative — the
-  sufficient-funds guard was dropped by **client decision**, not lost. Confirmed in
-  git (dropped `76dd757`, flip-flopped 4×) and now marked intentional in-code
-  (`validate-source-register.ts`). See KROK 4 #1.
-
-### B. Investment (financials)
-
-Single derivation `deriveFinancials` `investment-financials.ts:34-53`.
-
-- **Bilans = wpłaty − (materiały + robocizna) + rabat.** **ENFORCED**
-  `calculate-balance.ts:6-9`.
-- **Marża = robocizna − wypłaty − rabat − strata − settled.** **ENFORCED**
-  `calculate-margin.ts:13-14` (verified verbatim).
-- **Plain materiały never enters marża** (pass-through cost billed to client).
-  **ENFORCED** by construction — material terms simply absent from the marża
-  formula (fin:63-68).
-- **strata lowers marża, never bilans.** **ENFORCED** `calculate-margin.ts:5,14`;
-  loss kept out of `buildFinancialFields` (fin:94-95).
-- **settled excluded from materiały, subtracted from marża.** **ENFORCED**
-  `investment-financials.ts:41,50`.
-
-### C. Transfer (cross-field consistency)
-
-Guardian hook `validate.ts`:
-
-- CANCELLATION requires `cancelledTransaction` `validate.ts:33-38`.
-- **CORRECTION must be negative; all others positive** `validate.ts:47-51` →
-  `validation.ts:7-12`.
-- source_register required unless type is LABOR_COST/RABAT/LOSS (auto-cleared)
-  `validate.ts:54-61`, `transfer-rules.ts:52-53`.
-- investment required for INVESTOR_DEPOSIT/INVESTMENT_EXPENSE/LABOR_COST/RABAT
-  `validate.ts:64-66`.
-- REGISTER_TRANSFER: target required, must differ from source `validate.ts:69-75`.
-- OTHER→otherCategory; PAYOUT→worker `validate.ts:78-90`.
-- settled auto-cleared unless expenses-tab type `validate.ts:95-97`.
-
-### D. Transfer (mutation authorization)
-
-- Cannot edit an already-cancelled transfer or a CANCELLATION row
-  `actions/transfers.ts:182-183`.
-- **Only LABOR_COST amounts are editable**; other amount edits silently dropped
-  `actions/transfers.ts:271-273`; reinforced by field access
-  `transfers.ts:85,111`. Amount edits audited into `amount-edits`
-  `actions/transfers.ts:286-296`.
-
-### E. Kosztorys item (incoming invariant — specced, not built)
-
-- **Worth is computed, never stored = quantity × snapshotted price.** All totals
-  derived. Spec prd:263-266; road:137. **BRAK w kodzie** — the item table doesn't
-  exist yet.
-- **Price snapshot immutability:** catalogue price change affects only items
-  created afterwards. Spec prd:264-265,271-272. **BRAK w kodzie**.
+| Poddomena                         | Klasa       | Dlaczego                                                                  |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------- |
+| Kosztorys (rozpiska + etapy)      | **Core**    | Tu żyje przewaga: własny model wyceny, etapów i płaszczyzn narzędziowych. |
+| Rozliczenie klienta (settlement)  | **Core**    | Pięć plików `settlement-*` — reguły, których arkusz nie umie wyrazić.     |
+| Rekoncyliacja kosztorys↔transfery | **Core**    | Instrument weryfikacyjny właściciela; nie ma go w żadnym gotowcu.         |
+| Rozliczenie podwykonawców         | **Core**    | Per-etap, per-płaszczyzna, per-osoba (EX-613).                            |
+| Transfery i kasy                  | **Support** | Zwykła księga gotówki; wartość w integracji, nie w modelu.                |
+| Sync z Google Sheets              | **Support** | ACL do cudzego systemu; kandydat na osobny slice łuku l5.                 |
+| Inwestycje / leady / pracownicy   | **Support** | CRUD nad Payloadem.                                                       |
+| Auth, cache, env                  | **Generic** | Payload JWT, `unstable_cache`, walidowany env.                            |
 
 ---
 
-## KROK 4 — MODEL vs CODE drift
+## KROK 3 — Agregaty i niezmienniki
 
-| #   | Document / model says                                                               | Code does                                                                                                                                                   | Evidence                                                                    | Severity                                   |
-| --- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------ |
-| 1   | (Superseded) An earlier model read "register must not go negative" as an invariant. | **Intentional:** registers may go negative by **client decision**; the guard was removed deliberately, not lost, and is now marked so in-code. Not a drift. | git `76dd757` (drop), EX-410 (canceled); `validate-source-register.ts` note | None — **intentional**, documented in-code |
-| 2   | Payment methods available to users.                                                 | Collection offers CASH/BLIK/TRANSFER/CARD; app enables **only CASH** (rest commented). Admin-panel row can carry a method app forms never surface.          | `transfers.ts:43-48` vs `constants/transfers.ts:124-137`                    | Medium                                     |
-| 3   | Corrections now route to the expenses tab.                                          | Retired `CORRECTION_MOVED_LABEL` + CORRECTION slot in `TRANSFERS_SUMMARY_TYPES` kept as frozen placeholders (to avoid shifting sheet formulas).             | `constants/transfers.ts:104-122`                                            | Low — **intentional**, documented in-code  |
-| 4   | Domain words: "Transfer", "Kosztorys".                                              | Slugs `transactions`, `kosztoryses`; kosztorys UI label is Kosztorys but the code identifier / file is `Sheets` / `sheets.ts`.                              | `transfers.ts:52-56`; `sheets.ts:13`                                        | Low — naming only                          |
-| 5   | Kosztorys item worth = qty × snapshot; sections/items/stages/catalogue.             | None of the item/section/stage/catalogue tables exist yet.                                                                                                  | prd:263-266; `sheets.ts:13` is a sheet-id holder                            | Expected — greenfield of this phase        |
+### A. Pozycja kosztorysu (`kosztorys-items` + jej `stage-progress`)
 
-**Anti-drift guards that already exist** (strengths worth preserving): compile-time
-check that every union member has a Payload option `transfers.ts:37-41`; shared
-single-source membership arrays (`transfer-rules.ts:22-24`,
-`constants/transfers.ts:95-101`) keep settled/tab-routing rules from diverging.
+Kandydat na prawdziwy agregat — **dziś nim nie jest**: `stage-progress` to osobna kolekcja
+zapisywana niezależnie od pozycji.
+
+Niezmienniki dziś **liczone** (nie egzekwowane zapisem):
+
+1. **Pomiar = Σ etapów.** Nie ma kolumny „pomiar"; `rowTotalQtyDone` (`settlement-rows.ts:14`)
+   sumuje etapy widoczne w danym widoku. Parametr `view` jest **wymagany**, nie domyślny —
+   domyślka po cichu przywróciłaby odczyt ślepy na płaszczyznę (`settlement-rows.ts:10-12`).
+2. **„Pozostało" kotwiczy do przedmiaru**, nie do etapów: `rowRemainingForView`
+   (`settlement-rows.ts:58`) = wartość przedmiaru − wartość wykonana.
+3. **Przekroczenie przedmiaru** jest liczone przy pomiarze klienckim, nigdy przy aktywnym widoku —
+   przedmiar nie ma płaszczyzny (`settlement-rows.ts:78` + docblock).
+
+### B. Inwestycja — bilans i marża
+
+```
+bilans = przychody − (materiały + robocizna) + rabat + materialsNetDiscount + strata
+marża  = robocizna − wypłaty − rabat − strata − rozliczone − materialsNetDiscount
+```
+
+`src/lib/kosztorys/calculate-balance.ts`, `calculate-margin.ts`.
+
+Od EX-649 obok tej marży stoi druga — nie zamiast niej. Powyższa zostaje żywa na v1, `/raporty`
+i w kolumnie „Marża":
+
+```
+prognoza          = przedmiar × cena − przedmiar × stawka ekipy   (scenariusz: z narzędziami / bez)
+marża rzeczywista = robocizna − rabat − należne podwykonawcom − rozliczone − strata
+```
+
+`src/lib/kosztorys/margin-forecast.ts`, `margin-v2.ts`. Prognoza nie zna rabatu, straty ani
+materiału wliczonego w robociznę; marża rzeczywista wycenia ekipę z kosztorysu, nie z wypłat, i
+zwraca `null` (a nie zero), gdy któryś etap ma wykonaną pracę bez rozliczenia.
+
+**Poprzednia destylacja twierdziła, że strata nigdy nie dotyka bilansu — to już nieprawda.**
+EX-675 wprowadził stratę do obu formuł: obniża marżę i **podnosi** bilans (klient przestaje być
+winien to, co firma wzięła na siebie), po wartości nominalnej, nigdy nie poszerzając bazy VAT
+(AGENTS.md, „Transfer Business Logic").
+
+### C. Rozliczenie klienta — arytmetyka pre/post-rabat
+
+`clientTotalsFromSubtotals` (`settlement-client-totals.ts:54`) produkuje cztery figury:
+
+```
+doneNet         = Σ netto wykonane
+itemRabatNet    = Σ rabatów pozycji
+globalRabatNet  = rabat globalny
+sumaPracNet     = doneNet + itemRabatNet          (:66)
+rabatClientNet  = globalRabatNet + itemRabatNet   (:67)
+```
+
+Stąd `laborCostsNet + rabatClientNet = sumaPracNet` — ale **tylko na widoku klienckim**. Na
+`w_tools`/`no_tools` równość nie zachodzi, dlatego faza 5 changeu `kosztorys-terminology` rozdziela
+nazwę figury od nazwy operacji sumowania zamiast wieszać jedną nazwę nad obiema.
+
+`executedWorkNetPreRabat` (`settlement-client-totals.ts:83`) nie ma **żadnego wywołania
+produkcyjnego** — został jako parity-oracle dla testów (docblock `:79-81`).
+
+### D. Rozliczenie podwykonawcy
+
+Niezmiennik: **per etap relacja jest OR** — jedna ekipa wykonała, przy jednej cenie
+(`subcontractor-due.ts:21-27`). Etap bez płaszczyzny nie kredytuje nikogo i podnosi
+`hasUnconfirmedPlane` — kwoty renderują się krótsze, a ostrzeżenie stoi obok nich.
+Σ `byWorker` === `combined` z konstrukcji; reszta bez przypisania jest własnym wpisem (`null`),
+nigdy rozsmarowanym po przypisanych (`subcontractor-due.ts:16-19`).
+
+### E. Szew rekoncyliacji
+
+`buildKosztorysReconciliation` (`reconciliation.ts:114`) porównuje netto do netto:
+`sumaPracNet` ↔ `laborCostsNetFromTransactions` oraz `rabatClientNet` ↔ `investmentRabat`.
+
+**Wyciszenie jest per INWESTYCJA, nie per figura** (`reconciliation.ts:132`): odkąd EX-555 wyłączył
+księgowanie `LABOR_COST`/`RABAT`, każda nowa inwestycja krzyczałaby bez końca — alarm, który dzwoni
+na wszystkim, nie weryfikuje niczego. Reguła per-figura wyciszyłaby „robocizna zaksięgowana, rabat
+nie", czyli dokładnie tę lukę, którą `showRabat` wypycha na ekran.
+
+**Brak fallbacku jest niezmiennikiem, nie brakiem.** `readingFromKosztorys`
+(`summary-reading.ts:33`) nigdy nie sięga do transferów: pusty kosztorys to odpowiedź „zero", nie
+pytanie przekazane dalej. Legacy robocizna zostaje czytelna na v1 — to jest lista rzeczy do
+wprowadzenia, nie defekt.
 
 ---
 
-## KROK 5 — Refactor ranking
+## KROK 4 — Rozjazdy MODEL vs KOD
 
-Ranked by **value** (how core the invariant) × **risk** (how weakly enforced today).
-
-1. **#1 — Kosztorys Item aggregate (compute-not-store worth + snapshot immutability).**
-   Core to the whole phase, and today entirely unenforced because unbuilt. High
-   value; risk is "greenfield," so it's about _building the invariant in from the
-   start_ (worth derived, price snapshotted at creation) rather than fixing drift.
-   This is S-01/S-02/S-06 territory.
-
-2. **#2 — Reconcile payment-method divergence (drift #2).** Lower value (mostly a
-   consistency/UX correctness issue), moderate risk. Decide whether the extra
-   methods are real domain concepts or dead options, then converge the two lists.
-
-Drift #1, #3 and #4 are **not** refactor targets — #1 is an intentional client
-decision (negative balances allowed; EX-410 opened to "restore" it and canceled),
-#3 is intentional and documented, #4 is cosmetic naming a migration isn't worth.
+| #   | Rozjazd                                                                                 | Status przy `938e0564`                                         |
+| --- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Nazwa „Pomiar z natury" sugeruje pomiar w terenie; to formuła `=SUM(D:M)`               | **Żywy.** Rozstrzyga slice „niezmienniki", nie ten.            |
+| 2   | Polskie identyfikatory dla figur generycznych (`saldo`, `sumaPrac`, `wydatki`)          | **Zamknięty.** EX-548 przemianował je; guard trzyma 21 rdzeni. |
+| 3   | `wplatyNet` / `materialyNet` — hybrydy polsko-angielskie                                | **Zamknięty.** Zero trafień.                                   |
+| 4   | Zaliczki jako osobny moduł                                                              | **Zamknięty.** `zaliczki.ts` usunięty (EX-536).                |
+| 5   | „Strata nigdy nie dotyka bilansu"                                                       | **Odwrócony.** EX-675 — dotyka obu figur.                      |
+| 6   | `settlement.ts` jako jeden god-module                                                   | **Zamknięty.** Pięć plików `settlement-*` (EX-650).            |
+| 7   | `googleSheetId` `required: true, unique: true` — kosztorys nie może istnieć bez arkusza | **Żywy.** `src/collections/sheets.ts:44-50`.                   |
+| 8   | Postęp etapu zapisywany poza agregatem pozycji                                          | **Żywy.** Cel slice'a „agregat".                               |
+| 9   | `materialsNetDiscount` nieobecny w mapie domeny                                         | **Zamknięty tą regeneracją.**                                  |
 
 ---
 
-## Summary
+## KROK 5 — Ranking refaktorów
 
-This artifact maps two coexisting domains in Wykonczymy: a mature, code-enforced
-**cash-ledger + investment-P&L** core (marża/bilans and the four modifiers —
-korekta, rabat, strata, settled — each verified against `calculate-margin.ts` and
-`calculate-balance.ts`), and an **incoming in-app kosztorys editor** that the docs
-specify in full but the code has barely started (`kosztoryses` is still just a
-Google-Sheet-id holder). The strongest domain rules — balance-computed-on-read,
-CORRECTION-must-be-negative, robocizna-has-no-source-register, strata-never-touches-bilans,
-only-LABOR*COST-amounts-editable — are genuinely enforced in code, and the codebase
-even has anti-drift guards (compile-time union coverage, shared membership arrays).
-One finding first read as the headline — a dropped negative-balance guard — turned
-out on git investigation to be an **intentional client decision** (registers are
-allowed to go negative), not a silent loss; EX-410 was opened to "restore" it and
-correctly **canceled**. That leaves the top refactor target as the **incoming
-Kosztorys Item aggregate** — building worth-is-computed and price-snapshot
-immutability in from the start, before the kosztorys editor piles new surface area
-onto the ledger. Cautionary note for future passes: a commented-out guard is a
-\_candidate* finding, not a verdict — confirm intent in git before ranking it.
+1. **Brak podłogi „≥1 pozycja" przy usuwaniu.** `removeItemAction`
+   (`src/lib/actions/kosztorys.ts:417`) nie sprawdza, czy to ostatnia pozycja; reguła
+   `REMOVE_BLOCK_LAST_ITEM` żyje wyłącznie po stronie klienta
+   (`delete-policy.ts:26,45`). Klasyczny niezmiennik egzekwowany w UI zamiast w agregacie.
+   → slice „niezmienniki".
+2. **Agregat Kosztorys Item.** `stage-progress` zapisywany niezależnie od pozycji, więc niezmiennik
+   „pomiar = Σ etapów" jest liczony przy odczycie, a nie chroniony przy zapisie. → slice „agregat".
+3. **`googleSheetId` wymagany i unikalny** (`sheets.ts:44-50`) — model mówi „kosztorys istnieje sam
+   z siebie", schemat mówi „tylko jako cień arkusza". → slice „ACL".
+4. **Terminologia** — ten slice (EX-548).
+
+### Świadome NIE-cele (nie proponować jako defekty)
+
+- **Ujemne saldo rejestru dozwolone** — decyzja klienta (git `76dd757`, EX-410 canceled).
+- ~~**Kosztorys v2 rozłączony od marży**~~ — nieaktualne od EX-555 (robocizna i rabat na liście czytane z kosztorysu) i EX-649 (marża rzeczywista i prognoza w panelu oraz na liście).
+- **Polskie stringi UI i transkrybowane nagłówki arkusza** — poprawne z polityki.
+- **`'RABAT'` w enumie i `'planowana'` w statusie inwestycji** — wartości zamrożone migracjami.
+
+---
+
+## Bottom line
+
+Rdzeń domeny przesunął się od „kosztorys jako import arkusza" do „kosztorys jako druga płaszczyzna
+pieniądza, świadomie porównywana z transakcjami". Trzy rzeczy, które ta regeneracja zmienia
+w obrazie z lipca: strata **dotyka** bilansu, `settlement.ts` już nie istnieje jako jeden plik,
+a `materialsNetDiscount` jest pełnoprawnym modyfikatorem obu figur inwestycji. Dług językowy
+(EX-548) jest spłacony, a guard `local/no-domain-drift` pilnuje 21 rdzeni na `'error'` — kolejny
+dług jest już architektoniczny: niezmienniki, agregat, ACL.

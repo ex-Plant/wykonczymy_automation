@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useState } from 'react'
 import { Upload } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { Description } from '@/components/ui/description'
 import { FieldLabel } from '@/components/ui/field'
 
 type FileInputPropsT = React.ComponentProps<'input'> & {
@@ -23,6 +24,8 @@ function FileInput({
   onChange,
   accept = 'image/*,application/pdf',
   initialFileName,
+  multiple,
+  disabled,
   ref,
   ...props
 }: FileInputPropsT) {
@@ -49,10 +52,10 @@ function FileInput({
     setIsDragOver(false)
   }
 
-  function setFileOnInput(file: File) {
+  function setFilesOnInput(files: File[]) {
     if (!inputRef.current) return
     const dt = new DataTransfer()
-    dt.items.add(file)
+    for (const file of files) dt.items.add(file)
     inputRef.current.files = dt.files
   }
 
@@ -60,19 +63,22 @@ function FileInput({
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
+    // `disabled` reaches the hidden input, which kills the click path but not this one. Callers that
+    // disable mid-ingest would otherwise get a second concurrent batch through the drop target.
+    if (disabled) return
 
-    const file = e.dataTransfer.files[0]
-    if (!file) return
+    const dropped = [...e.dataTransfer.files].slice(0, multiple ? undefined : 1)
+    if (dropped.length === 0) return
 
-    if (accept && !matchesAccept(file, accept)) {
+    if (accept && dropped.some((file) => !matchesAccept(file, accept))) {
       setError(`Nieobsługiwany format pliku. Dozwolone: ${humanizeAccept(accept)}`)
       return
     }
     setError(undefined)
 
-    // Sync file to the hidden input (so form reads and ref.files work)
-    setFileOnInput(file)
-    setFileName(file.name ?? '')
+    // Sync files to the hidden input (so form reads and ref.files work)
+    setFilesOnInput(dropped)
+    setFileName(joinFileNames(dropped))
 
     // Fire onChange directly — native dispatchEvent doesn't reliably trigger React's synthetic handler
     if (onChange && inputRef.current) {
@@ -85,8 +91,7 @@ function FileInput({
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    setFileName(file?.name ?? '')
+    setFileName(joinFileNames([...(e.target.files ?? [])]))
     setError(undefined)
     onChange?.(e)
   }
@@ -108,28 +113,35 @@ function FileInput({
           'border-input bg-background flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 transition-colors',
           'text-muted-foreground hover:border-primary/50 hover:bg-muted/50',
           isDragOver && 'border-primary bg-muted/50',
+          disabled && 'pointer-events-none opacity-50',
           className,
         )}
       >
-        <Upload className="size-4 shrink-0" />
+        <Upload />
         <span className="line-clamp-1 min-w-0 text-sm break-all">{fileName ?? placeholder}</span>
 
         <input
           ref={setRefs}
           type="file"
           accept={accept}
+          multiple={multiple}
+          disabled={disabled}
           onChange={handleChange}
           className="sr-only"
           {...props}
         />
       </div>
       {error && (
-        <div role="alert" className="text-destructive mt-1 text-xs">
+        <Description role="alert" tone="error" size="xs" className="mt-1">
           {error}
-        </div>
+        </Description>
       )}
     </div>
   )
+}
+
+function joinFileNames(files: File[]): string {
+  return files.map((file) => file.name).join(', ')
 }
 
 const MIME_LABELS: Record<string, string> = {

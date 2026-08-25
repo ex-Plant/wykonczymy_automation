@@ -9,5 +9,9 @@ declare module '@tanstack/react-table' {
     canHide?: boolean
     /** Cell text alignment. Default: left. */
     align?: 'left' | 'right' | 'center'
+    /** Renders an (i) info icon next to the header label with this hover/click content. */
+    tooltip?: string
+    /** Tailwind min-w-* utility class applied to the header and cell. */
+    minWidth?: string
   }
 }

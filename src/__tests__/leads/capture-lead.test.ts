@@ -93,3 +93,35 @@ describe('captureLead — notify + auto-reply', () => {
     expect(dataOf()).toEqual({ notifyStatus: 'sent', autoReplyStatus: 'sent' })
   })
 })
+
+describe('captureLead — options', () => {
+  // The sweep suppresses the customer-facing channel but must never suppress the sales
+  // one: a lead recovered late is still a lead somebody has to call (EX-660).
+  it('skips the auto-reply on request while still notifying sales', async () => {
+    await captureLead(payload, input, { autoReply: 'skip' })
+    expect(sendAutoReply).not.toHaveBeenCalled()
+    expect(notifyNewLead).toHaveBeenCalledTimes(1)
+    expect(dataOf()).toEqual({ notifyStatus: 'sent', autoReplyStatus: 'skipped' })
+  })
+
+  // Guards the two webhook callers, which pass no options at all.
+  it('sends both channels when no options are given', async () => {
+    await captureLead(payload, input)
+    expect(notifyNewLead).toHaveBeenCalledTimes(1)
+    expect(sendAutoReply).toHaveBeenCalledTimes(1)
+  })
+
+  // The sweep revalidates once for the whole run, so a per-row afterChange hook would
+  // be both redundant and — in the cron's Route Handler context — a runtime throw.
+  it('forwards skipRevalidation to both the store and the status write', async () => {
+    await captureLead(payload, input, { skipRevalidation: true })
+    expect(storeLead).toHaveBeenCalledWith(payload, input, { skipRevalidation: true })
+    expect(update.mock.calls.at(-1)?.[0]?.context).toEqual({ skipRevalidation: true })
+  })
+
+  it('defaults skipRevalidation to false so the webhook path keeps revalidating', async () => {
+    await captureLead(payload, input)
+    expect(storeLead).toHaveBeenCalledWith(payload, input, { skipRevalidation: false })
+    expect(update.mock.calls.at(-1)?.[0]?.context).toEqual({ skipRevalidation: false })
+  })
+})

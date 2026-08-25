@@ -1,7 +1,9 @@
 import { getRelationName } from '@/lib/utils/get-relation-name'
-import type { TransferTypeT, PaymentMethodT } from '@/lib/constants/transfers'
+import { resolveId } from '@/lib/utils/resolve-id'
+import type { TransferTypeT, PaymentMethodT, VatPlaneT } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 import type { MediaInfoT } from '@/lib/queries/media'
+import { resolveInvoiceFiles, type InvoiceFieldT } from '@/lib/invoices/invoice-field'
 import type { TransferRowT } from '@/types/transfers'
 
 type NameMapT = Map<number, string>
@@ -44,6 +46,7 @@ export type TransferDocT = {
   id: number
   description?: string | null
   amount: number
+  netAmount?: number | null
   type: string
   paymentMethod: string
   date: string
@@ -55,22 +58,21 @@ export type TransferDocT = {
   worker?: RelationIdT
   createdBy?: RelationIdT
   createdAt: string
-  invoice?: RelationIdT
+  invoice?: InvoiceFieldT
   invoiceNote?: string | null
   cancelled?: boolean | null
   settled?: boolean | null
+  vatPlane?: VatPlaneT | null
   originalType?: TransferTypeT | null
 }
 
 /** Maps a depth:0 transfer document to a flat TransferRowT, resolving IDs via lookup maps. */
 export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): TransferRowT {
-  const mediaId = typeof doc.invoice === 'number' ? doc.invoice : null
-  const media = mediaId ? lookups.media.get(mediaId) : undefined
-
   return {
     id: doc.id,
     description: doc.description ?? '',
     amount: doc.amount,
+    netAmount: doc.netAmount ?? null,
     type: doc.type as TransferTypeT,
     paymentMethod: doc.paymentMethod as PaymentMethodT,
     date: doc.date,
@@ -85,6 +87,7 @@ export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): Tr
     invoiceNote: doc.invoiceNote ?? null,
     cancelled: doc.cancelled ?? false,
     settled: doc.settled ?? false,
+    vatPlane: doc.vatPlane ?? null,
     originalType: doc.originalType ?? null,
     sourceRegisterName: lookupName(lookups.cashRegisters, doc.sourceRegister),
     targetRegisterName: lookupName(lookups.cashRegisters, doc.targetRegister),
@@ -93,30 +96,13 @@ export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): Tr
     otherCategoryName: lookupName(lookups.otherCategories, doc.otherCategory),
     workerName: lookupName(lookups.users, doc.worker),
     createdByName: lookupName(lookups.users, doc.createdBy),
-    invoiceUrl: media?.url ?? null,
-    invoiceFilename: media?.filename ?? null,
-    invoiceMimeType: media?.mimeType ?? null,
+    invoices: resolveInvoiceFiles(doc.invoice, lookups.media),
   }
 }
 
-/**
- * Extracts unique invoice IDs from raw (depth: 0) transfer docs.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractInvoiceIds(docs: any[]): number[] {
-  const ids = new Set<number>()
-  for (const doc of docs) {
-    if (typeof doc.invoice === 'number') ids.add(doc.invoice)
-  }
-  return [...ids]
-}
-
+// `TransferRowT` spells "no relation" as null, `resolveId` as undefined.
 function toNullableId(field: unknown): number | null {
-  if (typeof field === 'number') return field
-  if (typeof field === 'object' && field !== null && 'id' in field) {
-    return (field as { id: number }).id
-  }
-  return null
+  return resolveId(field) ?? null
 }
 
 function lookupName(map: NameMapT, field: unknown): string {

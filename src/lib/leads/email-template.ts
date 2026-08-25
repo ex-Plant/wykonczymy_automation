@@ -1,4 +1,4 @@
-import { escapeHtml } from './escape-html'
+import { escapeHtml } from '@/lib/utils/escape-html'
 
 // Branded HTML email shell — card body + logo/wordmark footer, all inline styles so it
 // survives Gmail/Outlook (which strip <style> and don't support inline <svg>).

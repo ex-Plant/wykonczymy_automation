@@ -3,7 +3,9 @@
 import { Fragment, useRef, useState } from 'react'
 import { Trash2, WandSparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Description } from '@/components/ui/description'
 import { Separator } from '@/components/ui/separator'
+import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { GradientSpinner } from '@/components/ui/gradient-spinner'
 import { RemoveButton } from '@/components/ui/remove-button'
 import { LineItemInvoiceField } from '@/components/forms/form-fields/line-item-invoice-field'
@@ -11,20 +13,21 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils/cn'
 import { formatPLN } from '@/lib/utils/format-currency'
 import {
+  billsNetAmount,
   EXPENSE_CATEGORY_LABEL,
   needsExpenseCategory,
   showsOtherCategory,
 } from '@/lib/constants/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
-import type {
-  BulkExpenseFormApiT,
-  BulkExpenseFormValuesT,
+import {
+  makeLineItem,
+  type BulkExpenseFormApiT,
+  type BulkExpenseFormValuesT,
 } from '@/components/forms/expense-form/bulk-expense-form'
 
 // The TanStack array-field API this component drives (`form.Field name="lineItems" mode="array"`).
-// Structural on purpose — same convention as AppFieldComponentsT: name only the members we call,
-// since the full FieldApi generic is unnameable and the real inferred field is assignable to this.
+// Structural on purpose — name only the members we call, since the full FieldApi generic is
+// unnameable and the real inferred field is assignable to this.
 type LineItemsArrayFieldT = {
   state: { value: BulkExpenseFormValuesT['lineItems'] }
   pushValue: (value: BulkExpenseFormValuesT['lineItems'][number]) => void
@@ -42,12 +45,17 @@ type CategoryFieldConfigT = {
 const isReceiptFile = (file: File) =>
   file.type.startsWith('image/') || file.type === 'application/pdf'
 
-const EMPTY_LINE_ITEM: BulkExpenseFormValuesT['lineItems'][number] = {
-  description: '',
-  amount: '',
-  invoiceNote: '',
-  category: '',
-  expenseCategory: '',
+// What the picked photos mean: N separate expenses, or N pages of one expense's invoice.
+type ScanModeT = 'one-per-photo' | 'one-invoice'
+
+const SCAN_MODE_OPTIONS: OptionT<ScanModeT>[] = [
+  { value: 'one-per-photo', label: 'Kilka wydatków' },
+  { value: 'one-invoice', label: 'Jeden wydatek' },
+]
+
+const SCAN_MODE_HINT: Record<ScanModeT, string> = {
+  'one-per-photo': 'Każde zdjęcie to osobny paragon — powstanie z niego własna pozycja.',
+  'one-invoice': 'Wszystkie zdjęcia to jedna faktura — powstanie jedna pozycja z kilkoma stronami.',
 }
 
 type LineItemsFieldPropsT = {
@@ -57,22 +65,23 @@ type LineItemsFieldPropsT = {
   defaultExpenseCategory?: string
   total: number
   hasInvestment?: boolean
-  onRemoveItem: (index: number, removeValue: (index: number) => void) => void
-  onFileChange: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void
-  // Batch-attach N receipt images: register each file at its row index (see use-invoice-files).
+  onRemoveItem: (id: string, index: number, removeValue: (index: number) => void) => void
+  onFileChange: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void
+  onRemoveFile: (id: string, index: number) => void
+  // Batch-attach N receipt images: 'per-row' registers `files[i]` against row `ids[i]`,
+  // 'single-row' hangs all of them on `ids[0]` as one multi-page invoice (see use-invoice-files).
   // Async (ingest processing) — awaited before generation so the files map is populated first.
-  onRegisterFiles: (startIndex: number, files: File[]) => Promise<void>
-  // Read a row's attached file so it can render a thumbnail preview (undefined → file input).
-  getFile: (index: number) => File | undefined
-  // Bump to force-remount the uncontrolled file inputs (clears their selection).
-  fileInputKey?: number
+  onRegisterFiles: (ids: string[], files: File[], mode?: 'per-row' | 'single-row') => Promise<void>
+  // Read a row's attached pages so it can render a preview (empty → file input).
+  getRowFiles: (id: string) => File[] | undefined
   // Receipt generation: scan every eligible row's image and populate its fields (see use-receipt-generation).
   onGenerate?: () => void
   isGenerating?: boolean
-  generatingIndices?: Set<number>
+  // Marker sets key on each row's stable id (EX-448), not its position.
+  generatingIds?: Set<string>
   // Rows whose picked file is still being processed at ingest — show a spinner, disable actions.
-  ingestingIndices?: Set<number>
-  failedIndices?: Set<number>
+  ingestingIds?: Set<string>
+  failedIds?: Set<string>
   generationProgress?: { done: number; total: number } | null
 }
 
@@ -122,7 +131,7 @@ function CategorySelect({
 }) {
   return (
     <form.AppField name={`lineItems[${index}].${config.fieldName}`}>
-      {(field: AppFieldComponentsT) => (
+      {(field) => (
         <field.Combobox
           label={config.label}
           placeholder={config.placeholder}
@@ -145,41 +154,55 @@ export function LineItemsField({
   hasInvestment,
   onRemoveItem,
   onFileChange,
+  onRemoveFile,
   onRegisterFiles,
-  getFile,
-  fileInputKey = 0,
+  getRowFiles,
   onGenerate,
   isGenerating = false,
-  generatingIndices,
-  ingestingIndices,
-  failedIndices,
+  generatingIds,
+  ingestingIds,
+  failedIds,
   generationProgress,
 }: LineItemsFieldPropsT) {
   const inlineCategory = getInlineCategory(transferType, referenceData, hasInvestment)
+  const showsNetAmount = billsNetAmount(transferType)
   const secondRowCategory = getSecondRowCategory(transferType, referenceData)
-  const emptyItem = defaultExpenseCategory
-    ? { ...EMPTY_LINE_ITEM, expenseCategory: defaultExpenseCategory }
-    : EMPTY_LINE_ITEM
-  const receiptInputRef = useRef<HTMLInputElement>(null)
-  const isIngesting = (ingestingIndices?.size ?? 0) > 0
-  const [isDragOver, setIsDragOver] = useState(false)
+  // Fresh per call — each pushed row needs its own `id` (a shared object would collide ids).
+  const newItem = () =>
+    makeLineItem(defaultExpenseCategory ? { expenseCategory: defaultExpenseCategory } : undefined)
+  const scanInputRef = useRef<HTMLInputElement>(null)
+  const isIngesting = (ingestingIds?.size ?? 0) > 0
+  const [dragOverMode, setDragOverMode] = useState<ScanModeT | null>(null)
+  const [scanMode, setScanMode] = useState<ScanModeT>('one-per-photo')
 
   // Scan flow: add each picked receipt as a row (image attached) FIRST, then run the AI generation.
   // Order matters — rows persist even if extraction fails, so a failed scan still yields line
   // items to fill in by hand. Ingest is async (HEIC-convert / compress / guard), so AWAIT it before
   // generation — otherwise generation reads an empty files map. Empty picked list → skip the add
   // and just re-run generation on any existing eligible rows (picker cancelled).
-  async function scanReceipts(picked: File[], lineItemsField: LineItemsArrayFieldT) {
+  //
+  // `mode` is the user's declared intent, taken from WHICH entry point they used: one expense per
+  // photo, or one expense whose pages are all the picked photos. Nothing about the files themselves
+  // can tell the two apart, so the choice has to be made before the scan runs.
+  async function scanReceipts(
+    picked: File[],
+    lineItemsField: LineItemsArrayFieldT,
+    mode: ScanModeT,
+  ) {
     if (picked.length > 0) {
       // Reuse the lone initial blank row for the first image so the first receipt lands on
-      // row 0 rather than after an empty row; otherwise append after the existing rows.
+      // row 0 rather than after an empty row; otherwise append after the existing rows. Mint the
+      // new rows up front so we know their ids (pushValue is async in the form's state) and can
+      // pair each picked file to its row by id — `ids[i]` holds `picked[i]`.
       const rows = lineItemsField.state.value
       const reuseFirstRow = rows.length === 1 && !rows[0].description && !rows[0].amount
-      const startIndex = reuseFirstRow ? 0 : rows.length
-      const rowsToPush = reuseFirstRow ? picked.length - 1 : picked.length
-
-      for (let i = 0; i < rowsToPush; i++) lineItemsField.pushValue(emptyItem)
-      await onRegisterFiles(startIndex, picked)
+      const rowCount = mode === 'one-invoice' ? 1 : picked.length
+      const newRows = Array.from({ length: reuseFirstRow ? rowCount - 1 : rowCount }, () =>
+        newItem(),
+      )
+      for (const row of newRows) lineItemsField.pushValue(row)
+      const ids = (reuseFirstRow ? [rows[0], ...newRows] : newRows).map((row) => row.id)
+      await onRegisterFiles(ids, picked, mode === 'one-invoice' ? 'single-row' : 'per-row')
     }
     onGenerate?.()
   }
@@ -187,21 +210,41 @@ export function LineItemsField({
   function handleScanReceipts(
     e: React.ChangeEvent<HTMLInputElement>,
     lineItemsField: LineItemsArrayFieldT,
+    mode: ScanModeT,
   ) {
     const picked = Array.from(e.target.files ?? [])
     e.target.value = '' // allow re-picking the same files after a reset
-    return scanReceipts(picked, lineItemsField)
+    return scanReceipts(picked, lineItemsField, mode)
   }
 
   // Drop mirrors the picker but drops carry no `accept` filter, so keep only receipt files and bail
   // on an empty result — unlike the picker, an unmatched drop must NOT re-run generation on existing rows.
-  function handleDropReceipts(e: React.DragEvent, lineItemsField: LineItemsArrayFieldT) {
+  function handleDropReceipts(
+    e: React.DragEvent,
+    lineItemsField: LineItemsArrayFieldT,
+    mode: ScanModeT,
+  ) {
     e.preventDefault()
-    setIsDragOver(false)
+    setDragOverMode(null)
     if (isGenerating || isIngesting) return
     const picked = Array.from(e.dataTransfer.files).filter(isReceiptFile)
     if (picked.length === 0) return
-    return scanReceipts(picked, lineItemsField)
+    return scanReceipts(picked, lineItemsField, mode)
+  }
+
+  function dropZoneProps(lineItemsField: LineItemsArrayFieldT, mode: ScanModeT) {
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        e.preventDefault()
+        setDragOverMode(mode)
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        e.preventDefault()
+        setDragOverMode(null)
+      },
+      onDrop: (e: React.DragEvent) => handleDropReceipts(e, lineItemsField, mode),
+      className: cn(dragOverMode === mode && 'ring-neon-cyan ring-2'),
+    }
   }
 
   return (
@@ -209,14 +252,21 @@ export function LineItemsField({
       {(lineItemsField: LineItemsArrayFieldT) => (
         <div className="space-y-4">
           <div className="space-y-6">
-            {lineItemsField.state.value.map((_: unknown, index: number) => (
-              <Fragment key={index}>
+            {lineItemsField.state.value.map((item, index: number) => (
+              <Fragment key={item.id}>
                 <div className="space-y-2">
-                  <div className="flex items-end gap-2">
+                  {/* Top-aligned, not bottom: every field here carries a label, so their inputs
+                    line up on their own — and a validation error growing under one field can no
+                    longer drag its neighbours (and the delete button) down a line. The label-less
+                    slots below pay for it with an mt-6 that clears a label + its gap. */}
+                  <div className="flex items-start gap-2">
                     <form.AppField name={`lineItems[${index}].amount`}>
-                      {(field: AppFieldComponentsT) => (
+                      {(field) => (
                         <field.Input
-                          label="Kwota"
+                          // Named outright once a Netto column sits next to it — an unqualified
+                          // „Kwota" beside „Netto" reads as the amount that bills the client,
+                          // which is exactly backwards on this type.
+                          label={showsNetAmount ? 'Brutto' : 'Kwota'}
                           placeholder="0.00 PLN"
                           type="number"
                           showError
@@ -224,8 +274,21 @@ export function LineItemsField({
                         />
                       )}
                     </form.AppField>
+                    {showsNetAmount && (
+                      <form.AppField name={`lineItems[${index}].netAmount`}>
+                        {(field) => (
+                          <field.Input
+                            label="Netto"
+                            placeholder="0.00 PLN"
+                            type="number"
+                            showError
+                            fieldClassName="w-28"
+                          />
+                        )}
+                      </form.AppField>
+                    )}
                     <form.AppField name={`lineItems[${index}].description`}>
-                      {(field: AppFieldComponentsT) => (
+                      {(field) => (
                         <field.Input
                           label="Opis"
                           placeholder="Opcjonalnie"
@@ -242,22 +305,30 @@ export function LineItemsField({
                         fieldClassName="min-w-0 flex-1"
                       />
                     )}
-                    {failedIndices?.has(index) && (
-                      <span className="text-destructive mb-2 shrink-0 text-xs whitespace-nowrap">
+                    {/* No icon: this row is already Kwota + Netto + Opis + kategoria + the delete
+                      slot, and a `shrink-0` glyph would take its ~1rem straight off the flex-1
+                      inputs. `tone="error"` alone carries the alarm here. */}
+                    {failedIds?.has(item.id) && (
+                      <Description
+                        tone="error"
+                        size="xs"
+                        withIcon={false}
+                        className="mt-8 shrink-0 whitespace-nowrap"
+                      >
                         nie odczytano
-                      </span>
+                      </Description>
                     )}
                     {/* Delete lives in row 1, its height matching the inputs; the row being read
                       shows the loader in its slot and queued rows keep it disabled — removing a
                       row mid-generation shifts the array under in-flight extraction tasks (captured
                       index), landing a result on the wrong row. */}
-                    <div className="flex size-9 shrink-0 items-center justify-center">
-                      {generatingIndices?.has(index) || ingestingIndices?.has(index) ? (
+                    <div className="mt-6 flex size-9 shrink-0 items-center justify-center">
+                      {generatingIds?.has(item.id) || ingestingIds?.has(item.id) ? (
                         <GradientSpinner />
                       ) : (
                         <RemoveButton
                           icon={Trash2}
-                          onClick={() => onRemoveItem(index, lineItemsField.removeValue)}
+                          onClick={() => onRemoveItem(item.id, index, lineItemsField.removeValue)}
                           disabled={
                             isGenerating || isIngesting || lineItemsField.state.value.length === 1
                           }
@@ -275,15 +346,15 @@ export function LineItemsField({
                       />
                     )}
                     <LineItemInvoiceField
-                      index={index}
-                      file={getFile(index)}
+                      id={item.id}
+                      files={getRowFiles(item.id)}
                       fieldClassName="min-w-0 flex-1"
-                      fileInputKey={fileInputKey}
                       onFileChange={onFileChange}
+                      onRemoveFile={onRemoveFile}
                     />
                   </div>
                   <form.AppField name={`lineItems[${index}].invoiceNote`}>
-                    {(field: AppFieldComponentsT) => (
+                    {(field) => (
                       <field.Textarea
                         label="Notatka"
                         placeholder="Opcjonalnie"
@@ -306,43 +377,42 @@ export function LineItemsField({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => lineItemsField.pushValue(emptyItem)}
+              onClick={() => lineItemsField.pushValue(newItem())}
             >
               Dodaj pozycję
             </Button>
             <input
-              ref={receiptInputRef}
+              ref={scanInputRef}
               type="file"
               accept="image/*,application/pdf"
               multiple
               className="sr-only"
-              onChange={(e) => handleScanReceipts(e, lineItemsField)}
+              onChange={(e) => handleScanReceipts(e, lineItemsField, scanMode)}
             />
             {onGenerate && (
-              <Button
-                type="button"
-                variant="ai"
-                size="sm"
-                onClick={() => receiptInputRef.current?.click()}
-                disabled={isGenerating || isIngesting}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setIsDragOver(true)
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault()
-                  setIsDragOver(false)
-                }}
-                onDrop={(e) => handleDropReceipts(e, lineItemsField)}
-                className={cn(isDragOver && 'ring-neon-cyan ring-2')}
-              >
-                {isGenerating || isIngesting ? (
-                  <GradientSpinner />
-                ) : (
-                  <WandSparkles className="text-neon-cyan" />
-                )}
-                <span className="text-neon-cyan font-semibold">Dodaj paragony</span>
-              </Button>
+              <>
+                <ToggleGroup
+                  options={SCAN_MODE_OPTIONS}
+                  value={scanMode}
+                  onChange={setScanMode}
+                  aria-label="Co oznaczają wybrane zdjęcia"
+                />
+                <Button
+                  type="button"
+                  variant="ai"
+                  size="sm"
+                  onClick={() => scanInputRef.current?.click()}
+                  disabled={isGenerating || isIngesting}
+                  {...dropZoneProps(lineItemsField, scanMode)}
+                >
+                  {isGenerating || isIngesting ? (
+                    <GradientSpinner />
+                  ) : (
+                    <WandSparkles className="text-neon-cyan" />
+                  )}
+                  <span className="text-neon-cyan font-semibold">Wygeneruj z paragonów</span>
+                </Button>
+              </>
             )}
             {generationProgress && (
               <span className="text-muted-foreground self-center text-sm">
@@ -350,6 +420,7 @@ export function LineItemsField({
               </span>
             )}
           </div>
+          {onGenerate && <Description size="xs">{SCAN_MODE_HINT[scanMode]}</Description>}
           <Label>Suma: {formatPLN(total)}</Label>
         </div>
       )}

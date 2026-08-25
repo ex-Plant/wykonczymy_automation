@@ -4,7 +4,7 @@
 # Why: invoice/receipt files live in Vercel Blob with no versioning / no undelete.
 # The DB dump (db-backup.yml) backs up only the `media` POINTER rows, not the bytes.
 # This mirrors the bytes so a DB restore has files to resolve against. Recovery
-# procedure + rationale: context/changes/blob-backup/runbook.md.
+# procedure + rationale: context/reference/blob-recovery-runbook.md.
 #
 # Strategy — Rung 3 "manifest-diff", MIRROR-ONLY:
 #   1. Pull the latest manifest from FTP  (the set already backed up)
@@ -16,7 +16,10 @@
 # Daily (not hourly): invoices are low-frequency + immutable.
 #
 # Secrets required (repo → Settings → Secrets):
-#   BLOB_READ_WRITE_TOKEN : Vercel Blob token — in CI only feeds list(); downloads are anonymous
+#   BLOB_READ_WRITE_TOKEN : the PRODUCTION Vercel Blob token, and it must stay production — every
+#                           other environment was swapped to the preview store on 2026-08-19, but
+#                           this backup exists to back up production. In CI it only feeds list();
+#                           downloads are anonymous.
 #   FTP_HOST / FTP_USER / FTP_PASS : same FTPS server as db-backup.yml
 #
 # Manual runs (workflow_dispatch) default to a test/ dir so they never touch the real

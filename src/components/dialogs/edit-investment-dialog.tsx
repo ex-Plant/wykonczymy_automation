@@ -2,7 +2,7 @@
 
 import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FormDialog } from '@/components/dialogs/form-dialog'
+import { FormDialog } from '@/components/ui/form-dialog'
 import { InvestmentForm } from '@/components/forms/investment-form/investment-form'
 import { updateInvestmentAction } from '@/lib/actions/investments'
 import type { InvestmentRefT } from '@/types/reference-data'
@@ -19,8 +19,8 @@ export function EditInvestmentDialog({ investment }: EditInvestmentDialogPropsT)
       formId={formId}
       showKeepOpen={false}
       trigger={
-        <Button size="sm" variant="outline" aria-label="Edytuj inwestycję">
-          <Pencil className="size-4" />
+        <Button size="xs" variant="outline" aria-label="Edytuj inwestycję">
+          <Pencil />
           <span>Edytuj</span>
         </Button>
       }
@@ -47,6 +47,7 @@ export function EditInvestmentDialog({ investment }: EditInvestmentDialogPropsT)
           submittingLabel="Zapisywanie..."
           onSubmitSuccess={onSubmitSuccess}
           keepOpen={keepOpen}
+          persistDraft={false}
         />
       )}
     </FormDialog>

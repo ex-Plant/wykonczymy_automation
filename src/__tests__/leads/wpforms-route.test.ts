@@ -11,7 +11,6 @@ vi.mock('next/server', () => ({
     json: (body: unknown, init?: { status?: number }) => ({ status: init?.status ?? 200, body }),
   },
 }))
-vi.mock('next/cache', () => ({ revalidateTag: () => {} }))
 vi.mock('@payload-config', () => ({ default: {} }))
 vi.mock('payload', () => ({ getPayload: async () => ({}) }))
 vi.mock('@/lib/env/server', () => ({ serverEnv: { WPFORMS_WEBHOOK_SECRET: 'test-secret' } }))

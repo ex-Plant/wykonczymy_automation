@@ -27,6 +27,7 @@ const mockCreate = vi.fn()
 const mockUpdate = vi.fn()
 const mockFindByID = vi.fn()
 const mockDelete = vi.fn()
+const mockCount = vi.fn()
 const mockBeginTransaction = vi.fn()
 const mockCommitTransaction = vi.fn()
 const mockRollbackTransaction = vi.fn()
@@ -36,6 +37,7 @@ const mockPayload = {
   update: mockUpdate,
   findByID: mockFindByID,
   delete: mockDelete,
+  count: mockCount,
   db: {
     beginTransaction: mockBeginTransaction,
     commitTransaction: mockCommitTransaction,
@@ -86,8 +88,12 @@ const {
   createBulkTransferAction,
   cancelTransferAction,
   updateTransferAction,
-  updateTransferInvoiceAction,
+  addTransferInvoicesAction,
+  removeTransferInvoiceAction,
+  removeAllTransferInvoicesAction,
 } = await import('@/lib/actions/transfers')
+
+const { deleteOrphanedMediaAction } = await import('@/lib/actions/delete-orphaned-media')
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -114,6 +120,7 @@ function makeDepositData(overrides = {}) {
     date: '2026-02-25',
     type: 'INVESTOR_DEPOSIT' as const,
     paymentMethod: 'CASH' as const,
+    vatPlane: 'NET' as const,
     sourceRegister: 1,
     investment: 1,
     ...overrides,
@@ -159,6 +166,8 @@ beforeEach(() => {
   mockUpdate.mockReset().mockResolvedValue({ id: 1 })
   mockFindByID.mockReset()
   mockDelete.mockReset().mockResolvedValue(undefined)
+  // Default: nothing else points at the media, so the guarded delete goes through.
+  mockCount.mockReset().mockResolvedValue({ totalDocs: 0 })
   mockBeginTransaction.mockReset().mockResolvedValue(TX_ID)
   mockCommitTransaction.mockReset().mockResolvedValue(undefined)
   mockRollbackTransaction.mockReset().mockResolvedValue(undefined)
@@ -200,16 +209,43 @@ describe('createTransferAction', () => {
     expect(mockCreate).toHaveBeenCalledOnce()
   })
 
-  it('valid COMPANY_FUNDING → success', async () => {
-    const result = await createTransferAction(makeDepositData({ type: 'COMPANY_FUNDING' }))
+  // Both company deposits are investment-free by rule (EX-557), so their fixtures must be too —
+  // and `success` alone cannot tell "the row landed as asked" from "the row landed wrong", since
+  // payload.create is mocked and the hook that would clear a stray investment never runs here.
+  // The hook's own guard is src/__tests__/hooks/transfers/investment-write-guard.test.ts.
+  it.each(['COMPANY_FUNDING', 'OTHER_DEPOSIT'])(
+    'valid %s → success, and the created row carries no investment',
+    async (type) => {
+      const result = await createTransferAction(
+        makeDepositData({ type, investment: undefined, vatPlane: undefined }),
+      )
+
+      expect(result.success).toBe(true)
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: 'transactions',
+          data: expect.objectContaining({ type, investment: undefined, vatPlane: undefined }),
+        }),
+      )
+    },
+  )
+
+  // The write takes `parsed.data`, so anything the schema does not name is gone before Payload sees
+  // it. Spreading the raw input instead handed a client every column on the row — `cancelled` among
+  // them, which is the audit trail.
+  it('writes only what the schema named — a smuggled column never reaches payload.create', async () => {
+    const result = await createTransferAction({
+      ...makeSingleTransferData(),
+      cancelled: true,
+      settled: true,
+    } as unknown as Parameters<typeof createTransferAction>[0])
 
     expect(result.success).toBe(true)
-  })
-
-  it('valid OTHER_DEPOSIT → success', async () => {
-    const result = await createTransferAction(makeDepositData({ type: 'OTHER_DEPOSIT' }))
-
-    expect(result.success).toBe(true)
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ cancelled: expect.anything() }),
+      }),
+    )
   })
 
   it('valid PAYOUT → success', async () => {
@@ -275,12 +311,12 @@ describe('createTransferAction', () => {
     expect(result.success).toBe(false)
   })
 
-  it('invoice mediaId → passes mediaId to payload.create', async () => {
-    await createTransferAction(makeSingleTransferData(), 42)
+  it('invoice page list → passes it straight to payload.create', async () => {
+    await createTransferAction(makeSingleTransferData(), [42, 43])
 
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ invoice: 42 }),
+        data: expect.objectContaining({ invoice: [42, 43] }),
       }),
     )
   })
@@ -445,14 +481,14 @@ describe('createBulkTransferAction', () => {
     }
   })
 
-  it('each create gets correct invoice mediaId from array', async () => {
-    const mediaIds = [101, undefined, 103]
+  it('each create gets its own row’s invoice pages, and a page-less row gets none', async () => {
+    const mediaIds = [[101, 102], [], [103]]
 
     await createBulkTransferAction(makeBulkTransferData(3), mediaIds)
 
-    expect(mockCreate.mock.calls[0][0].data.invoice).toBe(101)
+    expect(mockCreate.mock.calls[0][0].data.invoice).toEqual([101, 102])
     expect(mockCreate.mock.calls[1][0].data.invoice).toBeUndefined()
-    expect(mockCreate.mock.calls[2][0].data.invoice).toBe(103)
+    expect(mockCreate.mock.calls[2][0].data.invoice).toEqual([103])
   })
 
   it('OTHER type → each create gets its own category from line item', async () => {
@@ -708,6 +744,27 @@ describe('updateTransferAction', () => {
     )
   })
 
+  // Not even on the type that owns the plane. It decides which side of the settlement the wpłata
+  // pays, so an edit would rewrite a bilans the client has already seen — the correction is a
+  // cancellation plus a fresh booking, exactly as for `amount`.
+  it.each(['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE'])(
+    '%s → a vatPlane submitted with an edit never reaches the write',
+    async (type) => {
+      mockFindByID.mockResolvedValueOnce(
+        makeOriginalTransfer({ type, vatPlane: 'NET', createdBy: adminUser.id }),
+      )
+
+      const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS' }))
+
+      expect(result.success).toBe(true)
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ vatPlane: expect.anything() }),
+        }),
+      )
+    },
+  )
+
   it('cancelled transaction → returns error', async () => {
     mockFindByID.mockResolvedValueOnce(makeOriginalTransfer({ cancelled: true }))
 
@@ -821,6 +878,30 @@ describe('updateTransferAction', () => {
     )
   })
 
+  it('newly uploaded pages append to the ones already attached', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ createdBy: adminUser.id, invoice: [55, 56] }),
+    )
+
+    await updateTransferAction(10, makeUpdateData(), [88, 89])
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ invoice: [55, 56, 88, 89] }),
+      }),
+    )
+  })
+
+  it('no uploaded pages → leaves the invoice field untouched', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ createdBy: adminUser.id, invoice: [55] }),
+    )
+
+    await updateTransferAction(10, makeUpdateData())
+
+    expect(mockUpdate.mock.calls[0][0].data).not.toHaveProperty('invoice')
+  })
+
   // Sheet sync moved to the transactions collection afterChange hook (review T2.2),
   // so updateTransferAction no longer calls it directly. The edit / investment-move /
   // non-expense-skip behavior is covered in hooks/sync-kosztorys-sheet.test.ts.
@@ -837,63 +918,199 @@ describe('updateTransferAction', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════
-// updateTransferInvoiceAction
+// Invoice page actions
 // ═════════════════════════════════════════════════════════════════════════
 
-describe('updateTransferInvoiceAction', () => {
-  beforeEach(() => {
-    mockFindByID.mockResolvedValue({ invoice: 42 })
-  })
+describe('addTransferInvoicesAction', () => {
+  it('appends the new page to the pages already attached', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
 
-  it('success → updates invoice reference with mediaId', async () => {
-    const result = await updateTransferInvoiceAction(10, 88)
+    const result = await addTransferInvoicesAction(10, [88])
 
     expect(result.success).toBe(true)
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: 'transactions',
         id: 10,
-        data: { invoice: 88 },
+        data: { invoice: [55, 56, 88] },
       }),
     )
   })
 
-  it('deletes old media when replacing invoice', async () => {
-    mockFindByID.mockResolvedValueOnce({ invoice: 55 })
+  // The whole reason the action takes a batch: setTransferInvoices is a read-modify-write, so a
+  // page-at-a-time caller would race and keep only the last one.
+  it('a whole batch lands in pick order in ONE update', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55] })
 
-    await updateTransferInvoiceAction(10, 88)
+    await addTransferInvoicesAction(10, [88, 89, 90])
 
-    expect(mockDelete).toHaveBeenCalledWith(
-      expect.objectContaining({ collection: 'media', id: 55 }),
+    expect(mockUpdate).toHaveBeenCalledTimes(1)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [55, 88, 89, 90] } }),
     )
   })
 
-  it('skips old media deletion when no previous invoice', async () => {
-    mockFindByID.mockResolvedValueOnce({ invoice: null })
+  it('appending keeps every existing page — nothing is deleted', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55] })
 
-    await updateTransferInvoiceAction(10, 88)
+    await addTransferInvoicesAction(10, [88])
 
     expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
   })
 
-  it('called with correct collection and mediaId', async () => {
-    await updateTransferInvoiceAction(77, 200)
+  it('reads ids out of populated media docs, not just raw ids', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [{ id: 55, filename: 'p1.jpg' }] })
+
+    await addTransferInvoicesAction(10, [88])
 
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: 'transactions',
-        id: 77,
-        data: { invoice: 200 },
-      }),
+      expect.objectContaining({ data: { invoice: [55, 88] } }),
     )
   })
 
+  it('re-adding an attached page is a no-op rather than a duplicate', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [88] })
+
+    await addTransferInvoicesAction(10, [88])
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [88] } }))
+  })
+
+  it('a batch mixing attached and new ids appends only the new ones', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
+
+    await addTransferInvoicesAction(10, [56, 88])
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [55, 56, 88] } }),
+    )
+  })
+
+  it('the same id twice in one batch attaches one page', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [] })
+
+    await addTransferInvoicesAction(10, [88, 88, 89])
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [88, 89] } }),
+    )
+  })
+
+  it('first page on an invoice-less transfer → one-page list', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: null })
+
+    await addTransferInvoicesAction(10, [88])
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [88] } }))
+  })
+
+  it('an empty batch touches nothing', async () => {
+    const result = await addTransferInvoicesAction(10, [])
+
+    expect(result.success).toBe(true)
+    expect(mockFindByID).not.toHaveBeenCalled()
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
   it('payload.update failure → returns error', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [] })
     mockUpdate.mockRejectedValueOnce(new Error('Invoice update failed'))
 
-    const result = await updateTransferInvoiceAction(10, 88)
+    const result = await addTransferInvoicesAction(10, [88])
 
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('Invoice update failed')
+  })
+})
+
+describe('removeTransferInvoiceAction', () => {
+  it('drops one page and leaves the rest in order', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56, 57] })
+
+    const result = await removeTransferInvoiceAction(10, 56)
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { invoice: [55, 57] } }),
+    )
+  })
+
+  it('deletes only the media the new list dropped', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56, 57] })
+
+    await removeTransferInvoiceAction(10, 56)
+
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'media', id: 56 }),
+    )
+    expect(mockDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('removing a page that is not attached changes nothing', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55] })
+
+    await removeTransferInvoiceAction(10, 99)
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [55] } }))
+    expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
+  })
+})
+
+describe('removeAllTransferInvoicesAction', () => {
+  it('clears the list and deletes every page', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: [55, 56] })
+
+    const result = await removeAllTransferInvoicesAction(10)
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [] } }))
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'media', id: 55 }),
+    )
+    expect(mockDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: 'media', id: 56 }),
+    )
+  })
+
+  it('a transfer with no invoice → clears to an empty list, deletes nothing', async () => {
+    mockFindByID.mockResolvedValueOnce({ invoice: null })
+
+    await removeAllTransferInvoicesAction(10)
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { invoice: [] } }))
+    expect(mockDelete).not.toHaveBeenCalledWith(expect.objectContaining({ collection: 'media' }))
+  })
+})
+
+describe('deleteOrphanedMediaAction', () => {
+  // The add form uploads every page before it creates the expense, so a failed create leaves files
+  // in Blob with nothing pointing at them — unreachable, but still billed for.
+  it('deletes ids nothing references', async () => {
+    const result = await deleteOrphanedMediaAction([101, 102, 103])
+
+    expect(result.success).toBe(true)
+    expect(mockDelete).toHaveBeenCalledTimes(3)
+    expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 101 })
+    expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 103 })
+  })
+
+  // The ids come straight from the browser and the join-table FK cascades, so an unguarded delete
+  // would let any caller strip pages off other people's expenses.
+  it('refuses an id a transfer still references', async () => {
+    mockCount.mockResolvedValueOnce({ totalDocs: 1 })
+
+    await deleteOrphanedMediaAction([101, 102])
+
+    expect(mockDelete).toHaveBeenCalledTimes(1)
+    expect(mockDelete).toHaveBeenCalledWith({ collection: 'media', id: 102 })
+  })
+
+  it('a failing delete does not stop the rest', async () => {
+    mockDelete.mockRejectedValueOnce(new Error('blob gone'))
+
+    const result = await deleteOrphanedMediaAction([101, 102])
+
+    expect(result.success).toBe(true)
+    expect(mockDelete).toHaveBeenCalledTimes(2)
   })
 })

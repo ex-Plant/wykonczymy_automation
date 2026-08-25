@@ -1,13 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 
 // storeLead's collection hook calls revalidateTag, which throws outside a Next request
 // context. Stub it — cache invalidation is not under test here.
-vi.mock('next/cache', () => ({ revalidateTag: () => {}, updateTag: () => {} }))
 
 import { storeLead, type StoreLeadInputT } from '@/lib/leads/store-lead'
-import { countUnreadLeads, markLeadsSeen } from '@/lib/db/notifications'
+import { STREAMS, countUnreadLeads, markSeen } from '@/lib/db/notifications'
 import { getDb } from '@/lib/db/get-db'
 
 // Integration tests against the Payload Local API + local Postgres. Skips cleanly with
@@ -27,7 +26,7 @@ const makeInput = (externalId: string): StoreLeadInputT => ({
   submittedAt: '2026-07-05T18:48:40.000Z',
 })
 
-describe.skipIf(!ENV_READY)('countUnreadLeads + markLeadsSeen (DB)', () => {
+describe.skipIf(!ENV_READY)('countUnreadLeads + markSeen (DB)', () => {
   let payload: Payload
   let userId: number
   const createdLeadIds: number[] = []
@@ -61,7 +60,7 @@ describe.skipIf(!ENV_READY)('countUnreadLeads + markLeadsSeen (DB)', () => {
 
   it('counts leads created after the cursor, and advancing the cursor clears them', async () => {
     // Cursor first, then leads → the leads are unambiguously newer than seen_at.
-    await markLeadsSeen(payload, userId)
+    await markSeen(payload, userId, STREAMS.leads)
 
     const lead1 = await storeLead(payload, makeInput(`${runTag}-a`))
     const lead2 = await storeLead(payload, makeInput(`${runTag}-b`))
@@ -71,8 +70,8 @@ describe.skipIf(!ENV_READY)('countUnreadLeads + markLeadsSeen (DB)', () => {
     expect(await countUnreadLeads(payload, userId)).toBe(2)
 
     // Advancing the cursor past them drops the count to 0 — and re-running is idempotent.
-    await markLeadsSeen(payload, userId)
-    await markLeadsSeen(payload, userId)
+    await markSeen(payload, userId, STREAMS.leads)
+    await markSeen(payload, userId, STREAMS.leads)
     expect(await countUnreadLeads(payload, userId)).toBe(0)
   })
 

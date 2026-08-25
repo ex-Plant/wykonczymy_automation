@@ -1,11 +1,7 @@
 import { z } from 'zod'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
-import { getAmountError } from '@/lib/utils/validation'
+import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 import { validateTransferFields } from './transfer-validation'
-
-// Shared refinement helpers moved to transfer-validation.ts (also used by the bulk
-// expense schema). Re-exported so existing importers of this module keep working.
-export { validateTransferFields, validateLineItemCategories } from './transfer-validation'
 
 // ---------------------------------------------------------------------------
 // Server-side schema for single transfers
@@ -26,11 +22,20 @@ export const createTransferSchema = z
     worker: z.number().optional(),
     otherDescription: z.string().optional(),
     invoiceNote: z.string().optional(),
+    vatPlane: z.enum(['NET', 'GROSS']).optional(),
+    // The netto off the faktura on a wpłata brutto. Optional here because most types carry no
+    // netto at all — which rows must have one is `carriesNetAmount`, enforced below and again in
+    // the Payload hook.
+    netAmount: z.number().optional(),
   })
   .superRefine((data, ctx) => {
     const amountErr = getAmountError(data.amount, data.type)
     if (amountErr) {
       ctx.addIssue({ code: 'custom', message: amountErr, path: ['amount'] })
+    }
+    const netErr = getNetAmountError(data.netAmount, data.amount, data.type, data.vatPlane)
+    if (netErr) {
+      ctx.addIssue({ code: 'custom', message: netErr, path: ['netAmount'] })
     }
     validateTransferFields(data, ctx)
   })

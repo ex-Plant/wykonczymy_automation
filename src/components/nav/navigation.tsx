@@ -11,9 +11,10 @@ type NavigationPropsT = {
     email: string
     role: RoleT
   }
+  investmentCrumb: React.ReactNode
 }
 
-export async function Navigation({ user }: NavigationPropsT) {
+export async function Navigation({ user, investmentCrumb }: NavigationPropsT) {
   const isManager = isManagementRole(user.role)
 
   let referenceData: ReferenceDataT | undefined
@@ -22,5 +23,5 @@ export async function Navigation({ user }: NavigationPropsT) {
     referenceData = { ...base, currentUserId: user.id, currentUserRole: user.role }
   }
 
-  return <TopNav referenceData={referenceData} />
+  return <TopNav referenceData={referenceData} investmentCrumb={investmentCrumb} />
 }

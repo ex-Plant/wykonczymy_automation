@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/button'
-import { FilterGrid } from '@/components/ui/filter-grid'
+import { FilterGrid } from '@/components/filters/filter-grid'
 import { Description } from '@/components/ui/description'
-import { SaldoDisplay, saldoColor } from '@/components/ui/saldo-display'
+import { SignedMoneyDisplay, signedMoneyColor } from '@/components/ui/signed-money-display'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
 type StatEntryT = {
@@ -26,10 +26,14 @@ type ToggleStatButtonsPropsT = {
   summaryTooltip?: string
   helpText?: string
   colorValues?: boolean
-  onToggle?: (label: string) => void
 }
 
-export function computeSummary(entries: readonly StatEntryT[], hidden: Set<string>): number {
+// Takes the structural minimum rather than StatEntryT — the sum reads no styling, so any
+// {label, amount} list can be summed by the same formula the tiles render.
+export function computeSummary(
+  entries: readonly { label: string; amount: number }[],
+  hidden: Set<string>,
+): number {
   return entries.filter((e) => !hidden.has(e.label)).reduce((sum, e) => sum + e.amount, 0)
 }
 
@@ -41,7 +45,6 @@ export function ToggleStatButtons({
   summaryTooltip,
   helpText,
   colorValues,
-  onToggle,
 }: ToggleStatButtonsPropsT) {
   const allEntries = rows.flat()
 
@@ -54,7 +57,6 @@ export function ToggleStatButtons({
       else next.add(label)
       return next
     })
-    onToggle?.(label)
   }
 
   if (allEntries.length === 0) return null
@@ -88,14 +90,13 @@ export function ToggleStatButtons({
                     variant="outline"
                     key={entry.label}
                     onClick={() => toggle(entry.label)}
-                    className={cn(
-                      'justify-start border-2',
-                      entry.borderClassName,
-                      isHidden && 'opacity-40',
-                    )}
+                    align="start"
+                    className={cn('border-2', entry.borderClassName, isHidden && 'opacity-40')}
                   >
                     <span className="text-muted-foreground">{entry.label}:</span>
-                    <span className={cn('font-medium', colorValues && saldoColor(entry.amount))}>
+                    <span
+                      className={cn('font-medium', colorValues && signedMoneyColor(entry.amount))}
+                    >
                       {entry.value}
                     </span>
                   </Button>
@@ -118,8 +119,8 @@ export function ToggleStatButtons({
         )
       })}
 
-      <SaldoDisplay
-        saldo={total}
+      <SignedMoneyDisplay
+        amount={total}
         label={summaryLabel}
         tooltip={summaryTooltip}
         selectionCount={{ selected: allEntries.length - hidden.size, total: allEntries.length }}
@@ -130,4 +131,4 @@ export function ToggleStatButtons({
   )
 }
 
-export type { StatEntryT, ToggleStatButtonsPropsT }
+export type { StatEntryT }

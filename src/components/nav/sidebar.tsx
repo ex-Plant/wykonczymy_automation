@@ -3,11 +3,12 @@
 import { Button } from '@/components/ui/button'
 import { logoutAction } from '@/lib/actions/auth'
 import { refreshDataAction } from '@/lib/actions/refresh'
-import { isAdminOrOwnerRole, isManagementRole } from '@/lib/auth/roles'
+import { isManagementRole } from '@/lib/auth/roles'
 import { SECTION_LINKS } from '@/lib/constants/sections'
+import { UnreadFleetBadge } from '@/components/nav/unread-fleet-badge'
 import { toastMessage } from '@/lib/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import { FileBarChart, FileSpreadsheet, LogOut, Mail, RefreshCw, Shield, Users } from 'lucide-react'
+import { Car, FileSpreadsheet, LogOut, Mail, RefreshCw, Shield, Users } from 'lucide-react'
 import Link from 'next/link'
 import { useTransition } from 'react'
 
@@ -28,7 +29,6 @@ export function Sidebar() {
   }
 
   const showUsers = isManagementRole(user.role)
-  const showReports = isAdminOrOwnerRole(user.role)
 
   // Roundcube can't auto-login via URL; _user only prefills the username field on its
   // login page (no-op when a Roundcube session is already active).
@@ -43,35 +43,36 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
         {SECTION_LINKS.map((link) => (
-          <Button key={link.href} variant="ghost" size="sm" className="justify-start" asChild>
+          <Button key={link.href} variant="ghost" size="sm" align="start" asChild>
             <Link href={link.href}>
-              <link.icon className="size-4" />
+              <link.icon />
               {link.label}
               {link.badge && <link.badge />}
             </Link>
           </Button>
         ))}
         {showUsers && (
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
+          <Button variant="ghost" size="sm" align="start" asChild>
             <Link href="/kosztorysy">
-              <FileSpreadsheet className="size-4" />
-              Kosztorysy
+              <FileSpreadsheet />
+              Kosztorysy v1
             </Link>
           </Button>
         )}
         {showUsers && (
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/pracownicy">
-              <Users className="size-4" />
-              Pracownicy
+          <Button variant="ghost" size="sm" align="start" asChild>
+            <Link href="/flota">
+              <Car />
+              Flota
+              <UnreadFleetBadge />
             </Link>
           </Button>
         )}
-        {showReports && (
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/raporty">
-              <FileBarChart className="size-4" />
-              Raporty
+        {showUsers && (
+          <Button variant="ghost" size="sm" align="start" asChild>
+            <Link href="/pracownicy">
+              <Users />
+              Pracownicy
             </Link>
           </Button>
         )}
@@ -89,23 +90,23 @@ export function Sidebar() {
             disabled={isRefreshing}
             aria-label="Odśwież dane"
           >
-            <RefreshCw className={isRefreshing ? 'size-4 animate-spin' : 'size-4'} />
+            <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
             Odśwież dane
           </Button>
           <Button size="sm" asChild aria-label="Panel administracyjny">
             <Link href="/admin" target="_blank">
-              <Shield className="size-4" />
+              <Shield />
               Admin
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild aria-label="Poczta (Roundcube)">
             <Link href={roundcubeUrl} target="_blank" rel="noopener noreferrer">
-              <Mail className="size-4" />
+              <Mail />
               Poczta
             </Link>
           </Button>
           <Button variant="outline" size="sm" onClick={handleLogout} disabled={isPending}>
-            <LogOut className="size-4" />
+            <LogOut />
             Wyloguj
           </Button>
         </div>

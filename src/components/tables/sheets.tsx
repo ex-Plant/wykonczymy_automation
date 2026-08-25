@@ -3,32 +3,13 @@
 import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { OptionalLink } from '@/components/ui/optional-link'
 import { LinkSheetToInvestmentDialog } from '@/components/dialogs/link-sheet-to-investment-dialog'
 import { LinkedSheetActions } from '@/components/sheets/linked-sheet-actions'
+import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
 import { SheetSetupDialog } from '@/components/dialogs/sheet-setup-dialog'
-import { SHEET_STATUS_LABELS, type SheetStatusT } from '@/lib/constants/sheets'
-
-// A kosztorys is a real Google Sheet registered in the app — either linked to an
-// investment or standing alone. This is a distinct entity from an investment
-// that simply has no kosztorys yet (see InvestmentWithoutSheetRowT), which is why
-// the two now render as separate tables instead of one status-discriminated list.
-export type KosztorysRowT = {
-  id: string
-  status: SheetStatusT
-  name: string
-  sheetId: number
-  sheetName: string
-  googleSheetId: string
-  investmentId?: number
-  investmentName?: string
-}
-
-// An investment with no kosztorys yet — the target for "Dodaj kosztorys".
-export type InvestmentWithoutSheetRowT = {
-  id: string
-  investmentId: number
-  name: string
-}
+import { SHEET_STATUS_LABELS } from '@/lib/constants/sheets'
+import type { InvestmentWithoutSheetRowT, KosztorysRowT } from '@/types/table-rows'
 
 type InvestmentOptionT = { id: number; name: string }
 
@@ -49,13 +30,15 @@ export function getKosztorysColumns({
       meta: { canHide: false },
       cell: (info) => {
         const row = info.row.original
-        if (row.investmentId !== undefined)
-          return (
-            <Link href={`/inwestycje/${row.investmentId}`} className="font-medium hover:underline">
+        return (
+          <span className="font-medium">
+            <OptionalLink
+              href={row.investmentId !== undefined ? `/inwestycje/${row.investmentId}` : undefined}
+            >
               {info.getValue()}
-            </Link>
-          )
-        return <span className="font-medium">{info.getValue()}</span>
+            </OptionalLink>
+          </span>
+        )
       },
     }),
 
@@ -101,7 +84,8 @@ export function getKosztorysColumns({
 }
 
 // Columns for the "Inwestycje bez kosztorysu" table: investment name + the
-// action to attach a kosztorys (link existing; auto-create stays disabled).
+// action to attach a kosztorys (link existing; auto-create stays disabled). The
+// kosztorys_v2 link is still offered — the in-app editor exists regardless of a sheet.
 export function getInvestmentWithoutSheetColumns() {
   return [
     investmentCol.accessor('name', {
@@ -125,15 +109,18 @@ export function getInvestmentWithoutSheetColumns() {
       cell: (info) => {
         const row = info.row.original
         return (
-          <SheetSetupDialog
-            investmentId={row.investmentId}
-            investmentName={row.name}
-            trigger={
-              <Button size="sm" variant="outline">
-                Dodaj kosztorys
-              </Button>
-            }
-          />
+          <div className="flex items-center justify-end gap-2">
+            <OpenKosztorysV2Button investmentId={row.investmentId} label="kosztorys_v2" />
+
+            <SheetSetupDialog
+              investmentId={row.investmentId}
+              trigger={
+                <Button size="sm" variant="outline">
+                  Dodaj kosztorys
+                </Button>
+              }
+            />
+          </div>
         )
       },
     }),

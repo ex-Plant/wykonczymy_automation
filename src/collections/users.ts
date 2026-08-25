@@ -1,14 +1,57 @@
 import {
   canUpdateUser,
+  isAdminOrOwner,
   isAdminOrOwnerOrManagerBoolean,
   isAdminOrOwnerField,
   isAdminOrOwnerOrManager,
-  isAdminOrOwnerOrSelf,
 } from '@/access'
 import { forgotPasswordEmailHTML } from '@/lib/email/forgot-password-template'
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Where } from 'payload'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { makePreventDelete } from '@/hooks/prevent-delete'
 import { ROLES, ROLE_LABELS } from '@/lib/auth/roles'
+
+// Block a hard delete while a FIGURE or its audit trail still names this person: a wypłata whose
+// recipient is unknown, an amount edit with no editor, an etap with no podwykonawca. Deactivation
+// (`active`) is the intended way for someone to leave; it keeps the row, so every past figure still
+// says who it was about.
+// Plain authorship is deliberately NOT a blocker — a media uploader, a snapshot's `takenBy`, a
+// preset's `createdBy` name who touched something, not what a złotówka means, and blocking on them
+// would freeze an account after one upload.
+const preventDeleteWithReferences = makePreventDelete({
+  probes: [
+    {
+      collection: 'transactions',
+      where: (id): Where => ({
+        or: [
+          { worker: { equals: id } },
+          { createdBy: { equals: id } },
+          { updatedBy: { equals: id } },
+        ],
+      }),
+      label: 'transakcje',
+    },
+    {
+      collection: 'amount-edits',
+      where: (id) => ({ editedBy: { equals: id } }),
+      label: 'zmiany kwot',
+    },
+    // The only NOT NULL FK of the four: without this probe the delete fails anyway, but with a raw
+    // 23502 instead of a sentence naming the kasa.
+    {
+      collection: 'cash-registers',
+      where: (id) => ({ owner: { equals: id } }),
+      label: 'kasy',
+    },
+    {
+      collection: 'kosztorys-stages',
+      where: (id) => ({ worker: { equals: id } }),
+      label: 'etapy kosztorysu',
+    },
+  ],
+  message: (blockers) =>
+    `Nie można usunąć pracownika — jest powiązany z danymi (${blockers.join(', ')}). Zamiast usuwać, odznacz „Aktywny".`,
+})
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -25,6 +68,7 @@ export const Users: CollectionConfig = {
     },
   },
   hooks: {
+    beforeDelete: [preventDeleteWithReferences],
     afterChange: [makeRevalidateAfterChange('users')],
     afterDelete: [makeRevalidateAfterDelete('users')],
   },
@@ -41,7 +85,7 @@ export const Users: CollectionConfig = {
     read: isAdminOrOwnerOrManager,
     create: isAdminOrOwnerOrManager,
     update: canUpdateUser,
-    delete: isAdminOrOwnerOrSelf,
+    delete: isAdminOrOwner,
     admin: isAdminOrOwnerOrManagerBoolean,
   },
   fields: [

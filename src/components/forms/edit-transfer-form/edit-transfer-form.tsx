@@ -1,33 +1,34 @@
 'use client'
 
-import { useRef, useState } from 'react'
 import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SelectItem } from '@/components/ui/select'
 import { FieldGroup } from '@/components/ui/field'
 import { FileInput } from '@/components/ui/file-input'
 import { useAppForm, useStore } from '@/components/forms/hooks/form-hooks'
 import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
+import { useFilePickIngest } from '@/components/forms/hooks/use-file-pick-ingest'
 import {
   showsInvestment,
   needsExpenseCategory,
   isLaborCost,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
-import { editExpenseFormSchema } from '@/components/forms/expense-form/expense-schema'
-import { uploadFileClient } from '@/lib/utils/upload-file-client'
-import type { z } from 'zod'
+import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
+import type { EditTransferFormValuesT } from './edit-transfer-form-api'
+import { submitWithInvoicePages } from '@/lib/invoices/submit-with-invoice-pages'
+import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
 import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
 import { updateTransferAction } from '@/lib/actions/transfers'
 import {
   AmountField,
   DateField,
   DescriptionField,
   EntityComboboxField,
-  ExpenseCategoryField,
 } from '@/components/forms/form-fields'
+import { ExpenseCategoryField } from '@/components/forms/edit-transfer-form/expense-category-field'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
 import FormFooter from '../form-components/form-footer'
 import { FormClearButton } from '../form-components/form-clear-button'
@@ -39,8 +40,6 @@ type EditTransferFormPropsT = {
   keepOpen?: boolean
 }
 
-type FormValuesT = z.infer<typeof editExpenseFormSchema>
-
 const FORM_ID = 'edit-transfer'
 
 export function EditTransferForm({
@@ -50,11 +49,7 @@ export function EditTransferForm({
   keepOpen,
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [selectedFileName, setSelectedFileName] = useState<string | undefined>()
-  // Bumped on reset to remount the (uncontrolled) file input, clearing its
-  // native file and internal filename state — form.reset() can't reach them.
-  const [fileInputKey, setFileInputKey] = useState(0)
+  const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
   const form = useAppForm({
     defaultValues: {
@@ -66,9 +61,9 @@ export function EditTransferForm({
       expenseCategory: row.expenseCategoryId ? String(row.expenseCategoryId) : '',
       otherCategory: row.otherCategoryId ? String(row.otherCategoryId ?? '') : '',
       invoiceNote: row.invoiceNote ?? '',
-    } as FormValuesT,
+    } as EditTransferFormValuesT,
     validators: {
-      onSubmit: editExpenseFormSchema,
+      onSubmit: editTransferFormSchema,
     },
     onSubmit: async ({ value }) => {
       const data: UpdateTransferFormT = {
@@ -82,29 +77,21 @@ export function EditTransferForm({
         invoiceNote: value.invoiceNote || undefined,
       }
 
-      // Capture file before dialog closes — the ref won't be available after unmount
-      const file = fileRef.current?.files?.[0]
-
       await submit(!!keepOpen, {
         form,
         action: async () => {
-          let invoiceMediaId: number | undefined
-          if (file) {
-            try {
-              invoiceMediaId = await uploadFileClient(file)
-            } catch (err) {
-              const message = err instanceof Error ? err.message : 'Nie udało się przesłać pliku'
-              return { success: false, error: message }
-            }
-          }
-          return updateTransferAction(row.id, data, invoiceMediaId)
+          // Enter bypasses the disabled submit button, so the guard has to exist here too —
+          // saving mid-ingest would persist the row without the pages still being converted.
+          if (isIngesting) return { success: false, error: 'Poczekaj na przetworzenie plików.' }
+
+          return submitWithInvoicePages(files, (pageIds) =>
+            // `undefined` means "no pages this save" to an update that only ever ADDS invoices.
+            updateTransferAction(row.id, data, pageIds.length > 0 ? pageIds : undefined),
+          )
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
-        onReset: () => {
-          setSelectedFileName(undefined)
-          setFileInputKey((k) => k + 1)
-        },
+        onReset: resetFiles,
       })
 
       return false
@@ -118,14 +105,16 @@ export function EditTransferForm({
   // type field without a reload (matches the create form's currentInvestment).
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
 
-  function handleFileChange() {
-    const file = fileRef.current?.files?.[0]
-    setSelectedFileName(file?.name)
-  }
+  // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
+  // the file input below only ever ADDS pages, so there is no other way to drop one here.
+  const { visibleInvoices, handleRemove, handleRemoveAll, removalConfirm } = useInvoiceRemoval(
+    row.id,
+    row.invoices,
+  )
 
   return (
     <form.AppForm>
-      <FormClearButton />
+      <FormClearButton onReset={resetFiles} />
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -154,7 +143,7 @@ export function EditTransferForm({
           )}
 
           <form.AppField name="otherCategory">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Select label="Kategoria" placeholder="Wybierz kategorię" showError>
                 {referenceData.otherCategories.map((cat) => (
                   <SelectItem key={cat.id} value={String(cat.id)}>
@@ -165,33 +154,43 @@ export function EditTransferForm({
             )}
           </form.AppField>
 
+          {/* No plane field here by design (owner, 2026-08-20): retagging a wpłata moves the debt by
+              a VAT's worth, exactly like editing its kwota — which this form already refuses. A
+              transfer has no version history, so the correction path is the one that leaves a trail:
+              anuluj i zaksięguj na nowo. */}
           <form.AppField name="invoiceNote">
-            {(field: AppFieldComponentsT) => (
+            {(field) => (
               <field.Textarea label="Notatka" placeholder="Wpisz notatkę..." rows={3} showError />
             )}
           </form.AppField>
 
           <div className="space-y-2">
-            {row.invoiceUrl && !selectedFileName && (
+            {visibleInvoices.length > 0 && files.length === 0 && (
               <InvoicePreviewButton
-                url={row.invoiceUrl}
-                filename={row.invoiceFilename}
-                mimeType={row.invoiceMimeType}
+                invoices={visibleInvoices}
+                onRemove={handleRemove}
+                onRemoveAll={visibleInvoices.length > 1 ? handleRemoveAll : undefined}
               />
             )}
             <FileInput
-              key={fileInputKey}
-              ref={fileRef}
-              label={row.invoiceUrl ? 'Zamień fakturę' : 'Dodaj fakturę'}
+              key={inputKey}
+              label="Dodaj faktury"
               accept="image/*,application/pdf"
-              placeholder={selectedFileName ?? 'Przeciągnij lub kliknij'}
-              onChange={handleFileChange}
+              multiple
+              {...fileInputProps}
             />
           </div>
         </FieldGroup>
 
-        <FormFooter label="Zapisz" submittingLabel="Zapisywanie..." className="mt-6" />
+        <FormFooter
+          label="Zapisz"
+          submittingLabel="Zapisywanie..."
+          className="mt-6"
+          disabled={isIngesting}
+        />
       </form>
+
+      <ConfirmDialog {...removalConfirm} />
     </form.AppForm>
   )
 }

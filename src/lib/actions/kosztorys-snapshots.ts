@@ -1,9 +1,10 @@
 'use server'
 
 import { z } from 'zod'
-import type { PayloadRequest } from 'payload'
 import { protectedAction, validateAction } from '@/lib/actions/run-action'
+import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { getSnapshot, insertSnapshot, listSnapshots, type SnapshotMetaT } from '@/lib/db/snapshots'
 import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
 import { restoreKosztorys } from '@/lib/kosztorys/restore-kosztorys'
@@ -46,42 +47,48 @@ export async function saveSnapshotAction(
 
 // --- Restore + listing ---
 
-const snapshotIdSchema = z.object({ snapshotId: z.number() })
+const restoreSchema = z.object({ snapshotId: z.number(), investmentId: z.number() })
 
-// Restore a snapshot by id: resolve its investment from the row (never trust a client-passed one),
-// then in ONE transaction take a forced pre-restore auto snapshot (so a mis-restore is itself
-// recoverable) and wipe-and-reinsert the tree. On any throw the transaction rolls back and the live
-// tree is untouched. `skipRevalidation` suppresses the per-op collection hooks (~1000 rows would
-// otherwise fire revalidateTag each) — the action's revalidate list bumps every tag once after commit.
-export async function restoreSnapshotAction(snapshotId: number): Promise<ActionResultT> {
+export type RestoreResultT = { droppedWorkerAssignments: number }
+
+// Restore a snapshot into the CURRENT investment: `investmentId` is the editor's open context and the
+// snapshot must belong to it — a snapshot from another investment is refused as "not found" (a bare
+// snapshotId with no such check would wipe-and-reinsert whatever investment the row happens to point
+// at, unbounded by what the user is looking at). Then, in ONE transaction, take a forced pre-restore
+// auto snapshot (so a mis-restore is itself recoverable) and wipe-and-reinsert the tree. On any throw
+// the transaction rolls back and the live tree is untouched. `skipRevalidation` suppresses the per-op
+// collection hooks (~1000 rows would otherwise fire revalidateTag each) — the action's revalidate list
+// bumps every tag once after commit.
+export async function restoreSnapshotAction(
+  snapshotId: number,
+  investmentId: number,
+): Promise<ActionResultT<RestoreResultT>> {
   return protectedAction(
     'restoreSnapshotAction',
     async ({ payload, user }) => {
-      const parsed = validateAction(snapshotIdSchema, { snapshotId })
+      const parsed = validateAction(restoreSchema, { snapshotId, investmentId })
       if (!parsed.success) return parsed
 
       const snapshot = await getSnapshot(await getDb(payload), parsed.data.snapshotId)
-      if (!snapshot) return { success: false, error: 'Nie znaleziono wersji' }
-
-      const transactionId = await payload.db.beginTransaction()
-      if (!transactionId) throw new Error('Failed to start transaction')
-      const req = {
-        transactionID: transactionId,
-        context: { skipRevalidation: true },
-      } as unknown as PayloadRequest
-      try {
-        const txDb = await getDb(payload, req)
-        await captureAutoSnapshot(txDb, snapshot.investmentId, user.id)
-        await restoreKosztorys(payload, req, snapshot.investmentId, snapshot.payload)
-        await payload.db.commitTransaction(transactionId)
-      } catch (err) {
-        await payload.db.rollbackTransaction(transactionId)
-        throw err
+      // Not found, or scoped to a different investment — indistinguishable on purpose (no existence leak).
+      if (!snapshot || snapshot.investmentId !== parsed.data.investmentId) {
+        return { success: false, error: 'Nie znaleziono wersji' }
       }
-      return { success: true }
+
+      const restored = await withPayloadTransaction(
+        payload,
+        async (req) => {
+          const txDb = await getDb(payload, req)
+          await captureAutoSnapshot(txDb, snapshot.investmentId, user.id)
+          return restoreKosztorys(payload, req, snapshot.investmentId, snapshot.payload)
+        },
+        { skipRevalidation: true },
+      )
+      // The count travels to the client because the restore silently moved money: należne that the
+      // snapshot attributed to a since-deleted person lands in the residual bucket instead.
+      return { success: true, data: restored }
     },
-    // Settings (VAT/coeffs) change too, so bump investments alongside the four tree tags.
-    ['kosztorysSections', 'kosztorysItems', 'kosztorysStages', 'stageProgress', 'investments'],
+    [...KOSZTORYS_TREE_TAGS],
   )
 }
 

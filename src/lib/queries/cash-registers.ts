@@ -1,12 +1,9 @@
-import {
-  fetchReferenceData,
-  fetchRegisterBalances,
-  type RegisterBalanceMapT,
-} from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchRegisterBalances, type RegisterBalanceMapT } from '@/lib/queries/balances'
 import { isAdminOrOwnerRole, MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { requireAuth } from '@/lib/auth/require-auth'
 import type { CashRegisterRefT, WorkerRefT, CashRegisterTypeT } from '@/types/reference-data'
-import type { CashRegisterRowT } from '@/components/tables/cash-registers'
+import type { CashRegisterRowT } from '@/types/table-rows'
 
 export function shapeCashRegisters(
   cashRegisters: CashRegisterRefT[],

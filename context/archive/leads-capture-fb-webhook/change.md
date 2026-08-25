@@ -26,4 +26,17 @@ built later), Sentry, notification bell + websockets, cron sweeper for `notifySt
 
 Design: `context/reference/superpowers/archive/2026-07-06-leads-capture-design.md`
 Reference: `context/reference/facebook-leads-setup.md` (webhook/token/backfill/data-shape)
-Plan: `context/archive/leads-capture-fb-webhook/plan.md`
+
+## Kept from the plan (deleted 2026-08-08)
+
+- **Extraction is type-driven, not label-driven.** `EMAIL` / `PHONE` / `FULL_NAME` are lifted by Meta's
+  field **type** (from the form's `questions` key→type map), with an email-regex fallback on values when
+  the typed field is absent, and everything kept verbatim in `rawData`. Only Meta-typed fields are safe
+  as columns — a `CUSTOM` field's label is per-form free text and can't back a schema. Proven against a
+  62-lead dump. `values` is always an array; read `values[0]`, never assume a scalar.
+- **A missing email must never throw or drop** — it returns an emailless result and fires the safety-net
+  alert. Silent loss was the whole risk this change existed to close.
+- **`clients` deferred on a direction, not on effort**: an investment is not a client identity, so the
+  lead→client link waits until leads actually flow (option B).
+- Generalisations extracted to `context/foundation/lessons.md`: HMAC over raw request bytes, and Payload
+  compound-uniqueness via a raw index.

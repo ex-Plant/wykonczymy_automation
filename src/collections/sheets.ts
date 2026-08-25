@@ -66,5 +66,16 @@ export const Sheets: CollectionConfig = {
       // when set — multiple NULLs are allowed.
       label: { en: 'Investment', pl: 'Inwestycja' },
     },
+    {
+      name: 'sheetColumnMapping',
+      type: 'json',
+      label: { en: 'Column mapping', pl: 'Wskazanie kolumn' },
+      admin: {
+        description: {
+          en: 'Fallback only: field → column index, applied when the header text does not resolve a column. Matching by name always wins.',
+          pl: 'Wyłącznie awaryjnie: pole → indeks kolumny, użyte gdy nazwa nagłówka nie rozpozna kolumny. Dopasowanie po nazwie zawsze wygrywa.',
+        },
+      },
+    },
   ],
 }

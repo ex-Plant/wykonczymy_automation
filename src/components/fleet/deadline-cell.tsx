@@ -1,0 +1,49 @@
+'use client'
+
+import { daysLabel } from '@/lib/fleet/deadline-label'
+import { OVERDUE } from '@/lib/fleet/thresholds'
+import { formatPLDate } from '@/lib/utils/format-date'
+import { cn } from '@/lib/utils/cn'
+import type { FleetDeadlineT } from '@/types/fleet'
+
+type DeadlineCellPropsT = {
+  deadline: FleetDeadlineT
+  /** A retired car carries no urgency — its deadlines are history, not a to-do list. */
+  muted?: boolean
+}
+
+/**
+ * Three visually distinct states, not two: overdue/urgent, fine, and **no data at all**. "Nothing
+ * recorded" must never look like "nothing due" — that is the blind spot the whole reminder module
+ * exists to close.
+ */
+export function DeadlineCell({ deadline, muted }: DeadlineCellPropsT) {
+  if (!deadline.hasEvent) {
+    return <span className="text-muted-foreground text-xs">brak danych</span>
+  }
+
+  if (!deadline.nextDueAt || deadline.daysLeft === null) {
+    return <span className="text-muted-foreground text-xs">bez terminu</span>
+  }
+
+  const urgent = !muted && deadline.bucket === OVERDUE
+  const warning = !muted && deadline.bucket !== null && deadline.bucket !== OVERDUE
+
+  return (
+    <div className="flex flex-col leading-tight">
+      <span
+        className={cn(
+          'text-sm',
+          urgent && 'text-destructive font-medium',
+          warning && 'text-chart-orange font-medium',
+          muted && 'text-muted-foreground',
+        )}
+      >
+        {formatPLDate(deadline.nextDueAt)}
+      </span>
+      <span className={cn('text-xs', urgent ? 'text-destructive' : 'text-muted-foreground')}>
+        {daysLabel(deadline.daysLeft)}
+      </span>
+    </div>
+  )
+}

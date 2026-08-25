@@ -1,16 +1,18 @@
-import { redirect, notFound } from 'next/navigation'
-import { requireAuth } from '@/lib/auth/require-auth'
-import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
+import { isAdminOrOwnerRole } from '@/lib/auth/roles'
+import { requireManagementPage } from '@/lib/auth/require-management-page'
+import { parseInvestmentId } from '@/lib/queries/investment-id'
 import { parsePagination } from '@/lib/utils/pagination'
-import {
-  fetchReferenceData,
-  fetchFilteredByType,
-  fetchCategoryBreakdowns,
-} from '@/lib/queries/reference-data'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType, fetchCategoryBreakdowns } from '@/lib/queries/transfer-totals'
+import { deriveFinancials } from '@/lib/db/investment-financials'
 import { calculateMargin } from '@/lib/db/calculate-margin'
+import { InvestmentSummaryPanel } from '@/components/investments/investment-summary-panel'
+import { StatsVersionToggle } from '@/components/investments/stats-version-toggle'
+import { parseStatsVersion, STATS_VERSION_PARAM } from '@/lib/constants/stats-version'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
-import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-costs'
+import { buildFinancialFields, buildSettledFields } from '@/lib/queries/investment-financial-fields'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
@@ -18,16 +20,14 @@ import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
 import { ContactLink } from '@/components/ui/contact-link'
 import { FinancialStats } from '@/components/investments/financial-stats'
+import { STATUS_LABELS } from '@/components/investments/investment-status-badge'
 import { EditInvestmentDialog } from '@/components/dialogs/edit-investment-dialog'
 import { SheetButton } from '@/components/dialogs/sheet-button'
 import { OpenKosztorysV2Button } from '@/components/kosztorys/open-kosztorys-v2-button'
-import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function InvestmentDetailPage({ params, searchParams }: DynamicPagePropsT) {
-  const session = await requireAuth(MANAGEMENT_ROLES)
-  if (!session.success) redirect('/zaloguj')
-  const { user } = session
+  const user = await requireManagementPage()
 
   const step = perfStart()
 
@@ -35,12 +35,14 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
   const sp = await searchParams
   const { page, limit } = parsePagination(sp)
 
-  const investmentId = Number(id)
+  const investmentId = parseInvestmentId(id)
   const urlFilters = buildTransferFilters(sp, { id: user.id })
   const transferWhere = { ...urlFilters, investment: { equals: investmentId } }
 
   // Stats ignore cancelled toggle — SQL already excludes cancelled via hardcoded WHERE clause
   const statsWhere = stripCancelledFilters(transferWhere)
+
+  const version = parseStatsVersion(sp[STATS_VERSION_PARAM])
 
   const [refData, typeDistribution, breakdowns] = await Promise.all([
     fetchReferenceData(),
@@ -56,6 +58,9 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
     typeDistribution,
     breakdowns.categoryCosts,
     breakdowns.settledCategoryCosts,
+    investment.materialsNetRate,
+    investment.settlementMode,
+    breakdowns.netCategoryCosts,
   )
 
   const financialFields = buildFinancialFields(financials, refData.expenseCategories)
@@ -63,11 +68,6 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
     financials.settledCategoryCosts,
     refData.expenseCategories,
   )
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Inwestycja', value: investment.name },
-    ...financialFields,
-  ]
-
   const infoFields = [
     { label: 'Adres', value: investment.address },
     { label: 'Telefon', value: <ContactLink type="phone" value={investment.phone} /> },
@@ -75,41 +75,51 @@ export default async function InvestmentDetailPage({ params, searchParams }: Dyn
     { label: 'Osoba kontaktowa', value: investment.contactPerson },
     { label: 'Notatki', value: investment.notes },
     { label: 'Opinia', value: investment.review || '—' },
-    { label: 'Status', value: investment.status === 'active' ? 'Aktywna' : 'Zakończona' },
+    { label: 'Status', value: STATUS_LABELS[investment.status] },
   ]
 
   return (
     <PageWrapper title={investment.name}>
       <div className="flex flex-wrap items-center gap-2">
         <EditInvestmentDialog investment={investment} />
-        <SheetButton
-          investmentId={investmentId}
-          investmentName={investment.name}
-          hasSheet={investment.hasSheet}
-        />
+        <SheetButton investmentId={investmentId} hasSheet={investment.hasSheet} />
         <OpenKosztorysV2Button investmentId={investmentId} />
       </div>
       <InfoList items={infoFields.filter((f) => f.value)} />
 
-      <FinancialStats
-        fields={financialFields}
-        margin={calculateMargin(financials)}
-        totalPayouts={financials.totalPayouts}
-        totalLoss={financials.totalLoss}
-        settledFields={settledFields}
-      />
+      {/* Anchored here rather than inside either reading's block: the two readings render different
+          trees, so a toggle living inside them moves under the cursor on every switch. */}
+      <div className="w-fit">
+        <StatsVersionToggle version={version} />
+      </div>
 
-      {/* Transactions table */}
+      {version === 'v1' ? (
+        <FinancialStats
+          fields={financialFields}
+          margin={calculateMargin(financials)}
+          totalPayouts={financials.totalPayouts}
+          settledFields={settledFields}
+        />
+      ) : (
+        // Streamed off the critical path: the panel owns the kosztorys tree fetch, the page's
+        // long-pole query, so the rest of the page paints without waiting on it.
+        <Suspense fallback={null}>
+          <InvestmentSummaryPanel
+            investmentId={investmentId}
+            investmentName={investment.name}
+            canSeeMargin={isAdminOrOwnerRole(user.role)}
+            expenseCategories={refData.expenseCategories}
+          />
+        </Suspense>
+      )}
+
       <TransfersSection
         config={{
           query: { where: transferWhere, page, limit },
           baseUrl: `/inwestycje/${id}`,
           excludeColumns: ['investment'],
           filters: buildFilterConfig(refData, 'investments'),
-          context: 'investment',
-          contextId: investmentId,
-          headerFields,
-          totalPayouts: financials.totalPayouts,
+          invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
       />

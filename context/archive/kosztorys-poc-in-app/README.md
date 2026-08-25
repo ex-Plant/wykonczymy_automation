@@ -7,8 +7,10 @@ editor approach and settled the shape; these are its raw brainstorm/design/plan 
 **Not the source of truth, and not a build spec.** They are POC-grade notes — decisions may
 have since changed or been superseded. The reconciled, current decisions live in:
 
-- `context/changes/kosztorys-mvp/change.md` — the durable MVP decision register (distilled from these).
-- `context/foundation/roadmap.md` — the reconciled slice arc (F-01, S-01…S-15).
+- `context/foundation/roadmap.md` — the reconciled slice arc (F-01, S-01…S-19); its "Reconciled with
+  the POC" note and "Open Roadmap Questions" section absorbed the MVP decision register that once
+  lived at `context/changes/kosztorys-mvp/change.md` (deleted 2026-07-24 in a bulk cleanup, no
+  distillation needed — everything it carried is already here or in roadmap.md).
 
 Kept as archive (not deleted) because they carry unique rationale the distilled docs don't
 fully capture — the reasoning behind each POC decision, the sheet-inspection findings, and the
@@ -21,7 +23,16 @@ duplicates of docs already living under `context/` on the mainline, and two unre
 
 ## Contents
 
-- The braindump (żywe notatki z brainstormu: goals, sheet inspection, schema, decisions) was distilled into `context/reference/kosztorys-editor-domain-notes.md` (its current durable home) rather than kept here.
-- `2026-06-19-kosztorys-poc-in-app-design.md` / `kosztorys-poc-in-app-change.md` / `kosztorys-poc-in-app-plan.md` — the POC change identity + spec + plan.
-- `2026-06-19-kosztorys-editor-grid-bakeoff-design.md` / `2026-06-19-kosztorys-editor-v2-datasheet-grid.md` — the editor grid bake-off (react-datasheet-grid won).
-- `2026-06-20-kosztorys-*` — per-slice designs + plans (add/remove struktura, reorder, section subtotals, subcontractor pricing, CSV export, VAT-per-investment).
+Only `kosztorys-poc-in-app-change.md` survives — the POC's decision register, and the best
+synthesis of everything the folder held. On **2026-08-08** the raw designs and plans were read
+in full and deleted (the braindump had already been distilled into
+`context/reference/kosztorys-editor-domain-notes.md`): the POC braindump, the POC design +
+plan, the grid bake-off pair, and the per-slice design/plan pairs for add/remove struktura,
+reorder, section subtotals, subcontractor pricing, CSV export and VAT-per-investment.
+
+Their durable rationale was extracted first — the grid bake-off's two-mode-cell argument and
+its rejected candidates, the DnD/sparse-ordering-key trap, the frozen-columns corollary, the
+hierarchical-visibility rule and the drifted-implementation rule all live in
+`context/foundation/lessons.md`; the section-subtotals ruling lives inline in
+`kosztorys-poc-in-app-change.md` (#1). The archive commit was a rename, so `git log --follow`
+on this folder still reaches every deleted file in full.

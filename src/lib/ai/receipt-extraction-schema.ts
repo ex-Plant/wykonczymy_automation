@@ -5,11 +5,13 @@ import { z } from 'zod'
 // guard and the prompt both key off this one constant so they can't drift.
 export const UNREADABLE_RECEIPT = 'NIE UDAŁO SIĘ ODCZYTAĆ !!! :('
 
-// `amount` is nullable so "no total legible on the receipt" is expressible (mapped to a
-// blank form field). String fields carry `''` when the model finds nothing.
+// `amount` and `netAmount` are nullable so "no such total legible on the receipt" is expressible
+// (mapped to a blank form field) — for `netAmount` that covers every paragon, which prints a brutto
+// total only. String fields carry `''` when the model finds nothing.
 export const receiptExtractionSchema = z.object({
   description: z.string(),
   amount: z.number().nullable(),
+  netAmount: z.number().nullable(),
   invoiceNote: z.string(),
   otherCategoryName: z.string(),
 })

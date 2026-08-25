@@ -66,6 +66,7 @@ export function DataTableRow<TData>({
         .filter((cell) => visibleColumnIds.has(cell.column.id))
         .map((cell) => {
           const align = cell.column.columnDef.meta?.align
+          const minWidth = cell.column.columnDef.meta?.minWidth
           return (
             <td
               key={cell.id}
@@ -73,6 +74,7 @@ export function DataTableRow<TData>({
                 'text-foreground px-3 py-2',
                 align === 'right' && 'text-right',
                 align === 'center' && 'text-center',
+                minWidth,
               )}
             >
               {flexRender(cell.column.columnDef.cell, cell.getContext())}

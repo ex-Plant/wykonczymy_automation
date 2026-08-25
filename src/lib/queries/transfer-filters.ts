@@ -1,7 +1,6 @@
 import type { Where } from 'payload'
+import type { ResolvedSearchParamsT } from '@/types/page'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
-
-type SearchParamsT = Record<string, string | string[] | undefined>
 
 type UserContextT = {
   id: number
@@ -58,7 +57,7 @@ function normalizeAmountSearch(raw: string | undefined): AmountSearchT | null {
 }
 
 export function buildTransferFilters(
-  searchParams: SearchParamsT,
+  searchParams: ResolvedSearchParamsT,
   userContext: UserContextT,
 ): Where {
   // Impossible condition — forces Payload to return zero results
@@ -138,6 +137,14 @@ export function buildTransferFilters(
   if (expenseCategoryIds.length > 0) where.expenseCategory = { in: expenseCategoryIds }
   else if (expenseCategoryParam) where.id = NO_RESULTS
 
+  // Worker filter — a single PAYOUT worker (the subcontractor summary's per-worker link target,
+  // `?type=PAYOUT&worker=<id>`). A non-numeric value is ignored rather than short-circuited to
+  // NO_RESULTS: the link only ever emits a real id, so tolerating garbage keeps the URL forgiving.
+  const workerParam = getStringParam(searchParams.worker)
+  if (workerParam && /^\d+$/.test(workerParam)) {
+    where.worker = { equals: Number(workerParam) }
+  }
+
   // Other category filter
   const otherCategoryParam = getStringParam(searchParams.otherCategory)
   const otherCategoryIds = parseNumericIds(otherCategoryParam)
@@ -171,14 +178,73 @@ export function buildTransferFilters(
   return where
 }
 
-/** Strip cancelled-related conditions from a Where object (for stats queries that handle it in SQL). */
+// The fields a CANCELLATION row does not carry. cancelTransferAction copies only amount, date,
+// description, paymentMethod and the back-reference — deliberately, since a persisted sourceRegister
+// would be subtracted a second time by the balance query (see enrichCancellationOriginals). So every
+// screen that narrows by one of these — kasa, pracownik, inwestycja — cut the audit rows away before
+// they could be paired with anything, and „Tryb anulowań" answered „Brak danych" on all three.
+// Exported, so a composed Where can carry original-only fields under a branch — unwalked, the list
+// reads „Brak danych".
+const isBranch = (field: string, condition: unknown): condition is Where[] =>
+  (field === 'or' || field === 'and') && Array.isArray(condition)
+
+const FIELDS_ONLY_THE_ORIGINAL_CARRIES = [
+  'sourceRegister',
+  'targetRegister',
+  'investment',
+  'worker',
+  'expenseCategory',
+  'otherCategory',
+] as const
+
+/**
+ * Re-aim the audit list's scope at the transaction being cancelled.
+ *
+ * „Tryb anulowań" lists CANCELLATION rows and pairs each with its original. The narrowing, though,
+ * is always about the original — „anulowania w tej kasie" means transactions of that kasa that were
+ * cancelled, and the audit row itself belongs to no kasa at all. Payload resolves the dotted path
+ * through the self-relation, so this stays one query rather than a prefetch of ids.
+ *
+ * The list only. The sum tile above it goes through where-to-sql, which knows columns of
+ * `transactions` and throws on anything else — and a CANCELLATION copies its original's amount, so
+ * the tile is summing the same money either way.
+ *
+ * Fields the audit row DOES carry stay put and mean what they say: `date` is when it was cancelled,
+ * `createdBy` is who cancelled it.
+ */
+export function scopeAuditThroughOriginal(where: Where): Where {
+  return Object.fromEntries(
+    Object.entries(where).map(([field, condition]) => {
+      if (isBranch(field, condition)) return [field, condition.map(scopeAuditThroughOriginal)]
+      return (FIELDS_ONLY_THE_ORIGINAL_CARRIES as readonly string[]).includes(field)
+        ? [`cancelledTransaction.${field}`, condition]
+        : [field, condition]
+    }),
+  )
+}
+
+/**
+ * Whether a scope narrows by something only the ORIGINAL carries — i.e. whether the sum tile can
+ * still be trusted in „Tryb anulowań". The tile goes through where-to-sql, which throws on a dotted
+ * path, so it cannot be re-aimed the way the list is — the caller drops it rather than render a
+ * confident 0,00 zł beside a populated list.
+ */
+export function scopeNarrowsByOriginalOnlyField(where: Where): boolean {
+  return Object.entries(where).some(([field, condition]) => {
+    if (isBranch(field, condition)) return condition.some(scopeNarrowsByOriginalOnlyField)
+    return (FIELDS_ONLY_THE_ORIGINAL_CARRIES as readonly string[]).includes(field)
+  })
+}
+
+/**
+ * Drop the `cancelled` condition for stats queries, which hardcode `cancelled IS NOT TRUE` in SQL.
+ *
+ * The `type` condition must survive: a CANCELLATION row copies its original's amount and carries
+ * `cancelled = false`, so the default `not_in: ['CANCELLATION']` is the only thing keeping it out
+ * of the sum (EX-574).
+ */
 export function stripCancelledFilters(where: Where): Where {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { cancelled, type, ...rest } = where
-  const result: Where = { ...rest }
-  // Keep type filter only if it's a user-selected inclusion filter, not the default not_in exclusion
-  if (type && typeof type === 'object' && 'in' in type) {
-    result.type = type
-  }
-  return result
+  const { cancelled, ...rest } = where
+  return rest
 }

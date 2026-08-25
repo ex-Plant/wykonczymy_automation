@@ -9,9 +9,15 @@ import type {
 } from '@/types/investment-financials'
 import { buildSqlConditions, isNoResultsSentinel } from '@/lib/db/where-to-sql'
 import { getDb } from '@/lib/db/get-db'
+import { DEPOSIT_TYPES } from '@/lib/constants/transfers'
+import { SETTLEMENT_MODE_DEFAULT, type SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 
-// Re-exported so the existing importers of the derive functions keep resolving here.
-export { deriveCategoryBreakdowns, deriveFinancials } from '@/lib/db/investment-financials'
+// Parameterized `(type, …)` IN-list derived from the single DEPOSIT_TYPES source, so the
+// deposit-vs-expense split isn't re-inlined as a literal in every balance query.
+const depositTypesInList = sql`(${sql.join(
+  DEPOSIT_TYPES.map((type) => sql`${type}`),
+  sql.raw(', '),
+)})`
 
 /**
  * SUM balance for a cash register using SQL aggregation.
@@ -30,7 +36,7 @@ export const sumRegisterBalance = async (
     SELECT
       COALESCE(SUM(
         CASE
-          WHEN type IN ('INVESTOR_DEPOSIT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT')
+          WHEN type IN ${depositTypesInList}
             THEN amount
           ELSE -amount
         END
@@ -63,7 +69,7 @@ export const sumAllRegisterBalances = async (payload: Payload): Promise<Map<numb
       SELECT source_register_id AS register_id,
         COALESCE(SUM(
           CASE
-            WHEN type IN ('INVESTOR_DEPOSIT', 'COMPANY_FUNDING', 'OTHER_DEPOSIT')
+            WHEN type IN ${depositTypesInList}
               THEN amount
             ELSE -amount
           END
@@ -133,12 +139,13 @@ export const sumAllInvestmentFinancials = async (
   const elapsed = perfStart()
   const db = await getDb(payload)
 
-  const [totalsResult, categoryResult] = await Promise.all([
+  const [totalsResult, categoryResult, investmentsResult] = await Promise.all([
     db.execute(sql`
       SELECT investment_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE investment_id IS NOT NULL
         AND cancelled IS NOT TRUE
@@ -148,14 +155,29 @@ export const sumAllInvestmentFinancials = async (
       SELECT investment_id, expense_category_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE investment_id IS NOT NULL
         AND cancelled IS NOT TRUE
         AND expense_category_id IS NOT NULL
       GROUP BY investment_id, expense_category_id, type, (settled IS TRUE)
     `),
+    // The materiały netto concession is per investment, so the listing's Marża can only be as
+    // correct as the detail page's if the rate and its settlement-mode gate travel with the sums.
+    db.execute(sql`
+      SELECT id, materials_net_rate::float8, settlement_mode::text
+      FROM investments
+    `),
   ])
+
+  const pricingByInvestment = new Map<number, { rate: number | null; mode: SettlementModeT }>()
+  for (const row of investmentsResult.rows) {
+    pricingByInvestment.set(Number(row.id), {
+      rate: row.materials_net_rate == null ? null : Number(row.materials_net_rate),
+      mode: (row.settlement_mode as SettlementModeT) ?? SETTLEMENT_MODE_DEFAULT,
+    })
+  }
 
   // Group the raw (type, settled) sums per investment.
   const rowsByInvestment = new Map<number, TypeSettledTotalT[]>()
@@ -170,6 +192,7 @@ export const sumAllInvestmentFinancials = async (
       type: row.type as string,
       settled: row.settled === true,
       total: Number(row.total),
+      netTotal: Number(row.net_total ?? 0),
     })
   }
 
@@ -187,6 +210,7 @@ export const sumAllInvestmentFinancials = async (
       type: row.type as string,
       settled: row.settled === true,
       total: Number(row.total),
+      netTotal: Number(row.net_total ?? 0),
     })
   }
 
@@ -195,10 +219,21 @@ export const sumAllInvestmentFinancials = async (
   // computing settledCategoryCosts here keeps the two paths identical by construction.
   const map = new Map<number, InvestmentFinancialsT>()
   for (const [invId, rows] of rowsByInvestment) {
-    const { categoryCosts, settledCategoryCosts } = deriveCategoryBreakdowns(
+    const { categoryCosts, settledCategoryCosts, netCategoryCosts } = deriveCategoryBreakdowns(
       categoryRowsByInvestment.get(invId) ?? [],
     )
-    map.set(invId, deriveFinancials(rows, categoryCosts, settledCategoryCosts))
+    const pricing = pricingByInvestment.get(invId)
+    map.set(
+      invId,
+      deriveFinancials(
+        rows,
+        categoryCosts,
+        settledCategoryCosts,
+        pricing?.rate ?? null,
+        pricing?.mode ?? SETTLEMENT_MODE_DEFAULT,
+        netCategoryCosts,
+      ),
+    )
   }
   console.log(`[PERF] query.sumAllInvestmentFinancials ${elapsed()}ms (${map.size} investments)`)
   return map
@@ -222,7 +257,8 @@ export const sumCategoryByTypeSettled = async (
       SELECT expense_category_id,
         type::text AS type,
         (settled IS TRUE) AS settled,
-        COALESCE(SUM(amount), 0) AS total
+        COALESCE(SUM(amount), 0) AS total,
+        COALESCE(SUM(net_amount), 0) AS net_total
       FROM transactions
       WHERE cancelled IS NOT TRUE
         AND expense_category_id IS NOT NULL
@@ -237,6 +273,7 @@ export const sumCategoryByTypeSettled = async (
     type: row.type as string,
     settled: row.settled === true,
     total: Number(row.total),
+    netTotal: Number(row.net_total ?? 0),
   }))
 }
 
@@ -256,7 +293,8 @@ export const sumFilteredByType = async (
     SELECT
       type::text AS type,
       (settled IS TRUE) AS settled,
-      COALESCE(SUM(amount), 0) AS total
+      COALESCE(SUM(amount), 0) AS total,
+      COALESCE(SUM(net_amount), 0) AS net_total
     FROM transactions
     WHERE cancelled IS NOT TRUE
       ${conditions}
@@ -270,5 +308,6 @@ export const sumFilteredByType = async (
     type: row.type as string,
     settled: row.settled === true,
     total: Number(row.total),
+    netTotal: Number(row.net_total ?? 0),
   }))
 }

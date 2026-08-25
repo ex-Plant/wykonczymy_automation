@@ -1,13 +1,12 @@
 'use client'
 
-import { useTransition } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Banknote, CreditCard, FolderOpen, Landmark, Receipt, Tags, User } from 'lucide-react'
-import { FilterGrid } from '@/components/ui/filter-grid'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
-import { FilterMultiSelect } from '@/components/transfers/filter-multi-select'
-import { ClearButton } from '@/components/transfers/clear-button'
-import { DateFilters } from '@/components/transfers/date-filters'
+import { FilterGrid } from '@/components/filters/filter-grid'
+import { SearchFilterInput } from '@/components/filters/search-filter-input'
+import { FilterMultiSelect } from '@/components/filters/filter-multi-select'
+import { ClearButton } from '@/components/filters/clear-button'
+import { DateFilters } from '@/components/filters/date-filters'
 import { StatButton } from '@/components/ui/stat-button'
 import { formatPLN } from '@/lib/utils/format-currency'
 import {
@@ -16,7 +15,7 @@ import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
 } from '@/lib/constants/transfers'
-import { buildUrlWithParams } from '@/lib/utils/build-url-with-params'
+import { useUrlFilterParams } from '@/hooks/use-url-filter-params'
 import { cn } from '@/lib/utils/cn'
 import { Loader } from '@/components/ui/loader/loader'
 import type { ReferenceItemT } from '@/types/reference-data'
@@ -46,6 +45,8 @@ type TransferFiltersPropsT = {
   baseUrl: string
   className?: string
   totalFilteredAmount?: number
+  /** Server-derived (see TransferTableServer) — the list shows cancelled rows, the sum never does. */
+  listsCancelled?: boolean
 }
 
 export function TransferFilters({
@@ -59,26 +60,11 @@ export function TransferFilters({
   baseUrl,
   className,
   totalFilteredAmount,
+  listsCancelled,
 }: TransferFiltersPropsT) {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  // Transition keeps UI responsive during server re-render (shows Loader instead of blocking).
   // Debounce in FilterMultiSelect batches rapid clicks to reduce how often we hit the server.
-  const [isPending, startTransition] = useTransition()
-
-  function navigate(url: string) {
-    startTransition(() => {
-      router.replace(url, { scroll: false })
-    })
-  }
-
-  function updateParam(key: string, value: string) {
-    navigate(buildUrlWithParams(baseUrl, searchParams.toString(), { [key]: value, page: '' }))
-  }
-
-  function updateMultipleParams(overrides: Record<string, string>) {
-    navigate(buildUrlWithParams(baseUrl, searchParams.toString(), { ...overrides, page: '' }))
-  }
+  const { updateParam, updateMultipleParams, isPending } = useUrlFilterParams(baseUrl)
 
   const getMultiParam = (key: string) => (searchParams.get(key) ?? '').split(',').filter(Boolean)
 
@@ -197,7 +183,7 @@ export function TransferFilters({
             onChange={(v) => updateParam('amount', v)}
             placeholder="Kwota"
             inputMode="decimal"
-            inputClassName="w-36 lg:w-36"
+            className="w-36"
             debounceMs={DEBOUNCE_MS}
           />
 
@@ -206,7 +192,7 @@ export function TransferFilters({
             onChange={(v) => updateParam('id', stripNonDigits(v))}
             placeholder="ID"
             inputMode="numeric"
-            inputClassName="w-24 lg:w-28"
+            className="w-24 lg:w-28"
             debounceMs={DEBOUNCE_MS}
           />
 
@@ -215,13 +201,18 @@ export function TransferFilters({
           </ClearButton>
         </FilterGrid>
       )}
-      <DateFilters updateParam={updateParam} updateMultipleParams={updateMultipleParams} />
+      <DateFilters baseUrl={baseUrl} />
 
       {totalFilteredAmount !== undefined && hasAnyFilter && (
         <StatButton
           label="Suma wybranych transakcji"
           value={formatPLN(totalFilteredAmount)}
           className="border-chart-blue"
+          tooltip={
+            listsCancelled
+              ? 'Suma pomija transakcje anulowane, ale liczy anulowania, które je cofają — dlatego nie zgadza się z listą poniżej.'
+              : undefined
+          }
         />
       )}
     </div>

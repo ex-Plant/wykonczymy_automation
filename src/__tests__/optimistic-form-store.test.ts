@@ -10,8 +10,10 @@ vi.mock('@/lib/utils/toast', () => ({
 }))
 
 const { useOptimisticFormStore } = await import('@/stores/optimistic-form-store')
+const { usePendingStore } = await import('@/stores/pending-store')
 
 const store = () => useOptimisticFormStore.getState()
+const pending = () => usePendingStore.getState().pending
 
 beforeEach(() => {
   mockToastMessage.mockReset()
@@ -22,6 +24,7 @@ beforeEach(() => {
     keepOpen: false,
     showKeepOpen: false,
   })
+  usePendingStore.setState({ pending: new Map() })
 })
 
 // ── Dialog state ─────────────────────────────────────────────────────────
@@ -68,7 +71,7 @@ describe('dialog state', () => {
 // ── submitOptimistically ─────────────────────────────────────────────────
 
 describe('submitOptimistically', () => {
-  const files = new Map<number, File>()
+  const files = new Map<number, File[]>()
   const onSuccess = vi.fn()
 
   beforeEach(() => {
@@ -128,9 +131,10 @@ describe('submitOptimistically', () => {
     expect(mockToastMessage).toHaveBeenCalledWith('Niewystarczające saldo', 'error', 5000)
   })
 
-  it('preserves invoice files in submission for recovery', async () => {
-    const file = new File(['data'], 'invoice.pdf', { type: 'application/pdf' })
-    const filesWithInvoice = new Map([[0, file]])
+  it('preserves every page of a row’s invoice in submission for recovery', async () => {
+    const page1 = new File(['data'], 'invoice.pdf', { type: 'application/pdf' })
+    const page2 = new File(['more'], 'invoice-2.pdf', { type: 'application/pdf' })
+    const filesWithInvoice = new Map([[0, [page1, page2]]])
 
     const action = vi.fn(() => Promise.resolve({ success: false, error: 'fail' } as ActionResultT))
 
@@ -140,7 +144,83 @@ describe('submitOptimistically', () => {
       expect(store().submission?.status).toBe('failed')
     })
 
-    expect(store().submission?.invoiceFiles.get(0)).toBe(file)
+    expect(store().submission?.invoiceFiles.get(0)).toEqual([page1, page2])
+  })
+})
+
+// ── The global pill ──────────────────────────────────────────────────────
+
+// The indicator reads only the pending store, so an optimistic submit that fails to release its key
+// leaves a pill on screen with no dialog to explain it — every settle path must clear it.
+describe('submitOptimistically raises the global pill', () => {
+  const files = new Map<number, File[]>()
+
+  it('holds the key, keyed on formId, while the action is in flight', () => {
+    store().submitOptimistically(
+      'transfer',
+      files,
+      vi.fn(() => new Promise<ActionResultT>(() => {})),
+      'OK',
+      vi.fn(),
+    )
+
+    expect(pending().get('transfer')).toBe('Zapisywanie…')
+  })
+
+  it('releases the key on success', async () => {
+    store().submitOptimistically(
+      'transfer',
+      files,
+      vi.fn(() => Promise.resolve({ success: true } as ActionResultT)),
+      'OK',
+      vi.fn(),
+    )
+
+    await vi.waitFor(() => expect(pending().size).toBe(0))
+  })
+
+  it('releases the key when the action returns a failure', async () => {
+    store().submitOptimistically(
+      'transfer',
+      files,
+      vi.fn(() => Promise.resolve({ success: false, error: 'nie' } as ActionResultT)),
+      'OK',
+      vi.fn(),
+    )
+
+    await vi.waitFor(() => expect(pending().size).toBe(0))
+  })
+
+  it('releases the key when the action rejects', async () => {
+    store().submitOptimistically(
+      'transfer',
+      files,
+      vi.fn(() => Promise.reject(new Error('boom'))),
+      'OK',
+      vi.fn(),
+    )
+
+    await vi.waitFor(() => expect(pending().size).toBe(0))
+  })
+
+  it('a second save in flight keeps its own key alive when the first settles', async () => {
+    store().submitOptimistically(
+      'transfer',
+      files,
+      vi.fn(() => Promise.resolve({ success: true } as ActionResultT)),
+      'OK',
+      vi.fn(),
+    )
+    store().submitOptimistically(
+      'deposit',
+      files,
+      vi.fn(() => new Promise<ActionResultT>(() => {})),
+      'OK',
+      vi.fn(),
+    )
+
+    await vi.waitFor(() => expect(pending().has('transfer')).toBe(false))
+    expect(pending().get('deposit')).toBe('Zapisywanie…')
   })
 })
 

@@ -2,16 +2,15 @@ import { redirect, notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { ADMIN_OR_OWNER_MANAGER_ROLES, ROLE_LABELS } from '@/lib/auth/roles'
 import { parsePagination } from '@/lib/utils/pagination'
-import { fetchReferenceData, fetchFilteredByType } from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchFilteredByType } from '@/lib/queries/transfer-totals'
 import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
 import { EditWorkerDialog } from '@/components/dialogs/edit-worker-dialog'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
-import { formatPLN } from '@/lib/utils/format-currency'
-import type { HeaderFieldT } from '@/types/export'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function UserDetailPage({ params, searchParams }: DynamicPagePropsT) {
@@ -50,25 +49,20 @@ export default async function UserDetailPage({ params, searchParams }: DynamicPa
     ...(registerName ? [{ label: 'Domyślna kasa', value: registerName }] : []),
   ]
 
-  const saldo = typeDistribution.find((row) => row.type === 'PAYOUT')?.total ?? 0
-
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Pracownik', value: worker.name },
-    { label: 'Wypłaty', value: formatPLN(saldo), amount: saldo },
-  ]
+  const payoutsTotal = typeDistribution.find((row) => row.type === 'PAYOUT')?.total ?? 0
 
   return (
     <PageWrapper title={worker.name} backHref="/pracownicy" backLabel="Pracownicy">
       <EditWorkerDialog worker={worker} cashRegisters={refData.cashRegisters} />
       <InfoList items={infoFields} />
-      <SaldoDisplay saldo={saldo} label="Wypłaty" />
+      <SignedMoneyDisplay amount={payoutsTotal} label="Wypłaty" />
       <TransfersSection
         config={{
           query: { where: transferWhere, page, limit },
           baseUrl: `/pracownicy/${id}`,
           excludeColumns: ['worker'],
           filters: buildFilterConfig(refData, ['users', 'expenseCategories', 'type']),
-          headerFields,
+          invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
       />

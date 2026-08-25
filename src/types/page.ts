@@ -1,4 +1,7 @@
-type SearchParamsT = Promise<Record<string, string | string[] | undefined>>
+/** A page's `searchParams` once awaited — the shape every parser downstream reads. */
+export type ResolvedSearchParamsT = Record<string, string | string[] | undefined>
+
+type SearchParamsT = Promise<ResolvedSearchParamsT>
 
 export type PagePropsT = {
   searchParams: SearchParamsT

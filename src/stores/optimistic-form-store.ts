@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import { usePendingStore } from '@/stores/pending-store'
 import { toastMessage } from '@/lib/utils/toast'
+import { logError } from '@/lib/utils/log-error'
 import type { ActionResultT } from '@/types/action'
 
 type PendingSubmissionT = {
   formId: string
-  invoiceFiles: Map<number, File>
+  invoiceFiles: Map<number, File[]>
   status: 'pending' | 'failed'
   error: string | null
 }
@@ -25,7 +27,7 @@ type OptimisticFormStoreT = {
   submission: PendingSubmissionT | null
   submitOptimistically: (
     formId: string,
-    invoiceFiles: Map<number, File>,
+    invoiceFiles: Map<number, File[]>,
     action: () => Promise<ActionResultT>,
     successMessage: string,
     onSuccess: () => void,
@@ -61,6 +63,11 @@ export const useOptimisticFormStore = create<OptimisticFormStoreT>()((set) => ({
       submission: { formId, invoiceFiles, status: 'pending', error: null },
     })
 
+    // This store owns recovery state (which dialog to reopen, which files to restore); the pill is
+    // raised through the generic pending store so the indicator has one source instead of two.
+    // Keyed on formId, so two dialogs saving at once can't clear each other's pill.
+    usePendingStore.getState().start(formId, 'Zapisywanie…')
+
     // Fire-and-forget — runs after dialog unmounts
     action()
       .then((result) => {
@@ -68,6 +75,7 @@ export const useOptimisticFormStore = create<OptimisticFormStoreT>()((set) => ({
           set({ submission: null })
           onSuccess()
           toastMessage(successMessage, 'success', 1000)
+          if (result.warning) toastMessage(result.warning, 'warning', 6000)
         } else {
           // Reopen dialog with failed state
           set((state) => ({
@@ -80,7 +88,7 @@ export const useOptimisticFormStore = create<OptimisticFormStoreT>()((set) => ({
         }
       })
       .catch((err) => {
-        console.error('[OPTIMISTIC_SUBMIT]', err)
+        logError('[OPTIMISTIC_SUBMIT]', err)
         const errorMessage = err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd'
         set((state) => ({
           openFormId: formId,
@@ -90,6 +98,9 @@ export const useOptimisticFormStore = create<OptimisticFormStoreT>()((set) => ({
         }))
         toastMessage(errorMessage, 'error', 5000)
       })
+      // finally, not a stop() per branch: a throw inside a handler (toast, onSuccess) would
+      // otherwise leave the pill up forever with no dialog on screen to explain it.
+      .finally(() => usePendingStore.getState().stop(formId))
   },
 
   clearSubmission: () => set({ submission: null }),

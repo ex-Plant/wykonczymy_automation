@@ -11,9 +11,9 @@ type PropsT = {
 // "Otwórz" link — no create/empty distinction like the legacy sheet (SheetButton) carries.
 export function OpenKosztorysV2Button({ investmentId, label = 'Otwórz kosztorys_v2' }: PropsT) {
   return (
-    <Button size="sm" variant="outline" asChild>
+    <Button size="xs" variant="outline" asChild>
       <Link href={`/inwestycje/${investmentId}/kosztorys_v2`}>
-        <Table2 className="size-4" />
+        <Table2 />
         {label}
       </Link>
     </Button>

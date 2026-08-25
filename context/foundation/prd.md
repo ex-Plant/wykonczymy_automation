@@ -92,8 +92,13 @@ automated, CI-runnable E2E replaces hand-driven MCP sessions for the financial c
 
 - A newly created investment's kosztorys lives **only in the app**, and the owner
   runs its full lifecycle there — sections, items, three price models, stage
-  progress (etapy), rooms (pokoje), totals, and print/PDF — with no Google Sheet
+  progress (etapy), totals, and the client view — with no Google Sheet
   created and no syncing involved.
+  > **Amended (2026-08-15).** Two originally-listed surfaces are cut: **pokoje**
+  > (owner, POC 2026-06-20) and **print/PDF plus every other export** (owner —
+  > EX-400 CSV, EX-666 PDF + live-formula sheet). The client-facing job they were
+  > for is done by the **client view** (S-13, token link + „Podgląd dla klienta")
+  > — live rather than a file. See roadmap → Cut & folded slices.
 - End-to-end verification of the financial core (sign in → create a transfer →
   register balance and investment figures update) runs automated and CI-runnable,
   replacing manual operator-driven sessions for that flow.
@@ -128,8 +133,8 @@ automated, CI-runnable E2E replaces hand-driven MCP sessions for the financial c
 #### Acceptance Criteria
 
 - No sheet-backed kosztorys record is created for the new investment.
-- All four parity surfaces work: etapy, pokoje, print/PDF + CSV, catalogue
-  autocomplete.
+- The parity surfaces work: etapy. (The other three originally listed here are cut —
+  pokoje, CSV export, catalogue autocomplete.)
 - Totals (row / section / grand) match hand-computed values.
 
 ### US-02: Financial core is regression-protected automatically
@@ -180,6 +185,10 @@ were challenged and resolved as "stands as written."
   > Considered: "an empty catalogue is dead weight until seeded; could grow
   > organically from typed items." Stands — the master price list is required at
   > release.
+  > **CUT (2026-07-28, owner).** The catalogue half shipped as szablony
+  > (`kosztorys_presets`, S-09); the autocomplete half never will — superseded by
+  > „Dodaj sekcję z szablonu" (EX-503), which composes from existing prace at
+  > section granularity. See roadmap → Cut & folded slices.
 - **[new] FR-007** — Owner sees per-row, per-section, and grand totals computed
   live.
   > Considered: "scale risk at 1000+ rows; server-computed totals safer." Stands —
@@ -208,12 +217,6 @@ were challenged and resolved as "stands as written."
 
 ### Modified
 
-- **[modified] FR-008** — Owner can print/PDF and CSV-export the kosztorys. _(Was:
-  print/PDF and CSV export exist for transfers only.)_ Reuses the existing export
-  infrastructure; only the kosztorys-shaped render is new.
-  > Considered: "the client-facing doc may need design beyond browser print; the CSV
-  > shape for nested data is its own decision." Stands — reuse is why this is cheap;
-  > polish later if needed.
 - **[modified] FR-009** — New investments get no Google Sheet; their kosztorys exists
   only in the app, nothing synced. _(Was: each new investment provisioned or linked
   a sheet.)_
@@ -267,8 +270,8 @@ stage, grand) are derived from that rule rather than persisted.
 
 The rule consumes the quantities the user enters (planned, measured, per-stage done)
 and the per-item price under the selected pricing view. Its output is the live
-row/section/grand totals the owner sees while editing and in the printed/exported
-document. A later change to a catalogue master price affects only items created
+row/section/grand totals the owner sees while editing and the client sees in the
+client view. A later change to a catalogue master price affects only items created
 afterwards — existing kosztorysy are immutable to it.
 
 **Existing rules unchanged:** marża = robocizna − wypłaty − rabat − strata, the
@@ -318,9 +321,9 @@ and remain open — they are load-bearing for implementation, not invented gaps.
 5. **Ordering of sections / items / stages.** Drag-to-reorder or by-creation /
    alphabetical? FR-001 and FR-002 assume reorder; confirm the interaction cost is
    accepted. — Owner: user. Ref: spec Q6.
-6. **Catalogue seeding.** FR-006 requires the catalogue at release. Hand-type from
-   scratch, parse a live sheet once to populate, or start empty and let it grow with
-   use? — Owner: user. Ref: spec Q8.
+6. ~~**Catalogue seeding.**~~ **Resolved (2026-07-09), then moot (2026-07-28):** no
+   standalone catalogue — szablony are the master price list, so building szablony is
+   seeding, and the autocomplete that would have read them is cut.
 7. **Item-to-room link.** Some items are room-scoped, some global. Does an item carry
    an optional room link in this phase, or is that deferred? — Owner: user. Ref:
    spec Q10.

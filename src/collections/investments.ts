@@ -1,12 +1,33 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { makePreventDelete } from '@/hooks/prevent-delete'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
+import {
+  SETTLEMENT_MODE_ADMIN_OPTIONS,
+  SETTLEMENT_MODE_DEFAULT,
+} from '@/lib/kosztorys/settlement-mode'
 
 const STATUS_OPTIONS = [
+  { label: { en: 'Planned', pl: 'Planowana' }, value: 'planowana' },
   { label: { en: 'Active', pl: 'Aktywna' }, value: 'active' },
   { label: { en: 'Completed', pl: 'Zakończona' }, value: 'completed' },
 ] as const
+
+// For LABOR_COST / RABAT / LOSS an orphaned transaction is terminal: they carry no source register
+// either, so a row stripped of `investment_id` is reachable from no investment and no kasa at all.
+// Cancelled rows count — they are the audit trail, and orphaning them erases it just as thoroughly.
+const preventDeleteWithTransactions = makePreventDelete({
+  probes: [
+    {
+      collection: 'transactions',
+      where: (id) => ({ investment: { equals: id } }),
+      label: 'transakcje',
+    },
+  ],
+  message: (blockers) =>
+    `Nie można usunąć inwestycji — istnieją powiązane dane (${blockers.join(', ')}). Najpierw usuń lub przenieś transakcje.`,
+})
 
 export const Investments: CollectionConfig = {
   slug: 'investments',
@@ -20,6 +41,7 @@ export const Investments: CollectionConfig = {
     group: { en: 'Finance', pl: 'Finanse' },
   },
   hooks: {
+    beforeDelete: [preventDeleteWithTransactions],
     afterChange: [makeRevalidateAfterChange('investments')],
     afterDelete: [makeRevalidateAfterDelete('investments')],
   },
@@ -74,8 +96,10 @@ export const Investments: CollectionConfig = {
       label: { en: 'Status', pl: 'Status' },
       options: [...STATUS_OPTIONS],
     },
-    // Global (per-investment) subcontractor markup coefficients — the defaults for the sheet;
-    // a section may override them, and an item may override them. Columns created in a migration with defaults.
+    // Global (per-investment) subcontractor markup coefficients — the defaults for the sheet, which
+    // a single pozycja may override. „Bez narzędzi" is not an independent number: the sheet derives
+    // it as „z narzędziami" less 15%, which is why DEFAULT_COEFFS owns both and the column default
+    // had to be corrected to match (20260825_0).
     {
       name: 'wToolsCoeff',
       type: 'number',
@@ -101,6 +125,41 @@ export const Investments: CollectionConfig = {
       type: 'number',
       defaultValue: DEFAULT_VAT,
       label: { en: 'VAT rate (fraction)', pl: 'Stawka VAT (ułamek)' },
+    },
+    // Edited from the kosztorys editor's Podsumowanie panel, not typically here. `required` pairs
+    // with the column's NOT NULL: without it Payload lets the admin clear the select, and the write
+    // surfaces as a raw constraint violation instead of a field error.
+    {
+      name: 'settlementMode',
+      type: 'select',
+      required: true,
+      defaultValue: SETTLEMENT_MODE_DEFAULT,
+      label: { en: 'Settlement mode', pl: 'Sposób rozliczenia' },
+      options: SETTLEMENT_MODE_ADMIN_OPTIONS,
+    },
+    // Materiały billed to the investor at netto instead of the brutto receipt, stored as a fraction
+    // (0.23 = 23%) like `vatRate` above. Deliberately neither `required` nor defaulted: null means
+    // "no concession" and must stay distinguishable from a 0% one, since that is what leaves every
+    // existing investment's figures untouched. Edited from the Podsumowanie panel, not typically here.
+    {
+      name: 'materialsNetRate',
+      type: 'number',
+      label: { en: 'Materials net rate (fraction)', pl: 'Stawka netto wydatków (ułamek)' },
+    },
+    // Global kosztorys discount: amount-only ('amount' | null). Overrides per-item discounts and is
+    // subtracted once from the executed total. `type` null = no global discount (per-item discounts
+    // apply). A percent global rabat is no longer stored — it's stamped into each per-item rabat.
+    // Edited from the kosztorys editor settings bar, not typically here.
+    {
+      name: 'globalDiscountType',
+      type: 'text',
+      label: { en: 'Global discount type', pl: 'Rabat globalny — typ' },
+    },
+    {
+      name: 'globalDiscountValue',
+      type: 'number',
+      defaultValue: 0,
+      label: { en: 'Global discount value', pl: 'Rabat globalny — wartość' },
     },
   ],
 }

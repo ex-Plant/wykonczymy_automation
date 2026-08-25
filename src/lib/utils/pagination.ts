@@ -1,3 +1,5 @@
+import type { ResolvedSearchParamsT } from '@/types/page'
+
 export type PaginationMetaT = {
   currentPage: number
   totalPages: number
@@ -10,12 +12,10 @@ export type PaginationParamsT = {
   limit: number
 }
 
-type SearchParamsT = Record<string, string | string[] | undefined>
-
 export const DEFAULT_LIMIT = 100
 export const ALLOWED_LIMITS: number[] = [20, 50, 100]
 
-export function parsePagination(searchParams: SearchParamsT): PaginationParamsT {
+export function parsePagination(searchParams: ResolvedSearchParamsT): PaginationParamsT {
   const pageParam = typeof searchParams.page === 'string' ? Number(searchParams.page) : 1
   const page = pageParam > 0 ? pageParam : 1
 

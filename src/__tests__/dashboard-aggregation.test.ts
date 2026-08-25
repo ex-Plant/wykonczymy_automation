@@ -36,6 +36,9 @@ const mockRefData: ReferenceDataBaseT = {
       notes: '',
       review: '',
       hasSheet: false,
+      materialsNetRate: null,
+      settlementMode: 'NET' as const,
+      vatRate: 0.08,
     },
     {
       id: 20,
@@ -49,6 +52,9 @@ const mockRefData: ReferenceDataBaseT = {
       notes: '',
       review: '',
       hasSheet: false,
+      materialsNetRate: null,
+      settlementMode: 'NET' as const,
+      vatRate: 0.08,
     },
   ],
   workers: [
@@ -63,6 +69,9 @@ const mockRefData: ReferenceDataBaseT = {
 
 vi.mock('@/lib/queries/reference-data', () => ({
   fetchReferenceData: vi.fn().mockResolvedValue(mockRefData),
+}))
+
+vi.mock('@/lib/queries/balances', () => ({
   fetchRegisterBalances: vi
     .fn()
     .mockResolvedValue({ '1': 10000, '2': 5000, '3': 3000, '5': 200, '6': -50 }),

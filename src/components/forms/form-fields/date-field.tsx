@@ -1,17 +1,14 @@
-import type { AppFieldComponentsT } from '@/components/forms/types/form-types'
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 
 type DateFieldPropsT = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  form: any
+  form: FormWithFieldT<'date'>
   fieldClassName?: string
 }
 
 export function DateField({ form, fieldClassName }: DateFieldPropsT) {
   return (
     <form.AppField name="date">
-      {(field: AppFieldComponentsT) => (
-        <field.Input label="Data" type="date" showError fieldClassName={fieldClassName} />
-      )}
+      {(field) => <field.DatePicker label="Data" showError fieldClassName={fieldClassName} />}
     </form.AppField>
   )
 }

@@ -1,35 +1,20 @@
 import { createFormStore } from '@/stores/create-form-store'
 import type { InvestmentFormValuesT } from '@/components/forms/investment-form/investment-schema'
 import type { WorkerFormValuesT } from '@/components/forms/worker-form/worker-schema'
+import type { BulkExpenseFormValuesT } from '@/components/forms/expense-form/bulk-expense-form'
+import type { VehicleFormValuesT } from '@/components/forms/vehicle-form/vehicle-schema'
+import type { InspectionFormValuesT } from '@/components/forms/inspection-form/inspection-schema'
 
 type DepositFormValuesT = {
   description: string
   amount: string
+  amountGross: string
   date: string
   type: string
   paymentMethod: string
+  vatPlane?: string
   sourceRegister: string
   investment?: string
-}
-
-type LineItemT = {
-  description: string
-  amount: string
-  invoiceNote: string
-  category: string
-  expenseCategory: string
-}
-
-type ExpenseFormValuesT = {
-  date: string
-  type: string
-  paymentMethod: string
-  sourceRegister: string
-  targetRegister: string
-  investment: string
-  worker: string
-  settled: boolean
-  lineItems: LineItemT[]
 }
 
 type InternalTransferFormValuesT = {
@@ -42,8 +27,10 @@ type InternalTransferFormValuesT = {
 }
 
 export const useDepositFormStore = createFormStore<DepositFormValuesT>('deposit-form')
-export const useExpenseFormStore = createFormStore<ExpenseFormValuesT>('expense-form')
+export const useExpenseFormStore = createFormStore<BulkExpenseFormValuesT>('expense-form')
 export const useInternalTransferFormStore =
   createFormStore<InternalTransferFormValuesT>('internal-transfer-form')
 export const useInvestmentFormStore = createFormStore<InvestmentFormValuesT>('investment-form')
 export const useWorkerFormStore = createFormStore<WorkerFormValuesT>('worker-form')
+export const useVehicleFormStore = createFormStore<VehicleFormValuesT>('vehicle-form')
+export const useInspectionFormStore = createFormStore<InspectionFormValuesT>('inspection-form')

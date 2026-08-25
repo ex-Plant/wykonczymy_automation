@@ -1,81 +1,27 @@
 import { redirect } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { ADMIN_OR_OWNER_ROLES } from '@/lib/auth/roles'
-import { parsePagination } from '@/lib/utils/pagination'
-import {
-  fetchReferenceData,
-  fetchFilteredByType,
-  fetchCategoryBreakdowns,
-} from '@/lib/queries/reference-data'
-import { deriveFinancials } from '@/lib/db/sum-transfers'
-import { calculateMargin } from '@/lib/db/calculate-margin'
-import { buildTransferFilters, stripCancelledFilters } from '@/lib/queries/transfer-filters'
-import { buildFinancialFields, buildSettledFields } from '@/lib/db/map-category-costs'
-import { perfStart } from '@/lib/perf'
-import { buildFilterConfig } from '@/lib/utils/build-filter-config'
-import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
-import { FinancialStats } from '@/components/investments/financial-stats'
-import type { HeaderFieldT } from '@/types/export'
-import type { PagePropsT } from '@/types/page'
+import { EmptyState } from '@/components/ui/empty-state'
 
-export default async function TransactionsReportPage({ searchParams }: PagePropsT) {
+/**
+ * Wygaszone do czasu EX-598. Raport sumował transakcje wielu inwestycji naraz, a obniżka za
+ * rozliczanie wydatków po kwocie netto jest ustawiana per inwestycja — marża i bilans nigdy nie
+ * zgadzały się z sumą kart inwestycji. Ostrzeżenie o tym stało w bannerze, ale liczby i tak były
+ * czytane; strona bez wejścia w menu i bez figur nie kłamie.
+ *
+ * Poprzednia wersja (staty + tabela transakcji) siedzi w historii gita — EX-598 przywraca ją razem
+ * z policzoną obniżką, zamiast pisać ją od zera.
+ */
+export default async function TransactionsReportPage() {
   const session = await requireAuth(ADMIN_OR_OWNER_ROLES)
   if (!session.success) redirect('/zaloguj')
-  const { user } = session
-
-  const step = perfStart()
-
-  const sp = await searchParams
-  const { page, limit } = parsePagination(sp)
-
-  const urlFilters = buildTransferFilters(sp, { id: user.id })
-
-  // Stats ignore cancelled toggle — SQL already excludes cancelled via hardcoded WHERE clause
-  const statsWhere = stripCancelledFilters(urlFilters)
-
-  const [refData, typeDistribution, breakdowns] = await Promise.all([
-    fetchReferenceData(),
-    fetchFilteredByType(statsWhere),
-    fetchCategoryBreakdowns(statsWhere),
-  ])
-  console.log(`[PERF] raporty data fetch ${step()}ms`)
-
-  const financials = deriveFinancials(
-    typeDistribution,
-    breakdowns.categoryCosts,
-    breakdowns.settledCategoryCosts,
-  )
-
-  const financialFields = buildFinancialFields(financials, refData.expenseCategories)
-  const settledFields = buildSettledFields(
-    financials.settledCategoryCosts,
-    refData.expenseCategories,
-  )
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Transakcje', value: 'Raport' },
-    ...financialFields,
-  ]
 
   return (
     <PageWrapper title="Raporty">
-      <FinancialStats
-        fields={financialFields}
-        margin={calculateMargin(financials)}
-        totalPayouts={financials.totalPayouts}
-        totalLoss={financials.totalLoss}
-        settledFields={settledFields}
-      />
-
-      <TransfersSection
-        config={{
-          query: { where: urlFilters, page, limit },
-          baseUrl: '/raporty',
-          filters: buildFilterConfig(refData),
-          headerFields,
-          totalPayouts: financials.totalPayouts,
-          cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
-        }}
+      <EmptyState
+        title="W budowie"
+        description="Raport jest wyłączony — marża i bilans nie uwzględniały obniżek za rozliczanie wydatków po kwocie netto, więc nie zgadzały się z kartami inwestycji. Wróci, gdy będą liczone poprawnie."
       />
     </PageWrapper>
   )

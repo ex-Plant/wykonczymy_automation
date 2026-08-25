@@ -2,60 +2,47 @@
 
 import { useCallback, useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
-import { ColumnToggle } from '@/components/ui/column-toggle'
-import { ActiveFilterButton } from '@/components/ui/active-filter-button'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
-import { getInvestmentColumns, type InvestmentRowT } from '@/components/tables/investments'
-import type { ExpenseCategoryRefT } from '@/types/reference-data'
-import { useActiveFilter } from '@/hooks/use-active-filter'
+import { ColumnToggle } from '@/components/filters/column-toggle'
+import { StatusFilter } from '@/components/investments/status-filter'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
+import { getInvestmentColumns, V2_COLUMN_IDS } from '@/components/tables/investments'
+import { Checkbox } from '@/components/ui/checkbox'
+import type { InvestmentRowT } from '@/types/table-rows'
+import { useStatusFilter } from '@/hooks/use-status-filter'
 import { useSearchFilter } from '@/hooks/use-search-filter'
-import { useOptimisticToggle } from '@/hooks/use-optimistic-toggle'
-import { toggleInvestmentStatus } from '@/lib/actions/toggle-active'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { AddInvestmentDialog } from '@/components/dialogs/add-investment-dialog'
 import type { PresetMetaT } from '@/lib/db/presets'
 
-const isActive = (row: InvestmentRowT) => row.status === 'active'
-const getStatusUpdate = (newActive: boolean) =>
-  ({ status: newActive ? 'active' : 'completed' }) as Partial<InvestmentRowT>
+const getStatus = (row: InvestmentRowT) => row.status
 
 type InvestmentDataTablePropsT = {
   data: InvestmentRowT[]
-  expenseCategories: ExpenseCategoryRefT[]
   presets: PresetMetaT[]
 }
 
-export function InvestmentDataTable({
-  data,
-  expenseCategories,
-  presets,
-}: InvestmentDataTablePropsT) {
+export function InvestmentDataTable({ data, presets }: InvestmentDataTablePropsT) {
   const { role: userRole } = useCurrentUser()
-  const { optimisticData, handleToggle } = useOptimisticToggle(
-    data,
-    getStatusUpdate,
-    toggleInvestmentStatus,
-  )
 
   const {
-    filteredData: activeFiltered,
-    showOnlyActive,
-    setShowOnlyActive,
-  } = useActiveFilter(optimisticData, isActive)
+    filteredData: statusFiltered,
+    selectedStatuses,
+    toggleStatus,
+  } = useStatusFilter(data, getStatus)
 
   const getSearchableText = useCallback(
     (row: InvestmentRowT) => `${row.name} ${row.address} ${row.contactPerson}`,
     [],
   )
   const { filteredData, searchTerm, setSearchTerm } = useSearchFilter(
-    activeFiltered,
+    statusFiltered,
     getSearchableText,
   )
 
-  const columns = useMemo(
-    () => getInvestmentColumns({ onToggle: handleToggle, userRole, expenseCategories }),
-    [handleToggle, userRole, expenseCategories],
-  )
+  const columns = useMemo(() => getInvestmentColumns({ userRole }), [userRole])
 
   return (
     <DataTable
@@ -64,19 +51,42 @@ export function InvestmentDataTable({
       storageKey="investments"
       getRowHref={(row) => `/inwestycje/${row.id}`}
       getRowClassName={(row) => (row.status === 'completed' ? 'opacity-50' : '')}
-      toolbar={(table, cv) => (
-        <>
-          <SearchFilterInput value={searchTerm} onChange={setSearchTerm} placeholder="Szukaj..." />
-          <ActiveFilterButton
-            isActive={showOnlyActive}
-            onChange={setShowOnlyActive}
-            activeLabel="Aktywne"
-            allLabel="Wszystkie"
-          />
-          <AddInvestmentDialog presets={presets} />
-          <ColumnToggle table={table} columnVisibility={cv} />
-        </>
-      )}
+      toolbar={(table, cv) => {
+        // Ticked unless the picker (or a previous untick) has switched one off — absent from the
+        // stored state means visible, which is what „domyślnie zaznaczony" has to mean here.
+        const v2Shown = V2_COLUMN_IDS.every((id) => cv[id] !== false)
+        return (
+          <>
+            <SearchFilterInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Szukaj..."
+              className={SEARCH_FILTER_TOOLBAR_WIDTH}
+            />
+            <StatusFilter selectedStatuses={selectedStatuses} onToggle={toggleStatus} />
+            <AddInvestmentDialog presets={presets} />
+            {/* One switch for the whole kosztorys-sourced half, beside the per-column picker rather
+              than inside it: reading v1 alone means hiding five columns at once, and doing that
+              five ticks at a time is the gesture this replaces. Unticking writes the same
+              visibility state the picker does, so the two never disagree about what is on screen. */}
+            <div className="ml-auto flex items-center gap-2">
+              <label className="flex w-fit cursor-pointer items-center gap-2 text-sm whitespace-nowrap">
+                <Checkbox
+                  checked={v2Shown}
+                  onCheckedChange={(state) =>
+                    table.setColumnVisibility((prev) => ({
+                      ...prev,
+                      ...Object.fromEntries(V2_COLUMN_IDS.map((id) => [id, state === true])),
+                    }))
+                  }
+                />
+                Pokaż kolumny v2
+              </label>
+              <ColumnToggle table={table} columnVisibility={cv} />
+            </div>
+          </>
+        )
+      }}
     />
   )
 }

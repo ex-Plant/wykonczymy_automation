@@ -3,10 +3,13 @@
 import { useMemo } from 'react'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { ActiveFilterButton } from '@/components/ui/active-filter-button'
-import { FilterMultiSelect } from '@/components/transfers/filter-multi-select'
+import { FilterMultiSelect } from '@/components/filters/filter-multi-select'
 import { Tags, User } from 'lucide-react'
-import { ColumnToggle } from '@/components/ui/column-toggle'
-import { SearchFilterInput } from '@/components/ui/search-filter-input'
+import { ColumnToggle } from '@/components/filters/column-toggle'
+import {
+  SEARCH_FILTER_TOOLBAR_WIDTH,
+  SearchFilterInput,
+} from '@/components/filters/search-filter-input'
 import { getCashRegisterColumns, REGISTER_TYPE_LABELS } from '@/components/tables/cash-registers'
 import { RegisterBalanceChart } from '@/components/dashboard/register-balance-chart'
 import { useActiveFilter } from '@/hooks/use-active-filter'
@@ -14,7 +17,7 @@ import { useClientMultiFilter } from '@/hooks/use-client-multi-filter'
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import { useOptimisticToggle } from '@/hooks/use-optimistic-toggle'
 import { toggleCashRegisterActive } from '@/lib/actions/toggle-active'
-import type { CashRegisterRowT } from '@/components/tables/cash-registers'
+import type { CashRegisterRowT } from '@/types/table-rows'
 import type { CashRegisterTypeT } from '@/types/reference-data'
 
 const isCashRegisterActive = (row: CashRegisterRowT) => row.active
@@ -85,6 +88,7 @@ export function CashRegistersTable({ data, className }: CashRegistersTablePropsT
               value={searchTerm}
               onChange={setSearchTerm}
               placeholder="Szukaj..."
+              className={SEARCH_FILTER_TOOLBAR_WIDTH}
             />
             <FilterMultiSelect
               label="Typ"

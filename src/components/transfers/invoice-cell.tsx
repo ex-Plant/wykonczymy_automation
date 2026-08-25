@@ -1,66 +1,64 @@
 'use client'
 
-import { useState } from 'react'
-import dynamic from 'next/dynamic'
-import { FileText, Plus } from 'lucide-react'
+import { useRef } from 'react'
+import { Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { InvoicePreviewDialog } from '@/components/dialogs/invoice-preview-dialog'
-import { removeTransferInvoiceAction } from '@/lib/actions/transfers'
-import { toastMessage } from '@/lib/utils/toast'
-
-const InvoiceUploadDialog = dynamic(() =>
-  import('@/components/dialogs/invoice-upload-dialog').then((m) => ({
-    default: m.InvoiceUploadDialog,
-  })),
-)
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { InvoicePreviewButton } from '@/components/dialogs/invoice-preview-button'
+import { useInvoiceRemoval } from '@/hooks/use-invoice-removal'
+import { useInvoiceUpload } from '@/hooks/use-invoice-upload'
+import type { InvoiceFileT } from '@/types/transfers'
 
 type InvoiceCellPropsT = {
   transactionId: number
-  url: string | null
-  filename: string | null
-  mimeType: string | null
+  invoices: InvoiceFileT[]
 }
 
-export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceCellPropsT) {
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [uploadOpen, setUploadOpen] = useState(false)
-  const [removed, setRemoved] = useState(false)
+export function InvoiceCell({ transactionId, invoices }: InvoiceCellPropsT) {
+  const pickerRef = useRef<HTMLInputElement>(null)
+  const { isUploading, uploadFiles } = useInvoiceUpload(transactionId)
+  const { visibleInvoices, handleRemove, handleRemoveAll, removalConfirm } = useInvoiceRemoval(
+    transactionId,
+    invoices,
+  )
 
-  const hasInvoice = !!url && !removed
-
-  function handleReplace() {
-    setPreviewOpen(false)
-    setUploadOpen(true)
-  }
-
-  async function handleRemove() {
-    if (!confirm('Czy na pewno chcesz usunąć fakturę?')) return
-    const result = await removeTransferInvoiceAction(transactionId)
-    if (result.success) {
-      setPreviewOpen(false)
-      setRemoved(true)
-    } else {
-      toastMessage(result.error ?? 'Nie udało się usunąć faktury', 'error')
-    }
+  function handlePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = [...(e.target.files ?? [])]
+    // Clear the control now that the files are captured: attaching the same photo again after a
+    // removal is an ordinary move, and with the value still set the browser fires no change event.
+    e.target.value = ''
+    void uploadFiles(picked)
   }
 
   return (
     <>
-      {hasInvoice ? (
+      {isUploading ? (
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setPreviewOpen(true)}
+          disabled
           className="text-muted-foreground"
-          aria-label={`Podgląd faktury: ${filename ?? 'faktura'}`}
+          aria-label="Przesyłanie faktury"
         >
-          <FileText />
+          <Loader2 className="animate-spin" />
         </Button>
+      ) : visibleInvoices.length > 0 ? (
+        <InvoicePreviewButton
+          invoices={visibleInvoices}
+          variant="compact"
+          // The preview covers the picker's own dialog, so it steps aside before the pick.
+          onAdd={(closePreview) => {
+            closePreview()
+            pickerRef.current?.click()
+          }}
+          onRemove={handleRemove}
+          onRemoveAll={visibleInvoices.length > 1 ? handleRemoveAll : undefined}
+        />
       ) : (
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setUploadOpen(true)}
+          onClick={() => pickerRef.current?.click()}
           className="text-muted-foreground"
           aria-label="Dodaj fakturę"
         >
@@ -68,29 +66,19 @@ export function InvoiceCell({ transactionId, url, filename, mimeType }: InvoiceC
         </Button>
       )}
 
-      {url && previewOpen && (
-        <InvoicePreviewDialog
-          url={url}
-          filename={filename}
-          mimeType={mimeType}
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-          onReplace={handleReplace}
-          onRemove={handleRemove}
-          // Stored file is already ingest-compressed (≤1920px, q0.6) — skip the Next optimizer
-          // and its cold-start round-trip; serve straight from the Blob CDN.
-          unoptimized
-        />
-      )}
+      <input
+        ref={pickerRef}
+        type="file"
+        accept="image/*,application/pdf"
+        multiple
+        // `sr-only` clips but keeps the control focusable, so without this a second pick can start
+        // mid-upload — and two concurrent read-modify-write attaches lose the first batch's pages.
+        disabled={isUploading}
+        className="sr-only"
+        onChange={handlePicked}
+      />
 
-      {uploadOpen && (
-        <InvoiceUploadDialog
-          transactionId={transactionId}
-          open={uploadOpen}
-          onOpenChange={setUploadOpen}
-          isReplace={hasInvoice}
-        />
-      )}
+      <ConfirmDialog {...removalConfirm} />
     </>
   )
 }

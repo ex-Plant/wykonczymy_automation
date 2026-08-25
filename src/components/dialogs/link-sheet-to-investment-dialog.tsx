@@ -6,19 +6,11 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SimpleSelect } from '@/components/ui/simple-select'
 import { toastMessage } from '@/lib/utils/toast'
 import { linkSheetToInvestmentAction } from '@/lib/actions/sheets'
 
@@ -68,13 +60,10 @@ export function LinkSheetToInvestmentDialog({
         )}
       </DialogTrigger>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Dodaj kosztorys do inwestycji</DialogTitle>
-          <DialogDescription>
-            Wybierz inwestycję bez kosztorysu. Po dodaniu, wydatki inwestycji zostaną
-            zsynchronizowane do kosztorysu.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogHeader
+          title="Dodaj kosztorys do inwestycji"
+          description="Wybierz inwestycję bez kosztorysu. Po dodaniu, wydatki inwestycji zostaną zsynchronizowane do kosztorysu."
+        />
 
         <div className="space-y-2 text-sm">
           {availableInvestments.length === 0 ? (
@@ -82,18 +71,16 @@ export function LinkSheetToInvestmentDialog({
               Brak inwestycji bez kosztorysu. Dodaj inwestycję albo odepnij istniejący kosztorys.
             </p>
           ) : (
-            <Select value={selectedId} onValueChange={setSelectedId} disabled={pending}>
-              <SelectTrigger>
-                <SelectValue placeholder="Wybierz inwestycję…" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableInvestments.map((inv) => (
-                  <SelectItem key={inv.id} value={String(inv.id)}>
-                    {inv.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SimpleSelect
+              value={selectedId}
+              onValueChange={setSelectedId}
+              disabled={pending}
+              placeholder="Wybierz inwestycję…"
+              options={availableInvestments.map((inv) => ({
+                value: String(inv.id),
+                label: inv.name,
+              }))}
+            />
           )}
         </div>
 

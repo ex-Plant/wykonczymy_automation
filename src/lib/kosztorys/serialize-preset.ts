@@ -14,13 +14,15 @@ export async function serializeKosztorysAsPreset(investmentId: number): Promise<
     items: snapshot.items.map((item) => ({
       ...item,
       plannedQty: 0,
-      measuredQty: 0,
+      sheetMeasuredQty: null,
       discountType: null,
       discountValue: 0,
-      hiddenInExport: false,
       note: null,
     })),
-    // Stages themselves (labels/ordinals) are structure and stay; only their recorded progress goes.
+    // Etapy (stages + their recorded progress) are per-job execution structure, not reusable scope —
+    // a preset carries none, and neither the seed nor the reload installs one: an etap's plane is
+    // forced at creation, so the first etap is the user's explicit call through the picker.
+    stages: [],
     progress: [],
   }
 }

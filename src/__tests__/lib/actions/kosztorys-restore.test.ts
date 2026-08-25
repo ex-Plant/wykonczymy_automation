@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // restoreSnapshotAction wraps the dangerous wipe-and-reinsert in a transaction and takes a forced
 // pre-restore auto snapshot, so we run the REAL action against the REAL DB and assert PERSISTED
@@ -16,7 +17,6 @@ const authState = vi.hoisted(() => ({
   next: null as null | { success: false; error: string },
 }))
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn().mockImplementation(async () => {
     if (authState.next) {
@@ -56,21 +56,12 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
     const firstUser = users.docs[0]
     if (!firstUser) throw new Error('no user in the DB to attribute the snapshot to')
     authState.userId = Number(firstUser.id)
-    const investment = await payload.create({
-      collection: 'investments',
-      data: { name: 'restore-snapshot-test', status: 'active' },
-      context: { skipRevalidation: true },
-    })
-    investmentId = Number(investment.id)
+    investmentId = await createTestInvestment(payload, 'restore-snapshot-test')
   })
 
   afterAll(async () => {
     if (investmentId) {
-      await payload.delete({
-        collection: 'investments',
-        id: investmentId,
-        context: { skipRevalidation: true },
-      })
+      await deleteTestInvestment(payload, investmentId)
     }
   })
 
@@ -97,7 +88,6 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
         investment: investmentId,
         name: 'Original',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       ...ctx,
     })
@@ -108,10 +98,8 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
         section: section.id,
         displayOrder: 0,
         plannedQty: 0,
-        measuredQty: 0,
         discountValue: 0,
         clientPrice: 0,
-        hiddenInExport: false,
       },
       ...ctx,
     })
@@ -137,14 +125,13 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
         investment: investmentId,
         name: 'Nowa',
         displayOrder: 1,
-        defaultCostVariant: 'w_tools',
       },
       ...ctx,
     })
     expect(await sectionNames()).toEqual(['Zmienione', 'Nowa'])
 
     const autoBefore = await autoCount()
-    const res = await restoreSnapshotAction(snapshotId)
+    const res = await restoreSnapshotAction(snapshotId, investmentId)
     expect(res.success).toBe(true)
 
     // Tree is back to the single saved section (new ids, same content/order).
@@ -157,12 +144,39 @@ describe.skipIf(!ENV_READY)('restoreSnapshotAction — persisted state (DB)', ()
     expect(await autoCount()).toBe(autoBefore + 1)
   })
 
+  it('refuses to restore a snapshot belonging to another investment and writes nothing', async () => {
+    // A manual snapshot that belongs to investment A (this suite's investmentId).
+    expect((await saveSnapshotAction(investmentId, 'wersja A')).success).toBe(true)
+    const snapRow = await db.execute(sql`
+      SELECT id FROM kosztorys_snapshots
+      WHERE investment_id = ${investmentId} AND kind = 'manual' ORDER BY id DESC LIMIT 1
+    `)
+    const snapshotIdA = Number(snapRow.rows[0].id)
+
+    // A separate investment B — the editor's current context.
+    const investmentIdB = await createTestInvestment(payload, 'restore-scope-other')
+    try {
+      const namesABefore = await sectionNames()
+      const autoABefore = await autoCount()
+
+      // Loading A's snapshot into B's context must be refused — touching NEITHER investment.
+      const res = await restoreSnapshotAction(snapshotIdA, investmentIdB)
+      expect(res.success).toBe(false)
+
+      // Investment A is not wiped/reinserted and takes no forced pre-restore snapshot.
+      expect(await sectionNames()).toEqual(namesABefore)
+      expect(await autoCount()).toBe(autoABefore)
+    } finally {
+      await deleteTestInvestment(payload, investmentIdB)
+    }
+  })
+
   it('is gated — a non-MANAGEMENT role gets Brak uprawnień and writes nothing', async () => {
     const namesBefore = await sectionNames()
     const autoBefore = await autoCount()
     authState.next = { success: false, error: 'Brak uprawnień' }
 
-    const res = await restoreSnapshotAction(1)
+    const res = await restoreSnapshotAction(1, investmentId)
 
     expect(res.success).toBe(false)
     expect(res.success === false && res.error).toBe('Brak uprawnień')

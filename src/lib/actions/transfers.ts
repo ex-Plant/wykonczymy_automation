@@ -5,10 +5,11 @@ import type { Transaction } from '@/payload-types'
 import {
   createBulkExpenseSchema,
   type CreateBulkExpenseFormT,
-} from '@/components/forms/expense-form/expense-schema'
+} from '@/components/forms/expense-form/bulk-expense-schema'
 import { canMutateTransfer } from '@/lib/auth/roles'
 import { canBeSettled } from '@/lib/constants/transfers'
 import { perfStart } from '@/lib/perf'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import {
   cancelTransferSchema,
   createTransferSchema,
@@ -23,8 +24,13 @@ import { isLaborCost, needsSourceRegister } from '../constants/transfers'
 import { syncBulkExpensesToSheet } from './sheets-sync'
 import { validateAction, protectedAction } from './run-action'
 import { validateSourceRegister } from './validate-source-register'
+import { logError } from '@/lib/utils/log-error'
+import { resolveId } from '@/lib/utils/resolve-id'
+import { invoiceIds } from '@/lib/invoices/invoice-field'
+import { deleteUnreferencedMedia } from '@/lib/invoices/delete-unreferenced-media'
+import type { ActionResultT } from '@/types/action'
 
-export async function createTransferAction(data: CreateTransferFormT, invoiceMediaId?: number) {
+export async function createTransferAction(data: CreateTransferFormT, invoiceMediaIds?: number[]) {
   return protectedAction(
     `createTransferAction type=${data.type}`,
     async ({ payload, user }) => {
@@ -36,17 +42,19 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
 
       if (needsSourceRegister(parsed.data.type)) {
         // For deposits, sourceRegister is actually the target (the register receiving money)
-        const validated = await validateSourceRegister(data.sourceRegister, payload)
+        const validated = await validateSourceRegister(parsed.data.sourceRegister, payload)
         console.log(`[PERF]   validateSourceRegister ${step()}ms`)
         if (!validated.success) return validated
       }
 
-      const created = await payload.create({
+      await payload.create({
         collection: 'transactions',
         data: {
-          ...data,
-          description: data.description || '',
-          invoice: invoiceMediaId,
+          // `parsed.data`, never the raw input: the schema is what narrows a client payload down to
+          // the fields a transfer may carry, and spreading the input again hands that narrowing back.
+          ...parsed.data,
+          description: parsed.data.description || '',
+          invoice: invoiceMediaIds?.length ? invoiceMediaIds : undefined,
           createdBy: user.id,
         },
       })
@@ -60,7 +68,7 @@ export async function createTransferAction(data: CreateTransferFormT, invoiceMed
 
 export async function createBulkTransferAction(
   data: CreateBulkExpenseFormT,
-  invoiceMediaIds?: (number | undefined)[],
+  invoiceMediaIds?: number[][],
 ) {
   const lineCount = data.lineItems.length
 
@@ -80,45 +88,44 @@ export async function createBulkTransferAction(
         if (!validated.success) return validated
       }
 
-      const transactionId = await payload.db.beginTransaction()
-      if (!transactionId) throw new Error('Failed to start transaction')
       // skipSheetSync: the per-row afterChange hook must NOT sync each created
       // row one-by-one — this action batches them all in a single sheet write below
       // (review T4.2). The flag rides on req.context, which Payload passes to hooks.
-      const req = { transactionID: transactionId, context: { skipSheetSync: true } }
-
-      const createdIds: number[] = []
-      try {
-        for (let i = 0; i < parsed.data.lineItems.length; i++) {
-          const item = parsed.data.lineItems[i]
-          const created = await payload.create({
-            collection: 'transactions',
-            req,
-            data: {
-              description: item.description,
-              amount: item.amount,
-              date: parsed.data.date,
-              type: parsed.data.type,
-              paymentMethod: parsed.data.paymentMethod,
-              sourceRegister: parsed.data.sourceRegister,
-              targetRegister: parsed.data.targetRegister,
-              investment: parsed.data.investment,
-              worker: parsed.data.worker,
-              expenseCategory: item.expenseCategory,
-              otherCategory: item.category,
-              invoice: invoiceMediaIds?.[i],
-              invoiceNote: item.invoiceNote,
-              settled: canBeSettled(parsed.data.type) && parsed.data.settled === true,
-              createdBy: user.id,
-            },
-          })
-          createdIds.push(created.id)
-        }
-        await payload.db.commitTransaction(transactionId)
-      } catch (err) {
-        await payload.db.rollbackTransaction(transactionId)
-        throw err
-      }
+      const createdIds = await withPayloadTransaction(
+        payload,
+        async (req) => {
+          const ids: number[] = []
+          for (let i = 0; i < parsed.data.lineItems.length; i++) {
+            const item = parsed.data.lineItems[i]
+            const invoicePages = invoiceMediaIds?.[i]
+            const created = await payload.create({
+              collection: 'transactions',
+              req,
+              data: {
+                description: item.description,
+                amount: item.amount,
+                netAmount: item.netAmount,
+                date: parsed.data.date,
+                type: parsed.data.type,
+                paymentMethod: parsed.data.paymentMethod,
+                sourceRegister: parsed.data.sourceRegister,
+                targetRegister: parsed.data.targetRegister,
+                investment: parsed.data.investment,
+                worker: parsed.data.worker,
+                expenseCategory: item.expenseCategory,
+                otherCategory: item.category,
+                invoice: invoicePages?.length ? invoicePages : undefined,
+                invoiceNote: item.invoiceNote,
+                settled: canBeSettled(parsed.data.type) && parsed.data.settled === true,
+                createdBy: user.id,
+              },
+            })
+            ids.push(created.id)
+          }
+          return ids
+        },
+        { skipSheetSync: true },
+      )
       console.log(`[PERF]   payload.create x${lineCount} ${step()}ms`)
 
       // Post-response sync after commit — never before, else a rolled-back row would
@@ -152,8 +159,7 @@ async function fetchAndAuthorize(
   if (original.cancelled) return { error: 'Transakcja jest już anulowana.' }
   if (original.type === 'CANCELLATION') return { error: 'Nie można edytować anulowania.' }
 
-  const creatorId =
-    typeof original.createdBy === 'number' ? original.createdBy : original.createdBy?.id
+  const creatorId = resolveId(original.createdBy)
   const allowed = canMutateTransfer({
     role: user.role,
     userId: user.id,
@@ -193,7 +199,7 @@ export async function cancelTransferAction(transferId: number, data: CancelTrans
 
       // Create CANCELLATION audit row
       const today = new Date().toISOString().split('T')[0]
-      const cancellation = await payload.create({
+      await payload.create({
         collection: 'transactions',
         data: {
           type: 'CANCELLATION',
@@ -220,7 +226,7 @@ export async function cancelTransferAction(transferId: number, data: CancelTrans
 export async function updateTransferAction(
   transferId: number,
   data: UpdateTransferFormT,
-  invoiceMediaId?: number,
+  invoiceMediaIds?: number[],
 ) {
   return protectedAction(
     'updateTransferAction',
@@ -242,13 +248,20 @@ export async function updateTransferAction(
       const newAmount = isLaborCost(original.type) ? amount : undefined
       const amountChanged = newAmount !== undefined && newAmount !== original.amount
 
+      // Moving a zaliczka to another investment orphans its etap tag; the collection's
+      // beforeValidate hook clears it, so every write path is covered, not just this action.
+
       await payload.update({
         collection: 'transactions',
         id: transferId,
         data: {
           ...fields,
           ...(newAmount !== undefined && { amount: newAmount }),
-          ...(invoiceMediaId !== undefined && { invoice: invoiceMediaId }),
+          // Newly picked files are extra pages of the same invoice, so they append — an edit that
+          // replaced the list would strand the pages the user never touched.
+          ...(invoiceMediaIds?.length && {
+            invoice: [...invoiceIds(original.invoice), ...invoiceMediaIds],
+          }),
           updatedBy: user.id,
         },
       })
@@ -278,50 +291,86 @@ export async function updateTransferAction(
 }
 
 /**
- * Point a transfer's invoice at `invoiceMediaId` (or clear it with `null`), then
- * best-effort delete the media it replaced so orphaned uploads don't accumulate.
+ * Rewrite a transfer's invoice pages to whatever `nextIds` derives from the current list, then
+ * delete the media the new list dropped once nothing else references it.
+ *
+ * Deliberately does NOT go through `fetchAndAuthorize` (owner, 2026-08-10): attaching and
+ * detaching invoice pages is open to every management session regardless of who created the
+ * transfer, exactly as it was before the pages became a list.
  */
-async function setTransferInvoice(
+async function setTransferInvoices(
   payload: Payload,
   transferId: number,
-  invoiceMediaId: number | null,
-): Promise<{ success: true }> {
+  nextIds: (currentIds: number[]) => number[],
+): Promise<ActionResultT> {
   const step = perfStart()
 
-  const transfer = await payload.findByID({
-    collection: 'transactions',
-    id: transferId,
-    depth: 0,
-  })
-  const oldMediaId = typeof transfer.invoice === 'number' ? transfer.invoice : null
+  const transfer = await payload.findByID({ collection: 'transactions', id: transferId, depth: 0 })
+  const currentIds = invoiceIds(transfer.invoice)
+  const next = nextIds(currentIds)
   console.log(`[PERF]   findByID(${transferId}) ${step()}ms`)
 
   await payload.update({
     collection: 'transactions',
     id: transferId,
-    data: { invoice: invoiceMediaId },
+    data: { invoice: next },
   })
   console.log(`[PERF]   payload.update(${transferId}) ${step()}ms`)
 
-  if (oldMediaId && oldMediaId !== invoiceMediaId) {
-    payload.delete({ collection: 'media', id: oldMediaId }).catch(console.error)
-  }
+  // Awaited, not fire-and-forget: the serverless invocation can be frozen the moment the response
+  // is written, which would drop the deletes and leak exactly the files this is here to reclaim.
+  await deleteUnreferencedMedia(
+    payload,
+    currentIds.filter((id) => !next.includes(id)),
+  )
 
   return { success: true }
 }
 
-export async function updateTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
+/**
+ * Takes the whole batch because `setTransferInvoices` is a read-modify-write — one call per page
+ * would race, and every page but the last would be lost.
+ */
+export async function addTransferInvoicesAction(
+  transferId: number,
+  invoiceMediaIds: number[],
+): Promise<ActionResultT> {
   return protectedAction(
-    'updateTransferInvoiceAction',
-    ({ payload }) => setTransferInvoice(payload, transferId, invoiceMediaId),
+    'addTransferInvoicesAction',
+    async ({ payload }) => {
+      // Inside the auth boundary, not before it: a `{ success: true }` returned without one would
+      // read as "authorized" to the next caller.
+      if (invoiceMediaIds.length === 0) return { success: true }
+
+      return setTransferInvoices(payload, transferId, (current) => {
+        const next = [...current]
+        invoiceMediaIds.forEach((id) => {
+          if (!next.includes(id)) next.push(id)
+        })
+        return next
+      })
+    },
     ['transfers'],
   )
 }
 
-export async function removeTransferInvoiceAction(transferId: number) {
+/** Removes one page, leaving the rest in order. */
+export async function removeTransferInvoiceAction(transferId: number, invoiceMediaId: number) {
   return protectedAction(
     'removeTransferInvoiceAction',
-    ({ payload }) => setTransferInvoice(payload, transferId, null),
+    ({ payload }) =>
+      setTransferInvoices(payload, transferId, (current) =>
+        current.filter((id) => id !== invoiceMediaId),
+      ),
+    ['transfers'],
+  )
+}
+
+/** Removes every page — the whole invoice, not one of its photos. */
+export async function removeAllTransferInvoicesAction(transferId: number) {
+  return protectedAction(
+    'removeAllTransferInvoicesAction',
+    ({ payload }) => setTransferInvoices(payload, transferId, () => []),
     ['transfers'],
   )
 }

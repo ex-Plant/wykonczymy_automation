@@ -8,7 +8,7 @@ import { ExternalLink } from '@/components/ui/external-link'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { KosztorysDataTable } from '@/components/sheets/kosztorys-data-table'
 import { InvestmentsWithoutSheetTable } from '@/components/sheets/investments-without-sheet-table'
-import type { KosztorysRowT, InvestmentWithoutSheetRowT } from '@/components/tables/sheets'
+import type { KosztorysRowT, InvestmentWithoutSheetRowT } from '@/types/table-rows'
 
 export default async function SheetsListPage() {
   const session = await requireAuth(ADMIN_OR_OWNER_MANAGER_ROLES)
@@ -54,13 +54,13 @@ export default async function SheetsListPage() {
   }))
 
   return (
-    <PageWrapper title="Kosztorysy">
+    <PageWrapper title="Kosztorysy v1">
       <div className="flex flex-wrap items-center justify-end gap-3">
         <ExternalLink href={ALL_SHEETS_URL}>Otwórz arkusze google ↗</ExternalLink>
       </div>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium">Kosztorysy</h2>
+        <h2 className="text-sm font-medium">Kosztorysy v1</h2>
         <KosztorysDataTable data={kosztorysRows} availableInvestments={investmentsWithoutSheet} />
       </section>
 

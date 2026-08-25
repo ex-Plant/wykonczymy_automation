@@ -472,7 +472,7 @@ describe('applyMaterialSync', () => {
       expect.arrayContaining([
         { id: { in: [8] } },
         { investment: { equals: 31 } },
-        { type: { in: ['INVESTMENT_EXPENSE', 'CORRECTION'] } },
+        { type: { in: ['INVESTMENT_EXPENSE', 'INVESTMENT_EXPENSE_NET', 'CORRECTION'] } },
       ]),
     )
   })

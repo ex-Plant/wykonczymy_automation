@@ -3,6 +3,7 @@ import ts from 'typescript-eslint'
 import nextPlugin from '@next/eslint-plugin-next'
 import reactHooksPlugin from 'eslint-plugin-react-hooks'
 import { fixupPluginRules } from '@eslint/compat'
+import { noDomainDriftRule } from './eslint-rules/no-domain-drift.mjs'
 
 export default ts.config(
   {
@@ -41,12 +42,7 @@ export default ts.config(
     // in the Payload CLI graph where `server-only` can't be imported), and tests (which seed
     // process.env).
     files: ['src/**/*.{ts,tsx}'],
-    ignores: [
-      'src/lib/env/**',
-      'src/payload.config.ts',
-      'src/scripts/**',
-      'src/__tests__/**',
-    ],
+    ignores: ['src/lib/env/**', 'src/payload.config.ts', 'src/scripts/**', 'src/__tests__/**'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -93,6 +89,14 @@ export default ts.config(
     },
   },
   {
+    // Unlike the env rule this one does not exempt tests and scripts — the bilans/marza drift lived
+    // in those files too. Migrations are exempt: their identifiers mirror frozen DB enum values.
+    files: ['src/**/*.{ts,tsx}', 'e2e/**/*.ts'],
+    ignores: ['src/migrations/**'],
+    plugins: { local: { rules: { 'no-domain-drift': noDomainDriftRule } } },
+    rules: { 'local/no-domain-drift': 'error' },
+  },
+  {
     // Root CommonJS configs (e.g. .dependency-cruiser.cjs) use module.exports; the flat config
     // otherwise parses them as ESM and flags `module` as no-undef.
     files: ['**/*.cjs'],
@@ -101,7 +105,15 @@ export default ts.config(
   {
     // One-off plain-Node .mjs tools (not app code) — their process/console use trips no-undef and
     // it's not worth a Node-globals config block. scripts/inspect-sheet.mjs = sheet-inspection POC;
-    // context/changes/blob-backup/blob-snapshot.mjs = EX-459 blob backup/recovery tool.
-    ignores: ['.next/', '.next-e2e/', 'scripts/inspect-sheet.mjs', 'scripts/blob-mirror.mjs', 'context/changes/blob-backup/blob-snapshot.mjs'],
+    // scripts/blob-snapshot.mjs = EX-459 blob backup/recovery tool.
+    ignores: [
+      '.next/',
+      '.next-e2e/',
+      '.claude/',
+      'scripts/inspect-sheet.mjs',
+      'scripts/blob-mirror.mjs',
+      'scripts/blob-snapshot.mjs',
+      'scripts/blob-restore.mjs',
+    ],
   },
 )

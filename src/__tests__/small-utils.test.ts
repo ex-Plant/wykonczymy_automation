@@ -1,39 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { parseDateRange } from '@/lib/utils/parse-date-range'
 import isValidUrl from '@/lib/utils/is-valid-url'
 import { refineAmount, refineDate } from '@/lib/utils/validation'
-
-// ── parseDateRange ───────────────────────────────────────────────────────
-
-describe('parseDateRange', () => {
-  it('returns range when both from and to present', () => {
-    expect(parseDateRange({ from: '2024-01-01', to: '2024-01-31' })).toEqual({
-      from: '2024-01-01',
-      to: '2024-01-31',
-    })
-  })
-
-  it('returns undefined when only from present', () => {
-    expect(parseDateRange({ from: '2024-01-01' })).toBeUndefined()
-  })
-
-  it('returns undefined when only to present', () => {
-    expect(parseDateRange({ to: '2024-01-31' })).toBeUndefined()
-  })
-
-  it('returns undefined when neither present', () => {
-    expect(parseDateRange({})).toBeUndefined()
-  })
-
-  it('ignores array values', () => {
-    expect(parseDateRange({ from: ['2024-01-01'], to: '2024-01-31' })).toBeUndefined()
-  })
-
-  it('ignores empty string from', () => {
-    expect(parseDateRange({ from: '', to: '2024-01-31' })).toBeUndefined()
-  })
-})
 
 // ── isValidUrl ───────────────────────────────────────────────────────────
 

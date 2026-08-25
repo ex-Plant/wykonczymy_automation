@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner } from '@/access'
 import {
   canBeSettled,
+  carriesNetAmount,
   needsExpenseCategory,
   needsOtherCategory,
   needsSourceRegister,
@@ -12,12 +13,17 @@ import {
 import { validateTransfer } from '@/hooks/transfers/validate'
 import { recalcAfterChange, recalcAfterDelete } from '@/hooks/transfers/recalculate-balances'
 import { syncSheetAfterChange, syncSheetAfterDelete } from '@/hooks/transfers/sync-sheet'
+import { deleteInvoiceMediaAfterDelete } from '@/hooks/transfers/delete-invoice-media'
 
 const TRANSFER_TYPES = [
   { label: { en: 'Investor Deposit', pl: 'Wpłata od inwestora' }, value: 'INVESTOR_DEPOSIT' },
   { label: { en: 'Company Funding', pl: 'Zasilenie z konta firmowego' }, value: 'COMPANY_FUNDING' },
   { label: { en: 'Other Deposit', pl: 'Inna wpłata' }, value: 'OTHER_DEPOSIT' },
   { label: { en: 'Investment Expense', pl: 'Wydatek inwestycyjny' }, value: 'INVESTMENT_EXPENSE' },
+  {
+    label: { en: 'Investment Expense (net)', pl: 'Wydatek inwestycyjny netto' },
+    value: 'INVESTMENT_EXPENSE_NET',
+  },
   { label: { en: 'Labor Cost', pl: 'Koszty robocizny' }, value: 'LABOR_COST' },
   { label: { en: 'Rebate', pl: 'Rabat' }, value: 'RABAT' },
   { label: { en: 'Loss', pl: 'Strata' }, value: 'LOSS' },
@@ -69,7 +75,7 @@ export const Transfers: CollectionConfig = {
   hooks: {
     beforeValidate: [validateTransfer],
     afterChange: [recalcAfterChange, syncSheetAfterChange],
-    afterDelete: [recalcAfterDelete, syncSheetAfterDelete],
+    afterDelete: [recalcAfterDelete, syncSheetAfterDelete, deleteInvoiceMediaAfterDelete],
   },
   fields: [
     {
@@ -88,6 +94,21 @@ export const Transfers: CollectionConfig = {
           en: 'Positive for most types — CORRECTION allows negative (invoice corrections)',
           pl: 'Dodatnia dla większości typów — KOREKTA pozwala na ujemne (korekty faktur)',
         },
+      },
+    },
+    {
+      // The netto twin of `amount` (brutto). On a netto wydatek it is what the investor is
+      // billed while brutto is what left the register; on a wpłata brutto it is what the
+      // faktura named as netto. Immutable like `amount` — a wrong netto is corrected by
+      // cancelling the row and re-adding it, so no edit path can move a figure both
+      // bilanses read. Which rows carry it, and the netAmount ≤ amount rule, have one
+      // authority each: `carriesNetAmount` and hooks/transfers/validate.ts.
+      name: 'netAmount',
+      type: 'number',
+      label: { en: 'Net amount', pl: 'Kwota netto' },
+      access: { update: () => false },
+      admin: {
+        condition: (data) => carriesNetAmount(typeOf(data), data?.vatPlane),
       },
     },
     {
@@ -116,6 +137,26 @@ export const Transfers: CollectionConfig = {
       required: true,
       label: { en: 'Payment Method', pl: 'Metoda płatności' },
       options: [...PAYMENT_METHODS],
+    },
+    {
+      // EX-536 netto/brutto wpłata bucket. Three-state: NET / GROSS / null. INVESTOR_DEPOSIT only —
+      // `carriesVatPlane` in the validate hook nulls it everywhere else. Not `required`, and the
+      // create schema keeps it `.optional()`: the form always sends a plane now, but rows written
+      // before that stay null and read as netto in the reconciliation.
+      // Immutable like `amount`, and for the same reason — the plane decides which side of the
+      // settlement the wpłata pays, so moving it after the fact rewrites a bilans the client has
+      // already seen. A plane typed wrong is corrected by cancelling the row and booking it again.
+      name: 'vatPlane',
+      type: 'select',
+      label: { en: 'Deposit VAT plane', pl: 'Rozliczenie netto/brutto' },
+      access: { update: () => false },
+      options: [
+        { label: { en: 'Net', pl: 'Netto' }, value: 'NET' },
+        { label: { en: 'Gross', pl: 'Brutto' }, value: 'GROSS' },
+      ],
+      admin: {
+        condition: (data) => typeOf(data) === 'INVESTOR_DEPOSIT',
+      },
     },
     {
       name: 'sourceRegister',
@@ -189,6 +230,8 @@ export const Transfers: CollectionConfig = {
       name: 'invoice',
       type: 'upload',
       relationTo: 'media',
+      // One invoice, many pages: a long invoice needs several photos to be readable (EX-659).
+      hasMany: true,
       label: { en: 'Invoice', pl: 'Faktura' },
     },
     {
@@ -233,7 +276,7 @@ export const Transfers: CollectionConfig = {
         condition: (data) => canBeSettled(data?.type),
         description: {
           en: 'Material already priced into robocizna: leaves the register, reduces margin, NOT billed to the client.',
-          pl: 'Materiał już zawarty w cenie robocizny: schodzi z kasy, obniża marżę, klient NIE płaci za niego osobno.',
+          pl: 'Materiał już zawarty w cenie robocizny: schodzi z kasy, obniża marżę, inwestor NIE płaci za niego osobno.',
         },
       },
     },

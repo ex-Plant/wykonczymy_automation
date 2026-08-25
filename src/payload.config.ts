@@ -11,11 +11,15 @@ import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
+import { blobTokenRefusal } from '@/lib/env/schema'
+
 import { AmountEdits } from '@/collections/amount-edits'
 import { CashRegisters } from '@/collections/cash-registers'
 import { Investments } from '@/collections/investments'
+import { KosztorysClientView } from '@/collections/kosztorys-client-view'
 import { KosztorysItems } from '@/collections/kosztorys-items'
 import { KosztorysSections } from '@/collections/kosztorys-sections'
+import { KosztorysShares } from '@/collections/kosztorys-shares'
 import { KosztorysStages } from '@/collections/kosztorys-stages'
 import { StageProgress } from '@/collections/stage-progress'
 import { Leads } from '@/collections/leads'
@@ -25,9 +29,18 @@ import { Sheets } from '@/collections/sheets'
 import { OtherCategories } from '@/collections/other-categories'
 import { Transfers } from '@/collections/transfers'
 import { Users } from '@/collections/users'
+import { VehicleInspections } from '@/collections/vehicle-inspections'
+import { Vehicles } from '@/collections/vehicles'
+import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-defaults'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Nothing in the Payload graph parses the env schema, so this file re-runs its Blob-token guard:
+// it is what hands the token to the plugin whose handleDelete calls del(), and without this
+// /admin/collections/media would delete real, tax-retained invoices from a dev session.
+const refusal = blobTokenRefusal(process.env.VERCEL_ENV, process.env.BLOB_READ_WRITE_TOKEN)
+if (refusal) throw new Error(`BLOB_READ_WRITE_TOKEN ${refusal}`)
 
 export default buildConfig({
   admin: {
@@ -69,14 +82,19 @@ export default buildConfig({
     KosztorysSections,
     KosztorysItems,
     KosztorysStages,
+    KosztorysShares,
+    KosztorysClientView,
     StageProgress,
     Transfers,
     OtherCategories,
     ExpenseCategories,
     AmountEdits,
     Leads,
+    Vehicles,
+    VehicleInspections,
     Media,
   ],
+  globals: [KosztorysClientViewDefaults],
   plugins: [
     vercelBlobStorage({
       collections: { media: true },

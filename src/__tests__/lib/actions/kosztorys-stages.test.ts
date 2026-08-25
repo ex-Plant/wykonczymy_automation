@@ -10,7 +10,6 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 // Same mock surface as the sibling delete-guard spec: requireAuth needs a request/cookie we lack
 // in node, and cache revalidation touches next/cache outside a request context.
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 // A real user id (looked up in beforeAll), not a hardcoded 1: removeStageAction now takes a
 // pre-delete snapshot whose taken_by FKs users.id, and a fresh prod-dump test DB has no user 1.
 const authState = vi.hoisted(() => ({ userId: 0 }))
@@ -22,7 +21,8 @@ vi.mock('@/lib/auth/require-auth', () => ({
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateCollections: vi.fn() }))
 
-const { removeStageAction, setStageProgressAction } = await import('@/lib/actions/kosztorys')
+const { removeStageAction, setStageProgressAction, updateStageAction } =
+  await import('@/lib/actions/kosztorys')
 
 // Gated like the sibling guard spec: skips with no DB env (portable), FAILS if env is set but the
 // DB is unreachable. Run against the local DB with `--env-file=.env`.
@@ -82,7 +82,6 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
         investment: investmentId,
         name: 'stage-test',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       overrideAccess: true,
       ...ctx,
@@ -99,10 +98,8 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
         section: sectionId,
         displayOrder: 0,
         plannedQty: 0,
-        measuredQty: 0,
         discountValue: 0,
         clientPrice: 0,
-        hiddenInExport: false,
       },
       overrideAccess: true,
       ...ctx,
@@ -128,6 +125,17 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
     return res.rows.length > 0
   }
 
+  // Newest auto-snapshot id, or 0 if none. A capture is proven by this rising — total count is
+  // useless here because pruneAutoCount holds auto snapshots at AUTO_KEEP, so an insert on a
+  // saturated investment nets zero rows even though a fresh snapshot was written.
+  async function latestAutoSnapshotId(): Promise<number> {
+    const res = await db.execute(sql`
+      SELECT coalesce(max(id), 0)::int AS id FROM kosztorys_snapshots
+      WHERE investment_id = ${investmentId} AND kind = 'auto'
+    `)
+    return Number(res.rows[0].id)
+  }
+
   async function progressRows(itemId: number, stageId: number) {
     const res = await db.execute(
       sql`SELECT id, qty_done FROM stage_progress WHERE item_id = ${itemId} AND stage_id = ${stageId}`,
@@ -136,7 +144,9 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
   }
 
   describe('removeStageAction — delete guard', () => {
-    it('blocks a stage with recorded progress (qty_done <> 0) — stage survives, exact toast error', async () => {
+    // EX-477: a populated stage is no longer blocked — the StageHeader gates it behind a confirm
+    // dialog; the action snapshots first, then deletes the column (cascading its progress rows).
+    it('deletes a stage with recorded progress (qty_done <> 0) and snapshots first', async () => {
       const sectionId = await createSection()
       const itemId = await createItem(sectionId)
       const stageId = await createStage()
@@ -144,14 +154,13 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
         INSERT INTO stage_progress (item_id, stage_id, qty_done, created_at, updated_at)
         VALUES (${itemId}, ${stageId}, 4, now(), now())
       `)
+      const before = await latestAutoSnapshotId()
 
       const res = await removeStageAction(stageId)
 
-      expect(res.success).toBe(false)
-      expect(res.success === false && res.error).toBe(
-        'Najpierw wyczyść ilości wpisane w tym etapie',
-      )
-      expect(await stageExists(stageId)).toBe(true)
+      expect(res.success).toBe(true)
+      expect(await stageExists(stageId)).toBe(false)
+      expect(await latestAutoSnapshotId()).toBeGreaterThan(before)
     })
 
     it('deletes a stage whose progress is all cleared to 0 (qty_done = 0 does not block)', async () => {
@@ -176,6 +185,42 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
 
       expect(res.success).toBe(true)
       expect(await stageExists(stageId)).toBe(false)
+    })
+  })
+
+  describe('updateStageAction — worker assignment (EX-613)', () => {
+    // The patch key is `workerId`, the collection field is the `worker` relationship — the action
+    // translates between them. Assert the COLUMN, not the action's result: a silently dropped key
+    // still returns success.
+    async function workerIdOf(stageId: number): Promise<number | null> {
+      const res = await db.execute(
+        sql`SELECT worker_id FROM kosztorys_stages WHERE id = ${stageId}`,
+      )
+      const raw = (res.rows[0] as { worker_id: number | null }).worker_id
+      return raw == null ? null : Number(raw)
+    }
+
+    it('persists the assignment and clears it back to null', async () => {
+      const stageId = await createStage()
+      expect(await workerIdOf(stageId)).toBeNull()
+
+      const assigned = await updateStageAction(stageId, { workerId: authState.userId })
+      expect(assigned.success).toBe(true)
+      expect(await workerIdOf(stageId)).toBe(authState.userId)
+
+      const cleared = await updateStageAction(stageId, { workerId: null })
+      expect(cleared.success).toBe(true)
+      expect(await workerIdOf(stageId)).toBeNull()
+    })
+
+    it('leaves the assignment alone when the patch omits workerId', async () => {
+      const stageId = await createStage()
+      await updateStageAction(stageId, { workerId: authState.userId })
+
+      const res = await updateStageAction(stageId, { label: 'przemianowany' })
+
+      expect(res.success).toBe(true)
+      expect(await workerIdOf(stageId)).toBe(authState.userId)
     })
   })
 

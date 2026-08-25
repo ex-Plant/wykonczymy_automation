@@ -2,17 +2,16 @@ import { redirect, notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { isAdminOrOwnerRole, isManagementRole, ROLES } from '@/lib/auth/roles'
 import { parsePagination } from '@/lib/utils/pagination'
-import { fetchReferenceData, fetchRegisterBalances } from '@/lib/queries/reference-data'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { fetchRegisterBalances } from '@/lib/queries/balances'
 import { buildTransferFilters } from '@/lib/queries/transfer-filters'
-import { formatPLN } from '@/lib/utils/format-currency'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
-import { SaldoDisplay } from '@/components/ui/saldo-display'
+import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
 import type { Where } from 'payload'
-import type { HeaderFieldT } from '@/types/export'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function CashRegisterDetailPage({ params, searchParams }: DynamicPagePropsT) {
@@ -46,7 +45,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
   const register = refData.cashRegisters.find((cr) => cr.id === registerId)
   if (!register) notFound()
 
-  const saldo = balanceRecord[String(registerId)] ?? 0
+  const registerBalance = balanceRecord[String(registerId)] ?? 0
 
   // only admin or owner can view MAIN registers
   if (!isAdminOrOwnerRole(user.role) && register.type === 'MAIN') notFound()
@@ -58,27 +57,18 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
     ? (refData.workers.find((w) => w.id === register.ownerId)?.name ?? '—')
     : '—'
 
-  const headerFields: HeaderFieldT[] = [
-    { label: 'Kasa', value: register.name },
-    { label: 'Właściciel', value: ownerName },
-    { label: 'Saldo', value: formatPLN(saldo) },
-  ]
-
   return (
     <PageWrapper title={register.name}>
       <InfoList items={[{ label: 'Właściciel', value: ownerName }]} />
-      <SaldoDisplay saldo={saldo} />
+      <SignedMoneyDisplay amount={registerBalance} />
 
       {/* Transactions table */}
       <TransfersSection
         config={{
           query: { where: transferWhere, page, limit },
           baseUrl: `/kasa/${id}`,
-          excludeColumns: [],
           filters: buildFilterConfig(refData, 'cashRegisters'),
-          context: 'register',
-          contextId: registerId,
-          headerFields,
+          invoiceDownload: true,
           cancelledTransactionAudit: sp.cancelledTransactionAudit === '1',
         }}
       />

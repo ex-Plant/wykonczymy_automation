@@ -5,14 +5,8 @@ import { Copy } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTrigger } from '@/components/ui/dialog'
+import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
 import { toastMessage } from '@/lib/utils/toast'
 import { ExternalLink } from '@/components/ui/external-link'
 import { getServiceAccountEmailAction } from '@/lib/actions/investments'
@@ -47,12 +41,7 @@ export function AddSheetDialog({ trigger }: PropsT) {
     }
   }
 
-  const copyEmail = () => {
-    void navigator.clipboard
-      .writeText(saEmail)
-      .then(() => toastMessage('Skopiowano adres konta usługi.', 'success'))
-      .catch(() => toastMessage('Nie udało się skopiować.', 'error'))
-  }
+  const copyEmail = () => copyToClipboard(saEmail, 'Skopiowano adres konta usługi.')
 
   const onSubmit = () => {
     if (!link.trim()) return
@@ -71,12 +60,10 @@ export function AddSheetDialog({ trigger }: PropsT) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger ?? <Button size="sm">Dodaj kosztorys</Button>}</DialogTrigger>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Nowy kosztorys</DialogTitle>
-          <DialogDescription>
-            Powiąż istniejący arkusz Google. Inwestycję podepniesz później z listy.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogHeader
+          title="Nowy kosztorys"
+          description="Powiąż istniejący arkusz Google. Inwestycję podepniesz później z listy."
+        />
 
         <div className="space-y-4 text-sm">
           <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">

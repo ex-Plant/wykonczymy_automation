@@ -93,7 +93,7 @@ Mutation pattern: client TanStack form + `useFormSubmit` → `'use server'` acti
 2. **Create expense → balance + table update same page** — `/kasa/[id]` or `/inwestycje/[id]`; `transfers.ts:76`, `expense-form.tsx:156`. Risk: `revalidateCollections(['transfers'])` + `router.refresh()` re-render (mocked away in units).
 3. **Create → cancel with reason → CANCELLATION audit row + balance reverts** — `/kasa/[id]`; `transfers.ts:200`, `cancel-transfer-button.tsx`. Canonical multi-boundary flow (two writes: `cancelled:true` + audit row).
 4. **Role redirect** — WORKER lands on own `/kasa/[id]`; non-privileged blocked from `/raporty` — `page.tsx:14-24`, `raporty/page.tsx:22`. RSC `requireAuth` + branching redirect/`notFound` only manifest in real navigation.
-5. **Invoice upload → mediaId into transfer → invoice visible** — expense/edit dialog on `/kasa/[id]`; `upload-file-client.ts:6` (`POST /api/upload-file`), `invoice-upload-dialog.tsx:37`. Real multipart/network boundary.
+5. **Invoice upload → mediaId into transfer → invoice visible** — expense/edit dialog on `/kasa/[id]`; `upload-file-client.ts:6` (`POST /api/upload-file`), `invoice-cell.tsx` (the table's picker — the upload dialog it named was deleted in EX-662). Real multipart/network boundary.
 6. **(Stretch) Optimistic submit failure recovery** — dialog reopens `failed` + repopulates retained `invoiceFiles`; `use-form-submit.ts:37`.
 
 - **Excluded from round 1:** `applyMaterialSync` / kosztorys Sheets sync (`sheets-sync.ts:237`) — hits the **live Google Sheets API**; needs stubbing before it's stable. Higher-effort, later.

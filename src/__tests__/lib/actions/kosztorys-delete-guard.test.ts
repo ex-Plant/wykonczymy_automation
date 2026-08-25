@@ -12,7 +12,6 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 vi.mock('server-only', () => ({}))
 // The action's own payload.delete fires the collection's afterDelete revalidate hook, which
 // calls next/cache's revalidateTag — that throws outside a request/static-generation store.
-vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), updateTag: vi.fn() }))
 // A real user id (looked up in beforeAll), not a hardcoded 1: removeSectionAction now takes a
 // pre-delete snapshot whose taken_by FKs users.id, and a fresh prod-dump test DB has no user 1.
 const authState = vi.hoisted(() => ({ userId: 0 }))
@@ -85,7 +84,6 @@ describe.skipIf(!ENV_READY)('kosztorys delete guards — persisted state (DB)', 
         investment: investmentId,
         name: 'guard-test',
         displayOrder: 0,
-        defaultCostVariant: 'w_tools',
       },
       overrideAccess: true,
       ...ctx,
@@ -96,7 +94,7 @@ describe.skipIf(!ENV_READY)('kosztorys delete guards — persisted state (DB)', 
 
   async function createItem(
     sectionId: number,
-    data: { measuredQty?: number; plannedQty?: number; clientPrice?: number } = {},
+    data: { plannedQty?: number; clientPrice?: number } = {},
   ): Promise<number> {
     const item = await payload.create({
       collection: 'kosztorys-items',
@@ -105,10 +103,8 @@ describe.skipIf(!ENV_READY)('kosztorys delete guards — persisted state (DB)', 
         section: sectionId,
         displayOrder: 0,
         plannedQty: data.plannedQty ?? 0,
-        measuredQty: data.measuredQty ?? 0,
         discountValue: 0,
         clientPrice: data.clientPrice ?? 0,
-        hiddenInExport: false,
       },
       overrideAccess: true,
       ...ctx,
@@ -137,17 +133,31 @@ describe.skipIf(!ENV_READY)('kosztorys delete guards — persisted state (DB)', 
     return res.rows.length > 0
   }
 
-  it('(a) blocks deleting an item with a pomiar (measured_qty <> 0) — row survives', async () => {
+  // Newest auto-snapshot id, or 0 if none. A capture is proven by this rising — total count is
+  // useless here because pruneAutoCount holds auto snapshots at AUTO_KEEP, so an insert on a
+  // saturated investment nets zero rows even though a fresh snapshot was written.
+  async function latestAutoSnapshotId(): Promise<number> {
+    const res = await db.execute(sql`
+      SELECT coalesce(max(id), 0)::int AS id FROM kosztorys_snapshots
+      WHERE investment_id = ${investmentId} AND kind = 'auto'
+    `)
+    return Number(res.rows[0].id)
+  }
+
+  // Recorded stage progress is the only thing "populated" means — a row without it always deletes.
+  it('(a) deletes an item with no stage progress', async () => {
     const sectionId = await createSection()
-    const itemId = await createItem(sectionId, { measuredQty: 5 })
+    const itemId = await createItem(sectionId, { plannedQty: 5 })
 
     const res = await removeItemAction(itemId)
 
-    expect(res.success).toBe(false)
-    expect(await itemExists(itemId)).toBe(true)
+    expect(res.success).toBe(true)
+    expect(await itemExists(itemId)).toBe(false)
   })
 
-  it('(b) blocks deleting an item with recorded stage progress (qty_done <> 0) — row survives', async () => {
+  // EX-477: a populated row is no longer blocked — the client gates it behind a confirm dialog, the
+  // action just deletes and captures a pre-delete auto snapshot so the recorded work is recoverable.
+  it('(b) deletes an item with recorded stage progress (qty_done <> 0) and snapshots first', async () => {
     const sectionId = await createSection()
     const itemId = await createItem(sectionId) // pomiar 0
     const stageId = await createStage()
@@ -155,11 +165,13 @@ describe.skipIf(!ENV_READY)('kosztorys delete guards — persisted state (DB)', 
       INSERT INTO stage_progress (item_id, stage_id, qty_done, created_at, updated_at)
       VALUES (${itemId}, ${stageId}, 3, now(), now())
     `)
+    const before = await latestAutoSnapshotId()
 
     const res = await removeItemAction(itemId)
 
-    expect(res.success).toBe(false)
-    expect(await itemExists(itemId)).toBe(true)
+    expect(res.success).toBe(true)
+    expect(await itemExists(itemId)).toBe(false)
+    expect(await latestAutoSnapshotId()).toBeGreaterThan(before)
   })
 
   it('(c) deletes a plan-only item (przedmiar + price, no pomiar / progress)', async () => {
@@ -172,15 +184,38 @@ describe.skipIf(!ENV_READY)('kosztorys delete guards — persisted state (DB)', 
     expect(await itemExists(itemId)).toBe(false)
   })
 
-  it('(d) blocks deleting a section holding a populated item — section + item survive', async () => {
+  // A plan-only item's opis/przedmiar/cena/rabat is irrecoverable by in-session undo once deleted,
+  // so removeItemAction must capture a pre-delete auto snapshot first — mirroring removeSectionAction.
+  it('(c2) captures a pre-delete auto snapshot when deleting a plan-only item', async () => {
     const sectionId = await createSection()
-    const itemId = await createItem(sectionId, { measuredQty: 7 })
+    const itemId = await createItem(sectionId, { plannedQty: 10, clientPrice: 99 })
+    const before = await latestAutoSnapshotId()
+
+    const res = await removeItemAction(itemId)
+
+    expect(res.success).toBe(true)
+    expect(await itemExists(itemId)).toBe(false)
+    expect(await latestAutoSnapshotId()).toBeGreaterThan(before)
+  })
+
+  // EX-477: a populated section cascade-deletes (items + stage_progress) behind the client's confirm;
+  // the action snapshots first, then deletes.
+  it('(d) deletes a section holding an item with stage progress and snapshots first', async () => {
+    const sectionId = await createSection()
+    const itemId = await createItem(sectionId)
+    const stageId = await createStage()
+    await db.execute(sql`
+      INSERT INTO stage_progress (item_id, stage_id, qty_done, created_at, updated_at)
+      VALUES (${itemId}, ${stageId}, 7, now(), now())
+    `)
+    const before = await latestAutoSnapshotId()
 
     const res = await removeSectionAction(sectionId)
 
-    expect(res.success).toBe(false)
-    expect(await sectionExists(sectionId)).toBe(true)
-    expect(await itemExists(itemId)).toBe(true)
+    expect(res.success).toBe(true)
+    expect(await sectionExists(sectionId)).toBe(false)
+    expect(await itemExists(itemId)).toBe(false)
+    expect(await latestAutoSnapshotId()).toBeGreaterThan(before)
   })
 
   it('(e) deletes an empty / plan-only section', async () => {

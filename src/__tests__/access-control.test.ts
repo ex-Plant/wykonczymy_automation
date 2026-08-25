@@ -8,7 +8,6 @@ import {
   isAdminOrOwner,
   isAdminOrOwnerOrManager,
   isAuthenticated,
-  isAdminOrOwnerOrSelf,
   rolesOrSelfField,
   isAdminField,
   isAdminOrOwnerField,
@@ -121,30 +120,6 @@ describe('isAuthenticated', () => {
 
   it('returns false when user is undefined', () => {
     expect(isAuthenticated(noUser as never)).toBe(false)
-  })
-})
-
-// ── isAdminOrOwnerOrSelf ─────────────────────────────────────────────────
-
-describe('isAdminOrOwnerOrSelf', () => {
-  it('returns true for ADMIN regardless of id', () => {
-    expect(isAdminOrOwnerOrSelf({ ...makeReq('ADMIN', 1), id: 99 } as never)).toBe(true)
-  })
-
-  it('returns true for OWNER regardless of id', () => {
-    expect(isAdminOrOwnerOrSelf({ ...makeReq('OWNER', 1), id: 99 } as never)).toBe(true)
-  })
-
-  it('returns true when user id matches resource id (self)', () => {
-    expect(isAdminOrOwnerOrSelf({ ...makeReq('EMPLOYEE', 42), id: 42 } as never)).toBe(true)
-  })
-
-  it('returns false when EMPLOYEE id does not match', () => {
-    expect(isAdminOrOwnerOrSelf({ ...makeReq('EMPLOYEE', 1), id: 99 } as never)).toBe(false)
-  })
-
-  it('returns false when MANAGER id does not match', () => {
-    expect(isAdminOrOwnerOrSelf({ ...makeReq('MANAGER', 1), id: 99 } as never)).toBe(false)
   })
 })
 

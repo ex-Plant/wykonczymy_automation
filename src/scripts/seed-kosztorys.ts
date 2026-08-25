@@ -6,6 +6,7 @@
 import { google } from 'googleapis'
 import { getPayload } from 'payload'
 import config from '../payload.config'
+import { sectionColorForIndex } from '../lib/kosztorys/section-colors'
 
 const SHEET_ID = '1TWZuU7ZDElhUameN4ii2U5TztmQG387Gqcn9NgwwObE'
 const TAB = 'kosztorys_robocizny'
@@ -85,13 +86,14 @@ async function run() {
     // Wiersz-nagłówek sekcji: kolumna A to tekst (nie numer).
     if (typeof a === 'string' && a.trim() !== '') {
       const name = b || a.trim()
+      const order = sectionOrder++
       const section = await payload.create({
         collection: 'kosztorys-sections',
         data: {
           investment: INVESTMENT_ID,
           name,
-          displayOrder: sectionOrder++,
-          defaultCostVariant: 'w_tools',
+          displayOrder: order,
+          color: sectionColorForIndex(order),
         },
         ...ctx,
       })
@@ -104,12 +106,16 @@ async function run() {
     // Pozycja: A numeryczne + niepusty opis. Puste wiersze pomijamy.
     if (typeof a === 'number' && b !== '') {
       if (currentSectionId == null) continue // pozycja przed pierwszą sekcją — pomiń
+      // „Pomiar z natury" = Σ etapów, więc pomiar bierze się z etapów C–H, nie z kolumny J.
       const stageQty = [row[2], row[3], row[4], row[5], row[6], row[7]].map(num) // C–H
       const plannedQty = num(row[8]) // I
-      const measuredQty = num(row[9]) // J
+      // J: the sheet's own „Pomiar z natury" — kept as the read-only reference figure the rozjazd
+      // list compares against Σ etapów. `str() === ''` rather than `num() || null`, so a genuine 0
+      // stays a claim instead of collapsing into „arkusz nic nie twierdzi".
+      const sheetMeasuredQty = str(row[9]) === '' ? null : num(row[9])
       const unit = str(row[10]) || null // K
       const clientPrice = num(row[11]) // L
-      const rabat = num(row[12]) // M (ułamek, 0,05 = 5%)
+      const discountFraction = num(row[12]) // M (ułamek, 0,05 = 5%)
 
       const item = await payload.create({
         collection: 'kosztorys-items',
@@ -120,11 +126,10 @@ async function run() {
           description: b,
           unit,
           plannedQty,
-          measuredQty,
-          discountType: rabat > 0 ? 'percent' : null,
-          discountValue: rabat > 0 ? rabat * 100 : 0,
+          sheetMeasuredQty,
+          discountType: discountFraction > 0 ? 'percent' : null,
+          discountValue: discountFraction > 0 ? discountFraction * 100 : 0,
           clientPrice,
-          hiddenInExport: false,
         },
         ...ctx,
       })
