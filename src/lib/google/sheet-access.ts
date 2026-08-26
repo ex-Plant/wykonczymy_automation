@@ -1,7 +1,7 @@
-import { google } from 'googleapis'
 import { serverEnv } from '@/lib/env/server'
-import { createServiceAccountJWT, parseServiceAccountCredentials } from './auth'
+import { parseServiceAccountCredentials } from './auth'
 import { getReadonlySheetsClient } from './readonly-sheets-client'
+import { getWritableSheetsClient } from './sheets'
 import { sheetWriteRefusal } from './sheet-write-guard'
 
 // The service-account email — what an owner must share a sheet with for the app
@@ -55,8 +55,7 @@ export async function verifySheetAccess(spreadsheetId: string): Promise<{ title:
       return { title }
     }
 
-    const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
-    await google.sheets({ version: 'v4', auth }).spreadsheets.batchUpdate({
+    await getWritableSheetsClient(spreadsheetId).spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
         requests: [{ updateSpreadsheetProperties: { properties: { title }, fields: 'title' } }],

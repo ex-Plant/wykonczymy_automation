@@ -46,13 +46,22 @@ export { buildTabSummary, formulaArgSeparator } from './sheet-summary'
 // environment gate impossible to route around: every write below sits under this call, and a new
 // writing function inherits the gate by needing a client at all — not by remembering a convention.
 // Reads take getReadonlySheetsClient() instead, so the gate never closes off reading.
-function getWritableSheetsClient(spreadsheetId: string): sheets_v4.Sheets {
+export function getWritableSheetsClient(spreadsheetId: string): sheets_v4.Sheets {
   const refusal = sheetWriteRefusal(
     serverEnv.VERCEL_ENV,
     spreadsheetId,
     serverEnv.GOOGLE_SHEETS_WRITE_ALLOWLIST,
   )
   if (refusal) throw new Error(refusal)
+  // A refusal is loud; the allowlist letting a write THROUGH was silent, which is the asymmetry
+  // that hurts — a client's id on the list would first announce itself in the client's sheet.
+  if (serverEnv.VERCEL_ENV !== 'production') {
+    console.warn(
+      `[sheets] WRITING to ${spreadsheetId} outside production (VERCEL_ENV=${serverEnv.VERCEL_ENV ?? 'unset'}) ` +
+        '— allowed only because it is on GOOGLE_SHEETS_WRITE_ALLOWLIST. If this is not YOUR OWN test ' +
+        'sheet, stop and take it off the list.',
+    )
+  }
   const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
   return google.sheets({ version: 'v4', auth })
 }
