@@ -13,6 +13,7 @@ export async function NavOpenRouterBalance({ className }: { className?: string }
 
   return (
     <Button
+      disabled
       type="button"
       variant="ai"
       size="sm"
