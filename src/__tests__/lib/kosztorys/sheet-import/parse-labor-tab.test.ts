@@ -72,18 +72,33 @@ describe('parseLaborTab', () => {
     ])
   })
 
-  it('emits every resolved etap, not only those carrying quantity', () => {
-    // An etap planned but not started is still an etap: taking the count from the data would drop
-    // the empty trailing ones and silently shrink the kosztorys.
+  it('imports only the etapy somebody typed into, renumbered to a contiguous run', () => {
+    // Ten etap columns, three of them used: the empty seven would arrive locked (no rozliczenie)
+    // and be deleted by hand every import.
     const { stages } = parse(BIALOSTOCKA_ROWS)
 
-    expect(stages).toHaveLength(10)
-    expect(stages.map((stage) => stage.ordinal)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    expect(stages.map((stage) => stage.ordinal)).toEqual([1, 2, 3])
   })
 
-  it('imports no stage labels, planes or workers — the sheet is not their source', () => {
+  it('names the etapy after the sheet header, planes and workers stay empty', () => {
     const { stages } = parse(BIALOSTOCKA_ROWS)
-    expect(stages.every((stage) => !stage.label && !stage.plane && !stage.workerId)).toBe(true)
+
+    // The sheet's own caption („1 etap ilość") is not a name — but its NUMBER is kept, so a skipped
+    // column never shifts what the surviving etapy are called.
+    expect(stages.map((stage) => stage.label)).toEqual(['Etap 1', 'Etap 2', 'Etap 3'])
+    expect(stages.every((stage) => !stage.plane && !stage.workerId)).toBe(true)
+  })
+
+  it('keeps a renamed etap column even with nothing booked against it', () => {
+    // „2 etap BRYGADA JEDEN" carries no wykonanie in the fixture — the owner naming it is the same
+    // claim that the etap exists.
+    const { stages } = parse(PRZEDPOLE_ROWS)
+
+    expect(stages.map((stage) => stage.label)).toEqual([
+      '1 etap BRYGADA JEDEN',
+      '2 etap BRYGADA JEDEN',
+      '3 etap EKIPA DWA',
+    ])
   })
 
   it('reads the narrow layout off its own resolved columns', () => {
@@ -93,7 +108,7 @@ describe('parseLaborTab', () => {
     expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({ unit: 'kpl', clientPrice: 1500, plannedQty: 1 })
     expect(items[0].discountValue).toBe(5)
-    expect(stages).toHaveLength(6)
+    expect(stages).toHaveLength(3)
   })
 
   it('keeps reading past a blank spacer row that looks exactly like the footer', () => {
