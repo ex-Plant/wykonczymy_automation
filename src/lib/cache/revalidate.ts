@@ -1,5 +1,14 @@
 import { revalidateTag, updateTag } from 'next/cache'
-import { CACHE_TAGS } from './tags'
+import { CACHE_TAGS, NOTIFICATION_RECIPIENTS_TAG } from './tags'
+
+/**
+ * Same Server-Actions-only warning as `revalidateCollections`. Separate because the recipients live
+ * in a global, so there is no collection slug to pass — and the card that writes them is on the page
+ * that displays them, which is exactly the case `updateTag`'s re-render is for.
+ */
+export function revalidateNotificationRecipients() {
+  updateTag(NOTIFICATION_RECIPIENTS_TAG)
+}
 
 /**
  * WARNING: Only call from Server Actions. Payload hooks must use `revalidateTag` directly
