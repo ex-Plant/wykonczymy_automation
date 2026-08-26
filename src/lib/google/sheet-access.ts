@@ -1,5 +1,8 @@
 import { google } from 'googleapis'
+import { serverEnv } from '@/lib/env/server'
 import { createServiceAccountJWT, parseServiceAccountCredentials } from './auth'
+import { getReadonlySheetsClient } from './readonly-sheets-client'
+import { sheetWriteRefusal } from './sheet-write-guard'
 
 // The service-account email — what an owner must share a sheet with for the app
 // to read/sync it. Parsed from the same credential JSON the clients use.
@@ -28,13 +31,32 @@ export function extractSheetId(input: string): string | undefined {
 // share at link time, then 403 on first sync. So after reading the title we run a
 // no-op write (rewrite the title to itself) under the full `spreadsheets` scope —
 // a Viewer share can read but not write, so this surfaces the gap now.
+//
+// That probe is a real write to someone's document, so it obeys the same environment gate as every
+// other write. Where the gate refuses, the probe is SKIPPED rather than failed: `null` here means
+// „the service account has no access", and returning it for a refusal would send the reader off to
+// re-share a sheet that was never the problem. Linking still works outside production; what it
+// stops proving is Editor rights.
 export async function verifySheetAccess(spreadsheetId: string): Promise<{ title: string } | null> {
-  const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
-  const sheets = google.sheets({ version: 'v4', auth })
   try {
-    const res = await sheets.spreadsheets.get({ spreadsheetId, fields: 'properties.title' })
+    const res = await getReadonlySheetsClient().spreadsheets.get({
+      spreadsheetId,
+      fields: 'properties.title',
+    })
     const title = res.data.properties?.title ?? ''
-    await sheets.spreadsheets.batchUpdate({
+
+    const refusal = sheetWriteRefusal(
+      serverEnv.VERCEL_ENV,
+      spreadsheetId,
+      serverEnv.GOOGLE_SHEETS_WRITE_ALLOWLIST,
+    )
+    if (refusal) {
+      console.warn(`[sheet-access] write probe skipped — ${refusal}`)
+      return { title }
+    }
+
+    const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
+    await google.sheets({ version: 'v4', auth }).spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
         requests: [{ updateSpreadsheetProperties: { properties: { title }, fields: 'title' } }],

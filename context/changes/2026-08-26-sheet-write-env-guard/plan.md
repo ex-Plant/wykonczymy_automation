@@ -354,14 +354,14 @@ arkusz").
 
 #### Automated
 
-- [x] 1.1 Spec predykatu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard.test.ts`
+- [x] 1.1 Spec predykatu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard.test.ts` — d09c59c9
 
 ### Phase 2: Szew — klient zapisowy za bramką, odczyty na `readonly`
 
 #### Automated
 
-- [ ] 2.1 Test regresyjny szwu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard-seam.test.ts`
-- [ ] 2.2 Spece arkuszowe przechodzą przez listę dozwolonych: `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts`
+- [x] 2.1 Test regresyjny szwu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard-seam.test.ts`
+- [x] 2.2 Spece arkuszowe przechodzą przez listę dozwolonych: `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts`
 
 ### Phase 3: Dokumentacja i odmrożenie bramy QA
 

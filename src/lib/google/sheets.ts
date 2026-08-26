@@ -1,5 +1,8 @@
 import { google, sheets_v4 } from 'googleapis'
+import { serverEnv } from '@/lib/env/server'
 import { createServiceAccountJWT } from './auth'
+import { getReadonlySheetsClient } from './readonly-sheets-client'
+import { sheetWriteRefusal } from './sheet-write-guard'
 import {
   columnLetter,
   colOf,
@@ -39,7 +42,17 @@ export {
 } from './sheet-configs'
 export { buildTabSummary, formulaArgSeparator } from './sheet-summary'
 
-function getClient(): sheets_v4.Sheets {
+// The only place in the repo that mints a write-scoped Sheets token, which is what makes the
+// environment gate impossible to route around: every write below sits under this call, and a new
+// writing function inherits the gate by needing a client at all — not by remembering a convention.
+// Reads take getReadonlySheetsClient() instead, so the gate never closes off reading.
+function getWritableSheetsClient(spreadsheetId: string): sheets_v4.Sheets {
+  const refusal = sheetWriteRefusal(
+    serverEnv.VERCEL_ENV,
+    spreadsheetId,
+    serverEnv.GOOGLE_SHEETS_WRITE_ALLOWLIST,
+  )
+  if (refusal) throw new Error(refusal)
   const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
   return google.sheets({ version: 'v4', auth })
 }
@@ -89,7 +102,7 @@ function resolveHeaders(cfg: SheetTabConfigT, grid: unknown[][]): HeaderMapT {
 class MissingTabError extends Error {}
 
 async function readGrid(spreadsheetId: string, cfg: SheetTabConfigT): Promise<unknown[][]> {
-  const sheets = getClient()
+  const sheets = getReadonlySheetsClient()
   try {
     const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: tabRange(cfg) })
     return (res.data.values ?? []) as unknown[][]
@@ -186,7 +199,7 @@ export async function applyTabRowsBatch(
   upserts: TabRowInputT[],
   removeIds: number[] = [],
 ): Promise<{ added: number; updated: number; removed: number }> {
-  const sheets = getClient()
+  const sheets = getWritableSheetsClient(spreadsheetId)
   const grid = await readGrid(spreadsheetId, cfg)
   const { headerRow, cols } = resolveHeaders(cfg, grid)
   const fields = fieldsOf(cfg)
@@ -298,7 +311,7 @@ export async function setupTab(
   cfg: SheetTabConfigT,
   summaryKeys: string[],
 ): Promise<void> {
-  const sheets = getClient()
+  const sheets = getWritableSheetsClient(spreadsheetId)
 
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
@@ -635,7 +648,7 @@ export async function ensureTab(
   // the common already-exists path (every sync after the first) free of that query.
   summaryKeys: string[] | (() => string[] | Promise<string[]>),
 ): Promise<{ created: boolean }> {
-  const sheets = getClient()
+  const sheets = getReadonlySheetsClient()
   const gid = await tabGid(sheets, spreadsheetId, cfg)
   if (gid != null) return { created: false }
   // Tab is absent → setupTab builds it on a fresh (empty) tab, so its internal

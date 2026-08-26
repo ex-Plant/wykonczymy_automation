@@ -103,6 +103,10 @@ const {
 // ── helpers ──────────────────────────────────────────────────────────────
 
 function setEnv() {
+  // The write seam refuses every sheet outside production, so these specs name their own fixture
+  // id on the allowlist. Setting VERCEL_ENV='production' would be the shorter route and the wrong
+  // one — it would switch the guard off and hide the very regression it exists to catch.
+  process.env.GOOGLE_SHEETS_WRITE_ALLOWLIST = 'sheet-1,sheet-old'
   process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
     client_email: 'test@x.iam.gserviceaccount.com',
     private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n',
