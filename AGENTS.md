@@ -148,7 +148,18 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 - The local app points at the docker Postgres on 5433 (`DB_POSTGRES_URL`, db `wykonczymy-db`) — a copy restored from Neon dumps: `pnpm db:dump` (prod → `dumps/dump-latest.sql`, also run by the pre-push hook) and `pnpm db:import` (dump → local). Refreshable, but confirm before wiping it — a restore loses anything entered locally since the last dump.
 - The **E2E suite** runs against an isolated `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, db `wykonczymy-test`), never the dev DB. Populate/reset its fixtures with `pnpm db:import:test` (same dump → test DB). `pnpm test:e2e` starts the container (`--wait` on its healthcheck) but does **not** import — run `db:import:test` once after a fresh volume or to reset.
 - **A `db-test` reset is three commands, not one: `pnpm db:import:test` → `pnpm seed:kosztorys:test` → `pnpm seed:deposits:test`.** The prod dump carries zero kosztorys rows and not one wpłata brutto, and `pnpm test:parity`'s dataset floor fails closed on both. Without the kosztorys seed every listing figure reads zero robocizny; without the wpłata-brutto seed the whole brutto plane and the legacy bridge (`net_amount IS NULL`, derived at VAT) are zero everywhere — so the guard would pass green having tested neither.
-- `GOOGLE_SERVICE_ACCOUNT_JSON` and `KOSZTORYS_TEMPLATE_SHEET_ID` in `.env` are real working credentials — Google Sheets writes hit live data.
+- **Google Sheets: reads are open everywhere, writes only from production.** `GOOGLE_SERVICE_ACCOUNT_JSON`
+  and `KOSZTORYS_TEMPLATE_SHEET_ID` in `.env` are real working credentials, and the sheet id comes from
+  the DB — every non-production database is a restored prod dump, so localhost, preview and the E2E DB
+  all carry **live client sheet ids**. That is how eight client sheets took 36 foreign rows in
+  2026-08. So `getWritableSheetsClient` (`src/lib/google/sheets.ts`) — the one place in the repo that
+  mints a `spreadsheets`-scoped token — refuses unless `VERCEL_ENV === 'production'` or the sheet id is
+  listed in `GOOGLE_SHEETS_WRITE_ALLOWLIST`, and it throws **before** the first Google API call. A new
+  writing function inherits the gate by needing a client at all, not by remembering a convention;
+  reads take `getReadonlySheetsClient()` and are unaffected. To work on sheet writes locally, put
+  **your own** test sheet's id on the allowlist — never a client's. Repairing a client's sheet happens
+  from production, and there is no other route. Note the allowlist is honoured **outside** production
+  only: a production allow-list would refuse a newly linked sheet.
 - **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
   has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`
   values are the real invoices. A delete on localhost against the production store therefore destroys

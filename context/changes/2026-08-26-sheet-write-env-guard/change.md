@@ -1,11 +1,11 @@
 ---
 change_id: sheet-write-env-guard
 title: Zapisy do Google Sheets tylko z produkcji — localhost nadpisywał żywy arkusz klienta
-status: implementing
+status: implemented
 created: 2026-08-26
 updated: 2026-08-26
 archived_at: null
-branch: null
+branch: sheet-write-env-guard
 worktree: null
 ---
 
@@ -41,10 +41,11 @@ Zakres do rozstrzygnięcia w planie:
 
 Regression test jest wymagany: hook/szew nie strzela poza produkcją.
 
-**Brama manualna `staging → main` jest zamrożona** na sekcjach dotykających arkuszy
+**Brama manualna `staging → main` była zamrożona** na sekcjach dotykających arkuszy
 (`sheet-live-compare`, `kosztorys-importer`, `import-etapy-z-arkusza`, `sheet-column-mapping`,
-`EX-686`, `sheet-measured-qty-from-formula`) do czasu wejścia strażnika —
-`context/changes/staging-to-main-gate/ledger.md`.
+`EX-686`, `sheet-measured-qty-from-formula`) do czasu wejścia strażnika. **Odmrożone 2026-08-26**
+wraz z warunkiem uruchamiania (własny arkusz testowy na `GOOGLE_SHEETS_WRITE_ALLOWLIST`, nigdy
+arkusz klienta) — `context/changes/staging-to-main-gate/ledger.md`.
 
 Do posprzątania po fixie: wiersze, które localhost zdążył wpisać/nadpisać w arkuszu
 „Bialostocka 5/152 Wojtek - ekipa hulko".

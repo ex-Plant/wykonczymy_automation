@@ -360,11 +360,11 @@ arkusz").
 
 #### Automated
 
-- [x] 2.1 Test regresyjny szwu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard-seam.test.ts`
-- [x] 2.2 Spece arkuszowe przechodzą przez listę dozwolonych: `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts`
+- [x] 2.1 Test regresyjny szwu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard-seam.test.ts` — 4210bc7d
+- [x] 2.2 Spece arkuszowe przechodzą przez listę dozwolonych: `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts` — 4210bc7d
 
 ### Phase 3: Dokumentacja i odmrożenie bramy QA
 
 #### Automated
 
-- [ ] 3.1 brak checków automatycznych — faza wyłącznie prozą
+- [x] 3.1 brak checków automatycznych — faza wyłącznie prozą
