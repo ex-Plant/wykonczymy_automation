@@ -60,7 +60,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
             </tr>
           )
         }}
-        toolbar={({ table, columnVisibility: cv }) => (
+        toolbar={({ table, columnVisibility: cv, ...order }) => (
           <>
             <SearchFilterInput
               value={searchTerm}
@@ -68,7 +68,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
               placeholder="Szukaj..."
               className={SEARCH_FILTER_TOOLBAR_WIDTH}
             />
-            <ColumnToggle table={table} columnVisibility={cv} />
+            <ColumnToggle table={table} columnVisibility={cv} {...order} />
             <AddInspectionDialog vehicles={data} />
             <AddVehicleDialog />
           </>

@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckIcon, Settings2 } from 'lucide-react'
+import { ArrowUpDown, CheckIcon, Settings2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +26,12 @@ export type ColumnToggleItemT = {
 type PropsT = {
   items: ColumnToggleItemT[]
   onToggle: (id: string) => void
+  /** When passed, the picker also offers the reorder trigger. Absent = visibility only. */
+  onOpenOrder?: () => void
   className?: string
 }
 
-export function ColumnToggleMenu({ items, onToggle, className }: PropsT) {
+export function ColumnToggleMenu({ items, onToggle, onOpenOrder, className }: PropsT) {
   if (items.length === 0) return null
 
   return (
@@ -57,6 +59,15 @@ export function ColumnToggleMenu({ items, onToggle, className }: PropsT) {
             {item.label}
           </DropdownMenuItem>
         ))}
+        {onOpenOrder && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={onOpenOrder}>
+              <ArrowUpDown />
+              Ustaw kolejność kolumn…
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

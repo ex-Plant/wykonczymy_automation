@@ -53,7 +53,7 @@ export function UserDataTable({ data, cashRegisters }: UserDataTablePropsT) {
       storageKey="users"
       getRowHref={(row) => `/pracownicy/${row.id}`}
       getRowClassName={(row) => (!row.active ? 'opacity-50' : '')}
-      toolbar={({ table, columnVisibility: cv }) => (
+      toolbar={({ table, columnVisibility: cv, ...order }) => (
         <>
           <SearchFilterInput
             value={searchTerm}
@@ -67,7 +67,7 @@ export function UserDataTable({ data, cashRegisters }: UserDataTablePropsT) {
             allLabel="Wszyscy"
           />
           <AddWorkerDialog cashRegisters={cashRegisters} />
-          <ColumnToggle table={table} columnVisibility={cv} />
+          <ColumnToggle table={table} columnVisibility={cv} {...order} />
         </>
       )}
     />

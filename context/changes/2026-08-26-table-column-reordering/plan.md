@@ -456,13 +456,13 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 3.1 `column-prefs-storage` spec passes
+- [x] 3.1 `column-prefs-storage` spec passes — 88cbb781
 
 ### Phase 4: Wire the UI
 
 #### Automated
 
-- [ ] 4.1 `column-toggle-order` adapter spec passes
+- [x] 4.1 `column-toggle-order` adapter spec passes
 
 ### Phase 5: Cleanup & close
 

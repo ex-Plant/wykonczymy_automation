@@ -82,7 +82,7 @@ export function CashRegistersTable({ data, className }: CashRegistersTablePropsT
         storageKey="cashRegisters"
         getRowHref={(row) => `/kasa/${row.id}`}
         getRowClassName={(row) => (!row.active ? 'opacity-50' : '')}
-        toolbar={({ table, columnVisibility: cv }) => (
+        toolbar={({ table, columnVisibility: cv, ...order }) => (
           <>
             <SearchFilterInput
               value={searchTerm}
@@ -111,7 +111,7 @@ export function CashRegistersTable({ data, className }: CashRegistersTablePropsT
               activeLabel="Aktywne"
               allLabel="Wszystkie"
             />
-            <ColumnToggle table={table} columnVisibility={cv} />
+            <ColumnToggle table={table} columnVisibility={cv} {...order} />
           </>
         )}
       />
