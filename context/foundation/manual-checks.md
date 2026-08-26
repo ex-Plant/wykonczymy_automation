@@ -1650,3 +1650,19 @@ JEDEN"). Zalogowany jako OWNER.
 - [ ] „Nie ustawiaj — wybiorę w kosztorysie": etapy wchodzą zablokowane, z czerwonym ostrzeżeniem w nagłówku (stan sprzed zmiany)
 - [ ] Wybór rozliczenia zrobiony przy jednym imporcie nie zostaje jako domyślny przy następnym otwarciu okna
 - [ ] Arkusz bez ani jednego wykonania i bez przemianowanych kolumn (czysta oferta): import przechodzi, kosztorys wchodzi bez etapów, podsumowanie mówi „Brak etapów", siatka się nie wywala, a okno importu **nie** pyta o rozliczenie etapów
+
+## table-column-reordering — kolejność kolumn w tabelach
+
+Setup: zalogowany jako OWNER, przeglądarka z czystym `localStorage` (klucze `table-columns:*`
+i `table-column-order:*`).
+
+- [ ] Na liście inwestycji „Nazwa" pojawia się w przełączniku Kolumny i da się ją odznaczyć
+- [ ] Odznaczenie wszystkich kolumn zostawia pustą tabelę, którą przełącznik przywraca
+- [ ] Na `/transfery` przełącznik Kolumny ma pozycję „Ustaw kolejność kolumn…", okno się otwiera, kolumna daje się przeciągnąć, a tabela przestawia się po upuszczeniu
+- [ ] Nowa kolejność przeżywa przeładowanie strony
+- [ ] „Przywróć domyślną kolejność" wraca do kolejności z kodu i **nie** odkrywa schowanych kolumn
+- [ ] Schowana kolumna jest w oknie wyszarzona, nadal przeciągalna, i po odkryciu ląduje na ustawionym miejscu
+- [ ] Kolejność ustawiona na `/transfery` obowiązuje też na innej stronie z tym samym kluczem, a kolumna wykluczona tam nie psuje układu
+- [ ] Stopka `/flota` („Razem") nadal stoi pod kolumną kosztów po przestawieniu kolumn
+- [ ] Inwestycje i kasy pamiętają swoje kolejności osobno — przestawienie jednej nie rusza drugiej
+- [ ] Tabele wirtualizowane (transakcje materiałowe, wypłaty podwykonawców) nadal poprawnie trzymają szerokości kolumn przy przewijaniu

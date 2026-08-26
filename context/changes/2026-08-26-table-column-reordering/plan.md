@@ -468,5 +468,5 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 5.1 Phase 3 and 4 specs still pass
-- [x] 5.2 No `visibleColumnIds` prop survives outside the `footer` callback
+- [x] 5.1 Phase 3 and 4 specs still pass — e040b8fe
+- [x] 5.2 No `visibleColumnIds` prop survives outside the `footer` callback — e040b8fe
