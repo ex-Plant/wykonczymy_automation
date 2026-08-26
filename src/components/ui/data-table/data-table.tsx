@@ -136,7 +136,6 @@ export function DataTable<TData>({
   const visibleLeafColumns = table.getVisibleLeafColumns()
   const visibleColCount = visibleLeafColumns.length
   const visibleColumnIdList = visibleLeafColumns.map((column) => column.id)
-  const visibleColumnIds = new Set(visibleColumnIdList)
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -169,7 +168,6 @@ export function DataTable<TData>({
                   <DataTableRow
                     key={row.id}
                     row={row}
-                    visibleColumnIds={visibleColumnIds}
                     getRowHref={getRowHref}
                     getRowClassName={getRowClassName}
                   />

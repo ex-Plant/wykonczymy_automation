@@ -462,11 +462,11 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 4.1 `column-toggle-order` adapter spec passes
+- [x] 4.1 `column-toggle-order` adapter spec passes — be59be6a
 
 ### Phase 5: Cleanup & close
 
 #### Automated
 
-- [ ] 5.1 Phase 3 and 4 specs still pass
-- [ ] 5.2 No `visibleColumnIds` prop survives outside the `footer` callback
+- [x] 5.1 Phase 3 and 4 specs still pass
+- [x] 5.2 No `visibleColumnIds` prop survives outside the `footer` callback

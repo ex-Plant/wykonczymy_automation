@@ -12,14 +12,12 @@ import { cn } from '@/lib/utils/cn'
 
 type DataTableRowPropsT<TData> = {
   row: Row<TData>
-  visibleColumnIds: Set<string>
   getRowHref?: (row: TData) => string | undefined
   getRowClassName?: (row: TData) => string
 }
 
 export function DataTableRow<TData>({
   row,
-  visibleColumnIds,
   getRowHref,
   getRowClassName,
 }: DataTableRowPropsT<TData>) {
@@ -61,26 +59,23 @@ export function DataTableRow<TData>({
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
     >
-      {row
-        .getAllCells()
-        .filter((cell) => visibleColumnIds.has(cell.column.id))
-        .map((cell) => {
-          const align = cell.column.columnDef.meta?.align
-          const minWidth = cell.column.columnDef.meta?.minWidth
-          return (
-            <td
-              key={cell.id}
-              className={cn(
-                'text-foreground px-3 py-2',
-                align === 'right' && 'text-right',
-                align === 'center' && 'text-center',
-                minWidth,
-              )}
-            >
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-            </td>
-          )
-        })}
+      {row.getVisibleCells().map((cell) => {
+        const align = cell.column.columnDef.meta?.align
+        const minWidth = cell.column.columnDef.meta?.minWidth
+        return (
+          <td
+            key={cell.id}
+            className={cn(
+              'text-foreground px-3 py-2',
+              align === 'right' && 'text-right',
+              align === 'center' && 'text-center',
+              minWidth,
+            )}
+          >
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </td>
+        )
+      })}
     </tr>
   )
 }
