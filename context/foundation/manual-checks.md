@@ -1631,3 +1631,22 @@ Zalogowany jako OWNER.
 - [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa
 - [ ] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
 - [ ] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
+
+## import-etapy-z-arkusza — puste etapy odsiane, podpisy i rozliczenie z okna importu
+
+Setup: baza testowa 5435, inwestycja z podpiętym arkuszem Google, którego zakładka
+`kosztorys_robocizny` ma 10 kolumn „wykonano", z czego wykonanie wpisane jest tylko w kilku, i
+której ostatni wiersz nagłówka nazywa przynajmniej jedną kolumnę po swojemu (np. „1 etap BRYGADA
+JEDEN"). Zalogowany jako OWNER.
+
+- [ ] Po „Pobierz i zastąp" wchodzą tylko te kolumny etapów, które mają wpisane wykonanie albo własną nazwę — kolumny puste i nieprzemianowane nie wchodzą
+- [ ] Kolumna przemianowana w arkuszu („2 etap BRYGADA JEDEN"), ale bez wpisanego wykonania, mimo wszystko wchodzi
+- [ ] Liczba etapów w podglądzie („Co wejdzie") zgadza się z toastem po imporcie i z liczbą kolumn w siatce
+- [ ] Przemianowana kolumna czyta w siatce dokładnie swoją nazwę z arkusza („1 etap BRYGADA JEDEN")
+- [ ] Kolumna z fabryczną nazwą („4 etap ilość") czyta „Etap 4" — numer z ARKUSZA, nawet jeśli w siatce stoi jako druga z kolei
+- [ ] Wpisane ilości siedzą w tych samych etapach co w arkuszu — po imporcie „Porównaj z arkuszem Google" nie pokazuje różnicy w wykonaniu
+- [ ] „Wszystkie z narzędziami" w oknie importu: po imporcie każdy nagłówek etapu ma ikonę klucza, żadnego czerwonego ostrzeżenia, ilości da się wpisywać
+- [ ] „Wszystkie bez narzędzi": analogicznie, druga ikona, a rachunek podwykonawcy liczy po stawce bez narzędzi
+- [ ] „Nie ustawiaj — wybiorę w kosztorysie": etapy wchodzą zablokowane, z czerwonym ostrzeżeniem w nagłówku (stan sprzed zmiany)
+- [ ] Wybór rozliczenia zrobiony przy jednym imporcie nie zostaje jako domyślny przy następnym otwarciu okna
+- [ ] Arkusz bez ani jednego wykonania i bez przemianowanych kolumn (czysta oferta): import przechodzi, kosztorys wchodzi bez etapów, podsumowanie mówi „Brak etapów", siatka się nie wywala, a okno importu **nie** pyta o rozliczenie etapów
