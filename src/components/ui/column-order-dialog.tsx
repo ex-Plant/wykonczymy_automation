@@ -11,7 +11,7 @@ import {
   DialogHeader,
 } from '@/components/ui/dialog'
 import type { ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
-import { rankForMove, type ColumnRanksT } from '@/lib/kosztorys/column-order'
+import { rankForMove, type ColumnRanksT } from '@/lib/table/column-order'
 import { useDraft } from '@/hooks/use-draft'
 import { cn } from '@/lib/utils/cn'
 
@@ -25,6 +25,9 @@ type PropsT = {
   baseRanks: ColumnRanksT
   onSetRank: (key: string, rank: number) => void
   onReset: () => void
+  // Where the setting applies — the ranks are per-surface, so the sentence has to name that surface
+  // rather than promise it everywhere.
+  description: string
 }
 
 function sameKeys(a: readonly string[], b: readonly string[]): boolean {
@@ -44,6 +47,7 @@ export function ColumnOrderDialog({
   baseRanks,
   onSetRank,
   onReset,
+  description,
 }: PropsT) {
   const keys = items.map((item) => item.id)
   const labels = new Map(items.map((item) => [item.id, item]))
@@ -64,10 +68,7 @@ export function ColumnOrderDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[min(90vw,420px)]">
-        <DialogHeader
-          title="Ustaw kolejność kolumn"
-          description="Przeciągnij pozycję, żeby przestawić kolumny w tabeli. Ustawienie zapamiętuje ta przeglądarka i działa we wszystkich kosztorysach."
-        />
+        <DialogHeader title="Ustaw kolejność kolumn" description={description} />
 
         {/* layoutScroll + min-h-0: without the first, framer measures drags against a stale scroll
             offset once the list is scrolled; without the second the inner box never shrinks in the

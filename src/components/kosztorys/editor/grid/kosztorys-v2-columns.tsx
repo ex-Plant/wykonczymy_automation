@@ -48,7 +48,7 @@ import {
   groupColumns,
   orderColumns,
   type ColumnRanksT,
-} from '@/lib/kosztorys/column-order'
+} from '@/lib/table/column-order'
 import {
   PREVIEW_VISIBLE_COLUMNS,
   PRZEDMIAR_ANCHORED_COLUMNS,

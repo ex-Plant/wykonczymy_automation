@@ -4,7 +4,7 @@ import type { BuildV2ColumnsOptsT } from '@/components/kosztorys/editor/grid/kos
 import { STAGES_COLUMN_GROUP, stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT } from '@/lib/kosztorys/types'
 
-// What the pure ordering function (lib/kosztorys/column-order) cannot assert on its own: how the
+// What the pure ordering function (lib/table/column-order) cannot assert on its own: how the
 // rank map behaves against the REAL column set.
 
 const STAGES: KosztorysStageT[] = [

@@ -1,7 +1,7 @@
 'use client'
 
 import { createJsonMapStore, dropKeys, useJsonMap } from '@/hooks/create-json-map-store'
-import type { ColumnRanksT } from '@/lib/kosztorys/column-order'
+import type { ColumnRanksT } from '@/lib/table/column-order'
 
 // User-defined column order = group key → rank, persisted in localStorage. Sparse: only groups the
 // owner actually dragged get an entry, so an empty map is exactly today's sheet order and a column
