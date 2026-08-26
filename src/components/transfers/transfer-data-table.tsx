@@ -62,12 +62,12 @@ export function TransferDataTable({
           if (row.type === 'CANCELLATION') return '[&_td]:text-muted-foreground'
           return ''
         }}
-        toolbar={(table, cv) => (
+        toolbar={({ table, columnVisibility: cv, ...order }) => (
           <div className="ml-auto flex items-center gap-2">
             <CancelledTransactionAuditButton baseUrl={baseUrl} />
             <CancelledFilterButton baseUrl={baseUrl} />
             {invoiceDownload && <InvoiceDownloadButton where={config.query.where} />}
-            <ColumnToggle table={table} columnVisibility={cv} />
+            <ColumnToggle table={table} columnVisibility={cv} {...order} />
           </div>
         )}
       />

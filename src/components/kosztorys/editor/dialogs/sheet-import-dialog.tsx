@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { DialogActions } from '@/components/ui/dialog-actions'
 import { SheetAccessBlock } from '@/components/kosztorys/editor/dialogs/sheet-access-block'
 import { SheetColumnPicker } from '@/components/kosztorys/editor/dialogs/sheet-column-picker'
@@ -23,7 +23,7 @@ import {
   itemVanishesPhrase,
 } from '@/components/kosztorys/editor/dialogs/sheet-report-words'
 import { applyKosztorysImport, type ImportPreviewT } from '@/lib/actions/kosztorys-import'
-import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 import { formatCoeff } from '@/lib/kosztorys/format'
 import type { ImportReportT } from '@/lib/kosztorys/sheet-import/build-import-plan'
 import type { FooterComparisonT } from '@/lib/kosztorys/sheet-import/footer-totals'
@@ -31,6 +31,8 @@ import type {
   UnresolvedColumnsT,
   UnresolvedReasonT,
 } from '@/lib/kosztorys/sheet-import/resolve-columns'
+import type { ToolPlaneT } from '@/lib/kosztorys/types'
+import { SimpleSelect } from '@/components/ui/simple-select'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { toastMessage } from '@/lib/utils/toast'
 
@@ -66,13 +68,23 @@ export function SheetImportDialog({
   onMappingSaved,
 }: PropsT) {
   const [pending, startTransition] = useTransition()
+  const [plane, setPlane] = useState<PlanePickT>(NO_PLANE)
+
+  // The editor mounts this dialog once for both triggers, so closing it never unmounts the pick. A
+  // successful import happens to clear it (the tree replacement remounts the body), but „Anuluj" and
+  // a failed apply do not — and a rozliczenie nobody chose this time would stamp every imported etap.
+  const [openedWith, setOpenedWith] = useState(open)
+  if (open !== openedWith) {
+    setOpenedWith(open)
+    if (open) setPlane(NO_PLANE)
+  }
 
   const { confirmDisabled, mismatchedTotals } = evaluateImportGate(preview, loaded, pending)
 
   function handleConfirm() {
     startTransition(async () => {
       try {
-        const result = await applyKosztorysImport(investmentId)
+        const result = await applyKosztorysImport(investmentId, plane === NO_PLANE ? null : plane)
         if (!result.success) {
           toastMessage(result.error, 'error', 6000)
           return
@@ -123,6 +135,7 @@ export function SheetImportDialog({
         ) : (
           <>
             <ScopeBlock report={report} />
+            {report.counts.stages > 0 && <PlaneBlock plane={plane} onChange={setPlane} />}
             <ColumnsBlock
               investmentId={investmentId}
               missing={report.missingColumns}
@@ -136,6 +149,42 @@ export function SheetImportDialog({
         )
       }
     </SheetReportDialog>
+  )
+}
+
+// „nie ustawiaj" is a value here rather than an empty string, because the select needs something to
+// render as the current pick.
+const NO_PLANE = 'none'
+type PlanePickT = ToolPlaneT | typeof NO_PLANE
+
+const PLANE_OPTIONS = [
+  { value: NO_PLANE, label: 'Nie ustawiaj — wybiorę w kosztorysie' },
+  ...TOOL_PLANES.map((plane) => ({
+    value: plane,
+    label: `Wszystkie ${PLANE_LABELS[plane].toLowerCase()}`,
+  })),
+]
+
+// One pick for the whole kosztorys; the odd etap out gets changed in its own header afterwards.
+function PlaneBlock({
+  plane,
+  onChange,
+}: {
+  plane: PlanePickT
+  onChange: (plane: PlanePickT) => void
+}) {
+  return (
+    <SheetReportBlock
+      title="Rozliczenie etapów"
+      verdict="Arkusz tego nie ma — ustaw raz dla wszystkich etapów. Bez tego etapy wejdą zablokowane."
+    >
+      <SimpleSelect
+        value={plane}
+        onValueChange={(value) => onChange(value as PlanePickT)}
+        options={PLANE_OPTIONS}
+        variant="toolbarSm"
+      />
+    </SheetReportBlock>
   )
 }
 

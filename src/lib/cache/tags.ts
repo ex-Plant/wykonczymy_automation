@@ -19,6 +19,10 @@ export const CACHE_TAGS = {
 
 export const entityTag = (collection: string, id: number | string) => `${collection}:${id}` as const
 
+// Its own const rather than a `CACHE_TAGS` entry: that map is keyed by collection slug and
+// `revalidateCollections` iterates it, and this is a global — there is no collection to name.
+export const NOTIFICATION_RECIPIENTS_TAG = 'global:notification-recipients'
+
 // Every tag a whole-tree kosztorys replacement invalidates. Settings may be copied rather than
 // changed, but `restoreKosztorys` rewrites the investment row regardless, so `investments` goes with
 // the four tree tags. Shared so the three replacement paths — snapshot restore, sheet import, preset

@@ -32,6 +32,7 @@ export const vehicle = (overrides: Partial<VehicleSummaryT> = {}): VehicleSummar
     make: 'Ford',
     model: 'Transit',
     status: 'ACTIVE',
+    exemptions: [],
     ...overrides,
   }
 }

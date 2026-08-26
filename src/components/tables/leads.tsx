@@ -31,7 +31,6 @@ export function getLeadColumns({ onToggle }: LeadColumnOptionsT) {
     col.accessor('name', {
       id: 'name',
       header: 'Imię i nazwisko',
-      meta: { canHide: false },
       cell: (info) => info.getValue() || '—',
     }),
     col.accessor('source', {

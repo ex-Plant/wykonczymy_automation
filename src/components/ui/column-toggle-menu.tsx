@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckIcon, Settings2 } from 'lucide-react'
+import { ArrowUpDown, CheckIcon, Settings2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +26,11 @@ export type ColumnToggleItemT = {
 type PropsT = {
   items: ColumnToggleItemT[]
   onToggle: (id: string) => void
+  onOpenOrder?: () => void
   className?: string
 }
 
-export function ColumnToggleMenu({ items, onToggle, className }: PropsT) {
+export function ColumnToggleMenu({ items, onToggle, onOpenOrder, className }: PropsT) {
   if (items.length === 0) return null
 
   return (
@@ -42,7 +43,16 @@ export function ColumnToggleMenu({ items, onToggle, className }: PropsT) {
           Kolumny
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-72">
+        {onOpenOrder && (
+          <>
+            <DropdownMenuItem onSelect={onOpenOrder}>
+              <ArrowUpDown />
+              Ustaw kolejność kolumn…
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuLabel>Widoczne kolumny</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.map((item) => (

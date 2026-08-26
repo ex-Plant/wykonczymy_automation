@@ -29,11 +29,7 @@ const baseEnv = {
   META_PAGE_ACCESS_TOKEN: 'x',
   META_PAGE_ID: 'x',
   WPFORMS_WEBHOOK_SECRET: 'x',
-  LEADS_NOTIFY_EMAIL: 'leads@example.com',
-  LEADS_ALERT_EMAIL: 'alerts@example.com',
   LEADS_REPLY_FROM: 'reply@example.com',
-  FLEET_NOTIFICATION_EMAIL: 'fleet@example.com',
-  ADMIN_EMAIL: 'admin@example.com',
   GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify({
     client_email: 'sa@example.iam.gserviceaccount.com',
     private_key: 'key',

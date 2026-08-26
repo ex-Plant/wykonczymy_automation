@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import type { Lead } from '@/payload-types'
 import { serverEnv } from '@/lib/env/server'
 import { FRONTEND_URL } from '@/lib/env'
+import { requireRecipients } from '@/lib/email/recipients'
 import { renderBrandedEmail } from './email-template'
 import { buildLeadAnswers } from './lead-answers'
 import { leadRawDataSchema, leadFormQuestionsSchema } from './lead-schema'
@@ -15,7 +16,7 @@ const row = (label: string, value?: string | null): string =>
   value ? `<tr><td><strong>${label}:</strong></td><td>${escapeHtml(value)}</td></tr>` : ''
 
 /**
- * Internal heads-up that a new lead landed — always to `LEADS_NOTIFY_EMAIL`,
+ * Internal heads-up that a new lead landed — always to the `newLead` recipients,
  * never to the lead. Throws on send failure so the caller can flip
  * `notifyStatus` to `failed` (the lead itself is already persisted).
  */
@@ -48,12 +49,12 @@ export async function notifyNewLead(payload: Payload, lead: Lead): Promise<void>
     ${answersHtml}
   `
 
-  await payload.sendEmail({ to: serverEnv.LEADS_NOTIFY_EMAIL, subject, html })
+  await payload.sendEmail({ to: await requireRecipients(payload, 'newLead'), subject, html })
 }
 
 /**
  * Safety net: a fetched lead failed schema validation or arrived without an
- * expected email. Alerts the ops/dev inbox (`LEADS_ALERT_EMAIL`) instead of
+ * expected email. Alerts the `opsAlerts` recipients instead of
  * leaving a silent gap. Best-effort — failure here must not break capture, so
  * the caller does not await-throw on it.
  */
@@ -69,7 +70,7 @@ export async function notifyShapeAlert(
   `
 
   await payload.sendEmail({
-    to: serverEnv.LEADS_ALERT_EMAIL,
+    to: await requireRecipients(payload, 'opsAlerts'),
     subject: '⚠️ Zgłoszenie wymaga uwagi - formularz ma niespodziewaną strukturę — Wykończymy',
     html,
   })
@@ -126,7 +127,7 @@ export async function notifyReconcileRecovery(
   `
 
   await payload.sendEmail({
-    to: serverEnv.LEADS_ALERT_EMAIL,
+    to: await requireRecipients(payload, 'opsAlerts'),
     subject: `⚠️ Cron odzyskał ${added} zgłoszeń — webhook nie dowozi — Wykończymy`,
     html,
   })
@@ -155,7 +156,7 @@ export async function notifyReconcileFailure(
   `
 
   await payload.sendEmail({
-    to: serverEnv.LEADS_ALERT_EMAIL,
+    to: await requireRecipients(payload, 'opsAlerts'),
     subject: '🚨 Cron odzyskiwania zgłoszeń nie zadziałał — Wykończymy',
     html,
   })

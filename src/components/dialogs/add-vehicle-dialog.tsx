@@ -13,6 +13,9 @@ const EMPTY_DEFAULTS: VehicleFormValuesT = {
   model: '',
   year: '',
   vin: '',
+  tyres: '',
+  note: '',
+  exemptions: [],
   status: 'ACTIVE',
 }
 

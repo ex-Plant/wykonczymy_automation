@@ -17,7 +17,7 @@ const ENV_STYLES: Record<EnvT, string> = {
 
 const ENV_LABELS: Record<EnvT, string> = {
   production: 'PROD',
-  preview: 'PREVIEW',
+  preview: 'TESTY',
   development: 'LOCAL',
 }
 

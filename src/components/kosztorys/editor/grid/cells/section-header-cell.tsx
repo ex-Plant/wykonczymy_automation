@@ -33,7 +33,7 @@ export type SectionHeaderSlotT = 'label' | 'blank'
 const CHROME_COLUMN_IDS: ReadonlySet<string> = new Set(['actions', 'layerGap'])
 
 // The band follows the grid instead of a named column: no column holds a fixed slot any more
-// (lib/kosztorys/column-order), so „Opis prac" can be dragged to the far right or hidden from the
+// (lib/table/column-order), so „Opis prac" can be dragged to the far right or hidden from the
 // client entirely — either of which used to paint the band off-screen or not at all.
 export function sectionBandLabelColumnId(
   columnIds: readonly (string | undefined)[],

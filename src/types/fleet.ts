@@ -1,28 +1,34 @@
-import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
+import type { FlaggableInspectionTypeT, InspectionTypeT } from '@/lib/fleet/inspection-types'
 import type { DeadlineBucketT } from '@/lib/fleet/thresholds'
 import type { VehicleRecordT } from '@/lib/fleet/types'
 
 /**
  * One deadline cell on the fleet listing. `hasEvent` is what separates "nothing recorded" from
  * "recorded, nothing due" — the two must not render the same, or a blind spot reads as healthy.
+ * `exempt` is a third answer again: the type does not apply to this car, so an empty cell is correct
+ * rather than a gap. The two flags are independent — an exempt type may still carry an old event.
  */
 export type FleetDeadlineT = {
   nextDueAt: string | null
   daysLeft: number | null
   bucket: DeadlineBucketT | null
   hasEvent: boolean
+  exempt: boolean
 }
 
 export type FleetRowT = VehicleRecordT & {
   deadlines: Record<InspectionTypeT, FleetDeadlineT>
   /** The stored „do wymiany" marks minus whatever the history has already answered. */
-  activeFlags: InspectionTypeT[]
+  activeFlags: FlaggableInspectionTypeT[]
   /** Newest reading known for the car, from an inspection of any type. */
   latestOdometer: number | null
   /** Distance since the last oil change; `null` when either reading is missing. */
   kmSinceOilChange: number | null
-  /** What the car cost inside the caller's window — every inspection type together. */
-  totalCosts: number
+  /**
+   * What the car cost inside the caller's window — every inspection type together. `null` when the
+   * window holds inspections but none of them a price, so „nieznane" cannot render as „0 zł".
+   */
+  totalCosts: number | null
 }
 
 export type InspectionHistoryEntryT = {
@@ -32,7 +38,9 @@ export type InspectionHistoryEntryT = {
   nextDueAt: string | null
   odometer: number | null
   nextDueOdometer: number | null
-  cost: number
+  cost: number | null
+  insurer: string
+  policyNumber: string
   note: string
   attachmentCount: number
   /** Distance since the previous event of the same type; `null` when either reading is missing. */

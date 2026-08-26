@@ -5,7 +5,7 @@ import {
 } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 
 // dsg has no colspan: exactly one column paints the section band's whole label and the rest go blank.
-// Since no column holds a fixed slot any more (lib/kosztorys/column-order), that column is resolved
+// Since no column holds a fixed slot any more (lib/table/column-order), that column is resolved
 // off the visible order — a hard-coded „Opis prac" used to paint the band off-screen the moment the
 // owner dragged it right, and not at all when the client view hid it.
 

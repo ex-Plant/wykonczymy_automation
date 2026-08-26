@@ -41,7 +41,7 @@ export function LeadsDataTable({ data }: { data: LeadRowT[] }) {
       columns={columns}
       storageKey="leads"
       initialSorting={[{ id: 'submittedAt', desc: true }]}
-      toolbar={(table, cv) => (
+      toolbar={({ table, columnVisibility: cv, ...order }) => (
         <>
           <SearchFilterInput
             value={searchTerm}
@@ -49,7 +49,7 @@ export function LeadsDataTable({ data }: { data: LeadRowT[] }) {
             placeholder="Szukaj..."
             className={SEARCH_FILTER_TOOLBAR_WIDTH}
           />
-          <ColumnToggle table={table} columnVisibility={cv} />
+          <ColumnToggle table={table} columnVisibility={cv} {...order} />
           <ReconcileLeadsButton />
         </>
       )}

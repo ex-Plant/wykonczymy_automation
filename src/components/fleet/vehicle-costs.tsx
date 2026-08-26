@@ -8,8 +8,9 @@ import {
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
 import { summariseCosts } from '@/lib/fleet/costs'
+import { emptyHistoryLabel } from '@/lib/fleet/history-window'
 import { INSPECTION_TYPE_LABELS, type InspectionTypeT } from '@/lib/fleet/inspection-types'
-import { formatPLN } from '@/lib/utils/format-currency'
+import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
 
@@ -18,13 +19,21 @@ const COLS = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
 
 export function VehicleCosts({
   historyByType,
+  fullHistoryByType,
 }: {
   historyByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>
+  // Re-summarised rather than counted raw: the odometer readings this table leaves out must not make
+  // an empty window look like a window that hid something.
+  fullHistoryByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>
 }) {
   const { byType, total, entries } = summariseCosts(historyByType)
 
   if (entries.length === 0) {
-    return <p className="text-muted-foreground text-xs">Brak przeglądów</p>
+    const label = emptyHistoryLabel(
+      'przeglądów',
+      summariseCosts(fullHistoryByType).entries.length > 0,
+    )
+    return <p className="text-muted-foreground text-xs">{label}</p>
   }
 
   return (
@@ -41,13 +50,13 @@ export function VehicleCosts({
             <Fragment key={bucket.type}>
               <SummaryLabelCell>{INSPECTION_TYPE_LABELS[bucket.type].pl}</SummaryLabelCell>
               <SummaryValueCell>{bucket.count}</SummaryValueCell>
-              <SummaryValueCell>{formatPLN(bucket.total)}</SummaryValueCell>
+              <SummaryValueCell>{formatPLNOrDash(bucket.total)}</SummaryValueCell>
             </Fragment>
           ))}
 
           <SummaryLabelCell weight="bold">Razem</SummaryLabelCell>
           <SummaryValueCell weight="bold">{entries.length}</SummaryValueCell>
-          <SummaryValueCell weight="bold">{formatPLN(total)}</SummaryValueCell>
+          <SummaryValueCell weight="bold">{formatPLNOrDash(total)}</SummaryValueCell>
         </SummaryTable>
       </div>
 
@@ -65,7 +74,7 @@ export function VehicleCosts({
                 {formatPLDate(entry.performedAt)}
               </SummaryLabelCell>
               <SummaryValueCell>{INSPECTION_TYPE_LABELS[entry.type].pl}</SummaryValueCell>
-              <SummaryValueCell>{formatPLN(entry.cost)}</SummaryValueCell>
+              <SummaryValueCell>{formatPLNOrDash(entry.cost)}</SummaryValueCell>
             </Fragment>
           ))}
         </SummaryTable>

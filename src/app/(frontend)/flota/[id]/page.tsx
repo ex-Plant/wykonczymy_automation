@@ -32,6 +32,11 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
   if (!detail) notFound()
 
   const { vehicle, historyByType } = detail
+  // Newest first out of `historyOfType`, so the polisa on top is the one in force.
+  const currentPolicy = historyByType.INSURANCE[0]
+  const policy = currentPolicy
+    ? [currentPolicy.insurer, currentPolicy.policyNumber].filter(Boolean).join(' · ')
+    : ''
 
   return (
     <PageWrapper
@@ -46,6 +51,9 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
             items={[
               { label: 'Status', value: <VehicleStatusBadge status={vehicle.status} /> },
               { label: 'VIN', value: vehicle.vin || '—' },
+              { label: 'Opony', value: vehicle.tyres || '—' },
+              { label: 'Ubezpieczenie', value: policy || '—' },
+              { label: 'Uwagi', value: vehicle.note || '—' },
             ]}
           />
           <InfoList

@@ -31,6 +31,8 @@ export function AddInspectionDialog({ vehicles, vehicleId }: AddInspectionDialog
     odometer: '',
     nextDueOdometer: '',
     cost: '',
+    insurer: '',
+    policyNumber: '',
     note: '',
   }
 

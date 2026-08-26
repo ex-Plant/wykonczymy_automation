@@ -84,6 +84,22 @@ function readMeasuredQty(
   return Number.isFinite(value) ? value : null
 }
 
+// Every etap column the owner has NOT renamed carries the sheet's own caption — „1 etap ilość", the
+// same words in all ten. Persisting that would name every etap after a header, so only a caption
+// that says something else counts as a name.
+const DEFAULT_STAGE_CAPTION = /^(\d+) etap( ilosc)?$/
+
+const isNamedStage = (caption: string): boolean =>
+  caption !== '' && !DEFAULT_STAGE_CAPTION.test(fold(caption))
+
+// „4 etap ilość" → 4. The sheet's own number, not the column's position in the run: delete etap
+// column E and the run shrinks, so the fifth surviving column is the sheet's sixth etap. Falls back
+// to the position for a column the owner blanked — there is nothing else to call it.
+const sheetStageNumber = (caption: string, column: number): number => {
+  const match = DEFAULT_STAGE_CAPTION.exec(fold(caption))
+  return match ? Number(match[1]) : column
+}
+
 export function parseLaborTab(
   grid: unknown[][],
   resolved: ResolvedLaborColumnsT,
@@ -178,23 +194,46 @@ export function parseLaborTab(
     }
   }
 
-  // Every resolved etap column becomes an etap, including the trailing ones nobody has started —
-  // deriving the count from the data would silently shrink the kosztorys. Label, plane and worker
-  // stay empty: the sheet's row-3 stage names are crew scribbles, not the app's etap labels, and
-  // plane/worker (EX-613) exist only in the app.
-  const stages: KosztorysStageT[] = Array.from({ length: stageColumns.count }, (_, index) => ({
-    id: index + 1,
-    ordinal: index + 1,
-    label: null,
-    plane: null,
-    workerId: null,
-  }))
+  // An etap column enters only if it carries something: wykonanie, or a name the owner typed over
+  // it. The owner's sheets have ten columns and run three or four, and the empty ones arrive locked
+  // (no rozliczenie) to be deleted by hand — but a column renamed „2 etap BRYGADA JEDEN" with
+  // nothing booked yet is a planned etap, and dropping it is the same hand-work in reverse.
+  //
+  // Survivors are renumbered to a contiguous run — `ordinal` is unique per investment, so it is the
+  // etap's position, not its name — and the SHEET's number is preserved in the label instead, so
+  // etap „7" stays etap 7 on screen no matter how many columns were skipped before it. Worker stays
+  // empty; it exists only in the app.
+  const captions = grid[HEADER_BLOCK_ROWS - 1] ?? []
+  const caption = (column: number) => text(captions[stageColumns.firstColumn + column - 1])
+  const usedColumns = new Set(progress.map((entry) => entry.stageId))
+
+  const stageIdByColumn = new Map<number, number>()
+  for (let column = 1; column <= stageColumns.count; column++) {
+    if (usedColumns.has(column) || isNamedStage(caption(column)))
+      stageIdByColumn.set(column, stageIdByColumn.size + 1)
+  }
+
+  const stages: KosztorysStageT[] = Array.from(stageIdByColumn, ([column, id]) => {
+    const columnCaption = caption(column)
+    return {
+      id,
+      ordinal: id,
+      label: isNamedStage(columnCaption)
+        ? columnCaption
+        : `Etap ${sheetStageNumber(columnCaption, column)}`,
+      plane: null,
+      workerId: null,
+    }
+  })
 
   return {
     sections,
     items,
     stages,
-    progress,
+    progress: progress.map((entry) => ({
+      ...entry,
+      stageId: stageIdByColumn.get(entry.stageId) ?? entry.stageId,
+    })),
     footerStart,
     skippedBeforeFirstSection,
     sheetRowByItemId,

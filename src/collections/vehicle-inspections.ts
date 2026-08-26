@@ -88,11 +88,31 @@ export const VehicleInspections: CollectionConfig = {
       },
     },
     {
-      // Required so a zero in the fleet listing's cost column means „it cost nothing" and nothing
-      // else — an optional price would make that cell unreadable (EX-729).
+      // Both belong to the event, not to the car: each polisa brings its own insurer and number, and
+      // only the history keeps that honest. Independently optional — the przyczepa's polisa has a
+      // number but no insurer recorded.
+      name: 'insurer',
+      type: 'text',
+      label: { en: 'Insurer', pl: 'Ubezpieczyciel' },
+      admin: {
+        condition: (data) => data?.type === 'INSURANCE',
+      },
+    },
+    {
+      // Text, never number: `354E000003305` is not finite as a float and `22044 4672279` has a space.
+      name: 'policyNumber',
+      type: 'text',
+      label: { en: 'Policy number', pl: 'Nr polisy' },
+      admin: {
+        condition: (data) => data?.type === 'INSURANCE',
+      },
+    },
+    {
+      // Optional again (partly reversing EX-729): the imported sheet carries no prices at all, and a
+      // required field would have turned nine unknowns into nine „0 zł". The invariant EX-729 bought
+      // survives because unknown now renders „—" instead of collapsing into zero.
       name: 'cost',
       type: 'number',
-      required: true,
       min: 0,
       label: { en: 'Cost', pl: 'Koszt' },
     },

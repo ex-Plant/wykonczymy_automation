@@ -1,6 +1,7 @@
 /**
- * The types that carry a deadline — every one of them answers "when is it next due". SERVICE is the
- * odd one out: an ad-hoc repair has nothing to count down to, so it belongs to no deadline surface.
+ * The types that carry a deadline — every one of them answers "when is it next due". SERVICE and
+ * ODOMETER are the odd ones out: an ad-hoc repair has nothing to count down to and a meter reading is
+ * not work at all, so neither belongs to any deadline surface.
  */
 export const SCHEDULED_INSPECTION_TYPES = [
   'TECHNICAL',
@@ -13,12 +14,21 @@ export const SCHEDULED_INSPECTION_TYPES = [
 /**
  * Everything a vehicle's history can hold. SERVICE is the ad-hoc repair — a visit to the mechanic
  * with no schedule behind it, as opposed to TECHNICAL (the yearly mandatory przegląd okresowy) and
- * WARRANTY (a service performed while the warranty still runs). Derived from the scheduled list so
- * the two can never drift apart.
+ * WARRANTY (a service performed while the warranty still runs). ODOMETER records nothing but the
+ * mileage on a given day — the way to answer „ile ma teraz" without inventing an inspection that
+ * never happened. Derived from the scheduled list so the two can never drift apart.
  */
-export const INSPECTION_TYPES = [...SCHEDULED_INSPECTION_TYPES, 'SERVICE'] as const
+export const INSPECTION_TYPES = [...SCHEDULED_INSPECTION_TYPES, 'SERVICE', 'ODOMETER'] as const
+
+/**
+ * The types a „do wymiany" mark can be put on — everything that is work somebody performs. ODOMETER
+ * is the exception: a reading cannot be needed, only taken.
+ */
+export const FLAGGABLE_INSPECTION_TYPES = [...SCHEDULED_INSPECTION_TYPES, 'SERVICE'] as const
 
 export type ScheduledInspectionTypeT = (typeof SCHEDULED_INSPECTION_TYPES)[number]
+
+export type FlaggableInspectionTypeT = (typeof FLAGGABLE_INSPECTION_TYPES)[number]
 
 export type InspectionTypeT = (typeof INSPECTION_TYPES)[number]
 
@@ -29,16 +39,17 @@ export const INSPECTION_TYPE_LABELS: Record<InspectionTypeT, { en: string; pl: s
   WARRANTY: { en: 'Warranty inspection', pl: 'Przegląd gwarancyjny' },
   TYRES: { en: 'Tyre change', pl: 'Wymiana opon' },
   SERVICE: { en: 'Service', pl: 'Serwis' },
+  ODOMETER: { en: 'Odometer reading', pl: 'Odczyt licznika' },
 }
 
 /**
  * Months to add to `performedAt` when prefilling the next due date.
  *
- * `null` for TYRES and SERVICE is a documented member of the type, not a gap: the real next date is
+ * `null` for TYRES, SERVICE and ODOMETER is a documented member of the type, not a gap: the real next date is
  * printed on the document (badanie techniczne, polisa OC), so every value here is a *suggestion* the
  * human overwrites — tyres have no interval to suggest, and an ad-hoc service has no next date at
  * all. The form reads the `null` to decide not to prefill; it must never fall back to a default, or a
- * two-year warranty would silently be wrong.
+ * two-year warranty would silently be wrong. A reading has no next date by definition.
  */
 export const INSPECTION_INTERVAL_MONTHS: Record<InspectionTypeT, number | null> = {
   TECHNICAL: 12,
@@ -47,6 +58,7 @@ export const INSPECTION_INTERVAL_MONTHS: Record<InspectionTypeT, number | null> 
   WARRANTY: 24,
   TYRES: null,
   SERVICE: null,
+  ODOMETER: null,
 }
 
 /**

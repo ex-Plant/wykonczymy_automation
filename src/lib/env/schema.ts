@@ -70,14 +70,9 @@ export const serverSchema = z
     META_PAGE_ACCESS_TOKEN: z.string().min(1),
     META_PAGE_ID: z.string().min(1),
     WPFORMS_WEBHOOK_SECRET: z.string().min(1),
-    LEADS_NOTIFY_EMAIL: z.string().min(1),
-    LEADS_ALERT_EMAIL: z.string().min(1),
+    // A *from*-address is not a recipient: it is infrastructure the SMTP account has to match, so it
+    // stays in env while the recipient lists live in the `notification-recipients` global.
     LEADS_REPLY_FROM: z.string().min(1),
-    // Fleet reminder digest recipients (EX-711) — the digest goes to both, in one send.
-    // FLEET_NOTIFICATION_EMAIL points at the same inbox as LEADS_NOTIFY_EMAIL for now;
-    // separate vars so the two can be split without touching code.
-    FLEET_NOTIFICATION_EMAIL: z.string().min(1),
-    ADMIN_EMAIL: z.string().min(1),
     // Google (Sheets + Drive for kosztorys integration)
     GOOGLE_SERVICE_ACCOUNT_JSON: z
       .string()

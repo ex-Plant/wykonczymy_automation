@@ -1609,3 +1609,60 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
 - [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
 - [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
 - [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny
+
+## fleet-sheet-parity — parytet z arkuszem kontroli przeglądów i ubezpieczeń
+
+Setup: baza testowa 5435 po migracji (`DB_POSTGRES_URL="$DB_POSTGRES_URL_TEST" pnpm exec payload
+migrate`) i po imporcie dziewięciu aut
+(`DB_POSTGRES_URL="$DB_POSTGRES_URL_TEST" node --env-file=.env --import tsx src/scripts/import-fleet-sheet.ts`).
+Zalogowany jako OWNER.
+
+- [ ] Panel Payload pokazuje „Ubezpieczyciel"/„Nr polisy" tylko przy Rodzaj = OC
+- [ ] Przegląd zapisuje się z pustym polem Koszt
+- [ ] W dialogu dodawania: OC pokazuje Ubezpieczyciel + Nr polisy, przełączenie Rodzaju na Przegląd techniczny je chowa
+- [ ] `354E000003305` i `22044 4672279` zapisują się i wracają bez zmian
+- [ ] „Odczyt licznika" pyta wyłącznie o datę, przebieg i notatkę (bez terminu i bez kosztu)
+- [ ] Zaznaczenie „bezterminowo" dla Przeglądu technicznego przeżywa przeładowanie strony
+- [ ] Kolumna Przegląd przyczepy (`WD776AL`) czyta „bezterminowo", a przyczepa znika z sekcji „nigdy nie zarejestrowano" w cotygodniowym mailu
+- [ ] Auto, którego przeglądy nie mają żadnej ceny, pokazuje „—" w kolumnie Koszty, a stopka „Razem" go nie dolicza
+- [ ] Strona pojazdu pokazuje Opony, Uwagi i aktualną polisę (ubezpieczyciel + numer)
+- [ ] `/flota` listuje wszystkie dziewięć aut z terminami przeglądu i OC zgodnymi z arkuszem
+- [ ] Przegląd VW T4 (`WF 7029W`, termin 2026-06-27) czyta PO TERMINIE
+- [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa
+- [ ] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
+- [ ] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
+
+## import-etapy-z-arkusza — puste etapy odsiane, podpisy i rozliczenie z okna importu
+
+Setup: baza testowa 5435, inwestycja z podpiętym arkuszem Google, którego zakładka
+`kosztorys_robocizny` ma 10 kolumn „wykonano", z czego wykonanie wpisane jest tylko w kilku, i
+której ostatni wiersz nagłówka nazywa przynajmniej jedną kolumnę po swojemu (np. „1 etap BRYGADA
+JEDEN"). Zalogowany jako OWNER.
+
+- [ ] Po „Pobierz i zastąp" wchodzą tylko te kolumny etapów, które mają wpisane wykonanie albo własną nazwę — kolumny puste i nieprzemianowane nie wchodzą
+- [ ] Kolumna przemianowana w arkuszu („2 etap BRYGADA JEDEN"), ale bez wpisanego wykonania, mimo wszystko wchodzi
+- [ ] Liczba etapów w podglądzie („Co wejdzie") zgadza się z toastem po imporcie i z liczbą kolumn w siatce
+- [ ] Przemianowana kolumna czyta w siatce dokładnie swoją nazwę z arkusza („1 etap BRYGADA JEDEN")
+- [ ] Kolumna z fabryczną nazwą („4 etap ilość") czyta „Etap 4" — numer z ARKUSZA, nawet jeśli w siatce stoi jako druga z kolei
+- [ ] Wpisane ilości siedzą w tych samych etapach co w arkuszu — po imporcie „Porównaj z arkuszem Google" nie pokazuje różnicy w wykonaniu
+- [ ] „Wszystkie z narzędziami" w oknie importu: po imporcie każdy nagłówek etapu ma ikonę klucza, żadnego czerwonego ostrzeżenia, ilości da się wpisywać
+- [ ] „Wszystkie bez narzędzi": analogicznie, druga ikona, a rachunek podwykonawcy liczy po stawce bez narzędzi
+- [ ] „Nie ustawiaj — wybiorę w kosztorysie": etapy wchodzą zablokowane, z czerwonym ostrzeżeniem w nagłówku (stan sprzed zmiany)
+- [ ] Wybór rozliczenia zrobiony przy jednym imporcie nie zostaje jako domyślny przy następnym otwarciu okna
+- [ ] Arkusz bez ani jednego wykonania i bez przemianowanych kolumn (czysta oferta): import przechodzi, kosztorys wchodzi bez etapów, podsumowanie mówi „Brak etapów", siatka się nie wywala, a okno importu **nie** pyta o rozliczenie etapów
+
+## table-column-reordering — kolejność kolumn w tabelach
+
+Setup: zalogowany jako OWNER, przeglądarka z czystym `localStorage` (klucze `table-columns:*`
+i `table-column-order:*`).
+
+- [ ] Na liście inwestycji „Nazwa" pojawia się w przełączniku Kolumny i da się ją odznaczyć
+- [ ] Odznaczenie wszystkich kolumn zostawia pustą tabelę, którą przełącznik przywraca
+- [ ] Na `/transfery` przełącznik Kolumny ma pozycję „Ustaw kolejność kolumn…", okno się otwiera, kolumna daje się przeciągnąć, a tabela przestawia się po upuszczeniu
+- [ ] Nowa kolejność przeżywa przeładowanie strony
+- [ ] „Przywróć domyślną kolejność" wraca do kolejności z kodu i **nie** odkrywa schowanych kolumn
+- [ ] Schowana kolumna jest w oknie wyszarzona, nadal przeciągalna, i po odkryciu ląduje na ustawionym miejscu
+- [ ] Kolejność ustawiona na `/transfery` obowiązuje też na innej stronie z tym samym kluczem, a kolumna wykluczona tam nie psuje układu
+- [ ] Stopka `/flota` („Razem") nadal stoi pod kolumną kosztów po przestawieniu kolumn
+- [ ] Inwestycje i kasy pamiętają swoje kolejności osobno — przestawienie jednej nie rusza drugiej
+- [ ] Tabele wirtualizowane (transakcje materiałowe, wypłaty podwykonawców) nadal poprawnie trzymają szerokości kolumn przy przewijaniu

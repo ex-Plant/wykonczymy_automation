@@ -36,14 +36,11 @@ export function VirtualizedTableBody<TData>({
 }: VirtualizedTableBodyPropsT<TData>) {
   const virtualItems = virtualizer.getVirtualItems()
   const colCount = visibleColumnIdList.length
-  const visibleColumnIds = new Set(visibleColumnIdList)
   // `table-auto` sizes columns from the cells currently in the DOM — which, under virtualization, is
   // whatever the scroll window happens to hold, so columns resize mid-scroll. A colgroup + fixed
   // layout pins them to the column defs' own sizes instead, and the summed width becomes the table's
   // floor so a narrow container scrolls rather than squeezing every column.
-  const leafHeaders = (headerGroups.at(-1)?.headers ?? []).filter((header) =>
-    visibleColumnIds.has(header.column.id),
-  )
+  const leafHeaders = headerGroups.at(-1)?.headers ?? []
   const totalWidth = leafHeaders.reduce((sum, header) => sum + header.getSize(), 0)
 
   return (
@@ -73,7 +70,6 @@ export function VirtualizedTableBody<TData>({
                   <DataTableRow
                     key={row.id}
                     row={row}
-                    visibleColumnIds={visibleColumnIds}
                     getRowHref={getRowHref}
                     getRowClassName={getRowClassName}
                   />

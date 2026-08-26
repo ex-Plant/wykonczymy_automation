@@ -67,8 +67,8 @@ describe('buildImportPlan', () => {
     const { tree, report } = plan()
 
     expect(tree.sections.map((section) => section.name)).toContain('Prace dodatkowe')
-    expect(tree.stages).toHaveLength(10)
-    expect(report.counts).toMatchObject({ sections: 2, items: 3, stages: 10 })
+    expect(tree.stages).toHaveLength(3)
+    expect(report.counts).toMatchObject({ sections: 2, items: 3, stages: 3 })
   })
 
   it('takes the global multipliers from the cennik’s own formulas, leaving VAT alone', () => {

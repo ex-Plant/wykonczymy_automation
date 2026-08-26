@@ -22,10 +22,10 @@ Authorization: Bearer {META_PAGE_ACCESS_TOKEN}
 2. **Fetch** the field data (call above) + the form's questions (`?fields=questions`,
    once per form per request) for the `key→label` map.
 3. **Normalize** — lift email/name/phone by field type → key heuristic → email regex;
-   a Zod safety net alerts `LEADS_ALERT_EMAIL` on an unexpected shape.
+   a Zod safety net alerts the `opsAlerts` list on an unexpected shape.
 4. **Store** once per `(source, externalId)` in the `leads` collection (idempotent — Meta
    redelivers on any non-200), keeping the full `field_data` (`rawData`) + `formQuestions`.
-5. **Notify** `LEADS_NOTIFY_EMAIL` (internal heads-up — name/email/phone plus a **"Treść
+5. **Notify** the `newLead` list (internal heads-up — name/email/phone plus a **"Treść
    formularza"** section with every extra form answer; fields already shown up top are
    de-duplicated) and **auto-reply** the lead from `LEADS_REPLY_FROM` (branded confirmation)
    — each retried 3×, tracked per lead in `notifyStatus` / `autoReplyStatus`. Store-then-notify:
@@ -77,10 +77,12 @@ Served from `src/app/(legal)/`, exempted from the login redirect in `src/proxy.t
 
 Meta: `META_APP_ID`, `META_APP_SECRET`, `META_APP_TOKEN`, `META_VERIFY_TOKEN`, `META_PAGE_ACCESS_TOKEN`.
 
-Email routing:
+Email routing — the two **recipient** lists are no longer env vars. They live in the
+`notification-recipients` global and are edited on `/zgloszenia` itself: `newLead` (internal
+new-lead heads-up; lists the extra form answers, de-duplicated against the ones shown up top) and
+`opsAlerts` (integration shape-alerts: schema fail / no email extracted). A stream with nobody in it
+throws rather than mailing the void. Only the _from_-address remains an env var:
 
-- `LEADS_NOTIFY_EMAIL` — internal new-lead heads-up (sales inbox); lists the extra form answers (fields already shown up top are de-duplicated).
-- `LEADS_ALERT_EMAIL` — integration shape-alerts (ops/dev inbox: schema fail / no email extracted).
 - `LEADS_REPLY_FROM` — `From:` on the customer auto-reply; its domain **must** have SPF/DKIM or the
   confirmation spam-folders. The logo in that email loads from `${NEXT_PUBLIC_FRONTEND_URL}/wykonczymy-app-icon.png`,
   so it only renders once deployed to a public prod domain.

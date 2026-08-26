@@ -31,6 +31,8 @@ const datasetEvent = (
   notifiedAt: null,
   odometerNotifiedAt: null,
   cost: 100,
+  insurer: '',
+  policyNumber: '',
   note: '',
   attachmentCount: 0,
   ...overrides,
@@ -45,6 +47,9 @@ const vehicle: FleetDatasetT['vehicles'][number] = {
   year: 2019,
   vin: '',
   flags: {},
+  exemptions: [],
+  tyres: '',
+  note: '',
 }
 
 describe('toRow', () => {
@@ -56,6 +61,7 @@ describe('toRow', () => {
       daysLeft: null,
       bucket: null,
       hasEvent: false,
+      exempt: false,
     })
     expect(Object.values(row.deadlines).every((deadline) => !deadline.hasEvent)).toBe(true)
   })
@@ -68,7 +74,17 @@ describe('toRow', () => {
       daysLeft: null,
       bucket: null,
       hasEvent: true,
+      exempt: false,
     })
+  })
+
+  // „Bezterminowo" in the sheet: the przyczepa has no przegląd to be late for. The empty cell is the
+  // answer, so the renderer must be able to tell it from the identical-looking blind spot above.
+  it('marks an exempt type as exempt while leaving every other type untouched', () => {
+    const row = toRow({ ...vehicle, exemptions: ['TECHNICAL'] }, [], TODAY, ALL_TIME)
+
+    expect(row.deadlines.TECHNICAL).toMatchObject({ exempt: true, hasEvent: false })
+    expect(row.deadlines.INSURANCE.exempt).toBe(false)
   })
 
   it('classifies an overdue deadline with a negative day count', () => {
@@ -208,8 +224,22 @@ describe('toRow — costs', () => {
     expect(row.totalCosts).toBe(1850)
   })
 
-  // Zero is the listing's answer for „nothing spent" — it is not a placeholder for missing data,
-  // which is why „Koszt" is a required field.
+  // An unknown price must not be laundered into „it was free" by the sum — the listing renders the
+  // resulting zero as „—" instead (see `hasKnownCost`).
+  it('leaves an unknown cost out of the total', () => {
+    const row = toRow(
+      vehicle,
+      [
+        datasetEvent('TECHNICAL', '2026-02-01T00:00:00.000Z', { cost: null }),
+        datasetEvent('TYRES', '2026-03-01T00:00:00.000Z', { cost: 1200 }),
+      ],
+      TODAY,
+      ALL_TIME,
+    )
+
+    expect(row.totalCosts).toBe(1200)
+  })
+
   it('is zero for a car with no inspections', () => {
     expect(toRow(vehicle, [], TODAY, ALL_TIME).totalCosts).toBe(0)
   })

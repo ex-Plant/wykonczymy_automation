@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { ArrowUpDown, CheckIcon, Eye, EyeOff, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ColumnOrderDialog } from '@/components/kosztorys/editor/dialogs/column-order-dialog'
+import { ColumnOrderDialog } from '@/components/ui/column-order-dialog'
 import {
   DropdownMenu,
   DropdownMenuCheckboxRow,
@@ -208,6 +208,7 @@ export function KosztorysViewMenu() {
         open={orderOpen}
         onOpenChange={setOrderOpen}
         items={columnToggleItems}
+        description="Przeciągnij pozycję, żeby przestawić kolumny w tabeli. Ustawienie zapamiętuje ta przeglądarka i działa we wszystkich kosztorysach."
         ranks={columnRanks}
         baseRanks={columnBaseRanks}
         onSetRank={setColumnRank}

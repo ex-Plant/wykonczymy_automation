@@ -17,7 +17,29 @@ import { VirtualizedTableBody } from './virtualized-table-body'
 import { TableHeader } from './table-header'
 import { TableFooter } from './table-footer'
 import { EmptyRow } from './empty-row'
-import { readVisibility, writeVisibility } from './column-visibility-storage'
+import {
+  readOrder,
+  readVisibility,
+  writeOrder,
+  writeVisibility,
+} from '@/lib/table/column-prefs-storage'
+import { baseRanksFromKeys, orderColumnKeys, type ColumnRanksT } from '@/lib/table/column-order'
+import { leafColumnIds } from '@/lib/table/leaf-column-ids'
+
+// One object rather than a positional list: the toolbar needs the rank writers as well as the
+// table, and every widening of that set would otherwise re-touch all eight call sites.
+export type DataTableToolbarContextT<TData> = {
+  table: Table<TData>
+  columnVisibility: VisibilityState
+  ranks: ColumnRanksT
+  // Read off the DECLARED column list, never the ordered one: a rank is a midpoint between its new
+  // neighbours' ranks, and an unranked neighbour falls back to its base. Derive these from the
+  // already-permuted list and the second drop computes its midpoint against neighbours that have
+  // already moved, landing one slot off. Same rule as the kosztorys grid's `assembleBaseRanks`.
+  baseRanks: ColumnRanksT
+  setRank: (key: string, rank: number) => void
+  resetOrder: () => void
+}
 
 type DataTablePropsT<TData> = {
   data: TData[]
@@ -36,7 +58,7 @@ type DataTablePropsT<TData> = {
   /** Summary `<tr>` pinned below the rows. Gets the visible column ids, in render order, so it can
    * span them or place a total under the column it belongs to even when some are hidden. */
   footer?: (visibleColumnIds: string[]) => React.ReactNode
-  toolbar?: (table: Table<TData>, columnVisibility: VisibilityState) => React.ReactNode
+  toolbar?: (ctx: DataTableToolbarContextT<TData>) => React.ReactNode
   className?: string
 }
 
@@ -56,16 +78,38 @@ export function DataTable<TData>({
 }: DataTablePropsT<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [ranks, setRanks] = useState<ColumnRanksT>({})
 
-  // Apply persisted visibility after hydration to avoid server/client mismatch
+  // Apply persisted visibility and order after hydration to avoid server/client mismatch
   useEffect(() => {
-    if (storageKey) setColumnVisibility(readVisibility(storageKey))
+    if (!storageKey) return
+    setColumnVisibility(readVisibility(storageKey))
+    setRanks(readOrder(storageKey))
   }, [storageKey])
+
+  function persistRanks(next: ColumnRanksT) {
+    setRanks(next)
+    if (storageKey) writeOrder(storageKey, next)
+  }
+
+  function setRank(key: string, rank: number) {
+    persistRanks({ ...ranks, [key]: rank })
+  }
+
+  function resetOrder() {
+    persistRanks({})
+  }
+
+  const declaredColumnIds = leafColumnIds(columns)
 
   const table = useReactTable({
     data: data as TData[],
     columns,
-    state: { sorting, columnVisibility },
+    state: {
+      sorting,
+      columnVisibility,
+      columnOrder: orderColumnKeys(declaredColumnIds, ranks),
+    },
     onSortingChange: setSorting,
     onColumnVisibilityChange: (updater) => {
       setColumnVisibility((prev) => {
@@ -94,11 +138,21 @@ export function DataTable<TData>({
   const visibleLeafColumns = table.getVisibleLeafColumns()
   const visibleColCount = visibleLeafColumns.length
   const visibleColumnIdList = visibleLeafColumns.map((column) => column.id)
-  const visibleColumnIds = new Set(visibleColumnIdList)
 
   return (
     <div className={cn('space-y-2', className)}>
-      {toolbar && <div className="flex items-center gap-2">{toolbar(table, columnVisibility)}</div>}
+      {toolbar && (
+        <div className="flex items-center gap-2">
+          {toolbar({
+            table,
+            columnVisibility,
+            ranks,
+            baseRanks: baseRanksFromKeys(declaredColumnIds),
+            setRank,
+            resetOrder,
+          })}
+        </div>
+      )}
       <div className="border-border overflow-x-auto rounded-lg border">
         {enableVirtualization ? (
           <VirtualizedTableBody
@@ -123,7 +177,6 @@ export function DataTable<TData>({
                   <DataTableRow
                     key={row.id}
                     row={row}
-                    visibleColumnIds={visibleColumnIds}
                     getRowHref={getRowHref}
                     getRowClassName={getRowClassName}
                   />

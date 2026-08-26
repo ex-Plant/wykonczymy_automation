@@ -13,6 +13,7 @@ import {
   TRANSFER_TYPE_LABELS,
   showsInvestment,
   isVatPlane,
+  PAYMENT_METHOD_PLANE_LABELS,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
@@ -226,6 +227,7 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
                   form.setFieldValue('vatPlane', planeFor(form.getFieldValue('type'), value)),
               }}
               fieldClassName="min-w-0 flex-1"
+              labels={currentType === 'INVESTOR_DEPOSIT' ? PAYMENT_METHOD_PLANE_LABELS : undefined}
             />
             <DateField form={form} fieldClassName="w-40" />
           </div>

@@ -52,7 +52,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
                 </td>
               )}
               <td className="text-right font-bold tabular-nums">
-                {formatPLN(filteredData.reduce((sum, row) => sum + row.totalCosts, 0))}
+                {formatPLN(filteredData.reduce((sum, row) => sum + (row.totalCosts ?? 0), 0))}
               </td>
               {visibleColumnIds.slice(costsIndex + 1).map((id) => (
                 <td key={id} />
@@ -60,7 +60,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
             </tr>
           )
         }}
-        toolbar={(table, cv) => (
+        toolbar={({ table, columnVisibility: cv, ...order }) => (
           <>
             <SearchFilterInput
               value={searchTerm}
@@ -68,7 +68,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
               placeholder="Szukaj..."
               className={SEARCH_FILTER_TOOLBAR_WIDTH}
             />
-            <ColumnToggle table={table} columnVisibility={cv} />
+            <ColumnToggle table={table} columnVisibility={cv} {...order} />
             <AddInspectionDialog vehicles={data} />
             <AddVehicleDialog />
           </>

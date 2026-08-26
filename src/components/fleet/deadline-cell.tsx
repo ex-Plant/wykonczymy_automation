@@ -13,11 +13,19 @@ type DeadlineCellPropsT = {
 }
 
 /**
- * Three visually distinct states, not two: overdue/urgent, fine, and **no data at all**. "Nothing
- * recorded" must never look like "nothing due" — that is the blind spot the whole reminder module
- * exists to close.
+ * Four visually distinct states, not two: overdue/urgent, fine, **no data at all**, and „does not
+ * apply". "Nothing recorded" must never look like "nothing due" — that is the blind spot the whole
+ * reminder module exists to close — and an exempt type must not look like either, or the one car
+ * that legitimately has no termin would sit in the listing as a permanent false alarm.
+ *
+ * Exempt wins over everything below it: an old event on a type the car has since been excused from
+ * would otherwise resurrect a deadline the owner has already answered.
  */
 export function DeadlineCell({ deadline, muted }: DeadlineCellPropsT) {
+  if (deadline.exempt) {
+    return <span className="text-muted-foreground text-xs">bezterminowo</span>
+  }
+
   if (!deadline.hasEvent) {
     return <span className="text-muted-foreground text-xs">brak danych</span>
   }

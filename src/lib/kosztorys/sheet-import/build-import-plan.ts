@@ -4,6 +4,7 @@ import type {
   KosztorysSectionT,
   KosztorysStageT,
   StageProgressT,
+  ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import { FIELD_LABELS, isOptionalField, type ColumnFieldT, type OptionalFieldT } from './columns'
 import type { SheetColumnMappingT } from './sheet-column-mapping'
@@ -82,6 +83,10 @@ export function buildImportPlan(
   grids: ImportGridsT,
   currentTree: SnapshotPayloadT,
   mapping?: SheetColumnMappingT,
+  // One rozliczenie for every imported etap, or null to leave them undecided. The sheet has no
+  // column for it, so this is the owner's answer, given once in the import window — picking it per
+  // etap afterwards is ten menus over etapy the grid keeps locked until they are set.
+  plane: ToolPlaneT | null = null,
 ): ImportPlanT {
   const resolvedLaborColumns = resolveLaborColumns(grids.laborGrid, mapping)
   const { missingFields, candidates, pointedFields } = resolvedLaborColumns
@@ -223,7 +228,7 @@ export function buildImportPlan(
     }
   }
 
-  const stages: KosztorysStageT[] = parsed.stages
+  const stages: KosztorysStageT[] = parsed.stages.map((stage) => ({ ...stage, plane }))
 
   // „Zastąp" means the sheet decides what the rozpiska contains: a praca it doesn't have stops
   // existing, rather than being appended beside the sheet's own copy. The owner is told what goes

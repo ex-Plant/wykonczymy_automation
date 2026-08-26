@@ -27,7 +27,6 @@ export function getKosztorysColumns({
     kosztorysCol.accessor('name', {
       id: 'name',
       header: 'Nazwa',
-      meta: { canHide: false },
       cell: (info) => {
         const row = info.row.original
         return (
@@ -53,7 +52,7 @@ export function getKosztorysColumns({
     kosztorysCol.display({
       id: 'actions',
       header: 'Akcje',
-      meta: { canHide: false, align: 'right' },
+      meta: { align: 'right' },
       cell: (info) => {
         const row = info.row.original
 
@@ -91,7 +90,6 @@ export function getInvestmentWithoutSheetColumns() {
     investmentCol.accessor('name', {
       id: 'name',
       header: 'Inwestycja',
-      meta: { canHide: false },
       cell: (info) => {
         const row = info.row.original
         return (
@@ -105,7 +103,7 @@ export function getInvestmentWithoutSheetColumns() {
     investmentCol.display({
       id: 'actions',
       header: 'Akcje',
-      meta: { canHide: false, align: 'right' },
+      meta: { align: 'right' },
       cell: (info) => {
         const row = info.row.original
         return (

@@ -3,6 +3,9 @@ import { parseLaborTab } from '@/lib/kosztorys/sheet-import/parse-labor-tab'
 import { resolveLaborColumns } from '@/lib/kosztorys/sheet-import/resolve-columns'
 import { fold } from '@/lib/kosztorys/sheet-import/columns'
 import { BIALOSTOCKA_ROWS, PRZEDPOLE_ROWS } from '@/__tests__/fixtures/kosztorys-sheet/rows'
+import { BIALOSTOCKA_LABOR_HEADER } from '@/__tests__/fixtures/kosztorys-sheet/header-blocks'
+import { col, row } from '@/__tests__/fixtures/kosztorys-sheet/grid'
+import { HEADER_BLOCK_ROWS } from '@/lib/kosztorys/sheet-import/columns'
 
 function parse(grid: (string | number)[][], formulas: (string | number)[][] = []) {
   const resolved = resolveLaborColumns(grid)
@@ -11,6 +14,24 @@ function parse(grid: (string | number)[][], formulas: (string | number)[][] = []
 }
 
 const POMIAR_COLUMN = 14 // O on Białostocka
+const HEADER_CAPTION_ROW = HEADER_BLOCK_ROWS - 1
+
+// Both real fixtures happen to use the FIRST etap columns, so the survivors' positions and their ids
+// coincide and the renumbering cannot be told apart from the identity. This one skips: wykonanie
+// sits in F (the run's third column) and J (its seventh).
+const GAPPED_STAGES: (string | number)[][] = [
+  ...BIALOSTOCKA_LABOR_HEADER,
+  row({ A: 'Sekcja', B: 'Sekcja', C: 'Sekcja', N: 'x', O: 'x', S: 100 }),
+  row({ C: 'malowanie ścian', F: 2, J: 3, N: 10, P: 'm2', Q: 50 }),
+]
+
+// The owner deleted an etap column, so the captions no longer run 1..10 in step with the columns —
+// the run's third column is the sheet's etap 9. Position and sheet number part company only here.
+const RENUMBERED_CAPTIONS: (string | number)[][] = GAPPED_STAGES.map((gridRow, index) =>
+  index === HEADER_CAPTION_ROW
+    ? Object.assign([...gridRow], { [col('F')]: '9 etap ilosc' })
+    : gridRow,
+)
 
 describe('parseLaborTab', () => {
   it('groups prace under the section header that precedes them', () => {
@@ -72,18 +93,54 @@ describe('parseLaborTab', () => {
     ])
   })
 
-  it('emits every resolved etap, not only those carrying quantity', () => {
-    // An etap planned but not started is still an etap: taking the count from the data would drop
-    // the empty trailing ones and silently shrink the kosztorys.
+  it('imports only the etapy somebody typed into, renumbered to a contiguous run', () => {
+    // Ten etap columns, three of them used: the empty seven would arrive locked (no rozliczenie)
+    // and be deleted by hand every import.
     const { stages } = parse(BIALOSTOCKA_ROWS)
 
-    expect(stages).toHaveLength(10)
-    expect(stages.map((stage) => stage.ordinal)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    expect(stages.map((stage) => stage.ordinal)).toEqual([1, 2, 3])
   })
 
-  it('imports no stage labels, planes or workers — the sheet is not their source', () => {
+  it('names the etapy after the sheet header, planes and workers stay empty', () => {
     const { stages } = parse(BIALOSTOCKA_ROWS)
-    expect(stages.every((stage) => !stage.label && !stage.plane && !stage.workerId)).toBe(true)
+
+    // The sheet's own caption („1 etap ilość") is not a name — but its NUMBER is kept, so a skipped
+    // column never shifts what the surviving etapy are called.
+    expect(stages.map((stage) => stage.label)).toEqual(['Etap 1', 'Etap 2', 'Etap 3'])
+    expect(stages.every((stage) => !stage.plane && !stage.workerId)).toBe(true)
+  })
+
+  it('renumbers the surviving etapy to a contiguous run', () => {
+    const { stages } = parse(GAPPED_STAGES)
+
+    expect(stages.map((stage) => stage.ordinal)).toEqual([1, 2])
+  })
+
+  it('names an etap after the number in its caption, not its position in the run', () => {
+    const { stages } = parse(RENUMBERED_CAPTIONS)
+
+    expect(stages.map((stage) => stage.label)).toEqual(['Etap 9', 'Etap 7'])
+  })
+
+  it('moves wykonanie onto the renumbered etapy rather than leaving it on the sheet column', () => {
+    const { items, progress } = parse(GAPPED_STAGES)
+
+    expect(progress).toEqual([
+      { itemId: items[0].id, stageId: 1, qtyDone: 2 },
+      { itemId: items[0].id, stageId: 2, qtyDone: 3 },
+    ])
+  })
+
+  it('keeps a renamed etap column even with nothing booked against it', () => {
+    // „2 etap BRYGADA JEDEN" carries no wykonanie in the fixture — the owner naming it is the same
+    // claim that the etap exists.
+    const { stages } = parse(PRZEDPOLE_ROWS)
+
+    expect(stages.map((stage) => stage.label)).toEqual([
+      '1 etap BRYGADA JEDEN',
+      '2 etap BRYGADA JEDEN',
+      '3 etap EKIPA DWA',
+    ])
   })
 
   it('reads the narrow layout off its own resolved columns', () => {
@@ -93,7 +150,7 @@ describe('parseLaborTab', () => {
     expect(items).toHaveLength(1)
     expect(items[0]).toMatchObject({ unit: 'kpl', clientPrice: 1500, plannedQty: 1 })
     expect(items[0].discountValue).toBe(5)
-    expect(stages).toHaveLength(6)
+    expect(stages).toHaveLength(3)
   })
 
   it('keeps reading past a blank spacer row that looks exactly like the footer', () => {

@@ -5,7 +5,9 @@ import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
 import { setSheetMeasuredQty } from '@/lib/db/kosztorys-sheet-measured-qty'
 import { getInvestmentSheet, MISSING_SHEET, type InvestmentSheetT } from '@/lib/google/sheet-lookup'
+import { TOOL_PLANES } from '@/lib/kosztorys/constants'
 import { replaceTreeWithSnapshot } from '@/lib/kosztorys/replace-tree-with-snapshot'
+import type { ToolPlaneT } from '@/lib/kosztorys/types'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { serializeKosztorys } from '@/lib/kosztorys/serialize-kosztorys'
 import {
@@ -71,9 +73,18 @@ export type ApplyImportResultT = {
 
 // Reading the sheet and merging it with the current tree — the single derivation both actions run,
 // so the preview can never describe an import different from the one apply performs.
-async function derivePlan(investmentId: number, sheet: InvestmentSheetT): Promise<ImportPlanT> {
+async function derivePlan(
+  investmentId: number,
+  sheet: InvestmentSheetT,
+  plane: ToolPlaneT | null = null,
+): Promise<ImportPlanT> {
   const grids = await readImportGrids(getReadonlySheetsClient(), sheet.googleSheetId)
-  return buildImportPlan(grids, await serializeKosztorys(investmentId), sheet.sheetColumnMapping)
+  return buildImportPlan(
+    grids,
+    await serializeKosztorys(investmentId),
+    sheet.sheetColumnMapping,
+    plane,
+  )
 }
 
 const FAILURE_MESSAGES: Record<SheetFailureReasonT, string> = {
@@ -262,6 +273,9 @@ export async function compareWithSheet(
 // cannot decide what gets written.
 export async function applyKosztorysImport(
   investmentId: number,
+  // Anything but the two planes is read as „nie ustawiaj" rather than refused: a client sending
+  // nonsense here asks for undecided etapy, which is what an import without a pick produces anyway.
+  plane?: ToolPlaneT | null,
 ): Promise<ActionResultT<ApplyImportResultT>> {
   return protectedAction<ApplyImportResultT>(
     'applyKosztorysImport',
@@ -271,7 +285,11 @@ export async function applyKosztorysImport(
 
       let plan: ImportPlanT
       try {
-        plan = await derivePlan(investmentId, sheet)
+        plan = await derivePlan(
+          investmentId,
+          sheet,
+          TOOL_PLANES.includes(plane as ToolPlaneT) ? (plane as ToolPlaneT) : null,
+        )
       } catch (error) {
         return { success: false, error: sheetFailureMessage(error) }
       }

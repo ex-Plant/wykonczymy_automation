@@ -1,3 +1,4 @@
+import { isExempt } from '@/lib/fleet/exemptions'
 import {
   SCHEDULED_INSPECTION_TYPES,
   type ScheduledInspectionTypeT,
@@ -19,7 +20,8 @@ export type MissingInspectionT = {
  * simply never needed one would otherwise be nagged about it every week forever.
  *
  * A recorded event with no due date does NOT count as missing: that is a data gap on a known event,
- * visible on the vehicle page, not an absent inspection.
+ * visible on the vehicle page, not an absent inspection. Neither does a type the car is exempt from —
+ * the przyczepa's przegląd is „bezterminowo", so its absence is the answer, not a blind spot.
  */
 export const findMissingInspections = (
   histories: readonly VehicleHistoryT[],
@@ -28,6 +30,8 @@ export const findMissingInspections = (
     .filter(({ vehicle }) => vehicle.status === 'ACTIVE')
     .flatMap(({ vehicle, events }) =>
       SCHEDULED_INSPECTION_TYPES.filter(
-        (type) => !events.some((candidate) => candidate.type === type),
+        (type) =>
+          !isExempt(vehicle.exemptions, type) &&
+          !events.some((candidate) => candidate.type === type),
       ).map((type) => ({ vehicleId: vehicle.id, registration: vehicle.registration, type })),
     )

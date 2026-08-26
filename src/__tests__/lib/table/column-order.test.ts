@@ -4,7 +4,7 @@ import {
   orderColumnKeys,
   orderColumns,
   rankForMove,
-} from '@/lib/kosztorys/column-order'
+} from '@/lib/table/column-order'
 
 // Assemble order as the grid builds it: actions leads, „Rozjazd" sits BEFORE the identity column.
 const KEYS = ['actions', 'divergence', 'description', 'plannedQty', 'stages', 'price', 'net']
