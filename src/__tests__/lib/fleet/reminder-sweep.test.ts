@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildFleetDigest, isEmptyDigest } from '@/lib/fleet/reminder-sweep'
 import { event, history } from '@/__tests__/helpers/fleet'
 
-// 2026-08-18 is a Tuesday; 2026-08-17 a Monday. The weekly missing-data section hangs off exactly
-// that difference, so both days are pinned rather than derived.
 const TUESDAY = '2026-08-18'
-const MONDAY = '2026-08-17'
 
 describe('buildFleetDigest', () => {
   it('sends nothing when every deadline is far away', () => {
@@ -37,9 +34,9 @@ describe('buildFleetDigest', () => {
 
     expect(digest.overdue.map((entry) => entry.type)).toEqual(['TECHNICAL'])
     expect(digest.within7.map((entry) => entry.type)).toEqual(['INSURANCE'])
-    expect(digest.within30.map((entry) => entry.type)).toEqual(['WARRANTY'])
+    // WARRANTY is 23 days out — inside the 30-day bucket the listing colours, outside the mail.
     expect(digest.overdue[0].daysLeft).toBe(-7)
-    expect(digest.stamps.map((stamp) => stamp.threshold)).toEqual([0, 7, 30])
+    expect(digest.stamps.map((stamp) => stamp.threshold)).toEqual([0, 7])
   })
 
   it('stays silent on a second run once the same buckets are stamped', () => {
@@ -80,13 +77,50 @@ describe('buildFleetDigest', () => {
           { status: 'RETIRED' },
         ),
       ],
-      MONDAY,
+      TUESDAY,
     )
 
     expect(isEmptyDigest(digest)).toBe(true)
   })
 
   it('reports the kilometre leg with the reading it was judged against', () => {
+    const digest = buildFleetDigest(
+      [
+        history([
+          event('OIL_CHANGE', '2026-01-01T00:00:00.000Z', {
+            nextDueAt: '2027-01-01T00:00:00.000Z',
+            odometer: 100_000,
+            nextDueOdometer: 115_000,
+          }),
+          event('TECHNICAL', '2026-08-01T00:00:00.000Z', {
+            nextDueAt: '2027-08-01T00:00:00.000Z',
+            odometer: 116_000,
+          }),
+        ]),
+      ],
+      TUESDAY,
+    )
+
+    expect(digest.odometer).toEqual([
+      {
+        inspectionId: expect.any(Number),
+        registration: 'WX 00001',
+        make: 'Ford',
+        model: 'Transit',
+        targetOdometer: 115_000,
+        latestOdometer: 116_000,
+        kmRemaining: -1_000,
+        kmSinceChange: 16_000,
+      },
+    ])
+    // The date leg said nothing, so nothing may be stamped as date-announced.
+    expect(digest.stamps).toEqual([
+      { inspectionId: expect.any(Number), threshold: null, odometer: true },
+    ])
+    expect(digest.overdue.concat(digest.within7)).toEqual([])
+  })
+
+  it('stays silent while a typed kilometre target is still ahead', () => {
     const digest = buildFleetDigest(
       [
         history([
@@ -104,30 +138,27 @@ describe('buildFleetDigest', () => {
       TUESDAY,
     )
 
-    expect(digest.odometer).toEqual([
-      {
-        inspectionId: expect.any(Number),
-        registration: 'WX 00001',
-        targetOdometer: 115_000,
-        latestOdometer: 114_500,
-        kmRemaining: 500,
-      },
-    ])
-    // The date leg said nothing, so nothing may be stamped as date-announced.
-    expect(digest.stamps).toEqual([
-      { inspectionId: expect.any(Number), threshold: null, odometer: true },
-    ])
-    expect(digest.overdue.concat(digest.within7, digest.within30)).toEqual([])
+    expect(digest.odometer).toEqual([])
   })
 
-  it('adds the missing-data section on Monday only', () => {
-    const bare = [history([])]
+  // The przyczepa's przegląd is „bezterminowo", yet the sheet import leaves a TECHNICAL row on file.
+  // Judged on its date alone that row is years overdue, and the mail would shout PO TERMINIE at the
+  // one car the listing renders as having no termin at all.
+  it('never reports a type the vehicle is exempt from', () => {
+    const overdueTechnical = [
+      event('TECHNICAL', '2024-08-01T00:00:00.000Z', { nextDueAt: '2025-08-01T00:00:00.000Z' }),
+    ]
 
-    expect(buildFleetDigest(bare, MONDAY).missing).toHaveLength(5)
-    expect(buildFleetDigest(bare, TUESDAY).missing).toEqual([])
-    // A vehicle with nothing recorded has no deadline that could ever fire — the weekly section is
-    // the only thing standing between it and permanent silence.
-    expect(isEmptyDigest(buildFleetDigest(bare, TUESDAY))).toBe(true)
+    const exempt = buildFleetDigest(
+      [history(overdueTechnical, { exemptions: ['TECHNICAL'] })],
+      TUESDAY,
+    )
+
+    expect(isEmptyDigest(exempt)).toBe(true)
+    expect(exempt.stamps).toEqual([])
+    // The same row without the exemption does fire — otherwise this spec would pass on a digest that
+    // is broken for every car.
+    expect(buildFleetDigest([history(overdueTechnical)], TUESDAY).overdue).toHaveLength(1)
   })
 })
 
@@ -147,9 +178,12 @@ describe('buildFleetDigest — oil interval without a typed target', () => {
       {
         inspectionId: expect.any(Number),
         registration: 'WX 00001',
+        make: 'Ford',
+        model: 'Transit',
         targetOdometer: 110_000,
         latestOdometer: 115_000,
         kmRemaining: -5_000,
+        kmSinceChange: 15_000,
       },
     ])
   })

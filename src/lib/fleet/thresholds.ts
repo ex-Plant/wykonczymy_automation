@@ -26,16 +26,18 @@ export const classifyDeadline = (nextDueAt: DayT | null, today: DayT): DeadlineB
   return DEADLINE_BUCKETS.find((bucket) => bucket > 0 && daysLeft <= bucket) ?? null
 }
 
+/**
+ * The widest bucket the digest still mails. 30 stays a bucket — it colours the listing and feeds the
+ * „Flota" badge — but a month's notice in an inbox was noise (owner, 2026-08-26). Buckets are day
+ * counts, so "mailed" is simply "no wider than this".
+ */
+export const MAILED_BUCKET_MAX = 7
+
+export const isMailedBucket = (bucket: DeadlineBucketT): boolean => bucket <= MAILED_BUCKET_MAX
+
 /** Strictly more urgent — the same bucket is not an escalation, so it earns no second email. */
 export const isMoreUrgent = (bucket: DeadlineBucketT, than: number | null): boolean =>
   than === null || bucket < than
-
-/**
- * How close to the oil change's kilometre target counts as due. Unlike the date legs this cannot be
- * polled — the current mileage is unknown between inspections — so it is judged only when a new
- * odometer reading arrives. See src/lib/fleet/should-notify.ts.
- */
-export const OIL_ODOMETER_WARN_KM = 1000
 
 /**
  * How far the car may go on one oil change before the module raises an alarm of its own. This is the

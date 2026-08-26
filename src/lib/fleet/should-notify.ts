@@ -2,9 +2,9 @@ import { daysBetween, toWarsawDay, type DayT } from '@/lib/fleet/days'
 
 import {
   OIL_CHANGE_INTERVAL_KM,
-  OIL_ODOMETER_WARN_KM,
   OVERDUE,
   classifyDeadline,
+  isMailedBucket,
   isMoreUrgent,
   type DeadlineBucketT,
 } from '@/lib/fleet/thresholds'
@@ -55,7 +55,7 @@ const dateLegFires = (
   bucket: DeadlineBucketT | null,
   today: DayT,
 ): boolean => {
-  if (bucket === null) return false
+  if (bucket === null || !isMailedBucket(bucket)) return false
   if (isMoreUrgent(bucket, row.notifiedThreshold)) return true
   if (bucket !== OVERDUE || !row.notifiedAt) return false
 
@@ -73,17 +73,15 @@ export const oilTarget = (row: InspectionEventT): number | null =>
   row.nextDueOdometer ?? (row.odometer != null ? row.odometer + OIL_CHANGE_INTERVAL_KM : null)
 
 /**
- * The two targets warn at different distances, deliberately: a typed target is a commitment worth a
- * heads-up before it lands, a derived one is only a guess and earns nothing until it is passed.
+ * Fires only once the target is behind us, whether it was typed or derived. A heads-up before it
+ * lands would ask the reader to watch their own dashboard for the day it lands, which nobody does —
+ * the alarm is worth sending exactly when the work is already owed.
  */
 const odometerLegFires = (row: InspectionEventT, latestOdometer: number | null): boolean => {
   if (row.type !== 'OIL_CHANGE' || latestOdometer == null || row.odometerNotifiedAt !== null)
     return false
 
   const target = oilTarget(row)
-  if (target == null) return false
 
-  return row.nextDueOdometer != null
-    ? target - latestOdometer <= OIL_ODOMETER_WARN_KM
-    : latestOdometer > target
+  return target != null && latestOdometer > target
 }

@@ -20,9 +20,7 @@ export async function GET(request: NextRequest) {
     const sections = {
       overdue: digest.overdue.length,
       within7: digest.within7.length,
-      within30: digest.within30.length,
       odometer: digest.odometer.length,
-      missing: digest.missing.length,
     }
 
     if (isEmptyDigest(digest)) {

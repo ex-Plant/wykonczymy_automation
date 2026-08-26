@@ -9,9 +9,7 @@ const { notifyFleetDigest } = await import('@/lib/fleet/notify')
 const EMPTY_DIGEST: FleetDigestT = {
   overdue: [],
   within7: [],
-  within30: [],
   odometer: [],
-  missing: [],
   stamps: [],
 }
 
