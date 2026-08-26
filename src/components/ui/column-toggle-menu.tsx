@@ -44,7 +44,16 @@ export function ColumnToggleMenu({ items, onToggle, onOpenOrder, className }: Pr
           Kolumny
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-72">
+        {onOpenOrder && (
+          <>
+            <DropdownMenuItem onSelect={onOpenOrder}>
+              <ArrowUpDown />
+              Ustaw kolejność kolumn…
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuLabel>Widoczne kolumny</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.map((item) => (
@@ -59,15 +68,6 @@ export function ColumnToggleMenu({ items, onToggle, onOpenOrder, className }: Pr
             {item.label}
           </DropdownMenuItem>
         ))}
-        {onOpenOrder && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onOpenOrder}>
-              <ArrowUpDown />
-              Ustaw kolejność kolumn…
-            </DropdownMenuItem>
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
