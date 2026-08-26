@@ -1,4 +1,4 @@
-import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-vercel-postgres'
+import { type MigrateUpArgs, sql } from '@payloadcms/db-vercel-postgres'
 
 // Hand-written (migrate:create's snapshot baseline is stale — see AGENTS.md).
 // Parity with the owner's vehicle-control sheet: the five of its columns that had nowhere to go.
@@ -26,17 +26,9 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   `)
 }
 
-export async function down({ db }: MigrateDownArgs): Promise<void> {
-  // Postgres cannot remove an enum value; 'ODOMETER' stays. Restoring the NOT NULL needs the same
-  // backfill 20260824_1 did — a row created while cost was optional has no price to restore.
-  await db.execute(sql`
-    ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "tyres";
-    ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "note";
-    ALTER TABLE "vehicles" DROP COLUMN IF EXISTS "exemptions";
-
-    ALTER TABLE "vehicle_inspections" DROP COLUMN IF EXISTS "insurer";
-    ALTER TABLE "vehicle_inspections" DROP COLUMN IF EXISTS "policy_number";
-    UPDATE "vehicle_inspections" SET "cost" = 0 WHERE "cost" IS NULL;
-    ALTER TABLE "vehicle_inspections" ALTER COLUMN "cost" SET NOT NULL;
-  `)
+export async function down(): Promise<void> {
+  // No true inverse exists: Postgres cannot drop an enum value, and restoring `cost NOT NULL` means
+  // writing „0 zł" over every unknown price — the exact lie this migration removed. Roll back by
+  // restoring the dump `db:migrate:prod` takes before it migrates.
+  throw new Error('20260825_1_fleet_sheet_parity is irreversible — restore from the dump')
 }

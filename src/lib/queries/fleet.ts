@@ -24,11 +24,13 @@ const getFleetDataset = unstable_cache(
 
     return dataset
   },
-  // Keyed -v3 because the payload's SHAPE has changed twice: it widened with `flags`, and `cost`
-  // narrowed from `number | null` to `number`. An entry written under either older shape is still
-  // valid JSON, so tags alone would keep serving it — a tag marks an entry stale but the same
-  // request is still answered from it once before revalidation (lessons.md).
-  ['fleet-dataset-v3'],
+  // Keyed -v4 because the payload's SHAPE has changed three times: it widened with `flags`, `cost`
+  // narrowed from `number | null` to `number`, and the sheet-parity slice widened it again with
+  // `exemptions` / `note` / `tyres` / `insurer` / `policyNumber`. An entry written under any older
+  // shape is still valid JSON, so tags alone would keep serving it — a tag marks an entry stale but
+  // the same request is still answered from it once before revalidation (lessons.md). A v3 entry has
+  // no `exemptions`, and `isExempt` would read `.some` off `undefined` and 500 the whole page.
+  ['fleet-dataset-v4'],
   { tags: [CACHE_TAGS.vehicles, CACHE_TAGS.vehicleInspections] },
 )
 

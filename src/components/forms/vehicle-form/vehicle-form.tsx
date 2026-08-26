@@ -1,12 +1,13 @@
 'use client'
 
 import { SelectItem } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { FieldGroup, FieldLabel } from '@/components/ui/field'
+import { FieldGroup } from '@/components/ui/field'
+import { InspectionTypeCheckboxes } from '@/components/fleet/inspection-type-checkboxes'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
+import FormBase from '@/components/forms/form-components/form-base'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import FormFooter from '@/components/forms/form-components/form-footer'
-import { INSPECTION_TYPE_LABELS, SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
+import { SCHEDULED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { VEHICLE_STATUS_LABELS, VEHICLE_STATUSES } from '@/lib/fleet/vehicle-status'
 import { useVehicleFormStore } from '@/stores/form-stores'
 import { vehicleFormSchema, type VehicleFormValuesT } from './vehicle-schema'
@@ -91,24 +92,13 @@ export function VehicleForm({
 
         <form.AppField name="exemptions">
           {(field) => (
-            <div className="flex flex-col gap-2">
-              <FieldLabel>Nie dotyczy (bezterminowo)</FieldLabel>
-              {SCHEDULED_INSPECTION_TYPES.map((type) => (
-                <label key={type} className="flex cursor-pointer items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={field.state.value.includes(type)}
-                    onCheckedChange={() =>
-                      field.handleChange(
-                        field.state.value.includes(type)
-                          ? field.state.value.filter((candidate) => candidate !== type)
-                          : [...field.state.value, type],
-                      )
-                    }
-                  />
-                  {INSPECTION_TYPE_LABELS[type].pl}
-                </label>
-              ))}
-            </div>
+            <FormBase label="Nie dotyczy (bezterminowo)" showError>
+              <InspectionTypeCheckboxes
+                types={SCHEDULED_INSPECTION_TYPES}
+                selected={field.state.value}
+                onChange={field.handleChange}
+              />
+            </FormBase>
           )}
         </form.AppField>
 

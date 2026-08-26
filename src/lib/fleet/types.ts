@@ -1,6 +1,6 @@
 import type { DayT } from '@/lib/fleet/days'
 import type {
-  FlaggableInspectionTypeT,
+  PerformedInspectionTypeT,
   InspectionTypeT,
   ScheduledInspectionTypeT,
 } from '@/lib/fleet/inspection-types'
@@ -11,7 +11,7 @@ import type { VehicleStatusT } from '@/lib/fleet/vehicle-status'
  * rather than derived from a deadline. Stored as the DAY the mark was made, not a boolean — that day
  * is what lets the mark clear itself (see `activeFlags`) instead of rotting until somebody unticks it.
  */
-export type VehicleFlagsT = Partial<Record<FlaggableInspectionTypeT, DayT>>
+export type VehicleFlagsT = Partial<Record<PerformedInspectionTypeT, DayT>>
 
 /**
  * One inspection event, flattened to plain data so every rule in this directory is testable without

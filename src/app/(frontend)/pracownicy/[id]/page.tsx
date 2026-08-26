@@ -44,7 +44,7 @@ export default async function UserDetailPage({ params, searchParams }: DynamicPa
 
   const infoFields = [
     { label: 'Rola', value: ROLE_LABELS[role].pl },
-    { label: 'Email', value: worker.email || '—' },
+    { label: 'Email', value: worker.email },
     { label: 'Status', value: worker.active ? 'Aktywny' : 'Nieaktywny' },
     ...(registerName ? [{ label: 'Domyślna kasa', value: registerName }] : []),
   ]

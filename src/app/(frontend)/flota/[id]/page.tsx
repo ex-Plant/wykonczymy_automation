@@ -13,9 +13,10 @@ import { VehicleStatusBadge } from '@/components/fleet/vehicle-status-badge'
 import { VehicleDetailTabs } from '@/components/fleet/vehicle-detail-tabs'
 import { InfoList } from '@/components/ui/info-list'
 import { PageWrapper } from '@/components/ui/page-wrapper'
+import { currentPolicyLabel } from '@/lib/fleet/policy-label'
 import { isOilChangeOverdue } from '@/lib/fleet/thresholds'
 import { cn } from '@/lib/utils/cn'
-import { formatKm } from '@/lib/utils/format-distance'
+import { formatKmOrDash } from '@/lib/utils/format-distance'
 import type { DynamicPagePropsT } from '@/types/page'
 
 export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
@@ -32,11 +33,7 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
   if (!detail) notFound()
 
   const { vehicle, historyByType } = detail
-  // Newest first out of `historyOfType`, so the polisa on top is the one in force.
-  const currentPolicy = historyByType.INSURANCE[0]
-  const policy = currentPolicy
-    ? [currentPolicy.insurer, currentPolicy.policyNumber].filter(Boolean).join(' · ')
-    : ''
+  const policy = currentPolicyLabel(historyByType.INSURANCE)
 
   return (
     <PageWrapper
@@ -50,10 +47,10 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
           <InfoList
             items={[
               { label: 'Status', value: <VehicleStatusBadge status={vehicle.status} /> },
-              { label: 'VIN', value: vehicle.vin || '—' },
-              { label: 'Opony', value: vehicle.tyres || '—' },
-              { label: 'Ubezpieczenie', value: policy || '—' },
-              { label: 'Uwagi', value: vehicle.note || '—' },
+              { label: 'VIN', value: vehicle.vin },
+              { label: 'Opony', value: vehicle.tyres },
+              { label: 'Ubezpieczenie', value: policy },
+              { label: 'Uwagi', value: vehicle.note },
             ]}
           />
           <InfoList
@@ -72,7 +69,7 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
                     {isOilChangeOverdue(vehicle.kmSinceOilChange) && (
                       <AlertTriangle className="size-4" />
                     )}
-                    {vehicle.kmSinceOilChange === null ? '—' : formatKm(vehicle.kmSinceOilChange)}
+                    {formatKmOrDash(vehicle.kmSinceOilChange)}
                   </span>
                 ),
               },

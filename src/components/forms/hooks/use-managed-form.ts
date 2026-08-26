@@ -101,7 +101,12 @@ export function useManagedForm<TValues, TData>({
   // store slot, so without this an abandoned add-draft would win over the record being edited.
   const draft = persistDraft && storedFormId === formId ? storedValues : null
 
-  const initialValues = draft === null ? defaultValues : (mergeStored?.(draft) ?? draft)
+  // Spread over `defaultValues` rather than replacing them: a draft written before this release knows
+  // nothing of a field the release added, and TanStack Form takes its field set from the initial
+  // values — so a restored draft would hand `undefined` to that field's input and crash it (the
+  // sheet-parity slice did exactly this to „Nie dotyczy", whose `.includes` ran on nothing).
+  const initialValues =
+    draft === null ? defaultValues : { ...defaultValues, ...(mergeStored?.(draft) ?? draft) }
 
   const form = useAppForm({
     defaultValues: initialValues,

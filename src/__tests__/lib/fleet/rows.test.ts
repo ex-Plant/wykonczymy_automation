@@ -224,8 +224,8 @@ describe('toRow — costs', () => {
     expect(row.totalCosts).toBe(1850)
   })
 
-  // An unknown price must not be laundered into „it was free" by the sum — the listing renders the
-  // resulting zero as „—" instead (see `hasKnownCost`).
+  // An unknown price must not be laundered into „it was free" by the sum. It is skipped, and only a
+  // set where NOTHING carries a price collapses to `null` — which every surface renders as „—".
   it('leaves an unknown cost out of the total', () => {
     const row = toRow(
       vehicle,
