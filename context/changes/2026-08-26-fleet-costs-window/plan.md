@@ -273,4 +273,4 @@ duplicated into `## Progress`.
 
 #### Automated
 
-- [x] 3.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes — PENDING_SHA
+- [x] 3.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes — d0c81b13
