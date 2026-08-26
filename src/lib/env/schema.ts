@@ -87,6 +87,10 @@ export const serverSchema = z
       }, 'GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON with client_email and private_key'),
     KOSZTORYS_TEMPLATE_SHEET_ID: z.string().min(1, 'KOSZTORYS_TEMPLATE_SHEET_ID is required'),
     KOSZTORYS_DRIVE_FOLDER_ID: z.string().optional(),
+    // Comma-separated sheet ids writable outside production; absent means "write nowhere", which is
+    // the safe default. Consumed per-write by sheetWriteRefusal (lib/google/sheet-write-guard.ts),
+    // not by a superRefine — the rule is per-sheet, so it cannot be settled once at parse time.
+    GOOGLE_SHEETS_WRITE_ALLOWLIST: z.string().optional(),
     // OpenRouter (receipt-scan vision extraction). Referer/app-name are optional attribution
     // headers OpenRouter surfaces on its dashboard; only the key is required to make calls.
     OPENROUTER_API_KEY: z.string().min(1),
