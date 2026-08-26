@@ -7,7 +7,7 @@ import { STREAMS, markSeen } from '@/lib/db/notifications'
 import { fetchAllLeads } from '@/lib/queries/leads'
 import { fetchRecipientLists } from '@/lib/queries/notification-recipients'
 import { LeadsDataTable } from '@/components/leads/leads-data-table'
-import { RecipientListCard } from '@/components/notifications/recipient-list-card'
+import { RecipientListCard } from '@/components/notification-recipients/recipient-list-card'
 import { Description } from '@/components/ui/description'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 
