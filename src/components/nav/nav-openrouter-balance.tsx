@@ -12,19 +12,22 @@ export async function NavOpenRouterBalance({ className }: { className?: string }
   if (!balance) return null
 
   return (
-    <Button
-      disabled
-      type="button"
-      variant="ai"
-      size="sm"
-      className={className}
-      title={`Saldo OpenRouter: ${usd(balance.remaining)} z ${usd(balance.total)}`}
-      data-testid="nav-openrouter-balance"
-    >
-      <WandSparkles className="text-neon-cyan" />
-      <span className="text-neon-cyan font-semibold tabular-nums">
-        Saldo {usd(balance.remaining)}
-      </span>
-    </Button>
+    // `title` sits on the wrapper: `disabled` pulls `pointer-events-none` in, so a tooltip on the
+    // button itself never fires — and this is the only place the total budget is shown.
+    <span title={`Saldo OpenRouter: ${usd(balance.remaining)} z ${usd(balance.total)}`}>
+      <Button
+        disabled
+        type="button"
+        variant="ai"
+        size="sm"
+        className={className}
+        data-testid="nav-openrouter-balance"
+      >
+        <WandSparkles className="text-neon-cyan" />
+        <span className="text-neon-cyan font-semibold tabular-nums">
+          Saldo {usd(balance.remaining)}
+        </span>
+      </Button>
+    </span>
   )
 }
