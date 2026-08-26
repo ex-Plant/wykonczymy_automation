@@ -361,6 +361,13 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodT, string> = {
   // CARD: 'Karta',
 }
 
+// On a wpłata od inwestora the method IS the plane (see `planeFor` in the deposit form), so the
+// select names the kwota that is about to be typed. Everywhere else the method is only the tor.
+export const PAYMENT_METHOD_PLANE_LABELS: Record<PaymentMethodT, string> = {
+  CASH: 'Gotówka netto',
+  TRANSFER: 'Przelew brutto',
+}
+
 // EX-536 netto/brutto wpłata bucket. The create form now always sends NET or GROSS (NET preselected),
 // but NULL stays a valid stored state for wpłaty booked before that. Downstream (deposits
 // reconciliation) an unmarked deposit is treated as netto — the owner's „brak wartości = netto"
