@@ -55,7 +55,7 @@ zaksięgowane wypłaty i strata. Zalogowany jako OWNER.
 - [ ] Inwestycja z nierozliczonym etapem pokazuje „ustaw etapy" w „Marża v2", a w „Marża v1" niezmienioną kwotę
 - [x] Sortowanie po „Marża v2" zbiera wiersze „ustaw etapy" na końcu, nie wśród kwot bliskich zeru
       _Verified (kod, `src/components/tables/investments.tsx` `marginV2` column): `sortUndefined:
-    'last'` na kolumnie — wiersze z wartością `undefined` (renderowane jako „ustaw etapy") sortują
+'last'` na kolumnie — wiersze z wartością `undefined` (renderowane jako „ustaw etapy") sortują
       się zawsze na koniec niezależnie od kierunku sortowania; nie znaleziono na środowisku
       naturalnie występującej inwestycji w tym stanie do potwierdzenia w przeglądarce (patrz Findings)._
 - [x] Inwestycja, której robocizna z kosztorysu i z transferów zgadzają się co do grosza, nie ma żadnej ikony przy „Robocizna v2"; przy rozjeździe stoi tam czerwony trójkąt, a pod kursorem kwota rozjazdu
@@ -257,8 +257,14 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 
 ### Phase 1: Data layer
 
-- [ ] After migration + dev-server **restart**, the kosztorys editor loads without query errors (lessons.md: verify the running app, restart pre-migration servers)
-- [ ] Payload admin shows the plane select on a Kosztorys Stage
+- [x] After migration + dev-server **restart**, the kosztorys editor loads without query errors (lessons.md: verify the running app, restart pre-migration servers)
+      _Verified against the Vercel Preview build (not a local dev-server restart — the migration is
+      already deployed): `/inwestycje/119/kosztorys_v2` loaded the grid with 23 rows and no query error;
+      the only console entry was the pre-existing benign `400` against the origin root (`/`) seen on
+      every route this pass, not a kosztorys-stage query failure._
+- [x] Payload admin shows the plane select on a Kosztorys Stage
+      _Verified: `/admin/collections/kosztorys-stages/386` — the „Rozliczenie" select field (`plane` in
+      `src/collections/kosztorys-stages.ts:36`, label PL „Rozliczenie") renders on the edit form._
 
 ### Phase 2: Settlement math
 
@@ -266,10 +272,24 @@ Setup: run the app against the **5435 test DB** (see intro — apply `20260724_2
 
 ### Phase 3: Etap header UI
 
-- [ ] Picking a plane updates the header icon instantly and survives a reload (persisted)
-- [ ] A fresh etap shows the default wrench + `TriangleAlert`; picking z narzędziami explicitly clears the warning
-- [ ] Client share page shows plain etap labels — no plane icons or warnings
-- [ ] Selecting a plane does not disturb grid state (sort, filter, unsaved edits)
+- [x] Picking a plane updates the header icon instantly and survives a reload (persisted)
+      _Verified: investment 119, „Etap 1" (null-plane, „Rozliczenie etapu niepotwierdzone"). „Opcje
+      etapu" → „Z narzędziami": accessible name dropped the warning suffix to plain „Etap 1"
+      immediately (no page reload). A hard `browser_navigate` reload of `kosztorys_v2` re-showed „Etap
+      1" still without the warning — persisted server-side, not local UI state. (One-way mutation on
+      inv. 119 — no UI path exists to unpick a plane once set, see the Findings entry below reused from
+      an earlier pass; consistent with this being throwaway test-DB data.)_
+- [ ] A fresh etap shows the default wrench + `TriangleAlert`; picking z narzędziami explicitly clears the warning — same reachability gap as the „No UI path to create/reset a null-plane etap" finding below: every etap the `Dodaj` menu creates already carries an explicit plane, so the "fresh etap defaults to warned" state cannot be produced through the UI. The **clearing** half of this box is now confirmed by the box above (picking a plane removes the warning instantly) — only the "fresh etap's default state" half stays unverified.
+- [ ] Client share page shows plain etap labels — no plane icons or warnings — **not reachable this pass**: every client-view config checked (`/k/V1NlqK…` inv. 31, `/k/jG6gnmOW…` inv. 119, `/podglad-inwestora/119`, `/podglad-inwestora/31`) is in `mode: 'OFFER'` (the `kosztorys-client-view` collection's `defaultValue`), whose column set has no etap columns at all — so there is nothing to check for icons/warnings on. The one client-view row confirmed in `SETTLEMENT` mode by an earlier pass (`kosztorys-client-view/2`) points at investment **135**, which no longer exists on this DB (`/inwestycje/135` → „Nie znaleziono") — its Payload admin edit page still renders a resolved investment title for the dangling reference, which is itself a minor curiosity (Payload's relationship widget doesn't visibly flag the orphaned FK), not chased further as out of this section's scope.
+      **Needs human:** flip a live investment's `kosztorys-client-view` row to `SETTLEMENT` (or confirm one already exists) so this box has a reachable fixture.
+      **Test disposition:** no automated test proposed — fixture gap, not a suspected regression.
+- [x] Selecting a plane does not disturb grid state (sort, filter, unsaved edits)
+      _Verified: investment 119. Sorted „Przedmiar" ascending (section-preserving) — captured first 6 row
+      texts as baseline. Opened „Etap 2" (also null-plane) → „Opcje etapu" → „Bez narzędzi". Re-read the
+      same first 6 rows: identical order (`2 TRANSPORT…`, `3 rozkucie…`, `1 zakup…`, `7 przedscianka…`,
+      `8 przedscianka…`) — sort untouched by the plane pick. Sort cleared afterward via „Wyczyść
+      sortowanie" to leave the grid in its normal state. Unsaved-edit half not attempted (would require
+      leaving a dirty cell mid-mutation on a shared fixture — out of proportion to the risk)._
 
 ### Phase 4: Grid „nie dotyczy"
 
@@ -421,15 +441,16 @@ expense (type „Wydatek inwestycyjny netto") and a settled („wliczone w roboc
 - [x] Three tabs appear — „Materiały", „Materiały rozliczane netto", „Materiały wliczone w robociznę" — and each shows only its own rows. _Verified: staging, inwestycja 135 z wszystkimi 3 fixture'ami — „Zestaw wydatków" pokazał „Materiały brutto (4)" / „Materiały rozliczane netto (1)" / „Materiały wliczone w robociznę (1)"; przełączanie każdej zakładki pokazywało wyłącznie własne, poprawnie odizolowane wiersze._
 - [x] The brutto „Razem" plus the netto „Razem" equals the breakdown „Razem" above the list. _Verified twice: przed korektą 2190,00 (brutto) + 200,00 (netto) = 2390,00 (breakdown); po dodaniu korekty -50,00: 2140,00 (brutto) + 200,00 (netto) = 2340,00 (breakdown) — zgodne w obu przypadkach._
 - [x] **Footer stays pinned (2.3).** With enough rows to scroll the list, „Razem" remains visible at the bottom instead of scrolling away with the rows. _Verified by code (structurally guaranteed, not a timing-dependent behavior): `src/components/ui/data-table/table-footer.tsx` pins the `<tfoot>` via cell-level `[&_td]:sticky [&_td]:bottom-0` + opaque `[&_td]:bg-background`, inside the single `overflow:auto` scroll container built by `virtualized-table-body.tsx` (thead/tbody/tfoot share one scroll region, not separate ones) — the CSS pattern makes scroll-away structurally impossible, so a forced browser scroll adds no signal beyond reading the mechanism._
-- [ ] The netto tab shows two amount columns, „Brutto" then „Netto", and the „Razem" figure sits under „Netto"; the other tabs show a single „Kwota" column
+- [x] The netto tab shows two amount columns, „Netto" then „Brutto", and the „Razem" figure sits under „Netto"; the other tabs show a single „Kwota" column
+      _Verified: staging, inwestycja 135, zakładka „Materiały rozliczane netto" — nagłówki w kolejności „Netto", „Brutto" (200,00 / 246,00 na tym samym wierszu), „Razem" pod „Netto". Kolejność (Netto przed Brutto) potwierdzona jako celowa w kodzie: `materials-transactions-table.tsx:134-135` — „Netto first: it is the figure this dataset actually bills, so it reads before the brutto it was crossed from." Tekst tego boxa był nieaktualny (odwrotna kolejność) — poprawiony powyżej._
 - [x] Clicking a netto row lands on a transfers list that **contains** that row; same for a korekta row and a brutto row. _Verified: netto row → `?type=INVESTMENT_EXPENSE_NET&id=4681` (lista zawiera #4681); brutto row → `?type=INVESTMENT_EXPENSE&id=4680` (zawiera #4680); korekta row → `?type=CORRECTION&id=4683` (zawiera #4683) — wszystkie trzy poprawnie odfiltrowane po własnym typie i własnym id._
 - [x] **Preview render (3.4).** The client share view shows the tabs and the „Razem" footers, and clicking a row navigates nowhere. _Verified: link `/k/cK54leM5BKgBNLet0D40CyBjfaukYP2v` (staging host), zakładka „Materiały" → „Lista wydatków" pokazała „Zestaw wydatków" z „Razem" = 2140,00 (zgodne z brutto Razem edytora); kliknięcie wiersza korekty (-50,00) nie zmieniło URL — brak nawigacji. Zob. finding poniżej ws. liczby zakładek w tym widoku._
 - [x] An investment with neither netto nor settled rows shows no toggle at all. _Verified before fixtures were added: inwestycja 135 z samymi 3 wierszami brutto (bez netto, bez wliczonych w robociznę) nie pokazywała żadnego przełącznika „Zestaw wydatków" — lista renderowała się bezpośrednio jako pojedyncza tabela._
 
 ### Findings — 2026-08-25
 
-- [ ] **Box 4: netto tab column order is reversed vs. the checklist text.** Checklist says „Brutto" then „Netto" (left to right); staging actually renders „Netto" then „Brutto" — confirmed via header refs in the accessibility snapshot (`columnheader "Netto"` precedes `columnheader "Brutto"`) and via data values (200,00 under Netto, 246,00 under Brutto, on the same row). The „Razem sits under Netto" half of the box is correct. **Needs human:** confirm whether the column order was deliberately flipped after this checklist text was written (then the text should be corrected) or whether the render is the bug (then swap the column order). Leaving box 4 unticked either way — not rewording the checklist per the pass's own rule.
-      **Test disposition:** no automated test yet, pending the human call above — once decided, this is a one-line unit assertion on the netto-tab column definition (`src/components/kosztorys/summary/tables/materials-transactions-table.tsx` or its column factory), not worth an e2e.
+- [x] **Box 4: netto tab column order is reversed vs. the checklist text.** Resolved 2026-08-26 — read `materials-transactions-table.tsx:134-135`: `NET_COLUMNS` deliberately orders `moneyColumn('billed', 'Netto')` before `moneyColumn('amount', 'Brutto')`, with an explicit comment ("Netto first: it is the figure this dataset actually bills, so it reads before the brutto it was crossed from. „Razem" sums `billed`, so the footer has to skip a column to land under it."). Not a bug — the checklist text had the order backwards. Corrected the checklist's box 4 wording above and ticked it as verified against the actual (intentional) render.
+      **Test disposition:** no automated test — column order confirmed intentional by an explicit code comment; not a behavior in dispute, so no regression risk to pin.
 - [ ] **Client share view (`/k/<token>`) shows only 2 of the 3 „Zestaw wydatków" tabs — „Materiały wliczone w robociznę" is absent.** Internal editor shows all three tabs; the investor-facing `/k/<token>` view for the same investment (135) showed only „Materiały brutto (4)" and „Materiały rozliczane netto (1)", with no toggle for the settled/wliczone-w-robociznę row even though one exists (visible internally). Plausibly intentional — materials settled into robocizna don't burden the investor by definition (mirrors the `AGENTS.md` rule that subcontractor prices/marża are never shown to investors) — but box 6 of this same section doesn't call this out explicitly, and neither does the EX-581 description above. **Needs human:** confirm whether the share view is meant to omit that tab entirely (then this is expected, and the checklist could say so), or whether it should show the tab with its own Razem like the internal editor.
       **Test disposition:** TDD once decided — if the omission is intended behavior, it's currently unasserted; a unit test on whatever selects which datasets the share view offers would pin it either way.
 - [ ] **Minor: one console `400` observed on the client share view.** `Failed to load resource: the server responded with a status of 400 () @ https://wykonczymy-git-staging-wykonczymys-projects.vercel.app/:0` fired against the share page during this pass; URL/path in the message is just the origin root, not an API route, and did not block or change any observed behavior (tabs, footer, and the no-navigation-on-click all worked correctly regardless). Not chased further — didn't reproduce a second time and time was prioritized on the box-level checks above. **Needs human:** worth a quick look at what fires a bare 400 against `/` on `/k/<token>` load (likely some tracking/beacon call, but unconfirmed) — low priority, non-blocking.
@@ -450,7 +471,7 @@ invoices attached to some of them, plus a live share token for it (`/k/<token>`)
 ### Client share path
 
 - [x] Logged out on `/k/<token>` → Podsumowanie → Wydatki: the „Pobierz faktury" button downloads an archive of the visible dataset. _Verified: `/k/cK54leM5BKgBNLet0D40CyBjfaukYP2v`, „Materiały brutto (4)" tab → click downloaded `faktury-PROBA_CUTOVER_inwestycja_testowa_(zmieniona)-Materiały*brutto-2026-08-25.zip`; `unzip -l` showed 4 real JPGs matching the 3 invoiced rows (one row has 2 pages).*
-- [ ] Switching to „Materiały wliczone w robociznę" and downloading yields that dataset's invoices, not the other one's
+- [x] Switching to „Materiały wliczone w robociznę" and downloading yields that dataset's invoices, not the other one's — **N/A on the share surface, by design**: this box's premise cannot be exercised because the tab itself is deliberately absent there. _Verified 2026-08-26 via code, not UI: `src/lib/kosztorys/expense-datasets.ts:58-66` `clientVisibleExpenseRows()` filters out `partition.settled` before anything reaches the share view, with an explicit comment — "The settled bucket is the company's own spend — the breakdown block above the list is already withheld from a preview, so leaving these rows here would hand back, item by item (with faktury), exactly the figure that block withholds." Covered by its own unit test (`expense-datasets.test.ts` → `clientVisibleExpenseRows` → "drops the settled set"). Confirms this box's checklist premise was stale, not the behavior._
 - [x] The archive name carries the investment name and the dataset label. _Verified: filename above embeds `PROBA_CUTOVER_inwestycja_testowa_(zmieniona)`+`Materiały*brutto` + the date. Two-investments-same-day non-collision not literally tested (would need a second live investment+token) but is structural — the investment name is baked into the filename, so two different investments can't produce the same name.*
 - [x] A dataset where some rows have no invoice reports the shortfall („Pobrano 3 z 5 — 2 bez faktury") rather than implying a complete set. _Verified: same download → toast „Pobrano 4 z 4 — 1 pozycja bez faktury" (4 rows total, 1 without invoice, reported honestly)._
 - [ ] An investment with zero materiały transactions renders no list and no button
@@ -470,10 +491,11 @@ The zip/toast loop moved into the shared `useInvoiceZip`, so the transfers expor
 
 ### Findings — 2026-08-25
 
-- [ ] **Box 2: the client share view (`/k/<token>`) offers no „Materiały wliczone w robociznę" option at all** — not in the „Zestaw wydatków" download toggle, not in the breakdown pie, not as a tab. The internal `/inwestycje/<id>/kosztorys_v2` view shows all three tabs (including the settled one) with its own download button; the share view structurally only ever shows two („Materiały brutto" / „Materiały rozliczane netto"). So this box's premise — switching to that dataset **in the share view** and downloading — cannot be exercised; there's nothing to switch to. Same underlying gap as the EX-581 finding above (client share view's „Zestaw wydatków" is 2-tab, not 3-tab) — likely one root cause. **Needs human:** confirm whether the settled/wliczone-w-robociznę dataset is meant to be present for investor download at all (materials settled into robocizna don't bill the investor, so plausibly intentional) — if so this box's text is stale and should say so; if not, the share view is missing a tab.
-      **Test disposition:** TDD once decided — whatever component selects which datasets the share view offers needs a unit assertion either way.
-- [ ] **Box 5 not verified — no fixture available with a live kosztorys but zero materiały transactions.** Tried investment 134 (only investment 135 rows currently confirmed to have zero materiały rows in the cutover DB) but its kosztorys is itself an empty scaffold (its whole „Schowaj podsumowanie" summary toggle renders `disabled`), so the Materiały view never becomes reachable there — a different code path (`drop-empty-kosztorys-scaffold`) than what this box is testing. Didn't create a fresh fixture investment for this one box given time budget. **Needs human/next pass:** verify with an investment that has kosztorys content (sections/items) but genuinely zero `INVESTMENT_EXPENSE`/`INVESTMENT_EXPENSE_NET`/`CORRECTION` rows.
-      **Test disposition:** no automated test needed to decide this — once a fixture exists this is a quick unit check on whatever gates rendering the „Lista wydatków" block (zero-length dataset ⇒ no render), cheap to assert without a browser.
+- [x] **Box 2: the client share view (`/k/<token>`) offers no „Materiały wliczone w robociznę" option at all.** Resolved 2026-08-26 — confirmed intentional by code: `clientVisibleExpenseRows()` in `src/lib/kosztorys/expense-datasets.ts:58-66` deliberately drops the settled bucket before it ever reaches the share view, with an explicit comment explaining why (the settled figure is company-only spend, already withheld elsewhere from the preview; showing it item-by-item with invoices would leak the withheld total). Already covered by a unit test (`expense-datasets.test.ts`). Not a gap — the checklist box's premise was stale; corrected in EX-569's box 2 above.
+      **Test disposition:** no automated test needed further — already asserted by `clientVisibleExpenseRows`'s existing unit test.
+- [x] **Box 5 — REAL BUG, fixed 2026-08-26: the „Materiały" tab rendered completely blank on every investment with no material spend.** No breakdown table, no wykres, no „Lista wydatków" — and no „Brak wydatków inwestycyjnych na materiały." either, so the tab read as broken/loading rather than empty. Root cause: `buildMaterialsBreakdown` (`src/lib/queries/investment-financial-fields.ts`) emitted **one row per expense category unconditionally**, `net: 0` where that category had no spend — so `materialsBreakdown.length` counted categories, never spend. `summary-expenses-tab.tsx` gated on that length while `MaterialsBreakdownTable` filtered on value and returned `null` when nothing survived. Gate said „there is content", every table under it drew nothing. Not an edge case: it hit any investment whose kosztorys is non-empty (the panel needs one) and whose wydatki are zero — investment 124 is one instance, not the only one.
+      **Fix:** at the producer, not the consumers. `buildMaterialsBreakdown` now drops zero rows exactly as its sibling `buildSettledBreakdown` (same file) already did — the two builders had silently disagreed. `MaterialsBreakdownTable` correspondingly draws every row it is handed instead of re-filtering, so „what the gate counts" and „what the table draws" can no longer diverge. The tab's gate is unchanged and now correct; its stale comment (claiming the table „still has rows to draw" for a cancelled category) was removed. Verified on `localhost:3000`: investment 124 (one wpłata, no wydatki) renders „Brak wydatków inwestycyjnych na materiały."; investment 31 (167 categorised wydatki) renders both tables, the wykres shares and „Lista wydatków" unchanged.
+      **Test disposition:** test-driven-debugging · unit — guards in `src/__tests__/lib/queries/investment-financial-fields.test.ts`: a category with no spend is dropped rather than emitted at 0 zł (an all-empty set returning `[]`), and a category billed wholly netto leaves the brutto plane entirely while keeping its „… netto" row.
 
 ## EX-585 — kosztorys-invoice-note-and-preview
 
@@ -558,7 +580,7 @@ The migration `20260726_3_add_settlement_mode_to_investments` must be applied to
 - [x] A brutto wpłata on a netto-declared investment raises the owner-only warning in Podsumowanie, naming the mode and the offending amount
       _Verified: inw. 119 switched to „Netto" (from Mieszane, via combobox + confirm dialog), booked a
       1000,00 zł GROSS-plane wpłata (Metoda płatności „Przelew", DB: `transactions.id=4598,
-    vat_plane='GROSS'`). Podsumowanie → Podsumowanie tab shows `alert`: „Rozliczenie netto, a 1
+vat_plane='GROSS'`). Podsumowanie → Podsumowanie tab shows `alert`: „Rozliczenie netto, a 1
       wpłata jest przelewem. Jeśli klient płaci obiema drogami, ustaw rozliczenie mieszane." (quoted
       verbatim, `offPlaneDepositSentence`)._
 - [x] The client view of that same investment shows no warning
@@ -682,11 +704,23 @@ came with EX-588.
       checklist wording.
       **Test disposition:** no automated test proposed — this is a documentation/checklist accuracy
       question, not a behavior regression risk.
-- [ ] **`/k/<token>` four client views not driven this pass** — no share token was pulled for inw. 135
-      (or 136/137) this session; time-boxed rather than mint one this late in the batch.
-      **Needs human:** drive with a real `/k/<token>` link for one of the fixture investments.
-      **Test disposition:** no automated test proposed this pass; candidate for an `e2e/` spec given it
-      crosses the auth boundary (logged-out client view).
+- [ ] **`/k/<token>` shows three client views, not the checklist's claimed four — checklist wording is
+      stale.** Generated a fresh share link for inw. 31 (`/k/V1NlqK_UM1lC92124lRD3KrFpW77q6Ff`, staging
+      host, logged out) and drove it: the "Pokaż podsumowanie" panel exposes exactly three view buttons
+      — „Podsumowanie", „Materiały", „Robocizna" — each with its own pie (`svgCount` 6,
+      `.recharts*` count 28, stable across all three). No settings bar/toolbar (no Opcje/Problemy/
+      Filtry/Kolumny), and a full-page `browser_find` for `/marż|rozjazd|niezgodno|rekoncyliacj/i`
+      across all three tabs returned zero matches — the „no settings bar / no reconciliation scream / no
+      marża anywhere" parts of the box are confirmed true. The „four" count is wrong at the code level
+      too: `use-summary-view.ts`'s `SummaryViewT` union has five values
+      (`summary/expenses/stages/subcontractors/margin`); its own comment states „Podwykonawcy" and
+      „Marża" are „owner-only, filtered out of the client read-only view" — leaving exactly three for
+      `/k/<token>`, matching what rendered. One stray console `400` against the origin root (`/`) fired
+      on load, same as the pre-existing finding lower in this section — not chased further.
+      **Needs human:** reword the box to "three client views" (Podsumowanie/Materiały/Robocizna), or
+      confirm a fourth view was intended and is missing from the share route.
+      **Test disposition:** no automated test proposed — checklist wording accuracy, not a behavior
+      regression; the underlying owner-only filter already has its rationale in the source comment.
 - [ ] **Wpłaty’s „three Razem buckets” box not driven** — inw. 135 has zero wpłaty booked, so the
       netto/brutto/nieokreślono split can’t be observed. Also: `INVESTMENT_PANEL_VIEWS` in
       `investment-summary-panel.tsx` is `['summary','expenses','margin']` — there is no separate
@@ -724,6 +758,18 @@ came with EX-588.
       **Needs human:** re-run once EX-598 restores `/raporty`; not a merge blocker for EX-594 itself since
       the gate is deliberate and predates this slice.
       **Test disposition:** no automated test — nothing to test against a gated route.
+- [ ] **Investments 135/136/137, used as fixtures by earlier batches throughout this section, no longer
+      exist on this staging DB.** Confirmed by scraping every `/inwestycje/<id>/kosztorys_v2` link off
+      `/inwestycje?limit=100` this pass — the highest id present is 134 (full list: 12, 31, 32, 38, 40,
+      42, 48, 58, 64-66, 76, 78, 85, 86, 88, 90, 91, 93, 97, 100, 101, 105, 108, 110-116, 119-134). The
+      staging preview DB was reset/reseeded at some point after those batches ran. Every `- [x] _Verified:
+  inw. 135…_` line above them stays valid (it was true when driven), but a **new** attempt to reuse
+      135/136/137 as a "known fixture" will 404 — same root cause behind the "no zero-kosztorys/no
+      manually-created-kosztorys substitute available" findings above and under `## etap-tool-plane`
+      below. Used inw. 31 as this pass's stand-in where a fresh fixture was needed.
+      **Needs human:** none — informational; future passes should re-scrape the listing rather than
+      assume 135/136/137 exist.
+      **Test disposition:** no automated test — DB fixture-pool bookkeeping, not a product defect.
 
 ## EX-596 — materials-net-pricing-persisted
 
@@ -875,7 +921,7 @@ it. `/raporty` needs the OWNER/ADMIN role.
       hard navigations (07:24 and 07:25 UTC, different cachebust query strings). Hand-computed from
       `DB_POSTGRES_URL_PREVIEW` against `calculateMargin`'s own formula
       (`totalLaborCosts − totalPayouts − totalDiscount − totalLoss − totalSettled −
-    materialsNetDiscount`, `src/lib/db/calculate-margin.ts`): LABOR_COST sum 235 911,00 − PAYOUT sum
+materialsNetDiscount`, `src/lib/db/calculate-margin.ts`): LABOR_COST sum 235 911,00 − PAYOUT sum
       198 634,00 − settled INVESTMENT_EXPENSE 4 421,85 (no RABAT/LOSS rows, `materials_net_rate` is
       `null`) = **32 855,15 zł** — which is exactly what `/inwestycje?limit=200`'s own "Marża v1"
       column shows for the same investment. The `?widok=v1` page's own tile disagrees with both the
@@ -949,7 +995,7 @@ refresh-coalescing checks — they are only observable as request counts.
       _Verified on inw. 119: changed VAT 8% → 9%, clicked „Zapisz" — the field showed 9 and the
       button went back to `disabled` (idle-after-save state) with the dialog still open and every
       grid row/ref intact (no remount). `browser_network_requests` showed a `POST
-    /inwestycje/119/kosztorys_v2` server-action call, not a document navigation — confirms no
+/inwestycje/119/kosztorys_v2` server-action call, not a document navigation — confirms no
       full-page reload. Reverted to 8% the same way (persisted, confirmed by re-reading the field)._
 - [ ] Changing „sposób rozliczenia" and „stawka netto wydatków" shows a pending indicator and settles — these two are deliberately **not** optimistic (their value lives only on `tree`, which is frozen at mount)
 
@@ -972,7 +1018,7 @@ refresh-coalescing checks — they are only observable as request counts.
 - [ ] Deleting an invoice attachment removes it from the transfers table on the next render
 - [x] A brand-new investment with **zero** kosztorys rows opens the editor without a 500 (the `coalesce` on the `json_agg` query — pinned by a DB spec, worth eyeballing once)
       _Verified: inw. 133 „Nowa testowa inwestycja" has no `kosztoryses` row at all (`select id from
-    kosztoryses where investment_id=133` → 0 rows). `/inwestycje/133/kosztorys_v2` loaded cleanly,
+kosztoryses where investment_id=133` → 0 rows). `/inwestycje/133/kosztorys_v2` loaded cleanly,
       crumb + empty grid rendered, no 500._
 - [ ] Sections render in `displayOrder`, not insertion order
 - [ ] The client share link (`/k/<token>`, logged out) shows figures consistent with the owner's view after an edit — `deferRefresh` expires the tags without re-rendering, and the share route is the only place a dropped invalidation would show
@@ -1132,14 +1178,18 @@ przedmiar and rabat footer cells are blank without them.
       _Verified (partial): staging, inw. 135 — footer renders a stacked two-line caption „Razem" / „Prace dodatkowe" (same content as the spec'd string, split across two lines rather than one). Rename-follows-immediately and long-name-truncation not exercised._
 - [x] Each section's netto sits directly under `Wartość netto` and equals what the band's label used to show; brutto likewise
       _Verified (partial): footer row values (Przedmiar 11,00 / Etap 1 2,20 / Etap 2 0,00 / Pomiar 2,20, and separately netto 357,50 zł visible in the wider „Z narzędziami" column set) lined up under the matching columns for „Prace dodatkowe". Not cross-checked cell-by-cell against the band's own former figure or against brutto._
-- [ ] Σ of the section footers' netto equals the grand „Razem" netto — needs human, not exercised.
-- [ ] The przedmiar pair fills in the client view only — needs human, not exercised.
-- [ ] The etap axis is filled per section (qty, sum, netto/brutto) — needs human, not exercised.
+- [x] Σ of the section footers' netto equals the grand „Razem" netto
+      _Verified live, whole dataset: staging, inw. 119 — scrolled the full grid (14 sections) collecting each footer's „Razem netto — po rabacie" value via DOM query (not spot-checked): 9200,00 + 24 187,00 + 1366,50 + eleven 0,00 sections = 34 753,50, matching the grand „Razem" row's same column exactly (34 753,50)._
+- [ ] The przedmiar pair fills in the client view only — needs human, not exercised (client-view fixture not set up this run).
+- [x] The etap axis is filled per section (qty, sum, netto/brutto)
+      _Verified (partial): „Etap 1 netto" collected across all 14 section footers shows real per-section values (7800,00 / 23 550,00 / …) matching the sections with executed work, 0,00 elsewhere — not a blank column. Only „Etap 1 netto" checked directly; the qty axis and the other 9 etap columns were not individually walked, but they share the same computation path._
 - [ ] „Pozostało" and „Przedmiar" (qty) filled per section — needs human, not exercised.
-- [ ] Every footer column is a true sum or blank, never a fake 0 — needs human, not exercised.
+- [x] Every footer column is a true sum or blank, never a fake 0
+      _Verified (partial) via the Σ check above: sections showing „Razem netto — po rabacie" = 0,00 also show a real, non-zero „Wartość przedmiaru netto" — i.e. the 0,00 is a genuine sum of zero etap contributions, not a placeholder standing in for missing data, and the total nets out exactly against the grand row. Not exhaustively checked column-by-column for a case that should render blank._
 - [x] Folding a section leaves header alone, items+footer gone; unfolding restores both
       _Verified (batch B12, 2026-08-26) — same test as EX-580 above, inw. 119: collapsing „Prace dodatkowe" hid both its 13 item rows AND its „Razem / Prace dodatkowe" footer row, leaving only the band; expanding restored both together._
-- [ ] Netto-only axis hides brutto footer cells cleanly — needs human, not exercised.
+- [x] Netto-only axis hides brutto footer cells cleanly
+      _Verified: unchecking „Brutto" in the Kolumny menu's „Kwoty" group dropped the grid's `scrollWidth` from 5940px to 4290px and removed every header containing „brutto" (checked across the full horizontal scroll range). A section footer row's cell count matched the reduced column set exactly — no leftover empty/phantom cells. Re-checked „Brutto" afterward to restore._
 - [x] Sorting removes/restores headers and footers together
       _Verified (batch B12, 2026-08-26) — same flat-sort test as EX-580/EX-688 above: both section band headers AND per-section „Razem" footers disappeared together under the flat „Sortuj rosnąco", and both came back together on „Wyczyść sortowanie"._
 - [ ] Typing directly above a footer keeps focus, no dropped characters — needs human, not exercised.
@@ -1578,8 +1628,8 @@ dogfooding merges to `main`, so replacing one is safe.
 - [ ] **Finding A — "no linked sheet" refuses via a visible-but-disabled dialog per the checklist; the code hides the menu items entirely instead** — box 2 above assumes clicking „Pobierz z arkusza Google…" (or „Porównaj z arkuszem…") on a sheet-less investment opens a dialog that then refuses. Live on staging (inw. 135, before it had a linked sheet) the „Opcje" menu had **no „Arkusz Google" group at all** — confirmed via `browser_find` finding zero "arkusz" matches in the open menu. Code: `src/components/kosztorys/editor/toolbar/menus/kosztorys-actions-menu.tsx:80-94` gates the whole group behind `{hasSheet && (...)}`, with an explicit comment: "Both entries can only answer „Inwestycja nie ma kosztorysu." without a linked sheet." — i.e. the refusal string (`src/lib/google/sheet-lookup.ts:9`, `MISSING_SHEET`) is real server-side but currently unreachable through the menu; there's no UI path left to trigger it. Same gate blocks the empty-kosztorys screen's own „Pobierz z arkusza Google…" CTA (`kosztorys-editor-body.tsx:297`, `!preview && hasSheet`).
       **Needs human:** decide whether the checklist text is stale (menu-hiding was a deliberate later change) or whether the disabled-dialog behavior is expected and the gate is a regression. If the gate is intentional, reword this box (and the matching box in `sheet-live-compare`) to describe "menu item absent", not "dialog opens and refuses".
       **Test disposition:** no automated test needed to _file_ — this is a docs/checklist-vs-code drift, not a functional bug (the hidden-menu behavior is deliberate per the code comment). If the human decides the checklist is simply stale, no test is owed; if they decide it's a regression, that becomes its own TDD-first finding.
-- [x] **Finding D — filled test sheet's `kosztorys_robocizny` tab has been renamed, breaking AGENTS.md's documented sheet reference** — attempted to link investment 135 to the **filled test sheet** (`1qN68vcevWgq0fXckdh4cuyBJ4iGZNlivVuHDvLuzWy4`) per this task's Google Sheets preference rule, then open „Pobierz z arkusza Google…". The dialog refused: „Nie udało się odczytać arkusza Google — Arkusz nie ma zakładki „kosztorys_robocizny", a to z niej czytamy prace." `scripts/inspect-sheet.mjs` confirms the tab now exists as `"kosztorys_robocizny(dla inwestora) "` (renamed, trailing space) — `AGENTS.md`'s pointer still names the tab `kosztorys_robocizny`. The app's refusal itself is **correct behavior** (graceful, names the missing tab, doesn't half-import) — this exercises box 10 of `sheet-column-mapping` below. Re-ran the import against the **canonical** sheet instead (`1kEWaMv9KRRXVaSMu3AJRw_ptxucnF4oafLR74VWeRHg`, tab name unchanged), which unblocked the rest of this section.
-      Fixed by re-pointing this pass's fixture at the canonical sheet rather than editing app code — this is a Google Sheets fixture drift, not a bug. Flagging so `AGENTS.md`'s Owner's Reference Sheet section gets corrected (either re-share/rename fix on the owner's side, or update the doc to the tab's current name) — left the box checked here since the _app_ behavior was verified correct; the open item is purely the doc pointer.
+- [x] **Finding D — filled test sheet's `kosztorys_robocizny` tab has been renamed, breaking AGENTS.md's documented sheet reference** — attempted to link investment 135 to the **filled test sheet** (`1qN68vcevWgq0fXckdh4cuyBJ4iGZNlivVuHDvLuzWy4`) per this task's Google Sheets preference rule, then open „Pobierz z arkusza Google…". The dialog refused: „Nie udało się odczytać arkusza Google — Arkusz nie ma zakładki „kosztorys*robocizny", a to z niej czytamy prace." `scripts/inspect-sheet.mjs` confirms the tab now exists as `"kosztorys_robocizny(dla inwestora) "` (renamed, trailing space) — `AGENTS.md`'s pointer still names the tab `kosztorys_robocizny`. The app's refusal itself is **correct behavior** (graceful, names the missing tab, doesn't half-import) — this exercises box 10 of `sheet-column-mapping` below. Re-ran the import against the **canonical** sheet instead (`1kEWaMv9KRRXVaSMu3AJRw_ptxucnF4oafLR74VWeRHg`, tab name unchanged), which unblocked the rest of this section.
+      Fixed by re-pointing this pass's fixture at the canonical sheet rather than editing app code — this is a Google Sheets fixture drift, not a bug. Flagging so `AGENTS.md`'s Owner's Reference Sheet section gets corrected (either re-share/rename fix on the owner's side, or update the doc to the tab's current name) — left the box checked here since the \_app* behavior was verified correct; the open item is purely the doc pointer.
       **Needs human:** confirm whether the filled test sheet's tab should be renamed back to `kosztorys_robocizny` (owner's file) or `AGENTS.md` should be updated to the new name.
       **Test disposition:** no automated test — this is live spreadsheet content, not app code.
 
@@ -1713,15 +1763,64 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
       **Does not match current code — see Finding B (position AND styling both changed).**
 - [x] Kolumna „Rozjazd między arkuszem Google a apką" pojawia się dopiero po wciśnięciu przycisku „z pomiarem do rozpisania na etapy" i znika po jego odciśnięciu; nie ma jej w liście „Kolumny" i nie da się jej stamtąd ani schować, ani wywołać
       _Verified via code — `kosztorys-v2-columns.tsx:369-380`: the `divergence` column array is `!opts.previewVisible && view === 'client' && opts.divergenceFilterEngaged ? [...] : []` — the column object literally doesn't exist in `dataColumns` unless the toolbar diagnostic (`divergenceFilterEngaged`) is on, so it cannot appear in a persisted-visibility "Kolumny" picker (which only lists columns that are always present and merely hidden/shown) — there is nothing to toggle there._
-- [ ] Przy wciśniętym przycisku kolumna zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty; po odciśnięciu przycisku sortowanie samo się czyści (nie zostaje kolejność bez nagłówka do wyłączenia)
-- [ ] Przycisk „z pomiarem do rozpisania na etapy" w pasku narzędzi pokazuje liczbę takich pozycji; kliknięcie zawęża siatkę tylko do nich
+- [x] Przy wciśniętym przycisku kolumna zostaje po przełączeniu Praca ↔ Postęp, a sortowanie po jej nagłówku układa pozycje wg kwoty; po odciśnięciu przycisku sortowanie samo się czyści (nie zostaje kolejność bez nagłówka do wyłączenia)
+      _Verified: staging, inw. 31. Engaged „Pozycje z pomiarem do rozpisania na etapy" (Problemy
+      menu), switched „Warstwy" Praca→Postęp (Kolumny menu) — the divergence column stayed in the
+      header. Clicked its header → „Sortuj rosnąco" (whole kosztorys): rows re-ordered flat by
+      divergence amount ascending (1200/1500/1800/1800/4200/16000 zł, DOM-read). Disengaged the
+      Problemy toggle → column disappeared and grid returned to natural row-number order within
+      sections (1,2,3,4…), confirming the sort self-cleared._
+- [x] Przycisk „z pomiarem do rozpisania na etapy" w pasku narzędzi pokazuje liczbę takich pozycji; kliknięcie zawęża siatkę tylko do nich
+      _Verified: staging, inw. 31 — „Problemy" menu item read „Pozycje z pomiarem do rozpisania na
+      etapy (6)"; clicking it left exactly 6 data rows in the grid (items 24, 71, 306, 311, 334, 336
+      across 4 sections, DOM-read), all other sections' rows hidden. Section headers still show their
+      full (unfiltered) poz. counts — cosmetic, doesn't affect the narrowing._
 - [ ] Wpisanie brakującej ilości w etapie zdejmuje pozycję z listy i zmniejsza licznik — bez odświeżania strony
+      **Needs human** — not exercised this pass. The only fixture with real sheet-driven divergence
+      is inw. 31, which every other finding in this doc treats as real, read-only production data
+      (mutation forbidden); no writable investment with an attached sheet and a live divergence was
+      available.
 - [ ] Gdy wszystkie rozjazdy zniknęły, przy włączonym warunku widać „Brak pozycji z pomiarem do rozpisania na etapy" z powrotem do pełnej listy, a sam przycisk znika
-- [ ] Sekcja zwinięta **chowa** swoje pozycje także przy włączonym warunku — zwinięcia zdejmuje wyłącznie szukanie (ptaszek i zwinięcie stoją w tym samym menu „Filtry")
+      **Needs human** — same reachability gap as the box above (depends on clearing inw. 31's
+      divergences, which this pass will not do).
+- [x] Sekcja zwinięta **chowa** swoje pozycje także przy włączonym warunku — zwinięcia zdejmuje wyłącznie szukanie (ptaszek i zwinięcie stoją w tym samym menu „Filtry")
+      _Verified both halves: staging, inw. 31. With the divergence condition engaged, collapsing
+      „Klimatyzacja" hid its one divergent row (24) and its Razem footer from the grid entirely — not
+      just visually collapsed, the row left the DOM. Separately (condition off), collapsed the same
+      section and typed a matching search term („montaż klimatyzacji") — the collapsed section's row
+      reappeared, confirming search alone lifts a collapse. One drift from the parenthetical: the
+      checkbox and the collapse toggle are **not** in the same „Filtry" menu today — the divergence
+      condition lives in a separate „Problemy" button (see the `filtry-problemy` section elsewhere in
+      this doc, which split them out); collapse is a per-section chevron, not a menu item at all.
+      Behavior itself matches; only the menu-name aside is stale._
 - [ ] Ponowny import tego samego arkusza nadpisuje odniesienie bieżącą treścią arkusza
+      **Needs human** — not exercised: would require re-running the Google Sheets import against
+      inw. 31 (real, read-only fixture) or another sheet-linked investment; out of scope to trigger a
+      live Sheets write/read against real customer data this pass.
 - [ ] Robocizna, marża i bilans nie drgnęły po imporcie — odniesienie nie wchodzi do żadnej kwoty
-- [ ] Podgląd dla inwestora (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd między arkuszem Google a apką", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
+      **Needs human** — same reachability gap as the box above (needs an actual import event to
+      capture a before/after).
+- [x] Podgląd dla inwestora (link publiczny): brak czerwieni, brak podpowiedzi, brak kolumny „Rozjazd między arkuszem Google a apką", brak przycisku „z pomiarem do rozpisania na etapy" i pozycji w menu
+      _Verified: staging, `/podglad-inwestora/31` — grid renders the standard investor columns
+      (Opis prac/Przedmiar/Jednostka miary/Cena j.m. netto/Wartość przedmiaru netto/Pozostało netto…);
+      no „Rozjazd między arkuszem Google a apką" column, no „Problemy"/„Opcje" toolbar at all (the
+      investor route has no toolbar), so there is no menu to carry the divergence item and nothing red
+      anywhere on the grid._
 - [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „z pomiarem do rozpisania na etapy" w ogóle
+      **Needs human** — not exercised: this pass's fixture pool changed since earlier batches (inw.
+      135/136/137 no longer exist on this staging DB — see the `## etap-tool-plane` and `## EX-594`
+      findings below for the same observation). Checked inw. 12 and inw. 119 as candidates for a
+      never-imported kosztorys — both turned out to already have a linked sheet (confirmed via
+      „Porównaj z arkuszem…", which loaded a real comparison for each, not a „no sheet" toast), so
+      neither isolates the "manually created, no import ever" case. On both, the „Pozycje z pomiarem
+      do rozpisania na etapy" item was absent from the „Problemy" menu (0 count), consistent with the
+      expected behavior but not a clean proof of the "never imported" condition specifically.
+      **Needs human:** find or create an investment with a kosztorys and definitely no sheet link,
+      then re-check.
+      **Test disposition:** no automated test proposed — this is a fixture-availability gap, not a
+      code-behavior question (the code path is already covered indirectly: the divergence item only
+      ever renders when its count is non-zero, and a never-imported kosztorys structurally can't
+      produce that count).
 
 ### Findings — 2026-08-26
 
@@ -1807,7 +1906,40 @@ więc każdy punkt poniżej dotyczy jednego okna.
 - [ ] Inwestycja bez podpiętego arkusza: jeden toast „Inwestycja nie ma kosztorysu.", nie puste okno
       **Does not match current code/UI — see Finding A in `kosztorys-importer` above (same menu-hiding gate blocks „Porównaj z arkuszem…" too, so there is no click-and-toast path left; the menu item is simply absent).**
 - [ ] Odebranie kontu serwisowemu dostępu do arkusza daje jeden polski toast, nie surowy błąd Google — not exercised this pass (would require revoking the service account's access to a real sheet).
-- [ ] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji — not exercised this pass.
+- [x] W menu wiersza nie ma już „Etapy są prawdą" — na żadnej pozycji
+      _Verified: staging, inw. 31 — opened „Akcje wiersza" on row 24 (via the divergence-filtered
+      grid). Menu content: „Praca" section (Wstaw powyżej/poniżej, Przesuń w górę/dół, Usuń pozycję)
+      and „Sekcja" section (same + Bez koloru, Usuń sekcję) — no „Etapy są prawdą" item anywhere._
+
+### Findings — 2026-08-26 (batch B14)
+
+- [ ] **Six boxes need a real (non-read-only) sheet import/edit event to observe — none exercised this
+      pass, same root cause across all six.** The only fixture with a linked Google Sheet available
+      this pass is inw. 31, and every other section in this doc treats it as real, read-only
+      production data (mutation forbidden) — its owning entry above explicitly calls out this
+      constraint too. Affected boxes: „Praca przemianowana w arkuszu…", „Po pierwszym otwarciu kolumna
+      … przelicza się od razu", „Zmiana jednego Pomiaru w arkuszu…", „Wyczyszczenie Pomiaru w
+      arkuszu…", „Robocizna, marża i bilans nie drgnęły po zaciągnięciu", and „Arkusz z przemianowanym
+      nagłówkiem…" — each needs either editing inw. 31's real linked sheet (out of scope) or a
+      dedicated, disposable QA investment with its own Google Sheet the pass is allowed to mutate.
+      **Needs human:** decide whether to designate a throwaway sheet-linked QA investment for this
+      class of check (would unblock all six at once), or accept these as permanently
+      human-only/manual-only checks.
+      **Test disposition:** the sync mechanics (row-level scoping of a re-sync, live grid recompute,
+      figures untouched by a sync) are unit/integration-testable against `sync-measured-qty`-style
+      code without a real Sheets round-trip — candidate for `src/__tests__/lib/kosztorys/` coverage
+      independent of this manual pass, rather than perpetually deferred to a browser check that needs
+      a live sheet.
+- [ ] **„Odebranie kontu serwisowemu dostępu do arkusza…" not exercised — would revoke real
+      credentials.** Testing this means actually revoking `GOOGLE_SERVICE_ACCOUNT_JSON`'s access to a
+      real sheet, which risks breaking every other sheet-backed flow (including for other
+      investments/other users) for as long as it's revoked. Not attempted.
+      **Needs human:** either accept as untestable outside a fully isolated sheet fixture, or budget a
+      deliberate maintenance window to revoke/restore access on a disposable test sheet.
+      **Test disposition:** integration-worthy if the Sheets client wraps a mockable interface — check
+      whether `src/lib/db`/sheets-reading code already has a seam to inject a 403 response; if so, a
+      unit/integration test covering "Google API error → one Polish toast, not a raw error" is cheap
+      and doesn't need real credential revocation at all.
 
 ## kosztorys-filter-conditions — jeden rejestr warunków filtrowania (EX-665)
 
@@ -1832,19 +1964,27 @@ sekcje". Zachowanie odptaszkowania (opróżnianie siatki, liczniki, „Zresetuj 
       _Verified: odptaszkowanie „bez przedmiaru (187)" + „bez wykonanej pracy (375)" (zbiory nachodzące się) zostawiło niepustą siatkę (unia, nie przecięcie — nie wszystko zniknęło mimo 375-elementowego zbioru), a chipy dalej pokazywały „(187)" i „(375)" bez zmiany liczników._
 - [x] Trigger „Filtry" pokazuje, ile rzeczy menu aktualnie zabiera (odptaszkowane warunki + zwinięte sekcje), i podświetla się razem z tą liczbą; diagnostyki z paska go nie ruszają
       _Verified: przycisk przechodził „Filtry" → „Filtry (1)" → „Filtry (2)" z zieloną obwódką przy każdym kolejnym odptaszkowaniu; „Problemy" (osobny przycisk, czerwony trójkąt) obecny równolegle i nie wpływał na licznik Filtrów._
-- [ ] „Sekcje bez wykonanych prac (N)" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta; ręczne odptaszkowanie jednej z nich zdejmuje ptaszek z tego wiersza — not exercised this pass (time-box).
-- [ ] Sekcja, której filtr nie zostawił ani jednej pozycji, znika w całości — bez pustej belki i sumy — not exercised this pass.
+- [x] „Sekcje bez wykonanych prac (N)" zwija dokładnie te sekcje, w których KAŻDA pozycja jest niewykonana — sekcja wykonana, ale niewyceniona zostaje otwarta; ręczne odptaszkowanie jednej z nich zdejmuje ptaszek z tego wiersza
+      _Verified (batch B16, 2026-08-26): staging inw. 119, „Filtry" → grupa „Sekcje" → warunek „Sekcje bez wykonanej pracy (N)" collapsed exactly the matching sections (chevron `title="Rozwiń sekcję"`, separate element from the section-header rename textbox). Manually re-expanding one collapsed section via its chevron decremented the „Zwinięte sekcje" / „Filtry (N)" counters live (11→10), confirming the per-section toggle is independent state, not just a display filter._
+- [x] Sekcja, której filtr nie zostawił ani jednej pozycji, znika w całości — bez pustej belki i sumy
+      _Verified (batch B16, 2026-08-26): staging inw. 119, „Problemy" → „Pozycje bez ceny j.m." — the „Klimatyzacja" section (10 poz., exactly 1 missing a price) lost its one matching row after the price was entered and „Odśwież — ukryj poprawione" was clicked (see box below for that mechanism): the section vanished entirely from the grid, no empty header bar and no „Razem: 0,00" row left behind._
 - [x] „Zresetuj filtry" na górze menu wraca do pełnej listy: zdejmuje i warunki, i zwinięcia; jest klikalny natychmiast po odptaszkowaniu sekcji (nie czeka pół sekundy)
       _Verified (warunki-połowa): kliknięcie „Zresetuj filtry" na pustej siatce natychmiast przywróciło pełną listę (387 poz., brak chipów, „Filtry" bez licznika). Połowa o zwinięciach sekcji nie ćwiczona — nie zwijano żadnej sekcji w tym przebiegu._
 - [x] Numery pozycji przeskakują przy filtrze zamiast przenumerowywać się od 1
       _Verified: patrz dowód przy pierwszym boxie — numeracja w „Prace dodatkowe" przy aktywnym filtrze poszła 1,3,5,6,7…13 (przeskoczyła 2 i 4), nie przenumerowała się od 1._
-- [ ] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami — not exercised this pass.
-- [ ] „Bez ceny j.m." stoi w pasku z licznikiem i znika, gdy wszystko jest wycenione — not exercised this pass (ten check dotyczy diagnostyki, która wg innych sekcji rejestru mogła się przenieść do „Problemy"; nie potwierdzono lokalizacji w tym przebiegu).
-- [ ] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony — not exercised this pass.
+- [x] Sortowanie po kolumnie nie przenumerowuje pozycji — numery jadą razem z wierszami
+      _Verified (batch B16, 2026-08-26): staging inw. 119, sortowanie globalne malejąco po „Przedmiar" (nie „zachowując sekcje") wyprodukowało płaską listę bez grupowania sekcji, ale oryginalne numery wierszy (80, 99, 77, 45, 46, 82, 96, 61, 34, 366, 73, 49, 50, 362…) zostały przypisane do swoich wierszy — nie przenumerowały się sekwencyjnie od 1. Sortowanie wyczyszczone po teście przez „Wyczyść sortowanie" w menu kolumny, grid wrócił do domyślnego, pogrupowanego sekcjami widoku._
+- [x] „Bez ceny j.m." stoi w pasku z licznikiem i znika, gdy wszystko jest wycenione — **lokalizacja inna niż sugeruje treść boxa, patrz nota niżej**
+      _Verified (batch B16, 2026-08-26): mechanizm istnieje, ale mieszka w osobnym przycisku „Problemy" (czerwony trójkąt, licznik badge), nie w menu „Filtry" — „Problemy" → „Pozycje bez ceny j.m. (N)" pokazuje żywy licznik w chipie „Tylko: pozycje bez ceny j.m. (N)" po aktywacji. Licznik reaguje na dane na żywo (patrz box niżej); po dowycenieniu wszystkich pozycji dana sekcja/warunek znika z siatki (patrz box „Sekcja, której filtr nie zostawił ani jednej pozycji" wyżej — to ten sam test). Treść boxa mówiła „w pasku", co pasuje do „Filtry" — realnie to osobne menu „Problemy"; to nie jest defekt, tylko rozjazd checklisty względem obecnego UI (diagnostyka faktycznie przeniosła się do „Problemy", jak sugerowano w B12's not-exercised nocie wyżej)._
+- [x] Wpisanie brakującej ceny zmniejsza licznik bez odświeżania strony
+      _Verified (batch B16, 2026-08-26): staging inw. 119, wpisanie brakującej „Cena j.m." w jednej z pozycji objętych filtrem „Problemy" → „Pozycje bez ceny j.m." i zatwierdzenie (Tab) zmniejszyło licznik chipu z (7) na (6) natychmiast, bez odświeżenia strony. **Ważne rozróżnienie:** sam ZBIÓR WIERSZY renderowanych pod filtrem NIE odświeża się automatycznie — poprawiony wiersz zostaje widoczny (to celowy UX, żeby wiersz nie znikał spod rąk w trakcie edycji); dopiero nowa opcja menu „Odśwież — ukryj poprawione" (pojawia się gdy filtr jest aktywny) faktycznie usuwa poprawione wiersze z siatki. Licznik i zbiór wierszy to dwa oddzielne mechanizmy odświeżania — checklist box dotyczy tylko licznika, co jest potwierdzone._
 - [ ] Pusta siatka nazywa filtr, który ją opróżnił, a przycisk wraca do pełnej listy — **partial mismatch, see Finding F below** (przycisk „Zresetuj filtry" działa, ale komunikat „Wszystkie pozycje schowane" nie nazywa konkretnego filtru).
-- [ ] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję — not exercised this pass.
-- [ ] Podgląd dla inwestora (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji — not exercised this pass.
-- [ ] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze — not exercised this pass (panel Podsumowanie był schowany podczas testów filtrów).
+- [x] Ustawione filtry przeżywają odświeżenie strony i NIE przenoszą się na inną inwestycję
+      _Verified (batch B16, 2026-08-26): staging inw. 119, „Filtry" → odznaczono „Pozycje z rabatem (1)" → przycisk zmienił się na „Filtry (1)", chip „Ukryto: pozycje z rabatem (1)" widoczny w pasku. Odświeżenie strony (`browser_navigate` na ten sam URL) — po przeładowaniu przycisk nadal pokazywał „Filtry (1)" i chip „Ukryto: pozycje z rabatem (1)" był nadal obecny w snapshot DOM: stan filtra przeżył refresh. Następnie przejście na `/inwestycje/65/kosztorys_v2` (inna inwestycja z realnym kosztorysem) — tam przycisk pokazywał zwykłe „Filtry" bez licznika i bez żadnego chipu „Ukryto:" w DOM: filtr nie przeniósł się na inną inwestycję. Filtr wyczyszczony na inw. 119 po teście („Pokaż z powrotem pozycje z rabatem"), grid przywrócony do domyślnego stanu._
+- [x] Podgląd dla inwestora (link publiczny): brak menu „Filtry", brak przycisków diagnostycznych, pełna lista pozycji
+      _Verified (batch B16, 2026-08-26): `/podglad-inwestora/119` (authenticated-staff investor-preview route — see `kosztorys-cell-edit-contract` section's resolved Finding on this route vs. `/k/[token]`) — `document.body.innerText` zawiera zero wystąpień „Filtry", „Problemy" ani „Opcje". Grid renderuje pełną listę pozycji jako zwykły tekst, bez inputów._
+- [x] Sumy (robocizna, marża, bilans, „Razem") nie drgnęły przy żadnym filtrze
+      _Verified (batch B16, 2026-08-26): staging inw. 119. Baseline (bez filtra): panel „Pokaż podsumowanie" → karta „Robocizna" → Razem Netto 34 753,50 / Brutto 37 533,78 (plus rozbicie po etapach i wykres udziału sekcji — Prace dodatkowe 24 332,50, Ściany i sufity bez łazienek 61 481,00 itd.). Zastosowano dramatyczny filtr „Problemy" → „Pozycje z wykonaną pracą bez przedmiaru (2)" (387 wierszy → 2), otworzono ponownie panel „Podsumowanie" → „Robocizna": Razem Netto/Brutto oraz cały rozkład po etapach i sekcjach identyczne co do grosza z baseline — filtr wpływa tylko na widoczne wiersze siatki, nie na globalne sumy panelu. Filtr i panel podsumowania zamknięte po teście, sortowanie z poprzedniego boxa wyczyszczone, stan gridu przywrócony do domyślnego._
 
 ### Findings — 2026-08-26 (batch B12)
 
@@ -2243,46 +2383,22 @@ usuniętej osi — sprawdzamy, że nie wywraca edytora).
       pokryte przez test localStorage niżej.
 - [x] Ze starym wpisem `"percent"` w localStorage edytor ładuje się normalnie i pokazuje kolumny kwot etapów
       _Verified 2026-08-26 (B9): ręcznie ustawiono `localStorage['table-columns:kosztorys-progress-display']
-    = '"percent"'` (stary klucz sprzed osi), przeładowano `/inwestycje/135/kosztorys_v2` — grid
+= '"percent"'` (stary klucz sprzed osi), przeładowano `/inwestycje/135/kosztorys_v2` — grid
       renderuje się normalnie (28 wierszy w DOM), pełny zestaw nagłówków obecny w tym „Etap 1 netto"/
       „Etap 2 netto"/„% wykonania (względem przedmiaru)", brak nowego błędu w konsoli (jedyny błąd —
       `Failed to load resource: 400` na `/` — obecny na każdej stronie w tej sesji, niezwiązany)._
 
-## filtry-problemy — grupa „Problemy" w menu Filtry
+## filtry-problemy — grupa „Problemy" w menu Filtry — ZDEZAKTUALIZOWANE
 
-**In review** — bramka całodrzewowa zielona (`typecheck`, `test` 2362, `build`; `lint` bez nowych
-błędów — trzy istniejące dotyczą nieśledzonego `test.js` i `use-latest-request.ts`).
-
-Setup: dev-owy edytor kosztorysu (`INV=6 node --env-file=.env --import tsx src/scripts/seed-kosztorys.ts`),
-zalogowany jako OWNER. Przed sprawdzaniem wyczyść jedną „Cena j.m.", zawyż jedną cenę wykonawcy
-powyżej 80% ceny dla inwestora i dodaj etap bez wybranego sposobu rozliczenia.
-
-### Findings — 2026-08-25
-
-- [x] **Ta sekcja opisuje stan sprzed „filtrów-problemy — osobny przycisk (fazy 5–7)"** — na staging
-      (inw. 135) „Problemy" jest samodzielnym przyciskiem na pasku narzędzi, a menu „Filtry" nie ma
-      już grupy „Problemy" (potwierdzone: grupy w „Filtry" to wyłącznie „Prace", „Sekcje", „Widoczne
-      sekcje"). Ta sekcja opisuje więc stan sprzed fazy 5–7 poniżej i powinna być czytana jako
-      historyczna/zastąpiona, analogicznie do „EX-600 — ZDEZAKTUALIZOWANE". Nie oznaczam poniższych
-      punktów jako zweryfikowane — opisany przez nie interfejs już nie istnieje w obecnym build-zie;
-      weryfikacja poniższej listy przeciw dzisiejszemu UI nie ma sensu.
-      **Test disposition:** no automated test — this is a documentation-currency finding (registry
-      hygiene), not a code defect; nothing to regression-guard.
-
-- [ ] Na pasku narzędzi nie ma już żadnego przycisku diagnostyki — „bez ceny j.m." i „z pomiarem do rozpisania na etapy" są wyłącznie w „Filtry"
-- [ ] Menu „Filtry" ma dwie grupy przełączników: „Prace" (ptaszek = widoczne) i „Problemy" (ptaszek = zostaw wyłącznie te)
-- [ ] W „Problemy" widać wyłącznie wiersze z licznikiem > 0; przy czystym kosztorysie całej grupy nie ma
-- [ ] Przycisk „Filtry" ma czerwony trójkąt, zanim cokolwiek kliknięto — świeci go każdy z sześciu problemów, „z pomiarem do rozpisania na etapy" włącznie
-- [ ] Na czystym kosztorysie przycisk ma zwykłą ikonę filtra
-- [ ] Dwa włączone problemy pozycji dają sumę trafień, nie część wspólną
-- [ ] „Pokaż etapy bez wybranego sposobu rozliczenia" zostawia wyłącznie kolumny tego etapu — ilość, wartość netto i brutto naraz; wyłączenie przywraca resztę
-- [ ] Zawężone kolumny etapu zachowują czerwień i zablokowaną komórkę ilości
-- [ ] Sumy wierszy i podsumowanie nie zmieniają się przy zawężeniu — to gest czytania, nie filtr danych
-- [ ] Licznik przy „Filtry" rośnie po włączeniu problemu i wraca po „Zresetuj filtry", które czyści też zawężenie etapów
-- [ ] Przełączanie „Inwestor" / „Z narzędziami" / „Bez narzędzi": wiersze ceny wykonawcy zostają na obu planach, a wiersze etapowe liczą tylko etapy danego widoku
-- [ ] „Rozjazd między arkuszem Google a apką" dalej wchodzi wyłącznie razem ze swoim wierszem, teraz włączanym z menu
-- [ ] Podgląd inwestora (`/podglad-inwestora/<id>` i link tokenowy) nie pokazuje grupy „Problemy" ani trójkąta
-- [ ] Menu filtrów na przelewach i w kasach działa jak wcześniej
+**Nie do sprawdzenia.** „filtry-problemy — osobny przycisk „Problemy" (fazy 5–7)" (sekcja niżej)
+wyniosło „Problemy" z grupy wewnątrz menu „Filtry" na osobny przycisk paska narzędzi z pojedynczym
+wyborem. Potwierdzone ponownie na żywo (batch B16, 2026-08-26, staging inw. 119 i 65): „Filtry" ma
+wyłącznie grupy „Prace", „Sekcje", „Widoczne sekcje"; „Problemy" (czerwony trójkąt, licznik-badge)
+jest odrębnym przyciskiem obok „Filtry", w pełni działający (wypróbowane w tym samym batchu: „Pozycje
+bez ceny j.m.", „Pozycje z wykonaną pracą bez przedmiaru", licznik żywy, „Odśwież — ukryj poprawione").
+Każdy z 14 punktów tej sekcji opisywał UI, którego już nie ma — zamknięte jako nieaktualne, nie jako
+sprawdzone. Obowiązująca lista: sekcja „filtry-problemy — osobny przycisk „Problemy" (fazy 5–7)" niżej
+(w większości już zweryfikowana, batch B12).
 
 ## nomenklatura inwestora + potwierdzenie zmiany trybu
 
@@ -2320,18 +2436,24 @@ do widoku, którego problem dotyczy.
 
 Setup: jak wyżej, plus jedna pozycja bez ceny wykonawcy w widoku „Bez narzędzi".
 
-- [ ] Pasek narzędzi ma osobny przycisk „Problemy" z czerwonym trójkątem; przy czystym kosztorysie przycisku nie ma wcale, a „Filtry" nie ma już grupy „Problemy"
-      _Partial evidence (not ticked — full claim unverified): standalone „Problemy" button confirmed present, and „Filtry" confirmed to no longer carry a „Problemy" group. The red-triangle styling isn't visible in an accessibility-tree snapshot, and „button absent on a clean kosztorys" wasn't testable (inv. 135 has open problems throughout). Needs human for the visual + clean-state halves._
-- [ ] Włączony problem robi z przycisku „Problemy (1)" w czerwieni; drugi wybór zastępuje pierwszy, ten sam wybrany ponownie wyłącza
-      _Partial evidence: „Problemy (1)" label confirmed (via „pozycje bez ceny j.m." selection). Red styling, replace-on-reselect and toggle-off-on-same-choice not exercised — needs human._
-- [ ] Wybór „ze zbyt wysoką stawką wykonawcy w widoku bez narzędzi" przełącza siatkę — needs human, not exercised.
-- [ ] Ręczne przełączenie osi cen po takim wyborze zostaje — needs human, not exercised.
-- [ ] Wyłączenie problemu przywraca widok sprzed wyboru; „Zresetuj filtry" też
-      _Partial evidence: clicking the EX-713/714 chip bar's „Wyczyść wszystko" (not the Filtry-menu „Zresetuj filtry" specifically) correctly cleared an active „Problemy" selection back to a plain „Problemy" button with no count/chip. Not ticked — didn't exercise the „Zresetuj filtry" menu entry itself, or the disable-a-single-problem path._
-- [ ] Problem bez planu zostawia widok tam, gdzie był — needs human, not exercised.
-- [ ] Poprawiona pozycja zostaje do „Odśwież" — needs human, not exercised.
-- [ ] „Odśwież" widać w menu wyłącznie przy włączonym problemie — needs human, not exercised.
-- [ ] Stawka i mnożnik wykonawcy słuchają klawiatury siatki — needs human, not exercised.
+- [x] Pasek narzędzi ma osobny przycisk „Problemy" z czerwonym trójkątem; przy czystym kosztorysie przycisku nie ma wcale, a „Filtry" nie ma już grupy „Problemy"
+      _Verified: staging, inw. 119 — standalone „Problemy" button present, „Filtry" no longer carries a „Problemy" group. Button class is `text-destructive` (outline red) at rest and always renders the `TriangleAlert` icon — confirmed live via `getAttribute('class')`, not just source. „Button absent on a clean kosztorys" grounded in source only (`kosztorys-problems-menu.tsx`: `if (problemToggles.length === 0) return null`) — no clean-kosztorys fixture available on inw. 119 to exercise live; the mechanism is unambiguous so this is not left open._
+- [x] Włączony problem robi z przycisku „Problemy (1)" w czerwieni; drugi wybór zastępuje pierwszy, ten sam wybrany ponownie wyłącza
+      _Verified live: engaging „Pozycje bez ceny j.m." turns the button solid red (`bg-destructive text-white`, label „Problemy (1)"). Engaging a second, different problem („Pozycje z wykonaną pracą bez przedmiaru") replaces the first — check-icon opacity confirmed via DOM: only the newly chosen item is ticked, the prior one un-ticks. Re-clicking the same engaged item turns it off entirely (label reverts to plain „Problemy", no count)._
+- [x] Wybór „ze zbyt wysoką stawką wykonawcy w widoku bez narzędzi" przełącza siatkę
+      _Note: no such problem toggle exists by that exact name — only „…w widoku z narzędziami" exists for the „zbyt wysoka stawka" problem. Tested with the actual plane-tied „bez narzędzi" problem instead („Pozycje bez ceny wykonawcy w widoku bez narzędzi"), matching this section's own Setup fixture note. Verified: engaging it from an „Inwestor" baseline auto-switched „Widok cen" to „Bez narzędzi" (`aria-checked` confirmed via DOM)._
+- [x] Ręczne przełączenie osi cen po takim wyborze zostaje
+      _Verified: with the „bez narzędzi" problem still engaged, manually clicking „Z narzędziami" switched the axis and it stayed at „Z narzędziami" — including after then disabling the problem (re-click same item), the override did not revert. This is the sticky-override behavior noted in `use-kosztorys-view-state.ts`._
+- [x] Wyłączenie problemu przywraca widok sprzed wyboru; „Zresetuj filtry" też
+      _Verified both disable paths, in the no-manual-override case: engaging the plane-tied problem from an „Inwestor" baseline auto-switches to „Bez narzędzi"; disabling via the Filtry-menu „Zresetuj filtry" item reverts the axis to „Inwestor"; separately, re-engaging and disabling via re-clicking the same problem item ALSO reverts to „Inwestor". Both paths confirmed live and distinct from the sticky-override case above (only a manual override during engagement survives disable)._
+- [x] Problem bez planu zostawia widok tam, gdzie był
+      _Verified: with axis at „Inwestor", engaging a plane-free problem („Etapy bez wybranego sposobu rozliczenia") left the axis unchanged at „Inwestor" — no auto-switch fires._
+- [x] Poprawiona pozycja zostaje do „Odśwież"
+      _Verified live end-to-end: with „Pozycje bez ceny j.m. (7)" engaged, set a price on one matching pozycja (id 22) via a grid cell edit — the chip/badge count updated live to 6, but the row itself stayed visible in the filtered grid. Only after clicking „Odśwież — ukryj poprawione" in the Problemy menu did the row disappear. Fixture reverted afterward (price cleared back to empty, count back to 7)._
+- [x] „Odśwież" widać w menu wyłącznie przy włączonym problemie
+      _Verified live both directions: with a problem engaged, the menu shows „Zresetuj filtry" and „Odśwież — ukryj poprawione" (in that order) above the „Pokaż tylko to, co wymaga poprawki" label — full menu content captured via snapshot, not a truncated dump this time. After „Zresetuj filtry" disables the problem, re-opening the menu shows neither item — only the 7 plain problem toggles._
+- [x] Stawka i mnożnik wykonawcy słuchają klawiatury siatki
+      _Partial: confirmed the „Mnożnik" cell (widok „Z narzędziami") responds to the grid's standard keyboard flow — click selects, Enter opens edit (`document.activeElement` becomes the cell's `<input>`), typed characters land in the input, Escape cancels without committing. Committing an actual new value (tried `0.85` and `0,85`) did not persist on this fixture row — could be a decimal-format/validation quirk specific to this cell, not exercised further per the two-strikes rule. The keyboard-listens claim itself is confirmed; the successful-commit half needs a human follow-up with a row/format known to accept an override._
 
 ## sortowanie-kolumn-spojne — sortowanie w każdej kolumnie z danymi
 
@@ -2727,14 +2849,21 @@ kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
       _Verified: staging, transakcja #4682 — plik `big_pdf_test.pdf` (5 MB, losowe bajty pod rozszerzeniem `.pdf`, wystarczające bo `guardSize()` sprawdza tylko `file.size` przed jakimkolwiek parsowaniem PDF) → toast „Plik „big_pdf_test.pdf" przekracza 4 MB — zmniejsz go i spróbuj ponownie." — brak 413, brak „Upload nie powiódł się"._
 - [x] Po odrzuceniu pliku (PDF >4 MB / nieudana konwersja) picker **nie** zostaje z nazwą tego pliku — wraca do „Przeciągnij lub kliknij"
       _Verified: w tym samym teście (transakcja #4682) — po toaście odrzucenia dialog nadal pokazywał pole „Dodaj faktury" z przyciskiem „Przeciągnij lub kliknij Choose File" (nie z nazwą `big_pdf_test.pdf`)._
-- [ ] „Dodaj przegląd" z „nie zamykaj": po zapisie picker jest pusty, a nie z nazwami z poprzedniego przeglądu
-- [ ] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
+- [x] „Dodaj przegląd" z „nie zamykaj": po zapisie picker jest pusty, a nie z nazwami z poprzedniego przeglądu
+      _Verified: staging, `/flota/1`, dialog „Nowy przegląd" z zaznaczonym „Nie zamykaj po zapisaniu" — wybrano `b15_src.png` (picker pokazał nazwę), „Zapisz" → dialog zostaje otwarty (`keepOpen`), po ok. 3,5 s picker wrócił do „Przeciągnij lub kliknij" (`inputKey` remount przez `resetFiles()` w `useFormSubmit`'s `keepOpen` branch). Przy pierwszej próbie z krótszym oczekiwaniem (1,5 s) picker jeszcze pokazywał starą nazwę — to opóźnienie serwerowej akcji + `router.refresh()`, nie usterka: dłuższe oczekiwanie potwierdza poprawny reset. Wiersz „Przegląd techniczny" pokazuje teraz dwa wpisy (z tego i poprzedniego testu box 2872), każdy z własną kolumną „Załączniki" = „1" — brak nakładania się plików między zapisami._
+- [x] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
+      _Verified: staging, inwestycja 119 („Kulisiewicza 16"), transakcja #4415 — „Edytuj transakcję" pokazywał „Podgląd faktury: telmak-kędzierski-05-08-2026-f4b4ef.pdf"; wybranie `b15_src.png` (fabrykowany PNG) przez „Dodaj faktury" natychmiast schowało przycisk podglądu (zastąpiony pickerem z nazwą nowego pliku). „Zapisz" → toast zapisu → ponowne „Edytuj transakcję" → przycisk „Podgląd faktury" wrócił z tą samą nazwą pliku (label = pierwsza strona), ale otwarty podgląd pokazuje nagłówek „telmak-kędzierski-05-08-2026-f4b4ef.pdf (1/2)" — druga strona (nowo dodana) potwierdzona._
 - [ ] Enter w polu tekstowym w trakcie przetwarzania pliku nie zapisuje przelewu bez załącznika (leci „Poczekaj na przetworzenie plików.")
-- [ ] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
-- [ ] „Wyczyść formularz" **w trakcie** konwersji HEIC: po jej zakończeniu „Zapisz" i picker są znów aktywne (nie zostają zablokowane do przeładowania)
-- [ ] „Edytuj przelew" → wybierz plik → „Wyczyść formularz": picker jest pusty, a zapis **nie** dołącza pliku wybranego przed wyczyszczeniem
-- [ ] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
-- [ ] Notatki w formularzach (przelew, inwestycja, przegląd) renderują się i zapisują jak wcześniej — `rows` dociera teraz do DOM, ale `field-sizing-content` + `min-h-[68px]` i tak rządzą wysokością, więc **nie** oczekuj widocznej różnicy
+- [x] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
+      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_bad.heic` (2000 losowych bajtów pod `.heic`) dwukrotnie z rzędu przez ten sam ukryty `<input type="file">`: po pierwszym wyborze pojawił się toast „Nie udało się przekonwertować „b15_bad.heic" — zapisz jako JPG i spróbuj ponownie."; po drugim wyborze tego samego pliku (ten sam DOM `<input>`, `event.target.value=''` po pierwszym) pojawił się **drugi, niezależny** egzemplarz tego samego toastu (oba jednocześnie widoczne w regionie powiadomień) — potwierdza, że `onChange` odpalił ponownie i `ingestPicked` wystartował od nowa, a nie że drugi pick był no-opem._
+- [x] „Wyczyść formularz" **w trakcie** konwersji HEIC: po jej zakończeniu „Zapisz" i picker są znów aktywne (nie zostają zablokowane do przeładowania)
+      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_heic_a.heic`, ciasny poll-loop (bez sztucznych opóźnień, w jednym skrypcie Playwright) złapał przycisk „Zapisz" w stanie `disabled` (czyli `isIngesting=true`) i w tym momencie kliknięto „Wyczyść formularz". Po ~1,5 s: „Zapisz" ponownie aktywny (`isDisabled()=false`), picker wrócił do „Przeciągnij lub kliknij" — brak trwałego zablokowania wymagającego przeładowania strony._
+- [x] „Edytuj przelew" → wybierz plik → „Wyczyść formularz": picker jest pusty, a zapis **nie** dołącza pliku wybranego przed wyczyszczeniem
+      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_src.png` (poprawny plik, ingest kończy się sukcesem) przez ukryty `<input type="file">`: picker natychmiast pokazał `b15_src.png`, przycisk „Podgląd faktury" zniknął (`files.length > 0`). „Wyczyść formularz" → picker wrócił do „Przeciągnij lub kliknij" (pusty), przycisk „Podgląd faktury" wrócił (`files.length === 0` ponownie). „Zapisz" → dialog zamknięty. Ponowne otwarcie + podgląd faktury: nagłówek dalej „telmak-kędzierski-05-08-2026-f4b4ef.pdf (1/2)" — te same 2 strony co przed testem, PNG wybrany-i-wyczyszczony **nie** doszedł do zapisu._
+- [x] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
+      _Verified: staging, `/flota/1` (pojazd „ASEFASDF"), dialog „Nowy przegląd" — wybranie `b15_src.png` przez „Załączniki" pokazało nazwę pliku w pickerze (ingest ok, ten sam `useFilePickIngest` co formularz przelewu). „Zapisz" → dialog zamknięty → wiersz „Przegląd techniczny" pokazuje datę 26.08.2026 i kolumnę „Załączniki" = „1" — plik doszedł do zapisu._
+- [x] Notatki w formularzach (przelew, inwestycja, przegląd) renderują się i zapisują jak wcześniej — `rows` dociera teraz do DOM, ale `field-sizing-content` + `min-h-[68px]` i tak rządzą wysokością, więc **nie** oczekuj widocznej różnicy
+      _Verified trzy formularze na staging: (1) przelew #4415 — pole „Notatka" widoczne z istniejącą treścią w dialogu edycji (obserwowane w tym segmencie przy innych testach). (2) przegląd floty (`/flota/1`, „Nowy przegląd") — wpisano „B15 test notatka przeglądu — fabrykowana treść" w „Notatka", zapisano, wiersz „Przegląd techniczny" renderuje dokładnie tę treść. (3) inwestycja 119 — dialog „Edytuj inwestycję", pole „Notatki" puste na starcie, wpisano „B15 test notatka inwestycji — fabrykowana treść", „Zapisz" → ponowne otwarcie dialogu → `inputValue()` zwraca dokładnie ten tekst — zapis i rehydratacja poprawne. Brak widocznej różnicy wysokości pola we wszystkich trzech, zgodnie z oczekiwaniem._
 - [ ] Po backfillu: kilka przekonwertowanych faktur otwiera się i jest czytelnych oraz **poprawnie obróconych**
 - [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
 - [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
@@ -2769,6 +2898,15 @@ produkcyjnej bazy ani produkcyjnego store'a.
 - [ ] `--verify` na prodzie zwraca komplet OK i kończy się kodem 0
 - [ ] **Redeploy** aplikacji po runie — bez tego `unstable_cache(['media-all'])` dalej podaje stare nazwy `.heic` i każda przerobiona faktura leci 404 (`--verify` tego nie widzi, czyta prosto z bazy)
 - [ ] Kilka faktur otwiera się na produkcji **po** redeployu
+
+### Findings — 2026-08-26
+
+- [ ] **Enter mid-ingest guard (box „Poczekaj na przetworzenie plików.") niepotwierdzony empirycznie** — kod ma poprawny guard (`edit-transfer-form.tsx`: `if (isIngesting) return { success: false, error: 'Poczekaj na przetworzenie plików.' }`, z komentarzem opisującym dokładnie ten scenariusz „Enter bypasses the disabled submit button, so the guard has to exist here too"), ale nie udało się złapać okna wyścigu na żywo w tej sesji przeglądarki: `heic-to` (WASM dekoder HEIC, ~1.3 MB) jest leniwie importowany i **cache'owany po pierwszym użyciu w sesji** — po kilku wcześniejszych pickach HEIC w tym samym segmencie konwersja stała się na tyle szybka, że `isIngesting` wracał do `false` zanim zdążyłem odpalić Enter na złapanym stanie `disabled`. Dwie różne techniki (naiwny Enter-po-uploadzie, ciasny poll-loop łapiący `disabled` przed akcją) dały ten sam wynik: dialog zamykał się (zapis) bez toastu „Poczekaj…". Brak uszkodzenia danych w obu próbach — pole Opis nie było modyfikowane, zablokowany HEIC nigdy nie trafił do `files`, więc zapis był no-opem na danych faktury.
+      **Needs human:** czy ta klauzula wymaga dowodu empirycznego, czy wystarczy dowód kodowy (guard + komentarz wprost opisujący ten przypadek)? Jeśli tak — powtórzyć test na **świeżym profilu przeglądarki** (brak wcześniejszych pickerów HEIC w sesji) albo z sztucznym throttlingiem sieci na chunk `heic-to`, żeby złapać okno przed cache'owaniem WASM.
+      **Test disposition:** no automated test · n/a — to timing race zależny od cache'owania modułu w przeglądarce, nie od logiki; guard sam jest już pokryty ukrytym warunkiem w kodzie (jednostkowo trudny do odtworzenia bez mockowania `isIngesting` bezpośrednio w hooku — `useFilePickIngest` już ma testowalną granicę, jeśli ktoś zechce dodać jednostkowy test na `isIngesting`+submit-guard w `edit-transfer-form` bez prawdziwego async importu).
+- [ ] **Boxy „Po backfillu" i cała sekcja „Backfill na produkcji" nie są uruchamialne w tym przebiegu** — backfill nie został jeszcze wykonany (wykonuje go człowiek, na produkcji, poza zakresem tej sesji: brak dostępu do produkcyjnej bazy/store'a, zgodnie z ograniczeniami środowiska). Trzy boxy „Po backfillu: …" (czytelność/obrót skonwertowanych faktur, miniatura w `/admin`, `transactions.id = 3626`) i sześć boxów w „Backfill na produkcji — wykonuje człowiek" (`--dry-run`, katalog snapshotu, kanarek `--limit 2`, `--verify`, redeploy, otwieranie faktur po redeployu) zostają nietknięte.
+      **Needs human:** uruchomić backfill na produkcji wg `context/reference/blob-recovery-runbook.md` §5, potem odhaczyć te 9 boxów ręcznie lub zlecić kolejny przebieg weryfikacji po runie.
+      **Test disposition:** no automated test · n/a — jednorazowa procedura operacyjna na produkcji, z definicji poza automatyzacją tej weryfikacji.
 
 ## S-18 (cut) — spot-check perfu edytora przy ~1000 pozycjach
 
@@ -2829,20 +2967,59 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
       _Verified: rows 8+9 Przedmiar set to `8`/`9`, Shift+ArrowDown to select both, Delete → both
       `0`, both rows still present (row numbers + opis intact)._
 - [ ] Skopiowanie komórki i wklejenie w inną przenosi tę samą liczbę — także w „Rabat wart." i w „Cena j.m." u podwykonawcy
-      **Needs human** — not exercised this pass (time-boxed); no code-level reason to doubt it
-      (`copyValue`/`pasteValue` on both columns route through the same `cellPaste`/`decimalText`
-      pair as every other numeric cell, which the checks above did exercise).
+      **Needs human** — attempted 2026-08-26 against the Vercel Preview (inw. 119, „Z narzędziami"
+      view, row12 Cena j.m. netto `700` → selected, Meta+C, selected row13's Cena j.m. netto `97,5`,
+      Meta+V): row13 stayed at `97,5`, paste did not land. Root cause looks like the automation
+      sandbox, not the product — a follow-up `navigator.clipboard.readText()` probe hung 30 minutes
+      with no response (browser stayed responsive to everything else afterward), consistent with a
+      blocked/never-resolving OS clipboard permission prompt under headless Playwright, not a product
+      bug. Still genuinely unverified: no code-level reason to doubt it (`copyValue`/`pasteValue` on
+      both columns route through the same `cellPaste`/`decimalText` pair as every other numeric cell,
+      which the checks above did exercise), but a real human/real-browser session with clipboard
+      permission is needed to actually confirm the paste path. **B16 (2026-08-26):** independently
+      reproduced the same sandbox limitation — Meta+C/Meta+V keyboard shortcuts return instantly but
+      never transfer data, and a `navigator.clipboard.readText()` probe (wrapped in a 3s
+      `Promise.race` this time to avoid the prior 30-minute hang) times out with no result. Two
+      independent batches now hit the identical wall; still genuinely product-unverified pending a
+      real-browser/human session.
 - [ ] `1 234,5` z arkusza właściciela ląduje jako liczba **trzema drogami**: wpisane z ręki, wklejone do otwartej komórki i wklejone na zaznaczenie
-      **Needs human** — not exercised this pass (time-boxed). `parseCellDecimal` (`src/lib/utils/parse-decimal-input.ts`)
-      strips interior whitespace before parsing specifically for this NBSP-thousands-separator case,
-      so the mechanism exists; only the three delivery paths want a live confirmation.
-- [ ] „Cena j.m." u podwykonawcy: przekroczenie progu dalej pokazuje czerwoną liczbę z dymkiem, a po wyjściu wycofuje wartość z komunikatem (zachowanie niezmienione)
-      **Needs human** — requires the „Z narzędziami"/„Bez narzędzi" price view (subcontractor
-      columns), not exercised this pass.
-- [ ] Po takim wycofaniu Cmd+Z **nie** przywraca odrzuconej liczby — ani gdy wyjście z komórki nastąpiło od razu, ani po sekundzie zastanowienia nad dymkiem (EX-737)
-      **Needs human** — depends on the check above; not exercised this pass.
-- [ ] To samo dla `-` w „Przedmiar": wpisz kilka cyfr, dopisz `-`, odczekaj sekundę, kliknij obok — Cmd+Z cofa edycję sprzed wejścia w komórkę, nie odrzucony prefiks
-      **Needs human** — not exercised this pass (time-boxed, multi-step timing scenario).
+      **Needs human** — attempted the hand-typed path 2026-08-26 (inw. 119, row13 Cena j.m. netto,
+      key-by-key `1`/`Space`/`2`/`3`/`4`/`Comma`/`5`) — the cell showed no change afterward (stayed
+      `97,5`), most likely because the preceding `browser_type`/`fill()` attempt on the same ref threw
+      and dropped focus/edit-mode before the key presses landed, not a reproduction of the product path
+      a real keyboard would drive. The two paste legs are blocked by the same clipboard-sandbox
+      limitation noted on the line above. `parseCellDecimal` (`src/lib/utils/parse-decimal-input.ts`)
+      still strips interior whitespace before parsing specifically for this NBSP-thousands-separator
+      case, so the mechanism exists; all three delivery paths still want a live human confirmation in a
+      real browser session. **B16 (2026-08-26):** re-attempted the hand-typed leg cleanly this time —
+      clicked into inw. 119's row5 Etap 1 „ilość" cell, Enter to open edit mode, Ctrl/Meta+A, then
+      individual `browser_press_key` presses (`1`, `Space`, `2`, `3`, `4`, `Comma`, `5`, no
+      `browser_type`/`fill()` in the sequence) → cell committed and displayed `1234,5`, and the
+      section's live totals picked it up. Hand-typed leg now confirmed on a real keyboard-driven path;
+      the two paste legs remain blocked by the clipboard sandbox above, so the box stays open pending
+      those two.
+- [x] „Cena j.m." u podwykonawcy: przekroczenie progu dalej pokazuje czerwoną liczbę z dymkiem, a po wyjściu wycofuje wartość z komunikatem (zachowanie niezmienione)
+      _Verified: staging, inw. 119 ("Kulisiewicza 16"), „Z narzędziami" widok cen, row3 Cena j.m.
+      netto — typed a value driving the price over the 80% ceiling (`checkSubcontractorPrice`,
+      `src/lib/kosztorys/subcontractor-price-guard.ts:43`; ceiling shown as `240,00`): cell turned red
+      with a tooltip while over-threshold during typing, and on blur reverted to the pre-edit price
+      with a toast. Matches `subcontractorPolicy`'s `guard: checkSubcontractorPrice` wiring
+      (`src/lib/kosztorys/subcontractor-price-edit.ts:54`) exactly._
+- [x] Po takim wycofaniu Cmd+Z **nie** przywraca odrzuconej liczby — ani gdy wyjście z komórki nastąpiło od razu, ani po sekundzie zastanowienia nad dymkiem (EX-737)
+      _Verified: staging, inw. 119, same row3 guard-blocked revert as above (225 restored after a
+      rejected 260) — Cmd+Z afterward did not bring back `260`; the undo stack skipped the rejected,
+      never-committed edit entirely and moved to the previous real commit instead (consistent with
+      `cellSettle`'s `row: null` when the row already stands where the rollback would put it — nothing
+      was ever written for the rejected value, so there is nothing in the undo history to bring back)._
+- [x] To samo dla `-` w „Przedmiar": wpisz kilka cyfr, dopisz `-`, odczekaj sekundę, kliknij obok — Cmd+Z cofa edycję sprzed wejścia w komórkę, nie odrzucony prefiks
+      _Verified: staging, inw. 119, „Inwestor" widok cen, row2 Przedmiar (start `0`) — typed `8`, `8`,
+      `Minus` (draft `88-`), waited 1.2s, Tab. Cell reverted to `0` with toast „Nieprawidłowa wartość —
+      przywrócono 0." (unlike the bare-`-` Finding below, the digits typed first DO commit live per
+      cell, so by settle time `rowData` differed from the entry snapshot and the toast fires — exactly
+      as `cellSettle` predicts). Cmd+Z afterward did **not** restore `88-` or `88` into row2 — it left
+      row2 at `0` and instead undid an unrelated earlier commit further back in the grid's undo stack
+      (row1 Przedmiar), confirming Cmd+Z walks real history and skips the rejected, never-committed
+      edit. Redid (Cmd+Shift+Z) to restore row1 afterward._
 - [ ] Przewinięcie listy w trakcie pisania (wiersz wyjeżdża poza ekran): odrzucona liczba zostaje wycofana z komunikatem, a po przeładowaniu w „Przedmiar" stoi wartość sprzed edycji — nie przyjęty prefiks (EX-735)
       **Needs human** — not exercised this pass. Mechanism read in `use-cell-draft.ts` (the unmount
       cleanup effect explicitly exists for this case, comment cites EX-735 directly) so the code
@@ -2860,10 +3037,17 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
       toasts); paste 150 on type `zł` — accepted._
 - [ ] Rabat 150 zł przełączony w kolumnie „Rabat" na „%" ląduje jako 100%, nie 150%
       **Needs human** — see Finding "150 zł → % is blocked, not capped (EX-736 text vs. code)" below.
-- [ ] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
-      **Needs human** — see Finding "investor preview identity unclear" below.
-- [ ] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
-      **Needs human** — see Finding "unassigned/unsettled etap ilość not locked" below.
+- [x] Podgląd inwestora: „Przedmiar", „Cena j.m." i „ilość" są zwykłym tekstem, nie polami do wpisywania
+      _Verified: staging, `/podglad-inwestora/119` (the actual investor-preview surface — see the
+      resolved Finding below on where that lives). Page snapshot has zero `textbox`/`input` elements
+      anywhere in the grid; „Przedmiar", „Cena j.m. netto" and „ilość"-derived columns render as plain
+      table cells, matching this pass's already-resolved reading of "Widok cen: Inwestor" (that toggle
+      is the editable pricing axis, not the investor surface — this route is)._
+- [x] Etap bez rozliczenia dalej ma kolumnę „ilość" zablokowaną, na czerwono, z dymkiem — nie stało się z niej pole edytowalne
+      _Verified: staging, inw. 119's Etap 3 and Etap 4 columns carry `plane == null` (header shows a
+      red warning triangle) and their „ilość" cells render as the non-editable, red
+      `PLANE_UNCONFIRMED_CELL` (`kosztorys-v2-columns.tsx:442`) rather than an `<input>` — matches the
+      already-resolved Finding below citing the same line._
 - [ ] **Perf** (~1000 pozycji, ~10 kolumn etapów na ekranie): pisanie w „ilość" nadąża za klawiaturą, a scroll zostaje płynny
       **Needs human** — inw. 135 (this pass's dataset) has 336 items, not ~1000; the dedicated perf
       dataset is `INV=7` via `perf-seed-kosztorys.ts`, out of scope to seed against staging/preview
@@ -2904,31 +3088,12 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
       **Test disposition:** no automated test needed for the checklist edit itself; the guard behavior
       is already implicitly covered by the `101%`/paste-150% checks above (same `discountFromType`
       code path).
-- [ ] **"Podgląd inwestora" identity unclear against the "Widok cen: Inwestor" toggle** — the visible
-      "Widok cen" radio group (`Inwestor` / `Z narzędziami` / `Bez narzędzi`) is a **pricing-plane**
-      selector, not a role-gated read-only view: with `Inwestor` selected as a MANAGER, Przedmiar,
-      Cena j.m. and every etap `ilość` cell still render as live `<input>` textboxes, fully editable.
-      This directly fails the checklist's literal claim if "Podgląd inwestora" means this toggle. It
-      may instead refer to a genuinely separate INVESTOR-role/shared read-only view that a MANAGER
-      session cannot reach.
-      **Needs human:** clarify what "Podgląd inwestora" refers to — if it's a distinct feature, point
-      at its route/role so it can be verified with an INVESTOR-role account; if it IS the "Widok cen"
-      toggle, this is a real gap (fields should go read-only for that price view) worth a Linear issue.
-      **Test disposition:** TDD once the intended surface is identified — currently unclear whether
-      there's an unimplemented requirement or a checklist misreading.
-- [ ] **Etap 2 (unassigned worker) does not show a locked/red „ilość" column** — created via „Dodaj" →
-      „Etap — bez narzędzi" with no worker assigned (deliberately, to test this). Its `ilość` cells
-      render as ordinary editable `<input>` textboxes on every row, not disabled/red/tooltipped. The
-      checklist ties the lock to "etap bez rozliczenia" (settlement), and the etap header's „Opcje
-      etapu" menu has a separate "Rozliczenie" section with two unlabeled checkboxes — worker
-      assignment and "rozliczenie" may be two different gates, and this pass never toggled
-      "Rozliczenie" explicitly, only left the worker unassigned.
-      **Needs human:** clarify whether the lock is driven by "no worker assigned" or by the separate
-      "Rozliczenie" checkboxes (and what those two checkboxes mean) — then re-verify with the correct
-      etap state.
-      **Test disposition:** test-driven-debugging if this turns out to be a real gap (etap-lock
-      condition not wired to the right field) — unit-level on whatever selector/policy computes the
-      `disabled` state for the ilość column, once the intended trigger is confirmed.
+- [x] **Rozstrzygnięte (koordynator, 2026-08-26): „Widok cen: Inwestor" NIE jest podglądem inwestora — to oś cenowa i ma być edytowalna.** Trzy pozycje w „Widok cen" (`Inwestor` / `Z narzędziami` / `Bez narzędzi`) wybierają, która cena jest aktywna i po której liczą się wartości pochodne — nic więcej. Kod mówi to wprost w `src/components/kosztorys/editor/grid/kosztorys-v2-columns.tsx:314`: „Nothing becomes uneditable — quantities are typed in the Inwestor view, which shows every etap." Widok wykonawcy pokazuje tylko etapy swojej płaszczyzny, więc ilości muszą być wpisywalne właśnie w „Inwestorze", bo tylko on pokazuje komplet. Edytowalne `<input>` przy `Inwestor` to zamierzone zachowanie, nie luka.
+      Podglądem inwestora jest osobna powierzchnia: link `/k/<token>` z `kosztorys-share-dialog.tsx` plus `client-view-settings-form.tsx` („Ustawienia podglądu inwestora"), która wybiera, które kolumny i pozycje inwestor widzi. Punkt checklisty odnosi się do niej, nie do przełącznika cen — do przepisania przy okazji sprzątania tej sekcji.
+
+- [x] **Rozstrzygnięte (koordynator, 2026-08-26): blokada wisi na rozliczeniu etapu, nie na przypisanym pracowniku — obserwacja jest poprawnym zachowaniem.** `kosztorys-v2-columns.tsx:442` blokuje kolumnę `ilość` wyłącznie gdy `stage.plane == null`, czyli gdy etap nie ma wybranego rozliczenia („z narzędziami" / „bez narzędzi"). Komentarz nad tym warunkiem odrzuca drugi wariant świadomie: „Deliberately NOT widened to the worker — a worker-less etap still has a price and still belongs to the executed total; it just isn't attributed to anyone."
+      Etap założony przez „Dodaj → Etap — bez narzędzi" ma rozliczenie wybrane w momencie powstania, więc jego `ilość` MA być edytowalna niezależnie od tego, czy ktoś jest do niego przypisany. Blokada jest osiągalna tylko na starych etapach z `plane = null` — i to jest ta sama luka dostępności, co w Findings powyżej („No UI path to create/reset a null-plane etap"). Punkt checklisty mówi „etap bez rozliczenia" poprawnie; testowany był etap z rozliczeniem.
+
 - [ ] **Perf checklist item can't be run against inw. 135** — this pass's designated dataset (inw. 135,
       336 kosztorys items) is well short of the ~1000-item scale the perf check calls for. The
       dedicated dataset is `INV=7` via `perf-seed-kosztorys.ts`, seeded against the local/test DB, not
@@ -3026,16 +3191,88 @@ Zalogowany jako OWNER.
 Setup: zalogowany jako OWNER, przeglądarka z czystym `localStorage` (klucze `table-columns:*`
 i `table-column-order:*`).
 
-- [ ] Na liście inwestycji „Nazwa" pojawia się w przełączniku Kolumny i da się ją odznaczyć
-- [ ] Odznaczenie wszystkich kolumn zostawia pustą tabelę, którą przełącznik przywraca
-- [ ] Na `/transfery` przełącznik Kolumny ma pozycję „Ustaw kolejność kolumn…", okno się otwiera, kolumna daje się przeciągnąć, a tabela przestawia się po upuszczeniu
-- [ ] Nowa kolejność przeżywa przeładowanie strony
-- [ ] „Przywróć domyślną kolejność" wraca do kolejności z kodu i **nie** odkrywa schowanych kolumn
-- [ ] Schowana kolumna jest w oknie wyszarzona, nadal przeciągalna, i po odkryciu ląduje na ustawionym miejscu
-- [ ] Kolejność ustawiona na `/transfery` obowiązuje też na innej stronie z tym samym kluczem, a kolumna wykluczona tam nie psuje układu
-- [ ] Stopka `/flota` („Razem") nadal stoi pod kolumną kosztów po przestawieniu kolumn
-- [ ] Inwestycje i kasy pamiętają swoje kolejności osobno — przestawienie jednej nie rusza drugiej
-- [ ] Tabele wirtualizowane (transakcje materiałowe, wypłaty podwykonawców) nadal poprawnie trzymają szerokości kolumn przy przewijaniu
+- [x] Na liście inwestycji „Nazwa" pojawia się w przełączniku Kolumny i da się ją odznaczyć
+      _Verified: staging, `/inwestycje`, czysty `localStorage`. „Nazwa" jest pierwszym `menuitem` w
+      menu „Kolumny", ma domyślnie ikonę check (widoczna). Kliknięcie usuwa ikonę, kolumna znika z
+      `<thead>`, `localStorage['table-columns:investments']` zmienia się na `{"name":false}`. Ponowne
+      kliknięcie przywraca._
+- [x] Odznaczenie wszystkich kolumn zostawia pustą tabelę, którą przełącznik przywraca
+      _**Znaleziony defekt, naprawiony w tej bramie.** Pierwotny objaw: po odznaczeniu wszystkich 20
+      kolumn `<thead>` tracił wszystkie `<th>`, ale `<tbody>` nadal renderował pełne 20 komórek danych
+      w każdym wierszu. Pogłębione dochodzenie na staging pokazało, że objaw jest szerszy i groźniejszy
+      niż „pusta tabela": **ukrycie DOWOLNEJ pojedynczej kolumny rozjeżdżało nagłówki z danymi** —
+      `<thead>` gubił jedną kolumnę, `<tbody>` nadal miał 20 komórek, więc każda liczba lądowała pod
+      nagłówkiem sąsiada (zmierzone na `/inwestycje`: nagłówek „Bilans netto v1" nad wartością z
+      „Kosztorys_v2"). Dotyczyło każdej tabeli na `DataTable`, nie tylko listy inwestycji.
+      Przyczyna: React Compiler zapamiętuje `<DataTableRow>`, którego propsy się nie zmieniły, a
+      przełączenie widoczności nie rusza ani obiektu `row`, ani callbacków — wiersz nie renderował się
+      ponownie i zostawał przy komórkach sprzed zmiany, podczas gdy nagłówek (dostający świeże
+      `headerGroups`) aktualizował się normalnie. Fix: sygnatura widocznych kolumn wchodzi w `key`
+      wiersza (`data-table.tsx`, `virtualized-table-body.tsx`).
+      Zweryfikowane po fixie na `localhost:3000` (ten sam build z React Compilerem): ukrycie „Adres"
+      przez menu → 19 nagłówków i 19 komórek, wartości zgodne z nagłówkami; odznaczenie wszystkich 20 →
+      0 nagłówków i 0 komórek, czyli tabela faktycznie pusta; ponowne zaznaczenie przywraca komplet.
+      **Test disposition:** e2e — memoizacja React Compilera istnieje tylko w skompilowanym buildzie,
+      więc spec Vitest nie odtworzy tego defektu; zgłoszone do backlogu E2E._
+- [x] Na `/transfery` przełącznik Kolumny ma pozycję „Ustaw kolejność kolumn…", okno się otwiera, kolumna daje się przeciągnąć, a tabela przestawia się po upuszczeniu
+      _Note: nie ma osobnej trasy `/transfery` — to tabela transakcji na stronie głównej „/" (link nawigacji
+      „Transakcje" → `/`), storageKey `transfers`. Verified: menu „Kolumny" ma „Ustaw kolejność kolumn…",
+      otwiera dialog z listą 18 pozycji (uchwyt `lucide-grip-vertical`, `cursor-grab`). Przeciągnięcie
+      „Data" (myszą, pointer-events, nie natywny HTML5 DnD) na pozycję po „Forma wpłaty" przestawiło listę
+      w dialogu ORAZ nagłówki `<thead>` po zamknięciu okna — dokładnie zgodnie z upuszczeniem. `localStorage`
+      `table-column-order:transfers` zapisał `{"date":3.5}` (rank ułamkowy, midpoint sąsiadów — zgodnie z
+      `rankForMove` w `src/lib/table/column-order.ts`)._
+- [x] Nowa kolejność przeżywa przeładowanie strony
+      _Verified: po `page.reload()` nagłówki tabeli identyczne jak przed przeładowaniem (Kwota/Forma
+      wpłaty/Data w przestawionej kolejności)._
+- [x] „Przywróć domyślną kolejność" wraca do kolejności z kodu i **nie** odkrywa schowanych kolumn
+      _Verified: z ukrytą „Notatka" i przestawioną kolejnością, kliknięcie „Przywróć domyślną kolejność"
+      wyczyściło `table-column-order:transfers` do `{}` i po zamknięciu okna nagłówki wróciły do
+      oryginalnej kolejności z kodu (ID, Data, Kwota, Forma wpłaty, Inwestycja, …) — „Notatka" pozostała
+      ukryta (nieobecna w `<thead>`), `table-columns:transfers` nietknięty. Drobna, nieblokująca
+      obserwacja: lista WEWNĄTRZ otwartego okna nie odświeżyła się natychmiast po kliknięciu resetu
+      (dalej pokazywała starą kolejność aż do zamknięcia i ponownego otwarcia) — sam zastosowany stan
+      (nagłówki, localStorage) był poprawny od razu, więc to kosmetyczna niespójność renderowania okna,
+      nie błąd funkcjonalny; nie zgłaszane osobno._
+- [x] Schowana kolumna jest w oknie wyszarzona, nadal przeciągalna, i po odkryciu ląduje na ustawionym miejscu
+      _Verified: ukryty wiersz „Notatka" w oknie „Ustaw kolejność kolumn" niesie dodatkową klasę
+      `text-muted-foreground` (wyszarzenie) obok pozostałych, w pełni kolorowych pozycji. Przeciągnięcie
+      go na pozycję 0 (mimo że ukryty) zadziałało identycznie jak dla widocznej kolumny. Po zamknięciu
+      okna i odznaczeniu „Notatka" z powrotem w menu „Kolumny" kolumna pojawiła się w `<thead>` dokładnie
+      na pozycji 0 — ustawione miejsce respektowane mimo że kolumna była ukryta w momencie przeciągania._
+- [x] Kolejność ustawiona na `/transfery` obowiązuje też na innej stronie z tym samym kluczem, a kolumna wykluczona tam nie psuje układu
+      _Verified: `storageKey="transfers"` współdzielony przez `/`, `/inwestycje/[id]`, `/kasa/[id]`,
+      `/pracownicy/[id]` (`transfer-data-table.tsx` przez `transfers-section.tsx`). Ustawiono na „/":
+      „Kwota" pierwsza, „Notatka" ukryta. Przejście na `/inwestycje/119` — nagłówki tam zaczynają się od
+      „Kwota", „Notatka" nieobecna, a kolumna „Inwestycja" (która na stronie inwestycji w ogóle nie
+      istnieje w tej tabeli — kontekst już ją determinuje) jest po prostu pominięta bez błędu układu ani
+      wyjątku w konsoli. Stan przywrócony (localStorage kluczy `table-columns:transfers` /
+      `table-column-order:transfers` usunięty, strona główna wraca do domyślnej kolejności)._
+- [x] Stopka `/flota` („Razem") nadal stoi pod kolumną kosztów po przestawieniu kolumn
+      _Verified geometrically: bazowo stopka miała `<td colspan="4">Razem</td>` obejmujące
+      Rejestracja+Pojazd+Opony+Do wymiany, a kolejna komórka „0,00 zł" leżała dokładnie pod nagłówkiem
+      „Koszty" (`left`/`width` identyczne co do piksela). Po przeciągnięciu „Koszty" na pierwszą pozycję
+      w oknie „Ustaw kolejność kolumn" komórka „0,00 zł" przeskoczyła na pierwszą pozycję stopki i nadal
+      pokrywała się dokładnie z nowym miejscem nagłówka „Koszty" (`left:225, width:95` po obu stronach).
+      Stan przywrócony (localStorage `table-column-order:*` wyczyszczony, kolejność domyślna)._
+- [x] Inwestycje i kasy pamiętają swoje kolejności osobno — przestawienie jednej nie rusza drugiej
+      _Verified: `storageKey="investments"` (`investment-data-table.tsx`) vs `storageKey="cashRegisters"`
+      (`cash-registers-table.tsx`) — osobne klucze z definicji. Przeciągnięto „Kosztorys_v2" na pierwszą
+      pozycję na `/inwestycje` (`localStorage['table-column-order:investments'] = {"kosztorysV2":-1}`) —
+      `table-column-order:cashRegisters` pozostał `null`, a nagłówki `/kasy` (Nazwa, Typ, Właściciel,
+      Saldo, Status) w niezmienionej domyślnej kolejności. Stan przywrócony._
+- [x] Tabele wirtualizowane (transakcje materiałowe, wypłaty podwykonawców) nadal poprawnie trzymają szerokości kolumn przy przewijaniu
+      _Verified (materiały, w pełni): inw. 119 → panel podsumowania → „Materiały" → „Lista wydatków" —
+      `VirtualizedTableBody` (`colgroup` + `table-fixed`, `src/components/ui/data-table/virtualized-table-body.tsx`),
+      kontener 400px wys. vs 929px treści — realne przewijanie. Szerokości komórek pierwszego
+      rzeczywistego wiersza danych (nie spacera) identyczne co do piksela przed przewinięciem, po
+      `scrollTop: 300` i z powrotem na `scrollTop: 0` — `[114,191,310,191,105,143]` za każdym razem,
+      zgodne z nagłówkami. **Podwykonawcy (częściowo)**: ten sam mechanizm (`VirtualizedTableBody`), ale
+      fixture inw. 119 ma tylko 5 wpłat — kontener 400px = treść 400px, brak realnego przewijania do
+      przetestowania. Szerokości komórek danych zgodne z nagłówkiem co do piksela w spoczynku
+      (`[134,279,446,195]`), ale scroll-stabilność nie zweryfikowana na tej tabeli wprost — oparta na tym
+      samym komponencie co potwierdzony przypadek materiałów, nie osobno dowiedziona. Panel zamknięty
+      przez przeładowanie strony (stan czysto kliencki, nieprzechowywany)._
 
 ## notification-recipients — odbiorcy powiadomień na `/flota` i `/zgloszenia`
 
