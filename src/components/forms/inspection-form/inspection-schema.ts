@@ -9,7 +9,6 @@ export const inspectionFormSchema = z.object({
   performedAt: z.string().min(1, 'Data wykonania jest wymagana'),
   nextDueAt: z.string(),
   odometer: z.string(),
-  nextDueOdometer: z.string(),
   // Optional again: an imported przegląd genuinely has no price, and „0" would be a lie rather than
   // a gap. `''` reaches the domain layer as `null`, never as `0`.
   cost: z
@@ -30,7 +29,6 @@ export const inspectionSchema = z.object({
   performedAt: z.string().min(1, 'Data wykonania jest wymagana'),
   nextDueAt: z.string().optional(),
   odometer: z.number().nonnegative().optional(),
-  nextDueOdometer: z.number().nonnegative().optional(),
   cost: z.number().nonnegative().nullable(),
   // Independently optional: the przyczepa's polisa carries a number and no insurer.
   insurer: z.string().default(''),

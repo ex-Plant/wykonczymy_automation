@@ -29,7 +29,6 @@ export function AddInspectionDialog({ vehicles, vehicleId }: AddInspectionDialog
     performedAt,
     nextDueAt: months ? addMonthsToDay(performedAt, months) : '',
     odometer: '',
-    nextDueOdometer: '',
     cost: '',
     insurer: '',
     policyNumber: '',

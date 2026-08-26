@@ -15,7 +15,6 @@ export const event = (
   performedAt,
   nextDueAt: null,
   odometer: null,
-  nextDueOdometer: null,
   notifiedThreshold: null,
   notifiedAt: null,
   odometerNotifiedAt: null,

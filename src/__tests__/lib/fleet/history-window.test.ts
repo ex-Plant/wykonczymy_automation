@@ -11,7 +11,6 @@ const entry = (
   type: 'TECHNICAL',
   nextDueAt: null,
   odometer: null,
-  nextDueOdometer: null,
   cost: null,
   insurer: '',
   policyNumber: '',

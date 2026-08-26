@@ -37,7 +37,6 @@ export type InspectionHistoryEntryT = {
   performedAt: string
   nextDueAt: string | null
   odometer: number | null
-  nextDueOdometer: number | null
   cost: number | null
   insurer: string
   policyNumber: string

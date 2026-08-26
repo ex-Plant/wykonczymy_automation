@@ -24,7 +24,6 @@ export type InspectionEventT = {
   performedAt: string
   nextDueAt: string | null
   odometer: number | null
-  nextDueOdometer: number | null
   notifiedThreshold: number | null
   notifiedAt: string | null
   odometerNotifiedAt: string | null

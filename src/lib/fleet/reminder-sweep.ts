@@ -5,7 +5,7 @@ import {
   SCHEDULED_INSPECTION_TYPES,
   type ScheduledInspectionTypeT,
 } from '@/lib/fleet/inspection-types'
-import { oilTarget, shouldNotify } from '@/lib/fleet/should-notify'
+import { shouldNotify } from '@/lib/fleet/should-notify'
 import { OVERDUE } from '@/lib/fleet/thresholds'
 import type { VehicleHistoryT } from '@/lib/fleet/types'
 
@@ -24,13 +24,8 @@ export type OdometerEntryT = {
   registration: string
   make: string
   model: string
-  /** The reading the oil is due at — the typed target, or the interval from the last change. */
-  targetOdometer: number
-  latestOdometer: number
-  /** Negative once the target is behind us. */
-  kmRemaining: number
-  /** Distance covered since the change, the figure the digest announces. `null` when it had no reading. */
-  kmSinceChange: number | null
+  /** Distance covered since the change — the only figure the alarm needs, and the one the app shows. */
+  kmSinceChange: number
 }
 
 /**
@@ -105,17 +100,15 @@ export const buildFleetDigest = (
         else digest.within7.push(entry)
       }
 
-      const target = oilTarget(row)
-      if (decision.odometer && target != null && latestOdometer != null) {
+      // The leg only fires on a change that carries a reading, against a known latest one — so the
+      // subtraction below cannot be reached with either side missing.
+      if (decision.odometer && row.odometer != null && latestOdometer != null) {
         digest.odometer.push({
           inspectionId: row.id,
           registration: vehicle.registration,
           make: vehicle.make,
           model: vehicle.model,
-          targetOdometer: target,
-          latestOdometer,
-          kmRemaining: target - latestOdometer,
-          kmSinceChange: row.odometer != null ? latestOdometer - row.odometer : null,
+          kmSinceChange: latestOdometer - row.odometer,
         })
       }
 

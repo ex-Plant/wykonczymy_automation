@@ -22,9 +22,9 @@ import type { InspectionHistoryEntryT, VehicleDetailT } from '@/types/fleet'
 const EMPTY = '—'
 
 /**
- * The trailing columns are dropped for a section that has nothing to put in them: ubezpieczyciel and
- * nr polisy belong to OC, „Wymiana przy" to the oil change, and most entries carry no attachment. An
- * always-present column of dashes costs width and says nothing.
+ * The trailing columns are dropped for a section that has nothing to put in them: ubezpieczyciel
+ * and nr polisy belong to OC, and most entries carry no attachment. An always-present column of
+ * dashes costs width and says nothing.
  *
  * Driven by the entries rather than by the section's type so a polisa with no insurer recorded — the
  * przyczepa's — drops just that one column instead of both.
@@ -32,7 +32,6 @@ const EMPTY = '—'
 const columnsFor = (entries: InspectionHistoryEntryT[]) => ({
   insurer: entries.some((entry) => entry.insurer !== ''),
   policyNumber: entries.some((entry) => entry.policyNumber !== ''),
-  oilTarget: entries.some((entry) => entry.nextDueOdometer !== null),
   attachments: entries.some((entry) => entry.attachmentCount > 0),
 })
 
@@ -46,7 +45,6 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
     SUMMARY_VALUE_COL,
     ...(shown.insurer ? [SUMMARY_VALUE_COL] : []),
     ...(shown.policyNumber ? [SUMMARY_VALUE_COL] : []),
-    ...(shown.oilTarget ? [SUMMARY_VALUE_COL] : []),
     ...(shown.attachments ? [SUMMARY_VALUE_COL] : []),
   ].join(' ')
 
@@ -59,7 +57,6 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
       <SummaryHeaderCell>Koszt</SummaryHeaderCell>
       {shown.insurer && <SummaryHeaderCell>Ubezpieczyciel</SummaryHeaderCell>}
       {shown.policyNumber && <SummaryHeaderCell>Nr polisy</SummaryHeaderCell>}
-      {shown.oilTarget && <SummaryHeaderCell>Wymiana przy</SummaryHeaderCell>}
       {shown.attachments && <SummaryHeaderCell>Załączniki</SummaryHeaderCell>}
 
       {entries.map((entry) => (
@@ -87,10 +84,6 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
           {shown.insurer && <SummaryValueCell>{entry.insurer || EMPTY}</SummaryValueCell>}
 
           {shown.policyNumber && <SummaryValueCell>{entry.policyNumber || EMPTY}</SummaryValueCell>}
-
-          {shown.oilTarget && (
-            <SummaryValueCell>{formatKmOrDash(entry.nextDueOdometer)}</SummaryValueCell>
-          )}
 
           {shown.attachments && (
             <SummaryValueCell>

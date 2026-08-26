@@ -94,7 +94,6 @@ export function InspectionForm({
       performedAt: value.performedAt,
       nextDueAt: value.nextDueAt || undefined,
       odometer: optionalNumber(value.odometer),
-      nextDueOdometer: optionalNumber(value.nextDueOdometer),
       cost: nullableNumber(value.cost),
       insurer: value.insurer,
       policyNumber: value.policyNumber,
@@ -140,9 +139,8 @@ export function InspectionForm({
 
   const onTypeChange = (type: InspectionTypeT) => {
     prefillNextDue(type)
-    // Hiding a field does not clear it — without this a TECHNICAL row persists an oil target, or a
-    // polisa's number, that it has no business carrying.
-    if (type !== 'OIL_CHANGE') form.setFieldValue('nextDueOdometer', '')
+    // Hiding a field does not clear it — without this a TECHNICAL row persists a polisa's number
+    // that it has no business carrying.
     if (type !== 'INSURANCE') {
       form.setFieldValue('insurer', '')
       form.setFieldValue('policyNumber', '')
@@ -206,19 +204,6 @@ export function InspectionForm({
             Ostatni zapisany przebieg to {formatKm(odometerWentBackwardsFrom)} — wpisany odczyt jest
             niższy.
           </p>
-        )}
-
-        {currentType === 'OIL_CHANGE' && (
-          <form.AppField name="nextDueOdometer">
-            {(field) => (
-              <field.Input
-                label="Następna wymiana przy (km)"
-                type="number"
-                placeholder="135000"
-                showError
-              />
-            )}
-          </form.AppField>
         )}
 
         {currentType === 'INSURANCE' && (

@@ -1,11 +1,11 @@
 import { daysBetween, toWarsawDay, type DayT } from '@/lib/fleet/days'
 
 import {
-  OIL_CHANGE_INTERVAL_KM,
   OVERDUE,
   classifyDeadline,
   isMailedBucket,
   isMoreUrgent,
+  isOilChangeOverdue,
   type DeadlineBucketT,
 } from '@/lib/fleet/thresholds'
 import type { InspectionEventT } from '@/lib/fleet/types'
@@ -63,25 +63,18 @@ const dateLegFires = (
 }
 
 /**
- * Two ways the oil can come due on mileage: the target somebody typed, or — when nobody typed one —
- * the interval measured from the reading taken at the change itself. Without the second, an oil
- * change entered with no target is watched by nothing at all.
+ * The interval, and only the interval (owner, 2026-08-26). It used to defer to a „następna wymiana
+ * przy (km)" typed onto the change, which nobody filled in reliably and which the fleet table and
+ * vehicle page never read — so one car came out overdue in the mail and clean in the app (EX-745).
+ * The field is gone; this is the same rule `isOilChangeOverdue` renders.
  *
- * Exported because the digest prints this figure; deciding and announcing must read the same target.
- */
-export const oilTarget = (row: InspectionEventT): number | null =>
-  row.nextDueOdometer ?? (row.odometer != null ? row.odometer + OIL_CHANGE_INTERVAL_KM : null)
-
-/**
- * Fires only once the target is behind us, whether it was typed or derived. A heads-up before it
- * lands would ask the reader to watch their own dashboard for the day it lands, which nobody does —
- * the alarm is worth sending exactly when the work is already owed.
+ * Fires only once the interval is behind us. A heads-up before it lands would ask the reader to
+ * watch their own dashboard for the day it lands, which nobody does — the alarm is worth sending
+ * exactly when the work is already owed.
  */
 const odometerLegFires = (row: InspectionEventT, latestOdometer: number | null): boolean => {
   if (row.type !== 'OIL_CHANGE' || latestOdometer == null || row.odometerNotifiedAt !== null)
     return false
 
-  const target = oilTarget(row)
-
-  return target != null && latestOdometer > target
+  return row.odometer != null && isOilChangeOverdue(latestOdometer - row.odometer)
 }
