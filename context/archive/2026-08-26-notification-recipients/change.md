@@ -1,10 +1,10 @@
 ---
 change_id: notification-recipients
 title: Notification recipients move from env vars to a DB list that holds more than one person
-status: implemented
+status: archived
 created: 2026-08-26
 updated: 2026-08-26
-archived_at: null
+archived_at: 2026-08-26T08:57:02Z
 branch: table-column-reordering
 worktree: null
 ---

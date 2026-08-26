@@ -1,10 +1,10 @@
 ---
 change_id: table-column-reordering
 title: Column reordering on the shared DataTable, ported from the kosztorys grid
-status: implemented
+status: archived
 created: 2026-08-26
 updated: 2026-08-26
-archived_at: null
+archived_at: 2026-08-26T08:57:02Z
 branch: table-column-reordering
 worktree: null
 ---
