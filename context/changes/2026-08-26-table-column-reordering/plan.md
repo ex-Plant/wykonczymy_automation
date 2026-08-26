@@ -449,14 +449,14 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 2.1 No `canHide` reference survives in `src`
-- [x] 2.2 The tables' own specs still pass
+- [x] 2.1 No `canHide` reference survives in `src` — ff1352d1
+- [x] 2.2 The tables' own specs still pass — ff1352d1
 
 ### Phase 3: Ranks in `DataTable`
 
 #### Automated
 
-- [ ] 3.1 `column-prefs-storage` spec passes
+- [x] 3.1 `column-prefs-storage` spec passes
 
 ### Phase 4: Wire the UI
 

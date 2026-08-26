@@ -41,7 +41,7 @@ export function LeadsDataTable({ data }: { data: LeadRowT[] }) {
       columns={columns}
       storageKey="leads"
       initialSorting={[{ id: 'submittedAt', desc: true }]}
-      toolbar={(table, cv) => (
+      toolbar={({ table, columnVisibility: cv }) => (
         <>
           <SearchFilterInput
             value={searchTerm}

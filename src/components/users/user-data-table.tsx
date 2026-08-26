@@ -53,7 +53,7 @@ export function UserDataTable({ data, cashRegisters }: UserDataTablePropsT) {
       storageKey="users"
       getRowHref={(row) => `/pracownicy/${row.id}`}
       getRowClassName={(row) => (!row.active ? 'opacity-50' : '')}
-      toolbar={(table, cv) => (
+      toolbar={({ table, columnVisibility: cv }) => (
         <>
           <SearchFilterInput
             value={searchTerm}

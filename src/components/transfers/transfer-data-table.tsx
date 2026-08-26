@@ -62,7 +62,7 @@ export function TransferDataTable({
           if (row.type === 'CANCELLATION') return '[&_td]:text-muted-foreground'
           return ''
         }}
-        toolbar={(table, cv) => (
+        toolbar={({ table, columnVisibility: cv }) => (
           <div className="ml-auto flex items-center gap-2">
             <CancelledTransactionAuditButton baseUrl={baseUrl} />
             <CancelledFilterButton baseUrl={baseUrl} />

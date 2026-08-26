@@ -82,7 +82,7 @@ export function CashRegistersTable({ data, className }: CashRegistersTablePropsT
         storageKey="cashRegisters"
         getRowHref={(row) => `/kasa/${row.id}`}
         getRowClassName={(row) => (!row.active ? 'opacity-50' : '')}
-        toolbar={(table, cv) => (
+        toolbar={({ table, columnVisibility: cv }) => (
           <>
             <SearchFilterInput
               value={searchTerm}

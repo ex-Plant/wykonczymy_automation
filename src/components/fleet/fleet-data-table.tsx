@@ -60,7 +60,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
             </tr>
           )
         }}
-        toolbar={(table, cv) => (
+        toolbar={({ table, columnVisibility: cv }) => (
           <>
             <SearchFilterInput
               value={searchTerm}
